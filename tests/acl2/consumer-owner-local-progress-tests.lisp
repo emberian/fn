@@ -23,7 +23,7 @@
 (defconst *colp-id* '(7))
 (defconst *colp-group* '(102 110 46 116 101 115 116)) ; fn.test
 (defconst *colp-register*
-  (fn-col-register (fn-own-start *colp-boot* 2) *colp-id* *colp-group*))
+  (fn-col-register (fn-own-start *colp-boot* 2) 256 *colp-id* *colp-group*))
 (defconst *colp-s1* (colp-commit *colp-boot* (cadr *colp-register*)))
 (defconst *colp-o1* (fn-own-start *colp-s1* 2))
 

@@ -412,7 +412,10 @@ def independent_check(article, msgid, keyring):
 
 def parse_hdr_item(line):
     """`N verified HEX keyring G [policy ...]`, `N verified legacy keyring G`,
-    `N unverified REASON keyring G`, `N absent REASON`, `N carried HEX`."""
+    `N unverified REASON keyring G`, `N absent REASON`, `N carried HEX`,
+    `N revoked HEX keyring G` (books/stx-verify.lisp fn-stx-verified-item:
+    transit after this node revoked the principal, under keys it had
+    enrolled; never `verified`)."""
     parts = line.split()
     if len(parts) < 3 or not parts[0].isdigit():
         raise Undecided("malformed HDR :fn-verified line {!r}".format(line))
@@ -432,6 +435,11 @@ def parse_hdr_item(line):
         if not re.fullmatch(r"[0-9a-fA-F]{64}", parts[2]):
             raise Undecided("the node's carried line names no principal: {!r}".format(line))
         return {"outcome": "carried", "principal": parts[2].lower()}
+    if token == "revoked":
+        if len(parts) < 5 or parts[3] != "keyring" \
+                or not re.fullmatch(r"[0-9a-fA-F]{64}", parts[2]):
+            raise Undecided("the node's revoked line names no principal: {!r}".format(line))
+        return {"outcome": "revoked", "principal": parts[2].lower(), "keyring": parts[4]}
     raise Undecided("unknown HDR :fn-verified token in {!r}".format(line))
 
 
@@ -532,6 +540,16 @@ def ask_node(node, msgid):
 
 
 def compare(claim, check):
+    if claim["outcome"] == "revoked":
+        # The node vouches for nothing: it names the principal it revoked.
+        # A signature that verifies as ANOTHER principal's contradicts it.
+        if check["outcome"] == "verified" and check["principal"] != claim["principal"]:
+            return DISAGREE, "the node says revoked {} but the signature is {}'s".format(
+                claim["principal"], check["principal"])
+        return AGREE_UNVERIFIED, "not verified: the node revoked {} (keyring {}); the independent check says {}".format(
+            claim["principal"], claim["keyring"],
+            "the signature is that principal's" if check["outcome"] == "verified"
+            else check.get("reason"))
     node_verified = claim["outcome"] == "verified"
     check_verified = check["outcome"] == "verified"
     if node_verified and check_verified:

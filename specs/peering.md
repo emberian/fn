@@ -1613,10 +1613,22 @@ record rather than dropping an old one, so the journal prefix through any
 statement's txid is present whenever the Store opens. The replay rule is part
 of the Store format's meaning: a change to it is a format version with its
 own reader, never an edit that reinterprets records already written. An
-explicit re-evaluation under today's grants, `operator CONFIG keys redecide
-MSGID`, is specified (PKT-325) and not built: decided by ACL2 under the grants
-at the redecide's own txid, and filed as its own record, never an effect of
-open.
+explicit re-evaluation under today's grants is the operator's `operator
+CONFIG keys redecide MSGID` (PKT-325, PRF-166): control request 12 to the
+running owner (offline refused), decided by ACL2 as a new acceptance of the
+stored statement (`fn-ks-redecide-plan`: `fn-ks-plan` over the Store's
+keyring now and the live grants, which are the grants of the configuration
+in force at the redecide's own txid), and never an effect of open. Its one
+durable record is the kind-3 change at its own coordinates: no statement is
+re-filed and no record kind is added, so there is no cut, and the next open's
+recorded recovery sees a newest record that is no statement and repeats
+nothing (`fn-ks-reopen-after-a-redecide`). It is refused by name, the Store
+unchanged, when MSGID names no stored key statement (`not-a-key-statement`)
+or the statement's change is already in the keyring at a later generation
+(`already-acted`); a statement that declines again is reported `declined
+REASON`.
+
+SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, without a restart, and never re-decided by an open
 
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
