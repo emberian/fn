@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 895 |
-| Certification roots in the Makefile | 879 |
-| Books inside the root closure | 891 |
-| `defthm` and `defthmd` events | 12464 |
-| `defun` events | 8716 |
+| Books read | 900 |
+| Certification roots in the Makefile | 884 |
+| Books inside the root closure | 896 |
+| `defthm` and `defthmd` events | 12480 |
+| `defun` events | 8727 |
 | Functions with verified guards | 2181 |
 | Functions declared `:verify-guards nil` and never verified | 657 |
-| Functions left at the default with an explicit guard | 4603 |
-| Functions left at the default with no guard | 1275 |
-| `assert-event` checks | 12999 |
-| `must-fail` checks | 1427 |
+| Functions left at the default with an explicit guard | 4607 |
+| Functions left at the default with no guard | 1282 |
+| `assert-event` checks | 13057 |
+| `must-fail` checks | 1430 |
 | `encapsulate` events | 61 |
 | Theorems flagged SUSPECT by shape | 108 |
 | Export-hygiene warnings | 149 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 104 |
-| Include-hygiene warnings | 899 |
+| Teeth-form warnings | 107 |
+| Include-hygiene warnings | 905 |
 | Host-names warnings | 1015 |
 | Hand-written-record warnings | 18 |
 
@@ -486,6 +486,7 @@ that `make certify` requests.
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/reclaim-tombstone.lisp` | root | 0 | 13 | 0/0/13/0 | 0 | 0 | 0 |
+| `books/record-width-producers.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-attach-concrete.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-canonicality.lisp` | root | 41 | 0 | 0/0/0/0 | 0 | 0 | 2 |
@@ -521,6 +522,7 @@ that `make certify` requests.
 | `books/statement-items.lisp` | root | 2 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/statement-seam.lisp` | root | 12 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 24 | 56 | 0/0/56/0 | 0 | 0 | 0 |
+| `books/store-budget-article.lisp` | root | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-budget-naming.lisp` | root | 15 | 11 | 0/1/10/0 | 0 | 0 | 0 |
 | `books/store-budget.lisp` | root | 9 | 13 | 0/7/6/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-codec.lisp` | root | 67 | 46 | 14/2/30/0 | 0 | 0 | 0 |
@@ -888,8 +890,10 @@ that `make certify` requests.
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 62 | 12 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
+| `tests/acl2/profile-monotonicity-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 21 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
+| `tests/acl2/record-width-producers-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 17 | 2 | 0 |
 | `tests/acl2/records-ceiling-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 16 | 5 | 0 |
 | `tests/acl2/records-concrete-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 65 | 3 | 0 |
 | `tests/acl2/records-schema-v1-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 6 | 0 |
@@ -909,6 +913,7 @@ that `make certify` requests.
 | `tests/acl2/source-projection-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 5 | 3 | 0 |
 | `tests/acl2/stack-depth-twins-tests.lisp` | - | 2 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
+| `tests/acl2/store-budget-article-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 20 | 1 | 0 |
 | `tests/acl2/store-budget-naming-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 61 | 17 | 0 |
 | `tests/acl2/store-budget-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 28 | 3 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 23 | 11 | 0 |
