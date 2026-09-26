@@ -5586,7 +5586,8 @@
         "host/native/operator.lisp",
         "planning/evidence/sanding-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T075222Z-2909445.json",
-        "planning/evidence/manifests/certify-20260926T075416Z-2929730.json"
+        "planning/evidence/manifests/certify-20260926T075416Z-2929730.json",
+        "planning/evidence/manifests/certify-20260926T080341Z-3026258.json"
       ],
       "events": [
         "fn-served-implicit-tls-is-the-starttls-session",
