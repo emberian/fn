@@ -3567,9 +3567,33 @@
         "tests/mldsa65_interop.py",
         "tests/native_hybrid_signatures.lisp",
         "tests/test_native_hybrid_author.py",
-        "planning/evidence/crypto-deps-2026-09-26.md"
+        "planning/evidence/crypto-deps-2026-09-26.md",
+        "tests/test_native_starttls.py",
+        "tests/native_tls_transport.lisp",
+        "planning/evidence/release-openbsd-2026-09-26.md"
       ],
       "implementation_note": "ML-DSA-65 moved from OpenSSL 3.5's EVP interface to vendored PQClean behind a C shim loaded from lib/ beside the core; key files and signatures are byte-compatible with OpenSSL 3.5 (checked both ways over fresh keys and every committed OpenSSL-made carrier). TLS uses the system libssl; the image checks the version and every function it calls at build and at each start. The frozen image and the release tarball bundle libsodium and libfn-mldsa65, and no OpenSSL."
+    },
+    {
+      "id": "HST-015",
+      "title": "No Python on the path a deployed node executes: the release's launcher, image, libraries and service files start and load no Python program or library",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "inspection"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/release-tarball.sh",
+        "packaging/fn.rc.in",
+        "Makefile",
+        "planning/evidence/release-openbsd-2026-09-26.md"
+      ],
+      "implementation_note": "tools/runpath_check.py lists every program and library on the deployed path and fails on Python: statically (make check) every process-starting form in host/ (one, the operator-named pinned ION helper of app-journal workflow-ion-submit), the libraries the image dlopens, the shipped launcher, frozen launcher and service files; over a release (release-tarball.sh runs it before packing) every file: no .py, no Python shebang, every executable a /bin/sh script or ELF whose DT_NEEDED names no libpython, every service starting PREFIX/bin/fn. It cannot see what an operator-supplied helper is or what the loader resolves at run time. Python remains for clients and tests."
     }
   ]
 }
