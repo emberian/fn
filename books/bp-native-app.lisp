@@ -48,6 +48,29 @@
                   (list :refused :article-fields)
                 (list :ok msgid groups)))))))))
 
+;; A transit request's fields are the RELAYING agent's (RFC 5537 section 3.6
+;; step 1, fn-af-relayed-article-check), exactly the check
+;; fn-bpaj-transit-plan's Message-ID comes from (fn-bpaj-transit-msgid): a
+;; relayed article carries the injecting node's Injection-Info (and may carry
+;; its Xref), which the injecting agent's check fn-bpaj-article-fields
+;; refuses.  Until mission-signed, the transit lookups below used that check,
+;; so every transit request whose article had been injected (every
+;; Store-rendered, hybrid-signed carrier) answered (:conflict) and was refused
+;; as :intent before any Store attempt.
+(defun fn-bpaj-transit-article-fields (request)
+  (declare (xargs :guard t))
+  (if (not (fn-bpa-requestp request)) (list :refused :request)
+    (let ((parsed (fn-article-parse (fn-bpa-request-article request))))
+      (if (not (fn-article-result-okp parsed)) (list :refused :article-syntax)
+        (let ((checked (fn-af-relayed-article-check
+                        (fn-article-result-article parsed))))
+          (if (not (equal (car checked) :ok))
+              (list :refused (cadr checked))
+            (let ((msgid (cadr checked)) (groups (caddr checked)))
+              (if (or (not msgid) (not (consp groups)))
+                  (list :refused :article-fields)
+                (list :ok msgid groups)))))))))
+
 (defun fn-bpaj-request-subjectp (request)
   (declare (xargs :guard t))
   (and (fn-bpa-requestp request)
@@ -63,7 +86,7 @@
        (fn-bpa-requestp request)
        (fn-bpr-store-record-acceptedp store record)
        (equal (fn-record-payload record) stored-octets)
-       (let ((fields (fn-bpaj-article-fields request)))
+       (let ((fields (fn-bpaj-transit-article-fields request)))
          (and (equal (car fields) :ok)
               (equal (fn-record-msgid record)
                      (fn-record-octets-string (cadr fields)))))))
@@ -485,7 +508,7 @@
 
 (defun fn-bpaj-transit-record-lookup (store request intent)
   (declare (xargs :guard t))
-  (let ((fields (fn-bpaj-article-fields request)))
+  (let ((fields (fn-bpaj-transit-article-fields request)))
     (if (not (and (equal (car fields) :ok)
                   (fn-bpaj-transit-intentp intent)))
         (list :conflict)
