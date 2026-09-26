@@ -272,7 +272,7 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 ;   committed since the last query, never the history.  The length is NOT
 ;   recorded beside the event at the append: that would evaluate the
 ;   constrained record encoder inside a Store transition, which defconst
-;   evaluation cannot run (record §3 of hot-path-scans-2026-09-26).
+;   evaluation cannot run (record section 3 of hot-path-scans-2026-09-26).
 ;
 ; Why a named function and not `mbe' inside `fn-sbud-used': an `:exec' that
 ; reads the index is equal to the `len' only under the relation, so the guard
