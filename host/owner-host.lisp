@@ -2358,6 +2358,42 @@
     (fn-served-reply-to-buffer (f-get-global 'fn-owner-effects state) fn-octets)
     (mv nil (if okp :ok :malformed) fn-octets state)))
 
+; The same read over a range of the octet buffer (books/served-span.lisp;
+; REP-012, PRF-181): host/native/owner.lisp fnn-owner-handle-chunk fills the
+; buffer from the socket's byte vector and calls this with [start, end), so
+; no octet of a read is ever a cons cell.  fn-scar-ocfg-read-span is
+; fn-scar-ocfg-read-tls-prefix over (fn-oct-slice-list start end fn-octets)
+; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation); everything
+; installed below is installed as fn-owner-chunk installs it.
+(defun fn-owner-chunk-span (id start end fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (if (not (and (natp start) (natp end) (<= start end)
+                    (<= end (fn-octets-len fn-octets))))
+          (value :bad-range)
+        (let* ((result (fn-scar-ocfg-read-span
+                        (fn-owner-ocfg state) id start end fn-octets))
+               (state (fn-owner-install-ocfg
+                       (fn-own-tls-result-owner result) state))
+               (state (fn-owner-install-effects
+                       (fn-own-tls-result-effects result) state))
+               (state (f-put-global 'fn-owner-consumed
+                                    (fn-own-tls-result-consumed result) state))
+               ; PRF-161: progress, failed logins and submissions of this step.
+               (state (fn-owner-exposure-observe
+                       id (fn-own-tls-result-effects result)
+                       (fn-own-tls-result-consumed result) state))
+               ; One line per 441 the effects send (books/owner-log.lisp
+               ; fn-olog-served-refusal-lines-one-per-441).
+               (state (f-put-global 'fn-owner-refusal-lines
+                                    (fn-olog-served-refusal-lines
+                                     (fn-owner-core state) id
+                                     (fn-own-tls-result-effects result))
+                                    state)))
+          (value :ok))))))
+
 (defun fn-owner-close (id state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-step (list :close id) state)))

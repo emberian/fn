@@ -3336,6 +3336,32 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "REP-012",
+      "title": "The wire machine's ingress reads the octet buffer in place: the host fills the buffer once from the socket vector and the served read consumes the range by index, proved equal to the reference list read; no per-read cons list on the served hot path",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-181"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "books/served-span.lisp",
+        "books/wire-span.lisp",
+        "tests/acl2/served-span-tests.lisp",
+        "tests/acl2/wire-span-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "planning/evidence/ingress-span-2026-09-26.md"
+      ],
+      "implementation_note": "Lane ingress-span (2026-09-26, PKT-302 (iv)). The host (host/native/owner.lisp fnn-owner-handle-chunk) fills fn-octets once from the socket byte vector (fnn-octets-fill) and calls fn-owner-chunk-span, which reads the range via fn-scar-ocfg-read-span; no fnn-octet-list (a 512-element cons list per socket read) on the read path. KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the buffer fold IS the list counted fold over fn-oct-slice-list i end, byte for byte; KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation the span read is fn-ocfg-read-tls-prefix over the range's octets. The wire read fn-wire-feed-span (books/wire-span.lisp, fn-wire-feed-span-is-feed-proper) is the foundation the per-framed-event served fold will call. NOT YET (PKT-479): the served fold still rebuilds the connection per byte (per-framed-event dispatch removes it), and the wire still rebuilds its state per byte (a per-line index scan removes it); both are lemma-engineering, not soundness gaps. Measurement (before/after allocation and CPU) pending.",
+      "note": "Lane ingress-span (2026-09-26), PKT-302 (iv); rep-wave-d's program."
     }
   ]
 }
