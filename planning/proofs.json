@@ -6328,7 +6328,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "books/peer-carriage-rows.lisp",
@@ -6339,7 +6339,10 @@
         "tests/acl2/native-admin-tests.lisp",
         "tests/acl2/checkpoint-publish-tests.lisp",
         "tests/acl2/checkpoint-pack-retire-tests.lisp",
-        "planning/evidence/caps-to-profile-2026-09-26.md"
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T112332Z-985333.json",
+        "planning/evidence/manifests/certify-20260926T113443Z-1122513.json",
+        "planning/evidence/manifests/certify-20260926T113632Z-1144441.json"
       ],
       "progress_note": "Open (PKT-451): field 7 governs group names (community-bounds section 3's design; a records-shape and byte-store-frame freeze).",
       "events": [
