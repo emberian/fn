@@ -1,0 +1,8 @@
+test_a_peer_carries_more_than_the_old_row_cap (tests.test_native_peer_rows_growth.NativePeerRowsGrowthTests.test_a_peer_carries_more_than_the_old_row_cap) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1067.516s
+
+OK
+peer-rows-growth: 1100 requests in 1058.3 s
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_peer_rows_growth", "tests": 1, "failures": 0, "errors": 0, "skipped": 0, "executed": 1, "skips": [], "timings": [["tests.test_native_peer_rows_growth.NativePeerRowsGrowthTests.test_a_peer_carries_more_than_the_old_row_cap", 1067.516]]}

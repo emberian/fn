@@ -1,0 +1,12 @@
+test_a_peer_carries_more_than_the_old_row_cap (tests.test_native_peer_rows_growth.NativePeerRowsGrowthTests.test_a_peer_carries_more_than_the_old_row_cap) ... ok
+test_the_live_owner_extends_a_peer_and_an_older_image_refuses_it (tests.test_native_peer_rows_growth.NativePeerRowsLiveTests.test_the_live_owner_extends_a_peer_and_an_older_image_refuses_it) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 65.843s
+
+OK
+peer-rows-growth: 300 requests in 58.5 s
+peer-rows-live: far path-identity=far.example.invalid address=192.0.2.44 port=1119 security=clear inbound=fn.* outbound=- auth=source-address:192.0.2.44 carries-principal=0000000000000000000000000000000000000000000000000000000000000001 carries-principal=00000000000000000000000000000000000000000000000000000000000000
+peer-rows-old-image fresh -> 0 ull-replay reason=absent reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0 checkpoint-file=absent pins=0 reserved=0 connections=0 accepted operator status 
+peer-rows-old-image extended -> 4 fault operator status ACL2 refused configuration namespace observation 
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_peer_rows_growth", "tests": 2, "failures": 0, "errors": 0, "skipped": 0, "executed": 2, "skips": [], "timings": [["tests.test_native_peer_rows_growth.NativePeerRowsGrowthTests.test_a_peer_carries_more_than_the_old_row_cap", 60.189], ["tests.test_native_peer_rows_growth.NativePeerRowsLiveTests.test_the_live_owner_extends_a_peer_and_an_older_image_refuses_it", 5.654]]}
