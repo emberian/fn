@@ -513,10 +513,14 @@ code (`fn-nh-report-exit-of-render-and-more`).
 `packaging/release-tarball.sh FROZEN_DIR REVISION OUT_DIR` packages one
 frozen image as `fn-REV12-linux-x86_64.tar.gz` with its `.sha256`: the
 installed layout below under one directory `fn-REV12/`, carrying the SBCL
-runtime, OpenSSL 3.5 and libsodium beside the image, the operator documents
-under `share/doc/fn/`, and `SHA256SUMS` over every file. The launcher finds
-all of it relative to itself, so the directory runs wherever it is unpacked
-and needs no system OpenSSL. What a stranger runs, in order (each step's
+runtime, libsodium and the ML-DSA-65 library (vendored PQClean) beside the
+image, the operator documents under `share/doc/fn/`, and `SHA256SUMS` over
+every file. The launcher finds all of it relative to itself, so the directory
+runs wherever it is unpacked. The system provides the TLS library: OpenSSL
+3.0 or later on Linux, LibreSSL 3 or later on OpenBSD (HST-016); the image
+checks its version and every function it calls when it starts, and refuses
+to start, naming what is missing, otherwise. `FN_OPENSSL_PREFIX` optionally
+names another matched libcrypto/libssl pair. What a stranger runs, in order (each step's
 exact words and what it answers are in
 [peering with a friend](peering-with-a-friend.md), section 1):
 
@@ -532,10 +536,11 @@ exact words and what it answers are in
    it applies at the next start).
 4. For peering, the node's keys: `peer keygen KEYDIR` (an absolute path
    that does not exist yet) makes the directory mode 0700 with an Ed25519
-   pair from the tarball's libsodium and an ML-DSA-65 pair from its OpenSSL
-   3.5, every file 0600, and runs `peer genesis KEYDIR`, printing the
+   pair from the tarball's libsodium and an ML-DSA-65 pair from its ML-DSA-65
+   library, every file 0600, and runs `peer genesis KEYDIR`, printing the
    principal. It refuses an existing directory. A directory made by hand
-   with an `openssl` 3.5 command, then `peer genesis KEYDIR`, is the same.
+   with an `openssl` 3.5 command, then `peer genesis KEYDIR`, is the same:
+   the key files are the PEMs OpenSSL writes.
 5. `fn operator NODE/fn.toml run` under a service manager
    (`systemd-run --user --unit NAME -p MemoryMax=8G ...` on a box without
    root).
@@ -1224,8 +1229,8 @@ packaging/fn-native operator /etc/fn/fn.toml policy set posting-policy bound-log
 
 These are the native operator's verbs (`fn-host --fn operator CONFIG ...`);
 the Python `bin/fn principal` has only `new`, `list` and `set-password`. The
-native operator loads the hybrid-signature library, so it needs OpenSSL 3.5
-(`FN_OPENSSL_PREFIX`), as the node does. A later `policy set posting-policy
+native operator loads the hybrid-signature library (libsodium and
+`lib/libfn-mldsa65` beside the core), as the node does. A later `policy set posting-policy
 open` takes effect: a policy slot holds the value set last
 (`fn-cfg-set-policy-sets-the-policy`, books/config-invariants.lisp; until
 2026-09-25 the first value set stayed in force).

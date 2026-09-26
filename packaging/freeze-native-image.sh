@@ -1,36 +1,37 @@
 #!/bin/sh
 # Freeze already-built native images into a relocatable, source-pinned directory.
 #
-#   freeze-native-image.sh BUILD_DIR OUTPUT_DIR OPENSSL_PREFIX
+#   packaging/freeze-native-image.sh BUILD_DIR OUTPUT_DIR
 #
-# OPENSSL_PREFIX is the OpenSSL 3.5 pair to bundle, or `-' for none: the image
-# then loads the system's TLS library (OpenBSD's LibreSSL).  On OpenBSD,
-# FN_FREEZE_SODIUM names the libsodium to bundle (pkg_add libsodium:
-# /usr/local/lib/libsodium.so.11.1) and every other shared object the SBCL
-# runtime needs outside the base system (libzstd) is bundled beside it.
-# FN_FREEZE_DYNAMIC_SPACE_MB replaces the heap the build inherited
-# (--dynamic-space-size) in the frozen launchers; SBCL_USER_ARGS at run time
-# still overrides it (SBCL takes the last such option).
+# The directory carries the cores, the SBCL runtime, libsodium and the
+# ML-DSA-65 library (BUILD_DIR/lib/libfn-mldsa65.so, tools/build_mldsa65.sh)
+# in lib/.  It carries no TLS library: the system provides libssl (OpenSSL
+# 3.0+ or LibreSSL 3+), HST-016.
+#
+# On OpenBSD, FN_FREEZE_SODIUM names the libsodium to bundle (pkg_add
+# libsodium: /usr/local/lib/libsodium.so.11.1 on 7.9, kept under its own
+# name for ld.so), and every other shared object the SBCL runtime needs
+# outside the base system (libzstd) is bundled beside it; image.sha256 is in
+# sha256(1)'s BSD format there.  FN_FREEZE_DYNAMIC_SPACE_MB replaces the heap
+# the build inherited (--dynamic-space-size, 32000 MB from ACL2's save) in the
+# frozen launchers; SBCL_USER_ARGS at run time still overrides it (SBCL takes
+# the last such option).
 set -eu
-[ "$#" -eq 3 ] || { echo 'usage: freeze-native-image.sh BUILD_DIR OUTPUT_DIR OPENSSL_PREFIX' >&2; exit 2; }
-build=$1 out=$2 openssl=$3
+[ "$#" -eq 2 ] || { echo 'usage: freeze-native-image.sh BUILD_DIR OUTPUT_DIR' >&2; exit 2; }
+build=$1 out=$2
 [ ! -e "$out" ] || { echo "freeze-native-image: output exists: $out" >&2; exit 4; }
 case $out in /*) ;; *) echo 'freeze-native-image: output must be absolute' >&2; exit 2;; esac
 system=$(uname -s)
 case $system in Linux|OpenBSD) ;; *) echo "freeze-native-image: unsupported system $system" >&2; exit 4;; esac
 heap=${FN_FREEZE_DYNAMIC_SPACE_MB:-}
-case $heap in ''|*[!0-9]*) [ -z "$heap" ] || { echo 'freeze-native-image: FN_FREEZE_DYNAMIC_SPACE_MB must be a number of MB' >&2; exit 2; };; esac
+case $heap in *[!0-9]*) echo 'freeze-native-image: FN_FREEZE_DYNAMIC_SPACE_MB must be a number of MB' >&2; exit 2;; esac
 first=$build/fn-host
 [ -x "$first" ] && [ -s "$first.core" ] || { echo 'freeze-native-image: missing production build' >&2; exit 4; }
 runtime=$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' "$first")
 sbcl_home=$(sed -n "s/^export SBCL_HOME='\([^']*\)'/\1/p" "$first")
 [ -x "$runtime" ] && [ -d "$sbcl_home" ] || { echo 'freeze-native-image: missing SBCL runtime' >&2; exit 4; }
-if [ "$openssl" = - ]; then
-  bundle_openssl=no
-else
-  bundle_openssl=yes
-  [ -s "$openssl/lib/libcrypto.so.3" ] && [ -s "$openssl/lib/libssl.so.3" ] || { echo 'freeze-native-image: missing OpenSSL pair' >&2; exit 4; }
-fi
+mldsa=$build/lib/libfn-mldsa65.so
+[ -s "$mldsa" ] || { echo "freeze-native-image: missing $mldsa (tools/build_mldsa65.sh)" >&2; exit 4; }
 if [ -n "${FN_FREEZE_SODIUM:-}" ]; then
   sodium=$FN_FREEZE_SODIUM
 elif [ "$system" = Linux ]; then
@@ -47,16 +48,13 @@ else
   sodium_name=$(basename "$sodium")
   case $sodium_name in libsodium.so.[0-9]*.[0-9]*) ;; *)
     echo "freeze-native-image: OpenBSD libsodium must be libsodium.so.MAJOR.MINOR: $sodium" >&2; exit 4;; esac
-  hash_tool=sha256   # BSD-format lines; verified with sha256 -c
+  hash_tool=sha256   # BSD-format lines; checked with sha256 -c
 fi
 mkdir -p "$out/runtime/sbcl-home" "$out/lib"
 cp -p "$runtime" "$out/runtime/sbcl"
 cp -RL "$sbcl_home"/. "$out/runtime/sbcl-home"/
-if [ "$bundle_openssl" = yes ]; then
-  mkdir -p "$out/openssl/lib"
-  cp -L "$openssl/lib/libcrypto.so.3" "$openssl/lib/libssl.so.3" "$out/openssl/lib/"
-fi
 cp -L "$sodium" "$out/lib/$sodium_name"
+cp -L "$mldsa" "$out/lib/libfn-mldsa65.so"
 if [ "$system" = OpenBSD ]; then
   # The runtime's DT_NEEDED objects outside the base system (/usr/lib) travel
   # with it: pkg_add sbcl links libzstd from /usr/local/lib.
@@ -102,15 +100,10 @@ for name in $variants; do
   cp -p "$src.core" "$out/$name.core"
   {
     echo '#!/bin/sh'
-    echo '# fn frozen image launcher v1'
+    echo '# fn frozen image launcher v2'
     echo 'here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)'
     echo 'export SBCL_HOME="$here/runtime/sbcl-home/"'
-    if [ "$bundle_openssl" = yes ]; then
-      echo 'export FN_OPENSSL_PREFIX="$here/openssl"'
-      echo 'export LD_LIBRARY_PATH="$here/lib:$here/openssl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
-    else
-      echo 'export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
-    fi
+    echo 'export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
     sed -n '/^exec "/p' "$src" |
       sed -e 's|^exec "[^"]*"|exec "$here/runtime/sbcl"|' \
           -e "s|--core \"[^\"]*\"|--core \"\$here/$name.core\"|" \
@@ -118,6 +111,4 @@ for name in $variants; do
   } > "$out/$name"
   chmod 0755 "$out/$name"
 done
-parts="runtime lib"
-[ "$bundle_openssl" = no ] || parts="$parts openssl"
-(cd "$out" && find fn-host* $parts -type f | LC_ALL=C sort | xargs $hash_tool > image.sha256)
+(cd "$out" && find fn-host* runtime lib -type f | LC_ALL=C sort | xargs $hash_tool > image.sha256)
