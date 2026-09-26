@@ -22,6 +22,9 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-cei-correspondencep (fn-sn-event-index store)
                           (fn-sf-records (fn-sn-files store))))
+; Closed: theorems carry it as a named premise, and the lemmas that use it
+; open it by name.
+(in-theory (disable fn-bpaj-store-indexedp))
 
 ; Store membership through the Message-ID index: the record's own
 ; Message-ID selects its candidates, so no walk of the history and no decode
@@ -561,7 +564,7 @@
 (local
  (defthm fn-bpaj-record-msgid-is-a-string
    (implies (fn-record-p record) (stringp (fn-record-msgid record)))
-   :hints (("Goal" :in-theory (enable fn-record-p)))))
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-msgidp)))))
 
 ; The lookup reads the index; under the premise it is the walk.
 (defthm fn-bpaj-indexed-records-are-the-walk

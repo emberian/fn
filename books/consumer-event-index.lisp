@@ -94,10 +94,16 @@
   (declare (xargs :guard t))
   (if (consp index) (cdr index) nil))
 
-; The Message-ID half's lookup: no allocation, the walk by string index.
+; A Message-ID's list in the trie: the walk by string index, no allocation.
+; The index only ever stores true lists; the test makes that a type.
+(defun fn-cei-trie-records (msgid trie)
+  (declare (xargs :guard t))
+  (let ((value (fn-mxc-lookup msgid trie)))
+    (if (true-listp value) value nil)))
+
 (defun fn-cei-msgid-records (msgid index)
   (declare (xargs :guard t))
-  (fn-mxc-lookup msgid (fn-cei-msgid-trie index)))
+  (fn-cei-trie-records msgid (fn-cei-msgid-trie index)))
 
 ; Adding one event: its article record, if it has one with a string
 ; Message-ID, is appended to that Message-ID's list.
@@ -107,7 +113,8 @@
     (if (and (fn-record-p record) (stringp (fn-record-msgid record)))
         (fn-midx-put-chars
          (coerce (fn-record-msgid record) 'list)
-         (fn-cei-snoc (fn-mxc-lookup (fn-record-msgid record) trie) record)
+         (fn-cei-snoc (fn-cei-trie-records (fn-record-msgid record) trie)
+                      record)
          trie)
       trie)))
 
@@ -316,6 +323,10 @@
 (defthm fn-cei-snoc-is-true-list
   (true-listp (fn-cei-snoc xs x)))
 
+(defthm fn-cei-msgid-records-is-a-true-list
+  (true-listp (fn-cei-msgid-records msgid index))
+  :rule-classes :type-prescription)
+
 (defthm fn-cei-msgid-records-of-put
   (implies (stringp msgid)
            (equal (fn-cei-msgid-records msgid (fn-cei-put sequence event index))
@@ -330,8 +341,8 @@
                             (b (fn-record-msgid
                                 (fn-cei-event-article event)))))
            :in-theory (e/d (fn-cei-msgid-records fn-cei-put fn-cei-msgid-add
-                            fn-cei-msgid-trie fn-midx-lookup
-                            fn-midx-key-chars)
+                            fn-cei-msgid-trie fn-cei-trie-records
+                            fn-midx-lookup fn-midx-key-chars)
                            (fn-cei-snoc fn-cei-snoc-is-append-one
                             fn-midx-put-chars fn-midx-get-chars
                             fn-midx-string-list-coercion-injective)))))
@@ -355,7 +366,7 @@
   :hints (("Goal" :use ((:instance fn-cei-msgid-records-of-build-aux
                                    (sequence 0) (index nil)))
            :in-theory (e/d (fn-cei-build fn-cei-msgid-records
-                            fn-cei-msgid-trie)
+                            fn-cei-msgid-trie fn-cei-trie-records)
                            (fn-cei-msgid-records-of-build-aux
                             fn-cei-build-aux)))))
 
