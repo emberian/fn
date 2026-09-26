@@ -2663,7 +2663,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-118"
+        "PRF-118",
+        "PRF-133"
       ],
       "verification": [
         "proof",
@@ -2673,7 +2674,9 @@
         "books/payload-arena.lisp",
         "tests/acl2/payload-arena-tests.lisp",
         "tools/rep_measure.py",
-        "planning/evidence/rep-wave-d-2026-09-25.md"
+        "planning/evidence/rep-wave-d-2026-09-25.md",
+        "books/store-checkpoint-buffer.lisp",
+        "planning/evidence/rep-wave-d-2-2026-09-26.md"
       ],
       "implementation_note": "D27: the logical model stays octet lists, the executable path holds bytes. fn-arena is the concrete home of every retained payload (one byte per octet, sixteen per handle) with the abstraction relation proved once as the stobj's obligations, and the lifetime facts the mandate section 7 names as theorems: a pinned reader's handle cannot observe a mutated or reused payload (fn-arena-seals-keep-sealed), nothing removes a payload (no delete export; reclamation is a new seal and space is reclaimed at open), and the checkpoint reopen and ordinary admission establish the same relation with the history (fn-arn-store-corr-of-open, -of-commit). Not yet on a served path: the record's payload field is still the list; the program that moves it (the model change at records-shape, the record codec and the recovery decode over the arena, the served article as a reference effect, the checkpoint codec, the ingress span machine) is the record's section 3, with the matched baseline of section 1 it is measured against.",
       "keystones": [
@@ -2685,6 +2688,24 @@
         "fn-arn-store-corr-of-open"
       ],
       "note": "Lane rep-wave-d (2026-09-25), PRF-118, SCN-063, PKT-167."
+    },
+    {
+      "id": "REP-011",
+      "title": "The record's payload is an arena handle: the stored record and the acceptance state's article and pending hold a natural into fn-arena, the bytes are read by handle, and the transition is parametric in the payload",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/rep-wave-d-2-2026-09-26.md"
+      ],
+      "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator.",
+      "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."
     }
   ]
 }

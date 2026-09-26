@@ -5063,6 +5063,35 @@
         "planning/evidence/manifests/certify-20260926T002630Z-3094901.json"
       ],
       "progress_note": "Lane rep-wave-d (2026-09-25): the arena and its theorems certified on persvati (run-20260926T002605Z-febf, 1.17 s and 0.77 s at two jobs). The host join (the seal at the served POST's finish, the handle in the record) is the model change of the record's payload field, a coordinated freeze the record's section 3 lays out; until it lands the served path holds the list and no representation improvement is claimed."
+    },
+    {
+      "id": "PRF-133",
+      "title": "The state checkpoint's file octets, written as a plan over the octet buffer, are the octets the list codec specified",
+      "statement": "books/store-checkpoint-buffer.lisp. fn-sccb-plan (the host-called entry: host/store-node-host.lisp fn-store-sco-publish-plan, called by host/native/io.lisp fnn-command-state-checkpoint, the `store checkpoint' verb) writes the checkpoint value's postfix program forward into the octet buffer once (fn-sccb-renc) and returns a plan of (HEADER A B TRAILER) per FNSC segment. KEYSTONE fn-sccb-plan-is-file-octets: (implies (fn-sccb-treep c) (equal (fn-sccb-plan-octets (mv-nth 0 (fn-sccb-plan c seg st)) (mv-nth 1 (fn-sccb-plan c seg st))) (fn-scc-file-octets c seg))): the plan's octets over the buffer it leaves (the header, the buffer's cells A..B and the trailer, per frame: fn-sccb-plan-octets, which host/native/io.lisp fnn-plan-octets transcribes) are fn-scc-file-octets of the same value and segment size, so the file on disk is the file the list codec specified and the reader (fn-scc-decode-segments) is untouched. fn-sccb-renc-is-program: the writer is append of fn-scc-program with no hypothesis. fn-sccb-plan-refuses-what-the-codec-refuses: where the list codec answered :unencodable the plan does. fn-sccb-treep-encodes-octets: fn-sccb-treep (fn-scc-treep with every leaf's octets octets) is exactly the domain whose file is octets; the plan refuses the tree whose length needs 256 digits, which the list codec encoded to a list the host's byte vector could not hold. Every executable function is guard-verified. What it does not say: anything about the reader, or that the host writes the plan's octets (A-HOST, as for every buffer boundary).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-087"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "events": [
+        "fn-sccb-plan-is-file-octets",
+        "fn-sccb-renc-is-program",
+        "fn-sccb-plan-refuses-what-the-codec-refuses",
+        "fn-sccb-treep-encodes-octets"
+      ],
+      "evidence": [
+        "books/store-checkpoint-buffer.lisp",
+        "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "planning/evidence/rep-wave-d-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T034140Z-644868.json"
+      ],
+      "progress_note": "Lane rep-wave-d-2 (2026-09-26): certified on persvati (run-20260926T034120Z-cb87, 1.4 s and under 10 s at two jobs; run 1 found the book at 20.2 s and the leaf codecs were closed in the hints). The id was assigned by the brief to the records-shape freeze's correspondence theorems; that freeze did not start (its interface needs PKT-293), and the lane's one certified keystone is registered here; the coordinator renumbers at merge if it prefers."
     }
   ]
 }

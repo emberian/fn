@@ -19,6 +19,8 @@
       (eq (symbol-class 'fn-sccb-renc (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sccb-chunk-count (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sccb-frames (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-sccb-slice-acc (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-sccb-frames-acc (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sccb-frame-octets (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sccb-plan-octets (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sccb-plan (w state)) :common-lisp-compliant)))

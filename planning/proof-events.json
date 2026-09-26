@@ -5214,6 +5214,27 @@
           "name": "fn-arn-store-corr-of-open"
         }
       ]
+    },
+    {
+      "id": "PRF-133",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sccb-plan-is-file-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccb-renc-is-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccb-plan-refuses-what-the-codec-refuses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccb-treep-encodes-octets"
+        }
+      ]
     }
   ]
 }
