@@ -28,23 +28,29 @@ if [ "$BUILD" = host/native/build-dtn.lisp ]; then
     esac
 fi
 IMAGE="${FN_NATIVE_IMAGE:-$DEFAULT_IMAGE}"
-# The images need OpenSSL >= 3.5 for ML-DSA-65 (host/native/signatures.lisp);
-# hbox's system library is older, and its matched 3.5.8 pair lives here.
-# Lanes rediscovered this one by one (friction review 2026-09-26 section 5).
-HBOX_OPENSSL=/tank/fn/toolchains/openssl-3.5.8
-if [ -z "${FN_OPENSSL_PREFIX:-}" ] && [ "$(hostname -s 2>/dev/null || hostname)" = hbox ] \
-   && [ -d "$HBOX_OPENSSL/lib" ]; then
-    FN_OPENSSL_PREFIX=$HBOX_OPENSSL
-    echo "build_native_host: FN_OPENSSL_PREFIX unset on hbox; using $HBOX_OPENSSL" >&2
-fi
+# TLS is the system's libssl (OpenSSL 3.0+ or LibreSSL 3+; tls.lisp checks
+# every function it calls at build and at start).  FN_OPENSSL_PREFIX is
+# optional: set, it names another matched libcrypto/libssl pair.
 if [ -n "${FN_OPENSSL_PREFIX:-}" ]; then
     export FN_OPENSSL_PREFIX
     LD_LIBRARY_PATH="$FN_OPENSSL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export LD_LIBRARY_PATH
 fi
+# ML-DSA-65 is the vendored PQClean library, built into lib/ beside the
+# image's core, where the restarted image loads it (signatures.lisp).
+LIBDIR=$(dirname "$IMAGE")/lib
+sh tools/build_mldsa65.sh "$LIBDIR" >&2
+case $(uname -s) in
+  Darwin) FN_MLDSA_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-mldsa65.dylib ;;
+  *) FN_MLDSA_LIBRARY=$(cd "$LIBDIR" && pwd)/libfn-mldsa65.so ;;
+esac
+export FN_MLDSA_LIBRARY
 openssl_hint() {
-    if grep -q -E 'OpenSSL|ML-DSA|libcrypto|libssl' "$LOG" 2>/dev/null; then
-        echo "build_native_host: the log names OpenSSL; set FN_OPENSSL_PREFIX to an OpenSSL >= 3.5 prefix (now: ${FN_OPENSSL_PREFIX:-unset}; hbox: $HBOX_OPENSSL)" >&2
+    if grep -q -E 'OpenSSL|LibreSSL|TLS library|libcrypto|libssl' "$LOG" 2>/dev/null; then
+        echo "build_native_host: the log names the TLS library; the system needs OpenSSL 3.0+ or LibreSSL 3+ (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})" >&2
+    fi
+    if grep -q -E 'ML-DSA' "$LOG" 2>/dev/null; then
+        echo "build_native_host: the log names ML-DSA-65; the library is $FN_MLDSA_LIBRARY (tools/build_mldsa65.sh)" >&2
     fi
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"

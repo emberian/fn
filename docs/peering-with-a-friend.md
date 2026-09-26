@@ -21,9 +21,11 @@ addresses, ports and path identities with yours:
 
 ## 1. Bring a node up from the tarball (both of you)
 
-You need Linux on x86-64 and, for the TLS pair below, an `openssl` command
-(any version with EC keys). Nothing else: the tarball carries its Lisp
-runtime, OpenSSL 3.5 and libsodium, and runs from wherever it is unpacked.
+You need Linux on x86-64 with the system's OpenSSL 3 library (`libssl3` on
+Debian and Ubuntu, `openssl-libs` on Fedora; any 3.x) and, for the TLS pair
+below, an `openssl` command (any version with EC keys). Nothing else: the
+tarball carries its Lisp runtime, libsodium and its ML-DSA-65 library, and
+runs from wherever it is unpacked.
 `$F` alone prints the operator's usage; `$F --version` prints the source
 revision the tarball was built from.
 
@@ -58,7 +60,7 @@ printf 'PASSWORD\nPASSWORD\n' | $F operator $C principal set-password ember --po
 `set-password` reads the password twice, from the terminal or from two lines
 of standard input. Then the node's own keys, the principal that signs its
 invitation or acceptance. `peer keygen` draws both pairs through the
-tarball's own libsodium and OpenSSL 3.5, so no `openssl` command is needed:
+tarball's own libsodium and ML-DSA-65 library, so no `openssl` command is needed:
 
 ```sh
 $F operator $C peer keygen $N/keys            # prints: principal HEX

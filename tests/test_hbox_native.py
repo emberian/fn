@@ -103,7 +103,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
         hybrid = next(line for line in lines
                       if line.startswith("tstep test-tests.test_native_hybrid_author "))
         for assignment in ("FN_NATIVE_HOST=$T/build/fn-host ", "FN_RUN_HYBRID_E2E=1 ",
-                           "FN_TEST_OPENSSL=$FN_OPENSSL_PREFIX/bin/openssl "):
+                           "FN_TEST_OPENSSL=$FN_TEST_OPENSSL_BIN "):
             self.assertIn(assignment, hybrid)
         self.assertIn("test_budget.py --one tests.test_native_hybrid_author", hybrid)
         owner = next(line for line in lines if line.startswith("tstep test-tests.test_native_owner "))

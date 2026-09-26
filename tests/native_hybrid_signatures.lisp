@@ -1,7 +1,14 @@
 ;;; Component interoperability test for host/native/signatures.lisp.
+;;;
+;;;   FN_MLDSA_LIBRARY=build/lib/libfn-mldsa65.so \
+;;;   FN_TEST_ML_DSA_PRIVATE=... FN_TEST_ML_DSA_PUBLIC=... (and _B) \
+;;;     sbcl --script tests/native_hybrid_signatures.lisp
+;;;
+;;; The ML-DSA-65 keys are made by an independent implementation (OpenSSL
+;;; 3.5's genpkey); signing and verification are the node's PQClean library
+;;; (HST-016), which loads no TLS library.
 (unless (find-package "ACL2") (make-package "ACL2" :use '("COMMON-LISP")))
 (load "host/native/crypto.lisp")
-(load "host/native/tls.lisp")
 (load "host/native/signatures.lisp")
 (in-package "ACL2")
 
@@ -69,7 +76,7 @@
          :verified)
      "hybrid Ed25519 observation accepts a 200 KiB v2 preimage"))
   (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify public message ml-signature)
-                  "OpenSSL ML-DSA-65 sign/verify")
+                  "ML-DSA-65 sign/verify")
   (multiple-value-bind (verified observed)
       (fnn-hsig-ml-dsa-65-verify-raw ml-public message ml-signature)
     (fnn-hsig-check (and verified (equalp observed ml-public))
@@ -154,14 +161,23 @@
               (concatenate 'string public (string (code-char 0)) "suffix"))
              (error "NUL key path was accepted"))
     (fnn-hsig-fault () nil))
-  (let ((pinned (copy-tree *fnn-tls-pinned-libraries*)))
-    (fnn-tls-reset)
-    (fnn-hsig-check (equal pinned *fnn-tls-pinned-libraries*)
-                    "TLS reset preserves the selected library identity")
-    (fnn-tls-initialize)
-    (fnn-hsig-check (equal pinned *fnn-tls-libraries*)
-                    "TLS restart revalidates the same library pair"))
-  )
+  ;; The signatures facility never loads the TLS library.
+  (fnn-hsig-check (not (fboundp 'fnn-tls-initialize))
+                  "signatures initialize without the TLS facility")
+  ;; A key file that is not an ML-DSA-65 PEM is a fault, not a verdict.
+  (handler-case
+      (progn (fnn-hsig-ml-dsa-65-public-key private)
+             (error "a private PEM was accepted as a public key"))
+    (fnn-hsig-fault () nil))
+  (fnn-hsig-check
+   (let ((observations (fnn-hsig-observe ed-public private message signatures)))
+     (eq (second observations) :fault))
+   "an unreadable ML-DSA key is an observed fault, never :refused")
+  ;; Restart re-loads and re-checks the library.
+  (fnn-hsig-reset)
+  (fnn-hsig-check (eq *fnn-hsig-mldsa-state* :uninitialized) "reset forgets readiness")
+  (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify public message ml-signature)
+                  "verification after reset re-initializes"))
 
-(format t "FN_NATIVE_HYBRID_SIGNATURE_TEST passed openssl=~s~%"
-        *fnn-hsig-openssl-version*)
+(format t "FN_NATIVE_HYBRID_SIGNATURE_TEST passed mldsa=~s~%"
+        *fnn-hsig-mldsa-version*)

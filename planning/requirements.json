@@ -3326,6 +3326,32 @@
         "planning/evidence/operator-daily-2026-09-26.md"
       ],
       "implementation_note": "While fnn-owner-run serves, fnn-log-line and fnn-err offer each line to a queue (ACL2's fn-log-sink-offer: :queue, or :drop past 1 MiB of backlog, counted) and one writer thread drains it outside every owner lock; the SIGHUP reopen swaps the descriptor through the queue. `health` ends with `log-sink pending= dropped= written=`; its exit is unchanged. Under systemd stderr is the journal, which drains: nothing changes there unless journald stalls, when lines are dropped and counted rather than the owner stopping."
+    },
+    {
+      "id": "HST-016",
+      "title": "The native host needs only the system's TLS library (OpenSSL 3.0+ or LibreSSL 3+), libsodium and the release's vendored ML-DSA-65; no specific OpenSSL build",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "host/native/tls.lisp",
+        "host/native/signatures.lisp",
+        "host/native/fn-mldsa65.c",
+        "third_party/pqclean-ml-dsa-65/UPSTREAM.txt",
+        "tools/build_mldsa65.sh",
+        "packaging/freeze-native-image.sh",
+        "packaging/install-native.sh",
+        "tests/mldsa65_interop.py",
+        "tests/native_hybrid_signatures.lisp",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/crypto-deps-2026-09-26.md"
+      ],
+      "implementation_note": "ML-DSA-65 moved from OpenSSL 3.5's EVP interface to vendored PQClean behind a C shim loaded from lib/ beside the core; key files and signatures are byte-compatible with OpenSSL 3.5 (checked both ways over fresh keys and every committed OpenSSL-made carrier). TLS uses the system libssl; the image checks the version and every function it calls at build and at each start. The frozen image and the release tarball bundle libsodium and libfn-mldsa65, and no OpenSSL."
     }
   ]
 }
