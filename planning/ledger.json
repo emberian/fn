@@ -996,19 +996,19 @@
     "books": 1014,
     "books_in_root_closure": 1007,
     "roots": 989,
-    "theorems": 14176,
-    "functions": 9856,
-    "assert_events": 15116,
-    "must_fails": 1810,
+    "theorems": 14183,
+    "functions": 9862,
+    "assert_events": 15142,
+    "must_fails": 1814,
     "prover_refusals": 2,
     "encapsulates": 77,
     "guards": {
       "verified": 2257,
       "declared-off": 772,
-      "default-guarded": 5363,
-      "default-unguarded": 1464
+      "default-guarded": 5367,
+      "default-unguarded": 1466
     },
-    "suspect_theorems": 136,
+    "suspect_theorems": 135,
     "export_hygiene_warnings": 157,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 156,
@@ -10261,12 +10261,12 @@
       "book": "books/native-operator.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
-      "functions": 123,
+      "theorems": 51,
+      "functions": 124,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 122,
+        "default-guarded": 123,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
@@ -11074,12 +11074,12 @@
       "book": "books/node-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
-      "functions": 23,
+      "theorems": 53,
+      "functions": 24,
       "guards": {
         "verified": 10,
         "declared-off": 0,
-        "default-guarded": 13,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 10,
@@ -11097,9 +11097,7 @@
         "records-seam"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-cnode-inadmissible-config-changes-nothing"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -14588,12 +14586,12 @@
       "book": "books/store-capacity-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
-      "functions": 3,
+      "theorems": 5,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 3,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -22029,10 +22027,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
-      "must_fails": 2,
+      "assert_events": 37,
+      "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -24268,18 +24266,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 246,
-      "must_fails": 23,
+      "assert_events": 253,
+      "must_fails": 24,
       "prover_refusals": 0,
-      "defconsts": 49,
+      "defconsts": 52,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -27199,18 +27197,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
-      "must_fails": 0,
+      "assert_events": 14,
+      "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -29803,14 +29801,6 @@
       ]
     },
     {
-      "theorem": "fn-cnode-inadmissible-config-changes-nothing",
-      "book": "books/node-config.lisp",
-      "line": 424,
-      "reasons": [
-        "branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value"
-      ]
-    },
-    {
       "theorem": "fn-col-poll-index-get-non-uint-is-nil-by-definition",
       "book": "books/consumer-poll-index.lisp",
       "line": 113,
@@ -30056,7 +30046,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 1460,
+      "line": 1497,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -31248,7 +31238,7 @@
       {
         "theorem": "fn-sco-freeze-of-capture-carries-the-count",
         "book": "books/store-checkpoint-open.lisp",
-        "line": 827,
+        "line": 829,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -48094,49 +48084,49 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 311,
+        "line": 312,
         "name": "fn-sccr-decode-plan",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 311,
+        "line": 312,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 357,
+        "line": 358,
         "name": "fn-sccr-file-read-bound",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 366,
+        "line": 367,
         "name": "fn-sccr-admit-segment",
         "source": "books/store-checkpoint-reader.lisp",
         "reason": "defined in books/store-checkpoint-reader.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 374,
+        "line": 375,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 461,
+        "line": 462,
         "name": "fn-sccb-plan",
         "source": "books/store-checkpoint-buffer.lisp",
         "reason": "defined in books/store-checkpoint-buffer.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 662,
+        "line": 663,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

@@ -6759,7 +6759,10 @@
         "fn-cfg-apply-adds-at-most-the-work-bound",
         "fn-pcb-extend-deltas-apply-as-the-extend-delta",
         "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity",
-        "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
+        "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity",
+        "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound",
+        "fn-cvec-accepted-group-names-are-within-the-profile",
+        "fn-nop-init-plain-groups-are-within-the-profile"
       ]
     },
     {
