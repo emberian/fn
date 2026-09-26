@@ -88,6 +88,17 @@ node still runs bbf52159 (format 8, marker unmarked); nothing has touched it.
     green and I accepted the result rather than discard it. Lane bp-lifecycle stopped at its
     cap uncertified and gets a continuation, not a fourth blind run.
 
+11. **signed-history-index held for a proved premise** (09:40 UTC). The lane's result is large
+    (signed POST median at N=10,000 from 18.92 s to 0.241 s; the identity prepare no longer
+    replays the history; a Message-ID index in the Store's derived event index), but PRF-132's
+    two keystones and the BP fast/checked equalities gained a premise `fn-bpaj-store-indexedp`
+    that no theorem establishes at the host's open or preserves across transitions. Decision:
+    not merged until a continuation proves the premise established at the Store's open the host
+    calls and preserved by every admitted transition, and restates the keystones with it
+    discharged. Basis: §6 ("do not assume a carried premise merely because the optimized
+    function needs it") and the rule against weakened statements. Rejected: merging with
+    PRF-132 marked in-progress (a regression in what is claimed, hidden behind a status).
+
 ## Sent to ember with a recommendation (not decided)
 
 - **Packet 2, news-only restore**: a witness-driven `store rebase` on the restored copy
