@@ -1,0 +1,525 @@
+tests.test_acl2_bridge: 6.9 s of 180 s, 16 tests, ok
+        6.49 s  BridgeCorrelationTests.test_call_timeout_grows_with_form_size_and_bounds_the_recorded_reopen
+        0.21 s  BridgeCorrelationTests.test_timeout_poisons_the_bridge_for_good
+        0.02 s  ReaderFailClosedTests.test_a_poisoned_bridge_makes_the_reader_process_exit_non_zero
+tests.test_acl2_toolchain: 0.1 s of 180 s, 7 tests, ok
+        0.00 s  FingerprintTests.test_dynamic_assignments_paths_and_arguments_are_unqualified
+        0.00 s  FingerprintTests.test_comment_or_echo_cannot_disguise_an_exec
+        0.00 s  FingerprintTests.test_generated_launcher_is_qualified_and_nested_wrapper_is_bound
+tests.test_acl2_wrapper: 2.4 s of 180 s, 12 tests, ok
+        0.57 s  TimeoutTests.test_a_runaway_is_killed_and_reported_as_124
+        0.57 s  TimeoutTests.test_a_timed_out_run_leaves_its_slot_free
+        0.43 s  SlotTests.test_an_occupied_pool_makes_the_wrapper_wait_and_say_so
+tests.test_anchor: 6.2 s of 180 s, 25 tests, FAILED (1 failures, 0 errors, exit 1)
+        1.25 s  StoreAnchorCommands.test_a_batched_anchor_is_uncertain_at_both_commands
+        1.23 s  StoreAnchorCommands.test_anchor_records_then_refuses_a_replay
+        0.95 s  StoreAnchorCommands.test_no_anchor_obtainable_is_uncertain_not_refused
+tests.test_auth: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_bench_generate: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  ArticleSourceTests.test_exact_sizes_have_only_complete_crlf_lines
+        0.00 s  ArticleSourceTests.test_folded_stress_source_is_also_complete_crlf
+tests.test_bp_app_native: 0.1 s of 180 s, 0 tests, ok
+tests.test_bp_contact_native: 0.1 s of 180 s, 0 tests, ok
+tests.test_bp_contact_relay_native: 0.1 s of 180 s, 0 tests, ok
+tests.test_bp_fragment_node_native: 0.1 s of 180 s, 0 tests, ok
+tests.test_bp_ingress_host: 16.1 s of 180 s, 5 tests, ok
+        8.69 s  BpIngressHostTests.test_delete_failure_restart_uses_durable_acl2_duplicate_check
+        4.03 s  BpIngressHostTests.test_distinct_adus_get_distinct_store_bindings_and_conflict_refuses
+        1.85 s  BpIngressHostTests.test_malformed_or_unknown_group_stays_staged_and_unaccepted
+tests.test_bp_node_native: 0.1 s of 180 s, 0 tests, ok
+tests.test_bp_obligation_native: 0.1 s of 180 s, 1 tests, ok
+        0.00 s  NativeBpObligationBoundaryTests.test_pinned_predicate_uses_value_caller
+tests.test_bp_receipt_host: 0.6 s of 180 s, 1 tests, ok
+        0.52 s  BpReceiptHostTests.test_actual_store_acceptance_precedes_acl2_receipt_decision
+tests.test_bp_receive: 29.1 s of 180 s, 14 tests, ok
+        4.23 s  ReceiveTests.test_pending_receipt_requires_explicit_matching_recovery_decision
+        3.44 s  ReceiveTests.test_staged_wrapper_accepts_then_new_bid_regenerates_without_charge
+        3.18 s  ReceiveTests.test_conflicting_context_stays_staged_without_second_store_record
+tests.test_bp_receive_faults: 30.6 s of 180 s, 10 tests, ok
+        4.15 s  ReceiveFaultTests.test_intent_before_decision_requires_recovery_without_second_charge
+        3.58 s  ReceiveFaultTests.test_decision_before_lost_delete_retries_same_adu_without_charge
+        3.34 s  ReceiveFaultTests.test_store_at_its_transaction_bound_refuses_and_stays_openable
+tests.test_bp_receive_integrity_native: 0.1 s of 180 s, 0 tests, ok
+tests.test_bp_receive_process_crash: 23.3 s of 180 s, 1 tests, ok
+       23.16 s  ReceiverProcessCrashTests.test_process_death_at_receiver_durable_boundaries_recovers_once
+tests.test_bp_service_native: 0.1 s of 180 s, 0 tests, ok
+tests.test_bpa_dtn7: 6.7 s of 180 s, 11 tests, ok
+        1.02 s  Dtn7IdentityDifferentialTests.test_acl2_and_the_agent_agree_on_source_timestamp_and_sequence
+        1.01 s  BpaDtn7ClientTests.test_a_transfer_inside_every_read_window_still_hits_the_total_deadline
+        0.51 s  BpaDtn7ClientTests.test_bad_inventory_shape_duplicate_and_bad_utf8_are_refused
+tests.test_bridge_image: 6.5 s of 180 s, 7 tests, ok
+        3.10 s  SlotTests.test_nested_bridges_in_one_process_hold_one_slot
+        3.02 s  SlotTests.test_an_unrelated_process_waits_for_the_held_slot
+        0.19 s  ClosureTests.test_a_changed_closure_file_changes_the_digest
+tests.test_build_lists_check: 3.6 s of 180 s, 13 tests, ok
+        0.38 s  BuildListsCheckTests.test_allowlisted_omission_is_still_checked_for_reach
+        0.34 s  BuildListsCheckTests.test_include_after_the_ld_is_too_late
+        0.34 s  BuildListsCheckTests.test_unlisted_raw_reach_is_found
+tests.test_certified_claims: 0.2 s of 180 s, 11 tests, ok
+        0.00 s  CertifiedClaimsTests.test_changed_book_digest_and_include_are_distinct_gaps
+        0.00 s  CertifiedClaimsTests.test_explain_names_book_digest_and_newest_certifier
+        0.00 s  CertifiedClaimsTests.test_row_with_matching_manifest_passes
+tests.test_certify_runner: 38.8 s of 180 s, 49 tests, ok
+        4.93 s  MakefileRootsTests.test_project_roots_are_certifiable_and_store_dependents_remain_selected
+        2.89 s  ParallelScheduleTests.test_one_job_keeps_the_requested_order_and_the_same_manifest_fields
+        1.98 s  ProvisionalCertificationTests.test_a_clean_chain_certifies_and_the_token_still_means_certified
+tests.test_certs: 0.6 s of 180 s, 65 tests, ok
+        0.11 s  PublishTests.test_concurrent_publishers_commit_one_matched_pair_and_metadata
+        0.02 s  ArtifactSetTests.test_install_set_chooses_acl2_matching_child_over_newer_same_source
+        0.01 s  ArtifactSetTests.test_incremental_install_requires_the_origin_it_will_extend
+tests.test_checkpoint: 24.2 s of 180 s, 7 tests, ok
+        9.88 s  CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation
+        7.59 s  CheckpointTests.test_publish_select_and_suffix_replay_on_128_records
+        2.29 s  CheckpointTests.test_corrupt_selected_generation_is_reported_not_rolled_back
+tests.test_cite_check: 17.2 s of 180 s, 23 tests, ok
+       17.06 s  StrictTests.test_the_real_tree_reports_and_does_not_fail
+        0.00 s  ScanTests.test_a_book_citing_a_file_that_never_existed_is_a_load_bearing_phantom
+        0.00 s  ScanTests.test_a_catalogue_of_absent_paths_does_not_count_itself
+tests.test_current_view: 7.9 s of 180 s, 4 tests, ok
+        7.71 s  ViewTests.test_committed_view_is_current
+        0.00 s  HostCallTests.test_prefix_is_not_a_call
+        0.00 s  HostCallTests.test_quoted_core_call_counts
+tests.test_deploy_gate: 28.9 s of 180 s, 18 tests, FAILED (1 failures, 0 errors, exit 1)
+        0.31 s  RepoRootTests.test_a_directory_outside_any_fn_tree_falls_back_to_this_file_s_tree
+        0.30 s  RepoRootTests.test_two_fn_trees_in_play_are_announced_on_every_run
+        0.29 s  RepoRootTests.test_a_secondary_worktree_is_the_root_not_the_checkout_it_came_from
+tests.test_evidence_manifests: 17.5 s of 180 s, 10 tests, ok
+       15.34 s  CheckTests.test_an_archived_but_uncommitted_manifest_does_not_resolve_a_citation
+        0.58 s  CheckTests.test_committing_the_manifest_resolves_the_citation
+        0.36 s  CheckTests.test_the_command_line_reports_the_four_counts_for_this_tree
+tests.test_farm: 0.6 s of 180 s, 42 tests, ok
+        0.09 s  FailureTests.test_unmerged_real_index_refuses_before_remote_io
+        0.08 s  StatusTests.test_missing_or_stale_activity_is_unknown_not_zero
+        0.07 s  FailureTests.test_clean_index_allows_uncommitted_lane_source
+tests.test_feed: 5.2 s of 180 s, 16 tests, ok
+        5.00 s  SessionTests.test_a_line_is_split_at_crlf_and_the_rest_is_buffered
+        0.04 s  JournalTests.test_append_writes_exact_acl2_envelope
+        0.03 s  JournalTests.test_failed_append_carries_uncertain_phase
+tests.test_feed_fence: 0.2 s of 180 s, 3 tests, FAILED (1 failures, 2 errors, exit 1)
+        0.00 s  FeedFenceTests.test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three
+        0.00 s  FeedFenceTests.test_second_peer_is_not_advanced_after_lost_connection_append_failure
+        0.00 s  FeedFenceTests.test_missing_journal_or_mismatched_peer_list_never_silently_loses_obligation
+tests.test_feed_journal_live: 3.0 s of 180 s, 8 tests, ok
+        1.04 s  FeedJournalLiveTests.test_every_torn_prefix_and_body_repairs_then_appends_then_restarts
+        0.19 s  FeedJournalLiveTests.test_process_death_at_each_named_recovery_and_append_cut
+        0.04 s  FeedJournalLiveTests.test_each_recovery_barrier_failure_requires_a_fresh_successful_recovery
+tests.test_fn9p: 4.9 s of 180 s, 2 tests, ok
+        2.44 s  NinePViewTests.test_files_and_listings_agree_with_the_nntp_reader
+        2.37 s  NinePViewTests.test_mount_generation_is_fixed_and_a_fresh_mount_advances
+tests.test_fn_cli: 0.6 s of 180 s, 7 tests, FAILED (6 failures, 0 errors, exit 1)
+        0.07 s  FnCliTests.test_a_non_loopback_listener_is_refused_before_anything_starts
+        0.07 s  FnCliTests.test_peer_add_with_no_size_options_is_accepted
+        0.07 s  FnCliTests.test_running_cli_post_survives_restart_until_its_peer_is_available
+tests.test_fn_client: 0.5 s of 180 s, 36 tests, ok
+        0.04 s  FnClientTests.test_a_certificate_the_client_does_not_trust_is_refused_and_nothing_follows_the_382
+        0.02 s  FnClientTests.test_since_and_all_choose_the_window_without_consulting_the_watermark
+        0.02 s  FnClientTests.test_a_refused_read_leaves_the_watermark_where_the_last_good_read_left_it
+tests.test_fn_e1e2_two_store_owner: 0.2 s of 180 s, 11 tests, ok
+        0.00 s  NativeProtectedPeeringTests.test_acknowledged_protected_feed_does_not_reoffer_after_source_death
+        0.00 s  NativeProtectedPeeringTests.test_bad_outbound_password_yields_authenticated_430_observation
+        0.00 s  NativeProtectedPeeringTests.test_durable_sent_cut_requeues_on_protected_restart
+tests.test_fn_verify: 0.6 s of 180 s, 31 tests, ok
+        0.12 s  SpecBookTieTests.test_a_changed_v2_tag_or_width_is_caught
+        0.09 s  SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree
+        0.08 s  SpecBookTieTests.test_a_renamed_function_is_caught
+tests.test_fn_web: 26.1 s of 180 s, 32 tests, ok
+        2.53 s  WebClientTests.test_durable_inflight_restart_and_lost_reply_never_repost
+        2.53 s  WebClientTests.test_durable_draft_survives_restart_and_post_freezes_edited_source
+        2.02 s  WebClientTests.test_durable_outbox_restart_duplicate_and_single_instance
+tests.test_fn_web_native: 0.1 s of 180 s, 4 tests, ok
+        0.00 s  NativeProtectedWebClientTests.test_login_over_tls_is_the_nodes_answer_and_the_command_line_exits_by_it
+        0.00 s  NativeProtectedWebClientTests.test_thread_reply_outcomes_verdict_unread_and_resume
+        0.00 s  NativeWebClientTests.test_durable_draft_lost_post_reply_and_restart_keep_one_native_article
+tests.test_four_node_lab: 19.3 s of 180 s, 9 tests, ok
+        0.00 s  FourNodeLabPinnedBpaTests.test_the_pinned_bpa_run_is_declared_rather_than_silently_skipped
+        0.00 s  FourNodeLabTests.test_a_process_death_cut_was_actually_reached
+        0.00 s  FourNodeLabTests.test_each_node_carries_its_own_numbering_frontier
+tests.test_gate_reap: 0.2 s of 180 s, 20 tests, ok
+        0.07 s  AncestryTests.test_head_is_an_ancestor_of_dev_and_a_made_up_sha_is_unknown
+        0.00 s  PolicyTests.test_a_box_with_no_proc_keeps_everything
+        0.00 s  PolicyTests.test_a_branch_that_has_not_landed_is_kept
+tests.test_gate_verdicts: 0.1 s of 180 s, 25 tests, ok
+        0.00 s  TheLostReplyScenarioFails.test_a_clean_lost_reply_recovery_passes
+        0.00 s  TheLostReplyScenarioFails.test_a_cut_that_never_fired_is_inconclusive_not_a_pass
+        0.00 s  TheLostReplyScenarioFails.test_a_refused_post_leaves_the_rest_inconclusive
+tests.test_green_check: 75.8 s of 180 s, 30 tests, ok
+       18.72 s  MergeGateTests.test_the_command_line_gate_runs_on_this_tree
+       14.67 s  RealManifestsTests.test_json_is_one_object_a_reader_can_load
+       14.12 s  RealManifestsTests.test_the_command_line_runs_and_says_which_books_are_owed
+tests.test_harness_check: 5.3 s of 180 s, 38 tests, ok
+        5.17 s  RawArityTests.test_the_tree_has_no_raw_arity_finding
+        0.00 s  Acl2ArityWalkTests.test_a_cond_clause_head_is_a_test_and_not_a_head
+        0.00 s  SignatureLintTests.test_a_callee_taking_kwargs_absorbs_an_unknown_keyword
+tests.test_host_boundary: 0.6 s of 180 s, 16 tests, ok
+        0.28 s  OwnershipAndOrphanTests.test_a_contended_lock_is_still_a_clean_refusal
+        0.07 s  OwnershipAndOrphanTests.test_orphan_report_stays_bounded
+        0.07 s  OwnershipAndOrphanTests.test_initialization_publishes_metadata_through_staging
+tests.test_host_shape_check: 11.6 s of 180 s, 21 tests, ok
+        5.14 s  Positions.test_accepted_forms_are_clean
+        0.59 s  Positions.test_cond_test_and_arms
+        0.34 s  Positions.test_value_argument
+tests.test_index_cache: 3.9 s of 180 s, 4 tests, ok
+        1.29 s  IndexCacheTests.test_post_between_two_reader_commands_gives_post_generation_truth
+        0.43 s  IndexCacheTests.test_configuration_digest_change_is_refused
+        0.43 s  IndexCacheTests.test_index_answers_equal_the_fold_command_by_command
+tests.test_inn_lab: 19.5 s of 180 s, 30 tests, ok
+        0.00 s  CommandLineTests.test_the_lab_refuses_to_run_without_a_native_image
+        0.00 s  CommandLineTests.test_the_owner_is_the_packaged_entry_with_the_named_image
+        0.00 s  ArticleTests.test_a_changed_subject_or_body_is_not_a_permitted_relay_change
+tests.test_ledger: 6.1 s of 180 s, 84 tests, ok
+        5.93 s  RepositoryLedgerTests.test_the_checked_in_ledger_is_current
+        0.00 s  EnabledProjectionLintTests.test_a_function_that_computes_is_not_a_projection
+        0.00 s  ExportHygieneLintTests.test_rune_forms_and_theory_algebra_resolve_too
+tests.test_media: 16.6 s of 180 s, 20 tests, ok
+        4.67 s  MediaImportTests.test_reimport_of_the_same_media_is_a_duplicate_with_the_same_receipt
+        2.67 s  MediaImportTests.test_import_accepts_through_the_receiver_and_leaves_the_media_unchanged
+        2.34 s  MediaImportTests.test_every_reported_outcome_is_one_of_the_four
+tests.test_native_admin: 0.1 s of 180 s, 9 tests, ok
+        0.00 s  NativeAdminTests.test_create_capacity_retire_reopen_preserves_history
+        0.00 s  NativeAdminTests.test_live_uncertain_publication_fences_and_recovers
+        0.00 s  NativeAdminTests.test_peer_add_and_remove_use_public_native_admin
+tests.test_native_app_journal: 0.1 s of 180 s, 0 tests, ok
+tests.test_native_auth: 0.1 s of 180 s, 0 tests, ok
+tests.test_native_auth_admin_fidelity: 11.7 s of 180 s, 3 tests, ok
+        5.84 s  NativeAuthAdminFidelityTests.test_sigkill_after_rename_recovers_in_a_new_process
+        5.75 s  NativeAuthAdminFidelityTests.test_post_rename_eio_is_uncertain_then_fresh_process_recovers
+        0.00 s  NativeAuthAdminSourceMapTests.test_each_model_cut_is_on_the_actual_raw_executor
+tests.test_native_block_fault_ownership: 0.1 s of 180 s, 6 tests, ok
+        0.00 s  NativeBlockFaultOwnershipTests.test_signal_rechecks_start_time_and_session_before_pidfd_signal
+        0.00 s  NativeBlockFaultOwnershipTests.test_snapshot_mount_refuses_bytes_outside_owned_private_run
+        0.00 s  NativeBlockFaultOwnershipTests.test_dm_dependency_requires_one_exact_owned_loop
+tests.test_native_bounds_blob: 0.1 s of 180 s, 1 tests, ok
+        0.00 s  OperatorPostAboveTheOldBlobTests.test_operator_post_carries_up_to_a_and_names_one_octet_past
+tests.test_native_bounds_join: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  DeployRehearsalTests.test_step_rollback_step_post_3_mib_restart
+        0.00 s  LargeArticleTests.test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it
+tests.test_native_bp_app_clock: 0.1 s of 180 s, 1 tests, FAILED (1 failures, 0 errors, exit 1)
+        0.05 s  NativeBpAppClockTests.test_submit_observes_fresh_clock_and_replay_needs_none
+tests.test_native_bp_channel_admission: 0.1 s of 180 s, 1 tests, FAILED (1 failures, 0 errors, exit 1)
+        0.03 s  NativeBpChannelAdmissionTests.test_raw_eid_and_acl2_ingress_result
+tests.test_native_bp_node_admission_lock: 0.1 s of 180 s, 1 tests, ok
+        0.04 s  NativeBpNodeAdmissionLockTests.test_revocation_between_preflight_and_lock_refuses_both_classes
+tests.test_native_bp_transit_identity: 0.1 s of 180 s, 1 tests, ok
+        0.04 s  NativeBpTransitIdentityTests.test_identity_match_and_both_mismatches
+tests.test_native_checkpoint: 0.1 s of 180 s, 26 tests, ok
+        0.00 s  NativeCheckpointTests.test_acl2_namespace_codec_rejects_alias_overflow_and_excess
+        0.00 s  NativeCheckpointTests.test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin
+        0.00 s  NativeCheckpointTests.test_arbitrary_covered_deletion_image_recovers_and_resumes
+tests.test_native_compaction_crash_map: 0.1 s of 180 s, 4 tests, ok
+        0.00 s  NativeCompactionCrashMapTests.test_actual_reclaim_calls_logical_plan_subject
+        0.00 s  NativeCompactionCrashMapTests.test_each_native_cut_is_a_model_program_cut
+        0.00 s  NativeCompactionCrashMapTests.test_recovery_calls_exact_observation_subject
+tests.test_native_consumer_e2: 0.1 s of 180 s, 4 tests, ok
+        0.00 s  NativeConsumerE2Tests.test_different_local_uid_is_refused_by_owner
+        0.00 s  NativeConsumerE2Tests.test_durable_scope_ack_and_unrelated_article
+        0.00 s  NativeConsumerE2Tests.test_lost_register_reply_resolves_by_reopened_position
+tests.test_native_consumer_inspect: 0.1 s of 180 s, 4 tests, ok
+        0.00 s  NativeConsumerInspectTests.test_exact_max_cursor_and_high_octet_ids
+        0.00 s  NativeConsumerInspectTests.test_oversize_is_refused_at_the_acl2_encoding_ceiling
+        0.00 s  NativeConsumerInspectTests.test_truncated_trailing_and_unknown_version_refuse
+tests.test_native_consumer_project_bounds: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  NativeConsumerProjectBoundsTests.test_malformed_within_bound_uses_acl2_codec_refusal
+        0.00 s  NativeConsumerProjectBoundsTests.test_overbound_cursor_and_event_refuse_without_projection
+tests.test_native_control: 0.1 s of 180 s, 14 tests, ok
+        0.00 s  NativeControlCutGateTests.test_every_selector_is_read_only_through_the_accessor
+        0.00 s  NativeControlCutGateTests.test_feed_stop_follows_fnfd_flush_and_precedes_socket_send
+        0.00 s  NativeControlCutGateTests.test_the_gate_runs_before_dispatch
+tests.test_native_control_authority: 0.1 s of 180 s, 1 tests, ok
+        0.00 s  NativeControlAuthorityTests.test_grant_and_revoke_through_the_live_path_are_durable
+tests.test_native_control_filing: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  NativeControlFilingTests.test_served_post
+        0.00 s  NativeControlFilingTests.test_signed_author
+        0.00 s  NativeControlFilingTests.test_signed_withdrawal
+tests.test_native_crash_correspondence: 0.1 s of 180 s, 8 tests, ok
+        0.01 s  NativeCrashCorrespondenceTests.test_recovery_cuts_run_in_program_order_and_sweep_after_the_barriers
+        0.00 s  NativeCrashCorrespondenceTests.test_actual_owner_calls_the_three_native_persistence_subjects
+        0.00 s  NativeCrashCorrespondenceTests.test_allocator_observations_and_cuts_follow_syscalls
+tests.test_native_crash_model: 0.1 s of 180 s, 3 tests, ok
+        0.01 s  NativeCrashFaultSurfaceTests.test_every_native_cut_has_a_byte_program_coordinate
+        0.00 s  NativeCrashFaultSurfaceTests.test_missing_image_is_not_reported_as_a_skipped_campaign
+        0.00 s  NativeCrashFaultSurfaceTests.test_post_fault_environment_is_developer_image_only
+tests.test_native_cut_map: 0.1 s of 180 s, 3 tests, ok
+        0.01 s  NativeCutMapTests.test_every_declared_native_cut_is_a_model_program_cut
+        0.00 s  NativeCutMapTests.test_checkpoint_cuts_match_native_and_reclaim_program
+        0.00 s  NativeCutMapTests.test_outcomes_remain_explicit
+tests.test_native_frozen_relocation: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup
+        0.00 s  FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa
+tests.test_native_history_marker: 0.1 s of 180 s, 6 tests, ok
+        0.00 s  HistoryMarkerSourceTests.test_the_host_calls_acl2s_decisions_at_every_publish_site
+        0.00 s  NativeHistoryMarkerTests.test_a_burned_reservation_is_not_a_lost_record
+        0.00 s  NativeHistoryMarkerTests.test_a_frontier_frame_is_not_a_marker
+tests.test_native_history_required: 0.1 s of 180 s, 6 tests, ok
+        0.00 s  HistoryRequiredSourceTests.test_the_host_calls_acl2s_decisions
+        0.00 s  MigrationTests.test_every_migration_cut_reopens_consistently
+        0.00 s  MigrationTests.test_migrate_then_absence_and_loss_are_damage
+tests.test_native_hybrid_author: 0.1 s of 180 s, 10 tests, ok
+        0.00 s  NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart
+        0.00 s  NativeHybridAuthorTest.test_carried_budget_and_refusal_classes
+        0.00 s  NativeHybridAuthorTest.test_carrying_boundary_without_budget_carries_nothing
+tests.test_native_image_profiles: 0.1 s of 180 s, 12 tests, ok
+        0.01 s  NativeImageProfileSourceTests.test_default_build_is_production_and_developer_output_is_distinct
+        0.01 s  NativeImageProfileSourceTests.test_dtn_fault_readers_use_the_same_startup_gate
+        0.00 s  NativeImageProfileSourceTests.test_literal_build_inputs_exist
+tests.test_native_initializer_fidelity: 0.1 s of 180 s, 11 tests, ok
+        0.00 s  NativeInitializerSourceMapTests.test_source_map_exposes_each_current_initializer_model_cut
+        0.00 s  NativeInitializerFidelityTests.test_existing_valid_init_takes_actual_eexist_links_then_reopens
+        0.00 s  NativeInitializerFidelityTests.test_fresh_init_then_new_process_recover
+tests.test_native_key_statements: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  NativeKeyStatementTests.test_kill_at_the_cut_and_recovery_at_open
+        0.00 s  NativeKeyStatementTests.test_succession_revocation_and_carried_statement
+tests.test_native_live_reconfiguration: 0.1 s of 180 s, 11 tests, FAILED (1 failures, 0 errors, exit 1)
+        0.00 s  LiveReconfigurationSourceTests.test_a_request_being_answered_is_not_shut_by_the_stop_it_caused
+        0.00 s  LiveReconfigurationSourceTests.test_actual_native_open_and_completion_call_the_physical_history_model
+        0.00 s  LiveReconfigurationImageTests.test_a_group_created_live_is_served_before_restart
+tests.test_native_newnews_migration: 0.1 s of 180 s, 1 tests, ok
+        0.00 s  NativeNewnewsMigrationTests.test_legacy_horizon_and_new_stamp_on_reopened_store
+tests.test_native_nntp_post_probe: 0.2 s of 180 s, 13 tests, ok
+        0.03 s  RecordedRunTests.test_pre_d25_runs_fail_only_on_the_silent_swallow_and_the_wording
+        0.00 s  PostArmDerivationTests.test_a_cut_moved_out_of_ignore_errors_is_caught
+        0.00 s  PostArmDerivationTests.test_every_post_cut_has_the_arm_its_coordinate_gives
+tests.test_native_operator_campaign: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  OperatorCampaignParsingTests.test_a_missing_report_is_none_not_zero
+        0.00 s  OperatorCampaignParsingTests.test_articles_are_crlf_and_name_their_message_id
+        0.00 s  OperatorCampaignParsingTests.test_recover_line_counts_are_read_exactly
+tests.test_native_operator_cli: 0.1 s of 180 s, 6 tests, ok
+        0.04 s  NativeOperatorPrincipalCompositionTests.test_operator_calls_existing_acl2_credential_plan_and_executor
+        0.00 s  NativeOperatorCliTests.test_help_does_not_open_missing_config
+        0.00 s  NativeOperatorCliTests.test_missing_directory_and_oversize_config_are_usage
+tests.test_native_operator_verbs: 0.1 s of 180 s, 22 tests, ok
+        0.00 s  NativeOperatorReservedGroupSourceTests.test_reserved_names_are_refused_by_acl2_at_init_and_create
+        0.00 s  NativeOperatorCapacityTests.test_bare_init_is_the_default_profile
+        0.00 s  NativeOperatorCapacityTests.test_init_refuses_a_profile_by_the_relation_it_breaks
+tests.test_native_operator_verdicts: 0.1 s of 180 s, 6 tests, ok
+        0.00 s  NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups
+        0.00 s  NativeOperatorVerdictTests.test_needs_upgrade_and_rollback_check
+        0.00 s  NativeOperatorVerdictTests.test_refused_posts_are_logged_on_both_paths
+tests.test_native_owner: 1.8 s of 180 s, 6 tests, ok
+        1.16 s  NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step
+        0.54 s  NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously
+        0.03 s  NativeOwnerHandlerStructureTests.test_no_os_error_after_publication_is_classified_as_a_refusal
+tests.test_native_peer_invite: 0.1 s of 180 s, 3 tests, ok
+        0.00 s  NativePeerInviteTests.test_a_crash_between_consumption_and_enrolment_enrols_once
+        0.00 s  NativePeerInviteTests.test_an_acceptance_of_an_invitation_this_node_never_issued
+        0.00 s  NativePeerInviteTests.test_invite_accept_confirm_and_the_refusals
+tests.test_native_peer_pull: 0.1 s of 180 s, 3 tests, ok
+        0.00 s  NativePeerPullTests.test_kill_mid_round_recovery_asks_the_same_newnews
+        0.00 s  NativePeerPullTests.test_pull_from_fn_node
+        0.00 s  NativePeerPullTests.test_pull_from_inn
+tests.test_native_peering: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  NativePeeringTests.test_durable_feed_requeues_after_source_process_death
+        0.00 s  NativePeeringTests.test_live_peer_configuration_activates_both_directions
+        0.00 s  NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate
+tests.test_native_peering_matrix_slice: 0.2 s of 180 s, 1 tests, ok
+        0.01 s  NativePeeringMatrixSliceTests.test_hybrid_prefix_reaches_probe_and_startup_failure_names_rows
+tests.test_native_profile: 0.1 s of 180 s, 3 tests, ok
+        0.00 s  NativeProfileTests.test_posting_agent_and_a_relative_log_are_refused_by_name
+        0.00 s  NativeProfileTests.test_posts_land_in_the_configured_log_and_name_the_path_identity
+        0.00 s  NativeProfileTests.test_without_a_log_path_the_lines_go_to_stderr
+tests.test_native_profile_namespace: 0.1 s of 180 s, 1 tests, ok
+        0.00 s  NativeProfileNamespaceTests.test_the_operator_raises_credentials_and_generations
+tests.test_native_profile_upgrade: 0.1 s of 180 s, 11 tests, ok
+        0.00 s  ProfileUpgradeSourceTests.test_the_verb_is_acl2s_and_the_host_writes_the_program
+        0.00 s  FormatSevenToEightCutTests.test_every_cut_reopens_format_7_or_format_8
+        0.00 s  FormatSevenToEightTests.test_a_step_that_shrinks_is_refused
+tests.test_native_program_check: 0.5 s of 180 s, 9 tests, ok
+        0.05 s  NativeProgramCheckTests.test_current_tree_passes_every_program_in_the_cut_table
+        0.05 s  NativeProgramCheckTests.test_deleted_helper_cut_fails_both_callers
+        0.05 s  NativeProgramCheckTests.test_swapped_cut_and_link_fails
+tests.test_native_protected_peering: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  NativeProtectedPeeringTests.test_acknowledged_protected_feed_does_not_reoffer_after_source_death
+        0.00 s  NativeProtectedPeeringTests.test_bad_outbound_password_yields_authenticated_430_observation
+        0.00 s  NativeProtectedPeeringTests.test_durable_sent_cut_requeues_on_protected_restart
+tests.test_native_raw_scripts: 0.5 s of 180 s, 9 tests, FAILED (2 failures, 0 errors, exit 1)
+        0.09 s  RawScriptTests.test_native_feed_service_raw
+        0.06 s  RawScriptTests.test_native_owner_bound_commit_raw
+        0.06 s  RawScriptTests.test_native_owner_consumer_local_raw
+tests.test_native_reader_index: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  NativeReaderIndexTest.test_list_counts_and_numbered_msgid_lookup
+        0.00 s  NativeReaderIndexTest.test_listgroup_historical_pin_live_group_and_restart
+        0.00 s  NativeReaderIndexTest.test_listgroup_many_unrelated_groups_measured_socket_workload
+tests.test_native_recovery: 0.5 s of 180 s, 13 tests, ok
+        0.20 s  NativeRecoverySourceMapTests.test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty
+        0.16 s  StagingSweepDecisionTests.test_sweep_rounds_collect_sixty_five_allocation_orphans
+        0.00 s  NativeRecoverySourceMapTests.test_every_prefix_the_host_stages_under_is_an_acl2_staging_prefix
+tests.test_native_served_cost: 0.1 s of 180 s, 3 tests, ok
+        0.00 s  NativeServedCostTests.test_fast_entry_never_calls_full_recognizer
+        0.00 s  NativeServedCostTests.test_fast_predicate_has_fixed_spine_and_scalar_scope
+        0.00 s  NativeServedCostTests.test_owner_calls_fast_counted_entry
+tests.test_native_served_crash_model: 0.1 s of 180 s, 0 tests, ok
+tests.test_native_served_differential: 0.1 s of 180 s, 0 tests, ok
+tests.test_native_shared_owner_bench: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  NativeSharedOwnerBenchTests.test_article_profile_is_exact_and_unique
+        0.00 s  NativeSharedOwnerBenchTests.test_nearest_rank_percentile_and_summary
+tests.test_native_stamp_migration: 0.1 s of 180 s, 1 tests, ok
+        0.00 s  NativeStampMigrationTests.test_old_record_reopens_byte_exact_and_new_acceptance_uses_schema_one
+tests.test_native_starttls: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  NativeStartTlsTests.test_context_mismatch_refuses_before_listener
+        0.00 s  NativeStartTlsTests.test_pipelined_clienthello_protection_and_failure_isolation
+tests.test_native_state_checkpoint: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  StateCheckpointSourceTests.test_the_host_calls_the_keystone_subject_and_writes_the_program
+        0.00 s  StateCheckpointCutTests.test_every_cut_reopens_with_the_old_or_the_new_checkpoint
+        0.00 s  StateCheckpointTests.test_a_corrupt_checkpoint_falls_back_to_full_replay
+tests.test_native_storage_codec: 0.1 s of 180 s, 11 tests, ok
+        0.00 s  NativeConfigNamespaceSourceTests.test_native_config_scan_is_bounded_and_acl2_bound
+        0.00 s  NativeStorageCodecTests.test_acl2_frontier_maximum_refuses_before_staging
+        0.00 s  NativeStorageCodecTests.test_injected_allocator_barrier_failure_consumes_the_id_after_recovery
+tests.test_native_tls_transport: 0.9 s of 180 s, 2 tests, ok
+        0.51 s  NativeTlsTransportTest.test_client_chain_and_hostname_verification
+        0.24 s  NativeTlsTransportTest.test_context_handshake_failure_and_roundtrip
+tests.test_native_topic_local: 0.1 s of 180 s, 4 tests, ok
+        0.00 s  NativeTopicLocalTest.test_fresh_v2_anchor_refuses_legacy_reopen
+        0.00 s  NativeTopicLocalTest.test_install_is_durable_and_absent_source_refuses
+        0.00 s  NativeTopicLocalTest.test_root_and_report_admit_from_historical_signed_sources
+tests.test_native_topic_metadata: 0.1 s of 180 s, 2 tests, ok
+        0.00 s  NativeTopicMetadataTest.test_max_roster_folded_source_and_relay
+        0.00 s  NativeTopicMetadataTest.test_signed_source_candidate_and_relay
+tests.test_native_two_host_protected_gate: 0.1 s of 180 s, 5 tests, ok
+        0.00 s  LauncherPathsTests.test_unknown_variables_traversal_wrong_core_and_commands_are_refused
+        0.00 s  LauncherPathsTests.test_current_frozen_layout_resolves_beside_launcher
+        0.00 s  LauncherPathsTests.test_known_sbcl_placeholder_is_forced_empty_for_all_invocations
+tests.test_native_v0_matrix: 0.4 s of 180 s, 67 tests, ok
+        0.06 s  AuthDriverTests.test_the_secret_is_read_from_a_file_and_used_as_the_password
+        0.06 s  AuthDriverTests.test_a_permitted_unauthenticated_post_is_closed_not_abandoned
+        0.05 s  FromMailboxTests.test_the_unaddressed_post_is_its_own_article_and_is_asked_for
+tests.test_node_probe: 0.3 s of 180 s, 10 tests, ok
+        0.13 s  NodeProbeTests.test_a_certificate_the_client_does_not_trust_is_a_violated_handshake
+        0.01 s  NodeProbeTests.test_the_password_reaches_neither_the_record_nor_the_output
+        0.01 s  NodeProbeTests.test_a_correct_node_holds_every_assertion_and_the_post_comes_back
+tests.test_owner: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_post: 180.1 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_process_supervisor: 1.7 s of 180 s, 6 tests, ok
+        0.47 s  ProcessSupervisorTests.test_timeout_kills_term_ignoring_grandchild_after_leader_exits
+        0.40 s  ProcessSupervisorTests.test_second_term_during_cleanup_does_not_interrupt_reap
+        0.28 s  ProcessSupervisorTests.test_timeout_reaps_shell_and_grandchild
+tests.test_proof_artifacts: 3.8 s of 180 s, 4 tests, ok
+        3.66 s  ProfileTests.test_default_and_dtn_are_distinct_declared_images
+        0.03 s  AcquisitionTests.test_a_load_failure_rejects_the_whole_set_and_tries_the_next
+        0.00 s  ProfileTests.test_deployed_owner_host_additions_join_the_artifact_set
+tests.test_proof_cost: 0.2 s of 180 s, 18 tests, ok
+        0.00 s  ProofCostTests.test_write_baseline_refuses_to_add_without_allow_regression
+        0.00 s  ProofCostTests.test_allow_regression_keeps_unmeasured_baseline_entries
+        0.00 s  ProofCostTests.test_changed_book_or_include_cannot_supply_current_measurement
+tests.test_proof_profile: 0.1 s of 180 s, 22 tests, ok
+        0.00 s  Driver.test_driver_profiles_the_form_and_asks_for_three_listings
+        0.00 s  Driver.test_split_does_not_match_a_name_inside_another_form
+        0.00 s  Driver.test_split_puts_the_form_last_in_the_prefix
+tests.test_proof_repl: 5.3 s of 180 s, 12 tests, ok
+        2.97 s  ProcessLifetimeTests.test_duplicate_start_cannot_detach_an_older_server
+        0.82 s  RealAcl2Tests.test_a_true_theorem_is_admitted_and_a_false_one_is_refused
+        0.59 s  SessionTests.test_1_start_loads_up_to_the_first_refused_form_and_reports_it
+tests.test_provenance: 2.6 s of 180 s, 4 tests, ok
+        0.80 s  ProvenanceTests.test_the_provenance_a_post_stored_survives_reopening
+        0.79 s  ProvenanceTests.test_inspect_provenance_prints_the_acl2_line
+        0.45 s  ProvenanceTests.test_a_legacy_evidence_value_still_reads_back_as_itself
+tests.test_reach_check: 8.5 s of 180 s, 6 tests, ok
+        3.08 s  RatchetTests.test_an_unbaselined_orphan_fails_and_is_named
+        3.05 s  RatchetTests.test_the_tree_is_at_its_baseline
+        0.10 s  GraphTests.test_a_function_named_nowhere_outside_books_is_not_reachable
+tests.test_reader: 46.6 s of 180 s, 17 tests, ok
+        3.02 s  ReaderSocketTests.test_xpat_transcript_over_a_real_socket
+        2.94 s  ReaderSocketTests.test_malformed_and_overlimit_input_close
+        2.93 s  ReaderSocketTests.test_fragmented_and_coalesced_commands_follow_core_transcript
+tests.test_reader_partitions: 2.8 s of 180 s, 7 tests, ok
+        0.01 s  ReaderPartitionMatrixTests.test_every_two_piece_cut_preserves_multicommand_crlf_transcript
+        0.01 s  ReaderPartitionMatrixTests.test_every_two_piece_cut_preserves_split_utf8_wildmat_transcript
+        0.00 s  ReaderPartitionMatrixTests.test_bytewise_coalesced_and_empty_chunks_have_same_expected_reply
+tests.test_receipt_journal: 0.6 s of 180 s, 10 tests, ok
+        0.20 s  ReceiptJournalTests.test_a_failing_close_cannot_close_a_reused_descriptor
+        0.04 s  ReceiptJournalTests.test_a_record_replaced_by_a_symlink_is_refused_on_reopen
+        0.04 s  ReceiptJournalTests.test_receipt_intent_reserves_decision_headroom
+tests.test_receipt_journal_live: 1.1 s of 180 s, 1 tests, ok
+        1.05 s  ReceiptJournalLiveTests.test_actual_store_request_decision_restart_and_regeneration
+tests.test_scale_gate: 18.1 s of 180 s, 17 tests, FAILED (0 failures, 1 errors, exit 1)
+        0.00 s  CeilingTests.test_every_operation_has_a_pessimistic_sentence_with_its_scope
+        0.00 s  CeilingTests.test_over_is_recorded_as_a_substitution_and_never_as_over
+        0.00 s  CeilingTests.test_the_comparison_runs_the_previous_method_and_cites_its_table
+tests.test_scheduler: 0.6 s of 180 s, 23 tests, ok
+        0.38 s  Acl2HostRecord.test_the_host_record_is_accepted
+        0.08 s  DecisionLogging.test_records_are_sequenced
+        0.03 s  Driving.test_a_refused_attempt_is_a_pass_and_charges_no_retry
+tests.test_served_differential: 3.0 s of 180 s, 7 tests, ok
+        0.00 s  ServedDifferentialTests.test_bytewise_partition_agrees
+        0.00 s  ServedDifferentialTests.test_cut_after_a_reply_agrees
+        0.00 s  ServedDifferentialTests.test_cut_inside_a_command_agrees
+tests.test_session_depth: 0.1 s of 180 s, 15 tests, ok
+        0.01 s  Bindings.test_a_level_travels_through_let_star
+        0.01 s  Drift.test_a_hand_spelled_walk_is_drift_and_fails_only_under_strict
+        0.00 s  Bindings.test_a_shadowed_binding_does_not_carry_a_level
+tests.test_store: 26.8 s of 180 s, 21 tests, ok
+        2.77 s  StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers
+        2.27 s  StoreTests.test_known_abort_before_publication_and_indeterminate_after_publication
+        1.86 s  StoreTests.test_acl2_transaction_names_continue_after_nonempty_recovery
+tests.test_store_config: 15.5 s of 180 s, 6 tests, ok
+        5.14 s  StoreConfigTests.test_create_retire_and_revive_resume_numbering_across_recovery
+        3.14 s  StoreConfigTests.test_capacity_is_a_configuration_record_with_three_outcomes
+        2.67 s  StoreConfigTests.test_duplicate_create_unknown_retire_and_overflow_are_refused
+tests.test_store_corruption: 32.9 s of 180 s, 7 tests, ok
+       14.97 s  StoreCorruptionTests.test_frontier_malformed_namespace_matrix
+        6.36 s  StoreCorruptionTests.test_config_and_history_inconsistency_matrix
+        4.80 s  StoreCorruptionTests.test_malformed_frame_matrix
+tests.test_store_fault_matrix: 51.0 s of 180 s, 9 tests, ok
+       11.44 s  StoreFaultMatrixTests.test_recovery_read_and_all_five_barrier_matrix
+       10.27 s  StoreFaultMatrixTests.test_prepublication_create_write_and_file_fsync_matrix
+        8.20 s  StoreFaultMatrixTests.test_allocator_staging_and_write_progress_matrix
+tests.test_store_lifecycle: 2.7 s of 180 s, 4 tests, ok
+        1.98 s  StagingSweepTests.test_an_uncertain_publication_leaves_no_staging_orphan_after_recovery
+        0.27 s  StoreLifecycleTests.test_mutation_requires_a_live_exclusive_owner
+        0.23 s  StoreLifecycleTests.test_acquire_metadata_io_error_releases_writer_lock
+tests.test_store_node_host: 7.5 s of 180 s, 10 tests, ok
+        1.77 s  StoreNodeHostTests.test_lost_bridge_reply_after_namespace_observation_stays_fenced
+        1.06 s  StoreNodeHostTests.test_link_failure_fences_then_observed_recovery_reopens
+        1.02 s  StoreNodeHostTests.test_known_abort_consumes_frontier_without_a_record
+tests.test_store_process_crash: 16.1 s of 180 s, 1 tests, ok
+       15.99 s  StoreProcessCrashTests.test_process_death_at_publication_boundaries_releases_lock_and_reopens
+tests.test_stx: 5.2 s of 180 s, 5 tests, ok
+        1.05 s  StatementCarrier.test_a_rewritten_body_loses_authority_and_not_bytes
+        0.99 s  StatementCarrier.test_an_unknown_creator_is_unverified_not_refused
+        0.99 s  StatementCarrier.test_no_field_is_absent_and_absent_is_its_own_outcome
+tests.test_teeth_check: 33.9 s of 180 s, 40 tests, ok
+       19.31 s  TheCorpus.test_the_summary_exits_zero
+        8.27 s  MultiValued.test_a_macro_wrapper_is_not_flagged
+        5.26 s  Findings.test_an_assertion_that_does_not_hold
+tests.test_test_budget: 7.0 s of 180 s, 5 tests, ok
+        4.55 s  TestBudgetRunner.test_exit_codes_keep_failure_and_budget_apart
+        2.04 s  TestBudgetRunner.test_a_module_past_its_budget_is_terminated_and_reported_over
+        0.12 s  TestBudgetRunner.test_a_passing_module_reports_its_time_and_tests
+tests.test_theory_check: 3.1 s of 180 s, 6 tests, ok
+        2.94 s  RealTreeTests.test_every_book_reads_and_the_command_line_runs
+        0.00 s  AuditTests.test_a_codec_theory_is_one_defined_in_a_codec_book_or_named_codec
+        0.00 s  AuditTests.test_the_summary_and_table_carry_the_counts_and_the_names
+tests.test_triage: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_twonode_gate: 34.9 s of 180 s, 20 tests, FAILED (1 failures, 0 errors, exit 1)
+        0.00 s  NoTransitTests.test_no_scenario_assertion_fails_against_a_tree_without_the_feature
+        0.00 s  NoTransitTests.test_the_evidence_has_the_deploy_gate_s_shape
+        0.00 s  NoTransitTests.test_an_indeterminate_outcome_is_asserted_in_neither_direction
+tests.test_v0_matrix: 0.3 s of 180 s, 50 tests, ok
+        0.06 s  CapabilityPinProtocolTests.test_takethis_writes_its_block_before_reading_the_final_status
+        0.01 s  ReportPublicationTests.test_current_measurement_is_published_as_valid_json
+        0.01 s  ReportPublicationTests.test_parallel_publishers_leave_the_newer_run_selected
+tests.test_verdict: 0.2 s of 180 s, 16 tests, ok
+        0.03 s  PerRootVerdictTests.test_the_box_side_reader_counts_book_results_not_exit_codes
+        0.03 s  PerRootVerdictTests.test_an_older_manifest_with_no_book_results_falls_back_to_exit_codes
+        0.00 s  PerRootVerdictTests.test_the_gate_manifest_is_filed_where_a_reader_can_see_it
+tests.test_workflow_boundary: 0.4 s of 180 s, 2 tests, ok
+        0.25 s  WorkflowBoundaryTests.test_only_validated_integer_and_enum_fields_enter_generated_forms
+        0.03 s  WorkflowBoundaryTests.test_untrusted_enumeration_never_reaches_acl2_or_disk
+tests.test_workflow_faults: 1.1 s of 180 s, 10 tests, ok
+        0.61 s  WorkflowFaultTests.test_actual_acl2_bridge_initializes_then_replays_config
+        0.27 s  WorkflowFaultTests.test_process_restart_rediscovers_inbox_linked_before_directory_barrier
+        0.03 s  WorkflowFaultTests.test_exact_inbound_retry_after_delete_failure_is_idempotent
+tests.test_workflow_journal: 0.7 s of 180 s, 22 tests, ok
+        0.18 s  WorkflowJournalTests.test_a_failing_close_cannot_close_a_reused_descriptor
+        0.03 s  WorkflowJournalTests.test_enqueue_requires_node_binding_and_ack_means_published
+        0.03 s  WorkflowJournalTests.test_inbox_is_keyed_by_identity_and_not_by_the_agents_bid
+tests.test_workflow_live: 1.2 s of 180 s, 1 tests, ok
+        1.12 s  WorkflowLiveTests.test_real_node_enqueue_submit_restart_expiry_and_lost_outcome
+tests.test_workflow_process_crash: 0.8 s of 180 s, 2 tests, ok
+        0.42 s  WorkflowProcessCrashTests.test_death_after_link_recovers_attempt_as_acl2_input
+        0.28 s  WorkflowProcessCrashTests.test_death_before_publication_has_no_authoritative_record
+tests.test_workflow_restart: 3.9 s of 180 s, 4 tests, ok
+        0.99 s  WorkflowRestartTests.test_a_reopen_keeps_every_work_with_its_last_status
+        0.94 s  WorkflowRestartTests.test_first_attempt_is_admitted_after_a_reopen
+        0.92 s  WorkflowRestartTests.test_an_unknown_work_id_is_not_a_status
+153 modules, 1552.4 s; 139 passed within budget, 4 over budget
+done
