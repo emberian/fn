@@ -1,0 +1,31 @@
+# harness-repair native in /tank/fn/scratch/harness-repair/tree image bbf52159 start 2026-09-26T00:21:46Z
+tests.test_native_raw_scripts: 6.3 s of 180 s, 9 tests, ok
+        5.86 s  RawScriptTests.test_native_consumer_peer_raw
+        0.09 s  RawScriptTests.test_native_feed_service_raw
+        0.05 s  RawScriptTests.test_native_owner_bound_commit_raw
+tests.test_native_bp_app_clock: 0.1 s of 180 s, 1 tests, ok
+        0.04 s  NativeBpAppClockTests.test_submit_observes_fresh_clock_and_replay_needs_none
+tests.test_native_bp_channel_admission: 0.1 s of 180 s, 1 tests, ok
+        0.02 s  NativeBpChannelAdmissionTests.test_raw_eid_and_acl2_ingress_result
+tests.test_native_live_reconfiguration: 9.6 s of 180 s, 11 tests, FAILED (1 failures, 0 errors, exit 1)
+        6.79 s  LiveReconfigurationImageTests.test_a_group_created_live_is_served_before_restart
+        1.21 s  LiveReconfigurationImageTests.test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives
+        1.16 s  LiveReconfigurationImageTests.test_the_live_verb_answers_and_the_owner_keeps_serving
+tests.test_native_auth_admin_fidelity: 12.7 s of 180 s, 3 tests, ok
+        6.42 s  NativeAuthAdminFidelityTests.test_sigkill_after_rename_recovers_in_a_new_process
+        6.27 s  NativeAuthAdminFidelityTests.test_post_rename_eio_is_uncertain_then_fresh_process_recovers
+        0.00 s  NativeAuthAdminSourceMapTests.test_each_model_cut_is_on_the_actual_raw_executor
+tests.test_native_owner: 15.6 s of 180 s, 18 tests, ok
+        8.19 s  NativeOwnerTests.test_configured_source_address_opens_native_transit_session
+        1.58 s  NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart
+        1.55 s  NativeOwnerTests.test_each_submission_and_each_connection_take_a_fresh_reading
+tests.test_native_control: 29.6 s of 180 s, 14 tests, FAILED (1 failures, 0 errors, exit 1)
+       11.15 s  NativeControlTests.test_partial_frame_has_one_absolute_deadline
+        6.14 s  NativeControlTests.test_the_production_image_refuses_every_selector_at_startup
+        3.54 s  NativeControlTests.test_two_clients_sigterm_cleanup_and_restart
+tests.test_native_operator_verbs: 9.4 s of 180 s, 22 tests, ok
+        2.55 s  NativeOperatorCapacityTests.test_the_development_profile_budget_is_reported_and_refused_by_name
+        2.33 s  NativeOperatorUncertainOutcomeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it
+        1.25 s  NativeOperatorUncertainOutcomeTests.test_the_production_image_refuses_the_selector
+8 modules, 83.4 s; 6 passed within budget, 0 over budget
+# rc=1 end 2026-09-26T00:23:10Z

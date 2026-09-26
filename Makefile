@@ -288,6 +288,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-tests \
 	books/store-reclaim-buffer \
 	tests/acl2/store-reclaim-buffer-tests \
+	books/visibility-join \
+	tests/acl2/visibility-join-tests \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
 	books/reclaim-admission \
@@ -326,6 +328,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
+	books/record-width-producers \
+	tests/acl2/record-width-producers-tests \
+	tests/acl2/profile-monotonicity-tests \
+	books/store-budget-article \
+	tests/acl2/store-budget-article-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -601,6 +608,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-overview \
 	books/nntp-legacy \
 	books/nntp-xpat \
+	books/nntp-search-scope \
 	books/nntp-newnews \
 	books/nntp-invariants \
 	books/nntp-effects \
@@ -709,6 +717,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
 	tests/acl2/nntp-xpat-tests \
+	tests/acl2/nntp-search-scope-tests \
 	tests/acl2/nntp-newnews-tests \
 	books/bp-release \
 	books/bp-release-invariants \
@@ -753,11 +762,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-event-index-store-invariants-tests \
 	books/consumer-owner-local \
 	tests/acl2/consumer-owner-local-tests \
+	books/consumer-owner-local-progress \
+	tests/acl2/consumer-owner-local-progress-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
 	books/poster-bytes-invariants \
 	tests/acl2/poster-bytes-tests \
+	tests/acl2/source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-numbering-tests \
 	tests/acl2/owner-fault-tests \
@@ -796,6 +808,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
+	books/peer-pull-session \
+	tests/acl2/peer-pull-session-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
@@ -996,6 +1010,9 @@ check:
 # Static, under a second, with its teeth test.
 	$(PYTHON) tools/build_lists_check.py
 	$(PYTHON) -m unittest -q tests.test_build_lists_check
+# Every ACL2 a tool or test starts takes the machine's pool and heap cap
+# (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
+	$(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
 # specs/identity.md "The signed bytes" is what an independent verifier is
 # written from.  On 2026-09-24 tools/fn_verify.py had to read the books for
 # the preimage layout, the dropped fields and the ML-DSA context, because the
@@ -1095,12 +1112,14 @@ tooling-test:
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image -v
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers -v
 
 # Every test module in its own process under a wall-time budget (PKT-163):
 # the report lists each module's seconds and slowest tests, and a module
-# still running at 300 s is terminated and fails the target (exit 2; test
-# failures exit 1).  tests/test_budgets.json may lower a module's budget,
+# still running at 180 s is terminated, or one whose test ran over 20 s is
+# named, and either fails the target (exit 2; test failures exit 1).
+# `--order reverse` runs each module's tests last to first, which is how a
+# test that relies on an earlier one's leftovers is found (harness-repair).  tests/test_budgets.json may lower a module's budget,
 # never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
 # chosen set the same way.
 test: check certify

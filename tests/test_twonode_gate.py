@@ -104,7 +104,10 @@ class DryRun:
         (books / "acceptance.port").write_text("()\n")
         cls.evidence = Path(cls.temp.name) / "twonode-evidence.md"
         argv = [commit, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
-                "--evidence", str(cls.evidence), "--keep"]
+                "--evidence", str(cls.evidence), "--keep",
+                # The fake ACL2 by name, not the farm host's toolchain path
+                # (as tests/test_deploy_gate.py; harness-repair).
+                "--acl2", str(acl2 / "saved_acl2")]
         for overlay in cls.overlays:
             argv += ["--overlay", str(ROOT / overlay)]
         if cls.server_command:

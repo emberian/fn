@@ -28,6 +28,10 @@ def repository(directory: str) -> Path:
     subprocess.run(["git", "-C", str(root), "config", "user.email", "t@example"],
                    check=True)
     subprocess.run(["git", "-C", str(root), "config", "user.name", "t"], check=True)
+    # The developer's global commit.gpgsign would make every commit here wait
+    # on the signing agent (tests/test_triage.py hit it; harness-repair).
+    subprocess.run(["git", "-C", str(root), "config", "commit.gpgsign", "false"],
+                   check=True)
     (root / ".gitignore").write_text("planning/evidence/manifests/*.json\n")
     return root
 

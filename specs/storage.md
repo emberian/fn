@@ -82,6 +82,32 @@ record is at most 28 octets past that ceiling and the publish gate refuses
 it. The frontier and the profile's T field still cap transaction IDs at
 2^32 - 1. The widths are a stronger fn guarantee; no RFC requires them.
 
+The node's producers stay inside the u32 widths, so every record it stages
+is schema 1 and within R (`fn-sn-prepare-stages-a-narrow-article-record`,
+`fn-post-admitted-article-record-is-within-r`, PRF-123): the allocator
+stages only the reserved transaction ID (frontier - 1, the frontier u32),
+with generation equal to it and sequence the committed count; the stamp is
+seconds below 2^32 or the article is refused `:clock-unusable`; the POST
+boundary refuses a charge above 2^32 - 1 (`:charge-bound`) and a BP policy
+cannot name one. The prepare itself does not refuse a wide charge, so the
+bound is the boundary's. u64 is therefore the width the codec and the
+translation carry, not one the node produces: a transaction ID past
+2^32 - 1 needs a wider frontier file (frontier-3), a stamp past 2106 and a
+charge past 2^32 - 1 need their producers widened first.
+
+The history bound H is kept by admission, not only checked at open: an
+article is charged the record ceiling of its own payload length and group
+count at the produced widths (`fn-sbud-article-figure`), both by the
+developer `store post` verdict before reservation and by the served prepare's
+budget, so an admitted article never takes the committed history past H
+(`fn-sbud-article-verdict-keeps-history`,
+`fn-sbud-prepare-under-article-budget-keeps-history`) and the next open's
+replay bound holds.  The figure does not read the profile, so a profile
+upgrade keeps every article verdict (`fn-profile-upgrade-keeps-article-verdict`).
+Before this gate an article was charged a fixed 65 538 octets, and an article
+past it could be accepted and leave the store unopenable (packet 1,
+tests/acl2/profile-monotonicity-tests).
+
 STO-002: acceptance publishes one transaction containing the source references,
 duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or
@@ -303,8 +329,11 @@ promises and each has its own proof obligation:
   with its own version.
 - **Content reclamation** (C) removes object bytes. Obligation: no retention
   obligation holds them (D03: only an explicit authorized release ends one),
-  and no active reference pins them: a reader's pinned archive, a consumer
-  cursor or an unresolved BP handoff. The record that the bytes existed, and
+  and no active reference pins them: a reader's pinned archive or an
+  unresolved BP handoff. An E2 consumer position is not such a reference: it
+  is a committed Store-event prefix and creates no retention pin (the selected
+  no-implicit-pin profile, [consumer progress](consumer-progress.md)); a
+  consumer whose content was reclaimed sees an explicit unavailable gap. The record that the bytes existed, and
   their identity, stay (see anti-resurrection). Not implemented for article
   content.
 
@@ -318,7 +347,7 @@ policy that this contract does not yet have says otherwise.
 | Retention undertaking (`fn-e` `:undertake`, `books/store-events`) | Capacity charge; the hold on content; admissibility of a later release; the operator's `store retention` | Until the matching authorized release | P. H: an open undertaking must stay in the summary with its charge, subject and evidence. C: never removes it |
 | Retention release (`fn-e` `:release`) | That the hold ended and on whose authority; reclamation's permission; refusing a second release | Until superseded by a summary that keeps the released identity and its evidence (**open**: D13) | P. H: into the anti-resurrection summary only |
 | Identity and key policy evidence (`:statement-verdict` `fn-stxe`, `:keyring-snapshot` `fn-stxk`, `:accepted-statement` `fn-stxa`) | Verifying historical signed articles at recovery (STO-008: a missing enrollment is a fault); equivocation (`fn-sn-equivocatorp`); statement lookup; key and epoch evolution | Forever (**open**: a keyring-epoch summary that answers every historical verification identically) | P. H: only with a summary proved to answer `fn-sn-statement-lookup` and `fn-sn-equivocatorp` the same for every future query |
-| Consumer cursor pins (`:consumer` `fnce`: bootstrap, register, ack, rebase, unregister, rollover; `books/consumer-*`) | What each consumer acknowledged; which history an unacknowledged consumer still pins; the next registration epoch | Each entry until superseded by the next ack, rebase or unregister for that consumer. The epoch scalar: forever | P. H: into the latest entry per consumer plus `next-epoch` (the state `books/consumer-position` already carries). Its pins bound C |
+| Consumer positions (`:consumer` `fnce`: bootstrap, register, ack, rebase, unregister, rollover; `books/consumer-*`) | What each consumer declared through which committed Store-event prefix; the next registration epoch | Each entry until superseded by the next ack, rebase or unregister for that consumer. The epoch scalar: forever | P. H: into the latest entry per consumer plus `next-epoch` (the state `books/consumer-position` already carries), with a mapping that keeps every live position's prefix. They pin nothing, so they do not bound C (a retaining consumer mode would be a separately charged durable hold: PKT-165) |
 | Topic admission (`:topic-admin-install`, `:topic-anchor`, `:topic-admit`) | Admitting later topic events (parents, authorship, admin) | Forever (**open**: experimental) | P only |
 | Submission outcomes | Local POST: the accepted article record, which answers a retry with the same Message-ID as a duplicate. Refused and uncertain outcomes are not persisted beyond the burned reservation. BP submissions: the workflow and handoff records | As the article record / as the BP rows below | As those rows |
 | Unresolved BP handoffs and obligations (FNBS directory: dispatch, delivery, deletion, conflict, family, forward rows; `books/bp-fnbs-*`) | Custody, retry, delivery and deletion reports, conflict evidence | Until resolved; then an outcome summary for duplicate and replay refusal (**open**) | Separate namespace. None of P, H or C touches it today (**open**) |
@@ -495,8 +524,11 @@ statement index is re-derived from the payloads at open and an
 `:absent` article, which has no authorship field, contributes nothing under
 any keyring and neither does its tombstone, so it is not held),
 `held-reader-pin`, `held-consumer-cursor` (a
-consumer that acknowledged number A in the group holds every number above
-A), `held-feed` (a live peer not yet delivered it; a retired peer holds
+holder that acknowledged number A in the group holds every number above
+A: a per-group article-number holder. No caller constructs it from an E2
+consumer position, which is a Store-event prefix in another coordinate and
+pins nothing; the slot is reserved for an explicitly selected retaining
+consumer mode, PKT-165), `held-feed` (a live peer not yet delivered it; a retired peer holds
 nothing) and `held-bp-obligation`. The keystone says the executable test is
 exactly "no obligation in the flattened list names the article" together
 with the rule.

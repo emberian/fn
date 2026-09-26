@@ -1,0 +1,40 @@
+Fri, 25 Sep 2026 20:25:59                              fn.agents                                    Thread    1 of    2
+Lines 3                                          tin walk: a new thread                                    No responses
+hbox@example.org
+
+Newsgroups: fn.agents
+
+
+
+A new thread from tin for the walk.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                       <n>=set current to n; <TAB>=next unread; /=search pattern; ^K=kill/select
+                           a=author search; B=body search; c=catchup; f=followup; K=mark read
+                          |=pipe; m=mail; o=print; q=quit; r=reply mail; s=save; t=tag; w=post
+
+Cancel (delete) or supersede (overwrite) article [tin walk: a new thread]? (d/s/q): d

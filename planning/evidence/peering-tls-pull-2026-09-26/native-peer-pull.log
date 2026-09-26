@@ -1,0 +1,5 @@
+tests.test_native_peer_pull: 188.8 s of 300 s, 8 tests, ok
+       53.14 s  NativePeerPullTests.test_cursor_publication_cuts_over_tls
+       39.83 s  NativePeerPullTests.test_cursor_publication_cuts
+       36.03 s  NativePeerPullTests.test_pull_from_inn
+1 modules, 188.8 s; 1 passed within budget, 0 over budget

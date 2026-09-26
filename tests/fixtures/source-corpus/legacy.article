@@ -1,0 +1,6 @@
+Path: not-for-mail
+From: legacy@example.invalid
+Newsgroups: fn.test
+Subject: corpus unsigned legacy post
+
+no Date, no Message-ID, a bare Path

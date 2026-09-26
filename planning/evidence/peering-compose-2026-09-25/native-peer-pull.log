@@ -1,0 +1,69 @@
+test_cursor_publication_cuts (tests.test_native_peer_pull.NativePeerPullTests.test_cursor_publication_cuts)
+Packet 5 (PRF-124): SIGKILL at every write of the cursor's ... /tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:464: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-7q6mzka3/Abefore-write-1/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:429: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-7q6mzka3/Bbefore-write-1/stderr.log'>
+  pass
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ERROR
+test_kill_mid_round_recovery_asks_the_same_newnews (tests.test_native_peer_pull.NativePeerPullTests.test_kill_mid_round_recovery_asks_the_same_newnews) ... /tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:341: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-os0bxnj1/A/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:381: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-os0bxnj1/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:394: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-os0bxnj1/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"core_sha256": "76d2ff381a30a830c6b1505d12ca65d8f0baf7a971821c8fbc282ccd2d9d87f4", "dead_round_newnews": "NEWNEWS fn.* 20260926 000527 GMT", "fnpl": ["A.fnfd"], "image_sha256": "784ceb5c61ef4ed8c8b5bc5642fa98a6e098cbc5f71cdd32047f8ff61650ce4c", "kind": "kill-mid-round", "log_sha256_A": "df0157bd61ef88ec369c895e1eefbb5a007aaaadd633c4b1b4e76a405504c781", "log_sha256_B": "8fde3d6d714c831f648181da3bad6512c9e314c59aca3e6cc2d485757239bf13", "newnews_after_restart": ["NEWNEWS fn.* 20260926 000527 GMT"], "pull_lines": ["pull peer=A round=done cursor=advanced", "pull peer=A round=done cursor=advanced"]}
+ok
+test_pull_from_fn_node (tests.test_native_peer_pull.NativePeerPullTests.test_pull_from_fn_node) ... /tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:341: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-vtwru147/A/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:354: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-vtwru147/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"article_commands": ["ARTICLE <pull-two@example.invalid>", "ARTICLE <pull-one@example.invalid>"], "core_sha256": "76d2ff381a30a830c6b1505d12ca65d8f0baf7a971821c8fbc282ccd2d9d87f4", "fnpl": ["A.fnfd"], "image_sha256": "784ceb5c61ef4ed8c8b5bc5642fa98a6e098cbc5f71cdd32047f8ff61650ce4c", "kind": "fn-node", "log_sha256_A": "00ed508a08a9d7b9e2d5795bd70a2dd7d3c3d9ca4e2985dbea3a0c130375a517", "log_sha256_B": "1ed6751c15b8631e94efac85560e31834920f0ca59567328bc63284ad6705dd3", "newnews": ["NEWNEWS fn.* 20260925 000533 GMT", "NEWNEWS fn.* 20260926 000532 GMT"], "proxy_connections": 2, "pull_lines": ["pull peer=A round=done cursor=advanced", "pull peer=A round=done cursor=advanced"]}
+ok
+test_pull_from_inn (tests.test_native_peer_pull.NativePeerPullTests.test_pull_from_inn) ... /tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:495: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-vevyit2x/inn/log/innd-stdout.log'>
+  self.assertTrue(inn.start(), inn.diagnostics())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:495: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-vevyit2x/inn/log/nnrpd-stdout.log'>
+  self.assertTrue(inn.start(), inn.diagnostics())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py:504: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-vevyit2x/B/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"b_head": "221 0 <pull-from-inn@inn.pull.example.invalid> headers follow", "core_sha256": "76d2ff381a30a830c6b1505d12ca65d8f0baf7a971821c8fbc282ccd2d9d87f4", "fnpl": ["INN.fnfd"], "image_sha256": "784ceb5c61ef4ed8c8b5bc5642fa98a6e098cbc5f71cdd32047f8ff61650ce4c", "inn_ihave": "235 Article transferred OK", "kind": "inn", "log_sha256_B": "9df30e82b20da7a5b9d9d0e9a82520f6abb38968b39cdfd895f52f80ba710e5c", "newnews": ["NEWNEWS fn.* 20260925 000539 GMT"], "pull_lines": ["pull peer=INN round=done cursor=advanced"]}
+/usr/lib/python3.12/subprocess.py:1127: ResourceWarning: subprocess 4083336 is still running
+  _warn("subprocess %s is still running" % self.pid,
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+
+======================================================================
+ERROR: test_cursor_publication_cuts (tests.test_native_peer_pull.NativePeerPullTests.test_cursor_publication_cuts)
+Packet 5 (PRF-124): SIGKILL at every write of the cursor's
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py", line 438, in test_cursor_publication_cuts
+    stored_at_death = {i: self.stored(b, i) for i in ids}
+                          ^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py", line 471, in stored
+    return self.article_code(node, message_id) == b"223"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py", line 288, in article_code
+    return self.session(node["port"],
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/peering-compose-r1/tests/test_native_peer_pull.py", line 271, in session
+    with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 865, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.12/socket.py", line 850, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+----------------------------------------------------------------------
+Ran 4 tests in 44.435s
+
+FAILED (errors=1)

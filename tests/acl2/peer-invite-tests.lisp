@@ -282,10 +282,127 @@
                      '(:refused :document-kind)))
 
 ; The control requests round-trip, and a wrong kind decodes to nothing.
+; Confirm (kind 11) carries the acceptance and the invitation (PRF-124).
 (assert-event (equal (fn-pinv-request-decode
-                      *fn-pinv-confirm-kind*
-                      (fn-pinv-request-encode *fn-pinv-confirm-kind* (pit-acc)))
-                     (pit-acc)))
+                      *fn-pinv-accept-kind*
+                      (fn-pinv-request-encode *fn-pinv-accept-kind* (pit-inv)))
+                     (pit-inv)))
+(assert-event (equal (fn-pinv-confirm-request-decode
+                      (fn-pinv-confirm-request-encode (pit-acc) (pit-inv)))
+                     (list (pit-acc) (pit-inv))))
 (assert-event (null (fn-pinv-request-decode
                      *fn-pinv-accept-kind*
-                     (fn-pinv-request-encode *fn-pinv-confirm-kind* (pit-acc)))))
+                     (fn-pinv-confirm-request-encode (pit-acc) (pit-inv)))))
+(assert-event (null (fn-pinv-confirm-request-decode
+                     (fn-pinv-request-encode *fn-pinv-accept-kind* (pit-inv)))))
+(assert-event (equal (fn-pinv-request-encode *fn-pinv-confirm-kind* (pit-acc))
+                     :bad))
+
+; =============================================================================
+; PRF-124: the confirm's one record consumes and configures the peer.
+
+(defmacro pit-record ()
+  '(fn-pinv-confirm-record-plan (pit-acc) (pit-inv) *pit-b-ml* :verified
+                               :verified (pit-inv-rows) nil nil))
+(defmacro pit-peer ()
+  '(fn-pinv-confirmed-peer (fn-pinv-received-source (pit-inv))
+                          (fn-pinv-received-source (pit-acc)) (pit-b)))
+
+; Reachable witness of fn-pinv-confirm-record-configures-the-issued-
+; invitations-peer: the antecedent and every conjunct of the conclusion.
+(assert-event (equal (car (pit-record)) :configure))
+(assert-event (equal (car (pit-confirm)) :consume))
+(assert-event (fn-cfg-invitation-pendingp (pit-inv-rows) *pit-nonce-hex*))
+(assert-event (fn-pinv-kindp (fn-pinv-received-source (pit-inv))
+                             *fn-pinv-invitation-kind*))
+(assert-event (equal (fn-pinv-hex-string
+                      (fn-pinv-source-id (fn-pinv-received-source (pit-inv))))
+                     (fn-cfg-row-c (fn-cfg-invitation-row (pit-inv-rows)
+                                                          *pit-nonce-hex*))))
+(assert-event (fn-cfg-peerp (pit-peer)))
+(assert-event (equal (fn-cfg-peer-auth (pit-peer))
+                     (list :principal (fn-pinv-hex-string (pit-b)))))
+(assert-event (not (fn-cfg-peer-find (fn-cfg-peer-name (pit-peer)) nil)))
+(assert-event (equal (fn-pinv-at 1 (pit-record))
+                     (list (fn-pinv-at 1 (pit-confirm))
+                           (fn-cfg-set-peer-delta (pit-peer)))))
+; The peer is the invitation's words and the acceptance's.
+(assert-event (equal (pit-peer)
+                     (fn-cfg-peer-make "nodeB" "b.example"
+                                       '(:nntp 1 "127.0.0.1" 11190 (:clear))
+                                       (list "fn.*" *fn-record-max-payload* 16)
+                                       nil
+                                       (list :principal
+                                             (fn-pinv-hex-string (pit-b))))))
+
+; Reachable witness of fn-pinv-confirm-record-fold-consumes-and-configures,
+; over the fold from the issued value (pit-v1).
+(defmacro pit-next ()
+  ' (fn-cfg-apply (pit-v1) 2 nil (fn-pinv-at 1 (pit-record))))
+(assert-event (equal (fn-cfg-invitation-row (fn-cfg-invitations (pit-next))
+                                            *pit-nonce-hex*)
+                     (fn-cfg-row-make *pit-nonce-hex*
+                                      (fn-pinv-hex-string (pit-b))
+                                      (fn-pinv-hex-string
+                                       (fn-pinv-source-id
+                                        (fn-pinv-received-source (pit-acc))))
+                                      1)))
+(assert-event (equal (fn-cfg-rows-with-key (fn-cfg-peers (pit-next)) "nodeB")
+                     (fn-cfg-peer-rows (pit-peer))))
+(assert-event (equal (fn-cfg-peer-find "nodeB" (fn-cfg-peers (pit-next)))
+                     (pit-peer)))
+(assert-event (not (fn-pinv-enrolled-withp (pit-b) *pit-b-keys* nil)))
+(assert-event (equal (car (fn-pinv-confirm-plan (pit-acc) *pit-b-ml* :verified
+                                                :verified
+                                                (fn-cfg-invitations (pit-next))
+                                                nil))
+                     :enrol))
+; The record is admissible as one configuration record from the issued value.
+(assert-event (fn-cfg-admissiblep (pit-v1) 2 nil 0 0 (fn-pinv-at 1 (pit-record))))
+
+; Hypothesis removal (the one hypothesis, a :configure plan), each keeping
+; the rest of the witness and failing the conclusion it guards.
+; (1) Another invitation of this node (another nonce) presented with the
+; acceptance: refused, and the "invitation this node issued" conjunct fails.
+(assert-event (equal (fn-pinv-confirm-record-plan (pit-acc) (pit-inv2)
+                                                  *pit-b-ml* :verified
+                                                  :verified (pit-inv-rows) nil
+                                                  nil)
+                     '(:refused :another-invitation)))
+(must-fail (assert-event
+            (equal (fn-pinv-hex-string
+                    (fn-pinv-source-id (fn-pinv-received-source (pit-inv2))))
+                   (fn-cfg-row-c (fn-cfg-invitation-row (pit-inv-rows)
+                                                        *pit-nonce-hex*)))))
+; (2) A peer of that name already configured: refused, and "no configured
+; peer has the name" fails.
+(defconst *pit-taken*
+  (fn-cfg-peer-rows (fn-cfg-peer-make "nodeB" "other.example"
+                                      '(:nntp 1 "127.0.0.2" 119 (:clear))
+                                      nil nil
+                                      '(:source-address "127.0.0.2"))))
+(assert-event (equal (fn-pinv-confirm-record-plan (pit-acc) (pit-inv)
+                                                  *pit-b-ml* :verified
+                                                  :verified (pit-inv-rows) nil
+                                                  *pit-taken*)
+                     '(:refused :peer-name-taken)))
+(must-fail (assert-event (not (fn-cfg-peer-find "nodeB" *pit-taken*))))
+; (3) The acceptance presented in the invitation's place: refused by kind.
+(assert-event (equal (fn-pinv-confirm-record-plan (pit-acc) (pit-acc)
+                                                  *pit-b-ml* :verified
+                                                  :verified (pit-inv-rows) nil
+                                                  nil)
+                     '(:refused :invitation-kind)))
+(must-fail (assert-event (fn-pinv-kindp (fn-pinv-received-source (pit-acc))
+                                        *fn-pinv-invitation-kind*)))
+; (4) The fold's inner hypothesis (the acceptor not yet enrolled): with B
+; enrolled, the resumed plan after the record is not an enrolment.
+(assert-event (fn-pinv-enrolled-withp (pit-b) *pit-b-keys* (pit-b-snapshots)))
+(must-fail (assert-event
+            (equal (car (fn-pinv-confirm-plan (pit-acc) *pit-b-ml* :verified
+                                              :verified
+                                              (fn-cfg-invitations (pit-next))
+                                              (pit-b-snapshots)))
+                   :enrol)))
+; Before the record, the peers table has no nodeB: the fold made it.
+(must-fail (assert-event (fn-cfg-peer-find "nodeB" (fn-cfg-peers (pit-v1)))))

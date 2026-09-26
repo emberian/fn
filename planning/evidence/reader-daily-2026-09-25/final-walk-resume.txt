@@ -1,0 +1,12 @@
+Final image 74191b94, client restarted after the unreachable post; walk2.mjs part "resume".
+The script's JSON was not written: it stopped after step 05 (the process output
+was filtered to these lines at run time; steps 06-08 did not report).
+=== 01-home  Resume from local #3 <00000000843697536807.00000000000000049852.fn@fn.example.invalid> · continue after it
+=== 02-outbox
+uncertain walk: posted while the node was unreachable fn.agents · <fn-client.20260926T002808Z.a669e32e@ember.invalid> · needs settling
+draft draft: tomorrow's notes fn.agents · saved here, not posted
+accepted Re: Daily walk: where do we keep the notes? fn.agents · <fn-client.20260926T002722Z.55649e36@ember.invalid>
+=== 03-uncertain-record  Outcome: uncertain · unresolved Whether the node accepted this article is not settled. · [Re-send this same article to settle it]
+=== 04-reconcile  Settled by re-sending the same article; the first attempt's outcome stays recorded as it was.
+                  accepted Settled: the node accepted this article on the re-send. It is stored once.
+=== 05-outbox-after  uncertain walk: posted while the node was unreachable ... · settled by re-sending: accepted

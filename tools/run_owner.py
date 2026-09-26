@@ -516,7 +516,9 @@ class Acl2Owner(Acl2Store):
     def feed_filename_decode(self, components):
         literal = "(" + " ".join(self.literal(component) for component in components) + ")"
         result = self.call("(fn-feed-filename-host-decode '{})".format(literal))
-        if acl2_owner_symbol(result) == "bad":
+        # The answer is `:bad` or the peer's octets; a symbol reader refuses
+        # every octet list, so the refusal is recognized by its own spelling.
+        if acl2_result(result).strip().upper() == b":BAD":
             raise StoreFault("ACL2 refused FNFD filename components")
         return bytes(acl2_octet_list(result))
 
@@ -545,6 +547,17 @@ class Acl2Owner(Acl2Store):
 
     def feed_restart(self):
         return self._nat("(fn-owner-feed-restart state)")
+
+    def prov_post(self):
+        """The local-post provenance from the OWNER's live configuration.
+
+        `fn-owner-prov-post`, the call the native owner makes
+        (host/native/owner.lisp).  The inherited `fn-store-prov-post` reads
+        the standalone store bridge's configuration global, which an owner
+        process never installs: there it answered NIL, every intent was
+        refused and every owner POST answered 441.
+        """
+        return acl2_octets(self.call("(fn-owner-prov-post state)"))
 
     def submission_intent(self, evidence, generation, txid):
         """ACL2's capacity verdict and exact pre-commit intent frames."""
@@ -1303,7 +1316,10 @@ class Owner:
             if existing == "duplicate":
                 return "duplicate"
             if existing == "conflict":
-                return "refused"
+                # The word itself, as the native owner passes it
+                # (host/native/owner.lisp fnn-owner-attempt): the book renders
+                # the conflict refusal line from it (D25), not the generic 441.
+                return "conflict"
             # `fn-sbud-verdict` under the persisted profile, asked of the
             # ACL2 that holds this owner's store node (as the CLI post asks).
             if not publication_admissible(self.store, self.bridge):

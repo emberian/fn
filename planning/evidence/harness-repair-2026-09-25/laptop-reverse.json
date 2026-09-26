@@ -1,0 +1,2327 @@
+[
+  {
+    "module": "tests.test_anchor",
+    "seconds": 6.426,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_anchor.log",
+    "tests": 27,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_restoring_with_a_fresh_anchor_succeeds",
+        0.858
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_restoring_an_older_snapshot_is_refused",
+        0.836
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_no_anchor_obtainable_is_uncertain_not_refused",
+        0.841
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_anchor_records_then_refuses_a_replay",
+        1.112
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_a_store_that_never_anchored_recovers_as_before",
+        0.565
+      ],
+      [
+        "tests.test_anchor.StoreAnchorCommands.test_a_batched_anchor_is_uncertain_at_both_commands",
+        1.118
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_two_captures_cover_one_nonce_and_the_third_is_batched",
+        0.002
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_the_root_is_the_tenth_field",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_request_is_padded_to_the_minimum",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_pinned_key_is_the_one_in_the_server_file",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_one_flipped_octet_breaks_the_response",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_merkle_root_folds_the_path",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_captured_response_verifies_under_the_pinned_key",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_a_foreign_nonce_is_not_in_the_tree",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_a_different_pinned_key_does_not_verify",
+        0.0
+      ],
+      [
+        "tests.test_anchor.RoughtimeClient.test_a_batched_response_does_not_cover_one_nonce",
+        0.0
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_the_independent_verifier_stays_outside_the_host",
+        0.4
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_the_import_rule_reads_imports",
+        0.001
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_round_trip_and_rejection",
+        0.002
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_no_other_module_imports_cryptography",
+        0.384
+      ],
+      [
+        "tests.test_anchor.CryptoSeam.test_absent_library_is_not_a_verdict",
+        0.0
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_verdict_is_over_the_octets_acl2_produced",
+        0.006
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_tree_shape_alone_decides_it",
+        0.003
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_real_batched_capture_is_uncertain_not_accepted",
+        0.002
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_the_model_orders_the_three_captures",
+        0.001
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_reconstruction_matches_the_captured_response",
+        0.001
+      ],
+      [
+        "tests.test_anchor.Acl2OwnsTheSignedOctets.test_acl2_owns_the_delegation_window",
+        0.001
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_auth",
+    "seconds": 10.311,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_auth.log",
+    "tests": 20,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "timings": [
+      [
+        "tests.test_auth.ServedTlsTests.test_starttls_then_the_login_and_the_label_is_gone",
+        0.024
+      ],
+      [
+        "tests.test_auth.ServedTlsTests.test_starttls_is_advertised_and_authinfo_is_not_yet",
+        0.002
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_the_configuration_names_the_policy",
+        0.0
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_principal_list_shows_the_login_just_set",
+        0.071
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_post_is_gated_by_the_credentials_posting_flag",
+        0.005
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_post_is_gated_by_the_configured_policy",
+        0.004
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_peer_transit_is_advertised_without_a_reader_login",
+        0.002
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_login_with_the_credential_the_cli_just_wrote",
+        0.003
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_authinfo_is_advertised_on_a_peer_resolved_connection",
+        0.002
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_a_wrong_password_is_481",
+        0.003
+      ],
+      [
+        "tests.test_auth.ServedCredentialTests.test_a_read_still_needs_the_login_under_this_policy",
+        0.006
+      ],
+      [
+        "tests.test_auth.AuthTests.test_starttls_then_login",
+        0.559
+      ],
+      [
+        "tests.test_auth.AuthTests.test_starttls_is_580_without_a_certificate",
+        0.448
+      ],
+      [
+        "tests.test_auth.AuthTests.test_set_password_writes_a_verifier_and_no_secret",
+        0.0
+      ],
+      [
+        "tests.test_auth.AuthTests.test_protected_only_refuses_authinfo_before_tls",
+        0.455
+      ],
+      [
+        "tests.test_auth.AuthTests.test_posting_follows_the_credential_flag",
+        0.447
+      ],
+      [
+        "tests.test_auth.AuthTests.test_post_before_and_after_login_under_required",
+        0.451
+      ],
+      [
+        "tests.test_auth.AuthTests.test_nntplib_starttls_and_login",
+        0.0
+      ],
+      [
+        "tests.test_auth.AuthTests.test_login_and_wrong_password",
+        0.445
+      ],
+      [
+        "tests.test_auth.AuthTests.test_a_cleartext_credential_file_is_refused_by_name",
+        0.072
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_deploy_gate",
+    "seconds": 28.605,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_deploy_gate.log",
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_deploy_gate.StepAccountingTests.test_an_expected_nonzero_code_is_not_a_failure",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.StepAccountingTests.test_a_skipped_step_is_never_a_pass",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.RepoRootTests.test_two_fn_trees_in_play_are_announced_on_every_run",
+        0.174
+      ],
+      [
+        "tests.test_deploy_gate.RepoRootTests.test_the_default_and_a_relative_evidence_path_both_land_in_that_tree",
+        0.154
+      ],
+      [
+        "tests.test_deploy_gate.RepoRootTests.test_every_harness_anchors_its_evidence_on_the_invoking_tree",
+        0.152
+      ],
+      [
+        "tests.test_deploy_gate.RepoRootTests.test_a_secondary_worktree_is_the_root_not_the_checkout_it_came_from",
+        0.181
+      ],
+      [
+        "tests.test_deploy_gate.RepoRootTests.test_a_directory_outside_any_fn_tree_falls_back_to_this_file_s_tree",
+        0.195
+      ],
+      [
+        "tests.test_deploy_gate.DryRunTests.test_the_three_outcomes_stay_distinct",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.DryRunTests.test_the_reader_survived_the_post_and_the_reread_found_everything",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.DryRunTests.test_the_kill_actually_killed_the_server",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.DryRunTests.test_the_gate_completed",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.DryRunTests.test_the_gaps_are_written_out",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.DryRunTests.test_the_evidence_records_versions_and_commands",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.DryRunTests.test_every_phase_ran",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.CertificateChoiceTests.test_tree_and_revision_name_both_the_directory_and_lock",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.CertificateChoiceTests.test_an_uncertified_fallback_stops_the_gate",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.CertificateChoiceTests.test_a_rejected_cache_set_falls_back_to_the_declared_closure",
+        0.0
+      ],
+      [
+        "tests.test_deploy_gate.CertificateChoiceTests.test_a_coherent_cache_set_supplies_the_certificates",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_feed_journal_live",
+    "seconds": 3.855,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_feed_journal_live.log",
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_traversal_shaped_peer_uses_acl2_v1_components",
+        0.082
+      ],
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_short_reads_are_accumulated_until_real_eof",
+        0.037
+      ],
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_real_model_fence_survives_a_second_append_after_sync_failure",
+        0.061
+      ],
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_read_only_inspector_reports_replayed_queue_from_real_fnfd_bytes",
+        0.002
+      ],
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_process_death_at_each_named_recovery_and_append_cut",
+        0.81
+      ],
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_every_torn_prefix_and_body_repairs_then_appends_then_restarts",
+        1.309
+      ],
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_each_recovery_barrier_failure_requires_a_fresh_successful_recovery",
+        0.034
+      ],
+      [
+        "tests.test_feed_journal_live.FeedJournalLiveTests.test_complete_invalid_digest_length_schema_and_peer_preserve_evidence",
+        0.004
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_fn_verify",
+    "seconds": 0.465,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_fn_verify.log",
+    "tests": 31,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 26,
+    "timings": [
+      [
+        "tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree",
+        0.077
+      ],
+      [
+        "tests.test_fn_verify.SpecBookTieTests.test_a_renamed_function_is_caught",
+        0.066
+      ],
+      [
+        "tests.test_fn_verify.SpecBookTieTests.test_a_field_the_spec_forgets_to_drop_is_caught",
+        0.067
+      ],
+      [
+        "tests.test_fn_verify.SpecBookTieTests.test_a_changed_width_is_caught",
+        0.067
+      ],
+      [
+        "tests.test_fn_verify.SpecBookTieTests.test_a_changed_v2_tag_or_width_is_caught",
+        0.067
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_unsigned_post_both_say_unverified_1",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_the_node_accepted_the_signed_and_unsigned_posts_and_refused_the_tampered",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_tampered_v2_post_is_refused_and_not_stored_3",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_tampered_post_is_not_stored_so_nothing_is_decided_3",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_tampered_bytes_under_the_nodes_verified_line_are_2",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_signed_post_verifies_independently_0",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_large_signed_posts_verify_under_their_version_0",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_fabricated_hdr_answers_are_2",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_an_article_past_the_profile_over_tls_is_a_441_and_the_owner_serves_on",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.NativeVerifyTests.test_a_v1_record_from_before_v2_is_still_verified_0",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_that_cannot_be_decided_is_3",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_not_executed_is_1",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_claims_the_checks_contradict_are_2",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_withdrawal_by_the_author",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_what_cannot_be_decided_is_3",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_usage_error_never_reads_as_disagreement",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_the_versions_sign_disjoint_preimages",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_noncanonical_carrier_is_refused",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_wrong_version_byte_is_refused",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_valid_is_0",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v2_tampered_is_1",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_carrier_v1_now_carries_up_to_65535_octets",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_that_a_tampered_or_unsigned_article_is_unverified_is_1",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_agreement_on_a_valid_signature_is_0",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_a_lying_node_is_2",
+        0.0
+      ],
+      [
+        "tests.test_fn_verify.FakeNodeVerifyTests.test_a_carried_article_is_undecided_3_never_0_or_1",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_fn_client",
+    "seconds": 0.405,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_fn_client.log",
+    "tests": 36,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_fn_client.FnClientTests.test_the_watermark_is_written_only_after_the_articles_have_been_printed",
+        0.012
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_the_password_reaches_neither_the_output_nor_the_state",
+        0.007
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_the_node_uncertain_441_is_uncertain_and_never_reported_as_refused",
+        0.005
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_the_node_address_is_split_where_rfc_3986_says_and_nowhere_else",
+        0.003
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_since_and_all_choose_the_window_without_consulting_the_watermark",
+        0.018
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_show_fetches_one_article_by_message_id_and_leaves_the_watermark_alone",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_show_by_message_id_carries_no_article_number_in_json",
+        0.013
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_read_prints_the_headers_and_the_body_and_advances_the_watermark",
+        0.013
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_post_takes_the_body_from_standard_input_and_the_given_message_id",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_post_sends_the_article_and_the_node_can_read_it_back",
+        0.009
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_plain_against_a_node_that_needs_no_login_reads_without_tls_or_authinfo",
+        0.003
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_naming_no_subcommand_or_no_channel_choice_is_a_usage_error",
+        0.002
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_json_carries_every_status_line_the_node_sent_and_the_exit_code",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_groups_lists_each_served_name_with_its_water_marks",
+        0.005
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_authinfo_before_tls_is_reported_as_the_node_483_and_no_password_is_sent",
+        0.003
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_an_article_refused_in_the_middle_of_a_range_leaves_the_watermark_alone",
+        0.005
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_wrong_password_is_the_node_481_and_not_an_uncertain_outcome",
+        0.005
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_watermark_that_cannot_be_saved_keeps_the_node_outcome_and_says_so",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_status_line_that_quotes_the_password_back_is_not_printed",
+        0.005
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_refused_read_leaves_the_watermark_where_the_last_good_read_left_it",
+        0.013
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_refused_article_is_the_node_441_and_exits_refused",
+        0.005
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_refusal_in_json_carries_the_status_line_and_the_refused_exit",
+        0.005
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_read_of_a_group_the_node_does_not_carry_is_the_node_411",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_post_whose_reply_never_arrives_exits_uncertain_and_prints_the_message_id",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_node_that_would_take_the_password_in_the_clear_never_gets_it",
+        0.003
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_node_that_is_not_listening_is_uncertain_and_not_refused",
+        0.001
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_node_that_accepts_and_then_closes_is_uncertain_and_not_a_traceback",
+        0.002
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_node_named_by_an_ipv6_address_is_reached_at_that_address",
+        0.004
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_negative_since_is_a_usage_error_and_never_reaches_the_node",
+        0.001
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_login_enrolled_without_posting_is_the_node_440",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_handshake_the_node_abandons_is_uncertain_and_not_refused",
+        0.004
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_credentials_file_the_group_can_read_is_a_usage_error",
+        0.002
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_credentials_file_at_0600_logs_in_and_keeps_the_password_off_argv",
+        0.006
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_command_before_the_login_is_refused_with_the_node_480",
+        0.003
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_certificate_the_client_does_not_trust_is_refused_and_nothing_follows_the_382",
+        0.034
+      ],
+      [
+        "tests.test_fn_client.FnClientTests.test_a_441_line_this_fake_had_never_sent_is_still_a_refusal",
+        0.006
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_fn_web",
+    "seconds": 26.351,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_fn_web.log",
+    "tests": 32,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_fn_web.WebClientTests.test_verdict_parser_rejects_malformed_and_unbounded_values",
+        0.51
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_verdict_badge_kind_never_invents_a_verdict",
+        0.506
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_unread_is_exact_with_the_nodes_list_counts",
+        0.505
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_uncertain_settlement_is_read_only_and_unknown_token_never_posts",
+        0.514
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_thread_order_follows_the_last_present_reference_and_survives_cycles",
+        0.505
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_sparse_and_empty_windows_keep_the_requested_slots_navigable",
+        0.508
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_saved_draft_counts_toward_bound_without_eviction",
+        1.519
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_reply_subject_and_references_keep_first_and_last_three",
+        0.506
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_recent_window_and_older_newer_boundaries_are_number_based",
+        0.514
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_read_marks_are_local_per_principal_and_refuse_a_foreign_file",
+        0.505
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_post_connection_loss_keeps_settlement_identifier",
+        0.511
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_outbox_parent_barrier_failure_prevents_startup_and_post",
+        0.506
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_invalid_window_is_refused_before_any_nntp_command",
+        0.524
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_historical_server_report_is_bound_to_article_and_never_inferred",
+        0.546
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_groups_recent_article_and_escaped_source",
+        0.522
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_form_origin_and_size_are_checked_before_nntp_post",
+        0.522
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_explicit_window_does_not_slide_when_new_articles_arrive",
+        0.522
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_empty_group_has_no_window_or_overview_request",
+        0.509
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_restart_discards_only_incomplete_temp_write",
+        1.524
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_refusal_remains_refusal_after_restart",
+        1.529
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_outbox_restart_duplicate_and_single_instance",
+        2.027
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_inflight_restart_and_lost_reply_never_repost",
+        2.555
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_fsync_failures_before_and_after_network",
+        1.531
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_draft_write_failure_fences_before_network",
+        1.03
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_draft_survives_restart_and_post_freezes_edited_source",
+        2.553
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_durable_concurrent_submit_and_full_spool_preserve_records",
+        1.089
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_double_submit_and_refresh_keep_one_exact_article",
+        0.512
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_composer_posts_via_nntp_and_keeps_three_outcomes",
+        0.54
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_bounded_form_memory_evicts_without_reposting",
+        0.505
+      ],
+      [
+        "tests.test_fn_web.WebClientTests.test_article_header_message_id_cannot_redirect_verdict_lookup",
+        0.507
+      ],
+      [
+        "tests.test_fn_web.ReaderSearchTests.test_search_sends_the_readers_wildmat_and_builds_none",
+        0.0
+      ],
+      [
+        "tests.test_fn_web.ReaderSearchTests.test_a_node_refusal_is_the_nodes_line",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_green_check",
+    "seconds": 29.523,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_green_check.log",
+    "tests": 30,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_the_worklist_is_everything_but_the_greens",
+        0.0
+      ],
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_the_table_puts_the_red_book_first",
+        0.0
+      ],
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_the_summary_is_three_lines",
+        0.0
+      ],
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_the_four_answers_partition_the_closure",
+        0.0
+      ],
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_green_is_green_only_at_the_digest_the_tree_carries",
+        0.0
+      ],
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_a_green_at_an_older_digest_is_not_a_green",
+        0.0
+      ],
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_a_failure_newer_than_the_green_makes_the_book_red",
+        0.0
+      ],
+      [
+        "tests.test_green_check.SyntheticTreeTests.test_a_book_no_manifest_requested_is_unmeasured_not_clean",
+        0.0
+      ],
+      [
+        "tests.test_green_check.RealManifestsTests.test_the_command_line_runs_and_says_which_books_are_owed",
+        6.028
+      ],
+      [
+        "tests.test_green_check.RealManifestsTests.test_strict_exits_one_exactly_when_a_book_is_red_at_its_digest",
+        5.659
+      ],
+      [
+        "tests.test_green_check.RealManifestsTests.test_json_is_one_object_a_reader_can_load",
+        5.528
+      ],
+      [
+        "tests.test_green_check.RealManifestsTests.test_it_read_the_committed_archive",
+        0.0
+      ],
+      [
+        "tests.test_green_check.RealManifestsTests.test_every_book_in_the_closure_gets_exactly_one_answer",
+        0.0
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_the_gate_lines_say_the_counts_and_every_row",
+        0.0
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_the_gate_is_green_only_when_every_row_is_green",
+        0.004
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_the_command_line_gate_runs_on_this_tree",
+        6.05
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_recertifying_only_dependency_does_not_qualify_its_consumer",
+        0.005
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_host_include_is_a_dependency_not_an_uncertifiable_root",
+        0.002
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_changed_books_reads_the_working_tree_against_the_merge_base",
+        0.235
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_a_changed_book_no_root_reaches_is_unaudited_and_not_green",
+        0.003
+      ],
+      [
+        "tests.test_green_check.MergeGateTests.test_a_changed_book_names_the_books_that_include_it_and_nothing_else",
+        0.002
+      ],
+      [
+        "tests.test_green_check.GreenWinsWhenItIsNewerTests.test_a_source_that_moved_during_the_run_vouches_for_nothing",
+        0.001
+      ],
+      [
+        "tests.test_green_check.GreenWinsWhenItIsNewerTests.test_a_later_green_at_the_same_digest_clears_the_red",
+        0.002
+      ],
+      [
+        "tests.test_green_check.DependencyDriftTests.test_older_matching_closure_pass_survives_newer_incompatible_pass",
+        0.002
+      ],
+      [
+        "tests.test_green_check.DependencyDriftTests.test_newer_failure_for_exact_closure_overrides_pass",
+        0.002
+      ],
+      [
+        "tests.test_green_check.DependencyDriftTests.test_newer_failure_for_different_closure_does_not_poison_pass",
+        0.002
+      ],
+      [
+        "tests.test_green_check.DependencyDriftTests.test_missing_failure_closure_digests_remain_conservative",
+        0.002
+      ],
+      [
+        "tests.test_green_check.DependencyDriftTests.test_a_moved_dependency_is_reported_on_the_green",
+        0.002
+      ],
+      [
+        "tests.test_green_check.AttributionTests.test_success_markers_attribute_a_failure_with_no_per_book_verdicts",
+        0.0
+      ],
+      [
+        "tests.test_green_check.AttributionTests.test_a_run_that_attributes_nothing_is_counted_not_guessed",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_inn_lab",
+    "seconds": 18.033,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_inn_lab.log",
+    "tests": 30,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_inn_lab.RelayParseTests.test_ihave_pairs_both_replies_and_carries_the_article_unstuffed",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.RelayParseTests.test_connections_are_kept_apart_and_the_last_offer_is_reported",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.RelayParseTests.test_check_then_takethis_is_one_exchange_answered_twice",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.RelayParseTests.test_a_transfer_without_its_final_reply_is_not_complete",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.PidParseTests.test_the_fake_writes_the_pid_file_the_lab_reads",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.PidParseTests.test_an_empty_pid_file_is_the_empty_string_and_not_an_exception",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.PidParseTests.test_a_pid_is_read_and_a_non_numeric_tail_is_not",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_the_violations_are_exactly_the_three_the_fake_image_commits",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_the_transit_rows_hold_with_their_replies_quoted",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_the_owner_was_stopped_recovered_and_reread",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_the_header_differences_are_recorded_by_name",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_the_evidence_carries_the_subject_and_the_relay_transcript",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_the_configuration_on_disk_is_the_configuration_in_the_tool",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_the_box_is_left_clean_and_the_install_is_left_alone",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_innd_was_killed_and_its_history_survived",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_every_message_id_carries_this_run_s_tag",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.LabTests.test_every_decided_key_is_a_declared_assertion",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ConfigurationTests.test_the_ports_are_the_114xx_decade_and_all_differ",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ConfigurationTests.test_the_me_entry_carries_the_exclusion_that_makes_a_loop_a_437",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ConfigurationTests.test_the_fn_site_excludes_fn_so_its_articles_are_not_offered_back",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ConfigurationTests.test_innfeed_names_the_relay_that_forwards_to_the_owner",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ConfigurationTests.test_incoming_conf_has_no_identity_key",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ConfigurationTests.test_every_template_renders_and_is_named_in_config_files",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.CommandLineTests.test_the_owner_is_the_packaged_entry_with_the_named_image",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.CommandLineTests.test_the_lab_refuses_to_run_without_a_native_image",
+        0.001
+      ],
+      [
+        "tests.test_inn_lab.CommandLineTests.test_no_development_entry_point_is_left_in_the_lab",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ArticleTests.test_the_differences_are_named_field_by_field",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ArticleTests.test_folded_fields_and_case_are_one_field",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ArticleTests.test_a_posted_article_has_no_path_and_a_relayed_one_does",
+        0.0
+      ],
+      [
+        "tests.test_inn_lab.ArticleTests.test_a_changed_subject_or_body_is_not_a_permitted_relay_change",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_index_cache",
+    "seconds": 3.879,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 1,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_index_cache.log",
+    "tests": 4,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_index_cache.IndexCacheTests.test_post_between_two_reader_commands_gives_post_generation_truth",
+        1.269
+      ],
+      [
+        "tests.test_index_cache.IndexCacheTests.test_index_answers_equal_the_fold_command_by_command",
+        0.407
+      ],
+      [
+        "tests.test_index_cache.IndexCacheTests.test_forged_generation_is_refused_not_answered",
+        0.426
+      ],
+      [
+        "tests.test_index_cache.IndexCacheTests.test_configuration_digest_change_is_refused",
+        0.414
+      ]
+    ],
+    "slow_tests": [],
+    "passed": false
+  },
+  {
+    "module": "tests.test_media",
+    "seconds": 17.241,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_media.log",
+    "tests": 20,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_media.MediaManifestTests.test_same_length_damage_is_caught_by_the_copy_digest",
+        0.03
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_partial_copy_is_absent_from_the_inventory_rather_than_short",
+        0.029
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_manifest_names_identity_size_and_digest_of_every_bundle",
+        0.026
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_manifest_boundaries_are_refused",
+        0.028
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_exported_media_is_written_read_only",
+        0.039
+      ],
+      [
+        "tests.test_media.MediaManifestTests.test_export_refuses_a_repeated_bundle_identity",
+        0.041
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_reimport_of_the_same_media_is_a_duplicate_with_the_same_receipt",
+        4.629
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_quota_exhaustion_refuses_without_charging_or_promising",
+        2.304
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_partial_copy_accepts_the_whole_item_and_refuses_the_truncated_one",
+        1.574
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_import_accepts_through_the_receiver_and_leaves_the_media_unchanged",
+        2.825
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_every_reported_outcome_is_one_of_the_four",
+        2.45
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_an_uncertain_staging_cut_is_reported_uncertain_not_refused",
+        0.689
+      ],
+      [
+        "tests.test_media.MediaImportTests.test_a_corrupted_file_is_refused_before_anything_is_staged",
+        1.651
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_uncertain_dominates_refused_in_a_volume_exit_code",
+        0.001
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_export_then_verify_reports_accepted",
+        0.03
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_an_adu_without_its_bundle_octets_is_a_usage_error",
+        0.001
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_second_export_over_a_written_volume_is_refused",
+        0.017
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_missing_volume_is_refused_not_a_fault",
+        0.001
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_damaged_copy_is_refused_by_verify_with_no_store_touched",
+        0.019
+      ],
+      [
+        "tests.test_media.MediaCommandLineTests.test_a_bundle_without_an_identity_is_a_usage_error",
+        0.001
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_node_probe",
+    "seconds": 0.302,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_node_probe.log",
+    "tests": 10,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_node_probe.NodeProbeTests.test_the_password_reaches_neither_the_record_nor_the_output",
+        0.018
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_no_post_stops_after_the_group_and_is_not_a_pass",
+        0.007
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_an_unreachable_node_decides_nothing_and_exits_3",
+        0.001
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_a_wrong_password_is_violated_and_nothing_after_it_is_decided",
+        0.006
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_a_refused_post_is_violated_and_the_reread_is_undecided",
+        0.006
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_a_node_that_would_take_the_password_in_the_clear_is_violated_and_never_gets_it",
+        0.003
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_a_node_that_accepts_and_then_closes_decides_nothing_and_exits_3",
+        0.002
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_a_missing_credential_or_cafile_is_a_usage_error",
+        0.001
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_a_correct_node_holds_every_assertion_and_the_post_comes_back",
+        0.01
+      ],
+      [
+        "tests.test_node_probe.NodeProbeTests.test_a_certificate_the_client_does_not_trust_is_a_violated_handshake",
+        0.1
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_proof_repl",
+    "seconds": 4.783,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 1,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_proof_repl.log",
+    "tests": 12,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_proof_repl.SessionTests.test_3_status_and_stop",
+        0.068
+      ],
+      [
+        "tests.test_proof_repl.SessionTests.test_2_send_answers_with_the_trimmed_output_and_the_exit_says_error",
+        0.073
+      ],
+      [
+        "tests.test_proof_repl.SessionTests.test_1_start_loads_up_to_the_first_refused_form_and_reports_it",
+        0.583
+      ],
+      [
+        "tests.test_proof_repl.RealAcl2Tests.test_a_true_theorem_is_admitted_and_a_false_one_is_refused",
+        0.826
+      ],
+      [
+        "tests.test_proof_repl.ReaderTests.test_head_and_name_sees_through_local_and_names_only_events",
+        0.0
+      ],
+      [
+        "tests.test_proof_repl.ReaderTests.test_forms_keep_raw_text_quotes_and_strings_and_drop_comments",
+        0.0
+      ],
+      [
+        "tests.test_proof_repl.ReaderTests.test_brief_keeps_the_checkpoints_and_summary_of_a_long_output",
+        0.0
+      ],
+      [
+        "tests.test_proof_repl.ReaderTests.test_an_event_is_wrapped_in_a_prover_time_limit_and_a_query_is_not",
+        0.0
+      ],
+      [
+        "tests.test_proof_repl.ProcessLifetimeTests.test_stopping_busy_session_stops_descendants_and_releases_output",
+        0.099
+      ],
+      [
+        "tests.test_proof_repl.ProcessLifetimeTests.test_start_preserves_an_old_live_json_server",
+        0.002
+      ],
+      [
+        "tests.test_proof_repl.ProcessLifetimeTests.test_duplicate_start_cannot_detach_an_older_server",
+        2.867
+      ],
+      [
+        "tests.test_proof_repl.CacheStartupTests.test_incompatible_cached_parent_and_child_refuse_without_session",
+        0.012
+      ]
+    ],
+    "slow_tests": [],
+    "passed": false
+  },
+  {
+    "module": "tests.test_served_differential",
+    "seconds": 2.769,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_served_differential.log",
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_served_differential.ServedDifferentialTests.test_whole_transcript_agrees",
+        0.001
+      ],
+      [
+        "tests.test_served_differential.ServedDifferentialTests.test_split_utf8_wildmat_agrees",
+        0.001
+      ],
+      [
+        "tests.test_served_differential.ServedDifferentialTests.test_input_after_quit_is_ignored_identically",
+        0.0
+      ],
+      [
+        "tests.test_served_differential.ServedDifferentialTests.test_framing_rejection_agrees",
+        0.0
+      ],
+      [
+        "tests.test_served_differential.ServedDifferentialTests.test_cut_inside_a_command_agrees",
+        0.001
+      ],
+      [
+        "tests.test_served_differential.ServedDifferentialTests.test_cut_after_a_reply_agrees",
+        0.0
+      ],
+      [
+        "tests.test_served_differential.ServedDifferentialTests.test_bytewise_partition_agrees",
+        0.001
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_reach_check",
+    "seconds": 8.177,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_reach_check.log",
+    "tests": 6,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_reach_check.RatchetTests.test_the_tree_is_at_its_baseline",
+        2.934
+      ],
+      [
+        "tests.test_reach_check.RatchetTests.test_every_baselined_orphan_carries_a_reason",
+        0.0
+      ],
+      [
+        "tests.test_reach_check.RatchetTests.test_an_unbaselined_orphan_fails_and_is_named",
+        2.973
+      ],
+      [
+        "tests.test_reach_check.GraphTests.test_the_served_read_path_is_reachable",
+        0.0
+      ],
+      [
+        "tests.test_reach_check.GraphTests.test_the_bridges_count_as_host_lines",
+        0.0
+      ],
+      [
+        "tests.test_reach_check.GraphTests.test_a_function_named_nowhere_outside_books_is_not_reachable",
+        0.102
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_reader_partitions",
+    "seconds": 2.799,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_reader_partitions.log",
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_reader_partitions.ReaderPartitionMatrixTests.test_quit_ignores_suffix_and_closes_connection",
+        0.001
+      ],
+      [
+        "tests.test_reader_partitions.ReaderPartitionMatrixTests.test_partial_disconnect_does_not_leak_session_to_next_connection",
+        0.001
+      ],
+      [
+        "tests.test_reader_partitions.ReaderPartitionMatrixTests.test_malformed_and_oversize_commands_reject_and_close",
+        0.001
+      ],
+      [
+        "tests.test_reader_partitions.ReaderPartitionMatrixTests.test_every_two_piece_cut_preserves_split_utf8_wildmat_transcript",
+        0.006
+      ],
+      [
+        "tests.test_reader_partitions.ReaderPartitionMatrixTests.test_every_two_piece_cut_preserves_multicommand_crlf_transcript",
+        0.008
+      ],
+      [
+        "tests.test_reader_partitions.ReaderPartitionMatrixTests.test_connection_reset_after_partial_input_leaves_next_connection_usable",
+        0.004
+      ],
+      [
+        "tests.test_reader_partitions.ReaderPartitionMatrixTests.test_bytewise_coalesced_and_empty_chunks_have_same_expected_reply",
+        0.002
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_scale_gate",
+    "seconds": 20.902,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_scale_gate.log",
+    "tests": 22,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_scale_gate.ReuseAndAdoptTests.test_the_second_run_keeps_the_stores_and_names_its_one_violation",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.ReuseAndAdoptTests.test_the_overlays_are_pushed_even_though_there_is_no_ship",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.ReuseAndAdoptTests.test_the_adoption_is_recorded_as_a_gap",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.ReuseAndAdoptTests.test_the_adopted_series_is_what_the_tables_report",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.ReuseAndAdoptTests.test_an_adopted_payload_is_not_measured_a_second_time",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.PartialCurveTests.test_the_reader_still_measured_the_store_that_survived",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.PartialCurveTests.test_the_partial_point_survives_with_the_posts_it_did_make",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.PartialCurveTests.test_the_nonzero_exit_of_the_series_is_a_gap_not_a_pass",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.PartialCurveTests.test_the_like_for_like_phase_is_a_skip_and_never_a_pass",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.PartialCurveTests.test_the_gate_still_renders_and_names_the_death",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_stop_is_the_ceiling_that_was_crossed",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_series_table_holds_every_measured_point",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_reader_table_covers_the_whole_range_and_the_connections",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_profile_names_where_the_reopen_spent_its_seconds",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_post_sentence_quotes_the_deadline_the_call_was_racing",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_only_violation_is_the_fake_acl2_the_owner_needs",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_largest_store_fact_separates_passing_from_measured",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_hundred_connection_default_is_the_shipped_one",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_connections_all_completed",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_the_comparison_runs_the_previous_method_and_cites_its_table",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_over_is_recorded_as_a_substitution_and_never_as_over",
+        0.0
+      ],
+      [
+        "tests.test_scale_gate.CeilingTests.test_every_operation_has_a_pessimistic_sentence_with_its_scope",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_stx",
+    "seconds": 4.909,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_stx.log",
+    "tests": 5,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_stx.StatementCarrier.test_the_field_is_one_header_line_of_base64",
+        0.0
+      ],
+      [
+        "tests.test_stx.StatementCarrier.test_no_field_is_absent_and_absent_is_its_own_outcome",
+        0.956
+      ],
+      [
+        "tests.test_stx.StatementCarrier.test_an_unknown_creator_is_unverified_not_refused",
+        0.956
+      ],
+      [
+        "tests.test_stx.StatementCarrier.test_a_signed_article_verifies_under_the_nodes_keyring",
+        0.977
+      ],
+      [
+        "tests.test_stx.StatementCarrier.test_a_rewritten_body_loses_authority_and_not_bytes",
+        0.962
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_v0_matrix",
+    "seconds": 0.337,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_v0_matrix.log",
+    "tests": 50,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_v0_matrix.VocabularyTests.test_the_vocabulary_is_the_three_outcomes_and_two_non_outcomes",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.VocabularyTests.test_the_three_exit_codes_stay_distinct",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.VocabularyTests.test_the_statement_vocabulary_is_read_as_its_own",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.VocabularyTests.test_a_reply_becomes_exactly_one_outcome",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.VocabularyTests.test_a_permission_answer_is_not_a_missing_verb",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.VocabularyTests.test_a_missing_verb_is_recognised_apart_from_a_refusal",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.VocabularyTests.test_a_host_fault_is_counted_and_is_not_an_outcome",
+        0.004
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_the_generated_document_is_accepted",
+        0.004
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_plan_rows_over_a_complete_file_changes_nothing",
+        0.004
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_row_that_is_not_in_the_plan_is_refused",
+        0.005
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_row_planned_after_the_run_is_added_as_a_non_outcome",
+        0.007
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_missing_planned_row_is_refused",
+        0.005
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_hand_edited_verdict_breaks_the_digest",
+        0.005
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_forged_digest_still_fails_on_the_summary",
+        0.006
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_document_written_by_something_else_is_refused",
+        0.005
+      ],
+      [
+        "tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_client_rewritten_by_hand_is_refused",
+        0.005
+      ],
+      [
+        "tests.test_v0_matrix.TinWireTests.test_reads_the_article_reply_and_each_post_reply_in_order",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.ReportPublicationTests.test_parallel_runs_receive_distinct_history_directories",
+        0.008
+      ],
+      [
+        "tests.test_v0_matrix.ReportPublicationTests.test_parallel_publishers_leave_the_newer_run_selected",
+        0.014
+      ],
+      [
+        "tests.test_v0_matrix.ReportPublicationTests.test_overlay_dry_run_and_invalid_rows_cannot_publish",
+        0.007
+      ],
+      [
+        "tests.test_v0_matrix.ReportPublicationTests.test_custom_report_paths_cannot_overwrite_another_run",
+        0.004
+      ],
+      [
+        "tests.test_v0_matrix.ReportPublicationTests.test_current_measurement_is_published_as_valid_json",
+        0.013
+      ],
+      [
+        "tests.test_v0_matrix.ReportPublicationTests.test_an_old_source_cannot_replace_the_selected_report",
+        0.006
+      ],
+      [
+        "tests.test_v0_matrix.ReportPublicationTests.test_a_run_the_driver_stopped_early_cannot_publish",
+        0.009
+      ],
+      [
+        "tests.test_v0_matrix.NativeEnvironmentTests.test_pinned_openssl_reaches_probe_and_public_operator",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_the_listing_runs_and_names_every_row",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_every_spec_belongs_to_a_declared_feature",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_every_scenario_id_is_in_the_catalog",
+        0.001
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_every_row_id_is_unique",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_every_requirement_id_is_in_the_registry",
+        0.001
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_every_declared_feature_has_at_least_one_row",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_an_expectation_is_an_outcome_or_nothing",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.InventoryTests.test_a_probe_row_says_why_it_has_no_expectation",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_exact_wildcard_config_usage_is_distinct_from_request_refusal",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_backfill_leaves_no_planned_row_silent",
+        0.001
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_an_outcome_row_names_the_client_that_saw_it",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_agrees_is_null_for_a_row_that_is_not_an_outcome",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_a_verdict_outside_the_vocabulary_is_refused",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_a_row_that_did_not_run_must_name_its_blocker",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_a_row_that_did_not_run_has_no_client",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_a_row_is_emitted_once",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_a_refusal_row_that_draws_its_refusal_agrees",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.EmitTests.test_a_foreign_client_is_marked_independent",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.DryRunRowTests.test_the_summary_is_over_the_rows",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.DryRunRowTests.test_the_row_names_its_invocation_its_revision_and_its_log",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.DryRunRowTests.test_the_row_is_a_refusal_and_agrees",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.DryRunRowTests.test_the_document_validates",
+        0.001
+      ],
+      [
+        "tests.test_v0_matrix.DryRunRowTests.test_the_document_indexes_by_requirement_and_scenario",
+        0.0
+      ],
+      [
+        "tests.test_v0_matrix.CommittedMatrixTests.test_the_committed_matrix_validates",
+        0.004
+      ],
+      [
+        "tests.test_v0_matrix.CapabilityPinProtocolTests.test_takethis_writes_its_block_before_reading_the_final_status",
+        0.057
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_triage",
+    "seconds": 1.445,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_triage.log",
+    "tests": 29,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_triage.WholeTriageTests.test_two_rounds_answer_a_two_deep_chain",
+        0.0
+      ],
+      [
+        "tests.test_triage.WholeTriageTests.test_the_substitution_goes_to_the_box_and_not_to_the_worktree",
+        0.0
+      ],
+      [
+        "tests.test_triage.WholeTriageTests.test_the_report_says_what_it_is_not",
+        0.0
+      ],
+      [
+        "tests.test_triage.WholeTriageTests.test_the_report_is_written_where_it_says_it_is",
+        0.0
+      ],
+      [
+        "tests.test_triage.WholeTriageTests.test_the_assumption_stack_names_the_substituted_book",
+        0.0
+      ],
+      [
+        "tests.test_triage.WholeTriageTests.test_no_certificate_and_no_manifest_leaves_the_box",
+        0.0
+      ],
+      [
+        "tests.test_triage.WholeTriageTests.test_every_runner_invocation_carries_no_publish",
+        0.0
+      ],
+      [
+        "tests.test_triage.WholeTriageTests.test_every_independent_red_is_reported_with_its_round",
+        0.0
+      ],
+      [
+        "tests.test_triage.ProvisionalTriageTests.test_the_runner_is_asked_for_the_waves_and_the_convert_budget",
+        0.0
+      ],
+      [
+        "tests.test_triage.ProvisionalTriageTests.test_the_report_separates_proved_from_unknown",
+        0.0
+      ],
+      [
+        "tests.test_triage.ProvisionalTriageTests.test_the_convert_failure_is_the_independent_red",
+        0.0
+      ],
+      [
+        "tests.test_triage.ProvisionalTriageTests.test_one_round_is_enough_and_no_source_is_substituted",
+        0.0
+      ],
+      [
+        "tests.test_triage.ProvisionalTriageTests.test_a_book_that_converted_is_blocked_and_hides_nothing",
+        0.0
+      ],
+      [
+        "tests.test_triage.NeverPublishTests.test_submit_refuses_to_start_a_run_that_would_publish",
+        0.0
+      ],
+      [
+        "tests.test_triage.NeverPublishTests.test_farm_reads_the_publication_off_the_command_line",
+        0.0
+      ],
+      [
+        "tests.test_triage.LastGreenSourceTests.test_the_plan_reads_off_this_tree_with_no_farm_and_no_acl2",
+        0.218
+      ],
+      [
+        "tests.test_triage.LastGreenSourceTests.test_it_finds_the_commit_whose_bytes_are_the_green_digest",
+        0.214
+      ],
+      [
+        "tests.test_triage.LastGreenSourceTests.test_a_green_digest_no_commit_holds_is_reported_as_such",
+        0.2
+      ],
+      [
+        "tests.test_triage.LastGreenSourceTests.test_a_book_with_no_green_anywhere_cannot_be_substituted",
+        0.157
+      ],
+      [
+        "tests.test_triage.LastGreenSourceTests.test_a_book_green_at_the_digest_it_carries_cannot_be_substituted",
+        0.156
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_the_failure_restatement_is_not_a_second_error",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_the_complete_wave_says_blocked_in_its_own_words",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_the_checkpoint_is_cut_and_says_so",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_an_independent_red_keeps_its_error_and_its_checkpoint",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_an_absolute_box_path_names_a_repository_book",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_a_timeout_is_read_from_the_exit_code_not_the_log",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_a_failure_with_no_error_at_all_is_not_smoothed_over",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_a_cascade_wrapped_after_there_is",
+        0.0
+      ],
+      [
+        "tests.test_triage.ClassificationTests.test_a_cascade_wrapped_after_no_certificate",
+        0.0
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_owner",
+    "seconds": 25.118,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_owner.log",
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_owner.TransitPortTests.test_the_capability_block_names_the_effective_transit_commands",
+        1.204
+      ],
+      [
+        "tests.test_owner.TransitPortTests.test_a_record_for_a_different_address_does_not_open_transit",
+        1.073
+      ],
+      [
+        "tests.test_owner.TransitPortTests.test_a_reader_connection_is_refused_the_transit_commands",
+        0.79
+      ],
+      [
+        "tests.test_owner.TransitPortTests.test_a_connection_from_a_configured_peer_address_opens_as_transit",
+        1.045
+      ],
+      [
+        "tests.test_owner.SubmissionCrashCutTests.test_precommit_resolution_and_response_cuts_recover_without_loss",
+        5.956
+      ],
+      [
+        "tests.test_owner.SubmissionCrashCutTests.test_an_ambiguous_store_result_is_reported_then_fences_the_owner",
+        2.235
+      ],
+      [
+        "tests.test_owner.OwnerTlsTests.test_the_listener_serves_nntp_through_tls_with_a_self_signed_cert",
+        0.906
+      ],
+      [
+        "tests.test_owner.OwnerTlsTests.test_a_plaintext_client_cannot_speak_to_the_tls_listener",
+        0.865
+      ],
+      [
+        "tests.test_owner.OwnerTests.test_two_readers_keep_their_pins_across_a_post_until_advanced",
+        1.813
+      ],
+      [
+        "tests.test_owner.OwnerTests.test_live_group_reconfiguration_is_durable_and_uses_a_pinned_client",
+        1.324
+      ],
+      [
+        "tests.test_owner.OwnerTests.test_configured_store_capacity_is_shared_by_control_and_nntp",
+        0.884
+      ],
+      [
+        "tests.test_owner.OwnerTests.test_a_stalled_reader_does_not_block_a_post",
+        0.781
+      ],
+      [
+        "tests.test_owner.OwnerTests.test_a_killed_owner_reopens_with_every_completed_post_durable",
+        1.531
+      ],
+      [
+        "tests.test_owner.OwnerSurvivesAFaultTests.test_a_fault_in_a_served_read_costs_that_connection_and_nothing_else",
+        1.218
+      ],
+      [
+        "tests.test_owner.OwnerSurvivesAFaultTests.test_a_fault_carrying_a_submission_leaves_the_post_path_open",
+        1.288
+      ],
+      [
+        "tests.test_owner.ConnectionReleaseTests.test_a_socket_closed_without_quit_also_releases_the_slot",
+        1.3
+      ],
+      [
+        "tests.test_owner.ConnectionReleaseTests.test_a_quit_releases_the_owners_connection_slot",
+        0.79
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_post",
+    "seconds": 14.403,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_post.log",
+    "tests": 9,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_post.StorePostTests.test_post_reaches_240_and_the_article_can_be_read_back",
+        1.456
+      ],
+      [
+        "tests.test_post.StorePostTests.test_an_independent_nntplib_client_posts_and_reads_back",
+        1.287
+      ],
+      [
+        "tests.test_post.StorePostTests.test_a_refused_proto_article_is_441_with_its_reason",
+        1.144
+      ],
+      [
+        "tests.test_post.StorePostTests.test_a_reader_pinned_before_a_post_keeps_its_view",
+        1.214
+      ],
+      [
+        "tests.test_post.StorePostTests.test_a_read_only_reader_refuses_posting_with_440",
+        1.215
+      ],
+      [
+        "tests.test_post.StorePostTests.test_a_group_this_store_does_not_carry_is_441",
+        1.28
+      ],
+      [
+        "tests.test_post.StorePostTests.test_a_duplicate_supplied_message_id_is_the_refused_441",
+        1.231
+      ],
+      [
+        "tests.test_post.SeedPostTests.test_post_is_refused_without_a_configured_writer",
+        2.711
+      ],
+      [
+        "tests.test_post.SeedPostTests.test_post_argument_is_a_syntax_error",
+        2.784
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_store",
+    "seconds": 26.563,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_store.log",
+    "tests": 21,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_store.StoreTests.test_writer_lock_refuses_concurrent_mutator",
+        0.824
+      ],
+      [
+        "tests.test_store.StoreTests.test_two_group_post_replays_both_allocations_and_one_pin",
+        0.94
+      ],
+      [
+        "tests.test_store.StoreTests.test_recovery_scan_io_failure_keeps_gate_closed_until_success",
+        0.934
+      ],
+      [
+        "tests.test_store.StoreTests.test_recovery_limits_and_barrier_failure_fence_until_success",
+        1.106
+      ],
+      [
+        "tests.test_store.StoreTests.test_published_post_with_failed_core_reply_stays_fenced_and_recovers",
+        2.75
+      ],
+      [
+        "tests.test_store.StoreTests.test_post_reopen_replays_and_preserves_literal_lisp_bytes",
+        1.216
+      ],
+      [
+        "tests.test_store.StoreTests.test_metadata_frames_round_trip_and_reject_truncation",
+        0.788
+      ],
+      [
+        "tests.test_store.StoreTests.test_link_eio_without_visible_final_fences_host_and_core",
+        0.655
+      ],
+      [
+        "tests.test_store.StoreTests.test_legacy_json_metadata_is_never_rewritten_on_open",
+        0.538
+      ],
+      [
+        "tests.test_store.StoreTests.test_known_abort_before_publication_and_indeterminate_after_publication",
+        2.479
+      ],
+      [
+        "tests.test_store.StoreTests.test_initialize_refuses_missing_frontier_when_history_exists",
+        0.883
+      ],
+      [
+        "tests.test_store.StoreTests.test_finish_rejects_stale_and_prepublication_states",
+        0.537
+      ],
+      [
+        "tests.test_store.StoreTests.test_failed_config_file_barrier_is_reestablished_during_recovery",
+        0.726
+      ],
+      [
+        "tests.test_store.StoreTests.test_empty_payload_is_present_and_orphan_staging_is_ignored",
+        1.242
+      ],
+      [
+        "tests.test_store.StoreTests.test_duplicate_retry_and_conflicting_id_do_not_overwrite",
+        1.797
+      ],
+      [
+        "tests.test_store.StoreTests.test_duplicate_is_detected_before_full_transaction_limit",
+        1.078
+      ],
+      [
+        "tests.test_store.StoreTests.test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery",
+        1.527
+      ],
+      [
+        "tests.test_store.StoreTests.test_checksum_unknown_schema_and_final_symlink_fault",
+        1.979
+      ],
+      [
+        "tests.test_store.StoreTests.test_allocator_replace_error_and_frontier_replay_boundaries",
+        1.771
+      ],
+      [
+        "tests.test_store.StoreTests.test_allocator_barrier_failure_recovers_observed_frontier_on_same_object",
+        0.926
+      ],
+      [
+        "tests.test_store.StoreTests.test_acl2_transaction_names_continue_after_nonempty_recovery",
+        1.765
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_checkpoint",
+    "seconds": 24.807,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_checkpoint.log",
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_checkpoint.CheckpointTests.test_select_refuses_unpublished_generation",
+        0.724
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_publish_select_and_suffix_replay_on_128_records",
+        7.733
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_process_death_at_every_cut_recovers_old_authority_or_complete_generation",
+        10.344
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_no_marker_is_a_distinct_outcome",
+        1.283
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_differential_mismatch_is_corruption_without_a_debug_flag",
+        1.168
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_corrupt_selected_generation_is_reported_not_rolled_back",
+        2.279
+      ],
+      [
+        "tests.test_checkpoint.CheckpointTests.test_corrupt_marker_is_reported",
+        1.202
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  },
+  {
+    "module": "tests.test_reader",
+    "seconds": 44.295,
+    "budget": 180.0,
+    "over_budget": false,
+    "terminated": false,
+    "returncode": 0,
+    "log": "/private/tmp/claude-501/-Users-ember-dev-fn/997a44b0-dfc8-42a4-88c8-3341eab6dce6/scratchpad/hr/rev-logs/tests.test_reader.log",
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "timings": [
+      [
+        "tests.test_reader.StoreReaderSocketTests.test_store_with_non_news_payload_degrades_only_that_article",
+        1.659
+      ],
+      [
+        "tests.test_reader.StoreReaderSocketTests.test_store_snapshot_returns_exact_durable_article_and_holds_lock",
+        2.049
+      ],
+      [
+        "tests.test_reader.StoreReaderSocketTests.test_newnews_reports_only_articles_newer_than_the_requested_instant",
+        2.12
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_xpat_transcript_over_a_real_socket",
+        2.668
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_sessions_do_not_leak_selected_group",
+        2.641
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_reset_client_does_not_end_listener",
+        2.775
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_reader_profile_transcript_over_a_real_socket",
+        2.692
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_quit_replies_then_closes",
+        2.684
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_newnews_transcript_over_a_real_socket",
+        2.671
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_malformed_and_overlimit_input_close",
+        2.693
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_listgroup_filtered_empty_response_still_selects_first_article",
+        2.797
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_list_wildmat_filters_in_acl2_and_preserves_session_on_syntax_error",
+        2.676
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_list_variants_transcript_over_a_real_socket",
+        2.665
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_legacy_commands_transcript_over_a_real_socket",
+        2.659
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_help_lists_every_dispatched_command",
+        2.833
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_fragmented_and_coalesced_commands_follow_core_transcript",
+        2.99
+      ],
+      [
+        "tests.test_reader.ReaderSocketTests.test_exact_510_octet_command_is_framed_but_511_octets_closes",
+        2.948
+      ]
+    ],
+    "slow_tests": [],
+    "passed": true
+  }
+]

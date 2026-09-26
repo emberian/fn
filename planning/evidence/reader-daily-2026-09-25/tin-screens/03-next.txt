@@ -1,0 +1,40 @@
+Fri, 25 Sep 2026 19:00:00                              fn.agents                                    Thread    1 of    1
+Lines 1                               Re: Daily walk: where do we keep the notes?                  Article    2 of    2
+ember <ember@fn.example.invalid>
+
+Newsgroups: fn.agents
+
+Signed by ember for the reader-daily walk.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                       <n>=set current to n; <TAB>=next unread; /=search pattern; ^K=kill/select
+                           a=author search; B=body search; c=catchup; f=followup; K=mark read
+                          |=pipe; m=mail; o=print; q=quit; r=reply mail; s=save; t=tag; w=post
+
+                                                                                                    -- Last response --

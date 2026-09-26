@@ -1,0 +1,12 @@
+[
+ {
+  "name": "01-compose",
+  "url": "http://127.0.0.1:8968/c?id=YsQPNVhKikN-1T9eWKm9KBgoGSJWZ-QL",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nfn.agents\nWrite a post\nOne form sends one exact article. If the reply is uncertain, keep its Message-ID and check it before trying again.\nSubject\nFrom (optional)\nMessage\nSave draft Post to fn.agents"
+ },
+ {
+  "name": "02-post-node-unreachable",
+  "url": "http://127.0.0.1:8968/result?id=YsQPNVhKikN-1T9eWKm9KBgoGSJWZ-QL",
+  "text": "fn / news\nember at 127.0.0.1:21968 · TLSv1.3, certificate verified\nLocal outbox\nGroups\nOutcome: uncertain\nThe article may or may not have been accepted. Do not post a new copy while its status is unknown.\nMessage-ID: <fn-client.20260926T001032Z.2e0959cc@ember.invalid>\ncould not connect to 127.0.0.1:21968: [Errno 61] Connection refused\nDo not repost. Your text is kept below exactly as it was sent, and in the local outbox across restarts. Check the Message-ID first: if the node serves it, it was accepted.\nCheck whether the node serves this Message-ID Send the same bytes again\nSending again repeats this exact article with this Message-ID. If the node already stored it, it says so and stores nothing new; if it did not, this is the post. It is never done automatically.\nThe exact article sent\nFrom: ember <ember@127.0.0.1>\nNewsgroups: fn.agents\nSubject: walk: posted while the node was unreachable\nMessage-ID: <fn-client.20260926T001032Z.2e0959cc@ember.invalid>\nsent with the tunnel down\nNode response and diagnostic detail\nRefresh this page safely; it never sends another POST. The durable outbox keeps the source and recorded result across restart."
+ }
+]

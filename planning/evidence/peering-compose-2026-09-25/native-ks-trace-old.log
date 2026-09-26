@@ -1,0 +1,11 @@
+test_a_decline_across_a_restart_with_a_grant_added (tests.test_native_key_statements.NativeKeyStatementTests.test_a_decline_across_a_restart_with_a_grant_added)
+Packet 7 (PRF-124): a statement that declined for want of a `keys' ... NATIVE-KEY-STATEMENT-WITNESS statement POST without a grant b'240 article received OK'
+NATIVE-KEY-STATEMENT-WITNESS log at acceptance ['key-statement declined no-grant']
+NATIVE-KEY-STATEMENT-WITNESS log after the restart ['key-statement declined no-grant', 'key-statement enrol-successor committed at-open']
+NATIVE-KEY-STATEMENT-WITNESS history after the restart ['generation=2 state=active principal=5555555555555555555555555555555555555555555555555555555555555555', 'generation=1 state=retired principal=5555555555555555555555555555555555555555555555555555555555555555']
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 4.213s
+
+OK

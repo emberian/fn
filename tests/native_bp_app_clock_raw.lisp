@@ -15,6 +15,9 @@
         (fn-owner-operator-submit :accepted)
         (fn-owner-stamp-status (push :stamp-status *events*) *stamp-status*)
         (otherwise (error "unexpected owner action ~s" name))))
+; Operator logging is a side effect after the ACL2 outcome (the same stub as
+; native_owner_bound_commit_raw.lisp); it decides nothing here.
+(defun fnn-owner-log (&rest arguments) (declare (ignore arguments)) nil)
 (defun fnn-octet-list (x) x)
 (defun fnn-octets (x) x)
 (defun fnn-nat (x) x)
@@ -24,6 +27,8 @@
     (fn-owner-app-planned-result :accepted)
     (fn-owner-app-msgid '(1)) (fn-owner-app-article '(2))
     (fn-owner-app-groups '((3))) (fn-owner-app-evidence '(4))
+    ;; An ordinary (non-transit) request: the bound-submission arm.
+    (fn-owner-app-transitp nil)
     (otherwise (error "unexpected global ~s" name))))
 (defun fnn-bpapp-action (journal request generation)
   (declare (ignore journal request generation))
@@ -51,16 +56,18 @@
 (defun fnn-owner-core (name)
   (case name
     (fn-owner-prov-post '(1)) (fn-owner-config-generation 1)
-    (fn-owner-next-txid 2)
+    (fn-owner-next-txid 2) (fn-owner-app-current-generation 1)
     (otherwise (error "unexpected owner core query ~s" name))))
 
-(let ((found nil))
+;; The dispatcher and the deployed txid check it calls, by name, so a rename
+;; fails here rather than leaving a stub in its place.
+(let ((missing (list 'fnn-bpapp-planned-txid 'fnn-bpapp-accept-locked)))
   (with-open-file (stream "host/native/bp-app.lisp")
     (loop for form = (read stream nil :eof) until (eq form :eof)
           when (and (consp form) (eq (car form) 'defun)
-                    (eq (cadr form) 'fnn-bpapp-accept-locked))
-            do (eval form) (setq found t)))
-  (unless found (error "BP accept dispatcher not found")))
+                    (member (cadr form) missing))
+            do (eval form) (setq missing (remove (cadr form) missing))))
+  (when missing (error "BP dispatcher forms not found: ~s" missing)))
 (let ((found nil))
   (with-open-file (stream "host/native/owner.lisp")
     (loop for form = (read stream nil :eof) until (eq form :eof)
@@ -74,8 +81,9 @@
     (error "expected ~s, got ~s" expected actual)))
 (defun accept ()
   (multiple-value-list
+   ;; The bundle identity joined the arguments with 7281e76f (BP-R17).
    (fnn-bpapp-accept-locked :service :journal :inbound '(1)
-                            :node '(2) :source :destination)))
+                            :node '(5) '(2) :source :destination)))
 
 ;; A refused reading cannot use the owner's previously stored observation.
 (setq *clock-outcome* :refused *stamp-status* :usable
