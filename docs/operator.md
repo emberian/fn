@@ -117,7 +117,7 @@ A profile flag or `--profile` there is a usage error (5) whose first line
 says so:
 
 ```
-under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise it afterwards offline with: fn operator CONFIG store upgrade-profile [scale|default] [--FIELD N ...]; or delete the mission line from fn.toml to choose a profile at init
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init
 usage operator init MISSION-FIXES-PROFILE
 ```
 
@@ -1137,6 +1137,7 @@ fn operator COPY/fn.toml store needs-upgrade            # needs-upgrade | curren
 cp -p COPY/store/config.json KEPT/config.json.format-7  # the file a lossless rollback restores
 cp -a COPY/store SNAPSHOT/store                          # the pre-migration snapshot
 fn operator COPY/fn.toml store upgrade-profile           # format 7 -> 8, bounds unchanged
+fn operator COPY/fn.toml store upgrade-profile --max-transactions N   # raise one bound
 fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
 fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
 ```

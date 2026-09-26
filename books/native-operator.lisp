@@ -1819,7 +1819,7 @@ OBSERVED (the markers found beside the store root) is empty."
     (cond ((and (equal status :refused) (equal reason :no-store))
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
           ((and (equal status :usage) (equal reason :mission-fixes-profile))
-           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise it afterwards offline with: fn operator CONFIG store upgrade-profile [scale|default] [--FIELD N ...]; or delete the mission line from fn.toml to choose a profile at init")
+           "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init")
           ((and (equal status :usage) (fn-nop-help-subjectp command))
            (fn-nop-help-text command))
           (t nil))))
