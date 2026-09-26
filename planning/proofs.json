@@ -5404,6 +5404,31 @@
         "fn-bpnf-family-without-offset-zero-is-not-ready",
         "fn-bpnf-family-next-memo-is-aux"
       ]
+    },
+    {
+      "id": "PRF-137",
+      "title": "A re-signed carrier of an accepted signed source is a D25 conflict at the signed control route; only the saved artifact is already stored",
+      "statement": "The subject is fn-rcl-existing-action (books/store-reclaim.lisp), which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action on the octets fn-hsig-injected-carrier-octets computes, before it commits. fn-sr-a-re-signed-carrier-is-a-conflict (books/consumer-artifact-retry): the held payload under Message-ID M is fn-hsig-injected-carrier-octets of source S, principal P, keys K and signatures S1 at clock A; the same S, P and K with signatures S2 different from S1, at any clock B and for any groups, both plans naming M, is :conflict. It instantiates fn-sr-a-changed-source-is-a-conflict (PRF-117) through fn-cra-a-re-signed-carrier-is-other-octets: two rendered carriers (fn-hc-render-at-most) of one source, principal and key set with different signatures are different octets (folding inserts only octets outside the base64 alphabet, base64 round-trips, and the canonical carrier decodes to exactly its signatures, fn-hc-decode-at-of-encode-at). The same artifact resent is :duplicate by fn-sr-a-signed-retry-is-already-stored (PRF-117, cited, not restated). Together they are the fn side of CNS-003: a client that resends its saved artifact gets D25's duplicate; one that re-signs gets a conflict. Not claimed: that the two Message-ID and the two nonempty-octet hypotheses are necessary (they are the instantiated keystone's; no conclusion-failing witness exists at the fixture and the weakened theorem is not proved), anything about the Python consumer (an external client), or that a revoked author's resend reaches D25 (the enrolment check refuses it first; PKT-322).",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-003"
+      ],
+      "depends_on": [
+        "PRF-117"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/consumer-artifact-retry.lisp",
+        "tests/acl2/consumer-artifact-retry-tests.lisp",
+        "books/source-routes.lisp",
+        "planning/evidence/consumer-e2-2-2026-09-26.md"
+      ],
+      "progress_note": "Lane consumer-e2-2 (2026-09-26), gpt-6's review of wave 2 section 2.",
+      "events": [
+        "fn-sr-a-re-signed-carrier-is-a-conflict",
+        "fn-cra-a-re-signed-carrier-is-other-octets"
+      ]
     }
   ]
 }

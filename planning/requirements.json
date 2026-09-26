@@ -2723,6 +2723,33 @@
       ],
       "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator.",
       "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."
+    },
+    {
+      "id": "CNS-003",
+      "title": "The consumer persists each submission attempt before the native boundary, resends only its immutable saved artifact, never records refused while an attempt lacks a durable answer, and consumes a report only after verifying it itself",
+      "specification": "specs/consumer-progress.md#submission-attempts-and-the-saved-artifact",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-137"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "books/consumer-artifact-retry.lisp",
+        "tests/acl2/consumer-artifact-retry-tests.lisp",
+        "books/source-routes.lisp",
+        "tools/fn_consumer.py",
+        "tools/fn_verify.py",
+        "tests/test_fn_consumer_journal.py",
+        "tests/test_native_consumer_exchange.py",
+        "planning/evidence/consumer-e2-2-2026-09-26.md"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
+      "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
     }
   ]
 }
