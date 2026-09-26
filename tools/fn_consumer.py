@@ -31,7 +31,8 @@ serves the exact source back.
 Exit codes: 0 finished, 1 refused (an fn or application refusal it cannot
 settle), 3 stopped on an uncertain fn outcome (wake again to settle), 4 fault.
 Developer cuts (`FN_CONSUMER_CUT`): `in-transaction`, `after-commit`,
-`after-ack` stop the process with os._exit at that point.
+`after-ack`, `before-post`, `after-post` stop the process with os._exit at
+that point.
 """
 import argparse
 import datetime
@@ -405,6 +406,7 @@ class Consumer:
             code, out, err = self.native(
                 "hybrid-author", self.control, self.config["generation"], paths[0],
                 paths[1], paths[2], self.config["keys"]["ml_public"])
+            cut("after-post")
             state = {0: "stored", 1: "refused", 3: "uncertain"}.get(code, "uncertain")
             if code == 1 and before == "uncertain":
                 # A refused resend after an uncertain POST does not say the
