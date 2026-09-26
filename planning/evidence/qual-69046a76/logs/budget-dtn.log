@@ -1,0 +1,93 @@
+# label dtn start 2026-09-26T15:12:46Z cwd /tank/fn/scratch/qual-69046a76/tree
+# FN_NATIVE_HOST /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host
+# FN_NATIVE_BP_HOST /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn FN_NATIVE_BP_NODE_HOST /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
+# env FN_CERT_CACHE=/tank/fn/certcache
+# env FN_D23_VERIFY=1
+# env FN_DTN7_REPO=/tank/fn/dtn7/repo
+# env FN_FORMAT7_IMAGE=/tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host
+# env FN_INN_SRC=/tank/fn/inn/2.7.4
+# env FN_NATIVE_BP_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_BP_NODE_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_CONTACT_RECEIVER=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_CONTACT_SENDER=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_CORE_SHA256=dc3b8919ab8d43750d9b9fb521c7c40039eaf29086d5f7b55293ba85d2faea7a
+# env FN_NATIVE_CRASH_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# env FN_NATIVE_DEVELOPER_CORE_SHA256=271f8297fa16917130ccef6d0b47ce7c88d3833712121f3a95eec92ce175d861
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# env FN_NATIVE_DEVELOPER_LAUNCHER_SHA256=e4eeefd290450e7497dade96e2c4089e0caacfa88f72c737f51a92b2f3b2ba18
+# env FN_NATIVE_DTN_DEVELOPER_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn-developer
+# env FN_NATIVE_DTN_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-dtn
+# env FN_NATIVE_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host
+# env FN_NATIVE_IMAGE_SOURCE_SHA=69046a76
+# env FN_NATIVE_LAUNCHER_SHA256=432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505
+# env FN_NATIVE_READER_HOST=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer
+# env FN_NATIVE_RUNTIME_SHA256=b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/qual-69046a76/tree
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/qual-69046a76/diag/dtn
+# env FN_NATIVE_TEST_ROOT=/tank/fn/scratch/qual-69046a76/tree
+# env FN_OLD_IMAGE=/tank/fn/gates/qual-bbf52159-20260925/build/images/bbf52159dcab19228bd6cd0b855b99dd6d68758d/fn-host
+# env FN_OLD_NATIVE_HOST=/tank/fn/gates/qual-c3420013-20260925/build/images/c3420013/fn-host
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_E2E=1
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_RUN_CONSUMER_INSPECT=1
+# env FN_RUN_CONSUMER_POLL_E2E=1
+# env FN_RUN_CONSUMER_PROJECT_BOUNDS=1
+# env FN_RUN_HYBRID_E2E=1
+# env FN_RUN_NATIVE_CLONE=1
+# env FN_RUN_NATIVE_READER_INDEX=1
+# env FN_RUN_TOPIC_LOCAL_E2E=1
+# env FN_RUN_TOPIC_METADATA_E2E=1
+# env FN_RUN_VERIFY_E2E=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/qual-69046a76/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+# env SBCL_HOME=/tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/runtime/sbcl-home/
+tests.test_bp_service_native: 9.3 s of 180 s, 17 tests, FAILED (7 failures, 0 errors, exit 1)
+        2.20 s  NativeBpServiceTests.test_monotonic_age_expires_interrupted_work
+        0.95 s  NativeBpServiceTests.test_recovery_rejects_corrupt_name_gap_and_token_binding
+        0.89 s  NativeBpServiceTests.test_outage_restart_duplicate_and_conflict
+tests.test_bp_contact_native: 1.3 s of 180 s, 2 tests, ok
+        0.60 s  NativeBpContactTests.test_bad_window_and_decimal_bound
+        0.58 s  NativeBpContactTests.test_closed_window_interruption_and_anchored_wall_jump
+tests.test_bp_contact_relay_native: 3.0 s of 180 s, 1 tests, ok
+        2.88 s  NativeBpContactRelayTests.test_interrupted_contact_receiver_restart_then_expiry
+tests.test_bp_app_native: 72.4 s of 180 s, 7 tests, OVER BUDGET (a test over 20 s: test_application_receipt_releases_forward_pin_only_after_durable_record 60.0 s)
+       59.96 s  NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record
+        3.52 s  NativeBpApplicationTests.test_control_article_over_bp_is_filed_in_its_control_group
+        2.46 s  NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance
+tests.test_bp_node_native: 21.8 s of 180 s, 27 tests, FAILED (27 failures, 0 errors, exit 1)
+        1.00 s  NativeBpNodeTests.test_absent_bp_trust_refuses_custody_with_the_policy_reason
+        1.00 s  NativeBpNodeTests.test_dropped_receipt_contact_is_reoffered_by_the_next_pass
+        0.80 s  NativeBpNodeTests.test_absent_bp_trust_refuses_the_receipt_at_reception
+tests.test_bp_receive_integrity_native: 1.0 s of 180 s, 4 tests, FAILED (2 failures, 0 errors, exit 1)
+        0.35 s  NativeBpReceiveIntegrityTests.test_two_sessions_reusing_transfer_zero_keep_both_exact_wires
+        0.27 s  NativeBpReceiveIntegrityTests.test_refusal_after_partial_segments_has_no_successful_end_ack
+        0.14 s  NativeBpReceiveIntegrityTests.test_receive_core_fault_remains_exit_four
+tests.test_bp_fragment_node_native: 180.0 s of 180 s, ? tests, OVER BUDGET (terminated at 180 s)
+tests.test_bp_obligation_native: 4.1 s of 180 s, 5 tests, FAILED (1 failures, 0 errors, exit 1)
+        2.50 s  NativeBpObligationTests.test_kill_between_attempt_and_outcome_then_recover_committed
+        0.56 s  NativeBpObligationTests.test_shared_owner_refuses_unsigned_receipt_profile
+        0.53 s  NativeBpObligationTests.test_shared_owner_admits_and_recovers_forward_pin
+tests.test_native_source_corpus_bp: 130.1 s of 180 s, 1 tests, OVER BUDGET (a test over 20 s: test_corpus_carried_by_bp_through_dtn7 130.0 s)
+      130.01 s  NativeSourceCorpusBpTests.test_corpus_carried_by_bp_through_dtn7
+tests.test_native_bp_app_clock: 0.2 s of 180 s, 1 tests, ok
+        0.07 s  NativeBpAppClockTests.test_submit_observes_fresh_clock_and_replay_needs_none
+tests.test_native_bp_channel_admission: 0.1 s of 180 s, 1 tests, ok
+        0.03 s  NativeBpChannelAdmissionTests.test_raw_eid_and_acl2_ingress_result
+tests.test_native_bp_node_admission_lock: 0.1 s of 180 s, 1 tests, ok
+        0.04 s  NativeBpNodeAdmissionLockTests.test_revocation_between_preflight_and_lock_refuses_both_classes
+tests.test_native_bp_transit_identity: 0.1 s of 180 s, 1 tests, ok
+        0.04 s  NativeBpTransitIdentityTests.test_identity_match_and_both_mismatches
+tests.test_native_app_journal: 4.7 s of 180 s, 10 tests, ok
+        0.95 s  NativeApplicationJournalTests.test_receiver_request_receipt_intent_and_restart_regeneration
+        0.53 s  NativeApplicationJournalTests.test_forwarding_capacity_exhaustion_refuses_without_durable_record
+        0.46 s  NativeApplicationJournalTests.test_unsigned_receipt_profile_refuses_before_read_or_publication
+tests.test_native_image_profiles: 1.7 s of 180 s, 12 tests, ok
+        0.60 s  RawPostEntryWitnesses.test_production_images_refuse_raw_post_before_store_or_payload_io
+        0.29 s  RawPostEntryWitnesses.test_developer_images_keep_raw_post
+        0.28 s  RawPostEntryWitnesses.test_dtn_selector_gate_is_serialized
+15 modules, 429.8 s; 8 passed within budget, 0 SKIPPED (no test executed), 3 over budget; 0 tests skipped
+# test_budget rc=3 end 2026-09-26T15:19:56Z
+tests.test_bp_fragment_node_native whole: FAILED (errors=1) # rc=1 wall=338 end 2026-09-26T15:25:34Z

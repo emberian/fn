@@ -1,0 +1,11 @@
+listening after 96.0 s
+greeting b'200 fn-nntp experimental server ready'
+LIST b'215 list of active newsgroups follows'
+  groups 2 end
+GROUP b'211 20000 1 20000 fn.test'
+OVER 1-2000 -> b'224 overview information follows' lines=2000 octets=164673 end 60.21 s; owner alive=True
+OVER 1-10000 -> b'224 overview information follows' lines=10000 octets=836674 end 132.52 s; owner alive=True
+OVER 1-20000 -> b'224 overview information follows' lines=20000 octets=1706674 end 180.29 s; owner alive=True
+owner alive after: True exit None
+owner exit 0 | stderr tail: OWNER-OPEN open=full-replay reason=checkpoint-open-refused / accepted reader connection=0 time=2026-09-26T16:54:57Z / CHECKPOINT auto sequence=20000 suffix=20000 octets=151595027 ms=36624 / accepted operator run
+rc=0

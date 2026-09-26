@@ -1,0 +1,8 @@
+# chain-20000 fixture /tank/fn/scratch/fixtures/chain-20000-8cc3cd4c start 2026-09-26T15:38:20Z
+test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1376.989s
+
+OK
+# rc=0 wall=1377

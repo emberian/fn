@@ -1,0 +1,23 @@
+	Command being timed: "python3 tests/reclaim_lifecycle_native.py /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host-developer /tank/fn/scratch/qual-69046a76/s15/n300 300 512 67108864 --cuts"
+	User time (seconds): 87.49
+	System time (seconds): 10.38
+	Percent of CPU this job got: 33%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:53.05
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 516572
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 5405768
+	Voluntary context switches: 18050
+	Involuntary context switches: 1410
+	Swaps: 0
+	File system inputs: 183490
+	File system outputs: 22022
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
