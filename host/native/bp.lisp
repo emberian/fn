@@ -429,9 +429,9 @@ may or may not be durable."
         (fnn-octet-list
          (fnn-string-octets (format nil "~(~a~)~%" reason))))
        (incf (fnn-bp-tally-uncertain tally))
-       ;; ACL2 could not decide the article's lifetime: this article's
-       ;; verdict is unknown; nothing was published.
-       (fnn-bp-note tally :uncertain)
+       ;; ACL2 could not decide the article's verdict.  The delivery plan
+       ;; withholds the ACK and the connection raises the indeterminate the
+       ;; BP verb renders as a fence (fnn-bp-verb).
        (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
        (list :uncertain reason)))))
 
@@ -703,8 +703,10 @@ admitted and ACL2 refuses every inbound bundle at the receive boundary."
              outcome reason (length adu))
     (when (and adu-out (eq outcome :accepted))
       (fnn-write-staged adu-out (fnn-octets adu)))
-    (fnn-core 'fn-bprc-run-exit-code
-              (fnn-core 'fn-bprc-note (fnn-core 'fn-bprc-empty) outcome))))
+    (ecase outcome
+      (:accepted +fnn-exit-ok+)
+      (:refused +fnn-exit-refused+)
+      (:uncertain +fnn-exit-uncertain+))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The positional protocol behind `--fn bp'.  `-' selects the default.
