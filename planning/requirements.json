@@ -2023,7 +2023,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-102"
+        "PRF-102",
+        "PRF-131"
       ],
       "verification": [
         "proof",
@@ -2377,7 +2378,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-114",
-        "PRF-121"
+        "PRF-121",
+        "PRF-131"
       ],
       "verification": [
         "proof",
@@ -2404,7 +2406,7 @@
         "fn-bpfw-reassemble-is-spec",
         "fn-bpfs-plan-fragments-reassemble-uncapped"
       ],
-      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067."
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings)."
     },
     {
       "id": "NNT-022",

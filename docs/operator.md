@@ -554,7 +554,7 @@ administration and the control socket. Its verbs:
 | `operator CONFIG init\|status\|recover\|help` and the administrative plans (`policy set path-identity`, `bp-boundary add`, groups) | node configuration through the one ACL2 operator plan; `run`, `post` and `principal` exit 5 (their surfaces are not in this image) |
 | `store ROOT init\|recover\|status\|retention\|config\|inspect\|probe` | Store diagnostics, as in the default image |
 | `app-journal`, `bp-service`, `bp-contact`, `tcpcl` | journals, the queue service, contact windows, the convergence layer |
-| `bp send`, `bp receive`, `bp decode` | the lab's transport tools, not the node: `bp send` reports a severed contact as uncertain (exit 3) and its RETRY argument re-offers a named durable `authored-N.wire` with its original identity; `bp receive`'s STORE argument admits sessions against that Store's enrolled boundaries, and without it every inbound bundle is refused at the receive boundary |
+| `bp send`, `bp receive`, `bp decode` | the lab's transport tools, not the node: `bp send` reports a contact severed after it connected as interrupted (exit 6) and one that never connected as not-connected (exit 7), and a fence as uncertain (exit 3) and its RETRY argument re-offers a named durable `authored-N.wire` with its original identity; `bp receive`'s STORE argument admits sessions against that Store's enrolled boundaries, and without it every inbound bundle is refused at the receive boundary |
 
 `reader` is refused and `model` faults, as the build header says, and the
 developer-only `owner` verb is not registered in either DTN image.
@@ -1236,6 +1236,15 @@ report releases an obligation. This experimental command awaits certified
 FNWF closure and a source-matched native image before operational use.
 
 ## What "uncertain" means, and what to do
+
+For the BP verbs (specs/host.md "BP run classes"), exit 3 keeps this
+meaning; a connection lost after it existed is exit 6 and a connection
+that never existed exit 7. Neither asks for recovery: the job is durable
+and the next contact re-offers it under the same identity. A BP node's
+held rows and held octets are raised offline with `bp-node profile
+JOURNAL NODE MAX-HELD-ROWS MAX-HELD-OCTETS` (default 64 and 16 MiB; never
+lowered); a journal opened under a profile smaller than its rows fences
+with `held-beyond-profile`.
 
 `uncertain` (exit 3) is not a soft failure. It means fn asked the operating
 system to make something durable and did not get an answer it can act on:

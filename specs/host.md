@@ -147,6 +147,8 @@ their own conventions and are outside this table.
 | 3 | Uncertain: the outcome of a publication is unknown and recovery is required before further mutation. | `StoreIndeterminate` |
 | 4 | Fault: invalid durable state or an I/O fault. Corrupt or ungapped committed history, a store whose core cannot replay it, a barrier or descriptor failure, a poisoned ACL2 bridge. | `StoreFault`, `OSError` |
 | 5 | Usage: the invocation itself is wrong. | `UsageParser`, `UnicodeError` on arguments |
+| 6 | BP verbs only: a connection lost after it existed. The peer may or may not hold the bundle; the job stays durable and is re-offered under its own identity. No recovery is required. | ACL2 `fn-bprc-exit-code` (:interrupted) |
+| 7 | BP verbs only: no connection existed. Nothing left the node; the job stays queued. | ACL2 `fn-bprc-exit-code` (:not-connected) |
 
 A reader whose ACL2 bridge is poisoned exits 4 rather than answering the next
 client from a pipe whose replies can no longer be matched to its commands.
@@ -154,6 +156,32 @@ Native conditions use the same outcome distinctions through `fnn-exit-code-for`;
 the operator plan's code projection is ACL2-owned. Successful queries and an
 article accepted with a retention obligation both use code 0, so callers must
 also interpret the named operation and its result.
+
+### BP run classes
+
+The BP verbs (`bp`, `bp-service`, `bp-contact`, `bp-node`, `bp-app`,
+`bp-obligation`) answer one of five classes, which ACL2 computes from the
+evidence the host records (books/bp-run-class.lisp, PRF-131): the reason of
+each `:forward-refused` effect (the durable `:requeued` record's), each TCPCL
+session's outcome and whether a publication in its delivery callback was
+uncertain, each article verdict, and each publication program's
+classification. A fence dominates everything, then a connection lost after
+it existed, then a refusal, then a connection that never existed:
+
+| Class | Code | The question to ask |
+| --- | --- | --- |
+| `:accepted` | 0 | none |
+| `:fenced` | 3 | a publication's outcome is unknown: stop and recover, as for every fn command |
+| `:refused` | 1 | why the request was refused (named on stdout) |
+| `:interrupted` | 6 | when the contact returns; the job is re-offered with its identity |
+| `:not-connected` | 7 | whether the peer or route is reachable; nothing was sent |
+
+The codes separate the classes (`fn-bprc-exit-code-separates-the-classes`);
+no later or earlier evidence masks a fence (`fn-bprc-fence-is-never-masked`);
+connection-local evidence never fences (`fn-bprc-connection-local-never-fences`).
+Every `fnn-store-indeterminate` a BP verb raises is rendered as the fenced
+code (`fnn-bp-verb`). `bp decode` answers an article verdict, not a run: 0,
+1 or 3.
 
 ## ACL2 bridge correlation
 

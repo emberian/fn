@@ -13,6 +13,12 @@ import unittest
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
 
+# specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
+# connection lost after it existed is exit 6 (connection-local: the job stays
+# and is re-offered; no recovery); exit 3 stays the fence.
+LOST = 6
+
+
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_IMAGE = ROOT / "build" / "fn-host-dtn"
@@ -211,7 +217,7 @@ class NativeBpContactRelayTests(unittest.TestCase):
         self.relay.route(first_port, cut_next=True)
         try:
             interrupted = self.service_run("work-interrupted")
-            self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
+            self.assertEqual(interrupted.returncode, LOST, interrupted.stderr)
             self.assertIn(b"BP queue accepted", interrupted.stdout)
             self.assertIn(b"reason=uncertain", interrupted.stdout)
             try:
@@ -260,7 +266,7 @@ class NativeBpContactRelayTests(unittest.TestCase):
         expiring = self.tmp / "sender-expiring"
         second = self.service_run("work-to-expire", journal=expiring,
                                   lifetime=1000)
-        self.assertEqual(second.returncode, 3, second.stderr)
+        self.assertEqual(second.returncode, LOST, second.stderr)
         before = len(tuple((expiring / "lifecycle").glob("*.fnb")))
         time.sleep(1.5)
         expired = self.tick(1, 60000, journal=expiring, lifetime=1000)

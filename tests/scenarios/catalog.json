@@ -1895,11 +1895,12 @@
       "id": "SCN-067",
       "title": "A family of more fragments than the old 64-fragment ceiling, interrupted by a receiver kill, reassembles once and is delivered once",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "REP-008"
       ],
       "steps": [
+        "Raise the receiving node's profile to 128 held rows (`bp-node profile JOURNAL NODE 128 16777216`); a write that lowers it again is refused (exit 1).",
         "Author one request ADU and cut it into 70 fragments (fn-bpf-cut).",
         "Serve the receiver continuously; send 35 fragments, highest offset first; kill the receiver with SIGKILL.",
         "Restart the receiver on the same journal and send the other 35, offset zero last."
@@ -1911,7 +1912,9 @@
       "evidence": [
         "tests/test_bp_fragment_node_native.py",
         "tests/acl2/bp-fragment-sweep-tests.lisp",
-        "planning/evidence/bp-lifecycle-2026-09-25.md"
+        "planning/evidence/bp-lifecycle-2026-09-25.md",
+        "books/bp-node-profile.lisp",
+        "planning/evidence/bp-lifecycle-3-2026-09-26.md"
       ]
     },
     {
@@ -2090,6 +2093,29 @@
       "evidence": [
         "tests/acl2/payload-arena-tests.lisp",
         "planning/evidence/rep-wave-d-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-077",
+      "title": "A 10 MiB article carried by BP through 4 KiB fragments, under a node profile that admits it, is reassembled once and handed to the Store once",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-008",
+        "STO-015"
+      ],
+      "steps": [
+        "Raise the receiving node's profile (`bp-node profile`) to at least 2,561 held rows and 16 MiB of held octets, and the Store profile's max-article-octets to at least 10 MiB.",
+        "Author one 10 MiB request ADU and send it through a route whose Transfer MRU is 4 KiB, so the sender cuts it into fragments (RFC 9171 5.8).",
+        "Kill the receiver with SIGKILL halfway through the family, restart it on the same journal, and send the rest."
+      ],
+      "expected": [
+        "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
+        "Blocked today, before any of this: the sender's ADU record refuses a payload over *fn-bpa-max-octets* (65,538, books/bp-adu.lisp) and the bundle decoder reads at most *fn-bpb-max-input* (1 MiB, books/bp-bundle.lisp); the whole reassembled bundle is one held image capped by *fn-bpnf-max-held-image* (131,072). The node's held rows and held octets are no longer a blocker (PRF-131). PKT-276."
+      ],
+      "evidence": [
+        "planning/evidence/bp-lifecycle-3-2026-09-26.md",
+        "books/bp-node-profile.lisp"
       ]
     }
   ]
