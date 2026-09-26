@@ -1038,27 +1038,88 @@
                       (fn-nop-usage :flag-word-as-group "init" nil nil))
                      (fn-nop-help-text "init")))
 
-; The rollback sentence's count (fn-native-operator-snapshot-loss-counts-the-suffix).
-(defconst *fn-nop-snap* '((1 . 440) (2 . 512)))
-(defconst *fn-nop-cur* '((1 . 440) (2 . 512) (3 . 300) (4 . 280) (5 . 610)))
-(assert-event (equal (fn-native-operator-snapshot-loss *fn-nop-snap* *fn-nop-cur*)
-                     '(:loses 3)))
-(assert-event (equal (fn-native-operator-snapshot-loss *fn-nop-cur* *fn-nop-cur*)
+;; The rollback verb's history claim (PRF-141,
+;; fn-native-operator-history-loss-is-ancestry).  Events are committed
+;; records' octets; *fn-nop-a* and *fn-nop-b* have the same length and the same
+;; leading sequence octet and differ in content.
+(defconst *fn-nop-a* '(0 0 0 0 0 0 0 0 65 65 65 65))
+(defconst *fn-nop-b* '(0 0 0 0 0 0 0 0 66 66 66 66))
+(defconst *fn-nop-c* '(0 0 0 0 0 0 0 1 67 67 67 67 67))
+(defconst *fn-nop-d* '(0 0 0 0 0 0 0 2 68 68))
+
+; Reachable positive witness: the store's history is the snapshot's records
+; followed by two more; the antecedent and both conclusions hold.
+(assert-event
+ (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
+   (and (equal (append snap (nthcdr (len snap) cur)) cur)
+        (equal (car (fn-native-operator-history-loss snap cur)) :loses)
+        (equal (cadr (fn-native-operator-history-loss snap cur))
+               (len (nthcdr (len snap) cur)))
+        (equal (fn-native-operator-history-loss snap cur) '(:loses 2)))))
+(assert-event (equal (fn-native-operator-history-loss (list *fn-nop-a* *fn-nop-c*)
+                                                      (list *fn-nop-a* *fn-nop-c*))
                      '(:loses 0)))
-; A snapshot whose history diverged (record 2 differs) is refused, not counted.
-(assert-event (equal (fn-native-operator-snapshot-loss '((1 . 440) (2 . 999)) *fn-nop-cur*)
-                     '(:refused :snapshot-not-a-prefix)))
-; A snapshot ahead of the store is not a prefix either.
-(assert-event (equal (car (fn-native-operator-snapshot-loss *fn-nop-cur* *fn-nop-snap*))
-                     :refused))
+; The host's call sequence, as `fnn-command-rollback-snapshot' makes it.
+(assert-event
+ (equal (fn-native-operator-history-verdict
+         (fn-native-operator-history-step
+          (fn-native-operator-history-start) *fn-nop-a* t *fn-nop-a*)
+         3)
+        '(:loses 2)))
+
+;; gpt-6's counterexample (§7), the removed hypothesis: the old observation's
+;; (SEQUENCE . LENGTH) descriptors agree as a prefix, and the old verdict over
+;; them said one transaction is lost; the histories differ in their first
+;; record, the ancestry premise is false, and the verb refuses.
+(defun fn-nop-test-descriptors (events sequence)
+  (if (consp events)
+      (cons (cons sequence (len (car events)))
+            (fn-nop-test-descriptors (cdr events) (+ 1 sequence)))
+    nil))
+(assert-event
+ (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-b* *fn-nop-c*)))
+   (and (fn-nop-history-prefixp (fn-nop-test-descriptors snap 0)
+                                (fn-nop-test-descriptors cur 0))
+        (equal (fn-native-operator-snapshot-loss (fn-nop-test-descriptors snap 0)
+                                                 (fn-nop-test-descriptors cur 0))
+               '(:loses 1))
+        (not (equal (append snap (nthcdr (len snap) cur)) cur))
+        (equal (fn-native-operator-history-loss snap cur)
+               '(:refused :snapshot-not-a-prefix)))))
+(must-fail
+ (thm (implies (fn-nop-history-prefixp (fn-nop-test-descriptors snap 0)
+                                       (fn-nop-test-descriptors cur 0))
+               (equal (car (fn-native-operator-history-loss snap cur)) :loses))
+      :hints (("Goal" :do-not-induct t))))
+; The count's premise removed: over the same pair the count is not the
+; suffix's length.
+(assert-event
+ (let ((snap (list *fn-nop-a*)) (cur (list *fn-nop-b* *fn-nop-c*)))
+   (not (equal (cadr (fn-native-operator-history-loss snap cur))
+               (len (nthcdr (len snap) cur))))))
+(must-fail
+ (thm (equal (cadr (fn-native-operator-history-loss snap cur))
+             (len (nthcdr (len snap) cur)))
+      :hints (("Goal" :do-not-induct t))))
+; The list-level lemma (fn-native-operator-snapshot-loss-counts-the-suffix)
+; without its prefix hypothesis.
 (must-fail
  (thm (equal (cadr (fn-native-operator-snapshot-loss snap cur))
-             (- (len cur) (len snap)))))
+             (- (len cur) (len snap)))
+      :hints (("Goal" :do-not-induct t))))
+; A snapshot ahead of the store, and one that diverges later, are refused.
+(assert-event (equal (car (fn-native-operator-history-loss
+                           (list *fn-nop-a* *fn-nop-c*) (list *fn-nop-a*)))
+                     :refused))
+(assert-event (equal (car (fn-native-operator-history-loss
+                           (list *fn-nop-a* *fn-nop-d*)
+                           (list *fn-nop-a* *fn-nop-c* *fn-nop-d*)))
+                     :refused))
 (assert-event (equal (fn-native-operator-snapshot-loss-report '(:loses 3) 2 5)
                      (concatenate 'string
                                   "rollback snapshot loses transactions=3 snapshot-transactions=2 store-transactions=5"
                                   (coerce '(#\Newline) 'string)
-                                  "restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back")))
+                                  "the snapshot's committed records are this store's first 2, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back")))
 ; The parse: an absolute snapshot path, and nothing else.
 (assert-event (equal (fn-native-operator-result-native-action
                       (fn-native-operator-run *fn-nop-minimal-config*
