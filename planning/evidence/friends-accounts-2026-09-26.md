@@ -98,11 +98,29 @@ result: none yet (no redeemed row can be made until PKT-439).
 - REPL (persvati /home/ember/fn-gates/friends-accounts-repl): books/config 243
   forms, books/config-invariants 46, books/accounts 47, tests/acl2/accounts-tests
   75, all admitted.
-- Farm r1: see "Manifests" below.
+- REPL: books/nntp-auth 252 forms; the snapshot test forms against it;
+  books/owner-prepare-correspondence 27 forms after the hint repair.
 
 ## Manifests
 
-(filled at harvest)
+All on persvati, 2 jobs, 300 s, toolchain w25 acl2-literal.
+- r1 run-20260926T103354Z-99af (certify-20260926T103427Z-435280, 393 books to
+  certify: config.lisp's closure, large as expected): 111 passed; one root red,
+  books/nntp-auth `fn-auth-config-with-accounts`' guard (credential list a true
+  list); the rest cascaded.
+- r2 run-20260926T104023Z-60e5 (certify-20260926T104052Z-510505, harvested):
+  231 passed, 51 failed; three roots (config-owner-read-invariants, owner-agent,
+  owner-prepare-correspondence: hints instantiating the owner's open theorems
+  with the operator's policy where fn-ocfg-open now pins the snapshot); books
+  over 10 s: books/owner-invariants 12.7 s at 2 jobs (unchanged by this lane;
+  10.9 s at dev's last merge certification: watched, not a regression of
+  these bytes' proofs).
+- r3 run-20260926T105035Z-5ab5 (certify-20260926T105103Z-617929, harvested):
+  GREEN, 101 certified over books/owner-config.lisp's and books/nntp-auth.lisp's
+  closures (with tests/acl2/accounts-snapshot-tests), 481 from the cache
+  (including r2's passes at the same bytes); no book over 10 s.
+The merged bytes need a merge certification with --affected-by
+books/config.lisp (the value-make arity seam touches every dependent).
 
 ## Packets
 

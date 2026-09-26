@@ -6064,7 +6064,10 @@
         "books/nntp-auth.lisp",
         "books/owner-config.lisp",
         "tests/acl2/accounts-tests.lisp",
-        "planning/evidence/friends-accounts-2026-09-26.md"
+        "planning/evidence/friends-accounts-2026-09-26.md",
+        "tests/acl2/accounts-snapshot-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T104052Z-510505.json",
+        "planning/evidence/manifests/certify-20260926T105103Z-617929.json"
       ],
       "progress_note": "friends-accounts (2026-09-26): slot, admission, plan, once-only keystones and the credential snapshot built with teeth; the wire verb, operator verbs and the native case are PKT-439.",
       "events": [
