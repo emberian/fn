@@ -289,7 +289,6 @@
     (if (equal verdict :installed)
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
-               (state (f-put-global 'fn-owner-record-octets nil state))
                ; PRF-099: the carried-usage cache restarts from the Store
                ; this open replayed (fn-pcb-usage-extend walks it once).
                (state (f-put-global 'fn-owner-carried-usage nil state)))
@@ -412,23 +411,16 @@
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
         (value :configured)))))
 
-; The committed record octets of the carried Store, from the carried
-; (K . SUM) of the first K records extended by the records committed since
-; (books/store-budget.lisp `fn-sbud-bytes-extend'; equal to
-; `fn-sbud-bytes-used' when the cache is valid,
-; `fn-sbud-bytes-used-is-kernel-sum').  Committed records only grow while one
-; owner runs, and the cache is reset when a profile is installed at open, so
-; each record is encoded once per owner process, not once per POST.
+; The committed record octets of the carried Store: the tally the Store
+; carries (books/store-budget.lisp `fn-sbud-carried-bytes'; equal to
+; `fn-sbud-bytes-used' on a related Store,
+; books/store-record-tally.lisp `fn-srt-carried-figures-are-the-kernel-figures').
+; Extended by the one appended record at the record directory observation
+; and rebuilt from the records only at open, so no query walks or re-encodes
+; the history.
 (defun fn-owner-record-octets (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((records (fn-sf-records (fn-sn-files (fn-owner-store state))))
-         (cache (if (boundp-global 'fn-owner-record-octets state)
-                    (f-get-global 'fn-owner-record-octets state)
-                  nil))
-         (bytes (fn-sbud-bytes-extend cache records))
-         (state (f-put-global 'fn-owner-record-octets
-                              (cons (len records) bytes) state)))
-    (mv bytes state)))
+  (mv (fn-sbud-carried-bytes (fn-owner-store state)) state))
 
 ; The owner's verdict on one more record of KIND: the carried profile's count
 ; and history gates against the Store it carries, and the maintenance
@@ -440,7 +432,7 @@
   (mv-let (bytes state) (fn-owner-record-octets state)
     (let ((s (fn-owner-store state)))
       (value (fn-smr-verdict-at (fn-owner-store-profile state) kind
-                                (fn-sbud-used s) bytes)))))
+                                (fn-sbud-carried-used s) bytes)))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
@@ -597,7 +589,7 @@
                  ; (books/store-maintenance-reserve.lisp
                  ; `fn-smr-prepare-keeps-the-reserve').
                  (budget (fn-smr-article-budget-for
-                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          (fn-owner-store-profile state) (fn-sbud-carried-used s)
                           bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)
@@ -670,7 +662,7 @@
                  ; (books/store-maintenance-reserve.lisp
                  ; `fn-smr-prepare-keeps-the-reserve').
                  (budget (fn-smr-article-budget-for
-                          (fn-owner-store-profile state) (fn-sbud-used s)
+                          (fn-owner-store-profile state) (fn-sbud-carried-used s)
                           bytes record))
                  (before (fn-owner-ocfg state))
                  (state (if (equal record :clock-unusable)

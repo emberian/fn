@@ -79,7 +79,7 @@
                    (fn-sn-topic s) (fn-sn-completion-record s))))
   :hints (("Goal" :in-theory
            (e/d (fn-sn-finish)
-                (fn-sn-with-topic fn-sn-with-consumer fn-sn-make-v6
+                (fn-sn-with-topic fn-sn-with-consumer fn-sn-make-v6 fn-sn-make-v7
                  fn-sn-completion-enabledp fn-sn-completion-record
                  fn-store-retention-event-p fn-cpe-eventp fn-th-topic-eventp
                  fn-stxe-p fn-stxk-p fn-stxa-p
@@ -131,7 +131,7 @@
   (equal (fn-sn-topic (fn-sn-update s files node))
          (fn-sn-topic s))
   :hints (("Goal" :in-theory
-           (enable fn-sn-update fn-sn-make-v6 fn-sn-topic))))
+           (enable fn-sn-update fn-sn-make-v6 fn-sn-make-v7 fn-sn-topic))))
 
 (defthm fn-sti-staged-nontopic-candidate-step-ok
   (implies (and (fn-sn-statep s)
@@ -242,7 +242,7 @@
                             fn-sf-record-dir-result
                             fn-sf-recovery-barrier)
                            (fn-sn-update fn-sn-with-event-index
-                            fn-sn-make-v6 fn-cei-put
+                            fn-sn-make-v6 fn-sn-make-v7 fn-cei-put
                             fn-th-prefix-project fn-sn-statep fn-sf-statep
                             fn-csi-take-append-after-prefix)))))
 
@@ -491,7 +491,7 @@
            :in-theory (e/d (fn-sn-io fn-sn-update
                             fn-sf-completion-phasep)
                            (fn-sn-statep fn-sf-statep fn-sn-file-step
-                            fn-sn-with-event-index fn-sn-make-v6)))))
+                            fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7)))))
 
 (defthm fn-sti-io-enters-completion-only-from-record-attempted
   (implies (and (fn-sf-statep files)
@@ -530,14 +530,14 @@
                             fn-sn-identity-sequencep
                             fn-sf-completion-phasep)
                            (fn-sn-statep fn-sf-statep
-                            fn-sn-with-event-index fn-sn-make-v6
+                            fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7
                             fn-cei-put fn-th-prefix-step)))))
 
 (defthm fn-sti-io-keeps-topic-by-definition
   (equal (fn-sn-topic (fn-sn-io s operation result)) (fn-sn-topic s))
   :hints (("Goal" :in-theory
            (e/d (fn-sn-io)
-                (fn-sn-update fn-sn-with-event-index fn-sn-make-v6
+                (fn-sn-update fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7
                  fn-cei-put fn-sn-statep)))))
 
 (defthm fn-sti-record-directory-installs-topic-valid-completion
@@ -563,7 +563,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-sn-io)
                 (fn-sn-statep fn-sn-update fn-sn-with-event-index
-                 fn-sn-make-v6 fn-cei-put)))))
+                 fn-sn-make-v6 fn-sn-make-v7 fn-cei-put)))))
 
 (defthm fn-sti-io-record-phase-keeps-candidate
   (implies (and (fn-sf-statep files)
@@ -672,7 +672,7 @@
                             fn-sf-statep fn-th-prefix-step
                             fn-th-topic-eventp fn-sn-io fn-sn-file-step
                             fn-sn-update fn-sn-with-event-index
-                            fn-sn-make-v6 fn-cei-put
+                            fn-sn-make-v6 fn-sn-make-v7 fn-cei-put
                             ; fn-csi-io-preserves-live, used above, is the
                             ; consumer fact; re-deriving it through the full
                             ; relation took 2.7 s (0.9 s closed).
@@ -867,7 +867,7 @@
                             fn-sf-completion-phasep fn-sf-record-phasep)
                            (fn-csi-livep fn-sti-completed-prefixp
                             fn-sn-statep fn-sf-statep
-                            fn-sn-update fn-sn-make-v6
+                            fn-sn-update fn-sn-make-v6 fn-sn-make-v7
                             fn-th-prefix-step fn-th-topic-eventp)))))
 
 (defthm fn-sti-known-abort-preserves-consumer-live

@@ -33,7 +33,7 @@
                             (groups (fn-sn-groups s))
                             (capacity (fn-sn-capacity s))))
            :in-theory (e/d (fn-sn-prepare)
-                           (fn-sn-update fn-sn-make-v6
+                           (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
                             fn-sn-statep fn-node-statep
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-prepare-record fn-bs-store-relation)))))
@@ -50,7 +50,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-sn-prepare
                             fn-sf-prepare-record)
-                           (fn-sn-update fn-sn-make-v6
+                           (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
                             fn-sn-statep fn-node-statep
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-history-recoverablep fn-sf-candidatep))))))
@@ -64,7 +64,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-sn-prepare
                             fn-sf-prepare-record)
-                           (fn-sn-update fn-sn-make-v6
+                           (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
                             fn-sn-statep fn-node-statep
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-history-recoverablep fn-sf-candidatep))))))

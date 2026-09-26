@@ -44,9 +44,13 @@
                    (fn-nh-answer-report kind
                                         (fn-owner-store-profile state)
                                         (fn-owner-ocfg state)
-                                        (if (boundp-global 'fn-owner-record-octets state)
-                                            (f-get-global 'fn-owner-record-octets state)
-                                          nil)
+                                        ; the carried figures are a valid
+                                        ; (K . SUM) cache for the carried
+                                        ; records (fn-srt-carried-figures-
+                                        ; are-a-valid-octet-cache)
+                                        (let ((s (fn-owner-store state)))
+                                          (cons (fn-sbud-carried-used s)
+                                                (fn-sbud-carried-bytes s)))
                                         obs min)))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))

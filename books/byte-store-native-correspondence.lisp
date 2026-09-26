@@ -48,14 +48,14 @@
 (local
  (defthm fn-bs-native-node-of-update
    (equal (fn-sn-node (fn-sn-update s files node)) node)
-   :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6
+   :hints (("Goal" :in-theory (enable fn-sn-update fn-sn-make-v6 fn-sn-make-v7
                                       fn-sn-node)))))
 (local
  (defthm fn-bs-native-node-of-event-index-update
    (equal (fn-sn-node (fn-sn-with-event-index s event-index))
           (fn-sn-node s))
    :hints (("Goal" :in-theory (enable fn-sn-with-event-index
-                                      fn-sn-make-v6 fn-sn-node)))))
+                                      fn-sn-make-v6 fn-sn-make-v7 fn-sn-node)))))
 
 ; Exact host-called subject bridge.  The node is unchanged because fn-sn-io
 ; is the composed file-observation entry; its file projection is precisely the
@@ -74,7 +74,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-bs-native-io-operationp fn-bs-native-io-event
                  fn-sn-io fn-sn-file-step fn-sf-dispatch)
-                (fn-sn-update fn-sn-with-event-index fn-sn-make-v6
+                (fn-sn-update fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7
                  fn-cei-put)))))
 
 ; The native tags cover exactly the byte interpreter's observation language

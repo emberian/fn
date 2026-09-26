@@ -25,7 +25,7 @@
 ; The observed-open proofs use Store selector equations.  Expanding the
 ; rebuildable index's fourteen-field constructor in every recovery goal
 ; obscures the unchanged file and node projections.
-(local (in-theory (disable fn-sn-make-v6)))
+(local (in-theory (disable fn-sn-make-v6 fn-sn-make-v7)))
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))

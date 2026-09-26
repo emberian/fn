@@ -12,7 +12,7 @@
   :hints (("Goal"
            :in-theory (e/d (fn-sn-crash)
                            (fn-sn-statep fn-sf-crash-choicep
-                            fn-sn-update-indexed fn-sn-make-v6)))))
+                            fn-sn-update-indexed fn-sn-make-v6 fn-sn-make-v7)))))
 
 (defthm fn-thr-successful-recover-rebuilds-topic-by-definition
   (implies (and (fn-sn-statep s)
@@ -26,7 +26,7 @@
            :in-theory (e/d (fn-sn-recover)
                            (fn-sn-statep fn-sf-statep
                             fn-sn-update fn-sn-update-replayed
-                            fn-sn-make-v6 fn-th-prefix-project)))))
+                            fn-sn-make-v6 fn-sn-make-v7 fn-th-prefix-project)))))
 
 (defthm fn-thr-observed-open-rebuilds-exact-topic
   (implies (fn-sn-open-okp
