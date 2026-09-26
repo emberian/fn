@@ -6084,6 +6084,23 @@
           "name": "fn-pull-records-replay-ignores-an-uncommitted-tail"
         }
       ]
+    },
+    {
+      "id": "PRF-177",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osp-authorized-event-keeps-the-carried-source-and-signatures"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-report-fits-or-refuses-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-report-is-a-page-or-a-refusal"
+        }
+      ]
     }
   ]
 }

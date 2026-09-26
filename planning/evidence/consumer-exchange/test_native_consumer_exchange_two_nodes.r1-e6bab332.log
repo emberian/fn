@@ -1,0 +1,388 @@
+test_exchange_across_two_nodes_and_every_cut (tests.test_native_consumer_exchange_two_nodes.NativeTwoNodeConsumerExchangeTests.test_exchange_across_two_nodes_and_every_cut) ... CONSUMER-2N-WITNESS exchange-two-nodes sha256=0ce1c0df987a37804b8ff9763b08ebe2d1a3d449f34e1aefa3c708e1b368f28f
+{
+ "b_acked": 6,
+ "case": "exchange-two-nodes",
+ "hops": {
+  "Q": {
+   "at_a": [
+    {
+     "check": "verified",
+     "check_source_sha256": "90c2928825a82af3ace9a34b289373ea33d6fc74a2c3b0b1865642a759c6db5f",
+     "disposition": "applied",
+     "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+     "node_verdict": "44666e2d65000205050558203c666e2d65312e7265706c792d7231406167656e742d622e696e76616c69643e015820b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2024c666e2d6879627269642d7631",
+     "own_verdict": "verified",
+     "received_path": "Path: a.exchange.example.invalid!!b.exchange.example.invalid!not-for-mail",
+     "received_sha256": "e5477b6810b6e36f32fc155543bea7548527e2c2c6854b2a4a48678e9197a715",
+     "signatures_sha256": "7eba78ec3be912a56958b8fc003395edf1287dcfc832d2d5bc4f8ad3df9f8957",
+     "source_sha256": "90c2928825a82af3ace9a34b289373ea33d6fc74a2c3b0b1865642a759c6db5f",
+     "store_sequence": 5
+    }
+   ],
+   "at_b": [
+    {
+     "check": "verified",
+     "check_source_sha256": "90c2928825a82af3ace9a34b289373ea33d6fc74a2c3b0b1865642a759c6db5f",
+     "disposition": "repeat",
+     "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+     "node_verdict": "44666e2d65000208080858203c666e2d65312e7265706c792d7231406167656e742d622e696e76616c69643e015820b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2024c666e2d6879627269642d7631",
+     "own_verdict": "verified",
+     "received_path": "Path: b.exchange.example.invalid!not-for-mail",
+     "received_sha256": "bd3109833fb8eaf46a83628e2629a2f2124f9c7532befdf8cc1b149554f955f3",
+     "signatures_sha256": "7eba78ec3be912a56958b8fc003395edf1287dcfc832d2d5bc4f8ad3df9f8957",
+     "source_sha256": "90c2928825a82af3ace9a34b289373ea33d6fc74a2c3b0b1865642a759c6db5f",
+     "store_sequence": 8
+    }
+   ],
+   "projections_differ": true,
+   "submission": {
+    "message_id": "<fn-e1.reply-r1@agent-b.invalid>",
+    "signatures_sha256": "7eba78ec3be912a56958b8fc003395edf1287dcfc832d2d5bc4f8ad3df9f8957",
+    "source_sha256": "90c2928825a82af3ace9a34b289373ea33d6fc74a2c3b0b1865642a759c6db5f"
+   }
+  },
+  "R": {
+   "at_a": [
+    {
+     "check": "verified",
+     "check_source_sha256": "32ba90dc298f929743c7434ab662517717009fedaa6ecf9ae60886406353ae96",
+     "disposition": "repeat",
+     "message_id": "<fn-e1.r1@agent-a.invalid>",
+     "node_verdict": "44666e2d650002040404581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+     "own_verdict": "verified",
+     "received_path": "Path: a.exchange.example.invalid!not-for-mail",
+     "received_sha256": "1d48434bf5a661d2cc13876a4a92fbcff95855a09688fe5973b7720f822956ed",
+     "signatures_sha256": "8f5c7110c4e115a6f2cf12f51ed9c6c2add1d21c98e2f9fb6e2510a91d2a4b81",
+     "source_sha256": "32ba90dc298f929743c7434ab662517717009fedaa6ecf9ae60886406353ae96",
+     "store_sequence": 4
+    }
+   ],
+   "at_b": [
+    {
+     "check": "verified",
+     "check_source_sha256": "32ba90dc298f929743c7434ab662517717009fedaa6ecf9ae60886406353ae96",
+     "disposition": "applied",
+     "message_id": "<fn-e1.r1@agent-a.invalid>",
+     "node_verdict": "44666e2d650002050505581a3c666e2d65312e7231406167656e742d612e696e76616c69643e015820a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1014c666e2d6879627269642d7631",
+     "own_verdict": "verified",
+     "received_path": "Path: b.exchange.example.invalid!!a.exchange.example.invalid!not-for-mail",
+     "received_sha256": "aa06b98b7d92aa2aaec6439e1a3761143153865da5ec12071487938d8b1e1ed4",
+     "signatures_sha256": "8f5c7110c4e115a6f2cf12f51ed9c6c2add1d21c98e2f9fb6e2510a91d2a4b81",
+     "source_sha256": "32ba90dc298f929743c7434ab662517717009fedaa6ecf9ae60886406353ae96",
+     "store_sequence": 5
+    }
+   ],
+   "projections_differ": true,
+   "submission": {
+    "message_id": "<fn-e1.r1@agent-a.invalid>",
+    "signatures_sha256": "8f5c7110c4e115a6f2cf12f51ed9c6c2add1d21c98e2f9fb6e2510a91d2a4b81",
+    "source_sha256": "32ba90dc298f929743c7434ab662517717009fedaa6ecf9ae60886406353ae96"
+   }
+  }
+ },
+ "image_sha256": "b12749be6a8ca836a4c792548929818387fbb9f5e56efd8afd9ec2cfdecbb9e5",
+ "log": [
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "dregg-receipt-0001"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "in-transaction",
+   97,
+   "CONSUMER-CUT in-transaction\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "after-commit",
+   97,
+   "CONSUMER-CUT after-commit\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "owner-after-submit",
+   3,
+   "consumer stopped: ack uncertain; position settles it on the next wake\n"
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "before-post",
+   97,
+   "CONSUMER-CUT before-post\n"
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   "owner-after-submit",
+   3,
+   "consumer stopped: reply POST uncertain; a resend of the saved artifact reconciles it\n"
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   "after-ack",
+   97,
+   "CONSUMER-CUT after-ack\n"
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ],
+ "positions": {
+  "agent-a": 9,
+  "agent-b": 11
+ },
+ "q_settled_by": "post-answer",
+ "restart_mid_poll": {
+  "acked": 6,
+  "cursor_sha256": "e185eb8d762140c01825cd2d3705e7350e8d7255802dd1aee7bf94109bfe6a5f",
+  "report_sha256": "50aabca33883a70de62e685f2e804bf8c2b40f62b4fe8cfdd9242f84509e224d"
+ },
+ "transfer": {
+  "articles_at_b": 1,
+  "ihave_r_at_b": "435 duplicate",
+  "newnews": [
+   "NEWNEWS fn.* 20260925 114015 GMT",
+   "NEWNEWS fn.* 20260925 114015 GMT",
+   "NEWNEWS fn.* 20260925 114015 GMT",
+   "NEWNEWS fn.* 20260926 114018 GMT"
+  ],
+  "pull_article_commands_for_r": []
+ }
+}
+ok
+test_revoked_author_settles_by_observation_across_nodes (tests.test_native_consumer_exchange_two_nodes.NativeTwoNodeConsumerExchangeTests.test_revoked_author_settles_by_observation_across_nodes) ... CONSUMER-2N-WITNESS revoked-author-two-nodes sha256=2449b170f7e0904c8366517a7979a9d8ec2f113b44d3cf678a762cbc894a3c3a
+{
+ "a_outbox": {
+  "attempts": 2,
+  "journal": [
+   {
+    "exit": null,
+    "purpose": "submit",
+    "state": "unanswered",
+    "status": null
+   },
+   {
+    "exit": 1,
+    "purpose": "reconcile",
+    "state": "answered",
+    "status": "AUTHOR-NOT-ENROLLED"
+   }
+  ],
+  "last_exit": 1,
+  "message_id": "<fn-e1.r1@agent-a.invalid>",
+  "principal": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+  "settled_by": "store-observation",
+  "sha256": "0525484c7362960563489481cbaf74fe395f8f38994f255539f0ec208e678daa",
+  "state": "stored"
+ },
+ "b_transitions": [
+  [
+   "fn-e1",
+   "r1"
+  ]
+ ],
+ "case": "revoked-author-two-nodes",
+ "image_sha256": "b12749be6a8ca836a4c792548929818387fbb9f5e56efd8afd9ec2cfdecbb9e5",
+ "log": [
+  [
+   "agent-a",
+   [
+    "report",
+    "r1",
+    "dregg-receipt-0001"
+   ],
+   "after-post",
+   97,
+   "CONSUMER-CUT after-post\n"
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "wake"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-a",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ],
+  [
+   "agent-b",
+   [
+    "summary"
+   ],
+   null,
+   0,
+   ""
+  ]
+ ]
+}
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 28.479s
+
+OK

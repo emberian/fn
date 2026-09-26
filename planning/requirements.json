@@ -1822,7 +1822,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-116"
+        "PRF-116",
+        "PRF-177"
       ],
       "verification": [
         "proof",
@@ -1838,7 +1839,7 @@
         "planning/evidence/manifests/certify-20260926T000312Z-2863061.json",
         "planning/evidence/consumer-e2/test_native_consumer_exchange.gate-eca72d1c.log"
       ],
-      "note": "Local-owner profile only (0600 same-UID control socket, one group, historical membership). The consumer transaction is the external client's SQLite transaction; exactly-once is of its local transition under SQLite atomic commit and the unique operation index, not of any external effect. An identical resend over local control is answered D25's duplicate (PKT-166); the consumer settles an uncertain POST by that answer or by fn serving the exact source back through poll. No retention pin (PKT-165 is the retaining-mode packet)."
+      "note": "Local-owner profile only (0600 same-UID control socket, one group, historical membership). The consumer transaction is the external client's SQLite transaction; exactly-once is of its local transition under SQLite atomic commit and the unique operation index, not of any external effect. An identical resend over local control is answered D25's duplicate (PKT-166); the consumer settles an uncertain POST by that answer or by fn serving the exact source back through poll. No retention pin (PKT-165 is the retaining-mode packet). Two nodes peered over NNTP: CNS-004."
     },
     {
       "id": "TOP-002",
@@ -3165,6 +3166,34 @@
         "planning/evidence/manifests/certify-20260926T103810Z-481225.json"
       ],
       "implementation_note": "RFC 3977 section 6.2.1.3 (430: no article with that message-id) and section 7.4 (NEWNEWS). The unavailable class, the consecutive-round count and the bound (peer row pull-unavailable-rounds, default 5) are fn local policy. The feed half (a MODE STREAM refusal durable across a restart with an IHAVE fallback on the same connection, RFC 4644 section 2.3) is not implemented: PKT-431."
+    },
+    {
+      "id": "CNS-004",
+      "title": "Two consumers on two fn nodes peered over NNTP exchange a signed report and reply; each verifies with its own keyring and acknowledges only its own node's position; repeated transfers, lost replies, consumer deaths and a node restart mid-poll yield no second transition",
+      "specification": "specs/consumer-progress.md#two-nodes",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-177"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-signed-post.lisp",
+        "tests/acl2/owner-signed-post-tests.lisp",
+        "books/consumer-owner-local-progress.lisp",
+        "tools/fn_consumer.py",
+        "tests/test_native_consumer_exchange_two_nodes.py",
+        "tests/test_fn_consumer_journal.py",
+        "planning/evidence/consumer-exchange-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T114912Z-1309060.json",
+        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log"
+      ],
+      "implementation_note": "A client contract over fn's peering; not an RFC requirement. The carriage is RFC 3977/4644 peering (IHAVE/TAKETHIS answered 435/438 for a held article, RFC 3977 section 6.3.2; the NEWNEWS pull, section 7.4, NNT-018); the stored-source guarantee is fn's (PRF-177 (a)). The Python consumer is an external client: its database lock, resend and correlation are its own bookkeeping under CNS-003.",
+      "note": "Local-owner profile on each node; NNTP peering with source-address authentication on loopback in the scenario. BP carriage through the relay network is PKT-333 phase 2."
     }
   ]
 }

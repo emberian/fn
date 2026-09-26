@@ -490,3 +490,41 @@
            (fn-stxk-context :ok 3 *pat-after-revocation* nil 5 nil)
            *pat-revoked-event*))
          :ok)))
+
+; PRF-177 (a): fn-osp-authorized-event-keeps-the-carried-source-and-signatures.
+; The witness is the host-called constructor over the staged served article
+; and this Store's snapshots (*ospt-event*, above): the antecedent (an event)
+; and every conjunct of the conclusion, with the concrete source and
+; signatures the author signed.
+(defun ospt-keeps-conclusion (received snapshots)
+  (let* ((s (fn-own-store *ospt-taken*))
+         (sequence (fn-sn-identity-next s))
+         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+         (e (ospt-event received snapshots))
+         (form (fn-pa-carrier-form received)))
+    (and (equal (car form) :ok)
+         (equal (fn-stxa-authored-source e) (nth 1 form))
+         (equal (fn-stxa-article-record e)
+                (fn-record-encode
+                 (fn-record-make
+                  sequence txid txid *ospt-msgid* received *ospt-groups*
+                  (fn-record-octets-string
+                   (fn-id-text (fn-id-obligation-of
+                                (fn-record-string-octets *ospt-msgid*)
+                                (fn-id-subject-of-payload received))))
+                  (fn-record-octets-string
+                   (fn-id-text (fn-id-subject-of-payload received)))
+                  "served-post-evidence" (fn-charge-for-payload (len received))
+                  (fn-record-stamp-of-observation *ospt-obs*))))
+         (fn-hsig-authorize-at (fn-hsig-source-version (nth 1 form))
+                               (nth 2 form) (nth 3 form) (nth 1 form)
+                               (nth 4 form) *tha-ml-key* :verified :verified))))
+(assert-event (ospt-event *ospt-staged* *ospt-snapshots*))
+(assert-event (ospt-keeps-conclusion *ospt-staged* *ospt-snapshots*))
+(assert-event (equal (fn-stxa-authored-source *ospt-event*) *tha-root-source*))
+(assert-event (equal (nth 4 (fn-pa-carrier-form *ospt-staged*)) *tha-signatures*))
+; Hypothesis removal (the event): the same carried article at a node that
+; enrolled nobody forms no event, and the conclusion fails.
+(assert-event (equal (car (fn-pa-carrier-form *ospt-staged*)) :ok))
+(assert-event (not (ospt-event *ospt-staged* nil)))
+(must-fail (assert-event (ospt-keeps-conclusion *ospt-staged* nil)))
