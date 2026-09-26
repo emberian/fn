@@ -3176,18 +3176,21 @@
         "`operator CONFIG init --max-transactions 1164 --max-config-generations 1164 fn.test`; `peer add far ...`; 1,100 separate `peer carries far HEX`; `peer list`.",
         "`peer budget far 1048576 3`; `peer budget far 2097152 5`; `peer list`; `peer carries far HEX0` again; `peer list`.",
         "Developer `store ROOT init --max-transactions 8191`; post; `checkpoint publish`; hard-link generation 0 as generations 1..4096; `checkpoint publish`; `checkpoint status`.",
-        "The same with `--max-transactions 4095` and generations 0..4095."
+        "The same with `--max-transactions 4095` and generations 0..4095.",
+        "`init --max-group-name-octets 100 fn.test`; `group create` of a 100-octet name, then of a 101-octet name; `init --max-group-name-octets 100` of a 101-octet name on a fresh root; `init fn.test` and `group create` of the 101-octet name."
       ],
       "expected": [
         "Every request exits 0; the listing (a fresh open replaying every configuration record) names the 1,100 principals in request order.",
         "Both budget requests exit 0 and the 1,100 principals stay; the repeated principal adds no row.",
         "The second publication prints generation=4097 and status lists 4096 and 4097.",
-        "The publication is refused (exit 1) naming the profile's capacity, and the directory is unchanged."
+        "The publication is refused (exit 1) naming the profile's capacity, and the directory is unchanged.",
+        "The 100-octet name is created; the 101-octet `group create` exits 1 naming max-group-name-octets with the configuration directory unchanged; the `init` exits 1 naming it and writes no store; under the default profile the 101-octet name is created."
       ],
       "evidence": [
         "planning/evidence/caps-to-profile-2026-09-26.md",
         "planning/evidence/caps-to-profile/native-checkpoint-generations.log",
-        "planning/evidence/caps-to-profile/native-peer-rows-growth.log"
+        "planning/evidence/caps-to-profile/native-peer-rows-growth.log",
+        "planning/evidence/caps-to-profile/native-group-name-bound.log"
       ],
       "implementation": {
         "test": "tests.test_native_peer_rows_growth",
@@ -3611,6 +3614,34 @@
         "native": true,
         "record": "planning/evidence/ingress-span-2026-09-26.md",
         "log": "planning/evidence/ingress-span-2026-09-26/test-tests.test_native_bounds_join.SpanReferenceTests.log"
+      }
+    },
+    {
+      "id": "SCN-115",
+      "title": "1,100 separate offline `peer carries` requests on one store cost each request a replay at the records' own work, not the configuration's size per record",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-025"
+      ],
+      "steps": [
+        "`operator CONFIG init --max-transactions 1164 --max-config-generations 1164 fn.test`; `peer add far ...`; 1,100 separate `peer carries far HEX`, timed; `peer list`."
+      ],
+      "expected": [
+        "Every request exits 0 and the listing names the 1,100 principals in request order; the total time is recorded against the same run on the image before PRF-186 (planning/evidence/caps-to-profile-2026-09-26.md, Continuation)."
+      ],
+      "evidence": [
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/caps-to-profile/native-peer-rows-growth-after.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_rows_growth",
+        "cases": [
+          "test_a_peer_carries_more_than_the_old_row_cap"
+        ],
+        "native": true,
+        "log": "planning/evidence/caps-to-profile/native-peer-rows-growth-after.log",
+        "record": "planning/evidence/caps-to-profile-2026-09-26.md"
       }
     }
   ]

@@ -1481,6 +1481,16 @@ checkpoint published before a249a699 is refused too, today as
 direction: older images reject a newer checkpoint file and fall back to a
 full replay.
 
+And the incremental peer rows (delta codes 18 and 19, `peer carries` and
+`peer budget` since 2026-09-26, offline or live): a store whose
+configuration log holds either is refused at open by releases before them
+(the deployed bbf52159 image exits 4; rehearsed on a copy, planning/evidence/
+caps-to-profile-2026-09-26.md), so roll back only from the pre-upgrade
+snapshot. A store that never extended a peer after the upgrade is unaffected.
+The same holds for a checkpoint or pack directory that has published
+generation 4096 or more (the numbering is a uint32 since then): an older
+release refuses that directory.
+
 There are two rollbacks, and they are not the same:
 
 - **Restoring the kept `config.json`** (the old release reads the new
