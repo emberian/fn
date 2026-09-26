@@ -3015,7 +3015,8 @@
         "tests/acl2/native-operator-tests.lisp",
         "tests/test_native_operator_verbs.py",
         "planning/evidence/manifests/certify-20260924T160912Z-2158325.json",
-        "planning/evidence/manifests/certify-20260924T230658Z-1653033.json"
+        "planning/evidence/manifests/certify-20260924T230658Z-1653033.json",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "progress_note": "Lanes group-name-validity (grammar, 2026-09-24) and group-names-2 (reserved names, 2026-09-24). Teeth: records-shape-tests has the grammar witnesses and seven must-fails; native-admin-tests and native-operator-tests have the reserved witnesses (example, example.test, Example.a, EXAMPLE.test, poster, POSTER, Poster refused; fn.example, examples.test, poster.x, fn.poster accepted; retire of example.test accepted) and one must-fail per hypothesis. fn-record-group-namep-bounds-length-by-definition is the local bound by definition and is not cited. Lane defaults-precise (2026-09-24): specific-purpose recognizer and the local-agreement theorem; teeth in native-admin-tests (15 special witnesses, 12 near misses, the plan witness over five special names and one ordinary, one must-fail per hypothesis). persvati run-20260924T230642Z-0e1b.",
       "events": [
@@ -3115,7 +3116,8 @@
         "planning/evidence/manifests/certify-20260924T222809Z-1310195.json",
         "planning/evidence/m5-compact-verb-2026-09-24.md",
         "planning/evidence/m5-compact-verb/campaign-checkpoint.json",
-        "planning/evidence/m5-compact-verb/native-modules-2.log"
+        "planning/evidence/m5-compact-verb/native-modules-2.log",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "progress_note": "Lane m5-compaction (2026-09-24). Certified on persvati (run-20260924T213519Z-7956, manifest certify-20260924T213534Z-827010, ACL2 8.7, every book under 4 s) and on hbox with the w28 toolchain. Teeth: a reachable five-event store (record, undertaking, release, identity, enrollment) whose open before, after losing covered names 1 and 3, and after the whole plan reconstructs the same five records; concrete counterexamples and a must-fail for each composition hypothesis (a suffix gap; losing the newest suffix name, which the gate accepts and which silently drops record 4; a plan computed above the pack boundary, same loss; a conflicting surviving covered file, refused before and accepted after). Native, developer image of this branch on hbox: six operator POSTs around a selected pack, then reclaim and every reclaim cut (each covered unlink occurrence and the directory barrier); GROUP, ARTICLE by number and by Message-ID, HDR Subject and store retention are identical, the suffix files byte-identical, and the next POST gets high+1. Open: the byte model states survival for the uncovered suffix only, not old-or-absent for a covered name; guards of the framed observe stay unverified (the Store-event decoder chain); one pack holds at most 4096 events and 4 MiB, so the exact-history pack cannot compact an arbitrarily large store; no operator entry reaches reclaim (developer `checkpoint` verb only). Lane m5-compact-verb (2026-09-24): the operator entry `operator CONFIG store compact` (fn-cverb-decide decides pack+select+reclaim+retire, resume, or a named refusal; the host carries out exactly those steps). fn-cverb-pack-fits-the-profile-budget: when the decision packs, every file present plus the pack the host seals from the same records fits the profile's aggregate bound (field 3); fn-cverb-pack-decision-capture-succeeds: a pack decision on an exact event history below a uint32 frontier is never refused by the capture; the operator argv reaches :compact exactly for `store compact` (two native-operator theorems). The 4 MiB pack is kept as the compaction unit (refused by name above it; the 4096-event limit never binds, fn-cverb-profile-count-within-pack-events). Native on images of 5181e0ea: the ten CHECKPOINT_CUTS (now including the two retire cuts) pass through the developer checkpoint verbs and the operator verb, 20/20; the production image compacts, rereads every article identically and posts at high+1. Finding 3 of m5-compaction is not detectable from the open's observation: the frontier is reserved before the record, so a lost newest file equals an abandoned reservation (fn-cverb-open-history-gate-admits-a-lost-suffix); a post-commit witness is a decision for ember. Lane bounds-p1-profile (2026-09-25): fn-cverb-profile-count-within-pack-events is renamed fn-cverb-preset-count-within-pack-events and holds for the presets only; under an operator profile with max_transactions above 4096 (the D27 default is 2^32-1) the 4096-event pack limit can refuse compaction by name (:exceeds-compaction-unit) until chained packs (P5).",
       "events": [
@@ -3620,7 +3622,8 @@
         "planning/evidence/live-status-2026-09-25.md",
         "planning/evidence/status-join-2026-09-25.md",
         "books/native-admin.lisp",
-        "planning/evidence/deploy-fixes-2026-09-25.md"
+        "planning/evidence/deploy-fixes-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
       "events": [
@@ -3911,7 +3914,8 @@
         "planning/evidence/operator-verdicts-2026-09-25.md",
         "books/store-profile-upgrade.lisp",
         "tests/acl2/store-profile-upgrade-tests.lisp",
-        "planning/evidence/deploy-fixes-2026-09-25.md"
+        "planning/evidence/deploy-fixes-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "statement": "fn-osb-install-serves-the-profile-bound: for an admitted Store profile, fn-osb-install -- which host/owner-host.lisp fn-owner-install-profile calls from host/native/owner.lisp fnn-owner-install on every run path, the developer owner run included -- answers :installed and leaves an owner whose fn-own-body-limit, the bound every later connection's wire reads, is the profile's max-article-octets A; fn-osb-install-keeps-the-posting-configuration: the posting bit, agent and served groups are unchanged; fn-osb-install-keeps-configp: a well-formed posting configuration stays one. fn-olog-served-refusal-lines-one-per-441: the lines host/owner-host.lisp fn-owner-chunk leaves for a socket read are exactly one per 441 reply in the effects the client is sent, each one line beginning refused; fn-olog-post-refusal-reason-names-the-sent-reason: each injection reason fn-post-refusal-line names reads back from its reply as itself. fn-olog-control-refusal-line-says-refused-iff-submit-refused: the line fn-owner-operator-submit leaves says refused exactly when fn-own-operator-submit-result is :refused (no hypothesis). fn-native-auth-admin-effect-word-restart-unless-no-owner: the credential verb's answer, fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp fnn-native-auth-admin-result-code calls, is restart-required exactly unless the writer-lock observation taken after the durable change is :free or :absent. Covered scope: that the host observes the lock after the durable write, writes each line and one LF, and that the developer init routes its words through fn-nop-developer-init is measured by the native tests, not proved. fn-profile-format-7-store-needs-upgrade: fn-profile-needs-upgrade-verdict, which host/native/io.lisp fnn-command-needs-upgrade calls for `operator CONFIG store needs-upgrade', is by definition the no-argument upgrade-profile verdict's (one owner), and is :needs-upgrade for every admitted format-7 store. fn-profile-rollback-sound-iff-records-within: fn-profile-rollback-verdict, which fnn-command-rollback-check calls with the kept config.json's decoded profile, the store's own config.json profile and the committed transaction files' octet lengths, says :sound exactly when the kept profile is admitted, does not drop the store's history-marker requirement (fn-profile-rollback-drops-markerp), and every length is within fn-profile-rollback-record-bound (R for format 8, H/T for format 7). fn-profile-rollback-keeps-a-required-marker: when the store's profile requires the committed-history marker and the verdict is :sound, the kept profile requires it too; the kept format-7 config.json over a migrated store is refused as history-marker-required-dropped (qual-e747dbcc U1). Covered scope: that the older image's open reads records under that bound is the bounds-join record's statement about that image, not proved.",
       "progress_note": "Lane operator-verdicts, 2026-09-25: PKT-103, PKT-104 (native run), PKT-095, PKT-102, PKT-099. Teeth in the five test books; native runs in planning/evidence/operator-verdicts-2026-09-25.md."
@@ -3970,7 +3974,8 @@
         "books/peer-carriage.lisp",
         "tests/acl2/peer-carriage-tests.lisp",
         "tests/acl2/native-admin-tests.lisp",
-        "planning/evidence/peer-carriage-2026-09-25.md"
+        "planning/evidence/peer-carriage-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "progress_note": "Open: the class is a log detail, not a durable :unverified verdict (dev holds no present-carrier article that is not accepted or carried); the budget is fixed across the admitted history in the trace theorem (a lowered budget refuses from then on but is not restated); BP transit keeps the plan reason.",
       "events": [
@@ -4219,7 +4224,8 @@
         "host/owner-host.lisp",
         "host/native/owner.lisp",
         "host/native/hybrid-control.lisp",
-        "planning/evidence/peer-keys-2026-09-25.md"
+        "planning/evidence/peer-keys-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "progress_note": "Open: no native run (no image was built on hbox for these bytes); a crash between the statement's kind-4 commit and the executor's kind-3 commit leaves the statement accepted and unexecuted (no model crash point, no recovery re-run); a refused kind-3 commit surfaces as the transit attempt's refusal after its kind-4 committed; fn_verify.py does not render :revoked; the served path (NNTP POST, BP transit) never reports :revoked by design (TRANSITP nil).",
       "events": [
@@ -4286,7 +4292,8 @@
         "planning/evidence/peer-invite-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T105118Z-4150165.json",
         "planning/evidence/manifests/certify-20260925T183424Z-3570225.json",
-        "tests/test_native_peer_invite.py"
+        "tests/test_native_peer_invite.py",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "events": [
         "fn-pinv-accept-step-enrols-only-a-bound-invitation",
@@ -4375,7 +4382,8 @@
         "tests/acl2/owner-log-reopen-tests.lisp",
         "books/owner-bound-commit.lisp",
         "tests/acl2/owner-bound-commit-tests.lisp",
-        "planning/evidence/operator-config-2026-09-25.md"
+        "planning/evidence/operator-config-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "statement": "fn-native-config-show-round-trip: for every configuration C that fn-native-config-show-wfp admits, fn-native-config-load -- the loader fn-native-operator-run (host/native-operator-host.lisp:19) reads fn.toml through -- of fn-native-config-show-octets C, the text `operator CONFIG show' prints and a mission writes, is (:accepted C); the [alerts] and [ops] rows are part of C. fn-native-config-load-renderable: every configuration fn-native-config-load accepts satisfies fn-native-config-show-wfp (the parser's values are parsed-shaped and each field's normalization keeps its bound), so fn-native-config-show carries no run-time check; with the round trip, fn-native-config-loaded-show-round-trip: the rendering of every loaded configuration loads back as itself. fn-native-mission-profiles-valid and fn-native-mission-store-opens-with-its-profile: for each of small-community, relay and archive, the mission's profile request resolves to an admitted profile, and the frame `init' writes for it (fn-bs-config-frame-for-profile, host/store-host.lisp fn-store-metadata-config-frame) decodes at every later open to exactly that profile (under A-CRYPTO through fn-bs-config-decode-of-encode). fn-native-operator-run-init-under-a-mission: under a configuration naming a mission, an accepted init plan's profile is the mission's request. fn-olr-reopen-iff-requested: fn-olr-decide, which host/owner-host.lisp fn-owner-log-reopen answers host/native/owner.lisp fnn-owner-maybe-reopen-log with, reopens exactly when a log path is configured and a SIGHUP arrived since the last one handled, and every counted request is then handled. fn-obc-commit-only-after-filing: fn-obc-commit-gate, which fnn-owner-complete-bound-submission asks (through fn-owner-bound-commit-gate) before any commit callback, answers :commit only when fn-pa-filing-plan files the article in exactly the committed groups; with C1's keystone a control article then commits only in its filing group (fn-obc-control-commits-only-in-its-filing-group). Covered scope: that the host calls the callback only on :commit, and swaps the log descriptor under the log mutex, is host code measured natively, not proved.",
       "progress_note": "Lane operator-config, 2026-09-25: PKT-096, PKT-097, PKT-101, PKT-069."
@@ -4445,7 +4453,8 @@
         "tests/test_native_key_statements.py",
         "tests/test_native_peer_pull.py",
         "planning/evidence/peering-compose-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260925T235912Z-4066344.json"
+        "planning/evidence/manifests/certify-20260925T235912Z-4066344.json",
+        "planning/evidence/manifests/certify-20260926T002322Z-3065393.json"
       ],
       "events": [
         "fn-pinv-confirm-record-configures-the-issued-invitations-peer",
