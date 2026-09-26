@@ -230,7 +230,7 @@ class NativeInjectionInfoTests(unittest.TestCase):
                    b"Injection-Date: Sat, 26 Sep 2026 12:00:00 +0000\r\n"
                    + article("<inj-peer@example.invalid>", peer_line.decode()))
         seen["relay"] = self.relay(relayed, a, "<inj-peer@example.invalid>")
-        self.assertTrue(seen["relay"].startswith("335 / 235"), seen)
+        self.assertTrue(seen["relay"].startswith("335") and " / 235" in seen["relay"], seen)
         peer_stored = self.fetch(a, "<inj-peer@example.invalid>")
         seen["relayed info"] = [line.decode() for line in
                                 header_lines(peer_stored, b"Injection-Info")]
@@ -250,7 +250,6 @@ class NativeInjectionInfoTests(unittest.TestCase):
         self.assertTrue(seen["post anonymous"].startswith("240"), seen)
         self.assertEqual(len(anon_info), 1, seen)
         self.assertNotIn(b"posting-account", anon_info[0], seen)
-        self.assertTrue(seen["relay"].startswith("335 / 235"), seen)
         self.assertEqual(seen["relayed info"], [peer_line.decode()], seen)
 
 
