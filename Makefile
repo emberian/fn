@@ -406,6 +406,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-family-replay-tests \
 	books/bp-node-profile-replay \
 	tests/acl2/bp-node-profile-tests \
+	books/bp-node-profile-admission \
+	tests/acl2/bp-node-profile-admission-tests \
 	books/bp-node-fragment-step \
 	tests/acl2/bp-node-fragment-step-tests \
 	books/bp-node-fragment-guards \

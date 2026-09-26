@@ -29,20 +29,23 @@
   ;; ACL2's reading of the generation selection file, and the recovery
   ;; event built from it (spec bp-node-machine 3.6; N16).
   (plan (list :none)) (recovery-event nil)
-  ;; ACL2's reading of the node's profile, (ROWS OCTETS): the held rows and
-  ;; held octets the machine may hold (fn-bpnpf-read, books/bp-node-profile).
+  ;; ACL2's reading of the node's profile, (ROWS OCTETS ADU BUNDLE): the held
+  ;; rows and held octets the machine may hold, the largest ADU it admits and
+  ;; the largest bundle it decodes (fn-bpnpf-profile-read,
+  ;; books/bp-node-profile; PRF-131, PRF-134).
   (profile nil))
 
 (defun fnn-bps-max-rows (service) (first (fnn-bps-profile service)))
 (defun fnn-bps-max-octets (service) (second (fnn-bps-profile service)))
 
 (defun fnn-bps-read-profile (root)
-  "ACL2's reading of ROOT's `bp-node-profile' (fn-bpnpf-read): the default
-when the file is absent, the operator's (ROWS OCTETS) when it is one valid
-profile frame; anything else is refused before the journal is opened."
+  "ACL2's reading of ROOT's `bp-node-profile' (fn-bpnpf-profile-read): the
+default when the file is absent, the operator's (ROWS OCTETS ADU BUNDLE) when
+it is one valid profile frame (a format-1 frame takes the default ADU and
+bundle octets); anything else is refused before the journal is opened."
   (let* ((path (fnn-join root (fnn-core 'fn-bpnpf-file-name)))
          (present (fnn-check-regular path))
-         (profile (fnn-core 'fn-bpnpf-read (and present t)
+         (profile (fnn-core 'fn-bpnpf-profile-read (and present t)
                             (and present
                                  (fnn-octet-list
                                   (fnn-read-regular-bounded
@@ -976,13 +979,18 @@ octet is ACL2's."
 ADMISSION is ACL2's channel admission answer for this transfer
 (fnn-bps-tcpcl-admission).  PRF-128: fn-bpaj-admitted-receive-event refuses
 a bundle from a refused channel with the admission's reason, and only its
-:ready answer reaches fnn-bps-foundation-step, so no custody is taken."
+:ready answer reaches fnn-bps-foundation-step, so no custody is taken.
+PRF-134: fn-bpnpf-admitted-receive-event applies the node's profile around
+it: a wire past the profile's bundle octets is refused before it is decoded
+and a bundle whose ADU is past the profile's ADU octets before custody, each
+by name (books/bp-node-profile-admission)."
   (let* ((tally (fnn-bps-tally service))
          (observation
            (fnn-bp-observation (fnn-bp-tally-wall tally)
                                 (fnn-bp-tally-wall-error tally)))
          (prepared
-           (fnn-core 'fn-bpaj-admitted-receive-event
+           (fnn-core 'fn-bpnpf-admitted-receive-event
+                     (fnn-bps-profile service)
                      admission (fnn-bp-tally-config tally) wire observation)))
     (unless (eq (fnn-core 'fn-bpnf-receive-wire-readyp prepared) t)
       (return-from fnn-bps-receive (values prepared nil)))
