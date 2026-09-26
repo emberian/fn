@@ -2902,6 +2902,30 @@
         "planning/evidence/bounds-p5-2026-09-25.md"
       ],
       "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
+    },
+    {
+      "id": "SEC-005",
+      "title": "A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, without a restart, and never re-decided by an open",
+      "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-166"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/key-statements.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "books/native-operator.lisp",
+        "host/native/keys.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_key_statements.py",
+        "planning/evidence/keys-and-accounts-2026-09-26.md"
+      ],
+      "implementation_note": "A stronger fn guarantee (no RFC speaks of key statements): the redecide is a control-socket operator action decided by ACL2 (fn-ks-redecide-plan) under the live grants, which are those in force at its own txid; its one durable record is the kind-3 change. Refused by name for no stored statement, an acted statement, or a decline; offline refused (no owner)."
     }
   ]
 }

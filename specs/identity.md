@@ -471,6 +471,16 @@ boundary lists that principal and that the node verified nothing.
 `tools/fn_verify.py` exits 3 (cannot decide) on it and reports its own
 check beside it. To get a decision, ask a node that enrolled the author.
 
+A fifth form, `revoked <principal-hex> keyring <G>`, is the record of a
+signed article that reached this node by transit after this node revoked
+its principal, under keys the node had enrolled for it, both primitive
+observations verified (books/stx-verify.lisp `fn-stx-verified-item`; G is
+the revocation tombstone's generation). It vouches for nothing and never
+reads `verified`. `tools/fn_verify.py` renders it: when the independent check
+finds the signature to be that principal's, or does not verify it, the two
+agree on "not verified" (exit 1); when the signature is another principal's,
+the line is a disagreement (exit 2).
+
 The line also does not show whether the node should have accepted, that is,
 whether enrollment was current or group policy allowed the post. Those
 checks are local node policy. The independent check covers the signature

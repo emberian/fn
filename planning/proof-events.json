@@ -5729,6 +5729,35 @@
           "name": "fn-rclp-reclaiming-pack-is-a-first-link"
         }
       ]
+    },
+    {
+      "id": "PRF-166",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ks-redecide-decides-under-the-configuration-at-its-own-txid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-reopen-after-a-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-redecide-of-no-stored-statement-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-redecide-of-an-acted-statement-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-redecide-of-an-unacted-statement-is-its-acceptance-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ks-a-redecide-that-acted-is-refused-the-second-time"
+        }
+      ]
     }
   ]
 }
