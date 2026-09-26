@@ -66,7 +66,7 @@
 ;; fnn-owner-publish-captured calls fn-ock-publication-stream; host/owner-host.lisp
 ;; fn-owner-sco-due and fn-owner-sco-capture call fn-ock-publication-blockedp
 ;; and fn-ock-capture-budget (PKT-492, PKT-315).
-(include-book "books/owner-checkpoint-stream")
+(include-book "books/owner-checkpoint-pipeline")
 (include-book "books/poster-bytes-buffer")
 ;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
@@ -182,6 +182,8 @@
 ;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
 ;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+(include-book "books/store-checkpoint-tables")
+(include-book "books/store-checkpoint-tables-reader")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the

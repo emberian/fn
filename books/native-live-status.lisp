@@ -227,8 +227,8 @@
     (fn-nls-text "unknown")))
 
 ; The sixth element: the owner's deferred automatic publication,
-; (:deferred REASON ESTIMATE BUDGET) as books/owner-checkpoint-stream.lisp
-; `fn-ock-publication-stream' answered it and host/owner-host.lisp
+; (:deferred REASON ESTIMATE BOUND) as books/owner-checkpoint-pipeline.lisp
+; `fn-ockp-decide' answered it (REASON exceeds-budget or exceeds-space) and host/owner-host.lisp
 ; `fn-owner-sco-publication-done' recorded it (host/native-live-status-host.lisp
 ; appends it to the host's observation); nil when nothing is deferred, and
 ; always nil offline (no owner, no publisher).

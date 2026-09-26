@@ -204,11 +204,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
 	books/store-checkpoint-shape \
-	tests/acl2/store-checkpoint-shape-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
+	tests/acl2/store-checkpoint-tables-tests \
 	books/owner-checkpoint-stream \
-	tests/acl2/owner-checkpoint-stream-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
 	tests/acl2/linear-recognizers-tests \
@@ -716,10 +715,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
+	books/store-checkpoint-tables \
+	books/store-checkpoint-tables-reader \
+	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
-	tests/acl2/store-checkpoint-buffer-tests \
-	tests/acl2/store-checkpoint-reader-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \

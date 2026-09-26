@@ -160,11 +160,12 @@ class ProverRefusalTests(unittest.TestCase):
         self.assertEqual(book.must_fails, 3)
         self.assertEqual(book.prover_refusals, [(5, "the counter-witness is 2^64 octets")])
 
-    def test_the_tree_labels_rep_wave_d_3s_width_refusals(self):
+    def test_the_tree_totals_count_every_labelled_refusal(self):
+        # rep-wave-d-3's two labelled width refusals went with its schema-2
+        # reader tests (lane checkpoint-pipeline, 2026-09-26: the schema-3
+        # keystone's width hypothesis has a constructible witness, so its
+        # must-fail is an ordinary tooth); the totals property stays.
         tree = ledger.load_tree()
-        labelled = tree.books["tests/acl2/store-checkpoint-reader-tests.lisp"].prover_refusals
-        self.assertEqual(len(labelled), 2)
-        self.assertIn("2^64", labelled[0][1])
         totals = ledger.build_ledger(tree)["totals"]
         self.assertEqual(totals["prover_refusals"],
                          sum(len(b.prover_refusals) for b in tree.books.values()))

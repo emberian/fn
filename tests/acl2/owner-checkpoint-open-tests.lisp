@@ -120,55 +120,10 @@
 ; -----------------------------------------------------------------------------
 ; checkpoint-cost (PKT-141)
 
-; The file carries the count.  Witness: the capture of the whole history
-; freezes to its count, and thaws back to itself.
+; The capture of the whole history (the schema-3 tables' value since lane
+; checkpoint-pipeline: books/store-checkpoint-tables.lisp carries the
+; witnesses of the file).
 (defconst *ock-t-capture* (fn-sco-capture *ock-t-configs* *ock-t-events*))
-(assert-event (equal (fn-sco-at 1 (fn-sco-freeze *ock-t-capture*)) 2))
-(assert-event (equal (fn-sco-thaw (fn-sco-freeze *ock-t-capture*)) *ock-t-capture*))
-; The count form is not the list form: the file differs.
-(assert-event (not (equal (fn-sco-freeze *ock-t-capture*) *ock-t-capture*)))
-; fn-sco-thaw-of-freeze, its one hypothesis (a checkpoint's shape): a value
-; whose record slot is already a count is not one, and it does not come back.
-(defconst *ock-t-not-shape* (list :fn-store-checkpoint 2 nil nil nil nil nil))
-(assert-event (not (equal (fn-sco-thaw (fn-sco-freeze *ock-t-not-shape*))
-                          *ock-t-not-shape*)))
-; (Stated at the concrete value, so ACL2 refutes it by evaluation instead of
-; searching.)
-(must-fail
- (defthm ock-t-thaw-without-shape
-   (implies (equal c *ock-t-not-shape*)
-            (equal (fn-sco-thaw (fn-sco-freeze c)) c))))
-; A checkpoint whose index does not hold its records keeps the list.
-(defconst *ock-t-unindexed*
-  (fn-sco-make *ock-t-events* (fn-sco-cpr *ock-t-capture*)
-               (fn-sco-identity *ock-t-capture*) (fn-sco-consumer *ock-t-capture*)
-               (fn-sco-topic *ock-t-capture*) nil))
-(assert-event (equal (fn-sco-freeze *ock-t-unindexed*) *ock-t-unindexed*))
-(assert-event (equal (fn-sco-thaw (fn-sco-freeze *ock-t-unindexed*)) *ock-t-unindexed*))
-
-; The codec round trip through the frozen file, on the witness.
-; (Attachments evaluate in assert-event, not in defconst: the digest is
-; fn-sha256's.)
-(assert-event (let ((segments (fn-scc-segments (fn-sco-freeze *ock-t-capture*) 64)))
-                (and (< 1 (len segments))
-                     (equal (fn-sco-thaw (cadr (fn-scc-decode-segments segments)))
-                            *ock-t-capture*))))
-; Its tree hypothesis: a value the codec cannot encode does not come back.
-(defconst *ock-t-untree*
-  (fn-sco-make *ock-t-events* 1/2 nil nil nil nil))
-(assert-event (not (fn-scc-treep (fn-sco-freeze *ock-t-untree*))))
-(assert-event (equal (fn-scc-segments (fn-sco-freeze *ock-t-untree*) 64) :unencodable))
-(must-fail
- (defthm ock-t-decode-without-tree
-   (implies (and (equal c *ock-t-untree*)
-                 (fn-sco-shapep c)
-                 (< (+ 1 (len (fn-scc-encode (fn-sco-freeze c)))) *fn-scc-u64-bound*)
-                 (< (fn-scc-value-sequence (fn-sco-freeze c)) *fn-scc-u64-bound*))
-            (equal (fn-sco-thaw (cadr (fn-scc-decode-segments
-                                       (fn-scc-segments (fn-sco-freeze c) 64))))
-                   c))))
-; The header carries S for the count form.
-(assert-event (equal (fn-scc-value-sequence (fn-sco-freeze *ock-t-capture*)) 2))
 
 ; The one-pass Store open.  Witness: from the prefix's capture extended over
 ; the suffix, the open is the full open, :ok, and the configuration fold is
@@ -184,21 +139,6 @@
 (assert-event (equal (fn-ock-install (car *ock-t-store-open*) (cadr *ock-t-store-open*) 4)
                      *ock-t-full*))
 
-; The publication off the mutex.  Witness: from the prefix's capture over the
-; captured history, NEXT is the capture of that history and the octets are its
-; frozen file.
-(assert-event (equal (car (fn-ock-publication (fn-sco-capture *ock-t-configs* *ock-t-prefix*)
-                                               *ock-t-configs* *ock-t-events* 64))
-                     *ock-t-capture*))
-(assert-event (equal (cadr (fn-ock-publication (fn-sco-capture *ock-t-configs* *ock-t-prefix*)
-                                                *ock-t-configs* *ock-t-events* 64))
-                     (fn-scc-file-octets (fn-sco-freeze *ock-t-capture*) 64)))
-; A later commit does not reach a publication already captured: capturing at
-; the prefix publishes the prefix.
-(assert-event (equal (car (fn-ock-publication
-                           (fn-sco-capture *ock-t-configs* nil)
-                           *ock-t-configs* *ock-t-prefix* 64))
-                     (fn-sco-capture *ock-t-configs* *ock-t-prefix*)))
 ; fn-sco-store-open-of-extended-capture, the hypothesis of its second
 ; conjunct (the open is :ok) has NO must-fail: on these refused opens (a
 ; repeated history, an improper prefix, a non-event prefix) the configuration

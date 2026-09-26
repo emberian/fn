@@ -707,40 +707,9 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 ;;; a refusal before any durable change exits 1, an uncertain publication,
 ;;; selection, reclaim or retirement exits 3, a fault 4.
 
-;; PKT-169: the compaction's temporary space is checked against the disk.
-;; The host observes the free octets of the store's filesystem (statvfs:
-;; f_bavail blocks of f_frsize octets, what an unprivileged writer may use)
-;; and ACL2 decides (books/store-compact-verb.lisp `fn-cverb-disk-admitsp').
-;; NIL when the call fails or the platform's layout is not known here; ACL2
-;; then refuses :temporary-space by name.  A developer image honours
-;; FN_NATIVE_DISK_FREE=N, which caps the observation at N octets (a small
-;; disk for the native case; the production image refuses to start with it).
-(sb-alien:define-alien-routine ("statvfs" fnn-%statvfs) sb-alien:int
-  (path sb-alien:c-string) (buffer (* (sb-alien:unsigned 8))))
-
-(defun fnn-statvfs-free-octets (path)
-  (let ((buffer (sb-alien:make-alien (sb-alien:unsigned 8) 256)))
-    (unwind-protect
-         (when (zerop (fnn-%statvfs path buffer))
-           (let ((sap (sb-alien:alien-sap buffer)))
-             (declare (ignorable sap))
-             #+(and linux x86-64)
-             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-64 sap 32))
-             #+darwin
-             (* (sb-sys:sap-ref-64 sap 8) (sb-sys:sap-ref-32 sap 24))
-             #-(or (and linux x86-64) darwin)
-             nil))
-      (sb-alien:free-alien buffer))))
-
-(defun fnn-disk-free-octets (store)
-  (let ((free (fnn-statvfs-free-octets (fnn-store-root store)))
-        (cap (fnn-developer-selector "FN_NATIVE_DISK_FREE")))
-    (if (and free cap)
-        (let ((n (ignore-errors (parse-integer cap))))
-          (unless (and (integerp n) (>= n 0))
-            (fnn-fault "invalid FN_NATIVE_DISK_FREE (expected octets)"))
-          (min free n))
-        free)))
+;; PKT-169: the disk's free octets (fnn-disk-free-octets) are observed in
+;; host/native/io.lisp since lane checkpoint-pipeline: the checkpoint
+;; pipeline's space decision needs them in every image.
 
 (defun fnn-pack-retirable-generations (store chain selected generations)
   "The generations the compact and reclaim decisions may count as older and

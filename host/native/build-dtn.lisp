@@ -141,13 +141,19 @@
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
-;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
-;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
+;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
-;; The state checkpoint read from the octet buffer (rep-wave-d-3):
-;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
-;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
+;; The FNSC segments read from the octet buffer (rep-wave-d-3):
+;; host/store-node-host.lisp fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+;; The schema-3 tables and the pipeline (lane checkpoint-pipeline, D33/D34):
+;; host/store-node-host.lisp fn-store-sco-decode calls fn-sct-load,
+;; fn-store-sco-select calls fn-sco-select-named and
+;; fn-store-sco-publish-setup calls fn-ockp-setup.
+(include-book "books/store-checkpoint-tables")
+(include-book "books/store-checkpoint-tables-reader")
+(include-book "books/owner-checkpoint-pipeline")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file

@@ -437,6 +437,60 @@ encoded and encodes through the octet buffer, never as octet lists.
   `fn-sccb-plan-is-file-octets`), and it refuses exactly where the codec
   refuses (`fn-ock-publication-stream-refuses-what-the-codec-refuses`).
 
+STO-026: The state checkpoint is four tables (schema 3), each a run of
+FNSC segments, holding every payload once, written by one resumable
+pipeline in bounded batches through the publication buffer and read back
+as the capture; a file of another schema is refused by name and the
+journal replays.
+
+- **The tables** (lane checkpoint-pipeline, 2026-09-26; D33, D34;
+  books/store-checkpoint-tables.lisp). F: one row `(3 S FRONTIER
+  REVISION)`. P: one row per committed event, its payload bytes (an
+  article's payload, a composite's article-record bytes) or NIL. E: one row
+  per committed event, the event with every octets leaf equal to its P row
+  written as a reference `ref s` (one op added to the tree codec); the
+  record's other fields are its own until the catalog slice. R: the four
+  fold roots (the configuration fold paused at S, the identity context, the
+  consumer cursor, the topic prefix state) with each stored article's
+  payload written as a reference to its P row, found through the event
+  index's Message-ID trie. No event index is stored: the load rebuilds it
+  from E as `fn-sco-capture` does. The dedupe is by equality with P[s]
+  (`fn-sct-refp`); a signed composite's carried record is a distinct
+  object with distinct bytes, so its payload in R stays literal (PKT-583).
+- **The frame.** Each run is `fn-scc-chunks` of its rows' programs in
+  segments of at most the profile's record bound, framed and chained from
+  the genesis by the unchanged FNSC frame (schema byte 3, sequence S);
+  `fn-scc-decode-segments`'s refusals and the per-segment admission
+  (`fn-sccr-admit-segment`) are reused, and the admission refuses another
+  schema by name: `open=full-replay reason=checkpoint-schema`
+  (`fn-sco-select-named`). One store format (D34): no schema-2 reader.
+- **The pipeline** (books/owner-checkpoint-pipeline.lisp). Capture (O(1)
+  under the mutex: the base, the configuration history, the record list by
+  pointer, the frontier, the free space, the source revision); the estimate
+  from the tables' metadata without encoding or touching a payload octet,
+  equal to the file's length (`fn-ockp-estimate-is-len-file-octets`); the
+  decision by name before any allocation (`fn-ockp-decide`, PRF-200:
+  `exceeds-budget` against `fn-ock-capture-budget`, `exceeds-space` against
+  the free octets the host observed by statvfs less `fn-smr-reserve-octets`;
+  the retry blocked while the bound it named is below the estimate); then
+  `fn-ockp-step` per batch of 1,024 rows (a work bound per step, D27),
+  the full segments framed and admitted by the reader's rule before they
+  are handed to the host, the residue under one segment kept for the next
+  step. The owner's thread and the verb run the same steps
+  (host/native/io.lisp `fnn-checkpoint-write-steps`), each step's frames
+  written through `fn-bs-scp-program`'s staged file between its `created`
+  and `written` cuts: no new program, no new cut (SCN-129: a kill between
+  two steps reopens with the old checkpoint and the stage is swept).
+- **What is proved.** `fn-sct-decode-file-of-file-is-the-capture` (PRF-199):
+  the reader's decode of the file written for the tables of a capture is
+  those tables, and their value is the capture, for any segment size;
+  `fn-sct-load-is-decode-file` (PRF-135): the host's buffer load is that
+  reader on the frames' octets; so `fn-sn-recover-from-checkpoint-equals-
+  full-recover` transfers unchanged. Open: `fn-ockp-run-writes-the-file`,
+  the batched loop's octets are the file (PKT-583); its step facts are
+  PRF-133's and the witness at batch sizes 1, 3 and 1000 is in
+  tests/acl2/store-checkpoint-tables-tests.lisp.
+
 ## History classes and lifetimes
 
 STO-010: every class of durable state the store holds has a stated lifetime,
