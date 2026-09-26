@@ -4651,7 +4651,8 @@
         "host/native/bp-node.lisp",
         "specs/bp-node-machine.md",
         "tests/bp-dtn7/run_mission_four_node.py",
-        "planning/evidence/mission-four-node-2026-09-25.md"
+        "planning/evidence/mission-four-node-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T011543Z-36645.json"
       ],
       "events": [
         "fn-bpnj-step-delegates-every-other-event",
