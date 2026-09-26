@@ -33,10 +33,18 @@
                         invitations snapshots))
 
 (defun fn-pinv-host-invitation-source (date-ms nonce principal token keys name
-                                               path groups host port)
+                                               path groups host port
+                                               inviter-host inviter-port)
   (declare (xargs :mode :program))
   (fn-pinv-invitation-source date-ms nonce principal token keys name path
-                             groups host port))
+                             groups host port inviter-host inviter-port))
+
+; PRF-160: the accept's plan over the invitation and the live peers table:
+; (:configure DELTAS) configures the inviter as a peer before the enrolment.
+(defun fn-pinv-host-accept-record-plan (received observed-ml ed ml snapshots
+                                                 peers)
+  (declare (xargs :mode :program))
+  (fn-pinv-accept-record-plan received observed-ml ed ml snapshots peers))
 
 (defun fn-pinv-host-acceptance-source (date-ms received observed-ml ed ml
                                                principal token keys path

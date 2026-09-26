@@ -1,0 +1,40 @@
+                                                 Group Selection (localhost[T]  1)                                            h=help
+
+     1     1  fn.test                           (no description)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                 <n>=set current to n; n=next unread; g,/=search pattern; c=catchup
+                               ^N=line down; ^P=line up; h=help; m=move; q=quit; r=toggle all/unread
+                             s=subscribe; S=sub pattern; u=unsubscribe; U=unsub pattern; y=yank in/out
+
+                                                       *** End of groups ***

@@ -1,0 +1,159 @@
+RUN init --profile development rc=0
+  | accepted operator init
+COUNT accepted=127 first-refused-post=128 reply='441 posting failed; the store has no capacity for this article' owner-alive=True
+owner exit 0
+RUN status rc=0
+  | transactions=127 articles=127 staging-orphans=0 unsigned-legacy-experiment
+  | headroom transactions-used=127 transactions-budget=128 bytes-used=64776 history-bound=25165824 charge-reserved=254 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+  | accepted operator status
+RUN retention set released-by-all-holders rc=0
+  | accepted operator retention
+RUN store compact rc=0
+  | compacted steps=pack,select,reclaim,retire records=127 generation=0 reclaimed=127 retired=0
+  | accepted operator compact
+RUN store reclaim rc=0
+  | reclaimed=127 freed-octets=14258 generation=1 retired=1
+  | reclaimed <cnt0@example.invalid>
+  | reclaimed <cnt1@example.invalid>
+  | reclaimed <cnt2@example.invalid>
+  | reclaimed <cnt3@example.invalid>
+  | reclaimed <cnt4@example.invalid>
+  | reclaimed <cnt5@example.invalid>
+  | reclaimed <cnt6@example.invalid>
+  | reclaimed <cnt7@example.invalid>
+  | reclaimed <cnt8@example.invalid>
+  | reclaimed <cnt9@example.invalid>
+  | reclaimed <cnt10@example.invalid>
+  | reclaimed <cnt11@example.invalid>
+  | reclaimed <cnt12@example.invalid>
+  | reclaimed <cnt13@example.invalid>
+  | reclaimed <cnt14@example.invalid>
+  | reclaimed <cnt15@example.invalid>
+  | reclaimed <cnt16@example.invalid>
+  | reclaimed <cnt17@example.invalid>
+  | reclaimed <cnt18@example.invalid>
+  | reclaimed <cnt19@example.invalid>
+  | reclaimed <cnt20@example.invalid>
+  | reclaimed <cnt21@example.invalid>
+  | reclaimed <cnt22@example.invalid>
+  | reclaimed <cnt23@example.invalid>
+  | reclaimed <cnt24@example.invalid>
+  | reclaimed <cnt25@example.invalid>
+  | reclaimed <cnt26@example.invalid>
+  | reclaimed <cnt27@example.invalid>
+  | reclaimed <cnt28@example.invalid>
+  | reclaimed <cnt29@example.invalid>
+  | reclaimed <cnt30@example.invalid>
+  | reclaimed <cnt31@example.invalid>
+  | reclaimed <cnt32@example.invalid>
+  | reclaimed <cnt33@example.invalid>
+  | reclaimed <cnt34@example.invalid>
+  | reclaimed <cnt35@example.invalid>
+  | reclaimed <cnt36@example.invalid>
+  | reclaimed <cnt37@example.invalid>
+  | reclaimed <cnt38@example.invalid>
+  | reclaimed <cnt39@example.invalid>
+  | reclaimed <cnt40@example.invalid>
+  | reclaimed <cnt41@example.invalid>
+  | reclaimed <cnt42@example.invalid>
+  | reclaimed <cnt43@example.invalid>
+  | reclaimed <cnt44@example.invalid>
+  | reclaimed <cnt45@example.invalid>
+  | reclaimed <cnt46@example.invalid>
+  | reclaimed <cnt47@example.invalid>
+  | reclaimed <cnt48@example.invalid>
+  | reclaimed <cnt49@example.invalid>
+  | reclaimed <cnt50@example.invalid>
+  | reclaimed <cnt51@example.invalid>
+  | reclaimed <cnt52@example.invalid>
+  | reclaimed <cnt53@example.invalid>
+  | reclaimed <cnt54@example.invalid>
+  | reclaimed <cnt55@example.invalid>
+  | reclaimed <cnt56@example.invalid>
+  | reclaimed <cnt57@example.invalid>
+  | reclaimed <cnt58@example.invalid>
+  | reclaimed <cnt59@example.invalid>
+  | reclaimed <cnt60@example.invalid>
+  | reclaimed <cnt61@example.invalid>
+  | reclaimed <cnt62@example.invalid>
+  | reclaimed <cnt63@example.invalid>
+  | reclaimed <cnt64@example.invalid>
+  | reclaimed <cnt65@example.invalid>
+  | reclaimed <cnt66@example.invalid>
+  | reclaimed <cnt67@example.invalid>
+  | reclaimed <cnt68@example.invalid>
+  | reclaimed <cnt69@example.invalid>
+  | reclaimed <cnt70@example.invalid>
+  | reclaimed <cnt71@example.invalid>
+  | reclaimed <cnt72@example.invalid>
+  | reclaimed <cnt73@example.invalid>
+  | reclaimed <cnt74@example.invalid>
+  | reclaimed <cnt75@example.invalid>
+  | reclaimed <cnt76@example.invalid>
+  | reclaimed <cnt77@example.invalid>
+  | reclaimed <cnt78@example.invalid>
+  | reclaimed <cnt79@example.invalid>
+  | reclaimed <cnt80@example.invalid>
+  | reclaimed <cnt81@example.invalid>
+  | reclaimed <cnt82@example.invalid>
+  | reclaimed <cnt83@example.invalid>
+  | reclaimed <cnt84@example.invalid>
+  | reclaimed <cnt85@example.invalid>
+  | reclaimed <cnt86@example.invalid>
+  | reclaimed <cnt87@example.invalid>
+  | reclaimed <cnt88@example.invalid>
+  | reclaimed <cnt89@example.invalid>
+  | reclaimed <cnt90@example.invalid>
+  | reclaimed <cnt91@example.invalid>
+  | reclaimed <cnt92@example.invalid>
+  | reclaimed <cnt93@example.invalid>
+  | reclaimed <cnt94@example.invalid>
+  | reclaimed <cnt95@example.invalid>
+  | reclaimed <cnt96@example.invalid>
+  | reclaimed <cnt97@example.invalid>
+  | reclaimed <cnt98@example.invalid>
+  | reclaimed <cnt99@example.invalid>
+  | reclaimed <cnt100@example.invalid>
+  | reclaimed <cnt101@example.invalid>
+  | reclaimed <cnt102@example.invalid>
+  | reclaimed <cnt103@example.invalid>
+  | reclaimed <cnt104@example.invalid>
+  | reclaimed <cnt105@example.invalid>
+  | reclaimed <cnt106@example.invalid>
+  | reclaimed <cnt107@example.invalid>
+  | reclaimed <cnt108@example.invalid>
+  | reclaimed <cnt109@example.invalid>
+  | reclaimed <cnt110@example.invalid>
+  | reclaimed <cnt111@example.invalid>
+  | reclaimed <cnt112@example.invalid>
+  | reclaimed <cnt113@example.invalid>
+  | reclaimed <cnt114@example.invalid>
+  | reclaimed <cnt115@example.invalid>
+  | reclaimed <cnt116@example.invalid>
+  | reclaimed <cnt117@example.invalid>
+  | reclaimed <cnt118@example.invalid>
+  | reclaimed <cnt119@example.invalid>
+  | reclaimed <cnt120@example.invalid>
+  | reclaimed <cnt121@example.invalid>
+  | reclaimed <cnt122@example.invalid>
+  | reclaimed <cnt123@example.invalid>
+  | reclaimed <cnt124@example.invalid>
+  | reclaimed <cnt125@example.invalid>
+  | reclaimed <cnt126@example.invalid>
+  | accepted operator reclaim
+RUN status rc=0
+  | transactions=127 articles=127 staging-orphans=0 unsigned-legacy-experiment
+  | headroom transactions-used=127 transactions-budget=128 bytes-used=50518 history-bound=25165824 charge-reserved=127 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | reclaim rule=released-by-all-holders reclaimable=0 reclaimable-octets=0 held=0 reclaimed=127 freed-octets=14258
+  | accepted operator status
+POST after reclaim on the count-full store: 441 posting failed; the store has no capacity for this article
+owner exit 0
+RUN status rc=0
+  | transactions=127 articles=127 staging-orphans=0 unsigned-legacy-experiment
+  | headroom transactions-used=127 transactions-budget=128 bytes-used=50518 history-bound=25165824 charge-reserved=127 charge-capacity=1048576
+  | maintenance-reserve octets=4096 transactions=1 held
+  | reclaim rule=released-by-all-holders reclaimable=0 reclaimable-octets=0 held=0 reclaimed=127 freed-octets=14258
+  | accepted operator status

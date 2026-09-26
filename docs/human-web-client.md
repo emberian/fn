@@ -139,3 +139,54 @@ reading, escaped content, form checks and all three POST outcomes.
 `tests/test_fn_web_native.py` additionally exercises a scratch native owner
 when `FN_NATIVE_DEVELOPER_HOST` and `FN_NATIVE_TEST_ROOT` identify a frozen
 image and its source snapshot.
+
+## tin over TLS
+
+tin 2.6 reads the `STARTTLS` capability but never sends the command; it
+speaks only NNTP over TLS from the first octet (`-T`). Point it at the
+node's implicit-TLS listener, which runs the same session as a STARTTLS
+connection after its handshake (`books/served-implicit-tls.lisp`). On the
+node, in `fn.toml` (`control.cancel` among the `init` groups if tin's cancel
+should be filed):
+
+```toml
+[listener]
+host = "127.0.0.1"
+port = 1119
+tls_cert = "/srv/fn/tls/cert.pem"
+tls_key = "/srv/fn/tls/key.pem"
+tls_port = 1563
+
+[auth]
+required = true
+protected_only = true
+```
+
+The owner prints `LISTENING-TLS 1563`. For the reader, a tin built with
+`./configure --with-nntps=openssl`, the node's certificate as its trust
+anchor in `~/.tin/tinrc`, and the login in `~/.newsauth` (mode 0600,
+`SERVER PASSWORD USER`):
+
+```text
+tls_ca_cert_file=/home/reader/.fn/node-cert.pem
+```
+
+```text
+localhost PASSWORD guest
+```
+
+```sh
+NNTPSERVER=localhost tin -r -T -A -p 1563 -g localhost
+```
+
+The certificate must name the host tin dials (`subjectAltName=DNS:localhost`
+above); `-k` skips verification and is not a protected channel. `-A`
+authenticates at connect; tin then asks `CAPABILITIES` again and sees
+`POST`. tin writes `From:`/`Sender:` from the machine's name and refuses to
+post from a host without a domain (`Bad address in From: header`, `Invalid
+Sender:-header <user@host..>`): give it one (the build's `DOMAIN_NAME`, or
+`disable_sender=ON` in the site `tin.defaults`). A cancel from tin is an
+ordinary unsigned control article: the node files it in `control.cancel`
+and the target stays served (C2: an unsigned cancel carries no authority).
+The walk of 2026-09-26 (log in, read, follow up, post, cancel, all `240`) is
+`planning/evidence/sanding-2026-09-26.md`.

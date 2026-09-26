@@ -1,0 +1,59 @@
+transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4096 list-memory-octets=25769803776
+headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 held
+open=full-replay reason=absent
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file=absent
+pins=13 reserved=26 connections=0
+accepted operator status
+status rc=0
+
+ACL2 Warning [Invariant-risk] in FN-STORE-SCO-PUBLISH-PLAN:  Invariant-
+risk has been detected for a call of function FN-STORE-SCO-PUBLISH-PLAN
+(as possibly leading to an ill-guarded call of UPDATE-FN-OCTETS$C-FILL);
+see :DOC invariant-risk.
+
+checkpoint sequence=13 octets=27546 open=full-replay reason=absent
+accepted operator checkpoint
+checkpoint rc=0
+transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4096 list-memory-octets=25769803776
+headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 held
+open=checkpoint:13 suffix=0
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file octets=27546 modified=1790400892
+pins=13 reserved=26 connections=0
+accepted operator status
+status-after rc=0
+total 27
+drwx------ 5 hbox hbox    14 Sep 26 01:34 .
+drwxrwxr-x 3 hbox hbox     4 Sep 26 01:34 ..
+-rw------- 1 hbox hbox    43 Sep 25 18:40 allocation-frontier.json
+-rw------- 1 hbox hbox  1155 Sep 22 16:40 auth.toml
+-rw------- 1 hbox hbox     0 Sep 22 16:40 auth.toml.lock
+-rw------- 1 hbox hbox    43 Sep 25 18:40 committed-history.json
+drwx------ 2 hbox hbox     7 Sep 22 16:40 config
+-rw------- 1 hbox hbox   190 Sep 25 17:57 config.json
+-rw------- 1 hbox hbox   129 Sep 24 17:43 config.json.format-7
+-rw------- 1 hbox hbox     0 Sep 22 16:41 control.sock.lock
+drwx------ 2 hbox hbox     2 Sep 26 01:34 staging
+-rw------- 1 hbox hbox 27546 Sep 26 01:34 store-checkpoint.fnsc
+drwx------ 2 hbox hbox    15 Sep 25 18:40 transactions
+-rw------- 1 hbox hbox     0 Sep 22 16:40 writer.lock
+owner reopen of the live copy from its checkpoint: LISTENING after 0.15 s
+owner exit 0
+transactions=13 articles=13 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4096 max-history-octets=805306368 max-record-octets=17138486 max-article-octets=32768 max-groups-per-article=65535 max-group-name-octets=256 max-open-suffix=4096 max-consumers=1048576 max-bp-rows=1048576 max-config-generations=1048576 max-credentials=1048576 max-policy-members=1048576 history-marker=unmarked
+open-cost replay-records=4096 list-memory-octets=25769803776
+headroom transactions-used=13 transactions-budget=4096 bytes-used=10960 history-bound=805306368 charge-reserved=26 charge-capacity=1048576
+maintenance-reserve octets=4096 transactions=1 held
+open=checkpoint:13 suffix=0
+reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0
+checkpoint-file octets=27546 modified=1790400892
+pins=13 reserved=26 connections=0
+accepted operator status
+status-after-owner rc=0

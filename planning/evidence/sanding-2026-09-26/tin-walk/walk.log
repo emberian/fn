@@ -1,0 +1,28 @@
+03:57:18 $ openssl req -x509 -newkey rsa:2048 -keyout /tank/fn/scratch/sanding/tin-walk-r3/node/key.pem -out /tank/fn/scratch/sanding/tin-walk-r3/node/cert.pem -sha256 -days 2 -nodes -subj /CN=localhost -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -> 0
+....+++++++++++++++++++++++++++++++++++++++*......+...+.........+...........+....+......+..+++++++++++++++++++++++++++++++++++++++*......+...+.....+...+.......+...+..+.+......+...+..+.+...+.....+......+.+............+............++++++
+.+......+.......+........+......+...+.......+...+..+....+++++++++++++++++++++++++++++++++++++++*......+...+......+........+.............+...+...........+.+.................+.+......+......+.....+....+...+..+....+.....+......+.+..+...+.......+..+.............+...+.....+.......+......+.........+..+......+....+++++++++++++++++++++++++++++++++++++++*..........+...+...+......+.....+...+............+.+..................+.....+.......+...+..............+.+..+...+....+......+......+.........+............+..+...++++++
+-----
+
+03:57:18 $ /tank/fn/scratch/sanding/native-r3/tree/build/fn-host --fn operator /tank/fn/scratch/sanding/tin-walk-r3/node/fn.toml init fn.test fn.letters control.cancel -> 0
+initialized /tank/fn/scratch/sanding/tin-walk-r3/node/store
+accepted operator init
+
+03:57:18 $ setsid -w /tank/fn/scratch/sanding/native-r3/tree/build/fn-host --fn operator /tank/fn/scratch/sanding/tin-walk-r3/node/fn.toml principal set-password guest --posting -> 0
+guest principal=45d5ebf23ae82e66c1a1e789d7f52c95af520ca17148467cb6bbb1d44d78915b posting=true
+Password: Confirm password: accepted operator principal set-password effective-at-next-start
+
+03:57:18 $ systemctl --user stop sanding-tin-owner -> 5
+Failed to stop sanding-tin-owner.service: Unit sanding-tin-owner.service not loaded.
+
+03:57:18 $ systemctl --user reset-failed sanding-tin-owner -> 1
+Failed to reset failed state of unit sanding-tin-owner.service: Unit sanding-tin-owner.service not loaded.
+
+03:57:18 $ systemd-run --user --unit sanding-tin-owner -p MemoryMax=24G --setenv=ACL2_CUSTOMIZATION=NONE --setenv=LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib sh -c exec /tank/fn/scratch/sanding/native-r3/tree/build/fn-host --fn operator /tank/fn/scratch/sanding/tin-walk-r3/node/fn.toml run > /tank/fn/scratch/sanding/tin-walk-r3/owner.stdout 2>&1 -> 0
+Running as unit: sanding-tin-owner.service; invocation ID: 9a783f37c2a34c80b0581f3a7fdacb0e
+
+03:57:19 owner: OWNER-OPEN open=full-replay reason=absent
+CONTROL /tank/fn/scratch/sanding/tin-walk-r3/node/store/control.sock
+LISTENING 32041
+LISTENING-TLS 32042
+
+03:57:57 done

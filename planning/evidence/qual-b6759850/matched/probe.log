@@ -1,0 +1,5 @@
+probe label=b6759850 rep=1 n=1000 rc=0 wall=292.05 user=71.44 sys=1.05 maxrss_kib=717876 {"host":"native","transactions":1000,"payload_bytes":2048,"commit_seconds":290.9922,"reopen_seconds":0.9740,"status":"passed"}
+probe label=bbf52159 rep=1 n=1000 rc=0 wall=358.54 user=75.88 sys=1.98 maxrss_kib=2038404 {"host":"native","transactions":1000,"payload_bytes":2048,"commit_seconds":357.3752,"reopen_seconds":1.0220,"status":"passed"}
+probe label=b6759850 rep=1 n=2000 rc=0 wall=902.20 user=302.69 sys=2.71 maxrss_kib=836956 {"host":"native","transactions":2000,"payload_bytes":2048,"commit_seconds":899.4602,"reopen_seconds":2.6460,"status":"passed"}
+probe label=bbf52159 rep=1 n=2000 rc=0 wall=802.53 user=284.54 sys=3.07 maxrss_kib=2226280 {"host":"native","transactions":2000,"payload_bytes":2048,"commit_seconds":791.9309,"reopen_seconds":10.4332,"status":"passed"}
+stopped after rep 1 by the lane 2026-09-26T07:53:38Z (commit-regression closed the finding; rep 2 skipped)

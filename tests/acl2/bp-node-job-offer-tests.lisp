@@ -193,3 +193,138 @@
  (and (not (fn-bpnj-stays-ready-p (list *jo-st* *jo-st-p*) *jo-peer* nil *jo-key2* *jo-prefix*))
       (not (member-equal *jo-key2*
                          (fn-bpnj-contact-offers (list *jo-st* *jo-st-p*) *jo-peer* nil nil)))))
+
+;; -----------------------------------------------------------------------------
+;; PRF-139 part 2: the single traversal (fn-bpnj-scan) is the two lookup scans.
+
+(defconst *jo-j1* (fn-bpn-find-job *jo-key1* *jo-jobs*))
+(defconst *jo-j2* (fn-bpn-find-job *jo-key2* *jo-jobs*))
+;; A job carrying J's key with other bytes: never in a machine state (its
+;; jobs satisfy fn-bpn-job-listp), used only for the corrupted-list witnesses.
+(defun jo-twin (j)
+  (fn-bpn-make-job (fn-bpn-job-work-id j) (fn-bpn-job-attempt-id j)
+                   (fn-bpn-job-generation j) (fn-bpn-job-sequence j)
+                   (fn-bpn-job-age-anchor j) (fn-bpn-job-peer j) (fn-bpn-job-route j)
+                   (fn-bpn-job-bundle j) (append (fn-bpn-job-wire j) '(0))
+                   (fn-bpn-job-status j) (fn-bpn-job-last-token j)))
+(defconst *jo-j1t* (jo-twin *jo-j1*))
+(defconst *jo-j2t* (jo-twin *jo-j2*))
+(assert-event (and (equal (fn-bpn-job-key *jo-j1t*) *jo-key1*)
+                   (equal (fn-bpn-job-key *jo-j2t*) *jo-key2*)
+                   (not (equal *jo-j1t* *jo-j1*)) (not (equal *jo-j2t* *jo-j2*))
+                   (fn-bpn-job-listp *jo-jobs*)
+                   (not (fn-bpn-job-listp (list *jo-j2* *jo-j2t*)))))
+
+;; KEYSTONE fn-bpnj-contact-next-is-the-two-scan-selection (no hypothesis):
+;; reachable witnesses, each answer kind.  Held head, younger ready: :offer
+;; of KEY2; KEY2 offered: :held KEY1; the pending state: :close.
+(defun jo-two-scan (st peer routing offered)
+  (let* ((jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+         (job (fn-bpnj-select jobs jobs peer routing offered))
+         (held (fn-bpnj-held jobs jobs peer routing offered)))
+    (cond ((not (fn-bpnp-receipt-contact-event st peer)) (list :close))
+          (job (list :offer (list :contact-job peer (fn-bpn-job-key job))
+                     (cons (fn-bpn-job-key job) offered)
+                     (fn-bpn-nth 1 (fn-bpnj-offerable job peer routing))))
+          (held (list :held (fn-bpn-job-key held)
+                      (fn-bpn-nth 1 (fn-bpnj-offerable held peer routing))))
+          (t (list :close)))))
+(assert-event
+ (and (equal (fn-bpnj-contact-next *jo-st* *jo-peer* *jo-routing* nil)
+             (jo-two-scan *jo-st* *jo-peer* *jo-routing* nil))
+      (equal (cadr (fn-bpnj-contact-next *jo-st* *jo-peer* *jo-routing* nil))
+             (list :contact-job *jo-peer* *jo-key2*))
+      (equal (fn-bpnj-contact-next *jo-st* *jo-peer* *jo-routing* (list *jo-key2*))
+             (jo-two-scan *jo-st* *jo-peer* *jo-routing* (list *jo-key2*)))
+      (equal (car (fn-bpnj-contact-next *jo-st* *jo-peer* *jo-routing* (list *jo-key2*)))
+             :held)
+      (equal (fn-bpnj-contact-next *jo-st-p* *jo-peer* *jo-routing* nil)
+             (jo-two-scan *jo-st-p* *jo-peer* *jo-routing* nil))))
+
+;; fn-bpnj-scan-finds-the-selected-job.  Witness: PRE = (KEY1's held job),
+;; REST = (KEY2's ready job); PRE selects nothing; the scan's ready job is
+;; KEY2's, as the lookup scan's.
+(assert-event
+ (and (equal *jo-jobs* (append (list *jo-j1*) (list *jo-j2*)))
+      (not (fn-bpnj-select (list *jo-j1*) *jo-jobs* *jo-peer* *jo-routing* nil))
+      (equal (car (fn-bpnj-scan (list *jo-j2*) *jo-jobs* *jo-peer* *jo-routing* nil nil))
+             (fn-bpnj-select (list *jo-j2*) *jo-jobs* *jo-peer* *jo-routing* nil))
+      (equal (car (fn-bpnj-scan (list *jo-j2*) *jo-jobs* *jo-peer* *jo-routing* nil nil))
+             *jo-j2*)))
+;; Without JOBS = PRE ++ REST (corrupted list): REST holds KEY2's twin, which
+;; is not the entry the lookup reads; the lookup scan answers KEY2's job, the
+;; scan nothing.  PRE (empty) selects nothing.
+(assert-event
+ (and (not (equal *jo-jobs* (append nil (list *jo-j2t*))))
+      (not (fn-bpnj-select nil *jo-jobs* *jo-peer* *jo-routing* nil))
+      (equal (fn-bpnj-select (list *jo-j2t*) *jo-jobs* *jo-peer* *jo-routing* nil) *jo-j2*)
+      (not (equal (car (fn-bpnj-scan (list *jo-j2t*) *jo-jobs* *jo-peer* *jo-routing* nil nil))
+                  (fn-bpnj-select (list *jo-j2t*) *jo-jobs* *jo-peer* *jo-routing* nil)))))
+;; Without PRE selecting nothing (corrupted list, KEY2 twice): PRE's KEY2 job
+;; is ready and shadows REST's twin.
+(assert-event
+ (let ((jobs (list *jo-j2* *jo-j2t*)))
+   (and (equal jobs (append (list *jo-j2*) (list *jo-j2t*)))
+        (fn-bpnj-select (list *jo-j2*) jobs *jo-peer* *jo-routing* nil)
+        (not (equal (car (fn-bpnj-scan (list *jo-j2t*) jobs *jo-peer* *jo-routing* nil nil))
+                    (fn-bpnj-select (list *jo-j2t*) jobs *jo-peer* *jo-routing* nil))))))
+
+;; fn-bpnj-scan-finds-the-held-job.  Witness: KEY2 offered, PRE = (KEY1's
+;; held job), HELD = that job, REST = (KEY2's job); nothing is ready; the
+;; scan keeps KEY1's job.  And from PRE empty: the scan finds KEY1's job.
+(assert-event
+ (and (not (fn-bpnj-select *jo-jobs* *jo-jobs* *jo-peer* *jo-routing* (list *jo-key2*)))
+      (equal (fn-bpnj-held (list *jo-j1*) *jo-jobs* *jo-peer* *jo-routing* (list *jo-key2*))
+             *jo-j1*)
+      (equal (cdr (fn-bpnj-scan (list *jo-j2*) *jo-jobs* *jo-peer* *jo-routing*
+                                (list *jo-key2*) *jo-j1*))
+             (or *jo-j1* (fn-bpnj-held (list *jo-j2*) *jo-jobs* *jo-peer* *jo-routing*
+                                       (list *jo-key2*))))
+      (equal (cdr (fn-bpnj-scan *jo-jobs* *jo-jobs* *jo-peer* *jo-routing* (list *jo-key2*) nil))
+             *jo-j1*)))
+;; Without JOBS = PRE ++ REST (corrupted): REST = (KEY1's twin); the lookup
+;; scan answers KEY1's job, the scan nothing.  Nothing is ready; HELD is
+;; PRE's (empty) held job.
+(assert-event
+ (and (not (equal *jo-jobs* (append nil (list *jo-j1t*))))
+      (not (fn-bpnj-select *jo-jobs* *jo-jobs* *jo-peer* *jo-routing* (list *jo-key2*)))
+      (equal nil (fn-bpnj-held nil *jo-jobs* *jo-peer* *jo-routing* (list *jo-key2*)))
+      (not (equal (cdr (fn-bpnj-scan (list *jo-j1t*) *jo-jobs* *jo-peer* *jo-routing*
+                                     (list *jo-key2*) nil))
+                  (or nil (fn-bpnj-held (list *jo-j1t*) *jo-jobs* *jo-peer* *jo-routing*
+                                        (list *jo-key2*)))))))
+;; Without nothing ready (a list with KEY2 ahead of KEY1): the scan stops at
+;; KEY2's ready job before reaching KEY1's held one.
+(assert-event
+ (let ((jobs (list *jo-j2* *jo-j1*)))
+   (and (equal jobs (append nil jobs))
+        (fn-bpnj-select jobs jobs *jo-peer* *jo-routing* nil)
+        (equal nil (fn-bpnj-held nil jobs *jo-peer* *jo-routing* nil))
+        (not (equal (cdr (fn-bpnj-scan jobs jobs *jo-peer* *jo-routing* nil nil))
+                    (or nil (fn-bpnj-held jobs jobs *jo-peer* *jo-routing* nil)))))))
+;; Without HELD = PRE's held job (corrupted, KEY1 twice): PRE's KEY1 job is
+;; held, HELD is nil; the lookup scan answers PRE's job through the shadowed
+;; twin, the scan nothing.
+(assert-event
+ (let ((jobs (list *jo-j1* *jo-j1t*)))
+   (and (equal jobs (append (list *jo-j1*) (list *jo-j1t*)))
+        (not (fn-bpnj-select jobs jobs *jo-peer* *jo-routing* (list *jo-key2*)))
+        (not (equal nil (fn-bpnj-held (list *jo-j1*) jobs *jo-peer* *jo-routing* (list *jo-key2*))))
+        (not (equal (cdr (fn-bpnj-scan (list *jo-j1t*) jobs *jo-peer* *jo-routing* (list *jo-key2*) nil))
+                    (or nil (fn-bpnj-held (list *jo-j1t*) jobs *jo-peer* *jo-routing*
+                                          (list *jo-key2*))))))))
+
+;; fn-bpnj-unique-keys-make-every-job-its-own-entry.  Witness: the reachable
+;; list; both jobs are their own entries.  Without unique keys: KEY2's twin
+;; is a member but not its own entry.  Without membership: the twin against
+;; the reachable list.
+(assert-event
+ (and (fn-bpn-job-listp *jo-jobs*)
+      (fn-bpnj-own-entryp *jo-j1* *jo-jobs*) (fn-bpnj-own-entryp *jo-j2* *jo-jobs*)))
+(assert-event
+ (let ((jobs (list *jo-j2* *jo-j2t*)))
+   (and (not (fn-bpn-job-listp jobs)) (member-equal *jo-j2t* jobs)
+        (not (fn-bpnj-own-entryp *jo-j2t* jobs)))))
+(assert-event
+ (and (fn-bpn-job-listp *jo-jobs*) (not (member-equal *jo-j2t* *jo-jobs*))
+      (not (fn-bpnj-own-entryp *jo-j2t* *jo-jobs*))))

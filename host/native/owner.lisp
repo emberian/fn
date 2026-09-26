@@ -22,8 +22,14 @@
 ;;; a client that arrives while the accept thread is launching a worker for
 ;;; the previous one: with the fnn-listen default of 1 the second client's
 ;;; connection is dropped and it sees a reset or a hang for no reason it can
-;;; act on.  Sixteen is the depth host/native/control.lisp already uses.
-(defconstant +fnn-owner-listen-backlog+ 16)
+;;; act on.  Sixteen was the depth host/native/control.lisp uses; a reader
+;;; port facing strangers (PRF-161) is flooded by clients the owner must
+;;; each answer with ACL2's 400, and with sixteen the kernel held the rest
+;;; half-open for its SYN-ACK retries: 69 of 500 flood connections from one
+;;; address read nothing for 10 s on hbox
+;;; (planning/evidence/public-exposure-2026-09-26.md section 4).  The queue
+;;; still decides nothing: every connection it hands over meets fn-exp-open.
+(defconstant +fnn-owner-listen-backlog+ 128)
 
 (define-condition fnn-owner-connection-fault (error)
   ((operation :initarg :operation :reader fnn-owner-connection-fault-operation)
@@ -1087,11 +1093,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 
 ;;; The open's recovery (books/key-statements.lisp fn-ks-recover-recorded):
 ;;; the newest record the open read, when it is a statement, is decided
-;;; under the grants in force at its own txid (packet 7,
-;;; *fn-ks-reopen-policy*), so a change the cut lost is made exactly as the
-;;; acceptance would have made it, a change already made is the newest
-;;; record (no statement), and a declined statement declines again whatever
-;;; grants were added since.
+;;; under the grants in force at its own txid (packet 7; no policy switch),
+;;; so a change the cut lost is made exactly as the acceptance would have
+;;; made it whatever configuration was published since (PRF-140), a change
+;;; already made is the newest record (no statement), and a declined
+;;; statement declines again whatever grants were added since.
 (defun fnn-owner-key-statement-recover (service records)
   (when records
     (let ((pending (fnn-owner-core 'fn-owner-key-statement-pending
@@ -1754,7 +1760,44 @@ EPIPE and the client saw a bare close)."
                  uncertain stop)))
        (when uncertain
          (fnn-owner-stop-service-locked service +fnn-exit-uncertain+ socket))
+       ;; PRF-161: the step reached this address's failed-login limit
+       ;; (fn-exp-observe): ACL2's 400, then the close.
+       (let ((exposure-close (fnn-global 'fn-owner-exposure-close)))
+         (when exposure-close
+           (unless (fnn-octet-list-p exposure-close)
+             (fnn-fault "owner returned a malformed exposure close"))
+           (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
+                 closing t)))
        (values reply (or closing uncertain) starttls consumed)))))
+
+;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
+;;; Before every served step ACL2 answers :proceed or the milliseconds to
+;;; wait; waiting reads nothing more from this socket, so the client meets
+;;; TCP backpressure and nothing it sent is dropped or cut.
+(defun fnn-owner-exposure-wait (service cid)
+  (loop
+    (let ((answer (fnn-owner-serialized
+                   service cid
+                   (lambda ()
+                     (fnn-owner-advance-clock)
+                     (fnn-owner-core 'fn-owner-exposure-charge cid)))))
+      (cond ((eq answer :proceed) (return))
+            ((and (integerp answer) (> answer 0))
+             (when (or *fnn-sigterm-requested*
+                       (fnn-owner-service-stopping service))
+               (return))
+             (sleep (/ (min answer 1000) 1000)))
+            (t (fnn-fault "owner returned a malformed exposure charge"))))))
+
+(defun fnn-owner-exposure-idle (service cid)
+  (let ((answer (fnn-owner-serialized
+                 service cid
+                 (lambda ()
+                   (fnn-owner-advance-clock)
+                   (fnn-owner-action 'fn-owner-exposure-idle cid)))))
+    (unless (member answer '(:keep :close))
+      (fnn-fault "owner returned a malformed idle decision"))
+    answer))
 
 (defun fnn-owner-receive (service fd channel seconds)
   "Read through the active transport.  Before TLS, MSG_PEEK is used only when
@@ -1782,16 +1825,26 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
     (values (if (= (length address) 4) :inet :inet6)
             (coerce address 'list))))
 
-(defun fnn-owner-serve-client (service socket)
+(defun fnn-owner-serve-client (service socket &optional implicit-tls)
   ;; RETAINED is the part of the last socket read the served machine has not
   ;; consumed yet.  It is this connection's, never the service's, and the
   ;; socket is read only when it is empty, so it holds at most one
   ;; +fnn-max-read+ read minus one octet (host/native/io.lisp fnn-recv) and
   ;; cannot grow while a client keeps sending.
-  (let ((fd (fnn-socket-fd socket)) (cid nil) (channel nil) (retained nil))
+  (let ((fd (fnn-socket-fd socket)) (cid nil) (channel nil) (retained nil)
+        ;; PRF-161: the id the exposure state registered, released in the
+        ;; unwind whatever path cleared CID.
+        (opened-cid nil))
     (unwind-protect
          (handler-case
              (progn
+               ;; PRF-162: an implicit-TLS connection completes SSL_accept
+               ;; before the owner opens anything, so a failed handshake
+               ;; costs no connection slot and sends no greeting.
+               (when implicit-tls
+                 (setq channel
+                       (fnn-tls-accept (fnn-owner-service-tls-context service)
+                                       fd 10)))
                (multiple-value-bind (family address)
                    (fnn-owner-socket-address service socket)
                  (multiple-value-bind (opened greeting)
@@ -1803,23 +1856,44 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                       ;; here is what makes DATE answer when the connection
                       ;; was accepted rather than when the process started.
                       (fnn-owner-advance-clock)
-                      (let* ((peer
-                               (fnn-owner-core
-                                'fn-owner-peer-for-socket-address
-                                family address))
-                             (opened
-                              (if peer
-                                  (fnn-owner-core 'fn-owner-open-peer peer)
-                                (fnn-owner-core 'fn-owner-open))))
+                      (let ((peer
+                              (fnn-owner-core
+                               'fn-owner-peer-for-socket-address
+                               family address)))
                         (unless (or (null peer) (fnn-octet-list-p peer))
                           (fnn-fault "owner returned a malformed peer identity"))
-                        (when opened (fnn-owner-log))
-                        (values opened
-                                (if opened (fnn-owner-octets-global 'fn-owner-output)
-                                  (fnn-make-octets 0))))))
+                        ;; PRF-161: ACL2 admits or refuses the connection
+                        ;; under the limits in force (books/public-exposure.lisp
+                        ;; fn-exp-open) and opens it in the same call.  A
+                        ;; refusal leaves the 400 in fn-owner-output.
+                        (let ((opened (fnn-owner-core 'fn-owner-exposure-open
+                                                      family address peer)))
+                          (when opened (fnn-owner-log))
+                          (values opened
+                                  (fnn-owner-octets-global 'fn-owner-output))))))
                    (unless (and opened (integerp opened))
+                     ;; RFC 3977 5.1.1 note [2]: after a 400 greeting the
+                     ;; server immediately closes the connection.
+                     (when (> (length greeting) 0)
+                       (fnn-owner-connection-call
+                        service :send-greeting
+                        (lambda ()
+                          (fnn-owner-send fd channel greeting 10)
+                          (fnn-graceful-close fd))))
                      (return-from fnn-owner-serve-client nil))
-                   (setq cid opened)
+                   (setq cid opened opened-cid opened)
+                   ;; The event a STARTTLS connection gets after its
+                   ;; handshake, and nothing else: the connection is then
+                   ;; the STARTTLS session after 382
+                   ;; (fn-served-implicit-tls-is-the-starttls-session).
+                   (when implicit-tls
+                     (fnn-owner-serialized
+                      service cid
+                      (lambda ()
+                        (unless (eq (fnn-owner-action
+                                     'fn-owner-tls-established cid)
+                                    :ok)
+                          (fnn-fault "owner rejected established TLS")))))
                    (when (> (length greeting) 0)
                      (fnn-owner-connection-call
                       service :send-greeting
@@ -1844,9 +1918,21 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                    ;; Whatever this step does not consume is set again below;
                    ;; nothing carried here is ever read from the socket twice.
                    (setq retained nil)
-                   (cond ((eq incoming :timeout) nil)
+                   (cond ((eq incoming :timeout)
+                          ;; RFC 3977 3.1's autologout, decided by ACL2
+                          ;; (fn-exp-idle): the close sends nothing.
+                          (when (eq (fnn-owner-exposure-idle service cid) :close)
+                            (fnn-owner-connection-call
+                             service :graceful-close
+                             (lambda ()
+                               (when channel
+                                 (fnn-tls-close-channel channel)
+                                 (setq channel nil))
+                               (fnn-graceful-close fd)))
+                            (return)))
                          ((zerop (length incoming)) (return))
-                         (t (multiple-value-bind (reply closing starttls consumed)
+                         (t (fnn-owner-exposure-wait service cid)
+                            (multiple-value-bind (reply closing starttls consumed)
                                 (fnn-owner-handle-chunk service cid incoming socket)
                               (cond
                                 (channel
@@ -1983,6 +2069,11 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
         (ignore-errors
           (fnn-owner-serialized
            service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
+      (when opened-cid
+        (ignore-errors
+          (fnn-owner-serialized
+           service nil
+           (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid)))))
       (when channel (fnn-tls-close-channel channel))
       (fnn-socket-shut socket))))
 
@@ -1994,7 +2085,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
           (delete sb-thread:*current-thread*
                   (fnn-owner-service-workers service) :test #'eq))))
 
-(defun fnn-owner-launch-client (service socket)
+(defun fnn-owner-launch-client (service socket &optional implicit-tls)
   "Register the socket and worker before either can enter the owner core."
   (fnn-with-owner (service)
     (if (fnn-owner-service-stopping service)
@@ -2004,7 +2095,8 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
         (let ((worker
                 (sb-thread:make-thread
                  (lambda ()
-                   (unwind-protect (fnn-owner-serve-client service socket)
+                   (unwind-protect (fnn-owner-serve-client service socket
+                                                           implicit-tls)
                      (fnn-owner-client-done service socket)))
                  :name "fn owner client")))
           (push worker (fnn-owner-service-workers service))
@@ -2134,6 +2226,34 @@ here, and written only through fn-owner-sco-publication-done."
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
+(defun fnn-owner-start-tls-accept (service listener)
+  "PRF-162: accept implicit-TLS clients on LISTENER until the service stops.
+The thread is a worker, so the stop joins it with the clients."
+  (fnn-with-owner (service)
+    (let ((thread
+            (sb-thread:make-thread
+             (lambda ()
+               (unwind-protect
+                    (handler-case
+                        (loop
+                          (when (or *fnn-sigterm-requested*
+                                    (fnn-owner-service-stopping service))
+                            (return))
+                          (let ((socket (fnn-accept-observe listener 1)))
+                            (unless (eq socket :timeout)
+                              (fnn-owner-launch-client service socket t))))
+                      (sb-bsd-sockets:socket-error (condition)
+                        (unless (or *fnn-sigterm-requested*
+                                    (fnn-owner-service-stopping service))
+                          (fnn-err "owner TLS listener: ~a" condition))))
+                 (fnn-with-owner (service)
+                   (setf (fnn-owner-service-workers service)
+                         (delete sb-thread:*current-thread*
+                                 (fnn-owner-service-workers service) :test #'eq)))))
+             :name "fn owner TLS accept")))
+      (push thread (fnn-owner-service-workers service))
+      thread)))
+
 (defun fnn-owner-accept (service listener once)
   ;; Darwin does not reliably wake a blocking accept(2) when another context
   ;; calls shutdown(2) on the listener.  Keep accept itself nonblocking and
@@ -2174,10 +2294,10 @@ here, and written only through fn-owner-sco-publication-done."
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
-                        connection-fault-operation)
+                        connection-fault-operation tls-port)
   "Run one service from already-normalized boundary values."
   (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-gc-nursery-octets+)
-  (let ((service nil) (listener nil)
+  (let ((service nil) (listener nil) (tls-listener nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -2189,6 +2309,13 @@ here, and written only through fn-owner-sco-publication-done."
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  ;; PRF-161: the listener this run binds decides the default
+                  ;; of every absent exposure row (fn-exp-address-publicp).
+                  (unless (member (fnn-owner-action 'fn-owner-exposure-install
+                                                    family
+                                                    (and address (coerce address 'list)))
+                                  '(:public :loopback))
+                    (fnn-fault "owner refused the exposure install"))
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)
@@ -2225,6 +2352,16 @@ here, and written only through fn-owner-sco-publication-done."
                         (dolist (hook (fnn-owner-service-start-hooks service))
                           (funcall hook service))
                         (fnn-out "LISTENING ~d" bound-port)
+                        ;; PRF-162: the implicit-TLS listener ACL2 offered
+                        ;; (fn-native-operator-result-run-implicit-tls-port),
+                        ;; on the same address, with its own accept thread.
+                        (when (and tls-port tls-context (not once))
+                          (multiple-value-bind (tls-bound tls-bound-port)
+                              (fnn-listen tls-port :address address :family family
+                                                   :backlog +fnn-owner-listen-backlog+)
+                            (setq tls-listener tls-bound)
+                            (fnn-owner-start-tls-accept service tls-bound)
+                            (fnn-out "LISTENING-TLS ~d" tls-bound-port)))
                         (fnn-owner-accept service listener once))))
                   (when *fnn-sigterm-requested*
                     (fnn-owner-stop-service service +fnn-exit-ok+))
@@ -2249,20 +2386,25 @@ here, and written only through fn-owner-sco-publication-done."
                     (fnn-owner-feed-close-all service)
                     (fnn-store-close (fnn-owner-service-store service)))
                (setq *fnn-sigterm-wakeup-fd* nil)
+               (when tls-listener (fnn-socket-shut tls-listener))
                (when listener (fnn-socket-shut listener)))))
       (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
             *fnn-sigterm-requested* old-requested
             *fnn-sigterm-owner-active* old-active))))
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
-                                 listener-port oncep max-connections &optional tls-context)
+                                 listener-port oncep max-connections &optional tls-context
+                                 tls-port)
   "Operator callback over ACL2-normalized projections; no argv semantics."
   (unless (and (typep store-octets 'fnn-octets)
                (typep listener-host-octets 'fnn-octets)
                (integerp listener-port) (<= 0 listener-port 65535)
                (member oncep '(t nil))
                (integerp max-connections) (> max-connections 0)
-               (or (null tls-context) (fnn-tls-context-p tls-context)))
+               (or (null tls-context) (fnn-tls-context-p tls-context))
+               (or (null tls-port)
+                   (and tls-context (integerp tls-port) (< 0 tls-port 65536)
+                        (/= tls-port listener-port) (not oncep))))
     (fnn-fault "malformed ACL2 owner run plan"))
   (let* ((root (fnn-octets-string store-octets))
          (projection
@@ -2287,7 +2429,7 @@ here, and written only through fn-owner-sco-publication-done."
       (fnn-owner-run root listener-port oncep max-connections
                      (or (fnn-post-entry-fault nil) (fnn-state-checkpoint-test-fault))
                      (fnn-octets address-list)
-                     family tls-context))))
+                     family tls-context nil tls-port))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

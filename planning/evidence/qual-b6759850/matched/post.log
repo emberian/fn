@@ -1,0 +1,2 @@
+post label=b6759850 rep=1 n=1000 {"n": 1000, "octets": 2048, "median_ms": 163.3, "p95_ms": 391.68, "max_ms": 2550.45, "load_s": 203.369, "owner_cpu_s": 3.36, "owner_cpu_ms_per_post": 3.36}
+post label=bbf52159 rep=1 n=1000 {"n": 1000, "octets": 2048, "median_ms": 150.09, "p95_ms": 422.17, "max_ms": 2843.67, "load_s": 217.961, "owner_cpu_s": 3.55, "owner_cpu_ms_per_post": 3.55}

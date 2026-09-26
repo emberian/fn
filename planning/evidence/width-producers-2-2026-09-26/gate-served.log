@@ -1,0 +1,17 @@
+init exit=0
+profile format=8 max-transactions=4 max-history-octets=250000 max-record-octets=196608 max-article-octets=150000 max-groups-per-article=8 max-group-name-octets=
+greeting 200 fn-nntp experimental server ready
+POST -> 340 send article to be posted
+article octets 148112 -> 240 article received OK
+QUIT -> 205 closing connection
+greeting 200 fn-nntp experimental server ready
+POST -> 340 send article to be posted
+article octets 148112 -> 441 posting failed; the store has no capacity for this article
+QUIT -> 205 closing connection
+committed files: 1, octets: 148613
+recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none
+open=full-replay reason=absent
+reopen exit=0
+transactions=1 articles=1 staging-orphans=0 unsigned-legacy-experiment
+profile format=8 max-transactions=4 max-history-octets=250000 max-record-octets=196608 max-article-octets=150000 max-groups-per-article=8 max-group-name-octets=
+open-cost replay-records=4 list-memory-octets=8000000

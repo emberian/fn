@@ -15,6 +15,8 @@
 (include-book "journal-publish")
 (include-book "native-config")
 (include-book "peer-config")
+; PRF-161: the exposure slots and the anonymous words `policy set' admits.
+(include-book "public-exposure-rows")
 (include-book "identity")
 (include-book "bp-eid-shape")
 ; The argv, decimal, result and config-name vocabulary, and the peer and
@@ -224,6 +226,26 @@
              (member-equal (cadddr words) '("bound-logins" "open")))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ; PRF-161 (books/public-exposure.lisp): what an unauthenticated
+       ; session may do, a durable `:set-policy' record applied live.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-exp-policy-slot*)
+             (fn-exp-anonymous-wordp (cadddr words)))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
+       ; PRF-161: a limit of the public reader port, a `:set-limit' row
+       ; (SLOT, "") staged, published and replayed like the retention rule.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (fn-exp-limit-slotp (caddr words))
+             (fn-native-admin-decimalp (cadddr words)))
+        (fn-native-admin-result :accepted nil :set-exposure (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two
@@ -307,6 +329,8 @@
                (if (equal name "release-after")
                    (fn-native-admin-result-capacity plan)
                  nil))))
+            ((equal kind :set-exposure)
+             (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
             ((equal kind :set-policy)
              (list (fn-cfg-set-policy
                     name

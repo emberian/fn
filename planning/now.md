@@ -475,3 +475,41 @@ The deputy's working state, with agent ids and queued briefs, is local in
 - Evidence: dated records in [`planning/evidence/`](evidence/) and certify
   manifests in [`planning/evidence/manifests/`](evidence/manifests/).
 - [Milestones](milestones.md): M0 to M6 and the current-task line.
+
+## Wave 2 under the Fable mandate (2026-09-25 23:30 to 2026-09-26 07:00 UTC; the wave-2 deputy)
+
+The restart record is `build/coordinator/WAVE-STATE.md` (its "START HERE"
+section); the mission is `handoff-2026-09-25-fable-mandate.md` with
+gpt-6's two reviews (`review-2026-09-26-gpt6-wave2.md`,
+`review-2026-09-26-gpt6-answers.md`); the decisions that wait on ember are
+`decisions-for-ember-2026-09-26.md`; the packets are
+`backlog-2026-09-25.md` (sweeps 2 to 9, PKT-180 to PKT-352).
+
+- **dev:** 27 lane merges since 483987b1, every merged lane's bytes certified
+  (`git log --first-parent 483987b1..dev`: each merge message states what
+  was proved, the numbers and what is not done). What a human or agent can
+  now do that they could not: settle a lost POST reply without a second
+  Message-ID (`reconcile`); two sleeping agents exchange a signed report and
+  reply across six ownership cuts, each verifying the signatures itself,
+  with an attempt journal that never turns an accepted operation into a
+  refused one; one authored article keeps one identity through POST, retry,
+  operator post, NNTP transit, BP carriage through dtn7 and reopen; the
+  four-node signed mission passes 7/7; pull a feed over STARTTLS as a
+  principal; a declined key statement stays declined across restarts (no
+  `:current` switch); the operator walks init to a recovered node through
+  the installed `fn`, gets an eight-state `health`, releases articles and
+  gets the disk and headroom back with maintenance always able to finish;
+  BP verbs answer distinct exit codes and the BP node's bounds are profile
+  fields; `store checkpoint` completes and reopens at N=10,000 x 32 KiB
+  (it died before); a proved payload arena (no host caller yet).
+- **The candidate `b6759850`** is frozen and imaged on hbox with its full
+  closure green (940 books); qualification is running. It is NOT
+  deployable until the ~20x per-record commit regression found after
+  483987b1 is closed (lane commit-regression). The live node stays on
+  `bbf52159`.
+- **Held:** chained packs (a real join with reclaim-lifecycle-2, being
+  assembled); the representation freeze (PKT-293, ember's; gpt-6's §1 is
+  the recommendation); the exit-code table and CONFLICT (the
+  coordinator's word).
+- **Blockers:** persvati's ACL2 pool held by 15 orphan REPL sessions
+  (PKT-346); hbox at load 6 to 9 all night.

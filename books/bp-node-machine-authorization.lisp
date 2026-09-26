@@ -305,10 +305,13 @@
              jobs)
             (fn-bpn-find-queued-for-peer peer jobs)))
   :hints
+  ;; The job recognizer and its field predicates opened in every case
+  ;; (354,000 steps); the argument needs only key uniqueness.
   (("Goal" :induct (fn-bpn-find-queued-for-peer peer jobs)
     :in-theory
-    (enable fn-bpn-find-queued-for-peer fn-bpn-find-job
-            fn-bpn-job-listp fn-bpn-job-key-memberp))))
+    (union-theories '(fn-bpn-find-queued-for-peer fn-bpn-find-job
+                      fn-bpn-job-listp fn-bpn-job-key-memberp)
+                    (theory 'minimal-theory)))))
 
 (defthm fn-bpn-attempt-proposal-is-authorized
   (implies
@@ -796,6 +799,10 @@
      '(fn-bpn-lifecycle-invariantp fn-bpn-pending-authorizedp)
      (theory 'minimal-theory)))))
 
+; The two effect theorems below keep nth and zp closed: the event's fields
+; are named by nth in the statement and the step alike, and opening nth
+; doubled the case split (1.8 s to 0.8 s each).
+;
 ; A convergence-layer send can leave the actual dispatcher only after the
 ; matching :attempting record has been reported durable.  The proposal
 ; relation binds the output to the exact retained route, peer, key and wire.
@@ -830,7 +837,7 @@
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp
        fn-bpn-effect-kind-memberp fn-bpn-answer-constructor-accessors
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
-       fn-bpn-member fn-cbor-ag-car car-cons cdr-cons true-listp nth zp)
+       fn-bpn-member fn-cbor-ag-car car-cons cdr-cons true-listp)
      (theory 'minimal-theory)))))
 
 ; Queue acceptance has two intentionally distinct authorities.  :durable is
@@ -892,5 +899,5 @@
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp
        fn-bpn-effect-kind-memberp fn-bpn-answer-constructor-accessors
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
-       fn-bpn-member fn-cbor-ag-car car-cons cdr-cons true-listp nth zp)
+       fn-bpn-member fn-cbor-ag-car car-cons cdr-cons true-listp)
      (theory 'minimal-theory)))))

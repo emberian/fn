@@ -41,13 +41,21 @@
                    ;; [alerts] headroom_min_percent, ACL2's projection of
                    ;; the run plan the host carried
                    ;; (fn-native-operator-result-health-min-percent).
-                   (fn-nh-answer-report kind
-                                        (fn-owner-store-profile state)
-                                        (fn-owner-ocfg state)
-                                        (if (boundp-global 'fn-owner-record-octets state)
-                                            (f-get-global 'fn-owner-record-octets state)
-                                          nil)
-                                        obs min)))))
+                   ;; PRF-161: `health' also carries the exposure lines
+                   ;; (books/public-exposure.lisp fn-exp-health-lines),
+                   ;; after the eight states, so the first line and its exit
+                   ;; code are fn-nh-render's unchanged.
+                   (append
+                    (fn-nh-answer-report kind
+                                         (fn-owner-store-profile state)
+                                         (fn-owner-ocfg state)
+                                         (if (boundp-global 'fn-owner-record-octets state)
+                                             (f-get-global 'fn-owner-record-octets state)
+                                           nil)
+                                         obs min)
+                    (if (equal kind :health)
+                        (fn-owner-exposure-health state)
+                      nil))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))
 

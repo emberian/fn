@@ -1,0 +1,10 @@
+DONE dtn
+DONE dtndev
+control rc=0
+dtn7-carried-1 rc=0
+dtn7-carried-2 rc=0
+dtn7-unauthorized rc=0
+mission-unsigned rc=0 wall=141
+mission-signed rc=0 wall=146
+ambiguous-peer rc=0
+LABS-DONE

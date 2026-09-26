@@ -224,3 +224,5 @@ PKT-244.
    `python3 -m unittest tests.test_bp_ingress_host tests.test_bp_receive
    tests.test_bp_receive_faults tests.test_media`), with the unaffordable
    answer mocked, not produced by ACL2.
+
+Harvested by assurance-triage (2026-09-26) as the scenario catalog's evidence log: [`gate-served.log`](width-producers-2-2026-09-26/gate-served.log), gate-served.log, copied from hbox /tank/fn/scratch/width-producers-2/, sha256 `4de4b1062565a378a1138fa706e9f2771bc6255d92797bfa2022a4150906fac7`.

@@ -168,3 +168,5 @@ operator walk):
 - Affected: books/native-health.lisp (a BP source), host/native/bp-node.lisp.
 - Continues without it: the store image's eight lines, with the NNTP feed as
   the transfer source.
+
+Named by assurance-triage (2026-09-26) as the scenario catalog's evidence log for SCN-070: [`summary.txt`](operator-health-2026-09-25/native-out/summary.txt), the output of `native.sh`, sha256 `7088a1905b3d47a8293a4821d5e1c368ef53cfd8a7575f1525fcd91dca67f010`.

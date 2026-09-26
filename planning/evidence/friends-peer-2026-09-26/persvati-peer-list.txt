@@ -1,0 +1,1 @@
+hbox-scratch.friends.fn.invalid path-identity=hbox-scratch.friends.fn.invalid address=192.168.50.39 port=11991 security=starttls inbound=local.*,control.cancel outbound=local.*,control.cancel auth=principal:70fc9ddc19170e4d65f8c9c063f56551a6e53c543a810ee79432bbc15a195b49

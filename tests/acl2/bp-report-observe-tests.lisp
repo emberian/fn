@@ -75,3 +75,15 @@
  (assert-event
   (equal (fn-bpn-report-observe-next (bproa-state) *bpnm-peer* nil)
          (list :observed 2 (fn-bpn-job-key (bproa-job)) (bproa-report)))))
+
+;; PRF-136: fn-bpn-report-observe-held-needs-an-administrative-header.
+;; Witness: the pending request's carrier (not administrative) is no report.
+;; Without the hypothesis: the held status report has an administrative
+;; header and is observed, so the conclusion fails.
+(assert-event
+ (and (not (fn-bpnf-held-administrative-headerp *bpah-held*))
+      (not (fn-bpn-report-observe-held (bproa-state) *bpah-held*
+                                       *bpnm-local*))))
+(assert-event
+ (and (fn-bpnf-held-administrative-headerp (bproa-held))
+      (fn-bpn-report-observe-held (bproa-state) (bproa-held) *bpnm-local*)))
