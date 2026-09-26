@@ -186,7 +186,30 @@ here.
 
 ## Certification
 
-CERT_PLACEHOLDER
+- `books/key-statements` (sha256 `992385d8...86f86d`): certified by the
+  native-r1 image step on hbox, manifest
+  planning/evidence/manifests/certify-20260926T060726Z-524058.json
+  (status passed, 3.5 s, 8 jobs, w28 toolchain; the other 373 books of the
+  image closure installed from the cache).
+- `tests/acl2/key-statements-tests` (sha256 `5956c332...283ddc`): hbox farm
+  run-20260926T063126Z-4fed (`--affected-by books/key-statements.lisp`, 2
+  jobs, 300 s), manifest
+  planning/evidence/manifests/certify-20260926T063151Z-588946.json, status
+  passed, 1.4 s; key-statements installed from the cache at these bytes. No
+  book over 10 s.
+- Before any farm run, every changed form ran in the REPL on persvati (the
+  book's 75 forms; the test book's forms, must-fails included).
+- The farm moved from persvati to hbox: all 16 persvati ACL2 slots are held
+  by long-lived `proof-repl` sessions of other lanes (peer-pull-repl,
+  operator-walk-r1, reclaim-d13-repl, k0-corollaries-repl (1 day),
+  peer-keys-repl, reclaim-lifecycle-repl, rep-wave-c-repl, status-join-repl,
+  consumer-e2-2-repl, ...), so a persvati submit waits in
+  `certs.py install-partial` for a slot indefinitely (this lane's waited 24
+  minutes and was cancelled). A coordinator item.
+- `make check-lane`: the only failure is the D26 ratchet on
+  `books/bp-node-job-offer` (11.6 s at 2 jobs, hbox
+  certify-20260926T044558Z-333541, dev's certification batch 17), a book
+  this lane does not touch, measured by a manifest already on dev (not re-run on dev here).
 
 ## Not done
 

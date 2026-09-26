@@ -5425,7 +5425,9 @@
         "host/owner-host.lisp",
         "host/native/owner.lisp",
         "tests/test_native_key_statements.py",
-        "planning/evidence/key-replay-fixture-2026-09-26.md"
+        "planning/evidence/key-replay-fixture-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T060726Z-524058.json",
+        "planning/evidence/manifests/certify-20260926T063151Z-588946.json"
       ],
       "events": [
         "fn-ks-accepted-statement-finishes-under-its-admission-context"
