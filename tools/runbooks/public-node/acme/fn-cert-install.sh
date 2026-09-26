@@ -7,7 +7,7 @@
 # certificate: gap packet c), so a renewal is a restart every ~60 days. The
 # feeds resume from their journals and readers reconnect.
 set -eu
-TLS=/srv/fn-public/node/tls
+TLS=/home/hbox/fn-public/node/tls
 : "${LEGO_CERT_PATH:?}" "${LEGO_CERT_KEY_PATH:?}"
 # Refuse a pair that does not match before touching the live files.
 [ "$(openssl x509 -noout -pubkey -in "$LEGO_CERT_PATH" | openssl sha256)" = \
@@ -19,7 +19,7 @@ install -m 0600 "$LEGO_CERT_KEY_PATH" "$TLS/.key.pem.new"
 mv "$TLS/.key.pem.new" "$TLS/key.pem"
 mv "$TLS/.cert.pem.new" "$TLS/cert.pem"
 # The same pair under the names deploy-fresh's --cert-dir reads.
-LIVE=/srv/fn-public/acme/live
+LIVE=/home/hbox/fn-public/acme/live
 install -d -m 0700 "$LIVE"
 install -m 0644 "$TLS/cert.pem" "$LIVE/.fullchain.pem.new" && mv "$LIVE/.fullchain.pem.new" "$LIVE/fullchain.pem"
 install -m 0600 "$TLS/key.pem" "$LIVE/.privkey.pem.new" && mv "$LIVE/.privkey.pem.new" "$LIVE/privkey.pem"

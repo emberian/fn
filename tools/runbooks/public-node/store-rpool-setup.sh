@@ -8,7 +8,7 @@
 # What it makes:
 #   rpool/fn-public   its own encryption root (raw 32-octet key in
 #                     /etc/zfs/keys/fn-public.key on the NVMe root, 0400 root),
-#                     mountpoint=legacy, mounted at /srv/fn-public by
+#                     mountpoint=legacy, mounted at /home/hbox/fn-public by
 #                     fn-store-rpool.service at every boot. The rest of rpool
 #                     stays exactly as it is (hand-unlocked, altroot /othersys).
 #   fn-store-snapshot.timer   hourly snapshots, 48 hourly + 14 daily kept.
@@ -29,7 +29,7 @@ APPLY=0
 [ "${1:-}" = "--apply" ] && APPLY=1
 HERE=$(cd "$(dirname "$0")" && pwd)
 DS=rpool/fn-public
-MNT=/srv/fn-public
+MNT=/home/hbox/fn-public
 KEY=/etc/zfs/keys/fn-public.key
 OWNER=hbox:hbox
 run() { echo "+ $*"; [ "$APPLY" = 1 ] && sh -c "$*"; return 0; }
@@ -39,6 +39,12 @@ zpool list -H rpool >/dev/null 2>&1 || { echo "rpool is not imported: unlock and
 avail=$(zfs get -Hp -o value available rpool)
 echo "rpool available: $avail octets"
 [ "$avail" -ge 53687091200 ] || { echo "rpool has under 50 GB free: use the NVMe fallback (a plain directory $MNT)"; exit 3; }
+# The same path is deploy_fresh.sh's `auto` (the NVMe fallback). A node
+# already there is refused: moving it onto rpool is a reinstall (D34), not a
+# mount over it.
+if [ -d "$MNT" ] && ! mountpoint -q "$MNT" && [ -n "$(ls -A "$MNT" 2>/dev/null)" ]; then
+  echo "$MNT is not empty and not a mount: a node is installed on the NVMe root there; stop (D34: reinstall onto rpool instead)"; exit 3
+fi
 if zfs list -H "$DS" >/dev/null 2>&1; then echo "$DS exists; not recreating"; else
   run "install -d -m 0700 /etc/zfs/keys"
   run "[ -e $KEY ] || (umask 077; dd if=/dev/urandom of=$KEY bs=32 count=1 status=none)"

@@ -57,7 +57,7 @@ you name, or the public node cannot push to you. If it is not, see
 "a node behind NAT" below.
 
 In the commands below, `$F` is `bin/fn` and `$C` is `fn.toml`. `ME` is ember
-on the public node, and `YOU` is spwashi or pug. `N=/srv/fn-public` on the
+on the public node, and `YOU` is spwashi or pug. `N=/home/hbox/fn-public` on the
 public node.
 
 ### A1. The invitation (ember)
