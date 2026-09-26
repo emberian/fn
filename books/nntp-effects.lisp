@@ -417,6 +417,24 @@
                             fn-nntp-safe-group-listp)
                            (fn-nntp-active-line)))))
 
+; O2: the status field is "y" or "n", two printable octets.
+(defthm fn-nntp-active-status-line-is-response-text
+  (implies (fn-nntp-safe-group-namep group)
+           (fn-nntp-response-textp
+            (fn-nntp-active-status-line archive group closed)))
+  :hints (("Goal" :in-theory (enable fn-nntp-active-status-line
+                                     fn-nntp-closed-status
+                                     fn-nntp-append-pieces))))
+
+(defthm fn-nntp-active-status-lines-are-response-text
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-block-textp
+            (fn-nntp-active-status-lines archive groups closed)))
+  :hints (("Goal" :induct (fn-nntp-active-status-lines archive groups closed)
+           :in-theory (e/d (fn-nntp-active-status-lines fn-nntp-block-textp
+                            fn-nntp-safe-group-listp)
+                           (fn-nntp-active-status-line)))))
+
 ; RFC 6048 LIST COUNTS lines: the group name and three decimal fields.
 (defthm fn-nntp-counts-summary-line-is-response-text
   (implies (fn-nntp-safe-group-namep group)
@@ -1340,6 +1358,29 @@
                     fn-nntp-xpat-msgid-lines
                     fn-nntp-xpat-response))
 
+(defthm fn-nntp-effects-list-active-status
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-list-active-status session archive groups closed))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-active-status)
+                                  (fn-nntp-active-status-lines)))))
+
+(defthm fn-nntp-effects-list-status-response
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-list-status-response session archive closed args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-status-response)
+                                  (fn-nntp-projectionp fn-statep
+                                   fn-state-groups fn-state-articles
+                                   fn-state-nexts fn-nntp-keywordp
+                                   fn-nntp-keyword-tokenp
+                                   fn-nntp-list-response
+                                   fn-nntp-list-active-status
+                                   fn-nntp-filter-groups-by-wildmat
+                                   fn-wildmat-parse)))))
+
 ; PRF-195: LIST NEWSGROUPS with the reader listing's descriptions, and LIST
 ; MOTD.  A description is sent only when it is printable ASCII, which is
 ; response text; otherwise the marker is, which fn-nntp-newsgroup-lines
@@ -1398,6 +1439,7 @@
                                    fn-nntp-keyword-tokenp
                                    fn-nntp-list-response
                                    fn-nntp-list-counts-command
+                                   fn-nntp-list-status-response
                                    fn-nntp-list-active-times)))))
 
 (in-theory (disable fn-nntp-list-command))

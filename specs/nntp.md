@@ -692,6 +692,100 @@ recomputes for unsigned articles: its duplicate key is the Message-ID. For a
 signed carrier the receiver verifies the author's signature over
 `fn-hc-authored-source`, which drops exactly the node-added fields.
 
+### Read-only groups (NNT-040)
+
+NNT-040: a group the operator sets read-only (`group policy NAME n`) refuses a local POST that names it with a 441 naming the reason, and LIST ACTIVE lists it with status `n`, from the same configured list on the same connection
+
+RFC 3977 section 7.6.3 gives LIST ACTIVE a status field: `y` (posting
+permitted) or `n` (posting not permitted). RFC 6048 section 2.1 names the
+other values; fn serves `y` and `n` only (`m` is moderation, deferred with
+P3; `x`, `j` and `=` are not served). `n` means *local* postings are not
+permitted: articles relayed by peers (IHAVE, TAKETHIS, BP) still arrive,
+which is the RFC's meaning of the flag and not a stronger fn guarantee.
+
+- **Configuration.** `operator CONFIG group policy NAME n|y` (offline, or
+  live through the control socket) stages `(:set-group-status NAME STATUS 0
+  nil)`, configuration delta code 21 (`books/config.lisp`), admitted only for
+  a live group and `y` or `n` (`:no-such-group`, `:group-status`). The fold
+  rewrites the group entry's policy identifier (`*fn-cfg-read-only-policy-id*` is
+  `n`, the default `*fn-cfg-default-policy-id*` is `y`); nothing else about the
+  group changes. Keystone `fn-cfg-set-group-status-sets-the-status`
+  (`books/config-invariants.lisp`) over `fn-cfg-apply-delta`: the status set
+  is the status read, and no other group's changes. No store record and no
+  format changes: the value is replayed, and the delta kind is a code of the
+  existing record codec.
+- **One list.** The owner's posting configuration
+  (`books/owner-agent.lisp` `fn-oag-post-config`, installed at recovery and
+  at every live reconfiguration) carries `fn-cfg-closed-names`, the live
+  groups whose status is `n` (`fn-cfg-closed-names-are-the-n-groups`). A
+  connection answers from the configuration it pinned, like every other
+  served answer: a connection opened before the change keeps its answer
+  until it re-pins.
+- **POST.** `fn-nntp-post-step` runs the gate `fn-gst-post-gate`
+  (`books/group-status.lisp`) on an article the injection decision accepts
+  (`fn-post-gated-decision`); every refusal the decision makes keeps its own
+  line, so a clockless server still answers the clock line. An ordinary
+  article (no Control field) that names a closed group, alone or in a
+  cross-post, is answered
+  `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)`
+  and nothing is submitted. A control message (a cancel) is not a posting to
+  the group and is not gated; a Supersedes article is a posting and is.
+- **LIST ACTIVE.** LIST and LIST ACTIVE [wildmat] render each group's status
+  with `fn-nntp-closed-status` of the same list
+  (`fn-nntp-list-status-response`, through the environment
+  `fn-post-reader-env` builds from the connection's configuration); with no
+  group closed the answer is byte-for-byte the earlier one.
+- **The claim.** Keystone `fn-gst-post-gate-refuses-exactly-a-listed-n-group`:
+  the gate refuses exactly when the article names a group whose listed
+  status is `n`. LIST COUNTS still reports `y` for every group (PKT-575).
+
+### Own-post cancel and Cancel-Lock (SEC-006)
+
+SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
+
+Status: **specified, not implemented** (PKT-575; the decision is PKT-576,
+planning/evidence/group-policy-2026-09-26.md).
+
+Today a cancel or Supersedes from an ordinary newsreader is filed and
+withdraws nothing: only a verified signed canceller acts
+(`fn-ctl-withdrawal-plan` declines `:unsigned`). RFC 5537 section 5.3
+leaves cancel authentication to local policy; the same-login basis is a
+local policy (the coordinator's decision P1), Cancel-Lock is RFC 8315.
+
+The obstruction, measured in the tree: nothing durable names an unsigned
+article's posting login. The Store's kind-4 record does not
+(planning/evidence/path-and-login-2026-09-25.md, "The Store's kind-4 record
+does not; that remains open"), and the injected octets carry only the
+agent (`fn-inj-injection-info-line`). A withdrawal is decided at
+`fn-own-refresh` from durable state (`fn-ctl-journal-withdrawals` over the
+articles and their stored verdicts), so a basis that compares logins has
+nothing to compare against after a restart. D34 excludes adding the login
+to the Store record (a format change).
+
+The proposed design (the default of PKT-576): the node puts the login's
+material in the article's own octets, as RFC 8315 does:
+
+- at injection, the node adds `Cancel-Lock: sha256:BASE64(SHA256(K))` with
+  `K = BASE64(HMAC-SHA256(S, MSGID || LOGIN))` (RFC 8315 section 4's
+  recommended construction), S a 32-octet node secret created at `init`
+  beside the store's configuration and never served;
+- a cancel (Control: cancel, or Supersedes) POSTed by an authenticated
+  login gets `Cancel-Key: sha256:K'` for its target, computed from that
+  login; the withdrawal plan accepts an unsigned cause whose Cancel-Key
+  hashes to a Cancel-Lock of the target (RFC 8315 section 3), with the hash
+  in ACL2 (`books/sha256.lisp`, executable) and HMAC over it;
+- a friend's cancel from another node travels with its Cancel-Key, so every
+  node that holds the target decides the same way (visible(T,C) =
+  visible(C,T) keeps holding: the decision reads the two articles only);
+- the D25 inverse (`fn-inj-source-of`) must strip the injected Cancel-Lock.
+
+What it proves and what it cannot: acceptance is exact (the cancel's key
+hashes to the lock), and the same login is always accepted. "A different
+login is refused" holds only up to a SHA-256 second preimage of the lock
+(2^256 generic work; the collision figure, 2^128, does not apply because
+the lock is fixed before the forger chooses), an assumption to be named in
+`books/assumptions.lisp`, never a theorem about the real hash.
+
 ### Not yet true of POST
 
 There is no

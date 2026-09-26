@@ -199,6 +199,36 @@
            (fn-nntp-decimal-field (fn-nntp-summary-low summary))
            (fn-nntp-string-octets " y")))))
 
+; O2: the status field (RFC 3977 section 7.6.3) of a group under CLOSED,
+; the octets of the groups whose configured status is "n" (see
+; `fn-nntp-env-with-closed' below).
+(defun fn-nntp-closed-memberp (octets closed)
+  (declare (xargs :guard t))
+  (if (consp closed)
+      (or (equal octets (car closed))
+          (fn-nntp-closed-memberp octets (cdr closed)))
+    nil))
+
+; The status field of a group whose name is OCTETS, under CLOSED.
+(defun fn-nntp-closed-status (octets closed)
+  (declare (xargs :guard t))
+  (if (fn-nntp-closed-memberp octets closed) "n" "y"))
+
+(defun fn-nntp-active-status-line (archive group closed)
+  (let ((summary (fn-nntp-group-summary archive group)))
+    (fn-nntp-append-pieces
+     (list (fn-nntp-string-octets group) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-low summary)) '(32)
+           (fn-nntp-string-octets
+            (fn-nntp-closed-status (fn-nntp-string-octets group) closed))))))
+
+(defun fn-nntp-active-status-lines (archive groups closed)
+  (if (consp groups)
+      (cons (fn-nntp-active-status-line archive (car groups) closed)
+            (fn-nntp-active-status-lines archive (cdr groups) closed))
+    nil))
+
 (defun fn-nntp-active-lines (archive groups)
   (if (consp groups)
       (cons (fn-nntp-active-line archive (car groups))
@@ -276,6 +306,10 @@
 (defun fn-nntp-list-active (session archive groups)
   (fn-nntp-multi session "215 list of active newsgroups follows"
                  (fn-nntp-active-lines archive groups)))
+
+(defun fn-nntp-list-active-status (session archive groups closed)
+  (fn-nntp-multi session "215 list of active newsgroups follows"
+                 (fn-nntp-active-status-lines archive groups closed)))
 
 (defun fn-nntp-list-counts (session archive groups)
   (fn-nntp-multi session "215 list of newsgroups follows"
@@ -567,7 +601,7 @@
 ; global.
 (defun fn-nntp-env (observation facts posting)
   (declare (xargs :guard t :verify-guards nil))
-  (list :fn-nntp-env observation facts posting nil))
+  (list :fn-nntp-env observation facts posting nil nil))
 
 ; The fourth field is the reader listing the connection's pinned
 ; configuration carries (PRF-195): (DESCS MOTD), DESCS an alist from a group
@@ -578,7 +612,7 @@
 ; MOTD answers an empty block.
 (defun fn-nntp-env-listed (observation facts posting listing)
   (declare (xargs :guard t :verify-guards nil))
-  (list :fn-nntp-env observation facts posting listing))
+  (list :fn-nntp-env observation facts posting listing nil))
 
 (defun fn-nntp-env-observation (x)
   (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
@@ -592,9 +626,31 @@
   (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
 
+; O2 (read-only groups).  The sixth field: the octets of each served group
+; whose configured status is "n" (books/config.lisp `fn-cfg-closed-names'),
+; taken from the connection's pinned posting configuration by
+; books/nntp-post.lisp `fn-post-reader-env'.  LIST ACTIVE's status field
+; (RFC 3977 section 7.6.3) is `fn-nntp-closed-status' of it, and the served
+; POST gate (books/group-status.lisp) refuses an article naming a group of
+; it: one list, one reader.  An environment with none closes no group.
+(defun fn-nntp-env-full (observation facts posting listing closed)
+  (declare (xargs :guard t :verify-guards nil))
+  (list :fn-nntp-env observation facts posting listing closed))
+
+(defun fn-nntp-env-with-closed (observation facts posting closed)
+  (declare (xargs :guard t :verify-guards nil))
+  (list :fn-nntp-env observation facts posting nil closed))
+
+(defun fn-nntp-env-closed (x)
+  (declare (xargs :guard t))
+  (if (and (consp x) (consp (cdr x)) (consp (cddr x)) (consp (cdddr x))
+           (consp (cddddr x)) (consp (cdr (cddddr x))))
+      (car (cdr (cddddr x)))
+    nil))
+
 (defun fn-nntp-envp (x)
   (and (true-listp x)
-       (equal (len x) 5)
+       (equal (len x) 6)
        (equal (car x) :fn-nntp-env)
        (fn-clock-observationp (fn-nntp-env-observation x))
        (fn-nntp-group-fact-listp (fn-nntp-env-facts x))
@@ -1289,6 +1345,10 @@
 (verify-guards fn-nntp-env-listing)
 
 (verify-guards fn-nntp-envp)
+
+(verify-guards fn-nntp-env-full)
+
+(verify-guards fn-nntp-env-with-closed)
 
 (verify-guards fn-nntp-blind-env)
 
@@ -2175,6 +2235,32 @@
             (fn-nntp-single session "501 syntax error")))
       (fn-nntp-single session "501 syntax error"))))
 
+; LIST and LIST ACTIVE [wildmat] with the status field of CLOSED (O2): the
+; argument grammar of `fn-nntp-list-active-or-newsgroups', every other
+; variant `fn-nntp-list-response''s.
+(defun fn-nntp-list-status-response (session archive closed args)
+  (if (null args)
+      (fn-nntp-list-active-status session archive (fn-state-groups archive)
+                                  closed)
+    (if (and (consp args)
+             (fn-nntp-keyword-tokenp (car args))
+             (fn-nntp-keywordp (car args) "ACTIVE"))
+        (let ((arguments (cdr args)))
+          (if (null arguments)
+              (fn-nntp-list-active-status session archive
+                                          (fn-state-groups archive) closed)
+            (if (and (consp arguments) (null (cdr arguments)))
+                (let ((parsed (fn-wildmat-parse (car arguments))))
+                  (if (fn-wildmat-result-okp parsed)
+                      (fn-nntp-list-active-status
+                       session archive
+                       (fn-nntp-filter-groups-by-wildmat
+                        (fn-wildmat-result-value parsed)
+                        (fn-state-groups archive))
+                       closed)
+                    (fn-nntp-single session "501 syntax error")))
+              (fn-nntp-single session "501 syntax error"))))
+      (fn-nntp-list-response session archive args))))
 ;; -----------------------------------------------------------------------------
 ;; LIST NEWSGROUPS with descriptions (RFC 3977 section 7.6.6) and LIST MOTD
 ;; (RFC 6048 section 2.5), from the reader listing (PRF-195, NNT-039).
@@ -2290,7 +2376,13 @@
                  (fn-nntp-keyword-tokenp (car args))
                  (fn-nntp-keywordp (car args) "MOTD"))
             (fn-nntp-list-motd session env (cdr args))
-          (fn-nntp-list-response session archive args))))))
+          ;; O2: with a closed group, LIST and LIST ACTIVE carry each
+          ;; group's status; with none, the answer is exactly the earlier
+          ;; one.
+          (if (consp (fn-nntp-env-closed env))
+              (fn-nntp-list-status-response session archive
+                                            (fn-nntp-env-closed env) args)
+            (fn-nntp-list-response session archive args)))))))
 
 (verify-guards fn-nntp-xover-range)
 (verify-guards fn-nntp-xover-response)
@@ -2334,6 +2426,10 @@
 (verify-guards fn-nntp-active-times-lines)
 (verify-guards fn-nntp-filter-facts-by-wildmat)
 (verify-guards fn-nntp-list-active-times)
+(verify-guards fn-nntp-active-status-line)
+(verify-guards fn-nntp-active-status-lines)
+(verify-guards fn-nntp-list-active-status)
+(verify-guards fn-nntp-list-status-response)
 (verify-guards fn-nntp-described-lines)
 (verify-guards fn-nntp-list-newsgroups-described)
 (verify-guards fn-nntp-list-motd)
@@ -2402,6 +2498,9 @@
     fn-nntp-env-observation fn-nntp-env-facts fn-nntp-env-posting
     fn-nntp-env-listed fn-nntp-env-listing
     fn-nntp-envp fn-nntp-blind-env
+    fn-nntp-env-full fn-nntp-env-with-closed fn-nntp-env-closed fn-nntp-closed-memberp
+    fn-nntp-closed-status fn-nntp-active-status-line fn-nntp-active-status-lines
+    fn-nntp-list-active-status fn-nntp-list-status-response
     fn-nntp-unix-dtn-ms fn-nntp-host-observation fn-nntp-div fn-nntp-mod
     fn-nntp-civil-from-days fn-nntp-days-from-civil fn-nntp-dtn-civil
     fn-nntp-civil-year fn-nntp-civil-month fn-nntp-civil-day
