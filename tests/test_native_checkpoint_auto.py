@@ -35,7 +35,6 @@ after 64 POSTs):
 """
 import hashlib
 import re
-import select
 import socket
 import time
 import unittest
@@ -111,20 +110,34 @@ class AutoCheckpointFixture(scp.StateCheckpointFixture):
     def owner_line(self, owner, pattern, deadline=180.0, nudge=True):
         """The first stderr line of OWNER matching PATTERN within DEADLINE
         seconds, opening a connection now and then (the owner publishes
-        between accepts), or None."""
+        between accepts), or None.
+
+        The owner's stderr is a FILE (start_filed, PKT-505), not a pipe: a
+        read at the file's current end returns b"" while the owner lives,
+        and select() always reports a regular file ready.  So end of file
+        means "no new line yet", a line without its LF is kept until the
+        rest arrives, and only the owner's exit (poll()) fails the wait."""
         seen = []
+        partial = b""
         end = time.monotonic() + deadline
         while time.monotonic() < end:
-            ready = select.select([owner.stderr], [], [], 0.25)[0]
-            if ready:
-                line = owner.stderr.readline()
-                if not line:
-                    self.fail("the owner closed its stderr; lines so far: {!r}".format(seen))
+            chunk = owner.stderr.readline()
+            if chunk:
+                partial += chunk
+                if not partial.endswith(b"\n"):
+                    continue
+                line, partial = partial, b""
                 seen.append(line)
                 match = pattern.search(line)
                 if match:
                     return match
                 continue
+            status = owner.poll()
+            if status is not None:
+                rest = owner.stderr.read()
+                self.fail("the owner exited with status {} before the line; lines so far: {!r}"
+                          .format(status, seen + ([partial + rest] if partial or rest else [])))
+            time.sleep(0.25)
             if nudge:
                 with socket.create_connection(("127.0.0.1", self.port), timeout=30) as conn:
                     conn.recv(256)
