@@ -451,8 +451,9 @@ def read_all(connection: socket.socket) -> bytes:
 
 # --- the client ----------------------------------------------------------------
 
-def ask(name: str, request: dict, timeout: float = 3600) -> dict:
-    sock_path = session_dir(name) / "sock"
+def ask(name: str, request: dict, timeout: float = 3600,
+        sock_path: Path | None = None) -> dict:
+    sock_path = sock_path or session_dir(name) / "sock"
     if not sock_path.exists():
         raise SystemExit(f"proof-repl: no live session {name!r} (start it first)")
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -633,13 +634,17 @@ def _is_acl2_group(pgid) -> bool:
     return any(word.endswith("tools/acl2") for word in _command_of(pgid).split())
 
 
-def session_rows() -> list[dict]:
-    """Every session directory's state, with its liveness, age and idle time."""
+def session_rows(roots: list[str] | None = None) -> list[dict]:
+    """Every session directory's state, with its liveness, age and idle time.
+
+    ``roots`` are other trees (each ROOT/build/proof-repl) to read instead of
+    this one's: persvati keeps one tree per lane under ~/fn-gates.
+    """
     rows = []
-    if not SESSIONS.exists():
-        return rows
+    bases = [Path(root) / "build" / "proof-repl" for root in roots] if roots else [SESSIONS]
     now = time.time()
-    for directory in sorted(SESSIONS.iterdir()):
+    directories = [d for base in bases if base.is_dir() for d in sorted(base.iterdir())]
+    for directory in directories:
         state_path = directory / "state.json"
         if not state_path.is_file():
             continue
@@ -677,7 +682,7 @@ def _duration(seconds: float) -> str:
 
 
 def list_sessions(args) -> int:
-    rows = session_rows()
+    rows = session_rows(getattr(args, "root", None))
     if not rows:
         print("proof-repl: no sessions")
         return 0
@@ -690,7 +695,8 @@ def list_sessions(args) -> int:
         deadline = row["deadline"]
         print(f"{row['name']:24} {status_word:6} {(state.get('lane') or '-'):24} "
               f"{_duration(row['age']):>7} {_duration(row['idle']):>7} "
-              f"{(_duration(deadline) if deadline else 'none'):>8} {state.get('book')}")
+              f"{(_duration(deadline) if deadline else 'none'):>8} {state.get('book')}"
+              + (f"  [{row['directory'].parent.parent.parent}]" if getattr(args, "root", None) else ""))
     return 0
 
 
@@ -717,7 +723,8 @@ def reap_one(row: dict) -> str:
     name, state = row["name"], row["state"]
     if row["server"] and row["socket"]:
         try:
-            if ask(name, {"op": "stop"}, timeout=30).get("stopped"):
+            if ask(name, {"op": "stop"}, timeout=30,
+                   sock_path=row["directory"] / "sock").get("stopped"):
                 return "stopped through its socket"
         except (SystemExit, OSError, ValueError):
             pass
@@ -740,7 +747,7 @@ def reap_one(row: dict) -> str:
 
 
 def reap(args) -> int:
-    rows = session_rows()
+    rows = session_rows(args.root)
     chosen = [(row, reason) for row in rows
               for reason in [reap_reason(row, args.lane, args.older_than)] if reason]
     if not chosen:
@@ -799,12 +806,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("name")
     p.set_defaults(run=stop)
     p = sub.add_parser("list", help="each session's lane, age, idle time and deadline")
+    p.add_argument("--root", action="append", default=None, metavar="TREE",
+                   help="read TREE/build/proof-repl instead of this tree's (repeatable)")
     p.set_defaults(run=list_sessions)
     p = sub.add_parser("reap", help="stop dead, overdue or a lane's sessions")
     p.add_argument("--lane", default=None, help="every session tagged with this lane")
     p.add_argument("--older-than", type=float, default=None, metavar="S",
                    help="live sessions idle at least S seconds")
     p.add_argument("--dry-run", action="store_true", help="say what would be reaped")
+    p.add_argument("--root", action="append", default=None, metavar="TREE",
+                   help="reap in TREE/build/proof-repl instead of this tree's (repeatable)")
     p.set_defaults(run=reap)
     args = parser.parse_args(argv)
     return args.run(args)
