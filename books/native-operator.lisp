@@ -458,7 +458,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention" "account")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention" "account" "motd")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -483,7 +483,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
          "usage: fn operator CONFIG store {upgrade-profile [development|scale|default] [--FIELD N ...] [--history-marker required] | needs-upgrade | rollback-check KEPT-CONFIG-JSON | rollback-check --snapshot SNAPSHOT-STORE | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID} (offline; refused while an owner runs; no field may shrink; required needs a covering marker and is never undone)")
-        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
+        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it)")
+        ((equal subject "motd")
+         "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
          "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
@@ -504,7 +506,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account|motd} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -699,7 +701,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
-                 (equal command "control") (equal command "retention"))
+                 (equal command "control") (equal command "retention")
+                 (equal command "motd"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -1123,6 +1126,7 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "policy")
            (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")
+           (equal (fn-native-operator-result-command result) "motd")
            (and (equal (fn-native-operator-result-command result) "account")
                 (not (equal (fn-ncfg-first
                              (fn-native-operator-result-arguments result))
@@ -1288,6 +1292,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "bp-route")
                (equal (fn-native-operator-result-command result) "policy")
                (equal (fn-native-operator-result-command result) "retention")
+               (equal (fn-native-operator-result-command result) "motd")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((and (equal (fn-native-operator-result-command result) "account")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))

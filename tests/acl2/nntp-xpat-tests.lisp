@@ -159,5 +159,5 @@
                               (list :command (fn-nntp-string-octets "CAPABILITIES"))))
         (xp-block "101 capability list follows"
                   '("VERSION 2" "READER" "OVER MSGID" "HDR" "XPAT" "NEWNEWS"
-                    "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT"
+                    "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT"
                     "IMPLEMENTATION fn-nntp-lab"))))

@@ -2552,7 +2552,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/mailbox.lisp",
         "books/injection.lisp",
@@ -7014,6 +7014,53 @@
         "fn-ocar-ocfg-open-keeps-store",
         "fn-osi-ocar-exp-open-keeps-store",
         "fn-sco-thaw-checked-accepts-own-publication"
+      ]
+    },
+    {
+      "id": "PRF-195",
+      "title": "LIST NEWSGROUPS and LIST MOTD show exactly the descriptions and message the connection's pinned configuration holds, set by a live :set-group-description record (code 20) that changes only the name it keys",
+      "statement": "Over the served step the host runs (host/owner-host.lisp fn-owner-chunk -> fn-served-step), a framed LIST NEWSGROUPS [wildmat] line answers fn-nntp-list-newsgroups-described over the pinned archive's groups and the descriptions of the connection's posting configuration's listing (fn-served-step-list-newsgroups-is-the-described-listing), and LIST MOTD answers fn-nntp-list-motd over that listing's message (fn-served-step-list-motd-is-the-configured-message); a description is sent when it is non-empty printable ASCII and otherwise the (no description) marker, and with no listing the reply is the marker listing of before (fn-nntp-described-lines-of-no-descs). The listing of the posting configuration books/owner-agent.lisp fn-oag-post-config builds (host/owner-host.lisp fn-owner-post-config; installed by fn-ocl-publish after each published record) holds, for a group G, G's description in the configuration's eleventh slot exactly when G is served and has one (fn-oag-description-of-the-listing), and the node's message lines (fn-oag-motd-of-the-listing). Over fn-cfg-apply-delta (replay and live staging), the :set-group-description delta for NAME makes NAME's description its pieces concatenated (fn-cfg-description-after-set-is-its-pieces), leaves every other name's text (fn-cfg-description-after-set-of-another-name), makes the node's message (NAME \"\") its lines (fn-cfg-motd-after-set-is-its-lines), and no other kind touches the slot (fn-cfg-descriptions-of-other-kinds); fn-cfg-delta-reason refuses a name that is neither \"\" nor a live group (:no-such-group, by definition) and admits only the delta's own printable rows (fn-cfg-admitted-description-rows-are-printable). The reader listing is not an input of the injection decision (fn-inj-decide-ignores-the-listing).",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-039"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config.lisp",
+        "books/config-descriptions.lisp",
+        "books/owner-descriptions-read.lisp",
+        "books/owner-agent.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp-effects.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/group-descriptions-tests.lisp",
+        "tests/test_native_reader_index.py",
+        "planning/evidence/usenet-headers-2026-09-26.md"
+      ],
+      "progress_note": "usenet-headers (2026-09-26): slot, delta code 20, operator verbs, served keystones and teeth certified in the lane's persvati REPL tree (not a batch manifest); native case written, run on hbox pending the batch.",
+      "events": [
+        "fn-cfg-description-after-set-is-its-pieces",
+        "fn-cfg-description-after-set-of-another-name",
+        "fn-cfg-motd-after-set-is-its-lines",
+        "fn-cfg-descriptions-of-other-kinds",
+        "fn-cfg-admitted-description-rows-are-printable",
+        "fn-oag-description-of-descs",
+        "fn-oag-description-of-the-listing",
+        "fn-oag-motd-of-the-listing",
+        "fn-nntp-archive-command-pinned-list-newsgroups",
+        "fn-nntp-archive-command-pinned-list-motd",
+        "fn-served-dispatch-list-newsgroups",
+        "fn-served-dispatch-list-motd",
+        "fn-served-step-list-newsgroups-is-the-described-listing",
+        "fn-served-step-list-motd-is-the-configured-message",
+        "fn-nntp-described-lines-of-no-descs",
+        "fn-nntp-described-lines-are-response-text",
+        "fn-nntp-motd-lines-are-response-text",
+        "fn-nntp-effects-list-newsgroups-described",
+        "fn-nntp-effects-list-motd",
+        "fn-inj-decide-ignores-the-listing"
       ]
     }
   ]

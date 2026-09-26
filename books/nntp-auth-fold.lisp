@@ -138,6 +138,7 @@
                   fn-nntp-group-result fn-nntp-listgroup-command
                   fn-nntp-listgroup-result
                   fn-nntp-list-command fn-nntp-list-response
+                  fn-nntp-list-newsgroups-described fn-nntp-list-motd
                   fn-nntp-list-counts-command fn-nntp-list-counts
                   fn-nntp-list-active fn-nntp-list-active-times
                   fn-nntp-list-active-or-newsgroups
@@ -277,7 +278,7 @@
     (fn-nntp-result-effects
      (fn-nntp-step-pinned
       (fn-post-session-base ps) archive index verdicts
-      (fn-nntp-env observation nil (and (fn-inj-config-allow config) t))
+      (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config))
       wire-event))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-post-step-pinned)
@@ -308,9 +309,10 @@
   :hints (("Goal"
            :use ((:instance fn-auth-fold-reader-offer-has-a-post-command-origin
                             (session (fn-post-session-base ps))
-                            (env (fn-nntp-env
+                            (env (fn-nntp-env-listed
                                   observation nil
-                                  (and (fn-inj-config-allow config) t)))))
+                                  (and (fn-inj-config-allow config) t)
+                                  (fn-inj-config-listing config)))))
            :in-theory (disable fn-nntp-post-step-pinned
                                fn-nntp-step-pinned fn-post-offeredp))))
 
