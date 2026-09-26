@@ -55,7 +55,7 @@
            (e/d (fn-sn-recover fn-cei-correspondencep
                   fn-sn-with-topic fn-sn-with-event-index
                   fn-sn-with-consumer fn-sn-update-replayed)
-                (fn-sn-statep fn-sn-make-v6 fn-sn-make-v7 fn-sn-event-index fn-sn-files
+                (fn-sn-statep fn-sn-make-v6 fn-sn-event-index fn-sn-files
                  fn-sf-recover
                  fn-sf-replay-node fn-replay-identity
                  fn-cpe-projection-replay fn-th-prefix-project
@@ -81,7 +81,7 @@
            :in-theory (e/d (fn-ceis-relatedp fn-sn-io fn-sn-file-step
                             fn-sf-record-dir-result
                             fn-store-files-traces-vocabulary)
-                           (fn-sn-update fn-sn-with-event-index fn-sn-make-v6 fn-sn-make-v7
+                           (fn-sn-update fn-sn-with-event-index fn-sn-make-v6
                             fn-sf-statep fn-store-event-p
                             fn-cei-correspondencep fn-cei-build
                             fn-cei-build-aux fn-cei-put fn-cei-put-digits
@@ -95,7 +95,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-ceis-relatedp fn-sn-prepare-consumer
                   fn-store-files-traces-vocabulary)
-                (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
+                (fn-sn-update fn-sn-make-v6
                  fn-sn-statep fn-sf-statep fn-store-event-p
                  fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))
@@ -108,7 +108,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-ceis-relatedp fn-sn-prepare-retention
                   fn-store-files-traces-vocabulary)
-                (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
+                (fn-sn-update fn-sn-make-v6
                  fn-sn-statep fn-sf-statep fn-store-event-p
                  fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))
@@ -121,7 +121,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-ceis-relatedp fn-sn-prepare-identity
                   fn-store-files-traces-vocabulary)
-                (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
+                (fn-sn-update fn-sn-make-v6
                  fn-sn-statep fn-sf-statep fn-store-event-p
                  fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux
@@ -135,7 +135,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-ceis-relatedp fn-sn-prepare-topic
                   fn-store-files-traces-vocabulary)
-                (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
+                (fn-sn-update fn-sn-make-v6
                  fn-sn-statep fn-sf-statep fn-store-event-p
                  fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))
@@ -148,7 +148,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-ceis-relatedp fn-sn-prepare
                   fn-store-files-traces-vocabulary)
-                (fn-sn-update fn-sn-make-v6 fn-sn-make-v7
+                (fn-sn-update fn-sn-make-v6
                  fn-sn-statep fn-sf-statep fn-store-event-p
                  fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))
@@ -166,7 +166,7 @@
                   fn-sn-advance-identity-next
                   fn-sn-with-topic fn-sn-with-consumer
                   fn-sn-update-indexed fn-sn-update-accepted)
-                (fn-sn-make-v6 fn-sn-make-v7 fn-sn-event-index
+                (fn-sn-make-v6 fn-sn-event-index
                  fn-sn-completion-enabledp fn-sn-completion-record
                  fn-store-retention-event-p fn-stxe-p fn-stxk-p
                  fn-stxa-p fn-cpe-eventp fn-th-topic-eventp
@@ -188,7 +188,7 @@
                   fn-sn-update-indexed fn-sn-update-accepted
                   fn-sf-records-of-core-completion
                   fn-sf-records-of-emit-success)
-                (fn-sn-make-v6 fn-sn-make-v7 fn-sn-files
+                (fn-sn-make-v6 fn-sn-files
                  fn-sf-core-completion fn-sf-emit-success
                  fn-sn-completion-enabledp fn-sn-completion-record
                  fn-store-retention-event-p fn-stxe-p fn-stxk-p
@@ -216,7 +216,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-ceis-relatedp fn-sn-crash fn-sf-crash)
                 (fn-sn-statep fn-sf-statep
-                 fn-sn-make-v6 fn-sn-make-v7 fn-cei-correspondencep fn-cei-build)))))
+                 fn-sn-make-v6 fn-cei-correspondencep fn-cei-build)))))
 
 (defthm fn-ceis-recover-preserves-related
   (implies (and (fn-sn-statep s) (fn-ceis-relatedp s))
@@ -225,5 +225,5 @@
            :in-theory
            (e/d (fn-ceis-relatedp fn-sn-recover)
                 (fn-sn-statep fn-sf-statep fn-sf-recover
-                 fn-sn-make-v6 fn-sn-make-v7 fn-cei-correspondencep fn-cei-build
+                 fn-sn-make-v6 fn-cei-correspondencep fn-cei-build
                  fn-cei-build-aux)))))

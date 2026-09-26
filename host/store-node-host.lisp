@@ -68,9 +68,8 @@
   (declare (xargs :stobjs state :mode :program))
   ; PKT-169: the maintenance reservation (`fn-smr-verdict-at').
   (let ((s (f-get-global 'fn-store-sn state)))
-    ; The carried figures (fn-srt-carried-figures-are-the-kernel-figures).
-    (value (fn-smr-verdict-at profile kind (fn-sbud-carried-used s)
-                              (fn-sbud-carried-bytes s)))))
+    (value (fn-smr-verdict-at profile kind (fn-sbud-used s)
+                              (fn-sbud-bytes-used s)))))
 
 ; An article's verdict (packet 1): the count gate and the history gate at the
 ; article's own figure, `fn-sbud-article-verdict-at' of the committed count
@@ -81,8 +80,8 @@
   (let ((s (f-get-global 'fn-store-sn state)))
     ; PKT-169: and one release record still fits after it
     ; (`fn-smr-article-verdict-keeps-the-reserve').
-    (value (fn-smr-article-verdict-at profile (fn-sbud-carried-used s)
-                                      (fn-sbud-carried-bytes s)
+    (value (fn-smr-article-verdict-at profile (fn-sbud-used s)
+                                      (fn-sbud-bytes-used s)
                                       payload-length group-count))))
 
 (defun fn-store-sn-headroom (profile state)

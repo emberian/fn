@@ -182,8 +182,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
 	tests/acl2/store-budget-tests \
-	books/store-record-tally \
-	tests/acl2/store-record-tally-tests \
 	books/store-profile-upgrade \
 	books/byte-store-profile-program \
 	tests/acl2/store-profile-upgrade-tests \

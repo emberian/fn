@@ -374,11 +374,9 @@
                  (eq (fn-sf-phase old-files) :record-attempted))
             (let* ((candidate (fn-sf-record-candidate old-files))
                    (sequence (fn-rcon-store-event-sequence candidate)))
-              (fn-sn-with-record-tally
-               (fn-sn-with-event-index
-                updated (fn-cei-put sequence candidate
-                                    (fn-sn-event-index s)))
-               (fn-sn-tally-extend (fn-sn-record-tally s) candidate)))
+              (fn-sn-with-event-index
+               updated (fn-cei-put sequence candidate
+                                   (fn-sn-event-index s))))
           updated))
     s))
 (defthm fn-rcon-sn-io-is-sn-io

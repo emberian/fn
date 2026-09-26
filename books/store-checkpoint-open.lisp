@@ -23,7 +23,7 @@
 ; at open only.
 (in-package "ACL2")
 (include-book "config-observed")
-(local (in-theory (disable fn-sn-make-v6 fn-sn-make-v7)))
+(local (in-theory (disable fn-sn-make-v6)))
 
 ; A total nth: the checkpoint is decoded from bytes, so its accessors take
 ; any value.
