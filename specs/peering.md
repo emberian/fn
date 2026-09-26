@@ -1687,7 +1687,7 @@ is the operator's `peer add` of the same name, which replaces the record.
 The accepting side gets no peer record from `accept` (the invitation does
 not carry the inviter's address).
 
-NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided
+NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, a declined key statement stays declined across a restart unless a new statement is decided, and an accepted key statement whose change a crash cut finishes under its own admission context
 
 **Crash between consumption and enrolment.** The consuming record is
 published before the enrolment. A process death between the two leaves a row

@@ -2412,12 +2412,13 @@
     },
     {
       "id": "NNT-022",
-      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided",
+      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, a declined key statement stays declined across a restart unless a new statement is decided, and an accepted key statement whose change a crash cut finishes under its own admission context",
       "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-124"
+        "PRF-124",
+        "PRF-140"
       ],
       "verification": [
         "proof",
@@ -2439,9 +2440,11 @@
         "tests/test_native_peer_invite.py",
         "tests/test_native_key_statements.py",
         "tests/test_native_peer_pull.py",
-        "planning/evidence/peering-compose-2026-09-25.md"
+        "planning/evidence/peering-compose-2026-09-25.md",
+        "planning/evidence/key-replay-fixture-2026-09-26.md"
       ],
-      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule), with *fn-ks-reopen-policy* as the switch. Pull over TLS (packet 8) is not part of this requirement yet."
+      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule) by definition, with no supported switch back to the open's live grants (the old behaviour is a counterexample fixture only); an accepted statement cut before its key change finishes under the configuration at its txid (PRF-140). An explicit re-evaluation verb (`keys redecide`, PKT-325) is specified, not built. Pull over TLS (packet 8) is not part of this requirement yet.",
+      "note": "Lane key-replay-fixture (2026-09-26): PRF-140, SCN-082, PKT-325."
     },
     {
       "id": "NNT-019",
