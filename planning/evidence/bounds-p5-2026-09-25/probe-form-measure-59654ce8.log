@@ -1,0 +1,2 @@
+n=2000 form=plain rc=0 wall=412.660427422 {"host":"native","transactions":2000,"payload_bytes":2048,"commit_seconds":409.5814,"reopen_seconds":2.9301,"status":"passed"}
+n=2000 form=article rc=0 wall=441.526898903 {"host":"native","transactions":2000,"payload_bytes":2048,"commit_seconds":438.5683,"reopen_seconds":2.8340,"status":"passed"}
