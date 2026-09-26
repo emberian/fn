@@ -87,7 +87,7 @@ Two constants that capped data are gone (D27;
 planning/evidence/caps-to-profile-2026-09-26.md). A peer's row group grows
 by requests: `peer carries` and `peer budget` publish only the rows they
 change, `(:add-peer-rows NAME ROWS)` and `(:remove-peer-rows NAME ROWS)`
-(configuration delta codes 17 and 18, books/config.lisp), and
+(configuration delta codes 18 and 19, books/config.lisp), and
 `*fn-cfg-max-rows*` (1,024) bounds the work of one delta, not the rows one
 peer holds (`fn-cfg-add-peer-rows-refuses-exactly-past-the-work-bound`,
 `fn-cfg-apply-delta-adds-at-most-the-work-bound`); the published deltas
@@ -101,7 +101,7 @@ plus one: the allocator refuses exactly at that capacity
 `fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), so
 `store upgrade-profile` raises it and a store no longer meets a lifetime
 figure of 4,096 publications. No store format changed: an older image
-refuses a configuration log holding codes 17 or 18 and a checkpoint
+refuses a configuration log holding codes 18 or 19 and a checkpoint
 directory holding more than 4,096 names or a name at or above 4096, the
 rollback consequence of these two steps. Open: the group-name width and
 field 7's reader (PKT-451).

@@ -88,7 +88,7 @@ keyed on another peer apply in another order; an improper row list); the
 work bound reached by exactly 1,024 rows and passed by a malformed 1,025;
 the budget request's two deltas (add, then remove the two old budget rows),
 admitted, equal to the whole-group extension, budget (5 3); the two new
-refusals; codes 17 and 18 round-trip and a record holding both encodes and
+refusals; codes 18 and 19 round-trip and a record holding both encodes and
 decodes to itself. tests/acl2/native-admin-tests.lisp: the `peer budget` and
 `peer carries` plans publish the incremental deltas, and applied give the
 answers the whole-group delta gave.
@@ -229,7 +229,7 @@ recertified as config's dependents at unchanged bytes.
 4. The live owner's `peer carries` arm
    (`fn-native-admin-host-owner-reconfigure`) runs the same
    `fn-native-admin-plan-deltas-over`, but only the offline arm ran natively.
-5. The rollback consequence (an older image refusing codes 17 and 18, or a
+5. The rollback consequence (an older image refusing codes 18 and 19, or a
    generation name at or above 4096) is stated, not rehearsed on a copy.
 6. native-admin at 11.2 s in r1 (its variance today is 8.9 to 15.0 s): a D26
    debt this lane did not create.
