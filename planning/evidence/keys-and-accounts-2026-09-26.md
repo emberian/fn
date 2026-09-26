@@ -265,8 +265,10 @@ fail) before r3.
   tests/acl2/login-binding-live-tests, tests/acl2/native-auth-host-tests,
   tests/acl2/docs-operator-grammar-tests: passed 5, failed 0, 177 from the cache. Manifest
   planning/evidence/manifests/certify-20260926T120553Z-1490002.json. OVER 10 s:
-  tests/acl2/login-binding-live-tests 11.8 s at 2 jobs (a defect for PKT-463: split the two test
-  fixtures it includes, or measure quietly first).
+  tests/acl2/login-binding-live-tests 11.8 s at 2 jobs: one must-fail search took 8.8 s.
+- r4: persvati run-20260926T121304Z-1f17 at b83ac6da (that search bounded; its counter-witness
+  *lblt-wrong* unchanged): tests/acl2/login-binding-live-tests passed, no book over 10 s. Manifest
+  planning/evidence/manifests/certify-20260926T121324Z-1564124.json.
 
 ### Native (hbox /tank/fn/scratch/keys-and-accounts-2/native-n1, fabf99ea)
 
@@ -301,8 +303,7 @@ publication re-reads the file).
 PKT-211 (succession-era invitations: fn-pinv-genesis-okp still refuses a principal whose current keys
 are not its genesis keys; `peer list` does not render the carriage budget; no native signature-failed
 row), PKT-433 (c) the POST reply naming a refused key change beside a durable composite, (d) the seven
-verdict names in the transit log, fn_verify's `revoked` natively; tests/acl2/login-binding-live-tests
-at 11.8 s (D26). Teeth gap: fn-lb-a-connection-opened-after-a-publication-is-bound-anew has a
+verdict names in the transit log, fn_verify's `revoked` natively. Teeth gap: fn-lb-a-connection-opened-after-a-publication-is-bound-anew has a
 must-fail for its durable hypothesis and witnesses for every antecedent, not a must-fail for each of
 its seven hypotheses. Decision for ember (joins PKT-440): code 17 makes an older image refuse a store
 that ever published a binding.
