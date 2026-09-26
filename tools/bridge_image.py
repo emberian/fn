@@ -266,6 +266,22 @@ def _prune(kind: str, keep: Path) -> None:
         shutil.rmtree(entry, ignore_errors=True)
 
 
+def error_summary(transcript: str, limit: int = 2000) -> str:
+    """The ACL2 error paragraphs of a failed boot form, bounded.
+
+    The refused form's reply is the whole `ld` transcript (81 KiB for the
+    owner boot); a caller that prints it into a pipe can fill the pipe, and
+    a reader needs the error, not the transcript.
+    """
+    lines = transcript.splitlines()
+    kept: list[str] = []
+    for index, line in enumerate(lines):
+        if "ACL2 Error" in line or "HARD ACL2 ERROR" in line.upper():
+            kept.extend(lines[index:index + 6])
+    text = " ".join(" ".join(kept).split()) or " ".join(transcript.split())[-limit:]
+    return text[:limit]
+
+
 def build(kind: str, image_digest: str, environment: dict) -> Path:
     """Boot from the sources through the bridge's checks, then save-exec."""
     from tools import run_store
@@ -279,7 +295,12 @@ def build(kind: str, image_digest: str, environment: dict) -> Path:
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
     started = time.monotonic()
-    session = run_store.Acl2Store(_forms=KINDS[kind], _use_image=False, _reset=False)
+    try:
+        session = run_store.Acl2Store(_forms=KINDS[kind], _use_image=False, _reset=False)
+    except run_store.StoreError as error:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise RuntimeError(f"bridge image build for {kind} failed: "
+                           f"{error_summary(str(error))}") from None
     try:
         # save-exec refuses inside the read-eval-print loop.
         session.proc.stdin.write(

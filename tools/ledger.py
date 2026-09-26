@@ -28,6 +28,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -2101,9 +2102,40 @@ def resolve(relative: str) -> str:
     return "/".join(parts)
 
 
+_TREE_CACHE: "tuple[str, Tree] | None" = None
+
+
 def load_tree() -> Tree:
-    books = {relative: analyze_book(path, relative) for path, relative in book_paths()}
-    return Tree(books, makefile_roots(), load_hosts())
+    """The analysed tree, computed once per content of its inputs.
+
+    One `make check` process asked for it up to five times (teeth_check:
+    static findings, macro names, the recogniser, hypothesis coverage and
+    teeth, the registry), and each call re-parsed every book and re-derived
+    every theorem's suspect reasons: 5 x ~9 s of teeth_check's 33 s
+    (harness-repair, 2026-09-25).  The key is the bytes of every book, host
+    and tools file the analysis reads and the Makefile, so an edit between
+    calls (a test's temporary tree) is a new analysis, never a stale one.
+    Callers read the Tree; none mutates it.
+    """
+    global _TREE_CACHE
+    books = book_paths()
+    hosts = host_paths()
+    digest = hashlib.sha256(str(ROOT).encode())
+    for path, relative in books + hosts + [(ROOT / "Makefile", "Makefile")]:
+        digest.update(relative.encode() + b"\0")
+        try:
+            digest.update(path.read_bytes())
+        except OSError:
+            digest.update(b"\1unreadable")
+        digest.update(b"\0")
+    key = digest.hexdigest()
+    if _TREE_CACHE is not None and _TREE_CACHE[0] == key:
+        return _TREE_CACHE[1]
+    tree = Tree({relative: analyze_book(path, relative) for path, relative in books},
+                makefile_roots(),
+                {relative: analyze_host(path, relative) for path, relative in hosts})
+    _TREE_CACHE = (key, tree)
+    return tree
 
 
 # --------------------------------------------------------------------------

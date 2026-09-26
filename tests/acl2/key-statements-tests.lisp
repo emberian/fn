@@ -321,3 +321,108 @@
                           *kst-rows* *kst-ml* :refused :verified 5 6 7)))
     (equal (fn-ks-recover st *kst-rows* *kst-ml* :verified :verified 8 9 10)
            st))))
+
+; =============================================================================
+; Packet 7 (PRF-124): the recorded disposition at reopen.  The statement's
+; txid, a `keys' grant as a configuration record, and journals before and
+; after it.
+(defconst *kst-tx* (fn-ks-txid *kst-event*))
+(assert-event (natp *kst-tx*))
+(make-event `(defconst *kst-grant*
+               ',(fn-cfg-record-make 1 (+ 1 *kst-tx*) 1
+                                     (list (fn-cfg-grant-control
+                                            "fn.keys" (kst-hex *tha-principal*)
+                                            "keys"))
+                                     nil)))
+(make-event `(defconst *kst-grant-before*
+               ',(fn-cfg-record-make 1 *kst-tx* 1
+                                     (list (fn-cfg-grant-control
+                                            "fn.keys" (kst-hex *tha-principal*)
+                                            "keys"))
+                                     nil)))
+; With no configuration record through its txid the statement had no grant:
+; its plan declines.
+(assert-event
+ (equal (car (fn-ks-plan *kst-event* *kst-snapshots*
+                         (fn-cfg-authorities
+                          (fn-cfg-value (fn-ctl-config-at *kst-tx* nil)))
+                         *kst-ml* :verified :verified))
+        :decline))
+(assert-event (fn-ks-configs-after-p *kst-tx* (list *kst-grant*)))
+; The grant, once in force, would make it act.
+(assert-event
+ (equal (fn-cfg-authorities
+         (fn-cfg-value (fn-ctl-config-at *kst-tx* (list *kst-grant-before*))))
+        *kst-rows*))
+(defmacro kst-declined ()
+  '(fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                 (fn-cfg-authorities
+                  (fn-cfg-value (fn-ctl-config-at *kst-tx* nil)))
+                 *kst-ml* :verified :verified 5 6 7))
+; fn-ks-a-decline-replays-as-a-decline, reached: the later grant appended,
+; the recorded recovery leaves the declined acceptance's state.
+(assert-event (equal (kst-declined)
+                     (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)))
+(assert-event
+ (equal (fn-ks-recover-recorded (kst-declined) (append nil (list *kst-grant*))
+                                *kst-ml* :verified :verified 8 9 10)
+        (kst-declined)))
+; Hypothesis removal (the record is later than the statement): the same
+; grant at the statement's own txid is in force there, and the recovery acts.
+(assert-event (not (fn-ks-configs-after-p *kst-tx* (list *kst-grant-before*))))
+(must-fail
+ (assert-event
+  (equal (fn-ks-recover-recorded (kst-declined) (list *kst-grant-before*)
+                                 *kst-ml* :verified :verified 8 9 10)
+         (kst-declined))))
+; The pre-packet behaviour, for the record: deciding under the open's live
+; grants (the :current policy) acts on the old decline.
+(assert-event
+ (not (equal (fn-ks-recover (kst-declined) *kst-rows* *kst-ml* :verified
+                            :verified 8 9 10)
+             (kst-declined))))
+; Hypothesis removal (the plan declined): a plan that acts but whose kind-3
+; event the acceptance could not build at its coordinates (a non-natural
+; sequence) leaves the statement pending, and the recovery builds it.
+(assert-event
+ (equal (car (fn-ks-plan *kst-event* *kst-snapshots*
+                         (fn-cfg-authorities
+                          (fn-cfg-value (fn-ctl-config-at
+                                         *kst-tx* (list *kst-grant-before*))))
+                         *kst-ml* :verified :verified))
+        :enroll))
+(must-fail
+ (assert-event
+  (let ((st (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
+                          *kst-rows* *kst-ml* :verified :verified
+                          :bad :bad :bad)))
+    (equal (fn-ks-recover-recorded st (list *kst-grant-before*)
+                                   *kst-ml* :verified :verified 8 9 10)
+           st))))
+
+; fn-ks-reopen-is-blind-to-later-configuration, reached (both sides) and its
+; hypothesis removed (a record at the statement's txid changes the answer).
+(assert-event
+ (equal (fn-ks-recover-recorded (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
+                                (append (list *kst-grant-before*)
+                                        (list *kst-grant*))
+                                *kst-ml* :verified :verified 5 6 7)
+        (fn-ks-recover-recorded (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
+                                (list *kst-grant-before*)
+                                *kst-ml* :verified :verified 5 6 7)))
+(must-fail
+ (assert-event
+  (equal (fn-ks-recover-recorded (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
+                                 (append nil (list *kst-grant-before*))
+                                 *kst-ml* :verified :verified 5 6 7)
+         (fn-ks-recover-recorded (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
+                                 nil *kst-ml* :verified :verified 5 6 7))))
+; fn-ks-recorded-recovery-completes-the-cut, reached where the journal
+; replays: the cut, recovered under the grant in force at the txid, is the
+; acting acceptance.
+(assert-event
+ (equal (fn-ks-recover-recorded (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
+                                (list *kst-grant-before*)
+                                *kst-ml* :verified :verified 5 6 7)
+        (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event* *kst-rows*
+                      *kst-ml* :verified :verified 5 6 7)))

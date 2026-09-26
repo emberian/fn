@@ -9,11 +9,14 @@ reimplement certificate serialization.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import re
 import subprocess
 import json
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import acl2_slots  # noqa: E402
 
 
 _MISSING_PACKAGE = re.compile(r'The name "([A-Za-z][A-Za-z0-9_-]{0,63})" '
@@ -98,16 +101,12 @@ def acl2_certificate_pairs(paths: list[Path], pairs: list[tuple[int, int]],
            for p, c in pairs):
         raise ValueError("certificate comparison index out of range")
     packages: list[str] = []
-    environment = os.environ.copy()
-    environment["ACL2_CUSTOMIZATION"] = "NONE"
-    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
-    environment.pop("ACL2_SYSTEM_BOOKS", None)
     for _ in range(25):
-        result = subprocess.run([str(acl2)], cwd=root,
+        # The machine's ACL2 pool and heap cap (PKT-162).
+        result = acl2_slots.run([str(acl2)], "cert_alists pairs", cwd=root,
                                 input=_driver(paths, pairs, packages).encode(),
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                env=environment, check=False,
-                                timeout=timeout_seconds)
+                                check=False, timeout=timeout_seconds)
         output = result.stdout.decode("utf-8", "replace")
         missing = _MISSING_PACKAGE.search(output)
         if missing:

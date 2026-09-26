@@ -1721,6 +1721,125 @@
       ]
     },
     {
+      "id": "SCN-069",
+      "title": "Two strangers become peers with one confirm, and a declined key statement stays declined across a restart that adds the grant",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-022"
+      ],
+      "steps": [
+        "A and B run `peer genesis`; A: `peer invite nodeB fn.* HOST PORT a.example KEYS INV`; B: `peer accept INV KEYS b.example - ACC`; A: `peer confirm ACC INV`; A: `peer list`.",
+        "A: `peer confirm ACC INV-OTHER` with another invitation A issued; A2 with FN_PEER_TEST_STOP_AFTER_CONSUME: confirm, restart, `peer list`, confirm again.",
+        "Node D: enrol P, POST a succession statement with no `keys` grant; `control grant P keys fn.keys` live; restart D twice."
+      ],
+      "expected": [
+        "The confirm exits 0 and `peer list` shows nodeB with auth principal B.",
+        "Another invitation is refused another-invitation and configures nothing; after the stop A2 already lists nodeB2, and the retry enrols once.",
+        "The statement logs `key-statement declined no-grant`; after each restart the log adds `key-statement declined ... at-open` and the key history is unchanged (the pre-packet image instead logs `enrol-successor committed at-open`)."
+      ]
+    },
+    {
+      "id": "SCN-060",
+      "title": "a POST whose reply was lost, then withdrawn by an authorized cancel, is settled by re-sending the same article: already stored, no new Message-ID, no new number",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-019"
+      ],
+      "steps": [
+        "A developer node with fn.test and control.cancel; the owner runs with FN_NATIVE_POST_FAULT=finish-durable:kill. fn_client posts with --draft and the owner dies after the commit is durable, before the reply (exit 3, uncertain); fn_web posts through its outbox under the same cut.",
+        "The owner restarts; both targets answer 220. A principal granted cancel over fn.test files a signed cancel of each target.",
+        "A fresh reader asks ARTICLE <target> for both; fn_client show <target>.",
+        "fn_client reconcile DRAFT and fn_web POST /reconcile re-send the exact stored lines; then reconcile again.",
+        "On a protected node the poster's login loses posting permission after a lost reply; fn_client reconcile."
+      ],
+      "expected": [
+        "Both lookups answer 430 withdrawn; show exits 1 and says the answer is not evidence about acceptance.",
+        "Both reconciliations draw 441 posting failed; this article is already stored here and settle accepted (already-stored); the transaction files and GROUP fn.test are unchanged; the draft and outbox keep the original outcome uncertain beside the reconciliation.",
+        "The authorization case answers 440 and settles unresolved (exit 4); the article is still served (220) and nothing is stored."
+      ],
+      "evidence": [
+        "tests/test_native_visibility_join.py",
+        "planning/evidence/visibility-join-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-062",
+      "title": "One authored article keeps one identity through every route, and the node shows the table",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-020"
+      ],
+      "steps": [
+        "Two developer-image nodes A and B, A feeding B, each with a path identity",
+        "POST each corpus element to A, retry it at a later second, and POST it with one authored byte changed",
+        "Post three elements again through the operator route; author a signed article through hybrid-author and POST a dual-signature carrier",
+        "Await each accepted article at B and re-offer it by IHAVE",
+        "SIGKILL and reopen A; reread every article and retry four elements",
+        "Stop both nodes and read every record with store inspect",
+        "On one node: target then cancel with a pinned reader, cancel then target, a Supersedes; SIGKILL and reopen"
+      ],
+      "expected": [
+        "Xref refused; every other element 240; a retry 441 already stored; a changed byte 441 a different article; a legacy post without Message-ID is a new article on retry",
+        "The operator route answers DUPLICATE and adds no article; the supplied Path tail is kept behind A's identity; every source and the carrier are stored verbatim after the injected block",
+        "B stores A's octets with its identity and an empty diagnostic spliced into Path; the re-offer is 435; numbers and octets are unchanged across reopen; store inspect equals the served octets",
+        "Both cancel orders withdraw their targets from every fresh view, live and after replay; the pinned reader keeps 220; the superseding article stays visible",
+        "hybrid-author's resend of the same signed carrier is DUPLICATE, exit 0; the same source signed afresh (hedged ML-DSA-65) or changed is REFUSED, exit 1; no article is added"
+      ],
+      "evidence": [
+        "tests/test_native_source_corpus.py",
+        "tests/acl2/source-routes-tests.lisp",
+        "planning/evidence/source-corpus-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-068",
+      "title": "A person reads a conversation across a withdrawn message, searches a stated window, and resends an uncertain post only on request",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-021"
+      ],
+      "steps": [
+        "On a scratch developer-image node, post a root, a signed reply and a further reply; withdraw the signed reply with its author's signed cancel.",
+        "Open the group, the withdrawn number, the conversation of the last reply, and a search of the group in the web reader; reply with a double-click, go Back and press Post again; post while the node is unreachable, restart the client, and press Re-send this same article to settle it."
+      ],
+      "expected": [
+        "The group window lists the withdrawn number with the node's 423 withdrawn; the conversation lists the withdrawn reply with the node's 430 withdrawn and shows the root and the last reply from the node's XPAT References answer.",
+        "The search page names the node's XPAT command and window; the article page shows claimed From, carriers, the node's historical verdict, current enrollment as not served and no independent verification, separately.",
+        "Back after posting shows that the form was already posted and sends nothing; after restart the intent is uncertain and nothing is sent until the button; the reconciliation answer is recorded beside the unchanged original (NNT-019)."
+      ],
+      "evidence": [
+        "tests/test_fn_web.py",
+        "planning/evidence/reader-daily-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "SCN-061",
+      "title": "Two sleeping consumers exchange a signed report and reply through one node across every ownership cut",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-002"
+      ],
+      "steps": [
+        "A authors signed report R through its outbox and sleeps.",
+        "B wakes three times, dying inside its transaction, after its commit, and while the owner loses its ack reply; then dies after settling the ack before posting Q; then the owner loses Q's POST reply.",
+        "B wakes and settles Q; A wakes after Q is durable; a third author reuses R's operation id with a different source; both consumers wake."
+      ],
+      "expected": [
+        "B's database holds nothing after the in-transaction death and exactly one transition and one outbox Q after the commit; fn's position moves only with the ack and the lost ack is settled by position.",
+        "Q is stored once and settled by the owner of that fact; A records exactly one reply transition; the reused operation id is conflict evidence at both consumers with no second transition or reply."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-e2-2026-09-25.md"
+      ]
+    },
+    {
       "id": "SCN-066",
       "title": "A signed report crosses four native fn nodes and two dtn7-rs relays with outages and restarts; its receipt settles before the receiver's consumer wakes; the reply returns",
       "milestone": "M4",
@@ -1745,6 +1864,32 @@
         "planning/evidence/mission-four-node-2026-09-25.md"
       ],
       "note": "Unsigned report and reply pass on image abbd8aef (all seven steps); the signed report is refused at B (request-refused, reason not logged): the scenario stays specified until the signed run passes. planning/evidence/mission-four-node-2026-09-25.md."
+    },
+    {
+      "id": "SCN-071",
+      "title": "A node pulls over TLS as its own principal; a wrong principal and a clear-transport credential are refused, and the cut campaign holds over TLS",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-023"
+      ],
+      "steps": [
+        "A: store with STARTTLS, `[auth] required = true, protected_only = true`, `principal set-password nodeB`; two articles posted with `operator post`. B: `peer add A a.pull.example.invalid 127.0.0.1 PORT fn.* fn.* source-address 127.0.0.9 PROFILE false false starttls localhost A-CERT`, `peer pull A 2`, PROFILE = FNAUTH1 nodeB and its password; a recording proxy in front of A.",
+        "The same with PROFILE naming a login A does not hold.",
+        "The same with no security arguments (a clear transport) and the permission false.",
+        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault."
+      ],
+      "expected": [
+        "Both articles stored once at B; B logs `pull peer=A round=done cursor=advanced transport=tls`; the proxy's first plaintext command is STARTTLS and it sees no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.",
+        "B logs `round=failed cursor=held at=preamble` for every round, stores nothing, and its FNPL journal stays at the first-instant record.",
+        "B logs `round=failed cursor=held refused=clear-credential` for every round and the proxy accepts no connection.",
+        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`."
+      ],
+      "evidence": [
+        "planning/evidence/peering-tls-pull-2026-09-26.md",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log"
+      ]
     }
   ]
 }

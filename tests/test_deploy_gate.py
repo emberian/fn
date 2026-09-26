@@ -158,7 +158,11 @@ class DryRunTests(unittest.TestCase):
         cls.code = deploy_gate.main([
             commit, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
             "--overlay", str(ROOT / "tests/deploy_gate_fake"),
-            "--nntplib-python", "none", "--evidence", str(cls.evidence), "--keep"])
+            "--nntplib-python", "none", "--evidence", str(cls.evidence), "--keep",
+            # The fake ACL2 by name: the farm host's default launcher moved to
+            # a gate toolchain path the fake HOME does not hold, and the
+            # version probe read "unavailable" (harness-repair).
+            "--acl2", str(acl2 / "saved_acl2")])
         cls.text = cls.evidence.read_text()
 
     @classmethod

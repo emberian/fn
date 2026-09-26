@@ -43,6 +43,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import acl2_slots  # noqa: E402
 import run_store  # noqa: E402
 
 # The store layout as the model names it (tools/run_store.py).
@@ -123,11 +124,9 @@ class ModelBridge:
     """An ACL2 process holding books/byte-store-programs, nothing else."""
 
     def __init__(self):
-        env = os.environ.copy()
-        env["ACL2_CUSTOMIZATION"] = "NONE"
-        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"
-        self.proc = subprocess.Popen(
-            [env.get("FN_ACL2", "acl2")], cwd=ROOT, env=env,
+        # The machine's ACL2 pool and heap cap (PKT-162); close() returns it.
+        self.proc = acl2_slots.popen(
+            [os.environ.get("FN_ACL2", "acl2")], "campaign model bridge", cwd=ROOT,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
         run_store.read_prompt(self.proc, run_store.ACL2_START_TIMEOUT_SECONDS)
@@ -154,10 +153,13 @@ class ModelBridge:
                 self.proc.stdin.close()
             except Exception:
                 pass
-            self.proc.wait(timeout=10)
-            if self.proc.stdout is not None:
-                self.proc.stdout.close()
-            self.proc = None
+            try:
+                self.proc.wait(timeout=10)
+                if self.proc.stdout is not None:
+                    self.proc.stdout.close()
+            finally:
+                self.proc = None
+                acl2_slots.release_tree_slot()
 
 
 def import_image(store_root: Path, unit: int = 4096) -> str:

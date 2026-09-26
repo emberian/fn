@@ -171,17 +171,29 @@ class NativePeerInviteTests(unittest.TestCase):
         data = acc.read_bytes()
         at = data.index(b"Acceptor-Path: b.example")
         tampered.write_bytes(data[:at + 15] + b"c" + data[at + 16:])
-        self.refused(a, ("peer", "confirm", str(tampered)), "unverified")
-        self.run_ok(a, "peer", "confirm", str(acc))
+        self.refused(a, ("peer", "confirm", str(tampered), str(inv)), "unverified")
+        # PRF-124: another invitation A issued, presented with this acceptance.
+        inv_other = self.root / "inv-other"
+        self.run_ok(a, "peer", "invite", "nodeX", "fn.*", "127.0.0.1", "11999",
+                    "a.example", str(keys_a), str(inv_other))
+        self.refused(a, ("peer", "confirm", str(acc), str(inv_other)), "another-invitation")
+        self.assertNotIn("nodeB", out(a.operator("peer", "list")))
+        self.run_ok(a, "peer", "confirm", str(acc), str(inv))
+        # PRF-124: the confirm's one record configured B as a peer of A, bound
+        # to B's principal.
+        listed = out(a.operator("peer", "list"))
+        print("NATIVE-PEER-INVITE A peer list after confirm:", listed)
+        self.assertIn("nodeB", listed)
+        self.assertIn(pb, listed)
         # A second confirm of the same acceptance.
-        self.refused(a, ("peer", "confirm", str(acc)), "already-confirmed")
+        self.refused(a, ("peer", "confirm", str(acc), str(inv)), "already-confirmed")
         # A replayed nonce: C accepts the consumed invitation (C enrols A),
         # and A refuses C's acceptance.
         acc_c = self.root / "acc-c"
         self.run_ok(c, "peer", "accept", str(inv), str(keys_c), "c.example", "-", str(acc_c))
-        self.refused(a, ("peer", "confirm", str(acc_c)), "invitation-consumed")
+        self.refused(a, ("peer", "confirm", str(acc_c), str(inv)), "invitation-consumed")
         # An invitation presented to confirm is not an acceptance.
-        self.refused(a, ("peer", "confirm", str(inv)), "document-kind")
+        self.refused(a, ("peer", "confirm", str(inv), str(inv)), "document-kind")
         for node in (a, b, c):
             node.stop()
         history_a, history_b = a.key_history(), b.key_history()
@@ -207,7 +219,7 @@ class NativePeerInviteTests(unittest.TestCase):
         acc_e = self.root / "acc-e"
         self.run_ok(e, "peer", "accept", str(foreign), str(keys_e), "e.example", "-",
                     str(acc_e))
-        self.refused(a, ("peer", "confirm", str(acc_e)), "no-such-invitation")
+        self.refused(a, ("peer", "confirm", str(acc_e), str(foreign)), "no-such-invitation")
         for node in (a, d, e):
             node.stop()
 
@@ -222,15 +234,19 @@ class NativePeerInviteTests(unittest.TestCase):
                     "a2.example", str(keys_g), str(inv))
         acc = self.root / "acc-crash"
         self.run_ok(b2, "peer", "accept", str(inv), str(keys_h), "b2.example", "-", str(acc))
-        died = a2.operator("peer", "confirm", str(acc))
+        died = a2.operator("peer", "confirm", str(acc), str(inv))
         print("NATIVE-PEER-INVITE A2 confirm with the stop ->", died.returncode)
         self.assertNotEqual(died.returncode, EXIT_OK, out(died))
         self.assertEqual(a2.process.wait(timeout=60), 137)
         a2.reap()
         self.assertFalse([line for line in a2.key_history() if ph in line])
         a2.start()
-        self.run_ok(a2, "peer", "confirm", str(acc))
-        self.refused(a2, ("peer", "confirm", str(acc)), "already-confirmed")
+        # The one record is durable: the peer exists before the enrolment.
+        listed = out(a2.operator("peer", "list"))
+        print("NATIVE-PEER-INVITE A2 peer list after the stop:", listed)
+        self.assertIn("nodeB2", listed)
+        self.run_ok(a2, "peer", "confirm", str(acc), str(inv))
+        self.refused(a2, ("peer", "confirm", str(acc), str(inv)), "already-confirmed")
         a2.stop()
         b2.stop()
         history = a2.key_history()

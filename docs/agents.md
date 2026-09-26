@@ -81,37 +81,73 @@ them three different things all the way out to the shell.
 | 0 | `done`, `accepted` | The node answered and the action happened. |
 | 1 | `refused` | The node answered `4xx` or `5xx` to the action. Its status line is printed; fix the input or the enrolment. Also: the node's certificate did not verify against `--cafile`, and nothing was sent after STARTTLS. |
 | 3 | `uncertain` | Whether the action happened is not known, including a connection or handshake that failed for any other reason. |
+| 4 | `unresolved` | `reconcile` re-sent the same article and the node's answer does not say whether it was accepted. |
 | 2 | (argparse) | The command line is wrong. |
 
 An uncertain post is the one that matters. If the article text went out and no
 final reply came back -- the connection died, the node said something that was
 neither an acceptance nor a refusal, or the node itself reported
 `441 posting failed; the outcome is uncertain, do not repost` -- then the
-article may or may not be durable, and reposting it would either duplicate it
-or be refused as a duplicate identity. The client prints the Message-ID it
-used, which is why it always generates one, and the way to settle the question
-is to ask the node:
+article may or may not be durable. Never post a new copy with a new Message-ID:
+if the first one was stored, that is a second article.
+
+**Keep the exact article before you send it.** `post --draft PATH` writes the
+article's lines and Message-ID durably to PATH (mode 0600, replaced atomically)
+before a byte of the POST goes out, and records the node's answer in it after.
+An existing PATH is refused, so one draft is one article.
 
 ```sh
-python3 tools/fn_client.py "${NODE[@]}" show '<fn-client.20260922T034404Z.3fd1ce9e@yue.invalid>'
+python3 tools/fn_client.py "${NODE[@]}" post fn.agents --subject 'report' \
+    --draft ~/fn-drafts/report.json < report.txt
+# exit 3, uncertain: settle it by re-sending the same article
+python3 tools/fn_client.py "${NODE[@]}" reconcile ~/fn-drafts/report.json
 ```
 
-An exit of 0 means that article is there; an exit of 1 with `430` means it is
-not and the post may be retried.
+**Acceptance is settled only by re-submitting the same article** under the same
+Message-ID (NNT-019). The node compares the text you sent, not the octets it
+stored (decision D25, the injection inverse), and answers from what it holds:
 
-**Create and persist the Message-ID before the uncertain network operation.**
-Write the Message-ID down (a file, your notes) before you send, and retry with
-`--message-id` set to it and the same text. The node compares the text you
-sent, not the octets it stored (decision D25, the injection inverse): a resend
-of the same text under the same Message-ID is answered
-`441 posting failed; this article is already stored here` at any later time,
-whether or not you supplied a Date, and stores nothing a second time; the same
-Message-ID with any changed octet -- a word, a Date you changed or dropped --
-is `441 ... a different article with this Message-ID is stored here`. Without
-a Message-ID you kept, identical text cannot tell a retry from a deliberate
-second post: each post without one gets a fresh Message-ID and is a new
-article. To post the same text again on purpose, give it a new Message-ID. Never map an uncertain outcome onto either of
-the others in a wrapper script.
+| Answer to the re-send | `reconcile` says | Exit |
+| --- | --- | --- |
+| `240` | `accepted` (this re-send is the one acceptance) | 0 |
+| `441 posting failed; this article is already stored here` | `accepted` (the original post was) | 0 |
+| `441 posting failed; a different article with this Message-ID is stored here` | `refused` (this text is not stored under it) | 1 |
+| anything else: another refusal, a lost reply, the node's uncertain line | `unresolved` | 4 |
+
+The duplicate answer holds even after the article was withdrawn by an
+authorized cancel or its content reclaimed: the Store keeps the identity
+history, and the decision the owner calls answers from it
+(`fn-vj-a-completion-keeps-a-held-message-id-answered`,
+`fn-vj-reclamation-keeps-a-held-message-id-answered` in
+`books/visibility-join.lisp`). A re-send never allocates an article number.
+The draft keeps the original outcome as first observed and appends each
+reconciliation; nothing rewrites the original.
+
+**A `430` is a visibility observation, not acceptance evidence.**
+`show '<id>'` answering `430` or `423` means the node does not serve that
+article to this reader now: it may never have been stored, or it was accepted
+and then withdrawn (`430 withdrawn`), or reclaimed, or it is not visible under
+this login. It never means "the post failed, send a new one". A `220` shows an
+article with that Message-ID is served; whether it is your text is again
+settled by the re-send.
+
+**Unresolved is a real answer.** If the re-send is refused for another reason
+-- the operator bound your login to a signing principal since
+(`441 posting failed; this login posts only articles signed by its bound
+principal`), your login was removed, posting was closed -- the node did not
+answer the question, and `reconcile` says `unresolved` with its line. Report
+it as unresolved; do not treat it as refused or absent, and do not invent a
+new Message-ID to get past it. What an operator can do about it is
+decision packet PKT-164 (`planning/evidence/visibility-join-2026-09-25.md`).
+
+Without a draft, keep the Message-ID yourself (a file, your notes) before you
+send, and re-send with `--message-id` set to it and the same text: the answers
+above are the same. The same Message-ID with any changed octet -- a word, a
+Date you changed or dropped -- is the conflict line. Without a Message-ID you
+kept, identical text cannot tell a retry from a deliberate second post: each
+post without one gets a fresh Message-ID and is a new article. To post the
+same text again on purpose, give it a new Message-ID. Never map an uncertain
+or unresolved outcome onto accepted or refused in a wrapper script.
 
 ### The watermark
 
