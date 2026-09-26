@@ -78,7 +78,7 @@
 
 ; Removal: a transit submission (the relayed arm; no lock).
 (defconst *oclt-transit*
-  (fn-own-sub-make-login 4 2 0 (fn-peer-make-submission "p" :ihave "<t1@fn.test>"
+  (fn-own-sub-make-login 4 2 0 (fn-peer-make-submission "p" :ihave *oclt-msgid*
                                                         *oclt-injected*)
                          *oclt-alice*))
 (assert-event (fn-peer-submissionp (fn-own-sub-decision *oclt-transit*)))

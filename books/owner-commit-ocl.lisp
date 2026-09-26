@@ -217,7 +217,8 @@
                   (config (fn-own-config (fn-ocfg-owner oc)))
                   (queue (fn-own-queue (fn-ocfg-owner oc)))
                   (inflight (fn-own-inflight (fn-ocfg-owner oc)))
-                  (feeds (fn-own-feeds (fn-ocfg-owner oc))))
+                  (feeds (fn-own-feeds (fn-ocfg-owner oc)))
+                  (node-secret (fn-own-node-secret (fn-ocfg-owner oc))))
                  (:instance fn-ocmt-refreshed-ready-view-config
                   (st (fn-sn-finish (fn-own-store (fn-ocfg-owner oc))))
                   (view (fn-own-view (fn-ocfg-owner oc)))
@@ -233,6 +234,7 @@
                   (queue (fn-own-queue (fn-ocfg-owner oc)))
                   (inflight (fn-own-inflight (fn-ocfg-owner oc)))
                   (feeds (fn-own-feeds (fn-ocfg-owner oc)))
+                  (node-secret (fn-own-node-secret (fn-ocfg-owner oc)))
                   (cfg (fn-ocfg-config oc)) (pins (fn-ocfg-pins oc))
                   (staged (fn-ocfg-staged oc))))
            :in-theory (e/d (fn-ocl-relation fn-own-complete
