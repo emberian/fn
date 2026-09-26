@@ -14,6 +14,8 @@ bounds each native call; a 20,000-record open costs minutes
 profile's max-article-octets, which the in-process `probe N article' commits
 as well-formed articles the served reader frames.
 """
+import base64
+import json
 import os
 from pathlib import Path
 import re
@@ -25,6 +27,9 @@ from tools import run_store
 
 N = int(os.environ.get("FN_P5_N", "20000"))
 CUT_N = int(os.environ.get("FN_P5_CUT_N", "4500"))
+# A chain fixture built once (planning/evidence/pack-chain-open-2026-09-26/
+# chain_fixture.py build): the scale test copies it instead of probing.
+FIXTURE = os.environ.get("FN_P5_FIXTURE")
 PROFILE_FLAGS = ("--profile", "scale", "--max-transactions", "1048576",
                  "--max-article-octets", "2048")
 CUTS = ("candidate-file", "candidate-link", "candidate-directory",
@@ -47,6 +52,15 @@ EIO_CUTS = (
 )
 
 
+def decode_view(recorded):
+    """The served view chain_fixture.py wrote: numbers as keys, octets base64."""
+    def dec(value):
+        return base64.b64decode(value) if isinstance(value, str) \
+            else tuple(dec(v) for v in value)
+    return {(int(key) if key.isdigit() else key): dec(value)
+            for key, value in recorded.items()}
+
+
 def fewest_links(n):
     """A link holds at most 4096 events (and at most 4 MiB), so a whole chain
     over N records has at least this many links.  The partition itself is
@@ -62,8 +76,10 @@ class NativePackChainTests(unittest.TestCase):
     native_timeout = int(os.environ.get("FN_P5_TIMEOUT", "1800"))
     # A stop hook is reached after the open and the capture of the store.
     stop_deadline = native_timeout
-    # The owner's greeting waits for its open-time checkpoint (49.5 s over a
-    # 20,000-record suffix on hbox), and its stop for the close.
+    # The owner's greeting waits for its open (LISTENING after 196.0 s over
+    # the 12-link, 20,000-record chain fixture on hbox, 154.4 s before
+    # compaction on tmpfs: planning/evidence/pack-chain-open-2026-09-26.md),
+    # and its stop for the close.
     served_timeout = native_timeout
     setUp = NativeCheckpointTests.setUp
     tearDown = NativeCheckpointTests.tearDown
@@ -96,37 +112,55 @@ class NativePackChainTests(unittest.TestCase):
         out = self.native("store", store, "recover").stdout
         self.assertIn("transactions={} articles={}".format(n, n), out)
 
-    @unittest.skipUnless(os.environ.get("FN_P5_SCALE") == "1",
-                         "N=20,000: the owner's first open (full replay of 20,000 "
-                         "records, before any pack) misses wait_for_announcement's "
-                         "180 s startup deadline (pack-chain-join native-join1; "
-                         "chain-native-8); classified by pack-chain-open (PKT-331). "
-                         "Set FN_P5_SCALE=1 to run it")
+    @unittest.skipUnless(os.environ.get("FN_P5_SCALE") == "1" or FIXTURE,
+                         "N=20,000: building the scale store takes about 20 minutes on "
+                         "tmpfs; set FN_P5_FIXTURE to a fixture from "
+                         "planning/evidence/pack-chain-open-2026-09-26/chain_fixture.py "
+                         "(built once), or FN_P5_SCALE=1 to build it here")
     def test_scale_store_compacts_into_a_chain(self):
-        store, config, port = self.scale_store("scale-chain", N)
-        sample = ["<capacity-{}@example.invalid>".format(k)
-                  for k in (0, 1, 4095, 4096, 4097, N // 2, N - 2, N - 1)]
-        before = self.served_view(config, port, sample)
-        before_retention = self.native("store", store, "retention").stdout
-        compacted = self.native("operator", config, "store", "compact")
+        if FIXTURE:
+            # The same store, view and compaction, built once
+            # (chain_fixture.py build): copy it; the fixture is never opened.
+            n, store, config, port, sample, before, before_retention, compacted = \
+                self.scale_fixture("scale-chain")
+        else:
+            n = N
+            store, config, port = self.scale_store("scale-chain", n)
+            sample = ["<capacity-{}@example.invalid>".format(k)
+                      for k in (0, 1, 4095, 4096, 4097, n // 2, n - 2, n - 1)]
+            before = self.served_view(config, port, sample)
+            before_retention = self.native("store", store, "retention").stdout
+            compacted = self.native("operator", config, "store", "compact").stdout
         match = re.search(r"compacted steps=pack,select,reclaim,retire records=(\d+) "
                           r"generation=(\d+) links=(\d+) reclaimed=(\d+) retired=0",
-                          compacted.stdout)
-        self.assertIsNotNone(match, compacted.stdout)
+                          compacted)
+        self.assertIsNotNone(match, compacted)
         links = int(match.group(3))
         self.assertEqual((int(match.group(1)), int(match.group(2)), int(match.group(4))),
-                         (N, links - 1, N))
-        self.assertGreaterEqual(links, max(2, fewest_links(N)))
-        self.assertEqual(self.chain(store), (links, N))
+                         (n, links - 1, n))
+        self.assertGreaterEqual(links, max(2, fewest_links(n)))
+        self.assertEqual(self.chain(store), (links, n))
         self.assertEqual(self.transaction_bytes(store), {})
-        self.recovered(store, N)
+        self.recovered(store, n)
         self.assert_view_kept_and_next_number(store, config, port, sample,
                                               before, before_retention,
                                               "scale-chain")
         # The post is the uncovered suffix: the next compaction packs only it.
         again = self.native("operator", config, "store", "compact")
         self.assertIn("links=1 reclaimed=1 retired=0", again.stdout)
-        self.assertEqual(self.chain(store), (links + 1, N + 1))
+        self.assertEqual(self.chain(store), (links + 1, n + 1))
+
+    def scale_fixture(self, name):
+        fixture = Path(FIXTURE)
+        origin = json.loads((fixture / "origin.json").read_text(encoding="ascii"))
+        recorded = json.loads((fixture / "before-view.json").read_text(encoding="ascii"))
+        store = self.base / name
+        shutil.copytree(fixture / "store", store, symlinks=True)
+        config, port = self.owner_config(store, name)
+        return (origin["n"], store, config, port, recorded["sample"],
+                decode_view(recorded["view"]),
+                (fixture / "retention.txt").read_text(encoding="utf-8"),
+                (fixture / "compact.txt").read_text(encoding="utf-8"))
 
     def test_every_chain_publication_cut_from_both_entries(self):
         base, config0, _ = self.scale_store("cut-base", CUT_N)

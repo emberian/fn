@@ -2658,7 +2658,7 @@
     },
     {
       "id": "SCN-064",
-      "title": "A chain's covered-file reclaim and generation retirement are cut at every unlink and barrier over a multi-link chain with an uncovered suffix; every cut reopens to the whole history and the reclaim and retire entries finish",
+      "title": "A chain's covered-file reclaim and generation retirement are cut at every unlink and barrier over a multi-link chain with an uncovered suffix; every cut reopens to the whole history and the reclaim and retire entries finish; a 20,000-record store compacted into a 12-link chain serves every article identically to its pre-compaction self and takes the next number",
       "milestone": "M5",
       "status": "implemented",
       "requirements": [
@@ -2668,25 +2668,29 @@
         "Init a scale-profile store (max-transactions 1048576, max-article-octets 2048) and commit N = 4,500 well-formed 2 KiB articles (store probe N article); an uncut `checkpoint pack STORE select` of a copy gives the chain's length L (at least 2).",
         "On copies, stop and kill `operator store compact` after the first, second and 4096th covered unlink (pack-reclaim-unlink 1, 2, 4096: the developer stop selector names occurrences up to 4096) and at the reclaim directory barrier; status; count the transaction files; recover; `checkpoint pack-reclaim`; recover; compact again.",
         "Compact the store, post one article (the uncovered suffix), recover; twice stop and kill `operator store compact` at selection-file, leaving two complete candidates that were never selected; recover after each.",
-        "On copies, stop and kill the next `operator store compact` after the first and second retirement unlink (pack-retire-unlink 1, 2) and at the retirement directory barrier; status; recover; `checkpoint pack-retire`; recover; compact again."
+        "On copies, stop and kill the next `operator store compact` after the first and second retirement unlink (pack-retire-unlink 1, 2) and at the retirement directory barrier; status; recover; `checkpoint pack-retire`; recover; compact again.",
+        "From the 20,000-record chain fixture built once (planning/evidence/pack-chain-open-2026-09-26/chain_fixture.py build: probe 20000 article on tmpfs, the served view of every article by number, eight by Message-ID and HDR Subject, the retention listing, then `operator store compact`; kept at /tank/fn/scratch/fixtures/chain-20000-8cc3cd4c with its SHA256SUMS), a copy is recovered, served (the owner's startup deadline is the class's served_timeout), posted to once, served again and compacted again (FN_P5_FIXTURE)."
       ],
       "expected": [
         "After each reclaim cut the chain is whole (links=L boundary=N), exactly N-k transaction files remain after the k-th unlink (404 after the 4096th, none after the barrier), and recover reads all N records from the chain and the remaining files; pack-reclaim reports exactly the remaining files and leaves none; the verb then refuses as already-compact (exit 1) with the chain unchanged.",
         "With a suffix and two unselected candidates the chain stays links=L boundary=N and recover reads N+1 records.",
-        "After each retirement cut the chain has the new link (links=L+1 boundary=N+1), no transaction file remains, and recover reads N+1 records; pack-retire retires exactly the orphans left (1 after the first unlink, 0 after the second or the barrier) and never a chain link; the verb then refuses as already-compact."
+        "After each retirement cut the chain has the new link (links=L+1 boundary=N+1), no transaction file remains, and recover reads N+1 records; pack-retire retires exactly the orphans left (1 after the first unlink, 0 after the second or the barrier) and never a chain link; the verb then refuses as already-compact.",
+        "The compaction recorded links=12 generation=11 records=20000 reclaimed=20000 and status shows links=12 boundary=20000 with no transaction file; recover reads 20000 records; the served view after compaction equals the recorded view byte for byte (every article by number, the eight by Message-ID, HDR Subject, GROUP) and the retention listing is unchanged; the next post takes high+1; the next compaction adds one link of one record (links=13 boundary=20001)."
       ],
       "evidence": [
         "tests/test_native_pack_chain.py",
-        "planning/evidence/bounds-p5-2026-09-25.md"
+        "planning/evidence/bounds-p5-2026-09-25.md",
+        "planning/evidence/pack-chain-open-2026-09-26.md"
       ],
       "implementation": {
         "test": "tests.test_native_pack_chain",
         "cases": [
-          "NativePackChainTests.test_chain_reclaim_retire_and_suffix_cuts_resume"
+          "NativePackChainTests.test_chain_reclaim_retire_and_suffix_cuts_resume",
+          "NativePackChainTests.test_scale_store_compacts_into_a_chain"
         ],
         "native": true,
-        "log": "planning/evidence/bounds-p5-2026-09-25.md",
-        "record": "planning/evidence/bounds-p5-2026-09-25.md"
+        "log": "planning/evidence/pack-chain-open-2026-09-26/scale-fixture-089f932b.log",
+        "record": "planning/evidence/pack-chain-open-2026-09-26.md"
       }
     },
     {
