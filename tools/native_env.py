@@ -13,8 +13,8 @@ any test step.
 
 A module *reads* a variable when its source calls `os.environ.get("NAME"`,
 `os.environ["NAME"]` or `os.getenv("NAME"`; `plan` scans the module's own file
-(tests/test_x.py for tests.test_x or tests.test_x.Class), not the helpers it
-imports.  For each requested module `plan` prints one line,
+(tests/test_x.py for tests.test_x or tests.test_x.Class) and every tests.*
+module it imports, transitively.  For each requested module `plan` prints one line,
 
     MODULE NAME=VALUE ...
 
@@ -123,8 +123,31 @@ def module_file(module: str) -> Path:
     raise SystemExit(f"native_env: no source for {module}")
 
 
+IMPORT = re.compile(r'^\s*(?:from\s+(tests\.[A-Za-z0-9_.]+)\s+import|import\s+(tests\.[A-Za-z0-9_.]+))',
+                    re.M)
+
+
 def reads(module: str) -> list[str]:
-    return sorted(set(READ.findall(module_file(module).read_text())))
+    """The variables MODULE's file reads, and every tests.* module it imports
+    (transitively): tests/test_native_operator_verdicts.py takes FN_NATIVE_HOST
+    through test_native_control_filing (PKT-499 (d))."""
+    found: set[str] = set()
+    seen: set[Path] = set()
+    pending = [module_file(module)]
+    while pending:
+        path = pending.pop()
+        if path in seen:
+            continue
+        seen.add(path)
+        text = path.read_text()
+        found.update(READ.findall(text))
+        for match in IMPORT.finditer(text):
+            name = match.group(1) or match.group(2)
+            try:
+                pending.append(module_file(name))
+            except SystemExit:
+                continue
+    return sorted(found)
 
 
 def join_images(built: list[str], *extra: str) -> str:
