@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1024 |
-| Certification roots in the Makefile | 999 |
-| Books inside the root closure | 1017 |
-| `defthm` and `defthmd` events | 14454 |
-| `defun` events | 10032 |
+| Books read | 1026 |
+| Certification roots in the Makefile | 1001 |
+| Books inside the root closure | 1019 |
+| `defthm` and `defthmd` events | 14467 |
+| `defun` events | 10049 |
 | Functions with verified guards | 2284 |
 | Functions declared `:verify-guards nil` and never verified | 784 |
-| Functions left at the default with an explicit guard | 5478 |
-| Functions left at the default with no guard | 1486 |
+| Functions left at the default with an explicit guard | 5493 |
+| Functions left at the default with no guard | 1488 |
 | `assert-event` checks | 15214 |
-| `must-fail` checks | 1804 |
+| `must-fail` checks | 1810 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 138 |
 | Export-hygiene warnings | 161 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 154 |
-| Include-hygiene warnings | 1022 |
-| Host-names warnings | 1157 |
+| Include-hygiene warnings | 1024 |
+| Host-names warnings | 1176 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -378,6 +378,7 @@ that `make certify` requests.
 | `books/group-bucket-index.lisp` | root | 27 | 21 | 0/1/20/0 | 0 | 0 | 0 |
 | `books/group-bucket-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/group-number-index.lisp` | root | 2 | 10 | 0/0/9/1 | 0 | 0 | 0 |
+| `books/heap-figure.lisp` | root | 13 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/hybrid-carrier.lisp` | root | 18 | 33 | 0/0/33/0 | 0 | 0 | 0 |
 | `books/hybrid-lifecycle-store-invariants.lisp` | root | 21 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/hybrid-lifecycle.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -888,6 +889,7 @@ that `make certify` requests.
 | `tests/acl2/group-bucket-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 14 | 5 | 0 |
 | `tests/acl2/group-descriptions-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 1 | 0 |
 | `tests/acl2/group-number-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 7 | 0 |
+| `tests/acl2/heap-figure-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 6 | 0 |
 | `tests/acl2/hybrid-carrier-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 4 | 0 |
 | `tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 2 | 0 |
 | `tests/acl2/hybrid-lifecycle-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
