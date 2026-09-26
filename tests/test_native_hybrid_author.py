@@ -223,6 +223,78 @@ class NativeHybridAuthorTest(unittest.TestCase):
         finally:
             self.stop_owner(owner)
 
+    def test_unserved_group_and_every_refusal_are_named(self):
+        """PKT-147: a signed article naming a group this node does not serve
+        is refused by the name the injection decision gives it
+        (books/hybrid-store-injected.lisp KEYSTONE
+        fn-hsig-injected-carrier-unserved-group-is-refused-by-name, the word
+        from books/native-hybrid-control.lisp fn-nhc-author-refusal), not by
+        a bare refusal or a fault; the same signer's article naming only a
+        served group is accepted; an unenrolled generation and a damaged
+        signature each answer their own word."""
+        owner = self.start_owner()
+        try:
+            enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
+                                   str(self.principal), str(self.ed_public),
+                                   str(self.ml_public))
+            self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+
+            def signed(stem, newsgroups, extra=b""):
+                source = self.root / (stem + ".eml")
+                source.write_bytes(b"From: author@example.invalid\r\n"
+                                   b"Date: Sat, 26 Sep 2026 10:00:00 +0000\r\n"
+                                   b"Newsgroups: " + newsgroups + b"\r\n"
+                                   b"Subject: " + stem.encode() + b"\r\n"
+                                   b"Message-ID: <" + stem.encode()
+                                   + b"@example.invalid>\r\n" + extra
+                                   + b"\r\nbody\r\n")
+                result = self.invoke("hybrid-sign", str(self.principal),
+                                     str(self.ed_public), str(self.ed_secret),
+                                     str(self.ml_public), str(self.ml_private),
+                                     str(source))
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                values = dict(line.split() for line in result.stdout.decode().splitlines())
+                ed_path = self.root / (stem + "-ed.sig")
+                ml_path = self.root / (stem + "-ml.sig")
+                ed_path.write_bytes(bytes.fromhex(values["ed25519"]))
+                ml_path.write_bytes(bytes.fromhex(values["ml-dsa-65"]))
+                return [str(self.control), "1", str(source), str(ed_path),
+                        str(ml_path), str(self.ml_public)]
+
+            def author(arguments):
+                done = self.invoke("hybrid-author", *arguments)
+                return done.returncode, done.stderr.decode().strip().splitlines()[-1:]
+
+            outcomes = {
+                "unserved-only": author(signed("pkt147-unserved", b"fn.unserved")),
+                "served-and-unserved": author(signed("pkt147-mixed",
+                                                     b"fn.test,fn.unserved")),
+                "unserved-cancel": author(signed(
+                    "pkt147-cancel", b"fn.unserved",
+                    b"Control: cancel <pkt147-served@example.invalid>\r\n")),
+                "served": author(signed("pkt147-served", b"fn.test")),
+            }
+            unenrolled = signed("pkt147-unenrolled", b"fn.test")
+            unenrolled[1] = "7"
+            outcomes["unenrolled-generation"] = author(unenrolled)
+            damaged = signed("pkt147-damaged", b"fn.test")
+            signature = bytearray(Path(damaged[4]).read_bytes())
+            signature[0] ^= 1
+            Path(damaged[4]).write_bytes(bytes(signature))
+            outcomes["damaged-signature"] = author(damaged)
+        finally:
+            self.stop_owner(owner)
+        print("NATIVE-PKT147-WITNESS " + repr(sorted(outcomes.items())))
+        for key in ("unserved-only", "served-and-unserved", "unserved-cancel"):
+            self.assertEqual(outcomes[key], (1, ["refused hybrid-author UNKNOWN-GROUP"]),
+                             outcomes)
+        self.assertEqual(outcomes["served"][0], 0, outcomes)
+        self.assertEqual(outcomes["unenrolled-generation"],
+                         (1, ["refused hybrid-author AUTHOR-NOT-ENROLLED"]), outcomes)
+        self.assertEqual(outcomes["damaged-signature"][0], 1, outcomes)
+        self.assertNotIn("REFUSED", outcomes["damaged-signature"][1][0].split()[-1:],
+                         outcomes)
+
     def test_portable_carrier_verifies_exact_source_and_keyset(self):
         source = self.root / "authored.eml"
         source.write_bytes(

@@ -403,6 +403,33 @@ class NativeControlAcrossPeersTests(unittest.TestCase):
             self.assertEqual(pinned_advanced[name],
                              {m: fresh[name][m] for m in pinned_before[name]})
 
+    def test_a_view_with_every_article_withdrawn(self):
+        """PKT-208's nil-group-index view (control-c3e, "Not done"): a view
+        whose visible list is empty has no group index.  It is reachable: a
+        signed cancel naming its own Message-ID withdraws itself (author
+        basis), so a store holding only that article publishes a view with
+        nothing visible and one withdrawn article.  The served answer by
+        Message-ID must still say `withdrawn` (books/nntp-control.lisp
+        fn-nntp-withdrawn-article-answers-430-withdrawn)."""
+        p = self.signer("p", 0x55,
+                        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+                        "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+                        "1")
+        node = self.initialize("h")
+        self.start(node)
+        self.command([IMAGE, "--fn", "hybrid-enroll", node["control"], p["generation"],
+                      p["principal"], p["ed_public"], p["ml_public"]])
+        own = "<self-cancel@example.invalid>"
+        self.author(node, p, own, "fn.post", "Control: cancel " + own)
+        fresh = self.answer(node, own)
+        self.kill(node)
+        self.start(node)
+        replayed = self.answer(node, own)
+        print("NATIVE-EMPTY-VIEW-WITNESS " + json.dumps(
+            {"fresh": fresh, "replayed": replayed}, sort_keys=True))
+        self.assertEqual(fresh, "430 withdrawn")
+        self.assertEqual(replayed, "430 withdrawn")
+
     def test_author_basis(self):
         self.run_matrix("author")
 

@@ -86,9 +86,15 @@
               (snapshot (first selected))
               (principal (second selected))
               (keys (third selected)))
-         (unless selected (return-from fnn-hybrid-control-author :refused))
+         ;; PKT-147: every refusing arm answers ACL2's word for it
+         ;; (books/native-hybrid-control.lisp fn-nhc-author-refusal).
+         (unless selected
+           (return-from fnn-hybrid-control-author
+             (fnn-core 'fn-nhc-author-refusal :enrollment nil)))
          (let* ((fields (fnn-core 'fn-hsig-host-authored-source-fields source)))
-           (unless fields (return-from fnn-hybrid-control-author :refused))
+           (unless fields
+             (return-from fnn-hybrid-control-author
+               (fnn-core 'fn-nhc-author-refusal :source nil)))
            (let* ((msgid (fnn-octets (fnn-string-octets (first fields))))
                 (groups (mapcar (lambda (g) (fnn-octets (fnn-string-octets g)))
                                 (second fields)))
@@ -100,7 +106,16 @@
                 (received (fnn-core 'fn-hsig-injected-carrier-octets
                                     source principal keys signatures
                                     post-config observation)))
-           (unless received (return-from fnn-hybrid-control-author :refused))
+           ;; A named newsgroup this node does not serve is the injection
+           ;; decision's :unknown-group, answered by name
+           ;; (books/hybrid-store-injected.lisp KEYSTONE
+           ;; fn-hsig-injected-carrier-unserved-group-is-refused-by-name).
+           (unless received
+             (return-from fnn-hybrid-control-author
+               (fnn-core 'fn-nhc-author-refusal :carrier
+                         (fnn-core 'fn-hsig-injected-carrier-reason
+                                   source principal keys signatures
+                                   post-config observation))))
            ;; C1: the filing step every ingress takes (fn-pa-filing-plan via
            ;; fn-owner-control-filing).  This path commits through its own
            ;; identity callback, not fnn-owner-attempt-transit, so it asks
@@ -115,7 +130,8 @@
                           (member (first filing) '(:file :refused)))
                (fnn-fault "owner returned malformed control filing ~a" filing))
              (when (eq (first filing) :refused)
-               (return-from fnn-hybrid-control-author :refused))
+               (return-from fnn-hybrid-control-author
+                 (fnn-core 'fn-nhc-author-refusal :filing (second filing))))
              (unless (and (listp (second filing))
                           (every #'fnn-octet-list-p (second filing)))
                (fnn-fault "owner returned malformed filed groups"))
@@ -170,7 +186,7 @@
                         (:conflict :conflict)
                         (:absent (fnn-owner-identity-commit service event))
                         (t (fnn-fault "owner returned malformed existing action")))))))
-             :refused)))))))))
+             (fnn-core 'fn-nhc-author-refusal :event nil))))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
   (when (typep frame 'fnn-octets)
