@@ -259,3 +259,15 @@ article under a live pin); it is D03's release, open.
   after every cut.
 - **The maintenance reservation** (item 2 of the brief): the finding and
   packet F2, not an invariant.
+
+## 8. The N=4,000 run (live at the lane's budget)
+
+`run.sh n4000 4000 256 67108864` (no cut campaign; the campaign is the
+N=300 one above) was started on the 9c5baa89 image at 00:5x UTC and is
+still building its store when this record is committed: 995 articles after
+about 17 minutes, about one POST per second at N near 1,000 on the
+developer image (not attributed: the served POST path's cost is not this
+lane's change, and no matched profile was taken). Its log is
+/tank/fn/scratch/reclaim-lifecycle/logs/n4000.jsonl; the next action is to
+read its before/after lines (files, octets, bytes-used, reclaim wall) into
+this section with the log's SHA-256. Until then the scale claim is N=300.
