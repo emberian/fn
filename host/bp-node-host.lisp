@@ -16,6 +16,7 @@
 (include-book "../books/bp-node-records")
 (include-book "../books/bp-authored-wire")
 (include-book "../books/bp-channel-ingress")
+(include-book "../books/bp-run-class")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
@@ -201,25 +202,7 @@
 (defun fn-bpn-host-receive-length (r) (nth 3 r))
 
 ; -----------------------------------------------------------------------------
-; One process result from two different kinds of evidence.
-;
-; ARTICLE-* counts are verdicts about complete inbound BP bundles.  OPERATIONAL
-; is the convergence session's result.  An uncertain socket/session result is
-; therefore not overwritten by a refused article: uncertainty dominates across
-; both domains, then refusal, then acceptance.  host/native/bp.lisp calls this
-; function directly before mapping the returned keyword to its public exit code.
-
-(defun fn-bpn-host-run-outcome (article-accepted article-refused
-                                                 article-uncertain operational)
-  (if (not (and (natp article-accepted)
-                (natp article-refused)
-                (natp article-uncertain)
-                (member-equal operational '(nil :accepted :refused :uncertain))))
-      :uncertain
-    (cond ((or (< 0 article-uncertain)
-               (equal operational :uncertain))
-           :uncertain)
-          ((or (< 0 article-refused)
-               (equal operational :refused))
-           :refused)
-          (t :accepted))))
+; One process result.  The class of a BP verb's run and its exit code are
+; books/bp-run-class.lisp's (PRF-131): host/native/bp.lisp records each
+; article verdict, session outcome and ACL2 effect with fn-bprc-note and
+; renders fn-bprc-run-exit-code.

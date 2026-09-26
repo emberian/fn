@@ -50,6 +50,10 @@
   fd tag spool session (carry nil) (held nil) (closing nil) (broken nil)
   (pending nil) (trace nil) (inbound 0)
   (accepted 0) (refused 0) (uncertain 0) (outcome nil)
+  ;; T when a Store or FNBS publication inside the delivery callback was
+  ;; uncertain: a fence, not the connection's own loss (ACL2 reads both,
+  ;; fn-bprc-session-evidence, books/bp-run-class.lisp).
+  (fenced nil)
   ;; The Reason Code of the peer's XFER_REFUSE for the outbound transfer, as
   ;; ACL2's :outbound-refused event carried it; nil when none arrived.
   (refusal nil))
@@ -270,7 +274,8 @@ and faults without following or deleting anything."
                           (fnn-store-indeterminate (e)
                             (fnn-tcl-drop conn)
                             (incf (fnn-tclc-uncertain conn))
-                            (setf (fnn-tclc-outcome conn) :uncertain)
+                            (setf (fnn-tclc-outcome conn) :uncertain
+                                  (fnn-tclc-fenced conn) t)
                             (fnn-tcl-log conn "uncertain" "~a" e)
                             (error e))))
                 (plan (fnn-core 'fn-tcl-delivery-plan
@@ -296,7 +301,8 @@ and faults without following or deleting anything."
               (fnn-tcl-flush conn))
              (:uncertain
               (incf (fnn-tclc-uncertain conn))
-              (setf (fnn-tclc-outcome conn) :uncertain)
+              (setf (fnn-tclc-outcome conn) :uncertain
+                    (fnn-tclc-fenced conn) t)
               (fnn-tcl-log conn "uncertain" "inbound xfer=~d reason=~a"
                            (second event)
                            (fnn-core 'fn-tcl-delivery-plan-detail plan))

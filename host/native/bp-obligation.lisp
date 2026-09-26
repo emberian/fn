@@ -186,7 +186,7 @@
                (return-from fnn-command-bpo-owner-request +fnn-exit-refused+))
              (fnn-bps-drive-effects service (fnn-bps-step service event))
              (case (fnn-bps-outcome service)
-               (:uncertain
+               (:fenced
                 (fnn-indeterminate "BP obligation request carrier publication is uncertain"))
                (:refused (fnn-refuse "BP obligation request carrier was refused")))
              (fnn-out "BP obligation request carrier durable work=~a attempt=~a generation=~d"
@@ -273,4 +273,4 @@
                 :message (format nil "unknown bp-obligation command ~a"
                                  command))))))
 
-(fnn-register-verb "bp-obligation" #'fnn-dispatch-bp-obligation)
+(fnn-register-verb "bp-obligation" (fnn-bp-verb #'fnn-dispatch-bp-obligation))
