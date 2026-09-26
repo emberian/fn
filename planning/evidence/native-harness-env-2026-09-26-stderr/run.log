@@ -1,0 +1,25 @@
+== source commit 583cda60830ea4dca716daf5d2a9b76ee4e0f340
+== install 14:44:13Z
+   install exit 0 (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/install.log)
+== certify 14:44:19Z
+   certify exit 0 (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/certify.log)
+== acquire 14:44:35Z
+   acquire exit 0 (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/acquire.log)
+== validate 14:45:10Z
+   validate exit 0 (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/validate.log)
+== image-developer 14:45:36Z
+   image-developer exit 0 (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/image-developer.log)
+== image-production 14:46:59Z
+   image-production exit 0 (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/image-production.log)
+== test-tests.test_native_bounds_join 14:48:27Z
+   test-tests.test_native_bounds_join exit 0: tests.test_native_bounds_join: OK (2 ran, 1 skipped)
+    skipped  tests.test_native_bounds_join.DeployRehearsalTests.test_step_rollback_step_post_3_mib_restart: FN_FORMAT7_IMAGE names a pre-D27 image
+   (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/test-tests.test_native_bounds_join.log)
+== test-tests.test_native_public_exposure 14:49:06Z
+   test-tests.test_native_public_exposure exit 0: tests.test_native_public_exposure: OK (1 ran, 0 skipped)
+   (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/test-tests.test_native_public_exposure.log)
+== test-tests.test_native_operator_verbs 14:50:01Z
+   test-tests.test_native_operator_verbs exit 1: tests.test_native_operator_verbs: FAILED (1 failures, 0 errors, 22 ran, 0 skipped)
+   (/tank/fn/scratch/hot-path-checker-2/native-stderr/logs/test-tests.test_native_operator_verbs.log)
+== modules: 2 OK, 0 SKIPPED (no test executed), 1 FAILED
+== done status 1; /tank/fn/scratch/hot-path-checker-2/native-stderr/SHA256SUMS

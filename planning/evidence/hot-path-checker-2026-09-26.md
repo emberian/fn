@@ -420,3 +420,57 @@ In PKT-447:
   heuristic.
 - **Path-sensitivity** for event-dispatch arms (§2) is not built. It would
   remove PKT-448 (d)'s false paths.
+
+## Continuation (hot-path-checker-2, 2026-09-26)
+
+**The scaling rows.** The sweep had finished (`done` = 0). The predecessor
+had fetched it into planning/evidence/hot-path-checker-2026-09-26/rows/, and
+those rows are now §4 and are committed. The certification manifest was
+harvested from hbox (certify-20260926T102804Z-1396338). 55 N-finds carry
+`confirmed` in planning/hot-path-findings.json: those reached from the POST
+entries, from the open entries, and the nine `fn-nntp-*` OVER candidates.
+Each one says the row is aggregate. Commit 492dfc08.
+
+**The check over dev's bytes.** dev was merged at 86915c1a, then again at
+efae2fdc: served-path-scale, hot-path-scans-2, exposure-reply-size,
+multi-peer-relay, keys-and-accounts and operator-daily-3 since 17ff24aa.
+`tools/hot_path_check.py --summary --strict` then reported 15 NEW and 6
+STALE. It now reports 182 traversals from 147 host entries (174 unexpected,
+7 cold, 1 uncalled), with 0 NEW and 0 STALE. The report is
+planning/evidence/hot-path-checker-2026-09-26/merged-report.txt (.json
+beside it).
+
+STALE entries, removed because the walk is gone from the executed path:
+
+- `fn-all-article-memberships`, `fn-articles-freshp` and
+  `fn-node-articles-have-archive-bindingsp`. served-path-scale (PRF-173)
+  gave each an `mbe` whose `:exec` indexes once in a hash stobj, so the
+  quadratic `:logic` bodies no longer run. PKT-189 is closed.
+- `fn-bpaj-record-for-msgid`: signed-history-index's Message-ID index.
+- `fn-bpnp-has-forward-pendingp*1*`: replaced by the forward plan.
+- `fn-store-sn-pin-count len`: moved into `fn-rtf-pin-count`.
+
+NEW entries, each listed with an owner:
+
+- **PKT-448 (a)**: `fn-fr-scan`, `fn-nab-check`, `fn-nab-fill-bindings` and
+  `fn-nab-fill-pins`. These are the linear successors. They are still
+  whole-list walks each time `fn-node-statep` or `fn-statep` runs on a
+  served path.
+- **PKT-448 (f)**: `fn-rtf-pin-count len N`, called from
+  `fn-store-sn-pin-count`.
+- **PKT-504 (a)**: `fn-retain-pin-id-scanp` and `fn-retain-release-id-scanp`,
+  the admission scans. They are reached from the POST and transit entries.
+- **PKT-504 (b)**: the six forward-plan walks in F, from
+  `fnn-bpnode-forward-contact`.
+- **PKT-504 (c)**: `fn-cev-find-article` (from `fn-native-live-status-host-*`)
+  and `fn-ks-find-statement` (from `fn-owner-key-statement-redecide-find`).
+
+No listed find became unowned. The tool's behaviour did not change: no
+change to tools/hot_path_check.py was needed. Merge commits c20c44cc and
+082b929c, then 583cda60 (findings) and 99e90127 (proofs.json events after the
+merge: PRF-185's control-evidence keystone reads uncertified at the merged
+digest, which is the deputy's certification).
+
+**Not done here (PKT-504 (f)).** The rows have not been re-measured on the
+merged head, and there is no profile naming the POST and OVER walks.
+PKT-447 is unchanged.
