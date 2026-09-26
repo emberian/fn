@@ -2929,6 +2929,42 @@
         "log": "planning/evidence/operator-daily/native-control.log",
         "record": "planning/evidence/operator-daily-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-095",
+      "title": "Two friends' nodes peer for days without an operator: a peer that lists an article it cannot produce, a clean restart, pulls every minute (bounded native form: 30 minutes)",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-035"
+      ],
+      "steps": [
+        "S: a scripted reader-only peer listing <real-0>, <ghost>, <real-1> for NEWNEWS since before it was built, serving the real ones and answering ARTICLE <ghost> 430. B: `peer add S ... fn.* - 127.0.0.9 true`, `peer pull S 2 3`.",
+        "The same with FN_PULL_TEST_KILL at after-fsync:2 and before-write:2 (round 1's held close), then a restart.",
+        "Soak (FN_PULL_SOAK_SECONDS=1800): B pulls a fn node A and S every 60 s with bound 3; A receives an article every two minutes; B restarts cleanly half-way."
+      ],
+      "expected": [
+        "Both real ids stored once in round 1; `cursor=held unavailable=1` twice, then `cursor=advanced unavailable=1 dropped=<ghost>` once; the first three NEWNEWS name one instant; three ARTICLE <ghost>.",
+        "after-fsync:2: three ARTICLE <ghost> in all (the count survived); before-write:2: four (round 1 not durable); the real ids stored once.",
+        "Every article A held stored once at B; <ghost> dropped once; three ARTICLE <ghost>."
+      ],
+      "evidence": [
+        "planning/evidence/peer-feeds-2026-09-26.md",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-run1.log",
+        "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-final.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_pull",
+        "cases": [
+          "test_unavailable_id_is_dropped_at_the_bound",
+          "test_unavailable_count_survives_a_cut",
+          "test_soak_two_nodes_and_an_unproducible_listing"
+        ],
+        "native": true,
+        "log": "planning/evidence/peer-feeds-2026-09-26/native-peer-pull-final.log",
+        "record": "planning/evidence/peer-feeds-2026-09-26.md"
+      }
     }
   ]
 }

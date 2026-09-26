@@ -12,6 +12,13 @@ so the cases read B's NEWNEWS lines rather than trusting B's own account.
 - test_kill_mid_round_recovery_asks_the_same_newnews: the proxy withholds
   B's first ARTICLE; B is killed (SIGKILL) there; after restart B's first
   NEWNEWS is byte-identical to the dead round's and the article is stored.
+- test_unavailable_id_is_dropped_at_the_bound (PRF-165, PKT-213): a
+  scripted peer lists an id it answers 430; the other ids are stored, the
+  cursor holds for BOUND-1 rounds and advances at the BOUND-th, logging the
+  drop once.
+- test_unavailable_count_survives_a_cut: the held close's FNPL append is
+  cut after its fsync (the count survives the restart) and before its
+  write (the count starts again).
 - test_pull_from_inn: INN (FN_INN_SRC, an installed INN 2.7 tree) holds an
   article in fn.test; B pulls it from nnrpd and stores it.
 
@@ -36,6 +43,7 @@ Run: FN_NATIVE_HOST=<launcher> [FN_INN_SRC=/tank/fn/inn/2.7.4] \
      python3 -m unittest -v tests.test_native_peer_pull
 """
 
+import calendar
 import hashlib
 import json
 import os
@@ -194,6 +202,106 @@ class RecordingProxy:
     def since(self, mark):
         with self.lock:
             return list(self.commands[mark:])
+
+    def close(self):
+        self.closed = True
+        self.listener.close()
+
+
+class ScriptedPeer:
+    """A reader-only NNTP server (PRF-165, PKT-213): DATE answers the wall
+    clock, every NEWNEWS lists LISTED, and ARTICLE serves ARTICLES and
+    answers 430 for any other id -- a peer that keeps listing an article it
+    cannot produce.  It records each command, as the proxy does."""
+
+    def __init__(self, listed, articles, tls=None):
+        self.listed = list(listed)
+        self.articles = dict(articles)
+        self.arrived = int(time.time())
+        # TLS: (certificate, key) -- STARTTLS is answered 382 and the
+        # session continues inside TLS, so ARTICLE is counted HERE, on the
+        # server side, where a proxy in front could not read it (PKT-236 b).
+        self.tls = tls
+        self.listener = socket.socket()
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(8)
+        self.port = self.listener.getsockname()[1]
+        self.lock = threading.Lock()
+        self.commands = []
+        self.closed = False
+        threading.Thread(target=self.accept_loop, daemon=True).start()
+
+    def accept_loop(self):
+        while not self.closed:
+            try:
+                client, _ = self.listener.accept()
+            except OSError:
+                return
+            threading.Thread(target=self.serve, args=(client,), daemon=True).start()
+
+    def serve(self, client):
+        try:
+            stream = client.makefile("rwb", buffering=0)
+            stream.write(b"200 scripted peer ready (no posting)\r\n")
+            while True:
+                line = stream.readline()
+                if not line:
+                    return
+                text = line.rstrip(b"\r\n").decode("ascii", "replace")
+                with self.lock:
+                    self.commands.append(text)
+                word = text.split(" ", 1)[0].upper()
+                if word == "DATE":
+                    stream.write(time.strftime("111 %Y%m%d%H%M%S\r\n",
+                                               time.gmtime()).encode("ascii"))
+                elif word == "NEWNEWS":
+                    # RFC 3977 7.4: ids that ARRIVED at or after the instant;
+                    # all of this peer's ids arrived when it was built.
+                    words = text.split()
+                    try:
+                        since = calendar.timegm(time.strptime(words[2] + words[3],
+                                                              "%Y%m%d%H%M%S"))
+                    except (IndexError, ValueError):
+                        since = 0
+                    listed = self.listed if self.arrived >= since else []
+                    body = b"".join(m.encode("ascii") + b"\r\n" for m in listed)
+                    stream.write(b"230 list follows\r\n" + body + b".\r\n")
+                elif word == "ARTICLE":
+                    mid = text.split(" ", 1)[1] if " " in text else ""
+                    if mid in self.articles:
+                        octets = self.articles[mid].replace(b"\r\n.", b"\r\n..")
+                        stream.write("220 0 {}\r\n".format(mid).encode("ascii")
+                                     + octets + b".\r\n")
+                    else:
+                        stream.write(b"430 no such article\r\n")
+                elif word == "STARTTLS" and self.tls:
+                    import ssl
+                    stream.write(b"382 continue with TLS negotiation\r\n")
+                    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                    context.load_cert_chain(str(self.tls[0]), str(self.tls[1]))
+                    client = context.wrap_socket(client, server_side=True)
+                    stream = client.makefile("rwb", buffering=0)
+                elif word == "QUIT":
+                    stream.write(b"205 bye\r\n")
+                    return
+                else:
+                    stream.write(b"500 what\r\n")
+        except OSError:
+            pass
+        finally:
+            try:
+                client.close()
+            except OSError:
+                pass
+
+    def count(self, prefix):
+        with self.lock:
+            return sum(1 for c in self.commands if c.startswith(prefix))
+
+    def newnews(self):
+        with self.lock:
+            return [c for c in self.commands if c.upper().startswith("NEWNEWS")]
 
     def close(self):
         self.closed = True
@@ -526,7 +634,7 @@ class NativePeerPullTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         return certificate, key
 
-    def initialize_protected(self, name, login, password):
+    def initialize_protected(self, name, login, password, protected_only=True):
         """A serving node: STARTTLS, authentication required and AUTHINFO only
         on a protected channel; LOGIN/PASSWORD is the principal it holds for
         the pulling node."""
@@ -540,8 +648,9 @@ class NativePeerPullTests(unittest.TestCase):
         config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             'tls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n[log]\npath = "{}"\n'
-            '[auth]\nrequired = true\nprotected_only = true\npath = "{}"\n'.format(
+            '[auth]\nrequired = true\nprotected_only = {}\npath = "{}"\n'.format(
                 store, port, certificate, key, control, root / "fn.log",
+                "true" if protected_only else "false",
                 root / "auth.toml"), encoding="ascii")
         enrolled = subprocess.run(
             [str(IMAGE), "--fn", "operator", str(config), "principal", "set-password",
@@ -714,6 +823,268 @@ class NativePeerPullTests(unittest.TestCase):
                     self.assertEqual(counts[message_id], 1, (label, counts))
                 self.assertEqual(private, [], label)
         self.witness("tls-cursor-cuts", results, [])
+
+    # ------------------------------------------------------------ PRF-165
+
+    def unavailable_pair(self, name, bound):
+        ghost = "<ghost-{}@example.invalid>".format(name)
+        real = ["<real-{}-{}@example.invalid>".format(name, k) for k in range(2)]
+        peer = ScriptedPeer([real[0], ghost, real[1]],
+                            {m: article(m, "real-" + m[6:12], path="scripted!not-for-mail")
+                             for m in real})
+        self.addCleanup(peer.close)
+        b = self.initialize("B" + name, ["fn.test"], "b.pull.example.invalid")
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add",
+                      "S", "s.pull.example.invalid", "127.0.0.1", str(peer.port),
+                      "fn.*", "-", "127.0.0.9", "true"])
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull",
+                      "S", INTERVAL, str(bound)])
+        return peer, b, ghost, real
+
+    def test_unavailable_id_is_dropped_at_the_bound(self):
+        """PKT-213: the peer lists <ghost> between two real articles and
+        answers its ARTICLE 430.  The real articles are stored in the first
+        round; the cursor holds for BOUND-1 complete rounds, each naming the
+        same instant; at the BOUND-th the cursor advances and the log names
+        <ghost> once; the next NEWNEWS names a later instant."""
+        bound = 3
+        peer, b, ghost, real = self.unavailable_pair("drop", bound)
+        self.start(b)
+        for message_id in real:
+            self.await_article(b, message_id)
+        self.await_log(b, "dropped=" + ghost, 1)
+        self.await_log(b, "cursor=advanced", 1)
+        lines = self.pull_lines(b)
+        ghost_articles = peer.count("ARTICLE " + ghost)
+        newnews = peer.newnews()
+        counts = {m: self.count_article(b, m) for m in real}
+        fnpl = self.fnpl_files(b)
+        self.stop(b)
+        self.witness("unavailable-drop", {"pull_lines": lines, "newnews": newnews,
+                                          "ghost_article_commands": ghost_articles,
+                                          "counts": counts, "fnpl": fnpl, "bound": bound},
+                     [b])
+        done = [l for l in lines if "round=done" in l]
+        advanced_at = next(i for i, l in enumerate(done) if "cursor=advanced" in l)
+        self.assertEqual(advanced_at, bound - 1, done)
+        for l in done[:bound - 1]:
+            self.assertIn("cursor=held unavailable=1", l)
+            self.assertNotIn("dropped=", l)
+        self.assertIn("unavailable=1 dropped=" + ghost, done[bound - 1])
+        self.assertEqual(sum("dropped=" in l for l in lines), 1, lines)
+        self.assertEqual(len(set(newnews[:bound])), 1, newnews)
+        self.assertGreaterEqual(ghost_articles, bound)
+        for m in real:
+            self.assertEqual(counts[m], 1, counts)
+
+    def test_unavailable_count_survives_a_cut(self):
+        """PKT-213 at the FNPL cuts: append 2 is round 1's held close (the
+        :pull-unavailable record, then the cursor record).  Killed after its
+        fsync, the restarted node recovers <ghost>'s count of 1 and drops it
+        after BOUND-1 more rounds (BOUND ARTICLE <ghost> in all); killed
+        before its write, round 1 is not durable and the count starts again
+        (BOUND+1 in all).  Either way the real articles are stored once."""
+        bound = 3
+        results = {}
+        for cut, total in (("after-fsync:2", bound), ("before-write:2", bound + 1)):
+            name = cut.replace(":", "-")
+            peer, b, ghost, real = self.unavailable_pair(name, bound)
+            self.env["FN_PULL_TEST_KILL"] = cut
+            try:
+                self.start(b)
+            except Exception:
+                pass
+            finally:
+                del self.env["FN_PULL_TEST_KILL"]
+            process = b["process"]
+            code = process.wait(timeout=120)
+            b.pop("process")
+            process.communicate(timeout=60)
+            self.processes.remove(process)
+            self.assertEqual(code, -signal.SIGKILL, cut)
+            before = peer.count("ARTICLE " + ghost)
+            self.start(b)
+            self.await_log(b, "dropped=" + ghost, 1)
+            self.await_log(b, "cursor=advanced", 1)
+            ghost_articles = peer.count("ARTICLE " + ghost)
+            counts = {m: self.count_article(b, m) for m in real}
+            lines = self.pull_lines(b)
+            self.stop(b)
+            results[cut] = {"ghost_before_kill": before, "ghost_total": ghost_articles,
+                            "counts": counts, "pull_lines": lines,
+                            "log_sha256": sha256_of(b["log"])}
+            self.assertEqual(before, 1, (cut, before))
+            self.assertEqual(ghost_articles, total, (cut, ghost_articles, lines))
+            for m in real:
+                self.assertEqual(counts[m], 1, (cut, counts))
+        self.witness("unavailable-cuts", results, [])
+
+    # ------------------------------------------------------------ PKT-236 (b), (c)
+
+    def test_tls_replay_bound_counted_by_the_server(self):
+        """PKT-236 (b): the pull's duplicate-replay bound after a close cut,
+        observed through TLS.  The scripted peer terminates STARTTLS itself
+        and counts every ARTICLE it is sent.  B is killed after the fsync of
+        its close record (append 2: the round stored both ids) and before
+        that write; after the restart every ARTICLE B sends names an id not
+        stored at the kill, at most once (fn-pull-recovery-asks-the-dead-
+        rounds-newnews: the restarted round asks the dead round's NEWNEWS,
+        and ids the local node already holds draw 435, never ARTICLE)."""
+        results = {}
+        for cut in ("before-write:2", "after-fsync:2"):
+            name = cut.replace(":", "-")
+            root = self.base / ("S" + name)
+            root.mkdir()
+            certificate, key = self.certificate(root, "S")
+            ids = ["<tls-bound-{}-{}@example.invalid>".format(name, k) for k in range(2)]
+            peer = ScriptedPeer(ids, {m: article(m, "tb" + m[11:16], path="scripted!not-for-mail")
+                                      for m in ids}, tls=(certificate, key))
+            self.addCleanup(peer.close)
+            b = self.initialize("B" + name, ["fn.test"], "b.pull.example.invalid")
+            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "S",
+                          "s.pull.example.invalid", "127.0.0.1", str(peer.port), "fn.*",
+                          "-", "source-address", "127.0.0.9", "true", "starttls",
+                          "localhost", str(certificate)])
+            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull", "S",
+                          INTERVAL])
+            self.env["FN_PULL_TEST_KILL"] = cut
+            try:
+                self.start(b)
+            except Exception:
+                pass
+            finally:
+                del self.env["FN_PULL_TEST_KILL"]
+            process = b["process"]
+            code = process.wait(timeout=120)
+            b.pop("process")
+            process.communicate(timeout=60)
+            self.processes.remove(process)
+            self.assertEqual(code, -signal.SIGKILL, cut)
+            with peer.lock:
+                mark = len(peer.commands)
+            self.start(b)
+            for m in ids:
+                self.await_article(b, m)
+            self.await_log(b, "cursor=advanced", 1)
+            with peer.lock:
+                before = list(peer.commands[:mark])
+                after = list(peer.commands[mark:])
+            counts = {m: self.count_article(b, m) for m in ids}
+            lines = self.pull_lines(b)
+            self.stop(b)
+            fetched_before = [c for c in before if c.startswith("ARTICLE ")]
+            fetched_after = [c for c in after if c.startswith("ARTICLE ")]
+            results[cut] = {"article_before_kill": fetched_before,
+                            "article_after_restart": fetched_after,
+                            "starttls": sum(c == "STARTTLS" for c in before + after),
+                            "counts": counts, "pull_lines": lines,
+                            "log_sha256": sha256_of(b["log"])}
+            self.assertTrue(all("transport=tls" in l for l in lines if "round=" in l), lines)
+            self.assertEqual(sorted(fetched_before), sorted("ARTICLE " + m for m in ids))
+            # The bound: after the restart no id is fetched twice, and none
+            # the node already held at the kill (append 2 follows the whole
+            # round, so both ids were stored before it).
+            self.assertEqual(len(fetched_after), len(set(fetched_after)), fetched_after)
+            self.assertEqual(fetched_after, [], (cut, fetched_after))
+            for m in ids:
+                self.assertEqual(counts[m], 1, (cut, counts))
+        self.witness("tls-replay-bound", results, [])
+
+    def test_loopback_lab_exception_against_an_unprotected_server(self):
+        """PKT-236 (c): the loopback-lab exception's positive arm natively.
+        A requires authentication but not a protected channel
+        (protected_only = false); B's record for A is a clear transport to
+        the loopback literal with a credential whose profile permits clear
+        text.  B authenticates in the clear (the proxy sees AUTHINFO), pulls
+        both articles and advances."""
+        a = self.initialize_protected("A", "nodeB", "b-secret", protected_only=False)
+        b = self.initialize("B", ["fn.test"], "b.pull.example.invalid")
+        self.start(a)
+        proxy = RecordingProxy(a["port"])
+        self.addCleanup(proxy.close)
+        self.pull_protected(b, a, proxy.port, self.profile(b, "nodeB", "b-secret"),
+                            tls=False, allow_clear=True)
+        ids = ["<lab-one@example.invalid>", "<lab-two@example.invalid>"]
+        for n, message_id in enumerate(ids):
+            self.operator_post(a, message_id, "lab-{}".format(n))
+        self.start(b)
+        for message_id in ids:
+            self.await_article(b, message_id)
+        self.await_log(b, "cursor=advanced", 1)
+        with proxy.lock:
+            commands = list(proxy.commands)
+        lines = self.pull_lines(b)
+        self.stop(b)
+        self.stop(a)
+        self.witness("loopback-lab", {"commands": [c for c in commands
+                                                   if not c.upper().startswith("AUTHINFO PASS")],
+                                      "authinfo_pass_seen": any(c.upper().startswith("AUTHINFO PASS")
+                                                                for c in commands),
+                                      "pull_lines": lines}, [a, b])
+        self.assertIn("AUTHINFO USER nodeB", commands)
+        self.assertNotIn("STARTTLS", commands)
+        self.assertTrue(any("transport=clear" in l and "cursor=advanced" in l for l in lines), lines)
+
+    # ------------------------------------------------------------ the soak
+
+    @unittest.skipUnless(os.environ.get("FN_PULL_SOAK_SECONDS"),
+                         "set FN_PULL_SOAK_SECONDS for the bounded soak (runbook)")
+    def test_soak_two_nodes_and_an_unproducible_listing(self):
+        """SCN-095's bounded native form: B pulls a fn node A and the
+        scripted peer S (which keeps listing <ghost> and answers it 430)
+        once a minute for FN_PULL_SOAK_SECONDS; A receives an article every
+        two minutes; B is restarted cleanly half-way.  "Days" is the claim;
+        this is its bounded evidence: every article A held reaches B once,
+        <ghost> is dropped exactly once at the bound (the count survives the
+        restart), B's cursor for S advances, and B's RSS is sampled."""
+        seconds = int(os.environ["FN_PULL_SOAK_SECONDS"])
+        bound = 3
+        a = self.initialize("A", ["fn.test"], "a.pull.example.invalid")
+        self.start(a)
+        peer, b, ghost, real = self.unavailable_pair("soak", bound)
+        self.command([IMAGE, "--fn", "operator", b["config"], "peer", "add", "A",
+                      "a.pull.example.invalid", "127.0.0.1", str(a["port"]), "fn.*",
+                      "-", "127.0.0.8", "true"])
+        for name in ("A", "S"):
+            self.command([IMAGE, "--fn", "operator", b["config"], "peer", "pull",
+                          name, "60", str(bound)])
+        self.start(b)
+        posted, rss, restarted = [], [], False
+        begin = time.monotonic()
+        k = 0
+        while time.monotonic() - begin < seconds:
+            if k % 4 == 0:
+                mid = "<soak-{}@example.invalid>".format(k)
+                self.post(a, article(mid, "soak-{}".format(k)))
+                posted.append(mid)
+            try:
+                rss.append(int(Path("/proc/{}/status".format(b["process"].pid)).read_text()
+                               .split("VmRSS:")[1].split()[0]))
+            except (OSError, IndexError, ValueError):
+                pass
+            if not restarted and time.monotonic() - begin > seconds / 2:
+                self.stop(b)
+                self.start(b)
+                restarted = True
+            time.sleep(30)
+            k += 1
+        for mid in posted + real:
+            self.await_article(b, mid, timeout=180)
+        self.await_log(b, "dropped=" + ghost, 1, timeout=240)
+        lines = self.pull_lines(b)
+        counts = {m: self.count_article(b, m) for m in posted + real}
+        self.stop(b)
+        self.stop(a)
+        self.witness("soak", {"seconds": seconds, "posted": len(posted),
+                              "counts_all_one": all(v == 1 for v in counts.values()),
+                              "rounds": len(lines),
+                              "dropped_lines": [l for l in lines if "dropped=" in l],
+                              "ghost_article_commands": peer.count("ARTICLE " + ghost),
+                              "rss_kib_first_last_max": [rss[0], rss[-1], max(rss)] if rss else [],
+                              "restarted": restarted}, [a, b])
+        self.assertTrue(all(v == 1 for v in counts.values()), counts)
+        self.assertEqual(sum("dropped=" + ghost in l for l in lines), 1, lines)
+        self.assertEqual(peer.count("ARTICLE " + ghost), bound)
 
     @unittest.skipUnless(INN_READY, "set FN_INN_SRC to an installed INN 2.7 tree")
     def test_pull_from_inn(self):

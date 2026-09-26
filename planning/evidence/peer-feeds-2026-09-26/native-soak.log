@@ -1,0 +1,18 @@
+test_soak_two_nodes_and_an_unproducible_listing (tests.test_native_peer_pull.NativePeerPullTests.test_soak_two_nodes_and_an_unproducible_listing)
+SCN-095's bounded native form: B pulls a fn node A and the ... /tank/fn/scratch/peer-feeds/native-final/tree/tests/test_native_peer_pull.py:1043: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-d0pgyvo4/A/stderr.log'>
+  self.start(a)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/scratch/peer-feeds/native-final/tree/tests/test_native_peer_pull.py:1051: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-d0pgyvo4/Bsoak/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/tank/fn/scratch/peer-feeds/native-final/tree/tests/test_native_peer_pull.py:1067: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-d0pgyvo4/Bsoak/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"core_sha256": "be4f3b8342c6af896319947a5568993ed09eb31075227a9e1907dba44cfb72e9", "counts_all_one": true, "dropped_lines": ["pull peer=S round=done cursor=advanced unavailable=1 dropped=<ghost-soak@example.invalid> transport=clear"], "ghost_article_commands": 3, "image_sha256": "1dec0e3792154aad7437d16bccf89375aa1e99d048f93b816bc92f039c1ad17a", "kind": "soak", "log_sha256_A": "e09abb11447fd4090b0491106a0de6611cad1fbdd1e0bb49601bfd497f706e53", "log_sha256_Bsoak": "5783f1dd762adcc2e70cf9608d3a87dfcb29981ac0489ba4ff4472f0e8c5589a", "posted": 15, "restarted": true, "rounds": 60, "rss_kib_first_last_max": [360284, 386432, 386432], "seconds": 1800}
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1801.816s
+
+OK
+exit 0

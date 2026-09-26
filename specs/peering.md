@@ -290,6 +290,27 @@ recovers as in a clear one (`fn-pull-session-journal-is-the-cursor-at-every-cut`
 
 NNT-023: A pull presents its credential only over a verified TLS channel, is refused before any connection when a credential would cross a clear transport outside the loopback-lab exception, and a wrong principal leaves the cursor where it was
 
+A peer that lists a Message-ID and answers its ARTICLE with 430 (RFC 3977
+section 6.2.1.3) has answered it: the id is *unavailable* at that peer. The
+round reopens its local transit connection (the local node was inside an
+IHAVE it cannot finish) and goes on with the remaining ids. A round that ran
+to its end with every listed id answered 235/435/437 or unavailable is
+complete; while an unavailable id has been so for fewer than BOUND
+consecutive complete rounds the cursor keeps its instant (the peer lists the
+id again) and journals the per-id counts; once every unavailable id has
+reached BOUND the cursor advances and the owner log names each id dropped in
+that round (`dropped=<id>`). BOUND is the peer's `pull-unavailable-rounds`
+row (`peer pull NAME SECONDS ROUNDS`), else 5: local policy bounding the
+re-listing work, not a data cap. A failed round changes no count. The
+counts are durable: FNPL gains the `:pull-unavailable` record, written
+before the `:pull-cursor` record that commits it
+(`fn-pull-session-close-advances-only-past-a-fully-answered-round`,
+`fn-pull-session-unavailable-id-is-retried-below-the-bound`,
+`fn-pull-session-complete-round-past-the-bound-advances`,
+`fn-pull-records-replay-is-the-replay`; PRF-165).
+
+NNT-035: A pull and a feed survive a peer's partial and refusing behaviour: a peer that keeps listing an article it cannot produce no longer stalls the pull
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,
