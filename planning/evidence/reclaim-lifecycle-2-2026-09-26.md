@@ -164,6 +164,9 @@ relaxed expectation). hbox, the 1a370f0a image: that class (5 tests) OK,
 and tests/test_native_checkpoint.py `NativeProductionCompactTests` with
 `test_reclaim_keeps_served_view_watermarks_and_next_number` and
 `test_reclaim_cuts_keep_served_view_and_next_number` OK (3 tests, 55.9 s).
+tests/native_owner_consumer_raw.lisp reads the owner's verdict function by
+name; it now reads `fn-smr-verdict-at` (the laptop run: "native owner
+consumer boundary passed").
 
 ## 5. The lifecycle at N=300 with the charge release
 
