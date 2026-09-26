@@ -206,7 +206,7 @@
 
 (defthm fn-oix-feed-connect-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (fn-own-feed-connect o a b)))
+           (fn-scar-view-indexedp (fn-own-feed-connect o a b c)))
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-feed-connect )
                                   (fn-midx-correspondencep fn-own-refresh )))))
 

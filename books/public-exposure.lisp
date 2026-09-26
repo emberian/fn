@@ -101,11 +101,7 @@
 ; -----------------------------------------------------------------------------
 ; Total list access
 
-(defun fn-exp-at (i x)
-  (declare (xargs :guard t :measure (acl2-count x)))
-  (if (consp x)
-      (if (or (not (integerp i)) (<= i 0)) (car x) (fn-exp-at (1- i) (cdr x)))
-    nil))
+; fn-exp-at is books/public-exposure-rows.lisp's (PRF-211 reads it there).
 
 (defun fn-exp-nat (i x)
   (declare (xargs :guard t))
@@ -144,11 +140,20 @@
           ((null word) (if publicp :none :open))
           (t :none))))
 
+; TRUSTED is the parsed trusted range (books/public-exposure-rows.lisp
+; fn-exp-trusted-of-word), WORD the operator's word it was read from (for
+; `health'); fn-exp-lim-make is the limits with no trusted range.
+(defun fn-exp-lim-make-full (total per-address steps idle first auth-failures
+                                   posts anonymous trusted word)
+  (declare (xargs :guard t))
+  (list :fn-exp-limits total per-address steps idle first auth-failures posts
+        anonymous trusted word))
+
 (defun fn-exp-lim-make (total per-address steps idle first auth-failures posts
                               anonymous)
   (declare (xargs :guard t))
-  (list :fn-exp-limits total per-address steps idle first auth-failures posts
-        anonymous))
+  (fn-exp-lim-make-full total per-address steps idle first auth-failures posts
+                        anonymous nil nil))
 
 (defun fn-exp-lim-total (l) (declare (xargs :guard t)) (fn-exp-nat 1 l))
 (defun fn-exp-lim-per-address (l) (declare (xargs :guard t)) (fn-exp-nat 2 l))
@@ -160,6 +165,8 @@
 (defun fn-exp-lim-anonymous (l)
   (declare (xargs :guard t))
   (if (equal (fn-exp-at 8 l) :open) :open :none))
+(defun fn-exp-lim-trusted (l) (declare (xargs :guard t)) (fn-exp-at 9 l))
+(defun fn-exp-lim-trusted-word (l) (declare (xargs :guard t)) (fn-exp-at 10 l))
 
 ; The connections sockets may hold: one fewer than the owner's bound, so
 ; the operator's live reconfiguration, which stages through a private
@@ -173,15 +180,38 @@
   (declare (xargs :guard t))
   (if (< 1 (nfix max-conns)) (1- (nfix max-conns)) (nfix max-conns)))
 
+; PRF-211: the connection capacity the operator set: the
+; exposure-connections row, or the default with none (books/public-exposure-
+; rows.lisp says why the row is the capacity and the default is 31).
+(defun fn-exp-connections-capacity (v)
+  (declare (xargs :guard t))
+  (let ((row (fn-exp-row v *fn-exp-slot-connections*)))
+    (if (natp row) row *fn-exp-default-connections*)))
+
+; PRF-211: the trusted range in force, and the operator's word.  A row that
+; does not parse (no plan writes one: `policy set' admits only
+; fn-exp-trusted-wordp) exempts nothing.
+(defun fn-exp-trusted-word-of (v)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-row-lookup (fn-cfg-policies v) *fn-exp-trusted-slot*)))
+    (if (consp row) (fn-cfg-policy-id row) nil)))
+
+(defun fn-exp-trusted-of (v)
+  (declare (xargs :guard t))
+  (let ((r (fn-exp-trusted-of-word (fn-exp-trusted-word-of v))))
+    (if (equal r :bad) nil r)))
+
 ; The one reader of the rows.  V is the live configuration value, MAX-CONNS
-; the run's max_connections, PUBLICP ACL2's reading of the listener
-; (`fn-exp-address-publicp'), AUTH-REQUIRED the `[auth] required' bit.
+; the owner's bound (a run's is *fn-exp-owner-connection-bound*; the
+; low-level `owner run' test entry passes its own), PUBLICP ACL2's reading
+; of the listener (`fn-exp-address-publicp'), AUTH-REQUIRED the `[auth]
+; required' bit.  The total is the capacity, never past the owner's bound
+; less the operator's one.
 (defun fn-exp-limits (v max-conns publicp auth-required)
   (declare (xargs :guard t))
   (let* ((cap (fn-exp-socket-cap max-conns))
-         (row (fn-exp-row v *fn-exp-slot-connections*))
-         (total (if (natp row) (min row cap) cap)))
-    (fn-exp-lim-make
+         (total (min (fn-exp-connections-capacity v) cap)))
+    (fn-exp-lim-make-full
      total
      (fn-exp-or (fn-exp-row v *fn-exp-slot-per-address*)
                 *fn-exp-public-per-address* publicp total)
@@ -191,7 +221,10 @@
      (fn-exp-or (fn-exp-row v *fn-exp-slot-auth-failures*)
                 *fn-exp-public-auth-failures* publicp 0)
      (fn-exp-or (fn-exp-row v *fn-exp-slot-posts*) *fn-exp-public-posts* publicp 0)
-     (fn-exp-anonymous v publicp auth-required))))
+     (fn-exp-anonymous v publicp auth-required)
+     (fn-exp-trusted-of v)
+     (let ((word (fn-exp-trusted-word-of v)))
+       (if (equal (fn-exp-trusted-of-word word) :bad) nil word)))))
 
 ; Whether the listener faces anything but this host: FAMILY and ADDRESS are
 ; ACL2's projection of the configured listener host (books/native-config.lisp
@@ -397,8 +430,11 @@
            (list :refuse *fn-exp-auth-line* 3))
           ((<= (fn-exp-lim-total lim) (nfix nconns))
            (list :refuse *fn-exp-busy-line* 1))
-          ((<= (fn-exp-lim-per-address lim)
-               (fn-exp-count-address address (fn-exp-conns xs)))
+          ; PRF-211: an address in the trusted range is exempt from this
+          ; rule, and from no other.
+          ((and (not (fn-exp-trusted-addressp address (fn-exp-lim-trusted lim)))
+                (<= (fn-exp-lim-per-address lim)
+                    (fn-exp-count-address address (fn-exp-conns xs))))
            (list :refuse *fn-exp-address-line* 2))
           (t (list :admit)))))
 
@@ -620,6 +656,22 @@
         (and (equal (fn-exp-at 7 c) (fn-exp-window now))
              (posp (fn-exp-nat 8 c))))))
 
+; PRF-211: the capacity and the count, for `status' and `health': the
+; connections the owner holds, the capacity in force, the per-address limit
+; and the trusted range (`none' when there is none).
+(defun fn-exp-capacity-line (lim nconns)
+  (declare (xargs :guard t))
+  (append (fn-exp-text "exposure capacity")
+          (fn-exp-field "connections" nconns)
+          (fn-exp-field "capacity" (fn-exp-lim-total lim))
+          (fn-exp-field "per-address" (fn-exp-lim-per-address lim))
+          (fn-exp-text " trusted=")
+          (let ((word (fn-exp-lim-trusted-word lim)))
+            (if (and (stringp word) (fn-exp-lim-trusted lim))
+                (fn-exp-text word)
+              (fn-exp-text *fn-exp-trusted-none*)))
+          (list 10)))
+
 (defun fn-exp-health-lines (xs lim nconns now)
   (declare (xargs :guard t))
   (let ((c (fn-exp-counters xs)))
@@ -649,14 +701,16 @@
      (fn-exp-field "posts-per-minute" (fn-exp-lim-posts lim))
      (fn-exp-text " anonymous=")
      (fn-exp-text (if (equal (fn-exp-lim-anonymous lim) :open) "open" "none"))
-     (list 10))))
+     (list 10)
+     (fn-exp-capacity-line lim nconns))))
 
 ; =============================================================================
 ; Theorems
 
 (local (in-theory (disable fn-ocfg-open fn-ocfg-open-peer fn-own-conns
                            fn-own-next-id fn-own-find-conn fn-ocfg-owner
-                           fn-exp-pinned-acfg)))
+                           fn-exp-pinned-acfg fn-exp-trusted-addressp
+                           fn-exp-lim-trusted)))
 
 (defthm fn-exp-at-of-cons
   (and (equal (fn-exp-at 0 (cons a b)) a)
@@ -706,6 +760,9 @@
 ; open ever carries an address past the larger of what it held and the limit
 ; in force: so a limit lowered by reconfiguration closes nothing and admits
 ; nothing more from an address until it is back under the new limit.
+; PRF-211: the per-address clauses are those of an address outside the
+; trusted range; a trusted address is bounded by the total alone
+; (fn-exp-trusted-address-is-never-refused-by-address).
 
 (defthm fn-exp-open-admits-within-the-limits-in-force
   (let* ((r (fn-exp-open oc xs lim acfg peer address now))
@@ -714,21 +771,25 @@
                                       (fn-exp-conns (fn-exp-open-state r)))))
     (implies (fn-exp-open-id r)
              (and (< (len (fn-own-conns (fn-ocfg-owner oc))) (fn-exp-lim-total lim))
-                  (< before (fn-exp-lim-per-address lim))
                   (<= after (+ 1 before))
-                  (<= after (fn-exp-lim-per-address lim)))))
-  :hints (("Goal" :in-theory (enable fn-exp-open fn-exp-admit-decision
+                  (or (fn-exp-trusted-addressp address (fn-exp-lim-trusted lim))
+                      (and (< before (fn-exp-lim-per-address lim))
+                           (<= after (fn-exp-lim-per-address lim)))))))
+  :hints (("Goal" :in-theory (e/d (fn-exp-open fn-exp-admit-decision
                                      fn-exp-register fn-exp-open-id
-                                     fn-exp-open-state))))
+                                     fn-exp-open-state)
+                                  (fn-exp-count-in fn-exp-window)))))
 
 (defthm fn-exp-open-never-exceeds-a-limit-in-force
   (let* ((r (fn-exp-open oc xs lim acfg peer address now))
          (before (fn-exp-count-address address (fn-exp-conns xs)))
          (after (fn-exp-count-address address
                                       (fn-exp-conns (fn-exp-open-state r)))))
-    (<= after (max before (fn-exp-lim-per-address lim))))
-  :hints (("Goal" :in-theory (enable fn-exp-open fn-exp-admit-decision
-                                     fn-exp-register fn-exp-open-state))))
+    (implies (not (fn-exp-trusted-addressp address (fn-exp-lim-trusted lim)))
+             (<= after (max before (fn-exp-lim-per-address lim)))))
+  :hints (("Goal" :in-theory (e/d (fn-exp-open fn-exp-admit-decision
+                                     fn-exp-register fn-exp-open-state)
+                                  (fn-exp-count-in fn-exp-window)))))
 
 ; A refused open answers the 400 and changes neither the owner nor the
 ; connections: the host sends REFUSAL and closes (RFC 3977 5.1.1 note [2]).
@@ -743,16 +804,124 @@
                   (equal (fn-exp-conns (fn-exp-open-state r)) (fn-exp-conns xs))
                   (equal (take 4 (fn-exp-open-refusal r))
                          (fn-record-string-octets "400 ")))))
-  :hints (("Goal" :in-theory (enable fn-exp-open fn-exp-admit-decision
+  :hints (("Goal" :in-theory (e/d (fn-exp-open fn-exp-admit-decision
                                      fn-exp-open-id fn-exp-open-ocfg
                                      fn-exp-open-state fn-exp-open-refusal
-                                     fn-exp-line))))
+                                     fn-exp-line)
+                                  (fn-exp-count-in fn-exp-window)))))
 
 (defthm fn-exp-release-never-raises-a-count
   (<= (fn-exp-count-address a (fn-exp-conns (fn-exp-release xs id)))
       (fn-exp-count-address a (fn-exp-conns xs)))
   :rule-classes :linear
   :hints (("Goal" :in-theory (enable fn-exp-release))))
+
+; -----------------------------------------------------------------------------
+; PRF-211 (NNT-043): the capacity and the trusted range.
+;
+; The subject is still fn-exp-open (host: fn-owner-exposure-open through
+; fn-ocar-exp-open, equal to it under the configured owner's relation by
+; fn-ocar-exp-open-is-exp-open-under-ocl-relation), over the limits the host
+; reads with fn-exp-limits (host/owner-host.lisp fn-owner-exposure-limits)
+; from the owner's live configuration and the owner's bound, which a run
+; installs as *fn-exp-owner-connection-bound*
+; (books/native-operator.lisp fn-native-operator-result-run-max-connections,
+; host/native/operator.lisp's `run').
+
+; Whether the failed-login rule refuses this address now: the first arm of
+; fn-exp-admit-decision, which PRF-161's keystones already cover.
+(defun fn-exp-auth-refusesp (xs lim address now)
+  (declare (xargs :guard t))
+  (and (posp (fn-exp-lim-auth-failures lim))
+       (<= (fn-exp-lim-auth-failures lim)
+           (fn-exp-count-in address (fn-exp-window now) (fn-exp-fails xs)))))
+
+; A limit row a configuration value holds is within the rows' width.
+(local (defthm fn-exp-row-lookup-within
+  (implies (and (fn-cfg-limits-withinp rows)
+                (consp (fn-cfg-row-lookup rows slot)))
+           (<= (nfix (fn-cfg-limit-value (fn-cfg-row-lookup rows slot)))
+               (fn-cfg-limit-ceiling slot)))
+  :hints (("Goal" :in-theory (enable fn-cfg-row-lookup fn-cfg-limits-withinp
+                                     fn-cfg-limit-slot)))
+  :rule-classes nil))
+
+; The run's owner bound exceeds every capacity a configuration value can
+; hold (fn-cfg-valuep carries fn-cfg-limits-withinp, preserved by every
+; delta: books/config-invariants.lisp fn-cfg-apply-delta-preserves-valuep),
+; so fn-own-open's bound never refuses what the row admits.
+(defthm fn-exp-owner-bound-exceeds-every-capacity
+  (implies (fn-cfg-limits-withinp (fn-cfg-limits v))
+           (< (fn-exp-connections-capacity v) *fn-exp-owner-connection-bound*))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-exp-connections-capacity fn-exp-row)
+                                  (fn-cfg-limit-ceiling fn-cfg-limits-withinp
+                                   fn-cfg-row-lookup))
+           :use ((:instance fn-exp-row-lookup-within
+                            (rows (fn-cfg-limits v))
+                            (slot *fn-exp-slot-connections*))))))
+
+; The total in force is the capacity whenever the owner's bound exceeds it.
+(defthm fn-exp-limits-total-is-the-capacity
+  (implies (< (fn-exp-connections-capacity v) (nfix max-conns))
+           (equal (fn-exp-lim-total (fn-exp-limits v max-conns publicp
+                                                   auth-required))
+                  (fn-exp-connections-capacity v)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-exp-limits fn-exp-socket-cap
+                                     fn-exp-connections-capacity))))
+
+; KEYSTONE (the listener admits exactly up to the capacity).  Under the run's
+; owner bound and a well-formed configuration, and with the failed-login rule
+; not refusing the address, fn-exp-open's decision is exactly: refuse with
+; RFC 3977's 400 "too many connections" once the owner holds the capacity;
+; below it, refuse by address only for an address outside the trusted range
+; at its limit; admit otherwise.  fn-exp-open-refusal-is-a-400-and-opens-
+; nothing makes a refusal the named line and nothing opened.
+(defthm fn-exp-open-refuses-exactly-at-the-capacity
+  (let ((lim (fn-exp-limits v *fn-exp-owner-connection-bound* publicp
+                            auth-required)))
+    (implies (and (fn-cfg-limits-withinp (fn-cfg-limits v))
+                  (not (fn-exp-auth-refusesp xs lim address now)))
+             (equal (fn-exp-admit-decision xs lim nconns address now)
+                    (cond ((<= (fn-exp-connections-capacity v) (nfix nconns))
+                           (list :refuse *fn-exp-busy-line* 1))
+                          ((and (not (fn-exp-trusted-addressp
+                                      address (fn-exp-lim-trusted lim)))
+                                (<= (fn-exp-lim-per-address lim)
+                                    (fn-exp-count-address address
+                                                          (fn-exp-conns xs))))
+                           (list :refuse *fn-exp-address-line* 2))
+                          (t (list :admit))))))
+  :hints (("Goal" :in-theory (e/d (fn-exp-admit-decision fn-exp-auth-refusesp)
+                                  (fn-exp-limits fn-exp-connections-capacity
+                                   fn-exp-trusted-addressp fn-exp-count-address
+                                   fn-exp-count-in fn-cfg-limits-withinp))
+           :use ((:instance fn-exp-limits-total-is-the-capacity
+                            (max-conns *fn-exp-owner-connection-bound*))
+                 (:instance fn-exp-owner-bound-exceeds-every-capacity)))))
+
+; KEYSTONE (the trusted range).  An address in the trusted range is never
+; refused on the per-address rule, whatever it holds.
+(defthm fn-exp-trusted-address-is-never-refused-by-address
+  (implies (fn-exp-trusted-addressp address (fn-exp-lim-trusted lim))
+           (not (equal (fn-exp-admit-decision xs lim nconns address now)
+                       (list :refuse *fn-exp-address-line* 2))))
+  :hints (("Goal" :in-theory (enable fn-exp-admit-decision))))
+
+; And one outside it is refused exactly at its limit: with the failed-login
+; rule not refusing it and the owner below the total, the decision is the
+; per-address 400 exactly when the address holds its limit.
+(defthm fn-exp-untrusted-address-is-refused-exactly-at-its-limit
+  (implies (and (not (fn-exp-trusted-addressp address (fn-exp-lim-trusted lim)))
+                (not (fn-exp-auth-refusesp xs lim address now))
+                (< (nfix nconns) (fn-exp-lim-total lim)))
+           (equal (fn-exp-admit-decision xs lim nconns address now)
+                  (if (<= (fn-exp-lim-per-address lim)
+                          (fn-exp-count-address address (fn-exp-conns xs)))
+                      (list :refuse *fn-exp-address-line* 2)
+                    (list :admit))))
+  :hints (("Goal" :in-theory (enable fn-exp-admit-decision fn-exp-auth-refusesp))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (the work budget per quantum).

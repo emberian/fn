@@ -699,6 +699,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
 	tests/acl2/peer-inbound-tests \
+	books/peer-transit-forms \
+	tests/acl2/peer-transit-forms-tests \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
@@ -837,6 +839,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \
+	tests/acl2/owner-feed-form-tests \
 	books/owner-invariants \
 	books/owner-fault \
 	books/owner-feed-subject \

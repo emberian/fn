@@ -3648,6 +3648,147 @@
         "planning/evidence/heap-from-profile-2026-09-26.md"
       ],
       "implementation_note": "The installed bin/fn runs `heap -- ARGV` in the same image first (a boot figure of the core's size plus 128 MB, a bound on the probe's work), where ACL2 decides the figure from the command's store profile (config.json, or the init request's target) and the least of the machine's observations (sysconf physical pages; Linux cgroup memory.max up the hierarchy and RLIMIT_AS; RLIMIT_DATA), then execs the command with --dynamic-space-size MB through SBCL_USER_ARGS; a refusal is exit 1 with `refused machine-cannot-hold-profile heap=MB MB machine=M MB` and nothing else runs. `status` and `health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with a bare request on a machine under 4 GiB writes the small preset. A checkout's packaging/fn takes FN_TEST_HEAP_MB (the tests' figure), which the installed launcher ignores."
+    },
+    {
+      "id": "HST-017",
+      "title": "The release is one tarball per platform built from a git archive of REV behind the green gate of the default profile's closure, installed as one directory",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "packaging/release-tarball.sh",
+        "packaging/install-native.sh",
+        "packaging/install.sh",
+        "tools/green_check.py",
+        "tests/test_release_tarball.py",
+        "tests/test_native_distribution.sh",
+        "docs/install.md",
+        "planning/evidence/release-product-2026-09-26.md"
+      ],
+      "implementation_note": "The Linux tarball is built and rehearsed on hbox (record); the OpenBSD tarball follows release-openbsd's VM recipe. store export/import (the reinstall's data path) is lane migration-removal's; install.md marks those two lines until it lands."
+    },
+    {
+      "id": "HST-018",
+      "title": "No Python on the path a deployed node or its operator verbs execute: tools/runpath_check.py over the tree and over every release",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/release-tarball.sh",
+        "Makefile",
+        "planning/evidence/release-product-2026-09-26.md"
+      ],
+      "implementation_note": "Static mode runs in make check (lane release-openbsd); --tree runs in every release build and in tests.test_release_tarball; witnesses in tests/test_runpath_check.py (a planted python symlink among them)."
+    },
+    {
+      "id": "NNT-040",
+      "title": "A group the operator sets read-only refuses a local POST that names it with a 441 naming the reason, and LIST ACTIVE lists it with status n, from the same configured list on the same connection",
+      "specification": "specs/nntp.md#read-only-groups-nnt-040",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-196"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/group-status.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/owner-agent.lisp",
+        "books/native-admin.lisp",
+        "host/owner-host.lisp",
+        "host/native-admin-host.lisp",
+        "tests/acl2/group-status-tests.lisp",
+        "tests/test_native_group_policy.py",
+        "planning/evidence/group-policy-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS still reports y (PKT-575)."
+    },
+    {
+      "id": "SEC-006",
+      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
+      "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "planning/evidence/group-policy-2026-09-26.md"
+      ],
+      "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
+    },
+    {
+      "id": "NNT-043",
+      "title": "The reader port holds exactly the operator's connection capacity and refuses the next connection with RFC 3977's 400 by name, and an address in the operator's trusted range is never refused on the per-address rule",
+      "specification": "specs/nntp.md#connection-capacity-and-the-trusted-range-nnt-043",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-211"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/public-exposure.lisp",
+        "books/public-exposure-rows.lisp",
+        "tests/acl2/public-exposure-tests.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-host-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_public_limits.py",
+        "docs/operator.md",
+        "planning/evidence/public-limits-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 5.1.1 (400 then close) is the RFC requirement; the capacity, its default of 31 and the trusted range are local policy. The capacity is the existing exposure-connections :set-limit row (config delta code 8) and the range an exposure-trusted :set-policy row (code 5): no new delta code, no store format change, no fn.toml key. SCN-142 is the native case on both images. Sizing the capacity against the machine's memory and thread stacks is PKT-605."
+    },
+    {
+      "id": "NNT-045",
+      "title": "A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not",
+      "specification": "specs/nntp.md#transit-streaming-nnt-045",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-207"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-transit-forms.lisp",
+        "books/feed-connection.lisp",
+        "books/owner.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-streaming-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599)."
     }
   ]
 }

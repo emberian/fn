@@ -2569,7 +2569,7 @@
         "NNT-031"
       ],
       "steps": [
-        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 32, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
+        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 31, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
         "500 concurrent connections from 127.0.0.2; then, per-address lowered live to 1, 10 each from 127.0.1.1-50; then 4 silent and 4 one-octet-a-second connections from 127.0.0.4; lines of 600, 4096 and 65536 octets; an anonymous session under none, then under open (live) a 120-command STAT loop; AUTHINFO guessing at about 100 a second from 127.0.0.7; `operator CONFIG health`."
       ],
       "expected": [
@@ -3869,6 +3869,132 @@
         "log": "planning/evidence/heap-from-profile-2026-09-26/native-heap.log",
         "record": "planning/evidence/heap-from-profile-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-134",
+      "title": "A stranger installs the release tarball, starts a node under the service manager, posts and reads over TLS from another machine, and reinstalls it",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-017",
+        "HST-018"
+      ],
+      "steps": [
+        "Build fn-REV12-linux-x86_64.tar.gz on hbox with packaging/release-tarball.sh from a git archive of REV (FN_CERT_CACHE, FN_ACL2 set).",
+        "tools/runpath_check.py --tarball over it; plant a python3 symlink in a scratch copy and run it again.",
+        "On hbox under /tank/fn/scratch/release-product: verify SHA256SUMS, unpack, sh fn/install.sh --prefix P --node N --no-service; mission small-community, a self-signed pair, init, policy set path-identity, principal set-password; run under systemd-run --user.",
+        "From persvati: STARTTLS, AUTHINFO, POST an article, read it back on a fresh connection.",
+        "Stop; remove P; install again from the tarball; start; read the same article from persvati."
+      ],
+      "expected": [
+        "The build prints the green-check line, the acquire/validate lines, `version fn REV`, and the runpath check's pass line; the planted copy fails naming bin/python3.",
+        "install.sh refuses an existing prefix; the reinstalled node serves the article posted before the reinstall."
+      ],
+      "evidence": [
+        "planning/evidence/release-product-2026-09-26.md",
+        "planning/evidence/release-product-2026-09-26/build-c755569badf5.log"
+      ],
+      "implementation": {
+        "test": "tests/test_release_tarball.py",
+        "native": true,
+        "record": "planning/evidence/release-product-2026-09-26.md",
+        "log": "planning/evidence/release-product-2026-09-26/test_release_tarball.log"
+      }
+    },
+    {
+      "id": "SCN-125",
+      "title": "A read-only group, set offline and live: POST refused by name, LIST ACTIVE status n, a pinned connection unchanged, a restart replays it; and (SEC-006, specified) an unsigned post cancelled by its own login only",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-040",
+        "SEC-006"
+      ],
+      "steps": [
+        "`init fn.test`; `group create fn.ro`; offline `group policy fn.absent n` (refused), `group policy fn.ro m` (not accepted), `group policy fn.ro n`.",
+        "Start the owner; a reader lists LIST ACTIVE, POSTs to fn.ro, to fn.test,fn.ro and to fn.test, and STATs the refused Message-ID.",
+        "Live `group policy fn.ro y`: a new connection lists and POSTs to fn.ro; live `group policy fn.ro n`: another new connection POSTs to fn.ro.",
+        "Stop, restart; a reader lists LIST ACTIVE and POSTs to fn.ro.",
+        "(SEC-006, specified, not implemented: PKT-575) Logins ember and guest; ember POSTs an unsigned article to fn.test; guest, then ember, POST a cancel of it; a second node relays ember's article and ember's cancel."
+      ],
+      "expected": [
+        "The two offline refusals exit non-zero; `group policy fn.ro n` exits 0.",
+        "LIST ACTIVE shows fn.ro n and fn.test y; both POSTs naming fn.ro answer `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)`; fn.test answers 240; STAT of the refused article answers 430.",
+        "After `y` a new connection lists fn.ro y and its POST answers 240; after `n` a new connection's POST to fn.ro answers the read-only 441.",
+        "After the restart LIST ACTIVE shows fn.ro n and a POST to fn.ro answers the read-only 441.",
+        "(SEC-006, specified) guest's cancel is refused by name and the article stays 220; ember's cancel is accepted and the article answers 430 withdrawn on both nodes, in either arrival order."
+      ],
+      "implementation": {
+        "test": "tests.test_native_group_policy",
+        "cases": [
+          "GroupPolicyImageTests.test_read_only_group_offline_live_and_after_restart"
+        ],
+        "native": true,
+        "record": "planning/evidence/group-policy-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-142",
+      "title": "A reader port admits exactly its connection capacity (raised above the old 31, then raised live), refuses the next by name, and exempts the trusted range from the per-address limit, on the developer and production images",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-043"
+      ],
+      "steps": [
+        "Per image: `init fn.test`; `policy set exposure-connections 40`; start the owner on 127.0.0.1; `status`; 40 connections from 127.0.0.1, then a 41st; `health`.",
+        "Live `policy set exposure-connections 45`; 5 more connections, then one more; `status`.",
+        "Close every connection; live `policy set exposure-per-address 2` and `policy set exposure-trusted 127.0.2.0/24`; 6 connections from 127.0.2.9; 3 from 127.0.3.9; `health`; `policy set exposure-trusted 127.0.2.0/33`; `status`."
+      ],
+      "expected": [
+        "status shows capacity=40; the 40 read a 200/201 greeting; the 41st reads `400 too many connections; try again later` and is closed; health prints `exposure capacity connections=40 capacity=40 per-address=40 trusted=none`.",
+        "The 5 are admitted and the next reads the same 400; status shows connections=45 capacity=45.",
+        "All 6 from 127.0.2.9 are admitted; 2 from 127.0.3.9 are admitted and the third reads `400 too many connections from this address; try again later`; health prints `connections=8 capacity=45 per-address=2 trusted=127.0.2.0/24`; the malformed range is refused (non-zero exit) and status still shows trusted=127.0.2.0/24; the owner stays up."
+      ],
+      "implementation": {
+        "test": "tests.test_native_public_limits",
+        "cases": [
+          "DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+          "ProductionImagePublicLimits.test_capacity_and_trusted_range"
+        ],
+        "native": true,
+        "record": "planning/evidence/public-limits-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-138",
+      "title": "An INN-shaped peer streams into fn (MODE STREAM, pipelined CHECKs, then TAKETHISes) and gets the IHAVE verdicts in streaming form; fn feeds a 203 peer with CHECK and TAKETHIS and a 501 peer with IHAVE on the same connection",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_inn_shaped_streaming_driver_gets_the_ihave_verdicts",
+          "test_feed_to_a_peer_without_streaming_falls_back_to_ihave",
+          "test_feed_to_a_streaming_peer_uses_check_and_takethis"
+        ],
+        "native": true,
+        "log": "planning/evidence/transit-streaming-2026-09-26/native-peering.log",
+        "record": "planning/evidence/transit-streaming-2026-09-26.md"
+      },
+      "requirements": [
+        "NNT-045"
+      ],
+      "steps": [
+        "Node T with peer S (inbound fn.*, max-inflight 16). On one connection: MODE STREAM; IHAVE an article (335, 235), IHAVE it again (435), IHAVE an out-of-scope article (335, 437).",
+        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238, each 239 awaited (two TAKETHIS articles in one socket read lose the second: PKT-600, test_pipelined_takethis_in_one_read_answers_every_article, an expected failure); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them; TAKETHIS a held article; CHECK it.",
+        "Node A with a streaming peer record to a scripted peer answering MODE STREAM 501: post an article; then to one answering 203."
+      ],
+      "evidence": [
+        "tests/acl2/peer-transit-forms-tests.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/acl2/owner-feed-form-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "203; sixteen 238 then four 431 and 438 for the held one, each echoing its Message-ID; sixteen 239; 439 for the out-of-scope TAKETHIS where IHAVE gave 437; the four deferred now 238 and 239; 439 and 438 for the held article where IHAVE gave 435; every stored article served byte-identical.",
+        "The 501 peer receives MODE STREAM then IHAVE on the same connection and never CHECK or TAKETHIS, and a second article reaches it (no stop); the 203 peer receives CHECK then TAKETHIS and never IHAVE."
+      ]
     }
   ]
 }

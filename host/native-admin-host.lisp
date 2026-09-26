@@ -57,6 +57,8 @@
                                 :grant-control :revoke-control :set-retention
                                 ;; PRF-161: an exposure limit row.
                                 :set-exposure
+                                ;; O2: a group's LIST ACTIVE status.
+                                :set-group-status
                                 ;; PRF-195: a description or the message.
                                 :set-group-description :set-motd))
            (fn-store-cfg-peer-delta-record
