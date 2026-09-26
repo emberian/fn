@@ -20,6 +20,13 @@ from tests.test_native_crash_model import IMAGE_AVAILABLE, NativeCampaignMixin
 # as host/native/build.lisp loads them.
 SERVED_BRIDGE_SETUP = (
     '(include-book "books/records-concrete-owner")',
+    # host/store-node-host.lisp declares the octet buffer stobj
+    # (fn-store-sco-publish-plan, rep-wave-d-2) and reads the checkpoint
+    # from it (fn-store-sco-decode, rep-wave-d-3): the same three books
+    # tools/bridge_image.py loads before this ld (qual-b6759850 C18).
+    '(include-book "books/octets-stobj")',
+    '(include-book "books/store-checkpoint-buffer")',
+    '(include-book "books/store-checkpoint-reader")',
     '(ld "host/store-node-host.lisp" :ld-error-action :error)',
     '(include-book "books/config-observed")',
     '(include-book "books/owner")',
