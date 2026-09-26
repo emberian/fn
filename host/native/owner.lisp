@@ -173,23 +173,37 @@ function supplied no observation at all, which is a defect here."
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
   (fnn-owner-action 'fn-owner-finish-submission))
 
-(defun fnn-owner-name-list (octets)
-  "Split ACL2's LF-joined name projection; LF is excluded by the name grammar."
-  (let ((names nil) (current nil))
-    (unless (fnn-octet-list-p octets)
-      (fnn-fault "owner returned a non-octet name table"))
-    (dolist (octet octets)
-      (if (= octet 10)
-          (progn
-            (push (fnn-octets-string (fnn-octets (nreverse current))) names)
-            (setq current nil))
-          (push octet current)))
-    (when current
-      (push (fnn-octets-string (fnn-octets (nreverse current))) names))
-    (nreverse names)))
+;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
+;;; A wrapper that used to answer a keyword and leave the rest of its result
+;;; in f-put-global mailboxes returns ONE value; its recognizer is checked
+;;; here, once, at the boundary -- a shape check, as fnn-owner-action's
+;;; keyword check is, never a semantic one -- and a value that fails it is
+;;; a core fault (exit 4).  Fields are read through ACL2's accessors.
+(defun fnn-owner-result (recognizer name &rest args)
+  (let ((value (apply #'fnn-owner-core name args)))
+    (unless (fnn-core recognizer value)
+      (fnn-fault "owner returned a malformed result from ~(~a~)" name))
+    value))
 
-(defun fnn-owner-config-names (wrapper)
-  (fnn-owner-name-list (fnn-owner-core wrapper)))
+(defun fnn-owner-names (name &rest args)
+  "A wrapper's list of names (strings): no LF grammar, nothing split here."
+  (apply #'fnn-owner-result 'string-listp name args))
+
+;;; FeedPublication: WORD, PEER, the sealed frame PLAN ((PEER . FRAME) ...),
+;;; TOKEN, the rendered COMMAND, its STATUS and the LOG-LINE.
+(defun fnn-owner-feed-step (name &rest args)
+  (apply #'fnn-owner-result 'fn-ores-feed-publication-p name args))
+
+(defun fnn-owner-feed-word (publication)
+  (fnn-core 'fn-ores-feedpub-word publication))
+
+(defun fnn-owner-feed-command (publication)
+  (fnn-octets (fnn-core 'fn-ores-feedpub-command publication)))
+
+(defun fnn-owner-feed-log (publication)
+  "Write the publication's ACL2-rendered line; an empty one is none."
+  (let ((line (fnn-core 'fn-ores-feedpub-log-line publication)))
+    (when line (fnn-log-line line))))
 
 (defun fnn-owner-feed-directory (store)
   (fnn-join (fnn-store-root store) "feed"))
@@ -454,39 +468,33 @@ obligations may still name a peer removed from the current configuration."
 
 Call while holding the owner mutex immediately after a durable configuration
 completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
-  (let ((peers (fnn-owner-core 'fn-owner-feed-configure)))
-    (unless (fnn-octet-list-p peers)
-      (fnn-fault "owner returned a malformed refreshed feed table"))
-    (fnn-owner-feed-open-missing service (fnn-owner-name-list peers))))
+  (fnn-owner-feed-open-missing service (fnn-owner-names 'fn-owner-feed-configure)))
 
-(defun fnn-owner-feed-flush (service)
-  "Persist the exact pending owner frame batch before its authorized effect."
-  (let* ((raw-frames (fnn-global 'fn-owner-feed-frames))
-         (peers (fnn-owner-name-list
-                 (fnn-owner-core 'fn-owner-feed-record-peers))))
-    (unless (listp raw-frames)
-      (fnn-fault "owner returned malformed FNFD frame batch"))
-    (unless (= (length raw-frames) (length peers))
-      (fnn-fault "owner FNFD frame/peer count mismatch"))
-    (loop for peer in peers for index from 0 do
-      (let ((journal (cdr (assoc peer (fnn-owner-service-feeds service)
-                                 :test #'string=)))
-            (frame (fnn-owner-core 'fn-owner-feed-sealed-frame index)))
-        (unless journal
-          (fnn-fault "FNFD obligation has no journal for peer ~a" peer))
-        (unless (fnn-octet-list-p frame)
-          (fnn-fault "owner returned malformed sealed FNFD frame"))
-        (fnn-owner-feed-append journal (fnn-octets frame))))))
+(defun fnn-owner-feed-flush (service publication)
+  "Persist PUBLICATION's sealed frame plan before its authorized effect.
+
+Each pair of the plan names its peer's journal and carries the sealed frame,
+in append order (books/owner-results.lisp fn-ores-sealed-plan-is-indexed-fetch:
+the plan is the old by-index fetch); nothing is fetched by index and no name
+list is split.  The recognizer (fnn-owner-feed-step) already checked every
+pair is a string and a non-empty octet list."
+  (dolist (pair (fnn-core 'fn-ores-feedpub-plan publication))
+    (let ((journal (cdr (assoc (car pair) (fnn-owner-service-feeds service)
+                               :test #'string=))))
+      (unless journal
+        (fnn-fault "FNFD obligation has no journal for peer ~a" (car pair)))
+      (fnn-owner-feed-append journal (fnn-octets (cdr pair))))))
 
 (defun fnn-owner-feed-reconcile (service)
   (loop
-    (let ((resolution (fnn-owner-action 'fn-owner-feed-reconcile-next)))
+    (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-reconcile-next))
+           (resolution (fnn-owner-feed-word publication)))
       (case resolution
         (:done (return))
         (:uncertain
          (fnn-indeterminate "feed intent cannot be resolved from recovered store"))
         ((:feed-commit :feed-abort)
-         (fnn-owner-feed-flush service)
+         (fnn-owner-feed-flush service publication)
          (unless (eq (fnn-owner-action 'fn-owner-feed-reconcile-apply) :ok)
            (fnn-fault "owner refused recovered feed resolution")))
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
@@ -546,9 +554,7 @@ checkpoint's S, or NIL."
             ;; not an anchor the run is dated against.
             (unless (eq (fnn-owner-advance-clock) :observed)
               (fnn-fault "owner refused its first clock observation"))
-            (let ((peers (fnn-owner-core 'fn-owner-feed-configure)))
-              (unless (fnn-octet-list-p peers)
-                (fnn-fault "owner returned a malformed feed table"))
+            (let ((configured (fnn-owner-names 'fn-owner-feed-configure)))
               (setq service
                     (%make-fnn-owner-service
                      :store store
@@ -557,15 +563,15 @@ checkpoint's S, or NIL."
                      :stop-hooks *fnn-owner-stop-hooks*
                      :close-hooks *fnn-owner-close-hooks*
                      :stopping nil))
-              (let ((configured (fnn-owner-name-list peers)))
+              (progn
                 (setf (fnn-owner-service-feeds service)
                       (fnn-owner-feed-open-all service configured))
                 (fnn-owner-feed-reconcile service)
                 (when configured
-                  (let ((count (fnn-owner-core 'fn-owner-feed-restart)))
-                    (unless (and (integerp count) (>= count 0))
-                      (fnn-fault "owner returned malformed feed restart count")))
-                  (fnn-owner-feed-flush service)))
+                  (let ((restart (fnn-owner-feed-step 'fn-owner-feed-restart)))
+                    (unless (eq (fnn-owner-feed-word restart) :restarted)
+                      (fnn-fault "owner refused the feed restart"))
+                    (fnn-owner-feed-flush service restart))))
               (fnn-owner-key-statement-recover service records)
               service))
         (error (e)
@@ -1440,11 +1446,13 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
                         (fnn-owner-core 'fn-owner-prov-post))))
                  (generation (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
                  (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-                 (intent
+                 (intent-publication
                    (when (or (not transitp) (eq transit-kind :want))
-                     (fnn-owner-action 'fn-owner-submission-intent
-                                       (fnn-octet-list evidence)
-                                       generation txid))))
+                     (fnn-owner-feed-step 'fn-owner-submission-intent
+                                          (fnn-octet-list evidence)
+                                          generation txid)))
+                 (intent (and intent-publication
+                              (fnn-owner-feed-word intent-publication))))
             (declare (ignorable transit-checked))
             (if (and transitp (not (eq transit-kind :want)))
                 (progn
@@ -1463,17 +1471,18 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
                     (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
                 (progn
                   ;; Durable intent before the first Store mutation.  Empty is
-                  ;; a complete batch when the ACL2 target set is empty.
-                  (fnn-owner-feed-flush service)
+                  ;; a complete plan when the ACL2 target set is empty.
+                  (fnn-owner-feed-flush service intent-publication)
                   (let ((word (if transitp
                                   (fnn-owner-attempt-transit
                                    service msgid payload groups evidence t)
                                 (fnn-owner-attempt-served
                                  service msgid payload groups evidence))))
-                    (fnn-owner-action 'fn-owner-submission-resolution
-                                      word (fnn-octet-list evidence)
-                                      generation txid)
-                    (fnn-owner-feed-flush service)
+                    (fnn-owner-feed-flush
+                     service
+                     (fnn-owner-feed-step 'fn-owner-submission-resolution
+                                          word (fnn-octet-list evidence)
+                                          generation txid))
                     (if transitp
                         (fnn-owner-transit-complete
                          cid :want transit-reason word)
@@ -1535,17 +1544,17 @@ own result vocabulary."
                            (fnn-owner-octets-global 'fn-owner-submit-octets))
                    (equalp groups (fnn-owner-submit-groups)))
         (fnn-fault "owner bound submission changed after admission"))
-      (let ((intent
-              (fnn-owner-action 'fn-owner-submission-intent
-                                (fnn-octet-list evidence) generation txid)))
-        (unless (eq intent :ready)
+      (let ((intent-publication
+              (fnn-owner-feed-step 'fn-owner-submission-intent
+                                   (fnn-octet-list evidence) generation txid)))
+        (unless (eq (fnn-owner-feed-word intent-publication) :ready)
           (let ((result
                   (fnn-owner-action 'fn-owner-control-outcome :refused)))
             (fnn-owner-log)
             (unless (eq result :refused)
               (fnn-fault "owner bound intent refusal changed outcome"))
             (return-from fnn-owner-complete-bound-submission result)))
-        (fnn-owner-feed-flush service)
+        (fnn-owner-feed-flush service intent-publication)
         (let ((word (if commit-callback
                         ;; PKT-069: file first, here, not by the caller's
                         ;; convention.  The callback commits only when ACL2's
@@ -1565,9 +1574,10 @@ own result vocabulary."
                                               gate))))
                       (fnn-owner-attempt-served
                        service msgid payload groups evidence))))
-          (fnn-owner-action 'fn-owner-submission-resolution
-                            word (fnn-octet-list evidence) generation txid)
-          (fnn-owner-feed-flush service)
+          (fnn-owner-feed-flush
+           service
+           (fnn-owner-feed-step 'fn-owner-submission-resolution
+                                word (fnn-octet-list evidence) generation txid))
           (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
             (fnn-owner-log)
             (unless (member result
@@ -1627,19 +1637,20 @@ own result vocabulary."
                           (fnn-octets
                            (fnn-owner-core 'fn-owner-bp-transit-raw)))
             (fnn-fault "owner BP transit raw request changed"))
-          (let ((intent
-                  (fnn-owner-action 'fn-owner-submission-intent
-                                    (fnn-octet-list evidence) generation txid)))
-            (unless (eq intent :ready)
+          (let ((intent-publication
+                  (fnn-owner-feed-step 'fn-owner-submission-intent
+                                       (fnn-octet-list evidence) generation txid)))
+            (unless (eq (fnn-owner-feed-word intent-publication) :ready)
               (setq *fnn-owner-transit-detail* :submission-intent)
               (return-from fnn-owner-complete-bp-transit-submission
                 (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
-            (fnn-owner-feed-flush service)
+            (fnn-owner-feed-flush service intent-publication)
             (let ((word (fnn-owner-attempt-transit
                          service msgid stored groups evidence)))
-              (fnn-owner-action 'fn-owner-submission-resolution
-                                word (fnn-octet-list evidence) generation txid)
-              (fnn-owner-feed-flush service)
+              (fnn-owner-feed-flush
+               service
+               (fnn-owner-feed-step 'fn-owner-submission-resolution
+                                    word (fnn-octet-list evidence) generation txid))
               (let ((result
                       (fnn-owner-action 'fn-owner-bp-transit-outcome word)))
                 (unless (member result '(:accepted :duplicate :refused

@@ -6987,6 +6987,31 @@
           "name": "fn-heap-decision-exit-code-of-a-refusal"
         }
       ]
+    },
+    {
+      "id": "PRF-208",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ores-sealed-plan-is-indexed-fetch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-len-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-feed-port-publication-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-staged-result-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-refused-is-a-result"
+        }
+      ]
     }
   ]
 }

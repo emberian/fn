@@ -1449,7 +1449,8 @@
         "PRF-094",
         "PRF-188",
         "PRF-191",
-        "PRF-192"
+        "PRF-192",
+        "PRF-208"
       ],
       "verification": [
         "proof",
@@ -3618,6 +3619,32 @@
         "planning/evidence/heap-from-profile-2026-09-26.md"
       ],
       "implementation_note": "The installed bin/fn runs `heap -- ARGV` in the same image first (a boot figure of the core's size plus 128 MB, a bound on the probe's work), where ACL2 decides the figure from the command's store profile (config.json, or the init request's target) and the least of the machine's observations (sysconf physical pages; Linux cgroup memory.max up the hierarchy and RLIMIT_AS; RLIMIT_DATA), then execs the command with --dynamic-space-size MB through SBCL_USER_ARGS; a refusal is exit 1 with `refused machine-cannot-hold-profile heap=MB MB machine=M MB` and nothing else runs. `status` and `health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with a bare request on a machine under 4 GiB writes the small preset. A checkout's packaging/fn takes FN_TEST_HEAP_MB (the tests' figure), which the installed launcher ignores."
+    },
+    {
+      "id": "HST-019",
+      "title": "The native owner's wrappers return typed ACL2 results the host checks once; no global result mailboxes, no LF name grammar, no frame fetched by index",
+      "specification": "specs/host.md#typed-results-across-the-native-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-208"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/owner-results.lisp",
+        "tests/acl2/owner-results-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/feed-service.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/native_live_config_cache_raw.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md"
+      ],
+      "implementation_note": "First half (lane adapter-retirement): the feed results (FeedPublication) and the configuration staging results (ConfigResult) are typed; fnn-owner-name-list and fnn-owner-config-names are deleted and the feed flush consumes one sealed frame plan. The submission-taken, served-step and capture results are defined in books/owner-results.lisp and still travel through their globals until the continuation wires them (and the catalog slice's completion token)."
     }
   ]
 }

@@ -61,8 +61,12 @@
     (fn-owner-submit-msgid *bound-msgid*)
     (fn-owner-submit-octets *bound-payload*)))
 (defun fnn-owner-submit-groups () *bound-groups*)
-(defun fnn-owner-feed-flush (service)
-  (declare (ignore service)) (incf *bound-flushes*))
+;; A FeedPublication (books/owner-results.lisp) is stood for by its word
+;; here: the step is the recording action stub and the flush counts.
+(defun fnn-owner-feed-step (name &rest args) (apply #'fnn-owner-action name args))
+(defun fnn-owner-feed-word (publication) publication)
+(defun fnn-owner-feed-flush (service publication)
+  (declare (ignore service publication)) (incf *bound-flushes*))
 ; Operator logging is a side effect after the ACL2 outcome. It does not make
 ; or persist the decision; count the deployed call without replacing either.
 (defun fnn-owner-log () (incf *bound-logs*))
