@@ -100,5 +100,101 @@ class ControlReplyFitTests(ProfileUpgradeFixture):
         self.serves("raised")
 
 
+# PKT-471 (the coordinator's decision of 2026-09-26): a store SAVED before
+# PKT-467 with R in the window above CEILING is refused by name at every open
+# (books/store-profile-open.lisp fn-spo-config-open, the open
+# host/native/io.lisp fnn-metadata-config-decode calls; keystone
+# fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name), and
+# `store upgrade-profile --max-record-octets CEILING` is its one repair
+# (fn-spo-repair-verdict; fn-spo-repair-admits-exactly-the-lowering-to-the-width).
+#
+# The witness config.json is written BY HAND, never taken from a real store:
+# the octets the format-8 encoder wrote under the relation before PKT-467 for
+# the scale preset's fields with R = H = 4,294,967,295 (the codec's u32), the
+# same constant tests/acl2/store-profile-open-tests.lisp checks is
+# (fn-spo-saved-frame *spot-window*).  Its last 32 octets are the SHA-256 of
+# the rest (the FNSM trailer).
+WINDOW_FRAME = bytes.fromhex(
+    "464e534d010100000094000a666e2d73746f72652d38001e666e2d73746f7265"
+    "2d616c6c6f636174696f6e2d66726f6e746965722d3200000000000010000000"
+    "0000ffffffff00000000ffffffff0000000000008000000000000000ffff0000"
+    "0000000001000000000000001000000000000010000000000000001000000000"
+    "00000010000000000000001000000000000000100000000000000000000030f0"
+    "f366d0c3978954589a8e03e2160450ce2cc20435273838484922cb8e9d12")
+LINE = ("profile record bound exceeds the poll reply width: "
+        "run store upgrade-profile --max-record-octets 4294966940")
+
+
+class ProfileOpenRefusalSourceTests(unittest.TestCase):
+    def test_the_witness_frame_is_a_sealed_format_8_frame(self):
+        self.assertEqual(len(WINDOW_FRAME), 190)
+        self.assertEqual(WINDOW_FRAME[:4], b"FNSM")
+        self.assertEqual(hashlib.sha256(WINDOW_FRAME[:-32]).digest(), WINDOW_FRAME[-32:])
+        book = (ROOT / "tests" / "acl2" / "store-profile-open-tests.lisp").read_text(encoding="ascii")
+        octets = book.split("(defconst *spot-window-octets*", 1)[1].split("))", 1)[0]
+        self.assertEqual(bytes(int(w) for w in octets.replace("'(", " ").split()), WINDOW_FRAME)
+
+
+class ProfileOpenRefusalTests(ControlReplyFitTests):
+    def files(self):
+        return {str(p.relative_to(self.store)): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in sorted(self.store.rglob("*"))
+                if p.is_file() and p.name != "writer.lock"}
+
+    def run_owner(self):
+        import subprocess
+        return subprocess.run([str(self.image), "--fn", "operator", str(self.config), "run"],
+                              cwd=ROOT, env=verbs.environment(), stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=180, check=False)
+
+    def assert_named(self, result, what):
+        out = (result.stdout + result.stderr).decode("utf-8", "replace")
+        print("$", what, "->", result.returncode, "\n" + out.strip(), flush=True)
+        self.assertEqual(result.returncode, EXIT_REFUSED, out)
+        self.assertIn(LINE, out)
+        self.assertNotIn("ACL2 rejected durable configuration frame", out)
+
+    def test_a_store_saved_in_the_window_is_refused_by_name_at_every_open_then_repaired(self):
+        created = self.op("init", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.serves("window")
+        (self.store / "config.json").write_bytes(WINDOW_FRAME)
+        before = self.files()
+
+        self.assert_named(self.op("status"), "operator status")
+        self.assert_named(self.op("store", "recover"), "operator store recover")
+        self.assert_named(self.op("store", "checkpoint"), "operator store checkpoint")
+        self.assert_named(self.op("health"), "operator health")
+        self.assert_named(self.run_owner(), "operator run")
+        self.assert_named(self.store_cli("recover"), "store recover")
+        self.assert_named(self.store_cli("inspect", "<fit-window@example.invalid>"),
+                          "store inspect")
+        self.assert_named(self.store_cli("checkpoint"), "store checkpoint")
+        # Refused, never mutated.
+        self.assertEqual(self.files(), before)
+
+        # Any other target is refused by name and writes nothing.
+        other = self.op("store", "upgrade-profile", "--max-record-octets", str(CEILING - 1))
+        print(other.stderr.decode(errors="replace"), flush=True)
+        self.assertEqual(other.returncode, EXIT_REFUSED, other.stderr.decode())
+        self.assertIn(b"store profile upgrade refused: "
+                      b"repair-lowers-max-record-octets-to-the-poll-reply-only", other.stderr)
+        self.assertEqual(self.files(), before)
+
+        repaired = self.op("store", "upgrade-profile", "--max-record-octets", str(CEILING))
+        print(repaired.stdout.decode(errors="replace"), repaired.stderr.decode(errors="replace"),
+              flush=True)
+        self.assertEqual(repaired.returncode, EXIT_OK, repaired.stderr.decode())
+        self.assertIn(b"repaired profile=max-record-octets transactions-used=1", repaired.stdout)
+        profile = self.profile_line()
+        self.assertEqual(profile["max-record-octets"], CEILING)
+        self.assertEqual(profile["max-history-octets"], 4294967295)
+        self.assertEqual(profile["max-transactions"], 4096)
+        for name, digest in before.items():
+            if name != "config.json" and name.startswith("transactions"):
+                self.assertEqual(self.files()[name], digest)
+        self.serves("repaired")
+
+
 if __name__ == "__main__":
     unittest.main()
