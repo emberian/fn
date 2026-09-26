@@ -41,7 +41,7 @@ class NativeCheckpointTests(unittest.TestCase):
         result = subprocess.run(
             [str(self.image), "--fn", *map(str, args)], cwd=ROOT,
             env=env or self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=30, check=False, text=True)
+            timeout=getattr(self, "native_timeout", 30), check=False, text=True)
         self.assertEqual(result.returncode, expected,
                          f"native {args} returned {result.returncode}\n"
                          f"stdout={result.stdout}\nstderr={result.stderr}")
@@ -542,7 +542,7 @@ class NativeCheckpointTests(unittest.TestCase):
             [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
-            deadline = time.monotonic() + 10
+            deadline = time.monotonic() + getattr(self, "stop_deadline", 10)
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     stdout, stderr = process.communicate()
@@ -609,7 +609,9 @@ class NativeCheckpointTests(unittest.TestCase):
         store = self.initialized("pack-retire")
         before_first = self.native("store", store, "inspect",
                                    "<checkpoint@example.invalid>").stdout
-        self.native("checkpoint", "pack", store, "select")
+        # An unselected generation is outside every chain (P5), so retire
+        # removes it; a selected chain's links are never retired.
+        self.native("checkpoint", "pack", store)
         older = store / "packs" / "generation-0.fncp"
         old_bytes = older.stat().st_size
         self.native("store", store, "post", "<retired-pack-suffix@example.invalid>",
@@ -647,7 +649,25 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertIn("retired pack-generations=0",
                       self.native("checkpoint", "pack-retire", store,
                                   env=no_op_env).stdout)
+        # With the selected chain covering every record, a pack is ACL2's
+        # named no-op: exit 0, the no-op line, no new generation file and the
+        # marker unchanged.
+        marker = (store / "packs" / "selected.fncp").read_bytes()
+        names = sorted(p.name for p in (store / "packs").glob("generation-*.fncp"))
+        for argv in (("checkpoint", "pack", store),
+                     ("checkpoint", "pack", store, "select")):
+            nothing = self.native(*argv)
+            self.assertEqual(nothing.returncode, 0)
+            self.assertIn("packed nothing-uncovered boundary=2 records=2",
+                          nothing.stdout)
+            self.assertNotIn("generation=", nothing.stdout)
+            self.assertEqual(sorted(p.name for p in
+                                    (store / "packs").glob("generation-*.fncp")),
+                             names)
+            self.assertEqual((store / "packs" / "selected.fncp").read_bytes(), marker)
         # A later publication must advance to generation 2, never reuse 0.
+        self.native("store", store, "post", "<after-retire@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
         self.assertIn("generation=2",
                       self.native("checkpoint", "pack", store).stdout)
 
@@ -657,8 +677,8 @@ class NativeCheckpointTests(unittest.TestCase):
                                   ("pack-retire-directory", 1)):
             with self.subTest(point=point, occurrence=occurrence):
                 store = self.initialized(f"{point}-{occurrence}")
-                self.native("checkpoint", "pack", store, "select")
-                self.native("checkpoint", "pack", store, "select")
+                self.native("checkpoint", "pack", store)
+                self.native("checkpoint", "pack", store)
                 self.native("checkpoint", "pack", store, "select")
                 selected = store / "packs" / "generation-2.fncp"
                 selected_bytes = selected.read_bytes()
@@ -951,7 +971,8 @@ class NativeCheckpointTests(unittest.TestCase):
         return process
 
     def stop_owner(self, process):
-        diagnostic = stop_and_diagnostics(process, timeout=60)
+        diagnostic = stop_and_diagnostics(process,
+                                          timeout=getattr(self, "served_timeout", 60))
         self.assertEqual(process.returncode, 0, diagnostic)
 
     def operator_post(self, config, msgid, subject):
@@ -972,7 +993,7 @@ class NativeCheckpointTests(unittest.TestCase):
         owner = self.run_owner(config)
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
-                sock.settimeout(10)
+                sock.settimeout(getattr(self, "served_timeout", 10))
                 with sock.makefile("rwb", buffering=0) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
 
@@ -1141,19 +1162,21 @@ class NativeProductionCompactTests(unittest.TestCase):
         before_retention = self.native("store", store, "retention").stdout
         compacted = self.native("operator", config, "store", "compact")
         self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
-                      "generation=0 reclaimed={} retired=0".format(len(files), len(files)),
+                      "generation=0 links=1 reclaimed={} retired=0".format(len(files), len(files)),
                       compacted.stdout)
         self.assertIn("accepted operator compact", compacted.stderr)
         self.assertEqual(self.transaction_bytes(store), {})
         self.assert_view_kept_and_next_number(store, config, port, msgids,
                                               before, before_retention, name)
         # The post after the first compaction is the new suffix: a second
-        # compaction packs all six, reclaims it and retires generation 0.
+        # compaction packs only that suffix into a second link of the chain
+        # (P5), reclaims it and retires nothing: generation 0 is the chain's
+        # first link.
         suffix = len(self.transaction_bytes(store))
         self.assertGreaterEqual(suffix, 1)
         again = self.native("operator", config, "store", "compact")
         self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
-                      "generation=1 reclaimed={} retired=1".format(len(files) + suffix, suffix),
+                      "generation=1 links=1 reclaimed={} retired=0".format(len(files) + suffix, suffix),
                       again.stdout)
         self.assertEqual(self.transaction_bytes(store), {})
         refused = self.native("operator", config, "store", "compact", expected=1)

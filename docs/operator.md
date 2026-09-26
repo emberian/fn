@@ -9,6 +9,14 @@ makes no availability or flight-readiness claim; see
 
 Everything below is one command, `fn`, and one configuration file.
 
+**With only the release tarball** (`fn-REV-linux-x86_64.tar.gz`, made by
+`packaging/release-tarball.sh`), start at
+[From the release tarball](#from-the-release-tarball) and then
+[peering with a friend](peering-with-a-friend.md). The sections
+"Install", "Initialize" and "Require a login" further down describe the
+Python development service (`bin/fn --config ...`), not the tarball's
+`bin/fn`, whose verbs are `fn operator CONFIG VERB ...`.
+
 Status (2026-09-21): `bin/fn` and the workflow below describe the explicit
 **Python development service**. The production package uses the native saved
 image and the separate installation procedure below.
@@ -43,6 +51,9 @@ packaging/fn-native operator /path/to/fn.toml capacity 1048576
 packaging/fn-native operator /path/to/fn.toml peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false
 packaging/fn-native operator /path/to/fn.toml peer remove NAME
 packaging/fn-native operator /path/to/fn.toml peer list
+packaging/fn-native operator /path/to/fn.toml peer invite NAME GROUPS HOST PORT PATH /KEYDIR /OUT MY-HOST MY-PORT
+packaging/fn-native operator /path/to/fn.toml peer accept /INVITATION /KEYDIR PATH REACHABLE /OUT
+packaging/fn-native operator /path/to/fn.toml peer confirm /ACCEPTANCE /INVITATION
 packaging/fn-native operator /path/to/fn.toml policy set path-identity news.example.invalid
 packaging/fn-native operator /path/to/fn.toml run
 ```
@@ -209,12 +220,37 @@ retention charge capacity is a different number and IS reconfigurable
 (`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
 value that is not a decimal below 2^64 is a usage error (5).
 
+### Settle a client's lost post: `store inspect`
+
+A client whose POST reply was lost settles it by re-sending the same article
+under the same Message-ID (docs/agents.md). When that re-send meets the gate
+instead (`440` because the login lost its posting right, `480`, or the
+bound-principal `441`), the client stays `unresolved`, and the one
+privileged answer is this lookup on the stopped store:
+
+```text
+fn operator /path/to/fn.toml store inspect '<fn-client.20260922T034404Z.3fd1ce9e@yue.invalid>'
+accepted <fn-client.20260922T034404Z.3fd1ce9e@yue.invalid> an article is stored here under this Message-ID
+fn operator /path/to/fn.toml store inspect '<never-posted@fn.example.invalid>'
+absent <never-posted@fn.example.invalid> nothing is stored here under this Message-ID
+```
+
+`accepted` (exit 0) means the store binds that Message-ID: the article was
+committed, whatever its visibility now (a cancel or a reclaim does not
+unbind it). `absent` (exit 1) means nothing is stored under it. A word that
+is not a Message-ID is a usage error (5). It opens the store as `recover`
+does, so it is refused (1, `store is already locked`) while an owner runs.
+The store node's lookup decides and ACL2 renders the line
+(`fn-native-operator-inspect-report-is-the-lookup`,
+`books/native-operator.lisp`). It does not compare the stored text with the
+client's copy; tell the client which answer you got.
+
 Compaction is the other offline store step. It replaces the transaction
 files of the committed history with one lossless pack:
 
 ```text
 fn operator /path/to/fn.toml store compact
-compacted steps=pack,select,reclaim,retire records=7 generation=0 reclaimed=7 retired=0
+compacted steps=pack,select,reclaim,retire records=7 generation=0 links=1 reclaimed=7 retired=0
 ```
 
 It opens the store as `recover` does, so it is refused (1, `store is already
@@ -222,22 +258,24 @@ locked`) while an owner runs. ACL2 decides what it does
 (`fn-cverb-decide`, `books/store-compact-verb.lisp`) and the host carries out
 exactly that:
 
-- `pack,select,reclaim,retire`: capture every committed record's exact bytes
-  into the next pack generation, publish it, select it, unlink the
-  transaction files it covers and retire the older pack generations. The open
-  afterwards hands replay the identical record list
-  (`fn-ccp-reclaim-preserves-reconstructed-history`), so every article, number,
-  watermark, retention pin and the next article number are unchanged.
-- `reclaim,retire`: the selected pack already covers every committed record
-  (a rerun after an interrupted compaction); no new pack is written.
-- refused (1), nothing written, with the reason: `already-compact` (nothing
-  to pack, reclaim or retire), `empty-history`, `temporary-space` (the new pack would not
-  fit the free space of the store's filesystem, as the image observes it;
-  the pack is written beside the files it replaces, so leave at least the
-  history's size free), `exceeds-compaction-unit` (the
-  history's pack would exceed 4 MiB, the unit one pack holds; the open reads
-  a pack as one bounded read, and compacting a larger history needs chained
-  packs, which do not exist yet).
+- `pack,select,reclaim,retire`: extend the selected chain of packs over the
+  committed records it does not cover yet, one link (at most 4,096 records
+  or 4 MiB, and at least one record) at a time, publishing and selecting
+  each link; then unlink the transaction files the chain covers and retire
+  the pack generations outside it. The open afterwards hands replay the
+  identical record list (`fn-ccc-chain-reconstructs-the-history`), so every
+  article, number, watermark, retention pin and the next article number are
+  unchanged. `status` prints `pack-chain links=L boundary=B generations=...`.
+- `reclaim,retire`: the selected chain already covers every committed record
+  (a rerun after an interrupted compaction); no new link is written.
+- refused (1), with the reason: `already-compact` (nothing to pack, reclaim
+  or retire), `empty-history`, `temporary-space` (the next link would not
+  fit the free space of the store's filesystem, as the image observes it
+  before every link; each link is written beside the files it covers, so
+  leave at least one link, about 4 MiB, free). Nothing of the refused link
+  is written; links already selected by the same run stay (the message says
+  `links=K`), and a rerun continues from them. No size of the history is
+  refused.
 
 A death or an I/O error at any step leaves a store the next `recover` opens
 with the same history; an I/O error after a durable change is uncertain (3),
@@ -428,6 +466,37 @@ store is opened read-only with the current `fn.toml`'s threshold. The
 first line (`health exit=NN`) is what the command exits with: ACL2 renders
 it and reads it back from the same octets
 (`fn-nh-report-exit-of-render`, books/native-health.lisp).
+
+### From the release tarball
+
+`packaging/release-tarball.sh FROZEN_DIR REVISION OUT_DIR` packages one
+frozen image as `fn-REV12-linux-x86_64.tar.gz` with its `.sha256`: the
+installed layout below under one directory `fn-REV12/`, carrying the SBCL
+runtime, OpenSSL 3.5 and libsodium beside the image, the operator documents
+under `share/doc/fn/`, and `SHA256SUMS` over every file. The launcher finds
+all of it relative to itself, so the directory runs wherever it is unpacked
+and needs no system OpenSSL. What a stranger runs, in order (each step's
+exact words and what it answers are in
+[peering with a friend](peering-with-a-friend.md), section 1):
+
+1. `sha256sum -c` the tarball's sum, unpack, `sha256sum -c SHA256SUMS`.
+2. `fn operator NODE/fn.toml mission small-community --host IP --port P`
+   writes `fn.toml` (login required, only after STARTTLS; TLS paths under
+   `NODE/tls/`). It does **not** make the TLS pair: make one with `openssl
+   req -x509 ...` whose subjectAltName is the address others dial, into the
+   two paths `fn.toml` names.
+3. `init` (a small community serves `local.general` and `local.test`),
+   `policy set path-identity NAME`, `principal set-password LOGIN
+   --posting` (the password twice, from the terminal or two lines of stdin;
+   it applies at the next start).
+4. For peering, the node's keys: an Ed25519 pair and an ML-DSA-65 pair made
+   with an `openssl` 3.5 command into a key directory, then `peer genesis
+   KEYDIR`.
+5. `fn operator NODE/fn.toml run` under a service manager
+   (`systemd-run --user --unit NAME -p MemoryMax=8G ...` on a box without
+   root).
+
+`fn operator CONFIG help VERB` prints each verb's grammar.
 
 ### Install the native production entry
 
@@ -937,24 +1006,18 @@ NEWNEWS fn.* 20260919 000000 GMT
 ```
 
 Two things to know before you build a poller on it. First, the instant fn
-compares against is the **article's own** `Injection-Date`, or its `Date` when
-that field is absent: fn's store keeps no arrival stamp beside an article, so
-`NEWNEWS` reports when the injecting agent says the article was injected, not
-when this node received it. An article carrying neither field, or a date-time
-fn cannot decode exactly, is not reported at all. Second, one `NEWNEWS` will
-read at most 256 articles; a wildmat and date that select more than that are
-refused with `503` and the command reads nothing, rather than answering a
-shorter list that would look complete:
-
-```
-NEWNEWS fn.* 19700101 000000 GMT
-503 more matching articles than this command may read
-```
-
-Narrow the wildmat, or move the date forward, and poll again. A `501` from
-`NEWNEWS` is a syntax error in the arguments and a `503` is fn declining to
-do the work or lacking a wall clock for a two-digit year; the two are
-different and a poller should not retry the first.
+compares against is the **store's own acceptance stamp**: the owner's whole
+wall-clock second when it prepared the article, recorded with it and
+independent of the article's `Injection-Date` and `Date`
+(`fn-nntp-newnews-scan`, books/nntp-responses.lisp). A record written before
+stamps were kept takes the nearest later stamped article's second, else the
+reader's pinned wall second, else it is listed at every threshold. Second,
+the answer is one pass over the committed list with no article parsed, one
+line per matching article; a reclaimed article is not listed. A `501` from
+`NEWNEWS` is a syntax error in the arguments, and a `503 two-digit year
+needs a wall clock reading` means the date was given with two digits and the
+node holds no wall-clock reading to place its century; a poller should not
+retry the first.
 
 `LIST NEWSGROUPS` lists the served groups with a description field. fn's
 group table carries no description, so every line reads
@@ -1052,6 +1115,15 @@ What the policy does, and every decision below is ACL2's
   active. Set `[listener] tls_cert`/`tls_key` — `fn init --tls-cert --tls-key`
   writes them — and the node advertises `STARTTLS` (RFC 4642 §2.1) and drops
   the label once the layer is up. USER/PASS crosses in the clear otherwise.
+- `[listener] tls_port = 1563` opens a second listener beside `port` whose
+  connections begin TLS at connect (the port-563 practice RFC 4642 §1
+  describes; tin 2.6 and other NNTPS readers speak only this form). The
+  owner prints `LISTENING-TLS 1563` after `LISTENING`. It is refused as a
+  configuration (`usage`, exit 5) without `tls_cert`/`tls_key` or on the
+  plaintext port, and not opened by `run --once`. A connection on it is the
+  STARTTLS session after its handshake: no `STARTTLS` label, `502` to
+  `STARTTLS`, AUTHINFO allowed under `protected_only` from the first
+  command (`books/served-implicit-tls.lisp`).
 
 The policy reaches every connection the owner opens, including one it
 resolved to a peer record. A peer does not run AUTHINFO, so on a node with
@@ -1068,7 +1140,7 @@ A signed POST is `verified` for whichever principal signed it, whatever
 login posted it. To make a login post only as its own principal:
 
 ```
-packaging/fn-native operator /etc/fn/fn.toml principal bind alice 9261767a...(64 hex)
+packaging/fn-native operator /etc/fn/fn.toml principal bind alice PRINCIPAL-HEX  # 64 lowercase hex digits
 packaging/fn-native operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
 
@@ -1090,6 +1162,79 @@ login is not bound to this signing principal`. A login without a binding,
 and every login on a node whose policy is `open` (the default: `policy set
 posting-policy open`), posts as before. The service log names the login of
 each decision (`post login=alice bound=...`).
+
+## Expose a node to strangers
+
+Everything below is what runs on the branch and what the SCN-091 campaign
+measured on hbox (`planning/evidence/public-exposure-2026-09-26.md`); no fn
+node is exposed yet, and whether and how one is is PKT-404.
+
+A listener outside 127.0.0.0/8 and `::1` changes the default of every
+exposure row the configuration does not set. Loopback keeps the old
+behaviour. The rows are durable configuration, set with `policy set` like
+`path-identity`, applied to a running owner at once and replayed at every
+start:
+
+```
+fn operator /etc/fn/fn.toml policy set exposure-connections 200
+fn operator /etc/fn/fn.toml policy set exposure-per-address 8
+fn operator /etc/fn/fn.toml policy set exposure-steps-per-second 64
+fn operator /etc/fn/fn.toml policy set exposure-first-seconds 60
+fn operator /etc/fn/fn.toml policy set exposure-idle-seconds 600
+fn operator /etc/fn/fn.toml policy set exposure-auth-failures 10
+fn operator /etc/fn/fn.toml policy set exposure-posts-per-minute 60
+fn operator /etc/fn/fn.toml policy set anonymous none
+```
+
+What each does, what the client sees and the default off loopback is the
+table in `specs/nntp.md` ("Public exposure"). In short:
+
+- **Connections.** One fewer than the run's `max_connections` (32) is the
+  most sockets can hold: the last is kept for your own `policy set`, which
+  stages through the owner. Past the total a client reads `400 too many
+  connections; try again later` and is closed; past the per-address limit,
+  `400 too many connections from this address; try again later`. Under a
+  flood of 500 connections from one address the owner admitted 8 and sent
+  the 400 to the other 492; from 50 addresses with the per-address limit at
+  1, it admitted 30 and refused 470, and a fresh connection of yours got the
+  busy 400 until the flood's silent connections timed out.
+- **Silence.** A connection that sends no command for
+  `exposure-first-seconds`, or answers nothing for `exposure-idle-seconds`
+  after that, is closed with no reply (RFC 3977 §3.1). A client trickling
+  one octet a second is silence too: only an answered command or 512
+  octets resets the timer. With the timer at 5 s, silent and trickling
+  connections closed at 5.0 s.
+- **Work.** Each source address may start `exposure-steps-per-second`
+  served steps a second (a step is one read of at most one buffer). Past it
+  the connection is not refused: the owner stops reading it until the next
+  second, so the client slows down and loses nothing. At 20 a second an
+  anonymous `STAT` loop ran at 22 a second including its first burst.
+- **Failed logins.** After `exposure-auth-failures` 481 answers in a minute
+  from one address, that connection reads `400 too many authentication
+  failures; closing connection`, and new ones from the address read `400
+  too many authentication failures from this address` until the minute
+  ends.
+- **Anonymous readers.** `anonymous none` (the default off loopback, and
+  always when `[auth] required` is set) answers `480` to every reading and
+  posting command until the client logs in; CAPABILITIES, HELP, DATE, MODE,
+  QUIT, AUTHINFO and STARTTLS still answer. `anonymous open` is the old
+  behaviour, and it lets an anonymous client POST if `[posting]` is
+  enabled: there is no read-only anonymous level yet (PKT-405).
+
+`operator CONFIG health` prints three `exposure` lines after its eight
+states: `exposure pressure held|clear` (held at nine tenths of the total or
+after any refusal, wait or close in the current minute), the counts
+(`admitted`, `refused-busy`, `refused-address`, `refused-auth`, `deferred`,
+`idle-closed`, `auth-closed`) and the limits in force. They do not change
+the exit code.
+
+Before you open the port: set `[auth] required = true` and `protected_only
+= true` and a TLS pair (see "Require a login"), choose the certificate
+(a self-signed pair pinned by your readers, or a CA's; PKT-404 compares
+them), and do not put fn behind a TCP proxy unless the proxy limits per
+source itself: fn does not read the PROXY protocol, so behind a proxy every
+client is the proxy's address and one abuser would use up everybody's
+per-address and failed-login allowance.
 
 ## Add a group
 
@@ -1152,18 +1297,31 @@ There are two rollbacks, and they are not the same:
   marker: that requirement is never undone by a kept file.
 - **Restoring a pre-migration snapshot** (the whole store as it was).
   **Restoring a pre-migration snapshot loses every article accepted after
-  it.** `rollback-check --snapshot SNAPSHOT` counts them: ACL2 compares the
-  two committed histories (`fn-native-operator-snapshot-loss`) and answers
+  it.** `rollback-check --snapshot SNAPSHOT` counts them. Stop the node
+  first: the verb takes both stores' shared writer locks and holds them while
+  it compares, so a running owner's store is refused (`store is already
+  locked`, 1) rather than read mid-write. It reads each store's committed
+  history the way the open does (the selected pack's records, then the
+  transaction files after it) and ACL2 compares the two record by record,
+  octet for octet (`fn-native-operator-history-loss-is-ancestry`). When the snapshot's
+  records are exactly this store's first records it answers
 
   ```
   rollback snapshot loses transactions=3 snapshot-transactions=11 store-transactions=14
-  restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
+  the snapshot's committed records are this store's first 11, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
   ```
 
-  or `rollback snapshot refused snapshot-not-a-prefix` (1) when the snapshot
-  is not an earlier state of this store. The count is of committed
-  transaction files; a compacted history (its records in a pack) is not
-  counted by this verb.
+  and otherwise `rollback snapshot refused snapshot-not-a-prefix` (1): the
+  snapshot is not an earlier state of this store's history, and restoring
+  it would replace that history, not shorten it. That includes a snapshot
+  from a different store whose transactions have the same numbers and the
+  same file sizes: equal counters and lengths are not the same history, and
+  the verb does not treat them as one.
+
+  What the verb does not establish: that the snapshot is the newest earlier
+  state you have, or anything about the configuration history, retention
+  releases or peer state a restore also brings back; and a store-local
+  comparison is not a freshness witness (see `fn anchor` under Back up).
 
 ## Back up
 

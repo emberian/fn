@@ -105,6 +105,14 @@ before the subject and a bold title. Replies are indented under their parent
 that is another article in the same window. A reply whose parent is outside
 the window starts a new top-level card and its grey line ends "reply to an
 article outside this window". The order is display only; it decides nothing.
+For such a reply the client asks the node `STAT <parent>` (the last
+References entry; at most 40 per page, one per distinct parent), the same
+lookup the conversation page makes for each earlier message. When the node
+answers `430 withdrawn` the card carries a "parent withdrawn" pill and the
+line "reply to `<parent>`, which the node answers `430 withdrawn`", and the
+conversation page shows that parent's placeholder with the same answer. Any
+other answer (not held here, in another group) keeps the "outside this
+window" line; only the node's withdrawal answer is called withdrawn.
 
 Numbers inside the window and the group's range that carry no overview row
 are listed under "N local number(s) in this window serve no article", each

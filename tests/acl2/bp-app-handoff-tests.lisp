@@ -287,3 +287,16 @@
 (assert-event (bpah-all-round-trip *fn-bpah-release-verdicts*))
 ; The detail is a valid kind-7 detail (non-empty, at most 256 octets).
 (assert-event (<= (len (fn-bpah-release-detail :obligation-mismatch)) 256))
+
+;; PRF-136: fn-bpah-local-pendingp-has-a-nonfragment-header.  Witness: the
+;; pending request carrier is local-pending and its header is a non-fragment
+;; block.  Without the hypothesis: the held fragment carrier is heldp and its
+;; header is a fragment's, so the conclusion fails (and the definition
+;; refuses it, which the executable body now reads from the header alone).
+(assert-event
+ (and (fn-bpah-local-pendingp *bpah-held* *bpah-local*)
+      (fn-bpnf-held-nonfragment-headerp *bpah-held*)))
+(assert-event
+ (and (fn-bpnf-heldp *bpah-partial-held*)
+      (not (fn-bpah-local-pendingp *bpah-partial-held* *bpah-local*))
+      (not (fn-bpnf-held-nonfragment-headerp *bpah-partial-held*))))

@@ -48,19 +48,28 @@ class NativeProfileNamespaceTests(upgrade.ProfileUpgradeFixture):
 
     def test_the_operator_raises_credentials_and_generations(self):
         created = self.op("init", "--max-credentials", "128",
-                          "--max-config-generations", "2", "fn.test")
+                          "--max-config-generations", "3", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         profile = self.profile_line()
         self.assertEqual(profile["max-credentials"], 128)
-        self.assertEqual(profile["max-config-generations"], 2)
+        self.assertEqual(profile["max-config-generations"], 3)
 
-        # Generation 2 is within the bound; generation 3 is refused by name.
+        # Generation 2 is within the bound.  Generation 3, the last, is the
+        # content release's (PRF-138, books/store-capacity-config.lisp): a
+        # group is refused it by name, `retention set' is admitted there,
+        # and generation 4 is refused to every record.
         second = self.op("group", "create", "fn.two")
         self.assertEqual(second.returncode, EXIT_OK, second.stderr.decode())
         third = self.op("group", "create", "fn.three")
         self.assertEqual(third.returncode, EXIT_REFUSED, third.stderr.decode())
         self.assertIn("max-config-generations",
                       (third.stdout + third.stderr).decode().lower())
+        release = self.op("retention", "set", "released-by-all-holders")
+        self.assertEqual(release.returncode, EXIT_OK, release.stderr.decode())
+        again = self.op("retention", "set", "keep-forever")
+        self.assertEqual(again.returncode, EXIT_REFUSED, again.stderr.decode())
+        self.assertIn("max-config-generations",
+                      (again.stdout + again.stderr).decode().lower())
         # The store still opens: the writer never outgrew the listing bound.
         self.assertEqual(self.op("status").returncode, EXIT_OK)
 

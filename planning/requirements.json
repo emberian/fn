@@ -574,7 +574,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-009",
-        "PRF-073"
+        "PRF-073",
+        "PRF-085"
       ],
       "verification": [
         "proof",
@@ -2382,7 +2383,8 @@
         "PRF-114",
         "PRF-121",
         "PRF-131",
-        "PRF-134"
+        "PRF-134",
+        "PRF-136"
       ],
       "verification": [
         "proof",
@@ -2409,16 +2411,17 @@
         "fn-bpfw-reassemble-is-spec",
         "fn-bpfs-plan-fragments-reassemble-uncapped"
       ],
-      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings)."
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings). Lane bp-lifecycle-5 (2026-09-26): PRF-136 (the selector re-encodes no row of a family without its offset-zero fragment)."
     },
     {
       "id": "NNT-022",
-      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, and a declined key statement stays declined across a restart unless a new statement is decided",
+      "title": "A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, a declined key statement stays declined across a restart unless a new statement is decided, and an accepted key statement whose change a crash cut finishes under its own admission context",
       "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-124"
+        "PRF-124",
+        "PRF-140"
       ],
       "verification": [
         "proof",
@@ -2440,9 +2443,11 @@
         "tests/test_native_peer_invite.py",
         "tests/test_native_key_statements.py",
         "tests/test_native_peer_pull.py",
-        "planning/evidence/peering-compose-2026-09-25.md"
+        "planning/evidence/peering-compose-2026-09-25.md",
+        "planning/evidence/key-replay-fixture-2026-09-26.md"
       ],
-      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule), with *fn-ks-reopen-policy* as the switch. Pull over TLS (packet 8) is not part of this requirement yet."
+      "implementation_note": "A stronger fn guarantee (RFC 3977 and 5537 say nothing of peer agreement or key statements): one configuration record for consumption and peer; the reopen decision bound to the configuration generation in force at the statement's txid (C3's rule) by definition, with no supported switch back to the open's live grants (the old behaviour is a counterexample fixture only); an accepted statement cut before its key change finishes under the configuration at its txid (PRF-140). An explicit re-evaluation verb (`keys redecide`, PKT-325) is specified, not built. Pull over TLS (packet 8) is not part of this requirement yet.",
+      "note": "Lane key-replay-fixture (2026-09-26): PRF-140, SCN-082, PKT-325."
     },
     {
       "id": "NNT-019",
@@ -2516,7 +2521,8 @@
         "PRF-120",
         "PRF-128",
         "PRF-132",
-        "PRF-144"
+        "PRF-144",
+        "PRF-139"
       ],
       "verification": [
         "proof",
@@ -2634,7 +2640,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-130"
+        "PRF-130",
+        "PRF-141"
       ],
       "verification": [
         "proof",
@@ -2646,9 +2653,11 @@
         "packaging/fn",
         "host/native/operator.lisp",
         "docs/operator.md",
-        "planning/evidence/operator-walk-2026-09-26.md"
+        "planning/evidence/operator-walk-2026-09-26.md",
+        "planning/evidence/rollback-history-2026-09-26.md",
+        "tests/test_native_rollback_history.py"
       ],
-      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot counts what restoring a snapshot loses.",
+      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
       "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
     },
     {
@@ -2757,6 +2766,144 @@
       ],
       "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
       "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
+    },
+    {
+      "id": "STO-020",
+      "title": "The Store's capacity is a resource vector: admission never consumes the last resource an accepted promise needs, so a full store can complete its outstanding work, release, maintain itself, recover and reuse the space",
+      "specification": "specs/storage.md#the-capacity-vector-sto-020",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-138"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-capacity-vector.lisp",
+        "books/store-capacity-config.lisp",
+        "host/owner-host.lisp",
+        "host/store-node-host.lisp",
+        "tests/test_native_capacity_vector.py",
+        "planning/evidence/capacity-vector-2026-09-26.md"
+      ],
+      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`."
+    },
+    {
+      "id": "NNT-030",
+      "title": "A friend's node and this one become peers from one invitation each way of the exchange: the accept configures the inviter at the invitee from the invitation's signed address in one record before the enrolment, the confirm configures the invitee at the inviter, and a crash between record and enrolment is resumed without a second record",
+      "specification": "specs/peering.md#10-peering-invitations-issue-accept-confirm-prf-097",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-160"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "host/native/peer-invite.lisp",
+        "host/peer-invite-host.lisp",
+        "tests/test_native_peer_invite.py",
+        "docs/peering-with-a-friend.md",
+        "packaging/release-tarball.sh",
+        "planning/evidence/friends-peer-2026-09-26.md"
+      ],
+      "implementation_note": "A stronger fn guarantee: RFC 3977 and RFC 5537 say nothing of how two servers agree to peer. The `Inviter-Host`/`Inviter-Port` lines are signed body lines of the invitation (fn-peering-v1, additive); `-` names no address. TLS words, credentials and the outbound half remain the operator's `peer add` of the same name; docs/peering-with-a-friend.md is the two-machine runbook from the release tarball. Account invitation codes (PKT-401) are specified as a packet, not built."
+    },
+    {
+      "id": "NNT-031",
+      "title": "A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command",
+      "specification": "specs/nntp.md#public-exposure-nnt-031",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-161"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/public-exposure.lisp",
+        "books/public-exposure-rows.lisp",
+        "tests/acl2/public-exposure-tests.lisp",
+        "books/native-admin.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native-admin-host.lisp",
+        "tests/test_native_public_exposure.py",
+        "planning/evidence/public-exposure-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T074028Z-855253.json",
+        "planning/evidence/manifests/certify-20260926T075324Z-901451.json",
+        "planning/evidence/public-exposure-2026-09-26-report.json",
+        "tests/native_owner_chunk_loop_raw.lisp",
+        "tests/test_native_owner.py",
+        "docs/operator.md"
+      ],
+      "implementation_note": "RFC 3977 section 5.1.1 (400/502 greeting then close), section 3.1 (autologout, close without a response) and RFC 4643 section 2.2 (480) are RFC requirements; every number, per-address accounting and waiting instead of refusing are local policy. The anonymous policy only tightens `[auth] required`. Read-only and public-groups anonymous levels are deferred (PKT-405). SCN-091 is the native campaign."
+    },
+    {
+      "id": "NNT-032",
+      "title": "Everyday tools over protection: tin over an implicit-TLS listener that is the STARTTLS session, the group view's withdrawn parent, every documented command in the real grammar, and the operator's settling lookup",
+      "specification": "specs/human-client.md#everyday-tools-over-protection",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-162"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/served-implicit-tls.lisp",
+        "tests/acl2/served-implicit-tls-tests.lisp",
+        "books/native-operator.lisp",
+        "books/native-config.lisp",
+        "tests/test_native_implicit_tls.py",
+        "tools/docs_check.py",
+        "tests/test_docs_check.py",
+        "tests/acl2/docs-operator-grammar-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "planning/evidence/sanding-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4642 section 2.2 is STARTTLS; section 1 describes the separate TLS port and discourages it, so the implicit-TLS listener is a local policy for readers (tin 2.6) that speak only that form, and it runs the STARTTLS session machine (PRF-162). The inspect answer is the store node's Message-ID lookup rendered by ACL2; it does not compare article text (D25 is the re-send's).",
+      "note": "store inspect needs the owner stopped (the store lock); a live query through the control socket is PKT-410."
+    },
+    {
+      "id": "STO-012",
+      "title": "Compaction chains packs: each compaction packs only the uncovered suffix into a link naming its predecessor by digest, the open walks the chain, retire keeps it",
+      "specification": "specs/storage.md#chained-packs-p5-2026-09-25-sto-012",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-085"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/checkpoint-pack-chain.lisp",
+        "tests/acl2/checkpoint-pack-chain-tests.lisp",
+        "books/store-compact-verb.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_pack_chain.py",
+        "planning/evidence/manifests/certify-20260925T091457Z-3109471.json",
+        "planning/evidence/manifests/certify-20260925T094221Z-3382380.json",
+        "planning/evidence/bounds-p5-2026-09-25.md"
+      ],
+      "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
     }
   ]
 }

@@ -15,10 +15,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-recover-preserves-state"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-node-prepare-preserves-state"
         },
         {
@@ -64,14 +60,6 @@
         {
           "kind": "theorem",
           "name": "fn-sn-recover-preserves-state"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-node-trace-preserves-state"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-node-trace-preserves-old-bindings"
         },
         {
           "kind": "theorem",
@@ -153,10 +141,6 @@
         {
           "kind": "theorem",
           "name": "fn-allocate-at-watermark"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-state-has-fresh-local-numbers"
         },
         {
           "kind": "theorem",
@@ -646,7 +630,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-index-rebuild-correspondence"
+          "name": "fn-index-build-correspondence"
         },
         {
           "kind": "theorem",
@@ -1072,7 +1056,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-wm-pattern-match-work-cost"
+          "name": "fn-wm-match-codepoints-work-value"
         },
         {
           "kind": "theorem",
@@ -3290,10 +3274,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-hm-run-keeps-every-open-admitted"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-hm-open-refuses-a-lost-acknowledged-record"
         },
         {
@@ -5454,6 +5434,324 @@
           "kind": "theorem",
           "name": "fn-bpaj-indexed-records-are-the-walk",
           "note": "PRF-144 part 1 at the BP boundary: under fn-bpaj-store-indexedp the index answer is fn-bpaj-record-for-msgid's walk, so the dispatcher's lookups and fn-bpaj-store-record-accepted-fast answer as before. Teeth: bp-signed-binding-tests (hypothesis removal 2b: a stale index makes the dispatcher submit a stored signed article again)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-140",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ks-accepted-statement-finishes-under-its-admission-context"
+        }
+      ]
+    },
+    {
+      "id": "PRF-136",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-select-is-aux"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-select-plans-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-select-steps-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-without-zero-key-is-not-ready"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-active-fragment-is-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-zero-family-keys-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-heldp-primary-blockp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-local-pendingp-has-a-nonfragment-header"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-held-needs-an-administrative-header"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-held-expiry-header-of-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-141",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-history-loss-is-ancestry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-history-loss-is-snapshot-loss"
+        }
+      ]
+    },
+    {
+      "id": "PRF-139",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-contact-next-is-the-two-scan-selection",
+          "note": "KEYSTONE (one traversal, the same answer). fn-bpnj-contact-next, asked by host/native/bp-service.lisp fnn-bpc-drive-contact and host/native/bp-node.lisp fnn-bpnode-send-receipts before every offer, equals the former two-scan answer on every state; the PRF-120 theorems' hints cite it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-scan-finds-the-selected-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-scan-finds-the-held-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-unique-keys-make-every-job-its-own-entry"
+        }
+      ]
+    },
+    {
+      "id": "PRF-138",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admitted-history-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admitted-history-from-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-record-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admission-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-release-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-prepare-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-article-verdict-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-article-verdict-keeps-the-vector-at-producer-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-discharges-every-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admitted-profile-starts-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-profile-upgrade-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-antitone-in-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-is-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-roomp-without-debt-is-the-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-verdict-without-debt-is-the-reserve-gate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-debt-extend-is-the-record-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-admit-forward-adds-one-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-release-forward-removes-one-debt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-release-never-raises-the-charge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-config-publication-keeps-the-release-generation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-160",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-record-configures-the-verified-inviter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pinv-accept-record-fold-configures-the-inviter"
+        }
+      ]
+    },
+    {
+      "id": "PRF-161",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-admits-within-the-limits-in-force"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-never-exceeds-a-limit-in-force"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-open-refusal-is-a-400-and-opens-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-release-never-raises-a-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-charge-bounds-steps-per-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-charge-waits-and-never-closes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-pinned-acfg-requires-authentication"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-pinned-acfg-keeps-the-operators-credentials"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-anonymous-none-gates-every-restricted-command"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-charge-keeps-the-connections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-idle-keeps-the-connections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-observe-keeps-the-connection-ids"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-limits-never-drop-a-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-observe-closes-only-on-a-failed-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exp-idle-closes-only-silence"
+        }
+      ]
+    },
+    {
+      "id": "PRF-162",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-implicit-tls-is-the-starttls-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-implicit-tls-session-is-protected"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-implicit-tls-listener-needs-its-certificate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-inspect-report-is-the-lookup"
+        }
+      ]
+    },
+    {
+      "id": "PRF-085",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-links-okp-composes-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-capture-extends-the-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-capture-link-succeeds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-chain-reconstructs-the-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-reclaim-preserves-reconstructed-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-retire-plan-keeps-the-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-publication-crash-walks-old-or-new-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-links-count-within-boundary"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-pack-decision-capture-succeeds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-reclaiming-pack-is-a-first-link"
         }
       ]
     }

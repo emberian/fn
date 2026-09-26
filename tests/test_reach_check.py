@@ -43,6 +43,12 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(named, [], "the premise of this test has changed")
         self.assertNotIn("fn-transfer-add-chunk", self.graph.reachable)
 
+    def test_an_attached_implementation_is_reached_through_its_constraint(self):
+        """host/store-host.lisp names files through fn-store-txn-name ->
+        fn-sbud-txn-name -> the constrained fn-bs-txn-name, which
+        books/byte-store-txn-name.lisp `defattach`es to fn-bs-txn-name-impl."""
+        self.assertIn("fn-bs-txn-name-impl", self.graph.reachable)
+
     def test_the_bridges_count_as_host_lines(self):
         """tools/run_owner.py drives the owner by building ACL2 forms as
         text. A symbol named only there is still called by the host."""
@@ -86,6 +92,15 @@ class RatchetTests(unittest.TestCase):
         for key, reason in baseline["accepted"].items():
             self.assertGreater(len(reason), 40,
                                f"{key} is accepted without saying why")
+        self.assertEqual(reach_check.unexplained(baseline["accepted"]), [])
+
+    def test_a_placeholder_reason_is_untriaged(self):
+        self.assertEqual(
+            reach_check.unexplained({"PRF-1:x": "no host line reaches this subject and "
+                                     + reach_check.PLACEHOLDER,
+                                     "PRF-1:y": "SPEC: the model the hosted z refines",
+                                     "PRF-1:w": "a reason with no disposition word"}),
+            ["PRF-1:w", "PRF-1:x"])
 
 
 if __name__ == "__main__":

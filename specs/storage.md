@@ -731,30 +731,119 @@ The BP namespace keeps its own reservation, the FNBS received-namespace
 debt cover (books/bp-node-debt.lisp); a bundle delivered into the Store
 passes the Store gates above.
 
-### Chained packs (not implemented)
+### The capacity vector (STO-020)
 
-The 4 MiB compaction unit is permanent per store today, because each
-compaction repacks the whole history. Chaining lifts that limit without
-raising the open's largest single allocation. It needs:
+STO-020: The Store's capacity is a resource vector: admission never consumes the last resource an accepted promise needs, so a full store can complete its outstanding work, release, maintain itself, recover and reuse the space.
 
-1. A pack that covers events `[lower, boundary)` and names its predecessor:
-   the predecessor's generation, boundary and frame digest. The first pack
-   has `lower = 0` and no predecessor.
-2. Contiguity: each pack's `lower` is its predecessor's `boundary`. The
-   selection marker names the newest pack. The open walks the chain from
-   the newest, reads one pack at a time, and checks each link's digest.
-3. A chain-length bound in the profile, so the open's work stays bounded
-   before any pack is read. The aggregate replay bound (field 3) must also
-   count pack events; today it counts suffix files only (finding 3 of the
-   compact-verb record).
-4. Retire keeps every generation the selected chain names, and removes only
-   generations outside it.
-5. The preservation theorem generalized: the chain's concatenated
-   reconstruction plus the suffix is the identical record list (PRF-073 over
-   a chain). Each crash cut of publishing a new link leaves the previous
-   chain selected.
-6. A compaction then packs only the uncovered suffix, at most 4 MiB, into a
-   new link. It never repacks what earlier links cover.
+gpt-6's review of wave 2 (section 3) asks for "committed use + in-flight
+reservations + completion/maintenance debt <= admitted capacity" with the
+components apart. They are (books/store-capacity-vector.lisp, PRF-138):
+
+| Component | Bound | Where admission keeps it |
+| --- | --- | --- |
+| Transactions (the `%020d.txn` namespace, the history's sequence numbers) | the profile's T, for the life of the store (compaction and reclaim keep the count) | the gate reserves one transaction per open debt and one for the maintenance release |
+| History octets (unframed record octets, the sum the open counts) | H | the same, 4,096 octets (the release ceiling) per release |
+| Completion debt: the open forward undertakings, each owing one `:release` record | counted from the history (`fn-cvec-record-debt`), carried by the owner as (K . DEBT) | an `:undertake` is admitted only if its own release still fits |
+| The maintenance release | one `:release` record (STO-019) | as STO-019 |
+| Retained payload charge | the retention ledger's capacity | pre-paid: a pin's charge includes its release unit, and a release never raises the reserved charge |
+| Configuration generations (`retention set` is a configuration record) | `max_config_generations` | every other configuration record is refused the last generation (`max-config-generations`); the retention rule may use it |
+| Workspace (disk) | the free octets the host observes | compaction and reclaim are refused `temporary-space` when the pack does not fit (STO-019); the pack is bounded by the compaction unit |
+
+The gate (`fn-cvec-verdict-at`, `fn-cvec-article-budget-for`,
+`fn-cvec-article-verdict-at`) admits a record other than a release only if,
+after it, the profile's gate still admits DEBT' + 1 release records in turn,
+DEBT' the open undertakings after it. With no open undertaking it is
+STO-019's gate, except that an `:undertake` must keep its own release. Where
+the vector holds, every open undertaking's release and the maintenance
+release are admissible in any order (`fn-cvec-roomp-discharges-every-debt`).
+It holds at init, is kept by every admitted record, by a release against an
+open debt, by reclaim and by a profile upgrade; and a history of mixed record
+kinds each admitted at its prefix is within H and below T at its actual
+committed octets (`fn-cvec-admitted-history-keeps-the-vector`). The article
+premise is PRF-126's (a u32 charge); every other kind's record must be within
+its publication ceiling, which its codec bounds: the signed composite and
+peer-carried producers are outside the producer-width proof.
+
+The disk is an environmental assumption, not a reservation: the observed free
+octets are not owned, and a concurrent writer can take them. The pack write
+then fails before the selection; the store reopens and the rerun converges
+(the pack publication's cuts), so the outcome is refused or uncertain, never
+torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
+held|short`.
+
+
+### Chained packs (P5, 2026-09-25; STO-012)
+
+STO-012: Compaction chains packs: each compaction packs only the uncovered
+suffix into a link naming its predecessor by digest, the open walks the chain,
+retire keeps it.
+
+Each compaction packs only the uncovered suffix, so the pack no longer bounds
+the history (`books/checkpoint-pack-chain.lisp`, prefix `fn-ccc-`):
+
+1. A pack is one **link** (`fn-x` version 1): it covers events
+   `[lower, boundary)` and names its predecessor by generation and by the
+   predecessor's frame digest (the 32-octet trailer). The first link has
+   `lower = 0` and no predecessor; a version-0 pack decodes as a first link.
+   A link holds one scheduling quantum (`*fn-cc-max-events*` 4096 events and
+   `*fn-cc-max-octets*` 4 MiB of summary) and always at least one record, so
+   a record up to the profile's R is never refused by the quantum; one link
+   file is at most `fn-ccc-link-octet-bound` = 128 + max(4 MiB, R) octets,
+   the open's largest single pack read.
+2. **Contiguity**: a link's `lower` is its predecessor's `boundary` and its
+   lower frontier is its predecessor's frontier (`fn-ccc-links-okp`). The
+   selection marker names the newest link. The open walks the chain from the
+   newest (host/native/checkpoint.lisp `fnn-pack-walk`, one bounded read and
+   one `fn-ccc-entry-step` per link) and hands ACL2 the walked chain
+   (`fn-ccc-observe-chain`, `fn-ccc-coverage-chain`).
+3. **Walk bound**: the walk is given the profile's max-transactions T links
+   (`fn-ccc-walk-bound`). Every link covers a record, so a chain has at most
+   `boundary` links (`fn-ccc-links-count-within-boundary`) and an admitted
+   store never exhausts the fuel. There is no separate chain-length field.
+4. **Retire** keeps every generation the selected chain names and removes
+   only generations outside it (`fn-ccc-retire-plan-keeps-the-chain`).
+5. **Preservation**: the chain's records are one valid prefix
+   (`fn-ccc-links-okp-composes-a-prefix`); a capture over the uncovered
+   suffix extends the chain and keeps it a prefix of the history
+   (`fn-ccc-capture-extends-the-chain`); the open over the chain and the
+   transaction files from any sequence N at or below the chain's boundary
+   to the end of the history answers exactly the history
+   (`fn-ccc-chain-reconstructs-the-history`: N is 0 before a reclaim, the
+   boundary after it, anything between at a reclaim cut, so no reclaimed
+   file is needed); a reclaim keeps that answer at every cut
+   (`fn-ccc-reclaim-preserves-reconstructed-history`, PRF-073 over a
+   chain). The served view replays the records this open returns
+   (`fnn-pack-recover-records`, called by both reopen paths of the store
+   open), so an article in a link is framed from the same record bytes as
+   before it was packed. Each link is published and selected by the existing pack
+   program (immutable generation, then the selection marker); at every cut
+   the walk from the image's marker reads the old chain or the new link
+   followed by the old chain (`fn-ccc-publication-crash-walks-old-or-new-chain`,
+   stated under the two facts the pack program's keystones give).
+6. `store compact` extends the chain one link at a time until it covers
+   every committed record (`fnn-pack-extend-chain`); it never repacks what
+   earlier links cover, and it no longer refuses a history above 4096
+   transactions. `status` prints `pack-chain links=L boundary=B
+   generations=...`. Its temporary-space check (STO-019) is per link: before
+   every link the verb asks the one decision again over a fresh free-octet
+   observation, and refuses `temporary-space` by name, nothing of that link
+   written, when the link's accounted octets (`fn-cverb-link-octets`: the
+   128-octet header bound, the quantum's summary size and the trailer)
+   exceed it (`fn-cverb-pack-fits-the-disk`, over the link the host
+   captures). Links already selected stay; a rerun continues from them.
+7. `store reclaim` (STO-017) over a chain publishes one reclaiming pack, a
+   version-0 pack that decodes as the first link of a new chain covering
+   exactly what the selected chain covered
+   (`fn-rclp-reclaiming-pack-is-a-first-link`); its selection makes a
+   one-link chain, and retirement removes every link of the old one. A
+   rewritten history past one quantum is refused `spans-links` by name,
+   nothing written: rewriting it needs a chain of rewritten links published
+   before one selection, which is not built (PKT-332).
+
+Open: the link codec's round trip is executed in the test book, not proved;
+pack generation names stay below `*fn-cpp-max-generations*` (4096), so a
+store can be compacted at most 4096 times before retire must free names,
+which it cannot for names the chain holds (a finding for the next packet).
 
 Chaining is still packing. It does not relieve the transaction budget or the
 replay input. That is H's job.

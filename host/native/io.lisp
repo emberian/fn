@@ -881,6 +881,7 @@ round policy."
     (declare (ignore store sequences actual-lower)) records))
 (defvar *fnn-pack-lower-bound-callback*
   (lambda (store) (declare (ignore store)) 0))
+(defvar *fnn-pack-status-callback* nil)
 
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
@@ -2429,29 +2430,55 @@ The host reads and measures; it decides nothing."
                           (cddr verdict))
                  +fnn-exit-refused+)))))
 
-(defun fnn-rollback-history (root)
-  "The committed transaction files of the store at ROOT as (SEQUENCE .
-OCTET-LENGTH) pairs, in sequence order: an observation, no lock, no replay."
-  (let ((store (make-fnn-store root)))
-    (fnn-load-config store)
-    (mapcar (lambda (pair)
-              (let ((st (fnn-lstat (cdr pair))))
-                (unless st (fnn-fault "transaction file vanished"))
-                (cons (car pair) (sb-posix:stat-size st))))
-            (fnn-transaction-files store))))
+(defun fnn-rollback-history (store)
+  "The committed history of the acquired STORE as the open reads it: the
+selected pack's records and then the suffix files (`fnn-durable-records' and
+the pack callbacks, as `fnn-recover-full-replay'), each record's exact octets
+in sequence order, the committed-history marker checked against their count
+(`fnn-check-history-marker').  The caller holds STORE's writer lock for as
+long as it uses the result.  No file length or directory listing stands in
+for a record."
+  (multiple-value-bind (physical lower sequences)
+      (fnn-durable-records store (funcall *fnn-pack-lower-bound-callback* store))
+    (let ((records (funcall *fnn-pack-recover-callback* store physical sequences lower)))
+      (fnn-check-history-marker store (length records))
+      records)))
 
 (defun fnn-command-rollback-snapshot (root snapshot)
-  "What restoring the snapshot store at SNAPSHOT would lose against ROOT:
-ACL2's fn-native-operator-snapshot-loss over both committed histories.  The
-host observes and prints; ACL2 decides and counts."
-  (let* ((cur (fnn-rollback-history root))
-         (snap (fnn-rollback-history snapshot))
-         (verdict (fnn-core 'fn-native-operator-host-snapshot-loss snap cur)))
-    (unless (and (consp verdict) (member (first verdict) '(:loses :refused)))
-      (fnn-fault "ACL2 returned a malformed snapshot verdict"))
-    (fnn-out "~a" (fnn-core 'fn-native-operator-host-snapshot-loss-report
-                            verdict (length snap) (length cur)))
-    (if (eq (first verdict) :loses) +fnn-exit-ok+ +fnn-exit-refused+)))
+  "What restoring the snapshot store at SNAPSHOT would lose against ROOT.
+
+Both stores are acquired read-only under their shared writer locks (a store an
+owner holds is refused, never read unlocked) and held while ACL2 compares:
+`fn-native-operator-history-step' once per snapshot record with the store's
+record at the same position, then `fn-native-operator-history-verdict' over
+the store's record count (books/native-operator.lisp; PRF-141,
+fn-native-operator-history-loss-is-ancestry).  The host reads and prints;
+ACL2 compares and counts."
+  (let ((current (make-fnn-store root :writable nil))
+        (earlier (make-fnn-store snapshot :writable nil)))
+    (fnn-acquire current)
+    (unwind-protect
+         (progn
+           (fnn-acquire earlier)
+           (unwind-protect
+                (let* ((cur (fnn-rollback-history current))
+                       (snap (fnn-rollback-history earlier))
+                       (rest cur)
+                       (acc (fnn-core 'fn-native-operator-host-history-start)))
+                  (dolist (event snap)
+                    (setq acc (fnn-core 'fn-native-operator-host-history-step acc
+                                        (fnn-octet-list event) (consp rest)
+                                        (and (consp rest) (fnn-octet-list (car rest)))))
+                    (setq rest (cdr rest)))
+                  (let ((verdict (fnn-core 'fn-native-operator-host-history-verdict
+                                           acc (length cur))))
+                    (unless (and (consp verdict) (member (first verdict) '(:loses :refused)))
+                      (fnn-fault "ACL2 returned a malformed snapshot verdict"))
+                    (fnn-out "~a" (fnn-core 'fn-native-operator-host-snapshot-loss-report
+                                            verdict (length snap) (length cur)))
+                    (if (eq (first verdict) :loses) +fnn-exit-ok+ +fnn-exit-refused+)))
+             (fnn-store-close earlier)))
+      (fnn-store-close current))))
 
 ;; The offline profile upgrade's cuts, in the order
 ;; `fnn-upgrade-profile-write' reaches them: fn-bs-profile-program's
@@ -2784,6 +2811,11 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
             (fnn-core 'fn-native-live-status-host-offline kind
                       (fnn-store-config store) (fnn-store-observation store)
                       *the-live-state*))
+           ;; The selected pack chain (books/checkpoint-pack-chain via
+           ;; host/native/checkpoint.lisp): ACL2 computes the links and the
+           ;; boundary; the offline report does not carry them yet.
+           (when (and (eq kind :status) *fnn-pack-status-callback*)
+             (fnn-out "~a" (funcall *fnn-pack-status-callback* store)))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -2830,9 +2862,33 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
                     +fnn-exit-ok+)))
       (fnn-store-close store))))
 
-(defun fnn-command-probe (root count)
+(defun fnn-probe-article (sequence size)
+  "A well-formed article of exactly SIZE octets for probe record SEQUENCE: a
+head naming its Message-ID, groups and Subject, a blank line, and a body of
+CRLF lines of x padding the rest.  Developer fixture bytes, not a decision:
+the Store and the served projection judge them like any posted article."
+  (let* ((head (format nil "Message-ID: <capacity-~d@example.invalid>~c~cNewsgroups: fn.letters,fn.test~c~cSubject: capacity ~d~c~cFrom: probe@example.invalid~c~c~c~c"
+                       sequence #\Return #\Newline #\Return #\Newline sequence
+                       #\Return #\Newline #\Return #\Newline #\Return #\Newline))
+         (octets (make-array size :element-type '(unsigned-byte 8)
+                                  :initial-element (char-code #\x)))
+         (at (length head)))
+    (when (> (+ at 2) size) (fnn-fault "probe article head exceeds the payload"))
+    (loop for i from 0 below at do (setf (aref octets i) (char-code (char head i))))
+    ;; Lines of at most 76 x and CRLF; never leave one octet over.
+    (loop while (< at size)
+          do (let ((take (min 78 (- size at))))
+               (when (= (- size at take) 1) (decf take))
+               (setf (aref octets (+ at take -2)) 13
+                     (aref octets (+ at take -1)) 10)
+               (incf at take)))
+    octets))
+
+(defun fnn-command-probe (root count &optional articlep)
   "tests/store_capacity_probe.py's sequence in-process: commit COUNT maximum
-payloads, close, reopen, and report both timings as JSON on stdout."
+payloads, close, reopen, and report both timings as JSON on stdout.  With
+ARTICLEP (`probe N article') each payload is a well-formed article of the
+same size (fnn-probe-article), so the served reader can frame it."
   (let* ((started (get-internal-real-time))
          (store (make-fnn-store root :writable t))
          (payload nil))
@@ -2846,7 +2902,10 @@ payloads, close, reopen, and report both timings as JSON on stdout."
     (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
       (dotimes (sequence count)
         (let ((msgid (fnn-octets (fnn-ascii-octet-list
-                                  (format nil "<capacity-~d@example.invalid>" sequence)))))
+                                  (format nil "<capacity-~d@example.invalid>" sequence))))
+              (payload (if articlep
+                           (fnn-probe-article sequence (length payload))
+                         payload)))
           (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
             (fnn-advance-frontier store (fnn-bridge-next-txid))
             (unless (eq (fnn-bridge-prepare msgid payload codes obligation subject evidence
@@ -2875,7 +2934,9 @@ payloads, close, reopen, and report both timings as JSON on stdout."
                                 (= (fnn-bridge-group-next 1) (1+ count))
                                 (equalp (fnn-bridge-lookup
                                          (fnn-octets (fnn-ascii-octet-list "<capacity-0@example.invalid>")))
-                                        payload)
+                                        (if articlep
+                                            (fnn-probe-article 0 (length payload))
+                                          payload))
                                 (= (fnn-bridge-reserved) (* count (fnn-charge (length payload)))))
                      (fnn-fault "probe reopen state mismatch"))
                    (fnn-out "{\"host\":\"native\",\"transactions\":~d,\"payload_bytes\":~d,~
@@ -3371,6 +3432,7 @@ serialized profile when the saved image later starts."
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
+    "FN_BP_TEST_PROFILE"
     "FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION"
     "FN_BP_CLOCK_DOMAIN_TEST_FAIL"
     "FN_BP_SERVICE_TEST_SEND_FAULT" "FN_BP_APP_TEST_PAUSE_AFTER_DECISION"
@@ -3392,7 +3454,8 @@ serialized profile when the saved image later starts."
     "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"
     "FN_APP_JOURNAL_TEST_FENCE_STORE" "FN_APP_JOURNAL_TEST_READ_ONLY_STORE"
     "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
-    "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PULL_TEST_KILL"
+    "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
+    "FN_PULL_TEST_KILL"
     "FN_NATIVE_RECLAIM_FAULT"))
 
 (defun fnn-developer-selector (name)
@@ -3458,7 +3521,13 @@ serialized profile when the saved image later starts."
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
-                 ((string= command "probe") (need 4) (fnn-command-probe root (parse-integer (first rest))))
+                 ((string= command "probe")
+                  (need 4)
+                  (fnn-command-probe root (parse-integer (first rest))
+                                     (cond ((null (second rest)) nil)
+                                           ((string= (second rest) "article") t)
+                                           (t (error 'fnn-usage-error
+                                                     :message "probe form must be article")))))
                  ((string= command "post")
                   (need 8)
                   (fnn-command-post root (first rest) (second rest) (fnn-dash-nil (third rest))

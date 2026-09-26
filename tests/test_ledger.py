@@ -304,6 +304,45 @@ class RegistryTests(unittest.TestCase):
         self.assertTrue(any("guard status" in p for p in problems))
 
 
+class GeneratedStatusTests(unittest.TestCase):
+    """A proof target's status is derived from the manifests it cites."""
+
+    def status(self, names, books, manifest=None):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "books").mkdir()
+            (root / "books/a.lisp").write_text('(in-package "ACL2")\n(defthm t1 t)\n')
+            entry = {"id": "PRF-001", "evidence": []}
+            if manifest is not None:
+                folder = root / "planning/evidence/manifests"
+                folder.mkdir(parents=True)
+                (folder / "certify-x.json").write_text(json.dumps(manifest(root)))
+                entry["evidence"].append("planning/evidence/manifests/certify-x.json")
+            return ledger.derived_status(entry, names, books, {}, root)
+
+    def passed(self, root, digest=None):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+        import certs
+        return {"book_results": {"books/a": "passed"},
+                "source_digests_sha256": {
+                    "books/a.lisp": digest or certs.content_hash(root / "books/a.lisp")}}
+
+    def test_no_events_is_planned(self):
+        self.assertEqual(self.status([], set()), "planned")
+
+    def test_events_without_a_cited_manifest_are_uncertified(self):
+        self.assertEqual(self.status(["t1"], {"books/a"}),
+                         "uncertified-at-current-digest")
+
+    def test_a_cited_manifest_at_the_current_digest_certifies(self):
+        self.assertEqual(self.status(["t1"], {"books/a"}, self.passed), "certified")
+
+    def test_a_cited_manifest_at_an_older_digest_does_not(self):
+        self.assertEqual(self.status(["t1"], {"books/a"},
+                                     lambda root: self.passed(root, "0" * 64)),
+                         "uncertified-at-current-digest")
+
+
 class RepositoryLedgerTests(unittest.TestCase):
     """The real tree: the shipped ledger must be current and the cited events
     must pass the same checks the fixtures above describe."""

@@ -23,6 +23,8 @@
 (include-book "books/hybrid-store-injected")
 (include-book "books/peer-authored-accept")
 (include-book "books/login-binding")
+;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
+(include-book "books/public-exposure")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
@@ -38,6 +40,8 @@
 ; Recovery after a reclaim calls fn-ccp-observe-framed and fn-ccp-coverage-framed
 ; through host/checkpoint-host.lisp.
 (include-book "books/checkpoint-compaction-preservation")
+; The pack chain the open walks and compaction extends (P5).
+(include-book "books/checkpoint-pack-chain")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")

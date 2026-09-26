@@ -159,6 +159,32 @@
                                      (rpt-n) (rpt-n) nil '(0) 0 nil nil)
                      '(:refused :temporary-space)))
 (must-fail (assert-event (<= (rpt-pack-file) (1- (rpt-pack-file)))))
+;; fn-rclp-reclaiming-pack-is-a-first-link (pack-chain-join): the summary the
+;; reclaim publishes is a version-0 pack, the first link of a new chain with
+;; no predecessor covering what the selected chain covered; its bytes decode
+;; as that link under the profile's link read bound (a reachable witness).
+(defmacro rpt-link () '(fn-ccc-link-of-summary (cadr (fn-cc-capture (rpt-new) (rpt-n)))))
+(assert-event (and (fn-ccc-linkp (rpt-link))
+                   (equal (fn-ccc-lower (rpt-link)) 0)
+                   (equal (fn-ccc-pred-digest (rpt-link)) nil)
+                   (equal (fn-ccc-boundary (rpt-link)) (rpt-n))))
+(assert-event (equal (fn-ccc-decode-link (nth 4 (rpt-d))
+                                         (fn-ccc-link-octet-bound *rpt-profile*))
+                     (list :ok (rpt-link))))
+;; Tooth: without the :reclaim answer (the history not packed, lower 0) the
+;; link does not cover the chain's boundary.
+(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
+                                     (rpt-n) 0 nil nil nil 1000000 nil)
+                     '(:compact-first)))
+(must-fail (assert-event (equal (fn-ccc-boundary (rpt-link)) 0)))
+;; A rewritten history past one quantum is refused by name, nothing written
+;; (PKT-332: the chain of rewritten links is not built): the fixture's
+;; history followed by 4096 more records (bytes the rewrite keeps as they
+;; are) under the same packed observation.
+(defmacro rpt-long () '(append (rpt-events) (make-list 4096 :initial-element '(1 2 3))))
+(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-long)
+                                     (len (rpt-long)) (len (rpt-long)) nil '(0) 0 1000000 nil)
+                     '(:refused :spans-links)))
 ; --dry-run writes nothing and names the same article.
 (assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) (rpt-n) nil '(0) 0 1000000 t)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The content-reclamation lifecycle on the native image (STO-017, SCN-065).
 
-    reclaim_lifecycle_native.py IMAGE WORK N BODY_OCTETS HISTORY_OCTETS [--cuts|--headroom-only]
+    reclaim_lifecycle_native.py IMAGE WORK N BODY_OCTETS HISTORY_OCTETS [--cuts|--headroom-only|--chain]
 
 A Python client and harness only: every decision is the image's (ACL2's).
 It builds a store of N articles through NNTP POST, then walks the lifecycle
@@ -24,6 +24,12 @@ and prints one JSON line per observation:
                       skips, GROUP unchanged, re-POST of the old article 441
   headroom            (HISTORY_OCTETS chosen tight) a POST refused before the
                       reclaim is accepted after it
+  --chain             (pack-chain-join) the reclaim of a chained history: N
+                      articles compacted into one link, N more posted and
+                      compacted into a second link, then `store reclaim':
+                      one reclaiming pack, a first link covering the chain's
+                      boundary, and the old links retired (`status' names
+                      the chain before and after)
 """
 import hashlib, json, os, shutil, signal, subprocess, sys, time
 from pathlib import Path
@@ -224,6 +230,61 @@ def run():
     headroom()
 
 
+def chain_line(cfg):
+    code, so, se = native("operator", cfg, "status")
+    return next((l for l in so.splitlines() if l.startswith("pack-chain")), None)
+
+
+def chain_run():
+    work.mkdir(parents=True, exist_ok=True)
+    store, cfg, port = build("chain", N)
+    code, so, se = native("operator", cfg, "store", "compact")
+    out(tag="compact-1", exit=code, stdout=so.strip()[-300:], stderr=se.strip()[-200:],
+        chain=chain_line(cfg))
+    p = owner(cfg)
+    refused = []
+    try:
+        c = m.Conn(port)
+        for i in range(N, 2 * N):
+            r = post(c, i)
+            if not r.startswith(b"240"):
+                refused.append((i, r.decode(errors="replace").strip()))
+                break
+        c.close()
+    finally:
+        stop(p)
+    out(tag="built-more", posted=N - len(refused), refused=refused[:1])
+    code, so, se = native("operator", cfg, "store", "compact")
+    out(tag="compact-2", exit=code, stdout=so.strip()[-300:], stderr=se.strip()[-200:],
+        chain=chain_line(cfg))
+    code, so, se = native("operator", cfg, "retention", "set", "released-by-all-holders")
+    out(tag="retention-set", rule="released-by-all-holders", exit=code, stderr=se.strip()[-300:])
+    before = footprint(store)
+    sc, head_before, rec_before, _ = status(cfg)
+    out(tag="before", footprint=before, status_exit=sc, headroom=head_before, reclaim=rec_before)
+    t0 = time.perf_counter()
+    code, so, se = native("operator", cfg, "store", "reclaim")
+    out(tag="reclaim", exit=code, wall_s=round(time.perf_counter() - t0, 1),
+        head=so.splitlines()[:1], stderr=se.strip()[-300:], chain=chain_line(cfg))
+    after = footprint(store)
+    sc, head_after, rec_after, _ = status(cfg)
+    out(tag="after", footprint=after, status_exit=sc, headroom=head_after, reclaim=rec_after,
+        freed_files=before["files"] - after["files"], freed_octets=before["octets"] - after["octets"])
+    clean = selected_pack(store)
+    code, so, se = native("operator", cfg, "store", "reclaim")
+    out(tag="rerun", exit=code, stdout=so.strip()[-200:], same_pack=selected_pack(store) == clean)
+    # A third link on the reclaimed chain: post, compact, status.
+    p = owner(cfg)
+    try:
+        c = m.Conn(port); more = post(c, 2 * N).decode().strip(); c.close()
+    finally:
+        stop(p)
+    code, so, se = native("operator", cfg, "store", "compact")
+    out(tag="compact-after-reclaim", post=more, exit=code, stdout=so.strip()[-300:],
+        stderr=se.strip()[-200:], chain=chain_line(cfg))
+    out(tag="served", **served(cfg, port, [msgid(i) for i in range(2 * N)]))
+
+
 CLEAN = None
 RECLAIM_CUTS = [("stop", "candidate-file"), ("stop", "candidate-link"),
                 ("stop", "candidate-directory"), ("stop", "selection-file"),
@@ -303,16 +364,18 @@ def headroom():
     ccfg, _ = config_for(copy, "tight-small")
     f0 = footprint(copy)
     code, so, se = native("operator", ccfg, "store", "compact", env=small)
+    f1 = footprint(copy)
     out(tag="small-disk-compact", exit=code, stderr=se.strip()[-200:],
-        unchanged=footprint(copy) == f0)
+        unchanged=f1 == f0, before=f0, after=f1)
     # The real disk: compact, then the disk refusal of the reclaim on a copy.
     code, so, se = native("operator", cfg, "store", "compact")
     out(tag="tight-compact", exit=code, stdout=so.strip()[-200:], stderr=se.strip()[-300:])
     shutil.rmtree(copy, ignore_errors=True); shutil.copytree(store, copy)
     f0 = footprint(copy)
     code, so, se = native("operator", ccfg, "store", "reclaim", env=small)
+    f1 = footprint(copy)
     out(tag="small-disk-reclaim", exit=code, stderr=se.strip()[-200:],
-        unchanged=footprint(copy) == f0)
+        unchanged=f1 == f0, before=f0, after=f1)
     shutil.rmtree(copy, ignore_errors=True)
     before = footprint(store)
     code, so, se = native("operator", cfg, "store", "reclaim")
@@ -330,7 +393,9 @@ def headroom():
 
 
 if __name__ == "__main__":
-    if "--headroom-only" in sys.argv:
+    if "--chain" in sys.argv:
+        chain_run()
+    elif "--headroom-only" in sys.argv:
         work.mkdir(parents=True, exist_ok=True)
         headroom()
     else:

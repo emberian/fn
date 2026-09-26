@@ -19,11 +19,14 @@
   (list :cl (cons 0 1) 1 *bpfx-sender* '(115 101 110 100 101 114) 0))
 
 ; The older entry is inside the 131072-octet held-image bound but cannot fit
-; a 32768-octet session MRU.  Its no-fragment flag makes this a real MRU wait
+; a 4096-octet session MRU.  Its no-fragment flag makes this a real MRU wait
 ; even when a later fragmentation policy is enabled.  The younger entry fits.
+; The sizes are the smallest that keep that shape: the executable codec costs
+; about 6 microseconds an octet, so 49152/8192-octet payloads against a
+; 32768/65536 MRU made this book about ten seconds of evaluation (PKT-414).
 (defconst *bpfx-old-base*
   (fn-bpn-send-bundle *bpfx-sender-config* *bpfx-dest*
-                      (make-list 49152 :initial-element 65)
+                      (make-list 6144 :initial-element 65)
                       7 *bpfx-observation*))
 (defconst *bpfx-old-bundle*
   (fn-bpb-make-bundle
@@ -33,7 +36,7 @@
    (fn-bpb-bundle-payload *bpfx-old-base*)))
 (defconst *bpfx-new-bundle*
   (fn-bpn-send-bundle *bpfx-sender-config* *bpfx-dest*
-                      (make-list 8192 :initial-element 66)
+                      (make-list 1024 :initial-element 66)
                       8 *bpfx-observation*))
 (defconst *bpfx-old-wire* (fn-bpb-encode *bpfx-old-bundle*))
 (defconst *bpfx-new-wire* (fn-bpb-encode *bpfx-new-bundle*))
@@ -43,9 +46,9 @@
       (fn-bpb-bundlep *bpfx-new-bundle*)
       (fn-bpp-no-fragmentp
        (fn-bpp-flags (fn-bpb-bundle-primary *bpfx-old-bundle*)))
-      (> (len *bpfx-old-wire*) 32768)
+      (> (len *bpfx-old-wire*) 4096)
       (<= (len *bpfx-old-wire*) *fn-bpnf-max-held-image*)
-      (< (len *bpfx-new-wire*) 32768)
+      (< (len *bpfx-new-wire*) 4096)
       (fn-bpnf-receive-wire-readyp
        (fn-bpnf-receive-wire-event
         *bpfx-config* *bpfx-old-wire* *bpfx-observation* *bpfx-ingress*))
@@ -148,7 +151,7 @@
   (list :via "relay" (fn-record-string-octets "dtn://relay/")
         (list (fn-bprt-route 100 "dtn://bp-dest/" "relay" "dtn://relay/" 4556))))
 (defconst *bpfx-session-event*
-  (list :session *bpfx-dest* *bpfx-session* t 32768 *bpfx-observation* *bpfx-via*))
+  (list :session *bpfx-dest* *bpfx-session* t 4096 *bpfx-observation* *bpfx-via*))
 (make-event
  `(defconst *bpfx-open*
     ',(fn-bpnp-step *bpfx-s4* *bpfx-session-event*)))
@@ -171,7 +174,7 @@
 ; the selected arrival.  The small-MRU younger selection is therefore a
 ; consequence of the negotiated limit, not the held-list storage order.
 (defconst *bpfx-wide-session-event*
-  (list :session *bpfx-dest* *bpfx-session* t 65536 *bpfx-observation* *bpfx-via*))
+  (list :session *bpfx-dest* *bpfx-session* t 8192 *bpfx-observation* *bpfx-via*))
 (make-event
  `(defconst *bpfx-wide-open*
     ',(fn-bpnp-step *bpfx-s4* *bpfx-wide-session-event*)))
@@ -198,7 +201,7 @@
   (car (fn-bpnf-answer-effects *bpfx-s5-answer*)))
 (assert-event
  (and (equal (car *bpfx-send-effect*) :cl-send)
-      (< (len (fn-bpn-nth 6 *bpfx-send-effect*)) 32768)
+      (< (len (fn-bpn-nth 6 *bpfx-send-effect*)) 4096)
       (equal (fn-bpnp-used *bpfx-s5*) 5)
       (equal (fn-bpnp-debt *bpfx-s5*) 5)
       (equal (fn-bpnp-debt *bpfx-s5*)

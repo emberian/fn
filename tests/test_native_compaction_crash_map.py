@@ -33,7 +33,7 @@ class NativeCompactionCrashMapTests(unittest.TestCase):
         start = source.index("(defun fnn-pack-recover-records")
         end = source.index("\n(defun ", start + 1)
         body = source[start:end]
-        self.assertIn("(fnn-core 'fn-store-checkpoint-compaction-observe", body)
+        self.assertIn("(fnn-core 'fn-store-checkpoint-chain-observe", body)
 
 
 if __name__ == "__main__":
