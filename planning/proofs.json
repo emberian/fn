@@ -5939,7 +5939,10 @@
         "fn-exp-observe-keeps-the-connection-ids",
         "fn-exp-limits-never-drop-a-connection",
         "fn-exp-observe-closes-only-on-a-failed-login",
-        "fn-exp-idle-closes-only-silence"
+        "fn-exp-idle-closes-only-silence",
+        "fn-exp-481-scan-counts-the-481-replies",
+        "fn-exp-effects-scan-is-the-reply-scan",
+        "fn-exp-observe-effects-is-the-observation-of-the-reply"
       ]
     },
     {
@@ -6416,7 +6419,11 @@
         "fn-nh-exit-code-cases",
         "fn-nh-fence-of-starting-iff",
         "fn-nh-fence-of-route",
-        "fn-native-control-liveness-decides"
+        "fn-native-control-liveness-decides",
+        "fn-nh-starting-clears-on-listening",
+        "fn-native-control-printed-reason-is-the-decisions",
+        "fn-nctrl-reasoned-read-of-encode",
+        "fn-nctrl-reason-word-of-a-reason-is-not-none"
       ]
     },
     {
@@ -6548,7 +6555,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-scar-feed-span-is-feed-counted",
         "fn-scar-ocfg-read-span-is-read-tls-prefix",
