@@ -389,7 +389,13 @@ class NativeKeyStatementTests(unittest.TestCase):
         self.assertNotIn("key-statement", self.log(e))
         self.assertEqual(self.history(e), ["generation=1 state=active principal=" + P.hex()])
         # Today's configuration: the grant the statement was accepted under
-        # is revoked (a configuration record later than the statement).
+        # is revoked (a configuration record later than the statement),
+        # offline.  The killed owner left its control socket behind, and the
+        # operator hands a plan to a socket it finds (refused: nobody
+        # listens), so the harness removes the dead owner's socket first
+        # (recorded in planning/evidence/key-replay-fixture-2026-09-26.md).
+        self.assertTrue(e["control"].is_socket())
+        e["control"].unlink()
         self.fn("operator", e["config"], "control", "revoke", P.hex(), "keys", "fn.keys")
         listing = self.fn("operator", e["config"], "control", "list")
         witness("control list after the revoke", listing.stdout.decode("utf-8", "replace").strip())
