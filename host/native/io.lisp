@@ -2629,16 +2629,7 @@ retention ledger's reserved charge of its capacity."
     (destructuring-bind (used budget bytes-used history reserved capacity) headroom
       (fnn-out-profile (fnn-store-config store))
       (fnn-out "headroom transactions-used=~d transactions-budget=~d bytes-used=~d history-bound=~d charge-reserved=~d charge-capacity=~d"
-               used budget bytes-used history reserved capacity)))
-  ;; PKT-169: the maintenance reservation, ACL2's (fn-smr-report).
-  (let ((reserve (fnn-core-state 'fn-store-sn-maintenance-reserve
-                                 (fnn-store-config store))))
-    (unless (and (listp reserve) (= (length reserve) 3)
-                 (integerp (first reserve)) (integerp (second reserve))
-                 (member (third reserve) '(:held :short)))
-      (fnn-fault "ACL2 returned a malformed maintenance reservation"))
-    (fnn-out "maintenance-reserve octets=~d transactions=~d ~(~a~)"
-             (first reserve) (second reserve) (third reserve))))
+               used budget bytes-used history reserved capacity))))
 
 (defun fnn-store-observation (store)
   "What this process observed at its own open, which the status report names:
