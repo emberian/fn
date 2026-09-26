@@ -773,6 +773,7 @@
     "books/nntp-index",
     "tests/acl2/nntp-index-tests",
     "books/nntp-index-runtime",
+    "books/group-number-index",
     "books/group-bucket-index",
     "books/group-bucket-article",
     "books/group-bucket-article-invariants",
@@ -910,6 +911,7 @@
     "tests/acl2/public-exposure-reply-tests",
     "books/owner-open-carried",
     "tests/acl2/owner-open-carried-tests",
+    "tests/acl2/group-number-index-tests",
     "books/topic-history-metadata",
     "books/topic-history-metadata-invariants",
     "books/topic-history-authorship",
@@ -985,26 +987,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1006,
-    "books_in_root_closure": 999,
-    "roots": 981,
-    "theorems": 14073,
-    "functions": 9804,
-    "assert_events": 15074,
-    "must_fails": 1795,
+    "books": 1008,
+    "books_in_root_closure": 1001,
+    "roots": 983,
+    "theorems": 14088,
+    "functions": 9820,
+    "assert_events": 15090,
+    "must_fails": 1802,
     "prover_refusals": 2,
     "encapsulates": 73,
     "guards": {
       "verified": 2253,
       "declared-off": 772,
-      "default-guarded": 5327,
-      "default-unguarded": 1452
+      "default-guarded": 5341,
+      "default-unguarded": 1454
     },
     "suspect_theorems": 135,
     "export_hygiene_warnings": 157,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 150,
-    "include_hygiene_warnings": 1012,
+    "include_hygiene_warnings": 1015,
     "host_names_warnings": 1154,
     "hand_written_record_warnings": 18
   },
@@ -8837,12 +8839,12 @@
       "book": "books/group-bucket-article.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
-      "functions": 3,
+      "theorems": 6,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 3,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8890,12 +8892,12 @@
       "book": "books/group-bucket-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
-      "functions": 19,
+      "theorems": 27,
+      "functions": 21,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 18,
+        "default-guarded": 20,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8906,6 +8908,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "group-number-index",
         "msgid-index",
         "nntp-index-runtime"
       ],
@@ -8938,6 +8941,34 @@
         "nntp-invariants"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-number-index.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-index-runtime"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -10618,7 +10649,7 @@
       "book": "books/nntp-pinned-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 19,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -10754,12 +10785,12 @@
       "book": "books/nntp-range-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 2,
+      "theorems": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -12210,7 +12241,7 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 87,
+      "theorems": 89,
       "functions": 162,
       "guards": {
         "verified": 0,
@@ -23060,6 +23091,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/group-number-index-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 16,
+      "must_fails": 7,
+      "prover_refusals": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-range-indexed",
+        "../../books/owner"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/hybrid-carrier-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -30754,7 +30814,7 @@
       {
         "theorem": "fn-nntp-control-cleanp-is-clean-field",
         "book": "books/nntp-pinned-effects.lisp",
-        "line": 70,
+        "line": 87,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -34437,10 +34497,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/group-bucket-index.lisp",
+        "line": 6,
+        "include": "group-number-index",
+        "included": "books/group-number-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/group-bucket-invariants.lisp",
         "line": 3,
         "include": "group-bucket-cursor-invariants",
         "included": "books/group-bucket-cursor-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/group-number-index.lisp",
+        "line": 13,
+        "include": "nntp-index-runtime",
+        "included": "books/nntp-index-runtime.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -38004,6 +38078,13 @@
         "line": 3,
         "include": "../../books/group-bucket-invariants",
         "included": "books/group-bucket-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/group-number-index-tests.lisp",
+        "line": 7,
+        "include": "../../books/nntp-range-indexed",
+        "included": "books/nntp-range-indexed.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
