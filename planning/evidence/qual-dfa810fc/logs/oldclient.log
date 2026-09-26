@@ -1,0 +1,21 @@
+Running as unit: qual-dfa810fc-oldclient3.scope; invocation ID: d60a0a88c5984d468bfb5d66c5ce14a2
+CASE init fn.test                                               exit=0 | initialized /tank/fn/scratch/qual-dfa810fc/oldclient/store / accepted operator init
+CASE new fn_client post (the original)                          exit=0 | <oldclient-conflict@example.invalid> / accepted 127.0.0.1:48357 <oldclient-conflict@example.invalid> 240 article received OK
+CASE b6759850 fn_client CONFLICT (changed body, same Message-ID) exit=1 | refused 441 posting failed; a different article with this Message-ID is stored here
+CASE b6759850 fn_client UNKNOWN-GROUP (no.such.group)           exit=1 | refused 441 posting failed; a named newsgroup is not carried here
+CASE dfa810fc fn_client CONFLICT (changed body, same Message-ID) exit=1 | refused CONFLICT 441 posting failed; a different article with this Message-ID is stored here
+CASE dfa810fc fn_client UNKNOWN-GROUP (no.such.group)           exit=1 | refused 441 posting failed; a named newsgroup is not carried here
+CASE dfa810fc operator post (the original)                      exit=0 | accepted operator post ACCEPTED
+CASE b6759850 image operator post CONFLICT                      exit=3 | uncertain operator post UNCERTAIN
+CASE b6759850 image operator post UNKNOWN-GROUP                 exit=1 | refused operator post REFUSED
+CASE dfa810fc image operator post CONFLICT                      exit=1 | refused operator post CONFLICT
+CASE dfa810fc image operator post UNKNOWN-GROUP                 exit=1 | refused operator post REFUSED
+CASE dfa810fc hybrid-enroll P generation 1                      exit=0 | 
+CASE dfa810fc hybrid-author (the original)                      exit=0 | accepted hybrid-author ACCEPTED
+CASE b6759850 image hybrid-author CONFLICT                      exit=3 | uncertain hybrid-author UNCERTAIN
+CASE b6759850 image hybrid-author UNKNOWN-GROUP                 exit=3 | uncertain hybrid-author UNCERTAIN
+CASE dfa810fc image hybrid-author CONFLICT                      exit=1 | refused hybrid-author CONFLICT
+CASE dfa810fc image hybrid-author UNKNOWN-GROUP                 exit=1 | refused hybrid-author UNKNOWN-GROUP
+OWNER exit 0
+QUOTE-AGENTS Upgrade the client with the node: the `CONFLICT` word is new in the control reply, and an `fn` image from before it cannot decode it, so its `operator post` or `hybrid-author` answers `uncertain` (exit 3) for a conflict the node refused; the node's state is unchanged, and a current client reads the same reply as `refused ... CONFLICT` (exit 1). fn_client's own exit codes (0, 1, 3, 4 unresolved, 2 usage) describe the
+rc=0

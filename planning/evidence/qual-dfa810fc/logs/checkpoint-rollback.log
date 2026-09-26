@@ -1,0 +1,18 @@
+== bbf52159 status:
+open=full-replay reason=checkpoint-open-refused
+checkpoint-file octets=41272 modified=1790428186
+accepted operator status
+rc=0
+== bbf52159 recover:
+recovered transactions=13 articles=13 staging-orphans=0 anchor=none checkpoint=none
+open=full-replay reason=checkpoint-open-refused
+accepted operator recover
+== b6759850 status:
+open=full-replay reason=checkpoint-open-refused
+checkpoint-file octets=41272 modified=1790428186
+accepted operator status
+rc=0
+== b6759850 recover:
+recovered transactions=13 articles=13 staging-orphans=0 anchor=none checkpoint=none
+open=full-replay reason=checkpoint-open-refused
+accepted operator recover

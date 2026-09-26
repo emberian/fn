@@ -1,0 +1,2 @@
+spec-cite: 5174 single-name citations in specs/ and docs/; 4640 defined; by rule 49 template, 115 short, 21 tag; 0 exempted (0 names, reasons in tools/spec_cite_exemptions.json); 349 known stale (254 names, listed by packet); 0 unlisted
+rc=0

@@ -1,0 +1,27 @@
+# pull_unavailable_on_tarball start 2026-09-26T13:02:58Z
+test_unavailable_id_is_dropped_at_the_bound (tests.test_native_peer_pull.NativePeerPullTests.test_unavailable_id_is_dropped_at_the_bound)
+PKT-213: the peer lists <ghost> between two real articles and ... /tank/fn/scratch/qual-dfa810fc/ctree/tests/test_native_peer_pull.py:852: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-djt5fy3x/Bdrop/stderr.log'>
+  self.start(b)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+NATIVE-PULL-WITNESS {"bound": 3, "core_sha256": "099429ddd26c4737d2a026db067f6ccd236e1bdd16dafe19da1cb708847509b6", "counts": {"<real-drop-0@example.invalid>": 1, "<real-drop-1@example.invalid>": 1}, "fnpl": ["S.fnfd"], "ghost_article_commands": 3, "image_sha256": "432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505", "kind": "unavailable-drop", "log_sha256_Bdrop": "af25ac0ea6637989c1f7deb08555abef279a9cbb853fb0a2531721f2d19e1f3e", "newnews": ["NEWNEWS fn.* 20260925 130258 GMT", "NEWNEWS fn.* 20260925 130258 GMT", "NEWNEWS fn.* 20260925 130258 GMT"], "pull_lines": ["pull peer=S round=done cursor=held unavailable=1 transport=clear", "pull peer=S round=done cursor=held unavailable=1 transport=clear", "pull peer=S round=done cursor=advanced unavailable=1 dropped=<ghost-drop@example.invalid> transport=clear"]}
+ok
+test_unavailable_count_survives_a_cut (tests.test_native_peer_pull.NativePeerPullTests.test_unavailable_count_survives_a_cut)
+PKT-213 at the FNPL cuts: append 2 is round 1's held close (the ... /tank/fn/scratch/qual-dfa810fc/ctree/tests/test_native_peer_pull.py:896: ResourceWarning: unclosed file <_io.BufferedWriter name='/tmp/fn-native-pull-2c8a1rz9/Bafter-fsync-2/stderr.log'>
+  pass
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+FAIL
+
+======================================================================
+FAIL: test_unavailable_count_survives_a_cut (tests.test_native_peer_pull.NativePeerPullTests.test_unavailable_count_survives_a_cut)
+PKT-213 at the FNPL cuts: append 2 is round 1's held close (the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/qual-dfa810fc/ctree/tests/test_native_peer_pull.py", line 904, in test_unavailable_count_survives_a_cut
+    self.assertEqual(code, -signal.SIGKILL, cut)
+AssertionError: 5 != -9 : after-fsync:2
+
+----------------------------------------------------------------------
+Ran 2 tests in 6.190s
+
+FAILED (failures=1)
+# rc=1 wall=6
