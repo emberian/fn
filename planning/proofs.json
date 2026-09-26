@@ -5089,9 +5089,9 @@
         "books/store-checkpoint-buffer.lisp",
         "tests/acl2/store-checkpoint-buffer-tests.lisp",
         "planning/evidence/rep-wave-d-2-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260926T034140Z-644868.json"
+        "planning/evidence/manifests/certify-20260926T035409Z-754998.json"
       ],
-      "progress_note": "Lane rep-wave-d-2 (2026-09-26): certified on persvati (run-20260926T034120Z-cb87, 1.4 s and under 10 s at two jobs; run 1 found the book at 20.2 s and the leaf codecs were closed in the hints). The id was assigned by the brief to the records-shape freeze's correspondence theorems; that freeze did not start (its interface needs PKT-293), and the lane's one certified keystone is registered here; the coordinator renumbers at merge if it prefers."
+      "progress_note": "Lane rep-wave-d-2 (2026-09-26): certified on persvati (run-20260926T035337Z-d860, no book over 10 s at two jobs; run 1 found the book at 20.2 s and the leaf codecs were closed in the hints; run 2 preceded the accumulator forms that the stack exhaustion on hbox demanded). The id was assigned by the brief to the records-shape freeze's correspondence theorems; that freeze did not start (its interface needs PKT-293), and the lane's one certified keystone is registered here; the coordinator renumbers at merge if it prefers."
     }
   ]
 }
