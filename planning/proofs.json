@@ -6523,6 +6523,46 @@
         "fn-lb-a-connection-opened-after-a-publication-is-bound-anew",
         "fn-native-auth-admin-effect-word-applied-only-when-published"
       ]
+    },
+    {
+      "id": "PRF-180",
+      "title": "A POST reads the committed count, record octets, completion debt and carriage usage without walking the history: the count is the Store's derived event index's, the three caches advance through that index, and each equals its fold under the maintained index relation",
+      "statement": "Subjects, each called by host/owner-host.lisp: fn-sbud-count (books/store-budget.lisp) from fn-owner-publication-verdict, fn-owner-prepare and fn-owner-prepare-buffer (the budget fn-cvec-article-budget-for is handed), fn-owner-record-octets, fn-owner-record-debt, fn-owner-carried-usage and fn-owner-install-profile; fn-sbud-bytes-carried from fn-owner-record-octets (reached from the verdict, both prepares and fn-owner-headroom); fn-sbud-headroom-carried from fn-owner-headroom; fn-scf-debt-carried (books/store-carried-folds.lisp) from fn-owner-record-debt; fn-scf-usage-carried from fn-owner-carried-usage (fn-owner-peer-carried-relay-event). The maintained relation is fn-ceis-indexedp (the Store's derived event index is fn-cei-build of its committed history), established at every host-called open and preserved by every owner transition the host installs with no hypothesis (PRF-144 fn-osi-live-owner-store-is-indexed). The index now counts its puts (books/consumer-event-index.lisp, index = (SEQ-TRIE MSGID-TRIE . COUNT)); fn-cei-count-of-correspondence: under the correspondence the count is the history's length, so fn-sbud-count-is-used: under fn-ceis-indexedp, fn-sbud-count = fn-sbud-used = (len records). fn-sbud-lookup-of-correspondence: under the correspondence and a history within the uint32 sequence space, fn-cei-get k is the k-th record. fn-sbud-octets-advance-is-the-suffix-fold / fn-scf-debt-advance-is-the-suffix-fold / fn-scf-tally-advance-is-the-suffix-fold: advancing over sequences k..len-1 through the index is the fold over (nthcdr k records). Keystones: fn-sbud-bytes-carried-is-the-fold (fn-ceis-indexedp and fn-sbud-octets-cache-validp: the carried octets are fn-sbud-bytes-used), fn-scf-debt-carried-is-the-record-debt (fn-ceis-indexedp and fn-cvec-debt-cache-validp: fn-cvec-record-debt), fn-scf-usage-carried-is-the-projection (fn-ceis-indexedp and fn-pcb-cache-validp: read at any evidence, fn-pcb-usage), fn-sbud-headroom-carried-is-headroom-at (fn-ceis-indexedp). fn-sbud-octets-cache-valid-after-commit keeps the stored (COUNT . SUM) valid as the history grows; fn-owner-install-profile stores the fold once at open. The logical model is unchanged: fn-sbud-used stays len and fn-sbud-bytes-used the fold; the host calls the named carried functions (an mbe would put the relation in the guard, which the :program host would evaluate). No Store transition encodes a record (the index holds the event, not its length; the octets take one record's length per record committed since the last query). Teeth: tests/acl2/store-carried-folds-tests.lisp over the live owner's Stores across a commit (owner-store-indexed-tests' *osi-before*/*osi-after*), constructed indexed Stores for a non-zero debt and usage, a removal witness per hypothesis (the crash image or a constructed stale index for the relation; a CORRUPTED cache for validity); tests/acl2/consumer-event-index-tests.lisp for the count. Not covered: the prepare's candidate test still takes len and the last cons of the history (fn-pcar-candidatep, pointer walks, PKT-474); the operator status and health reports still extend by len/nthcdr and fold the debt (PKT-474).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-138",
+        "PRF-099"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/consumer-event-index.lisp",
+        "books/store-budget.lisp",
+        "books/store-carried-folds.lisp",
+        "tests/acl2/store-carried-folds-tests.lisp",
+        "tests/acl2/consumer-event-index-tests.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/hot-path-scans-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T124600Z-1898145.json",
+        "planning/evidence/manifests/certify-20260926T125431Z-1984974.json"
+      ],
+      "events": [
+        "fn-cei-count-of-correspondence",
+        "fn-sbud-count-is-used",
+        "fn-sbud-lookup-of-correspondence",
+        "fn-sbud-octets-advance-is-the-suffix-fold",
+        "fn-sbud-bytes-carried-is-the-fold",
+        "fn-sbud-octets-cache-valid-after-commit",
+        "fn-sbud-headroom-carried-is-headroom-at",
+        "fn-scf-debt-advance-is-the-suffix-fold",
+        "fn-scf-debt-carried-is-the-record-debt",
+        "fn-scf-tally-advance-is-the-suffix-fold",
+        "fn-scf-usage-carried-is-the-projection"
+      ]
     }
   ]
 }

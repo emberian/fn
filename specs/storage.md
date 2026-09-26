@@ -794,6 +794,18 @@ premise is PRF-126's (a u32 charge); every other kind's record must be within
 its publication ceiling, which its codec bounds: the signed composite and
 peer-carried producers are outside the producer-width proof.
 
+The served owner reads the figures the gate compares without walking the
+history (PRF-180). The committed count is the count the Store's derived event
+index keeps (every put adds one; the index is built at every open and extended
+by the commit's record-directory append); the committed record octets, the
+completion debt and the peer carriage usage are the owner's (K . VALUE) caches,
+advanced over the records committed since through the index's fixed-depth
+lookup. Each equals its fold over the history while the index is the index of
+that history, which holds of every owner the host reaches (PRF-144). A POST
+therefore costs one lookup and one record's length, debt step and carriage step
+per record committed since the previous query; the octets are folded once, at
+open.
+
 The disk is an environmental assumption, not a reservation: the observed free
 octets are not owned, and a concurrent writer can take them. The pack write
 then fails before the selection; the store reopens and the rerun converges

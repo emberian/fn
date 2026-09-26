@@ -2748,7 +2748,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-138"
+        "PRF-138",
+        "PRF-180"
       ],
       "verification": [
         "proof",
@@ -2760,7 +2761,9 @@
         "host/owner-host.lisp",
         "host/store-node-host.lisp",
         "tests/test_native_capacity_vector.py",
-        "planning/evidence/capacity-vector-2026-09-26.md"
+        "planning/evidence/capacity-vector-2026-09-26.md",
+        "books/store-carried-folds.lisp",
+        "tests/acl2/store-carried-folds-tests.lisp"
       ],
       "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`."
     },
