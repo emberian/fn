@@ -54,8 +54,8 @@ def environment(command=None):
     env["ACL2_CUSTOMIZATION"] = "NONE"
     env.pop("ACL2_SYSTEM_BOOKS", None)
     if FRIEND_FN and command and command[0] == FRIEND_FN:
-        # bin/fn honours FN_NATIVE_HOST before its own libexec image: the
-        # friend runs the tarball's image only without it.
+        # An installed bin/fn ignores FN_NATIVE_HOST (PKT-481 (a)); popping
+        # it keeps the friend's environment a stranger's.
         env.pop("FN_NATIVE_HOST", None)
     return env
 
