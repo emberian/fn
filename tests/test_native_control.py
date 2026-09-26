@@ -493,7 +493,10 @@ class NativeControlTests(unittest.TestCase):
         """`operator post` injects as the served POST does (INN lab of
         2026-09-22, finding 1), and refuses what injection refuses: a From
         with no address (RFC 5536 3.1.2; the agents run's `From: yue`), a
-        supplied Path, and a Message-ID the article does not carry."""
+        supplied Xref (the server's field), and a Message-ID the article does
+        not carry.  A supplied Path is accepted as the served POST accepts it
+        (D32, RFC 5537 3.4): the node's identity is prepended and the
+        supplied tail kept verbatim."""
         owner = self.start_owner()
         try:
             message_id = "<native-control-injected@example.invalid>"
@@ -508,9 +511,14 @@ class NativeControlTests(unittest.TestCase):
             self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
             path_id = "<native-control-path@example.invalid>"
-            refused_path = self.post(path_id, b"Path: elsewhere!not-for-mail\r\n"
-                                     + self.article(path_id))
-            self.assertEqual(refused_path.returncode, 1, refused_path.stderr.decode())
+            supplied_path = self.post(path_id, b"Path: elsewhere!not-for-mail\r\n"
+                                      + self.article(path_id))
+            self.assertEqual(supplied_path.returncode, 0, supplied_path.stderr.decode())
+
+            xref_id = "<native-control-xref@example.invalid>"
+            refused_xref = self.post(xref_id, b"Xref: elsewhere fn.test:1\r\n"
+                                     + self.article(xref_id))
+            self.assertEqual(refused_xref.returncode, 1, refused_xref.stderr.decode())
 
             other = self.post("<native-control-other@example.invalid>",
                               self.article("<native-control-named@example.invalid>"))
@@ -527,8 +535,14 @@ class NativeControlTests(unittest.TestCase):
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
         self.assert_injected(observed.stdout, payload)
-        for absent in (yue_id, path_id, "<native-control-other@example.invalid>"):
+        for absent in (yue_id, xref_id, "<native-control-other@example.invalid>"):
             self.assertNotEqual(self.inspect(absent).returncode, 0, absent)
+        pathed = self.inspect(path_id)
+        self.assertEqual(pathed.returncode, 0, pathed.stderr.decode())
+        head = pathed.stdout.split(b"\r\n\r\n", 1)[0].split(b"\r\n")
+        self.assertEqual([line for line in head if line.startswith(b"Path: ")],
+                         [b"Path: fn.example.invalid!elsewhere!not-for-mail"])
+        self.assertTrue(pathed.stdout.endswith(self.article(path_id)), pathed.stdout)
 
     def test_disabled_posting_refuses_cli_and_served_post(self):
         with self.config.open("a", encoding="ascii") as stream:

@@ -1,0 +1,13 @@
+# c4-control-path.prod start 2026-09-26T10:36:52Z cwd /tank/fn/scratch/qual-harness-c18/tree
+# FN_NATIVE_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host
+# FN_NATIVE_CRASH_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-developer
+# FN_NATIVE_BP_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-dtn FN_NATIVE_BP_NODE_HOST /tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-dtn-developer
+# overlay ae80c7ed3bc632874882ef086d4e91ce16a6c689df4783f08ebbc6686a5be0bf  tests/test_native_served_crash_model.py 891462e47519c3831e76be038105399372a28685227f6fffd72fdf4631cbbf07  tests/campaign/model_images.py 4c0ae8f5ae186bf486c60f839f4cb9259e7b2db04f25724dda9c2e5470c316c9  tools/build_lists_check.py bfddf0c1af39c487082fa3ce4e6530834e3fa39a6825e8f6e15155e8e81d093c  tests/native_bp_channel_admission_raw.lisp f0649e307c42499b222d3c510fb0432f4e570c0b3e38521e24c7c99b14693778  tests/native_bp_node_admission_lock_raw.lisp 4ed58cab00a068de1145a3ca183e300da59eb59b6a208e43d136cffd808a9ecb  tests/native_developer_selectors_raw.lisp 8405458a2948f3ad5527c77b382864cb8eec5459750c10114ffb57bdcaec7335  tests/campaign/test_native_operator_campaign.py 2097b99ee4edf7d85cfeea94eb0db6266f5aae1bc90e37b3476b95d3718f2323  tests/test_fn_web_native.py f0d6368863ec4175c404a3daa8019d443e63749d478be4b10161938b1be96bd0  tests/test_native_control.py b1383133c5061794de4660766298a419cbdff09347a97be1f75e8cdef7db9515  tests/test_native_operator_verbs.py 
+test_operator_post_is_injected_and_refuses_what_post_refuses (tests.test_native_control.NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses)
+`operator post` injects as the served POST does (INN lab of ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.488s
+
+OK
+# rc=0 wall=2 end 2026-09-26T10:36:54Z

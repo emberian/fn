@@ -1,0 +1,9 @@
+# c15 on dev f370581b image /tank/fn/scratch/throughput-gate/native-img-f370581bf9f3/tree/build/fn-host-developer
+4db6451b82dc09e8a02c62e582d5eded61b01008127d7980e169c9632e05fc34  /tank/fn/scratch/throughput-gate/native-img-f370581bf9f3/tree/build/fn-host-developer
+test_help_names_init (tests.test_native_operator_verbs.NativeOperatorInitTests.test_help_names_init) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.396s
+
+OK
+# rc=0 wall=1

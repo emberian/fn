@@ -123,6 +123,10 @@ class ModelImages:
 class ModelBridge:
     """An ACL2 process holding books/byte-store-programs, nothing else."""
 
+    # Every bridge_setup a campaign sends runs after this form
+    # (tools/build_lists_check.py served_findings reads it).
+    PRELOAD = '(include-book "books/byte-store-programs")'
+
     def __init__(self):
         # The machine's ACL2 pool and heap cap (PKT-162); close() returns it.
         self.proc = acl2_slots.popen(
@@ -130,7 +134,7 @@ class ModelBridge:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
         run_store.read_prompt(self.proc, run_store.ACL2_START_TIMEOUT_SECONDS)
-        self.call('(include-book "books/byte-store-programs")')
+        self.call(self.PRELOAD)
 
     def call(self, form: str, timeout: float = 120.0) -> str:
         self.proc.stdin.write((form + "\n").encode("ascii"))
