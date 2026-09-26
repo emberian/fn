@@ -731,6 +731,46 @@ The BP namespace keeps its own reservation, the FNBS received-namespace
 debt cover (books/bp-node-debt.lisp); a bundle delivered into the Store
 passes the Store gates above.
 
+### The capacity vector (STO-020)
+
+STO-020: The Store's capacity is a resource vector: admission never consumes the last resource an accepted promise needs, so a full store can complete its outstanding work, release, maintain itself, recover and reuse the space.
+
+gpt-6's review of wave 2 (section 3) asks for "committed use + in-flight
+reservations + completion/maintenance debt <= admitted capacity" with the
+components apart. They are (books/store-capacity-vector.lisp, PRF-138):
+
+| Component | Bound | Where admission keeps it |
+| --- | --- | --- |
+| Transactions (the `%020d.txn` namespace, the history's sequence numbers) | the profile's T, for the life of the store (compaction and reclaim keep the count) | the gate reserves one transaction per open debt and one for the maintenance release |
+| History octets (unframed record octets, the sum the open counts) | H | the same, 4,096 octets (the release ceiling) per release |
+| Completion debt: the open forward undertakings, each owing one `:release` record | counted from the history (`fn-cvec-record-debt`), carried by the owner as (K . DEBT) | an `:undertake` is admitted only if its own release still fits |
+| The maintenance release | one `:release` record (STO-019) | as STO-019 |
+| Retained payload charge | the retention ledger's capacity | pre-paid: a pin's charge includes its release unit, and a release never raises the reserved charge |
+| Configuration generations (`retention set` is a configuration record) | `max_config_generations` | every other configuration record is refused the last generation (`max-config-generations`); the retention rule may use it |
+| Workspace (disk) | the free octets the host observes | compaction and reclaim are refused `temporary-space` when the pack does not fit (STO-019); the pack is bounded by the compaction unit |
+
+The gate (`fn-cvec-verdict-at`, `fn-cvec-article-budget-for`,
+`fn-cvec-article-verdict-at`) admits a record other than a release only if,
+after it, the profile's gate still admits DEBT' + 1 release records in turn,
+DEBT' the open undertakings after it. With no open undertaking it is
+STO-019's gate, except that an `:undertake` must keep its own release. Where
+the vector holds, every open undertaking's release and the maintenance
+release are admissible in any order (`fn-cvec-roomp-discharges-every-debt`).
+It holds at init, is kept by every admitted record, by a release against an
+open debt, by reclaim and by a profile upgrade; and a history of mixed record
+kinds each admitted at its prefix is within H and below T at its actual
+committed octets (`fn-cvec-admitted-history-keeps-the-vector`). The article
+premise is PRF-126's (a u32 charge); every other kind's record must be within
+its publication ceiling, which its codec bounds: the signed composite and
+peer-carried producers are outside the producer-width proof.
+
+The disk is an environmental assumption, not a reservation: the observed free
+octets are not owned, and a concurrent writer can take them. The pack write
+then fails before the selection; the store reopens and the rerun converges
+(the pack publication's cuts), so the outcome is refused or uncertain, never
+torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
+held|short`.
+
 ### Chained packs (not implemented)
 
 The 4 MiB compaction unit is permanent per store today, because each
