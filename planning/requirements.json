@@ -3377,16 +3377,19 @@
       "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
       "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
       "milestone": "M4",
-      "status": "specified",
-      "proof_targets": [],
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-210"
+      ],
       "verification": [
         "proof",
         "test"
       ],
       "evidence": [
-        "planning/evidence/group-policy-2026-09-26.md"
+        "planning/evidence/group-policy-2026-09-26.md",
+        "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
+      "implementation_note": "Implemented by lane newsreader-cancel (2026-09-26) under PKT-576's default: RFC 8315 Cancel-Lock keyed by the posting login (K = Base64(HMAC-SHA256(S, MSGID || LOGIN)), lock = Base64(SHA-256(K)), S the node's secret), inserted by the owner after its Injection-Info line; the login's cancel or Supersedes gets the matching Cancel-Key; the withdrawal decision reads the two articles only (PRF-210). RFC 5537 section 5.3 leaves cancel authentication to local policy; the same-login basis is the coordinator's decision P1; Cancel-Lock verification is RFC 8315 section 2 and 4."
     },
     {
       "id": "REP-012",

@@ -11,7 +11,7 @@ fnn-owner-attempt-served).
   directly after the node's Injection-Info line.
 - bob POSTs a cancel of T (240, filed): T is still served (220), since
   bob's key opens nothing (fn-ctl-key-record-without-an-opened-lock-
-  declines-by-name).
+  declines-by-definition).
 - alice POSTs a cancel of T (240): ARTICLE T answers 430 and OVER over the
   group no longer lists it (fn-ctl-withdrawal-authority-is-exactly-signer-
   or-poster, :poster).  After a SIGKILL and restart the answer is unchanged

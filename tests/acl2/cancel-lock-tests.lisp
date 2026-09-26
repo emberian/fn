@@ -186,7 +186,7 @@
         (list :decline :no-grant)))
 
 ; ---------------------------------------------------------------------------
-; fn-ctl-key-record-without-an-opened-lock-declines-by-name: covered by bob
+; fn-ctl-key-record-without-an-opened-lock-declines-by-definition: covered by bob
 ; above; removal of "key record": a principal record declines by its own arms.
 (assert-event
  (equal (fn-ctl-withdrawal-effect

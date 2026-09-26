@@ -778,7 +778,7 @@
 ; SEC-006, refused by name: a key record none of whose keys opens a lock of
 ; the target declines :no-lock-match, whatever the target's verdict and
 ; groups (a different login's key, a key for another article).
-(defthm fn-ctl-key-record-without-an-opened-lock-declines-by-name
+(defthm fn-ctl-key-record-without-an-opened-lock-declines-by-definition
   (implies (and (fn-ctl-withdrawalp w)
                 (fn-ctl-key-principalp (fn-ctl-w-principal w))
                 (not (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))

@@ -7062,6 +7062,51 @@
           "name": "fn-native-config-ipv4-address-shape"
         }
       ]
+    },
+    {
+      "id": "PRF-210",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-verified-cause-ignores-its-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-plan-record-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cancel-executes-only-for-author-or-authority"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-login-key-opens-login-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-served-payload-without-a-login-is-the-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-key-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-lock-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cll-insert-adds-only-the-lines"
+        }
+      ]
     }
   ]
 }
