@@ -198,10 +198,10 @@ exactly that:
 - `reclaim,retire`: the selected pack already covers every committed record
   (a rerun after an interrupted compaction); no new pack is written.
 - refused (1), nothing written, with the reason: `already-compact` (nothing
-  to pack, reclaim or retire), `empty-history`, `temporary-space` (the files
-  already present plus the new pack would exceed the profile's aggregate
-  record bound, 24 MiB for `development`, 768 MiB for `scale`: the pack is
-  written beside the files it replaces), `exceeds-compaction-unit` (the
+  to pack, reclaim or retire), `empty-history`, `temporary-space` (the new pack would not
+  fit the free space of the store's filesystem, as the image observes it;
+  the pack is written beside the files it replaces, so leave at least the
+  history's size free), `exceeds-compaction-unit` (the
   history's pack would exceed 4 MiB, the unit one pack holds; the open reads
   a pack as one bounded read, and compacting a larger history needs chained
   packs, which do not exist yet).

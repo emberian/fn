@@ -2543,9 +2543,34 @@
         "host/native/checkpoint.lisp",
         "tests/acl2/store-reclaim-pack-tests.lisp",
         "tests/reclaim_lifecycle_native.py",
-        "planning/evidence/reclaim-lifecycle-2026-09-25.md"
+        "planning/evidence/reclaim-lifecycle-2026-09-25.md",
+        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
       ],
-      "implementation_note": "`operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Not implemented: the maintenance reservation in admission (PKT-169), release of the retention charge, a per-article release verb, BP/feed holders, chained packs."
+      "implementation_note": "`operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs."
+    },
+    {
+      "id": "STO-019",
+      "title": "Admission leaves room for the release record and checks maintenance's temporary space against the disk, so a full store can always finish or safely abandon its own maintenance",
+      "specification": "specs/storage.md#the-maintenance-reservation-sto-019",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-129"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-maintenance-reserve.lisp",
+        "books/store-compact-verb.lisp",
+        "books/store-reclaim-pack.lisp",
+        "host/owner-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/reclaim_lifecycle_native.py",
+        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
+      ],
+      "implementation_note": "PKT-169 as decided. The served gates (fn-smr-verdict-at, fn-smr-article-budget-for, fn-smr-article-verdict-at) keep one release record admissible after every other admission; compact and reclaim refuse temporary-space against the host-observed free octets (statvfs), not the history bound. `status` prints `maintenance-reserve octets=4096 transactions=1 held|short`. FN_NATIVE_DISK_FREE (developer image) caps the observation for the native small-disk case."
     }
   ]
 }
