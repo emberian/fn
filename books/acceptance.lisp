@@ -142,14 +142,132 @@
 
 (verify-guards fn-memberships-conflictsp)
 
+;; ---------------------------------------------------------------------------
+;; Freshness in one pass (served-path-scale, PRF-173; pack-chain-open's
+;; finding, PKT-331).
+;;
+;; The :logic body of `fn-articles-freshp' below rebuilds the memberships of
+;; every later article for each article: quadratic, and 77 percent of the
+;; 196 s open of the 20,000-article fixture (fn-all-article-memberships and
+;; fn-pair-memberp).  Its :exec path is `fn-fr-freshp': one hash set of the
+;; memberships seen so far, filled as the articles are folded front to back,
+;; each article's memberships checked against it before they are added.
+;; Linear in the memberships.  The two are equal on every value by
+;; `fn-articles-freshp-is-one-pass' (no hypothesis); no logical definition
+;; changes, so every theorem about freshness keeps its statement.
+;;
+;; The pass checks each article against the EARLIER ones where the :logic
+;; body checks it against the LATER ones; they agree because disjointness is
+;; symmetric (`fn-fr-disjointp-commutes').
+
+; No cons in XS is a member of YS (a membership is a cons (group . number)).
+(defun fn-fr-disjointp (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp xs)
+      (and (not (and (consp (car xs)) (member-equal (car xs) ys)))
+           (fn-fr-disjointp (cdr xs) ys))
+    t))
+
+; No cons in KEYS is bound in the hash set.
+(defun fn-fr-unboundp (keys fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t))
+  (if (consp keys)
+      (and (not (and (consp (car keys))
+                     (fn-keyset-tab-boundp (car keys) fn-keyset)))
+           (fn-fr-unboundp (cdr keys) fn-keyset))
+    t))
+
+; The fold: each article against the memberships of the articles before it.
+(defun fn-fr-scan (articles fn-keyset)
+  (declare (xargs :stobjs fn-keyset :guard t))
+  (if (consp articles)
+      (if (fn-fr-unboundp (fn-article-memberships (car articles)) fn-keyset)
+          (let ((fn-keyset (fn-ks-fill (fn-article-memberships (car articles))
+                                       fn-keyset)))
+            (fn-fr-scan (cdr articles) fn-keyset))
+        (mv nil fn-keyset))
+    (mv t fn-keyset)))
+
+(defun fn-fr-freshp (articles)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-keyset
+    (mv-let (ok fn-keyset)
+      (fn-fr-scan articles fn-keyset)
+      ok)))
+
 (defun fn-articles-freshp (articles)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp articles)
-      (and (not (fn-memberships-conflictsp
-                 (fn-article-memberships (car articles))
-                 (cdr articles)))
-           (fn-articles-freshp (cdr articles)))
-    t))
+  (mbe :logic
+       (if (consp articles)
+           (and (not (fn-memberships-conflictsp
+                      (fn-article-memberships (car articles))
+                      (cdr articles)))
+                (fn-articles-freshp (cdr articles)))
+         t)
+       :exec (fn-fr-freshp articles)))
+
+(local
+ (defthm fn-fr-pair-memberp-is-member
+   (iff (fn-pair-memberp p l)
+        (and (consp p) (member-equal p l)))))
+
+(local
+ (defthm fn-fr-conflictsp-is-not-disjoint
+   (iff (fn-memberships-conflictsp ms articles)
+        (not (fn-fr-disjointp ms (fn-all-article-memberships articles))))))
+
+(local
+ (defthm fn-fr-disjointp-of-append-left
+   (equal (fn-fr-disjointp (append a b) c)
+          (and (fn-fr-disjointp a c) (fn-fr-disjointp b c)))))
+
+(local
+ (defthm fn-fr-disjointp-of-cons-right
+   (equal (fn-fr-disjointp a (cons x b))
+          (and (not (and (consp x) (member-equal x a)))
+               (fn-fr-disjointp a b)))))
+
+(defthmd fn-fr-disjointp-commutes
+  (equal (fn-fr-disjointp a b) (fn-fr-disjointp b a))
+  :hints (("Goal" :induct (fn-fr-disjointp b a))))
+
+(local
+ (defthm fn-fr-unboundp-of-append
+   (equal (fn-fr-unboundp (append a b) st)
+          (and (fn-fr-unboundp a st) (fn-fr-unboundp b st)))))
+
+(local
+ (defthm fn-fr-unboundp-after-fill
+   (equal (fn-fr-unboundp a (fn-ks-fill m st))
+          (and (fn-fr-disjointp a m) (fn-fr-unboundp a st)))
+   :hints (("Goal" :induct (fn-fr-disjointp a m)
+            :in-theory (disable fn-ks-fill nth)))))
+
+(local
+ (defthm fn-fr-unboundp-of-empty
+   (implies (not (consp (nth 0 st)))
+            (fn-fr-unboundp a st))))
+
+(local
+ (defthm fn-fr-disjointp-of-all-memberships-left
+   (equal (fn-fr-disjointp (fn-all-article-memberships xs) m)
+          (fn-fr-disjointp m (fn-all-article-memberships xs)))
+   :hints (("Goal" :use ((:instance fn-fr-disjointp-commutes
+                                    (a (fn-all-article-memberships xs))
+                                    (b m)))))))
+
+(local
+ (defthm fn-fr-scan-is-freshp
+   (equal (mv-nth 0 (fn-fr-scan articles st))
+          (and (fn-articles-freshp articles)
+               (fn-fr-unboundp (fn-all-article-memberships articles) st)))
+   :hints (("Goal" :induct (fn-fr-scan articles st)
+            :in-theory (disable fn-ks-fill)))))
+
+; The refinement: the one-pass check the host executes is the freshness
+; relation, on every value.
+(defthm fn-articles-freshp-is-one-pass
+  (equal (fn-fr-freshp articles) (fn-articles-freshp articles)))
 
 (verify-guards fn-articles-freshp)
 
