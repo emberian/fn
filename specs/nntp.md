@@ -243,6 +243,18 @@ not move either; successful numeric retrieval updates the current article number
 Use the specified 412/420/423/430 cases and error precedence. Later expiry can
 invalidate a once-valid cursor; do not bake eternal existence into the invariant.
 
+NNT-042: a reader connection's view of the store is a VERSION, the committed
+count when the view was taken: the connection sees the articles committed below
+it, and a cancel committed after one of them leaves that article visible to the
+connection until it advances past the cancel. GROUP and LISTGROUP advance the
+connection's version to the current count between commands; within a command
+the version is fixed (C3), so a multi-line response is consistent. A long-lived
+reader therefore sees a peer's new article after its next GROUP, never only on
+reconnection. A stronger fn guarantee than RFC 3977 section 6.1.1, which fixes
+no view semantics; `fn-view-advance`, `fn-view-sees` and
+`fn-view-cancel-after-target` (books/catalog-delta.lisp) are the ACL2 half; the
+served path does not read them yet (PKT-585).
+
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
 `fn-nntp-open-session` decides once, `fn-nntp-step` reads the carried value, and
