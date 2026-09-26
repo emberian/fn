@@ -1,0 +1,43 @@
+# target tests.test_native_consumer_exchange  start 2026-09-26T06:21:37Z  tree /tank/fn/scratch/consumer-e2-2/tree-gate image /tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# image sha256 1f66a27beda5dcb033c810768b36f37192b1f454002108478e46461877e0ad96 (core)
+# env FN_CONSUMER_EXCHANGE_EVIDENCE=/tank/fn/scratch/consumer-e2-2/logs/test_native_consumer_exchange.gate-9900a68f.evidence.json
+# env FN_NATIVE_DEVELOPER_HOST=/tank/fn/scratch/consumer-e2-2/native-base/tree/build/fn-host-developer
+# env FN_NATIVE_SOURCE_ROOT=/tank/fn/scratch/consumer-e2-2/tree-gate
+# env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/consumer-e2-2/diag
+# env FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+# env FN_OPENSSL=/tank/fn/toolchains/openssl-3.5.8/bin/openssl
+# env FN_RUN_CONSUMER_EXCHANGE=1
+# env FN_TEST_OPENSSL=/tank/fn/scratch/consumer-e2-2/bin/test-openssl
+# env LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib
+test_a_conflicting_claim_arrives_before_and_after_the_legitimate_one (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_a_conflicting_claim_arrives_before_and_after_the_legitimate_one)
+The application, not the signature, says who may claim an ... ok
+test_a_report_from_an_author_the_consumer_does_not_trust_is_not_consumed (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_a_report_from_an_author_the_consumer_does_not_trust_is_not_consumed)
+fn enrolled U and accepted U's signed report; B was never given U's ... ok
+test_consumer_killed_after_the_owner_commits_then_revocation (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_consumer_killed_after_the_owner_commits_then_revocation)
+The review's cut exactly: the owner commits R and stops before it ... ok
+test_death_after_acceptance_then_revocation_is_never_refused (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_after_acceptance_then_revocation_is_never_refused)
+gpt-6's review, section 2: the node accepts R, the consumer dies ... ok
+test_death_while_recording_and_before_sending_are_reconciled (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_while_recording_and_before_sending_are_reconciled)
+Uncertainty during the answer's recording (death inside its BEGIN ... ok
+test_identical_operator_post_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_operator_post_resend_answers_duplicate)
+D25 on the operator post route (unsigned, same control socket). ... ok
+test_identical_signed_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_signed_resend_answers_duplicate)
+D25 on the local control route: a byte-identical resend of an ... ok
+test_two_sleeping_agents_exchange_across_every_ownership_cut (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_two_sleeping_agents_exchange_across_every_ownership_cut) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+10.331s    test_two_sleeping_agents_exchange_across_every_ownership_cut (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_two_sleeping_agents_exchange_across_every_ownership_cut)
+5.205s     test_a_conflicting_claim_arrives_before_and_after_the_legitimate_one (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_a_conflicting_claim_arrives_before_and_after_the_legitimate_one)
+3.672s     test_consumer_killed_after_the_owner_commits_then_revocation (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_consumer_killed_after_the_owner_commits_then_revocation)
+3.454s     test_death_after_acceptance_then_revocation_is_never_refused (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_after_acceptance_then_revocation_is_never_refused)
+3.257s     test_death_while_recording_and_before_sending_are_reconciled (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_death_while_recording_and_before_sending_are_reconciled)
+3.190s     test_a_report_from_an_author_the_consumer_does_not_trust_is_not_consumed (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_a_report_from_an_author_the_consumer_does_not_trust_is_not_consumed)
+1.214s     test_identical_signed_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_signed_resend_answers_duplicate)
+1.189s     test_identical_operator_post_resend_answers_duplicate (tests.test_native_consumer_exchange.NativeConsumerExchangeTests.test_identical_operator_post_resend_answers_duplicate)
+
+----------------------------------------------------------------------
+Ran 8 tests in 31.512s
+
+OK
+# rc=0 wall=31.6 end 2026-09-26T06:22:09Z

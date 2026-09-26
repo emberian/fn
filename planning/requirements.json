@@ -2746,7 +2746,9 @@
         "tools/fn_verify.py",
         "tests/test_fn_consumer_journal.py",
         "tests/test_native_consumer_exchange.py",
-        "planning/evidence/consumer-e2-2-2026-09-26.md"
+        "planning/evidence/consumer-e2-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T062056Z-559151.json",
+        "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
       ],
       "implementation_note": "A client contract, not an RFC requirement. The Python consumer is an external client; it decides only its own application meaning (attempt journal, its own verdict, the application's operation claims). The fn side it relies on is D25 at the signed control route: the saved artifact resent is :duplicate (fn-sr-a-signed-retry-is-already-stored, PRF-117) and a re-signed carrier of the same authored source is :conflict (fn-sr-a-re-signed-carrier-is-a-conflict, PRF-137), both over fn-rcl-existing-action, which host/native/hybrid-control.lisp fnn-hybrid-control-author asks through host/owner-host.lisp fn-owner-existing-action before it commits.",
       "note": "Local-owner profile. A revoked author's resend is refused before D25 is consulted (the enrolment check precedes it), so such a submission settles only by fn's Store serving the artifact back to a registered consumer (PKT-322). The two-store exchange across the relay network is the next lane."
