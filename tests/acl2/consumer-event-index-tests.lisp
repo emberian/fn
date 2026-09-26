@@ -40,3 +40,18 @@
  (defthm fn-ceit-false-future-lookup
    (equal (fn-cei-get 4 *fn-ceit-index*)
           (nth 3 *fn-ceit-events*))))
+
+; PRF-180, the count: every put counts, so the built index of a history holds
+; its length (fn-cei-count-of-build), and a live extension adds one.
+(assert-event (equal (fn-cei-count *fn-ceit-index*) 4))
+(assert-event (equal (fn-cei-count *fn-ceit-old*) 3))
+(assert-event (equal (fn-cei-count *fn-ceit-new*) 4))
+(assert-event (equal (fn-cei-count nil) 0))
+; fn-cei-count-of-correspondence without its hypothesis: the corrupted index
+; (a second put at sequence 2) does not correspond and counts 5 of 4 events.
+(assert-event (not (fn-cei-correspondencep *fn-ceit-corrupt* *fn-ceit-events*)))
+(assert-event (not (equal (fn-cei-count *fn-ceit-corrupt*)
+                          (len *fn-ceit-events*))))
+(must-fail
+ (defthm fn-ceit-false-count-without-correspondence
+   (equal (fn-cei-count index) (len events))))
