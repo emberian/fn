@@ -58,7 +58,7 @@
                              "bp-only-no-nntp-principal" 0)
             (fn-cfg-row-make "receiver-peer" "bp-trust" "network" 0)
             (fn-cfg-row-make "receiver-peer" "transport-bp"
-                             "dtn://receiver/" 0)) nil nil nil)))
+                             "dtn://receiver/" 0)) nil nil nil nil)))
 (defconst *bpah-request-view*
   (update-nth 4
     (list :cl (cons 1 1) 1 *bpah-peer*
@@ -73,7 +73,7 @@
                              "bp-only-no-nntp-principal" 0)
             (fn-cfg-row-make "sender-peer" "bp-trust" "network" 0)
             (fn-cfg-row-make "sender-peer" "transport-bp"
-                             "dtn://sender/" 0)) nil nil nil)))
+                             "dtn://sender/" 0)) nil nil nil nil)))
 (assert-event
  (fn-bpah-request-trustedp *bpah-request-view* *bpah-request-cfg*))
 (assert-event
@@ -156,7 +156,7 @@
 (defun bpah-cfg-with (rows)
   (fn-cfg-make 7 (fn-cfg-value-make nil 0 nil nil nil
                    (append (fn-cfg-peers (fn-cfg-value *bpah-receipt-cfg*))
-                           rows) nil nil nil)))
+                           rows) nil nil nil nil)))
 (defconst *bpah-carried-receipt-view*
   (update-nth 4 (list :cl (cons 2 2) 1 *bpah-local*
                       (fn-record-string-octets "relay") 7)
