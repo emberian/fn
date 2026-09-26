@@ -530,6 +530,69 @@ not touch, and an article with a verdict is not reclaimed.
 `423 article reclaimed` by number and `430 article reclaimed` by
 Message-ID. OVER answers 503 for it and NEWNEWS still lists it (open).
 
+### Content reclamation's durable step: `store reclaim` (STO-017)
+
+STO-017: Packing, history compaction and content reclamation are distinct operations; `store reclaim` removes released payload octets through a reclaiming pack and returns them to the file system.
+
+The three operations (the Fable mandate, section 8):
+
+- **Packing** (`store compact`, books/store-compact-verb.lisp) reduces
+  filesystem objects and keeps the exact event history: the selected pack
+  holds every committed record's canonical bytes.
+- **History compaction** (replacing history by a summary sufficient for
+  every future decision) is not implemented. Nothing here claims it.
+- **Content reclamation** (`store reclaim`, books/store-reclaim-pack.lisp)
+  changes only the payload octets of released article records. Every
+  event keeps its sequence, transaction ID, generation, Message-ID, groups,
+  obligation ID, content subject, release evidence, charge and stamp; every
+  event that is not a legacy article record (an accepted-statement
+  composite, a keyring snapshot, a statement verdict, a retention, consumer
+  or topic event) keeps its bytes (`fn-rclp-events-keep-every-other-kind`).
+
+The verb, offline under the exclusive lock after the ordinary open:
+
+    fn operator CONFIG store reclaim [--dry-run]
+    fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS}
+
+`fn-rclp-decide` answers over the replayed Store and the compact verb's
+observation: nothing (`reclaimed=0`, exit 0, and nothing written: with no
+authorized release this is the bounded answer, `fn-rclp-keep-forever-writes-nothing`),
+`--dry-run` (the Message-IDs and the octets a run would free, nothing
+written), compact first (the history is not one selected pack with no
+transaction file left: the ordinary compact steps run, then the decision
+is asked again), a named refusal (`temporary-space`, `capture`,
+`observation`, `profile`; exit 1, nothing written) or the steps:
+
+1. drop the derived state checkpoint (it holds payload octets and an open
+   would read it in place of the history); cuts
+   `reclaim-state-checkpoint-unlink`, `reclaim-state-checkpoint-directory`;
+2. publish the reclaiming generation unselected (the pack publication and
+   its `candidate-*` cuts); cut `reclaim-pack-published`;
+3. select it (the marker replacement and its `selection-*` cuts), the one
+   commit point; cut `reclaim-pack-selected`;
+4. retire the older generations (`pack-retire-*`): the unlink that returns
+   the octets and the inode to the file system; cut `reclaim-retired`.
+
+A reopen after any cut opens the old selected pack (the full history) or
+the new one (the reclaimed history), and a rerun converges: an event the
+pack rewrote is never rewritten again under any later context
+(`fn-rclp-a-reclaimed-event-stays-reclaimed`).
+
+What becomes available again, precisely: the payload octets of each
+reclaimed record, on disk when the older generation is retired, and in the
+committed-record octets the admission gate sums (`bytes-used` of
+`status`'s headroom line; `fn-rclp-freed-is-the-admission-count`). The
+transaction count is not released (sequence numbers are history) and the
+retention charge is not released (the archive pin is kept; D03's release of
+an archive undertaking is a node-invariant change, open).
+
+A known limit, stated: the compact verb's temporary-space rule (the files
+present plus the new pack within `max_history_octets`) and the admission
+gate's history rule (committed octets plus a record ceiling within the same
+bound) together mean a store refused for lack of history headroom cannot be
+compacted or reclaimed; the maintenance reservation is not yet an admission
+invariant (planning/evidence/reclaim-lifecycle-2026-09-25.md, PKT-169).
+
 ### Chained packs (not implemented)
 
 The 4 MiB compaction unit is permanent per store today, because each

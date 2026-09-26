@@ -481,7 +481,10 @@
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv '("retention" "set" "released-by-all-holders"))))
 (assert-event (and (equal (fn-native-operator-result-status *fn-nop-retention*) :accepted)
-                   (equal (fn-native-operator-result-native-action *fn-nop-retention*) :admin)))
+                   (equal (fn-native-operator-result-native-action *fn-nop-retention*) :admin)
+                   (equal (fn-native-admin-result-kind
+                           (fn-native-operator-result-admin-plan *fn-nop-retention*))
+                          :set-retention)))
 (must-fail (assert-event
             (equal (fn-native-operator-result-status
                     (fn-native-operator-run *fn-nop-minimal-config*
