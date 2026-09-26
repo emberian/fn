@@ -166,7 +166,9 @@
   :hints (("Goal"
            :use (fn-ocl-open-preserves-historical-relation
                  (:instance fn-ocri-own-open-preserves-reader-pins
-                            (o (fn-ocfg-owner oc))))
+                            (o (fn-ocfg-owner oc))
+                            (acfg (fn-auth-config-with-accounts
+                                   acfg (fn-cfg-value (fn-ocfg-config oc))))))
            :in-theory (e/d (fn-ocri-relation fn-ocfg-open)
                            (fn-ocl-relation fn-ocri-viewp
                             fn-ocri-conns-p fn-own-open
