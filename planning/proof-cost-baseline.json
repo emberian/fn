@@ -10,20 +10,6 @@
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
-    },
-    "tests/acl2/heap-figure-tests": {
-      "seconds": 37.428,
-      "run": "certify-20260926T210216Z-2591667",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "tests/acl2/nntp-help-tests": {
-      "seconds": 10.38,
-      "run": "certify-20260926T204406Z-2347753",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
     }
   }
 }
