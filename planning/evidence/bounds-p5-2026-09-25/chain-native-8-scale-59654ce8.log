@@ -1,0 +1,32 @@
+test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain) ... FAIL
+
+======================================================================
+FAIL: test_scale_store_compacts_into_a_chain (tests.test_native_pack_chain.NativePackChainTests.test_scale_store_compacts_into_a_chain)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/native_process.py", line 38, in wait_for_announcement
+    raise AssertionError("native startup deadline expired")
+AssertionError: native startup deadline expired
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/test_native_pack_chain.py", line 117, in test_scale_store_compacts_into_a_chain
+    self.assert_view_kept_and_next_number(store, config, port, sample,
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/test_native_checkpoint.py", line 1058, in assert_view_kept_and_next_number
+    after = self.served_view(config, port, msgids)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/test_native_checkpoint.py", line 993, in served_view
+    owner = self.run_owner(config)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/test_native_checkpoint.py", line 970, in run_owner
+    wait_for_announcement(process, b"LISTENING ")
+  File "/tank/fn/scratch/bounds-p5/tree5/tests/native_process.py", line 47, in wait_for_announcement
+    raise AssertionError("{}; stdout={!r}; stderr={}".format(
+AssertionError: native startup deadline expired; stdout=b''; stderr=
+
+----------------------------------------------------------------------
+Ran 1 test in 6693.080s
+
+FAILED (failures=1)
+exit=1
