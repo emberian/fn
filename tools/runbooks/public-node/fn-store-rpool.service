@@ -1,0 +1,16 @@
+[Unit]
+Description=Mount rpool/fn-public at /srv/fn-public (the public fn node's store)
+DefaultDependencies=no
+Requires=zfs-load-module.service
+After=zfs-load-module.service zfs-import.target zfs-mount.service
+Before=user@1000.service
+ConditionPathIsDirectory=/srv/fn-public
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fn-store-rpool-mount
+ExecStop=/bin/umount /srv/fn-public
+
+[Install]
+WantedBy=multi-user.target
