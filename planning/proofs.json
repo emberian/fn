@@ -5561,6 +5561,32 @@
         "fn-native-operator-history-loss-is-ancestry",
         "fn-native-operator-history-loss-is-snapshot-loss"
       ]
+    },
+    {
+      "id": "PRF-139",
+      "title": "The owner's admission and a BP contact's job selection cost what the request costs: the contact's selection is one traversal of the job list, equal to the two lookup scans (part 2, certified); the Store's maintained record count and octets (part 1) are held for a continuation",
+      "statement": "Part 2. fn-bpnj-contact-next (books/bp-node-job-offer.lisp; host/native/bp-service.lisp fnn-bpc-drive-contact and host/native/bp-node.lisp fnn-bpnode-send-receipts call it before every offer) reads the gate, then traverses the job list once (fn-bpnj-scan), and equals the former two-scan answer over fn-bpnj-select and fn-bpnj-held on every state (fn-bpnj-contact-next-is-the-two-scan-selection), so PRF-120's theorems keep their statements; the scan's ready and held components are the lookup scans' from any examined prefix (fn-bpnj-scan-finds-the-selected-job, fn-bpnj-scan-finds-the-held-job), and under the machine's key uniqueness (fn-bpn-job-listp, the jobs field of fn-bpn-machine-statep) every job is its own entry, so the one confirming lookup succeeds at once (fn-bpnj-unique-keys-make-every-job-its-own-entry). Part 1 (the owner's committed record count and octets as maintained Store state, equal to the fold) is not delivered: the attempt at 7f615571 extended the octets inside fn-sn-io through the constrained record encoder, which defconst evaluation cannot run; the continuation carries the count in the Store and advances the octet cache through the event index (planning/evidence/hot-path-scans-2026-09-26.md). Not covered: the per-contact drain still re-scans from the head per offer (PKT-324).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-120"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "events": [
+        "fn-bpnj-contact-next-is-the-two-scan-selection",
+        "fn-bpnj-scan-finds-the-selected-job",
+        "fn-bpnj-scan-finds-the-held-job",
+        "fn-bpnj-unique-keys-make-every-job-its-own-entry"
+      ],
+      "evidence": [
+        "books/bp-node-job-offer.lisp",
+        "tests/acl2/bp-node-job-offer-tests.lisp",
+        "planning/evidence/hot-path-scans-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T070754Z-693820.json"
+      ]
     }
   ]
 }
