@@ -650,3 +650,58 @@ is shared by all three wrappers and therefore carries no level; a session
 stored in and read back out of any other record field; a formal whose level
 no call constrains; and anything a macro other than the three projections
 builds. Those are the places to read by hand.
+
+## 11. A served entry walks what its request touches, and the check finds what else it walks
+
+A function called once per request, arrival or contact must not traverse a
+collection whose size does not depend on that request (AGENTS.md: "No
+whole-state revalidation on a served path"; answers 2026-09-26 §2).
+`tools/hot_path_check.py` looks for that pattern and runs in `make check`
+(`--summary --strict`). It seeds the accessors whose value grows with retained
+state (`tools/hot_path_dimensions.json`: N for Store history, F for held BP
+fragments, J for queued BP jobs). It follows each seeded value from every
+`host/` and `host/native/` definition down the path that executes. Each
+traversal it reaches is reported: `len`, `nthcdr`, `member`, `append`,
+`reverse`, a recursion down the list, `dolist`/`loop`, or a list conversion.
+
+The executed path is what counts.
+
+- A guard-verified body and anything below a `:program` host wrapper run raw
+  Lisp. There `mbe` runs `:exec` and no callee guard is evaluated.
+- A native dispatch `(fnn-core 'f ...)` calls f's executable counterpart, so
+  **f's guard is evaluated on every call**. A whole-state recognizer in the
+  guard of a function the host calls is therefore a walk per request. §4's
+  "never recomputed" holds only beneath that first call.
+- A function whose guards are not verified, entered from a counterpart, runs
+  its `*1*` body. There `mbe` runs `:logic` and every callee's guard is
+  evaluated.
+
+Each find gets one class:
+
+- cold: every entry that reaches it is an open, recovery, checkpoint or
+  install entry;
+- resumable: the dimensions file names the quantum that bounds it;
+- output-proportional: it grows only with K;
+- unexpected;
+- uncalled: only host functions that nothing calls reach it.
+
+`planning/hot-path-findings.json` lists every find with its owning packet.
+`--strict` fails on an unexpected find that list does not name, and on a
+listed find that no longer occurs. To remove an entry, remove the walk in the
+same commit. `--why F` prints every host entry that reaches F, each with one
+shortest call path. `--report` groups the finds by host entry.
+
+The check does not see everything:
+
+- It is path-insensitive: a case arm the host never selects still counts as
+  reached.
+- It is context-insensitive: a formal carries every dimension any caller
+  passes it.
+- It does not expand macros.
+- It treats `equal` as constant time.
+- A cut in the dimensions file is a named claim that a walk does not run on
+  the served path (for example, an `(or (equal node live) ...)` short
+  circuit). It is printed on every run.
+
+The tool's silence is not a proof. The scaling rows that confirm or refute a
+find are `tools/scale_probe.py`'s.
