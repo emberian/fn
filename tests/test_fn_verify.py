@@ -235,6 +235,9 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<no-hdr@x.invalid>": good,
                 "<garbled@x.invalid>": good,
                 "<carried@x.invalid>": cls.author.carried(source_for("<carried@x.invalid>")),
+                "<revoked@x.invalid>": cls.author.carried(source_for("<revoked@x.invalid>")),
+                "<revoked-other@x.invalid>": cls.author.carried(
+                    source_for("<revoked-other@x.invalid>")),
                 "<carried-unpinned@x.invalid>": cls.stranger.carried(
                     source_for("<carried-unpinned@x.invalid>")),
                 "<v1-60k@x.invalid>": cls.author.carried(
@@ -265,6 +268,8 @@ class FakeNodeVerifyTests(unittest.TestCase):
                 "<garbled@x.invalid>": "maybe",
                 "<carried@x.invalid>": "carried " + "55" * 32,
                 "<carried-unpinned@x.invalid>": "carried " + "66" * 32,
+                "<revoked@x.invalid>": "revoked " + "55" * 32 + " keyring 3",
+                "<revoked-other@x.invalid>": "revoked " + "77" * 32 + " keyring 3",
                 "<v1-60k@x.invalid>": a,
                 "<v2-200k@x.invalid>": a,
                 "<v2-tampered@x.invalid>": "unverified signature keyring 1",
@@ -333,6 +338,21 @@ class FakeNodeVerifyTests(unittest.TestCase):
             self.assertEqual(report["node"]["outcome"], "carried")
             if check:
                 self.assertEqual(report["independent"]["outcome"], check)
+
+    def test_a_revoked_verdict_is_rendered_and_never_verified(self):
+        # PKT-212: `revoked HEX keyring G' (books/stx-verify.lisp): the node
+        # vouches for nothing, so a signature that is the revoked principal's
+        # agrees on "not verified" (1); one that is another's is a lie (2).
+        code, report = self.verify("<revoked@x.invalid>")
+        self.assertEqual(code, 1, report)
+        self.assertEqual(report["node"], {"outcome": "revoked",
+                                          "principal": "55" * 32, "keyring": "3"})
+        self.assertEqual(report["independent"]["outcome"], "verified")
+        self.assertIn("revoked", report["detail"])
+        code, report = self.verify("<revoked-other@x.invalid>")
+        self.assertEqual(code, 2, report)
+        with self.assertRaises(fn_verify.Undecided):
+            fn_verify.parse_hdr_item("1 revoked legacy keyring 3")
 
     def test_check_article_is_the_offline_independent_check(self):
         # The offline form a client uses on bytes it already holds (the

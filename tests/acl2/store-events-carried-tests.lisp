@@ -1,5 +1,6 @@
 ; Teeth for books/store-events-carried.lisp and the carried kind in
-; books/owner-commit-carried.lisp (lane carry-kind, 2026-09-25).
+; books/owner-commit-carried.lisp (lane carry-kind, 2026-09-25); the
+; incremental identity prepare (lane signed-history-index, PRF-144).
 (in-package "ACL2")
 (include-book "../../books/owner-commit-carried")
 (include-book "owner-signed-post-tests")
@@ -167,3 +168,49 @@
                      :record-staged))
 (assert-event (eq (symbol-class 'fn-ccar-ocfg-prepare-identity (w state))
                   :common-lisp-compliant))
+
+; -----------------------------------------------------------------------------
+; PRF-144 part 2 (lane signed-history-index, 2026-09-26): the identity
+; prepare stages without replaying the appended history, and equals the
+; specification under the maintained store relation
+; (fn-ccar-sn-prepare-identity-is-sn-prepare-identity-under-relation) and,
+; for the host line, under the owner relation
+; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation).
+(defconst *evct-reserved-s* (fn-own-store *evct-reserved*))
+
+; Reachable positive witness (the reserved owner above, reached by
+; fn-own-run): the complete antecedent of both keystones, the conclusion of
+; both, and a non-degenerate answer (the composite is staged).
+(assert-event (fn-snt-relation *evct-reserved-s*))
+(assert-event (fn-own-relation *evct-reserved*))
+(assert-event (equal (fn-ccar-sn-prepare-identity *evct-reserved-s* *ospt-event*)
+                     (fn-sn-prepare-identity *evct-reserved-s* *ospt-event*)))
+(assert-event (equal (fn-sf-record-candidate
+                      (fn-sn-files
+                       (fn-ccar-sn-prepare-identity *evct-reserved-s*
+                                                    *ospt-event*)))
+                     *ospt-event*))
+(assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *ospt-event*)
+                     (fn-ocfg-step *evct-reserved-oc*
+                                   (list :store (list :prepare-identity *ospt-event*)))))
+
+; Hypothesis removal, a CORRUPTED state (unreachable while fn-snt-relation
+; holds): the same reserved store with its configured groups emptied and its
+; node kept.  The structural recognizer still holds, the relation does not
+; (the history no longer replays under the store's groups), and the two
+; prepares disagree: the specification's replay refuses, the incremental
+; prepare, which trusts the carried node, stages.  So the relation premise
+; is doing the work.
+(defconst *evct-regrouped-s*
+  (fn-sn-with-configuration *evct-reserved-s* nil
+                            (fn-sn-capacity *evct-reserved-s*)
+                            (fn-sn-node *evct-reserved-s*)
+                            (fn-sn-config-history *evct-reserved-s*)))
+(assert-event (fn-sn-statep *evct-regrouped-s*))
+(assert-event (not (fn-snt-relation *evct-regrouped-s*)))
+(assert-event (equal (fn-sn-prepare-identity *evct-regrouped-s* *ospt-event*)
+                     *evct-regrouped-s*))
+(assert-event (not (equal (fn-ccar-sn-prepare-identity *evct-regrouped-s*
+                                                       *ospt-event*)
+                          (fn-sn-prepare-identity *evct-regrouped-s*
+                                                  *ospt-event*))))

@@ -645,7 +645,7 @@ The test book must contain, over one real Store built by
    L12, L15, L17, L18. No dependency on new Store lemmas.
 2. New book `books/bp-receiver-store-evolution-invariants.lisp` including
    the above and `store-node-resolution-traces`: L1, L2, L7, L13, L14, L16, L21.
-3. L19 with `fn-bprv-replay-installs-every-record` in `books/replay-invariants.lisp`
+3. L19 with `fn-bprv-replay-loop-installs-every-record` in `books/replay-invariants.lisp`
    or a new `replay-content-invariants` book; then L20. This is the only step
    with proof risk and it is independent of steps 1 and 2.
 4. L22 last, after C1-14 lands or with its prefix hypothesis as stated.
@@ -662,7 +662,7 @@ listed so the design and the books say the same thing.
 | Book | Lemmas |
 | --- | --- |
 | `books/bp-receiver-evolving-history-invariants.lisp` | definitions; L3 to L6 (`fn-bprv-prefix-preserves-member`, `fn-bprv-grounded-monotone`, `fn-bprv-contexts-grounded-monotone`, `fn-bprv-history-relational-monotone`); L8 to L12 (`fn-bprv-acceptable-implies-grounded`, `fn-bprv-accept-preserves-history-relation`, `fn-bprv-prepare-preserves-history-relation`, `fn-bprv-commit-preserves-history-relation`, `fn-bprv-apply-record-preserves-evolving-invariant`); L15 to L18 (`fn-bprv-initial-evolving-invariant`, `fn-bprv-successful-replay-has-evolving-invariant`, `fn-bprv-grounded-context-has-history-record`, `fn-bprv-evolving-output-is-history-grounded`); the retention restatements `fn-bprv-evolving-*-preserves-existing-receipt` and `fn-bprv-evolving-replay-rest-preserves-receipt-adu` |
-| `books/bp-receiver-evolving-node-invariants.lisp` | L19 (`fn-bprv-history-record-is-node-committed-when-idle`) with its one-step install lemma `fn-bprv-apply-record-installs-record`, the multi-step `fn-bprv-apply-record-keeps-committed`, the loop lemmas and `fn-bprv-replay-node-commits-history-record` (the plan's `fn-bprv-replay-installs-every-record`); L20 (`fn-bprv-evolving-output-is-node-grounded-when-idle`); `fn-bprv-acceptable-at-ready-extension` |
+| `books/bp-receiver-evolving-node-invariants.lisp` | L19 (`fn-bprv-history-record-is-node-committed-when-idle`) with its one-step install lemma `fn-bprv-apply-record-installs-record`, the multi-step `fn-bprv-apply-record-keeps-committed`, the loop lemmas and `fn-bprv-replay-node-commits-history-record` (the plan's `fn-bprv-replay-loop-installs-every-record`); L20 (`fn-bprv-evolving-output-is-node-grounded-when-idle`); `fn-bprv-acceptable-at-ready-extension` |
 | `books/bp-receiver-evolving-store-invariants.lisp` | L1, L2, L7, L21 (`fn-bprv-snrt-step-extends-history`, `fn-bprv-snrt-run-extends-history`, `fn-bprv-store-step-preserves-evolving-invariant`, `fn-bprv-grounding-record-survives-store-run`); L13, L14 (`fn-bprv-system-step-preserves-invariant`, `fn-bprv-system-run-preserves-invariant`); L22 (`fn-bprv-evolving-invariant-survives-observed-reopen`); the live trace model `fn-bpr-live-step`, `fn-bpr-live-run`, `fn-bpr-live-install` with `fn-bprv-apply-record-agrees-at-ready-extension`, `fn-bpr-live-state-is-replay-of-journal` and `fn-bpr-live-receipt-regenerated-after-restart` |
 
 Deviations:

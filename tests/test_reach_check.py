@@ -55,6 +55,55 @@ class GraphTests(unittest.TestCase):
         self.assertGreater(self.graph.seeds["bridge"], 0)
 
 
+    def test_a_record_recognizer_reaches_its_field_conjuncts(self):
+        """PKT-394: fn-sco-finalize-from checks fn-node-statep, whose
+        fn-defrecord :fields call fn-statep and
+        fn-node-articles-have-archive-bindingsp; fn-statep's own :fields call
+        fn-articles-freshp, whose :exec is fn-fr-freshp.  Without the macro's
+        expansion none of them is a definition and the path is invisible."""
+        self.assertIn("fn-node-statep", self.graph.book_defs)
+        self.assertIn("fn-statep", self.graph.edges["fn-node-statep"])
+        self.assertIn("fn-node-articles-have-archive-bindingsp",
+                      self.graph.edges["fn-node-statep"])
+        for name in ("fn-node-statep", "fn-node-articles-have-archive-bindingsp",
+                     "fn-nab-articles-boundp", "fn-articles-freshp", "fn-fr-freshp"):
+            self.assertIn(name, self.graph.reachable)
+        # The proof-only relation stays unreached: no executed function calls it.
+        self.assertIn("fn-fr-disjointp", self.graph.book_defs)
+        self.assertNotIn("fn-fr-disjointp", self.graph.reachable)
+
+    def test_record_expansion_reads_the_keywords(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            book = Path(tmp) / "r.lisp"
+            book.write_text(
+                '(fn-defrecord fn-q\n'
+                '  :constructor (fn-q-make a b)\n'
+                '  :fields ((fn-q-a natp) ; a comment (unbalanced\n'
+                '           (fn-q-b (fn-q-good-b "(" (fn-q-b x))))\n'
+                '  :extra ((fn-q-whole x)))\n'
+                '(fn-defrecord fn-r :constructor (fn-r-make a) :fields ((fn-r-a t))\n'
+                '  :recognizer fn-r-okp :recognizer-formals (ctx))\n'
+                '(fn-defrecord fn-s :constructor (fn-s-make a) :fields ((fn-s-a t))\n'
+                '  :recognizer nil)\n', encoding="utf-8")
+            saved = reach_check.ROOT
+            reach_check.ROOT = Path(tmp)
+            try:
+                defs = reach_check.record_definitions([book])
+            finally:
+                reach_check.ROOT = saved
+        self.assertEqual(sorted(defs), ["fn-qp", "fn-r-okp"])
+        body = reach_check.Graph.symbols(defs["fn-qp"][1])
+        self.assertTrue({"natp", "fn-q-good-b", "fn-q-whole"} <= body)
+        self.assertIn("ctx", reach_check.Graph.symbols(defs["fn-r-okp"][1]))
+        # accessors and the constructor are plumbing, not definitions here
+        self.assertNotIn("fn-q-a", defs)
+        self.assertNotIn("fn-q-make", defs)
+
+    def test_this_checker_is_not_a_bridge(self):
+        self.assertNotIn(Path(reach_check.__file__).resolve(),
+                         [p.resolve() for p in self.graph.bridges])
+
+
 class RatchetTests(unittest.TestCase):
     """The baseline may shrink and may not grow silently."""
 

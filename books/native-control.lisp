@@ -11,6 +11,7 @@
 (include-book "injection")
 (include-book "native-config")
 (include-book "native-admin-shape")
+(include-book "outcome-class")
 
 (defconst *fn-nctrl-magic* '(70 78 67 84)) ; FNCT
 (defconst *fn-nctrl-version* 1)
@@ -35,9 +36,33 @@
 ; owner's injection decision refused the operator's article `:oversize', past
 ; the carried profile's article field A (`fn-native-control-refusal-status').
 ; It is last, so every earlier status keeps its enumeration octet.
-(defconst *fn-nctrl-statuses*
+; An enumeration codec: a status's octet is its position, so a new word is
+; appended last and every earlier word keeps its octet (the precedent is
+; :article-exceeds-profile-bound).  :conflict (PKT-246, D25) is a changed
+; source under a held Message-ID: a refusal (exit 1) the client names
+; CONFLICT.  *fn-nctrl-statuses-before-conflict* is the enumeration the
+; images before it decode, kept to state what an old client makes of it.
+(defconst *fn-nctrl-statuses-before-conflict*
   '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault
     :article-exceeds-profile-bound))
+; The merge order fixes the octets: :conflict (outcome-algebra, merged
+; first) is octet 8; control-across-peers' seven named refusals follow it.
+(defconst *fn-nctrl-statuses*
+  '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault
+    :article-exceeds-profile-bound :conflict
+    :author-not-enrolled :source-malformed :unknown-group :carrier-refused
+    :control-not-filed :control-malformed :signed-event-not-formed))
+; PKT-147 (control-across-peers): the signed-author ingress's refusals name
+; their reason (books/native-hybrid-control.lisp `fn-nhc-author-refusal'):
+; the signer has no current enrolment, the source's fields do not parse, a
+; named newsgroup is not served here (the injection decision's
+; :unknown-group), the carrier is otherwise refused, the control filing plan
+; refused (its two words), or the signed Store event was not formed.  They
+; follow, so every earlier status keeps its octet.
+(defconst *fn-nctrl-named-refusals*
+  '(:article-exceeds-profile-bound
+    :author-not-enrolled :source-malformed :unknown-group :carrier-refused
+    :control-not-filed :control-malformed :signed-event-not-formed))
 (defconst *fn-nctrl-reply-spec* (list (cons :enum *fn-nctrl-statuses*)))
 
 ; The FNCT payload width: the request spec's width, the widest FNCT payload
@@ -269,9 +294,11 @@
           opened
         (fn-frame-error :control-frame)))))
 
-(defun fn-native-control-request-decode (octets)
+; The request's payload grammar, apart from the frame that carries it: kind
+; 1, and kind 13 (books/native-control-reason.lisp, the request whose reply
+; names its reason) carry the same payload.
+(defun fn-nctrl-request-payload-decode (opened)
   (declare (xargs :guard t))
-  (let ((opened (fn-nctrl-open octets *fn-nctrl-request-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let ((payload (fn-frame-result-payload opened)))
@@ -292,11 +319,15 @@
                 (if (not (and groups
                               (fn-nctrl-requestp msgid groups article)))
                     (list :refused :request)
-                  (list :request msgid groups article))))))))))))
+                  (list :request msgid groups article)))))))))))
 
-(defun fn-native-control-admin-decode (octets)
+(defun fn-native-control-request-decode (octets)
   (declare (xargs :guard t))
-  (let ((opened (fn-nctrl-open octets *fn-nctrl-admin-kind*)))
+  (fn-nctrl-request-payload-decode
+   (fn-nctrl-open octets *fn-nctrl-request-kind*)))
+
+(defun fn-nctrl-admin-payload-decode (opened)
+  (declare (xargs :guard t))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
       (let ((parsed (fn-nctrl-admin-argv-decode
@@ -306,40 +337,56 @@
           (let ((argv (fn-record-parse-value parsed)))
             (if (and (consp argv) (fn-native-admin-argvp argv))
                 (list :admin argv)
-              (list :refused :arguments))))))))
+              (list :refused :arguments)))))))
 
-(defun fn-native-control-reply-encode (status)
+(defun fn-native-control-admin-decode (octets)
   (declare (xargs :guard t))
-  (if (not (member-equal status *fn-nctrl-statuses*))
+  (fn-nctrl-admin-payload-decode (fn-nctrl-open octets *fn-nctrl-admin-kind*)))
+
+(defun fn-nctrl-reply-encode-with (statuses status)
+  (declare (xargs :guard t))
+  (if (not (and (true-listp statuses)
+                (fn-frame-spec-listp (list (cons :enum statuses)))
+                (member-equal status statuses)))
       :bad
-    (let ((values (list status)))
-      (if (not (fn-frame-values-okp *fn-nctrl-reply-spec* values))
+    (let ((spec (list (cons :enum statuses))) (values (list status)))
+      (if (not (fn-frame-values-okp spec values))
           :bad
         (fn-nctrl-seal
          *fn-nctrl-reply-kind*
-         (fn-frame-fields-octets *fn-nctrl-reply-spec* values))))))
+         (fn-frame-fields-octets spec values))))))
 
-(defun fn-native-control-reply-decode (octets)
+(defun fn-nctrl-reply-decode-with (statuses octets)
   (declare (xargs :guard t))
   (let ((opened (fn-nctrl-open octets *fn-nctrl-reply-kind*)))
     (if (not (fn-frame-result-okp opened))
         :bad
       (let ((payload (fn-frame-result-payload opened)))
-        (if (not (fn-cbor-octet-listp payload))
+        (if (not (and (true-listp statuses)
+                      (fn-frame-spec-listp (list (cons :enum statuses)))
+                      (fn-cbor-octet-listp payload)))
             :bad
           (let ((fields (fn-frame-fields-parse
-                         *fn-nctrl-reply-spec* payload)))
+                         (list (cons :enum statuses)) payload)))
             (if (not (fn-frame-parse-okp fields))
                 :bad
               (let ((values (fn-frame-parse-value fields)))
                 (if (consp values) (car values) :bad)))))))))
 
+(defun fn-native-control-reply-encode (status)
+  (declare (xargs :guard t))
+  (fn-nctrl-reply-encode-with *fn-nctrl-statuses* status))
+
+(defun fn-native-control-reply-decode (octets)
+  (declare (xargs :guard t))
+  (fn-nctrl-reply-decode-with *fn-nctrl-statuses* octets))
+
 (defun fn-native-control-status-class (status)
   (declare (xargs :guard t))
   (cond ((member-equal status '(:accepted :duplicate)) :accepted)
-        ((member-equal status '(:refused :clock-unusable :busy
-                                :article-exceeds-profile-bound))
+        ((member-equal status '(:refused :clock-unusable :busy :conflict))
          :refused)
+        ((member-equal status *fn-nctrl-named-refusals*) :refused)
         ((equal status :uncertain) :uncertain)
         (t :fault)))
 
@@ -359,13 +406,80 @@
               :refused))
   :rule-classes nil)
 
+; HST-009 (PRF-143): the control family's outcome class and the fn-wide code.
+(defun fn-native-control-outcome-class (status)
+  (declare (xargs :guard t))
+  (fn-outcome-of-status (fn-native-control-status-class status)))
+
 (defun fn-native-control-status-exit-code (status)
   (declare (xargs :guard t))
-  (case (fn-native-control-status-class status)
-    (:accepted 0)
-    (:refused 1)
-    (:uncertain 3)
-    (otherwise 4)))
+  (fn-outcome-code (fn-native-control-outcome-class status)))
+
+; KEYSTONE (PRF-143, control family).  Every control client exits with
+; fn-native-control-status-exit-code (host/native-control-host.lisp
+; fn-native-control-host-status-exit-code; host/native/hybrid-control.lisp
+; fnn-command-hybrid-author, host/native/control.lisp's post and admin
+; clients): 3 exactly when the status is :uncertain.
+(defthm fn-native-control-exit-is-fenced-iff-uncertain
+  (equal (equal (fn-native-control-status-exit-code status) 3)
+         (equal status :uncertain))
+  :hints (("Goal" :in-theory '(fn-native-control-status-exit-code
+                                fn-native-control-outcome-class
+                                fn-native-control-status-class
+                                fn-outcome-of-status-fences-iff-uncertain
+                                member-equal (:e fn-outcome-code)
+                                (:e fn-outcome-of-status)))))
+
+; The completion status a control submission answers: the owner's control
+; result (books/owner.lisp fn-own-control-outcome-result), except that a
+; refusal whose completion word was D25's :conflict (fn-owner-existing-action:
+; a changed source under a held Message-ID) is named :conflict.  The host
+; calls it at host/native/owner.lisp fnn-owner-complete-bound-submission.
+; The owner's control results the host admits before it asks (host/native/
+; owner.lisp fnn-owner-complete-bound-submission checks this membership).
+(defconst *fn-nctrl-owner-control-results*
+  '(:accepted :duplicate :refused :clock-unusable :uncertain))
+
+(defun fn-native-control-completion-status (result word)
+  (declare (xargs :guard t))
+  (if (and (equal result :refused) (equal word :conflict)) :conflict result))
+
+; KEYSTONE (PKT-246).  The conflict is a refusal: it is answered only for an
+; owner refusal, it classes and exits as the refusal it is, and every other
+; result passes through unchanged.
+(defthm fn-native-control-conflict-is-a-refusal
+  (and (implies (and (member-equal result *fn-nctrl-owner-control-results*)
+                     (equal (fn-native-control-completion-status result word)
+                            :conflict))
+                (and (equal result :refused) (equal word :conflict)))
+       (equal (fn-native-control-outcome-class :conflict) :refused)
+       (equal (fn-native-control-status-exit-code :conflict)
+              (fn-outcome-code :refused))
+       (implies (not (equal word :conflict))
+                (equal (fn-native-control-completion-status result word)
+                       result)))
+  :rule-classes nil)
+
+; KEYSTONE (PKT-246, the format).  Appending :conflict changed no earlier
+; word's octets: each status the images before it knew is sealed exactly as
+; they seal it.  The seal's digest (fn-frame-digest, A-CRYPTO) is a
+; constrained function, so the statement is over the sealed payload and the
+; one seal both sides apply; the round trip of :conflict and what an older
+; decoder makes of it are executed witnesses (tests/acl2/outcome-class-tests):
+; the older decoder answers :bad, which is no status of its enumeration, so
+; its control client falls back to fn-native-control-transport-outcome of the
+; stage it reached; a reply is read only after the request was handed off, so
+; that is :uncertain, exit 3.  The client is upgraded with the node
+; (docs/agents.md); the old image's answer is conservative, never a false
+; acceptance.
+(defthm fn-nctrl-conflict-keeps-every-earlier-octet
+  (implies (member-equal status *fn-nctrl-statuses-before-conflict*)
+           (equal (fn-native-control-reply-encode status)
+                  (fn-nctrl-reply-encode-with
+                   *fn-nctrl-statuses-before-conflict* status)))
+  :hints (("Goal" :in-theory (disable fn-nctrl-seal (:e fn-nctrl-seal)
+                                      (:e fn-nctrl-reply-encode-with)
+                                      (:e fn-native-control-reply-encode)))))
 
 (defun fn-native-control-transport-outcome (stage)
   "Conservative result when no authenticated reply can be decoded.
@@ -378,6 +492,65 @@ distinguish an unobserved refusal from a durable acceptance."
     (:before-submission :refused)
     (:after-submission :uncertain)
     (otherwise :fault)))
+
+;; ---------------------------------------------------------------------------
+; Which path an offline `control' or `peer' verb takes (PKT-344).  The host
+; observes two things before it acts (host/native/operator.lisp
+; fnn-operator-execute-admin): whether a socket node sits at the configured
+; control path (SOCKET-NODE), and the Store's writer lock
+; (`fnn-store-owner-observation': :held :free :absent :unknown).  ACL2
+; decides:
+;   :live     a socket node and a lock not seen free: hand the vector to the
+;             owner (a failed connect is `fn-native-control-transport-outcome'
+;             :before-submission, :refused);
+;   :stale    a socket node and a free or absent lock: no owner holds the
+;             Store, so the node is a crashed owner's; the host removes it
+;             under the control-path lease (as `fnn-control-remove-stale' does
+;             at listen) and the verb runs offline;
+;   :offline  no socket node and a free or absent lock: the verb runs offline;
+;   :held     no socket node and a lock held or unreadable: refused, reason
+;             store-held; the offline executor is not started.
+; The offline executor still takes the exclusive writer lock itself, so a
+; race with a starting owner is refused by the lock, never served twice.
+(defun fn-native-control-liveness (socket-node lock)
+  (declare (xargs :guard t))
+  (let ((freep (and (member-equal lock '(:free :absent)) t)))
+    (cond ((and socket-node freep) :stale)
+          (socket-node :live)
+          (freep :offline)
+          (t :held))))
+
+(defun fn-native-control-liveness-offlinep (decision)
+  "The decisions under which the host starts the offline executor."
+  (declare (xargs :guard t))
+  (and (member-equal decision '(:offline :stale)) t))
+
+; The line the verb prints before its result for a decision, or nil.
+(defun fn-native-control-liveness-note (decision)
+  (declare (xargs :guard t))
+  (cond ((equal decision :stale)
+         "stale control socket removed (no owner holds the store; the node was left by an owner that stopped without closing it)")
+        ((equal decision :held)
+         "refused store-held (a process holds the store lock and no control socket is there to reach it: an owner starting, or an offline command; retry)")
+        (t nil)))
+
+; KEYSTONE (PKT-344).  The subject is `fn-native-control-liveness', which the
+; host calls through `fn-native-control-host-liveness'
+; (host/native/operator.lisp fnn-operator-execute-admin).  A stale socket
+; never refuses an offline verb: a socket node with the lock free or absent
+; is :stale and the verb runs offline.  A held lock never lets an offline
+; verb open the Store: the executor starts exactly when the lock was seen
+; free or absent, whatever the socket node shows.
+(defthm fn-native-control-liveness-decides
+  (and (iff (fn-native-control-liveness-offlinep
+             (fn-native-control-liveness socket-node lock))
+            (member-equal lock '(:free :absent)))
+       (iff (equal (fn-native-control-liveness socket-node lock) :stale)
+            (and socket-node (member-equal lock '(:free :absent))))
+       (member-equal (fn-native-control-liveness socket-node lock)
+                     '(:live :stale :offline :held)))
+  :hints (("Goal" :in-theory (enable fn-native-control-liveness
+                                     fn-native-control-liveness-offlinep))))
 
 (defun fn-native-control-max-active-clients ()
   "The fixed local transport worker ceiling selected by ACL2 policy."

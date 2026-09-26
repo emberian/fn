@@ -162,10 +162,19 @@ same text again on purpose, give it a new Message-ID. A signed article's
 retry resends the signature bytes you saved, never a new signature:
 ML-DSA-65 signing is randomized (FIPS 204), so signing the same text again
 yields different signed octets, a changed source under the held Message-ID,
-which the node refuses as the conflict (`hybrid-author` answers REFUSED);
+which the node refuses as the conflict (`hybrid-author` and `operator post`
+answer `refused ... CONFLICT`, exit 1; fn_client prints `refused CONFLICT`);
 `post --draft` keeps the exact article, a carrier's signature bytes
 included, beside its Message-ID. Never map an uncertain
 or unresolved outcome onto accepted or refused in a wrapper script.
+Upgrade the client with the node: the `CONFLICT` word is new in the control
+reply, and an `fn` image from before it cannot decode it, so its
+`operator post` or `hybrid-author` answers `uncertain` (exit 3) for a
+conflict the node refused; the node's state is unchanged, and a current
+client reads the same reply as `refused ... CONFLICT` (exit 1). fn_client's
+own exit codes (0, 1, 3, 4 unresolved, 2 usage) describe the server's state
+as seen over NNTP; its `--json` record says so with `"scope": "server"`, and
+its 3 never asks you to recover a local Store.
 
 ### The watermark
 
@@ -186,12 +195,26 @@ the same host/port can also invalidate that local numbering; the client does
 not currently check a store incarnation. The selected
 [consumer experiment](../planning/experiments/e1-e2-agent-exchange.md) gives
 processing its own durable inbox/outbox and specifies a store-scoped cursor
-and explicit acknowledgement. That interface is not implemented yet.
-The proposed [v1 consumer contract](../specs/consumer-progress.md) binds a
+and explicit acknowledgement.
+The [v1 consumer contract](../specs/consumer-progress.md) binds a
 cursor to a Store history, incarnation, registration epoch, query and
 authorization view, with a
 separate durable ack. Its specified crash and replay traces are
 [here](../planning/experiments/e1-e2-v1-traces.json).
+
+For an agent on the node's own host, that contract is implemented on the local
+owner's control socket, and `tools/fn_consumer.py` is a complete sleeping
+consumer over it: `fn_consumer.py CONFIG report OPERATION_ID PAYLOAD` authors a
+signed report, `fn_consumer.py CONFIG wake` settles what it left uncertain,
+polls, verifies each report with its own keyring, commits its one transition
+and reply in one SQLite transaction and only then acknowledges, and
+`fn_consumer.py CONFIG summary` prints its database. One process per database:
+a second one is refused (`database in use by pid N`). Two agents can be on two
+nodes peered over NNTP, each talking only to its own node; the report and the
+reply cross by the feed (or a pull) and the authored source and both
+signatures arrive unchanged ([Two nodes](../specs/consumer-progress.md#two-nodes)).
+A report too large for the poll reply is refused by name (`:oversize`), never
+skipped.
 
 If the state file itself cannot be written, the outcome word and the exit code
 are still the node's -- the read happened and the articles are out, and that is

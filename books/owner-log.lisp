@@ -221,6 +221,33 @@ the owner resolved the source address to, or nil for a reader."
       (fn-olog-text "uncertain")
     (fn-olog-code-class-word (fn-olog-transit-code o kind reason word))))
 
+;; PKT-433 (d), PRF-179: a transit refusal of a present carrier relays the
+;; pair (CLASS VERDICT) (books/peer-carriage.lisp fn-pcb-transit-refusal-
+;; detail): the line keeps `detail=CLASS' (the four class words an older
+;; reader finds) and adds `verdict=VERDICT' (fn-pcb-admission-verdict's
+;; name).  Any other detail is the one `detail=' field, as before.
+(defun fn-olog-verdict-detailp (detail)
+  (declare (xargs :guard t))
+  (and (consp detail) (consp (cdr detail)) (null (cddr detail))
+       (symbolp (car detail)) (car detail)
+       (symbolp (cadr detail)) (cadr detail)))
+
+(defun fn-olog-detail-fields (detail)
+  (declare (xargs :guard t))
+  (if (fn-olog-verdict-detailp detail)
+      (append (fn-olog-field "detail" (fn-olog-symbol-text (car detail)))
+              (cons 32 (fn-olog-field "verdict"
+                                      (fn-olog-symbol-text (cadr detail)))))
+    (fn-olog-field "detail" (fn-olog-symbol-text detail))))
+
+; The two words a relayed (CLASS VERDICT) prints are exactly its two names.
+(defthm fn-olog-detail-fields-print-the-class-and-the-verdict
+  (implies (fn-olog-verdict-detailp detail)
+           (equal (fn-olog-detail-fields detail)
+                  (append (fn-olog-field "detail" (fn-olog-symbol-text (car detail)))
+                          (cons 32 (fn-olog-field
+                                    "verdict" (fn-olog-symbol-text (cadr detail))))))))
+
 (defun fn-olog-transit-line (o id kind reason word detail)
   "The line for transit submission ID completing with KIND, REASON and WORD.
 
@@ -239,7 +266,7 @@ for one), or nil."
                           (fn-olog-decimal (fn-olog-transit-code o kind reason word)))
            (fn-olog-field "decision" (fn-olog-symbol-text kind))
            (fn-olog-field "reason" (fn-olog-symbol-text reason))
-           (fn-olog-field "detail" (fn-olog-symbol-text detail))
+           (fn-olog-detail-fields detail)
            (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
 
 ;; ----------------------------------------------------------------------------
@@ -475,6 +502,10 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
    (implies (fn-olog-parts-no-breakp parts)
             (fn-olog-no-breakp (fn-olog-join parts)))))
 
+(local (defthm fn-olog-detail-fields-is-no-break
+  (fn-olog-no-breakp (fn-olog-detail-fields detail))
+  :hints (("Goal" :in-theory (disable fn-olog-symbol-text)))))
+
 (local (in-theory (disable fn-olog-field fn-olog-class-word fn-olog-no-breakp
                            fn-olog-text fn-olog-decimal fn-olog-time)))
 
@@ -500,6 +531,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
   (fn-olog-no-breakp (fn-olog-transit-line o id kind reason word detail))
   :hints (("Goal" :in-theory (e/d (fn-olog-transit-class-word)
                                   (fn-olog-join fn-olog-code-class-word
+                                   fn-olog-detail-fields
                                    fn-olog-transit-code fn-olog-symbol-text)))))
 
 (defthm fn-olog-feed-reply-line-is-one-line

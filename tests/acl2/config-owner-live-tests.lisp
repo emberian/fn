@@ -220,7 +220,7 @@
                   (fn-ctl-visible-state-of (fn-own-view-archive v) '(:not-an-article))
                   (fn-own-view-verdicts v) (fn-own-view-index v) (fn-own-view-group-index v)
                   (fn-own-view-withdrawals v) (fn-own-view-raw v)
-                  (fn-own-view-withdrawn v))
+                  (fn-own-view-withdrawn v) (fn-own-view-keyring v))
                  (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                  (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                  (fn-own-facts o) (fn-own-config o) (fn-own-queue o)

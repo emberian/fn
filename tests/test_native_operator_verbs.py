@@ -58,7 +58,7 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
     """What the source has to say, whether or not an image was built."""
 
     def setUp(self):
-        self.model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
+        self.model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="utf-8")
         self.admin = (ROOT / "books" / "native-admin.lisp").read_text(encoding="ascii")
         self.host = (ROOT / "host" / "native" / "operator.lisp").read_text(encoding="ascii")
         self.owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="ascii")
@@ -204,17 +204,27 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         self.assertFalse(self.store.exists())
 
     def test_help_names_init(self):
+        # The property: one line, the init grammar naming the profile and
+        # every capacity field ACL2 accepts at init (books/native-operator.lisp
+        # fn-nop-help-text), then optionally the [ops] mission clause operator-walk
+        # added (the mission takes GROUP words only).  A dropped or renamed
+        # field, a second line, or a clause of another shape still fails.
         helped = self.operator("help", "init")
         self.assertEqual(helped.returncode, EXIT_OK, helped.stderr.decode())
-        self.assertEqual(helped.stdout.decode(),
-                         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]\n")
+        text = helped.stdout.decode()
+        grammar = ("usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
+        self.assertTrue(text.endswith("\n") and text.count("\n") == 1, text)
+        self.assertTrue(text.startswith(grammar), text)
+        clause = text[len(grammar):-1]
+        self.assertTrue(clause == "" or clause.startswith(
+            "; under [ops] mission: init [GROUP...] only "), clause)
 
 
 class NativeOperatorReservedGroupSourceTests(unittest.TestCase):
     """RFC 5536 s3.1.4 reserved names are ACL2's refusal; the host adds none."""
 
     def test_reserved_names_are_refused_by_acl2_at_init_and_create(self):
-        model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
+        model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="utf-8")
         admin = (ROOT / "books" / "native-admin.lisp").read_text(encoding="ascii")
         initial = (ROOT / "host" / "config-host.lisp").read_text(encoding="ascii")
         self.assertIn("(defun fn-native-admin-group-name-reservedp (text)", admin)

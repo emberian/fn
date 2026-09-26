@@ -51,8 +51,7 @@
        (if (and (eq word :refused)
                 (member detail '(:article :carrier :carrier-shape
                                  :local-enrollment :signature :conflict
-                                 :control-not-filed :control-malformed
-                                 :control-signed)))
+                                 :control-not-filed :control-malformed)))
            detail word)))
     (otherwise (error "unexpected owner core ~s" name))))
 (defun fnn-core (name &rest args)

@@ -191,8 +191,10 @@
 ; The served POST's reply words (fn-pa-served-word) carry the three reasons.
 (assert-event (equal (fn-pa-served-word :refused :control-not-filed)
                      :control-not-filed))
-(assert-event (equal (fn-pa-served-word :refused :control-signed)
-                     :control-signed))
+;; PKT-208: nothing produces :control-signed since c3 (b94f1015: a signed
+;; control article is filed like an unsigned one), so it is no longer a
+;; served reason: the word stays the attempt's own.
+(assert-event (equal (fn-pa-served-word :refused :control-signed) :refused))
 ; D27 (signed-path): a signed article whose composite was not formed or is
 ; past the profile's R carries its word to the poster.
 (assert-event (equal (fn-pa-served-word :refused :signed-record) :signed-record))

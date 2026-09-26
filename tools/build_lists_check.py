@@ -39,6 +39,10 @@ the difference explicit instead:
               books/octets-stobj and books/poster-bytes-buffer for
               host/owner-host.lisp's fn-owner-prepare-buffer and
               build-dtn.lisp did not, so the DTN image failed to build.
+              A host file's own `ld`s count before its uses.  The same rule
+              covers the Python bridges' boots (bridge_findings) and the
+              served crash model's ACL2 session (served_findings; qual-b6759850
+              C18).
 
 Static, no ACL2.  It does not follow the books an omitted host file includes,
 and it cannot see a counterpart name computed at run time.  `included` reads
@@ -82,12 +86,18 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
     "host/native-control-host.lisp": (
         "control socket; used by control/hybrid-control/operator/topic-local/consumer-local; "
         "the DTN image loads only operator.lisp of these",
-        {name: "operator.lisp's `post` executor and live-owner admin arm; the DTN "
+        {**{name: "operator.lisp's `post` executor and live-owner admin arm; the DTN "
                "image names :nntp-service and :control in *fnn-image-omitted-surfaces*, "
                "so the operator refuses `post` (exit 5) and never takes the live arm"
          for name in ("fn-native-control-host-status-class",
                       "fn-native-control-host-status-exit-code",
-                      "fn-native-control-host-refusal-status")}),
+                      "fn-native-control-host-refusal-status",
+                      "fn-native-control-host-reply-detail")},
+         **{name: "operator.lisp's offline control/peer liveness decision (PKT-344); "
+                 "the DTN image names :control in *fnn-image-omitted-surfaces*, so "
+                 "fnn-operator-execute-admin takes :offline without calling it"
+           for name in ("fn-native-control-host-liveness",
+                        "fn-native-control-host-liveness-note")}}),
     "host/peer-invite-host.lisp": (
         "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
         "which build-dtn.lisp does not load: the operator refuses `peer "
@@ -109,6 +119,7 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
        "*fnn-image-omitted-surfaces*, so the operator refuses `run` and `post` "
        "(exit 5) and never takes the live arm"
        for name in ("fnn-control-admin", "fnn-control-live-status", "fnn-control-owner-run-normalized",
+                    "fnn-control-remove-stale-offline",
                     "fnn-control-socket-path-p", "fnn-control-submit",
                     "fnn-feed-service-close", "fnn-feed-service-start",
                     "fnn-pull-service-close", "fnn-pull-service-start", "fnn-pull-service-wake",
@@ -118,6 +129,11 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
         "to the :control surface, which build-dtn.lisp names in "
         "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage exit) "
         "before this call",
+    ("host/native/operator.lisp", "fnn-keys-execute"):
+        "operator.lisp's `keys redecide` executor (host/native/keys.lisp, PRF-166); "
+        "fnn-operator-dispatch-plan maps :keys to the :control surface, which "
+        "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
+        "refuses it (the usage exit) before this call",
     ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
         "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
         "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",
@@ -312,7 +328,7 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
     index = index or BookIndex(root)
     available: set[str] = set()
     out: list[str] = []
-    seen: set[str] = set()
+    seen: dict[str, None] = {}  # host files `ld`ed so far, in load order
 
     def visit(text: str, base: str) -> None:
         for kind, target, rest in ORDER.findall(strip_code_keep_strings(text)):
@@ -324,14 +340,22 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
             path = os.path.normpath(os.path.join(base, target))
             if path in seen:
                 continue
-            seen.add(path)
+            seen[path] = None
             host_text = (root / path).read_text(encoding="utf-8")
             host_dir = os.path.dirname(path)
             index.close(available, [os.path.normpath(os.path.join(host_dir, t)) + ".lisp"
                                     for t, r in INCLUDE.findall(
                                         LOCAL_INCLUDE.sub("", strip_code_keep_strings(host_text)))
                                     if ":dir" not in r.lower()])
+            # The host files this one `ld`s serve it too, and their books:
+            # host/store-node-host.lisp loads host/store-host.lisp (and so
+            # books/store-config) before its own definitions.
+            before = len(seen)
+            visit(host_text, host_dir)
             local = {n.lower() for n in DEF.findall(strip_comments(host_text))}
+            for nested in list(seen)[before:]:
+                local |= {n.lower() for n in DEF.findall(
+                    strip_comments((root / nested).read_text(encoding="utf-8")))}
             defined_so_far = set().union(*(index.defs(b) for b in available if (root / b).exists()))
             for name in sorted(host_uses(host_text) - local - defined_so_far):
                 books = index.owner.get(name)
@@ -339,7 +363,6 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
                     out.append(f"included: {path} uses {name}, defined in "
                                f"{', '.join(sorted(books))}, which {loader} has not "
                                f"included when it loads {path}")
-            visit(host_text, host_dir)
 
     visit(dtn_text, ".")
     return out
@@ -369,8 +392,32 @@ def bridge_findings(root: Path = ROOT, kinds: dict | None = None,
     return out
 
 
+def served_findings(root: Path = ROOT, setup: tuple[str, ...] | None = None,
+                    index: BookIndex | None = None) -> list[str]:
+    """The `included` rule over the served crash model's ACL2 session.
+
+    tests/test_native_served_crash_model.py sends SERVED_BRIDGE_SETUP to a
+    model bridge (tests/campaign/model_images.ModelBridge) that has already
+    included its PRELOAD.  At b6759850 the setup loaded
+    host/store-node-host.lisp without books/octets-stobj and
+    books/store-checkpoint-buffer, which that file's
+    fn-store-sco-publish-plan takes and calls since rep-wave-d-2; every case
+    failed at model setup and the served crash model gave no evidence
+    (qual-b6759850 C18).
+    """
+    sys.path.insert(0, str(ROOT))
+    from tests.campaign.model_images import ModelBridge
+    if setup is None:
+        from tests.test_native_served_crash_model import SERVED_BRIDGE_SETUP
+        setup = SERVED_BRIDGE_SETUP
+    return include_findings(root, "\n".join((ModelBridge.PRELOAD,) + tuple(setup)) + "\n",
+                            index or BookIndex(root),
+                            loader="the served crash model's setup "
+                                   "(tests/test_native_served_crash_model.py)")
+
+
 def main() -> int:
-    found = findings() + bridge_findings()
+    found = findings() + bridge_findings() + served_findings()
     for line in found:
         print(f"build-lists: {line}")
     default = ld_closure(ROOT, (ROOT / DEFAULT_BUILD).read_text())

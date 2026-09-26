@@ -115,6 +115,36 @@ persvati path-identity=persvati.friends.fn.invalid address=192.168.50.120 port=1
 An invitation made with `- -` in place of your address still enrols you at
 the friend's node, and configures nothing there.
 
+**A friend whose keys have changed since genesis.** A document binds its
+principal by the keyring of the node that reads it: when your node already
+holds the friend's principal (enrolled, then succeeded by a key statement or
+`hybrid-enroll-next`), the friend signs the acceptance with their *current*
+keys and your confirm takes it (one record consumes the invitation and
+configures the friend; there is nothing to enrol, and the log says `peer
+confirm: the acceptor's current keys; nothing to enrol`). An acceptance under
+a key set the friend has since replaced is refused `not-current-keys`, one
+from a revoked principal `revoked`. A node that has never enrolled the friend
+still decides by the genesis identity and refuses current keys that are not
+the genesis ones (`genesis`): no succession chain travels with the document.
+
+### An account for the friend on your node
+
+To let the friend read and post on your node as themselves, hand them one
+code (it is printed once; send it over a channel you trust):
+
+```sh
+# ME
+$F operator $C account invite --expires 86400
+```
+
+The friend, over TLS (STARTTLS or the implicit-TLS listener), sends
+`XREDEEM CODE LOGIN` (answered `381 send the password with XREDEEM PASS`),
+then `XREDEEM PASS PASSWORD`, answered `281 account bound; authenticate with
+AUTHINFO on a new connection`; from then on they log in with AUTHINFO USER/PASS
+as LOGIN. `$F operator $C account list` shows the login and its principal.
+Once an account code is redeemed on a release with accounts, releases before it
+cannot open the store; roll back only from the pre-upgrade snapshot.
+
 ## 3. The protected feed both ways
 
 The records `accept` and `confirm` write are clear-transport and inbound
@@ -190,9 +220,45 @@ answers `430 withdrawn` on the other node too, once the cancel arrives
 there: the other node verifies the cancel under the author's enrolled keys
 (the node principals are enrolled by the exchange above).
 
+A friend who rotates keys posts a signed succession to `fn.keys` (the
+node needs a `keys` grant for the friend's principal: `operator CONFIG
+control grant PRINCIPAL-HEX keys fn.keys`). If the statement arrived before
+the grant, it declined; after granting, `operator CONFIG keys redecide
+MESSAGE-ID` enrols the successor without a restart (docs/operator.md, "Re-decide
+a declined key statement").
+
+Each node decides a cancel again under its own grants. The author's own
+cancel withdraws on both nodes; a moderator's cancel of someone else's
+unsigned article withdraws only on the node where you ran `control grant`
+for that moderator over the article's group, so grant it on both nodes if
+you both want it honoured. The order does not matter: a cancel that
+arrives before its article hides the article from its first appearance, a
+restart between the two changes nothing, and a reader already connected
+keeps seeing what it saw until it posts or reconnects
+(`tests/test_native_control_across_peers.py`, SCN-100).
+
+`hybrid-author` names its refusal: a signed article whose `Newsgroups`
+names a group this node does not carry is refused `UNKNOWN-GROUP` (exit
+1); ask your friend to create the group, or post to one you both carry.
+
 ## What is not here
 
 - A stranger's own account on your node: today you make it
   (`principal set-password`) and tell them the password. An invitation-code
   flow (the operator issues a code, the stranger redeems it over the reader
   port) is specified, not built (PKT-401).
+- A view in which every article is withdrawn (two cancels by one author
+  naming each other) answers the plain `430 no article with that
+  message-id` rather than `430 withdrawn`; and the BP receiver's refusal
+  line of an unfiled control article reads `reason=none` (PKT-443).
+- A friend whose server keeps listing an article it cannot produce (it
+  answers `ARTICLE` with 430) no longer stalls your pull: the other articles
+  arrive in the same round, the pull asks from the same instant for a few
+  rounds (`peer pull NAME SECONDS ROUNDS`; 5 when ROUNDS is left out)
+  and then moves on, logging `dropped=<id>` once. What is not here yet: a
+  friend's server that refuses `MODE STREAM` is still stopped per process
+  (a restart spends one `MODE STREAM` again) and is not fed with IHAVE on
+  the same connection; set its peer record's streaming word to `false`
+  (PKT-431).
+- One credential slot per peer serves both directions, so a credentialed
+  pull needs outbound groups too (PKT-431).

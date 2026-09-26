@@ -839,7 +839,7 @@ follows is justified only by this line."
 (defun fnn-owner-transit-refused (detail)
   (setq *fnn-owner-transit-detail*
         (if (and (consp detail) (eq (first detail) :refused)
-                 (keywordp (second detail)))
+                 (or (keywordp (second detail)) (consp (second detail))))
             (second detail)
           detail))
   :refused)
@@ -851,9 +851,12 @@ follows is justified only by this line."
 ;;; when they were observed.  Other ingresses keep ACL2's plan reason.
 (defun fnn-owner-transit-class (plan payload nntp-transit-p ed ml)
   (if (not nntp-transit-p) plan
-    (let ((class (fnn-owner-core 'fn-owner-transit-refusal-class
-                                 (fnn-octet-list payload) t ed ml)))
-      (if (keywordp class) (list :refused class) plan))))
+    ;; PKT-433 (d): ACL2's (CLASS VERDICT); the log prints both.
+    (let ((detail (fnn-owner-core 'fn-owner-transit-refusal-class
+                                  (fnn-octet-list payload) t ed ml)))
+      (if (and (consp detail) (keywordp (first detail)))
+          (list :refused detail)
+        plan))))
 
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence
                                   &optional nntp-transit-p)
@@ -1463,7 +1466,7 @@ owner's recovery fence."
 
 (defun fnn-owner-complete-bound-submission
     (service submit-callback msgid payload groups evidence generation txid
-     &optional commit-callback)
+     &optional commit-callback name-conflict)
   "Complete one ACL2-admitted control submission while the owner mutex is held.
 
 The interface callback is the sole admission event.  Local control and BP
@@ -1473,7 +1476,13 @@ and control-outcome sequence.
 PAYLOAD is :INJECTED for the operator's submission: the octets stored are the
 ones ACL2 injected (books/owner.lisp fn-own-operator-submit), read back from
 the owner after the take, never the payload the host read from the file.
-Every other caller submits exact authored octets and names them."
+Every other caller submits exact authored octets and names them.
+
+NAME-CONFLICT (the control callers: the operator post and hybrid-author)
+answers a refusal whose completion word was D25's :conflict as the control
+status :conflict (books/native-control.lisp
+fn-native-control-completion-status, PKT-246); the BP application keeps its
+own result vocabulary."
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
       (fnn-fault "owner bound submit returned ~a" submitted))
@@ -1530,7 +1539,9 @@ Every other caller submits exact authored octets and names them."
               (fnn-fault "owner bound completion returned ~a" result))
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
-            result))))))
+            (if name-conflict
+                (fnn-core 'fn-native-control-completion-status result word)
+              result)))))))
 
 (defun fnn-owner-complete-bp-transit-submission
     (service submit-callback msgid raw stored groups evidence
@@ -1700,18 +1711,26 @@ refused, not injected under a stale time (D10-a)."
                                ;; (fn-olog-control-refusal-line), NIL otherwise.
                                (fnn-owner-log 'fn-owner-log-line t)
                                submitted))
-                           msgid :injected groups evidence generation txid)))
+                           msgid :injected groups evidence generation txid
+                           nil t)))
                     ;; A refusal carries ACL2's reason to the operator: the
                     ;; injection decision's reason, mapped to the control
                     ;; word by books/native-control.lisp
                     ;; fn-native-control-refusal-status (an article past
                     ;; the profile's A is article-exceeds-profile-bound).
+                    ;; PKT-453 (a): the reason itself travels too, as
+                    ;; (:reason STATUS REASON); a reasoned request's reply
+                    ;; carries ACL2's word for it (books/native-control-
+                    ;; reason.lisp fn-nctrl-reason-word), a plain one the
+                    ;; status alone.
                     (if (eq status :refused)
-                        (fnn-core 'fn-native-control-host-refusal-status
-                                  (fnn-owner-core 'fn-owner-operator-refusal-reason
-                                                  (fnn-octet-list msgid)
-                                                  (mapcar #'fnn-octet-list groups)
-                                                  (fnn-octet-list payload)))
+                        (let ((reason (fnn-owner-core 'fn-owner-operator-refusal-reason
+                                                      (fnn-octet-list msgid)
+                                                      (mapcar #'fnn-octet-list groups)
+                                                      (fnn-octet-list payload))))
+                          (list :reason
+                                (fnn-core 'fn-native-control-host-refusal-status reason)
+                                reason))
                       status))
                 :clock-unusable))
          (when armed (fnn-owner-control-disarm-fault store armed)))))))
@@ -1748,7 +1767,8 @@ EPIPE and the client saw a bare close)."
            (closing (fnn-owner-bool-global 'fn-owner-closep))
            (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))
            (consumed (fnn-global 'fn-owner-consumed))
-           (uncertain nil))
+           (uncertain nil)
+           (redeemed nil))
        (unless (and (integerp consumed) (<= 0 consumed (length incoming)))
          (fnn-fault "owner returned malformed receive-prefix count"))
        (when (fnn-owner-bool-global 'fn-owner-submittedp)
@@ -1758,6 +1778,12 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "writer drained a different connection"))
            (setq reply (concatenate 'fnn-octets reply completion)
                  uncertain stop)))
+       ;; PRF-164: an XREDEEM PASS left this connection holding; the
+       ;; owner plans and publishes, and only then renders 281 or 482.
+       (when (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
+         (setq reply (concatenate 'fnn-octets reply
+                                  (fnn-owner-account-redeem service cid))
+               redeemed t))
        (when uncertain
          (fnn-owner-stop-service-locked service +fnn-exit-uncertain+ socket))
        ;; PRF-161: the step reached this address's failed-login limit
@@ -1768,7 +1794,7 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned a malformed exposure close"))
            (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
                  closing t)))
-       (values reply (or closing uncertain) starttls consumed)))))
+       (values reply (or closing uncertain) starttls consumed redeemed)))))
 
 ;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
 ;;; Before every served step ACL2 answers :proceed or the milliseconds to
@@ -1932,7 +1958,8 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                             (return)))
                          ((zerop (length incoming)) (return))
                          (t (fnn-owner-exposure-wait service cid)
-                            (multiple-value-bind (reply closing starttls consumed)
+                            (multiple-value-bind (reply closing starttls consumed
+                                                  redeemed)
                                 (fnn-owner-handle-chunk service cid incoming socket)
                               (cond
                                 (channel
@@ -1948,8 +1975,13 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                  ;; Stopping the process there turned one
                                  ;; client's refusal into every client's
                                  ;; closed socket (large-article, 2026-09-25).
-                                 (unless (or closing (= consumed (length incoming)))
-                                   (fnn-fault "protected owner read left a TLS suffix")))
+                                 ;; PRF-164: an XREDEEM PASS stops the fold at
+                                 ;; its line; what the client sent after it is
+                                 ;; the next step's input, already decrypted.
+                                 (cond ((or closing (= consumed (length incoming))))
+                                       (redeemed
+                                        (setq retained (subseq incoming consumed)))
+                                       (t (fnn-fault "protected owner read left a TLS suffix"))))
                                 ((fnn-owner-service-tls-context service)
                                  ;; The worker is the sole socket reader.  A
                                  ;; failed/short consume closes this connection;
@@ -2319,6 +2351,15 @@ The thread is a worker, so the stop joins it with the clients."
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)
+                  ;; PKT-283's native witness: the Store is recovered and
+                  ;; its writer lock held, and no control socket listens
+                  ;; yet (the startup hooks start it), so `health' must say
+                  ;; starting.  Held until SIGTERM (or SIGKILL); a developer
+                  ;; image only (fnn-developer-selector-gate).
+                  (when (fnn-developer-selector
+                         "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN")
+                    (fnn-out "OWNER-PAUSED-BEFORE-LISTEN")
+                    (loop until *fnn-sigterm-requested* do (sleep 0.05)))
                   (fnn-owner-run-startup-hooks service)
                   ;; Deterministic native witness for the signal window in
                   ;; which recovery is complete but no listener fd or module

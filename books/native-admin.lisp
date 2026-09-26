@@ -26,6 +26,8 @@
 ; group-name rules, the plan, its deltas and the publication decision.
 (include-book "native-admin-shape")
 (include-book "native-admin-peer")
+; PKT-211: `peer list' renders the carriage budget (its own book, D26).
+(include-book "native-admin-peer-budget")
 ; `bp-route add|remove', the BP route table (books/bp-route.lisp).
 (include-book "bp-route")
 ; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
@@ -172,7 +174,8 @@
   (declare (xargs :guard t
                   :guard-hints
                   (("Goal" :in-theory (disable fn-native-admin-decimalp
-                                               fn-native-admin-decimal-value)))))
+                                               fn-native-admin-decimal-value
+                                               (tau-system))))))
   (if (or (not (fn-native-admin-argvp argv))
           (< *fn-native-admin-max-arguments* (len argv)))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
@@ -279,6 +282,30 @@
                (member-equal (cadr words) '("budget" "carries" "pull")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
+       ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
+       ; query (no digest or verifier is rendered, books/accounts.lisp
+       ; `fn-acct-list-report').  `account invite DIGEST SECONDS' is the
+       ; form the operator's `account invite [--expires SECONDS]' sends
+       ; after ACL2 rendered the code and its digest on the operator's side
+       ; (host/native/operator.lisp): the code itself never reaches this
+       ; argv, the owner or any record.
+       ((and (equal (len words) 2)
+             (equal (car words) "account")
+             (equal (cadr words) "list"))
+        (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+       ((and (equal (len words) 4)
+             (equal (car words) "account")
+             (equal (cadr words) "invite")
+             (fn-cfg-account-digestp (caddr words))
+             (fn-native-admin-decimalp (cadddr words))
+             (posp (fn-native-admin-decimal-value
+                    (coerce (cadddr words) 'list))))
+        (fn-native-admin-result :accepted nil :account-invite (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
+       ((and (consp words) (equal (car words) "account"))
+        (fn-native-admin-result :refused :account nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
        ((and (consp words) (equal (car words) "bp-boundary"))
@@ -348,7 +375,7 @@
 
 ; PRF-099: the deltas over the live peer table.  An :extend-peer plan
 ; (`peer carries', `peer budget') extends the named boundary's rows as the
-; table holds them now (fn-pcb-extend-delta); every other plan is
+; table holds them now (fn-pcb-extend-deltas); every other plan is
 ; fn-native-admin-plan-deltas unchanged.  Host: host/native-admin-host.lisp
 ; fn-native-admin-host-owner-reconfigure (the live owner's table) and
 ; fn-native-admin-host-apply (the replayed store's table).
@@ -356,11 +383,14 @@
   (declare (xargs :guard t))
   (if (and (equal (fn-native-admin-result-status plan) :accepted)
            (equal (fn-native-admin-result-kind plan) :extend-peer))
-      (let ((delta (fn-pcb-extend-delta
-                    (fn-record-octets-string (fn-native-admin-result-name plan))
-                    (fn-native-admin-result-value plan)
-                    peers)))
-        (if delta (list delta) nil))
+      ; PRF-171: the incremental deltas (:add-peer-rows, then
+      ; :remove-peer-rows of a superseded single-valued slot), which apply
+      ; as the whole-group `fn-pcb-extend-delta'
+      ; (`fn-pcb-extend-deltas-apply-as-the-extend-delta').
+      (fn-pcb-extend-deltas
+       (fn-record-octets-string (fn-native-admin-result-name plan))
+       (fn-native-admin-result-value plan)
+       peers)
     (fn-native-admin-plan-deltas plan)))
 
 (defthm fn-native-admin-plan-deltas-over-other-plans-by-definition
@@ -415,7 +445,9 @@
            (fn-record-group-namep
             (fn-record-octets-string (fn-native-admin-result-name (fn-native-admin-plan argv)))))
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  (fn-native-admin-words
+                                  ((tau-system) fn-native-admin-words
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-carries-rows
                                    fn-native-admin-carries-hexp subsetp-equal
                                    fn-native-admin-retention-days
@@ -478,7 +510,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
-                     '(:list-peers :list-control))
+                     '(:list-peers :list-control :list-accounts))
        t))
 
 ;; `control list': one line per grant row of the replayed configuration,
@@ -509,16 +541,17 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
 ;; fn-nls-report) take it, so the host names no kind of its own.
 (defun fn-native-admin-result-report-kind (plan)
   (declare (xargs :guard t))
-  (if (equal (fn-native-admin-result-kind plan) :list-control)
-      :control
-    :peers))
+  (cond ((equal (fn-native-admin-result-kind plan) :list-control) :control)
+        ((equal (fn-native-admin-result-kind plan) :list-accounts) :accounts)
+        (t :peers)))
 
 ;; The report a query plan asks for, over a replayed configuration value.
 (defun fn-native-admin-query-report (plan value)
   (declare (xargs :guard t))
-  (if (equal (fn-native-admin-result-kind plan) :list-control)
-      (fn-native-admin-control-report (fn-cfg-authorities value))
-    (fn-native-admin-peer-report (fn-cfg-peers value))))
+  (cond ((equal (fn-native-admin-result-kind plan) :list-control)
+         (fn-native-admin-control-report (fn-cfg-authorities value)))
+        (t (fn-native-admin-peer-budget-report (fn-cfg-peers value)))))
+
 
 (encapsulate ()
 (local (in-theory (disable fn-bp-eid-shapep)))
@@ -531,7 +564,9 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                   (fn-native-admin-bp-boundary-plan (fn-native-admin-words argv))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  (fn-native-admin-peer-plan fn-native-admin-bp-boundary-plan
+                                  ((tau-system) fn-native-admin-peer-plan fn-native-admin-bp-boundary-plan
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-record-group-namep fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-words))
@@ -838,7 +873,9 @@ recovery observes it under (`fn-nco-observe')."
                   (equal (fn-native-admin-plan-deltas plan) nil))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  (fn-native-admin-group-name-reservedp
+                                  ((tau-system) fn-native-admin-group-name-reservedp
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
                                    fn-native-admin-peer-plan
                                    fn-native-admin-bp-boundary-plan
@@ -864,7 +901,9 @@ recovery observes it under (`fn-nco-observe')."
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan
                                    fn-native-admin-group-name-creatablep)
-                                  (fn-native-admin-group-name-reservedp
+                                  ((tau-system) fn-native-admin-group-name-reservedp
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
                                    fn-native-admin-peer-plan
                                    fn-native-admin-bp-boundary-plan

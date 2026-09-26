@@ -14,19 +14,33 @@
 ; The host (host/native/pull-service.lisp) moves octets between two sockets
 ; and the owner and appends the journal records this book hands it.
 ;
-; The cursor.  `(peer since advances)': PEER the peer's label octets, SINCE
-; the DTN millisecond instant the next NEWNEWS names (nil before the first
-; round asked anything), ADVANCES how many rounds moved it.  It is persisted
+; The cursor.  `(peer since advances pending)': PEER the peer's label
+; octets, SINCE the DTN millisecond instant the next NEWNEWS names (nil
+; before the first round asked anything), ADVANCES how many rounds moved it,
+; PENDING the ids unavailable at the peer with their consecutive counts.  It is persisted
 ; as an FNPL frame (the generic journal grammar of books/frame, magic "FNPL")
 ; in <store>/pull/, one file per peer named by the FNFD filename codec, and
 ; recovered by `fn-pull-replay' over the scanned entries.
 ;
 ; The ack-bounded advance.  A round moves the cursor past itself only when
 ; every Message-ID its NEWNEWS listed drew 235, 435 or 437 from the local
-; node: an ack means what it names (review 2026-09-24).  A 436, a lost
-; connection or a remote that cannot produce a listed article leaves the
-; cursor where the round found it, so the next round asks NEWNEWS from the
-; same instant and the peer lists the article again.
+; node: an ack means what it names (review 2026-09-24).  A 436 or a lost
+; connection leaves the cursor where the round found it, so the next round
+; asks NEWNEWS from the same instant and the peer lists the article again.
+;
+; Unavailable (PRF-165, PKT-213).  A peer that lists a Message-ID and then
+; answers its ARTICLE with 430 (RFC 3977 section 6.2.1.3: no article with
+; that message-id) has ANSWERED: the id is recorded in the round's
+; `unavailable' list, the local transit connection (inside an IHAVE it cannot
+; finish) is reopened, and the round goes on with the ids that remain.  A
+; round that ran to its end with every listed id answered or unavailable is
+; COMPLETE.  A complete round with an id unavailable fewer than BOUND
+; consecutive complete rounds holds the instant (the peer lists the id
+; again) and journals the per-id counts in the cursor's PENDING field; once
+; every unavailable id has reached BOUND the cursor advances, and each id
+; whose count reached BOUND in this round is named in the owner log
+; (`dropped=').  BOUND is the peer's `pull-unavailable-rounds' row, else
+; `*fn-pull-default-unavailable-rounds*'.  A failed round changes no count.
 ;
 ; Durable before the wire.  The only instant a NEWNEWS names is the round's
 ; cursor, fixed by `fn-pull-begin' for the round's whole life; a fresh cursor
@@ -61,6 +75,16 @@
 (defconst *fn-pull-overlap-ms* 1000)
 
 (defconst *fn-pull-terminal-codes* '(235 435 437))
+
+; RFC 3977 section 6.2.1.3: the peer has no article with that message-id.
+(defconst *fn-pull-unavailable-code* 430)
+
+; Local policy (PRF-165), not a data cap: how many consecutive complete
+; rounds an id the peer lists but cannot produce holds the cursor when the
+; peer record has no `pull-unavailable-rounds' row.  It bounds WORK (the
+; re-listing a held instant costs, one interval per round), never what is
+; stored; `peer pull NAME SECONDS ROUNDS' sets the peer's own figure.
+(defconst *fn-pull-default-unavailable-rounds* 5)
 
 ; -----------------------------------------------------------------------------
 ; Small total helpers
@@ -227,95 +251,119 @@
 ; -----------------------------------------------------------------------------
 ; The cursor
 
-(defun fn-pull-cursor (peer since advances)
+(defun fn-pull-cursor (peer since advances pending)
   (declare (xargs :guard t))
-  (list peer since advances))
+  (list peer since advances pending))
 
 (defun fn-pull-cursor-peer (c) (declare (xargs :guard t)) (fn-pull-at 0 c))
 (defun fn-pull-cursor-since (c) (declare (xargs :guard t)) (fn-pull-at 1 c))
 (defun fn-pull-cursor-advances (c) (declare (xargs :guard t)) (fn-pull-at 2 c))
+(defun fn-pull-cursor-pending (c) (declare (xargs :guard t)) (fn-pull-at 3 c))
 
 (defun fn-pull-fresh-cursor (peer)
   (declare (xargs :guard t))
-  (fn-pull-cursor peer nil 0))
+  (fn-pull-cursor peer nil 0 nil))
+
+; PENDING: (id . count) pairs, each id a Message-ID, each count positive.
+(defun fn-pull-pendingp (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (and (consp (car x))
+           (fn-pull-msgidp (car (car x)))
+           (posp (cdr (car x)))
+           (fn-pull-pendingp (cdr x)))
+    (null x)))
 
 ; A journaled cursor: every field present, SINCE an instant.
 (defun fn-pull-cursorp (c)
   (declare (xargs :guard t))
-  (and (true-listp c) (equal (len c) 3)
+  (and (true-listp c) (equal (len c) 4)
        (fn-feed-namep (fn-pull-cursor-peer c))
        (natp (fn-pull-cursor-since c))
-       (natp (fn-pull-cursor-advances c))))
+       (natp (fn-pull-cursor-advances c))
+       (fn-pull-pendingp (fn-pull-cursor-pending c))))
 
 
 ; A cursor the owner may begin a round with: journaled, or fresh (no instant).
 (defun fn-pull-startable-cursorp (c)
   (declare (xargs :guard t))
-  (and (true-listp c) (equal (len c) 3)
+  (and (true-listp c) (equal (len c) 4)
        (fn-feed-namep (fn-pull-cursor-peer c))
        (or (null (fn-pull-cursor-since c)) (natp (fn-pull-cursor-since c)))
-       (natp (fn-pull-cursor-advances c))))
+       (natp (fn-pull-cursor-advances c))
+       (fn-pull-pendingp (fn-pull-cursor-pending c))))
 
 ; -----------------------------------------------------------------------------
 ; The round
 ;
-; (phase peer wildmat since advances started listed todo answers buf current)
-; PEER, WILDMAT, SINCE and ADVANCES are fixed at `fn-pull-begin' and no step
-; changes them: the round asks with one cursor for its whole life.
+; (phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)
+; PEER, WILDMAT, SINCE, ADVANCES, PENDING and BOUND are fixed at
+; `fn-pull-begin' and no step changes them: the round asks with one cursor
+; for its whole life.  UNAVAILABLE collects the listed ids the peer answered
+; 430 (PRF-165).
 
-(defun fn-pull-round (phase peer wildmat since advances started listed todo
-                            answers buf current)
+(defun fn-pull-round (phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)
   (declare (xargs :guard t))
-  (list phase peer wildmat since advances started listed todo answers buf
-        current))
+  (list phase peer wildmat since advances pending bound started listed todo answers unavailable buf current))
 
 (defun fn-pull-r-phase (r) (declare (xargs :guard t)) (fn-pull-at 0 r))
 (defun fn-pull-r-peer (r) (declare (xargs :guard t)) (fn-pull-at 1 r))
 (defun fn-pull-r-wildmat (r) (declare (xargs :guard t)) (fn-pull-at 2 r))
 (defun fn-pull-r-since (r) (declare (xargs :guard t)) (fn-pull-at 3 r))
 (defun fn-pull-r-advances (r) (declare (xargs :guard t)) (fn-pull-at 4 r))
-(defun fn-pull-r-started (r) (declare (xargs :guard t)) (fn-pull-at 5 r))
-(defun fn-pull-r-listed (r) (declare (xargs :guard t)) (fn-pull-at 6 r))
-(defun fn-pull-r-todo (r) (declare (xargs :guard t)) (fn-pull-at 7 r))
-(defun fn-pull-r-answers (r) (declare (xargs :guard t)) (fn-pull-at 8 r))
-(defun fn-pull-r-buf (r) (declare (xargs :guard t)) (fn-pull-at 9 r))
-(defun fn-pull-r-current (r) (declare (xargs :guard t)) (fn-pull-at 10 r))
+(defun fn-pull-r-pending (r) (declare (xargs :guard t)) (fn-pull-at 5 r))
+(defun fn-pull-r-bound (r) (declare (xargs :guard t)) (fn-pull-at 6 r))
+(defun fn-pull-r-started (r) (declare (xargs :guard t)) (fn-pull-at 7 r))
+(defun fn-pull-r-listed (r) (declare (xargs :guard t)) (fn-pull-at 8 r))
+(defun fn-pull-r-todo (r) (declare (xargs :guard t)) (fn-pull-at 9 r))
+(defun fn-pull-r-answers (r) (declare (xargs :guard t)) (fn-pull-at 10 r))
+(defun fn-pull-r-unavailable (r) (declare (xargs :guard t)) (fn-pull-at 11 r))
+(defun fn-pull-r-buf (r) (declare (xargs :guard t)) (fn-pull-at 12 r))
+(defun fn-pull-r-current (r) (declare (xargs :guard t)) (fn-pull-at 13 r))
 
 (defthm fn-pull-r-of-round
-  (and (equal (fn-pull-r-phase (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) phase)
-       (equal (fn-pull-r-peer (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) peer)
-       (equal (fn-pull-r-wildmat (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) wildmat)
-       (equal (fn-pull-r-since (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) since)
-       (equal (fn-pull-r-advances (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) advances)
-       (equal (fn-pull-r-started (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) started)
-       (equal (fn-pull-r-listed (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) listed)
-       (equal (fn-pull-r-todo (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) todo)
-       (equal (fn-pull-r-answers (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) answers)
-       (equal (fn-pull-r-buf (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) buf)
-       (equal (fn-pull-r-current (fn-pull-round phase peer wildmat since advances started listed todo answers buf current)) current)))
+  (and
+       (equal (fn-pull-r-phase (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) phase)
+       (equal (fn-pull-r-peer (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) peer)
+       (equal (fn-pull-r-wildmat (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) wildmat)
+       (equal (fn-pull-r-since (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) since)
+       (equal (fn-pull-r-advances (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) advances)
+       (equal (fn-pull-r-pending (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) pending)
+       (equal (fn-pull-r-bound (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) bound)
+       (equal (fn-pull-r-started (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) started)
+       (equal (fn-pull-r-listed (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) listed)
+       (equal (fn-pull-r-todo (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) todo)
+       (equal (fn-pull-r-answers (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) answers)
+       (equal (fn-pull-r-unavailable (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) unavailable)
+       (equal (fn-pull-r-buf (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) buf)
+       (equal (fn-pull-r-current (fn-pull-round phase peer wildmat since advances pending bound started listed todo answers unavailable buf current)) current)))
 
 ; A round is read through its accessors and built by `fn-pull-round'; the
 ; list underneath stays closed in every proof below.
-(in-theory (disable fn-pull-round fn-pull-r-phase fn-pull-r-peer fn-pull-r-wildmat fn-pull-r-since fn-pull-r-advances fn-pull-r-started fn-pull-r-listed fn-pull-r-todo fn-pull-r-answers fn-pull-r-buf fn-pull-r-current))
+(in-theory (disable fn-pull-round fn-pull-r-phase fn-pull-r-peer fn-pull-r-wildmat fn-pull-r-since fn-pull-r-advances fn-pull-r-pending fn-pull-r-bound fn-pull-r-started fn-pull-r-listed fn-pull-r-todo fn-pull-r-answers fn-pull-r-unavailable fn-pull-r-buf fn-pull-r-current))
 
 ; The cursor a round asks with: what the journal holds while it runs.
 (defun fn-pull-round-cursor (r)
   (declare (xargs :guard t))
-  (fn-pull-cursor (fn-pull-r-peer r) (fn-pull-r-since r) (fn-pull-r-advances r)))
+  (fn-pull-cursor (fn-pull-r-peer r) (fn-pull-r-since r) (fn-pull-r-advances r)
+                  (fn-pull-r-pending r)))
 
-; Field updates.  Each names the fields it changes; the cursor's three and
-; the wildmat are not among the keywords.
+; Field updates.  Each names the fields it changes; the cursor's four, the
+; bound and the wildmat are not among the keywords.
 (defmacro fn-pull-with (r &key (phase 'nil phase-p)
                           (started 'nil started-p) (listed 'nil listed-p)
                           (todo 'nil todo-p) (answers 'nil answers-p)
+                          (unavailable 'nil unavailable-p)
                           (buf 'nil buf-p) (current 'nil current-p))
   `(fn-pull-round ,(if phase-p phase `(fn-pull-r-phase ,r))
                   (fn-pull-r-peer ,r) (fn-pull-r-wildmat ,r)
                   (fn-pull-r-since ,r) (fn-pull-r-advances ,r)
+                  (fn-pull-r-pending ,r) (fn-pull-r-bound ,r)
                   ,(if started-p started `(fn-pull-r-started ,r))
                   ,(if listed-p listed `(fn-pull-r-listed ,r))
                   ,(if todo-p todo `(fn-pull-r-todo ,r))
                   ,(if answers-p answers `(fn-pull-r-answers ,r))
+                  ,(if unavailable-p unavailable `(fn-pull-r-unavailable ,r))
                   ,(if buf-p buf `(fn-pull-r-buf ,r))
                   ,(if current-p current `(fn-pull-r-current ,r))))
 
@@ -323,18 +371,20 @@
 ; `fnn-pull-begin').  NOW is the owner's wall reading in DTN milliseconds.
 ; A fresh cursor takes its first instant here, one window before NOW, and
 ; `fn-pull-begin-effects' journals it before the round touches the wire.
+; BOUND is the plan's (`fn-pull-plan-bound').
 (defun fn-pull-begin-since (cursor now)
   (declare (xargs :guard t))
   (if (natp (fn-pull-cursor-since cursor))
       (fn-pull-cursor-since cursor)
     (fn-pull-back now *fn-pull-first-window-ms*)))
 
-(defun fn-pull-begin (cursor wildmat now)
+(defun fn-pull-begin (cursor wildmat now bound)
   (declare (xargs :guard t))
   (fn-pull-round :greeting (fn-pull-cursor-peer cursor) wildmat
                  (fn-pull-begin-since cursor now)
                  (nfix (fn-pull-cursor-advances cursor))
-                 nil nil nil nil nil nil))
+                 (fn-pull-cursor-pending cursor) bound
+                 nil nil nil nil nil nil nil))
 
 ; The round a session enters once its preamble (the feed-connection
 ; machine's greeting, STARTTLS, TLS and AUTHINFO) has reached :ready
@@ -342,28 +392,33 @@
 ; `fn-pull-begin' in the phase alone: the DATE is outstanding.  Its cursor
 ; fields are `fn-pull-begin''s (`fn-pull-begin-ready-cursor-fields'), so
 ; the cut theorem below transfers to it unchanged.
-(defun fn-pull-begin-ready (cursor wildmat now)
+(defun fn-pull-begin-ready (cursor wildmat now bound)
   (declare (xargs :guard t))
-  (fn-pull-with (fn-pull-begin cursor wildmat now) :phase :date))
+  (fn-pull-with (fn-pull-begin cursor wildmat now bound) :phase :date))
 
 (defthm fn-pull-begin-ready-cursor-fields
-  (and (equal (fn-pull-r-phase (fn-pull-begin-ready cursor wildmat now)) :date)
-       (equal (fn-pull-r-peer (fn-pull-begin-ready cursor wildmat now))
-              (fn-pull-r-peer (fn-pull-begin cursor wildmat now)))
-       (equal (fn-pull-r-wildmat (fn-pull-begin-ready cursor wildmat now))
-              (fn-pull-r-wildmat (fn-pull-begin cursor wildmat now)))
-       (equal (fn-pull-r-since (fn-pull-begin-ready cursor wildmat now))
-              (fn-pull-r-since (fn-pull-begin cursor wildmat now)))
-       (equal (fn-pull-r-advances (fn-pull-begin-ready cursor wildmat now))
-              (fn-pull-r-advances (fn-pull-begin cursor wildmat now)))
-       (equal (fn-pull-round-cursor (fn-pull-begin-ready cursor wildmat now))
-              (fn-pull-round-cursor (fn-pull-begin cursor wildmat now)))))
+  (and (equal (fn-pull-r-phase (fn-pull-begin-ready cursor wildmat now bound)) :date)
+       (equal (fn-pull-r-peer (fn-pull-begin-ready cursor wildmat now bound))
+              (fn-pull-r-peer (fn-pull-begin cursor wildmat now bound)))
+       (equal (fn-pull-r-wildmat (fn-pull-begin-ready cursor wildmat now bound))
+              (fn-pull-r-wildmat (fn-pull-begin cursor wildmat now bound)))
+       (equal (fn-pull-r-since (fn-pull-begin-ready cursor wildmat now bound))
+              (fn-pull-r-since (fn-pull-begin cursor wildmat now bound)))
+       (equal (fn-pull-r-advances (fn-pull-begin-ready cursor wildmat now bound))
+              (fn-pull-r-advances (fn-pull-begin cursor wildmat now bound)))
+       (equal (fn-pull-r-bound (fn-pull-begin-ready cursor wildmat now bound))
+              bound)
+       (equal (fn-pull-r-pending (fn-pull-begin-ready cursor wildmat now bound))
+              (fn-pull-r-pending (fn-pull-begin cursor wildmat now bound)))
+       (equal (fn-pull-round-cursor (fn-pull-begin-ready cursor wildmat now bound))
+              (fn-pull-round-cursor (fn-pull-begin cursor wildmat now bound)))))
 
 ; Effects, in the order the host performs them:
 ;   (:journal . cursor)   append the FNPL record, durably, before anything after it
 ;   (:remote . octets)    write to the peer
 ;   (:open-local)         open the logical transit connection of this peer
 ;   (:local . octets)     hand to that connection (fnn-owner-handle-chunk)
+;   (:reopen-local)       close that connection and open a fresh one (PRF-165)
 ;   (:close)              the round is over: close both sides
 (defun fn-pull-begin-effects (cursor now)
   (declare (xargs :guard t))
@@ -372,7 +427,8 @@
     (list (cons :journal
                 (fn-pull-cursor (fn-pull-cursor-peer cursor)
                                 (fn-pull-begin-since cursor now)
-                                (nfix (fn-pull-cursor-advances cursor)))))))
+                                (nfix (fn-pull-cursor-advances cursor))
+                                (fn-pull-cursor-pending cursor))))))
 
 (defun fn-pull-fail (r)
   (declare (xargs :guard t))
@@ -461,9 +517,20 @@
                   (list (cons :local (fn-pull-r-buf r)))
                 nil)
               nil)
-        ; The local node is inside an IHAVE it cannot finish: the round ends
-        ; with this article unanswered.
-        (mv-let (f e) (fn-pull-fail r) (mv f e nil))))
+        (if (and (equal code *fn-pull-unavailable-code*)
+                 (not (consp (fn-pull-r-buf r))))
+            ; PRF-165: the peer has no such article.  That is its answer for
+            ; the id; the local node is inside an IHAVE it cannot finish, so
+            ; its transit connection is reopened and the round goes on from
+            ; the fresh greeting with the ids that remain.
+            (mv (fn-pull-with r :phase :local-greeting :buf nil
+                              :unavailable
+                              (cons (fn-pull-r-current r)
+                                    (fn-pull-list (fn-pull-r-unavailable r))))
+                (list (list :reopen-local))
+                nil)
+          ; Any other reply: the round ends with this article unanswered.
+          (mv-let (f e) (fn-pull-fail r) (mv f e nil)))))
      (t (mv-let (f e) (fn-pull-fail r) (mv f e nil))))))
 
 (defun fn-pull-line-phasep (phase)
@@ -573,39 +640,184 @@
            (fn-pull-all-answeredp (cdr listed) answers))
     t))
 
-(defun fn-pull-advancesp (r)
+;; PRF-165: the unavailable class.
+
+; The round's bound as a positive count.
+(defun fn-pull-bound-of (bound)
+  (declare (xargs :guard t))
+  (if (posp bound) bound 1))
+
+; The consecutive count PENDING holds for ID (0 when absent).
+(defun fn-pull-count-of (id pending)
+  (declare (xargs :guard t))
+  (let ((hit (assoc-equal id (if (alistp pending) pending nil))))
+    (if (and (consp hit) (natp (cdr hit))) (cdr hit) 0)))
+
+; Every listed id drew a terminal answer or the peer's 430.
+(defun fn-pull-all-answered-or-unavailablep (listed answers unavailable)
+  (declare (xargs :guard t))
+  (if (consp listed)
+      (and (or (fn-pull-terminal-codep (fn-pull-answer-of (car listed) answers))
+               (and (member-equal (car listed) (fn-pull-list unavailable)) t))
+           (fn-pull-all-answered-or-unavailablep (cdr listed) answers unavailable))
+    t))
+
+; The round ran to its end and every id it listed was answered.
+(defun fn-pull-completep (r)
   (declare (xargs :guard t))
   (and (equal (fn-pull-r-phase r) :done)
        (consp (fn-pull-r-listed r))
        (natp (fn-pull-r-started r))
-       (fn-pull-all-answeredp (fn-pull-r-listed r) (fn-pull-r-answers r))))
+       (fn-pull-all-answered-or-unavailablep (fn-pull-r-listed r)
+                                             (fn-pull-r-answers r)
+                                             (fn-pull-r-unavailable r))))
+
+; The counts after a complete round: each id unavailable in it, one more
+; than the round's cursor held; an id the round did not find unavailable
+; starts again from nothing.
+(defun fn-pull-next-pending (ids pending)
+  (declare (xargs :guard t))
+  (if (consp ids)
+      (if (fn-pull-msgidp (car ids))
+          (cons (cons (car ids) (+ 1 (fn-pull-count-of (car ids) pending)))
+                (fn-pull-next-pending (cdr ids) pending))
+        (fn-pull-next-pending (cdr ids) pending))
+    nil))
+
+; Some unavailable id has not yet been unavailable BOUND consecutive rounds.
+(defun fn-pull-holdingp (ids pending bound)
+  (declare (xargs :guard t))
+  (if (consp ids)
+      (or (< (+ 1 (fn-pull-count-of (car ids) pending)) (fn-pull-bound-of bound))
+          (fn-pull-holdingp (cdr ids) pending bound))
+    nil))
+
+(defun fn-pull-advancesp (r)
+  (declare (xargs :guard t))
+  (and (fn-pull-completep r)
+       (not (fn-pull-holdingp (fn-pull-list (fn-pull-r-unavailable r))
+                              (fn-pull-r-pending r) (fn-pull-r-bound r)))))
 
 ; KEYSTONE SUBJECT.  The cursor after a round (host/native/pull-service.lisp
-; `fnn-pull-finish').
+; `fnn-pull-round' through `fn-pull-session-close').  An advancing round
+; moves the instant and clears PENDING; a complete round an unavailable id
+; still holds keeps the instant and journals the new counts; any other round
+; leaves the cursor as it began.
 (defun fn-pull-close (r)
   (declare (xargs :guard t))
-  (if (fn-pull-advancesp r)
-      (fn-pull-cursor (fn-pull-r-peer r)
-                      (fn-pull-back (fn-pull-r-started r) *fn-pull-overlap-ms*)
-                      (+ 1 (nfix (fn-pull-r-advances r))))
-    (fn-pull-round-cursor r)))
+  (cond ((fn-pull-advancesp r)
+         (fn-pull-cursor (fn-pull-r-peer r)
+                         (fn-pull-back (fn-pull-r-started r) *fn-pull-overlap-ms*)
+                         (+ 1 (nfix (fn-pull-r-advances r)))
+                         nil))
+        ((fn-pull-completep r)
+         (fn-pull-cursor (fn-pull-r-peer r) (fn-pull-r-since r)
+                         (fn-pull-r-advances r)
+                         (fn-pull-next-pending (fn-pull-list (fn-pull-r-unavailable r))
+                                               (fn-pull-r-pending r))))
+        (t (fn-pull-round-cursor r))))
 
-; The journal effects of a close: one record exactly when the cursor moved.
+; The journal effects of a close: one record exactly when the round was
+; complete (the cursor moved, or its counts changed).
 (defun fn-pull-close-effects (r)
   (declare (xargs :guard t))
-  (if (fn-pull-advancesp r) (list (cons :journal (fn-pull-close r))) nil))
+  (if (fn-pull-completep r) (list (cons :journal (fn-pull-close r))) nil))
 
-; KEYSTONE (the ack-bounded advance).  If closing a round moves the cursor,
-; the round ran to its end and EVERY Message-ID its NEWNEWS listed drew 235,
-; 435 or 437 from the local node; and the new instant is the peer's DATE at
-; the round's start less the overlap, so nothing the peer received after that
-; DATE is behind it.
+; The ids a complete round drops: unavailable in it, their count reaching
+; BOUND exactly now.  The owner log names each (`fn-pull-log-line').
+(defun fn-pull-dropped-of (ids pending bound)
+  (declare (xargs :guard t))
+  (if (consp ids)
+      (if (equal (+ 1 (fn-pull-count-of (car ids) pending)) (fn-pull-bound-of bound))
+          (cons (car ids) (fn-pull-dropped-of (cdr ids) pending bound))
+        (fn-pull-dropped-of (cdr ids) pending bound))
+    nil))
+
+(defun fn-pull-dropped (r)
+  (declare (xargs :guard t))
+  (if (fn-pull-completep r)
+      (fn-pull-dropped-of (fn-pull-list (fn-pull-r-unavailable r)) (fn-pull-r-pending r)
+                          (fn-pull-r-bound r))
+    nil))
+
+; Each listed id drew a terminal answer, or was unavailable in this round
+; with its consecutive count reaching the bound.
+(defun fn-pull-all-answered-or-droppedp (listed answers unavailable pending bound)
+  (declare (xargs :guard t))
+  (if (consp listed)
+      (and (or (fn-pull-terminal-codep (fn-pull-answer-of (car listed) answers))
+               (and (member-equal (car listed) (fn-pull-list unavailable))
+                    (<= (fn-pull-bound-of bound)
+                        (+ 1 (fn-pull-count-of (car listed) pending)))))
+           (fn-pull-all-answered-or-droppedp (cdr listed) answers unavailable
+                                             pending bound))
+    t))
+
+(defthm fn-pull-holdingp-member
+  (implies (and (not (fn-pull-holdingp ids pending bound))
+                (member-equal id ids))
+           (<= (fn-pull-bound-of bound) (+ 1 (fn-pull-count-of id pending))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-pull-bound-of fn-pull-count-of))))
+
+(defthm fn-pull-answered-or-unavailable-and-not-holding
+  (implies (and (fn-pull-all-answered-or-unavailablep listed answers unavailable)
+                (not (fn-pull-holdingp (fn-pull-list unavailable) pending bound)))
+           (fn-pull-all-answered-or-droppedp listed answers unavailable pending bound))
+  :hints (("Goal" :in-theory (disable fn-pull-bound-of fn-pull-count-of
+                                      fn-pull-terminal-codep fn-pull-answer-of))))
+
+(defthm fn-pull-list-of-true-list
+  (implies (true-listp x) (equal (fn-pull-list x) x)))
+
+; KEYSTONE (the ack-bounded advance, PRF-100 restated for PRF-165).  If
+; closing a round moves the cursor, the round ran to its end and EVERY
+; Message-ID its NEWNEWS listed drew 235, 435 or 437 from the local node,
+; or was answered 430 by the peer in this round with its consecutive count
+; reaching the bound; the new instant is the peer's DATE at the round's
+; start less the overlap, and no count survives it.
 (defthm fn-pull-close-advances-only-past-a-fully-answered-round
-  (implies (not (equal (fn-pull-close r) (fn-pull-round-cursor r)))
+  (implies (not (equal (fn-pull-cursor-advances (fn-pull-close r))
+                       (fn-pull-r-advances r)))
+           (and (equal (fn-pull-r-phase r) :done)
+                (fn-pull-all-answered-or-droppedp
+                 (fn-pull-r-listed r) (fn-pull-r-answers r)
+                 (fn-pull-r-unavailable r) (fn-pull-r-pending r)
+                 (fn-pull-r-bound r))
+                (equal (fn-pull-cursor-since (fn-pull-close r))
+                       (fn-pull-back (fn-pull-r-started r) *fn-pull-overlap-ms*))
+                (equal (fn-pull-cursor-pending (fn-pull-close r)) nil)))
+  :hints (("Goal" :in-theory (e/d ()
+                                  (fn-pull-all-answered-or-droppedp
+                                   fn-pull-all-answered-or-unavailablep
+                                   fn-pull-holdingp fn-pull-next-pending
+                                   fn-pull-list))
+           :use ((:instance fn-pull-answered-or-unavailable-and-not-holding
+                            (listed (fn-pull-r-listed r))
+                            (answers (fn-pull-r-answers r))
+                            (unavailable (fn-pull-r-unavailable r))
+                            (pending (fn-pull-r-pending r))
+                            (bound (fn-pull-r-bound r)))))))
+
+(defthm fn-pull-all-answered-or-unavailablep-of-no-unavailable
+  (implies (not (consp unavailable))
+           (equal (fn-pull-all-answered-or-unavailablep listed answers unavailable)
+                  (fn-pull-all-answeredp listed answers)))
+  :hints (("Goal" :in-theory (e/d (fn-pull-list)
+                                  (fn-pull-terminal-codep fn-pull-answer-of)))))
+
+; KEYSTONE (PRF-100's conclusion, verbatim, for a round the peer served in
+; full).  A round in which the peer produced every listed article moves the
+; cursor only past a round every listed id of which drew 235, 435 or 437.
+(defthm fn-pull-close-advances-past-all-answered-when-nothing-is-unavailable
+  (implies (and (not (consp (fn-pull-r-unavailable r)))
+                (not (equal (fn-pull-close r) (fn-pull-round-cursor r))))
            (and (equal (fn-pull-r-phase r) :done)
                 (fn-pull-all-answeredp (fn-pull-r-listed r) (fn-pull-r-answers r))
                 (equal (fn-pull-cursor-since (fn-pull-close r))
-                       (fn-pull-back (fn-pull-r-started r) *fn-pull-overlap-ms*)))))
+                       (fn-pull-back (fn-pull-r-started r) *fn-pull-overlap-ms*))))
+  :hints (("Goal" :in-theory (disable fn-pull-all-answeredp
+                                      fn-pull-all-answered-or-unavailablep))))
 
 (defthm fn-pull-all-answeredp-member
   (implies (and (fn-pull-all-answeredp listed answers)
@@ -613,14 +825,103 @@
            (fn-pull-terminal-codep (fn-pull-answer-of id answers)))
   :hints (("Goal" :in-theory (disable fn-pull-terminal-codep fn-pull-answer-of))))
 
-; The per-id reading: a listed id without a terminal answer holds the cursor.
+(defthm fn-pull-all-answered-or-droppedp-member
+  (implies (and (fn-pull-all-answered-or-droppedp listed answers unavailable
+                                                  pending bound)
+                (member-equal id listed))
+           (or (fn-pull-terminal-codep (fn-pull-answer-of id answers))
+               (and (member-equal id (fn-pull-list unavailable))
+                    (<= (fn-pull-bound-of bound)
+                        (+ 1 (fn-pull-count-of id pending))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-pull-terminal-codep fn-pull-answer-of
+                                      fn-pull-bound-of fn-pull-count-of))))
+
+; The per-id reading: a listed id with no terminal answer that was not
+; dropped in this round holds the cursor's instant and advance count.
 (defthm fn-pull-unanswered-id-holds-the-cursor
   (implies (and (member-equal id (fn-pull-r-listed r))
                 (not (fn-pull-terminal-codep
-                      (fn-pull-answer-of id (fn-pull-r-answers r)))))
-           (equal (fn-pull-close r) (fn-pull-round-cursor r)))
+                      (fn-pull-answer-of id (fn-pull-r-answers r))))
+                (not (and (member-equal id (fn-pull-list (fn-pull-r-unavailable r)))
+                          (<= (fn-pull-bound-of (fn-pull-r-bound r))
+                              (+ 1 (fn-pull-count-of id (fn-pull-r-pending r)))))))
+           (and (equal (fn-pull-cursor-since (fn-pull-close r)) (fn-pull-r-since r))
+                (equal (fn-pull-cursor-advances (fn-pull-close r))
+                       (fn-pull-r-advances r))))
   :hints (("Goal" :in-theory (disable fn-pull-terminal-codep fn-pull-answer-of
-                                      fn-pull-all-answeredp))))
+                                      fn-pull-all-answered-or-droppedp
+                                      fn-pull-bound-of fn-pull-count-of
+                                      fn-pull-close)
+           :use ((:instance fn-pull-close-advances-only-past-a-fully-answered-round)
+                 (:instance fn-pull-all-answered-or-droppedp-member
+                            (listed (fn-pull-r-listed r))
+                            (answers (fn-pull-r-answers r))
+                            (unavailable (fn-pull-r-unavailable r))
+                            (pending (fn-pull-r-pending r))
+                            (bound (fn-pull-r-bound r))))
+           :expand ((fn-pull-close r)))))
+
+(defthm fn-pull-count-of-next-pending
+  (implies (and (member-equal id ids) (fn-pull-msgidp id))
+           (equal (fn-pull-count-of id (fn-pull-next-pending ids pending))
+                  (+ 1 (fn-pull-count-of id pending))))
+  :hints (("Goal" :in-theory (e/d () (fn-pull-msgidp)))))
+
+(defthm fn-pull-count-of-next-pending-absent
+  (implies (not (member-equal id ids))
+           (equal (fn-pull-count-of id (fn-pull-next-pending ids pending)) 0))
+  :hints (("Goal" :in-theory (e/d () (fn-pull-msgidp)))))
+
+(defthm fn-pull-holdingp-witness
+  (implies (and (member-equal id ids)
+                (< (+ 1 (fn-pull-count-of id pending)) (fn-pull-bound-of bound)))
+           (fn-pull-holdingp ids pending bound))
+  :hints (("Goal" :in-theory (disable fn-pull-bound-of fn-pull-count-of))))
+
+; KEYSTONE (retried while listed).  An id the peer answered 430 in a round,
+; unavailable fewer than BOUND consecutive complete rounds counting this
+; one, does not let the instant pass it: the next NEWNEWS names the same
+; instant, so the peer lists the id again; and if the round was complete
+; its count is exactly one more than the round's cursor held.
+(defthm fn-pull-unavailable-id-is-retried-below-the-bound
+  (implies (and (member-equal id (fn-pull-list (fn-pull-r-unavailable r)))
+                (fn-pull-msgidp id)
+                (< (+ 1 (fn-pull-count-of id (fn-pull-r-pending r)))
+                   (fn-pull-bound-of (fn-pull-r-bound r))))
+           (and (equal (fn-pull-cursor-since (fn-pull-close r)) (fn-pull-r-since r))
+                (equal (fn-pull-cursor-advances (fn-pull-close r))
+                       (fn-pull-r-advances r))
+                (implies (fn-pull-completep r)
+                         (equal (fn-pull-count-of
+                                 id (fn-pull-cursor-pending (fn-pull-close r)))
+                                (+ 1 (fn-pull-count-of id (fn-pull-r-pending r)))))))
+  :hints (("Goal" :in-theory (e/d ()
+                                  (fn-pull-completep fn-pull-count-of fn-pull-list
+                                   fn-pull-bound-of fn-pull-msgidp
+                                   fn-pull-next-pending))
+           :use ((:instance fn-pull-holdingp-witness
+                            (ids (fn-pull-list (fn-pull-r-unavailable r)))
+                            (pending (fn-pull-r-pending r))
+                            (bound (fn-pull-r-bound r)))))))
+
+; KEYSTONE (dropped exactly at the bound).  A complete round in which every
+; unavailable id has reached BOUND consecutive rounds moves the cursor:
+; the peer's unproducible ids no longer hold it.  Together with
+; `fn-pull-unavailable-id-is-retried-below-the-bound' (the count is the
+; number of consecutive complete rounds, and below BOUND the instant holds),
+; an id is dropped at the round its count reaches BOUND and at no earlier one.
+(defthm fn-pull-complete-round-past-the-bound-advances
+  (implies (and (fn-pull-completep r)
+                (not (fn-pull-holdingp (fn-pull-list (fn-pull-r-unavailable r))
+                                       (fn-pull-r-pending r) (fn-pull-r-bound r))))
+           (equal (fn-pull-close r)
+                  (fn-pull-cursor (fn-pull-r-peer r)
+                                  (fn-pull-back (fn-pull-r-started r)
+                                                *fn-pull-overlap-ms*)
+                                  (+ 1 (nfix (fn-pull-r-advances r)))
+                                  nil)))
+  :hints (("Goal" :in-theory (disable fn-pull-completep fn-pull-holdingp))))
 
 ; -----------------------------------------------------------------------------
 ; A step asks with one cursor and journals nothing.
@@ -691,6 +992,8 @@
   (and (equal (fn-pull-r-peer (car (fn-pull-next r))) (fn-pull-r-peer r))
        (equal (fn-pull-r-since (car (fn-pull-next r))) (fn-pull-r-since r))
        (equal (fn-pull-r-advances (car (fn-pull-next r))) (fn-pull-r-advances r))
+       (equal (fn-pull-r-pending (car (fn-pull-next r))) (fn-pull-r-pending r))
+       (equal (fn-pull-r-bound (car (fn-pull-next r))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-next r))) (fn-pull-r-wildmat r))
        (equal (fn-pull-r-answers (car (fn-pull-next r))) (fn-pull-r-answers r))
        (equal (fn-pull-r-current (car (fn-pull-next r)))
@@ -714,6 +1017,8 @@
   (and (equal (fn-pull-r-peer (car (fn-pull-on-line r line))) (fn-pull-r-peer r))
        (equal (fn-pull-r-since (car (fn-pull-on-line r line))) (fn-pull-r-since r))
        (equal (fn-pull-r-advances (car (fn-pull-on-line r line))) (fn-pull-r-advances r))
+       (equal (fn-pull-r-pending (car (fn-pull-on-line r line))) (fn-pull-r-pending r))
+       (equal (fn-pull-r-bound (car (fn-pull-on-line r line))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-on-line r line))) (fn-pull-r-wildmat r))
        (equal (fn-pull-r-answers (car (fn-pull-on-line r line)))
               (fn-pull-r-answers r))
@@ -726,21 +1031,63 @@
             (fn-pull-remote-effects (mv-nth 1 (fn-pull-on-line r line))) w since))
   :hints (("Goal" :in-theory (enable fn-pull-on-line))))
 
+; The fields no transition changes, as one term, so the drain's induction
+; carries one equality instead of six.
+(defun fn-pull-fixed (r)
+  (declare (xargs :guard t))
+  (list (fn-pull-r-peer r) (fn-pull-r-wildmat r) (fn-pull-r-since r)
+        (fn-pull-r-advances r) (fn-pull-r-pending r) (fn-pull-r-bound r)))
+
+(defthm fn-pull-fixed-of-round
+  (equal (fn-pull-fixed (fn-pull-round phase peer wildmat since advances pending bound
+                                       started listed todo answers unavailable buf
+                                       current))
+         (list peer wildmat since advances pending bound)))
+
+(defthm fn-pull-fixed-of-on-line-and-fail
+  (and (equal (fn-pull-fixed (car (fn-pull-on-line r line))) (fn-pull-fixed r))
+       (equal (fn-pull-fixed (car (fn-pull-fail r))) (fn-pull-fixed r)))
+  :hints (("Goal" :in-theory (disable fn-pull-on-line fn-pull-fail-facts))
+          ("Subgoal 1" :in-theory (enable fn-pull-fail))))
+
+(defthm fn-pull-fixed-fold
+  (equal (list (fn-pull-r-peer r) (fn-pull-r-wildmat r) (fn-pull-r-since r)
+               (fn-pull-r-advances r) (fn-pull-r-pending r) (fn-pull-r-bound r))
+         (fn-pull-fixed r)))
+
+(in-theory (disable fn-pull-fixed))
+
+(defthm fn-pull-drain-keeps-the-fixed-fields
+  (equal (fn-pull-fixed (car (fn-pull-drain r fuel))) (fn-pull-fixed r))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain)
+                           (fn-pull-on-line fn-pull-split fn-pull-line-phasep
+                            fn-pull-fail)))))
+
 (defthm fn-pull-drain-keeps-the-cursor
   (and (equal (fn-pull-r-peer (car (fn-pull-drain r fuel))) (fn-pull-r-peer r))
        (equal (fn-pull-r-since (car (fn-pull-drain r fuel))) (fn-pull-r-since r))
        (equal (fn-pull-r-advances (car (fn-pull-drain r fuel))) (fn-pull-r-advances r))
+       (equal (fn-pull-r-pending (car (fn-pull-drain r fuel))) (fn-pull-r-pending r))
+       (equal (fn-pull-r-bound (car (fn-pull-drain r fuel))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-drain r fuel))) (fn-pull-r-wildmat r)))
-  :hints (("Goal" :in-theory (enable fn-pull-drain))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pull-fixed) (fn-pull-drain-keeps-the-fixed-fields
+                                            fn-pull-fixed-fold))
+           :use ((:instance fn-pull-drain-keeps-the-fixed-fields)))))
 
 (defthm fn-pull-drain-journals-nothing
   (equal (fn-pull-journal-effects (mv-nth 1 (fn-pull-drain r fuel))) nil)
-  :hints (("Goal" :in-theory (enable fn-pull-drain))))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                           (fn-pull-on-line fn-pull-split fn-pull-line-phasep)))))
 
 (defthm fn-pull-step-keeps-the-cursor-fields
   (and (equal (fn-pull-r-peer (car (fn-pull-step r event))) (fn-pull-r-peer r))
        (equal (fn-pull-r-since (car (fn-pull-step r event))) (fn-pull-r-since r))
        (equal (fn-pull-r-advances (car (fn-pull-step r event))) (fn-pull-r-advances r))
+       (equal (fn-pull-r-pending (car (fn-pull-step r event))) (fn-pull-r-pending r))
+       (equal (fn-pull-r-bound (car (fn-pull-step r event))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-step r event))) (fn-pull-r-wildmat r)))
   :hints (("Goal" :in-theory (enable fn-pull-step))))
 
@@ -769,7 +1116,9 @@
 (defthm fn-pull-drain-keeps-answers
   (equal (fn-pull-r-answers (car (fn-pull-drain r fuel)))
          (fn-pull-r-answers r))
-  :hints (("Goal" :in-theory (enable fn-pull-drain))))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                           (fn-pull-on-line fn-pull-split fn-pull-line-phasep)))))
 
 ; KEYSTONE.  A step that changes the answers is a local reply, and it adds
 ; exactly one answer: that reply's own code, for the article in hand.
@@ -785,6 +1134,76 @@
                              (fn-pull-r-answers r)))))
   :hints (("Goal" :in-theory (enable fn-pull-step))))
 
+; PRF-165: only the peer marks an id unavailable.
+
+(defthm fn-pull-on-line-unavailable
+  (and (equal (fn-pull-r-current (car (fn-pull-on-line r line))) (fn-pull-r-current r))
+       (implies (not (equal (fn-pull-r-phase r) :article))
+                (and (equal (fn-pull-r-unavailable (car (fn-pull-on-line r line)))
+                            (fn-pull-r-unavailable r))
+                     (not (equal (fn-pull-r-phase (car (fn-pull-on-line r line)))
+                                 :article)))))
+  :hints (("Goal" :in-theory (enable fn-pull-on-line fn-pull-fail))))
+
+(defthm fn-pull-on-line-unavailable-in-article
+  (implies (equal (fn-pull-r-phase r) :article)
+           (and (not (mv-nth 2 (fn-pull-on-line r line)))
+                (equal (fn-pull-r-unavailable (car (fn-pull-on-line r line)))
+                       (if (and (equal (fn-pull-code line) 430)
+                                (not (consp (fn-pull-r-buf r))))
+                           (cons (fn-pull-r-current r)
+                                 (fn-pull-list (fn-pull-r-unavailable r)))
+                         (fn-pull-r-unavailable r)))))
+  :hints (("Goal" :in-theory (enable fn-pull-on-line fn-pull-fail))))
+
+(defthm fn-pull-drain-unavailable
+  (implies (not (equal (fn-pull-r-unavailable (car (fn-pull-drain r fuel)))
+                       (fn-pull-r-unavailable r)))
+           (and (equal (fn-pull-r-phase r) :article)
+                (equal (fn-pull-r-unavailable (car (fn-pull-drain r fuel)))
+                       (cons (fn-pull-r-current r)
+                             (fn-pull-list (fn-pull-r-unavailable r))))))
+  :hints (("Goal" :in-theory (enable fn-pull-drain fn-pull-fail))))
+
+(defthm fn-pull-next-and-record-keep-unavailable
+  (and (equal (fn-pull-r-unavailable (car (fn-pull-next r))) (fn-pull-r-unavailable r))
+       (equal (fn-pull-r-unavailable (fn-pull-record-answer r code))
+              (fn-pull-r-unavailable r))
+       (equal (fn-pull-r-unavailable (car (fn-pull-fail r))) (fn-pull-r-unavailable r)))
+  :hints (("Goal" :in-theory (enable fn-pull-next fn-pull-record-answer fn-pull-fail))))
+
+(defthm fn-pull-drain-keeps-unavailable-outside-article
+  (implies (not (equal (fn-pull-r-phase r) :article))
+           (equal (fn-pull-r-unavailable (car (fn-pull-drain r fuel)))
+                  (fn-pull-r-unavailable r)))
+  :hints (("Goal" :in-theory (disable fn-pull-drain-unavailable)
+           :use ((:instance fn-pull-drain-unavailable)))))
+
+; KEYSTONE (PRF-165).  A step that changes the unavailable ids is the PEER's
+; reply to the round's ARTICLE (phase :article), and it adds exactly the
+; article in hand: the local node's replies never mark an id unavailable,
+; and the peer marks at most the one id it was asked for.
+(defthm fn-pull-step-marks-unavailable-only-on-the-peers-reply
+  (implies (not (equal (fn-pull-r-unavailable (car (fn-pull-step r event)))
+                       (fn-pull-r-unavailable r)))
+           (and (consp event)
+                (equal (car event) :remote)
+                (equal (fn-pull-r-phase r) :article)
+                (equal (fn-pull-r-unavailable (car (fn-pull-step r event)))
+                       (cons (fn-pull-r-current r)
+                             (fn-pull-list (fn-pull-r-unavailable r))))))
+  :hints (("Goal" :in-theory (e/d (fn-pull-step)
+                                  (fn-pull-next fn-pull-record-answer fn-pull-fail
+                                   fn-pull-drain fn-pull-list
+                                   fn-pull-drain-unavailable))
+           :use ((:instance fn-pull-drain-unavailable
+                            (r (fn-pull-with r :buf (append (if (true-listp (fn-pull-r-buf r))
+                                                                (fn-pull-r-buf r) nil)
+                                                            (fn-pull-event-octets event))))
+                            (fuel (+ 1 (len (append (if (true-listp (fn-pull-r-buf r))
+                                                        (fn-pull-r-buf r) nil)
+                                                    (fn-pull-event-octets event))))))))))
+
 ; -----------------------------------------------------------------------------
 ; The NEWNEWS names the cursor's instant.
 
@@ -792,7 +1211,10 @@
   (implies (and (equal w (fn-pull-r-wildmat r)) (equal since (fn-pull-r-since r)))
            (fn-pull-newnews-all
             (fn-pull-remote-effects (mv-nth 1 (fn-pull-drain r fuel))) w since))
-  :hints (("Goal" :in-theory (e/d (fn-pull-drain) (fn-pull-newnews-linep)))))
+  :hints (("Goal" :induct (fn-pull-drain r fuel)
+           :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                           (fn-pull-newnews-linep fn-pull-on-line fn-pull-split
+                            fn-pull-line-phasep)))))
 
 ; KEYSTONE.  Every NEWNEWS a step sends names the round's own cursor instant:
 ; the one `fn-pull-begin' fixed and the journal holds.
@@ -825,10 +1247,11 @@
 
 (defthm fn-pull-round-cursor-of-begin
   (implies (fn-pull-startable-cursorp c)
-           (equal (fn-pull-round-cursor (fn-pull-begin c wildmat now))
+           (equal (fn-pull-round-cursor (fn-pull-begin c wildmat now bound))
                   (fn-pull-cursor (fn-pull-cursor-peer c)
                                   (fn-pull-begin-since c now)
-                                  (fn-pull-cursor-advances c)))))
+                                  (fn-pull-cursor-advances c)
+                                  (fn-pull-cursor-pending c)))))
 
 (defthm fn-pull-replay-of-cons
   (equal (fn-pull-replay c (cons x rest))
@@ -841,38 +1264,56 @@
 (defthm fn-pull-startable-cursor-is-its-fields
   (implies (fn-pull-startable-cursorp c)
            (equal (fn-pull-cursor (fn-pull-cursor-peer c) (fn-pull-cursor-since c)
-                                  (fn-pull-cursor-advances c))
+                                  (fn-pull-cursor-advances c)
+                                  (fn-pull-cursor-pending c))
                   c))
   :hints (("Goal" :in-theory (enable fn-pull-at)
            :expand ((fn-pull-at 1 c) (fn-pull-at 0 (cdr c)) (fn-pull-at 2 c)
                     (fn-pull-at 1 (cdr c)) (fn-pull-at 0 (cddr c))
-                    (len c) (len (cdr c)) (len (cddr c)) (len (cdddr c))))))
+                    (fn-pull-at 3 c) (fn-pull-at 2 (cdr c))
+                    (fn-pull-at 1 (cddr c)) (fn-pull-at 0 (cdddr c))
+                    (len c) (len (cdr c)) (len (cddr c)) (len (cdddr c))
+                    (len (cddddr c))))))
 
 (defthm fn-pull-cursorp-of-cursor
-  ; (a cursor is a three-element list: `fn-pull-cursor' is open)
-  (equal (fn-pull-cursorp (list peer since advances))
-         (and (fn-feed-namep peer) (natp since) (natp advances))))
+  ; (a cursor is a four-element list: `fn-pull-cursor' is open)
+  (equal (fn-pull-cursorp (list peer since advances pending))
+         (and (fn-feed-namep peer) (natp since) (natp advances)
+              (fn-pull-pendingp pending))))
+
+(defthm fn-pull-pendingp-of-next-pending
+  (fn-pull-pendingp (fn-pull-next-pending ids pending))
+  :hints (("Goal" :in-theory (disable fn-pull-msgidp fn-pull-count-of))))
 
 (defthm fn-pull-back-natp
   (natp (fn-pull-back ms by))
   :rule-classes :type-prescription)
 
 (defun fn-pull-roundp (r)
-  ; What the owner carries of an in-flight round: its peer is a name and its
-  ; advance count a natural.
+  ; What the owner carries of an in-flight round: its peer is a name, its
+  ; instant and advance count naturals and its counts well formed.
   (declare (xargs :guard t))
   (and (fn-feed-namep (fn-pull-r-peer r))
-       (natp (fn-pull-r-advances r))))
+       (natp (fn-pull-r-since r))
+       (natp (fn-pull-r-advances r))
+       (fn-pull-pendingp (fn-pull-r-pending r))))
+
+(defthm fn-pull-begin-since-natp
+  (natp (fn-pull-begin-since c now))
+  :rule-classes :type-prescription)
 
 (defthm fn-pull-roundp-of-begin
   (implies (fn-pull-startable-cursorp c)
-           (fn-pull-roundp (fn-pull-begin c wildmat now)))
-  :hints (("Goal" :in-theory (enable fn-pull-startable-cursorp))))
+           (fn-pull-roundp (fn-pull-begin c wildmat now bound)))
+  :hints (("Goal" :in-theory (e/d (fn-pull-startable-cursorp)
+                                  (fn-pull-begin-since)))))
 
 (defthm fn-pull-run-keeps-the-cursor-fields
   (and (equal (fn-pull-r-peer (car (fn-pull-run r events))) (fn-pull-r-peer r))
        (equal (fn-pull-r-since (car (fn-pull-run r events))) (fn-pull-r-since r))
        (equal (fn-pull-r-advances (car (fn-pull-run r events))) (fn-pull-r-advances r))
+       (equal (fn-pull-r-pending (car (fn-pull-run r events))) (fn-pull-r-pending r))
+       (equal (fn-pull-r-bound (car (fn-pull-run r events))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-run r events))) (fn-pull-r-wildmat r)))
   :hints (("Goal" :in-theory (disable fn-pull-step))))
 
@@ -881,16 +1322,12 @@
            (fn-pull-roundp (mv-nth 0 (fn-pull-run r events))))
   :hints (("Goal" :in-theory (disable fn-pull-run))))
 
-(defthm fn-pull-begin-since-natp
-  (natp (fn-pull-begin-since c now))
-  :rule-classes :type-prescription)
-
 (in-theory (disable fn-pull-replay fn-pull-cursorp fn-pull-back
                     fn-pull-begin-since fn-pull-startable-cursorp))
 
 (defthm fn-pull-begin-since-of-a-journaled-instant
   (implies (natp since)
-           (equal (fn-pull-begin-since (list peer since advances) now) since))
+           (equal (fn-pull-begin-since (list peer since advances pending) now) since))
   :hints (("Goal" :in-theory (enable fn-pull-begin-since))))
 
 (defthm fn-pull-begin-journal-replays-to-the-round
@@ -898,11 +1335,15 @@
                 (equal (fn-pull-replay c0 j) c))
            (equal (fn-pull-replay c0 (append j (fn-pull-journal-effects
                                                 (fn-pull-begin-effects c now))))
-                  (fn-pull-round-cursor (fn-pull-begin c wildmat now))))
+                  (fn-pull-round-cursor (fn-pull-begin c wildmat now bound))))
   :hints (("Goal" :in-theory (e/d (fn-pull-startable-cursorp fn-pull-begin-since)
                                   (fn-pull-startable-cursor-is-its-fields))
            :use ((:instance fn-pull-startable-cursor-is-its-fields))
            :do-not-induct t)))
+
+(defthm fn-pull-advancesp-is-complete
+  (implies (fn-pull-advancesp r) (fn-pull-completep r))
+  :rule-classes :forward-chaining)
 
 (defthm fn-pull-close-journal-replays-to-the-close
   (implies (and (fn-pull-roundp r)
@@ -910,7 +1351,8 @@
            (equal (fn-pull-replay c0 (append j (fn-pull-journal-effects
                                                 (fn-pull-close-effects r))))
                   (fn-pull-close r)))
-  :hints (("Goal" :in-theory (disable fn-pull-advancesp) :do-not-induct t)))
+  :hints (("Goal" :in-theory (disable fn-pull-advancesp fn-pull-completep)
+           :do-not-induct t)))
 
 ; KEYSTONE (durable before the wire).  Suppose the journal replays to the
 ; cursor the owner holds for this peer.  Then after the begin's records the
@@ -922,7 +1364,7 @@
 (defthm fn-pull-journal-is-the-cursor-at-every-cut
   (implies (and (fn-pull-startable-cursorp c)
                 (equal (fn-pull-replay c0 j) c))
-           (let* ((r0 (fn-pull-begin c wildmat now))
+           (let* ((r0 (fn-pull-begin c wildmat now bound))
                   (j0 (append j (fn-pull-journal-effects
                                  (fn-pull-begin-effects c now)))))
              (and (equal (fn-pull-replay c0 j0) (fn-pull-round-cursor r0))
@@ -941,12 +1383,12 @@
                                fn-pull-begin-effects)
            :use ((:instance fn-pull-begin-journal-replays-to-the-round)
                  (:instance fn-pull-close-journal-replays-to-the-close
-                            (r (mv-nth 0 (fn-pull-run (fn-pull-begin c wildmat now)
+                            (r (mv-nth 0 (fn-pull-run (fn-pull-begin c wildmat now bound)
                                                       events)))
                             (j (append j (fn-pull-journal-effects
                                           (fn-pull-begin-effects c now)))))
                  (:instance fn-pull-roundp-of-run
-                            (r (fn-pull-begin c wildmat now)))
+                            (r (fn-pull-begin c wildmat now bound)))
                  (:instance fn-pull-roundp-of-begin)))))
 
 ; KEYSTONE (recovery asks again).  The round begun from the recovered cursor
@@ -957,7 +1399,7 @@
 (defthm fn-pull-recovery-asks-the-dead-rounds-newnews
   (implies (and (fn-pull-startable-cursorp c)
                 (equal (fn-pull-replay c0 j) c))
-           (let* ((r0 (fn-pull-begin c wildmat now))
+           (let* ((r0 (fn-pull-begin c wildmat now bound))
                   (dead (car (fn-pull-run r0 events)))
                   (recovered
                    (fn-pull-replay
@@ -965,7 +1407,7 @@
                                   (fn-pull-begin-effects c now))
                                (fn-pull-journal-effects
                                 (mv-nth 1 (fn-pull-run r0 events)))))))
-             (equal (fn-pull-r-since (fn-pull-begin recovered wildmat later))
+             (equal (fn-pull-r-since (fn-pull-begin recovered wildmat later bound))
                     (fn-pull-r-since dead))))
   :hints (("Goal" :in-theory (disable fn-pull-run fn-pull-close
                                       fn-pull-advancesp)
@@ -974,8 +1416,16 @@
 ; -----------------------------------------------------------------------------
 ; FNPL: the cursor's journal frame
 ;
-; One record kind, `(:pull-cursor peer since advances)', in the generic frame
-; grammar of books/frame (magic, version, kind, bounded length, payload,
+; Two record kinds in the generic frame grammar of books/frame:
+; `(:pull-cursor peer since advances)' and (PRF-165) `(:pull-unavailable
+; peer id count)'.  A cursor is journaled as one :pull-unavailable record per
+; PENDING entry, in order, then its :pull-cursor record, which COMMITS them:
+; replay stages unavailable records and a cursor record takes the staged
+; ones as its PENDING (`fn-pull-records-fold'); records after the last
+; cursor record are an uncommitted tail the open truncates
+; (`fn-pull-journal-scan''s committed offset).  A journal written before
+; PRF-165 is cursor records alone and replays to PENDING nil.  The grammar
+; is (magic, version, kind, bounded length, payload,
 ; trailer), framed on disk by the FNFD envelope (`fn-feed-journal-prefix':
 ; a four-octet length before each frame).  The file is <store>/pull/ plus the
 ; FNFD filename codec's components for the peer.
@@ -991,8 +1441,9 @@
 
 (defconst *fn-pull-magic* '(70 78 80 76))   ; FNPL
 (defconst *fn-pull-max-payload* 1024)
-(defconst *fn-pull-kinds* '(:pull-cursor))
-(defconst *fn-pull-specs* (list (cons :pull-cursor '(:text :nat :nat))))
+(defconst *fn-pull-kinds* '(:pull-cursor :pull-unavailable))
+(defconst *fn-pull-specs* (list (cons :pull-cursor '(:text :nat :nat))
+                                (cons :pull-unavailable '(:text :text :nat))))
 
 ; The placeholder a frame is encoded under before its trailer is computed
 ; over the protected prefix (books/frame-trailer `fn-frame-trailer').
@@ -1102,17 +1553,207 @@
 ; The sealed frame of a cursor, as the FNFD envelope carries it: protected
 ; prefix then trailer (books/frame-trailer), and nil for a cursor that is not
 ; a journaled one.
+(defun fn-pull-sealed-frame (kind values)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((unsealed (fn-pull-encode kind values *fn-pull-zero-digest*)))
+    (if (not (fn-cbor-octet-listp unsealed))
+        nil
+      (let ((prefix (fn-frame-protected-prefix unsealed)))
+        (append (fn-pull-list prefix) (fn-frame-trailer prefix))))))
+
+(verify-guards fn-pull-sealed-frame)
+
+; The :pull-cursor record's values: the cursor's first three fields.
+(defun fn-pull-cursor-values (c)
+  (declare (xargs :guard t))
+  (list (fn-pull-cursor-peer c) (fn-pull-cursor-since c)
+        (fn-pull-cursor-advances c)))
+
 (defun fn-pull-cursor-frame (c)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-pull-cursorp c))
       nil
-    (let ((unsealed (fn-pull-encode :pull-cursor c *fn-pull-zero-digest*)))
-      (if (not (fn-cbor-octet-listp unsealed))
-          nil
-        (let ((prefix (fn-frame-protected-prefix unsealed)))
-          (append (fn-pull-list prefix) (fn-frame-trailer prefix)))))))
+    (fn-pull-sealed-frame :pull-cursor (fn-pull-cursor-values c))))
 
 (verify-guards fn-pull-cursor-frame)
+
+(defun fn-pull-unavailable-frame (peer entry)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-pull-sealed-frame :pull-unavailable
+                        (list peer (if (consp entry) (car entry) nil)
+                              (if (consp entry) (cdr entry) nil))))
+
+(verify-guards fn-pull-unavailable-frame)
+
+; -----------------------------------------------------------------------------
+; The logical records of a journaled cursor, and their fold
+
+(defun fn-pull-pending-records (peer pending)
+  (declare (xargs :guard t))
+  (if (consp pending)
+      (cons (list :unavailable peer
+                  (if (consp (car pending)) (car (car pending)) nil)
+                  (if (consp (car pending)) (cdr (car pending)) nil))
+            (fn-pull-pending-records peer (cdr pending)))
+    nil))
+
+(defun fn-pull-cursor-records (c)
+  ; What `fn-pull-cursor-envelope' writes for C, as the scan reads it back.
+  (declare (xargs :guard t))
+  (if (fn-pull-cursorp c)
+      (append (fn-pull-pending-records (fn-pull-cursor-peer c)
+                                       (fn-pull-cursor-pending c))
+              (list (list :cursor (fn-pull-cursor-peer c) (fn-pull-cursor-since c)
+                          (fn-pull-cursor-advances c))))
+    nil))
+
+(defun fn-pull-journal-records (cursors)
+  (declare (xargs :guard t))
+  (if (consp cursors)
+      (append (fn-pull-cursor-records (car cursors))
+              (fn-pull-journal-records (cdr cursors)))
+    nil))
+
+; The fold the open performs: (committed . staged).  An unavailable record
+; of the cursor's peer is staged; a cursor record of that peer commits the
+; staged entries as its PENDING; any other record is ignored.
+(defun fn-pull-commit-of (x staged)
+  ; The cursor a cursor record X commits with the STAGED entries.
+  (declare (xargs :guard t))
+  (list (fn-pull-at 1 x) (fn-pull-at 2 x) (fn-pull-at 3 x)
+        (revappend (fn-pull-list staged) nil)))
+
+(defun fn-pull-commitsp (x c staged)
+  ; X is a cursor record of C's peer that commits a journaled cursor.
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :cursor)
+       (equal (fn-pull-at 1 x) (fn-pull-cursor-peer c))
+       (fn-pull-cursorp (fn-pull-commit-of x staged))))
+
+(defun fn-pull-stagesp (x c)
+  ; X is an unavailable record of C's peer.
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :unavailable)
+       (equal (fn-pull-at 1 x) (fn-pull-cursor-peer c))))
+
+(defun fn-pull-staged-entry (x)
+  (declare (xargs :guard t))
+  (cons (fn-pull-at 2 x) (fn-pull-at 3 x)))
+
+(defun fn-pull-records-fold (c staged records)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (let ((x (car records)))
+        (cond ((fn-pull-commitsp x c staged)
+               (fn-pull-records-fold (fn-pull-commit-of x staged) nil (cdr records)))
+              ((fn-pull-stagesp x c)
+               (fn-pull-records-fold c (cons (fn-pull-staged-entry x) staged)
+                                     (cdr records)))
+              (t (fn-pull-records-fold c staged (cdr records)))))
+    (cons c staged)))
+
+(in-theory (disable fn-pull-commit-of fn-pull-commitsp fn-pull-stagesp
+                    fn-pull-staged-entry))
+
+; KEYSTONE SUBJECT.  The cursor the open recovers from the scanned records
+; (host/native/pull-service.lisp `fnn-pull-journal-open').
+(defun fn-pull-records-replay (c records)
+  (declare (xargs :guard t))
+  (car (fn-pull-records-fold c nil records)))
+
+(defthm fn-pull-records-fold-of-append
+  (equal (fn-pull-records-fold c staged (append a b))
+         (fn-pull-records-fold (car (fn-pull-records-fold c staged a))
+                               (cdr (fn-pull-records-fold c staged a)) b))
+  :hints (("Goal" :induct (fn-pull-records-fold c staged a))))
+
+(defthm fn-pull-pending-record-stages
+  (let ((x (list :unavailable peer id n)))
+    (and (not (fn-pull-commitsp x c staged))
+         (equal (fn-pull-stagesp x c) (equal peer (fn-pull-cursor-peer c)))
+         (equal (fn-pull-staged-entry x) (cons id n))))
+  :hints (("Goal" :in-theory (enable fn-pull-commitsp fn-pull-stagesp
+                                     fn-pull-staged-entry fn-pull-at))))
+
+(defthm fn-pull-records-fold-of-pending-records
+  (implies (and (fn-pull-pendingp pending)
+                (equal peer (fn-pull-cursor-peer c)))
+           (equal (fn-pull-records-fold c staged (fn-pull-pending-records peer pending))
+                  (cons c (revappend pending staged))))
+  :hints (("Goal" :in-theory (disable fn-pull-msgidp revappend-removal))))
+
+(defthm fn-pull-records-fold-skips-another-peers-pending
+  (implies (not (equal peer (fn-pull-cursor-peer c)))
+           (equal (fn-pull-records-fold c staged (fn-pull-pending-records peer pending))
+                  (cons c staged))))
+
+(defthm fn-pull-revappend-revappend
+  (equal (revappend (revappend x y) z) (revappend y (append x z)))
+  :hints (("Goal" :in-theory (disable revappend-removal))))
+
+(defthm fn-pull-pendingp-true-listp
+  (implies (fn-pull-pendingp p) (true-listp p))
+  :rule-classes :forward-chaining)
+
+(defthm fn-pull-cursorp-is-startable
+  (implies (fn-pull-cursorp c) (fn-pull-startable-cursorp c))
+  :hints (("Goal" :in-theory (enable fn-pull-cursorp fn-pull-startable-cursorp))))
+
+(defthm fn-pull-records-fold-of-cursor-records
+  (equal (fn-pull-records-fold c nil (fn-pull-cursor-records x))
+         (if (and (fn-pull-cursorp x)
+                  (equal (fn-pull-cursor-peer x) (fn-pull-cursor-peer c)))
+             (cons x nil)
+           (cons c nil)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pull-cursorp fn-pull-commitsp fn-pull-commit-of
+                            fn-pull-stagesp)
+                           (fn-pull-pendingp fn-pull-pending-records revappend-removal
+                            fn-pull-startable-cursor-is-its-fields
+                            fn-pull-cursorp-is-startable))
+           :use ((:instance fn-pull-startable-cursor-is-its-fields (c x))
+                 (:instance fn-pull-cursorp-is-startable (c x))))))
+
+(defthm fn-pull-records-fold-of-journal-records
+  (equal (fn-pull-records-fold c nil (fn-pull-journal-records cursors))
+         (cons (fn-pull-replay c cursors) nil))
+  :hints (("Goal" :induct (fn-pull-replay c cursors)
+           :in-theory (e/d (fn-pull-replay) (fn-pull-cursor-records fn-pull-cursorp)))))
+
+; KEYSTONE (PRF-165, the FNPL refinement).  The records the open scans back
+; from a journal of cursor appends fold to exactly the cursor the logical
+; journal replays to: the per-id counts survive the reopen.
+(defthm fn-pull-records-replay-is-the-replay
+  (equal (fn-pull-records-replay c (fn-pull-journal-records cursors))
+         (fn-pull-replay c cursors)))
+
+(defun fn-pull-uncommittedp (records)
+  ; No record in RECORDS is a cursor record: nothing in it commits.
+  (declare (xargs :guard t))
+  (if (consp records)
+      (and (not (and (consp (car records)) (equal (car (car records)) :cursor)))
+           (fn-pull-uncommittedp (cdr records)))
+    t))
+
+(defthm fn-pull-uncommittedp-of-pending-records
+  (fn-pull-uncommittedp (fn-pull-pending-records peer pending)))
+
+(defthm fn-pull-records-fold-of-uncommitted-keeps-the-cursor
+  (implies (fn-pull-uncommittedp records)
+           (equal (car (fn-pull-records-fold c staged records)) c))
+  :hints (("Goal" :induct (fn-pull-records-fold c staged records)
+           :in-theory (enable fn-pull-commitsp))))
+
+; KEYSTONE (PRF-165, an uncommitted tail).  The unavailable records of a
+; cursor whose own record never became durable change nothing: the open
+; recovers the cursor before that append (and truncates them).
+(defthm fn-pull-records-replay-ignores-an-uncommitted-tail
+  (equal (fn-pull-records-replay
+          c (append (fn-pull-journal-records cursors)
+                    (fn-pull-pending-records peer pending)))
+         (fn-pull-replay c cursors))
+  :hints (("Goal" :in-theory (disable fn-pull-pending-records fn-pull-journal-records))))
+
 
 (defun fn-pull-journal-open-frame (frame)
   (declare (xargs :guard t :verify-guards nil))
@@ -1125,28 +1766,42 @@
 
 ; KEYSTONE SUBJECT.  One bounded read of an FNPL file at open
 ; (host/native/pull-service.lisp `fnn-pull-journal-open'): (status
-; safe-offset cursor).  The prefix plan is FNFD's; the safe offset advances
-; only over a complete verified frame of this peer and is the sole truncate
-; authority, so a torn final append is repaired to the previous record.
-(defun fn-pull-journal-scan (peer prefix frame offset)
+; safe-offset record committed).  The prefix plan is FNFD's; the safe offset
+; advances only over a complete verified frame of this peer; COMMITTED
+; advances only over a cursor record (PRF-165) and is the sole truncate
+; authority, so a torn final append, or the unavailable records of a cursor
+; whose own record never became durable, is repaired to the previous
+; cursor.  RECORD is `(:cursor peer since advances)' or `(:unavailable peer
+; id count)'.
+(defun fn-pull-journal-scan (peer prefix frame offset committed)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((plan (fn-feed-journal-prefix prefix)))
-    (cond ((equal plan :end) (list :end (nfix offset) nil))
-          ((equal plan :repair) (list :repair (nfix offset) nil))
-          ((not (natp plan)) (list :invalid (nfix offset) nil))
-          ((< (len frame) plan) (list :repair (nfix offset) nil))
+  (let ((plan (fn-feed-journal-prefix prefix))
+        (committed (nfix committed)))
+    (cond ((equal plan :end)
+           (if (equal committed (nfix offset))
+               (list :end committed nil committed)
+             (list :repair committed nil committed)))
+          ((equal plan :repair) (list :repair committed nil committed))
+          ((not (natp plan)) (list :invalid (nfix offset) nil committed))
+          ((< (len frame) plan) (list :repair committed nil committed))
           ((not (equal (len frame) plan))
-           (list :invalid (nfix offset) nil))
-          (t (let ((decoded (fn-pull-journal-open-frame frame)))
-               (if (and (fn-frame-result-okp decoded)
-                        (equal (fn-frame-result-kind decoded) :pull-cursor)
-                        (fn-pull-cursorp (fn-frame-result-payload decoded))
-                        (equal (fn-pull-cursor-peer
-                                (fn-frame-result-payload decoded)) peer))
-                   (list :next (+ (nfix offset)
-                                  *fn-feed-journal-prefix-size* plan)
-                         (fn-frame-result-payload decoded))
-                 (list :invalid (nfix offset) nil)))))))
+           (list :invalid (nfix offset) nil committed))
+          (t (let* ((decoded (fn-pull-journal-open-frame frame))
+                    (kind (fn-frame-result-kind decoded))
+                    (v (fn-frame-result-payload decoded))
+                    (next (+ (nfix offset) *fn-feed-journal-prefix-size* plan)))
+               (cond ((not (and (fn-frame-result-okp decoded)
+                                (true-listp v) (equal (len v) 3)
+                                (equal (car v) peer)
+                                (fn-feed-namep peer)))
+                      (list :invalid (nfix offset) nil committed))
+                     ((and (equal kind :pull-cursor)
+                           (natp (cadr v)) (natp (caddr v)))
+                      (list :next next (cons :cursor v) next))
+                     ((and (equal kind :pull-unavailable)
+                           (fn-pull-msgidp (cadr v)) (posp (caddr v)))
+                      (list :next next (cons :unavailable v) committed))
+                     (t (list :invalid (nfix offset) nil committed))))))))
 
 (verify-guards fn-pull-journal-scan)
 
@@ -1166,7 +1821,8 @@
 ; row is missing denotes no security and is not planned.
 ;
 ; A plan: (peer-octets host-octets port wildmat-octets interval-ms
-;          security auth), SECURITY `(:clear)' or `(:tls MODE SERVER-NAME
+;          security auth bound), BOUND the peer's `pull-unavailable-rounds'
+; row or `*fn-pull-default-unavailable-rounds*' (PRF-165), SECURITY `(:clear)' or `(:tls MODE SERVER-NAME
 ; TRUST-ANCHOR)' with MODE :starttls or :implicit, AUTH nil or
 ; `(:authinfo PROFILE-PATH ALLOW-CLEAR)'.
 
@@ -1194,6 +1850,7 @@
   (let ((tn (fn-cfg-peer-slot rows "transport-nntp"))
         (ig (fn-cfg-peer-slot rows "inbound-groups"))
         (seconds (fn-pcb-slot-natural *fn-pcb-pull-interval-slot* rows))
+        (rounds (fn-pcb-slot-natural *fn-pcb-pull-unavailable-slot* rows))
         (security (fn-pull-security-of-rows rows)))
     (if (and (stringp name) tn ig (posp seconds)
              (stringp (fn-cfg-row-c tn)) (posp (fn-cfg-row-n tn))
@@ -1205,7 +1862,8 @@
               (fn-record-string-octets (fn-cfg-row-c ig))
               (* 1000 seconds)
               security
-              (fn-pull-auth-of-rows rows))
+              (fn-pull-auth-of-rows rows)
+              (if (posp rounds) rounds *fn-pull-default-unavailable-rounds*))
       nil)))
 
 (defun fn-pull-plans-of (names peers)
@@ -1231,6 +1889,7 @@
 (defun fn-pull-plan-interval (p) (declare (xargs :guard t)) (fn-pull-at 4 p))
 (defun fn-pull-plan-security (p) (declare (xargs :guard t)) (fn-pull-at 5 p))
 (defun fn-pull-plan-auth (p) (declare (xargs :guard t)) (fn-pull-at 6 p))
+(defun fn-pull-plan-bound (p) (declare (xargs :guard t)) (fn-pull-at 7 p))
 
 ; The schedule the owner holds, reconfigured from the live plans at NOW.
 (defun fn-pull-schedule (plans now tbl)
@@ -1274,12 +1933,64 @@
 
 (verify-guards fn-pull-journal-wrap)
 
+(defun fn-pull-pending-envelope (peer pending)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp pending)
+      (let ((w (fn-pull-journal-wrap (fn-pull-unavailable-frame peer (car pending))))
+            (rest (fn-pull-pending-envelope peer (cdr pending))))
+        (if (or (equal w :bad) (equal rest :bad))
+            :bad
+          (append w rest)))
+    nil))
+
+(defthm fn-pull-journal-wrap-true-listp
+  (implies (not (equal (fn-pull-journal-wrap frame) :bad))
+           (true-listp (fn-pull-journal-wrap frame))))
+
+(verify-guards fn-pull-pending-envelope
+  :hints (("Goal" :in-theory (disable fn-pull-journal-wrap fn-pull-unavailable-frame))))
+
+(defthm fn-pull-pending-envelope-true-listp
+  (implies (not (equal (fn-pull-pending-envelope peer pending) :bad))
+           (true-listp (fn-pull-pending-envelope peer pending)))
+  :hints (("Goal" :in-theory (disable fn-pull-journal-wrap
+                                      fn-pull-unavailable-frame))))
+
+; KEYSTONE SUBJECT.  The octets one cursor append writes
+; (host/native/pull-service.lisp `fnn-pull-journal-append'): one wrapped
+; :pull-unavailable frame per PENDING entry, then the wrapped :pull-cursor
+; frame that commits them, or :bad (never written).  The host writes them in
+; one write and one fsync, so the crash cuts of an append are unchanged.
+(defun fn-pull-cursor-envelope (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (fn-pull-cursorp c))
+      :bad
+    (let ((p (fn-pull-pending-envelope (fn-pull-cursor-peer c)
+                                       (fn-pull-cursor-pending c)))
+          (w (fn-pull-journal-wrap (fn-pull-cursor-frame c))))
+      (if (or (equal p :bad) (equal w :bad))
+          :bad
+        (append p w)))))
+
+(verify-guards fn-pull-cursor-envelope
+  :hints (("Goal" :in-theory (disable fn-pull-pending-envelope
+                                      fn-pull-journal-wrap fn-pull-cursor-frame))))
+
 (defun fn-pull-done-p (r)
   (declare (xargs :guard t))
   (and (member-equal (fn-pull-r-phase r) '(:done :failed)) t))
 
-; The owner log line of a closed round: the peer, how it ended, and whether
-; the cursor moved.
+(defun fn-pull-dropped-words (ids)
+  (declare (xargs :guard t))
+  (if (consp ids)
+      (append (fn-record-string-octets " dropped=")
+              (fn-pull-list (car ids))
+              (fn-pull-dropped-words (cdr ids)))
+    nil))
+
+; The owner log line of a closed round: the peer, how it ended, whether the
+; cursor moved, how many listed ids the peer could not produce, and each id
+; dropped in this round (its count reached the bound).
 (defun fn-pull-log-line (r)
   (declare (xargs :guard t))
   (append (fn-record-string-octets "pull peer=")
@@ -1287,4 +1998,9 @@
           (fn-record-string-octets
            (if (equal (fn-pull-r-phase r) :done) " round=done" " round=failed"))
           (fn-record-string-octets
-           (if (fn-pull-advancesp r) " cursor=advanced" " cursor=held"))))
+           (if (fn-pull-advancesp r) " cursor=advanced" " cursor=held"))
+          (if (consp (fn-pull-r-unavailable r))
+              (append (fn-record-string-octets " unavailable=")
+                      (fn-nntp-decimal-field (len (fn-pull-r-unavailable r))))
+            nil)
+          (fn-pull-dropped-words (fn-pull-dropped r))))

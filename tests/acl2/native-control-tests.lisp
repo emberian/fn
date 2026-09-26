@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-control")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn-nctrl-test-msgid*
   (fn-record-string-octets "<control-1@example.invalid>"))
@@ -353,3 +354,42 @@
       (< (fn-nctrl-max-frame-for *nct-a* 81/2)
          (len (fn-native-control-request-encode *fn-nctrl-test-msgid* *nct-40*
                                                 *fn-nctrl-test-article*)))))
+
+; ---------------------------------------------------------------------------
+; fn-native-control-liveness-decides (PKT-344).  Positive witnesses, one per
+; arm: a crashed owner's socket (node present, lock free) is :stale and runs
+; offline; a live owner (node, lock held) is :live; no node and a free lock
+; is :offline; no node and a held lock is :held and never runs offline.
+(assert-event (equal (fn-native-control-liveness t :free) :stale))
+(assert-event (equal (fn-native-control-liveness t :absent) :stale))
+(assert-event (fn-native-control-liveness-offlinep :stale))
+(assert-event (equal (fn-native-control-liveness t :held) :live))
+(assert-event (equal (fn-native-control-liveness t :unknown) :live))
+(assert-event (equal (fn-native-control-liveness nil :free) :offline))
+(assert-event (equal (fn-native-control-liveness nil :held) :held))
+(assert-event (equal (fn-native-control-liveness nil :unknown) :held))
+(assert-event (not (fn-native-control-liveness-offlinep :held)))
+(assert-event (not (fn-native-control-liveness-offlinep :live)))
+(assert-event (stringp (fn-native-control-liveness-note :stale)))
+(assert-event (null (fn-native-control-liveness-note :live)))
+; The conclusion fails for the pre-PKT-344 rule (the socket node alone):
+; with a stale node that rule answered :live and the connect refused.
+(defun nct-livep-by-node-alone (socket-node lock)
+  (declare (ignore lock))
+  (if socket-node :live :offline))
+(assert-event (not (fn-native-control-liveness-offlinep
+                    (nct-livep-by-node-alone t :free))))
+(assert-event (fn-native-control-liveness-offlinep
+                (nct-livep-by-node-alone nil :held)))
+; Without the lock: the node alone does not decide stale.
+(must-fail
+ (defthm nct-stale-without-lock
+   (iff (equal (fn-native-control-liveness socket-node lock) :stale)
+        socket-node)
+   :rule-classes nil))
+; Without the node: a free lock alone is not stale.
+(must-fail
+ (defthm nct-stale-without-node
+   (iff (equal (fn-native-control-liveness socket-node lock) :stale)
+        (member-equal lock '(:free :absent)))
+   :rule-classes nil))

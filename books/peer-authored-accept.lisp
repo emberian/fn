@@ -576,7 +576,7 @@
 ;; the attempt's own word unchanged.
 (defconst *fn-pa-served-reasons*
   '(:article :carrier :carrier-shape :local-enrollment :signature :conflict
-    :control-not-filed :control-malformed :control-signed
+    :control-not-filed :control-malformed
     :event :signed-record
     ;; books/login-binding.lisp fn-lb-gate: a bound login under the
     ;; `posting-policy bound-logins' policy.

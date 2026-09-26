@@ -66,7 +66,7 @@
   '(fn-pinv-accept-step 1 2 3 (pit-inv) *pit-a-ml* :verified :verified nil))
 (assert-event (equal (car (pit-accept)) :enrol))
 (assert-event (fn-pinv-bound-document-p (pit-inv) *pit-a-ml* :verified
-                                        :verified *fn-pinv-invitation-kind*))
+                                        :verified *fn-pinv-invitation-kind* nil))
 (assert-event (equal (fn-pinv-at 1 (pit-accept))
                      (fn-hl-enroll-event 1 2 3 1 (pit-a) *pit-a-keys* nil)))
 (assert-event (equal (fn-pinv-received-principal (pit-inv)) (pit-a)))
@@ -83,7 +83,7 @@
                      '(:refused :unverified)))
 (must-fail (assert-event (fn-pinv-bound-document-p (pit-tampered) *pit-a-ml*
                                                    :verified :refused
-                                                   *fn-pinv-invitation-kind*)))
+                                                   *fn-pinv-invitation-kind* nil)))
 
 ; A body naming another key than the carrier's: refused by name.
 (defmacro pit-claims ()
@@ -95,7 +95,7 @@
                      '(:refused :claimed-keys)))
 (must-fail (assert-event (fn-pinv-bound-document-p (pit-claims) *pit-a-ml*
                                                    :verified :verified
-                                                   *fn-pinv-invitation-kind*)))
+                                                   *fn-pinv-invitation-kind* nil)))
 
 ; A principal that is not the key set's genesis identity: refused.
 (defmacro pit-not-genesis ()
@@ -108,7 +108,7 @@
 (must-fail (assert-event (fn-pinv-bound-document-p (pit-not-genesis)
                                                    *pit-a-ml* :verified
                                                    :verified
-                                                   *fn-pinv-invitation-kind*)))
+                                                   *fn-pinv-invitation-kind* nil)))
 
 ; Already enrolled with exactly these keys: the accept step refuses, and
 ; the keystone's "not already enrolled" conclusion fails there.
@@ -124,7 +124,7 @@
 ; by the plan and, independently, by configuration admission.
 
 (defmacro pit-issue ()
-  '(fn-pinv-issue-plan (pit-inv) *pit-a-ml* :verified :verified nil))
+  '(fn-pinv-issue-plan (pit-inv) *pit-a-ml* :verified :verified nil nil))
 (assert-event (equal (car (pit-issue)) :issue))
 (defconst *pit-v0* (fn-cfg-empty-value))
 (assert-event (null (fn-cfg-delta-reason *pit-v0* 1 nil 0 0
@@ -136,7 +136,7 @@
 (defconst *pit-nonce-hex* (fn-pinv-hex-string *pit-nonce*))
 (assert-event (fn-cfg-invitation-pendingp (pit-inv-rows) *pit-nonce-hex*))
 (assert-event (equal (fn-pinv-issue-plan (pit-inv) *pit-a-ml* :verified
-                                         :verified (pit-inv-rows))
+                                         :verified (pit-inv-rows) nil)
                      '(:refused :invitation-nonce-reused)))
 (assert-event (equal (fn-cfg-delta-reason (pit-v1) 2 nil 0 0
                                           (fn-pinv-at 1 (pit-issue)))
@@ -165,7 +165,7 @@
                (fn-pinv-received-source (pit-acc))
                (fn-cfg-invitation-row (pit-inv-rows) *pit-nonce-hex*)))
 (assert-event (fn-pinv-bound-document-p (pit-acc) *pit-b-ml* :verified
-                                        :verified *fn-pinv-acceptance-kind*))
+                                        :verified *fn-pinv-acceptance-kind* nil))
 
 ; Consumption, then the crash point: the configuration record is durable,
 ; the kind-3 record is not.  The same acceptance now enrols B.
@@ -197,14 +197,22 @@
 (must-fail (assert-event (fn-cfg-delta-reason (pit-v1) 3 nil 0 0
                                               (fn-pinv-at 1 (pit-confirm)))))
 
-; A second confirm after the enrolment: refused.
+; A second confirm after the enrolment: refused by the plans the host asks
+; first (the record plan passes the confirm plan's `already-confirmed').
+; The step itself answers (:current) there (PKT-211): the host asks it only
+; right after a consumption it published, below (PRF-179).
 (defmacro pit-b-snapshots ()
   ' (list (fn-pinv-at 1 (pit-confirm-step))))
+(assert-event (equal (fn-pinv-confirm-record-plan (pit-acc) (pit-inv) *pit-b-ml*
+                                                  :verified :verified
+                                                  (pit-consumed-rows)
+                                                  (pit-b-snapshots) nil)
+                     '(:refused :already-confirmed)))
 (assert-event (equal (fn-pinv-confirm-step 9 10 2 (pit-acc) *pit-b-ml*
                                            :verified :verified
                                            (pit-consumed-rows)
                                            (pit-b-snapshots))
-                     '(:refused :already-confirmed)))
+                     '(:current)))
 ; Removal witness for the resume keystone's "not enrolled": the resumed
 ; plan is not an enrolment there.
 (must-fail (assert-event
@@ -235,7 +243,7 @@
   '(fn-cfg-apply-delta (pit-v2) 3 nil
                       (fn-pinv-at 1 (fn-pinv-issue-plan (pit-inv2) *pit-a-ml*
                                                         :verified :verified
-                                                        (pit-consumed-rows)))))
+                                                        (pit-consumed-rows) nil))))
 (defmacro pit-other-inv ()
   '(pit-sign (fn-pinv-invitation-source *pit-date* *pit-nonce2* (pit-a)
                                        *pit-a-token* *pit-a-keys*
@@ -421,7 +429,7 @@
 ; the antecedent and every conjunct of the conclusion.
 (assert-event (equal (car (pit-arec)) :configure))
 (assert-event (fn-pinv-bound-document-p (pit-inv) *pit-a-ml* :verified
-                                        :verified *fn-pinv-invitation-kind*))
+                                        :verified *fn-pinv-invitation-kind* nil))
 (assert-event (not (fn-pinv-enrolled-withp (pit-a) *pit-a-keys* nil)))
 (assert-event (fn-pinv-inviter-addressedp (fn-pinv-received-source (pit-inv))))
 (assert-event (fn-cfg-peerp (pit-inviter-peer)))
@@ -452,9 +460,9 @@
                                                  :verified nil
                                                  (fn-cfg-peers (pit-anext)))
                      (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
-                                          :verified)))
+                                          :verified nil)))
 (assert-event (equal (car (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
-                                               :verified))
+                                               :verified nil))
                      :enrol))
 ; ... and the resumed step is the enrolment of A.
 (assert-event (equal (car (fn-pinv-accept-step 1 2 3 (pit-inv) *pit-a-ml*
@@ -473,9 +481,9 @@
 (assert-event (equal (fn-pinv-accept-record-plan (pit-other-inv) *pit-a-ml*
                                                  :verified :verified nil nil)
                      (fn-pinv-accept-plan (pit-other-inv) *pit-a-ml* :verified
-                                          :verified)))
+                                          :verified nil)))
 (assert-event (equal (car (fn-pinv-accept-plan (pit-other-inv) *pit-a-ml*
-                                               :verified :verified))
+                                               :verified :verified nil))
                      :enrol))
 (must-fail (assert-event (fn-pinv-inviter-addressedp
                           (fn-pinv-received-source (pit-other-inv)))))
@@ -505,5 +513,249 @@
                      '(:refused :unverified)))
 (must-fail (assert-event (fn-pinv-bound-document-p (pit-tampered) *pit-a-ml*
                                                    :verified :refused
-                                                   *fn-pinv-invitation-kind*)))
+                                                   *fn-pinv-invitation-kind* nil)))
 
+
+; PRF-166 (PKT-325): the `keys redecide' request (kind 12) round-trips its
+; Message-ID, and is no other request.
+(defconst *pinv-redecide-msgid* (fn-record-string-octets "<s@x.invalid>"))
+(assert-event
+ (equal (fn-pinv-redecide-request-decode
+         (fn-pinv-redecide-request-encode *pinv-redecide-msgid*))
+        *pinv-redecide-msgid*))
+(assert-event
+ (not (fn-pinv-request-decode *fn-pinv-issue-kind*
+                              (fn-pinv-redecide-request-encode *pinv-redecide-msgid*))))
+(assert-event (equal (fn-pinv-redecide-request-encode nil) :bad))
+(assert-event
+ (equal (fn-pinv-redecide-request-encode (make-list 251 :initial-element 60)) :bad))
+
+; PKT-221: the login-binding reload (kind 14) decodes as itself and as no
+; redecide; a redecide frame is no reload.
+(assert-event (fn-pinv-bindings-request-decode (fn-pinv-bindings-request-encode)))
+(assert-event
+ (not (fn-pinv-redecide-request-decode (fn-pinv-bindings-request-encode))))
+(assert-event
+ (not (fn-pinv-bindings-request-decode
+       (fn-pinv-redecide-request-encode *pinv-redecide-msgid*))))
+
+
+; -----------------------------------------------------------------------------
+; PRF-179 (PKT-211): succession-era documents.  B enrolled at A under its
+; genesis keys (generation 1), then succeeded to B2 (generation 2, same
+; principal): A's keyring.  B's acceptance signed under B2 names B's
+; principal and token, so the genesis rule alone refuses it.
+(defconst *pit-b2-ed* (make-list 32 :initial-element 13))
+(defconst *pit-b2-ml* (make-list 1952 :initial-element 14))
+(defconst *pit-b2-keys* (list (cons :ed25519 *pit-b2-ed*)
+                              (cons :ml-dsa-65 *pit-b2-ml*)))
+(defmacro pit-g1 () '(fn-hl-enroll-event 1 2 3 1 (pit-b) *pit-b-keys* nil))
+(defmacro pit-succ ()
+  '(list (fn-hl-enroll-event 4 5 6 2 (pit-b) *pit-b2-keys* (list (pit-g1)))
+         (pit-g1)))
+(assert-event (fn-stxk-p (car (pit-succ))))
+(defmacro pit-acc2 ()
+  ' (pit-acceptance (pit-inv) *pit-a-ml* (pit-b) *pit-b-token* *pit-b2-keys*))
+(defmacro pit-acc2-source () '(fn-pinv-received-source (pit-acc2)))
+(assert-event (consp (pit-acc2)))
+(assert-event (equal (fn-pinv-received-principal (pit-acc2)) (pit-b)))
+(assert-event (equal (fn-pinv-received-keys (pit-acc2)) *pit-b2-keys*))
+; Non-degenerate: B2 is not B's genesis key set.
+(assert-event (not (fn-pinv-genesis-okp (pit-acc2-source) (pit-b) *pit-b2-keys*)))
+
+; fn-pinv-document-of-a-current-enrolment-is-accepted: every antecedent,
+; then the conclusion.
+(assert-event (fn-pinv-verifiedp (pit-acc2) *pit-b2-ml* :verified :verified))
+(assert-event (fn-pinv-kindp (pit-acc2-source) *fn-pinv-acceptance-kind*))
+(assert-event (fn-pinv-names-keysp (pit-acc2-source) (pit-b) *pit-b2-keys*))
+(assert-event (fn-pinv-hex-fieldp (fn-pinv-field "Nonce" (pit-acc2-source)) 32))
+(assert-event (fn-pinv-enrolled-withp (pit-b) *pit-b2-keys* (pit-succ)))
+(assert-event (equal (fn-pinv-document (pit-acc2) *pit-b2-ml* :verified
+                                       :verified *fn-pinv-acceptance-kind*
+                                       (pit-succ))
+                     (list :ok (pit-acc2-source) (pit-b) *pit-b2-keys*)))
+; Without the current enrolment (the keyring before the succession): the
+; hypothesis fails, and so does the conclusion: `not-current-keys'.
+(assert-event (not (fn-pinv-enrolled-withp (pit-b) *pit-b2-keys*
+                                           (list (pit-g1)))))
+(assert-event (equal (fn-pinv-document (pit-acc2) *pit-b2-ml* :verified
+                                       :verified *fn-pinv-acceptance-kind*
+                                       (list (pit-g1)))
+                     '(:refused :not-current-keys)))
+; Without the verification: the ML-DSA observation refuses.
+(assert-event (not (fn-pinv-verifiedp (pit-acc2) *pit-b2-ml* :verified :refused)))
+(must-fail (assert-event
+            (equal (car (fn-pinv-document (pit-acc2) *pit-b2-ml* :verified
+                                          :refused *fn-pinv-acceptance-kind*
+                                          (pit-succ)))
+                   :ok)))
+; Without the kind: the same acceptance asked as an invitation.
+(assert-event (not (fn-pinv-kindp (pit-acc2-source) *fn-pinv-invitation-kind*)))
+(must-fail (assert-event
+            (equal (car (fn-pinv-document (pit-acc2) *pit-b2-ml* :verified
+                                          :verified *fn-pinv-invitation-kind*
+                                          (pit-succ)))
+                   :ok)))
+; Without the body naming the carrier's keys: the body names B's genesis
+; keys, the carrier is B2's.
+(defmacro pit-acc2-claims ()
+  '(pit-sign (fn-pinv-acceptance-source *pit-date* (pit-inv) *pit-a-ml*
+                                        :verified :verified (pit-b)
+                                        *pit-b-token* *pit-b-keys*
+                                        (fn-pinv-text "b.example")
+                                        (fn-pinv-text "-"))
+             (pit-b) *pit-b2-keys*))
+(assert-event (fn-pinv-enrolled-withp (fn-pinv-received-principal (pit-acc2-claims))
+                                      (fn-pinv-received-keys (pit-acc2-claims))
+                                      (pit-succ)))
+(assert-event (not (fn-pinv-names-keysp (fn-pinv-received-source (pit-acc2-claims))
+                                        (pit-b) *pit-b2-keys*)))
+(must-fail (assert-event
+            (equal (car (fn-pinv-document (pit-acc2-claims) *pit-b2-ml* :verified
+                                          :verified *fn-pinv-acceptance-kind*
+                                          (pit-succ)))
+                   :ok)))
+; Without a 32-octet nonce: an acceptance body built with a 3-octet one.
+(defmacro pit-acc2-short-nonce ()
+  '(pit-sign (fn-pinv-source "fn-acceptance" (fn-pinv-text "<fn-accept-x@fn-peering.invalid>")
+                             *pit-date*
+                             (fn-pinv-acceptance-fields
+                              (fn-pinv-hex '(1 2 3))
+                              (fn-pinv-source-id (pit-inv-source)) (pit-a) (pit-b)
+                              *pit-b-token* *pit-b2-keys*
+                              (fn-pinv-text "b.example") (fn-pinv-text "-")))
+             (pit-b) *pit-b2-keys*))
+(assert-event (fn-pinv-names-keysp (fn-pinv-received-source (pit-acc2-short-nonce))
+                                   (pit-b) *pit-b2-keys*))
+(assert-event (not (fn-pinv-hex-fieldp
+                    (fn-pinv-field "Nonce" (fn-pinv-received-source
+                                            (pit-acc2-short-nonce)))
+                    32)))
+(must-fail (assert-event
+            (equal (car (fn-pinv-document (pit-acc2-short-nonce) *pit-b2-ml*
+                                          :verified :verified
+                                          *fn-pinv-acceptance-kind* (pit-succ)))
+                   :ok)))
+
+; fn-pinv-document-binds-a-known-principal-only-at-its-current-keys:
+; witness above (B known, the document ok, B2 current).  Without "known":
+; under an empty keyring B's genesis acceptance passes, and B's genesis keys
+; are no current enrolment there.
+(assert-event (not (fn-pinv-knownp (pit-b) nil)))
+(assert-event (equal (car (fn-pinv-document (pit-acc) *pit-b-ml* :verified
+                                            :verified *fn-pinv-acceptance-kind*
+                                            nil))
+                     :ok))
+(must-fail (assert-event (fn-pinv-enrolled-withp (pit-b) *pit-b-keys* nil)))
+; Without the document passing: B's superseded genesis keys after the
+; succession (B known) are refused, and are not B's current enrolment.
+(assert-event (fn-pinv-knownp (pit-b) (pit-succ)))
+(assert-event (equal (fn-pinv-document (pit-acc) *pit-b-ml* :verified :verified
+                                       *fn-pinv-acceptance-kind* (pit-succ))
+                     '(:refused :not-current-keys)))
+(must-fail (assert-event (fn-pinv-enrolled-withp (pit-b) *pit-b-keys* (pit-succ))))
+; A refusal by name: B revoked (generation 3, a tombstone).
+(defmacro pit-revoked ()
+  '(cons (fn-hl-revoke-event 7 8 9 3 (pit-b) (pit-succ)) (pit-succ)))
+(assert-event (fn-stxk-p (car (pit-revoked))))
+(assert-event (equal (fn-pinv-document (pit-acc2) *pit-b2-ml* :verified
+                                       :verified *fn-pinv-acceptance-kind*
+                                       (pit-revoked))
+                     '(:refused :revoked)))
+
+; fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision: B
+; unknown to a keyring holding only A: the decision is the empty keyring's.
+(assert-event (not (fn-pinv-knownp (pit-b) (pit-a-snapshots))))
+(assert-event (equal (fn-pinv-document (pit-acc) *pit-b-ml* :verified :verified
+                                       *fn-pinv-acceptance-kind*
+                                       (pit-a-snapshots))
+                     (fn-pinv-document (pit-acc) *pit-b-ml* :verified :verified
+                                       *fn-pinv-acceptance-kind* nil)))
+; Without "unknown": B known after the succession decides otherwise.
+(must-fail (assert-event
+            (equal (fn-pinv-document (pit-acc) *pit-b-ml* :verified :verified
+                                     *fn-pinv-acceptance-kind* (pit-succ))
+                   (fn-pinv-document (pit-acc) *pit-b-ml* :verified :verified
+                                     *fn-pinv-acceptance-kind* nil))))
+
+; fn-pinv-an-enrolling-accept-is-the-clis-plan: B accepts A's invitation
+; with a keyring that holds B only (A unknown): the step enrols and the
+; plans agree.
+(assert-event (equal (car (fn-pinv-accept-step 1 2 3 (pit-inv) *pit-a-ml*
+                                               :verified :verified (pit-succ)))
+                     :enrol))
+(assert-event (equal (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
+                                          :verified nil)
+                     (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
+                                          :verified (pit-succ))))
+; Without the enrolling step: A known here at a key set it has since
+; succeeded (B2's, for the fixture): the plans differ, and the step refuses.
+(defmacro pit-a-moved ()
+  '(list (fn-hl-enroll-event 4 5 6 2 (pit-a) *pit-b2-keys* (pit-a-snapshots))
+         (car (pit-a-snapshots))))
+(assert-event (equal (fn-pinv-accept-step 1 2 3 (pit-inv) *pit-a-ml* :verified
+                                          :verified (pit-a-moved))
+                     '(:refused :not-current-keys)))
+(must-fail (assert-event
+            (equal (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
+                                        :verified nil)
+                   (fn-pinv-accept-plan (pit-inv) *pit-a-ml* :verified
+                                        :verified (pit-a-moved)))))
+
+; The confirm of a current acceptor, end to end over the plans the host
+; asks: A's record plan consumes and configures; after the record the step
+; answers (:current), enrolling nothing.
+(defmacro pit-confirm2 ()
+  '(fn-pinv-confirm-plan (pit-acc2) *pit-b2-ml* :verified :verified
+                         (pit-inv-rows) (pit-succ)))
+(assert-event (equal (car (pit-confirm2)) :consume))
+(assert-event (equal (car (fn-pinv-confirm-record-plan
+                           (pit-acc2) (pit-inv) *pit-b2-ml* :verified :verified
+                           (pit-inv-rows) (pit-succ) nil))
+                     :configure))
+(defmacro pit-v2s ()
+  '(fn-cfg-apply-delta (pit-v1) 2 nil (fn-pinv-at 1 (pit-confirm2))))
+(assert-event (null (fn-cfg-delta-reason (pit-v1) 2 nil 0 0
+                                         (fn-pinv-at 1 (pit-confirm2)))))
+(defmacro pit-step2 ()
+  '(fn-pinv-confirm-step 7 8 2 (pit-acc2) *pit-b2-ml* :verified :verified
+                         (fn-cfg-invitations (pit-v2s)) (pit-succ)))
+; fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption:
+; antecedents (the plan consumes; B2 current), conclusion (:current).
+(assert-event (equal (pit-step2) '(:current)))
+; Without "current": the genesis acceptor under the empty keyring enrols.
+(must-fail (assert-event (equal (pit-confirm-step) '(:current))))
+; Without "consumes": a superseded acceptance's plan is a refusal, and the
+; step after it is that refusal.
+(defmacro pit-confirm-old ()
+  '(fn-pinv-confirm-plan (pit-acc) *pit-b-ml* :verified :verified
+                         (pit-inv-rows) (pit-succ)))
+(assert-event (equal (pit-confirm-old) '(:refused :not-current-keys)))
+(must-fail (assert-event
+            (equal (fn-pinv-confirm-step
+                    7 8 2 (pit-acc) *pit-b-ml* :verified :verified
+                    (fn-cfg-invitations
+                     (fn-cfg-apply-delta (pit-v1) 2 nil
+                                         (fn-pinv-at 1 (pit-confirm-old))))
+                    (pit-succ))
+                   '(:current))))
+
+; fn-pinv-confirm-step-current-only-for-the-consuming-current-acceptor: the
+; antecedent (:current) and each conclusion at the witness.
+(defmacro pit-rows2 () '(fn-cfg-invitations (pit-v2s)))
+(defmacro pit-row2 ()
+  '(fn-cfg-invitation-row (pit-rows2)
+                          (fn-record-octets-string
+                           (fn-pinv-field "Nonce" (pit-acc2-source)))))
+(assert-event (fn-pinv-bound-document-p (pit-acc2) *pit-b2-ml* :verified
+                                        :verified *fn-pinv-acceptance-kind*
+                                        (pit-succ)))
+(assert-event (consp (pit-row2)))
+(assert-event (equal (fn-cfg-row-n (pit-row2)) 1))
+(assert-event (equal (fn-cfg-row-b (pit-row2)) (fn-pinv-hex-string (pit-b))))
+(assert-event (equal (fn-cfg-row-c (pit-row2))
+                     (fn-pinv-hex-string (fn-pinv-source-id (pit-acc2-source)))))
+; Without the antecedent: the genesis step enrols, and B's genesis keys are
+; no current enrolment in its keyring.
+(assert-event (equal (car (pit-confirm-step)) :enrol))
+(must-fail (assert-event (fn-pinv-enrolled-withp (pit-b) *pit-b-keys* nil)))

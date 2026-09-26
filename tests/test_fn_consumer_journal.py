@@ -16,6 +16,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,7 +24,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import fn_consumer  # noqa: E402
 
 FAKE = r'''#!/usr/bin/env python3
-import hashlib, json, os, sys
+import hashlib, json, os, sys, time
 from pathlib import Path
 state = Path(os.environ["FAKE_STATE"])
 words = sys.argv[2:]
@@ -33,6 +34,11 @@ if words[0] == "hybrid-sign":
     sys.exit(0)
 if words[0] == "hybrid-author":
     control, generation, q, ed, ml, mlpub = words[1:7]
+    hold = os.environ.get("FAKE_HOLD")
+    if hold:
+        Path(hold + ".started").write_text("")
+        while not Path(hold).exists():
+            time.sleep(0.05)
     log = json.loads(state.read_text()) if state.exists() else {"queue": [], "seen": []}
     log["seen"].append({"generation": generation,
                         "q": hashlib.sha256(Path(q).read_bytes()).hexdigest(),
@@ -106,6 +112,7 @@ class JournalAgainstAStandIn(unittest.TestCase):
 
     def run_consumer(self, *words, cut=None):
         env = dict(os.environ, FAKE_STATE=str(self.state))
+        env.pop("FAKE_HOLD", None)
         env.pop("FN_CONSUMER_CUT", None)
         if cut:
             env["FN_CONSUMER_CUT"] = cut
@@ -178,6 +185,52 @@ class JournalAgainstAStandIn(unittest.TestCase):
                          ("1", "ORIGINAL ML PUBLIC KEY\n"))
         [entry] = self.outbox()
         self.assertEqual((entry["state"], entry["attempts"]), ("stored", 2))
+
+    def test_a_second_process_on_the_database_is_refused_by_the_lock(self):
+        # PKT-351: the first process is inside hybrid-author with its attempt
+        # in flight; a second process on the same database is refused by
+        # name before it reads anything, and the in-flight attempt is not
+        # turned unanswered under the live process.
+        self.queue(0)
+        hold = self.root / "release"
+        env = dict(os.environ, FAKE_STATE=str(self.state), FAKE_HOLD=str(hold))
+        env.pop("FN_CONSUMER_CUT", None)
+        first = subprocess.Popen([sys.executable, str(ROOT / "tools" / "fn_consumer.py"),
+                                  str(self.config), "report", "r1", "x"], env=env,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(lambda: first.poll() is None and first.kill())
+        started = Path(str(hold) + ".started")
+        for _ in range(1200):
+            if started.exists() or first.poll() is not None:
+                break
+            time.sleep(0.05)
+        self.assertTrue(started.exists(), "the first consumer never reached hybrid-author")
+        second = self.run_consumer("summary")
+        self.assertEqual(second.returncode, 1, second.stderr)
+        self.assertEqual(second.stderr.decode().strip(),
+                         "fn_consumer: database in use by pid %d" % first.pid)
+        self.assertEqual(second.stdout, b"")
+        db = sqlite3.connect(str(self.root / "state.db"))
+        self.addCleanup(db.close)
+        self.assertEqual(db.execute("SELECT state FROM attempts").fetchall(), [("in-flight",)])
+        hold.write_text("")
+        out, err = first.communicate(timeout=120)
+        self.assertEqual(first.returncode, 0, err)
+        # Released with the holder: the next process opens it and sees the
+        # first process's answer, not an unanswered attempt.
+        [entry] = self.outbox()
+        self.assertEqual((entry["state"], entry["settled_by"], entry["attempts"]),
+                         ("stored", "post-answer", 1))
+
+    def test_the_lock_dies_with_its_holder(self):
+        # Teeth for the rule the lock replaces: a process that died (cut 97)
+        # holds nothing, and its in-flight attempt is unanswered to the next.
+        self.assertEqual(self.run_consumer("report", "r1", "x",
+                                           cut="attempt-recorded").returncode, 97)
+        result = self.run_consumer("summary")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        [entry] = json.loads(result.stdout)["outbox"]
+        self.assertEqual(entry["journal"][0]["state"], "unanswered")
 
     def test_the_artifact_is_immutable(self):
         self.queue(0)

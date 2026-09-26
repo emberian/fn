@@ -1536,7 +1536,8 @@
         "PRF-051",
         "PRF-092",
         "PRF-087",
-        "PRF-106"
+        "PRF-106",
+        "PRF-144"
       ],
       "verification": [
         "proof",
@@ -1821,7 +1822,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-116"
+        "PRF-116",
+        "PRF-177"
       ],
       "verification": [
         "proof",
@@ -1837,7 +1839,7 @@
         "planning/evidence/manifests/certify-20260926T000312Z-2863061.json",
         "planning/evidence/consumer-e2/test_native_consumer_exchange.gate-eca72d1c.log"
       ],
-      "note": "Local-owner profile only (0600 same-UID control socket, one group, historical membership). The consumer transaction is the external client's SQLite transaction; exactly-once is of its local transition under SQLite atomic commit and the unique operation index, not of any external effect. An identical resend over local control is answered D25's duplicate (PKT-166); the consumer settles an uncertain POST by that answer or by fn serving the exact source back through poll. No retention pin (PKT-165 is the retaining-mode packet)."
+      "note": "Local-owner profile only (0600 same-UID control socket, one group, historical membership). The consumer transaction is the external client's SQLite transaction; exactly-once is of its local transition under SQLite atomic commit and the unique operation index, not of any external effect. An identical resend over local control is answered D25's duplicate (PKT-166); the consumer settles an uncertain POST by that answer or by fn serving the exact source back through poll. No retention pin (PKT-165 is the retaining-mode packet). Two nodes peered over NNTP: CNS-004."
     },
     {
       "id": "TOP-002",
@@ -1974,7 +1976,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-079",
-        "PRF-103"
+        "PRF-103",
+        "PRF-176"
       ],
       "verification": [
         "proof",
@@ -1990,7 +1993,11 @@
         "host/native/bp-node.lisp",
         "host/bp-native-app-host.lisp",
         "tests/test_bp_node_native.py",
-        "planning/evidence/bp-routing-2026-09-25.md"
+        "planning/evidence/bp-routing-2026-09-25.md",
+        "books/bp-listener-set.lisp",
+        "books/bp-node-forward-plan.lisp",
+        "tests/acl2/bp-node-forward-plan-tests.lisp",
+        "planning/evidence/multi-peer-relay-2026-09-26.md"
       ],
       "implementation_note": "RFC 9171 section 4.3 and 5.4 step 1 leave the forwarding strategy to the node; fn implements no routing protocol (local policy) and decides from operator configuration rows written by `bp-route add PATTERN BOUNDARY [PRIORITY]` through the assured reconfiguration path. The next hop, the expected TCPCL node ID (RFC 9174 section 4.6 SESS_INIT) and the contact port are ACL2's (fn-bprt-outbound-choice over fn-bprt-table); host/native/bp-node.lisp fnn-bpnode-forward-contact opens no session without a route. Not covered: FNBS base jobs (bp-obligation request, bp-contact tick, bp-service) still carry their queued CONTACT-HOST:PORT; the unrouted 6-field :session form and :resume remain in the machine unsent by the host."
     },
@@ -2040,7 +2047,7 @@
         "books/native-auth-admin.lisp",
         "planning/evidence/bounds-profile-2026-09-25.md"
       ],
-      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9), BP rows (10) and policy members (13) still have constants (256, 4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
+      "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9) are read too since community-bounds (PRF-167, STO-021); BP rows (10) and policy members (13) still have constants (4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },
     {
       "id": "HST-006",
@@ -2073,7 +2080,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-112"
+        "PRF-112",
+        "PRF-172"
       ],
       "verification": [
         "proof",
@@ -2265,7 +2273,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-104"
+        "PRF-104",
+        "PRF-173"
       ],
       "verification": [
         "proof",
@@ -2277,9 +2286,13 @@
         "books/acceptance-alloc.lisp",
         "tests/acl2/linear-recognizers-tests.lisp",
         "tests/acl2/owner-checkpoint-open-tests.lisp",
-        "planning/evidence/checkpoint-cost-2026-09-25.md"
+        "planning/evidence/checkpoint-cost-2026-09-25.md",
+        "books/retention.lisp",
+        "books/owner.lisp",
+        "tests/acl2/open-one-pass-tests.lisp",
+        "planning/evidence/served-path-scale-2026-09-26.md"
       ],
-      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list, and fn-node-articles-have-archive-bindingsp and fn-articles-freshp are still quadratic (planning/evidence/checkpoint-cost-2026-09-25.md)."
+      "implementation_note": "The file carries S (fn-sco-freeze/fn-sco-thaw) when the event index yields the record list; both Store opens extend once and the owner installs from the Store open's value; fn-no-duplicatesp, fn-subsetp, fn-article-listp, fn-node-binding-listp and fn-retain-no-duplicatesp run linear :exec paths; the owner publishes on its own thread from values captured under the mutex. The Store state still holds the record list. fn-articles-freshp and fn-node-articles-have-archive-bindingsp run one-pass :exec paths and the admission's identity test walks without consing (PRF-173, planning/evidence/served-path-scale-2026-09-26.md); a full replay still makes linear lookups per step (PKT-455)."
     },
     {
       "id": "NNT-014",
@@ -2369,7 +2382,7 @@
         "tests/test_fn_web.py",
         "planning/evidence/reader-daily-2026-09-25.md"
       ],
-      "implementation_note": "fn guarantee and local client policy, not an RFC requirement: RFC 2980 section 2.9 defines XPAT and RFC 3977 sections 6.2.4 and 8.5 define STAT and HDR; the withdrawal answers are fn's C3. The node decides scope, visibility and match (PRF-122); tools/fn_web.py sends the commands, shows the node's lines and orders them for display.",
+      "implementation_note": "fn guarantee and local client policy, not an RFC requirement: RFC 2980 section 2.9 defines XPAT and RFC 3977 sections 6.2.4 and 8.5 define STAT and HDR; the withdrawal answers are fn's C3. The node decides scope, visibility and match (PRF-122); tools/fn_web.py sends the commands, shows the node's lines and orders them for display. The article page's fourth fact reads the node's HDR :fn-enrollment (NNT-036, PRF-168) and its fifth is the reader's own check (WEB-002).",
       "note": "Scripted walk and fake-socket tests; a scripted walk is not a human usability study. Current enrollment is not served by the node (PKT-175)."
     },
     {
@@ -2520,6 +2533,7 @@
         "PRF-120",
         "PRF-128",
         "PRF-132",
+        "PRF-144",
         "PRF-139"
       ],
       "verification": [
@@ -2639,7 +2653,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-130",
-        "PRF-141"
+        "PRF-141",
+        "PRF-143"
       ],
       "verification": [
         "proof",
@@ -2655,7 +2670,7 @@
         "planning/evidence/rollback-history-2026-09-26.md",
         "tests/test_native_rollback_history.py"
       ],
-      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
+      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 1 (HST-009, PRF-143; exit 6 until outcome-algebra) (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
       "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
     },
     {
@@ -2843,9 +2858,13 @@
         "planning/evidence/public-exposure-2026-09-26-report.json",
         "tests/native_owner_chunk_loop_raw.lisp",
         "tests/test_native_owner.py",
-        "docs/operator.md"
+        "docs/operator.md",
+        "books/public-exposure-reply.lisp",
+        "tests/acl2/public-exposure-reply-tests.lisp",
+        "tests/test_native_bounds_join.py",
+        "planning/evidence/exposure-reply-size-2026-09-26.md"
       ],
-      "implementation_note": "RFC 3977 section 5.1.1 (400/502 greeting then close), section 3.1 (autologout, close without a response) and RFC 4643 section 2.2 (480) are RFC requirements; every number, per-address accounting and waiting instead of refusing are local policy. The anonymous policy only tightens `[auth] required`. Read-only and public-groups anonymous levels are deferred (PKT-405). SCN-091 is the native campaign."
+      "implementation_note": "RFC 3977 section 5.1.1 (400/502 greeting then close), section 3.1 (autologout, close without a response) and RFC 4643 section 2.2 (480) are RFC requirements; every number, per-address accounting and waiting instead of refusing are local policy. The anonymous policy only tightens `[auth] required`. Read-only and public-groups anonymous levels are deferred (PKT-405). SCN-091 is the native campaign. SCN-111 is the large-reply case: the observation after every step reads the reply's two facts (answered, the 481 count) by a constant-stack scan of the effects (PKT-481)."
     },
     {
       "id": "NNT-032",
@@ -2926,6 +2945,309 @@
         "planning/evidence/friends-peer-2-2026-09-26.md"
       ],
       "implementation_note": "RFC 5537 section 3.6 relays by Newsgroups and section 5.3 gives a cancel its target's Newsgroups; section 3.7 files it under control.cancel (fn-pa-filing-plan). Offering under the filing group as well is a stronger fn guarantee (a peer that asked for control.cancel by name keeps receiving it). PKT-400 retired."
+    },
+    {
+      "id": "SEC-005",
+      "title": "A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened, and a friend whose keys succeeded since genesis is peered under its current keys, never under a superseded set",
+      "specification": "specs/peering.md#9-key-statements-succession-and-revocation-prf-098",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-166",
+        "PRF-175",
+        "PRF-179"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/key-statements.lisp",
+        "tests/acl2/key-statements-tests.lisp",
+        "books/native-operator.lisp",
+        "host/native/keys.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_key_statements.py",
+        "planning/evidence/keys-and-accounts-2026-09-26.md",
+        "books/login-binding-live.lisp",
+        "tests/acl2/login-binding-live-tests.lisp",
+        "host/native/login-bindings.lisp",
+        "tests/test_native_auth.py",
+        "books/peer-invite.lisp",
+        "tests/acl2/peer-invite-tests.lisp",
+        "tests/test_native_peer_invite.py",
+        "books/native-admin-peer-budget.lisp",
+        "books/peer-carriage.lisp",
+        "books/owner-log.lisp",
+        "tests/test_native_hybrid_author.py"
+      ],
+      "implementation_note": "A stronger fn guarantee (no RFC speaks of key statements): the redecide is a control-socket operator action decided by ACL2 (fn-ks-redecide-plan) under the live grants, which are those in force at its own txid; its one durable record is the kind-3 change. Refused by name for no stored statement, an acted statement, or a decline; offline refused (no owner). The login binding (PKT-221): rows of the configuration's accounts slot (mark 2, delta kind :login-binding code 17), published by the owner at start and on `principal bind|unbind' through the live reconfiguration (control request 14); the served gate reads the table the submission's connection pinned at open. PRF-179 (PKT-211): a peering document binds a principal this node's keyring holds only by its current enrolment (fn-pinv-document under fn-owner-hybrid-snapshots), the genesis identity otherwise; the confirm of an acceptor already current at the acceptance's keys completes at its consumption."
+    },
+    {
+      "id": "STO-021",
+      "title": "No hidden constant caps a community count: every constant bounding stored data is governed by a profile field, is a per-record work bound, or is a codec width that admits every valid profile; the consumer count is the profile's",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-167",
+        "PRF-178"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-position.lisp",
+        "books/consumer-owner-local.lisp",
+        "planning/evidence/community-bounds-2026-09-26.md",
+        "planning/evidence/control-reply-fit-2026-09-26.md"
+      ],
+      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168). The record bound R is refused past the consumer poll reply's report ceiling (PRF-178, PKT-467): the poll reply's width admits every valid profile."
+    },
+    {
+      "id": "HST-009",
+      "title": "Every native fn command exits with the code of its outcome class, one fn-wide table in which a code is a class and never a reason",
+      "specification": "specs/host.md#cli-exit-codes",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-143",
+        "PRF-172"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/outcome-class.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "docs/agents.md",
+        "tests/test_native_outcome_algebra.py",
+        "planning/evidence/outcome-algebra-2026-09-26.md"
+      ],
+      "implementation_note": "exit(f, x) = code(classify(f, x)): 0 accepted, 1 refused (NO-STORE, CONFLICT and every other reason printed as a word), 3 fenced (indeterminate local durable authority, nothing else), 4 fault, 5 usage, 6 interrupted, 7 not connected. The host's +fnn-exit-*+ constants are ACL2's fn-outcome-code. The table is the native executable's; tools/fn_client.py's --json record carries scope server. Outside it: health's verdict 0/19..27 (HST-007; PKT-329) and signal exits (128+N).",
+      "note": "An fn image from before :conflict answers a conflict uncertain (exit 3): clients are upgraded with the node (docs/agents.md)."
+    },
+    {
+      "id": "NNT-037",
+      "title": "A cancel crossing between peers has D29's behaviour on each node under its own grants, in both arrival orders, across a kill between the arrivals, with a reader pinned on either node; a signed article naming a group the node does not serve is refused by name",
+      "specification": "specs/peering.md#81-control-across-peers-prf-170",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-170"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/test_native_control_across_peers.py",
+        "tests/test_native_hybrid_author.py",
+        "books/hybrid-store-injected.lisp",
+        "books/native-hybrid-control.lisp",
+        "planning/evidence/control-across-peers-2026-09-26.md"
+      ],
+      "implementation_note": "D29: visible(T then C) = visible(C then T) is the test; each receiver decides again under its own enrolment and grants (specs/peering.md section 8). The two-node matrix witnesses the C3 keystones fn-ctl-visible-is-arrival-order-independent, fn-ctl-pinned-view-keeps-its-archive, fn-ctl-cancel-executes-only-for-author-or-authority and fn-ctl-replay-is-the-fold (PRF-097's, cited, not restated); PRF-170 is the named unserved-group refusal (PKT-147). RFC 3977 section 6.3.1 permits a plain refusal; the named word is a stronger fn guarantee."
+    },
+    {
+      "id": "NNT-036",
+      "title": "A reader is told the current enrollment of the principal a historical verdict names, as a fact distinct from the verdict",
+      "specification": "specs/peering.md#8-control-messages-filing-and-authority-implemented-cancel-decided-served-withdrawal-open-group-control-deferred",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-168"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/nntp-enrollment.lisp",
+        "books/owner-enrollment-read.lisp",
+        "tests/acl2/owner-enrollment-read-tests.lisp",
+        "tools/fn_web.py",
+        "tests/test_fn_web.py",
+        "tests/test_fn_web_native.py",
+        "specs/human-client.md",
+        "planning/evidence/reader-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T101956Z-272280.json"
+      ],
+      "implementation_note": "fn guarantee, not an RFC requirement: RFC 3977 section 8.5 lets a server offer HDR metadata items (the `:` prefix). PKT-175 implemented as the coordinator's default (a); (b), authenticated readers only, is a one-line policy switch on the served step. The historical signature verdict, historical local acceptance, current enrollment and current administrative authority stay separate (mandate section 5.4). ACL2 decides the item (fn-enr-item); tools/fn_web.py shows the node's words as the fourth provenance fact.",
+      "note": "The keyring view is pinned per committed view like the verdicts, so a reader opened before a rotation or revocation still reads the enrollment of its view."
+    },
+    {
+      "id": "WEB-002",
+      "title": "The web reader verifies a signed article independently with the reader's own keyring and says whose keyring",
+      "specification": "specs/human-client.md#reader-metadata-lines",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test"
+      ],
+      "evidence": [
+        "tools/fn_web.py",
+        "tools/fn_verify.py",
+        "tests/test_fn_web.py",
+        "tests/test_fn_web_native.py",
+        "docs/web.md",
+        "planning/evidence/reader-2-2026-09-26.md"
+      ],
+      "implementation_note": "PKT-253: a permitted external client check, not a node decision. tools/fn_web.py --keyring FILE runs tools/fn_verify.py check-article over the article's exact bytes (as tools/fn_consumer.py does) and renders verified here (principal, whose keyring), failed here (reason) or not performed (why). The node's keyring file is never read.",
+      "note": "Client behaviour; it proves nothing about the node's verdict and the page keeps the two apart."
+    },
+    {
+      "id": "NNT-034",
+      "title": "An operator's one-use invitation code lets a friend make their own AUTHINFO account over TLS, bound once and only once across a crash, without the operator editing auth.toml or restarting",
+      "specification": "specs/nntp.md#invitation-code-accounts-nnt-034",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-164"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/nntp-auth.lisp",
+        "tests/acl2/accounts-tests.lisp",
+        "planning/evidence/friends-accounts-2026-09-26.md",
+        "tests/acl2/accounts-wire-tests.lisp",
+        "tests/test_native_friends_accounts.py"
+      ],
+      "implementation_note": "XREDEEM is an fn extension, not RFC 4643 section 2.3's AUTHINFO; its replies reuse 381/281/482/483 in RFC 3977 section 3.2's classes. Built: the tenth configuration slot, admission, the redeem plan, the once-only theorems and the credential snapshot (PRF-164, friends-accounts); the wire verb XREDEEM CODE NAME / XREDEEM PASS PASSWORD, the owner's publication through fnn-owner-live-reconfigure-locked before the 281, the admission limit against max-credentials, and `operator CONFIG account invite|list` (friends-accounts-2). The native two-node session is tests/test_native_friends_accounts.py (SCN-094)."
+    },
+    {
+      "id": "STO-022",
+      "title": "The durable reply's barrier cost is the publication program's and nothing less: every fence of a served commit fences an object A <= M <= D reads, and a cheaper program is admitted only through the byte model's discipline and crash theorems and the history model's invariant",
+      "specification": "specs/storage.md#the-committed-history-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-169"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/byte-store-marker-candidates.lisp",
+        "tests/acl2/byte-store-marker-candidates-tests.lisp",
+        "planning/evidence/publish-program-2026-09-26.md",
+        "planning/evidence/publish-program-2026-09-26/measure.sh",
+        "planning/evidence/publish-program-2026-09-26/post_n.py"
+      ],
+      "implementation_note": "A served commit makes seven fsyncs (strace over `store probe`: 7.2 per commit with the reopen), two renames, one link and one unlink: the frontier's stage and root, the record's stage, transactions directory and staging directory, the marker's stage and root. On the pool `tank` (ZFS, about 90 percent full, no SLOG) each is one ZIL commit; the marker's two fence its stage inode and the root entry, and neither can be shared with a barrier that precedes the record's or follows the acknowledgement (PRF-169). The measured cost and the sound sharing are in the record; the reservation pulled into the completion window is PKT-441."
+    },
+    {
+      "id": "HST-010",
+      "title": "The operator's daily verbs distinguish an owner starting, a fenced store, a stale control socket and a refusal by name, each decided in ACL2 from the host's observations",
+      "specification": "specs/host.md#operator-health",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-172"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/native-health.lisp",
+        "books/native-control.lisp",
+        "books/native-control-reason.lisp",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_control.py",
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation_note": "health: reason=starting on the first line when the lock is held where an owner would listen (exit 20, the fenced state). Offline control/peer verbs: fn-native-control-liveness over the socket node and the lock; a stale node is removed under the control-path lease. Refusal by name: a control post and a live reconfiguration print ACL2's reason word after the status (`refused operator post REFUSED unknown-group`, `refused operator control REFUSED no-such-grant`), carried by the reasoned FNCT kinds 13/17 and reply kind 18 (books/native-control-reason.lisp) so an old client's plain request still reads the plain reply. health's starting clears on the listening observation (fn-nh-starting-clears-on-listening). Open: PKT-472."
+    },
+    {
+      "id": "NNT-035",
+      "title": "A pull and a feed survive a peer's partial and refusing behaviour: a peer that keeps listing an article it cannot produce no longer stalls the pull",
+      "specification": "specs/peering.md#128-the-newnews-pull-feed",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-165"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-pull.lisp",
+        "books/peer-pull-session.lisp",
+        "tests/acl2/peer-pull-tests.lisp",
+        "tests/acl2/peer-pull-session-tests.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_pull.py",
+        "planning/evidence/peer-feeds-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T102136Z-292994.json",
+        "planning/evidence/manifests/certify-20260926T102946Z-380804.json",
+        "planning/evidence/manifests/certify-20260926T103810Z-481225.json"
+      ],
+      "implementation_note": "RFC 3977 section 6.2.1.3 (430: no article with that message-id) and section 7.4 (NEWNEWS). The unavailable class, the consecutive-round count and the bound (peer row pull-unavailable-rounds, default 5) are fn local policy. The feed half (a MODE STREAM refusal durable across a restart with an IHAVE fallback on the same connection, RFC 4644 section 2.3) is not implemented: PKT-431."
+    },
+    {
+      "id": "CNS-004",
+      "title": "Two consumers on two fn nodes peered over NNTP exchange a signed report and reply; each verifies with its own keyring and acknowledges only its own node's position; repeated transfers, lost replies, consumer deaths and a node restart mid-poll yield no second transition",
+      "specification": "specs/consumer-progress.md#two-nodes",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-177"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-signed-post.lisp",
+        "tests/acl2/owner-signed-post-tests.lisp",
+        "books/consumer-owner-local-progress.lisp",
+        "tools/fn_consumer.py",
+        "tests/test_native_consumer_exchange_two_nodes.py",
+        "tests/test_fn_consumer_journal.py",
+        "planning/evidence/consumer-exchange-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T114912Z-1309060.json",
+        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log"
+      ],
+      "implementation_note": "A client contract over fn's peering; not an RFC requirement. The carriage is RFC 3977/4644 peering (IHAVE/TAKETHIS answered 435/438 for a held article, RFC 3977 section 6.3.2; the NEWNEWS pull, section 7.4, NNT-018); the stored-source guarantee is fn's (PRF-177 (a)). The Python consumer is an external client: its database lock, resend and correlation are its own bookkeeping under CNS-003.",
+      "note": "Local-owner profile on each node; NNTP peering with source-address authentication on loopback in the scenario. BP carriage through the relay network is PKT-333 phase 2."
+    },
+    {
+      "id": "STO-023",
+      "title": "Stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant: a peer's configuration rows grow by incremental deltas and checkpoint generations are a uint32 numbering under the profile's capacity",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-171"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/peer-carriage-rows.lisp",
+        "books/checkpoint-publish.lisp",
+        "books/checkpoint-pack-retire.lisp",
+        "planning/evidence/caps-to-profile-2026-09-26.md"
+      ],
+      "implementation_note": "Rows per peer (PKT-436's default) and checkpoint generations (PKT-168 (1)) are done with no store format change (PRF-171, SCN-101). Open: field 7 read by group create and the group-name width 460 (PKT-451)."
     }
   ]
 }

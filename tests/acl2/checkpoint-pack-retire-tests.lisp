@@ -49,21 +49,25 @@
                   (member-equal generation issued))
              (< (len (fn-cprt-crash-survivors generations issued retained))
                 (len generations))))))
-(assert-event (equal (fn-cprt-next-generation '(1 2)) 3))
-(assert-event (equal (fn-cprt-publication-initial '(1 2) 3 t t)
+(assert-event (equal (fn-cprt-next-generation '(1 2) 4096) 3))
+(assert-event (equal (fn-cprt-publication-initial '(1 2) 3 t t 4096)
                      (list :ok 3 (fn-jpub-initial t))))
-(assert-event (equal (fn-cprt-publication-initial '(1 2) 2 t t)
+(assert-event (equal (fn-cprt-publication-initial '(1 2) 2 t t 4096)
                      '(:error :generation)))
-(assert-event (equal (fn-cprt-publication-initial '(1 2) 3 nil t)
+(assert-event (equal (fn-cprt-publication-initial '(1 2) 3 nil t 4096)
                      '(:error :authority)))
-(assert-event (equal (fn-cprt-publication-initial '(1 2) 3 t nil)
+(assert-event (equal (fn-cprt-publication-initial '(1 2) 3 t nil 4096)
                      '(:error :occupied)))
-(assert-event (equal (fn-cprt-publication-initial '(2 1) 3 t t)
+(assert-event (equal (fn-cprt-publication-initial '(2 1) 3 t t 4096)
                      '(:error :namespace)))
-(assert-event (equal (fn-cprt-publication-initial '(4095) 4096 t t)
+(assert-event (equal (fn-cprt-publication-initial '(4095) 4096 t t 4096)
+                     (list :ok 4096 (fn-jpub-initial t))))
+;; PRF-171: the old lifetime figure is gone.  Generation 4096 and above are
+;; ordinary uint32 names; the capacity bounds the names retained.
+(assert-event (equal (fn-cprt-publication-initial '(4095) 4096 t t 1)
                      '(:error :exhausted)))
-(assert-event (equal (fn-cprt-next-generation nil) 0))
-(assert-event (equal (fn-cprt-next-generation '(0 2 2)) :invalid))
+(assert-event (equal (fn-cprt-next-generation nil 4096) 0))
+(assert-event (equal (fn-cprt-next-generation '(0 2 2) 4096) :invalid))
 (assert-event (equal (fn-cprt-retire-plan '(0 2) 1) :invalid))
 (assert-event (equal (fn-cprt-retire-plan '(1 0) 1) :invalid))
 
@@ -97,35 +101,50 @@
 ; physically retired generation name.
 (assert-event
  (and (member-equal 1 (fn-cprt-crash-survivors '(0 1 2) '(0) nil))
-      (equal (fn-cprt-next-generation '(1 2)) 3)))
+      (equal (fn-cprt-next-generation '(1 2) 4096) 3)))
 
 ; The allocator theorem needs a well-formed increasing namespace, a selected
 ; member, and remaining finite generation capacity.  Each omitted premise has
 ; a concrete counterexample (the malformed case yields :invalid).
 (assert-event
  (and (member-equal 2 '(2 1))
-      (equal (fn-cprt-next-generation '(2 1)) :invalid)))
+      (equal (fn-cprt-next-generation '(2 1) 4096) :invalid)))
 (assert-event
  (and (fn-cprt-generationsp '(0 1))
-      (not (< 3 (fn-cprt-next-generation '(0 1))))))
+      (not (< 3 (fn-cprt-next-generation '(0 1) 4096)))))
 (assert-event
  (and (fn-cprt-generationsp '(4095))
-      (equal (fn-cprt-next-generation '(4095)) :exhausted)))
+      (equal (fn-cprt-next-generation '(4095) 1) :exhausted)))
 (local
  (must-fail
   (defthm fn-cprt-next-without-valid-namespace
     (implies (and (member-equal selected generations)
-                  (not (equal (fn-cprt-next-generation generations) :exhausted)))
-             (< selected (fn-cprt-next-generation generations))))))
+                  (not (equal (fn-cprt-next-generation generations 4096) :exhausted)))
+             (< selected (fn-cprt-next-generation generations 4096))))))
 (local
  (must-fail
   (defthm fn-cprt-next-without-selected-member
     (implies (and (fn-cprt-generationsp generations)
-                  (not (equal (fn-cprt-next-generation generations) :exhausted)))
-             (< selected (fn-cprt-next-generation generations))))))
+                  (not (equal (fn-cprt-next-generation generations 4096) :exhausted)))
+             (< selected (fn-cprt-next-generation generations 4096))))))
 (local
  (must-fail
   (defthm fn-cprt-next-without-capacity
     (implies (and (fn-cprt-generationsp generations)
                   (member-equal selected generations))
-             (< selected (fn-cprt-next-generation generations))))))
+             (< selected (fn-cprt-next-generation generations 4096))))))
+
+;; fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity: a store
+;; that retired down to its selected pack keeps numbering past 4,096 and up
+;; to the uint32 width; the capacity counts retained names.
+(assert-event (equal (fn-cprt-next-generation '(70000) 2) 70001))
+(assert-event (equal (fn-cprt-next-generation '(70000 70001) 2) :exhausted))
+(assert-event (equal (fn-cprt-next-generation '(4294967294) 2) 4294967295))
+(assert-event (equal (fn-cprt-next-generation '(4294967295) 2) :exhausted))
+(assert-event (equal (fn-cprt-last '(3 9 70000)) 70000))
+;; Tooth (a valid namespace): out of order, :invalid, not the number after
+;; the last.
+(assert-event (not (fn-cprt-generationsp '(9 3))))
+(must-fail
+ (assert-event (equal (fn-cprt-next-generation '(9 3) 5)
+                      (+ 1 (fn-cprt-last '(9 3))))))

@@ -290,6 +290,27 @@ recovers as in a clear one (`fn-pull-session-journal-is-the-cursor-at-every-cut`
 
 NNT-023: A pull presents its credential only over a verified TLS channel, is refused before any connection when a credential would cross a clear transport outside the loopback-lab exception, and a wrong principal leaves the cursor where it was
 
+A peer that lists a Message-ID and answers its ARTICLE with 430 (RFC 3977
+section 6.2.1.3) has answered it: the id is *unavailable* at that peer. The
+round reopens its local transit connection (the local node was inside an
+IHAVE it cannot finish) and goes on with the remaining ids. A round that ran
+to its end with every listed id answered 235/435/437 or unavailable is
+complete; while an unavailable id has been so for fewer than BOUND
+consecutive complete rounds the cursor keeps its instant (the peer lists the
+id again) and journals the per-id counts; once every unavailable id has
+reached BOUND the cursor advances and the owner log names each id dropped in
+that round (`dropped=<id>`). BOUND is the peer's `pull-unavailable-rounds`
+row (`peer pull NAME SECONDS ROUNDS`), else 5: local policy bounding the
+re-listing work, not a data cap. A failed round changes no count. The
+counts are durable: FNPL gains the `:pull-unavailable` record, written
+before the `:pull-cursor` record that commits it
+(`fn-pull-session-close-advances-only-past-a-fully-answered-round`,
+`fn-pull-session-unavailable-id-is-retried-below-the-bound`,
+`fn-pull-session-complete-round-past-the-bound-advances`,
+`fn-pull-records-replay-is-the-replay`; PRF-165).
+
+NNT-035: A pull and a feed survive a peer's partial and refusing behaviour: a peer that keeps listing an article it cannot produce no longer stalls the pull
+
 #### 1.2.1 Peer changes are not transport-only
 
 Reconfiguration §2.3 and theorem §3.7 call listener and peer changes "effects,
@@ -1219,7 +1240,7 @@ expected, an fn journal digest before and after, and INN's `news.notice` and
 | S4 | both | duplicate: S2's articles re-offered by a forced backlog replay (`innfeed -y` / re-enqueue in fn) | INN: `438`; fn: `438` at CHECK and, with a client that ignores it, `439` at TAKETHIS (RFC 4644 §2.4.2 advisory rule exercised) |
 | S5 | INN → fn | policy refusal: article in `alt.test` only | `438 <msgid>` at CHECK (`:out-of-scope`); forced `TAKETHIS` → `439`; IHAVE variant: `435` |
 | S6 | INN → fn | `437`: article with neither `Injection-Date` nor `Date` via `IHAVE` | `335` then `437` (`:no-date`); the node unchanged, journal digest equal |
-| S7 | fn → INN | loop, outbound: an article received from INN (Path contains `inn.hbox.test`) | never offered back: no CHECK for it in `innfeed`'s log, and `fn-feed-never-offers-a-loop`'s witness is this transcript |
+| S7 | fn → INN | loop, outbound: an article received from INN (Path contains `inn.hbox.test`) | never offered back: no CHECK for it in `innfeed`'s log, and `fn-own-feed-never-offers-a-loop`'s witness is this transcript |
 | S8 | INN → fn | loop, inbound: an article whose Path names `fnA.hbox.test` in the middle, injected at INN with a hand-built Path | `438` (`:loop`); the tail-entry variant is accepted |
 | S9 | both | `431`/`436` and backoff: `ctlinnd throttle` during S2 and, reversed, a `reconfigure (:set-capacity r)` at fn's current reservation during S3 | fn backs off with the journaled `431` and resumes after `ctlinnd go`; INN's `innfeed` requeues on fn's `431` and delivers after capacity is raised |
 | S10 | fn → INN | restart mid-feed: `SIGKILL` fn after the `(:feed-sent ...)` of article 3 of 5, before its `239` | after restart, the first command for article 3 is `CHECK`, answered `438`; INN's `history` has each of the five exactly once; the feed journal has exactly one `235/239` outcome per msgid |
@@ -1496,8 +1517,12 @@ classifies the signed source and the filing plan the received carrier;
 where they disagree no event is built and the attempt is refused, never
 filed elsewhere. A signed control article stored under its `Newsgroups`
 before C1 (2026-09-25 morning, when every ingress began filing or refusing
-control articles) would no longer replay: its record binds no filing group.
-Whether any deployed store holds one has not been checked.
+control articles) does not replay: its record binds no filing group. Observed
+on hbox (control-across-peers, PKT-444): a pre-C1 image's store with a
+signed cancel in fn.test faults at open ("replay rejected committed
+transaction history"), the same store without it opens. The deployed store
+held no Control field when control-c3b copied it (2026-09-25); the repair
+path is PKT-444.
 
 **Per verb.**
 
@@ -1523,6 +1548,72 @@ answers `executed withdrawal <msgid> author|authority`, `executed
 reconfigure generation <n>`, `owed`, `declined <reason>` or `report
 <serial>`. It is the node's historical claim, like `:fn-verified`, and
 `tools/fn_verify.py` checks only the signature half of it.
+
+**Current enrollment (`HDR :fn-enrollment`, PKT-175, PRF-168).** A reader is
+told, as its own fact, whether the principal a historical verdict names is
+still enrolled in the node's keyring view. `HDR :fn-enrollment <msgid>`, in
+the same disclosure class as `:fn-control` (one line, Message-ID form only;
+`430` when the pinned view does not serve the article, `501` for any other
+argument shape), answers `0 ITEM` with ITEM one of:
+
+    active HEX keyring N      the verdict's generation is the principal's current enrollment N
+    retired HEX keyring N     the principal enrolled generation N since; the verdict's generation is no longer current
+    revoked HEX keyring N     the principal's newest snapshot is the revocation tombstone at N
+    unenrolled HEX            the keyring view holds no snapshot for the principal
+    none no-keyring-view      the connection pinned no keyring view
+    none no-record            no verdict is recorded for the article
+    none no-principal         the verdict names no 32-octet principal (unverified, absent, legacy)
+
+HEX is the verdict's principal in lowercase hex and N a decimal keyring
+generation. ACL2 decides it (`fn-enr-item`, books/nntp-enrollment.lisp)
+from the verdict the connection pinned and the keyring snapshots the view
+was committed with (`fn-own-view-keyring`, set by `fn-own-refresh` from
+`fn-sn-keyring-snapshots`; the control pin's fourth slot), through
+`fn-hl-current-for-principal` and `fn-hl-history-row`. It is a current
+fact, so it is pinned like the verdicts: a reader never sees a later
+enrollment than its view's. It never changes the verdict: the historical
+signature verdict, historical local acceptance, current enrollment and
+current administrative authority stay separate facts (the mandate §5.4);
+`:fn-control` remains the only answer about authority. The theorem over the
+host-called read is `fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment`
+(books/owner-enrollment-read.lisp; host line host/owner-host.lisp
+`fn-owner-chunk`).
+
+NNT-036: a reader is told the current enrollment, in the node's pinned
+keyring view, of the principal a historical verdict names, as a fact
+distinct from the verdict (active, retired, revoked or unenrolled), and a
+missing verdict or principal is a named answer, never an error.
+
+### 8.1 Control across peers (PRF-170)
+
+NNT-037: A cancel crossing between peers has D29's behaviour on each node under its own grants, in both arrival orders, across a kill between the arrivals, with a reader pinned on either node; a signed article naming a group the node does not serve is refused by name
+
+Each receiver decides again (above, "Feed"): a node's withdrawal of a
+target depends on its own enrolment and its own `control grant` rows at the
+cancel's txid, never on the sender's execution. D29's test is observed per
+node: `tests/test_native_control_across_peers.py` relays each target and
+its cancel to two nodes in both orders, with grants on either or both
+sides, with both receivers SIGKILLed between the arrivals in half the
+cases, and with a reader pinned on each node; the fresh answer is the same
+line in both orders (`430 withdrawn` where the node's decision withdraws),
+the pinned reader keeps its archive until its own POST re-pins it, and a
+revoke followed by a kill changes no recorded decision. The theorems these
+cases witness are C3's (`fn-ctl-visible-is-arrival-order-independent`,
+`fn-ctl-pinned-view-keeps-its-archive`,
+`fn-ctl-cancel-executes-only-for-author-or-authority`,
+`fn-ctl-replay-is-the-fold`); nothing here restates them.
+
+A signed article authored through `hybrid-author` passes the injecting
+agent before any Store attempt (`fn-hsig-injected-carrier-plan`), so a
+`Newsgroups` naming a group this node does not serve is the injection
+decision's `:unknown-group`, answered as the control status
+`unknown-group` (exit 1) rather than a bare refusal
+(`fn-hsig-injected-carrier-unserved-group-is-refused-by-name`,
+`fn-nhc-author-refusal`). Every other refusal of that ingress names its
+arm: `author-not-enrolled`, `source-malformed`, `carrier-refused`,
+`article-exceeds-profile-bound`, `control-not-filed`,
+`control-malformed`, `signed-event-not-formed`. RFC 3977 does not govern
+this local channel; the words are a local policy.
 
 ## 9. Key statements: succession and revocation (PRF-098)
 
@@ -1613,10 +1704,43 @@ record rather than dropping an old one, so the journal prefix through any
 statement's txid is present whenever the Store opens. The replay rule is part
 of the Store format's meaning: a change to it is a format version with its
 own reader, never an edit that reinterprets records already written. An
-explicit re-evaluation under today's grants, `operator CONFIG keys redecide
-MSGID`, is specified (PKT-325) and not built: decided by ACL2 under the grants
-at the redecide's own txid, and filed as its own record, never an effect of
-open.
+explicit re-evaluation under today's grants is the operator's `operator
+CONFIG keys redecide MSGID` (PKT-325, PRF-166): control request 12 to the
+running owner (offline refused), decided by ACL2 as a new acceptance of the
+stored statement (`fn-ks-redecide-plan`: `fn-ks-plan` over the Store's
+keyring now and the live grants, which are the grants of the configuration
+in force at the redecide's own txid), and never an effect of open. Its one
+durable record is the kind-3 change at its own coordinates: no statement is
+re-filed and no record kind is added, so there is no cut, and the next open's
+recorded recovery sees a newest record that is no statement and repeats
+nothing (`fn-ks-reopen-after-a-redecide`). It is refused by name, the Store
+unchanged, when MSGID names no stored key statement (`not-a-key-statement`)
+or the statement's change is already in the keyring at a later generation
+(`already-acted`); a statement that declines again is reported `declined
+REASON`.
+
+SEC-005: A friend's key succession or revocation declined for want of a grant is re-decided by an explicit operator action under the grants in force then, and a login's signing binding is changed by the operator, each without a restart; neither is re-decided by an open, and a session keeps the binding in force when it opened, and a friend whose keys succeeded since genesis is peered under its current keys, never under a superseded set
+
+**A login's signing binding, live (PKT-221, PRF-175).** The posting policy's
+login-to-principal table (`posting-policy bound-logins`,
+`books/login-binding.lisp`) is rows of the configuration: mark-2 rows
+`(LOGIN PRINCIPAL-HEX "" 2)` of the `accounts` slot beside the account rows
+(one credential table), written only by the delta kind `:login-binding`
+(code 17), which replaces that login's row or removes it and leaves every
+account row in place. The credential file's `signing` fields stay the
+operator's statement: the owner publishes them at start, and again when
+`operator CONFIG principal bind|unbind` (after rewriting the file) sends
+control request 14 to the running owner, each time through the live
+reconfiguration (`fnn-owner-live-reconfigure-locked`, `fn-ocl-publish`) with
+ACL2's plan `fn-lb-sync-plan` (one delta per login that differs, in records of
+at most 64). The verb answers `applied` only after the owner published it
+(`fn-native-auth-admin-effect-word`). The gate the host calls
+(`fn-lb-ocfg-gate`) reads the policy from the live configuration and the
+table from the configuration the submission's connection pinned when it
+opened: a session keeps the binding in force when it opened, and a
+connection opened after a publication is decided under the published table.
+An image older than the one that writes code 17 refuses a store whose
+configuration log holds it (as PKT-440 records for codes 15 and 16).
 
 **The revoked arm.** `fn-pa-current-plan` takes TRANSITP (t only on NNTP
 transit) and has a fifth outcome `(:revoked ...)`: the principal's newest
@@ -1743,8 +1867,25 @@ acceptance is an enrolment and never a second consumption
 refused (`:already-confirmed`). Any other acceptance of that nonce is refused
 (`:invitation-consumed`).
 
+**Succession-era documents (PRF-179, PKT-211).** Every document is read
+under the reading node's keyring (`fn-owner-hybrid-snapshots`): for a
+principal the keyring holds a generation of, the carrier's key set binds it
+only if it is the principal's current enrolment
+(`fn-pinv-document-binds-a-known-principal-only-at-its-current-keys`,
+`fn-pinv-document-of-a-current-enrolment-is-accepted`); a superseded set is
+refused `not-current-keys`, a revoked principal `revoked`. A principal with no
+generation is decided by its genesis identity exactly as before
+(`fn-pinv-document-of-an-unknown-principal-is-the-genesis-decision`). The
+confirm of an acceptor already current at the acceptance's keys ends with the
+consuming record: the step answers `(:current)` and enrols nothing
+(`fn-pinv-confirm-of-a-current-acceptor-completes-at-its-consumption`). The
+accept of an inviter already enrolled here is still refused
+`already-enrolled`; the accepting CLI builds its acceptance from the plan
+under the empty keyring, which is the owner's whenever the owner enrolled
+(`fn-pinv-an-enrolling-accept-is-the-clis-plan`).
+
 **Refusals, by name:** `unverified`, `document-kind`, `claimed-keys`,
-`genesis`, `nonce`, `source-id`, `invitation-source-id`,
+`genesis`, `not-current-keys`, `revoked`, `nonce`, `source-id`, `invitation-source-id`,
 `inviter-principal`, `no-such-invitation`, `another-inviter`,
 `another-invitation`, `invitation-consumed`, `already-confirmed`,
 `already-enrolled`, `invitation-nonce-reused`.
@@ -1892,7 +2033,7 @@ Keystones, as certified (statements in `books/peer-inbound-invariants.lisp`):
 | K1 refused transfer leaves the node | `fn-peer-refused-transfer-leaves-the-node` (`-by-definition`, `:rule-classes nil`) | | loop, duplicate and out-of-scope transfers return the node `equal` |
 | K1 "accepted through transit satisfies every acceptance premise" (`fn-peer-accepted-article-is-acceptance-accepted`) | **open** | | not attempted this wave: it is a theorem over `fn-node-complete` after `fn-node-prepare` and needs `fn-node-complete-preserves-state`'s article projection |
 | K2 loop refused at transfer | `fn-peer-loop-is-refused` | the Path names the local identity; `fn-node-statep`, `fn-cfgp` and the parse hypothesis were unnecessary and are dropped | identity second of three: refused `:loop`; tail-entry, `.POSTED` and `.POSTED.<src>` variants accepted; `fnA.hbox.test.old` not a match; unparsable octets are `:proto-article`, not `:loop` |
-| K2 outbound half (`fn-feed-never-offers-a-loop`, `fn-peer-render-prepends-path`) | **open**, feed lane | | |
+| K2 outbound half (`fn-own-feed-never-offers-a-loop`, `fn-peer-render-prepends-path`) | **open**, feed lane | | |
 | K2 general loop-test lemma over an arbitrary identity | **open** (`fn-path-names-p-ignores-the-tail-entry` was attempted and removed; the split/reverse induction did not close in budget) | | witnessed on concrete Paths |
 | K3 (K4 offer/transfer half) duplicate refused at offer and transfer | `fn-peer-history-is-refused-at-offer`, `fn-peer-history-is-have-at-offer`, `fn-peer-history-is-refused-at-transfer`, `fn-peer-history-grows-under-transfer` | history membership; for `-is-have-` also the peer record with an inbound half and a syntactic Message-ID; for `-grows-` `fn-node-statep` | `435`/`438` transcripts after the durable completion; a fresh Message-ID on the same node is `:want`; the binding is a tombstone (`fn-node-find-binding` consp after completion) |
 | K3 after replay (`fn-peer-history-survives-reopen`) | **open**, needs the store-node trace books | | |

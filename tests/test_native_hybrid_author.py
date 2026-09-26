@@ -2,6 +2,7 @@
 """Opt-in saved-image vertical for the mandatory hybrid author profile."""
 import base64
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -223,6 +224,78 @@ class NativeHybridAuthorTest(unittest.TestCase):
         finally:
             self.stop_owner(owner)
 
+    def test_unserved_group_and_every_refusal_are_named(self):
+        """PKT-147: a signed article naming a group this node does not serve
+        is refused by the name the injection decision gives it
+        (books/hybrid-store-injected.lisp KEYSTONE
+        fn-hsig-injected-carrier-unserved-group-is-refused-by-name, the word
+        from books/native-hybrid-control.lisp fn-nhc-author-refusal), not by
+        a bare refusal or a fault; the same signer's article naming only a
+        served group is accepted; an unenrolled generation and a damaged
+        signature each answer their own word."""
+        owner = self.start_owner()
+        try:
+            enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
+                                   str(self.principal), str(self.ed_public),
+                                   str(self.ml_public))
+            self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+
+            def signed(stem, newsgroups, extra=b""):
+                source = self.root / (stem + ".eml")
+                source.write_bytes(b"From: author@example.invalid\r\n"
+                                   b"Date: Sat, 26 Sep 2026 10:00:00 +0000\r\n"
+                                   b"Newsgroups: " + newsgroups + b"\r\n"
+                                   b"Subject: " + stem.encode() + b"\r\n"
+                                   b"Message-ID: <" + stem.encode()
+                                   + b"@example.invalid>\r\n" + extra
+                                   + b"\r\nbody\r\n")
+                result = self.invoke("hybrid-sign", str(self.principal),
+                                     str(self.ed_public), str(self.ed_secret),
+                                     str(self.ml_public), str(self.ml_private),
+                                     str(source))
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                values = dict(line.split() for line in result.stdout.decode().splitlines())
+                ed_path = self.root / (stem + "-ed.sig")
+                ml_path = self.root / (stem + "-ml.sig")
+                ed_path.write_bytes(bytes.fromhex(values["ed25519"]))
+                ml_path.write_bytes(bytes.fromhex(values["ml-dsa-65"]))
+                return [str(self.control), "1", str(source), str(ed_path),
+                        str(ml_path), str(self.ml_public)]
+
+            def author(arguments):
+                done = self.invoke("hybrid-author", *arguments)
+                return done.returncode, done.stderr.decode().strip().splitlines()[-1:]
+
+            outcomes = {
+                "unserved-only": author(signed("pkt147-unserved", b"fn.unserved")),
+                "served-and-unserved": author(signed("pkt147-mixed",
+                                                     b"fn.test,fn.unserved")),
+                "unserved-cancel": author(signed(
+                    "pkt147-cancel", b"fn.unserved",
+                    b"Control: cancel <pkt147-served@example.invalid>\r\n")),
+                "served": author(signed("pkt147-served", b"fn.test")),
+            }
+            unenrolled = signed("pkt147-unenrolled", b"fn.test")
+            unenrolled[1] = "7"
+            outcomes["unenrolled-generation"] = author(unenrolled)
+            damaged = signed("pkt147-damaged", b"fn.test")
+            signature = bytearray(Path(damaged[4]).read_bytes())
+            signature[0] ^= 1
+            Path(damaged[4]).write_bytes(bytes(signature))
+            outcomes["damaged-signature"] = author(damaged)
+        finally:
+            self.stop_owner(owner)
+        print("NATIVE-PKT147-WITNESS " + repr(sorted(outcomes.items())))
+        for key in ("unserved-only", "served-and-unserved", "unserved-cancel"):
+            self.assertEqual(outcomes[key], (1, ["refused hybrid-author UNKNOWN-GROUP"]),
+                             outcomes)
+        self.assertEqual(outcomes["served"][0], 0, outcomes)
+        self.assertEqual(outcomes["unenrolled-generation"],
+                         (1, ["refused hybrid-author AUTHOR-NOT-ENROLLED"]), outcomes)
+        self.assertEqual(outcomes["damaged-signature"][0], 1, outcomes)
+        self.assertNotIn("REFUSED", outcomes["damaged-signature"][1][0].split()[-1:],
+                         outcomes)
+
     def test_portable_carrier_verifies_exact_source_and_keyset(self):
         source = self.root / "authored.eml"
         source.write_bytes(
@@ -285,17 +358,65 @@ class NativeHybridAuthorTest(unittest.TestCase):
                               str(self.ml_public))
         self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
-        # The source alone is under the article cap, but adding the required
-        # carrier would exceed it.  The ACL2 total bound refuses emission.
+        # The source alone is under this Store's article bound, but adding
+        # the required carrier exceeds it.  D27 (bounds P2/P4): the signer's
+        # bound is the codec's (fn-hsig-host-max-source-octets, and
+        # fn-hc-render-at-most at *fn-article-max-octets*, the record
+        # ceiling); the operator's bound is the Store profile's
+        # max-article-octets, decided at injection.  So the signer emits the
+        # carrier, and the node whose profile it exceeds refuses it: 441 with
+        # the size line, nothing stored, the Message-ID still free.
+        status = self.invoke("operator", str(self.config), "status")
+        self.assertEqual(status.returncode, 0, status.stderr.decode())
+        bound = int(re.search(rb"max-article-octets=(\d+)",
+                              status.stdout).group(1))
         large_source = self.root / "large-source.eml"
         large_source.write_bytes(source.read_bytes() + b"x" * 26000)
-        refused_output = self.root / "too-large-carried.eml"
-        refused = self.invoke(
+        self.assertLessEqual(large_source.stat().st_size, bound)
+        large_carried = self.root / "large-carried.eml"
+        signed = self.invoke(
             "hybrid-sign-carrier", str(self.principal), str(self.ed_public),
             str(self.ed_secret), str(self.ml_public), str(self.ml_private),
-            str(large_source), str(refused_output))
-        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
-        self.assertFalse(refused_output.exists())
+            str(large_source), str(large_carried))
+        self.assertEqual(signed.returncode, 0, signed.stderr.decode())
+        self.assertGreater(large_carried.stat().st_size, bound)
+
+        def post(octets):
+            with socket.create_connection(("127.0.0.1", self.port),
+                                          timeout=30) as sock:
+                stream = sock.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"POST\r\n")
+                self.assertTrue(stream.readline().startswith(b"340 "))
+                body = b"".join(
+                    (b"." + line if line.startswith(b".") else line)
+                    for line in octets.splitlines(keepends=True))
+                try:
+                    stream.write(body + b".\r\n")
+                except OSError:
+                    # The node refused and closed mid-body: the refusal
+                    # arriving early (test_native_owner's oversize case).
+                    pass
+                try:
+                    return stream.readline()
+                except OSError:
+                    return b""
+
+        owner = self.start_owner()
+        try:
+            enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
+                                   str(self.principal), str(self.ed_public),
+                                   str(self.ml_public))
+            self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+            self.assertEqual(
+                post(large_carried.read_bytes()),
+                b"441 posting failed; the article exceeds the configured size\r\n")
+            # The same Message-ID, within the bound, is then accepted: the
+            # refusal was the size alone and stored nothing.
+            self.assertTrue(post(received).startswith(b"240 "))
+            self.assertIsNone(owner.poll(), "an oversize carrier stopped the owner")
+        finally:
+            self.stop_owner(owner)
 
     def test_local_revocation_targets_one_principal(self):
         other_principal = self.root / "other-principal.bin"
@@ -948,11 +1069,13 @@ class NativeHybridAuthorTest(unittest.TestCase):
                 binary[4] ^= 0xFF
                 return binary
 
-            for name, patch, detail in (
+            # PKT-433 (d): the log names the seven-class verdict beside the
+            # class word (books/peer-carriage.lisp fn-pcb-transit-refusal-detail).
+            for name, patch, detail, verdict in (
                     ("<pcb-unsupported@example.invalid>", suite_two,
-                     "unsupported-profile"),
+                     "unsupported-profile", "unsupported-profile"),
                     ("<pcb-unbound@example.invalid>", other_principal,
-                     "no-local-binding")):
+                     "no-local-binding", "unenrolled")):
                 reply = self._ihave(relay["port"], name,
                                     self._patch_carrier(carried, name, patch))
                 self.assertTrue(reply.startswith(b"437 "), reply)
@@ -960,7 +1083,29 @@ class NativeHybridAuthorTest(unittest.TestCase):
                          if l.startswith("refused transit ")
                          and " message-id=" + name + " " in l]
                 self.assertEqual(len(lines), 1, relay["log"].read_text())
-                self.assertIn(" detail=" + detail + " ", lines[0])
+                self.assertIn(" detail=" + detail + " verdict=" + verdict + " ",
+                              lines[0])
+                print("NATIVE-REFUSAL-CLASS", detail, verdict, flush=True)
+            # PKT-211: the signature-failed row.  The relay now enrols the
+            # author, so a present carrier is verified there; one octet of the
+            # signed body changed (same length) fails the observation.
+            ok("hybrid-enroll", relay["control"], "1", self.principal,
+               self.ed_public, self.ml_public)
+            name = "<pcb-forged@example.invalid>"
+            patched = self._patch_carrier(carried, name, lambda binary: binary)
+            head, body = patched.split(b"\r\n\r\n", 1)
+            at = next(k for k in range(len(body)) if body[k:k + 1].isalpha())
+            flipped = body[:at] + body[at:at + 1].swapcase() + body[at + 1:]
+            reply = self._ihave(relay["port"], name, head + b"\r\n\r\n" + flipped)
+            self.assertTrue(reply.startswith(b"437 "), reply)
+            lines = [l for l in relay["log"].read_text().splitlines()
+                     if l.startswith("refused transit ")
+                     and " message-id=" + name + " " in l]
+            self.assertEqual(len(lines), 1, relay["log"].read_text())
+            self.assertIn(" detail=signature-failed verdict=cryptographically-invalid ",
+                          lines[0])
+            print("NATIVE-REFUSAL-CLASS signature-failed cryptographically-invalid",
+                  flush=True)
         finally:
             for owner in reversed(owners):
                 self.stop_owner(owner)

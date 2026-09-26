@@ -108,14 +108,16 @@ store (`run`, `post`, `status`, `pins`, `obligations`, `health`, `recover`,
 `bp-route`, `retention`, `control`, `principal`) first looks for the same
 five entries, by `lstat` alone. With none of them there is no store here: the
 node was never initialized (or `[store] path` names the wrong directory), and
-the answer is **`refused` with exit 6** and the line
+the answer is **`refused` with exit 1**, the code of every known refusal, and
+the line
 
 ```
 no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)
 refused operator status NO-STORE
 ```
 
-never a fault (4). ACL2 decides it (`fn-native-operator-store-outcome`,
+never a fault (4); the word `NO-STORE` and the `run:` line, not the code,
+tell it from another refusal. ACL2 decides it (`fn-native-operator-store-outcome`,
 `fn-native-operator-absent-store-is-refused`, books/native-operator.lisp);
 a store with some of its entries (an interrupted `init`) is not "no store"
 and goes to the open, which recovers or refuses it.
@@ -149,9 +151,12 @@ values.
 | `max-record-octets` (R) | one encoded Store event | 196,608 (the FNST codec ceiling today) |
 | `max-article-octets` (A) | one article's payload | 32,768 (the record codec's today) |
 | `max-groups-per-article` (G) | newsgroups on one article | 16 (the record codec's today) |
-| `max-group-name-octets` | one group name | 128 (the record codec's today) |
+| `max-group-name-octets` | one group name (validated, not yet enforced on `group create`: PKT-435) | 256 (the record codec's and the configuration label's width today) |
 | `max-open-suffix` (K) | records replayed after the checkpoint | 65,536 (lowered with T) |
-| `max-consumers`, `max-bp-rows`, `max-config-generations`, `max-credentials`, `max-policy-members` | namespace counts | 1,048,576 each |
+| `max-consumers` | consumers registered; the next `consumer register` past it is refused | 1,048,576 |
+| `max-config-generations` | configuration generations ever published | 1,048,576 |
+| `max-credentials` | AUTHINFO logins in `auth.toml` | 1,048,576 |
+| `max-bp-rows`, `max-policy-members` | reserved: validated (`1..2^32-1`) and read by nothing; the BP rows are the journal's (PKT-296), and 64 policy members is statement schema v1's grammar limit (PKT-229) | 1,048,576 each |
 
 The D27 defaults are 64 MiB records, 16 MiB articles, 4096 groups and
 460-octet names; each default is capped at the codec ceiling the tree carries
@@ -159,8 +164,8 @@ today, and rises when that ceiling does (packet P2). The relations, each
 reported by name when it fails (exit 1, nothing written): `1 <= T <= 2^32-1`;
 `R <= H`; R at least the worst-case record of every Store event kind (today
 exactly 196,608: the accepted-statement kind's ceiling equals the codec's);
-R, A, G and the name bound within their codec ceilings; `1 <= K <= T`; each
-namespace count in `1..2^32-1`.
+R, A, G and the name bound within their codec ceilings; R at most 4,294,966,940 octets, the largest Store event the consumer poll reply can carry (the Store frame's u32 less the reply's 9 header and 346 cursor octets), refused past it as `max-record-octets-above-the-poll-reply` (PKT-467);
+`1 <= K <= T`; each namespace count in `1..2^32-1`.
 
 ```text
 fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters
@@ -218,7 +223,7 @@ before the rename is a refusal (1), at or after it an uncertain outcome (3)
 that the next `status` resolves by reading whichever frame is there. The
 retention charge capacity is a different number and IS reconfigurable
 (`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
-value that is not a decimal below 2^64 is a usage error (5).
+value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940`); that command is its one repair, the only lowering the verb admits (`fn-spo-repair-verdict`, `books/store-profile-open.lisp`), and it writes nothing for any other target.
 
 ### Settle a client's lost post: `store inspect`
 
@@ -304,11 +309,15 @@ opens the store read-only.
 per peer, in the order `peer add` takes its arguments:
 
 ```
-far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44
+far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44 budget-octets=1048576 budget-count=16
 ```
 
-A half the record does not carry is `-`. The line is rendered by ACL2
-(`fn-native-admin-peer-report`, books/native-admin.lisp) from the replayed
+A half the record does not carry is `-`. A peer given a carriage budget
+(`peer budget NAME OCTETS COUNT`) ends its line with `budget-octets=` (the
+budget the Store charges against: whole 4096-octet pages, so `peer budget far
+1048577 16` shows 1048576) and `budget-count=`; a peer without one prints
+neither, and every earlier word keeps its place. The line is rendered by ACL2
+(`fn-native-admin-peer-budget-report`, books/native-admin-peer-budget.lisp) from the replayed
 configuration's own peer rows. `peer list` is a read, answered like
 `status`: by the running owner from the configuration it carries, or, with no
 owner, from the store opened without the exclusive writer lock. It can neither
@@ -442,7 +451,7 @@ accepted operator health
 
 | exit | state | held when | what to do |
 |---|---|---|---|
-| 20 | `fenced` | a clone fence awaits its incarnation rollover; a process holds the store's writer lock and the configured control socket does not reach it; or the socket accepted and did not answer | find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
+| 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
 | 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no `store upgrade-profile` raises it |
 | 22 | `unqualified-profile` | the persisted profile is not format 8 (`store needs-upgrade`), or it is the development profile | `store upgrade-profile scale` or `default` (offline) |
 | 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | `store upgrade-profile`, `capacity`, or release obligations |
@@ -452,6 +461,23 @@ accepted operator health
 | 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
 | 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
 | 0 | (healthy) | every state is `clear` | |
+
+When the fence is held, the first line also names its reason, so an owner
+that is still recovering its store reads
+
+```
+health exit=20 state=fenced reason=starting (a process holds the store lock and nothing answers on the control socket yet: an owner starting or recovering, or an offline command; retry)
+```
+
+and the same command, once the owner listens, prints the owner's own report
+with no fence: `starting` is a reason of the fenced state, never a code of
+its own, and it clears on the one observation that listening changes
+(`fn-nh-starting-clears-on-listening`).
+
+The scale is the one exception to the fn-wide exit table (specs/host.md, "CLI
+exit codes"), and it never overlaps it: the code is 0 or at least 19, and 0
+is the only code it shares, with `accepted`
+(`fn-nh-exit-code-is-zero-or-past-the-outcome-codes`).
 
 Each state is its own line, and several can hold at once; the exit code is
 the first held one in the table's order, so a script can branch on it and
@@ -577,6 +603,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_KEY_STATEMENT_FAULT` | `statement-committed:kill` | the cut between a key statement's commit and its key change's (books/key-statements.lisp `fn-ks-cut`) |
 | `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
 | `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
+| `FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN` | any value | the owner holds the recovered Store and waits for SIGTERM before its control socket and listener start (`health` reads `starting`) |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 The served owner and `store ROOT post` read the post and recovery selectors
@@ -799,6 +826,24 @@ The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
 `--group` seeds them once, and `fn group` changes them afterwards. The
 configuration file holds only what the host needs in order to start.
+
+A peer this node pulls by NEWNEWS (RFC 3977 section 7.4) gets an interval,
+and optionally how many consecutive complete rounds an article the peer
+lists but cannot produce holds the pull cursor:
+
+```text
+fn-native --fn operator /etc/fn/fn.toml peer pull peer1 60 5
+```
+
+The words are NAME, SECONDS and, optionally, ROUNDS. `SECONDS` 0 stops pulling. `ROUNDS` (positive; 5 when left out) is PRF-165's
+bound: a 430 to `ARTICLE` is an answer, the round goes on with the other
+articles, and the owner log line of each round says what happened:
+`pull peer=NAME round=done cursor=held unavailable=1` while the peer's
+missing article holds the instant, then `cursor=advanced unavailable=1
+dropped=<id>` in the round its count reaches `ROUNDS`. A round that failed
+(`round=failed`) changes no count. The counts live in the store's `pull/`
+journal (FNPL); an image older than PRF-165 refuses a journal that holds one
+(PKT-432).
 
 Native peer records use the same offline durable administration path:
 
@@ -1045,12 +1090,18 @@ outcome, and exits with the code for that outcome:
 
 | Outcome | Exit | What it means |
 | --- | --- | --- |
-| `accepted` | 0 | The core accepted it and the decision is durable. |
-| `refused` | 1 | The core refused it. Nothing changed. Fix the input. |
-| `uncertain` | 3 | Whether it is durable is not known. See below. |
+| `accepted` | 0 | Done, or already so (`DUPLICATE`: the node holds exactly this article). The decision is durable. |
+| `refused` | 1 | The node refused it for the reason it names, and nothing was accepted: `CONFLICT` (a different article holds this Message-ID; post under a new one, or resend the saved bytes), `NO-STORE` (run `init`), a bound, a lock. A refusal the running owner decided carries its reason word after the status: `refused operator post REFUSED unknown-group` (a newsgroup this node does not serve), `REFUSED from-invalid` (a From with no address), `refused operator control REFUSED no-such-grant` (a revoke of a grant that is not there); `NONE` never appears, a refusal with no named reason prints the status alone. Fix what the reason names. |
+| `uncertain` | 3 | Whether it is durable is not known: this node's Store must recover before anything else changes. See below. |
 | `fault` | 4 | The host could not carry out the operation. |
 | `usage` | 5 | The command line or the configuration file is wrong. |
-| `refused` | 6 | (native `fn operator`) No store at the configured `[store] path`: run `init`. |
+| `interrupted` | 6 | (BP verbs) A connection was lost after it existed; the job is kept and re-offered under its own identity. No recovery. |
+| `not-connected` | 7 | (BP verbs) No connection was made; nothing left the node and the job stays queued. |
+
+This is the one table for every native `fn` command (specs/host.md "CLI exit
+codes", HST-009): a number means the same class whatever the verb, and the
+reason is the word on the line, never a code of its own. `health` is the one
+exception: it exits with its verdict (below), 0 or 19 to 27.
 
 These three outcomes stay distinct everywhere: the exit code, the stderr
 line, the log line, and the reply on the control socket. Never map
@@ -1138,8 +1189,10 @@ resolved to a peer record. A peer does not run AUTHINFO, so on a node with
 not set it on a node that is also taking a feed until that is decided
 (`planning/deputies/BOARD.md`, w11/auth-live).
 
-Restart the service after changing either the policy or the credential
-file: both are read once at start-up.
+Restart the service after changing the policy or a password in the
+credential file: both are read once at start-up. A login's `signing` binding
+is the exception (next section): `principal bind` and `unbind` apply to the
+running node at once.
 
 ### Bind a login to its signing principal
 
@@ -1159,10 +1212,20 @@ open` takes effect: a policy slot holds the value set last
 (`fn-cfg-set-policy-sets-the-policy`, books/config-invariants.lisp; until
 2026-09-25 the first value set stayed in force).
 
-`bind` writes a `signing` field into alice's table of `auth.toml` (restart to
-apply, like any credential change; `principal list` shows `signing=HEX`;
-`principal unbind alice` removes it). The policy is a durable configuration
-record, applied live. Under it, alice's unsigned article is answered `441
+`bind` writes a `signing` field into alice's table of `auth.toml`
+(`principal list` shows `signing=HEX`; `principal unbind alice` removes it).
+The node serves the binding from its configuration, not from the file: at
+start it publishes the file's bindings as configuration records, and when
+`bind` or `unbind` runs against a running node (the configuration names a
+`[control] path`) the verb asks the owner to re-read the file and publish
+the change at once (PKT-221; `books/login-binding-live.lisp`). The verb's
+last word says which: `applied` (the running owner published it),
+`effective-at-next-start` (no owner was running), `restart-required` (an
+owner holds the store and did not publish it, for example no control socket
+is configured), or `uncertain`. A session already authenticated keeps the
+binding in force when its connection opened; the next connection is decided
+under the new one. The policy is a durable configuration record, applied
+live. Under it, alice's unsigned article is answered `441
 posting failed; this login posts only articles signed by its bound
 principal`, and one signed by another principal `441 posting failed; the
 login is not bound to this signing principal`. A login without a binding,
@@ -1170,11 +1233,38 @@ and every login on a node whose policy is `open` (the default: `policy set
 posting-policy open`), posts as before. The service log names the login of
 each decision (`post login=alice bound=...`).
 
+### Re-decide a declined key statement: `keys redecide`
+
+A key statement (a signed succession or revocation posted to `fn.keys`) is
+decided once, when the node accepts it, under the `keys` grants in force
+then. One that declined (`key-statement declined no-grant` in the service
+log, say, because the grant came later) stays declined across restarts: an
+open re-decides nothing under later configuration (PRF-124). To decide it
+again under today's grants, ask the running node:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml control grant PRINCIPAL-HEX keys fn.keys
+packaging/fn-native operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
+```
+
+The owner decides it as a new acceptance of the stored statement under the
+grants of the configuration in force at the redecide's own transaction
+(books/key-statements.lisp `fn-ks-redecide-plan`, PRF-166). When it acts,
+the key change (the successor's enrolment, or the revocation) is the one
+durable record it writes, the service log says `key-statement redecide
+enrol-successor committed`, and the command exits 0; a restart repeats
+nothing. It is refused (exit 1, the Store unchanged) when the Message-ID
+names no stored key statement (`key-statement redecide refused
+not-a-key-statement`), when the statement's change is already made
+(`refused already-acted`), or when it declines again (`key-statement
+redecide declined REASON`). The verb needs the running owner: offline it is
+refused, like every control verb.
+
 ## Expose a node to strangers
 
 Everything below is what runs on the branch and what the SCN-091 campaign
 measured on hbox (`planning/evidence/public-exposure-2026-09-26.md`); no fn
-node is exposed yet, and whether and how one is is PKT-404.
+node is exposed yet, and whether and how one is is PKT-404. What one node sustains, and the weaker tier a disk-backed pool gives, is the measured envelope in "What one node sustains" at the end of this guide: size an exposed node's limits (`exposure-posts-per-minute`, `exposure-connections`) against it.
 
 A listener outside 127.0.0.0/8 and `::1` changes the default of every
 exposure row the configuration does not set. Loopback keeps the old
@@ -1277,6 +1367,28 @@ group's name, and the name grants no creation, moderation, deletion or
 forwarding authority. The plan for creating one is exactly the plan for any
 other valid name (`fn-native-admin-plan-create-ignores-special-purpose`).
 
+## Accounts for friends (invitation codes)
+
+An account for a friend is made by the friend, from a code you hand them
+(specs/nntp.md, "Invitation-code accounts"). With the node running or not:
+
+```
+fn operator CONFIG account invite --expires 86400
+fn operator CONFIG account list
+```
+
+`account invite` prints one code, once, on stdout, after the pending row is
+durable; the node keeps only its digest, so a lost code is issued again, never
+recovered. Without `--expires` a code lives 604800 seconds. The friend, on a TLS
+connection, sends `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, and is
+answered `281` once the account is durable; from the next connection they log
+in with AUTHINFO USER/PASS as LOGIN, bound to the login's local principal, with
+no auth.toml edit and no restart. A code redeems once; the same exchange after a
+lost reply answers `281` again and binds nothing new. `account list` shows
+`redeemed LOGIN PRINCIPAL-HEX` and `pending expires EXPIRY` lines, never a code,
+digest or verifier. Redeemed accounts and auth.toml's credentials together are
+bounded by the profile's `max-credentials`.
+
 ## Upgrade, and what a rollback loses
 
 Rehearse on a copy first: stop the node, `cp -a` its store, give the copy a
@@ -1293,6 +1405,16 @@ fn operator COPY/fn.toml store upgrade-profile --max-transactions N   # raise on
 fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
 fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
 ```
+
+Once an account code is redeemed on a release with accounts, releases before
+it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440:
+an older image refuses configuration delta kinds 15 and 16 at decode; a store
+that never issued a code is unaffected).
+
+The same rule covers the login-binding rows (delta code 17, `principal
+bind|unbind` applied live through the running node since 2026-09-26): a store
+that ever published a binding is refused by releases before it; roll back only
+from the pre-upgrade snapshot.
 
 There are two rollbacks, and they are not the same:
 
@@ -1330,6 +1452,16 @@ There are two rollbacks, and they are not the same:
   releases or peer state a restore also brings back; and a store-local
   comparison is not a freshness witness (see `fn anchor` under Back up).
 
+Two auxiliary files also decide what an older release can open, and neither
+is covered by `rollback-check`:
+
+- **The pull journals** (`<store>/pull/*.fnpl`). A release from before
+  2026-09-26 refuses a pull journal that holds the `:pull-unavailable`
+  record (the per-article count that bounds a peer's repeated 430s), so
+  rolling a node back to such a release means deleting its `pull/` journals
+  first; the cursor then restarts one day back, which is bounded duplicate
+  replay with no skipped accepted work (the NEWNEWS pull's own contract).
+
 ## Back up
 
 Stop the service, then copy the store directory.
@@ -1356,6 +1488,14 @@ A crash needs no special action: the next `fn run` replays the journal
 through ACL2 and reopens. Run `fn recover` first when you want the report
 before the service starts.
 
+An owner killed without its cleanup (SIGKILL, a power cut) leaves its
+control socket node behind. The offline `control` and `peer` verbs see the
+node and a free writer lock, so no owner holds the store: they remove the
+node under the control-path lease, print `stale control socket removed`, and
+run offline (HST-010, `fn-native-control-liveness`). With the lock held and
+no socket node they refuse `store-held` without opening the store; with both,
+they ask the owner. The next `run` removes a stale node itself.
+
 ```
 fn --config /etc/fn/fn.toml recover
 ```
@@ -1367,6 +1507,15 @@ when the store is demonstrably not a stale image, `uncertain` when no anchor
 server could be reached, `refused` when the anchor says the image is older
 than the one its own records stand under. A refused recover is a signal to
 stop and work out which image you are holding, not to retry.
+
+A store written by a release before 2026-09-25 (C1) that holds a signed
+control article, such as a cancel, filed under its Newsgroups is refused
+by name by every open (`recover`, `run`, `health`, `inspect`, `checkpoint`):
+`pre-C1 control record (txid N, <message-id>): run store repair-control`,
+exit 1. Nothing is changed or replayed. The repair verb
+`fn store ROOT repair-control` exists but refuses (`repair semantics
+undecided (PKT-444)`) until what such a repair means is decided; keep the
+store as it is until then.
 
 `fn status` reports what the store is: the configuration generation, the
 transaction and article counts, the last recorded anchor, and whether an
@@ -1438,3 +1587,80 @@ When you see it:
 4. **Keep the distinction in your automation.** Any wrapper, monitor or
    cron job around fn must keep 0, 1 and 3 apart. Collapsing them is how a
    node ends up reporting an article as accepted that it never stored.
+
+## What one node sustains (the measured envelope)
+
+These figures are measured, not promised. They were taken for one named
+profile on one box, by `tools/service_envelope.py`, on 2026-09-26. Each
+figure is tied to its image and its run's JSON in
+`planning/evidence/service-envelope-2026-09-26.md` (SCN-109).
+
+- **The workload.** `operator init --profile scale --max-transactions 1048576
+  --max-history-octets 4294967296 --max-article-octets 16384 fn.test`, one
+  group. Articles are 2 KiB; one in 256 is a hybrid-signed carrier (9.5 KiB).
+  There are no pins, no relay debt and no TLS.
+- **The client.** It runs on the same machine as the node, over loopback. Latency
+  rows use one client at a time; the rate rows run 3 connections reading
+  `ARTICLE` beside the posters.
+- **The box.** hbox has 24 CPUs and is shared with other work (load average 7
+  to 14 throughout).
+- **The storage.** tmpfs, or the ZFS pool `tank`: 91 percent full,
+  fragmentation 47 percent, no separate log device (SLOG).
+- **The image.** The developer image of dev 1770d687 (after
+  served-path-scale).
+
+A loopback, scripted measurement on one machine is not a multi-machine
+deployment result, not a network measurement and not a human study. Read the
+tmpfs column as the node's own work, never as what a disk-backed deployment
+does.
+
+| N = 10,000 | tmpfs | ZFS (`tank`, above) | the v1 target |
+| --- | ---: | ---: | ---: |
+| greeting on the loaded store, p95 | 1.3 s | 1.5 s | 50 ms |
+| `OVER` of a 40-article window, p95 | 317 ms | 321 ms | 50 ms |
+| unsigned POST, last line to durable `240`, p95 | 6.5 ms | **607 ms** | 250 ms |
+| hybrid-signed POST, p95 | 282 ms | **786 ms** | 500 ms |
+| sustained POSTs, 1 connection with 3 readers | 73 /s | **1.4 /s** | 10 /s |
+| sustained POSTs, 8 connections with 3 readers | 62 /s | **2.1 /s** | 10 /s |
+| restart to `LISTENING`, full replay | 12.7 s | 72 s | 30 s |
+| restart to `LISTENING`, from a fresh checkpoint | 11.9 s | 10.6 s | 15 s |
+| peak owner memory (VmHWM), after the rate rows | 16.9 GB (N 18,260) | 3.7 GB (N 10,368) | — |
+
+N = 100,000 (tmpfs only): **could not run**; see below. At the largest N the
+node reached, 36,208 on tmpfs, the greeting's p95 was 8.5 s, `OVER` of 40
+articles 4.2 s, an unsigned POST 12 ms and a signed POST 963 ms; the reopen
+from a checkpoint took 51 s and the owner's heap stood at 29.7 GB.
+
+**The published tier.** On a pool like `tank` (nearly full, no SLOG), expect:
+
+- a durable POST reply in about half a second (p95 0.6 s unsigned, 0.8 s
+  signed);
+- about two POSTs a second sustained, not ten.
+
+Almost all of that time is the durable publication, not fn's own work: the
+same POST costs 16 ms of owner CPU. A separate log device, a less full pool,
+or the fewer barriers that marker-sharing is building are the levers. fn will
+not acknowledge a POST before it is durable to buy the difference.
+
+**Where fn itself misses its targets.** These rows miss on every filesystem:
+
+- **The greeting.** Each connection still walks the whole state under the
+  owner's lock; PKT-455 carries this.
+- **`OVER`.** About 8 ms a row; PKT-476 carries this.
+
+The owner's memory grows with sustained posting. Watch `VmHWM`
+(`/proc/PID/status`) and size the host for it.
+
+**N = 100,000 could not run.** Neither could anything much past 36,000 while
+the node was taking POSTs. An owner posting steadily from an empty store
+stopped at N = 32,729 with `Heap exhausted, game over.` (SBCL's 32,000 MiB
+dynamic space), inside the automatic checkpoint capture. By N = 29,453 that
+capture took 90 s.
+
+A restarted owner opened in 49 s and died the same way at N = 36,208, at its
+next capture (PKT-191).
+
+- The POST each dead owner was answering is uncertain until you ask the node
+  (`STAT`) whether it was stored.
+- On this image, keep a node that takes posts well under about 30,000 articles.
+- Watch `VmHWM` against the dynamic space.

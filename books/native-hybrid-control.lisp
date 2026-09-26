@@ -237,3 +237,41 @@
   :hints (("Goal" :in-theory (disable fn-hl-revoke-event fn-hl-next-generation)
            :use ((:instance fn-hl-revoke-event-is-the-principals-tombstone
                             (keyring-generation (fn-hl-next-generation snapshots)))))))
+
+;; ---------------------------------------------------------------------------
+;; PKT-147 (control-across-peers, PRF-170): the signed-author ingress names
+;; every refusal.  host/native/hybrid-control.lisp `fnn-hybrid-control-author'
+;; answers each refusing arm with this word: ARM names the arm and REASON is
+;; the ACL2 reason that arm's decision returned (the carrier plan's,
+;; books/hybrid-store-injected.lisp `fn-hsig-injected-carrier-reason'; the
+;; filing plan's, books/peer-authored-accept.lisp `fn-pa-filing-plan'), or
+;; nil where the decision answers only nil (no current enrolment, no source
+;; fields, no signed Store event).  The words are control statuses
+;; (`*fn-nctrl-statuses*'), each a refusal (exit 1).
+(defun fn-nhc-author-refusal (arm reason)
+  (declare (xargs :guard t))
+  (cond ((equal arm :enrollment) :author-not-enrolled)
+        ((equal arm :source) :source-malformed)
+        ((equal arm :carrier)
+         (cond ((equal reason :unknown-group) :unknown-group)
+               ((equal reason :oversize) :article-exceeds-profile-bound)
+               (t :carrier-refused)))
+        ((equal arm :filing)
+         (if (member-equal reason '(:control-not-filed :control-malformed))
+             reason
+           :refused))
+        ((equal arm :event) :signed-event-not-formed)
+        (t :refused)))
+
+(defthm fn-nhc-author-refusal-is-a-named-refusal
+  (let ((word (fn-nhc-author-refusal arm reason)))
+    (and (member-equal word *fn-nctrl-statuses*)
+         (equal (fn-native-control-status-class word) :refused)
+         (equal (fn-native-control-status-exit-code word) 1)))
+  :rule-classes nil)
+
+;; The carrier's :unknown-group (a named newsgroup is not served here) is
+;; answered as itself, never as the plain refusal.
+(defthm fn-nhc-author-refusal-names-an-unserved-group
+  (equal (equal (fn-nhc-author-refusal :carrier reason) :unknown-group)
+         (equal reason :unknown-group)))

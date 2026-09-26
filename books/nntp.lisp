@@ -258,6 +258,9 @@
 ; for its target, and one walk of WS.  books/nntp-control.lisp states the
 ; arms over the kernel.
 (include-book "control-served")
+; HDR :fn-enrollment (PKT-175): the verdict principal's current enrollment
+; in the keyring view the control pin carries (books/nntp-enrollment.lisp).
+(include-book "nntp-enrollment")
 
 (defun fn-nntp-number-withdrawn-p (session archive index token)
   (declare (xargs :guard t))
@@ -380,6 +383,10 @@
          (consp args)
          (fn-nntp-keywordp (car args) ":FN-CONTROL"))
     (fn-nntp-control-hdr-response session archive index verdicts args))
+   ((and (fn-nntp-keywordp keyword "HDR")
+         (consp args)
+         (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
+    (fn-nntp-enrollment-hdr-response session archive index verdicts args))
    (t (fn-nntp-archive-command session archive env keyword args))))
 
 (defun fn-nntp-command-pinned (session archive index verdicts env tokens)

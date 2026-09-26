@@ -84,8 +84,11 @@
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
 (include-book "../books/login-binding")
+(include-book "../books/login-binding-live")
 ; PRF-161: the limits of a public reader port (fn-exp-).
 (include-book "../books/public-exposure")
+; fn-exp-observe-effects: the observation without building the reply.
+(include-book "../books/public-exposure-reply")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -740,9 +743,11 @@
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
 ;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
-      ;; fn-ocfg-step of this event for every configured owner, no hypothesis
-      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step), guard-verified under
-      ;; fn-sn-statep of the store, which fn-ocl-relation carries.
+      ;; fn-ocfg-step of this event on every owner fn-own-relation admits
+      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
+      ;; it stages without replaying the appended history, whose replay the
+      ;; maintained store relation carries.  Guard-verified under fn-sn-statep
+      ;; of the store, which fn-ocl-relation carries.
       (let ((state (fn-owner-install-ocfg
                     (fn-ccar-ocfg-prepare-identity (fn-owner-ocfg state) event)
                     state)))
@@ -790,9 +795,15 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-bootstrap (fn-owner-core state) history incarnation)))
 
+;; The consumer count is the carried Store profile's field 9 (D27, PRF-167),
+;; read by ACL2 (host/store-host.lisp `fn-store-profile-max-consumers'); before
+;; a profile is installed it reads 0 and every registration is refused.
 (defun fn-owner-consumer-local-register (consumer group state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-col-register (fn-owner-core state) consumer group)))
+  (value (fn-col-register (fn-owner-core state)
+                          (fn-store-profile-max-consumers
+                           (fn-owner-store-profile state))
+                          consumer group)))
 
 (defun fn-owner-consumer-local-ack (cursor-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -808,18 +819,13 @@
 
 (defun fn-owner-consumer-local-poll (consumer state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((decision (fn-col-poll (fn-owner-core state) consumer)))
-    (value
-     (if (eq (car decision) :poll)
-         (list :poll (cadr decision)
-               (if (caddr decision)
-                   (if (fn-stxa-p (caddr decision))
-                       (fn-stxa-encode (caddr decision))
-                     ; fn-rcon-record-encode-impl-is-record-encode-impl
-                     ; (books/records-codec-concrete, no hypothesis).
-                     (fn-rcon-record-encode-impl (caddr decision)))
-                 nil))
-       decision))))
+  ;; PKT-254: ACL2 encodes the selected event and refuses a report the
+  ;; poll reply cannot carry by name (books/consumer-owner-local.lisp
+  ;; fn-col-poll-report; fn-col-poll-report-fits-or-refuses-by-name,
+  ;; books/consumer-owner-local-progress.lisp).  The legacy record's encoder
+  ;; is fn-rcon-record-encode-impl (fn-rcon-record-encode-impl-is-record-
+  ;; encode-impl, books/records-codec-concrete, no hypothesis).
+  (value (fn-col-poll-report (fn-owner-core state) consumer)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1626,32 +1632,28 @@
       (f-get-global 'fn-owner-transit-carried state)
     nil))
 
-;; The login-binding table the native auth profile loaded
-;; (books/native-auth-profile.lisp fn-native-auth-load-bindings), installed
-;; beside the auth configuration before the listener opens.  Transport only:
-;; ACL2 built it, and fn-lb-owner-gate is the only reader.
-(defun fn-owner-set-login-bindings (bindings state)
+;; PKT-221: the credential file's login bindings (BINDINGS, read by
+;; host/native-auth-host.lisp fn-native-auth-host-load-bindings from the file
+;; the profile accepted) against the owner's live configuration
+;; (books/login-binding-live.lisp fn-lb-sync-plan): (:ok RECORDS), each a
+;; delta list host/native/auth.lisp fnn-native-auth-publish-bindings stages
+;; with fn-owner-reconfigure-deltas and publishes in order, or (:refused R).
+(defun fn-owner-login-bindings-plan (bindings state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (f-put-global 'fn-owner-login-bindings bindings state)))
-    (value :ok)))
-
-(defun fn-owner-login-bindings (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-login-bindings state)
-      (f-get-global 'fn-owner-login-bindings state)
-    nil))
+  (value (fn-lb-sync-plan bindings (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state))))))
 
 ;; The posting policy's gate for the served submission in flight
-;; (books/login-binding.lisp fn-lb-owner-gate over the owner, its LIVE
-;; configuration and the binding table), called by host/native/owner.lisp
-;; fnn-owner-attempt-served before the transit attempt.  The verdict's
-;; service-log line is left in fn-owner-login-log-line (nil: no login).
+;; (books/login-binding-live.lisp fn-lb-ocfg-gate: the policy of the owner's
+;; LIVE configuration, the login-binding table the submission's connection
+;; pinned when it opened), called by host/native/owner.lisp
+;; fnn-owner-attempt-served before the transit attempt.  The table is rows of
+;; the configuration (PKT-221), published at start and on `principal bind'
+;; through the live reconfiguration; there is no binding global.  The
+;; verdict's service-log line is left in fn-owner-login-log-line (nil: no
+;; login).
 (defun fn-owner-login-gate (received state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((verdict (fn-lb-owner-gate (fn-owner-core state)
-                                    (fn-ocfg-config (fn-owner-ocfg state))
-                                    (fn-owner-login-bindings state)
-                                    received))
+  (let* ((verdict (fn-lb-ocfg-gate (fn-owner-ocfg state) received))
          (state (f-put-global 'fn-owner-login-log-line
                               (fn-lb-verdict-line verdict) state)))
     (value verdict)))
@@ -1760,9 +1762,13 @@
 ; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
 ; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
 ; are the host's two primitive outcomes (nil when not observed).
+; PKT-240: through the seven-class verdict, whose refusal arm is
+; fn-pcb-refusal-class on every input
+; (fn-pcb-admission-verdict-refusal-arms-are-the-refusal-class).
 (defun fn-owner-transit-refusal-class (received transitp ed ml state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-pcb-refusal-class
+  ;; PKT-433 (d): (CLASS VERDICT) (fn-pcb-transit-refusal-detail), or nil.
+  (value (fn-pcb-transit-refusal-detail
           received (fn-sn-keyring-snapshots (fn-owner-store state))
           (fn-owner-transit-carried-list transitp state) ed ml)))
 
@@ -1865,6 +1871,42 @@
     (value (if (and (consp records) (null (cdr records)))
                (fn-ks-pending (car records))
              nil))))
+
+;; PRF-166 (PKT-325): `keys redecide MSGID' (books/key-statements.lisp
+;; fn-ks-find-statement, fn-ks-redecide-plan, fn-ks-redecide-event).  The
+;; stored statement MSGID (octets) names among the Store's records, or nil;
+;; its plan and kind-3 event under the Store's keyring now and the live
+;; configuration's grants -- the configuration in force at the redecide's own
+;; txid (fn-ks-redecide-decides-under-the-configuration-at-its-own-txid).
+;; Called by host/native/keys.lisp fnn-keys-owner-redecide under the owner
+;; mutex; the host observes, commits and logs.
+(defun fn-owner-key-statement-redecide-find (msgid state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-find-statement
+          (fn-store-octets->string msgid)
+          (fn-sf-records (fn-sn-files (fn-owner-store state))))))
+
+(defun fn-owner-key-statement-redecide-plan
+    (event observed-ml-key ed-observation ml-observation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-redecide-plan event
+                              (fn-sn-keyring-snapshots (fn-owner-store state))
+                              (fn-owner-key-statement-rows event nil state)
+                              observed-ml-key ed-observation ml-observation)))
+
+(defun fn-owner-key-statement-redecide-event
+    (event observed-ml-key ed-observation ml-observation coordinates state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-redecide-event event
+                               (fn-sn-keyring-snapshots (fn-owner-store state))
+                               (fn-owner-key-statement-rows event nil state)
+                               observed-ml-key ed-observation ml-observation
+                               (first coordinates) (second coordinates)
+                               (third coordinates))))
+
+(defun fn-owner-key-statement-redecide-log-line (plan outcome state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ks-redecide-log-line plan outcome)))
 
 ;; D27: the signed composite against the profile the owner was handed at
 ;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):
@@ -2101,16 +2143,20 @@
     (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
 
 ;; After a served step (fn-owner-chunk below): `fn-owner-exposure-close'
-;; holds the 400 the host appends before it closes, or NIL.
+;; holds the 400 the host appends before it closes, or NIL.  The step's
+;; EFFECTS go in, not its reply octets: fn-exp-observe-effects is
+;; fn-exp-observe of (fn-served-reply-octets effects)
+;; (fn-exp-observe-effects-unfolds) and scans the effects in constant stack
+;; without building that list (books/public-exposure-reply.lisp; PKT-481).
 (defun fn-owner-exposure-observe (id effects consumed state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
          (subject (and conn (fn-auth-session-subject (fn-own-conn-session conn))))
-         (r (fn-exp-observe (fn-owner-exposure-state state)
-                            (fn-owner-exposure-limits state) id
-                            (fn-owner-exposure-now state)
-                            (fn-served-reply-octets effects) consumed subject
-                            (and (fn-served-submission effects) t)))
+         (r (fn-exp-observe-effects (fn-owner-exposure-state state)
+                                    (fn-owner-exposure-limits state) id
+                                    (fn-owner-exposure-now state)
+                                    effects consumed subject
+                                    (and (fn-served-submission effects) t)))
          (state (f-put-global 'fn-owner-exposure (cdr r) state))
          (state (f-put-global 'fn-owner-exposure-close
                               (if (consp (car r)) (cadr (car r)) nil) state)))

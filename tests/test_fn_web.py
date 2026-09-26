@@ -125,7 +125,9 @@ class WebClientTests(unittest.TestCase):
         self.assertNotIn("<script>steal()", page)
         self.assertIn("<dt>Authorship evidence carried</dt><dd>FN-Statement present in "
                       "the article</dd>", page)
-        self.assertIn("not performed: carried but not independently verified here", page)
+        self.assertIn("<dt>Independent verification here</dt><dd><span class='badge "
+                      "not-performed'>not-performed</span> not performed: no keyring of "
+                      "this reader&#x27;s is configured", page)
         self.assertIn("<dt>Claimed author</dt><dd>&lt;script&gt;alert(1)&lt;/script&gt;", page)
         self.assertIn("Path: peer!other", page)
         self.assertIn("Viewing does not acknowledge application processing", page)
@@ -276,7 +278,11 @@ class WebClientTests(unittest.TestCase):
                       "verified by principal " + "ab" * 32 + " under keyring generation 7"
                       "</code>", page)
         self.assertIn("a key retired later does not change this record", page)
-        self.assertIn("<dt>Current enrollment or authorization</dt><dd>not available", page)
+        # A node without the item: the fourth fact is the node's non-answer,
+        # never a guess and never the historical verdict.
+        self.assertIn("<dt>Current enrollment or authorization</dt><dd><span class='badge "
+                      "unavailable'>unavailable</span> not available: the node did not "
+                      "answer :fn-enrollment (503", page)
         self.assertIn("HDR :fn-verified 1", self.node.seen)
 
         status, _, legacy_page = self.request("GET", "/a?group=fn.agents&number=2")
@@ -365,6 +371,88 @@ class WebClientTests(unittest.TestCase):
             "4 unverified signature keyring 2", 4)), "unverified")
         self.assertEqual(fn_web.verdict_kind(fn_web.parse_verdict_hdr(
             "4 absent no-record", 4)), "absent")
+
+    def test_verdict_parser_accepts_every_token_the_node_renders(self):
+        # specs/human-client.md "Reader metadata lines": books/stx-verify.lisp
+        # fn-stx-verified-item and books/stx-reader.lisp fn-stx-reader-item.
+        p = "ab" * 32
+        cases = {
+            "verified %s keyring 2" % p: "verified",
+            "verified legacy keyring 2": "verified",
+            "revoked %s keyring 3" % p: "revoked",
+            "carried %s" % p: "carried",
+            "absent no-record": "absent",
+        }
+        for reason in ("malformed", "ref-mismatch", "signature", "no-field", "unknown"):
+            cases["unverified %s keyring 1" % reason] = "unverified"
+            cases["absent %s" % reason] = "absent"
+        for item, kind in cases.items():
+            report = fn_web.parse_verdict_hdr("4 " + item, 4)
+            self.assertIsNotNone(report, item)
+            self.assertEqual(fn_web.verdict_kind(report), kind, item)
+        self.assertIn("was revoked under keyring generation 3",
+                      fn_web.parse_verdict_hdr("4 revoked %s keyring 3" % p, 4))
+        self.assertIn("not verified by this node",
+                      fn_web.parse_verdict_hdr("4 carried %s" % p, 4))
+        for bad in ("revoked %s" % p, "carried %s keyring 1" % p, "carried zz",
+                    "absent maybe", "unverified no-record keyring 1"):
+            self.assertIsNone(fn_web.parse_verdict_hdr("4 " + bad, 4), bad)
+
+    def test_enrollment_parser_accepts_every_token_and_nothing_else(self):
+        p = "CD" * 32
+        for word in ("active", "retired", "revoked"):
+            kind, text = fn_web.parse_enrollment_hdr("0 %s %s keyring 12" % (word, p))
+            self.assertEqual(kind, word)
+            self.assertIn("cd" * 32, text)
+            self.assertIn("12", text)
+        self.assertEqual(fn_web.parse_enrollment_hdr("0 unenrolled " + p)[0], "unenrolled")
+        for reason in ("no-record", "no-principal", "no-keyring-view"):
+            self.assertEqual(fn_web.parse_enrollment_hdr("0 none " + reason)[0], "none")
+        for bad in ("0 active %s" % p, "1 active %s keyring 1" % p, "0 enrolled %s keyring 1" % p,
+                    "0 none maybe", "0 unenrolled %s keyring 1" % p,
+                    "0 retired %s keyring x" % p, "0 active %s keyring %s" % (p, "9" * 11)):
+            self.assertIsNone(fn_web.parse_enrollment_hdr(bad), bad)
+
+    def test_enrollment_is_the_nodes_current_fact_beside_the_historical_verdict(self):
+        msgid = "<enrolled@example.invalid>"
+        self.node.inject("fn.agents", ["Newsgroups: fn.agents", "Subject: rotated",
+                                        "Message-ID: " + msgid, "FN-Statement: present", ""])
+        self.node.verdicts[msgid] = "verified " + "ab" * 32 + " keyring 1"
+        self.node.enrollments[msgid] = "retired " + "ab" * 32 + " keyring 4"
+        status, _, page = self.request("GET", "/a?group=fn.agents&number=1")
+        self.assertEqual(status, 200)
+        self.assertIn(HISTORICAL + "<span class='badge verified'>verified</span> <code>"
+                      "verified by principal " + "ab" * 32 + " under keyring generation 1",
+                      page)
+        self.assertIn("<dt>Current enrollment or authorization</dt><dd><span class='badge "
+                      "retired'>retired</span> principal " + "ab" * 32 + " has enrolled "
+                      "again since: its current keyring generation is 4", page)
+        self.assertIn("HDR :fn-enrollment " + msgid, self.node.seen)
+        # The same page reached by Message-ID asks the node the same question.
+        status, _, found = self.request("GET", "/find?" + urlencode({"id": msgid}))
+        self.assertEqual(status, 200)
+        self.assertIn("<span class='badge retired'>retired</span>", found)
+        # An answer outside the grammar is the node's non-answer, not a status.
+        self.node.enrollments[msgid] = "enrolled forever"
+        status, _, odd = self.request("GET", "/a?group=fn.agents&number=1")
+        self.assertIn("<span class='badge unavailable'>unavailable</span> not available: "
+                      "the node answered :fn-enrollment with a line outside the grammar", odd)
+        self.assertIn(HISTORICAL + "<span class='badge verified'>", odd)
+
+    def test_enrollment_asks_about_the_id_the_node_served_not_the_header(self):
+        actual = "<served-slot@example.invalid>"
+        claim = "<header-claim@example.invalid>"
+        number = self.node.inject("fn.agents", ["Newsgroups: fn.agents", "Subject: s",
+                                                  "Message-ID: " + actual, ""])
+        self.node.articles[actual] = ["Newsgroups: fn.agents", "Subject: s",
+                                      "Message-ID: " + claim, ""]
+        self.node.enrollments[actual] = "none no-record"
+        self.node.enrollments[claim] = "active " + "cd" * 32 + " keyring 9"
+        status, _, page = self.request("GET", "/a?group=fn.agents&number=%d" % number)
+        self.assertEqual(status, 200)
+        self.assertIn("<span class='badge none'>none</span> the node recorded no verdict", page)
+        self.assertNotIn("keyring generation 9", page)
+        self.assertIn("HDR :fn-enrollment " + actual, self.node.seen)
 
     def test_verdict_parser_rejects_malformed_and_unbounded_values(self):
         self.assertIsNone(fn_web.parse_verdict_hdr("4 verified " + "a" * 100000, 4))
@@ -960,6 +1048,113 @@ class ReaderSearchTests(unittest.TestCase):
         result = backend.search("fn.test", "subject", "!bad")
         self.assertEqual(result.word, fn_web.fn_client.REFUSED)
         self.assertEqual(result.detail, "501 syntax error")
+
+
+try:
+    from tests.test_fn_verify import HAVE_LIBS, Signer, source_for
+except ImportError:          # pragma: no cover - the verifier test module moved
+    HAVE_LIBS = False
+
+
+@unittest.skipUnless(HAVE_LIBS, "pip install cryptography dilithium-py")
+@unittest.skipUnless(shutil.which("openssl"), "openssl is required for the socket fixture")
+class IndependentCheckTests(unittest.TestCase):
+    """PKT-253: the fifth fact is this reader's own check of the article's bytes
+    with this reader's own keyring, through tools/fn_verify.py check-article.
+    The carriers are signed here (pyca Ed25519, dilithium-py ML-DSA-65) as
+    tests/test_fn_verify.py signs them; no verdict is mocked."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory()
+        root = Path(cls.temporary.name)
+        cls.cert, cls.key = make_pair(root)
+        cls.author = Signer(bytes([0x55]) * 32)
+        cls.stranger = Signer(bytes([0x66]) * 32)
+        cls.keyring = root / "reader-keyring.json"
+        cls.keyring.write_text(json.dumps({"format": "fn-verify-keyring-v1",
+                                           "principals": [cls.author.entry()]}))
+        cls.good_id, cls.bad_id, cls.stranger_id = (
+            "<own-good@x.invalid>", "<own-tampered@x.invalid>", "<own-stranger@x.invalid>")
+        cls.good = cls.author.carried(source_for(cls.good_id))
+        cls.tampered = cls.author.carried(source_for(cls.bad_id)).replace(
+            b"exact post source", b"Exact post source")
+        cls.unpinned = cls.stranger.carried(source_for(cls.stranger_id))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temporary.cleanup()
+
+    @staticmethod
+    def lines(octets):
+        return octets.decode("ascii").split("\r\n")[:-1]
+
+    def check(self, octets, msgid, keyring):
+        return fn_web.independent_check(self.lines(octets), msgid,
+                                        str(keyring) if keyring else "", "")
+
+    def test_verified_here_names_the_principal_and_whose_keyring(self):
+        own = self.check(self.good, self.good_id, self.keyring)
+        self.assertEqual(own["kind"], "verified-here", own)
+        self.assertIn("principal " + "55" * 32, own["text"])
+        self.assertIn("the reader's keyring " + str(self.keyring), own["text"])
+
+    def test_failed_here_says_why(self):
+        own = self.check(self.tampered, self.bad_id, self.keyring)
+        self.assertEqual(own["kind"], "failed-here", own)
+        self.assertIn("failed here: signature", own["text"])
+        unsigned = self.check(source_for("<own-plain@x.invalid>"), "<own-plain@x.invalid>",
+                              self.keyring)
+        self.assertEqual(unsigned["kind"], "failed-here")
+        self.assertIn("no-carrier", unsigned["text"])
+
+    def test_not_performed_says_why(self):
+        self.assertIn("no keyring of this reader's is configured",
+                      self.check(self.good, self.good_id, None)["text"])
+        stranger = self.check(self.unpinned, self.stranger_id, self.keyring)
+        self.assertEqual(stranger["kind"], "not-performed")
+        self.assertIn("not in the keyring", stranger["text"])
+        replaced = fn_web.independent_check(["Subject: \ufffd"], self.good_id,
+                                            str(self.keyring), "")
+        self.assertEqual(replaced["kind"], "not-performed")
+        self.assertIn("exact octets", replaced["text"])
+
+    def test_the_page_shows_the_readers_check_beside_the_nodes_facts(self):
+        node = FakeNode(self.cert, self.key, protected_only=False, require_auth=False)
+        node.start()
+        self.addCleanup(node.stop)
+        number = node.inject("fn.agents", self.lines(self.good))
+        tampered = node.inject("fn.agents", self.lines(self.tampered))
+        node.verdicts[self.good_id] = "verified " + "55" * 32 + " keyring 1"
+        node.enrollments[self.good_id] = "active " + "55" * 32 + " keyring 1"
+        args = SimpleNamespace(host="127.0.0.1", port=node.port, timeout=30.0, plain=True,
+                               cafile=None, keyring=str(self.keyring))
+        server = fn_web.WebServer(0, fn_web.Backend(args, "", ""))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+
+        def get(path):
+            conn = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=60)
+            conn.request("GET", path)
+            reply = conn.getresponse()
+            answer = reply.status, reply.read().decode("utf-8")
+            conn.close()
+            return answer
+
+        status, page = get("/a?group=fn.agents&number=%d" % number)
+        self.assertEqual(status, 200)
+        self.assertIn("<dt>Independent verification here</dt><dd><span class='badge "
+                      "verified-here'>verified-here</span> verified here: principal " +
+                      "55" * 32, page)
+        self.assertIn("<span class='badge active'>active</span>", page)
+        status, page = get("/a?group=fn.agents&number=%d" % tampered)
+        self.assertIn("<span class='badge failed-here'>failed-here</span> failed here: "
+                      "signature", page)
+        # The node's word for the tampered copy stays its own fact.
+        self.assertIn("HDR :fn-verified %d" % tampered, node.seen)
 
 if __name__ == "__main__":
     unittest.main()
