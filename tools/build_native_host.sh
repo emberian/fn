@@ -76,4 +76,26 @@ if [ ! -x "$IMAGE" ] || [ ! -s "$IMAGE.core" ]; then
     echo "build_native_host: save-exec produced no image; see $LOG" >&2
     exit 1
 fi
-echo "built $IMAGE profile=$PROFILE ($(du -h "$IMAGE.core" | cut -f1) core)"
+# The re-save (HST-017, lane image-anatomy's measurement): start the saved
+# core without ACL2 (no LP, no restart), collect, and save it again with
+# SBCL's own save.  The objects are the same; their layout is not: a node
+# started on the re-saved core touched 44.9 MiB at start against 67.8, and
+# 121.6 against 156.2 after 300 POSTs.  Why ACL2's save-exec lays the core
+# out worse is not established.  The launcher script is unchanged.
+line=$(grep '^exec ' "$IMAGE")
+sbcl=$(echo "$line" | sed 's/^exec "\([^"]*\)".*/\1/')
+home=$(sed -n "s/^export SBCL_HOME='\(.*\)'/\1/p" "$IMAGE")
+resaved="$IMAGE.core.resave"
+rm -f "$resaved"
+if ! SBCL_HOME="$home" "$sbcl" --tls-limit 16384 --dynamic-space-size 2048MB \
+       --control-stack-size 64 --disable-ldb --core "$IMAGE.core" --noinform \
+       --end-runtime-options --no-userinit --disable-debugger \
+       --eval "(progn (sb-ext:gc :full t) (sb-ext:save-lisp-and-die \"$resaved\" :executable nil))" \
+       >> "$LOG" 2>&1 || [ ! -s "$resaved" ]; then
+    echo "build_native_host: the re-save of $IMAGE.core failed; see $LOG" >&2
+    rm -f "$resaved"
+    exit 1
+fi
+mv "$resaved" "$IMAGE.core"
+echo "FN_NATIVE_RESAVED $(wc -c < "$IMAGE.core") octets" >> "$LOG"
+echo "built $IMAGE profile=$PROFILE ($(du -h "$IMAGE.core" | cut -f1) core, re-saved)"

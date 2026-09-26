@@ -256,9 +256,8 @@
 ; prover, the undo stack or the history commands read (HST-017,
 ; host/native/strip-world.lisp).  After the last event, before the save.
 (load "host/native/strip-world.lisp")
-(format t "~&FN_NATIVE_WORLD_STRIPPED triples=~d dynamic-usage=~d~%"
-        (fnn-strip-world *fnn-world-execution-properties*)
-        (sb-kernel:dynamic-usage))
+(format t "~&FN_NATIVE_WORLD_STRIPPED triples=~d residue=~s~%"
+        (fnn-strip-world) (fnn-strip-build-residue))
 (save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host-dtn")
            "fn native host (DTN only, no NNTP reader)"
            :return-from-lp '(fn-native-entry state)

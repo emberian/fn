@@ -20,29 +20,44 @@
 (defparameter *fnn-world-execution-properties*
   '(;; The *1* dispatch: (symbol-class 'fn (w *the-live-state*)) decides
     ;; whether the guard-verified raw body runs (interface-raw.lisp,
-    ;; oneify-cltl-code-1).
+    ;; oneify-cltl-code-1).  48 of the 63 reads lane image-anatomy recorded.
     symbol-class
-    ;; Signatures read by the *1* guard-failure forms (save-ev-fncall-guard-er,
-    ;; ev-fncall-guard-er), by ev-fncall and by translate of LP's return form.
+    ;; Signatures and guards: the *1* guard-failure forms
+    ;; (save-ev-fncall-guard-er), ev-fncall, df-call, guard-raw.
     formals stobjs-in stobjs-out guard
-    ;; Stobj dispatch: live-stobj checks, invariant-risk checks, accessor
-    ;; arrays (update-wrld-structures), abstract and congruent stobjs.
-    invariant-risk stobj stobj-function stobj-constant stobj-live-var
-    absstobj-info congruent-stobj-rep accessor-names global-stobjs
-    ;; Attachments and constrained functions: an unattached constrained call
-    ;; reports through these; ev refuses a non-executable function by them.
-    attachment constrainedp hereditarily-constrained-fnnames
-    non-executablep predefined classicalp
-    ;; Translate of the return-from-lp form and of any form LP reads.
-    macro-args macro-body const
-    ;; Tables (acl2-defaults-table, untrans-table, macro-aliases-table,
-    ;; guard-msg-table, memoize-table, ...) and every world global at its
-    ;; current value: global-val of an absent name is a hard error.
-    table-alist table-guard global-value))
+    ;; Stobj dispatch: live-stobj and invariant-risk checks, abstract stobjs.
+    invariant-risk absstobj-info stobj stobj-function
+    ;; Attachments and constrained or built-in functions.
+    attachment predefined constrainedp)
+  "The execution properties, kept on every symbol that has them.")
 
-(defun fnn-strip-world (keep)
-  "Replace the installed world by its current KEEP triples, over a new
-bottom that keeps the event and command indices valid for event 0."
+(defparameter *fnn-world-read-pairs*
+  '(;; LP's translate of the return-from-lp form (fn-native-entry state).
+    (fn-native-entry . global-stobjs) (fn-native-entry . macro-body)
+    (fn-native-entry . non-executablep)
+    ;; Tables and world globals LP and translate read at start.
+    (acl2-defaults-table . table-alist) (badge-table . table-alist)
+    (boot-strap-flg . global-value) (known-package-alist . global-value)
+    (operating-system . global-value) (project-dir-alist . global-value)
+    (untouchable-fns . global-value)
+    ;; lookup-world-index of event 0 and command 0 (the ACL2_SYSTEM_BOOKS
+    ;; start path, replace-project-dir-alist): the landmarks' current values
+    ;; and the indices, rebuilt below over the new world's bottom.
+    (event-landmark . global-value) (command-landmark . global-value)
+    (event-index . global-value) (command-index . global-value))
+  "The other (symbol . property) pairs execution reads: lane image-anatomy's
+recording of every world read across operator_verbs, hybrid_author,
+starttls, implicit_tls and a guard violation (63 pairs, 48 of them
+symbol-class), less those the execution properties cover, plus the start
+path with ACL2_SYSTEM_BOOKS set.")
+
+(defun fnn-world-keep-p (sym prop)
+  (or (member prop *fnn-world-execution-properties* :test #'eq)
+      (member (cons sym prop) *fnn-world-read-pairs* :test #'equal)))
+
+(defun fnn-strip-world ()
+  "Replace the installed world by its current kept triples (fnn-world-keep-p),
+over a new bottom that keeps the event and command indices valid for event 0."
   (let* ((state *the-live-state*)
          (key *current-acl2-world-key*)
          (pair (get 'current-acl2-world 'acl2-world-pair))
@@ -74,7 +89,7 @@ bottom that keeps the event and command indices valid for event 0."
       (let ((kept nil))
         (dolist (entry (get s key))
           (let ((stack (cdr entry)))
-            (when (and (member (car entry) keep)
+            (when (and (fnn-world-keep-p s (car entry))
                        (consp stack)
                        (not (eq (car stack) *acl2-property-unbound*)))
               ;; The value stack keeps its current value only: no retraction.
@@ -118,3 +133,42 @@ bottom that keeps the event and command indices valid for event 0."
     (setq *bad-wrld* nil)
     (sb-ext:gc :full t)
     (length (w state))))
+
+(defun fnn-strip-build-residue ()
+  "What the build session leaves that no node reads (lane image-anatomy's
+census): the input-channel symbols of every file ACL2 opened while building
+(85,001 on 2026-09-26, their plists holding the files' names and state),
+ACL2's own documentation text, defconst's redundancy discriminators (the raw
+values kept to recognise a re-submitted defconst; they keep the
+documentation alive), the build-sized hons space and memoize call array.
+Returns the counts it printed."
+  (let ((channels 0) (discriminators 0)
+        (p (find-package "ACL2-INPUT-CHANNEL")))
+    ;; Closed channels only: every file the build read.  An open channel's
+    ;; symbol (standard input, the live stdin of the saved process) keeps.
+    (do-symbols (s p)
+      (when (and (eq (symbol-package s) p)
+                 (plusp (length (symbol-name s)))
+                 (char= (char (symbol-name s) 0) #\/))
+        (incf channels)
+        (setf (symbol-plist s) nil)
+        (unintern s p)))
+    (sb-kernel:%set-symbol-global-value (quote *acl2-system-documentation*) nil)
+    (do-all-symbols (s)
+      (when (get s 'redundant-raw-lisp-discriminator)
+        (incf discriminators)
+        (remprop s 'redundant-raw-lisp-discriminator)))
+    ;; A small hons space in place of the build's (ACL2's own constructor;
+    ;; honsing stays correct, it only re-norms what it meets).  None at all
+    ;; would make every start build a default-sized one.
+    (setq *default-hs*
+          (hl-hspace-init :str-ht-size 100 :nil-ht-size 100 :cdr-ht-size 100
+                          :cdr-ht-eql-size 100 :addr-ht-size 100 :sbits-size 100
+                          :other-ht-size 100 :fal-ht-size 100 :persist-ht-size 100))
+    ;; The memoize call array is (2 x the most memoized functions)^2 counters;
+    ;; ACL2's own resize path, to what the functions memoized now need.
+    (let ((n (* 2 (+ 2 *max-symbol-to-fixnum*))))
+      (when (< n *2max-memoize-fns*)
+        (setq *2max-memoize-fns* n)
+        (sync-memoize-call-array)))
+    (list channels discriminators)))
