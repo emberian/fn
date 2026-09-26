@@ -7591,9 +7591,10 @@
         "host/native/owner.lisp",
         "tests/test_native_peering.py",
         "planning/evidence/transit-pipelining-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260926T231119Z-3936095.json"
+        "planning/evidence/manifests/certify-20260926T231119Z-3936095.json",
+        "planning/evidence/manifests/certify-20260926T233724Z-23643.json"
       ],
-      "progress_note": "Lane transit-pipelining 2026-09-27: REPL-admitted on hbox (sessions big, agt); certified on persvati run-20260926T231044Z-0b1a (manifest certify-20260926T231119Z-3936095: 67 affected roots passed, none over 10 s, 2 jobs, w25 acl2-literal).",
+      "progress_note": "Lane transit-pipelining 2026-09-27: REPL-admitted on hbox (sessions big, agt); certified on persvati run-20260926T231044Z-0b1a (manifest certify-20260926T231119Z-3936095: 67 affected roots passed, none over 10 s, 2 jobs, w25 acl2-literal). The teeth book, extended with cuts inside terminators and byte-at-a-time reads, recertified in run-20260926T233647Z-b92c (manifest certify-20260926T233724Z-23643). Native: tests.test_native_peering 11 ran OK on the tp1 image.",
       "events": [
         "fn-served-step-counted-result-is-step-of-consumed-prefix",
         "fn-served-drain-is-step",
