@@ -3928,7 +3928,7 @@
       "id": "SCN-143",
       "title": "A certificate renewal reaches a running node by `tls reload`: new connections get the new certificate, an open session keeps working, and a mismatched key or a dropped name is refused by name with the old certificate still served",
       "milestone": "M4",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-020"
       ],
