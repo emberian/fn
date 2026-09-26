@@ -2778,7 +2778,7 @@
     },
     {
       "id": "SCN-100",
-      "title": "A cancel crossing two peers in both orders, with grants on either or both sides, a kill between the arrivals and readers pinned on both nodes",
+      "title": "A cancel crossing two peers in both orders, with grants on either or both sides, a kill between the arrivals and readers pinned on both nodes; a store a pre-C1 image wrote holding a signed cancel is refused by name at open",
       "milestone": "M3",
       "status": "specified",
       "requirements": [
@@ -2788,19 +2788,24 @@
         "Three loopback nodes H, A and B, each `init fn.ga.t fn.gb.t fn.gab.t fn.post control.cancel`; P and Q enrolled on all three; Q granted cancel over fn.ga.* and fn.gab.* on A, fn.gb.* and fn.gab.* on B.",
         "For each basis (P cancels P's signed target; Q cancels an unsigned target) and each target group, H authors the target and the cancel; the harness relays the pair over IHAVE to A and B, target first or cancel first, with both receivers SIGKILLed and restarted between the two arrivals in half the cases.",
         "Readers opened on A and B after the first arrivals read each target again after the second arrivals and after their own POST; every grant is then revoked and both receivers SIGKILLed and restarted.",
-        "A signed article naming fn.unserved is authored through hybrid-author."
+        "A signed article naming fn.unserved is authored through hybrid-author.",
+        "A copy of the store the pre-C1 developer image f358dbac wrote (a signed target and a signed cancel of it filed under fn.test; tests/fixtures/pre-c1-control-store/witness) is opened by the current image through store recover, store inspect, store checkpoint, operator run and operator health; store repair-control is run on it; the same procedure's store without the cancel (fixtures .../ordinary) is recovered."
       ],
       "expected": [
         "On each node the fresh answer is the same line in both orders: 430 withdrawn for the author basis everywhere and for the authority basis where that node's grant covers the target's group, 220 otherwise.",
         "A pinned reader answers 220 for every target it saw until its POST re-pins it, then the fresh answer; after the revoke and the restart every answer is unchanged.",
-        "hybrid-author exits 1 with `refused hybrid-author UNKNOWN-GROUP`; the same signer's article naming only fn.test is accepted."
+        "hybrid-author exits 1 with `refused hybrid-author UNKNOWN-GROUP`; the same signer's article naming only fn.test is accepted.",
+        "Every open of the witness exits 1 with `pre-C1 control record (txid 2, <prec1-cancel@example.invalid>): run store repair-control` after its family's word (`store: `, `refused operator run `, `refused operator health `), never the generic fault; its transactions are unchanged; store repair-control exits 1 with `repair semantics undecided (PKT-444)`; the store without the cancel recovers two transactions and its status exits 0."
       ],
       "implementation": {
         "test": "tests.test_native_control_across_peers",
         "cases": [
           "NativeControlAcrossPeersTests.test_author_basis",
           "NativeControlAcrossPeersTests.test_authority_basis",
-          "NativeHybridAuthorTest.test_unserved_group_and_every_refusal_are_named"
+          "NativeHybridAuthorTest.test_unserved_group_and_every_refusal_are_named",
+          "tests.test_native_pre_c1_open.PreC1OpenTest.test_every_open_of_the_witness_refuses_by_name",
+          "tests.test_native_pre_c1_open.PreC1OpenTest.test_repair_control_refuses_until_its_semantics_are_decided",
+          "tests.test_native_pre_c1_open.PreC1OpenTest.test_the_store_without_the_cancel_opens"
         ],
         "native": true,
         "log": "planning/evidence/control-across-peers-2026-09-26/native-m1-across-peers.log",
