@@ -997,6 +997,30 @@
         v
       nil)))
 
+;; PRF-166 (PKT-325): `keys redecide MSGID' (kind 12), the Message-ID's
+;; octets.  The owner's handler (host/native/keys.lisp) decides it with
+;; books/key-statements.lisp fn-ks-redecide-plan; this is only its frame.
+(defconst *fn-pinv-redecide-kind* 12)
+(defconst *fn-pinv-max-redecide-msgid* 250)
+
+(defun fn-pinv-redecide-request-encode (msgid)
+  (declare (xargs :guard t))
+  (if (not (and (fn-cbor-octet-listp msgid) (consp msgid)
+                (<= (len msgid) *fn-pinv-max-redecide-msgid*)))
+      :bad
+    (fn-nhctrl-seal *fn-pinv-redecide-kind* *fn-pinv-request-spec*
+                    (list msgid))))
+
+(defun fn-pinv-redecide-request-decode (octets)
+  (declare (xargs :guard t))
+  (let ((v (fn-nhctrl-open-values octets *fn-pinv-redecide-kind*
+                                  *fn-pinv-request-spec*)))
+    (if (and (true-listp v) (equal (len v) 1)
+             (fn-cbor-octet-listp (car v)) (consp (car v))
+             (<= (len (car v)) *fn-pinv-max-redecide-msgid*))
+        (car v)
+      nil)))
+
 ; =============================================================================
 ; PRF-124: the confirm step ends with a configured peer, in the SAME
 ; configuration record that consumes the invitation.
