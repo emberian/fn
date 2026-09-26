@@ -1999,8 +1999,9 @@ def post_article(store, bridge, records_count, msgid, payload, groups, charge):
         return None, charge
     if existing == "conflict":
         raise StoreError("conflicting immutable Message-ID")
-    if not publication_admissible(store, bridge):
-        raise StoreError("transaction count has reached configured bound")
+    if frame_bridge.session(bridge).article_verdict(
+            store.config["profile"], len(payload), len(codes)) != "admissible":
+        raise StoreError("store budget refuses the article (transaction count or history bound)")
     return (durable_post(store, bridge, records_count, msgid, payload, codes, charge),
             charge)
 
