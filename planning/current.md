@@ -24,11 +24,11 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260926T150134Z-3185056` | no: source changed since b6759850 | no: dev source not on the node |
 | [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20260926T150134Z-3185056` | no: source changed since b6759850 | no: dev source not on the node |
 | [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | yes: `certify-20260926T150134Z-3185056` | no: source changed since b6759850 | no: dev source not on the node |
-| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | no: closure moved | no: source changed since b6759850 | no: dev source not on the node |
+| [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260926T152501Z-3400513` | no: source changed since b6759850 | no: dev source not on the node |
 | [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260926T150134Z-3185056` | no: source changed since b6759850 | no: dev source not on the node |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | yes: `certify-20260926T150134Z-3185056` | no: source changed since b6759850 | no: profile not deployed |
 | [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260926T150134Z-3185056` | no: source changed since b6759850 | no: profile not deployed |
-| [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-disk` | yes | no: closure moved | lab only: `5181e0ea` | no: dev source not on the node |
+| [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-disk` | yes | yes: `certify-20260926T152501Z-3400513` | lab only: `5181e0ea` | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260926T150134Z-3185056` | lab only: `lane/m6-list-counts` | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260926T140805Z-2669526` | no: source changed since b6759850 | no: dev source not on the node |
 
@@ -135,7 +135,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **keep until release, refuse the unaffordable.** An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.
 
 - Host-called subject: `fn-pcar-sbud-prepare` at host/owner-host.lisp:702, equated by `fn-pcar-sbud-prepare-is-sbud-prepare` (books/owner-prepare-carried.lisp:223).
-- Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260924T161235Z-2188032` passed this source of `books/owner-store-budget.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/accounts.lisp` and 75 more changed.
+- Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260926T152501Z-3400513` (earliest archived).
 - Tested: image `b6759850` ([qual-b6759850-2026-09-26](evidence/qual-b6759850-2026-09-26.md), closure `certify-20260926T050746Z-356474`), profile native-operator matrix, operator verbs, kill run (qual-b6759850: every image-gated module on the four frozen images, 154 module runs; verdict amended: rollback untested (PKT-481 (a)); 69046a76 is the candidate); changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `bbf52159`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: CAP-REFUSE-A/B refused, CAP-SET accepted; operator_verbs budget cases, bp_obligation 4/4, app_journal 10/10 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -183,7 +183,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **maintenance: operator compaction.** `operator CONFIG store compact` is decided in ACL2: the pack it writes fits the free space the host observes on the store's filesystem (PKT-169), and a reclaim keeps the reconstructed history.
 
 - Host-called subject: `fn-cverb-decide` at host/checkpoint-host.lisp:201.
-- Keystone: `fn-cverb-pack-fits-the-disk` (books/store-compact-verb.lisp:281; PRF-073 (uncertified-at-current-digest), PRF-129 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260926T065950Z-667448` passed this source of `books/store-compact-verb.lisp`, and since then `books/acceptance.lisp`, `books/byte-store-frame.lisp`, `books/checkpoint-pack-chain.lisp` and 10 more changed.
+- Keystone: `fn-cverb-pack-fits-the-disk` (books/store-compact-verb.lisp:281; PRF-073 (uncertified-at-current-digest), PRF-129 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260926T152501Z-3400513` (earliest archived).
 - Tested: lane image of `5181e0ea` ([m5-compact-verb-2026-09-24](evidence/m5-compact-verb-2026-09-24.md)), profile developer image, checkpoint cuts through both entries; not a shared qualification.
 - Deployed: no: node image `bbf52159`; changed since it: `books/store-compact-verb.lisp`, `host/checkpoint-host.lisp`.
 - Latest positive result: 10 of 10 checkpoint cuts pass through both entries on the developer image ([m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)).
