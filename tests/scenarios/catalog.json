@@ -3098,7 +3098,7 @@
     },
     {
       "id": "SCN-107",
-      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init and at store upgrade-profile; at the ceiling it is written and served",
+      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init, at store upgrade-profile and at every open of a store saved with it; `store upgrade-profile --max-record-octets 4294966940` is that store's one repair; at the ceiling it is written and served",
       "milestone": "M5",
       "status": "implemented",
       "requirements": [
@@ -3106,26 +3106,30 @@
       ],
       "steps": [
         "init with max-record-octets and max-history-octets one octet past 4,294,966,940; then init at 4,294,966,940; start the owner and POST.",
-        "init a default store; store upgrade-profile --max-record-octets one octet past the ceiling; start the owner and POST; upgrade to the ceiling; start the owner and POST."
+        "init a default store; store upgrade-profile --max-record-octets one octet past the ceiling; start the owner and POST; upgrade to the ceiling; start the owner and POST.",
+        "init a default store and POST one article; replace config.json by the hand-built frame of the scale fields with R = H = 4,294,967,295 (the old encoder's octets, tests/acl2/store-profile-open-tests.lisp *spot-window-octets*); run status, store recover, store checkpoint, health and run through the operator, and store recover, inspect and checkpoint through the developer entry; store upgrade-profile --max-record-octets one octet below the ceiling; then --max-record-octets 4294966940; start the owner and POST."
       ],
       "expected": [
         "The first init exits 1 naming max-record-octets-above-the-poll-reply and writes no config.json; the second writes R 4,294,966,940 and the POST is 240.",
-        "The refused upgrade exits 1 with `store profile upgrade refused: max-record-octets-above-the-poll-reply`, config.json byte-identical; the owner serves; the upgrade to the ceiling exits 0 and status reads R 4,294,966,940; the owner serves."
+        "The refused upgrade exits 1 with `store profile upgrade refused: max-record-octets-above-the-poll-reply`, config.json byte-identical; the owner serves; the upgrade to the ceiling exits 0 and status reads R 4,294,966,940; the owner serves.",
+        "Every open exits 1 with `profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940` and never `ACL2 rejected durable configuration frame`; no store file changes; the other target exits 1 with `store profile upgrade refused: repair-lowers-max-record-octets-to-the-poll-reply-only` and changes nothing; the repair exits 0 (`repaired profile=max-record-octets transactions-used=1`), status reads R 4,294,966,940 with H 4,294,967,295 and T 4096 kept, the transactions are byte-identical, and the owner serves."
       ],
       "evidence": [
         "tests/test_native_control_reply_fit.py",
         "planning/evidence/control-reply-fit-2026-09-26.md",
-        "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
+        "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log",
+        "planning/evidence/profile-open-refusal/test_native_control_reply_fit.r2-578d43c2.log"
       ],
       "implementation": {
         "test": "tests.test_native_control_reply_fit",
         "cases": [
           "test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling",
-          "test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it"
+          "test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it",
+          "test_a_store_saved_in_the_window_is_refused_by_name_at_every_open_then_repaired"
         ],
         "native": true,
         "record": "planning/evidence/control-reply-fit-2026-09-26.md",
-        "log": "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log"
+        "log": "planning/evidence/profile-open-refusal/test_native_control_reply_fit.r2-578d43c2.log"
       }
     },
     {

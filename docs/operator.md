@@ -223,7 +223,7 @@ before the rename is a refusal (1), at or after it an uncertain outcome (3)
 that the next `status` resolves by reading whichever frame is there. The
 retention charge capacity is a different number and IS reconfigurable
 (`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
-value that is not a decimal below 2^64 is a usage error (5).
+value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940`); that command is its one repair, the only lowering the verb admits (`fn-spo-repair-verdict`, `books/store-profile-open.lisp`), and it writes nothing for any other target.
 
 ### Settle a client's lost post: `store inspect`
 
