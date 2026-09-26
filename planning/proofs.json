@@ -5907,15 +5907,17 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/consumer-position.lisp",
         "books/consumer-owner-local.lisp",
         "tests/acl2/consumer-position-tests.lisp",
         "tests/acl2/consumer-owner-local-tests.lisp",
-        "planning/evidence/community-bounds-2026-09-26.md"
+        "planning/evidence/community-bounds-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T095002Z-4098660.json",
+        "planning/evidence/manifests/certify-20260926T100254Z-46471.json"
       ],
-      "progress_note": "Certification manifest to cite at harvest. Open (PKT-435): field 7 has no served reader and the group-name width is 256; the checkpoint generation names (PKT-168 (1)); PKT-183's contiguity lemma and credential-file bound; the FNFD payload fit.",
+      "progress_note": "Open (PKT-435): field 7 has no served reader and the group-name width is 256; the checkpoint generation names (PKT-168 (1)); PKT-183's contiguity lemma and credential-file bound; the FNFD payload fit.",
       "events": [
         "fn-cp-register-within-refuses-exactly-past-the-operator-bound",
         "fn-cp-apply-preserves-consumer-capacity"

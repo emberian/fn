@@ -309,7 +309,28 @@ not an edit.
 
 ## 8. Certification
 
-See "Farm" below, filled at harvest.
+persvati, w25 `acl2-literal`, 2 jobs, 300 s:
+
+- run-20260926T094930Z-38b9 at 818c589a (`--affected-by` consumer-position,
+  consumer-owner-local, store-profile-namespace): 557 passed, 0 failed.
+  Manifest `planning/evidence/manifests/certify-20260926T095002Z-4098660.json`.
+- run-20260926T100215Z-724c at e671ce6b (the same roots plus peer-feed,
+  scheduler, anchor-record, topic-history-store-events and the docs grammar
+  test book): 586 passed, 0 failed. Manifest
+  `planning/evidence/manifests/certify-20260926T100254Z-46471.json`.
+- Books over 10 s at two jobs: owner-invariants (10.4 s, then 12.4 s),
+  store-node-invariants (11.3 s) and native-admin (10.0 s). This lane edited
+  none of the three; they were recertified as dependents under load. They
+  are dev's D26 debt, and their times varied between the two runs.
+- `make check-lane` is red on one item, the proof-cost ratchet:
+  store-node-invariants at 11.29 s (run 2) is not in the baseline. Run 1
+  measured the same book at 8.43 s. The book's own bytes are unchanged
+  between the runs, and its closure differs only by a comment, so this is
+  load variance on persvati and not this lane's regression. It is left red
+  and not re-run for a lower figure. The deputy decides: a matched quiet
+  remeasurement, or the ten-second work on that book (8df249ea was its
+  last). Every other check-lane step passes.
+- hbox recertified the default image closure at 54104a12 (section 7).
 
 ## 9. PKT-183 (not done here)
 
