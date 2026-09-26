@@ -214,8 +214,10 @@ wire, settled `accepted` by the client.
 ## Not done, and why
 
 - Native reclamation case: no host verb (above).
-- The image of the final commit: books and host are unchanged after
-  `061e8854` (later commits touch docs, registries, Python tests); the native
-  module was re-run at the final tree with that image (see LANEDUMP / the
-  final report for the SHA).
+- The image of the final commit: `git diff 061e8854 eb561776 -- books host
+  Makefile tools/build_native_host.sh packaging` is empty, so the image is
+  the one above (launcher and core SHA-256 identical). The native module was
+  re-run in tree `eb561776` (`/tank/fn/scratch/visibility-join/tree-eb561776`)
+  with it: 2 tests OK, the same witnesses; log
+  `fa7898087fe1db468c6d08774cd2b132c1fee875feec7d6b05f567e49c808ec2`.
 - `planning/ledger.*` regenerate on merge (not committed by the lane).
