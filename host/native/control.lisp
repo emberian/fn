@@ -395,9 +395,18 @@ transition."
              (fnn-store-fault (condition)
                (fnn-err "control request fault; owner stopped: ~a" condition)
                :fault)
-             (fnn-store-error () :refused)
-             (fnn-os-error () :refused)
-             (sb-bsd-sockets:socket-error () :refused)
+             ;; PKT-264 (2): a refusal is no longer silent in the owner's
+             ;; log; the line names the condition's class and its message
+             ;; (the operator's reply word is still :refused).
+             (fnn-store-error (condition)
+               (fnn-err "control request refused (store-error): ~a" condition)
+               :refused)
+             (fnn-os-error (condition)
+               (fnn-err "control request refused (os-error): ~a" condition)
+               :refused)
+             (sb-bsd-sockets:socket-error (condition)
+               (fnn-err "control request refused (socket-error): ~a" condition)
+               :refused)
              (error (condition)
                (fnn-owner-fault-service service nil condition)
                :fault))))
