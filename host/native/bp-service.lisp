@@ -968,6 +968,9 @@ a bundle from a refused channel with the admission's reason, and only its
     (unless (eq (fnn-core 'fn-bpnf-receive-wire-readyp prepared) t)
       (return-from fnn-bps-receive (values prepared nil)))
     (let* ((event (fnn-core 'fn-bpnf-receive-wire-event-value prepared))
+           ;; The admitted ingress the :ready event carries
+           ;; (fn-bpaj-admitted-channel-receives-under-its-ingress).
+           (ingress (fourth event))
            (adu (fnn-core 'fn-bpb-payload (second event)))
            (effects (fnn-bps-foundation-step service event))
            (path nil))
