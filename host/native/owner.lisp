@@ -2162,6 +2162,33 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
       (when (null workers) (return))
       (dolist (worker workers) (sb-thread:join-thread worker)))))
 
+;;; Garbage between collections in the owner process.  SBCL's default
+;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
+;;; so 1,600 MiB): the heap census of 2026-09-25
+;;; (planning/evidence/rep-heap-2026-09-25.md) found that headroom to be the
+;;; largest term of the owner's resident set at every size measured, 1.4 to
+;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  This
+;;; bounds collection work and dead memory, not data: the live heap is the
+;;; store's and grows with it; only the garbage allowed to pile up between
+;;; two collections is capped.  It decides nothing ACL2 decides.
+(defparameter +fnn-owner-gc-nursery-octets+ (* 64 1024 1024))
+
+;;; The trigger while the owner serves (HST-017, lane image-floor).  The open
+;;; (recovery: the checkpoint decode and the suffix replay) and a checkpoint
+;;; publication allocate in proportion to the retained history and keep
+;;; +fnn-owner-gc-nursery-octets+ (PKT-316: a smaller trigger there slows the
+;;; reopen).  A served command allocates in proportion to one request, so
+;;; between accepts the garbage allowed to pile up is this much, and the
+;;; owner's resident set is the live heap plus this, not plus 64 MiB.  It
+;;; bounds dead memory and collection spacing, never data; it decides nothing
+;;; ACL2 decides.
+(defparameter +fnn-owner-service-nursery-octets+ (* 8 1024 1024))
+
+(defun fnn-owner-service-nursery ()
+  "Serving: the small trigger, unless a publication (which set the large one)
+is running; the publication restores this one when it ends."
+  (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-service-nursery-octets+))
+
 (defun fnn-owner-publish-captured (service captured)
   "The publication's thread: ACL2's fn-ock-publication-stream over the values
 captured under the owner mutex and the PUBLICATION buffer (fnn-live-octets-pub,
@@ -2177,6 +2204,14 @@ decides by name whether the file fits the profile's checkpoint budget
 nothing is written, and serving continues.  A failed write leaves the old
 checkpoint (or, at and after the rename, the old or the new one: the crash
 keystone) and serving continues."
+  ;; The publication allocates in proportion to the history: the open's
+  ;; trigger while it runs, the service trigger again when it ends.
+  (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-gc-nursery-octets+)
+  (unwind-protect
+       (fnn-owner-publish-captured-1 service captured)
+    (fnn-owner-service-nursery)))
+
+(defun fnn-owner-publish-captured-1 (service captured)
   (destructuring-bind (base configs records segment count suffix budget) captured
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
@@ -2356,17 +2391,6 @@ The thread is a worker, so the stop joins it with the clients."
                     (fnn-owner-service-stopping service))
           (error condition))))))
 
-;;; Garbage between collections in the owner process.  SBCL's default
-;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
-;;; so 1,600 MiB): the heap census of 2026-09-25
-;;; (planning/evidence/rep-heap-2026-09-25.md) found that headroom to be the
-;;; largest term of the owner's resident set at every size measured, 1.4 to
-;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  This
-;;; bounds collection work and dead memory, not data: the live heap is the
-;;; store's and grows with it; only the garbage allowed to pile up between
-;;; two collections is capped.  It decides nothing ACL2 decides.
-(defparameter +fnn-owner-gc-nursery-octets+ (* 64 1024 1024))
-
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port)
@@ -2439,6 +2463,8 @@ The thread is a worker, so the stop joins it with the clients."
                       (progn
                         (dolist (hook (fnn-owner-service-start-hooks service))
                           (funcall hook service))
+                        ;; Recovery is done: from here the owner serves.
+                        (fnn-owner-service-nursery)
                         (fnn-out "LISTENING ~d" bound-port)
                         ;; PRF-162: the implicit-TLS listener ACL2 offered
                         ;; (fn-native-operator-result-run-implicit-tls-port),

@@ -3950,6 +3950,17 @@ serialized profile when the saved image later starts."
          (need 4)
          (fnn-command-reader (parse-integer (second args)) (string= (third args) "1")
                              (fnn-dash-nil (fourth args))))
+        ;; HST-017: a guard violation at the host boundary, on purpose.  The
+        ;; saved world is the execution world (host/native/strip-world.lisp);
+        ;; this is the native witness that a guard failure inside fnn-call is
+        ;; still the same fault line and exit code
+        ;; (tests/test_native_image_floor.py).  Developer image only.
+        ((string= verb "guard-probe")
+         (unless (fnn-developer-image-p)
+           (error 'fnn-usage-error
+                  :message "guard-probe is available only in the developer image"))
+         (fnn-core 'fn-sha256-of-string 42)
+         +fnn-exit-ok+)
         ((string= verb "model")
          (need 3)
          (fnn-command-model (second args) (fnn-dash-nil (third args))))

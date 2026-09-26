@@ -252,6 +252,13 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
+; The saved world: what execution reads, at its current value, and nothing the
+; prover, the undo stack or the history commands read (HST-017,
+; host/native/strip-world.lisp).  After the last event, before the save.
+(load "host/native/strip-world.lisp")
+(format t "~&FN_NATIVE_WORLD_STRIPPED triples=~d dynamic-usage=~d~%"
+        (fnn-strip-world *fnn-world-execution-properties*)
+        (sb-kernel:dynamic-usage))
 (save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host-dtn")
            "fn native host (DTN only, no NNTP reader)"
            :return-from-lp '(fn-native-entry state)

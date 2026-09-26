@@ -67,6 +67,11 @@ if ! grep -q 'FN_NATIVE_BUILD_LOADED' "$LOG"; then
     echo "build_native_host: ready marker missing from $LOG" >&2
     exit 1
 fi
+# The saved world is the execution world (host/native/strip-world.lisp).
+if ! grep -q 'FN_NATIVE_WORLD_STRIPPED' "$LOG"; then
+    echo "build_native_host: world-strip marker missing from $LOG" >&2
+    exit 1
+fi
 if [ ! -x "$IMAGE" ] || [ ! -s "$IMAGE.core" ]; then
     echo "build_native_host: save-exec produced no image; see $LOG" >&2
     exit 1
