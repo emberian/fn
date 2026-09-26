@@ -185,3 +185,45 @@
                "fn.test" *cvt-big* (fn-index-build (fn-cat-view-below 1 1 *cvt-a* *cvt-c-big*)))
               nil))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 4 (the column): on live stobjs, and on the duplicate catalog where
+; the column lists two seqs and the newer visible one is the answer.
+
+(defun cvt-run-column (fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-cat (fn-cat-clear fn-cat)))
+    (mv-let (fn-arena fn-cat)
+      (fn-cat-load *cvt-h* nil 0 fn-arena fn-cat)
+      (mv (list (fn-cat-msgid-seqs "<c@x>" fn-cat)
+                (fn-cat-view-last-visible (fn-cat-msgid-seqs "<c@x>" fn-cat) 2 fn-cat)
+                (fn-cat-view-find "<c@x>" (fn-cat-count fn-cat) 2 fn-cat)
+                (fn-cat-view-last-visible (fn-cat-msgid-seqs "<c@x>" fn-cat) 1 fn-cat)   ; not yet visible at 1
+                (fn-cat-view-last-visible (fn-cat-msgid-seqs "<zz@x>" fn-cat) 2 fn-cat))
+          fn-arena fn-cat))))
+
+(defun cvt-exec-column ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (cvt-run-column fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(assert-event (equal (cvt-exec-column) (list '(1) 1 1 nil nil)))
+
+(defthm cvt-w-msgid-column
+  (and (equal (fn-cat-msgid-seqs "<c@x>" *cvt-c3*) '(1 2))
+       (equal (fn-cat-view-last-visible (fn-cat-msgid-seqs "<c@x>" *cvt-c3*) 3 *cvt-c3*) 2)
+       (equal (fn-cat-view-find "<c@x>" (fn-cat-count *cvt-c3*) 3 *cvt-c3*) 2)
+       ; row 2 withdrawn at version 3: the column's newest visible seq falls back to 1
+       (equal (fn-cat-view-last-visible (fn-cat-msgid-seqs "<c@x>" (fn-cat-withdraw 2 7 *cvt-c3*)) 4
+                                        (fn-cat-withdraw 2 7 *cvt-c3*))
+              1)
+       (equal (fn-cat-view-find "<c@x>" (fn-cat-count (fn-cat-withdraw 2 7 *cvt-c3*)) 4
+                                (fn-cat-withdraw 2 7 *cvt-c3*))
+              1))
+  :rule-classes nil)

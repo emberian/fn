@@ -3680,7 +3680,8 @@
         "tests/acl2/catalog-delta-tests.lisp",
         "planning/evidence/manifests/certify-20260926T212645Z-2809134.json",
         "tests/acl2/catalog-view-tests.lisp",
-        "planning/evidence/manifests/certify-20260926T222802Z-3457759.json"
+        "planning/evidence/manifests/certify-20260926T222802Z-3457759.json",
+        "planning/evidence/manifests/certify-20260926T224259Z-3607880.json"
       ],
       "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585); the ACL2 half runs in catalog-delta-tests (catalog-slice-2)."
     },

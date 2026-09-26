@@ -23,7 +23,10 @@
 ;     visible row's Message-ID is a served index key (fn-cat-view-msgids-okp);
 ;   fn-cat-view-number-article-is-row: the composed number lookup (entry, then
 ;     the trie) is that row's article when its Message-ID names no newer
-;     visible row.
+;     visible row;
+;   fn-cat-view-find-is-msgid-column: the Message-ID walk over the whole
+;     catalog is the newest visible seq of the Message-ID column
+;     (fn-cat-msgid-seqs, the hash-table read): the served lookup's exec.
 ; The served machine still reads the lists (step 7 proper threads fn-cat and
 ; fn-arena through its read path and pins v; PKT-585); this book is the
 ; abstraction it will be proved against.  The equation of fn-cat-view-articles
@@ -247,3 +250,80 @@
                  (:instance fn-midx-lookup-of-build-is-find-article
                             (msgid (fn-record-msgid (fn-cat-at (fn-cat-view-bound-find group n i v fn-cat) fn-cat)))
                             (articles (fn-cat-view-below i v fn-arena fn-cat)))))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE 4: the Message-ID walk is the column.  The served lookup's exec is
+; the Message-ID table's list (fn-cat-msgid-seqs: the hash-table read) walked
+; for its newest visible seq, never the rows.
+
+; The newest visible seq of an ascending list of seqs, or nil.
+(defun fn-cat-view-last-visible (seqs v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+  (if (consp seqs)
+      (let ((rest (fn-cat-view-last-visible (cdr seqs) v fn-cat)))
+        (if rest
+            rest
+          (let ((seq (car seqs)))
+            (if (and (natp seq) (< seq (fn-cat-count fn-cat)) (fn-cat-visible-at seq v fn-cat))
+                seq
+              nil))))
+    nil))
+
+(defthm fn-cat-view-last-visible-of-append
+  (equal (fn-cat-view-last-visible (append a b) v fn-cat)
+         (or (fn-cat-view-last-visible b v fn-cat) (fn-cat-view-last-visible a v fn-cat))))
+
+; The matching positions in [K, I), ascending: the bridge between the
+; descending walk and fn-cat-seqs-for (books/catalog.lisp), which ascends.
+(local (defun fn-cvl-range (msgid k i c)
+  (declare (xargs :measure (nfix (- i (nfix k)))))
+  (if (or (not (natp k)) (not (natp i)) (>= k i))
+      nil
+    (append (if (equal msgid (fn-record-msgid (nth k c))) (list k) nil)
+            (fn-cvl-range msgid (+ 1 k) i c)))))
+
+(local (defthm fn-cvl-append-assoc
+  (equal (append (append a b) d) (append a (append b d)))))
+
+(local (defthm fn-cvl-range-empty
+  (implies (<= (nfix i) (nfix k))
+           (equal (fn-cvl-range msgid k i c) nil))
+  :hints (("Goal" :expand ((fn-cvl-range msgid k i c))))))
+
+(local (defthm fn-cvl-range-split-top
+  (implies (and (natp k) (natp i) (< k i))
+           (equal (fn-cvl-range msgid k i c)
+                  (append (fn-cvl-range msgid k (+ -1 i) c)
+                          (if (equal msgid (fn-record-msgid (nth (+ -1 i) c))) (list (+ -1 i)) nil))))
+  :hints (("Goal" :induct (fn-cvl-range msgid k i c)
+           :in-theory (disable floor nonnegative-integer-quotient)))))
+
+(local (defthm fn-cvl-view-find-is-range
+  (implies (and (natp i) (<= i (fn-cat-count fn-cat)))
+           (equal (fn-cat-view-find msgid i v fn-cat)
+                  (fn-cat-view-last-visible (fn-cvl-range msgid 0 i fn-cat) v fn-cat)))
+  :hints (("Goal" :induct (fn-cat-view-find msgid i v fn-cat)
+           :in-theory (disable fn-cat-visible-at)))))
+
+(local (defthm fn-cvl-nthcdr-open
+  (implies (and (natp k) (< k (len c)))
+           (equal (nthcdr k c) (cons (nth k c) (nthcdr (+ 1 k) c))))))
+
+(local (defthm fn-cvl-nthcdr-beyond
+  (implies (and (natp k) (<= (len c) k))
+           (not (consp (nthcdr k c))))))
+
+(local (defthm fn-cvl-range-is-seqs-for
+  (implies (natp k)
+           (equal (fn-cvl-range msgid k (len c) c)
+                  (fn-cat-seqs-for msgid (nthcdr k c) k)))
+  :hints (("Goal" :induct (fn-cvl-range msgid k (len c) c)
+           :in-theory (disable fn-cvl-range-split-top nthcdr)))))
+
+(defthm fn-cat-view-find-is-msgid-column
+  (equal (fn-cat-view-find msgid (fn-cat-count fn-cat) v fn-cat)
+         (fn-cat-view-last-visible (fn-cat-msgid-seqs msgid fn-cat) v fn-cat))
+  :hints (("Goal" :in-theory (disable fn-cat-view-find fn-cat-view-last-visible fn-cvl-range-split-top)
+           :use ((:instance fn-cvl-view-find-is-range (i (fn-cat-count fn-cat)))
+                 (:instance fn-cvl-range-is-seqs-for (k 0) (c fn-cat))))))
