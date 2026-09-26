@@ -9,6 +9,8 @@
 ; tools/run_reader.py ld today.  The one trust tag names the raw-Lisp adapter,
 ; host/native/io.lisp, and is retired before the image is saved.
 
+; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
+(include-book "books/outcome-class")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
 ; the seams call the constrained encoders and decoders, and this is what makes

@@ -1463,7 +1463,7 @@ owner's recovery fence."
 
 (defun fnn-owner-complete-bound-submission
     (service submit-callback msgid payload groups evidence generation txid
-     &optional commit-callback)
+     &optional commit-callback name-conflict)
   "Complete one ACL2-admitted control submission while the owner mutex is held.
 
 The interface callback is the sole admission event.  Local control and BP
@@ -1473,7 +1473,13 @@ and control-outcome sequence.
 PAYLOAD is :INJECTED for the operator's submission: the octets stored are the
 ones ACL2 injected (books/owner.lisp fn-own-operator-submit), read back from
 the owner after the take, never the payload the host read from the file.
-Every other caller submits exact authored octets and names them."
+Every other caller submits exact authored octets and names them.
+
+NAME-CONFLICT (the control callers: the operator post and hybrid-author)
+answers a refusal whose completion word was D25's :conflict as the control
+status :conflict (books/native-control.lisp
+fn-native-control-completion-status, PKT-246); the BP application keeps its
+own result vocabulary."
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
       (fnn-fault "owner bound submit returned ~a" submitted))
@@ -1530,7 +1536,9 @@ Every other caller submits exact authored octets and names them."
               (fnn-fault "owner bound completion returned ~a" result))
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
-            result))))))
+            (if name-conflict
+                (fnn-core 'fn-native-control-completion-status result word)
+              result)))))))
 
 (defun fnn-owner-complete-bp-transit-submission
     (service submit-callback msgid raw stored groups evidence
@@ -1700,7 +1708,8 @@ refused, not injected under a stale time (D10-a)."
                                ;; (fn-olog-control-refusal-line), NIL otherwise.
                                (fnn-owner-log 'fn-owner-log-line t)
                                submitted))
-                           msgid :injected groups evidence generation txid)))
+                           msgid :injected groups evidence generation txid
+                           nil t)))
                     ;; A refusal carries ACL2's reason to the operator: the
                     ;; injection decision's reason, mapped to the control
                     ;; word by books/native-control.lisp

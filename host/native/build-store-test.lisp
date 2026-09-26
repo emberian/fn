@@ -3,6 +3,8 @@
 ; deliberately omits unrelated owner, BP, TCPCL, and service modules.  It is
 ; evidence tooling, never an operator-selectable production host profile.
 (in-package "ACL2")
+; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
+(include-book "books/outcome-class")
 (include-book "books/replay")
 (include-book "books/store-config")
 (include-book "books/identity")
