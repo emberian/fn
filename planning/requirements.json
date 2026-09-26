@@ -3759,6 +3759,28 @@
         "planning/evidence/transit-streaming-2026-09-26.md"
       ],
       "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599)."
+    },
+    {
+      "id": "NNT-044",
+      "title": "Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut",
+      "specification": "specs/nntp.md#pipelined-articles-nnt-044",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-213"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/served-tls-prefix.lisp",
+        "books/served-span.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-pipelining-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
     }
   ]
 }
