@@ -954,6 +954,12 @@ check-lane:
 
 check:
 	$(PYTHON) tools/check_scaffold.py
+# Every command the docs name exists with the grammar the docs give (NNT-032):
+# operator invocations are judged by ACL2's grammar in the generated book
+# tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is
+# not what the docs say now; the Python tools' invocations by their own
+# argparse parsers; quoted reply lines against the source that prints them.
+	$(PYTHON) tools/docs_check.py --check
 # A certified registry row must name existing ACL2 events whose defining
 # books have source- and include-closure-compatible manifest evidence, and
 # must itself cite an archived manifest that certified each event book at its
@@ -1150,7 +1156,7 @@ tooling-test:
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers -v
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_docs_check -v
 
 # Every test module in its own process under a wall-time budget (PKT-163):
 # the report lists each module's seconds and slowest tests, and a module
