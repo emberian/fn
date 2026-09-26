@@ -22,6 +22,13 @@
 (defconst *fn-bs-meta-config-kind* 1)
 (defconst *fn-bs-meta-frontier-kind* 2)
 (defconst *fn-bs-meta-max-frontier-payload* 5)
+; Frontier format 3 (PRF-126): the eight-octet CBOR uint head, so the
+; allocator's frontier is u64 like the record's txid.  A frame whose payload is
+; within the format-2 bound above is read exactly as format 2 read it
+; (`fn-bs-frontier-decode-extends-format-2'), so every frontier file a store
+; holds keeps its value; a wider one is refused by a format-2 image by the
+; frame bound, never misread.
+(defconst *fn-bs-meta-max-frontier-payload-3* 9)
 (defconst *fn-bs-meta-max-config-payload* 600)
 
 ; All accepted configuration values have exactly this layout.  The text
@@ -468,20 +475,55 @@
        (natp bound)
        (<= (len payload) bound)))
 
+; Below 2^32 the payload is the format-2 one, byte for byte; from 2^32 to
+; 2^64 - 1 it is the eight-octet head (`fn-cbor-encode-uint-wide', which is
+; the same octets below 2^32: `fn-cbor-encode-uint-wide-is-narrow').
 (defun fn-bs-frontier-encode-impl (n)
   (declare (xargs :guard t :verify-guards nil))
-  (if (not (and (natp n) (<= n *fn-cbor-max-uint*)))
-      nil
-    (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
-                   *fn-bs-meta-frontier-kind*
-                   (fn-cbor-encode (cons :uint n)))))
+  (cond ((and (natp n) (<= n *fn-cbor-max-uint*))
+         (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                        *fn-bs-meta-frontier-kind*
+                        (fn-cbor-encode (cons :uint n))))
+        ((and (natp n) (<= n *fn-cbor-max-uint64*))
+         (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                        *fn-bs-meta-frontier-kind*
+                        (fn-cbor-encode-uint-wide n)))
+        (t nil)))
+
+(local
+ (defthm fn-bs-frontier-wide-payload-bound
+   (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+            (and (fn-cbor-octet-listp (fn-cbor-encode-uint-wide n))
+                 (<= (len (fn-cbor-encode-uint-wide n))
+                     *fn-bs-meta-max-frontier-payload-3*)))
+   :hints (("Goal" :use ((:instance fn-cbor-encode-uint-wide-octets))
+            :in-theory (e/d (fn-cbor-encode-uint-wide fn-cbor-encode-argument
+                             fn-cbor-u16-bytes fn-cbor-u32-bytes)
+                            (fn-cbor-encode-uint-wide-is-narrow
+                             fn-cbor-encode-uint-wide-octets
+                             fn-cbor-u64-bytes floor mod))))))
+
+(local
+ (defthm fn-bs-frontier-wide-payload-length
+   (implies (and (natp n) (< *fn-cbor-max-uint* n) (<= n *fn-cbor-max-uint64*))
+            (equal (len (fn-cbor-encode-uint-wide n)) 9))
+   :hints (("Goal" :in-theory (e/d (fn-cbor-encode-uint-wide)
+                                   (fn-cbor-encode-uint-wide-is-narrow
+                                    fn-cbor-u64-bytes floor mod))))))
 
 (verify-guards fn-bs-frontier-encode-impl
   :hints (("Goal" :use ((:instance fn-bs-frontier-cbor-payload-bound
+                                     (n n))
+                        (:instance fn-bs-frontier-wide-payload-bound
                                      (n n))))))
 
-; The allocation ceiling is a codec decision: a frontier at the largest CBOR
-; uint is a valid persisted value, but it has no successor.  Hosts ask this
+; The allocation ceiling: the frontier frame carries u64 (format 3), but the
+; allocator stops at 2^32 - 1 until every reader of a transaction ID past it
+; is u64 -- the file machine (`fn-sf-statep', `*fn-sf-max-uint*'), the
+; observed open (`fn-sn-open-observed'), the checkpoint and its codec's TREE
+; naturals (`fn-checkpointp', `fn-cpc-treep') and the consumer positions
+; (PKT-244).  A frontier at 2^32 - 1 is a valid persisted value with no
+; successor.  Hosts ask this
 ; function before staging an allocator replacement, so no host range check
 ; can wrap or re-use an ID.
 (defun fn-bs-frontier-next (n)
@@ -491,7 +533,9 @@
     nil))
 
 
-(defun fn-bs-frontier-decode-impl (octets)
+; The format-2 reader, frozen as it was before PRF-126 (dev 23eed13e): a frame
+; of at most five payload octets holding one deterministic CBOR uint.
+(defun fn-bs-frontier-v2-decode (octets)
   (declare (xargs :guard t))
   (if (not (fn-cbor-octet-listp octets))
       nil
@@ -510,6 +554,38 @@
                            (fn-cbor-result-value decoded))))
               (fn-cbor-ag-cdr (fn-cbor-result-value decoded))
             nil))))))
+
+; The format-3 reader, the one the host calls (host/store-host.lisp
+; `fn-store-metadata-frontier-decode' through the scan seam's attachment).
+; A payload within the format-2 bound is read as format 2 reads it; a longer
+; one (at most nine octets) is one canonical wide uint, which
+; `fn-cbor-decode-prechecked-wide' accepts only above 2^32 - 1.
+(defun fn-bs-frontier-decode-impl (octets)
+  (declare (xargs :guard t))
+  (if (not (fn-cbor-octet-listp octets))
+      nil
+    (let ((frame (fn-frame-open octets *fn-bs-meta-max-frontier-payload-3*)))
+      (if (not (fn-bs-meta-frame-okp frame *fn-bs-meta-frontier-kind*
+                                      (fn-frame-result-payload frame)
+                                      *fn-bs-meta-max-frontier-payload-3*))
+          nil
+        (let ((payload (fn-frame-result-payload frame)))
+          (if (<= (len payload) *fn-bs-meta-max-frontier-payload*)
+              (let ((decoded (fn-cbor-decode-exact payload)))
+                (if (and (fn-cbor-result-okp decoded)
+                         (equal (fn-cbor-ag-car (fn-cbor-result-value decoded))
+                                :uint)
+                         (natp (fn-cbor-ag-cdr (fn-cbor-result-value decoded))))
+                    (fn-cbor-ag-cdr (fn-cbor-result-value decoded))
+                  nil))
+            (let ((decoded (fn-cbor-decode-prechecked-wide payload 1)))
+              (if (and (fn-cbor-result-okp decoded)
+                       (null (fn-cbor-result-rest decoded))
+                       (equal (fn-cbor-ag-car (fn-cbor-result-value decoded))
+                              :uint)
+                       (natp (fn-cbor-ag-cdr (fn-cbor-result-value decoded))))
+                  (fn-cbor-ag-cdr (fn-cbor-result-value decoded))
+                nil))))))))
 
 (defthm fn-bs-frontier-frame-inputp
   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
@@ -617,9 +693,10 @@
            :in-theory (enable fn-bs-frontier-decode-impl
                               fn-bs-meta-frame-okp))))
 
-(defthm fn-bs-frontier-impl-round-trip
+; The format-2 round trip, as it was.
+(defthm fn-bs-frontier-v2-round-trip
   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
-           (equal (fn-bs-frontier-decode-impl
+           (equal (fn-bs-frontier-v2-decode
                    (fn-bs-frontier-encode-impl n))
                   n))
   :hints (("Goal"
@@ -627,8 +704,142 @@
                  (:instance fn-bs-frontier-seal-octet-listp (n n))
                  (:instance fn-bs-frontier-cbor-round-trip (n n)))
            :in-theory (enable fn-bs-frontier-encode-impl
-                              fn-bs-frontier-decode-impl
+                              fn-bs-frontier-v2-decode
                               fn-bs-meta-frame-okp))))
+
+; Frame facts for any payload of at most nine octets (the wide ones).
+(local
+ (defthm fn-bs-frontier-payload-protected-octet-listp
+   (implies (and (fn-cbor-octet-listp p) (<= (len p) 9))
+            (fn-cbor-octet-listp
+             (fn-frame-protected *fn-bs-meta-magic* *fn-bs-meta-version*
+                                 *fn-bs-meta-frontier-kind* p)))
+   :hints (("Goal"
+            :use ((:instance fn-cbor-u32-bytes-are-octets (n (len p)))
+                  (:instance fn-cbor-octet-listp-append
+                             (xs (fn-cbor-u32-bytes (len p))) (ys p))
+                  (:instance fn-cbor-octet-listp-append
+                             (xs *fn-bs-meta-magic*)
+                             (ys (cons *fn-bs-meta-version*
+                                       (cons *fn-bs-meta-frontier-kind*
+                                             (append (fn-cbor-u32-bytes (len p))
+                                                     p))))))
+            :in-theory (enable fn-frame-protected fn-frame-header)))))
+
+(local
+ (defthm fn-bs-frontier-payload-seal-facts
+   (implies (and (fn-cbor-octet-listp p) (<= (len p) 9))
+            (and (fn-cbor-octet-listp
+                  (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                                 *fn-bs-meta-frontier-kind* p))
+                 (equal (fn-frame-open
+                         (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                                        *fn-bs-meta-frontier-kind* p)
+                         *fn-bs-meta-max-frontier-payload-3*)
+                        (fn-frame-ok *fn-bs-meta-magic* *fn-bs-meta-version*
+                                     *fn-bs-meta-frontier-kind* p))))
+   :hints (("Goal"
+            :use ((:instance fn-bs-frontier-payload-protected-octet-listp)
+                  (:instance fn-frame-digestp-of-fn-frame-digest
+                             (octets (fn-frame-protected
+                                      *fn-bs-meta-magic* *fn-bs-meta-version*
+                                      *fn-bs-meta-frontier-kind* p)))
+                  (:instance fn-cbor-octet-listp-append
+                             (xs (fn-frame-protected
+                                  *fn-bs-meta-magic* *fn-bs-meta-version*
+                                  *fn-bs-meta-frontier-kind* p))
+                             (ys (fn-frame-digest
+                                  (fn-frame-protected
+                                   *fn-bs-meta-magic* *fn-bs-meta-version*
+                                   *fn-bs-meta-frontier-kind* p))))
+                  (:instance fn-frame-open-of-seal
+                             (magic *fn-bs-meta-magic*)
+                             (version *fn-bs-meta-version*)
+                             (kind *fn-bs-meta-frontier-kind*)
+                             (payload p)
+                             (max-payload *fn-bs-meta-max-frontier-payload-3*)))
+            :in-theory (e/d (fn-frame-seal fn-frame-encode fn-frame-inputp
+                             fn-frame-magicp)
+                            (fn-frame-open-of-seal fn-frame-protected))))))
+
+; A frame format 2 accepts is one format 3 opens to the same result: the
+; bound is only a ceiling on the declared payload length.
+(local
+ (defthm fn-bs-frame-decode-monotone-in-bound
+   (implies (and (fn-frame-result-okp (fn-frame-decode octets digest small))
+                 (natp small) (natp large) (<= small large)
+                 (<= large *fn-frame-max-payload*))
+            (equal (fn-frame-decode octets digest large)
+                   (fn-frame-decode octets digest small)))
+   :hints (("Goal" :in-theory (enable fn-frame-decode
+                                      fn-record-at-most-is-length-bound)))))
+
+; KEYSTONE (PRF-126, frontier format 3).  The round trip over u64: every
+; frontier the allocator can hold is written and read back.
+(defthm fn-bs-frontier-impl-round-trip
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+           (equal (fn-bs-frontier-decode-impl
+                   (fn-bs-frontier-encode-impl n))
+                  n))
+  :hints (("Goal"
+           :cases ((<= n *fn-cbor-max-uint*))
+           :use ((:instance fn-bs-frontier-cbor-payload-bound (n n))
+                 (:instance fn-bs-frontier-wide-payload-bound (n n))
+                 (:instance fn-bs-frontier-wide-payload-length (n n))
+                 (:instance fn-bs-frontier-payload-seal-facts
+                            (p (fn-cbor-encode (cons :uint n))))
+                 (:instance fn-bs-frontier-payload-seal-facts
+                            (p (fn-cbor-encode-uint-wide n)))
+                 (:instance fn-bs-frontier-cbor-round-trip (n n))
+                 (:instance fn-cbor-decode-prechecked-wide-of-uint
+                            (n n) (rest nil) (budget 1)))
+           :in-theory (e/d (fn-bs-frontier-encode-impl
+                            fn-bs-frontier-decode-impl
+                            fn-bs-meta-frame-okp)
+                           (fn-bs-frontier-payload-seal-facts
+                            fn-bs-frontier-wide-payload-length
+                            fn-cbor-decode-prechecked-wide-of-uint
+                            fn-bs-frontier-cbor-round-trip
+                            fn-cbor-encode-uint-wide
+                            fn-cbor-decode-prechecked-wide
+                            fn-frame-seal fn-frame-open)))))
+
+; The frame the host writes is an octet list at every u64 frontier
+; (host/native/io.lisp `fnn-metadata-frontier-frame' checks it before I/O).
+(defthm fn-bs-frontier-encode-impl-octets
+  (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
+           (fn-cbor-octet-listp (fn-bs-frontier-encode-impl n)))
+  :hints (("Goal"
+           :cases ((<= n *fn-cbor-max-uint*))
+           :use ((:instance fn-bs-frontier-cbor-payload-bound (n n))
+                 (:instance fn-bs-frontier-wide-payload-bound (n n))
+                 (:instance fn-bs-frontier-payload-seal-facts
+                            (p (fn-cbor-encode (cons :uint n))))
+                 (:instance fn-bs-frontier-payload-seal-facts
+                            (p (fn-cbor-encode-uint-wide n))))
+           :in-theory (e/d (fn-bs-frontier-encode-impl)
+                           (fn-bs-frontier-payload-seal-facts
+                            fn-cbor-encode-uint-wide fn-frame-seal)))))
+
+; KEYSTONE (PRF-126: the upgrade relation from frontier format 2).  Every
+; frontier file the format-2 reader accepts, the format-3 reader the host now
+; calls reads to the same transaction ID.  So a store's saved frontier opens
+; under the new image unchanged, and no rewrite of it is needed.
+(defthm fn-bs-frontier-decode-extends-format-2
+  (implies (fn-bs-frontier-v2-decode octets)
+           (equal (fn-bs-frontier-decode-impl octets)
+                  (fn-bs-frontier-v2-decode octets)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-frame-decode-monotone-in-bound
+                            (digest (fn-frame-digest
+                                     (fn-frame-protected-prefix octets)))
+                            (small *fn-bs-meta-max-frontier-payload*)
+                            (large *fn-bs-meta-max-frontier-payload-3*)))
+           :in-theory (e/d (fn-bs-frontier-decode-impl
+                            fn-bs-frontier-v2-decode
+                            fn-bs-meta-frame-okp fn-frame-open)
+                           (fn-bs-frame-decode-monotone-in-bound
+                            fn-frame-decode)))))
 
 ; -----------------------------------------------------------------------------
 ; The profile frame
@@ -912,9 +1123,10 @@
 (defun fn-bs-initial-frontier-octets ()
   (fn-bs-frontier-encode-impl 0))
 
-; These are concrete correspondence facts for the host calls.  The allocator
-; and this CBOR profile share the uint32 domain; only fn-bs-frontier-next
-; refuses its maximum because that value has no successor.
+; These are concrete correspondence facts for the host calls.  The frontier
+; frame carries u64 (format 3; below 2^32 it is the format-2 frame); the
+; allocator stays within u32 and fn-bs-frontier-next refuses its maximum
+; because that value has no successor.
 (defthm fn-bs-frontier-encode-impl-unfolds
   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
            (equal (fn-bs-frontier-encode-impl n)

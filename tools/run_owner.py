@@ -32,7 +32,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
                        acl2_keyword, acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
                        durable_post, exit_code_for, group_codes, metadata,
-                       publication_admissible, validate_post_boundary)
+                       validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
 from tools import frame_bridge  # noqa: E402  (the profile's Lisp literal)
 from feed_wire import Journal, Session, discover_journal_peers  # FNFD layout/client
@@ -1320,9 +1320,12 @@ class Owner:
                 # (host/native/owner.lisp fnn-owner-attempt): the book renders
                 # the conflict refusal line from it (D25), not the generic 441.
                 return "conflict"
-            # `fn-sbud-verdict` under the persisted profile, asked of the
-            # ACL2 that holds this owner's store node (as the CLI post asks).
-            if not publication_admissible(self.store, self.bridge):
+            # `fn-sbud-article-verdict-at` under the persisted profile at this
+            # article's own figure, asked of the ACL2 that holds this owner's
+            # store node (`fn-store-sn-article-verdict`, as the CLI post asks).
+            if frame_bridge.session(self.bridge).article_verdict(
+                    self.store.config["profile"], len(payload),
+                    len(codes)) != "admissible":
                 return "refused"
             durable_post(self.store, self.bridge, self.records, msgid, payload,
                          codes, charge, evidence=evidence)

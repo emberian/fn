@@ -179,3 +179,106 @@
    (and (fn-bpi-policy-p (rwpt-bpi-policy 3))
         (equal (fn-sn-prepare *rwpt-bpi-corrupt* r) *rwpt-bpi-corrupt*)
         (fn-record-widep r))))
+
+; ===========================================================================
+; PRF-126: the producer ceiling.
+; KEYSTONE fn-record-encode-producer-length-bound (records-seam), a
+; non-degenerate witness at the tightest shape: sequence, txid, generation
+; and stamp at 2^32 (eight-octet heads, schema 2), charge 2^32 - 1, a
+; 250-octet Message-ID, three 256-octet metadata strings, a 65 536-octet
+; payload (a five-octet head) and no group: 66 618 octets against the
+; ceiling 66 619.  With one 256-octet group, 66 877 against 66 880 -- the
+; record the bounds-p6 record found one octet past R = 66 880 with all FIVE
+; fields wide.
+(defconst *rwpt-meta* (coerce (make-list 256 :initial-element #\m) 'string))
+(defconst *rwpt-msgid250* (coerce (make-list 250 :initial-element #\a) 'string))
+(defconst *rwpt-group256* (coerce (make-list 256 :initial-element #\g) 'string))
+(defconst *rwpt-payload* (make-list 65536 :initial-element 65))
+(defun rwpt-wide (groups charge)
+  (fn-record-make 4294967296 4294967296 4294967296 *rwpt-msgid250*
+                  *rwpt-payload* groups *rwpt-meta* *rwpt-meta* *rwpt-meta*
+                  charge 4294967296))
+(assert-event
+ (let ((r (rwpt-wide nil 4294967295)))
+   (and (fn-record-p r)
+        (fn-record-uint32p (fn-record-charge r))
+        (fn-record-widep r)
+        (equal (fn-record-schema-octet r) 2)
+        (equal (len (fn-record-encode r)) 66618)
+        (equal (fn-record-encoded-octets-ceiling 65536 0) 66619))))
+(assert-event
+ (let ((r (rwpt-wide (list *rwpt-group256*) 4294967295)))
+   (and (fn-record-p r)
+        (fn-record-widep r)
+        (equal (len (fn-record-encode r)) 66877)
+        (equal (fn-record-encoded-octets-ceiling 65536 1) 66880))))
+; Its hypothesis: the same records with charge 2^32 (a ninth-octet head)
+; encode 66 622 > 66 619 and 66 881 > 66 880.
+(assert-event
+ (let ((r (rwpt-wide nil 4294967296)))
+   (and (fn-record-p r)
+        (not (fn-record-uint32p (fn-record-charge r)))
+        (< (fn-record-encoded-octets-ceiling 65536 0) (len (fn-record-encode r))))))
+(assert-event
+ (let ((r (rwpt-wide (list *rwpt-group256*) 4294967296)))
+   (and (fn-record-p r)
+        (equal (len (fn-record-encode r)) 66881))))
+(must-fail
+ (defthm rwpt-producer-ceiling-without-the-charge-hypothesis
+   (<= (len (fn-record-encode record))
+       (fn-record-encoded-octets-ceiling (len (fn-record-payload record))
+                                         (len (fn-record-groups record))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory) :use ((:instance fn-record-encode-producer-length-bound))))))
+
+; fn-sn-prepare-stages-an-article-record-within-its-ceiling: the reachable
+; witness is the fixture store's record at charge 2; the charge hypothesis's
+; counterexample is the staged record at charge 2^64 - 1 in the 2^65-capacity
+; store, which the prepare stages and which is still within the ceiling at
+; this small shape, so the tooth is the seam theorem's above (the prepare
+; does not bound the charge; the hypothesis is what does).
+(assert-event
+ (let ((r (rwpt-article *sn-reserved* 2)))
+   (and (fn-record-uint32p 2)
+        (not (equal (fn-sn-prepare *sn-reserved* r) *sn-reserved*))
+        (<= (len (fn-record-encode r))
+            (fn-record-encoded-octets-ceiling 2 (len *sn-groups*))))))
+(assert-event
+ (let ((r (rwpt-article *rwpt-big* 18446744073709551615)))
+   (and (not (fn-record-uint32p 18446744073709551615))
+        (not (equal (fn-sn-prepare *rwpt-big* r) *rwpt-big*)))))
+(must-fail
+ (defthm rwpt-within-ceiling-without-the-prepare-hypothesis
+   (implies (fn-record-uint32p charge)
+            (<= (len (fn-record-encode
+                      (fn-sn-article-record s obs msgid payload groups
+                                            obligation-id subject evidence
+                                            charge)))
+                (fn-record-encoded-octets-ceiling (len payload) (len groups))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+
+; fn-bs-profile-admits-every-producer-record at the saved scale profile: a
+; wide G = 1 record at the profile's A (32 768) encodes within R.
+(assert-event
+ (let ((r (fn-record-make 4294967296 4294967296 4294967296 *rwpt-msgid250*
+                          (make-list 32768 :initial-element 65)
+                          (list *rwpt-group256*) *rwpt-meta* *rwpt-meta*
+                          *rwpt-meta* 4294967295 4294967296)))
+   (and (fn-bs-profile-admittedp *rwpt-scale*)
+        (fn-record-p r) (fn-record-widep r)
+        (<= 32768 (fn-bs-profile-max-article-octets *rwpt-scale*))
+        (<= 1 (fn-bs-profile-max-groups-per-article *rwpt-scale*))
+        (<= (len (fn-record-encode r))
+            (fn-bs-profile-max-record-octets *rwpt-scale*)))))
+
+; fn-bpi-staged-record-fits-the-producer-ceiling: the BP fixture record at
+; policy charge 3 is staged and within its ceiling; the policy hypothesis's
+; tooth is the seam theorem's (a policy charge above u32 is not a policy).
+(assert-event
+ (let ((r (rwpt-bpi-record *rwpt-bpi-store* 3)))
+   (and (fn-bpi-policy-p (rwpt-bpi-policy 3))
+        (not (equal (fn-sn-prepare *rwpt-bpi-store* r) *rwpt-bpi-store*))
+        (<= (len (fn-record-encode r))
+            (fn-record-encoded-octets-ceiling (len (fn-record-payload r))
+                                              (len (fn-record-groups r)))))))

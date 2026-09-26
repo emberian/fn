@@ -1966,6 +1966,32 @@
         "planning/evidence/operator-health-2026-09-25.md",
         "tests/acl2/native-health-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-072",
+      "title": "the served POST charges an article its own worst case before a transaction ID is reserved: an article past the remaining history is refused 441 and the store reopens, where the fixed-figure gate accepted it and left the store unopenable",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-013",
+        "STO-018"
+      ],
+      "steps": [
+        "On hbox, a developer store initialised with T 4, H 250 000, R 196 608, A 150 000, G 8 (fn.test), served by `operator run` on loopback.",
+        "POST a 148 112-octet article, then a second one of the same size (planning/evidence/width-producers-2-nntp-post.py).",
+        "Stop the node; `store recover` and `store status`.",
+        "The same on the image before the article gate (bbf52159)."
+      ],
+      "expected": [
+        "The first POST answers 240; the second 441 posting failed; the store has no capacity for this article (the owner's :unaffordable from fn-sbud-article-budget-for), with one transaction file of 148 613 octets.",
+        "The reopen succeeds (recovered transactions=1, exit 0).",
+        "Before the gate both POSTs answer 240, 297 226 record octets are committed past H, and every reopen refuses: transaction recovery input exceeds configured bound (exit 4)."
+      ],
+      "evidence": [
+        "planning/evidence/width-producers-2-gate-served.sh",
+        "planning/evidence/width-producers-2-nntp-post.py",
+        "planning/evidence/width-producers-2-2026-09-26.md"
+      ]
     }
   ]
 }

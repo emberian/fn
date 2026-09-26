@@ -5027,6 +5027,67 @@
           "name": "fn-nh-fence-of-route"
         }
       ]
+    },
+    {
+      "id": "PRF-126",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-encode-producer-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-encode-producer-length-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-profile-admits-every-producer-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-stages-an-article-record-within-its-ceiling"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-staged-record-fits-the-producer-ceiling"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-article-record-charge-and-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-figure-bounds-the-producer-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history-at-producer-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-impl-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-decode-extends-format-2"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-encode-impl-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-v2-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k0-host-frontier-frame-is-concrete-codec"
+        }
+      ]
     }
   ]
 }

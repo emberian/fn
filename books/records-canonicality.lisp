@@ -1032,6 +1032,113 @@
                             fn-cbor-at-mostp
                             (:type-prescription true-listp-append))))))
 
+;; The producer ceiling (PRF-126, the width-producers-2 lane).  The ceiling
+;; above counts every head at 5 octets.  Four of them are shorter in every
+;; record: the schema octet is at most 2 (1 octet), the group count at most
+;; 65 535 (3), the Message-ID at most 250 octets (a 2-octet head) and the
+;; metadata strings and group names at most 256 (3 each), and below 24
+;; groups the count takes 1 octet.  That is at least 17 octets the narrow
+;; ceiling never uses (15 + 2G from 24 groups on), and sequence, txid,
+;; generation and stamp at the eight-octet uint64 head need 16.  So the
+;; allocator and the clock may pass 2^32 - 1 with no profile's R changing;
+;; only the charge must stay within u32.
+(local
+ (defthm fn-record-item-short-byte-encoding-bound
+   (implies (<= (len xs) 255)
+            (<= (len (fn-record-item-encode (cons :bytes xs))) (+ 2 (len xs))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-item-encode)))))
+
+(local
+ (defthm fn-record-item-medium-byte-encoding-bound
+   (implies (<= (len xs) 65535)
+            (<= (len (fn-record-item-encode (cons :bytes xs))) (+ 3 (len xs))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-item-encode)))))
+
+(local
+ (defthm fn-record-uint-encode-tiny-length
+   (implies (and (natp n) (< n 24))
+            (equal (len (fn-record-uint-encode n)) 1))
+   :hints (("Goal" :in-theory (e/d (fn-record-uint-encode fn-cbor-encode-uint-wide
+                                    fn-cbor-encode-argument)
+                                   (fn-cbor-encode-uint-wide-is-narrow
+                                    fn-cbor-u64-bytes floor mod))))))
+
+(local
+ (defthm fn-record-uint-encode-u16-length-bound
+   (implies (and (natp n) (<= n 65535))
+            (<= (len (fn-record-uint-encode n)) 3))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (e/d (fn-record-uint-encode fn-cbor-encode-uint-wide
+                                    fn-cbor-encode-argument fn-cbor-u16-bytes)
+                                   (fn-cbor-encode-uint-wide-is-narrow
+                                    fn-cbor-u64-bytes floor mod))))))
+
+(local
+ (defthm fn-record-group-short-encoding-bound
+   (implies (fn-record-group-listp groups)
+            (<= (len (fn-record-encode-groups groups))
+                (* (+ 3 *fn-record-max-group-name*) (len groups))))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-record-encode-groups groups)
+            :in-theory (e/d (fn-record-group-namep fn-record-nonempty-at-mostp)
+                            (fn-record-item-encode))))))
+
+(local
+ (defthm fn-record-producer-field-lengths
+   (implies (fn-record-p record)
+            (and (<= (len (fn-record-string-octets (fn-record-msgid record)))
+                     *fn-record-max-msgid*)
+                 (<= (len (fn-record-string-octets (fn-record-obligation-id record)))
+                     *fn-record-max-metadata*)
+                 (<= (len (fn-record-string-octets (fn-record-content-subject record)))
+                     *fn-record-max-metadata*)
+                 (<= (len (fn-record-string-octets (fn-record-release-evidence record)))
+                     *fn-record-max-metadata*)
+                 (fn-record-group-listp (fn-record-groups record))
+                 (<= (len (fn-record-groups record)) *fn-record-max-groups*)
+                 (fn-record-uint64p (fn-record-sequence record))
+                 (fn-record-uint64p (fn-record-txid record))
+                 (fn-record-uint64p (fn-record-generation record))
+                 (fn-record-stampp (fn-record-stamp record))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-record-msgidp fn-record-metadata-bytes-p
+                                      fn-record-nonempty-at-mostp
+                                      fn-record-groups-validp fn-record-groupsp)))))
+
+; KEYSTONE (PRF-126: the ceiling a profile's R holds covers every record
+; whose charge fits u32, whatever the width of its sequence, txid,
+; generation and stamp).
+(defthm fn-record-impl-encode-producer-length-bound
+  (implies (fn-record-uint32p (fn-record-charge record))
+           (<= (len (fn-record-encode-impl record))
+               (fn-record-encoded-octets-ceiling
+                (len (fn-record-payload record))
+                (len (fn-record-groups record)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((not (fn-record-p record))
+                   (< (len (fn-record-groups record)) 24))
+           :use ((:instance fn-record-producer-field-lengths))
+           :in-theory (e/d (fn-record-encode-impl
+                            fn-record-encoded-octets-ceiling
+                            fn-record-uint32p fn-record-uint64p fn-record-stampp)
+                           (fn-record-widep
+                            fn-record-schema-octet fn-record-uint-encode
+                            fn-record-sequence fn-record-txid
+                            fn-record-generation fn-record-charge
+                            fn-record-stamp fn-record-msgid fn-record-payload
+                            fn-record-groups fn-record-obligation-id
+                            fn-record-content-subject fn-record-release-evidence
+                            fn-record-p
+                            fn-cbor-encode fn-record-item-encode
+                            fn-record-item-encode-is-cbor-encode
+                            fn-record-encode-groups
+                            fn-record-string-octets fn-record-string-octets-aux
+                            fn-cbor-at-mostp
+                            (:type-prescription true-listp-append))))))
+
 ; Kind dispatch: every accepted input begins with the five magic octets and
 ; the decoded schema (0 or 1).  A decoder for another event kind whose inputs
 ; never begin with this magic cannot accept a record.
