@@ -5088,6 +5088,55 @@
           "name": "fn-bs-k0-host-frontier-frame-is-concrete-codec"
         }
       ]
+    },
+    {
+      "id": "PRF-131",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-exit-code-separates-the-classes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-fence-is-never-masked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-connection-local-never-fences"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprc-uncertain-article-fences"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrc-job-result-class-is-the-transport-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-read-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-valid-profile-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-write-never-lowers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-read-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-row-past-the-profile-is-named"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-replay-past-the-profile-is-refused"
+        }
+      ]
     }
   ]
 }
