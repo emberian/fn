@@ -20,7 +20,7 @@
 (include-book "../books/byte-store-frame")
 (include-book "../books/byte-store-txn-name")
 (include-book "../books/store-budget-naming")
-(include-book "../books/store-profile-upgrade")
+(include-book "../books/store-profile-facts")
 (include-book "../books/store-profile-open")
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
@@ -86,8 +86,7 @@
       :invalid)))
 
 ; The bound and the grammar are `fn-profile-txn-observation'
-; (books/store-profile-upgrade.lisp), whose monotonicity in the profile is
-; `fn-profile-upgrade-keeps-txn-observation'; this wrapper converts octets.
+; (books/store-profile-facts.lisp); this wrapper converts octets.
 (defun fn-store-txn-observation-selected (observed maximum selected-lower)
   (declare (xargs :mode :program))
   (let ((names (fn-store-octet-lists->strings observed)))
@@ -378,18 +377,14 @@
 
 ;; The open of config.json every open path reads (PKT-471,
 ;; books/store-profile-open.lisp): (:opened VALUES), (:refused REASON) for a
-;; saved profile whose record bound the poll reply cannot carry, or
-;; (:rejected) for a frame that is no saved profile.  The refusal's line is
-;; ACL2's; `store upgrade-profile --max-record-octets W' repairs it through
-;; `fn-store-profile-repair-verdict'.
+;; saved profile whose record bound the poll reply cannot carry or a profile
+;; frame of another format (D34), or (:rejected) for a frame that is no saved
+;; profile.  The refusal's line is ACL2's and names the reinstall and import.
 (defun fn-store-metadata-config-open (octets)
   (fn-spo-config-open octets))
 
 (defun fn-store-metadata-config-refusal-text (verdict)
   (fn-spo-refusal-text verdict))
-
-(defun fn-store-profile-repair-verdict (octets target)
-  (fn-spo-repair-verdict octets target))
 
 ;; The Python `init --profile WORD': WORD's octets are read by the native
 ;; operator's own preset parser (`fn-nop-profile-preset-word',
@@ -439,8 +434,8 @@
 (defun fn-store-profile-report (values)
   (fn-bs-profile-report values))
 
-;; The Python store's view (tools/run_store.py): the persisted format (8, or 7
-;; for a store not yet upgraded), then T, H, R and A, every one ACL2's reading.
+;; The Python store's view (tools/run_store.py): the persisted format (8, the
+;; one format), then T, H, R and A, every one ACL2's reading.
 (defun fn-store-profile-summary (values)
   (list (if (fn-bs-profile-validp values) 8
           (if (fn-bs-profile-admittedp values) 7 0))
@@ -465,17 +460,10 @@
       :admissible
     :refused))
 
-;; The offline profile upgrade (books/store-profile-upgrade.lisp): the replay
-;; bound every open checks per record, the verdict of the upgrade verb, and
-;; the developer entry's profile word.
+;; The replay bound every open checks per record
+;; (books/store-profile-facts.lisp).
 (defun fn-store-profile-replay-within-bound (profile aggregate)
   (fn-profile-replay-within-boundp profile aggregate))
-
-(defun fn-store-profile-upgrade-verdict (current target)
-  (fn-profile-upgrade-verdict current target))
-
-(defun fn-store-profile-word (octets)
-  (fn-profile-word-octets octets))
 
 (defun fn-store-publication-kind-ceiling (kind)
   (fn-store-publication-ceiling kind))
@@ -484,8 +472,8 @@
 ;; whose payload is at most the profile's per-record ceiling.  Every committed
 ;; transaction file was published under `fn-bs-publication-admissiblep' (its
 ;; record at most `fn-bs-profile-record-ceiling', asserted on the actual bytes
-;; by host/native/io.lisp `fnn-publish'), and an upgrade never lowers that
-;; ceiling (`fn-profile-upgradep'), so no committed file exceeds this bound.
+;; by host/native/io.lisp `fnn-publish'), and the profile is written once, at
+;; init or import (D34), so no committed file exceeds this bound.
 ;; A profile that is not valid yields the frame overhead alone, and the open
 ;; refuses every file.
 (defun fn-store-profile-read-bound (profile)

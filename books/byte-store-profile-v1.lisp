@@ -91,7 +91,7 @@
 
 ;  The window PKT-467 closes: a profile the old relation admitted whose R lies
 ; above the poll reply's report ceiling fails the new relation by its own
-; name for it, which `init' and `store upgrade-profile' print.  An open of a
+; name for it, which `init' and `store import' print.  An open of a
 ; store saved in that window is refused by the host's generic configuration
 ; fault, not by this name (PKT-471: no such store is known).
 (defthm fn-bs-profile-v1-valid-above-the-poll-reply-is-refused-by-name

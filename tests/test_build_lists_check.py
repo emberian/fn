@@ -34,7 +34,12 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    'host/store-node-host.lisp call\n'
                    ';; fn-rcl-existing-action (list payload) and '
                    'fn-rclb-existing-action (buffer).\n'
-                   '(include-book "books/store-reclaim-buffer")\n')
+                   '(include-book "books/store-reclaim-buffer")\n'
+                   # post-identity-index (PRF-191): the served POST's calls.
+                   ';; PRF-191: fn-owner-existing-action-buffer and '
+                   'fn-owner-prepare-buffer call\n'
+                   ';; fn-pidx-existing-action and fn-pidx-sbud-prepare.\n'
+                   '(include-book "books/post-identity-index")\n')
 # rep-wave-d-2: the state checkpoint's publication over the buffer.  The book
 # includes books/octets-stobj itself, so a fixture that omits the buffer
 # includes omits this one too, or the omission is served transitively.
@@ -47,14 +52,27 @@ CHECKPOINT_BUFFER_INCLUDES = (
     ';; The state checkpoint read from the octet buffer (rep-wave-d-3):\n'
     ';; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and\n'
     ';; fn-store-sco-segment-admit calls fn-sccr-admit-segment.\n'
-    '(include-book "books/store-checkpoint-reader")\n')
+    '(include-book "books/store-checkpoint-reader")\n'
+    # ingress-span: the served read over the octet buffer.  The book includes
+    # books/octets-stobj (through books/wire-span), so a fixture that omits the
+    # buffer includes omits this one too, or the buffer is served transitively.
+    ';; The served read over the octet buffer (ingress-span): host/owner-host.lisp\n'
+    ';; fn-owner-chunk-span calls fn-scar-ocfg-read-span.\n'
+    '(include-book "books/served-span")\n')
 # checkpoint-capture-stream (2026-09-26): host/owner-host.lisp now also
 # includes books/owner-checkpoint-stream, whose closure holds octets-stobj,
 # so the bare copy (its three self-includes removed) still reaches fn-octets
 # and that finding is gone; the store-reclaim-buffer one stays.
+# post-identity-index (PRF-191): the served POST's owner-host calls are now
+# fn-pidx-existing-action and fn-pidx-sbud-prepare (books/post-identity-index,
+# which includes store-reclaim-buffer), so those two are the findings.
 BUFFER_FINDINGS = [
-    "included: host/owner-host.lisp uses fn-rclb-existing-action, defined in "
-    "books/store-reclaim-buffer.lisp, which host/native/build-dtn.lisp has not "
+    f"included: host/owner-host.lisp uses {name}, defined in "
+    "books/post-identity-index.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/owner-host.lisp"
+    for name in ("fn-pidx-existing-action", "fn-pidx-sbud-prepare")] + [
+    "included: host/owner-host.lisp uses fn-scar-ocfg-read-span, defined in "
+    "books/served-span.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"]
 STORE_NODE_HOST_FINDINGS = [
     "included: host/store-node-host.lisp uses fn-octets, defined in "
@@ -79,6 +97,9 @@ STORE_NODE_HOST_FINDINGS = [
 OWNER_HOST_SELF_INCLUDES = ('(include-book "../books/records-concrete-owner")\n'
                             '(include-book "../books/octets-stobj")\n'
                             '(include-book "../books/store-reclaim-buffer")\n')
+# post-identity-index (PRF-191): the book of the two calls that replaced
+# fn-rclb-existing-action and fn-pcar-sbud-prepare in the served POST.
+OWNER_HOST_PIDX_INCLUDE = ('(include-book "../books/post-identity-index")\n')
 
 
 @contextlib.contextmanager
@@ -94,7 +115,9 @@ def bare_owner_host():
         owner = root / "host" / "owner-host.lisp"
         text = owner.read_text()
         assert OWNER_HOST_SELF_INCLUDES in text
-        owner.write_text(text.replace(OWNER_HOST_SELF_INCLUDES, ""))
+        assert OWNER_HOST_PIDX_INCLUDE in text
+        owner.write_text(text.replace(OWNER_HOST_SELF_INCLUDES, "")
+                         .replace(OWNER_HOST_PIDX_INCLUDE, ""))
         yield root
 
 
@@ -214,7 +237,10 @@ class BuildListsCheckTests(unittest.TestCase):
             for name, book in (
                 # rep-wave-d-2: books/octets-stobj is in STORE_FORMS now (the
                 # store-node host takes the buffer), so fn-octets is served.
-                ("fn-rclb-existing-action", "books/store-reclaim-buffer.lisp"),
+                # post-identity-index: the served POST calls the two below
+                # instead of fn-rclb-existing-action.
+                ("fn-pidx-existing-action", "books/post-identity-index.lisp"),
+                ("fn-pidx-sbud-prepare", "books/post-identity-index.lisp"),
                 ("fn-rcon-ocfg-io", "books/records-concrete-owner.lisp"))])
 
     def test_served_crash_model_setup_satisfies_the_include_rule(self):

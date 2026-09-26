@@ -1,0 +1,17 @@
+test_a_lost_durable_outcome_exits_three_and_recover_resolves_it (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it) ... ok
+test_an_old_client_reads_conflict_as_uncertain (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_an_old_client_reads_conflict_as_uncertain) ... ok
+test_bp_decode_the_clock_cannot_decide_is_a_refusal_not_a_fence (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_bp_decode_the_clock_cannot_decide_is_a_refusal_not_a_fence) ... ok
+test_bp_not_connected_and_the_clockless_decode (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_bp_not_connected_and_the_clockless_decode) ... ok
+test_control_conflict_is_a_refusal_named_conflict (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_control_conflict_is_a_refusal_named_conflict) ... ok
+test_operator_family (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_operator_family) ... ok
+test_store_family (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_store_family) ... ok
+test_the_production_image_refuses_the_selector (tests.test_native_outcome_algebra.OutcomeAlgebraNativeTests.test_the_production_image_refuses_the_selector) ... ok
+test_the_host_constants_are_acl2s_map (tests.test_native_outcome_algebra.OutcomeAlgebraSourceTests.test_the_host_constants_are_acl2s_map) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 10.133s
+
+OK
+clockless decode: BP decode outcome=uncertain reason=lifetime-uncertain adu=0 exit=1
+bp decode without a clock: BP decode outcome=accepted reason=nil exit=0
+rc=0

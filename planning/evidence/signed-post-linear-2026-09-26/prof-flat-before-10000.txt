@@ -1,0 +1,57 @@
+
+Number of samples:   4244
+Sample interval:     0.001 seconds
+Total sampling time: 4.244 seconds
+Graph cycles:        0
+Sampled threads:
+   #<THREAD tid=2351841 "fn-prof" RUNNING {1210F538A3}> (1208/1048576 bytes, 7 hash buckets)
+   #<THREAD tid=2351840 "finalizer" RUNNING {1210ECE3D3}> (248/1048576 bytes, 2 hash buckets)
+   #<THREAD tid=2352707 "fn pull feed" RUNNING {121E494583}> (144/1048576 bytes, 1 hash buckets)
+   #<THREAD tid=2352772 "fn owner client" RUNNING {121F99FE53}> (534712/1048576 bytes, 1664 hash buckets)
+   #<THREAD tid=2352708 "fn local control accept" RUNNING {121E574463}> (264/1048576 bytes, 2 hash buckets)
+
+           Self        Total        Cumul
+  Nr  Count     %  Count     %  Count     %    Calls  Function
+------------------------------------------------------------------------
+   2    886  20.9   1776  41.8    886  20.9        -  FN-RECORD-STRING-OCTETS-AUX
+   4    758  17.9   1136  26.8   1644  38.7        -  FN-CBOR-OCTET-LISTP
+   6    524  12.3   1521  35.8   2168  51.1        -  FN-RECORD-PAYLOADP
+   8    501  11.8    501  11.8   2669  62.9        -  FN-CBOR-OCTETP
+  10    436  10.3    448  10.6   3105  73.2        -  SB-IMPL::APPEND2
+  12    206   4.9    213   5.0   3311  78.0        -  FN-RECORD-STRING-OCTETS
+  14     78   1.8     78   1.8   3389  79.9        -  foreign function pthread_sigmask
+  16     72   1.7     74   1.7   3461  81.6        -  FN-RECORD-NONEMPTY-AT-MOSTP
+  18     38   0.9     96   2.3   3499  82.4        -  FN-STXE-BOUNDED-OCTETSP
+  20     35   0.8     35   0.8   3534  83.3        -  (LABELS SB-IMPL::EQUAL-NOT-INLINE :IN EQUAL)
+  22     35   0.8     35   0.8   3569  84.1        -  %DATA-VECTOR-AND-INDEX
+  24     32   0.8     33   0.8   3601  84.8        -  SB-IMPL::LIST-REVERSE
+  26     26   0.6     26   0.6   3627  85.5        -  FN-CBOR-AT-MOSTP
+  28     18   0.4     18   0.4   3645  85.9        -  APPEND
+  30     17   0.4     35   0.8   3662  86.3        -  FN-STX-STRIP-WSP
+  32     16   0.4     30   0.7   3678  86.7        -  FN-RECORD-ASCII-OCTETP
+  34     16   0.4     16   0.4   3694  87.0        -  FN-CBOR-AG-CDR
+  36     16   0.4     16   0.4   3710  87.4        -  FN-AG-CDR
+  38     16   0.4     16   0.4   3726  87.8        -  foreign function poll
+  40     14   0.3     28   0.7   3740  88.1        -  FN-CBOR-VALUEP-BOUNDED
+  42     14   0.3     14   0.3   3754  88.5        -  FN-ARTICLE-HEADER-BYTEP
+  44     14   0.3     14   0.3   3768  88.8        -  FN-AG-CAR
+  46     14   0.3     14   0.3   3782  89.1        -  SB-KERNEL:TWO-ARG-<=
+  48     13   0.3     13   0.3   3795  89.4        -  GENERIC--
+  50     12   0.3     12   0.3   3807  89.7        -  foreign function clock_nanosleep
+  52     12   0.3     12   0.3   3819  90.0        -  FPR-SAVE
+  54     11   0.3    568  13.4   3830  90.2        -  FN-ARTICLE-PARSE-LINES
+  56     11   0.3     11   0.3   3841  90.5        -  TAKE
+  58     11   0.3     11   0.3   3852  90.8        -  FPR-RESTORE
+  60     11   0.3     11   0.3   3863  91.0        -  SB-KERNEL:STRING=*
+  62     10   0.2     41   1.0   3873  91.3        -  FN-RECORD-ASCII-OCTET-LISTP
+  64     10   0.2     33   0.8   3883  91.5        -  FN-STX-B64-DECODE-EXACT
+  66     10   0.2     10   0.2   3893  91.7        -  NTHCDR
+  68     10   0.2     10   0.2   3903  92.0        -  FN-SHS-ROUNDS
+  70      9   0.2   2963  69.8   3912  92.2        -  FN-RECORD-P
+  72      9   0.2    702  16.5   3921  92.4        -  FN-RECORD-METADATA-BYTES-P
+  74      9   0.2     17   0.4   3930  92.6        -  FN-ARTICLE-NEXT-LINE-AUX
+  76      9   0.2      9   0.2   3939  92.8        -  FN-ARTICLE-VCHARP
+  78      8   0.2      8   0.2   3947  93.0        -  FN-SHS-EXTEND
+  80      6   0.1    107   2.5   3953  93.1        -  FN-STXA-P
+------------------------------------------------------------------------
+         49   1.2                                     elsewhere

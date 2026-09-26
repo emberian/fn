@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-config")
 (include-book "../../host/native-config-host")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defun fn-ncfg-test-lines (lines)
   (if (consp lines)
@@ -168,7 +169,7 @@
                      '(:refused :syntax)))
 (assert-event (equal (fn-native-config-load
                       (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "host = \"0.0.0.0\"")))
-                     '(:refused :invalid)))
+                     '(:refused :listener-unspecified)))
 (assert-event (equal (fn-native-config-load
                       (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "tls_cert = \"/x\"")))
                      '(:refused :invalid)))
@@ -274,3 +275,82 @@
  (equal (fn-native-config-unsupported-key
          (car (cdr *fn-ncfg-native-protected-auth*)))
         "protected_only"))
+
+;; NNT-041 / PRF-197: the listener address grammar.
+(defun fn-ncfg-test-addrs (text)
+  (fn-native-config-listener-addresses (fn-record-string-octets text)))
+(defun fn-ncfg-test-plan (text)
+  (fn-native-config-listener-plan (fn-record-string-octets text)))
+(defconst *fn-ncfg-v6-lo* '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1))
+;; RFC 4291 section 2.2 forms 1, 2 and 3, and RFC 3986 section 3.2.2 brackets.
+(assert-event (equal (fn-ncfg-test-addrs "::1") (list (list :inet6 *fn-ncfg-v6-lo*))))
+(assert-event (equal (fn-ncfg-test-addrs "[::1]") (list (list :inet6 *fn-ncfg-v6-lo*))))
+(assert-event (equal (fn-ncfg-test-addrs "0:0:0:0:0:0:0:1") (list (list :inet6 *fn-ncfg-v6-lo*))))
+(assert-event (equal (fn-ncfg-test-addrs "2001:DB8:0:0:8:800:200C:417A")
+                     '((:inet6 (32 1 13 184 0 0 0 0 0 8 8 0 32 12 65 122)))))
+(assert-event (equal (fn-ncfg-test-addrs "2001:db8::8:800:200c:417a")
+                     '((:inet6 (32 1 13 184 0 0 0 0 0 8 8 0 32 12 65 122)))))
+(assert-event (equal (fn-ncfg-test-addrs "fe80::")
+                     '((:inet6 (254 128 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))
+(assert-event (equal (fn-ncfg-test-addrs "::13.1.68.3")
+                     '((:inet6 (0 0 0 0 0 0 0 0 0 0 0 0 13 1 68 3)))))
+;; Several listeners: written order, spaces around commas trimmed.
+(assert-event (equal (fn-ncfg-test-addrs "[::1], 127.0.0.1")
+                     (list (list :inet6 *fn-ncfg-v6-lo*) '(:inet (127 0 0 1)))))
+(assert-event (equal (fn-ncfg-test-addrs "192.0.2.7,2001:db8::7,localhost")
+                     '((:inet (192 0 2 7))
+                       (:inet6 (32 1 13 184 0 0 0 0 0 0 0 0 0 0 0 7))
+                       (:inet (127 0 0 1)))))
+;; Refusals name the reason.
+(assert-event (equal (fn-ncfg-test-plan "::") '(:refused :listener-unspecified)))
+(assert-event (equal (fn-ncfg-test-plan "[::]") '(:refused :listener-unspecified)))
+(assert-event (equal (fn-ncfg-test-plan "::ffff:192.0.2.7") '(:refused :listener-mapped)))
+(assert-event (equal (fn-ncfg-test-plan "::1,[::1]") '(:refused :listener-duplicate)))
+(assert-event (equal (fn-ncfg-test-plan "localhost,127.0.0.1") '(:refused :listener-duplicate)))
+(assert-event (equal (fn-ncfg-test-plan "1::2::3") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "1:2:3:4:5:6:7") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "1:2:3:4:5:6:7:8:9") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "12345::1") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "::1:") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "[::1]:1119") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "[::1") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "1.2.3.4::") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "example.org") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "") '(:refused :listener-address)))
+(assert-event (equal (fn-ncfg-test-plan "::1,") '(:refused :listener-address)))
+(assert-event (equal (fn-native-config-load
+                      (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "host = \"[::1], 192.0.2.7\"")))
+                     (list :accepted
+                           (fn-native-config-make "/srv/fn" "[::1], 192.0.2.7" 1119 nil nil nil nil
+                                                  "/srv/fn/auth.toml" t nil nil nil
+                                                  "/srv/fn/control.sock" nil nil nil 10 30 900
+                                                  nil nil "user" 3 67108864 7 nil nil))))
+(assert-event (equal (fn-native-config-load
+                      (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "host = \"::ffff:10.0.0.1\"")))
+                     '(:refused :listener-mapped)))
+(assert-event (equal (fn-native-config-host-listener-addresses
+                      (fn-record-string-octets "[::1],127.0.0.1"))
+                     (list (list :inet6 *fn-ncfg-v6-lo*) '(:inet (127 0 0 1)))))
+
+;; Teeth for the keystone fn-native-config-listener-addresses-are-bindable-projections.
+;; Positive witness: the complete antecedent and conclusion on a two-family list.
+(assert-event
+ (let ((ps (fn-ncfg-test-addrs "[::1], 192.0.2.7")))
+   (and (not (equal ps :bad)) (consp ps)
+        (fn-native-config-listener-projection-listp ps)
+        (no-duplicatesp-equal ps))))
+;; Its one hypothesis: without "not :bad" the conclusion fails (on "::").
+(assert-event (equal (fn-ncfg-test-addrs "::") :bad))
+(assert-event (not (fn-native-config-listener-projection-listp (fn-ncfg-test-addrs "::"))))
+;; The search is closed over the subject so the refusal is quick (the
+;; open search took 41.7 s on persvati); "::" above is the counterexample.
+(must-fail
+ (defthm fn-ncfg-test-addresses-without-admission
+   (fn-native-config-listener-projection-listp
+    (fn-native-config-listener-addresses host-octets))
+   :hints (("Goal" :in-theory (disable fn-native-config-listener-addresses)))))
+;; Each clause of the conclusion has a refusal that would violate it.
+(assert-event (not (fn-native-config-listener-projectionp '(:inet6 (0 0 0 0 0 0 0 0 0 0 255 255 10 0 0 1)))))
+(assert-event (not (fn-native-config-listener-projectionp (list :inet6 *fn-ncfg-ipv6-unspecified*))))
+(assert-event (not (fn-native-config-listener-projectionp '(:inet (0 0 0 0)))))
+(assert-event (not (no-duplicatesp-equal (list (list :inet6 *fn-ncfg-v6-lo*) (list :inet6 *fn-ncfg-v6-lo*)))))

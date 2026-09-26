@@ -1,0 +1,221 @@
+{
+ "image": "/tank/fn/scratch/egress-span/native-a6660cb8/tree/build/fn-host-developer-prof",
+ "core_sha256": "814571a281fe1a160f591df50e837b2ca3403b4e2538a3b678d7b3eab94aaab4",
+ "started_utc": "2026-09-26T15:54:22Z",
+ "box_before": {
+  "loadavg": "11.51 10.84 11.22 9/1833 2418078"
+ },
+ "open_s": 0.13376880064606667,
+ "post_2k": {
+  "wall_ms": 4.41758893430233,
+  "owner_cpu_ms": 0.0
+ },
+ "post_32k": {
+  "wall_ms": 39.28408492356539,
+  "owner_cpu_ms": 40.00000000000001
+ },
+ "post_3m": {
+  "wall_ms": 3312.8448696807027,
+  "owner_cpu_ms": 3320.0000000000005
+ },
+ "article_2k_harness": {
+  "client": "harness",
+  "n": 10,
+  "timing": {
+   "n": 10,
+   "min_ms": 4.045890644192696,
+   "median_ms": 6.9900015369057655,
+   "p95_ms": 7.218752987682819,
+   "max_ms": 7.218752987682819
+  },
+  "octets": 2126,
+  "owner_cpu_ms_per_op": 0.9999999999999787,
+  "client_cpu_ms_per_op": 6.6800855,
+  "owner_write_syscalls_per_op": 1.0,
+  "owner_octets_written_per_op": 2178.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 2,
+   "S:poll": 50,
+   "running": 5
+  },
+  "bytes_consed_per_op": 343889.6
+ },
+ "article_2k_buffered": {
+  "client": "buffered",
+  "n": 10,
+  "timing": {
+   "n": 10,
+   "min_ms": 0.4985220730304718,
+   "median_ms": 0.5532568320631981,
+   "p95_ms": 0.7497668266296387,
+   "max_ms": 0.7497668266296387
+  },
+  "octets": 2126,
+  "owner_cpu_ms_per_op": 1.000000000000023,
+  "client_cpu_ms_per_op": 0.15365970000000284,
+  "owner_write_syscalls_per_op": 1.0,
+  "owner_octets_written_per_op": 2178.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 1,
+   "running": 5
+  },
+  "bytes_consed_per_op": 343889.6
+ },
+ "article_2k_raw": {
+  "client": "raw",
+  "n": 10,
+  "timing": {
+   "n": 10,
+   "min_ms": 0.2863965928554535,
+   "median_ms": 0.5080378614366055,
+   "p95_ms": 0.6866808980703354,
+   "max_ms": 0.6866808980703354
+  },
+  "octets": 2126,
+  "owner_cpu_ms_per_op": 0.0,
+  "client_cpu_ms_per_op": 0.11573650000000213,
+  "owner_write_syscalls_per_op": 1.0,
+  "owner_octets_written_per_op": 2178.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 2,
+   "running": 2
+  },
+  "bytes_consed_per_op": 347198.4
+ },
+ "article_32k_harness": {
+  "client": "harness",
+  "n": 10,
+  "timing": {
+   "n": 10,
+   "min_ms": 51.80731602013111,
+   "median_ms": 68.05276870727539,
+   "p95_ms": 103.90185378491879,
+   "max_ms": 103.90185378491879
+  },
+  "octets": 32846,
+  "owner_cpu_ms_per_op": 4.999999999999982,
+  "client_cpu_ms_per_op": 77.20682869999999,
+  "owner_write_syscalls_per_op": 1.0,
+  "owner_octets_written_per_op": 32898.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 1,
+   "running": 31,
+   "S:poll": 608
+  },
+  "bytes_consed_per_op": 4759678.4
+ },
+ "article_32k_buffered": {
+  "client": "buffered",
+  "n": 10,
+  "timing": {
+   "n": 10,
+   "min_ms": 2.7071190997958183,
+   "median_ms": 3.823916893452406,
+   "p95_ms": 7.2563448920845985,
+   "max_ms": 7.2563448920845985
+  },
+  "octets": 32846,
+  "owner_cpu_ms_per_op": 4.0000000000000036,
+  "client_cpu_ms_per_op": 0.45724129999999974,
+  "owner_write_syscalls_per_op": 1.0,
+  "owner_octets_written_per_op": 32898.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 1,
+   "running": 35,
+   "S:poll": 1
+  },
+  "bytes_consed_per_op": 4747068.8
+ },
+ "article_32k_raw": {
+  "client": "raw",
+  "n": 10,
+  "timing": {
+   "n": 10,
+   "min_ms": 3.6517204716801643,
+   "median_ms": 3.8529587909579277,
+   "p95_ms": 8.176558651030064,
+   "max_ms": 8.176558651030064
+  },
+  "octets": 32846,
+  "owner_cpu_ms_per_op": 4.0000000000000036,
+  "client_cpu_ms_per_op": 0.42070730000001166,
+  "owner_write_syscalls_per_op": 1.0,
+  "owner_octets_written_per_op": 32898.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 1,
+   "running": 37
+  },
+  "bytes_consed_per_op": 4746804.8
+ },
+ "article_3m_harness": {
+  "client": "harness",
+  "n": 3,
+  "timing": {
+   "n": 3,
+   "min_ms": 6371.645445935428,
+   "median_ms": 7024.039521813393,
+   "p95_ms": 7932.56963416934,
+   "max_ms": 7932.56963416934
+  },
+  "octets": 3145806,
+  "owner_cpu_ms_per_op": 646.6666666666666,
+  "client_cpu_ms_per_op": 6935.323514666667,
+  "owner_write_syscalls_per_op": 2.0,
+  "owner_octets_written_per_op": 3145858.0,
+  "serving_thread_1ms_samples": {
+   "running": 1656,
+   "S:poll": 16401,
+   "S:futex": 1,
+   "S:running": 1
+  },
+  "bytes_consed_per_op": 484365525.3333333
+ },
+ "article_3m_buffered": {
+  "client": "buffered",
+  "n": 3,
+  "timing": {
+   "n": 3,
+   "min_ms": 543.5784105211496,
+   "median_ms": 747.8402145206928,
+   "p95_ms": 1004.3112561106682,
+   "max_ms": 1004.3112561106682
+  },
+  "octets": 3145806,
+  "owner_cpu_ms_per_op": 760.0000000000001,
+  "client_cpu_ms_per_op": 47.04602300000005,
+  "owner_write_syscalls_per_op": 1.0,
+  "owner_octets_written_per_op": 3145858.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 2,
+   "running": 2053,
+   "S:poll": 8
+  },
+  "bytes_consed_per_op": 462336154.6666667
+ },
+ "article_3m_raw": {
+  "client": "raw",
+  "n": 3,
+  "timing": {
+   "n": 3,
+   "min_ms": 633.7418695911765,
+   "median_ms": 653.102083131671,
+   "p95_ms": 664.8260354995728,
+   "max_ms": 664.8260354995728
+  },
+  "octets": 3145806,
+  "owner_cpu_ms_per_op": 653.3333333333334,
+  "client_cpu_ms_per_op": 42.12670933333366,
+  "owner_write_syscalls_per_op": 1.3333333333333333,
+  "owner_octets_written_per_op": 3145858.0,
+  "serving_thread_1ms_samples": {
+   "S:running": 1,
+   "running": 1742,
+   "S:poll": 4
+  },
+  "bytes_consed_per_op": 470073866.6666667
+ },
+ "box_after": {
+  "loadavg": "12.00 11.03 11.27 10/1839 2419180"
+ },
+ "ended_utc": "2026-09-26T15:54:54Z"
+}

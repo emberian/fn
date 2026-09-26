@@ -20,6 +20,8 @@ returned entries; validating individual object hashes does not prove no entries
 were omitted. An externally implemented index is part of the trust boundary until
 a suitable correspondence/checking argument exists.
 
+STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33; lane catalog-slice: the columns exist and are proved, the served path moves to them in the continuation).
+
 Proposed on-disk roles, not a frozen directory ABI:
 
 ```text
@@ -39,17 +41,10 @@ publication ceiling. Since D27 its values are the operator's (format
 groups per article, group-name octets, open suffix and five namespace counts,
 docs/operator.md), set at `init` by flags and validated by the relations of
 `fn-bs-profile-validp`; ACL2 fixes no value except the codec ceilings above
-them. A format-7 store runs under its translation until it is upgraded. It is
-written by `init` and changed only offline, by the profile upgrade (`operator
-CONFIG store upgrade-profile [PRESET] [--FIELD N ...]`,
-books/store-profile-upgrade.lisp): ACL2 admits only an upgrade
-(`fn-profile-upgradep`: a valid profile, no field smaller; the format 7 to 8
-step is the case of equal fields, `fn-profile-upgrade-format-7-to-8`), and
-each gate above is monotone under one, so a store valid under the old profile is
-valid under the new one and replays to the same state (replay takes no profile).
-The write is the byte program `fn-bs-profile-program`
-(books/byte-store-profile-program.lisp), whose crash images name the old frame or
-the new one at every cut. This is a local-policy choice of fn; no RFC governs it.
+them. It is written once, by `init` (or `store import`, STO-028), and never
+rewritten in place (D34, fresh deploys): a different profile is a reinstall
+and an import with the raised field; a store of another format is refused at
+open by name. This is a local-policy choice of fn; no RFC governs it.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
@@ -59,8 +54,8 @@ books/store-profile-namespace.lisp). The writer refuses exactly past the
 bound, by name (`:max-config-generations`, `:too-many-credentials`), and
 the reader admits every namespace within it: the configuration listing
 (`fn-nco-observe`) and the credential loader (`fn-native-auth-load`). An
-upgrade never lowers a count (`fn-profile-upgrade-keeps-namespace-counts`),
-so a namespace written under the old profile is admitted under the new one.
+open reads the profile the store was born under (D34), so a namespace the
+node wrote is admitted by every later open.
 The credential file's octet and line bounds follow its count: 512 octets and
 8 lines per credential, plus one unit for the header, a work bound per
 credential. fn.toml's size bounds stay constants. They bound the work of
@@ -99,12 +94,31 @@ generations a store retains are the profile's capacity, `max-transactions`
 plus one: the allocator refuses exactly at that capacity
 (`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`,
 `fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), so
-`store upgrade-profile` raises it and a store no longer meets a lifetime
+a reinstall with a larger T (`store import --max-transactions N`) raises it and a store no longer meets a lifetime
 figure of 4,096 publications. No store format changed: an older image
 refuses a configuration log holding codes 18 or 19 and a checkpoint
 directory holding more than 4,096 names or a name at or above 4096, the
-rollback consequence of these two steps. Open: the group-name width and
-field 7's reader (PKT-451).
+rollback consequence of these two steps. Field 7, `max-group-name-octets`,
+now governs group names at both intakes: `init` refuses
+`:max-group-name-octets` by name (`fn-nop-init-plain-groups-are-within-the-profile`)
+and every configuration record, offline or through the live owner, is
+authorized against it (`fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound`);
+the field was always validated against the codec width, so no format
+changed. Open: the name width rising to the wire's 460 (RFC 3977 section
+3.1), PKT-510.
+
+STO-025: opening a store costs each configuration record its own work.
+Every fold that replays configuration records (`fn-cpr-loop` at open,
+`fn-sco-cpr-prefix` over a checkpoint's prefix, `fn-cnode-replay-loop` and
+`fn-cnode-apply-config` at each publication's authorization) carries the
+configuration invariant in its guard and checks each record with
+`fn-cnode-carried-acceptablep`, which is the node's acceptance check under
+that invariant (`fn-cnode-record-acceptablep-is-the-carried-check`); before
+it, each record re-ran the whole-configuration recognizer two or three
+times, so a replay's cost grew with the configuration's size per record
+(PKT-501; planning/evidence/caps-to-profile-2026-09-26.md, Continuation).
+The replay still reads every configuration record at open; a configuration
+checkpoint the open resumes from is PKT-510.
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store
@@ -211,8 +225,7 @@ developer `store post` verdict before reservation and by the served prepare's
 budget, so an admitted article never takes the committed history past H
 (`fn-sbud-article-verdict-keeps-history`,
 `fn-sbud-prepare-under-article-budget-keeps-history`) and the next open's
-replay bound holds.  The figure does not read the profile, so a profile
-upgrade keeps every article verdict (`fn-profile-upgrade-keeps-article-verdict`).
+replay bound holds.  The figure does not read the profile.
 Before this gate an article was charged a fixed 65 538 octets, and an article
 past it could be accepted and leave the store unopenable (packet 1,
 tests/acl2/profile-monotonicity-tests).
@@ -494,7 +507,7 @@ policy that this contract does not yet have says otherwise.
 | Committed-history marker (`committed-history.json`, FNSM kind 3, STO-009) | Detecting a lost committed suffix at open | Forever; one monotone value | None. H must write a summary whose record count the marker still bounds (the summary counts as the records it replaces) |
 | Local number frontiers and watermarks (per-group next number) | Allocating a number never used before in that group | Forever. Today derived by replay from article records | H must carry every group's high-water in the summary (numbers are never reused, even for removed articles) |
 | Anti-resurrection summary | Refusing, or deciding by policy, a re-offer of a removed Message-ID or content identity; never reusing its numbers | Forever, once it exists | None. It does not exist yet: D13 is its precondition, and H and C are not admissible without it |
-| Store profile (`config.json`, FNSM kind 1) | Every open-time bound; the budget | Forever; changed only by the offline upgrade | None |
+| Store profile (`config.json`, FNSM kind 1) | Every open-time bound; the budget | Forever; written once at init or import (D34) | None |
 | Configuration history (`config/`, generations) | Current served groups and domain; the generation that local-post provenance cites | Current generation: forever. Older generations: while a record's provenance cites them (**open**) | Not in the Store transaction namespace. No capability today |
 | Pack generations and selection marker (`packs/`) | The selected pack reconstructs the covered prefix | The selected generation: while it is selected. Older generations: redundant | P (`pack-retire`: older generations only) |
 | Whole-state checkpoints and auxiliary images | A differential comparison at open. Derived, never authoritative | While selected | May be discarded; replay remains authoritative |
@@ -606,19 +619,14 @@ witness written after the commit:
   the count into the allocation barrier is not (allocation precedes the
   record's durability).
 - **The requirement (D31 case 1).** The format-8 profile's thirteenth field,
-  `history-marker`, is `unmarked` (0: every format-7 store, and a format-8
-  store not migrated) or `required` (1). Under `required` an absent marker
-  is damage: `fn-hmr-open-verdict` answers `:marker-missing` and the open
-  faults (exit 4). `init` never writes `required`
-  (`history-marker-required-before-a-marker`); `store upgrade-profile
-  --history-marker required` does, and `fn-hmr-upgrade-verdict` grants it
-  only when the marker is present and counts exactly the reconstructed
-  history (`history-marker-not-covering` otherwise). The command opens the
-  store first, and that open writes the covering marker, so a migration is
-  the two-step: the marker program, then the profile program
-  (`fn-hmr-legacy-store-migrates-by-the-two-step`,
-  `fn-hmr-requirement-follows-a-covering-marker`). The upgrade relation
-  lets the field rise and never fall (`not-an-upgrade history-marker`), so a
+  `history-marker`, is `unmarked` (0) or `required` (1). Under `required`
+  an absent marker is damage: `fn-hmr-open-verdict` answers
+  `:marker-missing` and the open faults (exit 4). `init` never writes
+  `required` (`history-marker-required-before-a-marker`), and D34 removed
+  the verb that marked a store later, so today every store is born
+  `unmarked`; how a store is born `required` (a birth that writes the
+  covering marker of the empty history first, `fn-hmr-birth`) is PKT-587.
+  No step changes the profile (`fn-hmr-step-keeps-the-profile`), so a
   required store never admits an absent marker, whatever follows
   (`fn-hmr-required-store-never-admits-an-absent-marker`).
 - **The recovery catch-up (D31 case 2).** A record can be durable while its
@@ -631,8 +639,7 @@ witness written after the commit:
   and before the open returns, a writable open writes `fn-hmr-catch-up`'s
   frame, the reconstructed count, through `fnn-mark-committed`: the same
   program and cuts (selectable on `recover` as
-  `FN_NATIVE_RECOVERY_FAULT=CUT:kill|eio`, and on `store upgrade-profile` as
-  `FN_NATIVE_PROFILE_FAULT`). An error there is uncertain (exit 3) and the
+  `FN_NATIVE_RECOVERY_FAULT=CUT:kill|eio`). An error there is uncertain (exit 3) and the
   next open catches up again. A reader under the shared lock writes nothing
   and answers no submission. Proved over the history model of commits,
   opens, resolutions and migrations: `fn-hmr-step-preserves-the-invariant`
@@ -958,3 +965,19 @@ Model logical transactions before selecting sector alignment, frame lengths,
 segment sizes, checkpoint layout, or a disk index. Then refine to bytes and the
 chosen platform contract. These choices are M2 exit criteria, not details to
 invent independently inside a file-writing adapter.
+
+## One format and the archive
+
+STO-028: A store has one format, `fn-store-8` (D34, fresh deploys). The open
+refuses a profile frame of any other format by name (`open refused
+reason=store-format: reinstall from the release and import`, exit 1) and
+translates nothing. `store export DIR` writes the committed history the open
+reads (the profile frame, the allocation frontier, each configuration record
+and each committed record, packs included, in sequence order) with a
+MANIFEST whose names and SHA-256 lines ACL2 renders; `store import DIR
+[--FIELD N ...]` builds a new store from it, refusing a MANIFEST mismatch, a
+record out of sequence and a profile the codec cannot represent by name, and
+admits it by the ordinary open (full replay) before it appears at its path.
+The import of an export replays the same history under the same profile
+(PRF-205). The MANIFEST is a transport check: the digest seam is abstract.
+

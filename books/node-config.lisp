@@ -391,11 +391,62 @@
                                   ceiling)
        (null (fn-node-stage (fn-cnode-node cn)))))
 
+;; PRF-186 (PKT-501).  The acceptance check with the configuration invariant
+;; carried instead of tested again: every conjunct of
+;; `fn-cnode-record-acceptablep' but `fn-cfgp' of the node's configuration.
+;; `fn-cfgp' is the whole configuration recognizer (every row of every slot),
+;; and the replay folds ran it two or three times per configuration record,
+;; so one replay of N records cost N times the configuration's size: 1,100
+;; `peer carries' records took 2.43 s and 9.9 GB consed per replay, and an
+;; offline request replays about four times (planning/evidence/
+;; caps-to-profile-2026-09-26.md, Continuation).  The folds whose guard
+;; carries `fn-cnode-statep' call this under :exec; their :logic bodies, and
+;; so every theorem about them, are unchanged.
+(defun fn-cnode-carried-acceptablep (cn record ceiling)
+  (declare (xargs :guard t))
+  (let ((cfg (fn-cnode-config cn)))
+    (and (fn-cfg-recordp record)
+         (equal (fn-cfg-record-generation record)
+                (+ 1 (nfix (fn-cfg-generation cfg))))
+         (fn-cfg-admissiblep (fn-cfg-value cfg)
+                             (fn-cfg-record-generation record)
+                             (fn-cfg-record-stamp record)
+                             (fn-retain-reserved
+                              (fn-node-retention (fn-cnode-node cn)))
+                             ceiling
+                             (fn-cfg-record-change record))
+         (null (fn-node-stage (fn-cnode-node cn))))))
+
+;; KEYSTONE (PRF-186).  Under the carried configuration invariant the carried
+;; check is the node's acceptance check, so a fold that carries the invariant
+;; and runs the carried check decides every configuration record exactly as
+;; the fold that re-tests the whole configuration.  The subjects the host
+;; calls are the four folds that use it under :exec (`fn-cnode-apply-config',
+;; `fn-cnode-replay-loop', books/config-physical-replay `fn-cpr-loop',
+;; books/store-checkpoint-open `fn-sco-cpr-prefix'), reached from
+;; host/native/io.lisp `fnn-bridge-recover' (`fn-store-sn-recover') and
+;; host/native/admin.lisp `fnn-admin-authorize'
+;; (`fn-store-cfg-native-admin-authorize'); each verify-guards discharges its
+;; :exec with this theorem.
+(defthm fn-cnode-record-acceptablep-is-the-carried-check
+  (implies (fn-cfgp (fn-cnode-config cn))
+           (equal (fn-cnode-record-acceptablep cn record ceiling)
+                  (fn-cnode-carried-acceptablep cn record ceiling)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cfg-record-acceptablep fn-cfgp)
+                                  (fn-cfg-valuep fn-cfg-admissiblep
+                                   fn-cfg-recordp)))))
+
+(defthm fn-cnode-statep-forward-cfgp
+  (implies (fn-cnode-statep cn) (fn-cfgp (fn-cnode-config cn)))
+  :rule-classes :forward-chaining)
+
 (defun fn-cnode-apply-config (cn record ceiling)
   (declare (xargs :guard (fn-cnode-statep cn) :verify-guards nil))
   (if (mbe :logic (not (fn-cnode-statep cn)) :exec nil)
       cn
-    (if (not (fn-cnode-record-acceptablep cn record ceiling))
+    (if (not (mbe :logic (fn-cnode-record-acceptablep cn record ceiling)
+                  :exec (fn-cnode-carried-acceptablep cn record ceiling)))
         cn
       (let* ((node (fn-cnode-node cn))
              (acc (fn-node-acceptance node))
@@ -417,7 +468,10 @@
           (fn-node-bindings node))
          config)))))
 
-(verify-guards fn-cnode-apply-config)
+(verify-guards fn-cnode-apply-config
+  :hints (("Goal" :use fn-cnode-record-acceptablep-is-the-carried-check
+           :in-theory (disable fn-cnode-statep fn-cnode-record-acceptablep
+                               fn-cnode-carried-acceptablep))))
 
 ; Refusal changes nothing: the same fact `fn-cfg-inadmissible-record-is-not-
 ; applied' states for the configuration fold.  -by-definition; not a rule.
@@ -639,6 +693,19 @@
          (fn-state-groups (fn-node-acceptance node)))
   :hints (("Goal" :in-theory (enable fn-replay-advance-txid)))))
 
+;; PRF-186.  Advancing a configured node's transaction id before a
+;; configuration record leaves a configured node, so the folds that carry
+;; `fn-cnode-statep' need not test the advanced node (books/config-physical-
+;; replay `fn-cpr-loop', books/store-checkpoint-open `fn-sco-cpr-prefix').
+(defthm fn-cnode-advanced-node-is-configured
+  (implies (fn-cnode-statep cn)
+           (fn-cnode-statep
+            (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node cn) txid)
+                           (fn-cnode-config cn))))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-statep)
+                                  (fn-node-statep fn-cfgp
+                                   fn-replay-advance-txid)))))
+
 ; Definition bridge for the release-record replay arm.  Release changes the
 ; reservation and evidence lists but carries the configured capacity exactly.
 (local
@@ -715,7 +782,10 @@
             (if (not (equal (fn-jrec-sequence j) expected))
                 (fn-replay-fault cn expected :sequence)
               (if (equal (fn-jrec-kind j) :config)
-                  (if (not (fn-cnode-record-acceptablep cn (fn-jrec-body j) ceiling))
+                  (if (not (mbe :logic (fn-cnode-record-acceptablep
+                                        cn (fn-jrec-body j) ceiling)
+                                :exec (fn-cnode-carried-acceptablep
+                                       cn (fn-jrec-body j) ceiling)))
                       (fn-replay-fault cn expected :config-refusal)
                     (fn-cnode-replay-loop
                      (fn-cnode-apply-config cn (fn-jrec-body j) ceiling)
@@ -732,6 +802,8 @@
 (verify-guards fn-cnode-replay-loop
   :hints (("Goal"
            :use ((:instance fn-cnode-apply-record-statep-iff-consp
+                            (record (fn-jrec-body (car js))))
+                 (:instance fn-cnode-record-acceptablep-is-the-carried-check
                             (record (fn-jrec-body (car js)))))
            :in-theory (e/d (fn-jrec-p)
                            (fn-cnode-statep fn-cnode-apply-record

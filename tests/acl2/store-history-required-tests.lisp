@@ -6,18 +6,13 @@
 ; The fixtures that hold a marker frame are zero-ary functions, not
 ; constants: a defconst is evaluated without the SHA-256 attachment.
 ; Profiles: the development preset (format 8, `unmarked') and the same with
-; the requirement; the operator's request `--history-marker required' over
-; the store's own profile.
+; the requirement.
 (defconst *hrt-unmarked* *fn-bs-profile-development*)
 (defconst *hrt-required* (fn-bs-profile-put 14 1 *fn-bs-profile-development*))
-(defconst *hrt-migrate* '(:current ((14 . 1))))
 (assert-event (fn-bs-profile-validp *hrt-unmarked*))
 (assert-event (fn-bs-profile-validp *hrt-required*))
 (assert-event (not (fn-bs-profile-marker-requiredp *hrt-unmarked*)))
 (assert-event (fn-bs-profile-marker-requiredp *hrt-required*))
-; A format-7 store runs `unmarked'.
-(assert-event (not (fn-bs-profile-marker-requiredp
-                    *fn-bs-meta-format-7-development-values*)))
 
 ; The decisions.
 (assert-event (equal (fn-hmr-open-verdict *hrt-unmarked* '(:absent) 3)
@@ -40,28 +35,6 @@
 (assert-event (equal (fn-hmr-catch-up *hrt-required* '(:absent) 4) nil))
 (assert-event (equal (fn-hmr-catch-up *hrt-unmarked* (list :present (fn-hm-after-commit 5)) 4)
                      nil))
-; The upgrade: `required' over a covering marker, refused over a marker
-; behind the history or none; never undone.
-(assert-event (equal (car (fn-hmr-upgrade-verdict *hrt-unmarked* *hrt-migrate*
-                                                  (list :present (fn-hm-after-commit 2)) 3))
-                     :upgrade))
-(assert-event (equal (fn-bs-config-decode
-                      (cadr (fn-hmr-upgrade-verdict *hrt-unmarked* *hrt-migrate*
-                                                    (list :present (fn-hm-after-commit 2)) 3)))
-                     *hrt-required*))
-(assert-event (equal (fn-hmr-upgrade-verdict *hrt-unmarked* *hrt-migrate*
-                                             (list :present (fn-hm-after-commit 1)) 3)
-                     '(:refused :history-marker-not-covering)))
-(assert-event (equal (fn-hmr-upgrade-verdict *hrt-unmarked* *hrt-migrate* '(:absent) 3)
-                     '(:refused :history-marker-not-covering)))
-(assert-event (equal (fn-hmr-upgrade-verdict *hrt-required* '(:current ((14 . 0)))
-                                             (list :present (fn-hm-after-commit 2)) 3)
-                     '(:refused :not-an-upgrade "history-marker")))
-; The 7-to-8 step with the requirement, in one verdict.
-(assert-event (equal (car (fn-hmr-upgrade-verdict *fn-bs-meta-format-7-development-values*
-                                                  *hrt-migrate*
-                                                  (list :present (fn-hm-after-commit 2)) 3))
-                     :upgrade))
 ; `init' never writes it.
 (assert-event (equal (fn-bs-profile-init-verdict '(:development ((14 . 1))))
                      '(:refused :history-marker-required-before-a-marker)))
@@ -102,27 +75,21 @@
 (assert-event (equal (fn-hmr-run '((:resolve 1)) (fn-hmr-run (take 5 *hrt-retry-crashed*) *hrt-st0*))
                      (fn-hmr-run (take 5 *hrt-retry-crashed*) *hrt-st0*)))
 
-; The migration, reachable from the end above: the store at rest opens
-; (nothing to catch up) and the upgrade writes `required'; then the marker's
-; deletion is damage.
-(defun hrt-rest () (fn-hmr-run '((:uncertain nil)) (hrt-end)))
-(defun hrt-migrated ()
-  (fn-hmr-run '((:open :marker-durable nil) (:migrate (:current ((14 . 1))) t)) (hrt-rest)))
-(assert-event (not (nth 4 (hrt-rest))))
-(assert-event (equal (nth 3 (hrt-migrated)) *hrt-required*))
-(assert-event (fn-hmr-invp (hrt-migrated)))
-(assert-event (equal (fn-hmr-open-verdict (nth 3 (hrt-migrated)) '(:absent) 2)
+; A `required' store's life, from its birth: the first open admits over the
+; birth's covering marker (count 0), two answered commits, the process dies;
+; then the marker's deletion is damage.
+(defconst *hrt-required-life*
+  '((:open :marker-durable nil) (:commit :marker-durable nil)
+    (:commit :marker-durable nil) (:uncertain nil)))
+(defun hrt-required-end () (fn-hmr-run *hrt-required-life* (fn-hmr-birth *hrt-required*)))
+(assert-event (fn-hmr-invp (hrt-required-end)))
+(assert-event (equal (fn-hmr-count (hrt-required-end)) 2))
+(assert-event (equal (nth 2 (hrt-required-end)) 2))
+(assert-event (not (nth 4 (hrt-required-end))))
+(assert-event (equal (fn-hmr-open-verdict (nth 3 (hrt-required-end)) (nth 1 (hrt-required-end)) 2)
+                     '(:admitted :marked 2)))
+(assert-event (equal (fn-hmr-open-verdict (nth 3 (hrt-required-end)) '(:absent) 2)
                      '(:refused :marker-missing)))
-
-; A legacy store whose marker is behind (as the deployed node's could be
-; after a crash): the upgrade's open writes the marker first, then the
-; profile.  Crashed in the profile program with the old profile kept, the
-; store is `unmarked' with the covering marker.
-(defun hrt-legacy () (fn-hmr-state 3 (list :present (fn-hm-after-commit 1)) 2 *hrt-unmarked* nil))
-(assert-event (fn-hmr-invp (hrt-legacy)))
-(assert-event (equal (fn-hmr-run '((:open :marker-durable nil) (:migrate (:current ((14 . 1))) nil))
-                                 (hrt-legacy))
-                     (fn-hmr-state 3 (list :present (fn-hm-after-commit 2)) 2 *hrt-unmarked* nil)))
 
 ; -----------------------------------------------------------------------------
 ; Teeth.  Per keystone: the positive witness asserts every hypothesis and the
@@ -177,70 +144,39 @@
 (defun hrt-k3-concl (ops st k)
   (equal (fn-hmr-open-verdict (nth 3 (fn-hmr-run ops st)) '(:absent) k)
          (list :refused :marker-missing)))
-(assert-event (and (fn-bs-profile-marker-requiredp (nth 3 (hrt-migrated))) (natp 2)
-                   (hrt-k3-concl *hrt-retry* (hrt-migrated) 2)))
+(assert-event (and (fn-bs-profile-marker-requiredp (nth 3 (hrt-required-end))) (natp 2)
+                   (hrt-k3-concl *hrt-retry* (hrt-required-end) 2)))
 ; Removal of the requirement: an `unmarked' store admits the absence.
 (assert-event (and (not (fn-bs-profile-marker-requiredp (nth 3 (hrt-end)))) (natp 2)))
 (must-fail (assert-event (hrt-k3-concl nil (hrt-end) 2)))
 ; Removal of (natp k).
-(assert-event (and (fn-bs-profile-marker-requiredp (nth 3 (hrt-migrated))) (not (natp -1))))
-(must-fail (assert-event (hrt-k3-concl nil (hrt-migrated) -1)))
+(assert-event (and (fn-bs-profile-marker-requiredp (nth 3 (hrt-required-end))) (not (natp -1))))
+(must-fail (assert-event (hrt-k3-concl nil (hrt-required-end) -1)))
 
-; Keystone 4, fn-hmr-requirement-follows-a-covering-marker.
-(defun hrt-live-covered () (fn-hmr-run '((:open :marker-durable nil)) (hrt-rest)))
-(defun hrt-k4-concl (op st)
-  (and (equal (car op) :migrate) (nth 4 st)
-       (fn-hmr-coveringp (nth 1 st) (fn-hmr-count st))
-       (equal (nth 1 (fn-hmr-step op st)) (nth 1 st))))
-(assert-event (and (not (fn-bs-profile-marker-requiredp (nth 3 (hrt-live-covered))))
-                   (fn-bs-profile-marker-requiredp
-                    (nth 3 (fn-hmr-step (list :migrate *hrt-migrate* t) (hrt-live-covered))))
-                   (hrt-k4-concl (list :migrate *hrt-migrate* t) (hrt-live-covered))))
-; Removal of "unmarked before": a required store stays required over any
-; step, here an answered retry.
-(defun hrt-required-live () (fn-hmr-run '((:open :marker-durable nil)) (hrt-migrated)))
-(assert-event (and (fn-bs-profile-marker-requiredp (nth 3 (hrt-required-live)))
-                   (fn-bs-profile-marker-requiredp
-                    (nth 3 (fn-hmr-step '(:resolve 0) (hrt-required-live))))))
-(must-fail (assert-event (hrt-k4-concl '(:resolve 0) (hrt-required-live))))
-; Removal of "required after": a burn.
-(assert-event (and (not (fn-bs-profile-marker-requiredp (nth 3 (hrt-live-covered))))
-                   (not (fn-bs-profile-marker-requiredp
-                         (nth 3 (fn-hmr-step '(:burn) (hrt-live-covered)))))))
-(must-fail (assert-event (hrt-k4-concl '(:burn) (hrt-live-covered))))
-; The gate itself: a live process over a marker behind the history (a
-; corrupted state) cannot migrate.
-(assert-event (not (fn-bs-profile-marker-requiredp
-                    (nth 3 (fn-hmr-step (list :migrate *hrt-migrate* t) (hrt-no-catch-up))))))
+; Keystone 4, fn-hmr-step-keeps-the-profile and fn-hmr-run-keeps-the-profile
+; (no hypotheses): a run from the birth with commits, an unanswered death
+; and an open keeps the birth profile, each step and the whole run.
+(defconst *hrt-life*
+  '((:open :marker-durable nil) (:commit :marker-durable nil)
+    (:uncertain t) (:open :marker-durable nil) (:resolve 0)))
+(defun hrt-life-end () (fn-hmr-run *hrt-life* (fn-hmr-birth *hrt-unmarked*)))
+(assert-event (equal (nth 3 (hrt-life-end)) *hrt-unmarked*))
+(assert-event (equal (fn-hmr-count (hrt-life-end)) 2))
+(assert-event (nth 4 (hrt-life-end)))
+(assert-event (equal (nth 3 (fn-hmr-step '(:commit :marker-durable nil)
+                                         (fn-hmr-run (take 1 *hrt-life*)
+                                                     (fn-hmr-birth *hrt-unmarked*))))
+                     *hrt-unmarked*))
+(assert-event (equal (nth 3 (hrt-required-end)) *hrt-required*))
 
-; Keystone 5, fn-hmr-legacy-store-migrates-by-the-two-step.
-(defun hrt-k5-concl (op1 op2 st)
-  (let ((mid (fn-hmr-step op1 st)))
-    (and (equal (car op1) :open) (equal (car op2) :migrate)
-         (fn-hmr-coveringp (nth 1 mid) (fn-hmr-count mid))
-         (equal (nth 1 (fn-hmr-step op2 mid)) (nth 1 mid)))))
-(defconst *hrt-open* '(:open :marker-durable nil))
-(defconst *hrt-mig* (list :migrate *hrt-migrate* t))
-(assert-event (and (not (nth 4 (hrt-legacy)))
-                   (not (fn-bs-profile-marker-requiredp (nth 3 (hrt-legacy))))
-                   (fn-bs-profile-marker-requiredp
-                    (nth 3 (fn-hmr-step *hrt-mig* (fn-hmr-step *hrt-open* (hrt-legacy)))))
-                   (hrt-k5-concl *hrt-open* *hrt-mig* (hrt-legacy))))
-; Removal of "at rest": a live process migrates after answering a retry.
-(assert-event (and (nth 4 (hrt-live-covered))
-                   (not (fn-bs-profile-marker-requiredp (nth 3 (hrt-live-covered))))
-                   (fn-bs-profile-marker-requiredp
-                    (nth 3 (fn-hmr-step *hrt-mig* (fn-hmr-step '(:resolve 0) (hrt-live-covered)))))))
-(must-fail (assert-event (hrt-k5-concl '(:resolve 0) *hrt-mig* (hrt-live-covered))))
-; Removal of "unmarked": a required store at rest, two burns.
-(assert-event (and (not (nth 4 (hrt-migrated)))
-                   (fn-bs-profile-marker-requiredp (nth 3 (hrt-migrated)))
-                   (fn-bs-profile-marker-requiredp
-                    (nth 3 (fn-hmr-step '(:burn) (fn-hmr-step '(:burn) (hrt-migrated)))))))
-(must-fail (assert-event (hrt-k5-concl '(:burn) '(:burn) (hrt-migrated))))
-; Removal of "required after": the open alone, then a burn.
-(assert-event (and (not (nth 4 (hrt-legacy)))
-                   (not (fn-bs-profile-marker-requiredp (nth 3 (hrt-legacy))))
-                   (not (fn-bs-profile-marker-requiredp
-                         (nth 3 (fn-hmr-step '(:burn) (fn-hmr-step *hrt-open* (hrt-legacy))))))))
-(must-fail (assert-event (hrt-k5-concl *hrt-open* '(:burn) (hrt-legacy))))
+; Keystone 5, fn-hmr-birth-holds-the-invariant (no hypotheses): both births
+; hold it, and the unmarked birth is the retry history's start.
+(assert-event (fn-hmr-invp (fn-hmr-birth *hrt-unmarked*)))
+(assert-event (equal (fn-hmr-birth *hrt-unmarked*) *hrt-st0*))
+(assert-event (fn-hmr-invp (fn-hmr-birth *hrt-required*)))
+(assert-event (equal (nth 1 (fn-hmr-birth *hrt-required*))
+                     (list :present (fn-hm-encode 0))))
+(assert-event (fn-hmr-invp (hrt-life-end)))
+; Mutation witness: a `required' birth without its marker fails the
+; invariant (the open refuses it), so the birth's marker is load-bearing.
+(assert-event (not (fn-hmr-invp (fn-hmr-state 0 '(:absent) 0 *hrt-required* nil))))

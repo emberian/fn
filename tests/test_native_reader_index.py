@@ -280,7 +280,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         reader = self.reader()
         status, caps = self.command(reader, "CAPABILITIES", True)
         self.assertTrue(status.startswith(b"101"), status)
-        self.assertIn(b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT\r\n",
+        self.assertIn(b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT\r\n",
                       caps)
         status, rows = self.command(reader, "LIST COUNTS", True)
         self.assertEqual(status, b"215 list of newsgroups follows\r\n")
@@ -316,6 +316,79 @@ class NativeReaderIndexTest(unittest.TestCase):
                          [b"fn.live 1 1 1 y\r\n", b"fn.test 2 1 2 y\r\n"])
         recovered[1].close()
         recovered[0].close()
+        self.stop_owner(restarted)
+
+    def run_refused(self, *words):
+        result = subprocess.run([str(IMAGE), "--fn", *map(str, words)], cwd=ROOT,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                timeout=180, check=False)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        return result
+
+    def test_list_newsgroups_descriptions_and_motd_published_live(self):
+        # PRF-195 (NNT-039): RFC 3977 section 7.6.6 descriptions and RFC 6048
+        # section 2.5 LIST MOTD from the configuration's descriptions slot,
+        # set by `group describe' and `motd set' on a running owner (one
+        # :set-group-description record each, code 20) and replayed at
+        # restart (books/owner-descriptions-read.lisp).
+        self.run_native("operator", self.config, "group", "create", "fn.live")
+        owner = self.start_owner()
+        before = self.reader()
+        status, rows = self.command(before, "LIST NEWSGROUPS", True)
+        self.assertEqual(status, b"215 list of newsgroups follows\r\n")
+        self.assertEqual(sorted(rows), [b"fn.live\t(no description)\r\n",
+                                        b"fn.test\t(no description)\r\n"])
+        self.assertEqual(self.command(before, "LIST MOTD", True),
+                         (b"215 message of the day follows\r\n", []))
+        before[1].close()
+        before[0].close()
+
+        self.run_native("operator", self.config, "group", "describe", "fn.test",
+                        "Friends", "and letters")
+        self.run_native("operator", self.config, "motd", "set",
+                        "Welcome to fn.", "Ask ember for a code.")
+        # Refused: a group the table does not hold (:no-such-group, at the
+        # owner's admission) and a text of spaces (:description-blank, at
+        # the plan); neither changes what a reader is shown below.
+        self.run_refused("operator", self.config, "group", "describe",
+                         "fn.nosuch", "x")
+        self.run_refused("operator", self.config, "group", "describe",
+                         "fn.test", "   ")
+
+        reader = self.reader()
+        status, rows = self.command(reader, "LIST NEWSGROUPS", True)
+        self.assertEqual(status, b"215 list of newsgroups follows\r\n")
+        self.assertEqual(sorted(rows), [b"fn.live\t(no description)\r\n",
+                                        b"fn.test\tFriends and letters\r\n"])
+        self.assertEqual(self.command(reader, "list newsgroups fn.t*", True)[1],
+                         [b"fn.test\tFriends and letters\r\n"])
+        self.assertEqual(self.command(reader, "LIST MOTD", True),
+                         (b"215 message of the day follows\r\n",
+                          [b"Welcome to fn.\r\n", b"Ask ember for a code.\r\n"]))
+        self.assertEqual(self.command(reader, "LIST MOTD x")[0],
+                         b"501 syntax error\r\n")
+        reader[1].close()
+        reader[0].close()
+        self.stop_owner(owner)
+
+        restarted = self.start_owner()
+        recovered = self.reader()
+        self.assertEqual(sorted(self.command(recovered, "LIST NEWSGROUPS", True)[1]),
+                         [b"fn.live\t(no description)\r\n",
+                          b"fn.test\tFriends and letters\r\n"])
+        self.assertEqual(self.command(recovered, "LIST MOTD", True)[1],
+                         [b"Welcome to fn.\r\n", b"Ask ember for a code.\r\n"])
+        recovered[1].close()
+        recovered[0].close()
+        self.run_native("operator", self.config, "group", "describe", "fn.test")
+        self.run_native("operator", self.config, "motd", "clear")
+        cleared = self.reader()
+        self.assertEqual(sorted(self.command(cleared, "LIST NEWSGROUPS", True)[1]),
+                         [b"fn.live\t(no description)\r\n",
+                          b"fn.test\t(no description)\r\n"])
+        self.assertEqual(self.command(cleared, "LIST MOTD", True)[1], [])
+        cleared[1].close()
+        cleared[0].close()
         self.stop_owner(restarted)
 
     def test_listgroup_many_unrelated_groups_measured_socket_workload(self):

@@ -14,7 +14,7 @@
 ;                          socket answers nothing (`fn-nh-fence-reasonp');
 ;   1 exhausted            a namespace at its codec ceiling: the transaction
 ;                          id width or the retention ledger's uint32 count;
-;                          no profile upgrade can raise either (terminal);
+;                          no profile can raise either (terminal);
 ;   2 unqualified-profile  the persisted profile is not format 8, or is the
 ;                          development profile;
 ;   3 space-pressure       free headroom below the operator's
@@ -254,9 +254,7 @@ profile's."
 
 (defun fn-nh-profile-words (profile)
   (declare (xargs :guard t))
-  (append (fn-nls-field "format" (cond ((fn-bs-profile-validp profile) 8)
-                                       ((fn-bs-meta-format-7-valuesp profile) 7)
-                                       (t 0)))
+  (append (fn-nls-field "format" (if (fn-bs-profile-validp profile) 8 0))
           (if (fn-nh-development-profilep profile)
               (fn-nls-text " development")
             nil)))

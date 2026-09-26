@@ -5,10 +5,11 @@ Needs a release built by packaging/release-tarball.sh on this platform:
     FN_RELEASE_TARBALL=/abs/out/fn-REV12-linux-x86_64.tar.gz \\
         python3 -m unittest -v tests.test_release_tarball
 
-(OUT_DIR/SHA256SUMS beside it).  FN_FORMAT7_FIXTURE optionally names a
+(OUT_DIR/SHA256SUMS beside it).  FN_FORMAT7_STORE optionally names a
 format-7 store (/tank/fn/scratch/fixtures/format-7-store) for the install's
-store-format refusal; that case needs the one-format open of lane
-migration-removal and is skipped, with that reason, without the fixture.
+store-format refusal (the one-format open of lane migration-removal, the
+same fixture tests.test_native_store_export reads); that case is skipped,
+with that reason, without the fixture.
 Without FN_RELEASE_TARBALL every case is skipped (not a pass).
 """
 from __future__ import annotations
@@ -29,7 +30,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import runpath_check  # noqa: E402
 
 TARBALL = os.environ.get("FN_RELEASE_TARBALL")
-FORMAT7 = os.environ.get("FN_FORMAT7_FIXTURE")
+FORMAT7 = os.environ.get("FN_FORMAT7_STORE")
 CLEAN_ENV = {"PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": "/tmp", "LANG": "C"}
 
 
@@ -135,8 +136,8 @@ class ReleaseTarballTests(unittest.TestCase):
             self.assertEqual(again.returncode, 4)
             self.assertIn("an installation is one directory", again.stderr)
 
-    @unittest.skipUnless(FORMAT7, "FN_FORMAT7_FIXTURE unset: the store-format refusal needs "
-                                  "migration-removal's one-format open and its fixture")
+    @unittest.skipUnless(FORMAT7, "FN_FORMAT7_STORE unset: the store-format refusal needs "
+                                  "migration-removal's format-7 fixture store")
     def test_install_refuses_a_format_7_store(self):
         with tempfile.TemporaryDirectory() as tmp:
             node = Path(tmp) / "node"

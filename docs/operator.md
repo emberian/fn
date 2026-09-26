@@ -118,7 +118,7 @@ A profile flag or `--profile` there is a usage error (5) whose first line
 says so:
 
 ```
-under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG store export DIR, reinstall, then fn operator CONFIG store import DIR --FIELD N; or delete the mission line from fn.toml to choose a profile at init
 usage operator init MISSION-FIXES-PROFILE
 ```
 
@@ -127,8 +127,9 @@ result line, so `init` with a stray word shows the full `init` grammar.
 
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
-(format `fn-store-8`, `books/byte-store-frame.lisp`) and only the offline
-upgrade raises. ACL2 fixes the relations between the fields
+(format `fn-store-8`, `books/byte-store-frame.lisp`, the one store format:
+D34) and nothing rewrites in place; a different profile is a reinstall and an
+import. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
 values.
 
@@ -136,9 +137,9 @@ values.
 | --- | --- | --- |
 | `max-transactions` (T) | committed transactions | 4,294,967,295 (the u32 txid width) |
 | `max-history-octets` (H) | total committed record octets | 1 TiB |
-| `max-record-octets` (R) | one encoded Store event | 196,608 (the FNST codec ceiling today) |
-| `max-article-octets` (A) | one article's payload | 32,768 (the record codec's today) |
-| `max-groups-per-article` (G) | newsgroups on one article | 16 (the record codec's today) |
+| `max-record-octets` (R) | one encoded Store event | 67,108,864 (64 MiB; at least 196,608, the worst-case Store event) |
+| `max-article-octets` (A) | one article's payload | 16,777,216 (16 MiB) |
+| `max-groups-per-article` (G) | newsgroups on one article | 4,096 |
 | `max-group-name-octets` | one group name (validated, not yet enforced on `group create`: PKT-435) | 256 (the record codec's and the configuration label's width today) |
 | `max-open-suffix` (K) | records replayed after the checkpoint | 65,536 (lowered with T) |
 | `max-consumers` | consumers registered; the next `consumer register` past it is refused | 1,048,576 |
@@ -171,6 +172,36 @@ profile format=8 max-transactions=100000 max-history-octets=1099511627776 max-re
 headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-bound=1099511627776 charge-reserved=... charge-capacity=...
 ```
 
+**The process heap (PKT-016, HST-013).** The installed `bin/fn` gives the
+node the heap its store profile needs on this machine, and refuses a profile
+the machine cannot hold before anything runs (exit 1, on stderr
+`fn: refused machine-cannot-hold-profile heap=MB MB machine=M MB`). The
+figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp): the image, a
+64 MiB collection nursery, sixteen bytes per octet for twice the history
+bound H plus one record bound R, doubled for the collector, and two
+checkpoint buffers of three times H; the machine is the least of its physical
+memory, the cgroup's `memory.max` (Linux) and the data-size limit (`ulimit
+-d`; OpenBSD's login class). `status` and `health` end with
+`heap=MB MB profile=WORD machine=M MB`. The presets on today's image (a
+389 MB core):
+
+| preset | T | H | R | A | G | K | heap |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,002 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
+| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 2,671 MB: refused on a 2 GB machine |
+| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 54,751 MB |
+| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 70 TiB: refused on every machine today (PKT-582) |
+
+`init` with no `--profile` and no field flag writes **small** on a machine
+under 4 GiB, and the D27 default elsewhere. The small preset has no
+`--profile` word yet (PKT-581); on a larger machine name its fields:
+`--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
+196608 --max-article-octets 32768 --max-groups-per-article 16
+--max-open-suffix 128`. A store outgrows its machine only through `store
+upgrade-profile`, which raises H: check the new figure with `status` before
+restarting. A checkout's `packaging/fn` takes the tests' `FN_TEST_HEAP_MB`
+instead; the installed one ignores it.
+
 Every committed transaction (an article, a retention, keyring, consumer or
 topic event) takes one of T, and its record octets count against H. The owner
 refuses the next POST once either is reached, and says so: `441 posting
@@ -184,34 +215,38 @@ the record octets it carries (each record encoded once per owner process,
 refused by name (`payload exceeds the modelled bound`). The profile cannot be
 raised by a configuration record: it bounds the work of opening the store
 (the transaction directory is enumerated up to T, the replay input up to H)
-before any configuration record is read. Raising it is an offline step on the
-existing store:
+before any configuration record is read. Raising it is a reinstall (D34, fresh
+deploys): export the store, remove it, and import the archive with the raised
+field:
 
 ```text
-fn operator /path/to/fn.toml store upgrade-profile --max-transactions 1000000
-fn operator /path/to/fn.toml store upgrade-profile scale
-fn operator /path/to/fn.toml store upgrade-profile          # format 7 -> 8, bounds unchanged
-upgraded profile=current transactions-used=7 transactions-budget=1000000 previous-budget=100000
+fn operator /path/to/fn.toml store export /srv/fn-archive
+exported records=7 configuration=1
+# stop the unit, remove the store directory, install the release
+fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
+imported records=7 configuration=1
 ```
 
-It opens the store as `recover` does, so it is refused (1, `store is already
-locked`) while an owner runs: stop the unit first. ACL2 decides
-(`fn-profile-upgrade-verdict`, `books/store-profile-upgrade.lisp`): the new
-profile must be valid and no field may shrink (`fn-profile-upgradep`); the
-same profile (`same-profile`), a shrink (`not-an-upgrade FIELD`) and a
-broken relation (by its name) are refused (1) and write nothing. With no word
-the base is the store's own profile, so the bare verb on a format-7 store (one
-written before D27) rewrites it as format 8 with every bound unchanged
-(`fn-profile-upgrade-format-7-to-8`); a format-7 store is otherwise served
-under that translation until it is upgraded. Format-6 stores are no longer
-opened. The new frame replaces `config.json` by stage, fsync, rename and
-root fsync; a death at any point leaves the old or the new profile, never a
-torn one (`fn-bs-profile-program-crash-is-old-or-new`), and an I/O error
-before the rename is a refusal (1), at or after it an uncertain outcome (3)
-that the next `status` resolves by reading whichever frame is there. The
-retention charge capacity is a different number and IS reconfigurable
-(`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
-value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940`); that command is its one repair, the only lowering the verb admits (`fn-spo-repair-verdict`, `books/store-profile-open.lisp`), and it writes nothing for any other target.
+`store export DIR` takes the store's writer lock, so it is refused (1, `store
+is already locked`) while an owner runs; DIR must not exist (`export refused
+reason=archive-exists`). The archive is a directory: `profile` (config.json's
+exact octets), `frontier`, `config/NAME` (each configuration record's
+octets), `records/NAME` (each committed record's octets, packs included, in
+sequence order) and `MANIFEST` (one `sha256  name` line per file, `sha256sum
+-c` reads it); ACL2 renders every name and the MANIFEST
+(`books/store-export.lisp`). `store import DIR [--FIELD N ...]` makes a NEW
+store: the configured store must not exist (`import refused
+reason=store-exists`); ACL2's plan (`fn-sxp-import-plan`) refuses a MANIFEST
+that does not match (`reason=manifest-mismatch NAME`), a record out of
+sequence (`reason=record-out-of-sequence N`) and a profile the codec cannot
+represent (`reason=profile REASON`), each exit 1 with nothing written; the
+store is then built beside its path, opened the ordinary way (full replay),
+and renamed into place only when that open admitted it. Fields only matter
+upward in practice (the records were committed under the old bounds, and the
+import's open refuses a history the new profile cannot hold). The retention
+charge capacity is a different number and IS reconfigurable
+(`capacity DECIMAL-UINT32`). A repeated field or a
+value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `open refused reason=max-record-octets-above-the-poll-reply: ... reinstall from the release and import`), and a store of any other format (a format-7 store, JSON metadata) likewise (`open refused reason=store-format: reinstall from the release and import`); nothing is translated or repaired in place.
 
 ### Settle a client's lost post: `store inspect`
 
@@ -444,9 +479,9 @@ accepted operator health
 | exit | state | held when | what to do |
 |---|---|---|---|
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
-| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no `store upgrade-profile` raises it |
-| 22 | `unqualified-profile` | the persisted profile is not format 8 (`store needs-upgrade`), or it is the development profile | `store upgrade-profile scale` or `default` (offline) |
-| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | `store upgrade-profile`, `capacity`, or release obligations |
+| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
+| 22 | `unqualified-profile` | the persisted profile is not format 8, or it is the development profile | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
 | 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection | check the peer's host and port (`peer list`) and its reachability |
@@ -519,6 +554,76 @@ words prints the operator's usage (it is `fn operator - help`), and `fn
 --version` prints the 40-digit source revision recorded beside the image's
 core (`libexec/fn/source-revision`; exit 1 when the image records none).
 
+### On OpenBSD (amd64, 7.9)
+
+The OpenBSD tarball, fn-REV12-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
+(`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
+run in the build VM). It carries the SBCL runtime with its one non-base
+library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
+built with the base `cc`, clang); TLS is the base system's LibreSSL. It
+needs no package: no Lisp, no Python, no OpenSSL. It is built against 7.9's
+libc and LibreSSL majors, so it runs on 7.9.
+
+Three OpenBSD rules decide where it lives and how it starts:
+
+- **W^X.** The SBCL runtime is linked `wxneeded`; OpenBSD runs it only from a
+  file system mounted `wxallowed`. The default install mounts `/usr/local`
+  that way (check with `mount | grep wxallowed`), so unpack under
+  `/usr/local`. Elsewhere it fails at start with `Cannot allocate memory`.
+- **Heap.** The launcher reserves `--dynamic-space-size 1024` (MB), not the
+  32,000 the Linux tarball inherits: OpenBSD counts the reservation against
+  the login class's `datasize` (1,536 MB for `default`, 4,096 MB for
+  `daemon`, the class rc.d uses). `SBCL_USER_ARGS="--dynamic-space-size N"`
+  overrides it per invocation.
+- **Working directory.** The image reads its working directory at start;
+  run it from a directory its user can read (`cd /var/fn`), or it halts with
+  `getcwd: Permission denied`. The rc.d script starts the node in `/var/fn`
+  itself (`daemon_execdir=/var/fn` in `packaging/fn.rc.in`); only a start by
+  hand needs the `cd`.
+
+As root, with the tarball and its sum in `/tmp`:
+
+```sh
+cd /tmp && sha256 -C fn-REV12-openbsd-amd64.tar.gz.sha256 fn-REV12-openbsd-amd64.tar.gz
+cd /usr/local && tar xzf /tmp/fn-REV12-openbsd-amd64.tar.gz
+cd fn-REV12 && sha256 -q -c SHA256SUMS               # every file in it
+F=/usr/local/fn-REV12/bin/fn
+C=/var/fn/fn.toml
+useradd -d /var/fn -s /sbin/nologin -c fn-node _fn
+install -d -o _fn -g _fn -m 0700 /var/fn /var/fn/tls /var/fn/log
+cd /var/fn
+su -s /bin/sh _fn -c "$F operator $C mission small-community --host 10.0.2.15 --port 11563"
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
+  -subj /CN=fnbsd.friends.fn.invalid -addext subjectAltName=IP:10.0.2.15 \
+  -keyout /var/fn/tls/key.pem -out /var/fn/tls/cert.pem
+chown _fn:_fn /var/fn/tls/*.pem && chmod 600 /var/fn/tls/key.pem
+su -s /bin/sh _fn -c "$F operator $C init"
+su -s /bin/sh _fn -c "$F operator $C policy set path-identity fnbsd.friends.fn.invalid"
+su -s /bin/sh _fn -c "$F operator $C principal set-password ember --posting"
+install -m 0555 /usr/local/fn-REV12/share/fn/rc.d/fn /etc/rc.d/fn
+rcctl enable fn && rcctl start fn
+```
+
+The base `openssl` is LibreSSL's and makes the EC pair as shown. The rc.d
+script (`packaging/fn.rc.in`, rendered with the release path) runs
+`bin/fn operator /var/fn/fn.toml run` as `_fn` from `/var/fn`, in the
+background, logging through syslog (`daemon.info`); `rcctl check fn` finds
+the SBCL process by its `--fn operator /var/fn/fn.toml run` arguments. A link
+to `bin/fn` (say `/usr/local/bin/fn`) works: the launcher follows it back
+into the release.
+
+Measured on a QEMU guest with 1 CPU and 2 GB of memory, 7.9 with no
+packages (planning/evidence/release-openbsd-2026-09-26.md): the node starts
+under rc.d, answers STARTTLS over LibreSSL (TLS 1.3), logs in, accepts a
+post and serves it on a fresh connection to a Linux client; `peer keygen`,
+`peer accept` of a Linux node's invitation and the Linux node's `peer
+confirm` of the acceptance succeed. Resident size 37 MB at start and 90 MB
+after 100 posts, with the 1,024 MB reservation. The smallest heap that
+served a post and a read on a fresh development-profile node was 288 MB;
+256 MB refuses at start (`dynamic space too small for core: 272320KiB
+required`) and 280 MB started but died in the first session, so the
+default keeps 1,024.
+
 ### Install the native production entry
 
 Build or select a source-pinned frozen image with `packaging/freeze-native-image.sh`
@@ -541,7 +646,7 @@ the image and execs it with every argument, deciding nothing. An installed
 `build/fn-host`. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
 the other image verbs are as below. The spike's bash `fn` wrapper made its
 own decisions; each is now the image's (its header lists where each went:
-`mission`, `health`, `show`, `store needs-upgrade`/`rollback-check`, the
+`mission`, `health`, `show`, the
 SIGHUP log reopen) or is gone.
 
 The layout is `bin/fn`, `libexec/fn/fn-host`,
@@ -818,7 +923,8 @@ the native image, and set `policy set path-identity` for the agent.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
-`--group` seeds them once, and `fn group` changes them afterwards. The
+`init` seeds them once, and `fn operator CONFIG group create NAME` (or `group retire NAME`)
+changes them afterwards, live or offline. The
 configuration file holds only what the host needs in order to start.
 
 A peer this node pulls by NEWNEWS (RFC 3977 section 7.4) gets an interval,
@@ -880,11 +986,17 @@ it again. The stop is ACL2's (`fn-fc-mode-stream-refusal-stops-the-dial`,
 books/feed-connection.lisp) and lasts one owner process: a restart spends
 one `MODE STREAM` exchange again.
 
-`[listener] host` accepts loopback aliases or an explicit numeric IPv4
-address. ACL2 parses the literal and supplies the exact bind address; the host
-does not resolve or reinterpret it. The wildcard `0.0.0.0` remains refused so
-an operator must name the interface placed in service. General IPv6 literals
-remain open; `::1` is the admitted IPv6 spelling.
+`[listener] host` is one address or a comma-separated list of them: IPv4
+dotted quads, IPv6 literals (`::1`, `2001:db8::7`, or bracketed `[::1]`) and
+the name `localhost`. The owner binds each on `port` (and on `tls_port` when
+set), so `host = "[::1], 192.0.2.7"` serves both families. ACL2 parses every
+literal and supplies the exact bind address; the host does not resolve or
+reinterpret it. The wildcards `0.0.0.0` and `::` stay refused so an operator
+names each interface placed in service, and an IPv4-mapped `::ffff:a.b.c.d`
+is refused in favour of the IPv4 address. A refusal names the reason:
+`listener-address`, `listener-unspecified`, `listener-mapped` or
+`listener-duplicate` (specs/nntp.md "Listener addresses", NNT-041). A
+changed `host` takes effect when the node restarts.
 
 ## Run it as a service
 
@@ -1340,17 +1452,17 @@ per-address and failed-login allowance.
 ## Add a group
 
 ```
-systemctl stop fn
-fn --config /etc/fn/fn.toml group create fn.announce
-systemctl start fn
+fn operator /etc/fn/fn.toml group create fn.announce
 ```
 
-The stop is required today. A group is a durable configuration record, and
-writing one needs the exclusive writer lock the running owner holds, so
-`fn group` refuses while the service is live and says so. `fn group retire
-<name>` retires a name: the articles already bound to it and its watermark
-are kept, and the name stops being served. Creating a retired name again
-revives it with its numbering intact.
+No stop is needed. A group is a durable configuration record: with the
+owner running and its `[control] path` live, the verb asks the owner, which
+publishes the record as a new configuration generation at once
+(`fn-native-admin-plan-deltas`, books/native-admin.lisp); with no owner
+running, the verb writes it offline and `run` serves it at the next start.
+`fn operator CONFIG group retire <name>` retires a name: the articles already
+bound to it and its watermark are kept, and the name stops being served.
+Creating a retired name again revives it with its numbering intact.
 
 **Special-purpose names are a local agreement, not ordinary groups.** RFC
 5536 section 3.1.4 names two kinds of restricted `<newsgroup-name>`. The
@@ -1393,22 +1505,27 @@ lost reply answers `281` again and binds nothing new. `account list` shows
 digest or verifier. Redeemed accounts and auth.toml's credentials together are
 bounded by the profile's `max-credentials`.
 
-## Upgrade, and what a rollback loses
+## Deploy a new release (D34: fresh deploys, no migrations)
 
-Rehearse on a copy first: stop the node, `cp -a` its store, give the copy a
-`fn.toml` whose paths point into the copy and whose listener is on loopback,
-and run the steps below against the copy with the new release's `bin/fn`.
-`packaging/upgrade-native.sh` switches a managed node's `current` release.
+A deploy is a reinstall. There is no in-place upgrade, no versioned release
+directory and no rollback of a store:
 
+```text
+fn operator NODE/fn.toml store export ARCHIVE     # only if the data must survive
+# stop the unit; remove NODE/store; install the release (one libexec/fn/, replaced whole)
+fn operator NODE/fn.toml store import ARCHIVE     # or: init
+# start the unit
 ```
-fn operator COPY/fn.toml store needs-upgrade            # needs-upgrade | current
-cp -p COPY/store/config.json KEPT/config.json.format-7  # the file a lossless rollback restores
-cp -a COPY/store SNAPSHOT/store                          # the pre-migration snapshot
-fn operator COPY/fn.toml store upgrade-profile           # format 7 -> 8, bounds unchanged
-fn operator COPY/fn.toml store upgrade-profile --max-transactions N   # raise one bound
-fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
-fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
-```
+
+The store has one format (`fn-store-8`). A store of any other format is
+refused at open by name (`open refused reason=store-format: reinstall from
+the release and import`, exit 1). The archive carries the committed records,
+the configuration records, the profile and the allocation frontier; the
+store identity and consumer state are records, so they travel with them.
+Feed journals and BP spools do not: a reinstalled node re-peers. Keep the
+archive until the new node serves; it is the only copy.
+
+What an older release refuses of this store's records (facts about releases, not a rollback procedure: under D34 a deploy is a fresh install and an older release is never started over a newer store):
 
 Once an account code is redeemed on a release with accounts, releases before
 it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440:
@@ -1435,51 +1552,15 @@ checkpoint published before a249a699 is refused too, today as
 direction: older images reject a newer checkpoint file and fall back to a
 full replay.
 
-There are two rollbacks, and they are not the same:
-
-- **Restoring the kept `config.json`** (the old release reads the new
-  history under the old profile). `rollback-check KEPT` says `rollback sound
-  transactions=N` when every committed record fits the older profile and the
-  store does not require the committed-history marker; nothing is lost. It
-  refuses `history-marker-required-dropped` once the store requires the
-  marker: that requirement is never undone by a kept file.
-- **Restoring a pre-migration snapshot** (the whole store as it was).
-  **Restoring a pre-migration snapshot loses every article accepted after
-  it.** `rollback-check --snapshot SNAPSHOT` counts them. Stop the node
-  first: the verb takes both stores' shared writer locks and holds them while
-  it compares, so a running owner's store is refused (`store is already
-  locked`, 1) rather than read mid-write. It reads each store's committed
-  history the way the open does (the selected pack's records, then the
-  transaction files after it) and ACL2 compares the two record by record,
-  octet for octet (`fn-native-operator-history-loss-is-ancestry`). When the snapshot's
-  records are exactly this store's first records it answers
-
-  ```
-  rollback snapshot loses transactions=3 snapshot-transactions=11 store-transactions=14
-  the snapshot's committed records are this store's first 11, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
-  ```
-
-  and otherwise `rollback snapshot refused snapshot-not-a-prefix` (1): the
-  snapshot is not an earlier state of this store's history, and restoring
-  it would replace that history, not shorten it. That includes a snapshot
-  from a different store whose transactions have the same numbers and the
-  same file sizes: equal counters and lengths are not the same history, and
-  the verb does not treat them as one.
-
-  What the verb does not establish: that the snapshot is the newest earlier
-  state you have, or anything about the configuration history, retention
-  releases or peer state a restore also brings back; and a store-local
-  comparison is not a freshness witness (see `fn anchor` under Back up).
-
-Two auxiliary files also decide what an older release can open, and neither
-is covered by `rollback-check`:
-
-- **The pull journals** (`<store>/pull/*.fnpl`). A release from before
-  2026-09-26 refuses a pull journal that holds the `:pull-unavailable`
-  record (the per-article count that bounds a peer's repeated 430s), so
-  rolling a node back to such a release means deleting its `pull/` journals
-  first; the cursor then restarts one day back, which is bounded duplicate
-  replay with no skipped accepted work (the NEWNEWS pull's own contract).
+And the incremental peer rows (delta codes 18 and 19, `peer carries` and
+`peer budget` since 2026-09-26, offline or live): a store whose
+configuration log holds either is refused at open by releases before them
+(the deployed bbf52159 image exits 4; rehearsed on a copy, planning/evidence/
+caps-to-profile-2026-09-26.md), so roll back only from the pre-upgrade
+snapshot. A store that never extended a peer after the upgrade is unaffected.
+The same holds for a checkpoint or pack directory that has published
+generation 4096 or more (the numbering is a uint32 since then): an older
+release refuses that directory.
 
 ## Back up
 

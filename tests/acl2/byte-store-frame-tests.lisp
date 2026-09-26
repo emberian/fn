@@ -19,8 +19,13 @@
 ; -----------------------------------------------------------------------------
 ; Format 8: the operator's fields, validated by relations
 
-; The presets are the format-7 tuples' translations, and valid; the defaults
-; are valid and are neither preset.
+; The presets (fn-bs-profile-preset over the T, H and A format 7 carried;
+; D34 kept the values, not the format) are valid; the defaults are valid and
+; are neither preset.
+(assert-event (equal *fn-bs-profile-development*
+                     (fn-bs-profile-preset 128 25165824 32768)))
+(assert-event (equal *fn-bs-profile-scale*
+                     (fn-bs-profile-preset 4096 805306368 32768)))
 (assert-event (fn-bs-profile-validp *fn-bs-profile-development*))
 (assert-event (fn-bs-profile-validp *fn-bs-profile-scale*))
 (assert-event (fn-bs-profile-validp *fn-bs-profile-defaults*))
@@ -30,9 +35,9 @@
                      1099511627776))
 (assert-event (equal (fn-bs-profile-max-open-suffix *fn-bs-profile-defaults*)
                      65536))
-; The translation's R is the article record of (32 768, 65 535) at the
+; The presets' R is the article record of (32 768, 65 535) at the
 ; record overhead of the widths the runtime produces (1 083 fixed octets,
-; unchanged by packet P6), above the format-7 H / T of 196 608.
+; unchanged by packet P6), above the development H / T of 196 608.
 (assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-development*)
                      17138486))
 (assert-event (equal (fn-bs-profile-record-ceiling *fn-bs-profile-scale*)
@@ -41,8 +46,8 @@
                      128))
 (assert-event (equal (fn-bs-profile-max-transactions *fn-bs-profile-scale*) 4096))
 ; The defaults read P2's ceilings: R 64 MiB, A 16 MiB, G 4096, names 256 (the
-; D27 figure 460 capped at the label width).  The presets translate format 7
-; with the codec ceilings, 65 535 groups of 256 octets.
+; D27 figure 460 capped at the label width).  The presets carry
+; the codec ceilings, 65 535 groups of 256 octets.
 (assert-event (equal (fn-bs-profile-max-record-octets *fn-bs-profile-defaults*)
                      67108864))
 (assert-event (equal (fn-bs-profile-max-article-octets *fn-bs-profile-defaults*)
@@ -134,9 +139,13 @@
 (bsft-refuses ((8 . 0)) :max-open-suffix-outside-transactions)
 (bsft-refuses ((8 . 1001)) :max-open-suffix-outside-transactions)
 (bsft-refuses ((9 . 0)) :namespace-count-outside-width)
+; The format word of the retired format (fn-store-experiment-7) is refused.
+(defconst *bsft-format-7-word*
+  '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
+    101 110 116 45 55))
 (bsft-refuses ((13 . 4294967296)) :namespace-count-outside-width)
 (assert-event (equal (fn-bs-profile-invalid-reason
-                      (fn-bs-profile-put 0 *fn-bs-meta-format-development* *bsft-free*))
+                      (fn-bs-profile-put 0 *bsft-format-7-word* *bsft-free*))
                      :format))
 (assert-event (equal (fn-bs-profile-invalid-reason (butlast *bsft-free* 1))
                      :layout))
@@ -160,15 +169,13 @@
 ; admits a payload of exactly that many octets, which the conclusion bounds.
 (assert-event (fn-bs-publication-admissiblep *bsft-poll-top* 0 4294966940))
 (assert-event (<= 4294966940 *fn-stxa-max-octets*))
-; Every preset and both format-7 translations: R well within the ceiling.
+; Every preset: R well within the ceiling.
 (assert-event (<= (fn-bs-profile-max-record-octets *fn-bs-profile-development*)
                   *fn-stxa-max-octets*))
 (assert-event (<= (fn-bs-profile-max-record-octets *fn-bs-profile-scale*)
                   *fn-stxa-max-octets*))
 (assert-event (<= (fn-bs-profile-max-record-octets *fn-bs-profile-defaults*)
                   *fn-stxa-max-octets*))
-(assert-event (fn-bs-profile-admittedp *fn-bs-meta-format-7-development-values*))
-(assert-event (fn-bs-profile-admittedp *fn-bs-meta-format-7-scale-values*))
 ; The hypothesis: without the gate's admission a payload one octet past the
 ; ceiling is a counterexample; and the gate refuses it even under the profile
 ; that asks for R one octet past the ceiling (that profile is not admitted).
@@ -262,25 +269,24 @@
            (len (fn-record-encode r))))))
 
 ; -----------------------------------------------------------------------------
-; Format 7 is still decoded and served under its translation; format 6 is not
+; One format (D34): a format-7 or format-6 frame is not decoded, and its
+; tuple is not a profile
 
-(defun bsft-format-7-frame (values)
+(defun bsft-old-format-frame (values)
   (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
                  *fn-bs-meta-config-kind*
-                 (fn-frame-fields-octets *fn-bs-meta-format-7-spec* values)))
-(assert-event (equal (fn-bs-config-decode
-                      (bsft-format-7-frame *fn-bs-meta-format-7-scale-values*))
-                     *fn-bs-meta-format-7-scale-values*))
-(assert-event (fn-bs-profile-admittedp *fn-bs-meta-format-7-scale-values*))
-(assert-event (equal (fn-bs-profile-of *fn-bs-meta-format-7-scale-values*)
-                     *fn-bs-profile-scale*))
-(assert-event (equal (fn-bs-profile-max-transactions
-                      *fn-bs-meta-format-7-scale-values*) 4096))
-(assert-event (equal (fn-bs-profile-record-ceiling
-                      *fn-bs-meta-format-7-development-values*) 17138486))
-(assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report
-                                                 *fn-bs-meta-format-7-scale-values*)))
-                     7))
+                 (fn-frame-fields-octets '(:text :nat :nat :nat :nat :text) values)))
+(defconst *bsft-format-7-scale*
+  (list *bsft-format-7-word* 1048576 32768 805306368 4096
+        *fn-bs-meta-frontier-format*))
+(assert-event (fn-bs-config-okp (fn-bs-config-encode *fn-bs-profile-scale*)))
+(assert-event (not (fn-bs-config-decode (bsft-old-format-frame *bsft-format-7-scale*))))
+(assert-event (not (fn-bs-profile-admittedp *bsft-format-7-scale*)))
+(assert-event (null (fn-bs-profile-of *bsft-format-7-scale*)))
+(assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *bsft-format-7-scale*)))
+                     0))
+(assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*)))
+                     8))
 (assert-event (equal (fn-bs-profile-report *bsft-free*)
                      (cons '("format" . 8)
                            (append
@@ -293,16 +299,15 @@
                                         (fn-bs-profile-put 14 1 *bsft-free*))))
                      "required"))
 (assert-event (equal (cdr (assoc-equal "history-marker"
-                                       (fn-bs-profile-report
-                                        *fn-bs-meta-format-7-scale-values*)))
+                                       (fn-bs-profile-report *fn-bs-profile-scale*)))
                      "unmarked"))
 ; A format-6 tuple (65538-octet records, below the article kind's ceiling) is
-; neither a format-7 tuple nor decoded.
+; not decoded either.
 (defconst *bsft-format-6*
   (list '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
           101 110 116 45 54)
         1048576 32768 8388864 128 *fn-bs-meta-frontier-format*))
-(assert-event (not (fn-bs-config-decode (bsft-format-7-frame *bsft-format-6*))))
+(assert-event (not (fn-bs-config-decode (bsft-old-format-frame *bsft-format-6*))))
 (assert-event (not (fn-bs-profile-admittedp *bsft-format-6*)))
 (assert-event (not (fn-bs-publication-admissiblep *bsft-format-6* 0 1)))
 

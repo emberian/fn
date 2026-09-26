@@ -1,0 +1,19 @@
+test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start (tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start) ... ok
+test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g (tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.754s
+
+OK
+NATIVE-HEAP /tmp/fn-heap-d1gywknp/development.toml init -> 1 fn: refused machine-cannot-hold-profile heap=2681 MB machine=2048 MB
+NATIVE-HEAP /tmp/fn-heap-d1gywknp/development.toml init -> 0 initialized /tmp/fn-heap-d1gywknp/development | accepted operator init
+NATIVE-HEAP /tmp/fn-heap-d1gywknp/development.toml run -> 1 fn: refused machine-cannot-hold-profile heap=2681 MB machine=2048 MB
+NATIVE-HEAP /tmp/fn-heap-d1gywknp/development.toml status -> 1 fn: refused machine-cannot-hold-profile heap=2681 MB machine=2048 MB
+NATIVE-HEAP /tmp/fn-heap-8uh24_ux/small.toml init -> 0 initialized /tmp/fn-heap-8uh24_ux/small | accepted operator init
+NATIVE-HEAP /tmp/fn-heap-8uh24_ux/small.toml status -> 0 actions=1 debt=0 held | open=full-replay reason=absent | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0 | checkpoint-file=absent | pins=0 reserved=0 connections=0 | pack-chain none | heap=1012 MB profile=small machine=2048 MB | accepted operator status
+NATIVE-HEAP figure=1012 MB machine=2048 MB
+NATIVE-HEAP CHECKPOINT auto sequence=100 suffix=100 octets=839540 ms=66
+NATIVE-HEAP vmhwm run=1 kB=148272
+NATIVE-HEAP /tmp/fn-heap-8uh24_ux/small.toml status -> 0 checkpoint:100 suffix=0 | reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0 | checkpoint-file octets=839540 modified=1790447850 | pins=100 reserved=200 connections=0 | pack-chain none | heap=1012 MB profile=small machine=2048 MB | accepted operator status
+NATIVE-HEAP vmhwm run=2 kB=136324
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_heap_from_profile", "tests": 2, "failures": 0, "errors": 0, "skipped": 0, "executed": 2, "skips": [], "timings": [["tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start", 0.374], ["tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g", 3.38]]}

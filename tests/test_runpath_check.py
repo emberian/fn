@@ -113,6 +113,13 @@ class RunpathCheckTests(unittest.TestCase):
                 core.write("libpython3.12.so.1.0".encode("utf-32-le") + b"\0" * 4)
             self.assert_finding(top, "may dlopen libpython3.12.so.1.0")
 
+    def test_arithmetic_expansion_runs_no_command(self):
+        # packaging/fn's heap step: `$(( (core_octets + 1048575) / 1048576 + 128 ))'.
+        self.assertEqual(runpath_check.split_commands(
+            "boot=$(( (core_octets + 1048575) / 1048576 + 128 ))"), [])
+        self.assertEqual(runpath_check.split_commands(
+            "n=$(( 1 + 2 )); /usr/local/bin/helper $(( n / 2 ))"), ["/usr/local/bin/helper"])
+
     def test_absolute_command_outside_the_release_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             top = self.release(Path(tmp))

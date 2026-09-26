@@ -1,0 +1,11 @@
+fn-69046a76798b-linux-x86_64.tar.gz: OK
+SUMS-OK
+tarball sha256 1a2a61e997c086c333760cf27b2e3b1eaf0fa0101aa54dda95abbc3b9e174003  /tank/fn/scratch/qual-69046a76/friends/release/fn-69046a76798b-linux-x86_64.tar.gz
+tarball core vs gate core:
+dc3b8919ab8d43750d9b9fb521c7c40039eaf29086d5f7b55293ba85d2faea7a  /tank/fn/scratch/qual-69046a76/friends/friend/fn-69046a76798b/libexec/fn/fn-host.core
+dc3b8919ab8d43750d9b9fb521c7c40039eaf29086d5f7b55293ba85d2faea7a  /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host.core
+432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505  /tank/fn/scratch/qual-69046a76/friends/friend/fn-69046a76798b/libexec/fn/fn-host
+432622d29a28d59455e01f3e5b426036c5862db21d5f7d1205a9304ab11e3505  /tank/fn/gates/qual-69046a76-20260926/build/images/69046a76798b8be6169eeed5a66cc46fbe399e51/fn-host
+fn --version: fn 69046a76798b8be6169eeed5a66cc46fbe399e51
+bare fn: usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)
+accepted operator help

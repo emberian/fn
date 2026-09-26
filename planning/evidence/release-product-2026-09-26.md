@@ -105,7 +105,7 @@ tests.test_release_tarball's planted symlink in a scratch copy (fails with
 
 `FN_RELEASE_TARBALL=.../fn-c755569badf5-linux-x86_64.tar.gz python3 -m
 unittest -v tests.test_release_tarball`: 8 ran, 7 OK, 1 skipped
-(`test_install_refuses_a_format_7_store`: FN_FORMAT7_FIXTURE unset; the
+(`test_install_refuses_a_format_7_store`: FN_FORMAT7_FIXTURE, since the merge FN_FORMAT7_STORE, unset; the
 one-format open is lane migration-removal's, not in this revision). Log
 `release-product-2026-09-26/test_release_tarball.log`, sha256 4c69f3fe...
 
@@ -187,3 +187,38 @@ validate at build) -> observed: the rehearsal's post and reads, the
 tarball test, the runpath check. The one book changed is the generated test
 book tests/acl2/docs-operator-grammar-tests.lisp (install.md's rows),
 admitted whole in the persvati REPL (13 forms, `last loaded: assert-event`).
+
+## Merge of dev a6cc8d0e (continuation release-product-merge)
+
+dev now carries crypto-deps, release-openbsd with openbsd-feed (8c4b8f5c),
+launcher-env, heap-from-profile and migration-removal (D34). Resolutions:
+
+- host/native/crypto.lisp: crypto-deps' final comment (HST-016) with this
+  lane's note that ld.so searches LD_LIBRARY_PATH (a release's
+  libexec/fn/lib) first; the code line was identical.
+- packaging/fn.rc.in: this lane's (install.sh renders @PREFIX@, @NODE@,
+  @USER@; defaults /var/fn and _fn, release-openbsd's values and its
+  "starts in /var/fn" sentence).
+- packaging/freeze-native-image.sh, packaging/install-native.sh: dev's
+  (crypto-deps' two-argument freeze; the per-platform libsodium check).
+- packaging/release-tarball.sh: this lane's pipeline and header; dev's
+  platform, runpath and OpenBSD pax steps were already in it.
+- tools/runbooks/README.md: dev's reinstall paragraph (D34, the
+  store-format refusal) pointing at the release's install.sh and
+  docs/install.md section 4; the stale `current`-symlink paragraph (the
+  deleted upgrade-native.sh's) dropped.
+- planning/backlog-2026-09-25.md: dev's (its PKT-588 row carries sweep 24's
+  addition); tests/acl2/docs-operator-grammar-tests.lisp regenerated
+  (`docs_check --write`: install.md's export/import rows now checked,
+  the verbs being on dev; operator=76, skip=1), admitted whole in the
+  persvati REPL (13 forms, last loaded: assert-event).
+- packaging/fn: dev's (the union); packaging/upgrade-native.sh and
+  tests/test_frozen_image_upgrade.sh stay deleted.
+
+Found by the merge: tools/runpath_check.py read the heap step's arithmetic
+`$(( ... / 1048576 ... ))` as a command `/` ("bin/fn: runs /, outside the
+release"); split_commands now drops arithmetic expansions, with a witness in
+tests/test_runpath_check.py. tests/test_release_tarball.py reads
+migration-removal's fixture name FN_FORMAT7_STORE (the fixture is not yet on
+hbox). planning/proofs.json: the evidence paths of files D34 deleted dropped
+from PRF-072, PRF-095 and PRF-141 (dev's check_scaffold was red on them).

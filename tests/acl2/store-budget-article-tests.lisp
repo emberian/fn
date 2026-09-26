@@ -98,19 +98,6 @@
         (<= (len (fn-record-payload *pmt-record*)) 32768)
         (not (fn-profile-replay-within-boundp *pmt-old* (+ b *pmt-len*))))))
 
-; fn-profile-upgrade-keeps-article-verdict: the upgrade that raised A (packet
-; 1's counterexample 2 for the profile-derived figure) keeps this verdict.
-(assert-event (fn-profile-upgradep *pmt-old* *pmt-new*))
-(assert-event (equal (fn-sbud-article-verdict-at *pmt-new* 1 *sbat-safe* 32768 400)
-                     :admissible))
-; Its hypothesis: not an upgrade (H lowered to 200 000) refuses the state.
-(defconst *sbat-lower-h* (fn-bs-profile-set-fields *pmt-old* '((3 . 200000))))
-(assert-event (fn-bs-profile-validp *sbat-lower-h*))
-(assert-event (not (fn-profile-upgradep *pmt-old* *sbat-lower-h*)))
-(assert-event (equal (fn-sbud-article-verdict-at *sbat-lower-h* 1 *sbat-safe*
-                                                 32768 400)
-                     :unaffordable))
-
 ; ---------------------------------------------------------------------------
 ; PRF-126: KEYSTONE fn-sbud-article-verdict-keeps-history-at-producer-width.
 ; Reachable-shape witness: packet 1's record with sequence, txid, generation

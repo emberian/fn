@@ -5,8 +5,8 @@
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
-; The scale and development profiles as the image before P6 saved them: the
-; format-7 translations, R = 17 138 486 (the article record of A = 32 768 and
+; The scale and development profiles as the image before P6 saved them
+; (the presets' values), R = 17 138 486 (the article record of A = 32 768 and
 ; G = 65 535 at the 1 083-octet overhead), the namespace counts 2^20 and the
 ; history requirement `unmarked'.  Written out, not computed, so a change to
 ; the presets does not move the witness with them.
@@ -37,9 +37,6 @@
 (assert-event (equal *fn-bs-profile-development* *bspv1-saved-development*))
 ; R is tight there: the article record of (A, G) is exactly R.
 (assert-event (equal (fn-record-encoded-octets-ceiling 32768 65535) 17138486))
-; The live node's format-7 store translates to the same R.
-(assert-event (equal (fn-bs-profile-record-ceiling
-                      *fn-bs-meta-format-7-scale-values*) 17138486))
 
 ; What the fix repairs: at the wide overhead (every uint head at 9 octets,
 ; P6's first cut) the article record of (A, G) is 17 138 514, 28 octets past

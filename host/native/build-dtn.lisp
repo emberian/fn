@@ -117,9 +117,13 @@
 ;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
 (include-book "books/store-history-marker")
 ;; D31: the history requirement and the recovery catch-up: io.lisp
-;; fnn-check-history-marker, fnn-recover and fnn-command-upgrade-profile call
-;; fn-hmr-open-verdict, fn-hmr-catch-up and fn-hmr-upgrade-verdict.
+;; fnn-check-history-marker and fnn-recover call
+;; fn-hmr-open-verdict and fn-hmr-catch-up.
 (include-book "books/store-history-required")
+;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
+;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
+;; fn-sxp-import-plan.
+(include-book "books/store-export")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
@@ -140,6 +144,9 @@
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
+;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
+;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
+(include-book "books/post-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
 ;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
@@ -148,6 +155,9 @@
 ;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
 ;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+;; The served read over the octet buffer (ingress-span): host/owner-host.lisp
+;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
+(include-book "books/served-span")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
@@ -184,6 +194,10 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The process heap from the store profile (PKT-016): host/native/heap.lisp,
+; which the operator loaded below calls.  After every `ld': no host wrapper
+; above uses it, and it would otherwise serve their books transitively.
+(include-book "books/heap-figure")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -224,6 +238,9 @@
         ; enrolled BP boundaries) through the one public operator entry.
         (load "host/native/owner.lisp")
         (load "host/native/operator.lisp")
+        ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
+        ; line `status' and `health' print; after operator.lisp, whose plan it reads.
+        (load "host/native/heap.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

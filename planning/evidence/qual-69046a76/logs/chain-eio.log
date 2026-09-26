@@ -1,0 +1,7 @@
+test_eio_at_each_link_publication_cut_from_both_entries (tests.test_native_pack_chain.NativePackChainTests.test_eio_at_each_link_publication_cut_from_both_entries) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1795.428s
+
+OK
+rc=0

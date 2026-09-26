@@ -10,7 +10,7 @@
 ; record ceiling of its own payload length and group count at the widths the
 ; runtime produces, `fn-record-encoded-octets-ceiling' (records-shape): the
 ; bound on its real record (`fn-record-encode-narrow-length-bound'), and
-; independent of the profile, so an upgrade keeps every verdict.
+; independent of the profile.
 ;
 ; Host calls: host/store-node-host.lisp `fn-store-sn-article-verdict' (the
 ; developer `store post', before the allocator reservation) and
@@ -19,7 +19,7 @@
 ; `fn-sbud-prepare', `fn-pcar-sbud-prepare-is-sbud-prepare').
 (in-package "ACL2")
 (include-book "owner-store-budget")
-(include-book "store-profile-upgrade")
+(include-book "store-profile-facts")
 
 (local (in-theory (disable fn-sbud-budget-is-the-profile-admissibility
                            fn-bs-publication-admissiblep fn-bs-profile-validp
@@ -185,25 +185,3 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
                             fn-bs-profile-admittedp
                             fn-bs-profile-max-history-octets)))))
 
-; Future admissibility is kept by an upgrade: the figure does not read the
-; profile, the budget and H only grow.
-(defthm fn-profile-upgrade-keeps-article-verdict
-  (implies (and (fn-profile-upgradep old new)
-                (equal (fn-sbud-article-verdict-at old used bytes-used
-                                                   payload-length group-count)
-                       :admissible))
-           (equal (fn-sbud-article-verdict-at new used bytes-used
-                                              payload-length group-count)
-                  :admissible))
-  :hints (("Goal" :use ((:instance fn-profile-upgrade-budget-grows
-                                   (kind :article))
-                        (:instance fn-profile-upgrade-keeps-replay-bound
-                                   (aggregate
-                                    (+ bytes-used
-                                       (fn-sbud-article-figure
-                                        payload-length group-count)))))
-           :in-theory (e/d (fn-sbud-article-verdict-at fn-sbud-admitp
-                            fn-bs-history-admissiblep
-                            fn-profile-replay-within-boundp)
-                           (fn-sbud-article-figure fn-sbud-budget
-                            fn-profile-upgradep)))))

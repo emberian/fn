@@ -2039,20 +2039,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-k0-profile-cuts-relation-by-step",
-          "note": "The profile program (fn-bs-profile-program, config.json) under the checkpoint theorem's hypotheses and (fn-bs-config-okp octets): the same five-cut statement. The landed resolution at the replaced cut names the new inode at config.json, which fn-bs-k0s-with-config-entry-preserves-relation relates. Teeth include octets the configuration check refuses.",
-          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-step-at-state-checkpoint-pairs-preserves-k0-coverage",
           "note": "Every step of the state-checkpoint program, taken from the pair the successful run reaches before it, with any outcome (the stage fsync with :ok or a well-formed crash selection of its writes): the result is covered and the kernel unchanged. The host's error arms (known failure before the rename, uncertain at or after it) are these steps' error outcomes.",
-          "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-step-at-profile-pairs-preserves-k0-coverage",
-          "note": "The profile program's every step with any outcome, as for the checkpoint, under (fn-bs-config-okp octets).",
           "pending_subject": "model-only: the subject is fn-bs-step, the byte-model step every fn-bs-*-program runs through; no host line calls it. The native host is tied to the programs only by tools/native_program_check.py (a static source-order transcription check)."
         },
         {
@@ -3110,35 +3098,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-txn-observation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-replay-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-publication-admissibility"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-verdict"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-verdict-writes-only-upgrades"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-config-decode-of-encode"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-program-crash-is-old-or-new"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-profile-program-crash-budget-is-old-or-new"
         }
       ]
     },
@@ -3160,10 +3120,6 @@
         {
           "kind": "theorem",
           "name": "fn-ccp-reclaim-preserves-reconstructed-history"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccp-profile-upgrade-keeps-reclaim-plan"
         },
         {
           "kind": "theorem",
@@ -3295,14 +3251,6 @@
         {
           "kind": "theorem",
           "name": "fn-hmr-required-store-never-admits-an-absent-marker"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hmr-requirement-follows-a-covering-marker"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hmr-legacy-store-migrates-by-the-two-step"
         }
       ]
     },
@@ -4015,19 +3963,6 @@
         {
           "kind": "theorem",
           "name": "fn-native-auth-admin-effect-word-restart-unless-no-owner"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-format-7-store-needs-upgrade"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-rollback-sound-iff-records-within"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-rollback-keeps-a-required-marker",
-          "note": "KEYSTONE (qual-e747dbcc U1). Host: host/native/io.lisp fnn-command-rollback-check passes the store's own profile as CURRENT. Teeth: tests/acl2/store-profile-upgrade-tests (the kept format-7 scale tuple over the scale preset marked required refuses by name; a required kept profile is sound; must-fail without the current requirement and without the :sound verdict)."
         }
       ]
     },
@@ -4053,10 +3988,6 @@
         {
           "kind": "theorem",
           "name": "fn-bs-profile-namespace-counts-within-width"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-namespace-counts"
         }
       ]
     },
@@ -4725,10 +4656,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-profile-upgrade-keeps-article-verdict"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-sbud-article-figure-bounds-the-record"
         }
       ]
@@ -5020,10 +4947,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-smr-profile-upgrade-keeps-the-reserve"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cverb-pack-fits-the-disk"
         },
         {
@@ -5136,10 +5059,6 @@
         {
           "kind": "theorem",
           "name": "fn-native-operator-store-outcome-passes-a-present-store"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-snapshot-loss-counts-the-suffix"
         },
         {
           "kind": "theorem",
@@ -5468,16 +5387,7 @@
     },
     {
       "id": "PRF-141",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-history-loss-is-ancestry"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-history-loss-is-snapshot-loss"
-        }
-      ]
+      "events": []
     },
     {
       "id": "PRF-139",
@@ -5543,10 +5453,6 @@
         {
           "kind": "theorem",
           "name": "fn-cvec-admitted-profile-starts-held"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cvec-profile-upgrade-keeps-the-vector"
         },
         {
           "kind": "theorem",
@@ -6376,10 +6282,6 @@
         {
           "kind": "theorem",
           "name": "fn-spo-config-open-refuses-only-what-the-old-open-rejected"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-spo-repair-admits-exactly-the-lowering-to-the-width"
         }
       ]
     },
@@ -6413,6 +6315,18 @@
         {
           "kind": "theorem",
           "name": "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-accepted-group-names-are-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nop-init-plain-groups-are-within-the-profile"
         }
       ]
     },
@@ -6667,6 +6581,410 @@
         {
           "kind": "theorem",
           "name": "fn-sco-thaw-checked-accepts-own-publication"
+        }
+      ]
+    },
+    {
+      "id": "PRF-193",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record",
+          "note": "KEYSTONE (PRF-193). The identity prepare the host installs (host/owner-host.lisp fn-owner-prepare-identity -> fn-ccar-ocfg-prepare-identity -> fn-ccar-sn-prepare-identity) stages EVENT as the next event above the history's last record, keeping the history and the node; the candidate test reads that record's txid (fn-pcar-stage-record), not every record's. Teeth: tests/acl2/store-events-carried-tests (reachable reserved store by fn-own-run with a non-empty history: the antecedent and every conjunct, the last-record bound included; hypothesis removal, reachable: the store before its frontier observations, where the prepare leaves it unchanged and nothing is staged, with a must-fail of the statement without its hypothesis)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-191",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-find-article-is-find-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-existing-action-is-rclb-existing-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-find-in-visible-is-find"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-view-okp-of-live-owner"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-pidx-prepare-keeps-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-pidx-prepare-keeps-view-indexed"
+        }
+      ]
+    },
+    {
+      "id": "PRF-189",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-nidx-number-article-is-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-indexed-is-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gnix-find-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gnix-get-of-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-lines-for-numbers-numbered-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-bucket-numbers-under-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-build-entries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-put-all"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gidx-numbers-okp-of-refresh"
+        }
+      ]
+    },
+    {
+      "id": "PRF-190",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpp-crc32c-scan-table-is-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpp-xor-is-masked-logxor"
+        }
+      ]
+    },
+    {
+      "id": "PRF-192",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-reply-to-buffer-is-the-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-reply-to-buffer-refusal-keeps-the-buffer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-181",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scar-feed-span-is-feed-counted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-is-read-tls-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-is-reference-under-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-own-read-span-is-own-read-tls-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-keeps-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-span-preserves-node-premise"
+        }
+      ]
+    },
+    {
+      "id": "PRF-186",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cnode-record-acceptablep-is-the-carried-check"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnode-advanced-node-is-configured"
+        }
+      ]
+    },
+    {
+      "id": "PRF-201",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "create-fn-cat{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdraw{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-redecide{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-clear{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-intern-list-materializes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-intern-is-intern-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hf-body-lines-of-is-nov-body-line-count-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit-keeps-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit-new-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-commit-binds-fresh-numbers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-visible-at-withdrawn"
+        }
+      ]
+    },
+    {
+      "id": "PRF-202",
+      "events": []
+    },
+    {
+      "id": "PRF-203",
+      "events": []
+    },
+    {
+      "id": "PRF-204",
+      "events": []
+    },
+    {
+      "id": "PRF-194",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-pinned-answers-500-to-a-keyword-help-does-not-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-help-renders-the-served-command-table-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-served-keywordp-unfolds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-195",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-description-after-set-is-its-pieces"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-description-after-set-of-another-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-motd-after-set-is-its-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-descriptions-of-other-kinds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-admitted-description-rows-are-printable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-description-of-descs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-description-of-the-listing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-motd-of-the-listing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-list-newsgroups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-list-motd"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-list-newsgroups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-list-motd"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-list-newsgroups-is-the-described-listing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-list-motd-is-the-configured-message"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-described-lines-of-no-descs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-described-lines-are-response-text"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-motd-lines-are-response-text"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-list-newsgroups-described"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-list-motd"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-inj-decide-ignores-the-listing"
+        }
+      ]
+    },
+    {
+      "id": "PRF-197",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-listener-addresses-are-bindable-projections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncfg-listener-plan-ok-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncfg-listener-element-ok-is-a-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncfg-listener-element-classifies-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-ipv6-literal-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-ipv4-address-shape"
+        }
+      ]
+    },
+    {
+      "id": "PRF-205",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sxp-import-of-export-replays-the-same-history",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import calls fn-sxp-import-plan; fnn-command-store-export calls fn-sxp-entries and fn-sxp-manifest. Teeth: tests/acl2/store-export-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
+          "note": "KEYSTONE (D34, one format). Host: host/native/io.lisp fnn-metadata-config-decode via fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-198",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-heap-decide-admits-every-store-the-profile-admits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-decide-refuses-exactly-past-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-small-profile-fits-a-small-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-request-on-a-small-machine-is-small"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-request-keeps-the-operators-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-machine-octets-is-at-most-each-observation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-decision-exit-code-of-a-refusal"
         }
       ]
     }

@@ -469,7 +469,7 @@
             (fn-nntp-string-octets "XPAT")
             (fn-nntp-string-octets "NEWNEWS")
             (fn-nntp-string-octets
-             "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
+             "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT")
             (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))
     (list (fn-nntp-string-octets "VERSION 2")
           (fn-nntp-string-octets "READER")
@@ -478,7 +478,7 @@
           (fn-nntp-string-octets "XPAT")
           (fn-nntp-string-octets "NEWNEWS")
           (fn-nntp-string-octets
-           "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS NEWSGROUPS OVERVIEW.FMT")
+           "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT")
           (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))))
 
 (defun fn-nntp-unadvertised-capability-lines ()
@@ -493,19 +493,25 @@
 
 (defun fn-nntp-help (session)
   ; RFC 3977 section 7.2: a short summary of the commands that are
-  ; understood.  Every keyword fn-nntp-session-command or
-  ; fn-nntp-archive-command (books/nntp.lisp) recognizes appears here, and
-  ; nothing else does; tests/acl2/nntp-legacy-tests.lisp pins the two lists
-  ; against each other.
+  ; understood.  The lines are the rows of the served command table,
+  ; *fn-nntp-served-command-table* in books/nntp-help.lisp: every keyword
+  ; the served dispatcher fn-auth-step-pinned recognizes, including the
+  ; authentication layer's AUTHINFO, STARTTLS and XREDEEM and the peer
+  ; layer's IHAVE, CHECK and TAKETHIS (PRF-194: a keyword outside the table
+  ; is answered 500 by the served step, and these lines render the table).
   (fn-nntp-multi session "100 help text follows"
                  (list (fn-nntp-string-octets
                         "CAPABILITIES HELP QUIT MODE DATE POST")
+                       (fn-nntp-string-octets
+                        "AUTHINFO STARTTLS XREDEEM")
                        (fn-nntp-string-octets
                         "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS")
                        (fn-nntp-string-octets
                         "ARTICLE HEAD BODY STAT")
                        (fn-nntp-string-octets
-                        "OVER XOVER HDR XHDR XPAT"))))
+                        "OVER XOVER HDR XHDR XPAT")
+                       (fn-nntp-string-octets
+                        "IHAVE CHECK TAKETHIS"))))
 
 ; -----------------------------------------------------------------------------
 ; Reader environment: the clock observation and the persisted group-creation
@@ -561,7 +567,18 @@
 ; global.
 (defun fn-nntp-env (observation facts posting)
   (declare (xargs :guard t :verify-guards nil))
-  (list :fn-nntp-env observation facts posting))
+  (list :fn-nntp-env observation facts posting nil))
+
+; The fourth field is the reader listing the connection's pinned
+; configuration carries (PRF-195): (DESCS MOTD), DESCS an alist from a group
+; name to its description octets and MOTD the lines of the node's message,
+; both projected from the configuration's descriptions slot by
+; books/owner-agent.lisp `fn-oag-listing'.  An environment built by
+; `fn-nntp-env' carries none: every group then shows the marker and LIST
+; MOTD answers an empty block.
+(defun fn-nntp-env-listed (observation facts posting listing)
+  (declare (xargs :guard t :verify-guards nil))
+  (list :fn-nntp-env observation facts posting listing))
 
 (defun fn-nntp-env-observation (x)
   (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
@@ -571,9 +588,13 @@
   (mbe :logic (car (cdr (cdr (cdr x))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 
+(defun fn-nntp-env-listing (x)
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+
 (defun fn-nntp-envp (x)
   (and (true-listp x)
-       (equal (len x) 4)
+       (equal (len x) 5)
        (equal (car x) :fn-nntp-env)
        (fn-clock-observationp (fn-nntp-env-observation x))
        (fn-nntp-group-fact-listp (fn-nntp-env-facts x))
@@ -1262,6 +1283,10 @@
 (verify-guards fn-nntp-env-facts)
 
 (verify-guards fn-nntp-env-posting)
+
+(verify-guards fn-nntp-env-listed)
+
+(verify-guards fn-nntp-env-listing)
 
 (verify-guards fn-nntp-envp)
 
@@ -2150,6 +2175,92 @@
             (fn-nntp-single session "501 syntax error")))
       (fn-nntp-single session "501 syntax error"))))
 
+;; -----------------------------------------------------------------------------
+;; LIST NEWSGROUPS with descriptions (RFC 3977 section 7.6.6) and LIST MOTD
+;; (RFC 6048 section 2.5), from the reader listing (PRF-195, NNT-039).
+;;
+;; A description is shown exactly as the configuration holds it when it is a
+;; non-empty run of printable ASCII (octets 32 to 126), which is what
+;; :set-group-description admits (books/config.lisp); a group with none shows
+;; the fixed marker of `fn-nntp-newsgroup-lines', so a group with no
+;; description is rendered as before.  The same test keeps any line of the
+;; message a single response line: a line the test refuses is not sent.
+
+(defun fn-nntp-description-textp (bytes)
+  (declare (xargs :guard t))
+  (if (consp bytes)
+      (and (integerp (car bytes)) (<= 32 (car bytes)) (<= (car bytes) 126)
+           (fn-nntp-description-textp (cdr bytes)))
+    (null bytes)))
+
+(defun fn-nntp-listing-descs (listing)
+  (declare (xargs :guard t))
+  (if (consp listing) (car listing) nil))
+
+(defun fn-nntp-listing-motd (listing)
+  (declare (xargs :guard t))
+  (if (and (consp listing) (consp (cdr listing))) (car (cdr listing)) nil))
+
+; The description octets DESCS holds for GROUP, or nil.
+(defun fn-nntp-description-of (group descs)
+  (declare (xargs :guard t))
+  (if (consp descs)
+      (if (and (consp (car descs)) (equal (car (car descs)) group))
+          (cdr (car descs))
+        (fn-nntp-description-of group (cdr descs)))
+    nil))
+
+(defun fn-nntp-description-field (group descs)
+  (declare (xargs :guard t))
+  (let ((d (fn-nntp-description-of group descs)))
+    (if (and (consp d) (fn-nntp-description-textp d))
+        d
+      (fn-nntp-string-octets "(no description)"))))
+
+(defun fn-nntp-described-lines (groups descs)
+  (if (consp groups)
+      (cons (fn-nntp-append-pieces
+             (list (fn-nntp-string-octets (car groups)) (list 9)
+                   (fn-nntp-description-field (car groups) descs)))
+            (fn-nntp-described-lines (cdr groups) descs))
+    nil))
+
+(defun fn-nntp-list-newsgroups-described (session archive descs args)
+  ; The argument grammar of LIST NEWSGROUPS [wildmat], parsed once.
+  (if (null args)
+      (fn-nntp-multi session "215 list of newsgroups follows"
+                     (fn-nntp-described-lines (fn-state-groups archive) descs))
+    (if (and (consp args) (null (cdr args)))
+        (let ((parsed (fn-wildmat-parse (car args))))
+          (if (fn-wildmat-result-okp parsed)
+              (fn-nntp-multi session "215 list of newsgroups follows"
+                             (fn-nntp-described-lines
+                              (fn-nntp-filter-groups-by-wildmat
+                               (fn-wildmat-result-value parsed)
+                               (fn-state-groups archive))
+                              descs))
+            (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session "501 syntax error"))))
+
+(defun fn-nntp-motd-lines (lines)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (if (fn-nntp-description-textp (car lines))
+          (cons (car lines) (fn-nntp-motd-lines (cdr lines)))
+        (fn-nntp-motd-lines (cdr lines)))
+    nil))
+
+; Section 2.5.2: "an argument MUST NOT be specified.  Otherwise, a 501
+; response code MUST be returned", and "The motd MAY be empty": this server
+; maintains the item (its capability line names MOTD), so a node with no
+; message answers an empty block, never 503.
+(defun fn-nntp-list-motd (session env args)
+  (if (null args)
+      (fn-nntp-multi session "215 message of the day follows"
+                     (fn-nntp-motd-lines
+                      (fn-nntp-listing-motd (fn-nntp-env-listing env))))
+    (fn-nntp-single session "501 syntax error")))
+
 (defun fn-nntp-list-command (session archive env args)
   ; LIST's variant keyword is dispatched here so that ACTIVE.TIMES can read
   ; the environment's creation facts; every other variant is decided by
@@ -2165,7 +2276,21 @@
              (fn-nntp-keyword-tokenp (car args))
              (fn-nntp-keywordp (car args) "COUNTS"))
         (fn-nntp-list-counts-command session archive (cdr args))
-      (fn-nntp-list-response session archive args))))
+      ; NEWSGROUPS and MOTD read the reader listing (PRF-195).
+      ; fn-nntp-list-response's NEWSGROUPS arm is therefore not reached
+      ; from this dispatcher: it is `fn-nntp-list-newsgroups-described'
+      ; with no descriptions (fn-nntp-described-lines-of-no-descs).
+      (if (and (consp args)
+               (fn-nntp-keyword-tokenp (car args))
+               (fn-nntp-keywordp (car args) "NEWSGROUPS"))
+          (fn-nntp-list-newsgroups-described
+           session archive
+           (fn-nntp-listing-descs (fn-nntp-env-listing env)) (cdr args))
+        (if (and (consp args)
+                 (fn-nntp-keyword-tokenp (car args))
+                 (fn-nntp-keywordp (car args) "MOTD"))
+            (fn-nntp-list-motd session env (cdr args))
+          (fn-nntp-list-response session archive args))))))
 
 (verify-guards fn-nntp-xover-range)
 (verify-guards fn-nntp-xover-response)
@@ -2209,7 +2334,20 @@
 (verify-guards fn-nntp-active-times-lines)
 (verify-guards fn-nntp-filter-facts-by-wildmat)
 (verify-guards fn-nntp-list-active-times)
+(verify-guards fn-nntp-described-lines)
+(verify-guards fn-nntp-list-newsgroups-described)
+(verify-guards fn-nntp-list-motd)
 (verify-guards fn-nntp-list-command)
+
+; With no descriptions, LIST NEWSGROUPS is the marker listing it was before
+; PRF-195 (fn-nntp-list-response's NEWSGROUPS arm).
+(defthm fn-nntp-described-lines-of-no-descs
+  (equal (fn-nntp-described-lines groups nil)
+         (fn-nntp-newsgroup-lines groups))
+  :hints (("Goal" :in-theory (enable fn-nntp-described-lines
+                                     fn-nntp-description-field
+                                     fn-nntp-description-of
+                                     fn-nntp-newsgroup-lines))))
 
 ; NEWNEWS.  The article accessors stay closed here for the reason recorded
 ; above fn-nov-overview: fn-nov-get-headers-car-is-a-field (local) is what
@@ -2262,6 +2400,7 @@
     fn-nntp-fact-name fn-nntp-fact-created fn-nntp-fact-observation
     fn-nntp-group-factp fn-nntp-group-fact-listp fn-nntp-env
     fn-nntp-env-observation fn-nntp-env-facts fn-nntp-env-posting
+    fn-nntp-env-listed fn-nntp-env-listing
     fn-nntp-envp fn-nntp-blind-env
     fn-nntp-unix-dtn-ms fn-nntp-host-observation fn-nntp-div fn-nntp-mod
     fn-nntp-civil-from-days fn-nntp-days-from-civil fn-nntp-dtn-civil
@@ -2294,6 +2433,10 @@
     fn-nntp-xpat-response fn-nntp-dtn-unix-seconds
     fn-nntp-active-times-line fn-nntp-active-times-lines
     fn-nntp-filter-facts-by-wildmat fn-nntp-list-active-times
+    fn-nntp-description-textp fn-nntp-listing-descs fn-nntp-listing-motd
+    fn-nntp-description-of fn-nntp-description-field
+    fn-nntp-described-lines fn-nntp-list-newsgroups-described
+    fn-nntp-motd-lines fn-nntp-list-motd
     fn-nntp-list-command
     fn-nntp-dt-nth fn-nntp-dt-alphap fn-nntp-dt-lower3
     fn-nntp-dt-month-index fn-nntp-dt-named-zone fn-nntp-dt-digits
