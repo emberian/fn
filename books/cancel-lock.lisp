@@ -170,6 +170,10 @@
 ; the poster wrote no Cancel-Lock of their own: exactly one Cancel-Lock line,
 ; LOGIN's lock for this Message-ID, then the Cancel-Key line of a cancel, at
 ; the end of the node's Injection-Info line; every other octet as injected.
+(local
+ (defthm fn-cl-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
 (defthm fn-cl-served-payload-writes-one-login-lock
   (let ((fields (fn-ctl-received-fields payload))
         (k (fn-cll-info-end payload 0 :start)))
