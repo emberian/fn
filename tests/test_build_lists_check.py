@@ -48,10 +48,11 @@ CHECKPOINT_BUFFER_INCLUDES = (
     ';; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and\n'
     ';; fn-store-sco-segment-admit calls fn-sccr-admit-segment.\n'
     '(include-book "books/store-checkpoint-reader")\n')
+# checkpoint-capture-stream (2026-09-26): host/owner-host.lisp now also
+# includes books/owner-checkpoint-stream, whose closure holds octets-stobj,
+# so the bare copy (its three self-includes removed) still reaches fn-octets
+# and that finding is gone; the store-reclaim-buffer one stays.
 BUFFER_FINDINGS = [
-    "included: host/owner-host.lisp uses fn-octets, defined in "
-    "books/octets-stobj.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/owner-host.lisp",
     "included: host/owner-host.lisp uses fn-rclb-existing-action, defined in "
     "books/store-reclaim-buffer.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"]

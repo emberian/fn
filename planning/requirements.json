@@ -2274,7 +2274,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-104",
-        "PRF-173"
+        "PRF-173",
+        "PRF-183"
       ],
       "verification": [
         "proof",
@@ -3276,6 +3277,30 @@
         "books/retention-figures.lisp"
       ],
       "implementation_note": "`operator CONFIG control log` and `control evidence MESSAGE-ID`: status reports the running owner renders over its committed view (FNLS frame kind 3; no FNCT kind taken), and the offline command over the replayed Store as recovery decides. `store ROOT retention` (offline: it takes a store root, so it has no socket to route by) prints the figures `operator CONFIG obligations` opens with, through the same ACL2 functions (fn-nls-obligations-figures-are-the-retention-figures). Live `bp-obligation status`: PKT-500."
+    },
+    {
+      "id": "STO-024",
+      "title": "The owner's automatic publication is decided by name before it is encoded and encodes through the octet buffer, never as octet lists",
+      "specification": "specs/storage.md#checkpointing-the-store-checkpoint-that-open-reads-p3-2026-09-25",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-183"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner-checkpoint-stream.lisp",
+        "tests/acl2/owner-checkpoint-stream-tests.lisp",
+        "books/octets-stobj.lisp",
+        "books/store-checkpoint-buffer.lisp",
+        "books/native-live-status.lisp",
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/checkpoint-capture-stream-2026-09-26.md"
+      ],
+      "implementation_note": "The publication thread (host/native/owner.lisp fnn-owner-publish-captured) calls fn-ock-publication-stream with its own buffer fn-octets-pub; ACL2 computes the file's exact length first (fn-ockb-file-len) against the profile's checkpoint budget (fn-ock-capture-budget, the reader's file bound: 3 x max-history-octets plus one segment's framing) and defers by name (CHECKPOINT deferred reason=exceeds-budget estimate=E budget=B; `status' carries ` deferred=... estimate=E budget=B' on its checkpoint-file line; the retry waits until the budget covers E, fn-ock-publication-blockedp on the due path); else it encodes once into the buffer and the host writes the plan straight from the array through the unchanged fn-bs-scp-program cuts. The frozen checkpoint value itself (the records twice) still lives on the heap at sixteen bytes per octet: the arena (PKT-293/PKT-167) and PKT-314 remain."
     }
   ]
 }

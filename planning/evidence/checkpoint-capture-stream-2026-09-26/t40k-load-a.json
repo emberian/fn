@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "label": "t40k-load-a",
+  "revision": "a9d75c88+ccs",
+  "image": "/tank/fn/scratch/checkpoint-capture-stream/native-auto2/tree/build/fn-host",
+  "core_sha256": "229a09efeae567061a8557573ea41f6dd28b0328284bace8390e969631d280ad",
+  "launcher_sha256": "657bbfd109e63202aa68004a2059f7876bddc66112cc0ef6c3745d4f7fea6d4f",
+  "client_sha256": {
+    "tools/service_envelope.py": "428ba180db8ecf04f9906385535c558ea3768959433c56bdfe120a716ee35950",
+    "tools/signed_carriers.py": "353fdeae5290b2fb4fe11b6783397c506a29a6b9ab5831e069972db3cbb9e290",
+    "tools/rep_measure.py": "51f6dc95b094f85310a998e0f095c7aea44effba153f54d71b7932b5949bb3d0",
+    "tools/msgid_measure.py": "97a1a72895819546455f64b0d8752e961e983a1757fb58615ce4c5dd408e6fa4"
+  },
+  "host": "hbox",
+  "unit": "ccs-t40k-load-a.service",
+  "steps": [
+    "load"
+  ],
+  "profile": "scale-1m",
+  "init_args": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384",
+    "fn.test"
+  ],
+  "store_dir": "/dev/shm/ccs/t40k-a",
+  "filesystem": {
+    "type": "tmpfs"
+  },
+  "n_at_start": 0,
+  "signed_every": 256,
+  "article_octets": 2048,
+  "groups_per_article": 1,
+  "pins": 0,
+  "relay_debt": 0,
+  "loaded_by_core_sha256": "229a09efeae567061a8557573ea41f6dd28b0328284bace8390e969631d280ad",
+  "cloned_from": null,
+  "offered_load": "one sequential client for the latency rows; closed loop for the rate rows",
+  "not_exposed": {
+    "bytes_consed": "needs the heap-hook image (rep_measure.py --heap-dir)",
+    "mutex_held_fraction": "the owner exposes no mutex accounting"
+  },
+  "samples": 100,
+  "started_utc": "2026-09-26T14:47:00Z",
+  "rows": {
+    "load": [
+      {
+        "started_utc": "2026-09-26T14:47:00Z",
+        "from": 0,
+        "to": 40000,
+        "seconds": 669.81,
+        "owner_cpu_s": 993.97,
+        "memory": {
+          "rss_kib": 4251764,
+          "hwm_kib": 5549868
+        },
+        "finished_utc": "2026-09-26T14:58:10Z"
+      }
+    ]
+  },
+  "opens": [
+    {
+      "n": 0,
+      "after": "stop",
+      "mode": "open=full-replay reason=absent",
+      "seconds": 0.083,
+      "owner_cpu_s": 0.08,
+      "memory": {
+        "rss_kib": 371520,
+        "hwm_kib": 371520
+      }
+    }
+  ],
+  "row_budget_s": 120,
+  "disk_before": {
+    "octets": 12288,
+    "inodes": 7
+  },
+  "n": 40000,
+  "signed_in_history": 156,
+  "written_utc": "2026-09-26T14:58:10Z"
+}
