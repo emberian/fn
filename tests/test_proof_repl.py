@@ -498,6 +498,16 @@ class OwnershipTests(unittest.TestCase):
             self.assertIsNone(row["deadline"])
             self.assertIsNone(proof_repl.reap_reason(row, None, None))  # dead, nothing held
 
+    def test_the_default_lane_is_the_trees_lane(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FN_LANE", None)
+            self.assertEqual(proof_repl.default_lane(pathlib.Path("/x/build/lanes/tv")), "tv")
+            self.assertEqual(proof_repl.default_lane(pathlib.Path("/h/fn-gates/reader-2-repl")), "reader-2")
+            self.assertEqual(proof_repl.default_lane(pathlib.Path("/h/fn-gates/operator-walk-r1")), "operator-walk")
+            self.assertIsNone(proof_repl.default_lane(pathlib.Path("/Users/e/dev/fn")))
+            os.environ["FN_LANE"] = "given"
+            self.assertEqual(proof_repl.default_lane(pathlib.Path("/x/build/lanes/tv")), "given")
+
     def test_list_reads_other_trees_with_root(self):
         with tempfile.TemporaryDirectory() as temporary:
             tree = pathlib.Path(temporary) / "lane-tree"
