@@ -135,6 +135,8 @@
     "books/hybrid-lifecycle-store-invariants",
     "books/owner-verdict-read",
     "books/owner-list-counts-read",
+    "books/config-descriptions",
+    "books/owner-descriptions-read",
     "books/owner-signed-post",
     "tests/acl2/hybrid-lifecycle-store-invariants-tests",
     "tests/acl2/native-hybrid-control-tests",
@@ -682,6 +684,7 @@
     "tests/acl2/nntp-pinned-msgid-tests",
     "books/nntp-list-counts",
     "tests/acl2/nntp-list-counts-tests",
+    "tests/acl2/group-descriptions-tests",
     "tests/acl2/nntp-post-tests",
     "books/path",
     "books/path-update",
@@ -999,26 +1002,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1020,
-    "books_in_root_closure": 1013,
-    "roots": 995,
-    "theorems": 14427,
-    "functions": 9987,
-    "assert_events": 15168,
-    "must_fails": 1832,
+    "books": 1023,
+    "books_in_root_closure": 1016,
+    "roots": 998,
+    "theorems": 14485,
+    "functions": 10024,
+    "assert_events": 15228,
+    "must_fails": 1833,
     "prover_refusals": 2,
     "encapsulates": 77,
     "guards": {
-      "verified": 2279,
+      "verified": 2284,
       "declared-off": 783,
-      "default-guarded": 5432,
+      "default-guarded": 5464,
       "default-unguarded": 1493
     },
-    "suspect_theorems": 136,
-    "export_hygiene_warnings": 159,
+    "suspect_theorems": 137,
+    "export_hygiene_warnings": 161,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 156,
-    "include_hygiene_warnings": 1015,
+    "teeth_form_warnings": 157,
+    "include_hygiene_warnings": 1020,
     "host_names_warnings": 1158,
     "hand_written_record_warnings": 18
   },
@@ -7371,6 +7374,34 @@
       "read_error": null
     },
     {
+      "book": "books/config-descriptions.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-cfg-set-group-description-refuses-an-unknown-group-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/config-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7668,12 +7699,12 @@
       "book": "books/config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 46,
-      "functions": 180,
+      "theorems": 59,
+      "functions": 195,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 179,
+        "default-guarded": 194,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -9490,12 +9521,12 @@
       "book": "books/injection.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 77,
+      "theorems": 19,
+      "functions": 79,
       "guards": {
         "verified": 62,
         "declared-off": 0,
-        "default-guarded": 15,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
       "verify_guards_events": 70,
@@ -9962,12 +9993,12 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 27,
-      "functions": 31,
+      "theorems": 28,
+      "functions": 38,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 31,
+        "default-guarded": 38,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -10470,7 +10501,7 @@
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 146,
+      "theorems": 151,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -10612,7 +10643,7 @@
       "book": "books/nntp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 102,
+      "theorems": 104,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -10937,15 +10968,15 @@
       "book": "books/nntp-responses.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 152,
+      "theorems": 14,
+      "functions": 163,
       "guards": {
-        "verified": 152,
+        "verified": 157,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 6,
         "default-unguarded": 0
       },
-      "verify_guards_events": 152,
+      "verify_guards_events": 157,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -11386,11 +11417,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 31,
-      "functions": 6,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11630,6 +11661,34 @@
         "nntp-control",
         "owner-invariants",
         "owner-verdict-read"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-descriptions-read.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-descriptions",
+        "owner-agent",
+        "owner-list-counts-read"
       ],
       "system_includes": [],
       "suspects": [],
@@ -23328,6 +23387,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/group-descriptions-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 60,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 15,
+      "defmacros": 5,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/native-admin",
+        "../../books/owner-descriptions-read"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/group-number-index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -29964,6 +30052,14 @@
       ]
     },
     {
+      "theorem": "fn-cfg-set-group-description-refuses-an-unknown-group-by-definition",
+      "book": "books/config-descriptions.lisp",
+      "line": 130,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-cfg-delta-reason and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-clock-drop-permission-is-exactly-expired-by-definition",
       "book": "books/clock-invariants.lisp",
       "line": 164,
@@ -30226,7 +30322,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 1497,
+      "line": 1502,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -30266,7 +30362,7 @@
     {
       "theorem": "fn-osb-install-refuses-unadmitted-by-definition",
       "book": "books/owner-served-bound.lisp",
-      "line": 94,
+      "line": 95,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-osb-install and the conclusion is that branch's value"
       ]
@@ -31020,6 +31116,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-cfg-motd-after-set-is-its-lines",
+        "book": "books/config-descriptions.lisp",
+        "line": 104,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-ocl-connection-archive-has-pinned-domain",
         "book": "books/config-owner-live.lisp",
         "line": 1462,
@@ -31142,7 +31244,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 847,
+        "line": 950,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -31208,13 +31310,13 @@
       {
         "theorem": "fn-oag-post-config-agent-is-the-path-identity",
         "book": "books/owner-agent.lisp",
-        "line": 87,
+        "line": 106,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-oag-tls-served-conn-config",
         "book": "books/owner-agent.lisp",
-        "line": 404,
+        "line": 423,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -31245,6 +31347,12 @@
         "theorem": "fn-ccar-own-complete-is-own-complete",
         "book": "books/owner-commit-carried.lisp",
         "line": 507,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-oag-motd-of-the-listing",
+        "book": "books/owner-descriptions-read.lisp",
+        "line": 426,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32386,6 +32494,12 @@
         "check": "gix-listgroup-without-projection",
         "book": "tests/acl2/group-bucket-index-tests.lisp",
         "line": 116,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "gdt-another-name-without-its-hypothesis",
+        "book": "tests/acl2/group-descriptions-tests.lisp",
+        "line": 75,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -35275,7 +35389,7 @@
       },
       {
         "book": "books/nntp-responses.lisp",
-        "line": 2317,
+        "line": 2454,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -35369,6 +35483,27 @@
         "line": 27,
         "include": "nntp-control",
         "included": "books/nntp-control.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-descriptions-read.lisp",
+        "line": 19,
+        "include": "owner-list-counts-read",
+        "included": "books/owner-list-counts-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-descriptions-read.lisp",
+        "line": 20,
+        "include": "owner-agent",
+        "included": "books/owner-agent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-descriptions-read.lisp",
+        "line": 21,
+        "include": "config-descriptions",
+        "included": "books/config-descriptions.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -38487,6 +38622,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/group-descriptions-tests.lisp",
+        "line": 5,
+        "include": "../../books/owner-descriptions-read",
+        "included": "books/owner-descriptions-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/group-descriptions-tests.lisp",
+        "line": 6,
+        "include": "../../books/native-admin",
+        "included": "books/native-admin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/group-number-index-tests.lisp",
         "line": 7,
         "include": "../../books/nntp-range-indexed",
@@ -40604,21 +40753,21 @@
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 179,
+        "line": 181,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 179,
+        "line": 181,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 179,
+        "line": 181,
         "name": "string-downcase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -48171,35 +48320,35 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 510,
+        "line": 511,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 751,
+        "line": 752,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 751,
+        "line": 752,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2368,
+        "line": 2369,
         "name": "fn-scar-ocfg-read-span",
         "source": "books/served-span.lisp",
         "reason": "defined in books/served-span.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2512,
+        "line": 2513,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -48375,9 +48524,9 @@
         "line": 407,
         "shape": "fn-inj-config-shapep",
         "shapes": 2,
-        "accessors": 16,
+        "accessors": 17,
         "variable": "x",
-        "reason": "hand-written record: 2 shape predicate(s) (fn-inj-config-shapep, fn-inj-decision-shapep) and 16 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
+        "reason": "hand-written record: 2 shape predicate(s) (fn-inj-config-shapep, fn-inj-decision-shapep) and 17 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/nntp-auth.lisp",
