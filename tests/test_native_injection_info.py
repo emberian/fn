@@ -226,9 +226,11 @@ class NativeInjectionInfoTests(unittest.TestCase):
         peer_line = (b'Injection-Info: peer.example.invalid; posting-account="0123abcd";'
                      b' mail-complaints-to="usenet@peer.example.invalid"')
         relayed = (b"Path: source.example.invalid!peer.example.invalid!not-for-mail\r\n"
-                   + article("<inj-peer@example.invalid>",
-                             peer_line.decode()).replace(b"\r\n\r\n", b"\r\n\r\n", 1))
+                   b"Date: Sat, 26 Sep 2026 12:00:00 +0000\r\n"
+                   b"Injection-Date: Sat, 26 Sep 2026 12:00:00 +0000\r\n"
+                   + article("<inj-peer@example.invalid>", peer_line.decode()))
         seen["relay"] = self.relay(relayed, a, "<inj-peer@example.invalid>")
+        self.assertTrue(seen["relay"].startswith("335 / 235"), seen)
         peer_stored = self.fetch(a, "<inj-peer@example.invalid>")
         seen["relayed info"] = [line.decode() for line in
                                 header_lines(peer_stored, b"Injection-Info")]

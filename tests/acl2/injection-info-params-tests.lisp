@@ -256,3 +256,34 @@ Hello, news.
  (not (equal (fn-native-operator-result-status
               (fn-nop-parse-account '("hash") nil nil))
              :accepted)))
+
+; D25 (gpt-6 wave-5 review §3): generated Injection-Info is node metadata,
+; not authored source.  The same source with a supplied Message-ID, injected
+; at two clock readings and stored under two logins' parameters, is one
+; article for the Store's duplicate test (books/poster-bytes.lisp
+; fn-pb-same-articlep, which the host's buffer twin equals): a same-source
+; retry is a duplicate whatever the new header says.
+(defconst *ipt-withid* (ipt-crlf (ipt-o "From: poster@example.invalid
+Subject: hello
+Newsgroups: fn.letters
+Message-ID: <a.b@example.invalid>
+
+Hello, news.
+")))
+(defconst *ipt-obs-next* (fn-clock-observation 1000001 843004801000 500 t))
+(defconst *ipt-d1* (fn-inj-decide *ipt-withid* *ipt-inj-cfg* *ipt-obs*))
+(defconst *ipt-d2* (fn-inj-decide *ipt-withid* *ipt-inj-cfg* *ipt-obs-next*))
+(assert-event
+ (let ((s1 (fn-ipp-injected-octets *ipt-d1* *ipt-secret* *ipt-login* *ipt-cfg1*))
+       (s2 (fn-ipp-injected-octets *ipt-d2* *ipt-secret* (ipt-o "bob") *ipt-cfg1*)))
+   (and (fn-inj-injectedp *ipt-d1*) (fn-inj-injectedp *ipt-d2*)
+        (equal (fn-inj-decision-msgid *ipt-d1*) (fn-inj-decision-msgid *ipt-d2*))
+        (not (equal s1 s2))
+        (fn-pb-same-articlep (fn-inj-decision-msgid *ipt-d1*) s2 s1))))
+; A different source under the same Message-ID is not.
+(assert-event
+ (let ((s1 (fn-ipp-injected-octets *ipt-d1* *ipt-secret* *ipt-login* *ipt-cfg1*))
+       (s3 (fn-ipp-injected-octets
+            (fn-inj-decide (append *ipt-withid* (ipt-o "more")) *ipt-inj-cfg* *ipt-obs-next*)
+            *ipt-secret* *ipt-login* *ipt-cfg1*)))
+   (not (fn-pb-same-articlep (fn-inj-decision-msgid *ipt-d1*) s3 s1))))
