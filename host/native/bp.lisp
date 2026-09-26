@@ -481,8 +481,10 @@ may or may not be durable."
             (ms (round (* 1000 (- (get-internal-real-time) started))
                        internal-time-units-per-second)))
         (if (member held points)
-            (let ((table (with-output-to-string (*standard-output*)
-                           (sb-profile:report))))
+            (let ((table (with-output-to-string (out)
+                           ;; SBCL prints the table to *trace-output*.
+                           (let ((*standard-output* out) (*trace-output* out))
+                             (sb-profile:report)))))
               (fnn-out "BP profile held=~d arrival-ms=~d" held ms)
               (with-input-from-string (in table)
                 (loop for line = (read-line in nil nil) while line
