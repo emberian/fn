@@ -1666,8 +1666,8 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
              (unless (fnn-regular-p st)
                (return-from fnn-state-checkpoint-plan (values :refused :not-regular)))
              (fnn-octets-clear)
-             ;; One allocation for the whole file's chunks, never past what
-             ;; ACL2 would admit.
+             ;; One allocation for the chunks of the whole file, never past
+             ;; what ACL2 would admit.
              (let ((bound (fnn-core 'fn-store-sco-file-read-bound profile)))
                (when (and (integerp bound) (> bound 0))
                  (fnn-octets-reserve (min (max 0 (sb-posix:stat-size st)) bound))))
@@ -1705,7 +1705,7 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                              (push (list header a (+ a chunk-octets) (fnn-octet-list trailer))
                                    frames)
                              (incf at chunk-octets)
-                             (incf total extent))))))))
+                             (incf total extent)))))))))
              (values :ok (nreverse frames)))
         (fnn-close fd)))))
 
