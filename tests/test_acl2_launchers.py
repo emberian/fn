@@ -57,13 +57,95 @@ def _pooled_with(node: ast.With) -> bool:
     return False
 
 
+def _assignments(tree: ast.AST) -> dict[str, list[ast.expr]]:
+    """Every value assigned to each plain name anywhere in the module."""
+    values: dict[str, list[ast.expr]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    values.setdefault(target.id, []).append(node.value)
+        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and node.value is not None \
+                and isinstance(node.target, ast.Name):
+            values.setdefault(node.target.id, []).append(node.value)
+    return values
+
+
+def _argv_list(expression: ast.expr, values, depth: int = 0) -> ast.List | None:
+    """The literal list an argv expression is, through names and `list + x`."""
+    if depth > 4:
+        return None
+    if isinstance(expression, ast.List):
+        return expression
+    if isinstance(expression, ast.BinOp) and isinstance(expression.op, ast.Add):
+        return _argv_list(expression.left, values, depth + 1)
+    if isinstance(expression, ast.Name):
+        for value in values.get(expression.id, []):
+            found = _argv_list(value, values, depth + 1)
+            if found is not None and found.elts:
+                return found
+    return None
+
+
+def _program_texts(element: ast.expr, values, depth: int = 0) -> list[str]:
+    """The program element's own text and what each name in it is assigned."""
+    texts = [ast.unparse(element)]
+    if depth < 4:
+        # Every name the element reads (`program`, `str(binary)`,
+        # `Path(exe).resolve()`), judged by what the module assigns it.
+        for name in {node.id for node in ast.walk(element) if isinstance(node, ast.Name)}:
+            for value in values.get(name, []):
+                texts += _program_texts(value, values, depth + 1)
+    return texts
+
+
+def _is_acquire(call: ast.Call, acquirers: set[str]) -> bool:
+    function = call.func
+    if (isinstance(function, ast.Attribute) and function.attr == "acquire_tree_slot"
+            and isinstance(function.value, ast.Name) and function.value.id == "acl2_slots"):
+        return True
+    return isinstance(function, ast.Name) and function.id in acquirers
+
+
+def _slot_acquirers(tree: ast.AST) -> set[str]:
+    """Names that are acl2_slots.acquire_tree_slot: an alias or a function calling it."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Assign) and isinstance(node.value, ast.Attribute)
+                and node.value.attr == "acquire_tree_slot"
+                and isinstance(node.value.value, ast.Name) and node.value.value.id == "acl2_slots"):
+            names |= {target.id for target in node.targets if isinstance(target, ast.Name)}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any(
+                isinstance(call, ast.Call) and _is_acquire(call, names)
+                for call in ast.walk(node)):
+            names.add(node.name)
+    return names
+
+
+def _acquires(function: ast.AST, acquirers: set[str]) -> bool:
+    """A function that takes the tree slot itself (acquire/release, not `with`)."""
+    return any(isinstance(call, ast.Call) and _is_acquire(call, acquirers)
+               for call in ast.walk(function))
+
+
 def unpooled_launches(source: str, filename: str = "<source>") -> list[tuple[int, str]]:
-    """(line, program) for every ACL2 launch outside the pool."""
+    """(line, program) for every ACL2 launch outside the pool.
+
+    The argv may be a literal list or a name bound to one (`command = [...]`,
+    `command = [...] + args`); its first element may be a literal or a name,
+    and a name is judged by every value the module assigns it, so an ACL2
+    path held in `program = os.environ["FN_ACL2"]` is caught (PKT-258).
+    """
     tree = ast.parse(source, filename)
     found: list[tuple[int, str]] = []
+    values = _assignments(tree)
+    acquirers = _slot_acquirers(tree)
 
     def visit(node: ast.AST, pooled: bool) -> None:
         if isinstance(node, ast.With) and _pooled_with(node):
+            pooled = True
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _acquires(node, acquirers):
             pooled = True
         if isinstance(node, ast.Call) and not pooled:
             function = node.func
@@ -72,11 +154,13 @@ def unpooled_launches(source: str, filename: str = "<source>") -> list[tuple[int
             through_pool = (isinstance(function, ast.Attribute)
                             and isinstance(function.value, ast.Name)
                             and function.value.id == "acl2_slots")
-            if (name in LAUNCHES and not through_pool and node.args
-                    and isinstance(node.args[0], ast.List) and node.args[0].elts):
-                program = ast.unparse(node.args[0].elts[0])
-                if re.search(r"acl2", program, re.IGNORECASE) and "tools" not in program:
-                    found.append((node.lineno, program))
+            argv = _argv_list(node.args[0], values) if (name in LAUNCHES and not through_pool
+                                                          and node.args) else None
+            if argv is not None and argv.elts:
+                texts = _program_texts(argv.elts[0], values)
+                if any(re.search(r"acl2", text, re.IGNORECASE) and "tools" not in text
+                       for text in texts):
+                    found.append((node.lineno, " = ".join(dict.fromkeys(texts))))
         for child in ast.iter_child_nodes(node):
             visit(child, pooled)
 
@@ -114,6 +198,32 @@ class LauncherRuleTests(unittest.TestCase):
                 "result = run([str(acl2)], cwd=root)",
                 "subprocess.run([str(ACL2)], input=driver)"):
             self.assertEqual(len(unpooled_launches(source)), 1, source)
+
+    def test_an_acl2_path_in_a_variable_is_caught(self):
+        # PKT-258: the program, or the whole argv, held in a name that does
+        # not say acl2.
+        for source in (
+                'program = os.environ["FN_ACL2"]\nsubprocess.Popen([program], stdin=PIPE)',
+                'exe = shutil.which("acl2")\ncommand = [exe, "--quiet"]\nsubprocess.run(command)',
+                'binary = Path(os.environ.get("FN_ACL2", "saved_acl2"))\n'
+                'argv = [str(binary)] + extra\nsubprocess.check_call(argv)',
+                'def start(cfg):\n    image = cfg.acl2_image\n    return subprocess.Popen([image])'):
+            self.assertEqual(len(unpooled_launches(source)), 1, source)
+
+    def test_an_explicit_tree_slot_acquisition_pools_its_function(self):
+        # run_store's bridge takes the slot with an alias, not a `with`.
+        pooled = ('_take = acl2_slots.acquire_tree_slot\n'
+                  'def start(env):\n    _take("bridge")\n'
+                  '    command = [str(resolve_acl2(env))]\n    return subprocess.Popen(command)')
+        self.assertEqual(unpooled_launches(pooled), [])
+        direct = ('def start(env):\n    acl2_slots.acquire_tree_slot("x")\n'
+                  '    return subprocess.Popen([env["FN_ACL2"]])')
+        self.assertEqual(unpooled_launches(direct), [])
+        elsewhere = ('_take = acl2_slots.acquire_tree_slot\n'
+                     'def other():\n    _take("x")\n'
+                     'def start(env):\n    command = [str(resolve_acl2(env))]\n'
+                     '    return subprocess.Popen(command)')
+        self.assertEqual(len(unpooled_launches(elsewhere)), 1)
 
     def test_the_pooled_spellings_pass(self):
         for source in (
