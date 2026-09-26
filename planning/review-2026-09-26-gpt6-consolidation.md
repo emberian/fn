@@ -104,7 +104,13 @@ by the deputy at the first batch):
   OpenSSL); a check that no Python is in the runpath of a deployed node; docs a stranger installs
   from.
 - **D36 A public node.** fn.fg-goose.online peered with spwashi and pug; the public-exposure
-  limits on; the certificate and the storage tier from ember.
+  limits on; the certificate from Let's Encrypt through ~/dev/dregg-infra's ACME tooling (ember,
+  2026-09-26); the node's store on the fastest durable disk hbox has, chosen by a lane that
+  measures fsync cost per mount (not a question for ember).
+- **D35 addendum (ember):** no OpenSSL 3.5 requirement: TLS from the system libssl (LibreSSL on
+  OpenBSD, OpenSSL 3.x on Linux), Ed25519 and SHA-256 from libsodium, ML-DSA-65 from a vendored
+  PQClean implementation of FIPS 204 (lane crypto-deps); the OpenBSD target is the current
+  release, the friend's version to be learned.
 
 The running wave-4 lanes finish (the ledger's five fixes fall under gpt-6's §6 and stay; the
 marker-sharing sharing lane stops at its current attempt: §8 defers the publication redesign).
