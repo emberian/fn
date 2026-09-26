@@ -1793,6 +1793,32 @@
         "tests/acl2/source-routes-tests.lisp",
         "planning/evidence/source-corpus-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-073",
+      "title": "The corpus carried by BP through a dtn7 relay arrives at B as A's record with B's Path splice",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-020"
+      ],
+      "steps": [
+        "Two nodes on the lane's developer and DTN developer images, A and B, with path identities; B's carried-author boundary names A (D23)",
+        "POST every corpus element to A's owner; enroll the signing author at both nodes",
+        "Undertake a forwarding obligation per accepted element; bp-obligation request each through one dtn7-rs relay (sled) to B's bp-node serve",
+        "Hold the last transfer into B mid-bundle, SIGKILL B, restart B and the relay",
+        "Read both nodes' records by Message-ID; SIGKILL B idle, reopen, read B again"
+      ],
+      "expected": [
+        "Xref refused at A (441); every other element 240 and carried",
+        "Each carried element has A's kind-8 attempt line and a distinct bundle identity (dtn://sender/, creation time, sequence) in B's kind-5 frame",
+        "B accepts each request; B's record is A's with receiver identity and an empty diagnostic spliced after Path: and nothing else changed; unchanged across SIGKILL and reopen"
+      ],
+      "evidence": [
+        "tests/test_native_source_corpus_bp.py",
+        "tests/acl2/relay-source-routes-tests.lisp",
+        "planning/evidence/source-corpus-2-2026-09-26.md"
+      ]
     }
   ]
 }

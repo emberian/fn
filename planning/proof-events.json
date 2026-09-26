@@ -4740,6 +4740,31 @@
           "name": "fn-sr-a-signed-retry-is-already-stored"
         }
       ]
+    },
+    {
+      "id": "PRF-127",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rs-authored-source-is-the-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-relaying-keeps-the-authored-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-a-transfer-is-wanted-only-if-both-parse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-a-wanted-transfer-keeps-the-authored-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rs-a-bp-transit-keeps-the-authored-source"
+        }
+      ]
     }
   ]
 }

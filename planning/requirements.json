@@ -2399,7 +2399,8 @@
       "milestone": "M3",
       "status": "implemented",
       "proof_targets": [
-        "PRF-117"
+        "PRF-117",
+        "PRF-127"
       ],
       "verification": [
         "proof",
@@ -2410,9 +2411,14 @@
         "tests/acl2/source-routes-tests.lisp",
         "tests/test_native_source_corpus.py",
         "tests/fixtures/source-corpus/supplied-date.article",
-        "planning/evidence/source-corpus-2026-09-25.md"
+        "planning/evidence/source-corpus-2026-09-25.md",
+        "books/relay-source.lisp",
+        "books/relay-source-routes.lisp",
+        "tests/acl2/relay-source-routes-tests.lisp",
+        "tests/test_native_source_corpus_bp.py",
+        "planning/evidence/source-corpus-2-2026-09-26.md"
       ],
-      "implementation_note": "fn guarantee over RFC 5536 s3.1.3 and RFC 5537 s3.4/s3.5 (D25, D32): on the injecting routes (served POST, operator post, hybrid-author) the verdict is fn-rcl-existing-action on the poster's source; transit and BP admission key on Message-ID (RFC 3977 s6.3.2, RFC 4644). PKT-166 decided and implemented: hybrid-author asks fn-owner-existing-action first; a resend of the same signed carrier is DUPLICATE (exit 0), a changed or re-signed source the refusal (exit 1). Open: BP carriage of the corpus not exercised by the module; the tombstone arm is unreachable-in-composition until a program writes tombstones."
+      "implementation_note": "fn guarantee over RFC 5536 s3.1.3 and RFC 5537 s3.4/s3.5 (D25, D32): on the injecting routes (served POST, operator post, hybrid-author) the verdict is fn-rcl-existing-action on the poster's source; transit and BP admission key on Message-ID (RFC 3977 s6.3.2, RFC 4644). PKT-166 decided and implemented: hybrid-author asks fn-owner-existing-action first; a resend of the same signed carrier is DUPLICATE (exit 0), a changed or re-signed source the refusal (exit 1). PRF-127: the transit projection (NNTP and BP) keeps fn-hc-authored-source. Open: BP carriage of the corpus reaches B (kind-8 attempts, bundle identities) but B refuses every A-injected article, reason not rendered (PKT-246, SCN-073); the tombstone arm is unreachable-in-composition until a program writes tombstones."
     }
   ]
 }
