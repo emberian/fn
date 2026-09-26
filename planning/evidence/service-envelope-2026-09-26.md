@@ -158,7 +158,44 @@ JSONs: `t10k-after.json`, `z10k-after.json`, `t10k-before.json`,
 
 ### N = 100,000, tmpfs, once
 
-(pending: the 100k units)
+The RSS ceiling was named before the start: each unit had `MemoryMax=40G`
+with no swap. Inside that ceiling the owner's own limit is SBCL's dynamic
+space of 32,000 MiB (33,554,432,000 octets).
+
+**The first load died at N = 32,729** (the image after served-path-scale). The
+unit ran `senv-t100k-load-a-after`, one owner process loading from 0, from
+13:18:04 to 13:31:56Z, and consumed 17 min 15 s of CPU with a memory peak of
+31.7G.
+
+- **How it died.** The owner printed `Heap exhausted during garbage
+  collection` and `Heap exhausted, game over.`, with the backtrace in
+  `ACL2::FN-SCC-FRAMES` (`APPEND`). That is the automatic checkpoint capture.
+  Bytes allocated were 33,528,241,120, 99.9 percent of the dynamic space.
+- **What the client saw.** POST 32,729 got an empty reply: the connection
+  closed. Its outcome is uncertain, and the resumed load asks the store (STAT)
+  rather than assuming.
+- **The captures before it.** The owner published an automatic checkpoint
+  about every 2,100 commits (sequence 2,209, 4,329, … 29,453). Each capture
+  took longer than the one before: 4.2 s at 2,209, 24.2 s at 10,626, 54.2 s at
+  21,050 and 90.1 s at 29,453. The capture's work and garbage grow with N, and
+  one process that keeps posting keeps them in its old generations
+  (generations 3, 4 and 7 held 10.0, 11.4 and 4.6 GB).
+- **Evidence.** The owner's non-`accepted` stderr is
+  `planning/evidence/service-envelope-2026-09-26/t100k-load-a-after-owner.stderr.txt`
+  (sha256 fe27d708…).
+
+This is PKT-191's "the checkpoint capture exhausts 32 GB", reproduced on the
+current image during sustained posting, at N = 32,729 rather than 100,000.
+**One owner process that posts without a restart cannot reach N = 100,000
+on this image.**
+
+The continuation reaches 100,000 as an operator would have to. It runs
+`envelope-100k.sh` with `--session-posts 15000`: at most 15,000 preload POSTs
+per owner process, then a restart that the next unit resumes from. That is not
+a smaller case: the store still reaches 100,000, and the restarts are part of
+what the row reports.
+
+(the rows at 100,000: pending at this commit)
 
 ## 4. Findings
 

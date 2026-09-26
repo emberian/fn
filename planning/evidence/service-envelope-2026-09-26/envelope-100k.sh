@@ -14,12 +14,12 @@ unit() {
   echo "$(date -u +%FT%TZ) senv-$name rc=$(cat $L/$name.rc 2>/dev/null || echo none)" >> $L/driver.log
 }
 M="$T measure --image $IMG --revision $REV"
-while systemctl --user is-active --quiet senv-t100k-load-a-$TAG; do sleep 30; done
-echo "$(date -u +%FT%TZ) senv-t100k-load-a-$TAG rc=$(cat $L/t100k-load-a-$TAG.rc 2>/dev/null || echo none)" >> $L/driver.log
-last=a
-for p in b c d e f g h i; do
+# (load-a died at N = 32,729: the heap; the continuation resumes from the store.)
+
+last=a; echo 75 > $L/t100k-load-a-$TAG.rc
+for p in b c d e f g h i j; do
   [ "$(cat $L/t100k-load-$last-$TAG.rc 2>/dev/null)" = 75 ] || break
-  unit t100k-load-$p-$TAG "$M --dir $D --label t100k-load-$p-$TAG --json $S/t100k-load-$p-$TAG.json --load-to 100000 --steps load,latency --budget 1200 --row-budget 60 --open-timeout 500"
+  unit t100k-load-$p-$TAG "$M --dir $D --label t100k-load-$p-$TAG --json $S/t100k-load-$p-$TAG.json --load-to 100000 --steps load,latency --budget 1500 --session-posts 15000 --row-budget 60 --open-timeout 500"
   last=$p
 done
 if [ "$(cat $L/t100k-load-$last-$TAG.rc 2>/dev/null)" = 0 ]; then
