@@ -602,7 +602,17 @@ passed 4, failed 0, 5 installed from the cache, no book over 10 s; manifest
    whose module failed on two harness faults: the smoke verb's argument
    protocol and a source test that matched the comment; both repaired; the
    second run's line is below).
-6. HBOX-SMOKE-LINE
+6. The second run (hbox `native-proto2`, the tree at `7ff27724`; developer
+   core `030b3c3dd8299617…`, production core `6bff486d5f4c1b31…`; log
+   `test-tests.test_native_proto_catalog.log` `023e1ca87928c2c0…`, both
+   under `/tank/fn/scratch/consolidation-design/native-proto2/`):
+   `tests.test_native_proto_catalog` OK, 3 ran, 0 skipped. The developer
+   image's `fn proto-catalog smoke` prints
+   `proto-catalog count=3 total=5 payload1=(4 5) get02=3 foundation=arena fields=5`:
+   the values are ACL2's (`fn-pcat-smoke`), and the live `fn-pcat` object
+   is the arena's concrete stobj (five fields: buf, off, size, count,
+   fill), not the generic's own (one field). The production image does
+   not register the verb (exit 5, nothing printed).
 
 **What the certificate tooling needed.** Nothing new: the four books are
 ordinary Makefile roots; `tools/certify_books.py` and `farm.py` certified
