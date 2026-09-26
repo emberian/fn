@@ -951,23 +951,23 @@
     "books": 966,
     "books_in_root_closure": 960,
     "roots": 944,
-    "theorems": 13570,
-    "functions": 9471,
-    "assert_events": 14231,
-    "must_fails": 1658,
+    "theorems": 13575,
+    "functions": 9474,
+    "assert_events": 14255,
+    "must_fails": 1661,
     "prover_refusals": 2,
-    "encapsulates": 65,
+    "encapsulates": 66,
     "guards": {
-      "verified": 2203,
+      "verified": 2204,
       "declared-off": 762,
-      "default-guarded": 5103,
-      "default-unguarded": 1403
+      "default-guarded": 5104,
+      "default-unguarded": 1404
     },
     "suspect_theorems": 123,
     "export_hygiene_warnings": 152,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 138,
-    "include_hygiene_warnings": 975,
+    "include_hygiene_warnings": 976,
     "host_names_warnings": 1112,
     "hand_written_record_warnings": 18
   },
@@ -7640,7 +7640,7 @@
       "book": "books/consumer-owner-local-progress.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 23,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -7667,14 +7667,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 9,
+      "functions": 11,
       "guards": {
-        "verified": 9,
+        "verified": 10,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 9,
+      "verify_guards_events": 10,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -7682,9 +7682,11 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "consumer-local-control",
         "consumer-poll-index",
         "consumer-store-projection",
-        "owner"
+        "owner",
+        "records-codec-concrete"
       ],
       "system_includes": [],
       "suspects": [],
@@ -11713,7 +11715,7 @@
       "book": "books/owner-signed-post.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
+      "theorems": 25,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -11727,7 +11729,7 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "hybrid-lifecycle-store-invariants",
         "owner-verdict-read",
@@ -21400,10 +21402,10 @@
         "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 25,
-      "must_fails": 6,
+      "assert_events": 43,
+      "must_fails": 8,
       "prover_refusals": 0,
-      "defconsts": 16,
+      "defconsts": 23,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -24492,16 +24494,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 10,
+      "functions": 11,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 10
+        "default-unguarded": 11
       },
       "verify_guards_events": 0,
-      "assert_events": 52,
-      "must_fails": 22,
+      "assert_events": 58,
+      "must_fails": 23,
       "prover_refusals": 0,
       "defconsts": 17,
       "defmacros": 0,
@@ -29518,7 +29520,7 @@
       {
         "theorem": "fn-osp-complete-store-is-finish",
         "book": "books/owner-signed-post.lisp",
-        "line": 158,
+        "line": 269,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32911,7 +32913,7 @@
       },
       {
         "book": "books/consumer-owner-local-progress.lisp",
-        "line": 22,
+        "line": 24,
         "include": "consumer-owner-local",
         "included": "books/consumer-owner-local.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -32921,6 +32923,13 @@
         "line": 7,
         "include": "consumer-poll-index",
         "included": "books/consumer-poll-index.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-owner-local.lisp",
+        "line": 8,
+        "include": "consumer-local-control",
+        "included": "books/consumer-local-control.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -45737,7 +45746,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2332,
+        "line": 2327,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 966 |
 | Certification roots in the Makefile | 944 |
 | Books inside the root closure | 960 |
-| `defthm` and `defthmd` events | 13570 |
-| `defun` events | 9471 |
-| Functions with verified guards | 2203 |
+| `defthm` and `defthmd` events | 13575 |
+| `defun` events | 9474 |
+| Functions with verified guards | 2204 |
 | Functions declared `:verify-guards nil` and never verified | 762 |
-| Functions left at the default with an explicit guard | 5103 |
-| Functions left at the default with no guard | 1403 |
-| `assert-event` checks | 14231 |
-| `must-fail` checks | 1658 |
+| Functions left at the default with an explicit guard | 5104 |
+| Functions left at the default with no guard | 1404 |
+| `assert-event` checks | 14255 |
+| `must-fail` checks | 1661 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
-| `encapsulate` events | 65 |
+| `encapsulate` events | 66 |
 | Theorems flagged SUSPECT by shape | 123 |
 | Export-hygiene warnings | 152 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 138 |
-| Include-hygiene warnings | 975 |
+| Include-hygiene warnings | 976 |
 | Host-names warnings | 1112 |
 | Hand-written-record warnings | 18 |
 
@@ -329,8 +329,8 @@ that `make certify` requests.
 | `books/consumer-event-index.lisp` | root | 23 | 18 | 2/1/15/0 | 0 | 0 | 0 |
 | `books/consumer-local-control.lisp` | root | 5 | 18 | 18/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-owner-index-invariants.lisp` | root | 6 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/consumer-owner-local-progress.lisp` | root | 21 | 3 | 0/0/0/3 | 0 | 0 | 0 |
-| `books/consumer-owner-local.lisp` | root | 1 | 9 | 9/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-owner-local-progress.lisp` | root | 23 | 3 | 0/0/0/3 | 0 | 0 | 0 |
+| `books/consumer-owner-local.lisp` | root | 1 | 11 | 10/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-poll-index.lisp` | root | 11 | 6 | 5/1/0/0 | 0 | 0 | 1 |
 | `books/consumer-poll-projection.lisp` | root | 2 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 58 | 30 | 29/0/1/0 | 0 | 0 | 0 |
@@ -475,7 +475,7 @@ that `make certify` requests.
 | `books/owner-served-bound.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/owner-served-carried.lisp` | root | 12 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-served-invariants.lisp` | root | 16 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/owner-signed-post.lisp` | root | 22 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/owner-signed-post.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-store-budget.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-store-indexed.lisp` | root | 42 | 7 | 0/5/2/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -817,7 +817,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 2 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 33 | 5 | 0 |
 | `tests/acl2/consumer-owner-index-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 2 | 0 |
-| `tests/acl2/consumer-owner-local-progress-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 25 | 6 | 0 |
+| `tests/acl2/consumer-owner-local-progress-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 43 | 8 | 0 |
 | `tests/acl2/consumer-owner-local-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 37 | 1 | 0 |
 | `tests/acl2/consumer-poll-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
@@ -927,7 +927,7 @@ that `make certify` requests.
 | `tests/acl2/owner-served-bound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 8 | 2 | 0 |
 | `tests/acl2/owner-served-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/owner-served-invariants-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 76 | 11 | 0 |
-| `tests/acl2/owner-signed-post-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 52 | 22 | 0 |
+| `tests/acl2/owner-signed-post-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 58 | 23 | 0 |
 | `tests/acl2/owner-store-budget-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 11 | 4 | 0 |
 | `tests/acl2/owner-store-indexed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 46 | 3 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 25 | 0/0/1/24 | 370 | 24 | 0 |
