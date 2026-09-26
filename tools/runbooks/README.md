@@ -60,24 +60,13 @@ source tree and original `build/*.core` are not runtime inputs. The initial
 `hbox-node-deploy.sh` takes the full frozen image directory as fourth argument.
 It still refuses an existing store.
 
-For a managed *isolated fixture* node, put the persistent `store/`, `fn.toml`,
-`tls/` and `credentials.txt` directly under NODE. Keep immutable installs in
-`NODE/releases/REV` and point `NODE/current` at the active release. Make the
-service's executable `NODE/current/bin/fn operator NODE/fn.toml run` before
-using `packaging/upgrade-native.sh`; its control hook receives `stop`, `start`
-and `check` with NODE as its second argument. The check must verify the actual
-service and a fresh read of a known article. Invoke:
-
-```sh
-FN_UPGRADE_STORE_COMPATIBLE=yes FN_UPGRADE_CONTROL=/path/to/fixture-control \
-  sh packaging/upgrade-native.sh NODE FROZEN_IMAGE_DIR REV
-```
-
-Before setting `FN_UPGRADE_STORE_COMPATIBLE=yes`, establish that the prior
-binary can read every Store change the candidate may commit before a health
-failure. A failed switch restores the executable and service, not prior Store
-bytes. The tool cannot infer schema compatibility. Staged service templates
-name the final release path, never the temporary stage path.
+A deploy is a reinstall (D34): stop the node, `fn operator NODE/fn.toml store
+export DIR` if its data must survive, remove the node, install the release
+(`packaging/install-native.sh`, one `libexec/fn/` replaced whole), then `init`
+or `fn operator NODE/fn.toml store import DIR`, and start. There is no release
+switching, no versioned release directory and no rollback of a store: a store
+of another format is refused at open by name (`open refused
+reason=store-format: reinstall from the release and import`).
 
 The tool verifies and stages the candidate before stopping, switches the
 `current` symlink atomically, then starts/checks. A failed start/check restores

@@ -1,5 +1,5 @@
-; fn: the open of a store's saved profile, and the one repair that lowers it
-; (PKT-471, the coordinator's decision of 2026-09-26).
+; fn: the open of a store's saved profile, and its refusals by name
+; (PKT-471, the coordinator's decision of 2026-09-26; D34).
 ;
 ; PKT-467 added one arm to the profile relation (books/byte-store-frame.lisp
 ; `fn-bs-profile-invalid-reason'): a record bound R above
@@ -8,10 +8,14 @@
 ; saved before that arm with R in the 355-octet window between the poll
 ; reply's ceiling and the codec's u32 no longer decodes, and the open used to
 ; answer the host's generic fault ("ACL2 rejected durable configuration
-; frame", exit 4).  The decision: the open refuses such a store BY NAME, and
-; `store upgrade-profile --max-record-octets W', W the poll reply's ceiling,
-; is its explicit repair.  Nothing is translated at open: the store's saved
-; profile keeps its meaning until the operator writes the repair.
+; frame", exit 4).  The decision: the open refuses such a store BY NAME.
+; D34 (fresh deploys, no migrations) removed the in-place repair that
+; lowered R: the refusal names the way out, a reinstall and an import.
+; Nothing is translated at open.
+;
+; D34 also makes the store format one format: a profile frame whose format
+; word is not fn-store-8 (a format-7 store, or any other) is refused at the
+; open by name, `:store-format', never translated.
 ;
 ;   * `fn-spo-config-open' OCTETS: the open of config.json the host calls
 ;     (host/native/io.lisp `fnn-metadata-config-decode', through
@@ -20,13 +24,9 @@
 ;     start, `store recover', `inspect', `checkpoint', `status' and the
 ;     offline `health').  It answers (:opened VALUES), the profile the store
 ;     runs under; (:refused :max-record-octets-above-the-poll-reply), a
-;     format-8 profile in the window; or (:rejected), a frame that is no
+;     format-8 profile in the window; (:refused :store-format), a sealed
+;     profile frame of another format; or (:rejected), a frame that is no
 ;     saved profile at all (a corrupted file: the host's fault, as before).
-;   * `fn-spo-repair-verdict' OCTETS TARGET: the one lowering admitted, by
-;     name.  It is a separate verdict, not an arm of `fn-profile-upgradep':
-;     that relation's first conjunct is an admitted OLD, which a window
-;     profile is not, and every `fn-profile-upgrade-keeps-*' theorem spends
-;     it; the upgrade relation is unchanged, so none of them moves.
 ;
 ; The saved profiles are those the format-8 encoder wrote under the relation
 ; before PKT-467: `fn-bs-profile-v2-invalid-reason' below, the text of
@@ -36,7 +36,7 @@
 ; before P6 saved (books/byte-store-profile-v1.lisp, whose relation reads the
 ; article record at a larger overhead than this one).
 (in-package "ACL2")
-(include-book "store-profile-upgrade")
+(include-book "store-profile-facts")
 (include-book "byte-store-profile-v1")
 (local (include-book "frame-invariants"))
 (local (include-book "cbor-invariants"))
@@ -115,6 +115,28 @@
               (fn-frame-parse-value parsed)
             nil))))))
 
+; The format word of a sealed profile frame (its first text field), valid
+; profile or not; NIL for a frame that does not open as one.
+(defun fn-spo-saved-format-word (octets)
+  (declare (xargs :guard t))
+  (if (not (fn-cbor-octet-listp octets))
+      nil
+    (let ((frame (fn-frame-open octets *fn-bs-meta-max-config-payload*)))
+      (if (not (fn-bs-meta-frame-okp frame *fn-bs-meta-config-kind*
+                                      (fn-frame-result-payload frame)
+                                      *fn-bs-meta-max-config-payload*))
+          nil
+        (let ((word (fn-frame-field-parse :text (fn-frame-result-payload frame))))
+          (if (fn-frame-parse-okp word)
+              (fn-frame-parse-value word)
+            nil))))))
+
+; D34: a sealed profile frame whose format is not the one format.
+(defun fn-spo-foreign-formatp (octets)
+  (declare (xargs :guard t))
+  (let ((word (fn-spo-saved-format-word octets)))
+    (and word (not (equal word *fn-bs-meta-format-8*)) t)))
+
 (defun fn-spo-in-the-windowp (saved)
   (declare (xargs :guard t))
   (equal (fn-bs-profile-invalid-reason saved)
@@ -127,17 +149,20 @@
     (if (and saved (fn-spo-in-the-windowp saved))
         (list :refused :max-record-octets-above-the-poll-reply)
       (let ((decoded (fn-bs-config-decode octets)))
-        (if (and decoded (fn-bs-profile-admittedp decoded))
-            (list :opened decoded)
-          (list :rejected))))))
+        (cond ((and decoded (fn-bs-profile-admittedp decoded))
+               (list :opened decoded))
+              ((fn-spo-foreign-formatp octets) (list :refused :store-format))
+              (t (list :rejected)))))))
 
 ; The line every open path prints for the refusal (the pre-C1 pattern:
 ; ACL2 renders it, the host carries it).
 (defun fn-spo-refusal-text (verdict)
   (declare (xargs :guard t))
-  (if (equal verdict (list :refused :max-record-octets-above-the-poll-reply))
-      "profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940"
-    nil))
+  (cond ((equal verdict (list :refused :max-record-octets-above-the-poll-reply))
+         "open refused reason=max-record-octets-above-the-poll-reply: the profile record bound exceeds the poll reply width; reinstall from the release and import")
+        ((equal verdict (list :refused :store-format))
+         "open refused reason=store-format: reinstall from the release and import")
+        (t nil)))
 
 ; -----------------------------------------------------------------------------
 ; The relation's half
@@ -430,11 +455,6 @@
                             (octets (fn-frame-result-payload
                                      (fn-frame-open octets
                                                     *fn-bs-meta-max-config-payload*))))
-                 (:instance fn-spo-fields-parse-car
-                            (specs *fn-bs-meta-format-7-spec*)
-                            (octets (fn-frame-result-payload
-                                     (fn-frame-open octets
-                                                    *fn-bs-meta-max-config-payload*))))
                  (:instance fn-spo-window-names-format-8
                             (values (fn-frame-parse-value
                                      (fn-frame-fields-parse
@@ -445,170 +465,36 @@
            :in-theory (e/d (fn-spo-config-open fn-spo-saved-format-8
                                    fn-bs-config-decode)
                                   (fn-spo-in-the-windowp fn-bs-profile-validp
+                                   fn-spo-foreign-formatp
                                    fn-spo-fields-parse-car
                                    fn-spo-window-names-format-8
                                    fn-frame-fields-parse fn-frame-field-parse
                                    fn-frame-open)))))
 
-; -----------------------------------------------------------------------------
-; The repair: the one lowering admitted, by name
-
-; The request `store upgrade-profile --max-record-octets 4294966940' parses to
-; (books/native-operator.lisp fn-nop-parse-store; witnessed in the test book).
-(defconst *fn-spo-repair-request*
-  (list :current (list (cons *fn-bs-pf-max-record-octets* *fn-stxa-max-octets*))))
-
-(defun fn-spo-repaired (saved)
-  "SAVED with R lowered to the poll reply's ceiling; every other field kept."
-  (declare (xargs :guard t))
-  (fn-bs-profile-put *fn-bs-pf-max-record-octets* *fn-stxa-max-octets* saved))
-
-; What `store upgrade-profile' does when the store's open refused by name.
-;   (:repair OCTETS)   write OCTETS as config.json (the repaired profile)
-;   (:refused REASON)  write nothing
-(defun fn-spo-repair-verdict (octets target)
-  (declare (xargs :guard t))
-  (let ((saved (fn-spo-saved-format-8 octets)))
-    (cond ((not (and saved (fn-spo-in-the-windowp saved)))
-           (list :refused :not-above-the-poll-reply))
-          ((not (equal target *fn-spo-repair-request*))
-           (list :refused :repair-lowers-max-record-octets-to-the-poll-reply-only))
-          ((not (fn-bs-profile-validp (fn-spo-repaired saved)))
-           (list :refused (fn-bs-profile-invalid-reason (fn-spo-repaired saved))))
-          (t (list :repair (fn-bs-config-encode (fn-spo-repaired saved)))))))
-
-; The widest article record a profile can ask for fits the poll reply, so
-; lowering R to the ceiling never breaks the article relation.
-(defthm fn-spo-widest-article-record-fits-the-poll-reply
-  (<= (fn-record-encoded-octets-ceiling *fn-bs-profile-article-ceiling-codec*
-                                        *fn-bs-profile-groups-ceiling-codec*)
-      *fn-stxa-max-octets*)
-  :rule-classes nil)
-
 (local
- (defun fn-spo-put-induct (i j values)
-   (if (or (zp i) (zp j))
-       (list i j values)
-     (fn-spo-put-induct (1- i) (1- j) (if (consp values) (cdr values) nil)))))
+ (defthm fn-spo-decode-is-valid
+   (implies (fn-bs-config-decode octets)
+            (fn-bs-profile-validp (fn-bs-config-decode octets)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-config-decode)
+                                   (fn-bs-profile-validp))))))
 
-(local
- (defthm fn-spo-nth-of-put
-   (implies (and (natp i) (natp j))
-            (equal (fn-bs-meta-nth j (fn-bs-profile-put i v values))
-                   (if (equal i j) v (fn-bs-meta-nth j values))))
-   :hints (("Goal" :induct (fn-spo-put-induct i j values)
-            :in-theory (enable fn-bs-profile-put fn-bs-meta-nth)
-            :expand ((fn-bs-profile-put i v values)
-                     (fn-bs-meta-nth j values)
-                     (:free (x) (fn-bs-meta-nth j x)))))))
+; KEYSTONE (D34, one format).  The open answers `:store-format' exactly for a
+; frame outside the window that the profile decoder does not decode and that
+; is a sealed profile frame naming a format other than fn-store-8.  So the
+; open decodes one format and names every other; nothing is translated.
+(defthm fn-spo-config-open-store-format-is-exactly-a-foreign-frame
+  (equal (equal (fn-spo-config-open octets) (list :refused :store-format))
+         (and (not (and (fn-spo-saved-format-8 octets)
+                        (fn-spo-in-the-windowp (fn-spo-saved-format-8 octets))))
+              (not (fn-bs-config-decode octets))
+              (fn-spo-foreign-formatp octets)))
+  :hints (("Goal" :use ((:instance fn-spo-decode-is-valid))
+           :in-theory (e/d (fn-spo-config-open fn-bs-profile-admittedp
+                            fn-bs-profile-of)
+                           (fn-spo-in-the-windowp fn-spo-saved-format-8
+                            fn-spo-foreign-formatp fn-bs-config-decode
+                            fn-bs-profile-validp fn-spo-decode-is-valid)))))
 
-(local
- (defthm fn-spo-pf-of-put
-   (implies (and (natp i) (natp j))
-            (equal (fn-bs-pf j (fn-bs-profile-put i v values))
-                   (if (equal i j) (nfix v) (fn-bs-pf j values))))
-   :hints (("Goal" :in-theory (enable fn-bs-pf)))))
-
-(local
- (defun fn-spo-put-okp-induct (i specs values)
-   (if (zp i)
-       (list specs values)
-     (fn-spo-put-okp-induct (1- i) (cdr specs)
-                            (if (consp values) (cdr values) nil)))))
-
-(local
- (defthm fn-spo-values-okp-of-put
-   (implies (and (fn-frame-values-okp specs values)
-                 (natp i) (< i (len specs))
-                 (fn-frame-field-okp (nth i specs) v))
-            (fn-frame-values-okp specs (fn-bs-profile-put i v values)))
-   :hints (("Goal" :induct (fn-spo-put-okp-induct i specs values)
-            :in-theory (e/d (fn-frame-values-okp fn-bs-profile-put)
-                            (fn-frame-field-okp fn-spo-nth-of-put
-                             fn-spo-pf-of-put))))))
-
-(local
- (defthm fn-spo-put-4-values-okp
-   (implies (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
-                 (natp v) (< v (expt 2 64)))
-            (fn-frame-values-okp *fn-bs-meta-profile-spec*
-                                 (fn-bs-profile-put 4 v values)))
-   :hints (("Goal" :use ((:instance fn-spo-values-okp-of-put
-                                    (specs *fn-bs-meta-profile-spec*) (i 4)))
-            :in-theory (e/d (fn-frame-field-okp fn-frame-natp)
-                            (fn-spo-values-okp-of-put fn-frame-values-okp
-                             fn-bs-profile-put fn-spo-nth-of-put
-                             fn-spo-pf-of-put))))))
-
-; The lowering of a saved profile in the window is a valid profile.
-(defthm fn-spo-repaired-of-the-window-is-valid
-  (implies (and (fn-bs-profile-v2-validp saved)
-                (< *fn-stxa-max-octets* (fn-bs-pf 4 saved)))
-           (fn-bs-profile-validp (fn-spo-repaired saved)))
-  :hints (("Goal" :use ((:instance fn-spo-widest-article-record-fits-the-poll-reply)
-                        (:instance fn-spo-put-4-values-okp
-                                   (values saved) (v *fn-stxa-max-octets*)))
-           :in-theory (e/d (fn-bs-profile-validp fn-bs-profile-invalid-reason
-                            fn-spo-repaired fn-record-encoded-octets-ceiling)
-                           (fn-bs-pf fn-frame-values-okp fn-bs-profile-put
-                            fn-spo-put-4-values-okp)))))
-
-; KEYSTONE (the repair).  Over the frame of any saved profile, the verdict
-; writes a frame exactly when the saved R is above the poll reply's ceiling
-; and the operator's target is that ceiling; what it writes opens, at the
-; open the host calls, as the saved profile with R lowered to the ceiling and
-; every other field kept.  Every other target over such a store, and every
-; target over a store that opens, is refused by name and writes nothing.
-(defthm fn-spo-repair-admits-exactly-the-lowering-to-the-width
-  (implies (fn-bs-profile-v2-validp saved)
-           (and (equal (equal (car (fn-spo-repair-verdict
-                                    (fn-spo-saved-frame saved) target))
-                              :repair)
-                       (and (< *fn-stxa-max-octets* (fn-bs-pf 4 saved))
-                            (equal target *fn-spo-repair-request*)))
-                (implies (equal (car (fn-spo-repair-verdict
-                                      (fn-spo-saved-frame saved) target))
-                                :repair)
-                         (equal (fn-spo-config-open
-                                 (cadr (fn-spo-repair-verdict
-                                        (fn-spo-saved-frame saved) target)))
-                                (list :opened (fn-spo-repaired saved))))))
-  :hints (("Goal" :do-not-induct t
-           :cases ((<= (fn-bs-pf 4 saved) *fn-stxa-max-octets*))
-           :use ((:instance fn-bs-profile-v2-valid-within-the-width-is-valid
-                            (values saved))
-                 (:instance fn-bs-profile-v2-valid-above-the-width-is-in-the-window
-                            (values saved))
-                 (:instance fn-spo-repaired-of-the-window-is-valid)
-                 (:instance fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name
-                            (values (fn-spo-repaired saved)))
-                 (:instance fn-bs-profile-valid-is-v2-valid
-                            (values (fn-spo-repaired saved)))
-                 (:instance fn-spo-valid-is-not-in-the-window
-                            (values saved)))
-           :in-theory (e/d (fn-spo-repair-verdict)
-                           (fn-bs-profile-v2-valid-within-the-width-is-valid
-                            fn-bs-profile-v2-valid-above-the-width-is-in-the-window
-                            fn-spo-repaired-of-the-window-is-valid
-                            fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name
-                            fn-bs-profile-valid-is-v2-valid
-                            fn-spo-valid-is-not-in-the-window
-                            fn-spo-in-the-windowp
-                            fn-bs-profile-v2-validp fn-bs-profile-validp
-                            fn-bs-profile-invalid-reason fn-spo-config-open
-                            fn-bs-config-encode fn-spo-saved-frame
-                            fn-spo-saved-format-8 fn-spo-shapep
-                            fn-spo-repaired fn-bs-pf)))))
-
-; The lowering changes R and nothing else.
-(defthm fn-spo-repaired-keeps-every-other-field
-  (implies (and (natp i) (<= 2 i) (<= i 14) (not (equal i 4)))
-           (equal (fn-bs-pf i (fn-spo-repaired saved)) (fn-bs-pf i saved)))
-  :hints (("Goal" :in-theory (e/d (fn-spo-repaired) (fn-bs-pf fn-bs-profile-put))
-           :cases ((equal i 2) (equal i 3) (equal i 5) (equal i 6) (equal i 7)
-                   (equal i 8) (equal i 9) (equal i 10) (equal i 11)
-                   (equal i 12) (equal i 13) (equal i 14)))))
-
-(in-theory (disable fn-spo-config-open fn-spo-repair-verdict
+(in-theory (disable fn-spo-config-open fn-spo-saved-format-word
                     fn-spo-saved-format-8 fn-spo-saved-frame
                     fn-bs-profile-v2-invalid-reason))

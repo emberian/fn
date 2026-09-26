@@ -1621,9 +1621,9 @@
     },
     {
       "id": "SCN-052",
-      "title": "an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
+      "title": "RETIRED (D34): an operator raises max-credentials and max-config-generations on a format-8 store and a credential file above the pre-D27 cap loads",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "STO-015"
       ],
@@ -1648,7 +1648,8 @@
         "native": true,
         "log": "planning/evidence/bounds-profile/native-namespace.log",
         "record": "planning/evidence/bounds-profile-2026-09-25.md"
-      }
+      },
+      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133)."
     },
     {
       "id": "SCN-054",
@@ -2752,9 +2753,9 @@
     },
     {
       "id": "SCN-097",
-      "title": "an operator raises max-consumers from the pre-D27 256 to 300 and the owner registers consumers 257 to 300 after the next open, refusing the 301st",
+      "title": "RETIRED (D34): an operator raises max-consumers from the pre-D27 256 to 300 and the owner registers consumers 257 to 300 after the next open, refusing the 301st",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "deferred",
       "requirements": [
         "STO-021"
       ],
@@ -2779,7 +2780,8 @@
         "native": true,
         "log": "planning/evidence/community-bounds/native-consumer-profile.log",
         "record": "planning/evidence/community-bounds-2026-09-26.md"
-      }
+      },
+      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133)."
     },
     {
       "id": "SCN-100",
@@ -3425,6 +3427,38 @@
         "record": "planning/evidence/served-path-scale-2026-09-26.md",
         "log": "planning/evidence/served-path-scale-2026-09-26/continuation/greet-10k-g1-6e3ccd15.json"
       }
+    },
+    {
+      "id": "SCN-132",
+      "title": "A format-7 store is refused at open by name: open refused reason=store-format, exit 1, the store untouched",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-028"
+      ],
+      "steps": [
+        "Open a copy of the format-7 fixture store (/tank/fn/scratch/fixtures/format-7-store) with status, recover and run."
+      ],
+      "expected": [
+        "Each exits 1 with the line open refused reason=store-format: reinstall from the release and import; no file of the store changes."
+      ]
+    },
+    {
+      "id": "SCN-133",
+      "title": "store export then store import on a fresh node serves the same history: Message-IDs, numbers, verdicts and consumer cursors equal",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-028",
+        "HST-014"
+      ],
+      "steps": [
+        "Build a store of 300 articles with a signed composite, a cancel, a retention event and a consumer registration; stop; store export DIR.",
+        "On a fresh node: store import DIR (and once with a raised field); start."
+      ],
+      "expected": [
+        "status and inspect observations and the article numbers are equal on both nodes; a tampered MANIFEST, a record out of sequence and a profile the codec cannot represent are refused by name, exit 1, nothing written."
+      ]
     }
   ]
 }

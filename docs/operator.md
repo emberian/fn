@@ -130,7 +130,7 @@ A profile flag or `--profile` there is a usage error (5) whose first line
 says so:
 
 ```
-under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. Raise a bound afterwards offline with: fn operator CONFIG store upgrade-profile --FIELD N (fields only rise; the presets are smaller than a mission's); or delete the mission line from fn.toml to choose a profile at init
+under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG store export DIR, reinstall, then fn operator CONFIG store import DIR --FIELD N; or delete the mission line from fn.toml to choose a profile at init
 usage operator init MISSION-FIXES-PROFILE
 ```
 
@@ -139,8 +139,9 @@ result line, so `init` with a stray word shows the full `init` grammar.
 
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
-(format `fn-store-8`, `books/byte-store-frame.lisp`) and only the offline
-upgrade raises. ACL2 fixes the relations between the fields
+(format `fn-store-8`, `books/byte-store-frame.lisp`, the one store format:
+D34) and nothing rewrites in place; a different profile is a reinstall and an
+import. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
 values.
 
@@ -196,34 +197,38 @@ the record octets it carries (each record encoded once per owner process,
 refused by name (`payload exceeds the modelled bound`). The profile cannot be
 raised by a configuration record: it bounds the work of opening the store
 (the transaction directory is enumerated up to T, the replay input up to H)
-before any configuration record is read. Raising it is an offline step on the
-existing store:
+before any configuration record is read. Raising it is a reinstall (D34, fresh
+deploys): export the store, remove it, and import the archive with the raised
+field:
 
 ```text
-fn operator /path/to/fn.toml store upgrade-profile --max-transactions 1000000
-fn operator /path/to/fn.toml store upgrade-profile scale
-fn operator /path/to/fn.toml store upgrade-profile          # format 7 -> 8, bounds unchanged
-upgraded profile=current transactions-used=7 transactions-budget=1000000 previous-budget=100000
+fn operator /path/to/fn.toml store export /srv/fn-archive
+exported records=7 configuration=1
+# stop the unit, remove the store directory, install the release
+fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
+imported records=7 configuration=1
 ```
 
-It opens the store as `recover` does, so it is refused (1, `store is already
-locked`) while an owner runs: stop the unit first. ACL2 decides
-(`fn-profile-upgrade-verdict`, `books/store-profile-upgrade.lisp`): the new
-profile must be valid and no field may shrink (`fn-profile-upgradep`); the
-same profile (`same-profile`), a shrink (`not-an-upgrade FIELD`) and a
-broken relation (by its name) are refused (1) and write nothing. With no word
-the base is the store's own profile, so the bare verb on a format-7 store (one
-written before D27) rewrites it as format 8 with every bound unchanged
-(`fn-profile-upgrade-format-7-to-8`); a format-7 store is otherwise served
-under that translation until it is upgraded. Format-6 stores are no longer
-opened. The new frame replaces `config.json` by stage, fsync, rename and
-root fsync; a death at any point leaves the old or the new profile, never a
-torn one (`fn-bs-profile-program-crash-is-old-or-new`), and an I/O error
-before the rename is a refusal (1), at or after it an uncertain outcome (3)
-that the next `status` resolves by reading whichever frame is there. The
-retention charge capacity is a different number and IS reconfigurable
-(`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
-value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940`); that command is its one repair, the only lowering the verb admits (`fn-spo-repair-verdict`, `books/store-profile-open.lisp`), and it writes nothing for any other target.
+`store export DIR` takes the store's writer lock, so it is refused (1, `store
+is already locked`) while an owner runs; DIR must not exist (`export refused
+reason=archive-exists`). The archive is a directory: `profile` (config.json's
+exact octets), `frontier`, `config/NAME` (each configuration record's
+octets), `records/NAME` (each committed record's octets, packs included, in
+sequence order) and `MANIFEST` (one `sha256  name` line per file, `sha256sum
+-c` reads it); ACL2 renders every name and the MANIFEST
+(`books/store-export.lisp`). `store import DIR [--FIELD N ...]` makes a NEW
+store: the configured store must not exist (`import refused
+reason=store-exists`); ACL2's plan (`fn-sxp-import-plan`) refuses a MANIFEST
+that does not match (`reason=manifest-mismatch NAME`), a record out of
+sequence (`reason=record-out-of-sequence N`) and a profile the codec cannot
+represent (`reason=profile REASON`), each exit 1 with nothing written; the
+store is then built beside its path, opened the ordinary way (full replay),
+and renamed into place only when that open admitted it. Fields only matter
+upward in practice (the records were committed under the old bounds, and the
+import's open refuses a history the new profile cannot hold). The retention
+charge capacity is a different number and IS reconfigurable
+(`capacity DECIMAL-UINT32`). A repeated field or a
+value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `open refused reason=max-record-octets-above-the-poll-reply: ... reinstall from the release and import`), and a store of any other format (a format-7 store, JSON metadata) likewise (`open refused reason=store-format: reinstall from the release and import`); nothing is translated or repaired in place.
 
 ### Settle a client's lost post: `store inspect`
 
@@ -456,9 +461,9 @@ accepted operator health
 | exit | state | held when | what to do |
 |---|---|---|---|
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
-| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no `store upgrade-profile` raises it |
-| 22 | `unqualified-profile` | the persisted profile is not format 8 (`store needs-upgrade`), or it is the development profile | `store upgrade-profile scale` or `default` (offline) |
-| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | `store upgrade-profile`, `capacity`, or release obligations |
+| 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
+| 22 | `unqualified-profile` | the persisted profile is not format 8, or it is the development profile | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
 | 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection | check the peer's host and port (`peer list`) and its reachability |
@@ -565,7 +570,7 @@ the checkout's `build/fn-host`) and execs it with every argument, deciding
 nothing. `fn operator CONFIG VERB ...` is the operator, `fn bp-node ...` and
 the other image verbs are as below. The spike's bash `fn` wrapper made its
 own decisions; each is now the image's (its header lists where each went:
-`mission`, `health`, `show`, `store needs-upgrade`/`rollback-check`, the
+`mission`, `health`, `show`, the
 SIGHUP log reopen) or is gone.
 
 The layout is `bin/fn`, `libexec/fn/fn-host`,
@@ -1436,91 +1441,25 @@ lost reply answers `281` again and binds nothing new. `account list` shows
 digest or verifier. Redeemed accounts and auth.toml's credentials together are
 bounded by the profile's `max-credentials`.
 
-## Upgrade, and what a rollback loses
+## Deploy a new release (D34: fresh deploys, no migrations)
 
-Rehearse on a copy first: stop the node, `cp -a` its store, give the copy a
-`fn.toml` whose paths point into the copy and whose listener is on loopback,
-and run the steps below against the copy with the new release's `bin/fn`.
-`packaging/upgrade-native.sh` switches a managed node's `current` release.
+A deploy is a reinstall. There is no in-place upgrade, no versioned release
+directory and no rollback of a store:
 
-```
-fn operator COPY/fn.toml store needs-upgrade            # needs-upgrade | current
-cp -p COPY/store/config.json KEPT/config.json.format-7  # the file a lossless rollback restores
-cp -a COPY/store SNAPSHOT/store                          # the pre-migration snapshot
-fn operator COPY/fn.toml store upgrade-profile           # format 7 -> 8, bounds unchanged
-fn operator COPY/fn.toml store upgrade-profile --max-transactions N   # raise one bound
-fn operator COPY/fn.toml store rollback-check KEPT/config.json.format-7
-fn operator COPY/fn.toml store rollback-check --snapshot SNAPSHOT/store
+```text
+fn operator NODE/fn.toml store export ARCHIVE     # only if the data must survive
+# stop the unit; remove NODE/store; install the release (one libexec/fn/, replaced whole)
+fn operator NODE/fn.toml store import ARCHIVE     # or: init
+# start the unit
 ```
 
-Once an account code is redeemed on a release with accounts, releases before
-it cannot open the store; roll back only from the pre-upgrade snapshot (PKT-440:
-an older image refuses configuration delta kinds 15 and 16 at decode; a store
-that never issued a code is unaffected).
-
-The same rule covers the login-binding rows (delta code 17, `principal
-bind|unbind` applied live through the running node since 2026-09-26): a store
-that ever published a binding is refused by releases before it; roll back only
-from the pre-upgrade snapshot.
-
-The published checkpoint names its event index only by its shape, and the
-shape changed at dev a249a699 (a Message-ID trie beside the sequence trie)
-and again at d0df09ed (the record count). A checkpoint published by an image
-from a249a699 up to d0df09ed is refused by name by every later image with
-this check: `status` and `store recover` say `open=full-replay
-reason=checkpoint-index-shape`, and the first open after the upgrade is a
-full replay of the history (at 20,000 articles about 170 s on hbox under
-load). Never deploy an image from d0df09ed up to this check over such a
-node: it opens that checkpoint as `open=checkpoint:S` with a record count of
-0 and a Message-ID index that misses committed articles (PKT-395). A
-checkpoint published before a249a699 is refused too, today as
-`reason=checkpoint-open-refused`.
-
-There are two rollbacks, and they are not the same:
-
-- **Restoring the kept `config.json`** (the old release reads the new
-  history under the old profile). `rollback-check KEPT` says `rollback sound
-  transactions=N` when every committed record fits the older profile and the
-  store does not require the committed-history marker; nothing is lost. It
-  refuses `history-marker-required-dropped` once the store requires the
-  marker: that requirement is never undone by a kept file.
-- **Restoring a pre-migration snapshot** (the whole store as it was).
-  **Restoring a pre-migration snapshot loses every article accepted after
-  it.** `rollback-check --snapshot SNAPSHOT` counts them. Stop the node
-  first: the verb takes both stores' shared writer locks and holds them while
-  it compares, so a running owner's store is refused (`store is already
-  locked`, 1) rather than read mid-write. It reads each store's committed
-  history the way the open does (the selected pack's records, then the
-  transaction files after it) and ACL2 compares the two record by record,
-  octet for octet (`fn-native-operator-history-loss-is-ancestry`). When the snapshot's
-  records are exactly this store's first records it answers
-
-  ```
-  rollback snapshot loses transactions=3 snapshot-transactions=11 store-transactions=14
-  the snapshot's committed records are this store's first 11, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
-  ```
-
-  and otherwise `rollback snapshot refused snapshot-not-a-prefix` (1): the
-  snapshot is not an earlier state of this store's history, and restoring
-  it would replace that history, not shorten it. That includes a snapshot
-  from a different store whose transactions have the same numbers and the
-  same file sizes: equal counters and lengths are not the same history, and
-  the verb does not treat them as one.
-
-  What the verb does not establish: that the snapshot is the newest earlier
-  state you have, or anything about the configuration history, retention
-  releases or peer state a restore also brings back; and a store-local
-  comparison is not a freshness witness (see `fn anchor` under Back up).
-
-Two auxiliary files also decide what an older release can open, and neither
-is covered by `rollback-check`:
-
-- **The pull journals** (`<store>/pull/*.fnpl`). A release from before
-  2026-09-26 refuses a pull journal that holds the `:pull-unavailable`
-  record (the per-article count that bounds a peer's repeated 430s), so
-  rolling a node back to such a release means deleting its `pull/` journals
-  first; the cursor then restarts one day back, which is bounded duplicate
-  replay with no skipped accepted work (the NEWNEWS pull's own contract).
+The store has one format (`fn-store-8`). A store of any other format is
+refused at open by name (`open refused reason=store-format: reinstall from
+the release and import`, exit 1). The archive carries the committed records,
+the configuration records, the profile and the allocation frontier; the
+store identity and consumer state are records, so they travel with them.
+Feed journals and BP spools do not: a reinstalled node re-peers. Keep the
+archive until the new node serves; it is the only copy.
 
 ## Back up
 

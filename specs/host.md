@@ -666,3 +666,10 @@ file descriptors and is superseded for this verb). The operator guide's
 [upgrade section](../docs/operator.md#upgrade-and-what-a-rollback-loses)
 describe the verbs.
 
+## HST-014: the deploy is a reinstall
+
+HST-014: A deploy is a reinstall (D34): stop the node, `store export` when
+its data must survive, remove the store, install the release (one
+`libexec/fn/`, replaced whole), `init` or `store import`, start. There is no
+upgrade verb, no versioned release directory and no rollback of a store.
+
