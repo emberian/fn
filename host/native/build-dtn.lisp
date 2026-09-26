@@ -148,6 +148,8 @@
 ;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
 ;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+; The process heap from the store profile (PKT-016): host/native/heap.lisp.
+(include-book "books/heap-figure")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
@@ -222,6 +224,9 @@
         ; enrolled BP boundaries) through the one public operator entry.
         (load "host/native/owner.lisp")
         (load "host/native/operator.lisp")
+        ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
+        ; line `status' and `health' print; after operator.lisp, whose plan it reads.
+        (load "host/native/heap.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

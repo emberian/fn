@@ -298,8 +298,11 @@ observation into the outcome and this function only carries it out."
                              result))))
               (unless (consp groups)
                 (fnn-fault "ACL2 accepted an init plan that names no group"))
-              (let* ((profile (fnn-core
-                               'fn-native-operator-host-result-init-profile result))
+              ;; PKT-016: a bare request on a machine under 4 GiB is the small
+              ;; preset (books/heap-figure.lisp fn-heap-init-request).
+              (let* ((profile (fnn-heap-init-request
+                               (fnn-core
+                                'fn-native-operator-host-result-init-profile result)))
                      (code (progn
                              (unless (consp profile)
                                (fnn-fault "ACL2 accepted an init plan with no store profile"))
@@ -544,6 +547,9 @@ observation into the outcome and this function only carries it out."
                         (fnn-operator-emit-status
                          (fnn-operator-status-of-exit-code code) command condition)
                         (return-from fnn-operator-execute-status code))))))
+        ;; PKT-016: the heap figure of this store's profile on this machine
+        ;; (books/heap-figure.lisp, ACL2's line).
+        (fnn-heap-print-store-line root)
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
         (unless (and (integerp watch) (plusp watch))
           (return code))
@@ -605,6 +611,7 @@ observation into the outcome and this function only carries it out."
               (unless (and (integerp code) (<= 0 code 99))
                 (fnn-fault "ACL2 health report carries no exit code"))
               (fnn-write-report report)
+              (fnn-heap-print-store-line root)
               (fnn-operator-emit-status :accepted "health")
               code)))
       (error (condition)

@@ -16,6 +16,11 @@ int main(int argc, char **argv) {
       fputs("reader is available only in the developer image\n", stderr);
       return 5;
     }
+    /* The installed launcher's heap probe (PKT-016): answer a figure. */
+    if (!strcmp(argv[i], "--fn") && !strcmp(argv[i+1], "heap")) {
+      puts("heap=64 MB profile=none machine=64 MB");
+      return 0;
+    }
   }
   char exe[4096];
 #ifdef __APPLE__
