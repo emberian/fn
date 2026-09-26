@@ -1199,7 +1199,7 @@ model-test: certify
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
-	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate \
+	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
 	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
