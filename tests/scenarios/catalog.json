@@ -2246,6 +2246,29 @@
         "The cut leaves the history at generation 1; the first restart logs `key-statement enrol-successor committed at-open` and the history shows generation 2 active, 1 retired; the second restart logs nothing new and the history is unchanged.",
         "Each restart logs `key-statement declined no-grant at-open` and the history is unchanged."
       ]
+    },
+    {
+      "id": "SCN-092",
+      "title": "tin logs in over the implicit-TLS listener, reads, posts, follows up and cancels; the operator settles a lost post by Message-ID",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-032"
+      ],
+      "steps": [
+        "On a scratch developer-image node with tls_cert, tls_key and tls_port, [auth] required and protected_only, run the owner; connect over TLS on tls_port with a verified certificate; ask CAPABILITIES, AUTHINFO USER, STARTTLS, DATE; connect to the plaintext port and STARTTLS.",
+        "Run tin 2.6.2 built with --with-nntps=openssl against tls_port with the node certificate as its CA: log in, read a group, post, follow up, cancel.",
+        "Post an article, stop the owner, and run store inspect for its Message-ID and for one never posted; configure tls_port without a certificate and run."
+      ],
+      "expected": [
+        "The TLS listener greets after the handshake, lists no STARTTLS, answers AUTHINFO USER 381 and STARTTLS 502; the plaintext listener still answers STARTTLS 382; a client that does not speak TLS on the TLS port ends only itself.",
+        "tin's post, follow-up and cancel are answered 240 over TLS after AUTHINFO.",
+        "store inspect answers accepted (exit 0) for the stored Message-ID and absent (exit 1) for the other, and is refused while the owner holds the store; tls_port without a certificate is a usage refusal (exit 5) with no listener."
+      ],
+      "evidence": [
+        "tests/test_native_implicit_tls.py",
+        "planning/evidence/sanding-2026-09-26.md"
+      ]
     }
   ]
 }

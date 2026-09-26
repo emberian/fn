@@ -1134,3 +1134,82 @@
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("store" "rollback-check" "--snapshot" "snap"))))
                      :usage))
+
+; ---------------------------------------------------------------------------
+; PRF-162: the implicit-TLS listener's port.
+(defconst *fn-nop-implicit-config*
+  (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = 1119"
+                       "tls_cert = \"/etc/fn/cert.pem\"" "tls_key = \"/etc/fn/key.pem\""
+                       "tls_port = 1563")))
+(defconst *fn-nop-implicit-run*
+  (fn-native-operator-run *fn-nop-implicit-config* (fn-nop-test-argv '("run"))))
+; fn-native-operator-implicit-tls-listener-needs-its-certificate: the
+; reachable witness, every conjunct of the conclusion.
+(assert-event (equal (fn-native-operator-result-run-implicit-tls-port *fn-nop-implicit-run*)
+                     1563))
+(assert-event (fn-native-operator-result-run-planp *fn-nop-implicit-run*))
+(assert-event (not (fn-native-operator-result-run-oncep *fn-nop-implicit-run*)))
+(assert-event (equal (fn-native-operator-result-run-tls-cert-octets *fn-nop-implicit-run*)
+                     (fn-record-string-octets "/etc/fn/cert.pem")))
+(assert-event (equal (fn-native-operator-result-run-tls-key-octets *fn-nop-implicit-run*)
+                     (fn-record-string-octets "/etc/fn/key.pem")))
+(assert-event (equal (fn-native-operator-result-run-listener-port *fn-nop-implicit-run*)
+                     1119))
+; `run --once' serves one client on the plaintext listener: no TLS port.
+(assert-event (null (fn-native-operator-result-run-implicit-tls-port
+                     (fn-native-operator-run *fn-nop-implicit-config*
+                                             (fn-nop-test-argv '("run" "--once"))))))
+; A plan that is not `run' offers none, even over the same configuration.
+(assert-event (null (fn-native-operator-result-run-implicit-tls-port
+                     (fn-native-operator-run *fn-nop-implicit-config*
+                                             (fn-nop-test-argv '("status"))))))
+; The hypothesis (a port is offered) removed: over a result that offers
+; none, the conclusion fails (no plan, no certificate).
+(assert-event (not (fn-native-operator-result-run-planp *fn-nop-post*)))
+(must-fail
+ (thm (let ((port (fn-native-operator-result-run-implicit-tls-port result)))
+        (declare (ignorable port))
+        (fn-native-operator-result-run-planp result))))
+; Without the certificate the loader refuses tls_port, so no plan exists.
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run
+          (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "tls_port = 1563"))
+          (fn-nop-test-argv '("run"))))
+        :usage))
+
+; ---------------------------------------------------------------------------
+; NNT-032: `store inspect MESSAGE-ID'.
+(defconst *fn-nop-inspect*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "inspect" "<a@fn.example.invalid>"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-inspect*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-inspect*) :inspect))
+(assert-event (fn-native-operator-result-needs-storep *fn-nop-inspect*))
+(assert-event (equal (fn-native-operator-result-inspect-msgid-octets *fn-nop-inspect*)
+                     (fn-record-string-octets "<a@fn.example.invalid>")))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("store" "inspect" "not-a-message-id"))))
+        :usage))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("store" "inspect"))))
+        :usage))
+; fn-native-operator-inspect-report-is-the-lookup: both answers, the lines
+; the host prints.
+(assert-event
+ (equal (fn-native-operator-inspect-report (fn-record-string-octets "<a@fn.example.invalid>") t)
+        (list 0 :accepted
+              "accepted <a@fn.example.invalid> an article is stored here under this Message-ID")))
+(assert-event
+ (equal (fn-native-operator-inspect-report (fn-record-string-octets "<a@fn.example.invalid>") nil)
+        (list 1 :absent
+              "absent <a@fn.example.invalid> nothing is stored here under this Message-ID")))
+; The answer follows the lookup and nothing else: the verdict of a found
+; lookup is not the verdict of a missing one.
+(must-fail
+ (thm (equal (cadr (fn-native-operator-inspect-report m t))
+             (cadr (fn-native-operator-inspect-report m nil)))))

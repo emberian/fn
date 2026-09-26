@@ -209,6 +209,31 @@ retention charge capacity is a different number and IS reconfigurable
 (`capacity DECIMAL-UINT32`). An unknown profile word, a repeated field or a
 value that is not a decimal below 2^64 is a usage error (5).
 
+### Settle a client's lost post: `store inspect`
+
+A client whose POST reply was lost settles it by re-sending the same article
+under the same Message-ID (docs/agents.md). When that re-send meets the gate
+instead (`440` because the login lost its posting right, `480`, or the
+bound-principal `441`), the client stays `unresolved`, and the one
+privileged answer is this lookup on the stopped store:
+
+```text
+fn operator /path/to/fn.toml store inspect '<fn-client.20260922T034404Z.3fd1ce9e@yue.invalid>'
+accepted <fn-client.20260922T034404Z.3fd1ce9e@yue.invalid> an article is stored here under this Message-ID
+fn operator /path/to/fn.toml store inspect '<never-posted@fn.example.invalid>'
+absent <never-posted@fn.example.invalid> nothing is stored here under this Message-ID
+```
+
+`accepted` (exit 0) means the store binds that Message-ID: the article was
+committed, whatever its visibility now (a cancel or a reclaim does not
+unbind it). `absent` (exit 1) means nothing is stored under it. A word that
+is not a Message-ID is a usage error (5). It opens the store as `recover`
+does, so it is refused (1, `store is already locked`) while an owner runs.
+The store node's lookup decides and ACL2 renders the line
+(`fn-native-operator-inspect-report-is-the-lookup`,
+`books/native-operator.lisp`). It does not compare the stored text with the
+client's copy; tell the client which answer you got.
+
 Compaction is the other offline store step. It replaces the transaction
 files of the committed history with one lossless pack:
 
@@ -1046,6 +1071,15 @@ What the policy does, and every decision below is ACL2's
   active. Set `[listener] tls_cert`/`tls_key` — `fn init --tls-cert --tls-key`
   writes them — and the node advertises `STARTTLS` (RFC 4642 §2.1) and drops
   the label once the layer is up. USER/PASS crosses in the clear otherwise.
+- `[listener] tls_port = 1563` opens a second listener beside `port` whose
+  connections begin TLS at connect (the port-563 practice RFC 4642 §1
+  describes; tin 2.6 and other NNTPS readers speak only this form). The
+  owner prints `LISTENING-TLS 1563` after `LISTENING`. It is refused as a
+  configuration (`usage`, exit 5) without `tls_cert`/`tls_key` or on the
+  plaintext port, and not opened by `run --once`. A connection on it is the
+  STARTTLS session after its handshake: no `STARTTLS` label, `502` to
+  `STARTTLS`, AUTHINFO allowed under `protected_only` from the first
+  command (`books/served-implicit-tls.lisp`).
 
 The policy reaches every connection the owner opens, including one it
 resolved to a peer record. A peer does not run AUTHINFO, so on a node with
