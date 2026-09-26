@@ -7085,26 +7085,6 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-cancel-executes-only-for-author-or-authority"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cl-login-key-opens-login-lock"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cl-served-payload-without-a-login-is-the-payload"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cl-key-shape"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cl-lock-shape"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cll-insert-adds-only-the-lines"
         }
       ]
     }

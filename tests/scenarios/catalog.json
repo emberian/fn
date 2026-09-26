@@ -3810,7 +3810,7 @@
     },
     {
       "id": "SCN-141",
-      "title": "A friend cancels their own unsigned post by login: gone from ARTICLE and OVER on their node and on two peers in either arrival order, kept gone after SIGKILL; another login's cancel of it is filed and withdraws nothing",
+      "title": "A friend cancels their own unsigned post with RFC 8315 Cancel-Lock/Cancel-Key (as tin writes them): gone from ARTICLE and OVER on their node and on two peers in either arrival order, kept gone after SIGKILL; another login's cancel with its own key is filed and withdraws nothing",
       "milestone": "M4",
       "status": "implemented",
       "implementation": {
@@ -3827,7 +3827,7 @@
       ],
       "steps": [
         "Node H requires AUTHINFO with logins alice and bob; nodes A and B take IHAVE from a configured peer.",
-        "alice POSTs T to fn.own.t; bob POSTs `Control: cancel T`; alice POSTs `Control: cancel T`; ARTICLE T and OVER over fn.own.t after each; SIGKILL H and restart.",
+        "alice POSTs T with `Cancel-Lock: sha256:Base64(SHA-256(K))`; bob POSTs `Control: cancel T` with a Cancel-Key of his own; alice POSTs `Control: cancel T` with `Cancel-Key: sha256:K`; ARTICLE T and OVER after each; SIGKILL H and restart.",
         "Relay T, bob's cancel and alice's cancel (as H stored them) to A (target first) and to B (cancels first)."
       ],
       "evidence": [
@@ -3835,8 +3835,8 @@
         "tests/test_native_own_cancel.py"
       ],
       "expected": [
-        "T as stored carries one `Cancel-Lock: sha256:` line directly after H's Injection-Info line; each cancel carries a `Cancel-Key: sha256:` line.",
-        "After bob's cancel (240) T answers 220; after alice's cancel (240) T answers 430 and OVER no longer lists it; after the restart T still answers 430.",
+        "T as stored carries alice's Cancel-Lock unchanged; each cancel carries its Cancel-Key.",
+        "After bob's cancel (240) T answers 220; after alice's cancel (240) T answers 430 withdrawn and OVER no longer lists it; after the restart T still answers 430.",
         "A serves T after T and bob's cancel, and answers 430 after alice's cancel; B answers 430 and its OVER omits T."
       ]
     }

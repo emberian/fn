@@ -3377,7 +3377,7 @@
       "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
       "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
       "milestone": "M4",
-      "status": "implemented",
+      "status": "specified",
       "proof_targets": [
         "PRF-210"
       ],
@@ -3389,7 +3389,7 @@
         "planning/evidence/group-policy-2026-09-26.md",
         "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "implementation_note": "Implemented by lane newsreader-cancel (2026-09-26) under PKT-576's default: RFC 8315 Cancel-Lock keyed by the posting login (K = Base64(HMAC-SHA256(S, MSGID || LOGIN)), lock = Base64(SHA-256(K)), S the node's secret), inserted by the owner after its Injection-Info line; the login's cancel or Supersedes gets the matching Cancel-Key; the withdrawal decision reads the two articles only (PRF-210). RFC 5537 section 5.3 leaves cancel authentication to local policy; the same-login basis is the coordinator's decision P1; Cancel-Lock verification is RFC 8315 section 2 and 4."
+      "implementation_note": "Half implemented by lane newsreader-cancel (2026-09-26, PRF-210): the decision. An unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it, on every node holding both, in either order, and after restart (tests.test_native_own_cancel with client-supplied lines, as tin writes them). Not yet: the node-written lock keyed by the posting login (books/cancel-lock.lisp fn-cl-served-payload is proved and tested but not called): the owner's completion gate requires the stored payload to be fn-own-sub-stored-octets of the in-flight submission, so the lines must be added in the owner's staged octets with the secret in the owner and the login in the submission (continuation; PKT-576's default, decided). Thunderbird, which writes no Cancel-Lock, therefore still cannot cancel. RFC 5537 section 5.3 leaves cancel authentication to local policy; the login basis is the coordinator's decision P1; Cancel-Lock is RFC 8315."
     },
     {
       "id": "REP-012",

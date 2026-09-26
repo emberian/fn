@@ -743,23 +743,29 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
 
 SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
 
-Status: **implemented** (PRF-210, lane newsreader-cancel,
-planning/evidence/newsreader-cancel-2026-09-26.md), under PKT-576's default
-as the coordinator decided it on 2026-09-26. RFC 5537 section 5.3 leaves
-cancel authentication to local policy; the login basis is that local policy
-(decision P1: the login is the principal of an unsigned post); the lock and
-key are RFC 8315.
+Status: **half implemented** (PRF-210, lane newsreader-cancel,
+planning/evidence/newsreader-cancel-2026-09-26.md). The decision is in
+place: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a
+Cancel-Lock of its target withdraws it, here and on every peer (a client
+that writes its own lines, as tin does, can cancel its own post today). The
+node-written lock keyed by the login, below, is proved and tested in ACL2 but
+not yet called by the owner: the owner's completion gate requires the stored
+payload to be the in-flight submission's staged octets
+(`fn-own-sub-stored-octets`), so the lines must be added there, with the
+secret held by the owner and the login carried by the submission. Until
+then Thunderbird, which writes no Cancel-Lock, cannot cancel. The decisions
+(PKT-576's default, P1) are the coordinator's of 2026-09-26. RFC 5537
+section 5.3 leaves cancel authentication to local policy; the login basis
+is that local policy; the lock and key are RFC 8315.
 
-What the node writes. On a served POST from an authenticated login L the
-owner (books/cancel-lock.lisp `fn-cl-served-payload`, called at
-host/native/owner.lisp `fnn-owner-attempt-served` before the login gate and
-the Store attempt) inserts directly after its own Injection-Info line
+What the node is to write (not wired). On a served POST from an authenticated login L the
+owner (books/cancel-lock.lisp `fn-cl-served-payload`) inserts directly after its own Injection-Info line
 
     Cancel-Lock: sha256:Base64(SHA-256(K))
     Cancel-Key: sha256:K'          (a cancel or Supersedes only)
 
 with `K = Base64(HMAC-SHA256(S, MSGID || L))` (RFC 8315 section 4), `K'`
-the same for the cancel's target, and S a 32-octet secret the owner creates
+the same for the cancel's target, and S a 32-octet secret the owner is to create
 at its first start in `STORE/cancel-lock.key` (never served, never in a
 record; a deleted file is replaced and the service log says so, and locks
 written under the old secret then no longer open by login; a file of the
