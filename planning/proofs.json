@@ -1424,7 +1424,8 @@
         "planning/evidence/manifests/certify-20260925T110203Z-65756.json",
         "planning/evidence/manifests/certify-20260925T100749Z-3672655.json",
         "planning/evidence/manifests/certify-20260925T184459Z-4147314.json",
-        "planning/evidence/manifests/certify-20260925T191657Z-265615.json"
+        "planning/evidence/manifests/certify-20260925T191657Z-265615.json",
+        "planning/evidence/manifests/certify-20260926T010233Z-3422722.json"
       ]
     },
     {
@@ -4088,7 +4089,8 @@
         "tests/acl2/byte-store-profile-v1-tests.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
         "tests/acl2/records-ceiling-tests.lisp",
-        "planning/evidence/bounds-p6-2026-09-25.md"
+        "planning/evidence/bounds-p6-2026-09-25.md",
+        "planning/evidence/manifests/certify-20260926T010233Z-3422722.json"
       ],
       "progress_note": "Certified with teeth; the theorem is over the implementation the seam attaches, not over the constrained seam function; the open corollary over fn-store-sn-recover is by congruence of the program-mode host map and is not an ACL2 event.",
       "events": [
@@ -4474,7 +4476,8 @@
         "tests/acl2/visibility-join-tests.lisp",
         "planning/evidence/manifests/certify-20260926T000258Z-2861655.json",
         "planning/evidence/visibility-join-2026-09-25.md",
-        "tests/test_native_visibility_join.py"
+        "tests/test_native_visibility_join.py",
+        "planning/evidence/manifests/certify-20260926T010233Z-3422722.json"
       ],
       "progress_note": "Certified persvati run-20260926T000228Z-6d61 (2 jobs, w25): books/visibility-join 1.4 s, its tests 1.6 s. Teeth: a reachable Store built by fn-sn-io/fn-spc-prepare/fn-sn-finish with target, cancel (withdrawn under a namespace grant) and the reclaimed tombstone; one must-fail per hypothesis (the stringp removals are corrupted-state witnesses). Native SCN-060 passed on the developer image (hbox).",
       "events": [
@@ -4504,7 +4507,8 @@
         "planning/evidence/manifests/certify-20260925T235221Z-2754177.json",
         "books/store-budget-article.lisp",
         "tests/acl2/store-budget-article-tests.lisp",
-        "planning/evidence/manifests/certify-20260926T001521Z-4100524.json"
+        "planning/evidence/manifests/certify-20260926T001521Z-4100524.json",
+        "planning/evidence/manifests/certify-20260926T010233Z-3422722.json"
       ],
       "progress_note": "Certified with teeth: manifests certify-20260925T235221Z-2754177 (persvati) and certify-20260926T001521Z-4100524 (hbox, with packet 1's gate); native gates on the a9ed4dc2 developer image (bounds-p6 record).",
       "events": [
@@ -4520,6 +4524,52 @@
         "fn-post-admitted-article-keeps-history",
         "fn-profile-upgrade-keeps-article-verdict",
         "fn-sbud-article-figure-bounds-the-record"
+      ]
+    },
+    {
+      "id": "PRF-126",
+      "title": "Every record a producer can stage is within the profile's R at any sequence, transaction ID, generation and stamp width, and the frontier frame carries u64 with every format-2 frame read unchanged",
+      "statement": "fn-record-encode-producer-length-bound (books/records-seam.lisp, the seam constraint discharged by fn-record-impl-encode-producer-length-bound in books/records-canonicality.lisp and by both attachments): if a record's charge is at most 2^32 - 1, its encoding is at most fn-record-encoded-octets-ceiling of its payload length and group count -- the 1 083-octet ceiling every saved profile's R was checked against -- whatever the width of its sequence, transaction ID, generation and stamp (the ceiling counts five-octet heads for the schema octet, the group count, the Message-ID, the three metadata strings and every group name, which encode at least 17 octets shorter; four eight-octet heads need 16). fn-bs-profile-admits-every-producer-record (books/record-width-producers.lisp): under an admitted profile such a record within A and G encodes within R, with no narrowness premise (PRF-086's fn-bs-profile-admits-every-article-record is the narrow case). fn-sn-prepare-stages-an-article-record-within-its-ceiling: a record fn-sn-prepare stages from fn-sn-article-record with a u32 charge is within the ceiling of its own payload and groups; fn-bpi-staged-record-fits-the-producer-ceiling: the same for the BP ingress producer (policy charge u32). fn-sbud-article-verdict-keeps-history-at-producer-width and fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width (books/store-budget-article.lisp): an article admitted by the article verdict (host/store-node-host.lisp fn-store-sn-article-verdict) or staged under the served budget (host/owner-host.lisp fn-owner-prepare -> fn-sbud-article-budget-for) keeps the committed history within H at any producer width. Frontier format 3 (books/byte-store-frame.lisp): fn-bs-frontier-impl-round-trip over every n <= 2^64 - 1 (the host's fn-store-metadata-frontier-frame/-decode through the scan seam's attachment), and fn-bs-frontier-decode-extends-format-2: every octet string the frozen format-2 reader fn-bs-frontier-v2-decode accepts, the format-3 reader fn-bs-frontier-decode-impl reads to the same transaction ID, so every saved frontier file opens unchanged. The allocator's successor fn-bs-frontier-next still stops at 2^32 - 1: the file machine (fn-sf-statep), the observed open (fn-sn-open-observed), the checkpoint (fn-checkpointp, fn-checkpoint-restore) and its TREE naturals (fn-cpc-treep) and the consumer candidate bound read u32, which is PKT-244.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-018",
+        "STO-013"
+      ],
+      "depends_on": [
+        "PRF-086",
+        "PRF-123"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/records-canonicality.lisp",
+        "books/records-seam.lisp",
+        "books/byte-store-frame.lisp",
+        "books/record-width-producers.lisp",
+        "books/store-budget-article.lisp",
+        "tests/acl2/record-width-producers-tests.lisp",
+        "tests/acl2/byte-store-frame-tests.lisp",
+        "tests/acl2/store-budget-article-tests.lisp",
+        "planning/evidence/width-producers-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T010233Z-3422722.json",
+        "planning/evidence/manifests/certify-20260926T011837Z-3569115.json"
+      ],
+      "progress_note": "Certified with teeth (persvati, w25, 2 jobs, 300 s): run-20260926T010201Z-edf7 (certify-20260926T010233Z-3422722: 562 of 565 passed; the three reds were this lane's test books, fixed in 9104f415) and run-20260926T011811Z-b295 (certify-20260926T011837Z-3569115: those three passed). Native served-POST gate on the a9ed4dc2 developer image (SCN-072). The allocator past 2^32 - 1 and the stamp past 2106 wait on PKT-244.",
+      "events": [
+        "fn-record-encode-producer-length-bound",
+        "fn-record-impl-encode-producer-length-bound",
+        "fn-bs-profile-admits-every-producer-record",
+        "fn-sn-prepare-stages-an-article-record-within-its-ceiling",
+        "fn-bpi-staged-record-fits-the-producer-ceiling",
+        "fn-sn-article-record-charge-and-groups",
+        "fn-sbud-article-figure-bounds-the-producer-record",
+        "fn-sbud-article-verdict-keeps-history-at-producer-width",
+        "fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width",
+        "fn-bs-frontier-impl-round-trip",
+        "fn-bs-frontier-decode-extends-format-2",
+        "fn-bs-frontier-encode-impl-octets",
+        "fn-bs-frontier-v2-round-trip",
+        "fn-bs-k0-host-frontier-frame-is-concrete-codec"
       ]
     }
   ]

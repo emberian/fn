@@ -95,6 +95,46 @@ translation carry, not one the node produces: a transaction ID past
 2^32 - 1 needs a wider frontier file (frontier-3), a stamp past 2106 and a
 charge past 2^32 - 1 need their producers widened first.
 
+STO-018: a record whose charge fits u32 is within the profile's R at any
+sequence, transaction ID, generation and stamp width, and the allocation
+frontier frame carries u64 (frontier format 3) with every format-2 frontier
+frame read to the same transaction ID. The record ceiling a profile's R is
+checked against counts five-octet heads for the schema octet, the group
+count, the Message-ID, the three metadata strings and every group name, which
+encode at least 17 octets shorter; four eight-octet heads need 16
+(`fn-record-encode-producer-length-bound`, PRF-126). So widening the
+allocator or the clock past 2^32 - 1 moves no profile field, and no saved
+profile needs translation. The frontier frame's payload is the format-2
+deterministic uint below 2^32 and the eight-octet head (canonical only above
+2^32 - 1, RFC 8949 §4.2.1) from 2^32 to 2^64 - 1; the format-2 reader is kept
+by name and the format-3 reader agrees with it on everything it accepts
+(`fn-bs-frontier-decode-extends-format-2`), so no frontier file is rewritten.
+An image before format 3 refuses a wide frontier frame by its payload bound,
+never misreads it. The width guarantees are fn's; no RFC requires them.
+
+The producers, and where each stops today:
+
+- sequence, transaction ID, generation: the durable allocator
+  (`fn-sf-prepare-record`, the frontier). Its successor
+  (`fn-bs-frontier-next`) still stops at 2^32 - 1: the file machine
+  (`fn-sf-statep`), the observed open (`fn-sn-open-observed`), the checkpoint
+  (`fn-checkpointp`, `fn-checkpoint-restore`) and its TREE naturals
+  (`fn-cpc-treep`) and the consumer candidate bound read the frontier as u32
+  (PKT-244).
+- stamp: `fn-record-stamp-of-observation`, seconds below 2^32 or
+  `:clock-unusable`; the checkpoint's TREE naturals carry an article's stamp,
+  so widening it waits on the same codec (PKT-244).
+- charge: the POST boundary (`fn-sbud-post-boundary`, `:charge-bound` above
+  2^32 - 1) and the BP policy (`fn-bpi-policy-p`); the charge is the one
+  field the ceiling cannot absorb.
+- the article producers (`fn-sn-article-record` from the served POST, the
+  developer `store post` and BP ingress): charged `fn-sbud-article-figure`
+  of their own counts before a transaction ID is reserved; the Python BP and
+  owner clients ask the same verdict (`fn-store-sn-article-verdict`). The
+  signed composite (kind 4) and peer-carried events are checked against R on
+  their actual bytes and are not yet charged the article figure before
+  reservation (PKT-244).
+
 The history bound H is kept by admission, not only checked at open: an
 article is charged the record ceiling of its own payload length and group
 count at the produced widths (`fn-sbud-article-figure`), both by the
