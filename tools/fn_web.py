@@ -2202,7 +2202,8 @@ def web_credentials(args, parser, environ=None, prompt=None):
     return user, password
 
 
-def main(argv=None):
+def build_parser() -> argparse.ArgumentParser:
+    """The command line's grammar (tools/docs_check.py parses the docs with it)."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--node", default="127.0.0.1:1119",
@@ -2226,6 +2227,11 @@ def main(argv=None):
     parser.add_argument("--no-marks", action="store_true",
                         help="keep read marks in memory only")
     parser.add_argument("--timeout", type=float, default=15.0)
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
     args = parser.parse_args(argv)
     fn_client.resolve(args, parser)
     if args.plain and args.host not in LOOPBACK:

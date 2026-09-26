@@ -937,24 +937,18 @@ NEWNEWS fn.* 20260919 000000 GMT
 ```
 
 Two things to know before you build a poller on it. First, the instant fn
-compares against is the **article's own** `Injection-Date`, or its `Date` when
-that field is absent: fn's store keeps no arrival stamp beside an article, so
-`NEWNEWS` reports when the injecting agent says the article was injected, not
-when this node received it. An article carrying neither field, or a date-time
-fn cannot decode exactly, is not reported at all. Second, one `NEWNEWS` will
-read at most 256 articles; a wildmat and date that select more than that are
-refused with `503` and the command reads nothing, rather than answering a
-shorter list that would look complete:
-
-```
-NEWNEWS fn.* 19700101 000000 GMT
-503 more matching articles than this command may read
-```
-
-Narrow the wildmat, or move the date forward, and poll again. A `501` from
-`NEWNEWS` is a syntax error in the arguments and a `503` is fn declining to
-do the work or lacking a wall clock for a two-digit year; the two are
-different and a poller should not retry the first.
+compares against is the **store's own acceptance stamp**: the owner's whole
+wall-clock second when it prepared the article, recorded with it and
+independent of the article's `Injection-Date` and `Date`
+(`fn-nntp-newnews-scan`, books/nntp-responses.lisp). A record written before
+stamps were kept takes the nearest later stamped article's second, else the
+reader's pinned wall second, else it is listed at every threshold. Second,
+the answer is one pass over the committed list with no article parsed, one
+line per matching article; a reclaimed article is not listed. A `501` from
+`NEWNEWS` is a syntax error in the arguments, and a `503 two-digit year
+needs a wall clock reading` means the date was given with two digits and the
+node holds no wall-clock reading to place its century; a poller should not
+retry the first.
 
 `LIST NEWSGROUPS` lists the served groups with a description field. fn's
 group table carries no description, so every line reads
@@ -1068,7 +1062,7 @@ A signed POST is `verified` for whichever principal signed it, whatever
 login posted it. To make a login post only as its own principal:
 
 ```
-packaging/fn-native operator /etc/fn/fn.toml principal bind alice 9261767a...(64 hex)
+packaging/fn-native operator /etc/fn/fn.toml principal bind alice PRINCIPAL-HEX  # 64 lowercase hex digits
 packaging/fn-native operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
 
