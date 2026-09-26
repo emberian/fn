@@ -3042,11 +3042,13 @@
       ],
       "steps": [
         "Init a 4 MiB-article profile; run the owner; POST 33,792 / 204,800 / 3,145,728 octets and re-read each with ARTICLE; POST A+1 octets.",
-        "In ACL2: feed a dot-stuffed body line whose CRLF is split across two buffer ranges through fn-wire-feed-span in two reads, and in one read; compare to fn-wire-feed-proper over the octets."
+        "In ACL2: feed a dot-stuffed body line whose CRLF is split across two buffer ranges through fn-wire-feed-span in two reads, and in one read; compare to fn-wire-feed-proper over the octets.",
+  "On hbox, the same POSTs (33,792 / 204,800 / 3,145,728 octets, and 200 dot-led lines written in 7-octet pieces) to the span image and to the base image (per-read list, FN_SPAN_REFERENCE_HOST), each on a fresh 4 MiB-article store; ARTICLE each (tests.test_native_bounds_join.SpanReferenceTests)."
       ],
       "expected": [
         "Each of 33 KiB / 200 KiB / 3 MiB is 240 and re-reads identical; A+1 is refused 441 by size; transactions-used is 3.",
-        "The two-read span and the one-read span leave the same wire state and frame the same (:article ((.hi))) event, equal to the reference; a line over the limit closes :line-overlimit at the same octet."
+        "The two-read span and the one-read span leave the same wire state and frame the same (:article ((.hi))) event, equal to the reference; a line over the limit closes :line-overlimit at the same octet.",
+  "Every POST reply, ARTICLE status line and served article octet agrees between the two images (the injected Date and Injection-Date values masked), and each re-reads the posted body."
       ],
       "evidence": [
         "tests/test_native_bounds_join.py",
