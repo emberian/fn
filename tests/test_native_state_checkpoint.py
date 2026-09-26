@@ -56,8 +56,16 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("'fn-store-sn-recover-from-checkpoint", opened)
         self.assertIn("'fn-store-sco-covered-count", opened)
         command = native_cuts.host_function(io, "fnn-command-state-checkpoint")
-        self.assertIn("'fn-store-sco-publish-octets", command)
+        # rep-wave-d-2: the publication is a plan over the octet buffer
+        # (fn-store-sco-publish-plan, books/store-checkpoint-buffer.lisp
+        # fn-sccb-plan); the host assembles the plan's octets from the
+        # buffer's array (fnn-plan-octets, fn-sccb-plan-octets transcribed)
+        # and writes them through the same byte program as before.
+        self.assertIn("'fn-store-sco-publish-plan", command)
+        self.assertIn("(fnn-plan-octets (first answer))", command)
         self.assertIn("(fnn-state-checkpoint-write store octets)", command)
+        node_plan = native_cuts.host_function(node_host, "fn-store-sco-publish-plan")
+        self.assertIn("(fn-sccb-plan (fn-sco-freeze next) segment-octets fn-octets)", node_plan)
         native_cuts.verify_state_checkpoint_cut_map()
 
 

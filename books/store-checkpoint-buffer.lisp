@@ -227,12 +227,18 @@
          (let ((fn-octets (fn-sccb-append-list (fn-scc-atom-octets x) fn-octets)))
            (fn-sccb-cons-ops n fn-octets)))))
 
+; The leaf codecs stay closed: the equation is about the writers over
+; opaque octet lists (an atom's octets are a nonempty true list, a length's
+; octets a true list), and opening them split the proof 9 s wide.
 (defthm fn-sccb-renc-is-program
   (equal (fn-sccb-renc x n fn-octets)
          (append fn-octets (fn-scc-program x)
                  (fn-scc-repeat (nfix n) *fn-scc-op-cons*)))
   :hints (("Goal" :induct (fn-sccb-renc x n fn-octets)
-           :in-theory (enable fn-scc-repeat))))
+           :in-theory (e/d (fn-scc-repeat)
+                           (fn-scc-atom-octets fn-scc-nat-octets fn-scc-le-digits
+                            fn-scc-string-octets fn-scc-atomp fn-scc-treep
+                            fn-sccb-treep fn-scc-octet-listp)))))
 
 (verify-guards fn-sccb-renc)
 
@@ -359,12 +365,23 @@
 ; Where the list codec refused, the plan refuses.
 (defthm fn-sccb-plan-refuses-what-the-codec-refuses
   (implies (not (fn-scc-treep c))
-           (equal (mv-nth 0 (fn-sccb-plan c seg fn-octets)) :unencodable)))
+           (equal (mv-nth 0 (fn-sccb-plan c seg fn-octets)) :unencodable))
+  :hints (("Goal" :do-not-induct t
+           :use fn-sccb-treep-is-treep
+           :in-theory (e/d (fn-sccb-plan)
+                           (fn-sccb-treep-is-treep fn-sccb-frames fn-sccb-renc
+                            fn-sccb-treep fn-scc-treep fn-sccb-chunk-count
+                            fn-scc-value-sequence fn-scc-program)))))
 
 ; The plan's buffer is the encoding: what a later reader by index sees.
 (defthm fn-sccb-plan-buffer-is-encode
   (implies (fn-sccb-treep c)
-           (equal (mv-nth 1 (fn-sccb-plan c seg fn-octets)) (fn-scc-encode c))))
+           (equal (mv-nth 1 (fn-sccb-plan c seg fn-octets)) (fn-scc-encode c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-sccb-plan)
+                           (fn-sccb-frames fn-sccb-treep fn-scc-treep
+                            fn-sccb-chunk-count fn-scc-value-sequence
+                            fn-scc-program)))))
 
 (in-theory (disable fn-sccb-append-list fn-sccb-cons-ops fn-sccb-renc
                     fn-sccb-frames fn-sccb-plan))
