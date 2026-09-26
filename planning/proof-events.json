@@ -4884,6 +4884,21 @@
           "name": "fn-pull-session-obs-is-the-machine-over-its-trace"
         }
       ]
+    },
+    {
+      "id": "PRF-128",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-refused-channel-takes-no-custody",
+          "note": "KEYSTONE (D23 custody). Over fn-bpaj-admitted-receive-event, the receive decision host/native/bp-service.lisp fnn-bps-receive calls with the admission answer: an answer of fn-bpaj-tcpcl-ingress-result that is not :admitted gives exactly (:refused REASON), REASON the admission's own, and never :ready, so fnn-bps-foundation-step is never asked and no kind-5 custody is taken. Teeth: tests/acl2/bp-channel-ingress-tests (two boundaries on one listener: (:refused :ambiguous-peer), not :ready; no trust profile: (:refused :no-trust-profile); hypothesis removal: the admitted neighbour's answer is :ready; labelled mutation witness: the anonymous ingress handed straight to the receive boundary, the pre-PRF-128 host, is :ready)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-admitted-channel-receives-under-its-ingress",
+          "note": "KEYSTONE (the admitted half). An admitted channel's bundle is decided by the unchanged fn-bpnf-receive-wire-event under the admitted ingress. Teeth: the allowlisted neighbour 'peer' on its own listener is :ready, its event's ingress names 'peer', and fn-bpnf-step on it proposes kind-5 :persist; hypothesis removal: over the refused (ambiguous) channel the answer differs from the receive boundary's answer on the anonymous ingress."
+        }
+      ]
     }
   ]
 }

@@ -1722,6 +1722,48 @@ restart; within a process a fresh attempt's token is the next token at its
 proposal, strictly above every earlier record's); the non-base events'
 effects are not shown free of `:finished` proposals by a theorem.
 
+#### 4.9.1 Custody only over an admitted channel (2026-09-26, lane mission-signed, PRF-128)
+
+D23 binds carriage to the admitted channel's actual policy. A bundle that
+arrives over a TCPCL session whose channel admission
+(`fn-bpaj-session-principal`, through `fn-bpaj-tcpcl-ingress-result`) is
+refused is refused at reception, with the admission's reason, before any
+FNBS step: no kind-5 custody row, so no forwarding job, no `:attempting`
+record, no fragment family and no owed receipt. `host/native/bp-service.lisp`
+`fnn-bps-receive` calls `fn-bpaj-admitted-receive-event`
+(`books/bp-channel-ingress.lisp`) with the admission answer of
+`fnn-bps-tcpcl-admission`, and hands `fnn-bps-foundation-step` only its
+`:ready` answer. The refusal is `(:refused REASON)` with the admission's
+reason (`fn-bpaj-refused-channel-takes-no-custody`), logged as
+`BP channel admission refused reason=R` and `BP refused xfer=N reason=R`
+and kept as receive evidence; an admitted channel's bundle is decided by the
+unchanged receive boundary under its admitted ingress
+(`fn-bpaj-admitted-channel-receives-under-its-ingress`). Before this rule a
+refused admission still stamped an anonymous ingress and the relay took
+custody of the transit (PKT-170); the destination's D23 source decision then
+refused its application, but the relay had carried it.
+
+The loopback policy names the neighbour by the listener the session arrives
+on, and the announced EID never selects among boundaries
+(`fn-bpaj-announced-eid-never-selects-a-peer`). Two boundaries on one
+listener are therefore `ambiguous-peer`, refused. A relay needs one listener
+per boundary; `bp-node serve` listens on one port, so a relay listens on the
+boundary of the neighbour that sends toward it (PKT-247).
+
+A delivered request the node does not accept prints ACL2's reason on one
+line, `BP node delivery refused result=R reason=C`
+(`fn-owner-bp-request-refusal-line`, `host/bp-native-app-host.lisp`): the D23
+source decision's refusal, the planner's or dispatcher's reason, the
+transfer decision's reason, or the Store attempt's plan reason.
+
+A transit request's Message-ID and fields are the relaying agent's (RFC 5537
+section 3.6 step 1, `fn-bpaj-transit-article-fields`), the check the transit
+plan's Message-ID already came from: an injected article carries its
+injecting node's Injection-Info, which the injecting agent's check (section
+3.4.1) refuses. The transit lookups used that check until 2026-09-26, so
+every Store-rendered hybrid-signed carrier was refused as
+`intent-store-conflict` at its destination.
+
 ## 5. The theorems
 
 Notation, fixed for every statement:

@@ -1890,6 +1890,32 @@
         "tests/test_native_peer_pull.py",
         "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log"
       ]
+    },
+    {
+      "id": "SCN-074",
+      "title": "The signed mission: A's hybrid-signed report crosses four fn nodes and two dtn7-rs relays to B, B's signed reply comes back, every refusal names its reason, and a relay takes no custody from a channel its policy refused",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-009",
+        "REP-007"
+      ],
+      "steps": [
+        "A's author signs the report (Ed25519 + ML-DSA-65) and hybrid-author stores its portable carrier; both authors are enrolled at A and B through hybrid-enroll.",
+        "The SCN-066 sequence runs with the signed report: fragmentation at X, the relays each listening on the boundary of the neighbour that sends toward them, restarts of all four nodes.",
+        "B verifies the delivered copy with hybrid-verify-source, consumes it and returns a signed reply the same way.",
+        "The ambiguous-peer case: X's two boundaries on one listener; A's transfer to X."
+      ],
+      "expected": [
+        "B answers request-accepted for the signed report and A for the signed reply; both receipts release their pins (pinned=no); all seven steps hold.",
+        "Every refused delivered request prints `BP node delivery refused result=... reason=...` with ACL2's reason.",
+        "In the ambiguous-peer case X logs `BP refused xfer=N reason=ambiguous-peer`, takes no kind-5 custody, and A's obligation stays pinned."
+      ],
+      "evidence": [
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "planning/evidence/mission-signed-2026-09-26.md"
+      ],
+      "note": "Pending the signed run on the lane image."
     }
   ]
 }
