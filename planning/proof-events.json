@@ -15,10 +15,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-recover-preserves-state"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-node-prepare-preserves-state"
         },
         {
@@ -64,14 +60,6 @@
         {
           "kind": "theorem",
           "name": "fn-sn-recover-preserves-state"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-node-trace-preserves-state"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-node-trace-preserves-old-bindings"
         },
         {
           "kind": "theorem",
@@ -153,10 +141,6 @@
         {
           "kind": "theorem",
           "name": "fn-allocate-at-watermark"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-state-has-fresh-local-numbers"
         },
         {
           "kind": "theorem",
@@ -646,7 +630,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-index-rebuild-correspondence"
+          "name": "fn-index-build-correspondence"
         },
         {
           "kind": "theorem",
@@ -1072,7 +1056,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-wm-pattern-match-work-cost"
+          "name": "fn-wm-match-codepoints-work-value"
         },
         {
           "kind": "theorem",
@@ -3288,10 +3272,6 @@
     {
       "id": "PRF-076",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-hm-run-keeps-every-open-admitted"
-        },
         {
           "kind": "theorem",
           "name": "fn-hm-open-refuses-a-lost-acknowledged-record"

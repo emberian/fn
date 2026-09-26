@@ -190,3 +190,5 @@ body.
 - BP transit keeps the plan reason as its detail (the carried arm is NNTP
   only).
 - `peer list` does not render the budget.
+
+Harvested by assurance-triage (2026-09-26) as the scenario catalog's evidence log: [`tests2.log`](peer-carriage-2026-09-25/tests2.log), the tests2.log above, copied from hbox /tank/fn/scratch/peer-carriage/tree/build/native/, sha256 `12f02fc45af3ff8e7842ffaa59d204b5f351d9391eeec478d91dabf9b800df9e`.

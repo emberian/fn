@@ -2517,15 +2517,81 @@ def check_function_event(tree: Tree, ident: str, name: str) -> list[str]:
     return problems
 
 
-def apply_events(regenerated: dict[str, list[str]]) -> str:
-    """``proofs.json`` with regenerated ``events``; everything else untouched."""
+PROOF_STATUSES = ("certified", "uncertified-at-current-digest", "planned")
+
+
+def event_books(tree: Tree, curated: dict) -> dict[str, set[str]]:
+    """Each target's event books (without ``.lisp``), from the curated map."""
+    found: dict[str, set[str]] = {}
+    for target in curated.get("targets", []):
+        books: set[str] = set()
+        for event in target.get("events", []):
+            name = event.get("name", "")
+            if event.get("kind", "theorem") == "theorem":
+                definition = tree.theorems.get(name)
+                book = definition.book if definition is not None else None
+            else:
+                definition = tree.functions.get(name)
+                book = (definition.book if definition is not None
+                        else tree.constrained.get(name))
+            if book is not None:
+                books.add(book.removesuffix(".lisp"))
+        found[target.get("id", "")] = books
+    return found
+
+
+def derived_status(entry: dict, names: list[str], books: set[str],
+                   state: "dict[str, tuple[str, list[str]]]", root: Path = ROOT) -> str:
+    """A proof target's ``status``: generated, never typed.
+
+    ``planned`` when the target cites no event; ``certified`` when, for every
+    event's defining book, a manifest the row cites in ``evidence`` recorded
+    that book passed at its current source digest and include closure (the
+    rule tools/certified_claims.py enforces); otherwise
+    ``uncertified-at-current-digest``.  The status speaks for the cited
+    events only; the target's statement may say more than they prove.
+    """
+    if not names:
+        return "planned"
+    here = str(Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import certified_claims  # the manifest rule; imported late, it imports this module
+    manifests = []
+    for relative in certified_claims.cited_manifests(entry):
+        path = root / relative
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(value, dict):
+            manifests.append(value)
+    if not manifests or not books:
+        return "uncertified-at-current-digest"
+    for book in books:
+        if book not in state:
+            state[book] = certified_claims.current_state(root, book)
+        digest, listing = state[book]
+        if not any(certified_claims.certifies(value, book, digest, listing)[0]
+                   for value in manifests):
+            return "uncertified-at-current-digest"
+    return "certified"
+
+
+def apply_events(regenerated: dict[str, list[str]],
+                 books: "dict[str, set[str]] | None" = None) -> str:
+    """``proofs.json`` with regenerated ``events`` and ``status``; the rest untouched."""
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
+    state: dict[str, tuple[str, list[str]]] = {}
     for entry in registry["proofs"]:
         names = regenerated.get(entry["id"], [])
         if names:
             entry["events"] = names
         else:
             entry.pop("events", None)
+        if books is not None:
+            entry["status"] = derived_status(entry, names, books.get(entry["id"], set()),
+                                             state)
     return json.dumps(registry, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -2583,7 +2649,8 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
     for path, expected in ((LEDGER_JSON, json.dumps(ledger, indent=2,
                                                     ensure_ascii=False) + "\n"),
                            (LEDGER_MD, ledger_markdown(ledger)),
-                           (PROOFS, apply_events(regenerated))):
+                           (PROOFS, apply_events(regenerated,
+                                                 event_books(tree, curated)))):
         relative = path.relative_to(ROOT).as_posix()
         if path != PROOFS and lane_generated(relative, expected):
             continue
@@ -2602,7 +2669,8 @@ def write_all() -> list[str]:
     LEDGER_JSON.write_text(json.dumps(ledger, indent=2, ensure_ascii=False) + "\n",
                            encoding="utf-8")
     LEDGER_MD.write_text(ledger_markdown(ledger), encoding="utf-8")
-    PROOFS.write_text(apply_events(regenerated), encoding="utf-8")
+    PROOFS.write_text(apply_events(regenerated, event_books(tree, curated)),
+                      encoding="utf-8")
     return problems
 
 
