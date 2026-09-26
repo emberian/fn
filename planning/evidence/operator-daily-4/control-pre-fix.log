@@ -1,0 +1,20 @@
+E
+======================================================================
+ERROR: test_an_unread_stderr_does_not_stop_the_node (tests.test_native_log_sink.LogSinkNativeTests.test_an_unread_stderr_does_not_stop_the_node)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/scratch/operator-daily-4/native-n1/tree/tests/test_native_log_sink.py", line 152, in test_an_unread_stderr_does_not_stop_the_node
+    replies = self.post_many(POSTS)
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/scratch/operator-daily-4/native-n1/tree/tests/test_native_log_sink.py", line 138, in post_many
+    replies.append(stream.readline().rstrip(b"\r\n"))
+                   ^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 720, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+----------------------------------------------------------------------
+Ran 1 test in 61.361s
+
+FAILED (errors=1)

@@ -512,3 +512,194 @@ deputy (1afc4e55: it inspects supplied_id); all 18 cases pass.
 - PKT-209's carrier-Control clause: stated in PKT-499 (a), not proved.
 - Live `bp-obligation status`: PKT-500, a design packet for the coordinator
   (trace, constraints, default, rejected alternative, cost); not implemented.
+
+## Continuation 3 (operator-daily-4, 2026-09-26)
+
+Brief: build/coordinator/queue/done/w4-operator-daily-4.txt, plus the
+deputy's PKT-518. Base dev a931ed8d; branch lane/operator-daily-4. Ids:
+PRF-187, HST-012, SCN-116, PKT-512. PKT-508, PKT-269 and PKT-518 closed;
+PKT-499 (b) and (d) done; PKT-513 not taken (no decision needed ember). No
+wire or delta code taken: FNCT 15, 16 and 19 up stay free, no FNLS kind;
+`health` gains one trailing line.
+
+### What an operator now reads
+
+- A node whose stderr nobody reads keeps serving. Before, the owner wrote
+  each log line under its log mutex from the thread that decided it, under
+  the owner mutex; at about 500 POSTs the pipe's 64 KiB filled, the write
+  blocked, and the node, control socket included, stopped answering. Now the
+  line goes to a queue and one writer thread drains it.
+- The running owner's `health` ends with `log-sink pending=P dropped=N
+  written=W`. Observed (SCN-116, n2 below): after 2,000 POSTs with stderr
+  unread, `pending` > 0 while every POST was answered 240; after the test
+  reads stderr, `pending=0 dropped=0` and written >= 2,000.
+- Under systemd, stderr is the journal, which drains: nothing changes there
+  unless journald stalls, and then lines are dropped and counted instead of
+  the owner stopping.
+
+### Decision (PKT-508): a bounded queue, then a counted drop
+
+ACL2 decides each offer (books/log-sink.lisp `fn-log-sink-offer`): queue
+the line when the queue is empty or when the pending octets with it stay
+within 1 MiB (`*fn-log-sink-pending-bound*`); otherwise drop it and count
+the drop. An empty queue takes any line, so no line is too long to log (D27:
+the bound limits the backlog a wedged sink leaves in memory, not a datum).
+Why not block: the log is an operator's record, never evidence of durable
+acceptance, so a lost line loses no decision, while a blocked write stops
+every decision. Why not a non-blocking write alone: O_NONBLOCK is shared by
+every process holding the same open file description (a terminal the shell
+also reads), and a short non-blocking write splits a line. Rejected: drop
+with no queue (loses lines on every burst a healthy sink would absorb).
+
+Host (host/native/io.lisp): `fnn-log-line` (every ACL2-rendered log line:
+`fnn-owner-log`, the refusal lines in `fnn-owner-handle-chunk`'s read, keys,
+admin, pull) and `fnn-err` (every host diagnostic) call `fnn-log-offer`
+while the writer runs. `fnn-log-offer` holds `*fnn-log-queue-mutex*` only
+for the ACL2 call and a list update, never across I/O; the thread holding
+the owner mutex (`fnn-with-owner`, `fnn-owner-serialized`) that called it
+returns at once. `fnn-log-writer-loop` pops the head, writes it whole with
+blocking writes holding no lock, and reports `fn-log-sink-take` with
+:written or :failed. `fnn-owner-run` (host/native/owner.lisp) starts the
+writer before recovery and stops it (drain, then at most
+`fn-log-sink-close-wait-seconds`, 10 s, before exiting without it) after
+the service closes. The SIGHUP reopen (`fnn-owner-maybe-reopen-log`) swaps
+the descriptor through the queue (`fnn-log-swap-fd`), in order. Offline
+commands keep the synchronous write (no served path). The served step's
+result does not depend on the write: `fnn-log-offer`'s value is discarded
+by every caller, and the reply the step computed is bound before the line
+is offered (e.g. `fn-owner-output` in the chunk read, read after the
+refusal lines are offered).
+
+### Theorems (PRF-187) and the host lines that call their subjects
+
+- `fn-log-sink-offer-preserves-okp`, `fn-log-sink-take-preserves-okp`
+  (KEYSTONE, the maintained relation), `fn-log-sink-init-okp`: with
+  `fn-log-sink-okp` (offered = written + pending + dropped; nothing pending
+  means no pending octets; pending octets within the bound unless one line
+  is pending) established by `fn-log-sink-init` (`fnn-log-writer-start`)
+  and preserved by `fn-log-sink-offer` (`fnn-log-offer`) and
+  `fn-log-sink-take` (`fnn-log-writer-loop`). So a sink that never drains
+  holds at most max(1 MiB, one line), however long the owner runs.
+- `fn-log-sink-offer-drops-only-past-the-bound` (KEYSTONE): the decision is
+  :queue or :drop (there is no wait), and :drop iff a line is pending and
+  this one would pass the bound. `fn-log-sink-drop-counts`: a drop adds one
+  to `dropped` and leaves the pending lines and octets.
+- `fn-nh-report-exit-of-render-and-more` (books/native-health.lisp): for a
+  verdict of at most eight outcomes and any true list after it, the exit
+  read back is the verdict's. Host: `fn-native-live-status-host-answer`
+  appends the exposure lines and `fn-nh-log-sink-line` of the sink
+  (`fnn-log-sink-snapshot`, from `fnn-control-live-status-answer`) after
+  `fn-nh-live-report`; `fnn-operator-execute-health` returns
+  `fn-nh-report-exit` of the page. Health's scale is unchanged; no ninth
+  code. (The exposure lines were appended without this theorem before.)
+- PKT-269: guard-verified now, in dependency order: books/store-events.lisp
+  `fn-store-event-kind-code`, `fn-store-retention-event-encode`,
+  `fn-store-event-encode` (the events are in books/store-budget.lisp, where
+  the served path first calls the codec: verifying them in store-events
+  would recertify its 570 dependents for an event only this chain needs);
+  `fn-sbud-record-octets`, `-bytes-used`, `-verdict`, `-headroom-at`,
+  `-headroom`, `-bytes-extend` (its body is an `mbe` whose :exec walks
+  `fn-sbud-drop`, guard-free, and `fn-sbud-record-octets-of-drop` equates
+  the sums; the logic is unchanged, so no theorem over it moved);
+  books/native-live-status.lisp's retention lines; books/native-health.lisp
+  `fn-nh-verdict`, its seven outcome helpers, `fn-nh-offline-report`,
+  `fn-nh-fenced-report` and `fn-nh-live-report` (FNLS kind 6, under the
+  owner mutex). No whole-state revalidation: the live report extends the
+  carried octet sum (`fn-sbud-bytes-extend`). Not verified:
+  `fn-nh-answer-report` and `fn-nls-report`, whose reclaim words call
+  books/store-reclaim-holders.lisp `fn-rcl-store-counts` (PKT-512 (a)).
+- PKT-518: `fn-cev-any-request-decode-of-encode` (KEYSTONE,
+  books/control-evidence.lisp): for every status kind and every control
+  report kind (`fn-cevg-kindp`) and every uint32 offset, the owner's
+  `fn-cev-any-request-decode` (`fn-native-live-status-host-answer`) of the
+  client's `fn-cev-any-request-encode` (`fn-native-live-status-host-request-encode`,
+  host/native/control.lisp `fnn-control-live-status-page`) is
+  `(:live-status KIND OFFSET)`. Supporting: `fn-cev-request-decode-of-encode`
+  (frame kind 3), `fn-cev-open-of-request-encode`, `fn-cev-msgid-octets`
+  (a grammar Message-ID survives the octet round trip),
+  `fn-cev-request-payload-fits`.
+
+### Teeth
+
+tests/acl2/log-sink-tests.lisp: a reachable run (two lines queue, the third
+drops at 120 > 100; the writer takes one written and one failed; an empty
+take changes nothing); an empty queue takes a 5,000-octet line past the
+bound 100 and the relation holds, a second line behind it drops; per
+keystone a must-fail without its hypothesis on a named counterexample
+(`*lst-bad*`, counts that do not add up; `*lst-over*`, two lines past the
+bound); both sides of the drop iff and a must-fail for the stronger "drop
+any line past the bound" rule (the 5,000-octet line); the drop-count
+witness and its must-fail on a queued line. tests/acl2/native-health-tests.lisp:
+the exact `log-sink pending=1 dropped=2 written=3` line; exit 26 read back
+after it; must-fails without the length hypothesis (`*nht-long*` reads 0)
+and without the true-list hypothesis (tail 7 reads :malformed).
+tests/acl2/control-evidence-tests.lisp: the kind-3 round trip at offset
+2^32-1; must-fails without the kind hypothesis (a Message-ID the grammar
+refuses) and without the offset hypothesis (2^32), for both theorems. All
+were admitted form by form in persvati REPLs before the farm.
+
+### Assurance chain
+
+`fn operator CONFIG run` -> `fnn-owner-run` starts the writer
+(`fn-log-sink-init`) -> each line: `fnn-log-line`/`fnn-err` ->
+`fnn-log-offer` -> `fn-log-sink-offer` (ACL2 decides :queue/:drop) ->
+`fnn-log-writer-loop` writes, `fn-log-sink-take` -> maintained relation
+`fn-log-sink-okp` (init establishes, offer and take preserve) ->
+`health`: `fnn-control-live-status-answer` -> `fn-nh-log-sink-line` after
+`fn-nh-live-report` -> `fn-nh-report-exit-of-render-and-more` -> SCN-116.
+
+### Certification (persvati, 2 jobs, none over 10 s)
+
+- r1 run-20260926T150032Z-721f at 76c406bb (`--affected-by` store-budget,
+  native-live-status, native-health, control-evidence, log-sink): 73
+  certified, 275 from the cache; certify-20260926T150135Z-3185305.json.
+- r2 run-20260926T150447Z-e335 at b1fc75da (the three test books after the
+  teeth named their witnesses, and the docs grammar book): 3 certified;
+  certify-20260926T150528Z-3223061.json.
+- store-events.lisp is unchanged, so its 570-book closure needed no run.
+
+### Native (hbox, tools/hbox_native.sh, images developer and production)
+
+n2 at b1fc75da (the final host and book code),
+hbox:/tank/fn/scratch/operator-daily-4/native-n2; fn-host
+9cf3ff5cf8f139fe6cefd5a9dc59cff61a66e024b24a11af67ca7b468e4535ab,
+fn-host-developer 9e240948199eb4bcea12c068f183a1928ffd078ef0dd439b23a44b4168e3db8a
+(planning/evidence/operator-daily-4/SHA256SUMS-n2). `== modules: 5 OK, 0
+SKIPPED, 0 FAILED`. No `--env` was needed: tools/native_env.py now plans
+FN_NATIVE_HOST for test_native_operator_verdicts through its import, and
+its hybrid E2E case (FN_RUN_HYBRID_E2E, read by the same import) ran
+instead of skipping.
+
+| module | result | log (SHA-256) |
+|---|---|---|
+| tests.test_native_log_sink (SCN-116) | OK (3 ran) | operator-daily-4/native-log_sink.log 53d36cb89a4dc7cee3f84d14d3b5fbc5ea757ddc638946ffb12f01c3d0ded482 |
+| tests.test_native_control | OK (18 ran) | operator-daily-4/native-control.log 102703cfcb227d976457d55666724295829da80ab75b110215b81f383239e29e |
+| tests.test_native_operator_cli | OK (6 ran) | operator-daily-4/native-operator_cli.log bbe5e852ea8b9e99fe5ea77fe6e85c75a6cb29803884e79dbfd9a99f1a030875 |
+| tests.test_native_control_evidence | OK (1 ran) | operator-daily-4/native-control_evidence.log 723f72a19d9bb08bd2afa7502cd249f3cfe4f62c78c35a347264a6391a00ec6e |
+| tests.test_native_operator_verdicts | OK (6 ran, 0 skipped) | operator-daily-4/native-operator_verdicts.log 69a039374ed545bf5356295dca1c1177780cfd2261e6430fdbf7a08a0107e073 |
+
+SCN-116 observed: under the unread pipe `log-sink pending=1505 dropped=0
+written=497` (about 64 KiB of lines went into the pipe, the rest waited in
+the queue, and every POST was answered 240 in 4.8 s); after draining
+`pending=0 dropped=0 written=2002`. Control: the same case against the
+pre-fix image (operator-daily-3's n3 fn-host, f5b9948e) times out waiting
+for a POST reply after 60 s, the owner wedged on the pipe
+(operator-daily-4/control-pre-fix.log
+13f5f3ea752bb06da48525a3722442bdb938bda165d335ae27407a04ff459b01). n1 at
+2ef48fc0 (before the guard and round-trip work): the same four modules OK.
+The brief's `tests.test_native_health` does not exist; health's native
+cases are in test_native_control.
+
+### Not done (PKT-512)
+
+- (3) PKT-264 (1) `bp-node health`, (4) PKT-098 alerts and `health
+  --explain`, (5) PKT-016 the launcher's heap from the profile, (6) PKT-286
+  the walk as tests and the lock age: not started. PKT-512 names the design
+  pointers for each.
+- PKT-269's remainder: `fn-nh-answer-report` and `fn-nls-report` wait on
+  books/store-reclaim-holders.lisp `fn-rcl-store-counts`.
+- The log sink's bound is an ACL2 constant, not yet an operator key; the
+  drop path is witnessed in ACL2 only (a native drop needs more than 1 MiB of
+  backlog); a writer thread that faults stops draining (later lines queue to
+  the bound and are dropped, counted).
+- PKT-499 (a) (the carrier-Control clause) and (e) are unchanged.
