@@ -25,6 +25,8 @@ import subprocess
 import tempfile
 import unittest
 
+from tests.native_process import next_log_number, start_filed
+
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
@@ -369,13 +371,23 @@ class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
                 b"\r\n\r\nexact payload bytes\r\n")
 
     def start_owner(self, image, extra_env=None):
+        """The owner, ready: its LISTENING line read from stdout.
+
+        Its stderr goes to a file in the test's temporary directory, never a
+        pipe (PKT-505): the owner logs one line per accepted POST under its
+        log mutex, and a pipe nobody reads fills at 64 KiB (about 500 POSTs),
+        after which the logging thread blocks in pipe_write holding the mutex
+        and the owner answers nothing more.  `owner.stderr' is a read handle
+        on that file, so a caller that reads it after the owner stops gets
+        the whole log, as it did from the pipe; `owner.stderr_path' names it.
+        """
         env = environment()
         if extra_env:
             env.update(extra_env)
-        process = subprocess.Popen(
+        process = start_filed(
             [str(image), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
+            self.root / "owner-{}.err".format(next_log_number(self)),
+            cwd=ROOT, env=env)
         self.addCleanup(self.reap, process)
         for _ in range(4):
             self.assertTrue(select.select([process.stdout], [], [], 180)[0],
@@ -385,7 +397,7 @@ class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
                 return process
             if process.poll() is not None:
                 self.fail("owner failed: {}".format(
-                    process.stderr.read().decode("utf-8", "replace")))
+                    process.stderr.read()[-8192:].decode("utf-8", "replace")))
         self.fail("the owner's readiness output was malformed")
 
     def reap(self, process):
