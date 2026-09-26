@@ -307,6 +307,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-marker-program \
 	books/byte-store-k0-marker \
 	tests/acl2/byte-store-k0-marker-tests \
+	books/byte-store-marker-candidates \
+	tests/acl2/byte-store-marker-candidates-tests \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \

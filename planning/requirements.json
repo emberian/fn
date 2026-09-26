@@ -2926,6 +2926,28 @@
         "planning/evidence/friends-peer-2-2026-09-26.md"
       ],
       "implementation_note": "RFC 5537 section 3.6 relays by Newsgroups and section 5.3 gives a cancel its target's Newsgroups; section 3.7 files it under control.cancel (fn-pa-filing-plan). Offering under the filing group as well is a stronger fn guarantee (a peer that asked for control.cancel by name keeps receiving it). PKT-400 retired."
+    },
+    {
+      "id": "STO-022",
+      "title": "The durable reply's barrier cost is the publication program's and nothing less: every fence of a served commit fences an object A <= M <= D reads, and a cheaper program is admitted only through the byte model's discipline and crash theorems and the history model's invariant",
+      "specification": "specs/storage.md#the-committed-history-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-169"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/byte-store-marker-candidates.lisp",
+        "tests/acl2/byte-store-marker-candidates-tests.lisp",
+        "planning/evidence/publish-program-2026-09-26.md",
+        "planning/evidence/publish-program-2026-09-26/measure.sh",
+        "planning/evidence/publish-program-2026-09-26/post_n.py"
+      ],
+      "implementation_note": "A served commit makes seven fsyncs (strace over `store probe`: 7.2 per commit with the reopen), two renames, one link and one unlink: the frontier's stage and root, the record's stage, transactions directory and staging directory, the marker's stage and root. On the pool `tank` (ZFS, about 90 percent full, no SLOG) each is one ZIL commit; the marker's two fence its stage inode and the root entry, and neither can be shared with a barrier that precedes the record's or follows the acknowledgement (PRF-169). The measured cost and the sound sharing are in the record; the reservation pulled into the completion window is PKT-441."
     }
   ]
 }
