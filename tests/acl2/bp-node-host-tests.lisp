@@ -5,26 +5,26 @@
 
 ; The native BP command's mixed article/transport result (fnn-bp-exit-code,
 ; host/native/bp.lisp): one complete article was refused while the TCPCL
-; session was lost after it existed.  The run is :uncertain (exit 3), not
+; session was lost after it existed.  The run is :interrupted (exit 6), not
 ; refused; had a publication in the delivery callback been uncertain, it is
-; :fenced (exit 6).
+; :fenced (exit 3, recovery required).
 (assert-event
  (equal (fn-bprc-run-exit-code
          (fn-bprc-note (fn-bprc-note (fn-bprc-empty) :refused)
                        (fn-bprc-session-evidence :uncertain nil)))
-        3))
+        6))
 (assert-event
  (equal (fn-bprc-run-exit-code
          (fn-bprc-note (fn-bprc-note (fn-bprc-empty) :refused)
                        (fn-bprc-session-evidence :uncertain t)))
-        6))
+        3))
 ; Each domain can independently raise the run result; a session with no
 ; adverse outcome records nothing.
 (assert-event
  (equal (fn-bprc-run-exit-code
          (fn-bprc-note (fn-bprc-note (fn-bprc-empty) :uncertain)
                        (fn-bprc-session-evidence :accepted nil)))
-        3))
+        6))
 (assert-event
  (equal (fn-bprc-run-exit-code
          (fn-bprc-note (fn-bprc-empty) (fn-bprc-session-evidence :refused nil)))
@@ -34,7 +34,7 @@
          (fn-bprc-note (fn-bprc-empty) (fn-bprc-session-evidence nil nil)))
         0))
 ; Invalid evidence fails closed, as a fence.
-(assert-event (equal (fn-bprc-run-exit-code '(0 -1 0 0)) 6))
+(assert-event (equal (fn-bprc-run-exit-code '(0 -1 0 0)) 3))
 (assert-event (equal (fn-bprc-session-evidence :garbled nil) :fenced))
 
 ; `bp send` RETRY: a durable authored wire is re-offered with its own

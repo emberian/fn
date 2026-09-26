@@ -13,9 +13,9 @@
 ;; fn-bprc-exit-code-separates-the-classes.  Witness: the five codes.
 (assert-event
  (equal (list (fn-bprc-exit-code :accepted) (fn-bprc-exit-code :refused)
-              (fn-bprc-exit-code :uncertain) (fn-bprc-exit-code :fenced)
+              (fn-bprc-exit-code :interrupted) (fn-bprc-exit-code :fenced)
               (fn-bprc-exit-code :not-connected))
-        '(0 1 3 6 7)))
+        '(0 1 6 3 7)))
 ;; Without (member c1 classes): a word that is no class answers the fenced
 ;; code, so it collides with :fenced.
 (assert-event
@@ -39,8 +39,8 @@
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
 ;; Without (not (equal c1 c2)): one class, one code.
 (assert-event
- (and (member-equal :uncertain *fn-bprc-classes*)
-      (equal (fn-bprc-exit-code :uncertain) (fn-bprc-exit-code :uncertain))))
+ (and (member-equal :interrupted *fn-bprc-classes*)
+      (equal (fn-bprc-exit-code :interrupted) (fn-bprc-exit-code :interrupted))))
 (must-fail
  (defthm bprct-codes-without-distinct
    (implies (and (member-equal c1 *fn-bprc-classes*)
@@ -58,13 +58,13 @@
                     '(:refused :failed :accepted)))
 (assert-event (and (equal *bprct-mixed* '(2 1 1 1))
                    (equal (fn-bprc-class *bprct-mixed*) :fenced)
-                   (equal (fn-bprc-run-exit-code *bprct-mixed*) 6)))
-;; The same run without the fence is a lost connection (exit 3): the fence
+                   (equal (fn-bprc-run-exit-code *bprct-mixed*) 3)))
+;; The same run without the fence is a lost connection (exit 6): the fence
 ;; is what makes it :fenced.
 (assert-event
  (equal (fn-bprc-class (fn-bprc-note-all (fn-bprc-empty)
                                          '(:refused :uncertain :refused :failed)))
-        :uncertain))
+        :interrupted))
 
 ;; ---------------------------------------------------------------------------
 ;; fn-bprc-connection-local-never-fences.  Witness: every connection-local
@@ -74,7 +74,7 @@
       (equal (fn-bprc-class (fn-bprc-note-all (fn-bprc-empty) '(:failed)))
              :not-connected)
       (equal (fn-bprc-class (fn-bprc-note-all (fn-bprc-empty) '(:failed :uncertain)))
-             :uncertain)
+             :interrupted)
       (equal (fn-bprc-class (fn-bprc-note-all (fn-bprc-empty) '(:failed :refused)))
              :refused)
       (equal (fn-bprc-class (fn-bprc-note-all (fn-bprc-empty) '(:accepted nil)))
@@ -125,7 +125,7 @@
  (and (bprct-hyps *jo-st-a* *jo-key2* 2)
       (equal (bprct-run-class *jo-st-a* *jo-key2* 2 :accepted) :accepted)
       (equal (bprct-run-class *jo-st-a* *jo-key2* 2 :refused) :refused)
-      (equal (bprct-run-class *jo-st-a* *jo-key2* 2 :uncertain) :uncertain)
+      (equal (bprct-run-class *jo-st-a* *jo-key2* 2 :uncertain) :interrupted)
       (equal (bprct-run-class *jo-st-a* *jo-key2* 2 :failed) :not-connected)
       (equal (fn-bprc-run-exit-code
               (fn-bprc-note-effects

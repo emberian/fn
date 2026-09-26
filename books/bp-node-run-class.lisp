@@ -11,7 +11,7 @@
 ; (fnn-bps-exit-code).  The theorem below is that the class the host renders
 ; for that answer is the class of the transport outcome the record names: a
 ; connect that never produced a socket (:failed) is :not-connected, a lost
-; connection (:uncertain) is :uncertain, never :fenced, and a refusal is
+; connection (:uncertain) is :interrupted, never :fenced, and a refusal is
 ; :refused.
 (in-package "ACL2")
 (include-book "bp-run-class")

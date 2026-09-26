@@ -8,7 +8,7 @@
 ;   :failed     ACL2 requeued a job whose transfer never had a connection
 ;               (the (:forward-refused W A G :failed) effect of the durable
 ;               :requeued record): nothing left the node; the job is queued.
-;   :uncertain  a connection existed and was lost, so the peer may or may
+;   :uncertain  (class :interrupted) a connection existed and was lost, so the peer may or may
 ;               not hold the bundle ((:forward-refused W A G :uncertain), a
 ;               TCPCL session whose transfer failed after it was
 ;               established), or ACL2 could not decide an article's
@@ -27,7 +27,7 @@
 
 (in-package "ACL2")
 
-(defconst *fn-bprc-classes* '(:accepted :refused :uncertain :fenced :not-connected))
+(defconst *fn-bprc-classes* '(:accepted :refused :interrupted :fenced :not-connected))
 
 ; The evidence record: (refused failed uncertain fenced), four counts.
 (defun fn-bprc-empty ()
@@ -54,26 +54,29 @@
         (otherwise (list r f u (+ 1 x)))))))
 
 ; The class.  A fence dominates everything (nothing masks a recovery event);
-; then a lost connection; then a refusal; then a connection that never
-; existed; otherwise the run was accepted.
+; then a connection lost after it existed (:interrupted); then a refusal;
+; then a connection that never existed; otherwise the run was accepted.
 (defun fn-bprc-class (c)
   (declare (xargs :guard t))
   (cond ((not (fn-bprc-countsp c)) :fenced)
         ((< 0 (nth 3 c)) :fenced)
-        ((< 0 (nth 2 c)) :uncertain)
+        ((< 0 (nth 2 c)) :interrupted)
         ((< 0 (nth 0 c)) :refused)
         ((< 0 (nth 1 c)) :not-connected)
         (t :accepted)))
 
-; specs/host.md "CLI exit codes" and "BP run classes".
+; specs/host.md "CLI exit codes" and "BP run classes".  A fence keeps the
+; code every fn command gives an unknown publication outcome, 3: recovery is
+; required before further mutation.  A connection lost after it existed is 6
+; and a connection that never existed 7: neither asks for recovery.
 (defun fn-bprc-exit-code (class)
   (declare (xargs :guard t))
   (case class
     (:accepted 0)
     (:refused 1)
-    (:uncertain 3)
+    (:interrupted 6)
     (:not-connected 7)
-    (otherwise 6)))
+    (otherwise 3)))
 
 (defun fn-bprc-run-exit-code (c)
   (declare (xargs :guard t))
@@ -208,5 +211,5 @@
   (case outcome
     (:accepted :accepted)
     (:refused :refused)
-    (:uncertain :uncertain)
+    (:uncertain :interrupted)
     (otherwise :not-connected)))
