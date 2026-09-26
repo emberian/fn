@@ -1,0 +1,10 @@
+224307224 img/fn-host-developer-shake2.core
+132504816 img/fn-host-developer-shake3.core
+127687104 img/fn-host-developer-shake4.core
+394777400 img/fn-host-direct.core
+394777400 img/fn-host-rec.core
+394810176 img/fn-host-resave.core
+344208616 img/fn-host-shake1.core
+224340000 img/fn-host-shake2.core
+132504816 img/fn-host-shake3.core
+127621552 img/fn-host-shake4.core
