@@ -26,7 +26,7 @@
 (defconst *ps-lab-auth* (list :authinfo "/b/A.fnauth" t))
 (defun ps-plan (host security auth)
   (list *ps-peer* (fn-record-string-octets host) 11119 *ps-wildmat* 2000
-        security auth))
+        security auth *fn-pull-default-unavailable-rounds*))
 
 (defconst *ps-tls-plan* (ps-plan "10.1.2.3" *ps-starttls* *ps-auth*))
 (defconst *ps-lab-plan* (ps-plan "127.0.0.1" (list :clear) *ps-lab-auth*))
@@ -55,7 +55,7 @@
 (defconst *ps-first* (- *ps-now* *fn-pull-first-window-ms*))
 ; The begin journals the first instant, then dials; nothing else.
 (assert-event (equal (cadr *ps-b0*)
-                     (list (cons :journal (list *ps-peer* *ps-first* 0))
+                     (list (cons :journal (list *ps-peer* *ps-first* 0 nil))
                            (list :dial))))
 
 (defconst *ps-preamble*
@@ -153,10 +153,10 @@
 (assert-event (equal (fn-pull-plan-verdict *ps-refused-plan*) :refused-clear-credential))
 (assert-event (null (fn-pull-plan-profile-path *ps-refused-plan*)))
 (assert-event (equal (cadr *ps-rb*)
-                     (list (cons :journal (list *ps-peer* *ps-first* 0)) (list :close))))
+                     (list (cons :journal (list *ps-peer* *ps-first* 0 nil)) (list :close))))
 (assert-event (equal (ps-run (car *ps-rb*) *ps-events*) (list (car *ps-rb*) nil)))
 (assert-event (equal (fn-pull-session-close (car *ps-rb*))
-                     (list *ps-peer* *ps-first* 0)))
+                     (list *ps-peer* *ps-first* 0 nil)))
 (assert-event (equal (fn-pull-session-log-line (car *ps-rb*))
                      (fn-record-string-octets
                       "pull peer=A round=failed cursor=held refused=clear-credential")))
@@ -187,25 +187,25 @@
 ; After :ready the round is PRF-100's.
 ; fn-pull-begin-ready-is-the-round-after-the-greeting: witness on a 200.
 (assert-event
- (equal (mv-let (r e c) (fn-pull-on-line (fn-pull-begin *ps-fresh* *ps-wildmat* *ps-now*)
+ (equal (mv-let (r e c) (fn-pull-on-line (fn-pull-begin *ps-fresh* *ps-wildmat* *ps-now* *fn-pull-default-unavailable-rounds*)
                                          (fn-record-string-octets "200 A ready"))
           (list r e c))
-        (list (fn-pull-begin-ready *ps-fresh* *ps-wildmat* *ps-now*)
+        (list (fn-pull-begin-ready *ps-fresh* *ps-wildmat* *ps-now* *fn-pull-default-unavailable-rounds*)
               (list (cons :remote (ps-line "DATE"))) t)))
 ; Tooth (a greeting code): a 400 does not enter the ready round.
 (must-fail
  (assert-event
-  (equal (mv-let (r e c) (fn-pull-on-line (fn-pull-begin *ps-fresh* *ps-wildmat* *ps-now*)
+  (equal (mv-let (r e c) (fn-pull-on-line (fn-pull-begin *ps-fresh* *ps-wildmat* *ps-now* *fn-pull-default-unavailable-rounds*)
                                           (fn-record-string-octets "400 go away"))
            (declare (ignore e c))
            r)
-         (fn-pull-begin-ready *ps-fresh* *ps-wildmat* *ps-now*))))
+         (fn-pull-begin-ready *ps-fresh* *ps-wildmat* *ps-now* *fn-pull-default-unavailable-rounds*))))
 
 ; KEYSTONE fn-pull-session-journal-is-the-cursor-at-every-cut.
 ; Witness: from the fresh cursor through the TLS session to its close.
 (defconst *ps-j0* (fn-pull-journal-effects (cadr *ps-b0*)))
 (assert-event (equal (fn-pull-replay *ps-fresh* *ps-j0*)
-                     (fn-pull-round-cursor (fn-pull-begin *ps-fresh* *ps-wildmat* *ps-now*))))
+                     (fn-pull-round-cursor (fn-pull-begin *ps-fresh* *ps-wildmat* *ps-now* *fn-pull-default-unavailable-rounds*))))
 (assert-event (equal (fn-pull-replay *ps-fresh*
                                      (append *ps-j0* (fn-pull-journal-effects *ps-effects*)))
                      (fn-pull-round-cursor (fn-pull-s-round *ps-end*))))
@@ -217,7 +217,7 @@
                      (list *ps-peer* (- (fn-pull-date-ms (fn-record-string-octets
                                                           "111 20260925120000"))
                                         *fn-pull-overlap-ms*)
-                           1)))
+                           1 nil)))
 ; Every cut inside the preamble recovers the begin's cursor: a kill after
 ; STARTTLS, after the TLS report or after the credential journals nothing.
 (assert-event
@@ -225,19 +225,81 @@
 ; Tooth (the journal replays to C): an older journaled instant with a
 ; journaled (not fresh) C: the begin journals nothing and the replay is not
 ; the round's cursor.
-(defconst *ps-held-c* (list *ps-peer* 900 2))
+(defconst *ps-held-c* (list *ps-peer* 900 2 nil))
 (must-fail
  (assert-event (equal (fn-pull-replay *ps-fresh*
-                                      (append (list (list *ps-peer* 5 0))
+                                      (append (list (list *ps-peer* 5 0 nil))
                                               (fn-pull-journal-effects
                                                (cadr (ps-begin *ps-tls-plan* *ps-held-c*
                                                                *ps-now* *ps-cred*)))))
-                      (fn-pull-round-cursor (fn-pull-begin *ps-held-c* *ps-wildmat* *ps-now*)))))
+                      (fn-pull-round-cursor (fn-pull-begin *ps-held-c* *ps-wildmat* *ps-now* *fn-pull-default-unavailable-rounds*)))))
 ; Tooth (startable C): a cursor whose advance count is not a natural.
-(defconst *ps-bad* (list *ps-peer* 5 -1))
+(defconst *ps-bad* (list *ps-peer* 5 -1 nil))
 (must-fail
  (assert-event (equal (fn-pull-replay *ps-bad*
                                       (fn-pull-journal-effects
                                        (cadr (ps-begin *ps-tls-plan* *ps-bad* *ps-now*
                                                        *ps-cred*))))
-                      (fn-pull-round-cursor (fn-pull-begin *ps-bad* *ps-wildmat* *ps-now*)))))
+                      (fn-pull-round-cursor (fn-pull-begin *ps-bad* *ps-wildmat* *ps-now* *fn-pull-default-unavailable-rounds*)))))
+
+; -----------------------------------------------------------------------------
+; PRF-165 over the host's step and close: a clear anonymous session whose
+; peer lists <a> and <b>, answers ARTICLE <a> with 430, and whose local
+; node has <b>.  Bound 2 from the plan.
+(defconst *ps-u-plan* (list *ps-peer* (fn-record-string-octets "127.0.0.1") 119
+                            *ps-wildmat* 2000 (list :clear) nil 2))
+(defconst *ps-a* (fn-record-string-octets "<a@fn.invalid>"))
+(defconst *ps-u-events*
+  (list (cons :remote (ps-line "200 A ready"))
+        (cons :remote (ps-line "111 20260925120000"))
+        (cons :remote (append (ps-line "230 list follows") (ps-line "<a@fn.invalid>")
+                              (ps-line "<b@fn.invalid>") (ps-line ".")))
+        (cons :local (ps-line "200 transit"))
+        (cons :local (ps-line "335 send it"))
+        (cons :remote (ps-line "430 no such article"))
+        (cons :local (ps-line "200 transit"))
+        (cons :local (ps-line "435 have it"))))
+(defconst *ps-u-s0* (car (ps-begin *ps-u-plan* *ps-fresh* *ps-now* nil)))
+(defconst *ps-u1* (car (ps-run *ps-u-s0* *ps-u-events*)))
+(defconst *ps-u1-close* (fn-pull-session-close *ps-u1*))
+(defconst *ps-u2-s0* (car (ps-begin *ps-u-plan* *ps-u1-close* (+ *ps-now* 60000) nil)))
+(defconst *ps-u2* (car (ps-run *ps-u2-s0* *ps-u-events*)))
+(defconst *ps-u2-close* (fn-pull-session-close *ps-u2*))
+(assert-event (equal (fn-pull-r-bound (fn-pull-s-round *ps-u1*)) 2))
+
+; KEYSTONE fn-pull-session-unavailable-id-is-retried-below-the-bound.
+(assert-event (member-equal *ps-a* (fn-pull-list (fn-pull-r-unavailable (fn-pull-s-round *ps-u1*)))))
+(assert-event (fn-pull-completep (fn-pull-s-round *ps-u1*)))
+(assert-event (equal (fn-pull-cursor-since *ps-u1-close*) (fn-pull-r-since (fn-pull-s-round *ps-u1*))))
+(assert-event (equal (fn-pull-count-of *ps-a* (fn-pull-cursor-pending *ps-u1-close*)) 1))
+; Tooth (below the bound): the second session's close moves the instant.
+(must-fail (assert-event (equal (fn-pull-cursor-since *ps-u2-close*)
+                                (fn-pull-r-since (fn-pull-s-round *ps-u2*)))))
+
+; KEYSTONE fn-pull-session-complete-round-past-the-bound-advances and
+; fn-pull-session-close-advances-only-past-a-fully-answered-round.
+(assert-event (equal (fn-pull-cursor-advances *ps-u2-close*) 1))
+(assert-event (null (fn-pull-cursor-pending *ps-u2-close*)))
+(assert-event (fn-pull-all-answered-or-droppedp
+               (fn-pull-r-listed (fn-pull-s-round *ps-u2*)) (fn-pull-r-answers (fn-pull-s-round *ps-u2*))
+               (fn-pull-r-unavailable (fn-pull-s-round *ps-u2*)) (fn-pull-r-pending (fn-pull-s-round *ps-u2*))
+               (fn-pull-r-bound (fn-pull-s-round *ps-u2*))))
+(assert-event (equal (fn-pull-session-log-line *ps-u2*)
+                     (append (fn-record-string-octets
+                              "pull peer=A round=done cursor=advanced unavailable=1 dropped=")
+                             *ps-a* (fn-record-string-octets " transport=clear"))))
+; Tooth (the antecedent / not holding): the first session holds.
+(must-fail (assert-event (equal (fn-pull-cursor-advances *ps-u1-close*) 1)))
+
+; KEYSTONE fn-pull-session-step-marks-unavailable-only-on-the-peers-reply.
+(defconst *ps-u-article* (car (ps-run *ps-u-s0* (take 5 *ps-u-events*))))
+(assert-event (fn-pull-session-readyp *ps-u-article*))
+(assert-event (equal (fn-pull-r-phase (fn-pull-s-round *ps-u-article*)) :article))
+(assert-event (equal (fn-pull-r-unavailable
+                      (fn-pull-s-round (car (ps-run *ps-u-article* (list (nth 5 *ps-u-events*))))))
+                     (list *ps-a*)))
+; Tooth (after the preamble): a 430 before :ready (as the peer's greeting)
+; marks nothing.
+(assert-event (null (fn-pull-r-unavailable
+                     (fn-pull-s-round (car (ps-run *ps-u-s0* (list (cons :remote (ps-line "430 no")))))))))
+(must-fail (assert-event (fn-pull-session-readyp *ps-u-s0*)))

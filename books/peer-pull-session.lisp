@@ -28,7 +28,7 @@
 ;
 ; The host (host/native/pull-service.lisp) performs the effects: (:journal
 ; . cursor), (:dial), (:tls SERVER-NAME TRUST-ANCHOR), (:remote . octets),
-; (:open-local), (:local . octets), (:close); it reports (:remote . octets),
+; (:open-local), (:reopen-local), (:local . octets), (:close); it reports (:remote . octets),
 ; (:tls-up) only after a verified handshake, (:local . octets) and (:lost).
 (in-package "ACL2")
 (include-book "peer-pull")
@@ -141,7 +141,8 @@
 (defun fn-pull-session-begin (plan cursor now credential)
   (declare (xargs :guard t))
   (let* ((security (fn-pull-plan-security plan))
-         (round (fn-pull-begin-ready cursor (fn-pull-plan-wildmat plan) now))
+         (round (fn-pull-begin-ready cursor (fn-pull-plan-wildmat plan) now
+                                     (fn-pull-plan-bound plan)))
          (refusal (fn-pull-session-refusal plan credential))
          (fc (fn-pull-session-fc0 plan credential))
          (journal (fn-pull-begin-effects cursor now)))
@@ -427,7 +428,7 @@
                   (equal (fn-pull-session-run (car b) events) (mv (car b) nil))
                   (equal (fn-pull-close (fn-pull-s-round (car b)))
                          (fn-pull-round-cursor
-                          (fn-pull-begin cursor (fn-pull-plan-wildmat plan) now))))))
+                          (fn-pull-begin cursor (fn-pull-plan-wildmat plan) now (fn-pull-plan-bound plan)))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d ()
                            (fn-pull-fail fn-pull-begin-ready fn-pull-begin-effects
@@ -442,8 +443,8 @@
 ; peer's greeting, and the session's :ready sends that transition's DATE.
 (defthm fn-pull-begin-ready-is-the-round-after-the-greeting
   (implies (member-equal (fn-pull-code line) '(200 201))
-           (equal (fn-pull-on-line (fn-pull-begin c w now) line)
-                  (mv (fn-pull-begin-ready c w now)
+           (equal (fn-pull-on-line (fn-pull-begin c w now bound) line)
+                  (mv (fn-pull-begin-ready c w now bound)
                       (list (cons :remote (fn-pull-date-command)))
                       t)))
   :hints (("Goal" :in-theory (enable fn-pull-on-line))))
@@ -496,7 +497,7 @@
   (and (equal (fn-pull-round-cursor
                (fn-pull-s-round (car (fn-pull-session-begin plan cursor now credential))))
               (fn-pull-round-cursor
-               (fn-pull-begin cursor (fn-pull-plan-wildmat plan) now)))
+               (fn-pull-begin cursor (fn-pull-plan-wildmat plan) now (fn-pull-plan-bound plan))))
        (implies (fn-pull-startable-cursorp cursor)
                 (fn-pull-roundp
                  (fn-pull-s-round (car (fn-pull-session-begin plan cursor now
@@ -510,7 +511,8 @@
                                    fn-pull-session-refusal fn-pull-round-cursor
                                    fn-pull-begin))
            :use ((:instance fn-pull-roundp-of-begin (c cursor)
-                            (wildmat (fn-pull-plan-wildmat plan)))))))
+                            (wildmat (fn-pull-plan-wildmat plan))
+                            (bound (fn-pull-plan-bound plan)))))))
 
 ; KEYSTONE (PRF-125, the transfer of PRF-100
 ; `fn-pull-journal-is-the-cursor-at-every-cut', whose statement does not
@@ -529,7 +531,7 @@
                   (r (fn-pull-s-round (car run))))
              (and (equal (fn-pull-replay c0 j0)
                          (fn-pull-round-cursor
-                          (fn-pull-begin c (fn-pull-plan-wildmat plan) now)))
+                          (fn-pull-begin c (fn-pull-plan-wildmat plan) now (fn-pull-plan-bound plan))))
                   (equal (fn-pull-replay
                           c0 (append j0 (fn-pull-journal-effects (mv-nth 1 run))))
                          (fn-pull-round-cursor r))
@@ -545,7 +547,8 @@
                                fn-pull-begin-journal-replays-to-the-round
                                fn-pull-close-journal-replays-to-the-close)
            :use ((:instance fn-pull-begin-journal-replays-to-the-round
-                            (wildmat (fn-pull-plan-wildmat plan)))
+                            (wildmat (fn-pull-plan-wildmat plan))
+                            (bound (fn-pull-plan-bound plan)))
                  (:instance fn-pull-close-journal-replays-to-the-close
                             (r (fn-pull-s-round
                                 (car (fn-pull-session-run
@@ -590,6 +593,96 @@
 (defun fn-pull-session-close-effects (s)
   (declare (xargs :guard t))
   (fn-pull-close-effects (fn-pull-s-round s)))
+
+; -----------------------------------------------------------------------------
+; PRF-165 over the host's close and step (pull-service.lisp `fnn-pull-round'
+; calls `fn-pull-session-step-pair' and `fn-pull-session-close').
+
+; KEYSTONE (PRF-165; PRF-100's advance restated with the unavailable class).
+; If the host's close moves a session's cursor, its round ran to its end and
+; every Message-ID its NEWNEWS listed drew 235, 435 or 437 from the local
+; node, or the peer's 430 in this round with its consecutive count reaching
+; the bound; the instant is the peer's DATE less the overlap, and no count
+; survives the advance.
+(defthm fn-pull-session-close-advances-only-past-a-fully-answered-round
+  (let ((r (fn-pull-s-round s)))
+    (implies (not (equal (fn-pull-cursor-advances (fn-pull-session-close s))
+                         (fn-pull-r-advances r)))
+             (and (equal (fn-pull-r-phase r) :done)
+                  (fn-pull-all-answered-or-droppedp
+                   (fn-pull-r-listed r) (fn-pull-r-answers r)
+                   (fn-pull-r-unavailable r) (fn-pull-r-pending r)
+                   (fn-pull-r-bound r))
+                  (equal (fn-pull-cursor-since (fn-pull-session-close s))
+                         (fn-pull-back (fn-pull-r-started r) *fn-pull-overlap-ms*))
+                  (equal (fn-pull-cursor-pending (fn-pull-session-close s)) nil))))
+  :hints (("Goal" :in-theory (disable fn-pull-close fn-pull-all-answered-or-droppedp)
+           :use ((:instance fn-pull-close-advances-only-past-a-fully-answered-round
+                            (r (fn-pull-s-round s)))))))
+
+; KEYSTONE (PRF-165, retried while listed).  An id the peer answered 430,
+; unavailable fewer than the bound's consecutive complete rounds, does not
+; let the host's close move the instant past it, and a complete round
+; journals its count one higher than the round began with.
+(defthm fn-pull-session-unavailable-id-is-retried-below-the-bound
+  (let ((r (fn-pull-s-round s)))
+    (implies (and (member-equal id (fn-pull-list (fn-pull-r-unavailable r)))
+                  (fn-pull-msgidp id)
+                  (< (+ 1 (fn-pull-count-of id (fn-pull-r-pending r)))
+                     (fn-pull-bound-of (fn-pull-r-bound r))))
+             (and (equal (fn-pull-cursor-since (fn-pull-session-close s))
+                         (fn-pull-r-since r))
+                  (equal (fn-pull-cursor-advances (fn-pull-session-close s))
+                         (fn-pull-r-advances r))
+                  (implies (fn-pull-completep r)
+                           (equal (fn-pull-count-of
+                                   id (fn-pull-cursor-pending (fn-pull-session-close s)))
+                                  (+ 1 (fn-pull-count-of id (fn-pull-r-pending r))))))))
+  :hints (("Goal" :in-theory (disable fn-pull-close fn-pull-completep fn-pull-count-of
+                                      fn-pull-bound-of fn-pull-msgidp)
+           :use ((:instance fn-pull-unavailable-id-is-retried-below-the-bound
+                            (r (fn-pull-s-round s)))))))
+
+; KEYSTONE (PRF-165, dropped at the bound).  The host's close of a complete
+; round in which every unavailable id has reached the bound advances.
+(defthm fn-pull-session-complete-round-past-the-bound-advances
+  (let ((r (fn-pull-s-round s)))
+    (implies (and (fn-pull-completep r)
+                  (not (fn-pull-holdingp (fn-pull-list (fn-pull-r-unavailable r))
+                                         (fn-pull-r-pending r) (fn-pull-r-bound r))))
+             (equal (fn-pull-session-close s)
+                    (fn-pull-cursor (fn-pull-r-peer r)
+                                    (fn-pull-back (fn-pull-r-started r)
+                                                  *fn-pull-overlap-ms*)
+                                    (+ 1 (nfix (fn-pull-r-advances r)))
+                                    nil))))
+  :hints (("Goal" :in-theory (disable fn-pull-close fn-pull-completep fn-pull-holdingp)
+           :use ((:instance fn-pull-complete-round-past-the-bound-advances
+                            (r (fn-pull-s-round s)))))))
+
+; KEYSTONE (PRF-165).  A host step that marks an id unavailable is the
+; peer's reply to the round's ARTICLE, after the preamble, and it marks
+; exactly the article in hand.
+(defthm fn-pull-session-step-marks-unavailable-only-on-the-peers-reply
+  (implies (not (equal (fn-pull-r-unavailable
+                        (fn-pull-s-round (car (fn-pull-session-step s event))))
+                       (fn-pull-r-unavailable (fn-pull-s-round s))))
+           (and (consp event)
+                (equal (car event) :remote)
+                (fn-pull-session-readyp s)
+                (equal (fn-pull-r-phase (fn-pull-s-round s)) :article)
+                (equal (fn-pull-r-unavailable
+                        (fn-pull-s-round (car (fn-pull-session-step s event))))
+                       (cons (fn-pull-r-current (fn-pull-s-round s))
+                             (fn-pull-list (fn-pull-r-unavailable
+                                            (fn-pull-s-round s)))))))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-step fn-pull-s-with-round)
+                                  (fn-pull-step fn-pull-fail fn-pull-list
+                                   fn-fc-drive fn-fc-drive-state fn-pull-obs-effects
+                                   fn-pull-session-fc-events fn-pull-pre-okp
+                                   fn-pull-done-p fn-pull-session-readyp))
+           :use ((:instance fn-pull-step-marks-unavailable-only-on-the-peers-reply
+                            (r (fn-pull-s-round s)))))))
 
 ; How many octets the host may read from the peer for the next event: one
 ; feed-machine chunk before :ready (`fn-fwi-chunkp'), nil (the host's own
