@@ -3928,7 +3928,7 @@
       "id": "SCN-143",
       "title": "A certificate renewal reaches a running node by `tls reload`: new connections get the new certificate, an open session keeps working, and a mismatched key or a dropped name is refused by name with the old certificate still served",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "HST-020"
       ],
@@ -3955,8 +3955,14 @@
           "DeveloperTlsReloadTests.test_reload_without_an_owner_is_not_accepted"
         ],
         "native": true,
-        "record": "planning/evidence/tls-reload-2026-09-26.md"
-      }
+        "record": "planning/evidence/tls-reload-2026-09-26.md",
+        "log": "planning/evidence/tls-reload-2026-09-26/test-tests.test_native_tls_reload.log"
+      },
+      "evidence": [
+        "tests/test_native_tls_reload.py",
+        "planning/evidence/tls-reload-2026-09-26.md",
+        "planning/evidence/tls-reload-2026-09-26/test-tests.test_native_tls_reload.log"
+      ]
     }
   ]
 }
