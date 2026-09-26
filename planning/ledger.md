@@ -10,21 +10,21 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1014 |
-| Certification roots in the Makefile | 989 |
-| Books inside the root closure | 1007 |
-| `defthm` and `defthmd` events | 14183 |
-| `defun` events | 9862 |
-| Functions with verified guards | 2257 |
-| Functions declared `:verify-guards nil` and never verified | 772 |
-| Functions left at the default with an explicit guard | 5367 |
-| Functions left at the default with no guard | 1466 |
-| `assert-event` checks | 15142 |
-| `must-fail` checks | 1814 |
+| Books read | 1018 |
+| Certification roots in the Makefile | 993 |
+| Books inside the root closure | 1011 |
+| `defthm` and `defthmd` events | 14417 |
+| `defun` events | 9972 |
+| Functions with verified guards | 2279 |
+| Functions declared `:verify-guards nil` and never verified | 783 |
+| Functions left at the default with an explicit guard | 5427 |
+| Functions left at the default with no guard | 1483 |
+| `assert-event` checks | 15149 |
+| `must-fail` checks | 1823 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 2 |
 | `encapsulate` events | 77 |
-| Theorems flagged SUSPECT by shape | 135 |
-| Export-hygiene warnings | 157 |
+| Theorems flagged SUSPECT by shape | 136 |
+| Export-hygiene warnings | 159 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 156 |
 | Include-hygiene warnings | 1015 |
@@ -301,6 +301,8 @@ that `make certify` requests.
 | `books/byte-store-state-checkpoint-program.lisp` | root | 7 | 3 | 0/3/0/0 | 4 | 0 | 0 |
 | `books/byte-store-txn-name.lisp` | root | 30 | 13 | 3/0/10/0 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
+| `books/catalog-record.lisp` | root | 66 | 46 | 22/0/22/2 | 0 | 0 | 1 |
+| `books/catalog.lisp` | root | 151 | 59 | 0/11/38/10 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 73 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 18 | 35 | 35/0/0/0 | 0 | 0 | 0 |
 | `books/checkpoint-auxiliary.lisp` | root | 0 | 12 | 7/0/0/5 | 0 | 0 | 0 |
@@ -818,6 +820,8 @@ that `make certify` requests.
 | `tests/acl2/byte-store-sweep-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 8 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
+| `tests/acl2/catalog-record-tests.lisp` | root | 11 | 2 | 0/0/0/2 | 3 | 6 | 0 |
+| `tests/acl2/catalog-tests.lisp` | root | 6 | 3 | 0/0/0/3 | 4 | 3 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 0 | 0 |
 | `tests/acl2/checkpoint-auxiliary-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 49 | 0 | 0 |
@@ -1170,6 +1174,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-fc-wire-next-unconsumed-is-bounded-linear` | `books/feed-connection-invariants.lisp` | 26 | instance-corollary: the statement is fn-wire-next-unconsumed-is-bounded instantiated, discharging nothing |
 | `fn-fr-disjointp-of-all-memberships-left` | `books/acceptance.lisp` | 251 | instance-corollary: the statement is fn-fr-disjointp-commutes instantiated, discharging nothing |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 697 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
+| `fn-held-accessors-are-the-wire-accessors` | `books/catalog-record.lisp` | 308 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 313 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
 | `fn-lace-cross-canonical-self` | `books/lace-invariants.lisp` | 289 | definition-restated: the conclusion is the body of fn-lace-canonicalp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-lb-ocfg-gate-unfolds` | `books/login-binding-live.lisp` | 119 | definition-restated: the conclusion is the body of fn-lb-ocfg-gate |
