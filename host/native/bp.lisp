@@ -434,17 +434,109 @@ may or may not be durable."
        (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
        (list :uncertain reason)))))
 
+;;; Developer measurement (FN_BP_TEST_PROFILE="64 128 256", developer image
+;;; only): SBCL's deterministic profiler counts the calls and time of the ACL2
+;;; functions a `bp-node serve' session reaches -- every executable
+;;; counterpart of a BP function (what the host calls, and what unverified
+;;; code calls) and the raw functions named below -- and after a session
+;;; whose arrival leaves the named number of rows held it prints the
+;;; session's and the arrival's wall time and that table, then resets.  A
+;;; measurement only: nothing it prints is read back or decides anything.
+(defparameter +fnn-bp-profile-names+
+  '("FN-BPNF-HELDP" "FN-BPB-ENCODE" "FN-BPB-BUNDLEP" "FN-BPNF-ACTIVE-FRAGMENTP"
+    "FN-BPNF-SAME-FRAGMENT-FAMILY-P" "FN-BPNF-ACTIVE-SET-ROWS"
+    "FN-BPNF-FAMILY-NEXT-MEMO" "FN-BPNF-FAMILY-SELECT"
+    "FN-BPNF-ZERO-FAMILY-KEYS" "FN-BPNF-FAMILY-PLAN-AT"
+    "FN-BPNF-ARRIVAL-COUNT" "FN-BPNF-FIND-HELD" "FN-BPNF-HELD-OCTETS"
+    "FN-BPN-MACHINE-STATEP" "FN-BPNF-RECEIVE-DECISION"))
+
+(defvar *fnn-bp-profile-points* :unset)
+(defvar *fnn-bp-profile-arrival-ms* nil)
+
+(defun fnn-bp-profile-points ()
+  "The held-row counts FN_BP_TEST_PROFILE names, profiling on first use."
+  (when (eq *fnn-bp-profile-points* :unset)
+    (let ((text (fnn-developer-selector "FN_BP_TEST_PROFILE")))
+      (setq *fnn-bp-profile-points*
+            (and text
+                 (with-input-from-string (in (substitute #\Space #\, text))
+                   (loop for n = (read in nil nil) while (integerp n) collect n))))
+      (when *fnn-bp-profile-points*
+        (let ((symbols nil))
+          (dolist (name +fnn-bp-profile-names+)
+            (let ((symbol (find-symbol name "ACL2")))
+              (when (and symbol (fboundp symbol)) (push symbol symbols))))
+          (do-symbols (symbol (find-package "ACL2_*1*_ACL2"))
+            (let ((name (symbol-name symbol)))
+              (when (and (fboundp symbol)
+                         (eq (symbol-package symbol)
+                             (find-package "ACL2_*1*_ACL2"))
+                         (or (eql 0 (search "FN-BP" name))
+                             (eql 0 (search "FN-OWNER-BP" name))))
+                (push symbol symbols))))
+          (eval `(sb-profile:profile ,@symbols)))
+        (sb-profile:reset))))
+  *fnn-bp-profile-points*)
+
+(defun fnn-bp-profile-ms (started)
+  (round (* 1000 (- (get-internal-real-time) started))
+         internal-time-units-per-second))
+
+(defun fnn-bp-profile-arrival (started)
+  "Note the arrival's wall time for the session's line."
+  (when (fnn-bp-profile-points)
+    (setq *fnn-bp-profile-arrival-ms* (fnn-bp-profile-ms started))))
+
+(defun fnn-bp-profile-session (service started)
+  "After a `bp-node serve' session: its line, and at a named held count the
+table of the calls the session made."
+  (let ((points (fnn-bp-profile-points)))
+    (when points
+      (let ((held (length (fnn-core 'fn-bpnf-held-list
+                                    (fnn-bps-state service))))
+            (ms (fnn-bp-profile-ms started)))
+        (fnn-out "BP profile held=~d session-ms=~d arrival-ms=~a"
+                 held ms *fnn-bp-profile-arrival-ms*)
+        (when (member held points)
+          (let ((table (with-output-to-string (out)
+                         ;; SBCL prints the table to *trace-output*.
+                         (let ((*standard-output* out) (*trace-output* out))
+                           (sb-profile:report :limit 60
+                                              :print-no-call-list nil)))))
+            (with-input-from-string (in table)
+              (loop for line = (read-line in nil nil) while line
+                    do (fnn-out "BP profile | ~a" line)))))
+        (setq *fnn-bp-profile-arrival-ms* nil)
+        (sb-profile:reset)))))
+
+(defun fnn-bp-profile-open (service started)
+  "After fnn-bps-open: the open's wall time, the rows it recovered and the
+table of the calls it made."
+  (when (fnn-bp-profile-points)
+    (let ((table (with-output-to-string (out)
+                   (let ((*standard-output* out) (*trace-output* out))
+                     (sb-profile:report :limit 40 :print-no-call-list nil)))))
+      (fnn-out "BP profile open held=~d open-ms=~d"
+               (length (fnn-core 'fn-bpnf-held-list (fnn-bps-state service)))
+               (fnn-bp-profile-ms started))
+      (with-input-from-string (in table)
+        (loop for line = (read-line in nil nil) while line
+              do (fnn-out "BP profile | ~a" line))))
+    (sb-profile:reset)))
+
 (defun fnn-bp-deliver-node
   (service conn session-counter xfer-id octets owner channel)
   "Complete one transfer through the single FNBS machine owner."
   (when (string= (or (fnn-developer-selector "FN_BP_TEST_DELIVER_FAULT") "") "1")
     (fnn-fault "bp: injected receive core fault"))
-  (let* ((tally (fnn-bps-tally service))
+  (let* ((started (get-internal-real-time))
+         (tally (fnn-bps-tally service))
          (admission (fnn-bps-tcpcl-admission
                      (fnn-bps-state service) conn session-counter xfer-id
                      owner channel)))
     (multiple-value-bind (result adu)
-        (fnn-bps-receive service admission octets)
+        (multiple-value-prog1 (fnn-bps-receive service admission octets)
+          (fnn-bp-profile-arrival started))
       (case (first result)
         (:accepted
          (incf (fnn-bp-tally-accepted tally))

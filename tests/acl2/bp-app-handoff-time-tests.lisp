@@ -228,3 +228,21 @@
           (fn-bpah-select-oldest-at nil *bpah-local*
                                      *bpaht-wall-less* nil)
           *bpaht-wall-less*) :live)))
+
+;; PRF-136: fn-bpah-held-expiry-header-of-held.  Witness: a held carrier's
+;; header decision is its decision (:live).  Without the hypothesis: the same
+;; row with its wire image dropped is not heldp; the definition answers
+;; :uncertain while the header still reads :live, so the equality fails
+;; (which is why the scan asks the full decision after the header's).
+(defconst *bpaht-bad-wire* (update-nth 8 nil *bpaht-new-held*))
+(assert-event
+ (and (fn-bpnf-heldp *bpaht-new-held*)
+      (equal (fn-bpah-held-expiry-header *bpaht-new-held* *bpaht-wall-less*)
+             :live)
+      (equal (fn-bpah-held-expiry *bpaht-new-held* *bpaht-wall-less*) :live)))
+(assert-event
+ (and (not (fn-bpnf-heldp *bpaht-bad-wire*))
+      (equal (fn-bpah-held-expiry-header *bpaht-bad-wire* *bpaht-wall-less*)
+             :live)
+      (equal (fn-bpah-held-expiry *bpaht-bad-wire* *bpaht-wall-less*)
+             :uncertain)))
