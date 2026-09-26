@@ -863,6 +863,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-control \
 	tests/acl2/nntp-control-tests \
 	books/owner-control-read \
+	books/nntp-enrollment \
+	books/owner-enrollment-read \
+	tests/acl2/owner-enrollment-read-tests \
 	books/login-binding \
 	tests/acl2/login-binding-tests \
 	books/public-exposure \

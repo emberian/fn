@@ -5729,6 +5729,31 @@
           "name": "fn-rclp-reclaiming-pack-is-a-first-link"
         }
       ]
+    },
+    {
+      "id": "PRF-168",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-reader-opened-after-completion-pins-the-finished-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-enr-item-of-an-enrolled-principal"
+        }
+      ]
     }
   ]
 }

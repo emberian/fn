@@ -1505,6 +1505,41 @@ reconfigure generation <n>`, `owed`, `declined <reason>` or `report
 <serial>`. It is the node's historical claim, like `:fn-verified`, and
 `tools/fn_verify.py` checks only the signature half of it.
 
+**Current enrollment (`HDR :fn-enrollment`, PKT-175, PRF-168).** A reader is
+told, as its own fact, whether the principal a historical verdict names is
+still enrolled in the node's keyring view. `HDR :fn-enrollment <msgid>`, in
+the same disclosure class as `:fn-control` (one line, Message-ID form only;
+`430` when the pinned view does not serve the article, `501` for any other
+argument shape), answers `0 ITEM` with ITEM one of:
+
+    active HEX keyring N      the verdict's generation is the principal's current enrollment N
+    retired HEX keyring N     the principal enrolled generation N since; the verdict's generation is no longer current
+    revoked HEX keyring N     the principal's newest snapshot is the revocation tombstone at N
+    unenrolled HEX            the keyring view holds no snapshot for the principal
+    none no-keyring-view      the connection pinned no keyring view
+    none no-record            no verdict is recorded for the article
+    none no-principal         the verdict names no 32-octet principal (unverified, absent, legacy)
+
+HEX is the verdict's principal in lowercase hex and N a decimal keyring
+generation. ACL2 decides it (`fn-enr-item`, books/nntp-enrollment.lisp)
+from the verdict the connection pinned and the keyring snapshots the view
+was committed with (`fn-own-view-keyring`, set by `fn-own-refresh` from
+`fn-sn-keyring-snapshots`; the control pin's fourth slot), through
+`fn-hl-current-for-principal` and `fn-hl-history-row`. It is a current
+fact, so it is pinned like the verdicts: a reader never sees a later
+enrollment than its view's. It never changes the verdict: the historical
+signature verdict, historical local acceptance, current enrollment and
+current administrative authority stay separate facts (the mandate §5.4);
+`:fn-control` remains the only answer about authority. The theorem over the
+host-called read is `fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment`
+(books/owner-enrollment-read.lisp; host line host/owner-host.lisp
+`fn-owner-chunk`).
+
+NNT-036: a reader is told the current enrollment, in the node's pinned
+keyring view, of the principal a historical verdict names, as a fact
+distinct from the verdict (active, retired, revoked or unenrolled), and a
+missing verdict or principal is a named answer, never an error.
+
 ## 9. Key statements: succession and revocation (PRF-098)
 
 The spike (`planning/evidence/spike-peering-2026-09-25.md`, theorems 2 and 3)

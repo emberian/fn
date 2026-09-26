@@ -116,6 +116,11 @@ not a node line: it is `tools/fn_verify.py check-article` run by the reader
 with the reader's own keyring (verified here, failed here with the reason, or
 not performed with why).
 
+WEB-002: The web reader verifies a signed article independently with the
+reader's own keyring, never the node's, says whose keyring it used, and
+shows verified here, failed here with the reason, or not performed with why,
+beside and never merged with the node's historical verdict.
+
 ## Everyday tools over protection
 
 NNT-032: An ordinary reader reaches a protected node with the tools people

@@ -1645,7 +1645,8 @@
                                                nil (fn-state-articles prefix)
                                                (fn-ctl-subseq-diff
                                                 (fn-state-articles prefix)
-                                                (fn-state-articles archive))))
+                                                (fn-state-articles archive))
+                                               nil))
                                             nil 0 max-conns nil nil nil nil
                                             nil nil nil nil))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
