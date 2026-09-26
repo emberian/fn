@@ -288,6 +288,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-tests \
 	books/store-reclaim-buffer \
 	tests/acl2/store-reclaim-buffer-tests \
+	books/visibility-join \
+	tests/acl2/visibility-join-tests \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
 	books/reclaim-admission \

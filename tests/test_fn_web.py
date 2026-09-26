@@ -452,7 +452,8 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("Message-ID:", result)
         status, _, settled = self.request("GET", "/settle?id=" + token)
         self.assertEqual(status, 200)
-        self.assertIn("did not serve this Message-ID in this lookup", settled)
+        self.assertIn("did not serve this Message-ID to this reader in this lookup", settled)
+        self.assertIn("not evidence about acceptance", settled)
         self.assertIn("original POST outcome has not changed", settled)
         self.assertEqual(self.node.seen.count("POST"), 1)
         self.assertEqual(self.request("POST", "/post", {
@@ -465,6 +466,76 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(self.request("POST", "/post", {
             "submission_id": token})[0], 410)
         self.assertEqual(self.node.seen.count("POST"), 1)
+
+    # NNT-019: an uncertain POST is settled by re-sending its exact lines.
+    def lost_submission(self):
+        self.node.d25, self.node.commit_then_drop = True, True
+        token = self.form_id()
+        status, headers, _ = self.request("POST", "/post", {"submission_id": token})
+        self.assertEqual(status, 303)
+        page = self.request("GET", headers["Location"])[2]
+        self.assertIn("badge uncertain", page)
+        self.assertIn("badge unresolved", page)
+        self.assertNotIn("if the node serves it, it was accepted", page)
+        (msgid,) = self.node.articles
+        return token, msgid
+
+    def reconcile(self, token, origin=True):
+        status, headers, page = self.request("POST", "/reconcile",
+                                             {"submission_id": token}, origin)
+        if status == 303:
+            return self.request("GET", headers["Location"])
+        return status, headers, page
+
+    def test_reconcile_after_withdrawal_is_already_stored_and_keeps_the_original(self):
+        self.enable_outbox()
+        token, msgid = self.lost_submission()
+        self.node.withdrawn.add(msgid)
+        settled = self.request("GET", "/settle?id=" + token)[2]
+        self.assertIn("not evidence about acceptance", settled)
+        self.assertIn("badge unresolved", settled)
+        held = dict(self.node.articles)
+        status, _, page = self.reconcile(token)
+        self.assertEqual(status, 200)
+        self.assertIn("badge uncertain", page)              # the original stays
+        self.assertIn("badge accepted", page)
+        self.assertIn("the original post was accepted", page)
+        self.assertEqual(self.node.articles, held)
+        self.assertEqual(self.node.seen.count("POST"), 2)
+        self.restart_outbox()
+        page = self.request("GET", "/result?id=" + token)[2]
+        self.assertIn("the original post was accepted", page)
+        saved = json.loads((self.outbox_path / (token + ".json")).read_text())
+        self.assertEqual(saved["result"]["word"], "uncertain")
+        self.assertEqual(saved["reconciliation"]["settled"], "already-stored")
+        self.assertEqual(saved["message_id"], msgid)
+        self.reconcile(token)                                # settled: nothing sent
+        self.assertEqual(self.node.seen.count("POST"), 2)
+
+    def test_reconcile_refused_for_another_reason_stays_unresolved(self):
+        token, msgid = self.lost_submission()
+        self.node.accept_post = False
+        status, _, page = self.reconcile(token)
+        self.assertEqual(status, 200)
+        self.assertIn("badge unresolved", page)
+        self.assertIn("440", page)
+        self.assertNotIn("badge accepted", page)
+        self.node.accept_post = True
+        page = self.reconcile(token)[2]
+        self.assertIn("the original post was accepted", page)
+        self.assertEqual(len(self.node.articles), 1)
+
+    def test_reconcile_needs_the_form_origin_and_an_uncertain_original(self):
+        token, msgid = self.lost_submission()
+        self.assertEqual(self.reconcile(token, origin=False)[0], 403)
+        self.assertEqual(self.node.seen.count("POST"), 1)
+        accepted = self.form_id()
+        self.node.commit_then_drop = False
+        self.request("POST", "/post", {"submission_id": accepted, "body": "other"})
+        posts = self.node.seen.count("POST")
+        self.reconcile(accepted)
+        self.assertEqual(self.node.seen.count("POST"), posts)
+        self.assertEqual(self.reconcile("forgotten")[0], 410)
 
     def test_bounded_form_memory_evicts_without_reposting(self):
         first = self.form_id()

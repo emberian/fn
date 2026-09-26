@@ -324,8 +324,12 @@ class Backend:
         return fn_client.compose(form, self.user, FormErrors(), body)
 
     def post(self, group: str, lines: tuple[str, ...], msgid: str):
+        def send(client):
+            answer = client.post(group, list(lines), msgid)
+            answer.status_lines = list(client.lines)
+            return answer
         try:
-            return self.using(lambda client: client.post(group, list(lines), msgid))
+            return self.using(send)
         except fn_client.Stop as exc:
             # A connection failure before POST still has a stable identifier
             # for later settlement. Keep it through the HTTP boundary.
@@ -347,7 +351,8 @@ class SubmissionBook:
                 self.entries.popitem(last=False)
             token = secrets.token_urlsafe(24)
             self.entries[token] = {"group": group, "lines": None, "message_id": "",
-                                   "result": None, "settlement": None}
+                                   "result": None, "settlement": None,
+                                   "reconciliation": None}
             return token
 
     def get(self, token: str):
@@ -392,6 +397,40 @@ class SubmissionBook:
                 result = fn_client.Result(fn_client.UNCERTAIN, str(exc), {}, "")
             entry["settlement"] = result
             return entry
+
+    def reconcile(self, token: str):
+        """Settle an uncertain POST by re-sending its exact lines (NNT-019).
+
+        The same article under the same Message-ID: the node answers from what
+        it stored (D25), including an article since withdrawn or reclaimed.
+        The original outcome is never rewritten; the answer is recorded
+        beside it.  Only an uncertain original is re-sent, and only until a
+        reconciliation settles it."""
+        with self.lock:
+            entry = self.entries.get(token)
+            if entry is None or entry["lines"] is None or entry["result"] is None:
+                return entry
+            if entry["result"].word != fn_client.UNCERTAIN or \
+                    reconciled(entry.get("reconciliation")):
+                return entry
+            if getattr(self, "fenced", None):
+                raise OutboxError(self.fenced)
+            try:
+                answer = self.backend.post(entry["group"], entry["lines"],
+                                           entry["message_id"])
+            except (OSError, Disconnected) as exc:
+                answer = fn_client.Result(fn_client.UNCERTAIN, str(exc),
+                                          {"message_id": entry["message_id"]}, "")
+            entry["reconciliation"] = fn_client.reconciliation(answer)
+            self._record(token, entry)
+            return entry
+
+    def _record(self, token, entry):
+        """Memory only; the durable book writes the record."""
+
+
+def reconciled(result) -> bool:
+    return result is not None and result.word in (fn_client.ACCEPTED, fn_client.REFUSED)
 
 
 class OutboxError(Exception):
@@ -516,6 +555,7 @@ class DurableSubmissionBook(SubmissionBook):
                     raise OutboxError("outbox draft is malformed")
                 return {"group": saved["group"], "lines": None,
                         "message_id": "", "result": None, "settlement": None,
+                        "reconciliation": None,
                         "draft": draft, "original_recorded": False,
                         "record_error": None}
             if not isinstance(saved["lines"], list) or not saved["lines"] or \
@@ -544,8 +584,19 @@ class DurableSubmissionBook(SubmissionBook):
                     (fn_client.DONE, fn_client.REFUSED, fn_client.UNCERTAIN) or
                     not isinstance(observation["detail"], str)):
                 raise OutboxError("outbox observation is malformed")
+            settled = saved.get("reconciliation")
+            if settled is not None and (not isinstance(settled, dict) or
+                    settled["word"] not in (fn_client.ACCEPTED, fn_client.REFUSED,
+                                            fn_client.UNRESOLVED) or
+                    not isinstance(settled["detail"], str) or
+                    not isinstance(settled.get("settled"), str) or
+                    result.word != fn_client.UNCERTAIN):
+                raise OutboxError("outbox reconciliation is malformed")
             return {"group": saved["group"], "lines": tuple(saved["lines"]),
                     "message_id": saved["message_id"], "result": result,
+                    "reconciliation": (fn_client.Result(settled["word"], settled["detail"],
+                                                        {"settled": settled["settled"]}, "")
+                                       if settled else None),
                     "settlement": (fn_client.Result(observation["word"],
                                    observation["detail"], {}, "") if observation else None),
                     "draft": None, "original_recorded": original is not None,
@@ -559,6 +610,10 @@ class DurableSubmissionBook(SubmissionBook):
                  "lines": list(entry["lines"]) if entry["lines"] is not None else None,
                  "message_id": entry["message_id"], "result": original,
                  "settlement": settlement, "draft": entry.get("draft")}
+        settled = entry.get("reconciliation")
+        if settled is not None:
+            saved["reconciliation"] = {"word": settled.word, "detail": settled.detail,
+                                       "settled": settled.data.get("settled", "")}
         data = json.dumps(saved, ensure_ascii=True, separators=(",", ":")).encode()
         if len(data) > 32768:
             raise OutboxError("outbox record exceeds 32 KiB")
@@ -591,6 +646,7 @@ class DurableSubmissionBook(SubmissionBook):
             token = secrets.token_urlsafe(24)
             self.entries[token] = {"group": group, "lines": None, "message_id": "",
                                    "result": None, "settlement": None, "draft": None,
+                                   "reconciliation": None,
                                    "original_recorded": False, "record_error": None}
             return token
 
@@ -651,6 +707,19 @@ class DurableSubmissionBook(SubmissionBook):
             except (OSError, OutboxError) as exc:
                 entry["record_error"] = self._fence(exc)
             return entry
+
+    def _record(self, token, entry):
+        # Called with the lock held, after a reconciliation answer.
+        if self.fenced:
+            return
+        original = ({"word": entry["result"].word, "detail": entry["result"].detail}
+                    if entry["original_recorded"] else None)
+        settlement = ({"word": entry["settlement"].word, "detail": entry["settlement"].detail}
+                      if entry["settlement"] is not None else None)
+        try:
+            self._write(token, entry, original, settlement)
+        except (OSError, OutboxError) as exc:
+            entry["record_error"] = self._fence(exc)
 
     def settle(self, token):
         entry = super().settle(token)
@@ -973,7 +1042,7 @@ a:hover { color:#922e24 } nav a { margin-right:1rem }
 .card, article { background:#fffefa; border:1px solid #cbd5cd; border-radius:12px; padding:1rem 1.2rem; margin:.7rem 0; box-shadow:0 2px 5px #193d2b0d }
 .meta { color:#52645d; font-size:.88rem; overflow-wrap:anywhere }
 .badge { display:inline-block; border-radius:100px; padding:.15rem .6rem; font-size:.8rem; background:#e2efe7; color:#144d3d }
-.accepted { background:#daf1df } .refused { background:#fae0d9 } .uncertain { background:#fff0be }
+.accepted { background:#daf1df } .refused { background:#fae0d9 } .uncertain { background:#fff0be } .unresolved { background:#f3e2ff }
 .thread { border-left:3px solid #b7d5c6 } pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:ui-monospace, monospace }
 details { margin-top:1rem; border-top:1px solid #d9e1d9; padding-top:.6rem } summary { cursor:pointer; font-weight:650 }
 .hint { border-left:3px solid #d1a24b; padding:.5rem .8rem; background:#fff9e8 }
@@ -1087,17 +1156,23 @@ class Handler(BaseHTTPRequestHandler):
                     "was sent" + (", and in the local outbox across restarts"
                                    if getattr(self.server.submissions, "durable", False)
                                    else ", while this process runs") +
-                    ". Check the Message-ID first: if the node serves it, it was accepted.</p>")
+                    ". A lookup shows only what this reader is served now: an article can be "
+                    "accepted and then withdrawn or reclaimed, and answer 430. To settle it, "
+                    "re-send this same article under the same Message-ID; the node answers "
+                    "from what it stored and never stores it twice.</p>")
         observed = ""
         if entry["settlement"] is not None:
             found = entry["settlement"]
             if found.word == fn_client.DONE:
                 finding = "The node now serves this Message-ID. The original POST response remains recorded above."
             elif found.word == fn_client.REFUSED:
-                finding = "The node did not serve this Message-ID in this lookup. The original POST outcome has not changed."
+                finding = ("The node did not serve this Message-ID to this reader in this lookup "
+                           "(withdrawn, reclaimed, not held, or not visible here). That is not "
+                           "evidence about acceptance; the original POST outcome has not changed.")
             else:
                 finding = "The lookup could not establish whether the article is served."
             observed = "<p class='hint'>" + e(finding) + "</p>"
+        observed += self.reconciliation_html(token, entry)
         self.page("Post " + word, "<nav><a href='/'>Groups</a></nav><article>"
                   "<span class='badge " + e(word) + "'>" + e(word) + "</span>"
                   "<h2>" + e(meaning) + "</h2>"
@@ -1119,6 +1194,35 @@ class Handler(BaseHTTPRequestHandler):
                      "This client keeps the exact submitted source and result only while "
                      "this process runs and the form remains in its bounded memory.") + "</p>"
                   "</article>")
+
+    def reconciliation_html(self, token, entry) -> str:
+        """The settlement of an uncertain POST, beside (never over) the original."""
+        if entry["result"].word != fn_client.UNCERTAIN:
+            return ""
+        settled = entry.get("reconciliation")
+        meaning = {
+            "accepted-now": "Settled: the node accepted this article on the re-send. It is "
+                            "stored once.",
+            "already-stored": "Settled: the node already holds this exact article, so the "
+                              "original post was accepted. Nothing was stored twice.",
+            "conflict": "Settled: a different article holds this Message-ID; this text is "
+                        "not stored under it.",
+        }
+        if settled is not None and reconciled(settled):
+            key = settled.data.get("settled", "")
+            return ("<div class='card'><span class='badge " + e(settled.word) + "'>" +
+                    e(settled.word) + "</span> <strong>" +
+                    e(meaning.get(key, settled.detail)) + "</strong><p class='meta'>" +
+                    e(settled.detail) + "</p></div>")
+        why = (("<p class='meta'>" + e(settled.detail) + "</p>") if settled is not None else "")
+        return ("<div class='card'><span class='badge unresolved'>unresolved</span> "
+                "<strong>Whether the node accepted this article is not settled.</strong>" + why +
+                "<form method='post' action='/reconcile'>"
+                "<input type='hidden' name='csrf' value='" + e(self.server.token) + "'>"
+                "<input type='hidden' name='submission_id' value='" + e(token) + "'>"
+                "<button type='submit'>Re-send this same article to settle it</button></form>"
+                "<p class='muted'>This sends the exact text above under the same Message-ID. "
+                "It never creates a second article.</p></div>")
 
     def article_html(self, group, number, one, verdict, has_verdict_lookup):
         fields = one["headers"]
@@ -1567,7 +1671,7 @@ class Handler(BaseHTTPRequestHandler):
             self.page("Outbox unavailable", "<p>" + e(exc) + "</p>", 503)
 
     def do_POST(self):
-        if not self.valid_host() or self.path not in ("/post", "/mark"):
+        if not self.valid_host() or self.path not in ("/post", "/mark", "/reconcile"):
             self.send_error(400)
             return
         expected = "http://127.0.0.1:%d" % self.server.server_port
@@ -1597,6 +1701,14 @@ class Handler(BaseHTTPRequestHandler):
             submission_id = values.get("submission_id", "")
             if not submission_id or len(submission_id) > 64:
                 raise ValueError("invalid submission identifier")
+            if self.path == "/reconcile":
+                entry = self.server.submissions.reconcile(submission_id)
+                if entry is None:
+                    self.page("Submission unavailable", "<p>No local record has this "
+                              "identifier. Nothing was sent.</p>", 410)
+                    return
+                self.redirect(href("/result", id=submission_id))
+                return
             group, subject = values.get("group", ""), values.get("subject", "")
             sender, references, body = (values.get("sender", ""),
                                         values.get("references", ""), values.get("body", ""))

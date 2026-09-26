@@ -1738,6 +1738,31 @@
         "Another invitation is refused another-invitation and configures nothing; after the stop A2 already lists nodeB2, and the retry enrols once.",
         "The statement logs `key-statement declined no-grant`; after each restart the log adds `key-statement declined ... at-open` and the key history is unchanged (the pre-packet image instead logs `enrol-successor committed at-open`)."
       ]
+    },
+    {
+      "id": "SCN-060",
+      "title": "a POST whose reply was lost, then withdrawn by an authorized cancel, is settled by re-sending the same article: already stored, no new Message-ID, no new number",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "NNT-019"
+      ],
+      "steps": [
+        "A developer node with fn.test and control.cancel; the owner runs with FN_NATIVE_POST_FAULT=finish-durable:kill. fn_client posts with --draft and the owner dies after the commit is durable, before the reply (exit 3, uncertain); fn_web posts through its outbox under the same cut.",
+        "The owner restarts; both targets answer 220. A principal granted cancel over fn.test files a signed cancel of each target.",
+        "A fresh reader asks ARTICLE <target> for both; fn_client show <target>.",
+        "fn_client reconcile DRAFT and fn_web POST /reconcile re-send the exact stored lines; then reconcile again.",
+        "On a protected node the poster's login loses posting permission after a lost reply; fn_client reconcile."
+      ],
+      "expected": [
+        "Both lookups answer 430 withdrawn; show exits 1 and says the answer is not evidence about acceptance.",
+        "Both reconciliations draw 441 posting failed; this article is already stored here and settle accepted (already-stored); the transaction files and GROUP fn.test are unchanged; the draft and outbox keep the original outcome uncertain beside the reconciliation.",
+        "The authorization case answers 440 and settles unresolved (exit 4); the article is still served (220) and nothing is stored."
+      ],
+      "evidence": [
+        "tests/test_native_visibility_join.py",
+        "planning/evidence/visibility-join-2026-09-25.md"
+      ]
     }
   ]
 }
