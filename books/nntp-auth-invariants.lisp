@@ -683,7 +683,10 @@
                             fn-auth-tls-eventp
                             fn-nntp-keyword-tokenp fn-nntp-tokenize
                             fn-nntp-command-inputp
-                            fn-nntp-command-arguments-at-mostp)))))
+                            fn-nntp-command-arguments-at-mostp))
+           ; PRF-164: the outcome of an XREDEEM hold never installs a
+           ; subject.
+           :use ((:instance fn-auth-redeem-outcome-leaves-no-subject-when-it-answers)))))
 
 ; KEYSTONE (c2).  An authenticated principal whose credential lacks the
 ; posting flag is answered 440 to POST, and nothing happens.

@@ -260,3 +260,14 @@
 (defun fn-native-operator-host-inspect-report (msgid-octets foundp)
   (declare (xargs :mode :program))
   (fn-native-operator-inspect-report msgid-octets foundp))
+
+;; PRF-164: `account invite' (host/native/operator.lisp).
+(defun fn-native-operator-host-result-account-invite-seconds (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-account-invite-seconds result))
+(defun fn-native-operator-host-result-account-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (if (fn-native-operator-result-account-invite-seconds result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))

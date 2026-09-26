@@ -115,6 +115,24 @@ persvati path-identity=persvati.friends.fn.invalid address=192.168.50.120 port=1
 An invitation made with `- -` in place of your address still enrols you at
 the friend's node, and configures nothing there.
 
+### An account for the friend on your node
+
+To let the friend read and post on your node as themselves, hand them one
+code (it is printed once; send it over a channel you trust):
+
+```sh
+# ME
+$F operator $C account invite --expires 86400
+```
+
+The friend, over TLS (STARTTLS or the implicit-TLS listener), sends
+`XREDEEM CODE LOGIN` (answered `381 send the password with XREDEEM PASS`),
+then `XREDEEM PASS PASSWORD`, answered `281 account bound; authenticate with
+AUTHINFO on a new connection`; from then on they log in with AUTHINFO USER/PASS
+as LOGIN. `$F operator $C account list` shows the login and its principal.
+Once an account code is redeemed on a release with accounts, releases before it
+cannot open the store; roll back only from the pre-upgrade snapshot.
+
 ## 3. The protected feed both ways
 
 The records `accept` and `confirm` write are clear-transport and inbound

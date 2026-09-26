@@ -10,6 +10,7 @@
 (include-book "native-config")
 (include-book "native-config-show")
 (include-book "native-admin")
+(include-book "accounts")
 (include-book "native-auth-admin")
 (include-book "byte-store-frame")
 (include-book "outcome-class")
@@ -455,7 +456,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention" "account")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -496,10 +497,12 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; restart to apply)")
+        ((equal subject "account")
+         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers; spec nntp Invitation-code accounts)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -592,6 +595,29 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
           (t (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
                            command config argv)))))
 
+;; PRF-164 (PKT-439): `account invite [--expires SECONDS]'.  The plan names
+;; the seconds only; the host reads the entropy, and ACL2 renders the code
+;; and its digest (books/accounts.lisp) before the digest-only admin argv is
+;; planned.  `account list' is an administrative query.
+(defun fn-nop-parse-account (words argv config)
+  (declare (xargs :guard t))
+  (cond ((and (equal (fn-ncfg-first words) "invite")
+              (null (fn-ncfg-rest words)))
+         (fn-nop-result :accepted :plan "account" config
+                        (list :account-invite *fn-acct-default-expiry-seconds*)))
+        ((and (equal (fn-ncfg-first words) "invite")
+              (equal (fn-ncfg-second words) "--expires")
+              (consp (fn-ncfg-rest (fn-ncfg-rest words)))
+              (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words))))
+              (posp (fn-nop-profile-decimal
+                     (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest words))))))
+         (fn-nop-result :accepted :plan "account" config
+                        (list :account-invite
+                              (fn-nop-profile-decimal
+                               (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest words)))))))
+        ((equal words '("list")) (fn-nop-parse-administration "account" argv config))
+        (t (fn-nop-usage :invalid-account-command "account" config words))))
+
 (defun fn-nop-parse-command (words config argv)
   "The accepted tag means a bounded command *plan* exists; no host effect ran."
   (declare (xargs :guard t))
@@ -665,6 +691,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
             ((equal command "keys") (fn-nop-parse-keys rest config))
+            ((equal command "account") (fn-nop-parse-account rest argv config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 
 (defun fn-native-operator-command-preflight (argv-octets)
@@ -1082,7 +1109,21 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "bp-route")
            (equal (fn-native-operator-result-command result) "policy")
            (equal (fn-native-operator-result-command result) "retention")
-           (equal (fn-native-operator-result-command result) "control"))))
+           (equal (fn-native-operator-result-command result) "control")
+           (and (equal (fn-native-operator-result-command result) "account")
+                (not (equal (fn-ncfg-first
+                             (fn-native-operator-result-arguments result))
+                            :account-invite))))))
+
+;; PRF-164: the seconds of an accepted `account invite' plan, or nil.
+(defun fn-native-operator-result-account-invite-seconds (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "account")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :account-invite))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
+    nil))
 
 (defun fn-native-operator-result-admin-plan (result)
   "The exact ACL2 administrative plan; no raw argv reaches the executor."
@@ -1222,6 +1263,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "policy")
                (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")) :admin)
+          ((and (equal (fn-native-operator-result-command result) "account")
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :account-invite))
+           :account-invite)
+          ((equal (fn-native-operator-result-command result) "account") :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "keys") :keys)
           ((equal (fn-native-operator-result-command result) "show") :show)

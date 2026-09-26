@@ -237,3 +237,113 @@
 ; acceptable, and the replay faults rather than overwrite.
 (assert-event (equal (fn-config-replay-loop (at-cfg2) 0 1000 (list (at-r3-bad)))
                      :fault))
+
+; -----------------------------------------------------------------------------
+; PKT-439: the owner's bounded plan, the word, the invite (friends-accounts-2)
+
+(defmacro at-bplan (v used bound)
+  `(fn-acct-redeem-bounded-plan ,v *at-stamp* *at-code* *at-login*
+                                *at-password* *at-salt* nil ,used ,bound))
+
+; KEYSTONE fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound
+; (natp used) (natp bound) (plan :redeem) => bounded = (if (< used bound) plan
+; refused).  Witness on both sides of the bound, from a real pending row.
+(assert-event (equal (car (at-plan1)) :redeem))
+(assert-event (equal (at-bplan (at-v1) 3 4) (at-plan1)))
+(assert-event (equal (at-bplan (at-v1) 4 4) '(:refused :account-credential-bound)))
+; (natp used) removed: USED = 5/2 against BOUND 2; every other hypothesis
+; holds; nfix reads 0, so the plan redeems where the statement says refused.
+(assert-event (and (not (natp 5/2)) (natp 2) (equal (car (at-plan1)) :redeem)
+                   (not (equal (at-bplan (at-v1) 5/2 2)
+                               (if (< 5/2 2) (at-plan1)
+                                 '(:refused :account-credential-bound))))))
+; (natp bound) removed: BOUND = 1/2 against USED 0.
+(assert-event (and (natp 0) (not (natp 1/2)) (equal (car (at-plan1)) :redeem)
+                   (not (equal (at-bplan (at-v1) 0 1/2)
+                               (if (< 0 1/2) (at-plan1)
+                                 '(:refused :account-credential-bound))))))
+; (plan :redeem) removed: the resume on the redeemed row is never refused by
+; the bound, so the statement's refusal is false there.
+(assert-event (and (natp 5) (natp 1)
+                   (equal (car (fn-acct-redeem-plan (at-v2) *at-stamp* *at-code*
+                                                    *at-login* *at-password*
+                                                    *at-salt* nil))
+                          :already-redeemed)
+                   (not (equal (at-bplan (at-v2) 5 1)
+                               '(:refused :account-credential-bound)))))
+
+; KEYSTONE fn-acct-redeem-word-is-bound-only-after-a-durable-redeem.
+(assert-event (equal (fn-acct-redeem-word (at-plan1) :accepted) :bound))
+(assert-event (equal (fn-acct-redeem-word '(:already-redeemed) :refused) :bound))
+; Hypothesis removed: a :redeem plan whose publication was refused is not
+; :bound, and the conclusion fails for it.
+(assert-event (and (not (equal (fn-acct-redeem-word (at-plan1) :refused) :bound))
+                   (not (or (equal (car (at-plan1)) :already-redeemed)
+                            (and (equal (car (at-plan1)) :redeem)
+                                 (equal :refused :accepted))))))
+
+; KEYSTONE fn-acct-redeem-word-of-an-unknown-code-is-refused.
+(assert-event (not (consp (at-row (at-v0) (at-digest)))))
+(assert-event (equal (fn-acct-redeem-word (at-bplan (at-v0) 0 5) :accepted)
+                     :refused))
+; Hypothesis removed: the code's pending row exists, and the word is :bound.
+(assert-event (and (consp (at-row (at-v1) (at-digest)))
+                   (equal (fn-acct-redeem-word (at-bplan (at-v1) 0 5) :accepted)
+                          :bound)))
+
+; KEYSTONE fn-acct-redeem-bounded-plan-after-its-redeem-is-bound (the crash
+; cut between the publication and the reply).
+(defmacro at-bv2 ()
+  '(fn-cfg-apply-delta (at-v1) 2 *at-stamp*
+                       (fn-acct-plan-delta (at-bplan (at-v1) 0 5))))
+(assert-event (equal (car (at-bplan (at-v1) 0 5)) :redeem))
+(assert-event (equal (fn-acct-redeem-bounded-plan (at-bv2) *at-stamp-late*
+                                                  *at-code* *at-login*
+                                                  *at-password* *at-salt-2* t
+                                                  9 9)
+                     '(:already-redeemed)))
+(assert-event (equal (fn-acct-redeem-word
+                      (fn-acct-redeem-bounded-plan (at-bv2) *at-stamp-late*
+                                                   *at-code* *at-login*
+                                                   *at-password* *at-salt-2* t
+                                                   9 9)
+                      :refused)
+                     :bound))
+; Hypothesis removed: a plan refused at the bound stages nothing, so the
+; retry is not a resume.
+(assert-event
+ (and (not (equal (car (at-bplan (at-v1) 5 5)) :redeem))
+      (not (equal (fn-acct-redeem-bounded-plan
+                   (fn-cfg-apply-delta (at-v1) 2 *at-stamp*
+                                       (fn-acct-plan-delta (at-bplan (at-v1) 5 5)))
+                   *at-stamp* *at-code* *at-login* *at-password* *at-salt* nil
+                   0 5)
+                  '(:already-redeemed)))))
+
+; The invite: the code's text, its pending row, and the row's liveness.
+(defconst *at-entropy* '(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 250))
+(assert-event (equal (fn-acct-code-text *at-entropy*)
+                     "000102030405060708090a0b0c0d0efa"))
+(assert-event (null (fn-acct-code-text (cdr *at-entropy*))))
+(defmacro at-inv-delta ()
+  '(fn-acct-invite-delta (fn-acct-code-digest-text
+                          (fn-record-string-octets
+                           (fn-acct-code-text *at-entropy*)))
+                         60 *at-stamp*))
+(assert-event (null (fn-cfg-delta-reason (at-v0) 1 *at-stamp* 0 0 (at-inv-delta))))
+(assert-event (equal (fn-acct-invite-expiry 60 *at-stamp*) 1700060002))
+(assert-event (< (+ (fn-clock-wall *at-stamp*) (fn-clock-wall-error *at-stamp*))
+                 (fn-acct-invite-expiry 60 *at-stamp*)))
+; Hypothesis of fn-acct-invite-delta-is-live-at-its-stamp removed: no wall
+; clock, no expiry, and the comparison fails.
+(assert-event (and (null (fn-acct-invite-expiry 60 *at-stamp-no-wall*))
+                   (null (fn-acct-invite-delta "x" 60 *at-stamp-no-wall*))
+                   (not (< (+ (fn-clock-wall *at-stamp-no-wall*)
+                              (fn-clock-wall-error *at-stamp-no-wall*))
+                           (fn-acct-invite-expiry 60 *at-stamp-no-wall*)))))
+; `account list' names logins and principals, never a digest.
+(assert-event
+ (let ((text (fn-record-octets-string (fn-acct-list-report (at-v2)))))
+   (and (stringp text)
+        (equal (subseq text 0 15) "redeemed robin ")
+        (not (search (at-digest) text)))))

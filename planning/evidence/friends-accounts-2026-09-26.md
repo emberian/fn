@@ -158,3 +158,133 @@ books/config.lisp (the value-make arity seam touches every dependent).
   file or a schema-1 record family so old images skip it -- costs a second
   persistence path and its crash model for a rollback case. Affected:
   books/config.lisp's codec only; nothing waits on it.
+
+## Continuation: friends-accounts-2 (PKT-439), 2026-09-26
+
+Lane friends-accounts-2 (deputy 3), from dev deb68237. What a friend can do
+now: the operator runs `fn operator CONFIG account invite [--expires SECONDS]`
+and hands over the one code it prints; the friend, over TLS, sends `XREDEEM
+CODE LOGIN` (381) and `XREDEEM PASS PASSWORD`, and is answered 281 only after
+the redeem record is durable; from the next connection AUTHINFO USER/PASS logs
+in as LOGIN with the login's local principal, no auth.toml edit, no restart.
+
+### The wire and the hold
+
+`XREDEEM PASS` is a command line, not a bare password line (the designed "next
+line is the password" would let a desynchronised client send its password as a
+command). The PASS line answers nothing: the session's pending slot holds
+`(:xredeem-wait CODE LOGIN PASSWORD)` and its handshaking bit is set, so the
+served fold stops at the line's end exactly as after 382, and the owner owes an
+event. host/native/owner.lisp `fnn-owner-handle-chunk` asks
+`fn-acct-host-owner-redeem-waitingp` after `fn-owner-chunk` and calls
+host/native/admin.lisp `fnn-owner-account-redeem` under the same mutex: 16
+octets of CSPRNG salt, `fnn-owner-live-reconfigure-locked` with the stage
+`fn-acct-host-owner-redeem-stage` (the bounded plan over the LIVE value at the
+owner's clock), then the word `fn-acct-redeem-word` and the event
+`(:account-outcome WORD)` through `fn-ocfg-read-step` (the `:tls-established`
+re-entry), which renders 281/482. Control request kind 13, reserved for this lane,
+stays unused (the session reaches the publish in-process); operator-daily's
+continuation may take it. Octets the client sent after the PASS line
+are kept and fed next (on a TLS channel too). No control request kind is used:
+the NNTP session reaches the publication in-process, as peer accept does; kind
+13 stays unused.
+
+Reusing the handshaking bit changed two existing statements, both narrowed and
+not hidden: `fn-auth-handshaking-session-serves-nothing` now excludes the one
+event a redemption hold answers, and `fn-auth-step-starttls-clears-a-principal-role`
+(PRF-049) is now about a hold that is not a redemption hold; the other hold is
+the new `fn-auth-step-redeem-hold-keeps-the-role` (no subject, role kept).
+
+### Proved (PRF-164 extended)
+
+Over `fn-auth-step-pinned` (books/served.lisp `fn-served-dispatch`'s callee;
+host line: host/owner-host.lisp `fn-owner-chunk` via `fn-own-read`, and
+host/native-admin-host.lisp `fn-owner-account-outcome` via
+`fn-ocfg-read-step`): `fn-auth-step-pinned-xredeem-before-tls-is-483`,
+`fn-auth-step-pinned-xredeem-pass-holds-for-the-owner`,
+`fn-auth-step-pinned-redeem-outcome-answers-the-word`. books/accounts.lisp:
+`fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound` (the
+admission limit: auth.toml's credentials plus redeemed rows against the
+profile's max-credentials, field 12; a resume is never refused by it),
+`fn-acct-redeem-word-is-bound-only-after-a-durable-redeem`,
+`fn-acct-redeem-word-of-an-unknown-code-is-refused`,
+`fn-acct-redeem-bounded-plan-after-its-redeem-is-bound` (the crash cut
+`FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH`, host/native/admin.lisp, after the
+publication and before the reply). The staged delta is
+`fn-acct-redeem-plan-is-admitted-and-redeems`' (cited); a redeemed account's
+AUTHINFO binds exactly its principal by
+`fn-auth-config-with-accounts-finds-the-redeemed-credential` with
+`fn-auth-step-principal-login-binds-exactly-the-unique-match` (cited, not
+re-proved). Teeth: tests/acl2/accounts-wire-tests.lisp (new) and
+tests/acl2/accounts-tests.lisp (appended). Not proved: the lift of the wire
+keystones through `fn-served-step`'s fold to `fn-own-read` (the fold's stop on
+handshakingp is books/served.lisp's); H7 (argument bound) of the 483 keystone
+has a checked witness, not a refuting one.
+
+Assurance chain: native entry host/native/owner.lisp `fnn-owner-handle-chunk`
+-> `fn-owner-chunk` -> `fn-own-read` -> `fn-served-step` ->
+`fn-auth-step-pinned` (the hold) -> host `fnn-owner-account-redeem` ->
+`fn-acct-host-owner-redeem-stage` = `fn-acct-redeem-bounded-plan` over
+`fn-owner-config` -> `fn-owner-reconfigure-deltas` / `fn-ocl-publish` /
+`fn-owner-reconfigure-complete` (PRF-028's, cited) -> word -> the outcome event
+-> observed 281/482 in tests/test_native_friends_accounts.py.
+
+### Operator
+
+`account invite`: ACL2 renders the code (`fn-acct-code-text`, 32 hex from 16
+CSPRNG octets) and its digest; only `account invite DIGEST SECONDS` reaches
+`fn-native-admin-plan`, live over the control socket or offline
+(`fn-native-admin-host-apply`, the `peer add` pattern); the code is written to
+stdout once, after exit 0. The expiry is in the record clock's unit (wall
+milliseconds since 2000-01-01): books/config.lisp's comment that EXPIRY is "the
+decimal wall-clock second" is wrong about the unit (left untouched: editing it
+recertifies config.lisp's closure; PKT-458). `account list` is a status-path
+report (`fn-nls-report` kind `:accounts`, code 7), live or offline:
+`redeemed LOGIN PRINCIPAL-HEX` / `pending expires EXPIRY`, never a digest or
+verifier. Exit codes are the admin path's (`fn-native-control-host-status-exit-code`
+live, `fnn-admin-execute` offline), not a new classify function.
+
+### PKT-440 (decided by the coordinator)
+
+"Once an account code is redeemed on a release with accounts, releases before
+it cannot open the store; roll back only from the pre-upgrade snapshot" is in
+docs/operator.md's rollback section, docs/peering-with-a-friend.md's account
+step and specs/nntp.md. Decision taken (old images are frozen); the upgrade
+rehearsal checks that sentence. The native module witnesses it with the
+bbf52159 image (FN_OLD_IMAGE, the qualification gate's copy, never /tank/fn/node).
+
+### Packets
+
+- PKT-439: narrowed to what remains (see "Not done").
+- PKT-458 (new): books/config.lisp's EXPIRY comment names seconds; the clock's
+  unit is milliseconds. Default: fix the comment at the next change that
+  recertifies config.lisp anyway.
+
+### Runs (friends-accounts-2; persvati, 2 jobs, 300 s, w25 acl2-literal)
+
+- r1 run-20260926T113511Z-4d9a (certify-20260926T113601Z-1137720): red,
+  nntp-auth-invariants c1 (the outcome event); native-admin 10.9 s (fixed: it
+  no longer includes accounts).
+- r2 run-20260926T114514Z-07cc (certify-20260926T114541Z-1263027): red,
+  nntp-auth-invariants c1 again and native-live-status
+  fn-nls-report-of-query-kind-is-query-report (now over fn-nls-query-report).
+- r3 run-20260926T115348Z-f44d (certify-20260926T115417Z-1367181): red,
+  nntp-auth-fold (XREDEEM keeps POST awaiting) and nntp-auth-teeth-tests K10
+  (S3 added, with its must-fail).
+- r4 run-20260926T120643Z-e478 (certify-20260926T120719Z-1504010): GREEN,
+  14 certified, 581 from the cache, no book over 10 s (REPL first:
+  nntp-auth-fold and nntp-auth-teeth-tests admitted at b0eaf32d).
+
+Native (hbox, tools/hbox_native.sh, developer image): n3 at a82ddb64 OK; n4 at
+d03139df OK: module log sha256 faebff1b979dcbd32272a54fdcd90d338a5a1f0e169fc10426f8cc405bcbc031,
+fn-host-developer 45e34aba50173a066fa5b7c62538a140416ba38e070271eded48a149d05c8e7b;
+the bbf52159 image (b6f7c0e5..., the qualification gate's copy) opens a fresh
+store (exit 0) and refuses the redeemed store (exit 4, "ACL2 refused
+configuration namespace observation").
+
+### Not done
+
+The release-tarball run of this module (tests/friends_tarball.sh drives only
+the feed module); a signed post as the bound principal (the module posts
+unsigned, 240); the lift of the wire keystones through the fold to
+fn-own-read; PKT-458.

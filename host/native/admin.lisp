@@ -190,6 +190,44 @@ Answers :accepted once the record is durable and the owner installed it, or
       (fnn-owner-feed-refresh-configuration service)
       :accepted)))
 
+;;; PRF-164 (PKT-439): the owner's side of XREDEEM.  The connection CID
+;;; holds (books/nntp-auth.lisp fn-auth-redeem-waitp) after its read; the
+;;; caller, fnn-owner-handle-chunk, holds the owner mutex.  The NNTP session
+;;; reaches the publication in-process, the way peer accept does
+;;; (host/native/peer-invite.lisp), not over the control socket: no control
+;;; request kind is used.
+(defun fnn-owner-account-redeem (service cid)
+  "Plan, publish, then answer: 281 only after the redeem record is durable.
+
+Returns the ACL2-rendered reply octets for CID."
+  (let* ((salt (fnn-csprng-octets (fnn-core 'fn-acct-host-salt-octets)
+                                  "credential salt"))
+         (bound (fnn-profile-nat 'fn-store-profile-max-credentials
+                                 (fnn-owner-service-store service)))
+         (published
+           (fnn-owner-live-reconfigure-locked
+            service
+            (lambda (pcid)
+              (fnn-owner-action 'fn-acct-host-owner-redeem-stage
+                                pcid cid salt bound)))))
+    (unless (member published '(:accepted :refused))
+      (fnn-fault "owner returned a malformed publication word"))
+    ;; The model's crash cut after fn-ocl-publish's root barrier and before
+    ;; the reply (books/accounts.lisp
+    ;; fn-acct-redeem-bounded-plan-after-its-redeem-is-bound); a developer
+    ;; image dies here on request.
+    (when (and (eq published :accepted)
+               (fnn-developer-selector "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
+      (fnn-err "account redeem: developer stop after the publication")
+      (sb-ext:exit :code 137 :abort t))
+    (fnn-log-line (fnn-owner-core 'fn-acct-host-owner-redeem-log-line published))
+    (let ((word (fnn-owner-core 'fn-acct-host-owner-redeem-word published)))
+      (unless (member word '(:bound :refused))
+        (fnn-fault "owner returned a malformed redeem word"))
+      (unless (eq (fnn-owner-action 'fn-owner-account-outcome cid word) :ok)
+        (fnn-fault "owner rejected the redeem outcome"))
+      (fnn-owner-octets-global 'fn-owner-output))))
+
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner."
   (fnn-owner-serialized

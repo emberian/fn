@@ -1,0 +1,54 @@
+test_a_friend_redeems_a_code_once_across_a_crash (tests.test_native_friends_accounts.NativeFriendsAccountsTests.test_a_friend_redeems_a_code_once_across_a_crash) ... /usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=6, family=2, type=1, proto=6, laddr=('127.0.0.1', 44662), raddr=('127.0.0.1', 51687)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=6, family=2, type=1, proto=6, laddr=('127.0.0.1', 44672), raddr=('127.0.0.1', 51687)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=6, family=2, type=1, proto=6, laddr=('127.0.0.1', 44674), raddr=('127.0.0.1', 51687)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=6, family=2, type=1, proto=6, laddr=('127.0.0.1', 44676), raddr=('127.0.0.1', 51687)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=6, family=2, type=1, proto=6, laddr=('127.0.0.1', 44680), raddr=('127.0.0.1', 51687)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=6, family=2, type=1, proto=6, laddr=('127.0.0.1', 44704), raddr=('127.0.0.1', 51687)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=6, family=2, type=1, proto=6, laddr=('127.0.0.1', 44716), raddr=('127.0.0.1', 51687)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/lib/python3.12/socket.py:791: ResourceWarning: unclosed <ssl.SSLSocket fd=5, family=2, type=1, proto=6, laddr=('127.0.0.1', 44694)>
+  self._sock = None
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 5.170s
+
+OK
+NATIVE-ACCOUNTS init local.general -> 0
+NATIVE-ACCOUNTS account invite -> 0
+NATIVE-ACCOUNTS XREDEEM 540dd9359f415228f0b92ade2325560d -> 483
+NATIVE-ACCOUNTS XREDEEM 540dd9359f415228f0b92ade2325560d -> 381
+NATIVE-ACCOUNTS XREDEEM PASS -> 281
+NATIVE-ACCOUNTS AUTHINFO USER -> 381
+NATIVE-ACCOUNTS AUTHINFO PASS -> 281
+NATIVE-ACCOUNTS POST  -> 340
+NATIVE-ACCOUNTS XREDEEM 540dd9359f415228f0b92ade2325560d -> 381
+NATIVE-ACCOUNTS XREDEEM PASS -> 482
+NATIVE-ACCOUNTS XREDEEM 540dd9359f415228f0b92ade2325560d -> 381
+NATIVE-ACCOUNTS XREDEEM PASS -> 281
+NATIVE-ACCOUNTS XREDEEM 00000000000000000000000000000000 -> 381
+NATIVE-ACCOUNTS XREDEEM PASS -> 482
+NATIVE-ACCOUNTS account list -> 0
+NATIVE-ACCOUNTS account invite -> 0
+NATIVE-ACCOUNTS XREDEEM accf611f3913fd27bdd9ab0fec814e45 -> 381
+NATIVE-ACCOUNTS XREDEEM accf611f3913fd27bdd9ab0fec814e45 -> 381
+NATIVE-ACCOUNTS XREDEEM PASS -> 281
+NATIVE-ACCOUNTS AUTHINFO USER -> 381
+NATIVE-ACCOUNTS AUTHINFO PASS -> 281
+NATIVE-ACCOUNTS POST  -> 340
+NATIVE-ACCOUNTS old-image status fresh -> 0 eep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0 checkpoint-file=absent pins=0 reserved=0 connections=0 accepted operator status
+NATIVE-ACCOUNTS old-image status redeemed -> 4 fault operator status ACL2 refused configuration namespace observation
