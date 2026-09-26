@@ -364,16 +364,18 @@ def headroom():
     ccfg, _ = config_for(copy, "tight-small")
     f0 = footprint(copy)
     code, so, se = native("operator", ccfg, "store", "compact", env=small)
+    f1 = footprint(copy)
     out(tag="small-disk-compact", exit=code, stderr=se.strip()[-200:],
-        unchanged=footprint(copy) == f0)
+        unchanged=f1 == f0, before=f0, after=f1)
     # The real disk: compact, then the disk refusal of the reclaim on a copy.
     code, so, se = native("operator", cfg, "store", "compact")
     out(tag="tight-compact", exit=code, stdout=so.strip()[-200:], stderr=se.strip()[-300:])
     shutil.rmtree(copy, ignore_errors=True); shutil.copytree(store, copy)
     f0 = footprint(copy)
     code, so, se = native("operator", ccfg, "store", "reclaim", env=small)
+    f1 = footprint(copy)
     out(tag="small-disk-reclaim", exit=code, stderr=se.strip()[-200:],
-        unchanged=footprint(copy) == f0)
+        unchanged=f1 == f0, before=f0, after=f1)
     shutil.rmtree(copy, ignore_errors=True)
     before = footprint(store)
     code, so, se = native("operator", cfg, "store", "reclaim")
