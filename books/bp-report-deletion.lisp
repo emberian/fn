@@ -100,9 +100,18 @@
   (declare (xargs :guard t :measure (acl2-count held-list)))
   (if (atom held-list)
       nil
-    (if (and (fn-bpn-report-held-delete-pendingp (car held-list))
-             (equal (fn-bpah-held-expiry (car held-list) observation)
-                    :expired))
+    ;; A live row's header says so without fn-bpnf-heldp's re-encoding
+    ;; (PRF-136): the :exec asks it first; on a held row it is the same
+    ;; decision (fn-bpah-held-expiry-header-of-held).
+    (if (mbe :logic (and (fn-bpn-report-held-delete-pendingp (car held-list))
+                         (equal (fn-bpah-held-expiry (car held-list) observation)
+                                :expired))
+             :exec (and (equal (fn-bpah-held-expiry-header
+                                (car held-list) observation)
+                               :expired)
+                        (fn-bpn-report-held-delete-pendingp (car held-list))
+                        (equal (fn-bpah-held-expiry (car held-list) observation)
+                               :expired)))
         (car held-list)
       (fn-bpn-report-find-expired-held (cdr held-list) observation))))
 
@@ -197,7 +206,12 @@
                                fn-bpn-report-primary-for-guard))))
 (verify-guards fn-bpn-report-tombstone-held)
 (verify-guards fn-bpn-report-apply-delete)
-(verify-guards fn-bpn-report-find-expired-held)
+(verify-guards fn-bpn-report-find-expired-held
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpah-held-expiry-header-of-held
+                            (held (car held-list))))
+           :in-theory (disable fn-bpah-held-expiry fn-bpah-held-expiry-header
+                               fn-bpnf-heldp fn-bpb-bundlep fn-bpp-blockp))))
 (verify-guards fn-bpn-report-deleted-record-matches-heldp
   :hints (("Goal" :use ((:instance fn-bpn-report-held-bundle-for-guard)
                          (:instance fn-bpn-report-primary-for-guard
