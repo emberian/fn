@@ -2922,7 +2922,7 @@
     },
     {
       "id": "SCN-102",
-      "title": "An operator after a crash: a SIGKILLed owner's socket does not lock out the offline control verbs, and health during a slow start says starting",
+      "title": "An operator after a crash: a SIGKILLed owner's socket does not lock out the offline control verbs, and health during a slow start says starting; every refusal names its reason on the wire, and an old client's plain request still reads the plain reply",
       "milestone": "M4",
       "status": "implemented",
       "requirements": [
@@ -2930,11 +2930,15 @@
       ],
       "steps": [
         "Start an owner with a configured control socket; SIGKILL it; `operator CONFIG control list`; start the owner again and stop it.",
-        "Start a developer owner with FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN (the store recovered and locked, no socket yet); `operator CONFIG health`; SIGTERM the owner."
+        "Start a developer owner with FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN (the store recovered and locked, no socket yet); `operator CONFIG health`; SIGTERM the owner.",
+        "With an owner running: `operator CONFIG post` an article whose From has no address, and one naming a newsgroup the node does not serve; post a well-formed one; `operator CONFIG control revoke` a grant that does not exist.",
+        "With an owner running: send a plain kind-3 FNCT admin frame (`control grant`), as every client before the reasoned kinds does, and read the reply; then `control revoke` the grant."
       ],
       "expected": [
         "The socket node survives the SIGKILL; `control list` exits 0, prints `stale control socket removed`, and the node is gone; the restarted owner binds and stops with 0.",
-        "health exits 20 and its first line starts `health exit=20 state=fenced reason=starting`; the owner exits 0 on SIGTERM."
+        "health exits 20 and its first line starts `health exit=20 state=fenced reason=starting`; the owner exits 0 on SIGTERM.",
+        "The two posts exit 1 with `refused operator post REFUSED from-invalid` and `... REFUSED unknown-group`; the well-formed post exits 0 (`accepted operator post ACCEPTED`); the revoke exits 1 with `refused operator control REFUSED no-such-grant`.",
+        "The reply is a kind-2 FNCT frame whose payload is the one octet 1 (:accepted) followed by the SHA-256 trailer; the revoke then exits 0."
       ],
       "evidence": [
         "planning/evidence/operator-daily-2026-09-26.md"
@@ -2943,10 +2947,12 @@
         "test": "tests.test_native_control",
         "cases": [
           "test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline",
-          "test_health_during_a_slow_start_says_starting"
+          "test_health_during_a_slow_start_says_starting",
+          "test_every_refusal_names_its_reason_on_the_wire",
+          "test_an_old_clients_plain_request_gets_the_plain_reply"
         ],
         "native": true,
-        "log": "planning/evidence/operator-daily/native-control.log",
+        "log": "planning/evidence/operator-daily-2/native-control.log",
         "record": "planning/evidence/operator-daily-2026-09-26.md"
       }
     },

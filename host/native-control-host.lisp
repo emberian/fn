@@ -1,6 +1,7 @@
 ; ACL2-facing boundary for the native local-control transport.
 (in-package "ACL2")
 (include-book "../books/native-control")
+(include-book "../books/native-control-reason")
 (include-book "../books/consumer-local-control")
 (include-book "../books/topic-history-local-control")
 
@@ -160,3 +161,40 @@
 (defun fn-native-control-host-consumer-cli-plan (command argv)
   (declare (xargs :mode :program))
   (fn-ncl-cli-plan command argv))
+
+;; PKT-453 (a): the refusal reason on the wire (books/native-control-reason).
+(defun fn-native-control-host-reasoned-request-encode (msgid groups article)
+  (declare (xargs :mode :program))
+  (fn-native-control-reasoned-request-encode msgid groups article))
+
+(defun fn-native-control-host-reasoned-request-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-native-control-reasoned-request-decode octets))
+
+(defun fn-native-control-host-reasoned-admin-encode (argv)
+  (declare (xargs :mode :program))
+  (fn-native-control-reasoned-admin-encode argv))
+
+(defun fn-native-control-host-reasoned-admin-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-native-control-reasoned-admin-decode octets))
+
+(defun fn-native-control-host-reasoned-framep (octets)
+  (declare (xargs :mode :program))
+  (fn-native-control-reasoned-framep octets))
+
+(defun fn-native-control-host-reasoned-reply-encode (status reason)
+  (declare (xargs :mode :program))
+  (fn-native-control-reasoned-reply-encode status reason))
+
+(defun fn-native-control-host-reasoned-client-step (octets)
+  ; What the client does with the reply to a reasoned request: (:status
+  ; STATUS WORD), (:resend) or (:transport).
+  (declare (xargs :mode :program))
+  (fn-native-control-reasoned-client-step
+   (fn-native-control-reasoned-reply-read octets)))
+
+(defun fn-native-control-host-reply-detail (status word)
+  ; The reason word the operator's line carries after the status, or nil.
+  (declare (xargs :mode :program))
+  (fn-native-control-reply-detail status word))

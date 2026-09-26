@@ -6371,7 +6371,7 @@
     {
       "id": "PRF-172",
       "title": "The operator's daily verbs decide starting, stale and the exit scale in ACL2: health's code never overlaps the seven outcome codes, a held lock where an owner would listen is starting, and an offline control verb runs offline exactly when the lock was seen free",
-      "statement": "books/native-health.lisp: fn-nh-exit-code-is-zero-or-past-the-outcome-codes: for every V, (fn-nh-exit-code V) is 0 or at least 19, and it satisfies fn-outcome-codep (books/outcome-class.lisp, reading *fn-outcome-codes*) exactly when it equals (fn-outcome-code :accepted); host: fnn-operator-execute-health (host/native/operator.lisp) returns fn-native-health-host-exit of the rendered report, which is fn-nh-exit-code (fn-nh-report-exit-of-render). fn-nh-exit-code-cases (exported): with at most eight outcomes the code is in (0 19 20..27). fn-nh-fence-of-starting-iff: with no clone fence and a route that did not reach an owner, fn-nh-fence-of is :starting exactly when the lock is :held and an owner would listen, and a free or absent lock is never fenced; host: fn-native-health-host-fenced from fnn-operator-health-report. fn-nh-fence-of-route restated over the fourth observation. books/native-control.lisp fn-native-control-liveness-decides: the offline executor starts (fn-native-control-liveness-offlinep) exactly when the lock was observed :free or :absent, the decision is :stale exactly when a socket node is present and the lock is free or absent, and it is one of :live :stale :offline :held; host: fn-native-control-host-liveness from fnn-operator-execute-admin, which removes a :stale node under the control-path lease (fnn-control-remove-stale-offline) and refuses :held without starting the executor.",
+      "statement": "books/native-health.lisp: fn-nh-exit-code-is-zero-or-past-the-outcome-codes: for every V, (fn-nh-exit-code V) is 0 or at least 19, and it satisfies fn-outcome-codep (books/outcome-class.lisp, reading *fn-outcome-codes*) exactly when it equals (fn-outcome-code :accepted); host: fnn-operator-execute-health (host/native/operator.lisp) returns fn-native-health-host-exit of the rendered report, which is fn-nh-exit-code (fn-nh-report-exit-of-render). fn-nh-exit-code-cases (exported): with at most eight outcomes the code is in (0 19 20..27). fn-nh-fence-of-starting-iff: with no clone fence and a route that did not reach an owner, fn-nh-fence-of is :starting exactly when the lock is :held and an owner would listen, and a free or absent lock is never fenced; host: fn-native-health-host-fenced from fnn-operator-health-report. fn-nh-fence-of-route restated over the fourth observation. books/native-control.lisp fn-native-control-liveness-decides: the offline executor starts (fn-native-control-liveness-offlinep) exactly when the lock was observed :free or :absent, the decision is :stale exactly when a socket node is present and the lock is free or absent, and it is one of :live :stale :offline :held; host: fn-native-control-host-liveness from fnn-operator-execute-admin, which removes a :stale node under the control-path lease (fnn-control-remove-stale-offline) and refuses :held without starting the executor. Continuation (operator-daily-2): books/native-health.lisp fn-nh-starting-clears-on-listening (PKT-454): fn-nh-health-step, the host's whole decision for one health invocation, is (:fenced :starting) exactly when no clone fence is present, the lock is :held, an owner would listen and the route is :offline; with the socket present and the owner answering, the same lock, fence and listener give (:answered OCTETS) and no fence; host: fn-native-health-host-step from fnn-operator-health-report. books/native-control-reason.lisp fn-native-control-printed-reason-is-the-decisions (PKT-453 (a)): for every FNCT status the client's step (fn-native-control-reasoned-client-step of fn-native-control-reasoned-reply-read) on the reasoned reply the owner sealed (fn-native-control-reasoned-reply-encode STATUS REASON) is (:status STATUS (fn-nctrl-reason-word REASON)), and for a refusal that named a reason the printed detail (fn-native-control-reply-detail) is fn-nctrl-reason-word of it; host: fnn-control-handle-client seals it (fn-native-control-host-reasoned-reply-encode) with the reason fnn-owner-control-submit-serialized (fn-owner-operator-refusal-reason) or fnn-owner-live-admin-serialized (the plan's reason or fn-owner-reconfigure-reason) answered; fnn-control-reasoned-exchange steps and fnn-operator-execute-post / fnn-operator-execute-admin print the detail (fnn-operator-status-detail).",
       "milestone": "M4",
       "requirements": [
         "HST-010",
@@ -6383,7 +6383,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "books/native-control.lisp",
@@ -6397,9 +6397,16 @@
         "tests/test_native_control.py",
         "planning/evidence/operator-daily-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T105358Z-645186.json",
-        "planning/evidence/manifests/certify-20260926T105642Z-673835.json"
+        "planning/evidence/manifests/certify-20260926T105642Z-673835.json",
+        "books/native-control-reason.lisp",
+        "tests/acl2/native-control-reason-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/admin.lisp",
+        "host/native-admin-host.lisp",
+        "planning/evidence/manifests/certify-20260926T124258Z-1868925.json",
+        "planning/evidence/manifests/certify-20260926T124728Z-1913800.json"
       ],
-      "progress_note": "Lane operator-daily (2026-09-26, wave 4 lane 5): PKT-329 (1), PKT-283, PKT-344. Teeth in the two test books. Open: PKT-453.",
+      "progress_note": "Lane operator-daily (2026-09-26, wave 4 lane 5): PKT-329 (1), PKT-283, PKT-344. Teeth in the two test books. Open: PKT-453. Continuation operator-daily-2 (2026-09-26): PKT-454's theorem; PKT-453 (a) the reason on the wire (request kinds 13 and 17, reply kind 18). Open: PKT-472.",
       "events": [
         "fn-nh-exit-code-is-zero-or-past-the-outcome-codes",
         "fn-nh-exit-code-cases",
