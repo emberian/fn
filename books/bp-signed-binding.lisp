@@ -84,6 +84,8 @@
                             fn-bpaj-record-lookup-fast)
                            (fn-bpsb-record-for-msgid-finds-a-member
                             fn-bpaj-record-for-msgid fn-record-p
+                            fn-record-octets-string fn-sn-event-index
+                            fn-cei-msgid-records
                             fn-bpr-article-records
                             fn-bpaj-transit-article-fields fn-bpaj-article-fields
                             fn-bpaj-transit-intentp fn-bpaj-request-intent
@@ -145,6 +147,7 @@
                   (fn-bpaj-store-record-accepted-fast store record))))
   :hints (("Goal" :in-theory (e/d (fn-bpaj-transit-record-lookup-fast)
                                   (fn-bpaj-record-for-msgid fn-record-p
+                                   fn-sn-event-index fn-cei-msgid-records
                                    fn-bpa-requestp fn-record-octets-string
                                    fn-bpaj-transit-article-fields
                                    fn-bpaj-transit-intentp
@@ -164,6 +167,7 @@
   :hints (("Goal" :in-theory (e/d (fn-bpaj-record-lookup-fast
                                    fn-bpaj-record-matches-request-fast)
                                   (fn-bpaj-record-for-msgid fn-record-p
+                                   fn-sn-event-index fn-cei-msgid-records
                                    fn-bpa-requestp fn-record-octets-string
                                    fn-bpaj-article-fields
                                    fn-bpaj-store-record-accepted-fast))))))
