@@ -39,7 +39,11 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
-IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
+# tools/hbox_native.sh sets no FN_NATIVE_HOST: take the developer image it
+# built, else the production one.
+IMAGE = (Path(IMAGE_TEXT) if IMAGE_TEXT else
+         next((p for p in (ROOT / "build" / "fn-host-developer", ROOT / "build" / "fn-host")
+               if p.is_file()), None))
 FRIEND_FN = os.environ.get("FN_FRIEND_FN")
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 EXIT_OK, EXIT_REFUSED = 0, 1
@@ -167,7 +171,7 @@ class NativeFriendsFeedTests(unittest.TestCase):
                                   timeout=120, check=False)
             print("NATIVE-FRIENDS bare fn ->", bare.returncode, text(bare)[:120])
             self.assertEqual(bare.returncode, EXIT_OK, text(bare))
-            self.assertIn("usage: fn operator CONFIG", bare.stdout.decode())
+            self.assertIn("usage: fn operator CONFIG {help|init|", bare.stdout.decode())
             version = subprocess.run([*command, "--version"], cwd=ROOT, env=environment(),
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      timeout=120, check=False)
@@ -188,8 +192,10 @@ class NativeFriendsFeedTests(unittest.TestCase):
         principal_a = re.search(r"principal ([0-9a-f]{64})", text(made)).group(1)
         f.ok("peer", "keygen", keys_f)
         self.assertEqual(stat.S_IMODE(keys_a.stat().st_mode), 0o700)
+        # The secret halves and their public twins are 0600; token.bin and
+        # principal.bin are genesis's (public words the invitation carries).
         for name in ("ed-public.bin", "ed-secret.bin", "ml-private.pem",
-                     "ml-public.pem", "token.bin", "principal.bin"):
+                     "ml-public.pem"):
             self.assertEqual(stat.S_IMODE((keys_a / name).stat().st_mode) & 0o077, 0,
                              name)
         self.assertEqual(len((keys_a / "ed-secret.bin").read_bytes()), 64)
@@ -200,6 +206,11 @@ class NativeFriendsFeedTests(unittest.TestCase):
 
         a.start()
         f.start()
+        # A's own principal signs its articles: enrolled at A as keyring
+        # generation 1, before the confirm enrols F.
+        enrol = a.run("hybrid-enroll", a.control, "1", keys_a / "principal.bin",
+                      keys_a / "ed-public.bin", keys_a / "ml-public.pem")
+        self.assertEqual(enrol.returncode, EXIT_OK, text(enrol))
         invitation, acceptance = self.base / "invitation", self.base / "acceptance"
         a.ok("peer", "invite", "f", "local.*", "127.0.0.1", f.port, "a.example",
              keys_a, invitation, "127.0.0.1", a.port)
@@ -212,9 +223,6 @@ class NativeFriendsFeedTests(unittest.TestCase):
         f.ok("peer", "add", "a.example", "a.example", "127.0.0.1", a.port, "local.*",
              "-", "127.0.0.1", "true")
 
-        enrol = a.run("hybrid-enroll", a.control, "1", keys_a / "principal.bin",
-                      keys_a / "ed-public.bin", keys_a / "ml-public.pem")
-        self.assertEqual(enrol.returncode, EXIT_OK, text(enrol))
 
         def author(stem, message_id, control=None):
             source = self.base / (stem + ".eml")
