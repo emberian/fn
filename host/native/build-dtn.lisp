@@ -145,6 +145,9 @@
 ;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
 ;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+;; The served read over the octet buffer (ingress-span): host/owner-host.lisp
+;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
+(include-book "books/served-span")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file

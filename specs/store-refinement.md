@@ -249,6 +249,7 @@ relation and cannot authorize reads advertised as recovered or any mutation.
 
 REP-010: The retained payload has a concrete home: the payload arena, an abstract stobj whose sealed handles are immutable and never reused, with the same relation to the history after a commit and after an open.
 REP-011: The record's payload is an arena handle: the stored record and the acceptance state's article and pending hold a natural into the arena, the bytes are read by handle, and the transition is parametric in the payload (the design and its order: planning/evidence/rep-wave-d-2-2026-09-26.md section 2, PKT-293; not implemented).
+REP-012: The wire machine's ingress reads a range of the octet buffer in place, not a per-read cons list: the host fills the buffer once from the socket vector and the served fold (fn-scar-ocfg-read-span) reads the range by index, proved equal to the reference list read (fn-ocfg-read-tls-prefix over the range's octets); the wire read fn-wire-feed-span corresponds to fn-wire-feed-proper over the slice. Per-framed-event dispatch and the per-line index scan are PKT-479.
 The arena `fn-arena` (books/payload-arena.lisp) holds every retained
 payload as bytes; its logical value is the list of payloads oldest first,
 so that `fn-arn-store-corr` (the arena is `records(P)`'s payloads in

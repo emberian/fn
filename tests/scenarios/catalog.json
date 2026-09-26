@@ -3022,6 +3022,33 @@
         "record": "planning/evidence/consumer-exchange-2026-09-26.md",
         "log": "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log"
       }
+    },
+    {
+      "id": "SCN-110",
+      "title": "A POST is served byte-identical after the ingress reads the octet buffer instead of a per-read list: an article of 33 KiB, 200 KiB and 3 MiB is accepted (240) and re-reads identical, and a line split across two socket reads and a dot-stuffed line frame the same article",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-012"
+      ],
+      "steps": [
+        "Init a 4 MiB-article profile; run the owner; POST 33,792 / 204,800 / 3,145,728 octets and re-read each with ARTICLE; POST A+1 octets.",
+        "In ACL2: feed a dot-stuffed body line whose CRLF is split across two buffer ranges through fn-wire-feed-span in two reads, and in one read; compare to fn-wire-feed-proper over the octets."
+      ],
+      "expected": [
+        "Each of 33 KiB / 200 KiB / 3 MiB is 240 and re-reads identical; A+1 is refused 441 by size; transactions-used is 3.",
+        "The two-read span and the one-read span leave the same wire state and frame the same (:article ((.hi))) event, equal to the reference; a line over the limit closes :line-overlimit at the same octet."
+      ],
+      "evidence": [
+        "tests/test_native_bounds_join.py",
+        "tests/acl2/wire-span-tests.lisp",
+        "tests/acl2/served-span-tests.lisp",
+        "planning/evidence/ingress-span-2026-09-26.md"
+      ],
+      "execution_scope": [
+        "native",
+        "proof"
+      ]
     }
   ]
 }
