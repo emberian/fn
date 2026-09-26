@@ -401,3 +401,31 @@
   (defthm fn-assume-host-exclusive-read-keeps-content
     (implies (fn-assume-host-exclusive-read before after ino)
              (equal (fn-bs-content after ino) (fn-bs-content before ino)))))
+
+; -----------------------------------------------------------------------------
+; A-BP-CONTACT (spec bp-node-machine 5.7; mandate 9, "a blocked oldest row
+; must not starve unrelated ready work").  A base contact to PEER sustains at
+; least (fn-assume-bp-contact-asks peer) of the driver's asks
+; (fn-bpnj-contact-next), each at a state whose gate is open: nothing issued,
+; no uncertain delivery, the base neither fenced nor pending.  That is the
+; contact half of A-BP-CONTACT and the persistence half of A-BP-PERSIST (every
+; publication the contact proposes is answered within its ask).  Routing
+; stability during the contact (the job's durable route stays the one the
+; table names, and the jobs ahead of it keep their order) is a hypothesis of
+; the theorem that uses this, not part of the assumption.
+;
+; Theorem that takes it as a hypothesis:
+;   fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact
+;                                   books/bp-node-job-offer-progress.lisp
+; The bound it needs is the job's prefix: the number of queued jobs at or
+; ahead of it in the job list, not the length of the whole queue.
+(encapsulate
+  (((fn-assume-bp-contact-asks *) => *))
+
+  (local (defun fn-assume-bp-contact-asks (peer)
+           (declare (ignore peer))
+           1))
+
+  (defthm fn-assume-bp-contact-asks-is-a-count
+    (natp (fn-assume-bp-contact-asks peer))
+    :rule-classes :type-prescription))
