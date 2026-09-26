@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 909 |
-| Certification roots in the Makefile | 892 |
-| Books inside the root closure | 905 |
-| `defthm` and `defthmd` events | 12576 |
-| `defun` events | 8787 |
+| Books read | 911 |
+| Certification roots in the Makefile | 894 |
+| Books inside the root closure | 907 |
+| `defthm` and `defthmd` events | 12605 |
+| `defun` events | 8835 |
 | Functions with verified guards | 2181 |
 | Functions declared `:verify-guards nil` and never verified | 668 |
-| Functions left at the default with an explicit guard | 4624 |
-| Functions left at the default with no guard | 1314 |
-| `assert-event` checks | 13154 |
-| `must-fail` checks | 1443 |
+| Functions left at the default with an explicit guard | 4668 |
+| Functions left at the default with no guard | 1318 |
+| `assert-event` checks | 13189 |
+| `must-fail` checks | 1450 |
 | `encapsulate` events | 64 |
 | Theorems flagged SUSPECT by shape | 109 |
-| Export-hygiene warnings | 149 |
+| Export-hygiene warnings | 150 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 107 |
-| Include-hygiene warnings | 919 |
-| Host-names warnings | 1014 |
+| Include-hygiene warnings | 920 |
+| Host-names warnings | 1022 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -477,7 +477,8 @@ that `make certify` requests.
 | `books/peer-inbound.lisp` | root | 71 | 62 | 9/4/49/0 | 0 | 0 | 4 |
 | `books/peer-invite.lisp` | root | 34 | 65 | 0/0/65/0 | 0 | 0 | 1 |
 | `books/peer-offer-indexed.lisp` | root | 20 | 10 | 9/0/1/0 | 0 | 0 | 1 |
-| `books/peer-pull.lisp` | root | 46 | 83 | 7/0/76/0 | 0 | 0 | 0 |
+| `books/peer-pull-session.lisp` | root | 28 | 38 | 0/0/38/0 | 0 | 0 | 0 |
+| `books/peer-pull.lisp` | root | 47 | 89 | 7/0/82/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/poster-bytes-buffer.lisp` | root | 55 | 21 | 0/0/20/1 | 0 | 0 | 0 |
@@ -894,6 +895,7 @@ that `make certify` requests.
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 219 | 5 | 0 |
 | `tests/acl2/peer-invite-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 59 | 11 | 0 |
 | `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 43 | 4 | 0 |
+| `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 35 | 7 | 0 |
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 40 | 8 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 62 | 12 | 0 |
