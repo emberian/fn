@@ -7,6 +7,7 @@ BP acceptance, Store commitment, or an application receipt.
 import collections
 import os
 from pathlib import Path
+import re
 import select
 import shutil
 import socket
@@ -559,10 +560,36 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP FNBS recovered held=2", restarted.stdout)
         self.assertEqual(self.conflict_records(self.receiver_journal), records)
 
+    # The operator's owner-backoff row (JOURNAL/bp-node-budgets, spec
+    # bp-node-machine 2.1; ACL2 validates it in fn-bpnp-configured-budgets)
+    # set short, so a busy test waits half a second, not the 5000 ms default
+    # (PKT-445 (b): three 5.5 s sleeps made this module the over-budget one).
+    BACKOFF_MS = 500
+
+    def configure_backoff(self):
+        self.receiver_journal.mkdir(parents=True, exist_ok=True)
+        (self.receiver_journal / "bp-node-budgets").write_text(
+            "owner-backoff %d\n" % self.BACKOFF_MS, encoding="ascii")
+
+    @staticmethod
+    def boottime_ms():
+        # host/native/bp.lisp fnn-bp-monotonic-now reads CLOCK_BOOTTIME.
+        return time.clock_gettime_ns(time.CLOCK_BOOTTIME) // 1000000
+
+    def wait_past_deferral(self, captured):
+        """Wait until the node's own monotonic clock passes the `after='
+        reading of the last deferral, and check that reading is the
+        configured backoff from now, not the default."""
+        after = int(re.findall(rb"deferred busy=[0-9]+ after=([0-9]+)", captured)[-1])
+        self.assertLessEqual(after - self.boottime_ms(), self.BACKOFF_MS)
+        while self.boottime_ms() <= after + 50:
+            time.sleep(0.05)
+
     def test_busy_application_defers_and_redelivers_after_backoff(self):
         """BP-R17 on the image: the owner answers the first delivery :busy.
         The node neither refuses nor fences: the row stays held, and the
-        first dispatch after the 5000 ms backoff delivers it."""
+        first dispatch after the configured backoff delivers it."""
+        self.configure_backoff()
         receiver, port = self.start_node(
             True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "1"})
         sent = self.send_request(port, "busy-request")
@@ -572,7 +599,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertNotIn(b"request-refused", out)
         self.assertNotIn(b"application uncertain", out)
         self.assertNotIn(b"application result is uncertain", out)
-        time.sleep(5.5)
+        self.wait_past_deferral(out)
         # Any later connection runs the dispatch loop; an unrouted transit
         # consumes no application answer.
         self.send_transit(port, self.unrouted_transit_bundle(), "busy-ping")
@@ -589,6 +616,7 @@ class NativeBpNodeTests(unittest.TestCase):
         durable (kind 20): a restart keeps it at 3 and reports the strand
         again on every pass, never redelivering; `bp-node resume' writes
         count 0 and the next pass delivers."""
+        self.configure_backoff()
         receiver, port = self.start_node(
             True, once=False, extra_env={"FN_BP_NODE_TEST_APP_BUSY": "100"})
         sent = self.send_request(port, "stranded-request")
@@ -598,11 +626,12 @@ class NativeBpNodeTests(unittest.TestCase):
         transit = self.unrouted_transit_bundle()
         for spool, marker in (("p1", b"BP node delivery deferred busy=2"),
                               ("p2", b"BP node delivery stranded busy=3")):
-            time.sleep(5.5)
+            self.wait_past_deferral(seen)
             self.send_transit(port, transit, spool)
             seen += self.wait_for_output(receiver, marker, timeout=120)
-        # A stranded row is not offered again: a later pass only reports it.
-        time.sleep(5.5)
+        # A stranded row is not offered again: a later pass, one backoff
+        # past the stranding, only reports it.
+        time.sleep(self.BACKOFF_MS / 1000 + 0.2)
         self.send_transit(port, transit, "p3")
         time.sleep(2)
         receiver.terminate()
