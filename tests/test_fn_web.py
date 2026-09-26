@@ -798,7 +798,7 @@ class WebClientTests(unittest.TestCase):
         status, _, page = self.request("GET", "/a?group=fn.agents&number=2")
         self.assertEqual(status, 410)
         self.assertIn("was withdrawn", page)
-        self.assertIn("It existed and was accepted", page)
+        self.assertIn("the article was held here (C3)", page)
         status, _, page = self.request("GET", "/find?id=%3Ch2%40fake.invalid%3E")
         self.assertEqual(status, 410)
         self.assertIn("<code>430 withdrawn", page)

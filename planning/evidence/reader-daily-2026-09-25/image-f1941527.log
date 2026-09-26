@@ -1,0 +1,7 @@
+profile=default image=build/fn-host roots=156 result=loaded
+built build/fn-host-developer profile=developer (133M core)
+undefined lines: 0
+5d50dd18d859408c48ca56c7e4e302b69e664aaee86956c3a2263bdb0c473d05  build/fn-host-developer
+436a8c962c7863038dec179d489f0f56aa7b8a840d9e28884a09f9b7ffffe402  build/fn-host-developer.core
+0e7a86ae506b6b7a5bf4f1998d26e94baa414e5fe9904f6fff12759672472e03  build/lane/native-build-developer.log
+IMAGE-DONE

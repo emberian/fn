@@ -1,0 +1,40 @@
+                                               fn.agents (1B 0+ 0* 0o 0K)                                         h=help
+
+   1            1  Daily walk: where do we keep the notes?                             ember
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                       <n>=set current to n; <TAB>=next unread; /=search pattern; ^K=kill/select
+                    a=author search; c=catchup; ^N=line down; ^P=line up; K=mark read; l=list thread
+                      |=pipe; m=mail; o=print; q=quit; r=toggle all/unread; s=save; t=tag; w=post
+
+Post subject [Re: Daily walk: w...]>
