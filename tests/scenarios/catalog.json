@@ -1815,6 +1815,29 @@
         "tests/test_fn_web.py",
         "planning/evidence/reader-daily-2026-09-25.md"
       ]
+    },
+    {
+      "id": "SCN-061",
+      "title": "Two sleeping consumers exchange a signed report and reply through one node across every ownership cut",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-002"
+      ],
+      "steps": [
+        "A authors signed report R through its outbox and sleeps.",
+        "B wakes three times, dying inside its transaction, after its commit, and while the owner loses its ack reply; then dies after settling the ack before posting Q; then the owner loses Q's POST reply.",
+        "B wakes and settles Q; A wakes after Q is durable; a third author reuses R's operation id with a different source; both consumers wake."
+      ],
+      "expected": [
+        "B's database holds nothing after the in-transaction death and exactly one transition and one outbox Q after the commit; fn's position moves only with the ack and the lost ack is settled by position.",
+        "Q is stored once and settled by the owner of that fact; A records exactly one reply transition; the reused operation id is conflict evidence at both consumers with no second transition or reply."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-e2-2026-09-25.md"
+      ]
     }
   ]
 }

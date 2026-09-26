@@ -4757,6 +4757,39 @@
           "name": "fn-nss-withdrawn-number-is-never-a-hit"
         }
       ]
+    },
+    {
+      "id": "PRF-116",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-scan-page-contract"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cp-ack-writes-only-a-forward-declaration-in-scope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cp-ack-after-its-commit-is-a-no-op"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-is-a-page-or-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-poll-is-the-index-window-scan-unfolds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-scope-entry-position-is-natural"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-ack-is-the-kernel-ack-unfolds"
+        }
+      ]
     }
   ]
 }
