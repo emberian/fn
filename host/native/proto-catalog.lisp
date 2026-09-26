@@ -18,8 +18,12 @@
   (or (cdr (assoc 'fn-pcat (user-stobj-alist *the-live-state*)))
       (fnn-fault "the catalog prototype stobj is not in this image")))
 
-(defun fnn-command-proto-catalog (args)
+(defun fnn-command-proto-catalog (command args)
+  "Native CLI: proto-catalog smoke (a registered verb takes a command and the rest)."
   (declare (ignore args))
+  (unless (string= command "smoke")
+    (error 'fnn-usage-error :message
+           (format nil "unknown proto-catalog command ~a" command)))
   (let* ((live (fnn-live-pcat))
          (fields (if (simple-vector-p live) (length live) -1))
          (answer (fnn-call 'fn-pcat-smoke live))

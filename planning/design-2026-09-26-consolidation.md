@@ -532,9 +532,102 @@ between two segments reopens with the OLD checkpoint (the `created` cut's
 verdict) and the staged file is swept. The verb's five cuts through both
 entries (`tests.test_native_state_checkpoint`) stay the module for the batch.
 
-## 3. The attach-stobj prototype
+## 3. The attach-stobj prototype: what worked, what the tooling needed, what it saves
 
-(section 3 is written from the prototype's result; see below)
+**The mechanism** (ACL2 8.7, the tree's `w25/acl2-literal` and the laptop's
+Homebrew 8.7_6; `:DOC attach-stobj`, `:DOC attachable-stobjs`, and the
+distribution's `books/demos/attach-stobj/` and `books/system/tests/
+attachable-stobjs/`, read): an abstract stobj introduced with `:attachable
+t` is a *generic*; `(attach-stobj gen impl)`, evaluated after `impl` (an
+abstract stobj with the same :logic functions positionally, and the same
+recognizer and creator logic) and before `gen` is introduced, makes `gen`'s
+foundation and every export's executable `impl`'s. There is no indirection
+in raw Lisp (each primitive macroexpands to the attachment's :exec); a
+function defined at `include-book` time that calls a generic's primitive is
+compiled then instead of loaded from the book's compiled file. The
+logical world is identical with or without the attachment, so a theorem
+proved over the generic is proved for every implementation.
+
+**The prototype** (`books/proto-catalog.lisp`, `proto-catalog-fold.lisp`,
+`proto-catalog-arena.lisp`, `tests/acl2/proto-catalog-tests.lisp`;
+`docs/prefixes.md` `fn-pcat-`):
+
+- `fn-pcat` is the generic: its :logic side is the ARENA's, verbatim
+  (`fn-arena$ap`, `create-fn-arena$a`, the seven `fn-arena$a-*`), so that
+  `fn-arena` (books/payload-arena.lisp, the byte array with an offset and a
+  size per handle) is a legal attachment; its own foundation `fn-pcat$c`
+  is one field holding the payload list, every export a list operation.
+  Its obligations (`{correspondence}`, `{preserved}`, `{guard-thm}` per
+  export, as `defabsstobj-missing-events` prints them) are the trivial
+  ones of "the field is the value"; the opened view restates the arena's
+  (`fn-pcat-seal-list-is-append`, ...).
+- `proto-catalog-fold` is the consumer, the shape of every book above the
+  catalog: `fn-pcat-seal-many` (a seal per record: the open) and
+  `fn-pcat-total` (the octets below a handle: a scalar), with
+  `fn-pcat-seal-many-keeps-sealed` (a pinned handle reads the same after
+  the fold; the arena's keystone over the generic's names) and
+  `fn-pcat-total-of-seal-is-delta` (the total after a seal is the old
+  total plus the delta, without a walk), both hypothesis-free but for the
+  handle's bounds. Guard-verified; the test book runs the exec path on a
+  live local generic and gives each theorem its witness and its
+  `must-fail` per hypothesis.
+- `proto-catalog-arena` is the attachment: `(include-book "payload-arena")`,
+  `(attach-stobj fn-pcat fn-arena)`, `(include-book "proto-catalog")`,
+  `(include-book "proto-catalog-fold")`, then at certification time
+  `fn-pcat-smoke` over the live generic (three seals, the total, two
+  reads), which printed `(3 5 (4 5) 3)` and is asserted.
+
+**What worked.** Everything the mechanism promises, measured on the
+certification logs (laptop, `tools/certify_books.py` under the pool; then
+persvati farm run `run-20260926T181951Z-fa12`, ACL2 8.7, 2 jobs, 300 s:
+passed 4, failed 0, 5 installed from the cache, no book over 10 s; manifest
+`planning/evidence/manifests/certify-20260926T182020Z-744871.json`):
+
+1. `fn-pcat`'s `defabsstobj ... :attachable t` over another book's :logic
+   functions was admitted with its obligations (0.1 s).
+2. The fold book was certified ONCE, against the generic (its certificate
+   is the generic's world).
+3. `proto-catalog-arena`'s `(include-book "proto-catalog-fold")` under the
+   attachment was accepted from that certificate in 0.01 s: **no
+   recertification of the interface's dependents**; the fold's functions
+   were recompiled at include time (silently, as the manual says) and ran
+   over the arena's foundation, giving the same value.
+4. The attachment book's own certificate (5.7 KB) records the fold as a
+   dependency; the fold's certificate is byte-identical before and after
+   the attachment book existed.
+5. The developer and production images (hbox, `tools/hbox_native.sh
+   --images developer,production`, build.lisp including
+   `books/proto-catalog-arena`) built: `fn-host-developer.core`
+   `02aecbde060b1c33…`, `fn-host.core` `8fd89db7a64dcdde…` (the first run,
+   whose module failed on two harness faults: the smoke verb's argument
+   protocol and a source test that matched the comment; both repaired; the
+   second run's line is below).
+6. HBOX-SMOKE-LINE
+
+**What the certificate tooling needed.** Nothing new: the four books are
+ordinary Makefile roots; `tools/certify_books.py` and `farm.py` certified
+them with the cache installing `payload-arena` and its closure; the cache
+key is the include closure, and the fold's closure does not contain the
+attachment book, so its cached pair is reused under the attachment. Two
+findings for the catalog slice: `assert-event` over a live stobj needs
+`:stobjs-out '(nil st)` and a form returning `(mv bool st)`; and a
+registered developer verb takes `(command rest)` with two words required
+(`fn proto-catalog smoke`).
+
+**Whether the substitution avoided recertifying the interface's
+dependents.** Yes: point 3. The rule the tree gains (packet P-B, section
+6): a representation is an implementation ATTACHED to a generic whose
+:logic side is the model; the books above the generic are certified once;
+choosing the implementation is one `attach-stobj` event in the image's
+include order (host/native/build.lisp), and a second implementation (a
+paged arena, a hash-table Message-ID index, the list-backed reference for
+a test book) costs its own obligations and no recertification above it.
+This is the form the catalog (`fn-cat`, section 1.1) and the byte owner
+take. What it does not buy: the books that thread the stobj as a formal
+still name it (the catalog's own books do; nothing above them must), and
+`:protect` and `:congruent-to` come from the attachment (the generic's
+declarations are overridden: state the intended ones on the
+implementation).
 
 ## 4. The deletion map
 
