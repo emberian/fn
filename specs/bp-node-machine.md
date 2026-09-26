@@ -2817,14 +2817,25 @@ trust rule. A signed article's verification against the author's enrollment
 
 ### 7.1 Limits that compose (§12, D-9)
 
-`*fn-bpf-max-length*` is now 65538, equal to `*fn-bpa-max-octets*`.
-`fn-bpn-limits-compose` in `books/bp-limits.lisp` proves the relationships
-among the limits in the current finite machine: ADU/reassembly equality,
-image capacity, lifecycle-record headroom and aggregate capacity for 64
-maximum-size images. The machine still checks each actual encoded image.
+**Codec widths under the profile (2026-09-26, lane bp-lifecycle-4,
+PRF-134).** The ADU record (`*fn-bpa-max-octets*`, with the article width
+`*fn-bpa-max-article*` = 2^24 - 2106), the bundle codec's block data and
+decoder input (`*fn-bpb-max-data*`, `*fn-bpb-max-input*`) and the held
+image (`*fn-bpnf-max-held-image*`) are codec widths of 2^24, the ceiling of
+every node-profile field; kind 5 and kind 18 carry the image in a
+`(:blob . 2^24)` field (the same octets as `:blob` for every image at most
+131,072) and a lifecycle record's payload width is 2^24 + 3,072. The bounds
+a node applies are its profile's (below). The ADU's fields are record
+items: byte-identical to the generic CBOR entry at or below 65,535 octets,
+a u32 head above. `fn-bpn-limits-compose-at-the-codec-widths`
+(`books/bp-limits.lisp`) states how the widths nest; it replaces
+`fn-bpn-limits-compose`, whose content (an ADU of 65,538 octets plus 65,534
+octets of header fits one sender job image of 131,072) is the finite
+machine P5 removes. The sender machine's job image
+(`*fn-bpn-machine-max-job-octets*`, the plain `:blob`) is not widened: a
+sender cannot yet hold an ADU above about 64 KiB as one job (PKT-294).
 The planned explicit header cap, stage slots and stage octets are not yet
-machine fields, so their rows below remain obligations for the family-plan
-batch. The limit equality alone does not establish maximum-size ADU service.
+machine fields.
 
 **The node's profile (2026-09-26, lane bp-lifecycle-3, PRF-131).** The
 held rows (`max-jobs`) and held octets (`max-octets`) the machine holds are
@@ -2833,20 +2844,30 @@ layout"), read by `fnn-bps-open` through `fn-bpnpf-read` and installed by
 `fn-bpnf-initial-state`; the default is 64 rows and 16 MiB. Every host loop
 that walks held rows in one step is bounded by the profile's rows. Recovery
 replay refuses a well-formed received row past the profile with
-`(:fault :held-beyond-profile)` (`fn-bpnpf-replay-past-the-profile-is-refused`)
-and the restart fences with that reason. The rows below that name a
-constant are still constants: the ADU cap, the bundle decoder bound
-(`*fn-bpb-max-input*`, 1 MiB) and the held image (`*fn-bpnf-max-held-image*`)
-are data caps not yet in the profile (PKT-276), and the lifecycle-record
-count between rotations is a work bound.
+`(:fault :held-beyond-profile)` (`fn-bpnpf-replay-past-the-profile-is-refused`;
+for an image past the held octets, `fn-bpnpf-replay-past-the-octets-is-refused`)
+and the restart fences with that reason. Profile 2 (PRF-134) adds
+`max-adu-octets` and `max-bundle-octets`. The host's receive entry is
+`fn-bpnpf-admitted-receive-event` (`fnn-bps-receive`): a wire past
+`max-bundle-octets` is refused `:bundle-beyond-profile` before it is decoded
+(the check walks at most that many conses plus one), a bundle whose ADU (a
+fragment's total ADU length) is past `max-adu-octets` is refused
+`:adu-beyond-profile` before custody, and anything else is PRF-128's channel
+answer unchanged (`fn-bpnpf-admission-within-profile-is-the-channel-answer`).
+A family therefore never grows an ADU its profile does not admit. The held
+image's bound is `max-held-octets`: the step and the family plan check the
+machine state's max-octets. The lifecycle-record count between rotations is
+a work bound.
 
 | Limit | Value today | Must satisfy |
 | --- | --- | --- |
 | held rows | the profile's `max-held-rows` (default 64; at most 2^24) | a row past it is refused at receive and at replay, by name |
-| request and receipt ADU | `*fn-bpa-max-octets*` 65538 | ≤ reassembly length |
-| reassembly length | `*fn-bpf-max-length*` 65538 | = ADU max; proved in current constants |
-| bundle image | `*fn-bpn-machine-max-job-octets*` = `*fn-frame-max-blob*` 131072 | ADU max + `*fn-bpn-max-header-octets*` ≤ it |
-| record payload | `*fn-bpn-lifecycle-max-payload*` 134144 | bundle image + held-record overhead ≤ it |
+| request and receipt ADU | the profile's `max-adu-octets` (default 65538; codec width 2^24) | refused past it at receive, by name |
+| decoded bundle | the profile's `max-bundle-octets` (default 1 MiB; codec width 2^24) | refused past it before decoding, by name |
+| held image | the profile's `max-held-octets` (codec width 2^24) | the step's and the plan's held-octet check |
+| reassembly length | uncapped (`fn-bpfw-reassemble`); the capped reference `*fn-bpf-max-length*` 65538 | ≤ ADU width |
+| sender job image | `*fn-bpn-machine-max-job-octets*` = `*fn-frame-max-blob*` 131072 | not widened (PKT-294) |
+| record payload | `*fn-bpn-lifecycle-max-payload*` 2^24 + 3072 | held image width + held-record overhead ≤ it |
 | fragment count | `*fn-bpf-max-fragments*` 64 | count × (per-fragment image) ≤ stage-octets; count ≤ stage-slots + 1 |
 | TCPCL transfer | the route's transfer MRU and the session's negotiated MRU | a whole image or a fragment image ≤ it (§7.3) |
 | aggregate | the profile's `max-held-octets` (default 16777216) | max-held × bundle image ≤ it, or the byte budget is the binding one and says so |
@@ -3082,12 +3103,11 @@ selector, anchor included. Measured once in a proof session on persvati
 (not a native image): a 10 MiB ADU arriving as 5,120 4 KiB fragments, each
 twice and in no particular order, reassembles in 0.62 s with 673 MB
 allocated as octet lists.
-Other ceilings still bound a family:
-- the held-image cap `*fn-bpnf-max-held-image*` on the whole bundle;
-- the bundle decoder's 1 MiB input (`*fn-bpb-max-input*`);
-- the ADU record's 65,538 octets (`*fn-bpa-max-octets*`);
-- the machine's job slots and octet budget.
-These are P5 of `planning/design-2026-09-25-bounds.md`. The job slots bind
+A family is bounded by the node's profile (PRF-134): its ADU by
+`max-adu-octets` (checked on every fragment's total ADU length), its whole
+image and held fragments by `max-held-octets`, its rows by `max-held-rows`.
+Before PRF-134 the held image (131,072), the bundle decoder (1 MiB) and the
+ADU record (65,538) were constants. The job slots bind
 first on the image: `*fn-bpn-machine-max-jobs*` (64) held rows, so the
 receiver refuses the 65th held fragment of one family with XFER_REFUSE No
 Resources (observed 2026-09-26 on the 0069b282 image); a family of 64
