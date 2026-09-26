@@ -54,21 +54,36 @@ independent cryptographic check and does not describe current authorization.
 `Injection-Date` are displayed as recorded fields.
 
 After `POST`, the page keeps **accepted**, **refused**, and **uncertain**
-distinct. An uncertain response keeps the generated Message-ID and offers a
-lookup; do not repost until its status is settled. Acceptance reflects the
-node's successful response under its documented durability contract, not a
-browser or recipient acknowledgement. A lookup that cannot find the article
-reports that observation; it does not turn an earlier uncertain outcome into
-a retrospective refusal.
+distinct. An uncertain response keeps the generated Message-ID and the exact
+article, and its settlement is **unresolved** until a reconciliation settles
+it. Acceptance reflects the node's successful response under its documented
+durability contract, not a browser or recipient acknowledgement.
+
+Reconciliation re-sends the recorded article lines under the same Message-ID
+(NNT-019): the page's "Re-send this same article to settle it" button is a
+CSRF-checked POST to `/reconcile`, only offered for an uncertain original. The
+node answers from what it stored (D25): `240` settles it accepted now, `441
+... already stored here` settles it accepted earlier (also after the article
+was withdrawn or reclaimed), `441 ... a different article with this Message-ID
+is stored here` settles it refused under that Message-ID, and any other answer
+leaves it **unresolved** with the node's line shown. The re-send never makes a
+second article and never generates a new Message-ID. The settlement is shown
+beside the original outcome, which never changes.
+
+The lookup link (GET `/settle`) only asks `ARTICLE` by that Message-ID and
+records what this reader is served now. A `430` there is a visibility
+observation -- the article may have been withdrawn by a cancel, reclaimed, or
+never stored -- never evidence that the post failed, and it does not turn an
+uncertain outcome into a refusal.
 
 Opening a compose form creates a random, local submission identifier. Its
 first valid POST freezes the exact article lines and Message-ID. A second
 click, concurrent POST, browser back/submit, or lost HTTP redirect with that
 identifier returns the same recorded outcome without another NNTP POST.
 The response redirects to a GET result page, so refreshing the page is also
-read only. The optional settlement link only asks `ARTICLE` by that same
+read only. The lookup link only asks `ARTICLE` by that same
 Message-ID; it records what the node serves now without rewriting the original
-POST response. The default bounded client memory holds at most 128 forms. Evicted
+POST response; the reconciliation above re-sends the frozen lines. The default bounded client memory holds at most 128 forms. Evicted
 identifiers return 410 and never send a replacement. This memory does not
 survive a web-client restart: an old form then returns 410, and any uncertain
 post must be investigated separately with a retained Message-ID. Client memory
@@ -103,7 +118,9 @@ uncertain and fences new submissions; a restart can only use whichever complete
 record survived. File and directory `fsync` plus atomic replacement are assumed
 to have their usual local-filesystem meanings; this does not qualify a drive,
 filesystem, or power-loss barrier. These records are client evidence, not fn
-acceptance or retention records. They do not settle a lost NNTP reply.
+acceptance or retention records. They do not settle a lost NNTP reply; the
+record's exact lines are what a reconciliation re-sends, and its answer is
+recorded beside the original (`reconciliation`), never over it.
 
 The client caps each NNTP line at 8 KiB and multiline block at 256 KiB or
 2,048 lines, the recent view at 40 articles, HTTP form at 24 KiB, and post
