@@ -174,8 +174,21 @@ class DryRunTests(unittest.TestCase):
                 if line.startswith("| ") and fragment in line]
 
     def test_the_gate_completed(self):
-        self.assertIn(self.code, (0, 1), self.text[-3000:])
+        # 0, not "0 or 1": the one violation this run used to carry was the
+        # real owner dying on the fake store CLI's imports (below).
+        self.assertEqual(self.code, 0, self.text[-3000:])
         self.assertNotIn("gate error", self.text)
+
+    def test_the_owner_the_gate_claims_is_the_one_that_answered(self):
+        # bin/fn's `run` takes no --store, so the gate drives
+        # tools/run_owner.py; the overlay's fake owner must be what answers,
+        # never a fallback to the reader under the owner's name.
+        rows = self.named("start server (owner, main)")
+        self.assertTrue(rows and "| 0 |" in rows[0], rows)
+        self.assertFalse(self.named("start server (reader, main)"))
+        self.assertIn("201 fn-nntp fake owner ready", self.text)
+        rows = self.named("entry-point-listening")
+        self.assertTrue(rows and "| held |" in rows[0], rows)
 
     def test_the_three_outcomes_stay_distinct(self):
         self.assertIn("accepted=0 refused=1 uncertain=3", self.text)
