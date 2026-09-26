@@ -383,8 +383,9 @@ this copies three of its fields and decides nothing."
 observed.  Returns (values POINTER CHAIN KEY MATCH DETAIL): POINTER is the
 context (the caller owns it and frees it), CHAIN, KEY and MATCH whether
 SSL_CTX_use_certificate_chain_file, SSL_CTX_use_PrivateKey_file and
-SSL_CTX_check_private_key returned 1, each attempted only after the one
-before it succeeded, and DETAIL the first failure's text.  A context the
+SSL_CTX_check_private_key returned 1 (the key and the chain are each
+attempted; the match only when both loaded), and DETAIL the first failure's
+text, the chain's before the key's.  A context the
 library cannot create at all is a config error."
   (fnn-tls-initialize)
   (unless (and (stringp certificate-path) (> (length certificate-path) 0)
@@ -410,29 +411,38 @@ library cannot create at all is a config error."
             (error 'fnn-tls-config-error
                    :detail (format nil "cannot require TLS 1.2+: ~a"
                                    (fnn-tls-error-stack))))
-          (fnn-%err-clear-error)
-          (unless (= (fnn-%ssl-ctx-use-chain-file pointer certificate-path) 1)
-            (return-from fnn-tls-server-candidate
-              (values pointer nil nil nil
-                      (format nil "certificate chain ~a cannot be loaded: ~a"
-                              certificate-path (fnn-tls-error-stack)))))
+          ;; The key first, then the chain.  SSL_CTX_use_PrivateKey_file
+          ;; after a certificate refuses a key that does not match it, which
+          ;; would report a readable key as unloadable; loaded before the
+          ;; chain, a key that does not belong to the leaf is dropped when the
+          ;; leaf is set (OpenSSL 3 and LibreSSL ssl_set_cert), so the three
+          ;; observations stay distinct: key readable, chain readable, match.
           (fnn-%ssl-ctx-set-default-passwd-cb
            pointer
            (sb-alien:cast
             (sb-alien:alien-callable-function 'fnn-%tls-no-password) (* t)))
           (fnn-%err-clear-error)
-          (unless (= (fnn-%ssl-ctx-use-private-key-file
-                      pointer private-key-path +fnn-tls-filetype-pem+) 1)
-            (return-from fnn-tls-server-candidate
-              (values pointer t nil nil
-                      (format nil "private key ~a cannot be loaded; encrypted keys are unsupported: ~a"
-                              private-key-path (fnn-tls-error-stack)))))
-          (fnn-%err-clear-error)
-          (unless (= (fnn-%ssl-ctx-check-private-key pointer) 1)
-            (return-from fnn-tls-server-candidate
-              (values pointer t t nil
-                      (format nil "certificate/private-key mismatch: ~a"
-                              (fnn-tls-error-stack)))))
+          (let* ((key (= (fnn-%ssl-ctx-use-private-key-file
+                          pointer private-key-path +fnn-tls-filetype-pem+) 1))
+                 (key-detail
+                   (unless key
+                     (format nil "private key ~a cannot be loaded; encrypted keys are unsupported: ~a"
+                             private-key-path (fnn-tls-error-stack))))
+                 (chain (progn (fnn-%err-clear-error)
+                               (= (fnn-%ssl-ctx-use-chain-file pointer certificate-path) 1)))
+                 (chain-detail
+                   (unless chain
+                     (format nil "certificate chain ~a cannot be loaded: ~a"
+                             certificate-path (fnn-tls-error-stack)))))
+            (unless (and chain key)
+              (return-from fnn-tls-server-candidate
+                (values pointer chain key nil (or chain-detail key-detail))))
+            (fnn-%err-clear-error)
+            (unless (= (fnn-%ssl-ctx-check-private-key pointer) 1)
+              (return-from fnn-tls-server-candidate
+                (values pointer t t nil
+                        (format nil "certificate/private-key mismatch: ~a"
+                                (fnn-tls-error-stack))))))
           (values pointer t t t nil))
       (error (condition)
         (fnn-%ssl-ctx-free pointer)
