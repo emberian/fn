@@ -718,6 +718,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-reader \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
+	books/proto-catalog \
+	books/proto-catalog-fold \
+	books/proto-catalog-arena \
+	tests/acl2/proto-catalog-tests \
 	tests/acl2/store-checkpoint-buffer-tests \
 	tests/acl2/store-checkpoint-reader-tests \
 	books/sha256-buffer \

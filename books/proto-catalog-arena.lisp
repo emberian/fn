@@ -41,7 +41,6 @@
 
 (value-triple (fn-pcat-smoke fn-pcat) :stobjs-out '(nil fn-pcat))
 
-(assert-event (equal (mv-let (result fn-pcat) (fn-pcat-smoke fn-pcat)
-                       (mv result fn-pcat))
-                     '(3 5 (4 5) 3))
+(assert-event (mv-let (result fn-pcat) (fn-pcat-smoke fn-pcat)
+                (mv (equal result '(3 5 (4 5) 3)) fn-pcat))
               :stobjs-out '(nil fn-pcat))
