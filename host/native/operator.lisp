@@ -44,6 +44,10 @@
            (fnn-operator-word status) subject reason))
 
 (defun fnn-operator-emit-result (result)
+  "ACL2's hint line (what the command accepts, or what to do), if any, then
+the one tagged result line."
+  (let ((hint (fnn-core 'fn-native-operator-host-result-hint result)))
+    (when (stringp hint) (fnn-err "~a" hint)))
   (fnn-operator-emit-status
    (fnn-core 'fn-native-operator-host-result-status result)
    (or (fnn-core 'fn-native-operator-host-result-command result) "request")
@@ -375,6 +379,12 @@ observation into the outcome and this function only carries it out."
                         (fnn-octets-string
                          (fnn-core 'fn-native-operator-host-result-rollback-path-octets
                                    result))))
+                      (:rollback-snapshot
+                       (fnn-command-rollback-snapshot
+                        root
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-snapshot-path-octets
+                                   result))))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     (string-downcase (symbol-name action)))
@@ -531,8 +541,21 @@ configuration usage result."
       (error 'fnn-usage-error :message "operator configuration file exceeds ACL2 bound"))
     (fnn-octet-list (fnn-read-regular-bounded path maximum))))
 
-(defun fnn-operator-dispatch-plan (result)
-  (let ((status (fnn-core 'fn-native-operator-host-result-status result)))
+(defun fnn-operator-store-outcome (result)
+  "HST-008: an accepted plan that needs a store, over a root holding none of
+the store's entries, becomes ACL2's :no-store refusal before any open
+(fn-native-operator-store-outcome, PRF-130).  The observation is the lstat
+one `init' makes; nothing is opened or locked."
+  (if (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
+      (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
+        (fnn-core 'fn-native-operator-host-store-outcome result
+                  (and (stringp root)
+                       (fnn-operator-init-observed (fnn-absolute root)))))
+    result))
+
+(defun fnn-operator-dispatch-plan (result0)
+  (let* ((result (fnn-operator-store-outcome result0))
+         (status (fnn-core 'fn-native-operator-host-result-status result)))
     (if (not (eq status :accepted))
         (progn (fnn-operator-emit-result result)
                (fnn-core 'fn-native-operator-host-result-exit-code result))
@@ -567,7 +590,7 @@ configuration usage result."
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
           ((:recover :upgrade-profile :compact :checkpoint :needs-upgrade
-            :rollback-check :reclaim :reclaim-dry-run)
+            :rollback-check :rollback-snapshot :reclaim :reclaim-dry-run)
            (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
           (:peering (fnn-pinv-execute result))

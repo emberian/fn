@@ -2597,6 +2597,30 @@
         "planning/evidence/width-producers-2-2026-09-26.md"
       ],
       "implementation_note": "R is not raised: the widening of a producer past 2^32 - 1 costs no profile field. The allocator still stops at 2^32 - 1 and the stamp producer at 2^32 s: their readers (file machine, observed open, checkpoint and its codec, consumer positions) are u32, PKT-244. The Python BP and owner clients ask the article verdict (fn-store-sn-article-verdict) at the article's own counts."
+    },
+    {
+      "id": "HST-008",
+      "title": "One installed fn takes an operator from nothing to a recovered node, each verb answering every store state with a distinct outcome",
+      "specification": "specs/host.md#operator-walk",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-130"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-operator.lisp",
+        "books/feed-connection.lisp",
+        "packaging/fn",
+        "host/native/operator.lisp",
+        "docs/operator.md",
+        "planning/evidence/operator-walk-2026-09-26.md"
+      ],
+      "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 6 (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot counts what restoring a snapshot loses.",
+      "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
     }
   ]
 }

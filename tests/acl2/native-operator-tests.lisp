@@ -743,10 +743,10 @@
 ; Help names both new subjects, and only from the ACL2 subject table.
 (assert-event (fn-nop-help-subjectp "init"))
 (assert-event (equal (fn-nop-help-text "init")
-                     "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]"))
+                     "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise it afterwards with store upgrade-profile)"))
 (assert-event (equal (fn-native-operator-result-arguments
                       (fn-native-operator-run nil (fn-nop-test-argv '("help" "init"))))
-                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")))
+                     '(:help "init" "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise it afterwards with store upgrade-profile)")))
 (assert-event (not (fn-nop-help-subjectp "initialise")))
 
 ; The run refusal names the key, and an admitted log path reaches the run
@@ -977,3 +977,94 @@
    (not (fn-nop-some-flag-wordp (cadr (fn-nop-developer-init words))))
    :hints (("Goal" :in-theory (disable fn-nop-parse-profile-flags
                                        fn-bs-profile-resolve)))))
+
+; -----------------------------------------------------------------------------
+; PRF-130 part 1 teeth: an absent store is the :no-store refusal, exit 6.
+; Reachable witness: the host-shaped plan for `status' under the minimal
+; configuration, and the observation the host makes beside a root that holds
+; none of the store's entries (nil).
+(defconst *fn-nop-status-plan*
+  (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("status"))))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-status-plan*)
+                     :status))
+(assert-event (fn-native-operator-result-needs-storep *fn-nop-status-plan*))
+(defconst *fn-nop-status-absent*
+  (fn-native-operator-store-outcome *fn-nop-status-plan* nil))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-status-absent*) :refused))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-status-absent*) :no-store))
+(assert-event (equal (fn-native-operator-exit-code *fn-nop-status-absent*) 6))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-status-absent*) :none))
+(assert-event (stringp (fn-native-operator-result-hint *fn-nop-status-absent*)))
+; health and run are store actions too.
+(assert-event (fn-native-operator-result-needs-storep
+               (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("health")))))
+(assert-event (fn-native-operator-result-needs-storep *fn-nop-run*))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-store-outcome *fn-nop-run* nil))
+                     6))
+; Hypothesis 1 removed (a plan that needs no store: help): passed through,
+; accepted, and its exit is 0, not 6.
+(defconst *fn-nop-help-plan*
+  (fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv '("help"))))
+(assert-event (not (fn-native-operator-result-needs-storep *fn-nop-help-plan*)))
+(assert-event (equal (fn-native-operator-store-outcome *fn-nop-help-plan* nil)
+                     *fn-nop-help-plan*))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-store-outcome *fn-nop-help-plan* nil)) 0))
+(must-fail
+ (thm (implies (not (consp observed))
+               (equal (fn-native-operator-result-status
+                       (fn-native-operator-store-outcome result observed))
+                      :refused))))
+; Hypothesis 2 removed (a store is there: config.json observed): the status
+; plan proceeds unchanged, exit 0.
+(assert-event (equal (fn-native-operator-store-outcome
+                      *fn-nop-status-plan* (list (fn-record-string-octets "config.json")))
+                     *fn-nop-status-plan*))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-store-outcome
+                       *fn-nop-status-plan* (list (fn-record-string-octets "config.json"))))
+                     0))
+(must-fail
+ (thm (implies (fn-native-operator-result-needs-storep result)
+               (equal (fn-native-operator-result-reason
+                       (fn-native-operator-store-outcome result observed))
+                      :no-store))))
+; The conclusion fails for an ordinary refusal: exit 1, not 6.
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-nop-refused :store-exists "init" nil nil)) 1))
+; A usage result carries ACL2's accepted form.
+(assert-event (equal (fn-native-operator-result-hint
+                      (fn-nop-usage :flag-word-as-group "init" nil nil))
+                     (fn-nop-help-text "init")))
+
+; The rollback sentence's count (fn-native-operator-snapshot-loss-counts-the-suffix).
+(defconst *fn-nop-snap* '((1 . 440) (2 . 512)))
+(defconst *fn-nop-cur* '((1 . 440) (2 . 512) (3 . 300) (4 . 280) (5 . 610)))
+(assert-event (equal (fn-native-operator-snapshot-loss *fn-nop-snap* *fn-nop-cur*)
+                     '(:loses 3)))
+(assert-event (equal (fn-native-operator-snapshot-loss *fn-nop-cur* *fn-nop-cur*)
+                     '(:loses 0)))
+; A snapshot whose history diverged (record 2 differs) is refused, not counted.
+(assert-event (equal (fn-native-operator-snapshot-loss '((1 . 440) (2 . 999)) *fn-nop-cur*)
+                     '(:refused :snapshot-not-a-prefix)))
+; A snapshot ahead of the store is not a prefix either.
+(assert-event (equal (car (fn-native-operator-snapshot-loss *fn-nop-cur* *fn-nop-snap*))
+                     :refused))
+(must-fail
+ (thm (equal (cadr (fn-native-operator-snapshot-loss snap cur))
+             (- (len cur) (len snap)))))
+(assert-event (equal (fn-native-operator-snapshot-loss-report '(:loses 3) 2 5)
+                     (concatenate 'string
+                                  "rollback snapshot loses transactions=3 snapshot-transactions=2 store-transactions=5"
+                                  (coerce '(#\Newline) 'string)
+                                  "restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back")))
+; The parse: an absolute snapshot path, and nothing else.
+(assert-event (equal (fn-native-operator-result-native-action
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "rollback-check" "--snapshot" "/srv/snap"))))
+                     :rollback-snapshot))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "rollback-check" "--snapshot" "snap"))))
+                     :usage))
