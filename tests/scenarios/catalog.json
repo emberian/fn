@@ -3148,8 +3148,20 @@
         "tests/test_native_bounds_join.py",
         "planning/evidence/exposure-reply-size-2026-09-26.md",
         "books/public-exposure-reply.lisp",
-        "tests/acl2/public-exposure-reply-tests.lisp"
-      ]
+        "tests/acl2/public-exposure-reply-tests.lisp",
+        "planning/evidence/exposure-reply-size/test_native_bounds_join.08ca81eb.fn-host.log",
+        "planning/evidence/exposure-reply-size/test_native_bounds_join.08ca81eb.fn-host-developer.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_bounds_join",
+        "cases": [
+          "test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving",
+          "test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it"
+        ],
+        "native": true,
+        "record": "planning/evidence/exposure-reply-size-2026-09-26.md",
+        "log": "planning/evidence/exposure-reply-size/test_native_bounds_join.08ca81eb.fn-host.log"
+      }
     }
   ]
 }
