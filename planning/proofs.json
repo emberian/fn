@@ -5907,7 +5907,7 @@
         "PRF-140"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -5918,7 +5918,8 @@
         "host/owner-host.lisp",
         "host/native/keys.lisp",
         "tests/test_native_key_statements.py",
-        "planning/evidence/keys-and-accounts-2026-09-26.md"
+        "planning/evidence/keys-and-accounts-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T100646Z-90653.json"
       ],
       "events": [
         "fn-ks-redecide-decides-under-the-configuration-at-its-own-txid",
