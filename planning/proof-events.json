@@ -6679,6 +6679,39 @@
           "note": "KEYSTONE (PRF-193). The identity prepare the host installs (host/owner-host.lisp fn-owner-prepare-identity -> fn-ccar-ocfg-prepare-identity -> fn-ccar-sn-prepare-identity) stages EVENT as the next event above the history's last record, keeping the history and the node; the candidate test reads that record's txid (fn-pcar-stage-record), not every record's. Teeth: tests/acl2/store-events-carried-tests (reachable reserved store by fn-own-run with a non-empty history: the antecedent and every conjunct, the last-record bound included; hypothesis removal, reachable: the store before its frontier observations, where the prepare leaves it unchanged and nothing is staged, with a must-fail of the statement without its hypothesis)."
         }
       ]
+    },
+    {
+      "id": "PRF-191",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-find-article-is-find-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-existing-action-is-rclb-existing-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-find-in-visible-is-find"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-view-okp-of-live-owner"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-pidx-prepare-keeps-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-pidx-prepare-keeps-view-indexed"
+        }
+      ]
     }
   ]
 }

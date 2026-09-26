@@ -45,6 +45,9 @@
 (include-book "../books/owner-bound-commit")
 (include-book "../books/owner-log-reopen")
 (include-book "../books/owner-prepare-carried")
+; PRF-191: a POST's Message-ID tests through the owner's view trie
+; (fn-pidx-existing-action, fn-pidx-sbud-prepare).
+(include-book "../books/post-identity-index")
 ; PRF-180: the per-POST caches advanced through the derived event index.
 (include-book "../books/store-carried-folds")
 (include-book "../books/owner-advance-carried")
@@ -749,7 +752,11 @@
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-rclb-existing-action msgid fn-octets groups s)))
+             ; PRF-191: the held article through the view trie
+             ; (books/post-identity-index.lisp
+             ; fn-pidx-existing-action-is-rclb-existing-action).
+             (existing (fn-pidx-existing-action msgid fn-octets groups
+                                                (fn-owner-core state))))
         (if existing
             (value existing)
           (mv-let (bytes state) (fn-owner-record-octets state)
@@ -774,7 +781,12 @@
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
-                           (fn-pcar-sbud-prepare before record budget)
+                           ; PRF-191: fn-pidx-sbud-prepare, equal to
+                           ; fn-pcar-sbud-prepare over the owner's carried
+                           ; view (fn-pidx-sbud-prepare-is-pcar-sbud-prepare):
+                           ; the duplicate test reads the view trie and the
+                           ; retention admission is decided once.
+                           (fn-pidx-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)
                 (value :clock-unusable)
@@ -2063,9 +2075,11 @@
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-rclb-existing-action
+      ; PRF-191: fn-rclb-existing-action through the view trie
+      ; (fn-pidx-existing-action-is-rclb-existing-action).
+      (let ((action (fn-pidx-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
-                     (fn-owner-store state))))
+                     (fn-owner-core state))))
         (value (if action action :absent))))))
 
 ; The subject identity of the payload in the octet buffer is

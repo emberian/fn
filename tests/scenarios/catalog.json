@@ -3455,6 +3455,34 @@
         "record": "planning/evidence/signed-post-linear-2026-09-26.md",
         "log": "planning/evidence/signed-post-linear-2026-09-26/meas/summary.log"
       }
+    },
+    {
+      "id": "SCN-120",
+      "title": "A POST's owner CPU does not grow with the history through its Message-ID tests: at N = 1,000 and N = 10,000 x 2 KiB the lane's image spends less owner CPU per POST than its base, with the same verdicts, and no Message-ID lookup walks the article list",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "On hbox take the developer image of the lane's base (dev 6407de336, the throughput gate's native-img-6407de336) and the lane's (tools/hbox_native.sh r1, which also runs tests.test_native_owner).",
+        "Load a 1,000-article store of 2 KiB articles (postmeasure.py load) and use the registered 10,000-article fixture /tank/fn/scratch/fixtures/n10k-2k.",
+        "For each N and image, on a /dev/shm copy of the store, in its own systemd-run scope: open, one warm-up POST, then K = 400 POSTs of 2,048 octets with the heap hook (bytes consed) and /proc owner CPU around them (postmeasure.py post); alternate the images, five rounds pinned to cores 20-23 (run2.sh); one sb-sprof :cpu window on the lane's image at N = 10,000."
+      ],
+      "expected": [
+        "Every POST answers 240; the lane's owner CPU per POST at N = 10,000 is below its base's and near its own N = 1,000 figure, the box load stated beside each figure.",
+        "In the lane's CPU profile at N = 10,000, FN-FIND-ARTICLE and FN-ACCEPTEDP have no samples under the POST, and FN-RETAIN-PIN-ID-SCANP (the one remaining admissibility scan, PKT-549) is reached from FN-PIDX-NODE-PREPARE alone, not also from FN-RETAIN-ADMIT."
+      ],
+      "evidence": [
+        "planning/evidence/post-identity-index-2026-09-26.md",
+        "planning/evidence/post-identity-index-2026-09-26/postmeasure.py"
+      ],
+      "implementation": {
+        "test": "planning/evidence/post-identity-index-2026-09-26/postmeasure.py",
+        "native": true,
+        "record": "planning/evidence/post-identity-index-2026-09-26.md",
+        "log": "planning/evidence/post-identity-index-2026-09-26/results.json"
+      }
     }
   ]
 }
