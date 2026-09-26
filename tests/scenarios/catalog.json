@@ -71,7 +71,17 @@
         "books/store-node-existing-invariants.lisp",
         "tests/acl2/store-node-existing-tests.lisp"
       ],
-      "execution_scope": "Validated for abstract atomic acceptance and now a real CLI cross-post/reopen path: one article, two local numbers, one charged pin. Full signed/network POST service remains outside this scenario evidence. The ACL2 Store decision is exercised on a reachable committed state with duplicate, each conflict factor, and missing binding; the actual host prepare/query wrappers call that decision. A newly built combined native image is still required to remeasure the changed host path."
+      "execution_scope": "Validated for abstract atomic acceptance and now a real CLI cross-post/reopen path: one article, two local numbers, one charged pin. Full signed/network POST service remains outside this scenario evidence. The ACL2 Store decision is exercised on a reachable committed state with duplicate, each conflict factor, and missing binding; the actual host prepare/query wrappers call that decision. A newly built combined native image is still required to remeasure the changed host path.",
+      "implementation": {
+        "test": "tests.test_store",
+        "cases": [
+          "test_two_group_post_replays_both_allocations_and_one_pin",
+          "test_duplicate_retry_and_conflicting_id_do_not_overwrite"
+        ],
+        "native": false,
+        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
+        "record": "planning/evidence/harness-repair-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-003",
@@ -892,13 +902,23 @@
       "evidence": [
         "planning/evidence/owner-survival-2026-09-21.md"
       ],
-      "execution_scope": "Implemented as tests/test_owner.py OwnerSurvivesAFaultTests, two cases, one owner process each. The fault is injected, not provoked by a peer: the two real crashes it stands for are fixed, and a regression that provokes one from the wire needs two nodes (tools/v0_matrix.py's transit rows). This remains Python-host evidence. Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015."
+      "execution_scope": "Implemented as tests/test_owner.py OwnerSurvivesAFaultTests, two cases, one owner process each. The fault is injected, not provoked by a peer: the two real crashes it stands for are fixed, and a regression that provokes one from the wire needs two nodes (tools/v0_matrix.py's transit rows). This remains Python-host evidence. Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015.",
+      "implementation": {
+        "test": "tests.test_owner",
+        "cases": [
+          "OwnerSurvivesAFaultTests.test_a_fault_in_a_served_read_costs_that_connection_and_nothing_else",
+          "OwnerSurvivesAFaultTests.test_a_fault_carrying_a_submission_leaves_the_post_path_open"
+        ],
+        "native": false,
+        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
+        "record": "planning/evidence/owner-survival-2026-09-21.md"
+      }
     },
     {
       "id": "SCN-027",
       "title": "Atomic signed acceptance across refusal, burned allocation and restart",
       "milestone": "M3",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "OBJ-007",
         "STO-002",
@@ -922,7 +942,8 @@
         "tests/acl2/store-identity-traces-tests.lisp",
         "tests/native_owner_publication.lisp"
       ],
-      "execution_scope": "The existing ACL2 source trace executes fn-sn transitions and reopen, and the raw SBCL witness executes the shared publication helper with controlled observations. The new schema-1 codec, constructor and substitution witnesses certify separately; the modified native hybrid-author/restart witness still needs a combined saved image. These results do not establish filesystem durability, cryptographic primitive correctness or arbitrary-trace preservation; PRF-050 remains in progress. The negative missing-enrollment composed trace evaluates from ACL2 sources, with no native corrupted-store startup claim."
+      "execution_scope": "The existing ACL2 source trace executes fn-sn transitions and reopen, and the raw SBCL witness executes the shared publication helper with controlled observations. The new schema-1 codec, constructor and substitution witnesses certify separately; the modified native hybrid-author/restart witness still needs a combined saved image. These results do not establish filesystem durability, cryptographic primitive correctness or arbitrary-trace preservation; PRF-050 remains in progress. The negative missing-enrollment composed trace evaluates from ACL2 sources, with no native corrupted-store startup claim.",
+      "note": "assurance-triage 2026-09-26: returned to specified: no recorded run of the SBCL witness (tests/native_owner_publication.lisp) or any native run; only the ACL2 book tests/acl2/store-identity-traces-tests is certified."
     },
     {
       "id": "SCN-028",
@@ -1187,7 +1208,21 @@
         "tests/test_fn_web.py",
         "tools/fn_web.py"
       ],
-      "execution_scope": "Real local HTTP and fake NNTP socket tests exercise this separate client's behavior. A source-matched native-node run, physical power-loss qualification, and general external-web security audit remain open."
+      "execution_scope": "Real local HTTP and fake NNTP socket tests exercise this separate client's behavior. A source-matched native-node run, physical power-loss qualification, and general external-web security audit remain open.",
+      "implementation": {
+        "test": "tests.test_fn_web",
+        "cases": [
+          "test_durable_outbox_restart_duplicate_and_single_instance",
+          "test_durable_draft_survives_restart_and_post_freezes_edited_source",
+          "test_durable_inflight_restart_and_lost_reply_never_repost",
+          "test_outbox_parent_barrier_failure_prevents_startup_and_post",
+          "test_durable_concurrent_submit_and_full_spool_preserve_records",
+          "test_durable_fsync_failures_before_and_after_network"
+        ],
+        "native": false,
+        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
+        "record": "planning/evidence/m6-web-2026-09-24.md"
+      }
     },
     {
       "id": "SCN-037",
@@ -1294,7 +1329,18 @@
         "specs/storage.md",
         "planning/evidence/m5-history-lifetimes-2026-09-24.md"
       ],
-      "execution_scope": "Partial: the first three steps run natively on a developer image (tests/test_native_history_marker.py). The fourth is a contract check: packing's preservation is PRF-073, and history compaction and content reclamation are not implemented."
+      "execution_scope": "Partial: the first three steps run natively on a developer image (tests/test_native_history_marker.py). The fourth is a contract check: packing's preservation is PRF-073, and history compaction and content reclamation are not implemented.",
+      "implementation": {
+        "test": "tests.test_native_history_marker",
+        "cases": [
+          "test_a_burned_reservation_is_not_a_lost_record",
+          "test_a_lost_newest_transaction_file_is_refused_with_the_reason",
+          "test_every_marker_cut_recovers_and_keeps_detecting"
+        ],
+        "native": true,
+        "log": "planning/evidence/m5-history-lifetimes/native-marker.log",
+        "record": "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+      }
     },
     {
       "id": "SCN-041",
@@ -1318,7 +1364,17 @@
         "tests/acl2/control-tests.lisp",
         "tests/native_peer_authored_accept_raw.lisp",
         "tests/test_native_control_filing.py"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_control_filing",
+        "cases": [
+          "test_served_post",
+          "test_transit_ihave"
+        ],
+        "native": true,
+        "log": "planning/evidence/control-c3e-2026-09-25/native-control-filing-9ad31f6c.log",
+        "record": "planning/evidence/control-c3e-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-042",
@@ -1342,7 +1398,16 @@
         "tests/test_bp_node_native.py",
         "tests/acl2/bp-route-tests.lisp",
         "planning/evidence/bp-routing-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_bp_node_native",
+        "cases": [
+          "test_removed_route_keeps_transit_held_and_reports_no_route"
+        ],
+        "native": true,
+        "log": "planning/evidence/bp-routing-2-2026-09-25/test_bp_node_native.log",
+        "record": "planning/evidence/bp-routing-2-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-043",
@@ -1366,7 +1431,18 @@
         "tests/test_native_state_checkpoint.py",
         "tests/acl2/store-checkpoint-open-tests.lisp",
         "planning/evidence/bounds-p3-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_state_checkpoint",
+        "cases": [
+          "test_checkpoint_open_equals_full_replay",
+          "test_a_corrupt_checkpoint_falls_back_to_full_replay",
+          "test_every_cut_reopens_with_the_old_or_the_new_checkpoint"
+        ],
+        "native": true,
+        "log": "planning/evidence/qual-bbf52159/chainC.out",
+        "record": "planning/evidence/bounds-p3-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-044",
@@ -1419,7 +1495,17 @@
         "tests/test_native_history_required.py",
         "tests/acl2/store-history-required-tests.lisp",
         "planning/evidence/marker-required-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_history_required",
+        "cases": [
+          "RetryResolutionTests",
+          "MigrationTests"
+        ],
+        "native": true,
+        "log": "planning/evidence/marker-required/native-required.log",
+        "record": "planning/evidence/marker-required-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-049",
@@ -1441,7 +1527,13 @@
       ],
       "evidence": [
         "planning/evidence/live-status-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "planning/evidence/live-status-2026-09-25/native.sh",
+        "native": true,
+        "log": "planning/evidence/live-status-2026-09-25/summary.txt",
+        "record": "planning/evidence/live-status-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-048",
@@ -1490,7 +1582,13 @@
         "tests/acl2/injection-tests.lisp",
         "tests/acl2/poster-bytes-tests.lisp",
         "planning/evidence/path-and-login-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "planning/evidence/path-and-login-2026-09-25/pl_probe.py",
+        "native": true,
+        "log": "planning/evidence/path-and-login-2026-09-25/tin-wire.log",
+        "record": "planning/evidence/path-and-login-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-051",
@@ -1513,7 +1611,13 @@
       "evidence": [
         "tests/acl2/login-binding-tests.lisp",
         "planning/evidence/path-and-login-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "planning/evidence/path-and-login-2026-09-25/pl_probe.py",
+        "native": true,
+        "log": "planning/evidence/path-and-login-2026-09-25/probe-bound.log",
+        "record": "planning/evidence/path-and-login-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-052",
@@ -1535,7 +1639,16 @@
       ],
       "evidence": [
         "planning/evidence/bounds-profile-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_profile_namespace",
+        "cases": [
+          "test_the_operator_raises_credentials_and_generations"
+        ],
+        "native": true,
+        "log": "planning/evidence/bounds-profile/native-namespace.log",
+        "record": "planning/evidence/bounds-profile-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-054",
@@ -1558,13 +1671,23 @@
       "evidence": [
         "planning/evidence/peer-carriage-2026-09-25.md",
         "tests/test_native_hybrid_author.py"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_hybrid_author",
+        "cases": [
+          "test_carried_budget_and_refusal_classes",
+          "test_carrying_boundary_without_budget_carries_nothing"
+        ],
+        "native": true,
+        "log": "planning/evidence/peer-carriage-2026-09-25/tests2.log",
+        "record": "planning/evidence/peer-carriage-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-055",
       "title": "XPAT is listed, joins its pattern arguments, ORs comma alternatives and matches case-sensitively on the served node",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "NNT-016"
       ],
@@ -1582,13 +1705,14 @@
         "tests/acl2/nntp-xpat-tests.lisp",
         "tests/test_fn_web.py",
         "planning/evidence/reader-surface-2026-09-25.md"
-      ]
+      ],
+      "note": "assurance-triage 2026-09-26: returned to specified: the served-node steps were not run (planning/evidence/reader-surface-2026-09-25.md \"Native: NOT RUN (blocked)\"); only the fake-node tests.test_fn_web ReaderSearchTests and the ACL2 book ran."
     },
     {
       "id": "SCN-047",
       "title": "A store written by an image before the u64 record codec opens under the new image with the same records and bytes; a u64 charge commits as schema 2",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-013"
       ],
@@ -1603,13 +1727,14 @@
       ],
       "evidence": [
         "planning/evidence/bounds-p6-2026-09-25.md"
-      ]
+      ],
+      "note": "assurance-triage 2026-09-26: returned to specified: the only recorded native run (planning/evidence/bounds-p6-2026-09-25.md, the u64 charge) refused the 2^40 charge (\"charge must be a positive uint32\") and wrote no schema-2 record, the opposite of the expected result; no test or script is committed."
     },
     {
       "id": "SCN-056",
       "title": "The checkpoint open is cheaper than full replay and an automatic publication does not hold served commands",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-016"
       ],
@@ -1624,7 +1749,8 @@
       "evidence": [
         "planning/evidence/checkpoint-cost-2026-09-25.md",
         "tests/acl2/owner-checkpoint-open-tests.lisp"
-      ]
+      ],
+      "note": "assurance-triage 2026-09-26: returned to specified: no committed harness or log, and the recorded measurements (planning/evidence/checkpoint-cost-2026-09-25.md) show owner start from a checkpoint slower than full replay (1.36 vs 1.10 s; 8.94 vs 7.28 s) and status at N=4096 about equal (7.72 vs 7.77 s), not the expected result."
     },
     {
       "id": "SCN-053",
@@ -1696,7 +1822,18 @@
         "planning/evidence/peer-pull-2026-09-25.md",
         "tests/test_native_peer_pull.py",
         "planning/evidence/peer-pull-2026-09-25/native-peer-pull.log"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_pull",
+        "cases": [
+          "test_pull_from_fn_node",
+          "test_kill_mid_round_recovery_asks_the_same_newnews",
+          "test_pull_from_inn"
+        ],
+        "native": true,
+        "log": "planning/evidence/peer-pull-2026-09-25/native-peer-pull.log",
+        "record": "planning/evidence/peer-pull-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-059",
@@ -1718,7 +1855,16 @@
         "tests/test_bp_node_native.py",
         "tests/acl2/bp-fragment-send-tests.lisp",
         "planning/evidence/bp-n16-prod-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_bp_node_native",
+        "cases": [
+          "test_request_above_peer_mru_is_fragmented_and_reassembled"
+        ],
+        "native": true,
+        "log": "planning/evidence/bp-n16-prod-2026-09-25/test_bp_node_native-r4.log",
+        "record": "planning/evidence/bp-n16-prod-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-069",
@@ -1762,7 +1908,17 @@
       "evidence": [
         "tests/test_native_visibility_join.py",
         "planning/evidence/visibility-join-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_visibility_join",
+        "cases": [
+          "test_lost_reply_then_withdrawal_reconciles_to_already_stored",
+          "test_lost_reply_then_authorization_change_is_unresolved"
+        ],
+        "native": true,
+        "log": "planning/evidence/visibility-join-2026-09-25/tests.test_native_visibility_join.log",
+        "record": "planning/evidence/visibility-join-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-062",
@@ -1792,7 +1948,18 @@
         "tests/test_native_source_corpus.py",
         "tests/acl2/source-routes-tests.lisp",
         "planning/evidence/source-corpus-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_source_corpus",
+        "cases": [
+          "test_identity_table_across_routes",
+          "test_signed_route_retry_is_already_stored",
+          "test_cancel_orders_pinned_reader_and_replay"
+        ],
+        "native": true,
+        "log": "planning/evidence/source-corpus-2026-09-25/native-15.log",
+        "record": "planning/evidence/source-corpus-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-068",
@@ -1814,7 +1981,18 @@
       "evidence": [
         "tests/test_fn_web.py",
         "planning/evidence/reader-daily-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_fn_web",
+        "cases": [
+          "test_holes_are_the_nodes_answers_and_withdrawn_is_not_absent",
+          "test_conversation_follows_references_across_a_withdrawn_middle",
+          "test_back_to_the_form_after_posting_returns_the_same_identifier"
+        ],
+        "native": false,
+        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
+        "record": "planning/evidence/reader-daily-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-061",
@@ -1837,7 +2015,16 @@
         "tests/test_native_consumer_exchange.py",
         "tools/fn_consumer.py",
         "planning/evidence/consumer-e2-2026-09-25.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_consumer_exchange",
+        "cases": [
+          "test_two_sleeping_agents_exchange_across_every_ownership_cut"
+        ],
+        "native": true,
+        "log": "planning/evidence/consumer-e2/test_native_consumer_exchange.gate-eca72d1c.log",
+        "record": "planning/evidence/consumer-e2-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-066",
@@ -1864,7 +2051,13 @@
         "planning/evidence/mission-four-node-2026-09-25.md",
         "planning/evidence/mission-signed-2-2026-09-26.md"
       ],
-      "note": "Passes on the lane image aa0f6c16 (not deployed; loopback on hbox): the signed report and the signed reply, all seven steps, 153.9 s (native-aa0f6c16/signed-r2, report.json 55580c3b36fb66dd...), and the unsigned control, all seven steps (unsigned-r2, 25bcafe453675d7e...). Relays listen per boundary, so the driver turns a relay's listener and restarts the node whose receipt is owed (PKT-291). planning/evidence/mission-signed-2-2026-09-26.md."
+      "note": "Passes on the lane image aa0f6c16 (not deployed; loopback on hbox): the signed report and the signed reply, all seven steps, 153.9 s (native-aa0f6c16/signed-r2, report.json 55580c3b36fb66dd...), and the unsigned control, all seven steps (unsigned-r2, 25bcafe453675d7e...). Relays listen per boundary, so the driver turns a relay's listener and restarts the node whose receipt is owed (PKT-291). planning/evidence/mission-signed-2-2026-09-26.md.",
+      "implementation": {
+        "test": "tests/bp-dtn7/run_mission_four_node.py",
+        "native": true,
+        "log": "planning/evidence/mission-four-node/unsigned.out",
+        "record": "planning/evidence/mission-four-node-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-071",
@@ -1890,7 +2083,19 @@
         "planning/evidence/peering-tls-pull-2026-09-26.md",
         "tests/test_native_peer_pull.py",
         "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_pull",
+        "cases": [
+          "test_tls_pull_as_its_own_principal",
+          "test_wrong_principal_is_refused_by_the_serving_node",
+          "test_clear_credential_is_refused_before_any_connection",
+          "test_cursor_publication_cuts_over_tls"
+        ],
+        "native": true,
+        "log": "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log",
+        "record": "planning/evidence/peering-tls-pull-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-067",
@@ -1916,7 +2121,16 @@
         "planning/evidence/bp-lifecycle-2026-09-25.md",
         "books/bp-node-profile.lisp",
         "planning/evidence/bp-lifecycle-3-2026-09-26.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_bp_fragment_node_native",
+        "cases": [
+          "test_seventy_fragments_across_a_kill_reassemble_once"
+        ],
+        "native": true,
+        "log": "planning/evidence/bp-lifecycle-3-2026-09-26/test_bp_fragment_node_native.log",
+        "record": "planning/evidence/bp-lifecycle-3-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-065",
@@ -1969,7 +2183,13 @@
         "planning/evidence/operator-health-2026-09-25/native.sh",
         "planning/evidence/operator-health-2026-09-25.md",
         "tests/acl2/native-health-tests.lisp"
-      ]
+      ],
+      "implementation": {
+        "test": "planning/evidence/operator-health-2026-09-25/native.sh",
+        "native": true,
+        "log": "planning/evidence/operator-health-2026-09-25/native-out/summary.txt",
+        "record": "planning/evidence/operator-health-2026-09-25.md"
+      }
     },
     {
       "id": "SCN-072",
@@ -1995,7 +2215,13 @@
         "planning/evidence/width-producers-2-gate-served.sh",
         "planning/evidence/width-producers-2-nntp-post.py",
         "planning/evidence/width-producers-2-2026-09-26.md"
-      ]
+      ],
+      "implementation": {
+        "test": "planning/evidence/width-producers-2-gate-served.sh",
+        "native": true,
+        "log": "planning/evidence/width-producers-2-2026-09-26/gate-served.log",
+        "record": "planning/evidence/width-producers-2-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-076",
@@ -2024,7 +2250,19 @@
         "tests/acl2/native-operator-tests.lisp",
         "tests/test_native_rollback_history.py",
         "planning/evidence/rollback-history-2026-09-26.md"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_rollback_history",
+        "cases": [
+          "test_equal_counters_different_content_is_not_an_earlier_state",
+          "test_an_earlier_state_counts_what_the_restore_loses",
+          "test_a_compacted_history_is_read_through_its_pack",
+          "test_a_held_store_is_refused_not_read_unlocked"
+        ],
+        "native": true,
+        "log": "planning/evidence/rollback-history-2026-09-26/green2-test.log",
+        "record": "planning/evidence/rollback-history-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-075",
@@ -2076,7 +2314,13 @@
         "planning/evidence/mission-signed-2026-09-26.md",
         "planning/evidence/mission-signed-2-2026-09-26.md"
       ],
-      "note": "Passes on the lane image aa0f6c16 (not deployed): B answers request-accepted for A's hybrid-signed report and its copy verifies with hybrid-verify-source (authored source f7fe359e...), A's receipt-accepted releases A's pin (pinned=no) before B's consumer wakes, B's signed reply is request-accepted at A and A's receipt releases B's pin; all seven steps (signed-r2). The ambiguous-peer case holds (X refuses with reason=ambiguous-peer, no BP accepted, A's obligation stays pinned). PRF-132 closed the layer-2 refusal (reason=history, PKT-247). planning/evidence/mission-signed-2-2026-09-26.md."
+      "note": "Passes on the lane image aa0f6c16 (not deployed): B answers request-accepted for A's hybrid-signed report and its copy verifies with hybrid-verify-source (authored source f7fe359e...), A's receipt-accepted releases A's pin (pinned=no) before B's consumer wakes, B's signed reply is request-accepted at A and A's receipt releases B's pin; all seven steps (signed-r2). The ambiguous-peer case holds (X refuses with reason=ambiguous-peer, no BP accepted, A's obligation stays pinned). PRF-132 closed the layer-2 refusal (reason=history, PKT-247). planning/evidence/mission-signed-2-2026-09-26.md.",
+      "implementation": {
+        "test": "tests/bp-dtn7/run_mission_four_node.py",
+        "native": true,
+        "log": "planning/evidence/mission-signed-2-2026-09-26/signed-r2.out",
+        "record": "planning/evidence/mission-signed-2-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-063",
@@ -2152,7 +2396,16 @@
         "tests/acl2/relay-source-routes-tests.lisp",
         "planning/evidence/source-corpus-2-2026-09-26.md",
         "planning/evidence/source-corpus-2-2026-09-26/native-7.log"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_source_corpus_bp",
+        "cases": [
+          "test_corpus_carried_by_bp_through_dtn7"
+        ],
+        "native": true,
+        "log": "planning/evidence/source-corpus-2-2026-09-26/native-7.log",
+        "record": "planning/evidence/source-corpus-2-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-078",
@@ -2228,7 +2481,18 @@
         "tools/fn_consumer.py",
         "planning/evidence/consumer-e2-2-2026-09-26.md",
         "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_consumer_exchange",
+        "cases": [
+          "test_death_after_acceptance_then_revocation_is_never_refused",
+          "test_consumer_killed_after_the_owner_commits_then_revocation",
+          "test_death_while_recording_and_before_sending_are_reconciled"
+        ],
+        "native": true,
+        "log": "planning/evidence/consumer-e2-2/test_native_consumer_exchange.gate-9900a68f.log",
+        "record": "planning/evidence/consumer-e2-2-2026-09-26.md"
+      }
     },
     {
       "id": "SCN-082",
