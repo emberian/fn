@@ -4420,7 +4420,6 @@
         "fn-bpfs-plan-fragments-reassemble-within-caps",
         "fn-bpfs-fragment-length-bound",
         "fn-bpfs-fragment-primary-length-shift",
-        "fn-bpfs-canvas-of-extents",
         "fn-bpfs-views-of-cut"
       ]
     },
