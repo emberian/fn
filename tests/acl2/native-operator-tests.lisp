@@ -474,6 +474,20 @@
           (equal (fn-nop-argument-texts (fn-nop-test-argv '("store" "reclaim")))
                  '("store" "reclaim" "--dry-run")))))
 
+;; `retention set RULE' reaches the administrative plan (D13): it was in
+;; the admin grammar (books/native-admin.lisp) but no operator command routed
+;; to it.
+(defconst *fn-nop-retention*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("retention" "set" "released-by-all-holders"))))
+(assert-event (and (equal (fn-native-operator-result-status *fn-nop-retention*) :accepted)
+                   (equal (fn-native-operator-result-native-action *fn-nop-retention*) :admin)))
+(must-fail (assert-event
+            (equal (fn-native-operator-result-status
+                    (fn-native-operator-run *fn-nop-minimal-config*
+                                            (fn-nop-test-argv '("retention" "set" "forever"))))
+                   :accepted)))
+
 ; `store checkpoint' (P3): an offline store action with no argument; it
 ; publishes the exact-state checkpoint (books/store-checkpoint-open.lisp).
 (defconst *fn-nop-checkpoint*
