@@ -9,6 +9,12 @@ import unittest
 
 from tests.native_process import AcceptThenClosePeer
 
+# specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
+# connection lost after it existed is exit 6 (connection-local: the job stays
+# and is re-offered; no recovery); exit 3 stays the fence.
+LOST = 6
+
+
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -59,7 +65,7 @@ class NativeBpContactTests(unittest.TestCase):
             "dtn://fn-a/", "dtn://fn-b/", "contact-work", "contact-attempt", 0,
             3600000, 2, 32, 1048576, 0, 0,
         )
-        self.assertEqual(queued.returncode, 3, queued.stderr)
+        self.assertEqual(queued.returncode, LOST, queued.stderr)
         self.assertIn("BP queue accepted", queued.stdout)
         before = len(self.records())
 
@@ -69,7 +75,7 @@ class NativeBpContactTests(unittest.TestCase):
         self.assertEqual(len(self.records()), before)
 
         interrupted = self.tick(0, 60000, 3600000, 2, 32, 1048576, 0, 0)
-        self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
+        self.assertEqual(interrupted.returncode, LOST, interrupted.stderr)
         self.assertIn("BP contact open", interrupted.stdout)
         self.assertGreater(self.peer.accepted, 1, "each transfer must follow a connection")
         self.assertGreater(len(self.records()), before)

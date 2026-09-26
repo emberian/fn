@@ -372,4 +372,4 @@ finds the transit principal in that ingress."
      (number 13 +fnn-bp-hop-limit+) (number 14 +fnn-tcl-transfer-mru+)
      (number 10 16) (optional-number 15) (number 16 0))))
 
-(fnn-register-verb "bp-app" #'fnn-dispatch-bp-app)
+(fnn-register-verb "bp-app" (fnn-bp-verb #'fnn-dispatch-bp-app))

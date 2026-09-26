@@ -45,8 +45,9 @@ class Fake:
 
     def __init__(self, statuses: list[str], log: str = "",
                  home: str = "/home/ember", codes: dict[str, int] | None = None,
-                 certs: str | None = None) -> None:
+                 certs: str | None = None, certs_stderr: str = "") -> None:
         self.commands: list[list[str]] = []
+        self.certs_stderr = certs_stderr
         self.statuses = list(statuses)
         self.log = log
         self.home = home
@@ -64,6 +65,7 @@ class Fake:
     def __call__(self, command, **kwargs):
         self.commands.append(list(command))
         output = ""
+        error = ""
         if command[0] == "ssh":
             script = command[-1]
             if script == "echo $HOME":
@@ -73,12 +75,14 @@ class Fake:
                 output = f"STATUS {state}\nMARKERS 7\nTAIL working\n"
             elif "tools/certs.py" in script:
                 output = self.certs
+                error = self.certs_stderr
             elif script.startswith("cat "):
                 output = self.log
         code = self.code_for(command)
         if code and kwargs.get("check"):
             raise subprocess.CalledProcessError(code, command, output=output)
-        return subprocess.CompletedProcess(command, code, stdout=output, stderr="")
+        return subprocess.CompletedProcess(command, code, stdout=output,
+                                           stderr=error)
 
     def scripts(self) -> list[str]:
         return [command[-1] for command in self.commands if command[0] == "ssh"]
@@ -93,8 +97,23 @@ class Fake:
         return [command for command in self.commands if command[0] == "rsync"]
 
 
+FIXTURE_BOOKS = ("books/alpha", "books/beta", "books/article", "books/wire",
+                 "books/base")
+
+
+def seed_books(root: Path) -> None:
+    """The book sources `submit` checks exist before it mirrors anything."""
+    for book in FIXTURE_BOOKS:
+        path = root / f"{book}.lisp"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists():
+            path.write_text("(in-package \"ACL2\")\n", encoding="utf-8")
+
+
 @contextlib.contextmanager
 def driving(fake, cache: Path):
+    # Every test's cache sits inside its worktree root.
+    seed_books(cache.parent)
     with mock.patch.object(farm, "RUN", fake), \
             mock.patch.object(farm, "SLEEP", lambda seconds: None), \
             mock.patch.dict(os.environ, {"FN_CERT_CACHE": str(cache)}), \
@@ -856,3 +875,131 @@ class StatusTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FrictionTests(unittest.TestCase):
+    """The 2026-09-26 friction review's farm findings (sections 2 and 3)."""
+
+    def test_a_failed_preflight_reports_exit_code_and_whole_stderr_cause_first(self):
+        books = "".join(f"  uncached: books/b{index}\n" for index in range(200))
+        fake = Fake([], certs=books,
+                    certs_stderr=("usage: certs.py ...\n"
+                                  "certs.py: error: install-partial needs "
+                                  "--toolchain-identity\n"),
+                    codes={"tools/certs.py": 2})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("persvati", root, ["books/alpha"], jobs=2,
+                                timeout_seconds=60, affected_by=[])
+        text = str(refused.exception)
+        self.assertIn("exit 2", text)
+        self.assertIn("first error: certs.py: error: install-partial needs", text)
+        self.assertIn("install-partial needs --toolchain-identity", text)
+        self.assertLess(text.index("needs --toolchain-identity"),
+                        text.index("uncached: books/b199"))
+        self.assertIn("ACL2 was not started", text)
+
+    def test_preflight_exit_codes_are_named(self):
+        detail = farm.preflight_detail(13, "", "")
+        self.assertIn("exit 13 (tools/certify_books.py --dry-run refused", detail)
+
+    def test_bad_book_words_refuse_before_any_remote_command(self):
+        cases = [
+            ([], ["books/alpha --affected-by books/beta"], "whitespace"),
+            ([], [" --affected-by books/alpha"], "whitespace"),
+            ([], ["--closure"], "is an option"),
+            ([], ["/abs/books/alpha.lisp"], "not a repository-relative"),
+            ([], ["books/alpah"], "no books/alpah.lisp"),
+            (["books/alpha.lisp.bak"], [], "not a repository-relative"),
+        ]
+        for books, affected, needle in cases:
+            fake = Fake([])
+            with self.subTest(books=books, affected=affected), \
+                    tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                with driving(fake, root / "cache"):
+                    with self.assertRaises(farm.FarmError) as refused:
+                        farm.submit("persvati", root, books, jobs=2,
+                                    timeout_seconds=60, affected_by=affected)
+                self.assertIn(needle, str(refused.exception))
+                self.assertIn("no farm run started", str(refused.exception))
+                self.assertEqual(fake.commands, [])
+
+    def test_valid_words_with_lisp_suffix_pass_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            seed_books(root)
+            farm.refuse_bad_book_names(root, ["books/alpha"],
+                                       ["books/beta.lisp", "books/wire"])
+
+    def test_uncached_list_is_a_count_unless_verbose(self):
+        lines = ["publish: 3 books, cache c", "  uncached: books/a",
+                 "  uncached: books/b", "  unverified: books/c",
+                 "  foreign-local (made in another live worktree): books/d"]
+        folded = farm.report_lines(lines)
+        self.assertNotIn("  uncached: books/a", folded)
+        self.assertIn("  foreign-local (made in another live worktree): books/d",
+                      folded)
+        self.assertIn("  uncached: 2 books (list with --verbose)", folded)
+        self.assertIn("  unverified: 1 books (list with --verbose)", folded)
+        self.assertEqual(farm.report_lines(lines, verbose=True), lines)
+
+    def write_run(self, root: Path, manifest: dict, logs: dict[str, str]) -> None:
+        run_dir = root / "build/acl2/certify-20260926T000000Z-1"
+        run_dir.mkdir(parents=True)
+        (run_dir / "manifest.json").write_text(json.dumps(manifest))
+        for book, text in logs.items():
+            (run_dir / (book.replace("/", "--") + ".certify.log")).write_text(text)
+        (root / "build/farm").mkdir(parents=True)
+        (root / "build/farm/run-v.log").write_text(
+            "Certification evidence: build/acl2/certify-20260926T000000Z-1\n")
+
+    def test_verdict_names_failing_books_first_error_log_and_slow_books(self):
+        manifest = {
+            "status": "failed", "jobs_effective": 2,
+            "book_results": {"books/alpha": "passed", "books/beta": "failed",
+                             "tests/acl2/beta-tests": "failed"},
+            "book_failures": {
+                "books/beta": ["failure marker in this book's log: ACL2 Error"],
+                "tests/acl2/beta-tests": ["timed out after 300 s"]},
+            "book_wall_seconds": {"books/alpha": 12.5, "books/beta": 3.0},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.write_run(root, manifest, {
+                "books/beta": ("ok\nACL2 Error [Failure] in ( DEFTHM BETA-OK ...): "
+                               "See :DOC failure.\n** FAILED **\n"),
+            })
+            lines = farm.verdict_lines(root, "run-v", 1)
+        text = "\n".join(lines)
+        self.assertEqual(lines[0], "== verdict run-v: exit 1")
+        self.assertIn("certified here: passed 1, failed 2; installed from the "
+                      "cache 0", text)
+        self.assertIn("FAILED books/beta: ACL2 Error [Failure] in ( DEFTHM BETA-OK",
+                      text)
+        self.assertIn("books--beta.certify.log", text)
+        # No log for the test book: the manifest's reason stands in.
+        self.assertIn("FAILED tests/acl2/beta-tests: timed out after 300 s", text)
+        self.assertIn("12.5 s  books/alpha  (at 2 jobs)", text)
+        self.assertNotIn("books/beta  (at", text)
+
+    def test_verdict_without_a_manifest_is_unknown_not_green(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lines = farm.verdict_lines(Path(directory), "run-q", 0)
+        self.assertIn("verdict is unknown (not green)", "\n".join(lines))
+
+    def test_main_wait_ends_with_the_verdict_block(self):
+        fake = Fake(["0"], log=WaitTests.LOG)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            out = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stdout(out):
+                code = farm.main(["wait", "hbox", "run-w", "--root", str(root),
+                                  "--poll-seconds", "1"])
+            self.assertEqual(code, 0)
+            printed = out.getvalue().splitlines()
+            start = next(index for index, line in enumerate(printed)
+                         if line.startswith("== verdict run-w: exit 0"))
+            self.assertIn("verdict is unknown", printed[start + 1])

@@ -15,7 +15,7 @@
 (defun fnn-bpc-advance-clock (service obs)
   ; Every iteration consumes one ACL2 effect batch.  No host success is
   ; inferred from a pending journal write or from a TCPCL acknowledgement.
-  (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+  (loop repeat (fnn-bps-max-rows service)
         for effects = (fnn-bps-step service (list :clock obs))
         while effects do (fnn-bps-drive-effects service effects)))
 
@@ -81,4 +81,4 @@
      ;; [STORE]: route the queued jobs by STORE's bp-route table.
      (fnn-tcl-arg args 11))))
 
-(fnn-register-verb "bp-contact" #'fnn-dispatch-bp-contact)
+(fnn-register-verb "bp-contact" (fnn-bp-verb #'fnn-dispatch-bp-contact))

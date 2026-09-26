@@ -19,6 +19,12 @@ from tests.native_process import stop_and_diagnostics, wait_for_announcement
 from tests.test_bp_contact_relay_native import ByteRelay
 from tools import run_bp_ingress, run_store
 
+# specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
+# connection lost after it existed is exit 6 (connection-local: the job stays
+# and is re-offered; no recovery); exit 3 stays the fence.
+LOST = 6
+
+
 
 ROOT = Path(os.environ.get(
     "FN_NATIVE_SOURCE_ROOT", Path(__file__).resolve().parent.parent))
@@ -1443,7 +1449,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(receiver.returncode, 3, (out, err))
         self.assertNotIn(b"BP application handoff durable", out)
         self.assertEqual(self.receiver_counts()[1], 0)
-        self.assertIn(sent.returncode, (1, 3), sent.stderr)
+        self.assertIn(sent.returncode, (1, LOST), sent.stderr)
 
     def test_ambiguous_fnrj_decision_fences_until_cold_replay(self):
         receiver, port = self.start_node(
@@ -1561,7 +1567,7 @@ class NativeBpNodeTests(unittest.TestCase):
         sender, port = self.start_node(False, once=False)
         self.relay.route(port, cut_next=True)
         interrupted = self.tick_receiver()
-        self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
+        self.assertEqual(interrupted.returncode, LOST, interrupted.stderr)
         self.assertIn(b"reason=uncertain", interrupted.stdout)
         self.stop_process(sender)
         pinned = self.sender_status()

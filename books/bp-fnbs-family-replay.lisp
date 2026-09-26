@@ -62,19 +62,25 @@
         (cond
          ((equal (car record) :bpnf-stored)
           (let ((h (fn-bpn-nth 3 record)))
-            (if (not (and (equal (fn-bpn-nth 3 h) next-arrival)
-                          (equal (fn-bpnf-receive-decision
-                                  held (fn-bpn-nth 4 h)
-                                  (fn-bpnf-held-bundle h)) :fresh)
-                          (< (len held)
-                             (fn-bpn-machine-state-max-jobs base))
-                          (<= (+ (fn-bpnf-held-octets held)
-                                 (len (fn-bpnf-held-wire h)))
-                              (fn-bpn-machine-state-max-octets base))))
-                (list :fault :kind-five-row)
+            (cond
+             ((not (and (equal (fn-bpn-nth 3 h) next-arrival)
+                        (equal (fn-bpnf-receive-decision
+                                held (fn-bpn-nth 4 h)
+                                (fn-bpnf-held-bundle h)) :fresh)))
+              (list :fault :kind-five-row))
+             ;; A well-formed row the node's profile cannot hold (the
+             ;; journal was written under a larger profile): a named
+             ;; verdict, never a truncated held list (PRF-131 part 2).
+             ((not (and (< (len held)
+                           (fn-bpn-machine-state-max-jobs base))
+                        (<= (+ (fn-bpnf-held-octets held)
+                               (len (fn-bpnf-held-wire h)))
+                            (fn-bpn-machine-state-max-octets base))))
+              (list :fault :held-beyond-profile))
+             (t
               (fn-bpnf-family-replay-rows-aux
                (cdr rows) base (cons h held) handoffs next
-               (1+ next-arrival)))))
+               (1+ next-arrival))))))
          ((equal (car record) :bpnf-delivered)
           (mv-let (ok updated handoff)
             (fn-bpah-apply-delivery record held)

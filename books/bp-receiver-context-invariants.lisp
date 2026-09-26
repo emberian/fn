@@ -274,7 +274,7 @@
 (defthm fn-bprv-context-backed-implies-consp
  (implies (fn-bprv-context-backedp store config context) (consp context))
  :hints (("Goal" :use ((:instance fn-bprv-found-record-binds
-   (records (fn-sf-records (fn-sn-files store)))))
+   (records (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
    :in-theory (e/d (fn-bprv-context-backedp fn-bprv-record-binds)
     (fn-bprv-find-record fn-bprv-found-record-binds))))
  :rule-classes :forward-chaining)

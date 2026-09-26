@@ -65,8 +65,27 @@ The credential file's octet and line bounds follow its count: 512 octets and
 8 lines per credential, plus one unit for the header, a work bound per
 credential. fn.toml's size bounds stay constants. They bound the work of
 reading a fixed-schema file that names the store, and the file holds no
-collection. Consumers, BP rows and policy members are not yet read from the
+collection. Consumers and policy members are not yet read from the
 profile (planning/evidence/bounds-profile-2026-09-25.md).
+
+A BP node's held rows and held octets are the operator's too, in the node's
+own profile rather than the Store's: the FNBS journal is not a Store
+namespace, and `bp-service`, `bp-contact` and `bp send` run with no Store.
+The file `bp-node-profile` in the journal root (books/bp-node-profile.lisp,
+PRF-131) is one frame of `fn-bp-profile-1`, `max-held-rows` and
+`max-held-octets`; its absence is 64 rows and 16 MiB, the machine every
+earlier journal ran under. Each field is a machine limit (1 to 2^24, the
+machine state's representation ceiling), the frame carries every value that
+relation admits (`fn-bpnpf-read-of-octets`: a saved profile opens), and
+every valid profile opens a machine with exactly those limits
+(`fn-bpnpf-valid-profile-opens`). `bp-node profile JOURNAL NODE ROWS
+OCTETS` only raises it (`fn-bpnpf-write-never-lowers`). A journal whose rows
+exceed the profile it opens under is refused at replay with the named
+verdict `:held-beyond-profile`, never truncated
+(`fn-bpnpf-replay-past-the-profile-is-refused`). The Store profile's
+`max-bp-rows` field is still not read (PKT-276); the ADU (65,538), bundle
+decoder (1 MiB) and held-image (131,072) ceilings are still constants
+(specs/bp-node-machine.md 7.1).
 
 STO-013: a record's sequence, transaction ID, generation, charge and stamp
 are u64 (design 2026-09-25-bounds §2.3, packet P6). A record that needs a
