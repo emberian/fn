@@ -1,0 +1,16 @@
+reaped cra (lane -): idle 4h04m >= 3600 s; stopped through its socket
+reaped k0c (lane -): idle 1d4h >= 3600 s; stopped through its socket
+reaped bsf (lane -): dead server; removed a stale socket
+reaped owfc (lane -): idle 8h32m >= 3600 s; stopped through its socket
+reaped ownop (lane -): idle 8h31m >= 3600 s; stopped through its socket
+reaped ks2 (lane -): idle 15h14m >= 3600 s; stopped through its socket
+reaped pull (lane -): idle 14h35m >= 3600 s; stopped through its socket
+reaped na (lane -): idle 1d0h >= 3600 s; stopped through its socket
+reaped nr (lane -): idle 1d0h >= 3600 s; stopped through its socket
+reaped rr (lane -): idle 1d1h >= 3600 s; stopped through its socket
+reaped sr (lane -): idle 1d0h >= 3600 s; stopped through its socket
+reaped rclp (lane -): idle 10h28m >= 3600 s; stopped through its socket
+reaped store-reclaim-pack (lane -): idle 9h58m >= 3600 s; stopped through its socket
+reaped store-reclaim-pack-tests (lane -): idle 9h54m >= 3600 s; stopped through its socket
+reaped shb (lane -): idle 23h42m >= 3600 s; stopped through its socket
+reaped sj (lane -): idle 23h23m >= 3600 s; stopped through its socket

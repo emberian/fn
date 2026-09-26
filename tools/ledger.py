@@ -417,6 +417,10 @@ class Book:
     in_theory_forms: list[object] = field(default_factory=list)
     # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
     must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
+    # (line, reason) for each `must-fail' labelled `; teeth: prover-refusal
+    # REASON' in the comment block directly above it: a refusal of proof
+    # search, not a necessity witness (PKT-341; see PROVER_REFUSAL).
+    prover_refusals: list[tuple[int, str]] = field(default_factory=list)
     # Each non-local ``(include-book "x")`` as (line, reference), for the
     # include-hygiene lint: a local include costs the includer nothing.
     nonlocal_includes: list[tuple[int, str]] = field(default_factory=list)
@@ -473,15 +477,45 @@ def program_mode(rest: list) -> bool:
     return False
 
 
+# A `must-fail' of a weakened theorem shows only that the prover did not find
+# a proof.  Where no counter-witness can be evaluated (a program of 2^64
+# octets; a stobj recogniser false of no executable value) that is all it
+# shows, and counting it as a tooth claims a necessity nobody exhibited
+# (PKT-341).  The test book says so in the comment block directly above the
+# form:
+#     ; teeth: prover-refusal REASON
+# and the ledger and tools/teeth_check.py count such must-fails apart.
+PROVER_REFUSAL = re.compile(r"^\s*;+\s*teeth:\s*prover-refusal\b\s*(.*)$")
+
+
+def prover_refusal_labels(lines: list[str], line: int) -> str | None:
+    """The REASON of a `; teeth: prover-refusal REASON' comment in the block
+    of comment lines directly above LINE (1-based), or None."""
+    index = line - 2
+    while index >= 0 and lines[index].lstrip().startswith(";"):
+        match = PROVER_REFUSAL.match(lines[index])
+        if match:
+            return match.group(1).strip() or "(no reason given)"
+        index -= 1
+    return None
+
+
 def analyze_book(path: Path, relative: str) -> Book:
     book = Book(path=relative)
     try:
-        forms = Reader(path.read_text(encoding="utf-8")).top_level()
+        text = path.read_text(encoding="utf-8")
+        forms = Reader(text).top_level()
     except ReadError as exc:
         book.read_error = str(exc)
         return book
     for form, line in forms:
         record(book, form, line, local=False, suppressed=False)
+    if book.must_fail_forms:
+        lines = text.splitlines()
+        for line, _ in book.must_fail_forms:
+            reason = prover_refusal_labels(lines, line)
+            if reason is not None:
+                book.prover_refusals.append((line, reason))
     for expression in book.in_theory_forms:
         collect_disabled(expression, book.disabled_rules, book.theories)
     verified = set(book.verify_guards)
@@ -2257,6 +2291,7 @@ def book_row(book: Book, tree: Tree) -> dict:
         "verify_guards_events": len(book.verify_guards),
         "assert_events": book.assert_events,
         "must_fails": book.must_fails,
+        "prover_refusals": len(book.prover_refusals),
         "defconsts": book.defconsts,
         "defmacros": book.defmacros,
         "encapsulates": book.encapsulates,
@@ -2278,6 +2313,7 @@ def build_ledger(tree: Tree) -> dict:
         "functions": sum(row["functions"] for row in rows),
         "assert_events": sum(row["assert_events"] for row in rows),
         "must_fails": sum(row["must_fails"] for row in rows),
+        "prover_refusals": sum(row["prover_refusals"] for row in rows),
         "encapsulates": sum(row["encapsulates"] for row in rows),
         "guards": {state: sum(row["guards"][state] for row in rows)
                    for state in GUARD_STATES},
@@ -2335,6 +2371,8 @@ def ledger_markdown(ledger: dict) -> str:
         f"| Functions left at the default with no guard | {guards['default-unguarded']} |",
         f"| `assert-event` checks | {totals['assert_events']} |",
         f"| `must-fail` checks | {totals['must_fails']} |",
+        f"| of which labelled prover-refusal (proof search refused, no counter-witness) | "
+        f"{totals['prover_refusals']} |",
         f"| `encapsulate` events | {totals['encapsulates']} |",
         f"| Theorems flagged SUSPECT by shape | {totals['suspect_theorems']} |",
         f"| Export-hygiene warnings | {totals['export_hygiene_warnings']} |",
@@ -2681,7 +2719,8 @@ def report(tree: Tree) -> None:
           f"{totals['functions']} functions, {totals['roots']} certification roots.")
     print("guards: " + ", ".join(f"{state}={totals['guards'][state]}"
                                  for state in GUARD_STATES))
-    print(f"{totals['assert_events']} assert-event, {totals['must_fails']} must-fail, "
+    print(f"{totals['assert_events']} assert-event, {totals['must_fails']} must-fail "
+          f"({totals['prover_refusals']} labelled prover-refusal), "
           f"{totals['encapsulates']} encapsulate.")
     print(f"{totals['suspect_theorems']} theorems flagged SUSPECT by shape.")
     for entry in ledger["suspects"]:

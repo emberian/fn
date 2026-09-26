@@ -142,6 +142,38 @@ class ClosureKeyTests(unittest.TestCase):
                 found = certs.closure(root, name)
                 self.assertCountEqual(found, [name] + dependencies, name)
 
+    def test_a_host_file_a_test_book_includes_is_in_its_key(self):
+        # PKT-117: the one form by which a book or test book loads a host file
+        # is `(include-book "../../host/X")` (six test books at 17ff24aa, e.g.
+        # tests/acl2/bp-node-host-tests); no book `ld`s one.  The key follows
+        # that edge like any other, so a host edit is a new key; a comment that
+        # names a host file (provenance-tests names host/store-host.lisp) is
+        # not a load and not in the key.  Host files loaded only by `ld` from
+        # a bridge are not certificate inputs; tools/bridge_image.py's image
+        # key follows those `ld` forms.
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory, {
+                "books/base": '(in-package "ACL2")\n(defun fn-b (x) x)\n',
+                "tests/acl2/host-tests": ('(in-package "ACL2")\n'
+                                          '(include-book "../../host/x-host")\n'
+                                          '; host/store-host.lisp is only named here\n'),
+                "tests/acl2/named-tests": ('(in-package "ACL2")\n'
+                                           '; guard in host/x-host.lisp\n'
+                                           '(include-book "../../books/base")\n'),
+            })
+            (root / "host").mkdir()
+            (root / "host" / "x-host.lisp").write_text(
+                '(in-package "ACL2")\n(include-book "../books/base")\n')
+            found = certs.closure(root, "tests/acl2/host-tests")
+            self.assertCountEqual(found, ["tests/acl2/host-tests", "host/x-host", "books/base"])
+            self.assertNotIn("host/store-host", found)
+            before = certs.closure_key(root, "tests/acl2/host-tests")[0]
+            named = certs.closure_key(root, "tests/acl2/named-tests")[0]
+            (root / "host" / "x-host.lisp").write_text(
+                '(in-package "ACL2")\n(include-book "../books/base")\n(defun fn-h (x) x)\n')
+            self.assertNotEqual(certs.closure_key(root, "tests/acl2/host-tests")[0], before)
+            self.assertEqual(certs.closure_key(root, "tests/acl2/named-tests")[0], named)
+
     def test_a_changed_dependency_changes_the_key_of_an_unchanged_book(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             first = worktree(one)

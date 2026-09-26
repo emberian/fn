@@ -1,0 +1,88 @@
+tests.test_certify_runner: 38.9 s of 180 s, 49 tests, ok
+        5.15 s  MakefileRootsTests.test_project_roots_are_certifiable_and_store_dependents_remain_selected
+        2.90 s  ParallelScheduleTests.test_one_job_keeps_the_requested_order_and_the_same_manifest_fields
+tests.test_acl2_wrapper: 2.4 s of 180 s, 12 tests, ok
+        0.56 s  TimeoutTests.test_a_runaway_is_killed_and_reported_as_124
+        0.56 s  TimeoutTests.test_a_timed_out_run_leaves_its_slot_free
+tests.test_ledger: 15.5 s of 180 s, 94 tests, ok
+        9.54 s  TreeCacheTests.test_a_later_process_reads_the_tree_an_earlier_one_analysed
+        5.70 s  RepositoryLedgerTests.test_the_checked_in_ledger_is_current
+tests.test_cite_check: 7.9 s of 180 s, 23 tests, ok
+        7.74 s  StrictTests.test_the_real_tree_reports_and_does_not_fail
+        0.01 s  ScanTests.test_a_catalogue_of_absent_paths_does_not_count_itself
+tests.test_reach_check: 11.5 s of 180 s, 8 tests, ok
+        4.23 s  RatchetTests.test_an_unbaselined_orphan_fails_and_is_named
+        4.06 s  RatchetTests.test_the_tree_is_at_its_baseline
+tests.test_evidence_manifests: 1.7 s of 180 s, 10 tests, ok
+        0.40 s  CheckTests.test_the_command_line_reports_the_four_counts_for_this_tree
+        0.24 s  CheckTests.test_committing_the_manifest_resolves_the_citation
+tests.test_green_check: 34.0 s of 180 s, 30 tests, ok
+        8.03 s  MergeGateTests.test_the_command_line_gate_runs_on_this_tree
+        6.40 s  RealManifestsTests.test_the_command_line_runs_and_says_which_books_are_owed
+tests.test_certified_claims: 0.2 s of 180 s, 11 tests, ok
+        0.00 s  CertifiedClaimsTests.test_changed_book_digest_and_include_are_distinct_gaps
+        0.00 s  CertifiedClaimsTests.test_explain_names_book_digest_and_newest_certifier
+tests.test_current_view: 5.4 s of 180 s, 4 tests, ok
+        3.63 s  ViewTests.test_committed_view_is_current
+        0.00 s  HostCallTests.test_prefix_is_not_a_call
+tests.test_proof_cost: 0.2 s of 180 s, 18 tests, ok
+        0.00 s  ProofCostTests.test_allow_regression_keeps_unmeasured_baseline_entries
+        0.00 s  ProofCostTests.test_changed_book_or_include_cannot_supply_current_measurement
+tests.test_throughput_gate: 2.3 s of 180 s, 8 tests, ok
+        0.51 s  ThroughputGateTests.test_an_under_load_run_is_compared_on_cpu_and_allocation_only
+        0.35 s  ThroughputGateTests.test_the_nearest_measured_ancestor_is_compared_and_a_later_code_change_is_stale
+tests.test_process_supervisor: 1.7 s of 180 s, 6 tests, ok
+        0.47 s  ProcessSupervisorTests.test_timeout_kills_term_ignoring_grandchild_after_leader_exits
+        0.41 s  ProcessSupervisorTests.test_second_term_during_cleanup_does_not_interrupt_reap
+tests.test_node_probe: 0.3 s of 180 s, 10 tests, ok
+        0.07 s  NodeProbeTests.test_a_certificate_the_client_does_not_trust_is_a_violated_handshake
+        0.01 s  NodeProbeTests.test_a_correct_node_holds_every_assertion_and_the_post_comes_back
+tests.test_fn_client: 0.5 s of 180 s, 43 tests, ok
+        0.04 s  FnClientTests.test_a_certificate_the_client_does_not_trust_is_refused_and_nothing_follows_the_382
+        0.03 s  FnClientTests.test_since_and_all_choose_the_window_without_consulting_the_watermark
+tests.test_theory_check: 3.2 s of 180 s, 6 tests, ok
+        3.12 s  RealTreeTests.test_every_book_reads_and_the_command_line_runs
+        0.00 s  AuditTests.test_a_codec_theory_is_one_defined_in_a_codec_book_or_named_codec
+tests.test_proof_repl: 17.3 s of 180 s, 18 tests, ok
+        8.19 s  OwnershipTests.test_a_send_postpones_the_idle_deadline_and_a_status_does_not
+        2.95 s  ProcessLifetimeTests.test_duplicate_start_cannot_detach_an_older_server
+tests.test_native_raw_scripts: 0.6 s of 180 s, 9 tests, ok
+        0.11 s  RawScriptTests.test_native_feed_service_raw
+        0.07 s  RawScriptTests.test_native_owner_bound_commit_raw
+tests.test_test_budget: 7.1 s of 180 s, 7 tests, ok
+        4.57 s  TestBudgetRunner.test_exit_codes_keep_failure_and_budget_apart
+        2.01 s  TestBudgetRunner.test_a_module_past_its_budget_is_terminated_and_reported_over
+tests.test_bridge_image: 6.5 s of 180 s, 7 tests, ok
+        3.06 s  SlotTests.test_nested_bridges_in_one_process_hold_one_slot
+        3.01 s  SlotTests.test_an_unrelated_process_waits_for_the_held_slot
+tests.test_acl2_launchers: 1.2 s of 180 s, 6 tests, ok
+        1.10 s  LauncherRuleTests.test_no_acl2_starts_outside_the_pool
+        0.01 s  LaunchPathTests.test_popen_holds_the_slot_until_released
+tests.test_scenario_implementation: 0.2 s of 180 s, 6 tests, ok
+        0.00 s  ScenarioImplementationTests.test_a_case_the_module_does_not_have_is_refused
+        0.00 s  ScenarioImplementationTests.test_a_log_that_names_neither_the_test_nor_is_named_is_refused
+tests.test_docs_check: 0.6 s of 180 s, 4 tests, ok
+        0.44 s  DocsCheckTests.test_every_reply_line_is_printable_and_an_invented_one_is_not
+        0.07 s  DocsCheckTests.test_every_python_invocation_parses_and_a_wrong_one_does_not
+tests.test_farm: 0.6 s of 180 s, 51 tests, ok
+        0.08 s  FailureTests.test_unmerged_real_index_refuses_before_remote_io
+        0.08 s  StatusTests.test_missing_or_stale_activity_is_unknown_not_zero
+tests.test_merge_registry: 1.4 s of 180 s, 9 tests, ok
+        0.33 s  DriverThroughGit.test_fields_merge_three_way_and_evidence_unions
+        0.33 s  DriverThroughGit.test_two_lanes_appending_rows_merge_clean
+tests.test_wait_for: 5.3 s of 180 s, 6 tests, ok
+        2.06 s  WaitForTests.test_log_marker_that_appears_later_is_printed_and_met
+        2.06 s  WaitForTests.test_pid_waits_for_exit_without_matching_patterns
+tests.test_native_program_check: 0.7 s of 180 s, 14 tests, ok
+        0.10 s  UnbalancedFormTests.test_balance_mode_exit_codes
+        0.05 s  NativeProgramCheckTests.test_current_tree_passes_every_program_in_the_cut_table
+tests.test_hbox_native: 0.3 s of 180 s, 5 tests, ok
+        0.06 s  HboxNativeDryRunTests.test_each_image_gets_the_runbooks_triple
+        0.05 s  HboxNativeDryRunTests.test_a_dtn_image_acquires_and_certifies_the_dtn_profile_first
+tests.test_acl2_slots: 2.0 s of 180 s, 5 tests, ok
+        0.55 s  SlotWaitTests.test_unset_wait_is_unbounded_and_a_freed_slot_is_taken
+        0.49 s  SlotWaitTests.test_the_environment_bounds_the_wait_and_the_minute_line_names_holders
+tests.test_build_native_host: 0.3 s of 180 s, 2 tests, ok
+        0.14 s  BuildNativeHostRefusalTests.test_each_marker_refuses_the_build_and_prints_the_line
+        0.04 s  BuildNativeHostRefusalTests.test_a_clean_log_builds
+29 modules, 169.9 s; 29 passed within budget, 0 over budget

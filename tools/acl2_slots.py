@@ -18,7 +18,14 @@ different shells still share one cap.
 ``FN_ACL2_SLOT_DIR`` relocates the lock files, which tests use to get a private
 pool.  Waiting is the point: a tool blocks until a slot frees rather than
 starting an ACL2 the machine cannot afford, and logs that it is waiting once a
-minute so a wait is never mistaken for a hang.
+minute, naming the holders (the "PID LABEL" each holder wrote into its slot
+file), so a wait is never mistaken for a hang and never anonymous.
+
+``FN_ACL2_SLOT_WAIT`` (or a caller's ``wait_seconds``; ``tools/acl2
+--wait-seconds``) bounds the wait: past it the acquisition refuses with
+``SlotWaitExpired``, whose message names every holder, instead of waiting on
+15 orphan sessions for 24 minutes (PKT-346).  Unset, the wait is unbounded,
+as before: the farm and the certify runner queue by design.
 """
 
 from __future__ import annotations
@@ -80,6 +87,49 @@ REPORT_SECONDS = 60.0
 POLL_SECONDS = 0.05
 
 
+class SlotWaitExpired(RuntimeError):
+    """No slot freed within the bounded wait; the message names the holders."""
+
+
+def holders(directory: Path | None = None, count: int | None = None) -> list[str]:
+    """What each held slot's file says: "slot-NNN: PID LABEL".
+
+    A slot file keeps its last holder's line after release, so only files whose
+    lock is held now are read.  Probing takes the lock for an instant when it is
+    free and drops it at once; it never touches a held slot.
+    """
+    directory = directory or slot_directory()
+    count = count or slot_count()
+    found = []
+    for index in range(count):
+        path = directory / f"slot-{index:03d}"
+        try:
+            descriptor = os.open(path, os.O_RDONLY)
+        except OSError:
+            continue
+        try:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except OSError:
+                text = os.pread(descriptor, 512, 0).decode("utf-8", "replace").strip()
+                found.append(f"{path.name}: {text or '(holder wrote nothing)'}")
+            else:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
+    return found
+
+
+def configured_wait() -> float | None:
+    """FN_ACL2_SLOT_WAIT in seconds; unset, empty or unparsable: unbounded."""
+    configured = os.environ.get("FN_ACL2_SLOT_WAIT", "").strip()
+    try:
+        seconds = float(configured)
+    except ValueError:
+        return None
+    return seconds if seconds >= 0 else None
+
+
 @dataclass
 class Slot:
     """The acquired slot: which one, how long the caller waited, pool size."""
@@ -113,12 +163,17 @@ def slot(
     log: Callable[[str], None] | None = None,
     poll: float = POLL_SECONDS,
     report_every: float = REPORT_SECONDS,
+    wait_seconds: float | None = None,
 ) -> Iterator[Slot]:
     """Hold one ACL2 slot for the duration of the block.
 
     Acquisition scans the pool in order, so slots fill low-index first and the
     machine's ACL2 processes stay identifiable by which lock file they hold.
+    ``wait_seconds`` (default ``FN_ACL2_SLOT_WAIT``, else unbounded) bounds the
+    wait; past it ``SlotWaitExpired`` names the holders.
     """
+    if wait_seconds is None:
+        wait_seconds = configured_wait()
     count = slot_count()
     directory = slot_directory()
     directory.mkdir(parents=True, exist_ok=True)
@@ -140,10 +195,17 @@ def slot(
             break
         if handle is None:
             waited = time.monotonic() - started
+            if wait_seconds is not None and waited >= wait_seconds:
+                held = holders(directory, count)
+                raise SlotWaitExpired(
+                    f"fn: no ACL2 slot of {count} freed within {wait_seconds:g}s "
+                    f"({label}); holders: " + ("; ".join(held) or "none named"))
             if waited - reported >= report_every:
                 reported = waited
+                held = holders(directory, count)
                 report(f"fn: waiting for one of {count} ACL2 slots "
-                       f"({label}): {int(waited)}s")
+                       f"({label}): {int(waited)}s; holders: "
+                       + ("; ".join(held) or "none named"))
             time.sleep(poll)
     waited = round(time.monotonic() - started, 3)
     try:

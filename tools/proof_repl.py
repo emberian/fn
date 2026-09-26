@@ -32,6 +32,20 @@ build/proof-repl/<name>/log.
 What a green here means: that ACL2 admitted the form in a session whose
 dependencies are cached certificates.  It is not a certificate; when the
 proof is found, put the event in the book and certify the book.
+
+A session holds one slot of the machine's ACL2 pool for its whole life, so
+it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
+sessions once held fifteen of persvati's sixteen slots).  `start` records
+the lane (`--lane`, else $FN_LANE, else the worktree's name under
+build/lanes/, or persvati's ~/fn-gates/NAME-repl) and an idle deadline
+(`--idle-seconds`, default 7200: longer than a farm wait of 3400 s or an
+hbox_native run of 5400 s between two sends, short enough that an abandoned session frees its slot within two
+hours); a session with no `send` for that long stops itself.  `list` prints
+each session's lane, age, idle time and deadline; `reap` stops the sessions
+this tool started that are dead, past their own deadline, idle longer than
+`--older-than S`, or tagged `--lane NAME` (the coordinator runs
+`reap --lane NAME` when it merges that lane).  It signals only the PIDs a
+session's state names, after checking each is still that session's process.
 """
 from __future__ import annotations
 
@@ -59,6 +73,8 @@ import acl2_toolchain  # noqa: E402
 import certs  # noqa: E402
 
 SESSIONS = ROOT / "build" / "proof-repl"
+# A session with no `send` for this long stops itself (see the header).
+DEFAULT_IDLE_SECONDS = 7200.0
 SENTINEL = "FN-REPL-DONE"
 EVENT_HEADS = ("defthm", "defthmd", "defun", "defund", "defrule", "defruled",
                "encapsulate", "verify-guards", "thm", "defthm-flag", "mutual-recursion",
@@ -268,14 +284,46 @@ def open_session_lock(name: str) -> int | None:
     return fd
 
 
+def default_lane(root: Path | None = None) -> str | None:
+    """$FN_LANE, else the lane the tree's path names.
+
+    build/lanes/NAME on the laptop; on persvati a lane's REPL tree is
+    ~/fn-gates/NAME-repl (or NAME-rN, NAME-devrepl), so the suffix goes.
+    """
+    configured = os.environ.get("FN_LANE")
+    if configured:
+        return configured
+    root = root or ROOT
+    if root.parent.name == "lanes":
+        return root.name
+    if root.parent.name == "fn-gates":
+        return re.sub(r"-(repl|devrepl|dev|r[0-9]+)$", "", root.name) or None
+    return None
+
+
+class _Terminated(Exception):
+    pass
+
+
+def _on_term(_number, _frame) -> None:
+    raise _Terminated()
+
+
 def serve(name: str, book: str, upto: str | None, through: str | None,
-          limit: float, load_timeout: float, lock_fd: int) -> int:
+          limit: float, load_timeout: float, lock_fd: int,
+          lane: str | None = None, idle_seconds: float = DEFAULT_IDLE_SECONDS) -> int:
     directory = session_dir(name)
     directory.mkdir(parents=True, exist_ok=True)
     state_path = directory / "state.json"
     sock_path = directory / "sock"
+    now = time.time()
     state = {"name": name, "book": book, "pid": os.getpid(), "loaded": [],
-             "stopped_at": None, "error": None, "ready": False, "sends": 0}
+             "stopped_at": None, "error": None, "ready": False, "sends": 0,
+             "lane": lane, "idle_seconds": idle_seconds, "started_at": now,
+             "last_active": now, "acl2_pgid": None, "ended": None}
+    # SIGTERM (reap's fallback) unwinds through the finally below, which
+    # kills the owned ACL2 group; without this it would outlive the server.
+    signal.signal(signal.SIGTERM, _on_term)
 
     def save() -> None:
         staged = directory / f".state-{os.getpid()}.tmp"
@@ -289,7 +337,9 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
         save()
         source = ROOT / f"{book}.lisp"
         text = source.read_text(encoding="utf-8")
-        acl2 = Acl2(f"proof-repl {name}", directory / "log")
+        acl2 = Acl2(f"proof-repl {name}" + (f" lane {lane}" if lane else ""),
+                    directory / "log")
+        state["acl2_pgid"] = acl2.pgid
         output, timed_out = acl2.send(f'(set-cbd "{source.parent}/")', load_timeout)
         if timed_out or errored(output):
             state["stopped_at"] = "set-cbd"
@@ -324,10 +374,22 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             return 1
         bound = True
         server.listen(4)
+        if idle_seconds > 0:
+            server.settimeout(min(30.0, max(0.05, idle_seconds / 4)))
         while acl2.alive():
-            connection, _ = server.accept()
+            try:
+                connection, _ = server.accept()
+            except socket.timeout:
+                idle = time.time() - state["last_active"]
+                if idle >= idle_seconds:
+                    state["ended"] = f"idle {int(idle)} s (deadline {idle_seconds:g} s)"
+                    break
+                continue
             with connection:
+                connection.settimeout(None)
                 request = json.loads(read_all(connection))
+                if request.get("op", "send") == "send":
+                    state["last_active"] = time.time()
                 answer = handle(request, acl2, state, limit)
                 if request.get("op") == "stop":
                     # A successful stop reply means the process group and
@@ -339,7 +401,10 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
                 connection.sendall(json.dumps(answer).encode("utf-8"))
                 if request.get("op") == "stop":
                     break
+    except _Terminated:
+        state["ended"] = "terminated (SIGTERM)"
     finally:
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
         if server is not None:
             server.close()
         if acl2 is not None:
@@ -395,8 +460,9 @@ def read_all(connection: socket.socket) -> bytes:
 
 # --- the client ----------------------------------------------------------------
 
-def ask(name: str, request: dict, timeout: float = 3600) -> dict:
-    sock_path = session_dir(name) / "sock"
+def ask(name: str, request: dict, timeout: float = 3600,
+        sock_path: Path | None = None) -> dict:
+    sock_path = sock_path or session_dir(name) / "sock"
     if not sock_path.exists():
         raise SystemExit(f"proof-repl: no live session {name!r} (start it first)")
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -467,7 +533,11 @@ def start(args) -> int:
         with open(directory / "server.log", "a", encoding="utf-8") as log:
             command = [sys.executable, __file__, "serve", args.name, args.book,
                        "--limit", str(args.limit), "--load-timeout", str(args.load_timeout),
-                       "--lock-fd", str(lock_fd)]
+                       "--lock-fd", str(lock_fd),
+                       "--idle-seconds", str(getattr(args, "idle_seconds", DEFAULT_IDLE_SECONDS))]
+            lane = getattr(args, "lane", None) or default_lane()
+            if lane:
+                command += ["--lane", lane]
             if args.upto:
                 command += ["--upto", args.upto]
             if args.through:
@@ -547,16 +617,157 @@ def stop(args) -> int:
     return 1
 
 
+def _command_of(pid: int) -> str:
+    """The command line of PID, or '' when there is no such process."""
+    try:
+        answer = subprocess.run(["ps", "-o", "command=", "-p", str(pid)],
+                                capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return answer.stdout.strip() if answer.returncode == 0 else ""
+
+
+def _is_server(pid, name: str) -> bool:
+    """PID is still this session's `proof_repl.py serve NAME` (not a reused PID)."""
+    if not isinstance(pid, int) or pid <= 1:
+        return False
+    words = _command_of(pid).split()
+    return ("serve" in words and name in words
+            and any(word.endswith("proof_repl.py") for word in words))
+
+
+def _is_acl2_group(pgid) -> bool:
+    """PGID is still a pooled ACL2 wrapper (tools/acl2) this tool started."""
+    if not isinstance(pgid, int) or pgid <= 1:
+        return False
+    return any(word.endswith("tools/acl2") for word in _command_of(pgid).split())
+
+
+def session_rows(roots: list[str] | None = None) -> list[dict]:
+    """Every session directory's state, with its liveness, age and idle time.
+
+    ``roots`` are other trees (each ROOT/build/proof-repl) to read instead of
+    this one's: persvati keeps one tree per lane under ~/fn-gates.
+    """
+    rows = []
+    bases = [Path(root) / "build" / "proof-repl" for root in roots] if roots else [SESSIONS]
+    now = time.time()
+    directories = [d for base in bases if base.is_dir() for d in sorted(base.iterdir())]
+    for directory in directories:
+        state_path = directory / "state.json"
+        if not state_path.is_file():
+            continue
+        try:
+            state = json.loads(state_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        saved = state_path.stat().st_mtime
+        # Sessions of the older tool carry no clock: their state file is
+        # rewritten on every request, so its mtime is the last activity.
+        last = state.get("last_active") or saved
+        started = state.get("started_at")
+        if not started:
+            # The older tool: the session's first write was its server.log.
+            first = directory / "server.log"
+            started = first.stat().st_mtime if first.exists() else saved
+        server = _is_server(state.get("pid"), directory.name)
+        socket_file = (directory / "sock").exists()
+        rows.append({"name": directory.name, "state": state, "directory": directory,
+                     "server": server, "socket": socket_file,
+                     "live": server and socket_file,
+                     "age": now - started,
+                     "idle": now - last,
+                     "deadline": state.get("idle_seconds")})
+    return rows
+
+
+def _duration(seconds: float) -> str:
+    seconds = int(max(0, seconds))
+    if seconds >= 86400:
+        return f"{seconds // 86400}d{seconds % 86400 // 3600}h"
+    if seconds >= 3600:
+        return f"{seconds // 3600}h{seconds % 3600 // 60:02d}m"
+    return f"{seconds // 60}m{seconds % 60:02d}s"
+
+
 def list_sessions(args) -> int:
-    if not SESSIONS.exists():
+    rows = session_rows(getattr(args, "root", None))
+    if not rows:
         print("proof-repl: no sessions")
         return 0
-    for directory in sorted(SESSIONS.iterdir()):
-        state_path = directory / "state.json"
-        if state_path.exists():
-            state = json.loads(state_path.read_text())
-            live = (directory / "sock").exists()
-            print(f"{directory.name:16} {'live' if live else 'dead':5} {state['book']}")
+    print(f"{'name':24} {'status':6} {'lane':24} {'age':>7} {'idle':>7} {'deadline':>8} book")
+    for row in rows:
+        state = row["state"]
+        status_word = ("live" if row["live"] else
+                       "stale" if row["socket"] else
+                       "ended" if state.get("ended") else "dead")
+        deadline = row["deadline"]
+        print(f"{row['name']:24} {status_word:6} {(state.get('lane') or '-'):24} "
+              f"{_duration(row['age']):>7} {_duration(row['idle']):>7} "
+              f"{(_duration(deadline) if deadline else 'none'):>8} {state.get('book')}"
+              + (f"  [{row['directory'].parent.parent.parent}]" if getattr(args, "root", None) else ""))
+    return 0
+
+
+def reap_reason(row: dict, lane: str | None, older_than: float | None) -> str | None:
+    """Why `reap` stops this session, or None to leave it."""
+    state = row["state"]
+    if lane is not None:
+        return f"lane {lane}" if state.get("lane") == lane else None
+    if not row["server"]:
+        # Nothing to stop but an orphan ACL2 group or a stale socket file.
+        if row["socket"] or _is_acl2_group(state.get("acl2_pgid")):
+            return "dead server"
+        return None
+    if older_than is not None and row["idle"] >= older_than:
+        return f"idle {_duration(row['idle'])} >= {older_than:g} s"
+    deadline = row["deadline"]
+    if deadline and row["idle"] >= deadline + 120:
+        return f"past its own idle deadline ({_duration(deadline)})"
+    return None
+
+
+def reap_one(row: dict) -> str:
+    """Stop one session: its own `stop` first, then only the PIDs its state names."""
+    name, state = row["name"], row["state"]
+    if row["server"] and row["socket"]:
+        try:
+            if ask(name, {"op": "stop"}, timeout=30,
+                   sock_path=row["directory"] / "sock").get("stopped"):
+                return "stopped through its socket"
+        except (SystemExit, OSError, ValueError):
+            pass
+    signalled = []
+    if row["server"] and _is_server(state.get("pid"), name):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.kill(state["pid"], signal.SIGTERM)
+            signalled.append(f"server {state['pid']}")
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and _is_server(state.get("pid"), name):
+            time.sleep(0.1)
+    pgid = state.get("acl2_pgid")
+    if _is_acl2_group(pgid):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(pgid, signal.SIGTERM)
+            signalled.append(f"ACL2 group {pgid}")
+    if not _is_server(state.get("pid"), name):
+        (row["directory"] / "sock").unlink(missing_ok=True)
+    return ("signalled " + ", ".join(signalled)) if signalled else "removed a stale socket"
+
+
+def reap(args) -> int:
+    rows = session_rows(args.root)
+    chosen = [(row, reason) for row in rows
+              for reason in [reap_reason(row, args.lane, args.older_than)] if reason]
+    if not chosen:
+        print("proof-repl: nothing to reap")
+        return 0
+    for row, reason in chosen:
+        lane = row["state"].get("lane") or "-"
+        if args.dry_run:
+            print(f"would reap {row['name']} (lane {lane}): {reason}")
+            continue
+        print(f"reaped {row['name']} (lane {lane}): {reason}; {reap_one(row)}")
     return 0
 
 
@@ -573,6 +784,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="prover time limit per sent event, seconds")
     p.add_argument("--load-timeout", type=float, default=600.0,
                    help="hard limit per form while loading the book")
+    p.add_argument("--lane", default=None,
+                   help="the owning lane (default $FN_LANE, else build/lanes/NAME)")
+    p.add_argument("--idle-seconds", type=float, default=DEFAULT_IDLE_SECONDS,
+                   help="stop the session after this long with no send "
+                        f"(default {DEFAULT_IDLE_SECONDS:g}; 0: never)")
     p.set_defaults(run=start)
     p = sub.add_parser("serve")
     p.add_argument("name")
@@ -582,8 +798,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--limit", type=float, default=60.0)
     p.add_argument("--load-timeout", type=float, default=600.0)
     p.add_argument("--lock-fd", type=int, required=True)
+    p.add_argument("--lane", default=None)
+    p.add_argument("--idle-seconds", type=float, default=DEFAULT_IDLE_SECONDS)
     p.set_defaults(run=lambda a: serve(a.name, a.book, a.upto, a.through, a.limit,
-                                       a.load_timeout, a.lock_fd))
+                                       a.load_timeout, a.lock_fd, a.lane, a.idle_seconds))
     p = sub.add_parser("send", help="one form; `-` reads it from stdin")
     p.add_argument("name")
     p.add_argument("form")
@@ -596,8 +814,18 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("stop")
     p.add_argument("name")
     p.set_defaults(run=stop)
-    p = sub.add_parser("list")
+    p = sub.add_parser("list", help="each session's lane, age, idle time and deadline")
+    p.add_argument("--root", action="append", default=None, metavar="TREE",
+                   help="read TREE/build/proof-repl instead of this tree's (repeatable)")
     p.set_defaults(run=list_sessions)
+    p = sub.add_parser("reap", help="stop dead, overdue or a lane's sessions")
+    p.add_argument("--lane", default=None, help="every session tagged with this lane")
+    p.add_argument("--older-than", type=float, default=None, metavar="S",
+                   help="live sessions idle at least S seconds")
+    p.add_argument("--dry-run", action="store_true", help="say what would be reaped")
+    p.add_argument("--root", action="append", default=None, metavar="TREE",
+                   help="reap in TREE/build/proof-repl instead of this tree's (repeatable)")
+    p.set_defaults(run=reap)
     args = parser.parse_args(argv)
     return args.run(args)
 
