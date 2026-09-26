@@ -25,7 +25,9 @@ ever starting that image.  For each requested module `plan` prints one line,
 the assignments hbox_native.sh gives that module's process: every image
 variable it reads whose image this run builds, the opt-in flags that mean
 "run against the image this run built", and the OpenSSL and tree paths.
-Values are box-shell words ($T is the tree, $FN_OPENSSL_PREFIX the toolchain).
+Values are box-shell words ($T is the tree, $FN_TEST_OPENSSL_BIN the test
+tool OpenSSL 3.5 that makes independent ML-DSA-65 keys; the node itself uses
+the system libssl and its own ML-DSA-65 library, HST-016).
 A module that reads an image variable whose image is not in --images (and
 not given by --env) is refused by name, exit 2:
 
@@ -56,7 +58,7 @@ IMAGE_PATH = {
     "dtn": "$T/build/fn-host-dtn",
     "dtn-developer": "$T/build/fn-host-dtn-developer",
 }
-OPENSSL = "$FN_OPENSSL_PREFIX/bin/openssl"
+OPENSSL = "$FN_TEST_OPENSSL_BIN"
 
 # Image variables: the images that satisfy each, first built wins.
 IMAGES = {
@@ -83,10 +85,10 @@ FALLBACK = {
 }
 # Set for every module that reads them: they mean "the image this run built".
 FIXED = {
-    "FN_RUN_HYBRID_E2E": ("1", "opt-in: the OpenSSL 3.5 saved-image gate"),
+    "FN_RUN_HYBRID_E2E": ("1", "opt-in: the hybrid-signature saved-image gate"),
     "FN_RUN_CONSUMER_EXCHANGE": ("1", "opt-in: the consumer exchange against this run's image"),
-    "FN_TEST_OPENSSL": (OPENSSL, "the toolchain's OpenSSL 3.5 (ML-DSA-65)"),
-    "FN_OPENSSL": (OPENSSL, "the toolchain's OpenSSL 3.5"),
+    "FN_TEST_OPENSSL": (OPENSSL, "the test tool OpenSSL 3.5 (independent ML-DSA-65 keys)"),
+    "FN_OPENSSL": (OPENSSL, "the test tool OpenSSL 3.5"),
     "FN_NATIVE_TEST_ROOT": ("$T", "the shipped tree"),
 }
 # Read but never set by the script: each needs something this run does not

@@ -481,17 +481,18 @@
 ; it is the codec ceiling `*fn-record-max-payload*'.
 ;
 ; Native operator startup supplies the one posting-policy bit after recovery
-; and after `fn-owner-install-profile'.  Preserve the agent and served groups
-; ACL2 already installed and set the served bound from the profile; this
+; and after `fn-owner-install-profile'.  Preserve the agent, served groups
+; and reader listing (PRF-195) ACL2 already installed and set the served bound from the profile; this
 ; changes the same fn-own-config value read by served POST and control.
 (defun fn-owner-posting-configure (allow state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (cfg (fn-own-config owner))
-         (next (fn-inj-make-config (and allow t)
-                                   (fn-inj-config-agent cfg)
-                                   (fn-inj-config-groups cfg)
-                                   (fn-owner-served-post-bound state))))
+         (next (fn-inj-make-config-listed (and allow t)
+                                          (fn-inj-config-agent cfg)
+                                          (fn-inj-config-groups cfg)
+                                          (fn-owner-served-post-bound state)
+                                          (fn-inj-config-listing cfg))))
     (if (not (fn-inj-configp next))
         (value :refused)
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
@@ -2220,6 +2221,22 @@
 ;; Once per run, after recovery and before listen: the listener the owner is
 ;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the
 ;; defaults of every absent row.
+;; NNT-041: several listeners.  The node is public when any listener is
+;; (fn-exp-address-publicp decides each).
+(defun fn-owner-exposure-projections-publicp (projections)
+  (declare (xargs :mode :program))
+  (and (consp projections)
+       (or (fn-exp-address-publicp (car (car projections)) (cadr (car projections)))
+           (fn-owner-exposure-projections-publicp (cdr projections)))))
+
+(defun fn-owner-exposure-install-set (projections state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((publicp (fn-owner-exposure-projections-publicp projections))
+         (state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))
+         (state (f-put-global 'fn-owner-exposure-close nil state))
+         (state (f-put-global 'fn-owner-exposure-public publicp state)))
+    (value (if publicp :public :loopback))))
+
 (defun fn-owner-exposure-install (family address state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-exposure (fn-exp-initial) state))

@@ -297,7 +297,6 @@
         "books/records-canonicality.lisp",
         "books/acceptance-stamp-invariants.lisp",
         "tests/acl2/acceptance-stamp-tests.lisp",
-        "tests/test_native_stamp_migration.py",
         "planning/evidence/t2a-acceptance-stamp-4670cc35-2026-09-23.md"
       ],
       "note": "T2a implements schema-1 acceptance stamps with exact schema-0 decode/re-encode as :legacy; the codec and replay properties have lane certification. Native carried-over Store qualification on the combined image remains open. Unknown article headers and body bytes remain preserved, but opaque re-encoding of an unknown record schema is still unimplemented; this broader requirement is not complete."
@@ -626,7 +625,7 @@
     },
     {
       "id": "STO-009",
-      "title": "A lost committed suffix is detected at open, and after migration a missing marker is damage",
+      "title": "A lost committed suffix is detected at open, and under a required marker a missing marker is damage",
       "specification": "specs/storage.md#the-committed-history-boundary",
       "milestone": "M5",
       "status": "implemented",
@@ -2680,8 +2679,7 @@
         "host/native/operator.lisp",
         "docs/operator.md",
         "planning/evidence/operator-walk-2026-09-26.md",
-        "planning/evidence/rollback-history-2026-09-26.md",
-        "tests/test_native_rollback_history.py"
+        "planning/evidence/rollback-history-2026-09-26.md"
       ],
       "implementation_note": "packaging/fn (installed as bin/fn) locates the image and forwards. An absent store is ACL2's :no-store refusal, exit 1 (HST-009, PRF-143; exit 6 until outcome-algebra) (fn-native-operator-store-outcome over the lstat observation init uses); usage errors print ACL2's accepted form first; init under a mission takes groups only; a peer refusing MODE STREAM is stopped by name for the owner's run; store rollback-check --snapshot holds both stores' shared writer locks, reads each committed history as the open does (selected pack, then suffix) and has ACL2 compare the records octet for octet: an earlier state only when the snapshot's records are this store's first records, and the count is the records after them (PRF-141).",
       "note": "The walk is the mandate's section 11 operator paragraph; the bp-node health verdict (PKT-174) and a durable record of a peer's streaming refusal are open (PKT-264)."
@@ -3463,6 +3461,193 @@
       ],
       "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585). catalog-slice-2 (2026-09-26): the relation between the catalog's columns and the store's history is proved at every entry (fn-cat-load-establishes-relation) and preserved by the completion; the served reads (PRF-204) remain PKT-585.",
       "note": "Lane catalog-slice (wave 5 lane 2, D33)."
+    },
+    {
+      "id": "NNT-038",
+      "title": "HELP lists every command the served dispatcher recognizes, and a command HELP does not list is answered 500",
+      "specification": "specs/nntp.md#help-the-served-command-table-nnt-038",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-194"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-help.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-help-tests.lisp",
+        "tests/acl2/nntp-legacy-tests.lisp",
+        "tests/test_reader.py",
+        "planning/evidence/reader-clients-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.2 requires HELP and leaves its text free (the RFC requirement); fn guarantees the list is exact: every keyword fn-auth-step-pinned serves is listed, an unlisted keyword is 500 (a stronger fn guarantee, PRF-194). The six-line grouping is local policy. Gap inventory R4 (2026-09-26): HELP had omitted AUTHINFO, STARTTLS, XREDEEM and the transit verbs."
+    },
+    {
+      "id": "NNT-039",
+      "title": "The operator sets a group's description and the node's message of the day on a running node, and LIST NEWSGROUPS and LIST MOTD show exactly what the configuration holds",
+      "specification": "specs/nntp.md#group-descriptions-and-the-message-of-the-day-nnt-039",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-195"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "tests/acl2/group-descriptions-tests.lisp",
+        "books/owner-descriptions-read.lisp",
+        "books/config-descriptions.lisp",
+        "planning/evidence/usenet-headers-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.6.6 and RFC 6048 section 2.5 are the RFC requirements; the text being the replayed configuration's, published live, is a stronger fn guarantee; printable ASCII, 256-octet row pieces and an empty MOTD rather than 503 are local policy (specs/nntp.md). Gap inventory items R2, R5 and O1."
+    },
+    {
+      "id": "NNT-041",
+      "title": "The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why",
+      "specification": "specs/nntp.md#listener-addresses-nnt-041",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-197"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/native-config.lisp",
+        "tests/acl2/native-config-tests.lisp",
+        "host/native-config-host.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/listener-v6-2026-09-26.md"
+      ],
+      "implementation_note": "RFC 4291 section 2.2 text forms and RFC 3986 section 3.2.2 brackets are RFC requirements; the wildcard and IPv4-mapped refusals and one socket per written address are local policy. The native two-family case (SCN-126) is named for the batch. Status and health do not yet list the bound addresses (PKT-577)."
+    },
+    {
+      "id": "STO-028",
+      "title": "A store has one format: another format is refused at open by name, and store export/import carry a store's history across a reinstall",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-205"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-profile-open.lisp",
+        "books/store-export.lisp",
+        "tests/acl2/store-export-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_store_export.py"
+      ],
+      "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open."
+    },
+    {
+      "id": "HST-014",
+      "title": "A deploy is a reinstall: stop, remove, install the release, init or import, start; no upgrade verb, no versioned release directory, no store rollback",
+      "specification": "specs/host.md#hst-014-the-deploy-is-a-reinstall",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-205"
+      ],
+      "verification": [
+        "inspection",
+        "integration"
+      ],
+      "evidence": [
+        "docs/operator.md",
+        "packaging/install-native.sh",
+        "tools/runbooks/README.md",
+        "tests/test_native_store_export.py"
+      ],
+      "implementation_note": "D34. upgrade-profile, needs-upgrade, rollback-check, repair and packaging/upgrade-native.sh were removed."
+    },
+    {
+      "id": "HST-016",
+      "title": "The native host needs only the system's TLS library (OpenSSL 3.0+ or LibreSSL 3+), libsodium and the release's vendored ML-DSA-65; no specific OpenSSL build",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "host/native/tls.lisp",
+        "host/native/signatures.lisp",
+        "host/native/fn-mldsa65.c",
+        "third_party/pqclean-ml-dsa-65/UPSTREAM.txt",
+        "tools/build_mldsa65.sh",
+        "packaging/freeze-native-image.sh",
+        "packaging/install-native.sh",
+        "tests/mldsa65_interop.py",
+        "tests/native_hybrid_signatures.lisp",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/crypto-deps-2026-09-26.md",
+        "tests/test_native_starttls.py",
+        "tests/native_tls_transport.lisp",
+        "planning/evidence/release-openbsd-2026-09-26.md"
+      ],
+      "implementation_note": "ML-DSA-65 moved from OpenSSL 3.5's EVP interface to vendored PQClean behind a C shim loaded from lib/ beside the core; key files and signatures are byte-compatible with OpenSSL 3.5 (checked both ways over fresh keys and every committed OpenSSL-made carrier). TLS uses the system libssl; the image checks the version and every function it calls at build and at each start. The frozen image and the release tarball bundle libsodium and libfn-mldsa65, and no OpenSSL."
+    },
+    {
+      "id": "HST-015",
+      "title": "No Python on the path a deployed node executes: the release's launcher, image, libraries and service files start and load no Python program or library",
+      "specification": "specs/host.md#trust-boundary-of-the-native-host",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "inspection"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/release-tarball.sh",
+        "packaging/fn.rc.in",
+        "Makefile",
+        "planning/evidence/release-openbsd-2026-09-26.md"
+      ],
+      "implementation_note": "tools/runpath_check.py lists every program and library on the deployed path and fails on Python: statically (make check) every process-starting form in host/ (one, the operator-named pinned ION helper of app-journal workflow-ion-submit), the libraries the image dlopens, the shipped launcher, frozen launcher and service files; over a release (release-tarball.sh runs it before packing) every file: no .py, no Python shebang, every executable a /bin/sh script or ELF whose DT_NEEDED names no libpython, every service starting PREFIX/bin/fn. It cannot see what an operator-supplied helper is or what the loader resolves at run time. Python remains for clients and tests."
+    },
+    {
+      "id": "HST-013",
+      "title": "The node's heap is its store profile's figure on this machine, and a profile the machine cannot hold is refused by name at start",
+      "specification": "specs/host.md#process-heap",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-198"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/heap-figure.lisp",
+        "host/native/heap.lisp",
+        "packaging/fn",
+        "specs/host.md",
+        "docs/operator.md",
+        "tests/test_native_heap_from_profile.py",
+        "planning/evidence/heap-from-profile-2026-09-26.md"
+      ],
+      "implementation_note": "The installed bin/fn runs `heap -- ARGV` in the same image first (a boot figure of the core's size plus 128 MB, a bound on the probe's work), where ACL2 decides the figure from the command's store profile (config.json, or the init request's target) and the least of the machine's observations (sysconf physical pages; Linux cgroup memory.max up the hierarchy and RLIMIT_AS; RLIMIT_DATA), then execs the command with --dynamic-space-size MB through SBCL_USER_ARGS; a refusal is exit 1 with `refused machine-cannot-hold-profile heap=MB MB machine=M MB` and nothing else runs. `status` and `health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with a bare request on a machine under 4 GiB writes the small preset. A checkout's packaging/fn takes FN_TEST_HEAP_MB (the tests' figure), which the installed launcher ignores."
     }
   ]
 }

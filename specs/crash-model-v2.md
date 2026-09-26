@@ -999,16 +999,11 @@ FNWF or FNRJ frame.
         (list :cut "checkpoint:selection-published")))     ; 174
 ```
 
-P-PROFILE (2026-09-24, M5) is the offline profile upgrade,
-host/native/io.lisp `fnn-upgrade-profile-write`, in
-books/byte-store-profile-program.lisp. It replaces the metadata file
-`config.json`, which only `init` wrote before: the frontier program's shape
-with no kernel observation (the file kernel has no profile). Its keystone,
-`fn-bs-profile-program-crash-is-old-or-new`, is stated from a store with an
-empty pending list and covers every crash image of every cut of the successful
-run: config.json names its old inode with the old content or the new inode with
-exactly the staged frame. The native cuts are `FN_NATIVE_PROFILE_FAULT`
-selectors (tests/campaign/native_cuts.py `PROFILE_CUTS`).
+P-PROFILE (2026-09-24, M5), the offline profile upgrade's replacement of
+`config.json`, was removed with the upgrade by D34 (fresh deploys): no
+program writes `config.json` after `init`, and `store import` builds a new
+store beside its path and renames it into place only after the ordinary
+open admitted it.
 
 ```lisp
 (defun fn-bs-profile-program (stage octets)

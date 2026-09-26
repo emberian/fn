@@ -244,7 +244,7 @@
       ; list is empty and NEWGROUPS reports no group rather than an invented
       ; creation date.
       (let ((r (fn-nntp-step (fn-post-session-base ps) archive
-                             (fn-nntp-env observation nil (and (fn-inj-config-allow config) t)) wire-event)))
+                             (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config)) wire-event)))
         (if (fn-post-offeredp (fn-nntp-result-effects r))
             (if (fn-inj-config-allow config)
                 (fn-post-make-result
@@ -423,12 +423,12 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-preserves-consistent-session
                             (session (fn-post-session-base ps))
-                            (env (fn-nntp-env observation nil (and (fn-inj-config-allow config) t))))
+                            (env (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config))))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-nntp-result-session
                                       (fn-nntp-step (fn-post-session-base ps)
                                                     archive
-                                                    (fn-nntp-env observation nil (and (fn-inj-config-allow config) t))
+                                                    (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config))
                                                     wire-event))))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-post-session-base ps))))
@@ -448,7 +448,7 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-effects-well-formed
                             (session (fn-post-session-base ps))
-                            (env (fn-nntp-env observation nil (and (fn-inj-config-allow config) t)))))
+                            (env (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config)))))
            :in-theory (e/d (fn-post-single fn-nntp-effectsp
                             fn-post-refusal-line)
                            (fn-nntp-step-effects-well-formed
@@ -753,8 +753,9 @@
       (fn-nntp-post-step ps archive config observation injection wire-event)
     (let ((r (fn-nntp-step-pinned
               (fn-post-session-base ps) archive index verdicts
-              (fn-nntp-env observation nil
-                           (and (fn-inj-config-allow config) t))
+              (fn-nntp-env-listed observation nil
+                           (and (fn-inj-config-allow config) t)
+                           (fn-inj-config-listing config))
               wire-event)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)
@@ -790,6 +791,7 @@
                              (fn-nntp-result-session
                               (fn-nntp-step-pinned
                                (fn-post-session-base ps) archive index verdicts
-                               (fn-nntp-env observation nil
-                                            (and (fn-inj-config-allow config) t))
+                               (fn-nntp-env-listed observation nil
+                                            (and (fn-inj-config-allow config) t)
+                                            (fn-inj-config-listing config))
                                wire-event))))))))
