@@ -2926,6 +2926,29 @@
         "planning/evidence/friends-peer-2-2026-09-26.md"
       ],
       "implementation_note": "RFC 5537 section 3.6 relays by Newsgroups and section 5.3 gives a cancel its target's Newsgroups; section 3.7 files it under control.cancel (fn-pa-filing-plan). Offering under the filing group as well is a stronger fn guarantee (a peer that asked for control.cancel by name keeps receiving it). PKT-400 retired."
+    },
+    {
+      "id": "NNT-037",
+      "title": "A cancel crossing between peers has D29's behaviour on each node under its own grants, in both arrival orders, across a kill between the arrivals, with a reader pinned on either node; a signed article naming a group the node does not serve is refused by name",
+      "specification": "specs/peering.md#81-control-across-peers-prf-170",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-170"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/test_native_control_across_peers.py",
+        "tests/test_native_hybrid_author.py",
+        "books/hybrid-store-injected.lisp",
+        "books/native-hybrid-control.lisp",
+        "planning/evidence/control-across-peers-2026-09-26.md"
+      ],
+      "implementation_note": "D29: visible(T then C) = visible(C then T) is the test; each receiver decides again under its own enrolment and grants (specs/peering.md section 8). The two-node matrix witnesses the C3 keystones fn-ctl-visible-is-arrival-order-independent, fn-ctl-pinned-view-keeps-its-archive, fn-ctl-cancel-executes-only-for-author-or-authority and fn-ctl-replay-is-the-fold (PRF-097's, cited, not restated); PRF-170 is the named unserved-group refusal (PKT-147). RFC 3977 section 6.3.1 permits a plain refusal; the named word is a stronger fn guarantee."
     }
   ]
 }
