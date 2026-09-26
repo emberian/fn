@@ -5431,6 +5431,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-cvec-article-verdict-keeps-the-vector-at-producer-width"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-cvec-roomp-discharges-every-debt"
         },
         {
