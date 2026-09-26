@@ -165,11 +165,20 @@
     nil))
 
 ;; Every member of one family selects the same rows, so it has the same plan.
+(defthm fn-bpnf-same-family-agrees
+  (implies (fn-bpnf-same-fragment-family-p a b)
+           (equal (fn-bpnf-same-fragment-family-p x a)
+                  (fn-bpnf-same-fragment-family-p x b)))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-same-fragment-family-p)
+                              (theory 'minimal-theory)))))
+
 (defthm fn-bpnf-same-family-selects-same-rows
-  (implies (and (fn-bpnf-same-fragment-family-p a b))
+  (implies (fn-bpnf-same-fragment-family-p a b)
            (equal (fn-bpnf-active-set-rows held a)
                   (fn-bpnf-active-set-rows held b)))
-  :hints (("Goal" :induct (fn-bpnf-active-set-rows held a))))
+  :hints (("Goal" :induct (fn-bpnf-active-set-rows held a)
+           :in-theory (disable fn-bpnf-same-fragment-family-p))))
 
 (defthm fn-bpnf-same-family-same-total
   (implies (fn-bpnf-same-fragment-family-p a b)
@@ -177,7 +186,42 @@
                    (fn-bpb-bundle-primary (fn-bpnf-held-bundle a)))
                   (fn-bpp-total-adu-length
                    (fn-bpb-bundle-primary (fn-bpnf-held-bundle b)))))
-  :hints (("Goal" :in-theory (enable fn-bpnf-fragment-coherence-key))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-same-fragment-family-p
+                                fn-bpnf-fragment-coherence-key car-cons)
+                              (theory 'minimal-theory)))))
+
+(defthm fn-bpnf-same-family-members-are-active
+  (implies (fn-bpnf-same-fragment-family-p a b)
+           (and (fn-bpnf-active-fragmentp a) (fn-bpnf-active-fragmentp b)))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-same-fragment-family-p)
+                              (theory 'minimal-theory))))
+  :rule-classes :forward-chaining)
+
+(defthm fn-bpnf-active-set-of-member
+  (implies (and (fn-bpnf-same-fragment-family-p a b)
+                (member-equal a (fn-bpnf-held-list st))
+                (member-equal b (fn-bpnf-held-list st)))
+           (equal (fn-bpnf-active-set st a) (fn-bpnf-active-set st b)))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-active-set fn-bpnf-family-member)
+                              (theory 'minimal-theory))
+           :use ((:instance fn-bpnf-same-family-selects-same-rows
+                            (held (fn-bpnf-held-list st)))
+                 (:instance fn-bpnf-same-family-members-are-active)))))
+
+(defthm fn-bpnf-fragment-query-of-member
+  (implies (and (fn-bpnf-same-fragment-family-p a b)
+                (member-equal a (fn-bpnf-held-list st))
+                (member-equal b (fn-bpnf-held-list st)))
+           (equal (fn-bpnf-fragment-query st a) (fn-bpnf-fragment-query st b)))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-fragment-query fn-bpnf-family-member)
+                              (theory 'minimal-theory))
+           :use ((:instance fn-bpnf-active-set-of-member)
+                 (:instance fn-bpnf-same-family-same-total)
+                 (:instance fn-bpnf-same-family-members-are-active)))))
 
 (defthm fn-bpnf-family-plan-at-of-member
   (implies (and (fn-bpnf-same-fragment-family-p a b)
@@ -185,21 +229,19 @@
                 (member-equal b (fn-bpnf-held-list st)))
            (equal (fn-bpnf-family-plan-at st a observation)
                   (fn-bpnf-family-plan-at st b observation)))
-  :hints (("Goal" :in-theory (e/d (fn-bpnf-family-plan-at fn-bpnf-family-plan
-                                   fn-bpnf-fragment-query fn-bpnf-active-set
-                                   fn-bpnf-family-member)
-                                  (fn-bpnf-fragment-query-is-reference
-                                   fn-bpnf-active-set-rows
-                                   fn-bpnf-same-fragment-family-p
-                                   fn-bpfw-reassemble fn-bpnf-offset-zero-source
-                                   fn-bpnf-family-whole-bundle
-                                   fn-bpnf-family-rows-livep
-                                   fn-bpnf-family-consumed-ids
-                                   fn-bpnf-held-octets fn-bpb-encode
-                                   fn-bpb-bundlep fn-bpnf-fragment-cells))
-           :use ((:instance fn-bpnf-same-family-selects-same-rows
-                            (held (fn-bpnf-held-list st)))
-                 (:instance fn-bpnf-same-family-same-total)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnf-family-plan-at fn-bpnf-family-plan)
+                              (theory 'minimal-theory))
+           :use ((:instance fn-bpnf-active-set-of-member)
+                 (:instance fn-bpnf-fragment-query-of-member)))))
+
+(in-theory (disable fn-bpnf-same-family-agrees
+                    fn-bpnf-same-family-selects-same-rows
+                    fn-bpnf-same-family-same-total
+                    fn-bpnf-same-family-members-are-active
+                    fn-bpnf-active-set-of-member
+                    fn-bpnf-fragment-query-of-member
+                    fn-bpnf-family-plan-at-of-member))
 
 ;; The memo's invariant: every tried row is a held active fragment whose plan
 ;; is not ready.
@@ -222,9 +264,14 @@
                         (fn-bpnf-family-plan-at st h observation))
                        :ready)))
   :hints (("Goal" :induct (fn-bpnf-family-tried-p h tried)
-           :in-theory (disable fn-bpnf-family-plan-at
-                               fn-bpnf-same-fragment-family-p))
+           :in-theory (union-theories
+                       '(fn-bpnf-family-tried-p fn-bpnf-family-tried-okp)
+                       (theory 'minimal-theory)))
+          ("Subgoal *1/1" :use ((:instance fn-bpnf-family-plan-at-of-member
+                                           (a h) (b (car tried)))))
           ("Subgoal *1/2" :use ((:instance fn-bpnf-family-plan-at-of-member
+                                           (a h) (b (car tried)))))
+          ("Subgoal *1/3" :use ((:instance fn-bpnf-family-plan-at-of-member
                                            (a h) (b (car tried)))))))
 
 (defthm fn-bpnf-family-next-memo-is-aux
@@ -233,10 +280,20 @@
            (equal (fn-bpnf-family-next-memo st held observation tried)
                   (fn-bpnf-family-next-aux st held observation)))
   :hints (("Goal" :induct (fn-bpnf-family-next-memo st held observation tried)
-           :in-theory (disable fn-bpnf-family-plan-at
+           :in-theory (disable fn-bpnf-family-tried-member-not-ready
+                               fn-bpnf-family-plan-at
                                fn-bpnf-active-fragmentp
                                fn-bpnf-arrival-count
-                               fn-bpnf-family-tried-p))))
+                               fn-bpnf-family-tried-p))
+          ("Subgoal *1/1" :use ((:instance fn-bpnf-family-tried-member-not-ready
+                                           (h (car held)))))))
+
+(in-theory (disable fn-bpnf-family-tried-member-not-ready
+                    fn-bpnf-family-next-memo-is-aux))
+
+(local
+ (defthm fn-bpnf-subsetp-equal-cons
+   (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
 
 (defthm fn-bpnf-subsetp-equal-reflexive
   (subsetp-equal x x))

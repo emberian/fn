@@ -109,19 +109,21 @@
 (defthm fn-bpfw-capped-fragment-list
   (implies (fn-bpf-fragment-listp fs) (fn-bpfw-fragment-listp fs)))
 
-(defthm fn-bpfw-fragment-list-under-the-cap
-  (implies (and (fn-bpfw-fragment-listp fs)
-                (fn-bpf-same-total fs total)
-                (<= total *fn-bpf-max-length*))
-           (fn-bpf-fragment-listp fs)))
+(local
+ (defthm fn-bpfw-fragment-list-under-the-cap
+   (implies (and (fn-bpfw-fragment-listp fs)
+                 (fn-bpf-same-total fs total)
+                 (<= total *fn-bpf-max-length*))
+            (fn-bpf-fragment-listp fs))))
 
-(defthm fn-bpfw-inputsp-with-caps
-  (equal (fn-bpf-inputsp fs total)
-         (and (fn-bpfw-inputsp fs total)
-              (<= total *fn-bpf-max-length*)
-              (<= (len fs) *fn-bpf-max-fragments*)))
-  :hints (("Goal" :in-theory (disable fn-bpf-fragment-listp
-                                      fn-bpfw-fragment-listp))))
+(local
+ (defthm fn-bpfw-inputsp-with-caps
+   (equal (fn-bpf-inputsp fs total)
+          (and (fn-bpfw-inputsp fs total)
+               (<= total *fn-bpf-max-length*)
+               (<= (len fs) *fn-bpf-max-fragments*)))
+   :hints (("Goal" :in-theory (disable fn-bpf-fragment-listp
+                                       fn-bpfw-fragment-listp)))))
 
 ; From here on a fragment is seen through its accessors.
 (local (in-theory (disable fn-bpfw-fragmentp fn-bpf-offset fn-bpf-bytes
@@ -152,6 +154,7 @@
                   (<= (len fs) *fn-bpf-max-fragments*))
              (fn-bpfw-spec fs total)
            (list :invalid :bounds)))
+  :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bpfw-inputsp fn-bpf-inputsp
                                       fn-bpf-canvas fn-bpf-first-index
                                       fn-bpf-run-end))))
@@ -160,22 +163,26 @@
 ; The merge of cells is a semilattice: :gap is its unit and :conflict absorbs
 ; every non-gap cell, so the order in which extents are merged is irrelevant.
 
-(defthm fn-bpfw-merge-cell-commutes
-  (equal (fn-bpf-merge-cell x y) (fn-bpf-merge-cell y x)))
+(local
+ (defthm fn-bpfw-merge-cell-commutes
+   (equal (fn-bpf-merge-cell x y) (fn-bpf-merge-cell y x))))
 
-(defthm fn-bpfw-merge-cell-associates
-  (equal (fn-bpf-merge-cell (fn-bpf-merge-cell x y) z)
-         (fn-bpf-merge-cell x (fn-bpf-merge-cell y z))))
+(local
+ (defthm fn-bpfw-merge-cell-associates
+   (equal (fn-bpf-merge-cell (fn-bpf-merge-cell x y) z)
+          (fn-bpf-merge-cell x (fn-bpf-merge-cell y z)))))
 
-(defthm fn-bpfw-merge-cell-commutes-2
-  (equal (fn-bpf-merge-cell x (fn-bpf-merge-cell y z))
-         (fn-bpf-merge-cell y (fn-bpf-merge-cell x z))))
+(local
+ (defthm fn-bpfw-merge-cell-commutes-2
+   (equal (fn-bpf-merge-cell x (fn-bpf-merge-cell y z))
+          (fn-bpf-merge-cell y (fn-bpf-merge-cell x z)))))
 
-(defthm fn-bpfw-merge-cell-gap
-  (and (equal (fn-bpf-merge-cell :gap x) x)
-       (equal (fn-bpf-merge-cell x :gap) x)))
+(local
+ (defthm fn-bpfw-merge-cell-gap
+   (and (equal (fn-bpf-merge-cell :gap x) x)
+        (equal (fn-bpf-merge-cell x :gap) x))))
 
-(in-theory (disable fn-bpf-merge-cell))
+(local (in-theory (disable fn-bpf-merge-cell)))
 
 ; -----------------------------------------------------------------------------
 ; Sorting by offset (a merge sort)
@@ -271,18 +278,34 @@
            (fn-bpfw-sortedp (cdr fs)))
     t))
 
-(defthm fn-bpfw-all-at-least-weakens
-  (implies (and (fn-bpfw-all-at-least fs k2) (<= k1 k2))
-           (fn-bpfw-all-at-least fs k1)))
+(local
+ (defthm fn-bpfw-all-at-least-weakens
+   (implies (and (fn-bpfw-all-at-least fs k2) (<= k1 k2))
+            (fn-bpfw-all-at-least fs k1))))
 
 (defthm fn-bpfw-all-at-least-of-merge
   (equal (fn-bpfw-all-at-least (fn-bpfw-merge a b) k)
          (and (fn-bpfw-all-at-least a k) (fn-bpfw-all-at-least b k))))
 
+(local
+ (defthm fn-bpfw-sorted-at-least-its-head
+   (implies (and (fn-bpfw-sortedp b) (consp b)
+                 (<= k (nfix (fn-bpf-offset (car b)))))
+            (fn-bpfw-all-at-least b k))
+   :hints (("Goal" :expand ((fn-bpfw-sortedp b) (fn-bpfw-all-at-least b k))
+            :do-not-induct t))))
+
 (defthm fn-bpfw-sortedp-of-merge
   (implies (and (fn-bpfw-sortedp a) (fn-bpfw-sortedp b)
                 (fn-bpfw-fragment-listp a) (fn-bpfw-fragment-listp b))
-           (fn-bpfw-sortedp (fn-bpfw-merge a b))))
+           (fn-bpfw-sortedp (fn-bpfw-merge a b)))
+  :hints (("Goal" :induct (fn-bpfw-merge a b)
+           :do-not '(generalize fertilize)
+           :in-theory (disable fn-bpfw-all-at-least-weakens))
+          ("Subgoal *1/3" :expand ((fn-bpfw-merge a b) (fn-bpfw-sortedp a)
+                                   (fn-bpfw-sortedp b)))
+          ("Subgoal *1/4" :expand ((fn-bpfw-merge a b) (fn-bpfw-sortedp a)
+                                   (fn-bpfw-sortedp b)))))
 
 (defthm fn-bpfw-sortedp-of-sort
   (implies (fn-bpfw-fragment-listp fs)
@@ -324,8 +347,9 @@
         (fn-bpfw-advance (cdr active)))
     nil))
 
-(defthm fn-bpfw-true-listp-of-nthcdr
-  (implies (true-listp x) (true-listp (nthcdr n x))))
+(local
+ (defthm fn-bpfw-true-listp-of-nthcdr
+   (implies (true-listp x) (true-listp (nthcdr n x)))))
 
 (defthm fn-bpfw-admit-true-list-list
   (implies (and (true-list-listp active) (fn-bpfw-fragment-listp queue)
@@ -395,33 +419,37 @@
            (equal (fn-bpfw-active-cell (fn-bpfw-advance active) d)
                   (fn-bpfw-active-cell active (+ 1 d)))))
 
-(defthm fn-bpfw-nth-of-nthcdr
-  (implies (and (natp k) (natp d))
-           (equal (nth d (nthcdr k xs)) (nth (+ k d) xs))))
+(local
+ (defthm fn-bpfw-nth-of-nthcdr
+   (implies (and (natp k) (natp d))
+            (equal (nth d (nthcdr k xs)) (nth (+ k d) xs)))))
 
-(defthm fn-bpfw-nthcdr-of-nil
-  (equal (nthcdr n nil) nil))
+(local
+ (defthm fn-bpfw-nthcdr-of-nil
+   (equal (nthcdr n nil) nil)))
 
-(defthm fn-bpfw-len-of-nthcdr
-  (implies (natp k)
-           (equal (len (nthcdr k xs))
-                  (if (<= k (len xs)) (- (len xs) k) 0)))
-  :hints (("Goal" :induct (nthcdr k xs))))
+(local
+ (defthm fn-bpfw-len-of-nthcdr
+   (implies (natp k)
+            (equal (len (nthcdr k xs))
+                   (if (<= k (len xs)) (- (len xs) k) 0)))
+   :hints (("Goal" :induct (nthcdr k xs)))))
 
 ; An admitted fragment's suffix at position I carries, at distance J - I,
 ; exactly the fragment's own cell at J.
-(defthm fn-bpfw-admitted-suffix-cell
-  (implies (and (fn-bpfw-fragmentp f)
-                (natp i) (natp j) (<= i j)
-                (<= (fn-bpf-offset f) i))
-           (equal (if (< (- j i)
-                         (len (nthcdr (- i (fn-bpf-offset f)) (fn-bpf-bytes f))))
-                      (nth (- j i)
-                           (nthcdr (- i (fn-bpf-offset f)) (fn-bpf-bytes f)))
-                    :gap)
-                  (fn-bpf-cell-of f j)))
-  :hints (("Goal" :cases ((<= (- i (fn-bpf-offset f))
-                              (len (fn-bpf-bytes f)))))))
+(local
+ (defthm fn-bpfw-admitted-suffix-cell
+   (implies (and (fn-bpfw-fragmentp f)
+                 (natp i) (natp j) (<= i j)
+                 (<= (fn-bpf-offset f) i))
+            (equal (if (< (- j i)
+                          (len (nthcdr (- i (fn-bpf-offset f)) (fn-bpf-bytes f))))
+                       (nth (- j i)
+                            (nthcdr (- i (fn-bpf-offset f)) (fn-bpf-bytes f)))
+                     :gap)
+                   (fn-bpf-cell-of f j)))
+   :hints (("Goal" :cases ((<= (- i (fn-bpf-offset f))
+                               (len (fn-bpf-bytes f))))))))
 
 ; Admission moves an extent from the queue to the active list without
 ; changing any cell at or after the current position.
@@ -543,10 +571,11 @@
 ; that list.  The sender's plan (bp-fragment-send,
 ; fn-bpfs-plan-fragments-reassemble-exactly) establishes that premise for
 ; every payload length and fragment count.
-(defthm fn-bpfw-no-marker-in-octets
-  (implies (and (fn-cbor-octet-listp cells)
-                (or (equal marker :gap) (equal marker :conflict)))
-           (equal (fn-bpf-first-index cells from marker) nil)))
+(local
+ (defthm fn-bpfw-no-marker-in-octets
+   (implies (and (fn-cbor-octet-listp cells)
+                 (or (equal marker :gap) (equal marker :conflict)))
+            (equal (fn-bpf-first-index cells from marker) nil))))
 
 (defthm fn-bpfw-exact-canvas-reassembles
   (implies (and (fn-bpfw-inputsp fs total)
@@ -559,11 +588,12 @@
 ; -----------------------------------------------------------------------------
 ; The shape of a success, for the node's family plan (bp-node-fragment-family)
 
-(defthm fn-bpfw-uncovered-cell-is-gap
-  (implies (not (fn-bpf-coveredp fs i))
-           (equal (fn-bpf-cell-at fs i) :gap))
-  :hints (("Goal" :induct (fn-bpf-cell-at fs i)
-           :in-theory (enable fn-bpf-merge-cell))))
+(local
+ (defthm fn-bpfw-uncovered-cell-is-gap
+   (implies (not (fn-bpf-coveredp fs i))
+            (equal (fn-bpf-cell-at fs i) :gap))
+   :hints (("Goal" :induct (fn-bpf-cell-at fs i)
+            :in-theory (enable fn-bpf-merge-cell)))))
 
 (defthm fn-bpfw-spec-is-never-ready
   (not (equal (car (fn-bpfw-spec fs total)) :ready)))

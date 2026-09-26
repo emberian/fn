@@ -212,8 +212,8 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnf-family-next-memo-is-aux
                             (held (fn-bpnf-held-list st)) (tried nil)))
-           :in-theory (disable fn-bpnf-family-next-memo-is-aux
-                               fn-bpnf-family-next-memo
-                               fn-bpnf-family-next-aux
-                               fn-bpn-machine-statep))))
+           :in-theory (union-theories
+                       '(fn-bpnf-subsetp-equal-reflexive
+                         (:executable-counterpart fn-bpnf-family-tried-okp))
+                       (theory 'minimal-theory)))))
 (verify-guards fn-bpnf-fragment-step)

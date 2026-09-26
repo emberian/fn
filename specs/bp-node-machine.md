@@ -2949,6 +2949,32 @@ remain C2 work. Slice C measures (BP-R22) payload size and held-set size
 independently on the native image: allocations, time and latency for
 success, gap, overlap and conflict.
 
+Landed 2026-09-25 (PRF-121, lane bp-lifecycle): the sorted linear algorithm
+and its call-site connection, without the two data caps.
+`books/bp-fragment-sweep.lisp` defines `fn-bpfw-reassemble`: a merge sort
+of the fragments by offset, then one tail-recursive sweep over positions
+that keeps, at each position, only the suffixes of the extents covering it.
+Its work is O(n log n) for the sort plus O(total + the sum of the fragment
+lengths). `fn-bpfw-reassemble-is-spec` equates it, on every input, with
+`fn-bpfw-spec`, which is the reference's own definition with
+`*fn-bpf-max-length*` and `*fn-bpf-max-fragments*` removed from the input
+recognizer. `fn-bpf-reassemble-is-capped-spec` shows the old reference is
+that spec restricted to the caps. `fn-bpnf-fragment-query`, the query that
+`fn-bpnf-family-plan` calls, now calls the sweep. The family selector
+`fn-bpnf-family-next` (host: `fnn-bps-fragment-progress`) runs a memo that
+plans each family once per call, not once per member.
+`fn-bpnf-family-next-memo-is-aux` equates the memo with the per-member
+selector, anchor included. Measured once in a proof session on persvati
+(not a native image): a 10 MiB ADU arriving as 5,120 4 KiB fragments, each
+twice and in no particular order, reassembles in 0.62 s with 673 MB
+allocated as octet lists.
+Other ceilings still bound a family:
+- the held-image cap `*fn-bpnf-max-held-image*` on the whole bundle;
+- the bundle decoder's 1 MiB input (`*fn-bpb-max-input*`);
+- the ADU record's 65,538 octets (`*fn-bpa-max-octets*`);
+- the machine's job slots and octet budget.
+These are P5 of `planning/design-2026-09-25-bounds.md`.
+
 ### 7.5 The routing table's configuration home (F-I, §12 D-3)
 
 - Slice A: the host installs one route from the same command-line arguments
