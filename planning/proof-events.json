@@ -6669,6 +6669,39 @@
           "name": "fn-sco-thaw-checked-accepts-own-publication"
         }
       ]
+    },
+    {
+      "id": "PRF-191",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-find-article-is-find-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-existing-action-is-rclb-existing-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-find-in-visible-is-find"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-view-okp-of-live-owner"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-pidx-prepare-keeps-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-pidx-prepare-keeps-view-indexed"
+        }
+      ]
     }
   ]
 }
