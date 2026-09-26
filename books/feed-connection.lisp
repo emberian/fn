@@ -301,6 +301,21 @@ configuration label)."
 ; complete line other than 203 in the :mode phase is a refusal the owner
 ; classifies as a streaming refusal, and once recorded the peer is not
 ; dialled again, whatever its queue.
+(local
+ (defthm fn-fc-from-line-mode-refusal
+   (implies (and (equal (fn-fc-phase st) :mode)
+                 (not (equal (fn-own-feed-response-code line) 203)))
+            (let ((r (fn-fc-from-line st input line)))
+              (and (equal (fn-fc-kind r) :refused)
+                   (equal (fn-fc-phase (fn-fc-next-state r)) :closed))))
+   :hints (("Goal" :in-theory (e/d (fn-fc-from-line fn-fc-mode-okp fn-fc-result
+                                    fn-fc-kind fn-fc-next-state
+                                    fn-fc-with-input-phase fn-fc-phase
+                                    fn-fc-make-state)
+                                   (fn-own-feed-response-code fn-fc-input
+                                    fn-fc-streamingp fn-fc-conn fn-fc-security
+                                    fn-fc-user fn-fc-pass fn-fc-allow-clear))))))
+
 (defthm fn-fc-mode-stream-refusal-stops-the-dial
   (implies (and (fn-fc-statep st)
                 (equal (fn-fc-phase st) :mode)
@@ -315,11 +330,17 @@ configuration label)."
                   (fn-fc-streaming-refusal-p st step)
                   (not (fn-fc-dial-allowedp
                         queued peer
-                        (fn-fc-stopped-put peer reason stopped))))))
-  :hints (("Goal" :in-theory (enable fn-fc-from-line fn-fc-mode-okp
-                                     fn-fc-result fn-fc-kind fn-fc-next-state
-                                     fn-fc-with-input-phase fn-fc-phase
-                                     fn-fc-make-state))))
+                        (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused*
+                                           stopped))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-fc-streaming-refusal-p
+                                   fn-fc-dial-allowedp fn-fc-stopped-put
+                                   fn-fc-stopped-reason)
+                                  (fn-fc-step fn-fc-from-line fn-fwi-step
+                                   fn-fwi-kind fn-fwi-line fn-fwi-next-state
+                                   fn-fc-statep fn-fwi-chunkp
+                                   fn-own-feed-response-code fn-fc-phase
+                                   fn-fc-kind fn-fc-next-state fn-fc-input)))))
 
 ; A peer with no recorded stop keeps its dial exactly as before.
 (defthm fn-fc-dial-allowedp-of-put-other
