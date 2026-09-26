@@ -756,6 +756,8 @@
     "tests/acl2/consumer-event-index-store-invariants-tests",
     "books/consumer-owner-local",
     "tests/acl2/consumer-owner-local-tests",
+    "books/consumer-owner-local-progress",
+    "tests/acl2/consumer-owner-local-progress-tests",
     "books/consumer-owner-index-invariants",
     "tests/acl2/consumer-owner-index-invariants-tests",
     "tests/acl2/owner-tests",
@@ -891,25 +893,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 904,
-    "books_in_root_closure": 900,
-    "roots": 887,
-    "theorems": 12507,
-    "functions": 8752,
-    "assert_events": 13103,
-    "must_fails": 1437,
+    "books": 906,
+    "books_in_root_closure": 902,
+    "roots": 889,
+    "theorems": 12528,
+    "functions": 8763,
+    "assert_events": 13128,
+    "must_fails": 1443,
     "encapsulates": 63,
     "guards": {
       "verified": 2181,
       "declared-off": 663,
       "default-guarded": 4607,
-      "default-unguarded": 1301
+      "default-unguarded": 1312
     },
     "suspect_theorems": 109,
     "export_hygiene_warnings": 149,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 107,
-    "include_hygiene_warnings": 912,
+    "include_hygiene_warnings": 914,
     "host_names_warnings": 1016,
     "hand_written_record_warnings": 18
   },
@@ -6950,6 +6952,31 @@
         "consumer-event-index-store-invariants",
         "consumer-owner-local",
         "store-node-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-owner-local-progress.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-owner-local"
       ],
       "system_includes": [],
       "suspects": [],
@@ -19360,6 +19387,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/consumer-owner-local-progress-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 8
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 6,
+      "defconsts": 16,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-owner-local-progress"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/consumer-owner-local-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -29781,6 +29835,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/consumer-owner-local-progress.lisp",
+        "line": 22,
+        "include": "consumer-owner-local",
+        "included": "books/consumer-owner-local.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/consumer-owner-local.lisp",
         "line": 7,
         "include": "consumer-poll-index",
@@ -32907,6 +32968,13 @@
         "line": 5,
         "include": "consumer-owner-local-tests",
         "included": "tests/acl2/consumer-owner-local-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-owner-local-progress-tests.lisp",
+        "line": 5,
+        "include": "../../books/consumer-owner-local-progress",
+        "included": "books/consumer-owner-local-progress.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
