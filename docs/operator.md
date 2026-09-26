@@ -1152,18 +1152,31 @@ There are two rollbacks, and they are not the same:
   marker: that requirement is never undone by a kept file.
 - **Restoring a pre-migration snapshot** (the whole store as it was).
   **Restoring a pre-migration snapshot loses every article accepted after
-  it.** `rollback-check --snapshot SNAPSHOT` counts them: ACL2 compares the
-  two committed histories (`fn-native-operator-snapshot-loss`) and answers
+  it.** `rollback-check --snapshot SNAPSHOT` counts them. Stop the node
+  first: the verb takes both stores' shared writer locks and holds them while
+  it compares, so a running owner's store is refused (`store is already
+  locked`, 1) rather than read mid-write. It reads each store's committed
+  history the way the open does (the selected pack's records, then the
+  transaction files after it) and ACL2 compares the two record by record,
+  octet for octet (`fn-native-operator-history-loss-is-ancestry`). When the snapshot's
+  records are exactly this store's first records it answers
 
   ```
   rollback snapshot loses transactions=3 snapshot-transactions=11 store-transactions=14
-  restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
+  the snapshot's committed records are this store's first 11, compared record by record (packed records included); restoring this snapshot loses every transaction committed after it: 3, the articles accepted since it among them; the snapshot cannot give them back
   ```
 
-  or `rollback snapshot refused snapshot-not-a-prefix` (1) when the snapshot
-  is not an earlier state of this store. The count is of committed
-  transaction files; a compacted history (its records in a pack) is not
-  counted by this verb.
+  and otherwise `rollback snapshot refused snapshot-not-a-prefix` (1): the
+  snapshot is not an earlier state of this store's history, and restoring
+  it would replace that history, not shorten it. That includes a snapshot
+  from a different store whose transactions have the same numbers and the
+  same file sizes: equal counters and lengths are not the same history, and
+  the verb does not treat them as one.
+
+  What the verb does not establish: that the snapshot is the newest earlier
+  state you have, or anything about the configuration history, retention
+  releases or peer state a restore also brings back; and a store-local
+  comparison is not a freshness witness (see `fn anchor` under Back up).
 
 ## Back up
 

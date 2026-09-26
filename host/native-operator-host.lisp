@@ -233,9 +233,17 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-snapshot-path-octets result))
 
-(defun fn-native-operator-host-snapshot-loss (snap cur)
+(defun fn-native-operator-host-history-start ()
   (declare (xargs :mode :program))
-  (fn-native-operator-snapshot-loss snap cur))
+  (fn-native-operator-history-start))
+
+(defun fn-native-operator-host-history-step (acc snap-event cur-present cur-event)
+  (declare (xargs :mode :program))
+  (fn-native-operator-history-step acc snap-event cur-present cur-event))
+
+(defun fn-native-operator-host-history-verdict (acc ncur)
+  (declare (xargs :mode :program))
+  (fn-native-operator-history-verdict acc ncur))
 
 (defun fn-native-operator-host-snapshot-loss-report (verdict nsnap ncur)
   (declare (xargs :mode :program))

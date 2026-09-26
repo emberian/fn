@@ -2011,15 +2011,19 @@
         "Enrol a login; peer two nodes; start both; status and health live; post; post over the article bound.",
         "Add a peer that answers 501 to MODE STREAM; post; watch the dial.",
         "Stop, back up, post two more; on a copy with rewritten paths upgrade the profile, rollback-check the kept config and the snapshot, restore the snapshot and recover.",
-        "SIGKILL the owner; status, recover, run, health."
+        "SIGKILL the owner; status, recover, run, health.",
+        "rollback-check --snapshot between two stores whose first transaction holds different articles of equal encoded length, the store one transaction longer; between a store and its own earlier copy after it was compacted; with the store's writer lock held exclusively."
       ],
       "expected": [
-        "Before init: refused exit 6 with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store."
+        "Before init: refused exit 6 with the init line, never a fault; init with a profile word under a mission is usage 5 naming what init accepts; the non-streaming peer receives MODE STREAM once and the owner logs its stop; rollback-check --snapshot prints the count of transactions the snapshot loses; after the crash recover exits 0 and run serves the store.",
+        "The equal-counter, different-content snapshot is refused snapshot-not-a-prefix (exit 1: not an earlier state of this history), never counted as one lost transaction; the compacted store's earlier copy is counted through its pack (loses 1 of 4); a held store is refused (already locked), never read unlocked."
       ],
       "evidence": [
         "planning/evidence/operator-walk-2026-09-26/walk.sh",
         "planning/evidence/operator-walk-2026-09-26.md",
-        "tests/acl2/native-operator-tests.lisp"
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/test_native_rollback_history.py",
+        "planning/evidence/rollback-history-2026-09-26.md"
       ]
     },
     {

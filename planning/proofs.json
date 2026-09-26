@@ -5052,7 +5052,7 @@
     {
       "id": "PRF-130",
       "title": "The operator walk: no store is a refusal (exit 6) before any open, a MODE STREAM refusal stops the dial, and a snapshot rollback's loss is counted",
-      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203 in the :mode phase (RFC 4644 section 2.3) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss, which host/native/io.lisp fnn-command-rollback-snapshot calls: fn-native-operator-snapshot-loss-counts-the-suffix, the verb answers :loses exactly when the snapshot's committed (sequence . length) history is a prefix of the store's, and the count is the number of committed transactions after it.",
+      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203 in the :mode phase (RFC 4644 section 2.3) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
       "milestone": "M4",
       "requirements": [
         "HST-008"
@@ -5533,6 +5533,33 @@
         "fn-bpah-local-pendingp-has-a-nonfragment-header",
         "fn-bpn-report-observe-held-needs-an-administrative-header",
         "fn-bpah-held-expiry-header-of-held"
+      ]
+    },
+    {
+      "id": "PRF-141",
+      "title": "store rollback-check --snapshot: an earlier state of this history exactly when the snapshot's committed records are this store's first records, compared octet for octet, and the count is the records after them",
+      "statement": "books/native-operator.lisp. host/native/io.lisp fnn-command-rollback-snapshot acquires both stores read-only under their shared writer locks (fnn-acquire; a store an owner holds is refused, never read unlocked) and holds both while it reads each committed history as the open reads it (fnn-rollback-history: fnn-durable-records from the selected pack's lower bound, the pack's records through *fnn-pack-recover-callback*, i.e. fn-store-checkpoint-compaction-observe, then the suffix files; fnn-check-history-marker over the count) and calls fn-native-operator-history-start, then fn-native-operator-history-step once per snapshot record with the store's record at the same position (CUR-PRESENT nil past the store's end), then fn-native-operator-history-verdict with the store's record count (through the fn-native-operator-host-history-* wrappers). Both theorems are stated over that composition, V = (fn-native-operator-history-verdict (fn-nop-history-run (fn-native-operator-history-start) snap cur) (len cur)), fn-nop-history-run being the host's loop. KEYSTONE fn-native-operator-history-loss-is-ancestry: (and (iff (equal (car V) :loses) (equal (append snap (nthcdr (len snap) cur)) cur)) (implies (equal (append snap (nthcdr (len snap) cur)) cur) (equal (cadr V) (len (nthcdr (len snap) cur))))): the verb answers :loses exactly when the store's history is the snapshot's records followed by more records, and the count is the number of those records; otherwise (:refused :snapshot-not-a-prefix). fn-native-operator-history-loss-is-snapshot-loss: V equals fn-native-operator-snapshot-loss (PRF-130's list-level function). Events are exact record octets: no sequence number, length or file size is compared, as a filter or as a count, and no collision assumption is used. Every executable function is guard-verified (guard t). What it does not say: that the host's loop makes exactly these calls (host code, source-checked by tests/test_native_rollback_history.py); anything about the configuration history, which a restore also replaces; that the snapshot is the newest earlier state; or freshness (a store-local comparison is not an anti-rollback witness, mandate 5.6).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-008"
+      ],
+      "depends_on": [
+        "PRF-130"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/native/io.lisp",
+        "host/native-operator-host.lisp",
+        "tests/test_native_rollback_history.py",
+        "planning/evidence/rollback-history-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T065706Z-2375300.json"
+      ],
+      "events": [
+        "fn-native-operator-history-loss-is-ancestry",
+        "fn-native-operator-history-loss-is-snapshot-loss"
       ]
     }
   ]
