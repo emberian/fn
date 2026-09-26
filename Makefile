@@ -201,6 +201,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
+	books/store-checkpoint-shape \
+	tests/acl2/store-checkpoint-shape-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	books/store-open-pre-c1 \
