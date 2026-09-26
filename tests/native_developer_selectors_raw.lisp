@@ -95,7 +95,8 @@
               +fnn-exit-usage+ fnn-store-error fnn-store-fault fnn-store-indeterminate
               fnn-usage-error fnn-refuse fnn-fault fnn-indeterminate fnn-exit-code-for
               *fnn-image-profile* *fnn-sigterm-owner-active* *fnn-sigterm-requested*
-              *fnn-sigterm-wakeup-fd* fnn-developer-image-p fnn-dash-nil
+              *fnn-sigterm-wakeup-fd* *fnn-sighup-count* +fnn-gc-nursery-octets+
+              fnn-developer-image-p fnn-dash-nil
               +fnn-developer-selectors+ fnn-developer-selector
               fnn-store-post-fault-argument fnn-developer-selector-refusal
               fnn-developer-selector-gate
