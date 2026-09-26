@@ -13,9 +13,17 @@ a per-test timing result; the report lists every module's wall time and its
 slowest tests.  A module still running at its budget is terminated and
 reported OVER BUDGET, so an over-budget module costs at most its budget.
 
-Outcomes stay distinct: a module passes, fails its tests, or exceeds its
-budget, and the exit code is 0 only when every module passed within budget
-(1 test failures, 2 budget exceeded, both 3).  Budgets: a module 180 s, one
+Outcomes stay distinct: a module passes, fails its tests, exceeds its
+budget, or skips every test it has, and the exit code is 0 only when every
+module passed within budget.  The code is a sum of bits: 1 test failures,
+2 budget exceeded (both 3, as before), 4 a module ran to the end with no test
+executed -- every test skipped, reported `SKIPPED (N of N)` with each skip's
+reason (PKT-437 (2): seven lanes read a module whose every test skipped for a
+missing image as "OK").  A module with some tests skipped passes and lists
+its skips; `--allow-skipped` keeps the report and drops bit 4, for a suite
+run where modules are known to lack their image (the laptop's --discover).
+`--verdict LOG` prints the verdict of a `--one` run's log (tools/hbox_native.sh
+runs each module that way, with no budget) and exits with its code.  Budgets: a module 180 s, one
 test 20 s (the Fable mandate's three minutes per module and 20 s per test,
 harness-repair 2026-09-25; the module default was 300 s).  A test that
 finished over its budget makes its module over budget, named in the report;
@@ -87,12 +95,18 @@ def run_one(module: str, order: str = "default") -> int:
         suite = unittest.TestSuite(reversed(_flatten(suite)))
     runner = unittest.TextTestRunner(resultclass=_TimedResult, verbosity=2)
     result = runner.run(suite)
+    # A setUpClass/setUpModule SkipTest is one skip for tests never counted
+    # in testsRun; a skipped test is counted in both.
+    counted = sum(isinstance(test, unittest.TestCase) for test, _ in result.skipped)
     print(RESULT_PREFIX + json.dumps({
         "module": module,
         "tests": result.testsRun,
         "failures": len(result.failures),
         "errors": len(result.errors),
         "skipped": len(result.skipped),
+        "executed": result.testsRun - counted,
+        "skips": [[test.id() if isinstance(test, unittest.TestCase) else str(test),
+                   str(reason)] for test, reason in result.skipped],
         "timings": result.timings,
     }), flush=True)
     return 0 if result.wasSuccessful() else 1
@@ -168,8 +182,16 @@ def run_module(module: str, budget: float, log_dir: Path | None,
     if record["slow_tests"]:
         over = True
     record["over_budget"] = over
-    record["passed"] = (not over and process.returncode == 0
-                        and "tests" in record)
+    return verdict_fields(record)
+
+
+def verdict_fields(record: dict) -> dict:
+    """`all_skipped` and `passed`: a module that executed no test did not pass."""
+    over = record.get("over_budget", False)
+    record["all_skipped"] = (not over and record.get("returncode") == 0
+                             and "tests" in record and record.get("executed", 1) == 0)
+    record["passed"] = (not over and record.get("returncode") == 0
+                        and "tests" in record and not record["all_skipped"])
     return record
 
 
@@ -182,8 +204,10 @@ def summarize(record: dict, slowest: int) -> str:
                       f"; also exit {record.get('returncode')}") + ")")
     elif record["over_budget"]:
         verdict = f"OVER BUDGET (terminated at {record['budget']:g} s)"
+    elif record["all_skipped"]:
+        verdict = f"SKIPPED ({record['skipped']} of {record['skipped']}; no test executed)"
     elif record["passed"]:
-        verdict = "ok"
+        verdict = "ok" + (f" ({record['skipped']} skipped)" if record.get("skipped") else "")
     else:
         verdict = (f"FAILED ({record.get('failures', '?')} failures, "
                    f"{record.get('errors', '?')} errors, exit {record['returncode']})")
@@ -192,7 +216,35 @@ def summarize(record: dict, slowest: int) -> str:
     timings = sorted(record.get("timings", []), key=lambda item: -item[1])[:slowest]
     for name, seconds in timings:
         line += f"\n    {seconds:8.2f} s  {name.rsplit('.', 2)[-2]}.{name.rsplit('.', 1)[-1]}"
+    for name, reason in record.get("skips", []):
+        line += f"\n    skipped  {name}: {reason}"
     return line
+
+
+def verdict_of_log(path: Path) -> int:
+    """Print the verdict of a `--one` run's log; exit 0 passed, 1 failed, 4 all skipped."""
+    record = {"module": path.stem, "seconds": 0.0, "budget": 0.0, "over_budget": False,
+              "returncode": None}
+    for line in path.read_text(errors="replace").splitlines():
+        if line.startswith(RESULT_PREFIX):
+            record.update(json.loads(line[len(RESULT_PREFIX):]))
+    if "tests" not in record:
+        print(f"{record['module']}: FAILED (no result line in {path})")
+        return 1
+    record["returncode"] = 0 if (record["failures"] == 0 and record["errors"] == 0) else 1
+    record["seconds"] = sum(seconds for _, seconds in record.get("timings", []))
+    verdict_fields(record)
+    if record["all_skipped"]:
+        verdict = f"SKIPPED ({record['skipped']} of {record['skipped']}; no test executed)"
+    elif record["passed"]:
+        verdict = f"OK ({record['executed']} ran, {record['skipped']} skipped)"
+    else:
+        verdict = (f"FAILED ({record['failures']} failures, {record['errors']} errors, "
+                   f"{record['executed']} ran, {record['skipped']} skipped)")
+    print(f"{record['module']}: {verdict}")
+    for name, reason in record.get("skips", []):
+        print(f"    skipped  {name}: {reason}")
+    return 0 if record["passed"] else 4 if record["all_skipped"] else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -211,10 +263,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--order", choices=("default", "reverse"), default="default",
                         help="run each module's tests in reverse to expose a test "
                              "that depends on what an earlier one left behind")
+    parser.add_argument("--allow-skipped", action="store_true",
+                        help="report a module that skipped every test as SKIPPED but "
+                             "leave exit bit 4 clear (a suite run known to lack images)")
+    parser.add_argument("--verdict", type=Path, default=None,
+                        help="print the verdict of a --one run's log and exit with it "
+                             "(0 passed, 1 failed, 4 every test skipped)")
     parser.add_argument("--one", default=None, help=argparse.SUPPRESS)
     arguments = parser.parse_args(argv)
     if arguments.one:
         return run_one(arguments.one, arguments.order)
+    if arguments.verdict:
+        return verdict_of_log(arguments.verdict)
     if arguments.budget > DEFAULT_BUDGET_SECONDS:
         parser.error(f"--budget may not exceed {DEFAULT_BUDGET_SECONDS:g} s")
     modules = list(arguments.modules) + (discover() if arguments.discover else [])
@@ -235,11 +295,15 @@ def main(argv: list[str] | None = None) -> int:
     failed = any(not r["terminated"] and (r["returncode"] != 0 or "tests" not in r)
                  for r in records)
     over = any(r["over_budget"] for r in records)
+    skipped = sum(r["all_skipped"] for r in records)
     total = sum(r["seconds"] for r in records)
     print(f"{len(records)} modules, {total:.1f} s; "
           f"{sum(r['passed'] for r in records)} passed within budget, "
-          f"{sum(r['over_budget'] for r in records)} over budget", flush=True)
-    return (1 if failed else 0) | (2 if over else 0)
+          f"{skipped} SKIPPED (no test executed), "
+          f"{sum(r['over_budget'] for r in records)} over budget; "
+          f"{sum(r.get('skipped', 0) for r in records)} tests skipped", flush=True)
+    return ((1 if failed else 0) | (2 if over else 0)
+            | (4 if skipped and not arguments.allow_skipped else 0))
 
 
 if __name__ == "__main__":

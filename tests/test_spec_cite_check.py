@@ -47,6 +47,22 @@ class SpecCiteCheckTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.exempted, {"fn-bpn-limits-compose": 1})
 
+    def test_a_slash_abbreviation_resolves_only_when_every_expansion_does(self):
+        self.assertEqual(scc.abbreviated("fnn-metadata-frontier-frame/-decode/-next"),
+                         ["fnn-metadata-frontier-frame", "fnn-metadata-frontier-decode",
+                          "fnn-metadata-frontier-next"])
+        defined = {"fn-a-frame", "fn-a-decode"}
+        good = ("specs/x.md", "`fn-a-frame/-decode`\n")
+        bad = ("specs/x.md", "`fn-a-frame/-decode/-next`\n")
+        self.assertTrue(scc.check(defined, [good], {}).ok)
+        self.assertEqual(list(scc.check(defined, [bad], {}).unlisted),
+                         ["fn-a-frame/-decode/-next"])
+
+    def test_a_record_name_is_defined(self):
+        # (fn-defrecord fn-node-state ...) in books/node.lisp: prose names the
+        # record kind, which no defun spells.
+        self.assertIn("fn-node-state", scc.defined_names())
+
     def test_the_tree_is_green_under_strict(self):
         self.assertEqual(scc.main(["--summary", "--strict"]), 0)
 

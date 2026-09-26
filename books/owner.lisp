@@ -904,6 +904,54 @@
   (declare (xargs :guard t))
   (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files s))))
 
+;; ---------------------------------------------------------------------------
+;; The group index, extended instead of rebuilt (served-path-scale, PRF-173;
+;; hot-path-scans section 4 item 1).  A refresh after one acceptance sees the
+;; visible list grown by one article at its head; the index of the grown list
+;; is the old index with that article's entries put in (`fn-gidx-build-of-
+;; cons'), work in the article's memberships and the group count, not in N.
+;; Any other change (a withdrawal, a verdict, a recovery view) rebuilds, as
+;; `fn-midx-refresh' does for the Message-ID index.  The keystone
+;; `fn-gidx-refresh-is-build': from an index that is the build of the old
+;; list (or no index), the refreshed index IS the build of the new list, so
+;; every served read over it answers as before.
+
+(defun fn-gidx-put-all (entries buckets)
+  (declare (xargs :guard t))
+  (if (consp entries)
+      (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
+    buckets))
+
+(defthm fn-gidx-build-entries-of-append
+  (equal (fn-gidx-build-entries (append a b))
+         (fn-gidx-put-all a (fn-gidx-build-entries b))))
+
+(defthm fn-gidx-build-of-cons
+  (equal (fn-gidx-build (cons article articles))
+         (fn-gidx-put-all (fn-index-article-entries article)
+                          (fn-gidx-build articles)))
+  :hints (("Goal" :in-theory (enable fn-gidx-build fn-index-build))))
+
+(defun fn-gidx-refresh (buckets old-articles new-articles)
+  (declare (xargs :guard t))
+  (cond ((null buckets) (fn-gidx-build new-articles))
+        ((equal new-articles old-articles) buckets)
+        ((and (consp new-articles)
+              (equal (fn-ag-cdr new-articles) old-articles))
+         (fn-gidx-put-all (fn-index-article-entries (fn-ag-car new-articles))
+                          buckets))
+        (t (fn-gidx-build new-articles))))
+
+(defthm fn-gidx-refresh-is-build
+  (implies (implies buckets
+                    (equal buckets (fn-gidx-build old-articles)))
+           (equal (fn-gidx-refresh buckets old-articles new-articles)
+                  (fn-gidx-build new-articles)))
+  :hints (("Goal" :in-theory (disable fn-gidx-build fn-gidx-put-all)
+           :use ((:instance fn-gidx-build-of-cons
+                            (article (car new-articles))
+                            (articles (cdr new-articles)))))))
+
 ; The records a withdrawing article causes are decided by the refresh that
 ; first publishes it, under the configuration in force at that article's own
 ; Store txid (`fn-ctl-article-withdrawals': the txid of its acceptance record
@@ -938,7 +986,8 @@
                       (len (fn-sf-records (fn-sn-files s)))
                       (fn-sf-frontier (fn-sn-files s))
                       archive verdicts index
-                      (fn-gidx-build visible)
+                      (fn-gidx-refresh (fn-own-view-group-index old-view)
+                                       old-visible visible)
                       withdrawals raw withdrawn
                       (fn-sn-keyring-snapshots s))
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)

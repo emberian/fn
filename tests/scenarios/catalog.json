@@ -2731,16 +2731,19 @@
       ],
       "steps": [
         "Node E: enrol P; POST a succession signed by the old keys with no `keys` grant; `control grant P keys fn.keys` live; `keys redecide MSGID`; `keys redecide MSGID` again; `keys redecide <absent@keys.invalid>`; stop; `keys redecide MSGID` offline; restart E.",
-        "The login binding (PKT-221; its native case is tests.test_native_auth NativeAuthTests.test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding): a login bound to P under `posting-policy bound-logins`; P enrolled; session A authenticates; `principal bind LOGIN Q` against the running owner; A POSTs an article signed by P; a new session B POSTs another article signed by P."
+        "The login binding (PKT-221; its native case is tests.test_native_auth NativeAuthTests.test_a_rebinding_applies_live_and_an_open_session_keeps_its_binding): a login bound to P under `posting-policy bound-logins`; P enrolled; session A authenticates; `principal bind LOGIN Q` against the running owner; A POSTs an article signed by P; a new session B POSTs another article signed by P.",
+        "The succession-era peering (PKT-211, PRF-179): node A enrols B (hybrid-enroll-next) and then B's successor keys (generation 2, the same principal and token); A invites B; B accepts signing with its current keys; A confirms; A `peer budget nodeB4 1048576 16` and `peer list`; a fresh node D accepts another A invitation under B's genesis keys and A confirms it; C, which never enrolled B, invites B, B accepts under its current keys and C confirms."
       ],
       "expected": [
         "The log reads `key-statement declined no-grant`, then `key-statement redecide enrol-successor committed` (exit 0), `key-statement redecide refused already-acted` (exit 1), `key-statement redecide refused not-a-key-statement` (exit 1); the history shows generation 2 active and 1 retired; the offline redecide exits non-zero; the restart logs no key-statement line and leaves the history unchanged.",
-        "The live bind answers `accepted operator principal bind applied` with the owner still running; A's article is 240 (the log reads `post login=LOGIN bound=P`); B's is 441 `... not bound ...` (the log reads `post login=LOGIN refused login-not-bound`)."
+        "The live bind answers `accepted operator principal bind applied` with the owner still running; A's article is 240 (the log reads `post login=LOGIN bound=P`); B's is 441 `... not bound ...` (the log reads `post login=LOGIN refused login-not-bound`).",
+        "A's confirm exits 0 with `peer confirm: the acceptor's current keys; nothing to enrol` in A's log, `peer list` names nodeB4 bound to B's principal and its line ends ` budget-octets=1048576 budget-count=16`; a second confirm is refused already-confirmed; A refuses D's acceptance `not-current-keys` and C refuses B's `genesis` (exit 1 each, the reason in the owner's log); A's key history for B is unchanged (no generation 3)."
       ],
       "implementation": {
         "test": "tests.test_native_key_statements",
         "cases": [
-          "NativeKeyStatementTests.test_redecide_a_declined_statement_after_its_grant"
+          "NativeKeyStatementTests.test_redecide_a_declined_statement_after_its_grant",
+          "NativePeerInviteTests.test_a_succeeded_friend_is_confirmed_under_its_current_keys"
         ],
         "native": true,
         "log": "planning/evidence/keys-and-accounts-2026-09-26.md",
@@ -2919,7 +2922,7 @@
     },
     {
       "id": "SCN-102",
-      "title": "An operator after a crash: a SIGKILLed owner's socket does not lock out the offline control verbs, and health during a slow start says starting",
+      "title": "An operator after a crash: a SIGKILLed owner's socket does not lock out the offline control verbs, and health during a slow start says starting; every refusal names its reason on the wire, and an old client's plain request still reads the plain reply",
       "milestone": "M4",
       "status": "implemented",
       "requirements": [
@@ -2927,11 +2930,15 @@
       ],
       "steps": [
         "Start an owner with a configured control socket; SIGKILL it; `operator CONFIG control list`; start the owner again and stop it.",
-        "Start a developer owner with FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN (the store recovered and locked, no socket yet); `operator CONFIG health`; SIGTERM the owner."
+        "Start a developer owner with FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN (the store recovered and locked, no socket yet); `operator CONFIG health`; SIGTERM the owner.",
+        "With an owner running: `operator CONFIG post` an article whose From has no address, and one naming a newsgroup the node does not serve; post a well-formed one; `operator CONFIG control revoke` a grant that does not exist.",
+        "With an owner running: send a plain kind-3 FNCT admin frame (`control grant`), as every client before the reasoned kinds does, and read the reply; then `control revoke` the grant."
       ],
       "expected": [
         "The socket node survives the SIGKILL; `control list` exits 0, prints `stale control socket removed`, and the node is gone; the restarted owner binds and stops with 0.",
-        "health exits 20 and its first line starts `health exit=20 state=fenced reason=starting`; the owner exits 0 on SIGTERM."
+        "health exits 20 and its first line starts `health exit=20 state=fenced reason=starting`; the owner exits 0 on SIGTERM.",
+        "The two posts exit 1 with `refused operator post REFUSED from-invalid` and `... REFUSED unknown-group`; the well-formed post exits 0 (`accepted operator post ACCEPTED`); the revoke exits 1 with `refused operator control REFUSED no-such-grant`.",
+        "The reply is a kind-2 FNCT frame whose payload is the one octet 1 (:accepted) followed by the SHA-256 trailer; the revoke then exits 0."
       ],
       "evidence": [
         "planning/evidence/operator-daily-2026-09-26.md"
@@ -2940,10 +2947,12 @@
         "test": "tests.test_native_control",
         "cases": [
           "test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline",
-          "test_health_during_a_slow_start_says_starting"
+          "test_health_during_a_slow_start_says_starting",
+          "test_every_refusal_names_its_reason_on_the_wire",
+          "test_an_old_clients_plain_request_gets_the_plain_reply"
         ],
         "native": true,
-        "log": "planning/evidence/operator-daily/native-control.log",
+        "log": "planning/evidence/operator-daily-2/native-control.log",
         "record": "planning/evidence/operator-daily-2026-09-26.md"
       }
     },
@@ -3049,6 +3058,272 @@
         "native",
         "proof"
       ]
+    },
+    {
+      "id": "SCN-105",
+      "title": "The four-node mission with relays that serve both directions at once: no listener turns and no direction restarts of the relays",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "REP-007"
+      ],
+      "steps": [
+        "tests/bp-dtn7/run_mission_four_node.py --report signed and --report unsigned on the DTN developer image: A -> X (fn relay) -> dtn7 r1 -> r2 -> Y (fn relay) -> B and back; X and Y run `bp-node serve -` (the listener set: both boundaries bound) with one argv per incarnation.",
+        "The only stops: X SIGKILLed while holding (step 2), X down while the receipt crosses (steps 2 to 4), A SIGKILLed (step 4), and the K6 Store writer-lock hand-offs (B stops for its owner in step 5 and serves again for A's receipt in step 6; A stops for its status and owner reads).",
+        "--case ambiguous-peer: X's two boundaries on one listener, served on that port explicitly."
+      ],
+      "expected": [
+        "7/7 steps held for both reports; Y is one incarnation for the whole mission; X's three incarnations are the SIGKILL and the outage; every receipt and the reply cross the relay in the opposite direction without a restart.",
+        "ambiguous-peer: X refuses A's transfer with reason ambiguous-peer and takes no custody (2/2)."
+      ],
+      "evidence": [
+        "planning/evidence/multi-peer-relay-2026-09-26.md",
+        "planning/evidence/multi-peer-relay-2026-09-26/signed.out",
+        "planning/evidence/multi-peer-relay-2026-09-26/unsigned.out",
+        "planning/evidence/multi-peer-relay-2026-09-26/ambiguous.out"
+      ],
+      "implementation": {
+        "test": "tests/bp-dtn7/run_mission_four_node.py",
+        "cases": [
+          "--report signed",
+          "--report unsigned",
+          "--case ambiguous-peer"
+        ],
+        "native": true,
+        "log": "planning/evidence/multi-peer-relay-2026-09-26/signed.out",
+        "record": "planning/evidence/multi-peer-relay-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-103",
+      "title": "The 20,000-article chain fixture opens without the quadratic freshness, archive-binding and admission walks, and serves the greeting, GROUP, OVER, ARTICLE and STAT on the opened owner; the reopen from the checkpoint that owner published is timed the same way",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-016"
+      ],
+      "steps": [
+        "Copy hbox:/tank/fn/scratch/fixtures/chain-20000-8cc3cd4c/store (pack-chain-open's fixture, SCN-064; never opened in place) and time `store STORE recover` (peak RSS by /usr/bin/time -v).",
+        "Time `operator CONFIG run` to its LISTENING line; on that owner time K greetings each on a fresh socket, GROUP fn.letters, K OVER, K ARTICLE and K STAT by number spread over 1..20000; stop.",
+        "Recover and run the same store again (the reopen, from the checkpoint the first run published) and time the LISTENING line, K greetings and GROUP.",
+        "Repeat on the image of the lane's base (dev 273cd980) for the before row."
+      ],
+      "expected": [
+        "Both images recover 20,000 transactions and 20,000 articles and GROUP answers 211 20000 1 20000 fn.letters; every OVER, ARTICLE and STAT answers 224, 220 and 223.",
+        "The lane's image opens in less time than the base image on the same fixture copy (the base: recover 311.9 s, LISTENING 280.7 s on a full replay, the fixture's checkpoint refused by the current format); the numbers and their scope are in the record."
+      ],
+      "evidence": [
+        "planning/evidence/served-path-scale-2026-09-26/fixture_open.py",
+        "planning/evidence/served-path-scale-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "planning/evidence/served-path-scale-2026-09-26/fixture_open.py",
+        "native": true,
+        "log": "planning/evidence/served-path-scale-2026-09-26/open-img2-5e15ad4c.log",
+        "record": "planning/evidence/served-path-scale-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-107",
+      "title": "A store profile whose record bound the consumer poll reply cannot carry is refused by name at init, at store upgrade-profile and at every open of a store saved with it; `store upgrade-profile --max-record-octets 4294966940` is that store's one repair; at the ceiling it is written and served",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-021"
+      ],
+      "steps": [
+        "init with max-record-octets and max-history-octets one octet past 4,294,966,940; then init at 4,294,966,940; start the owner and POST.",
+        "init a default store; store upgrade-profile --max-record-octets one octet past the ceiling; start the owner and POST; upgrade to the ceiling; start the owner and POST.",
+        "init a default store and POST one article; replace config.json by the hand-built frame of the scale fields with R = H = 4,294,967,295 (the old encoder's octets, tests/acl2/store-profile-open-tests.lisp *spot-window-octets*); run status, store recover, store checkpoint, health and run through the operator, and store recover, inspect and checkpoint through the developer entry; store upgrade-profile --max-record-octets one octet below the ceiling; then --max-record-octets 4294966940; start the owner and POST."
+      ],
+      "expected": [
+        "The first init exits 1 naming max-record-octets-above-the-poll-reply and writes no config.json; the second writes R 4,294,966,940 and the POST is 240.",
+        "The refused upgrade exits 1 with `store profile upgrade refused: max-record-octets-above-the-poll-reply`, config.json byte-identical; the owner serves; the upgrade to the ceiling exits 0 and status reads R 4,294,966,940; the owner serves.",
+        "Every open exits 1 with `profile record bound exceeds the poll reply width: run store upgrade-profile --max-record-octets 4294966940` and never `ACL2 rejected durable configuration frame`; no store file changes; the other target exits 1 with `store profile upgrade refused: repair-lowers-max-record-octets-to-the-poll-reply-only` and changes nothing; the repair exits 0 (`repaired profile=max-record-octets transactions-used=1`), status reads R 4,294,966,940 with H 4,294,967,295 and T 4096 kept, the transactions are byte-identical, and the owner serves."
+      ],
+      "evidence": [
+        "tests/test_native_control_reply_fit.py",
+        "planning/evidence/control-reply-fit-2026-09-26.md",
+        "planning/evidence/control-reply-fit/test_native_control_reply_fit.r2-632c228f.log",
+        "planning/evidence/profile-open-refusal/test_native_control_reply_fit.r2-578d43c2.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_control_reply_fit",
+        "cases": [
+          "test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling",
+          "test_upgrade_refuses_r_past_the_poll_reply_by_name_then_raises_to_it",
+          "test_a_store_saved_in_the_window_is_refused_by_name_at_every_open_then_repaired"
+        ],
+        "native": true,
+        "record": "planning/evidence/control-reply-fit-2026-09-26.md",
+        "log": "planning/evidence/profile-open-refusal/test_native_control_reply_fit.r2-578d43c2.log"
+      }
+    },
+    {
+      "id": "SCN-109",
+      "title": "The v1 service envelope of one named profile (scale-1m, 2 KiB articles, one in 256 hybrid-signed) is measured at N = 10,000 on tmpfs and on the ZFS pool and at N = 100,000 on tmpfs: the loaded greeting, OVER, unsigned and signed POST p95, the sustained POST rate on 1 and 8 connections with readers, and the reopen by full replay and from a checkpoint, each row naming its image, box, load and JSON",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-016"
+      ],
+      "steps": [
+        "Preload a scale-1m store to N = 10,000 on tmpfs (`service_envelope.py load`); copy it to tmpfs and to the pool with the derived checkpoint removed (`clone --drop-checkpoint`).",
+        "On each copy (`measure --steps latency,checkpoint,restart,rate`, one senv-* unit, MemoryMax=40G, under 30 minutes): the first open (a full replay), 100 greetings, 100 OVERs over 40 and over 100 articles, 100 unsigned and 50 signed POSTs, `store checkpoint`, the open from it, 60 s of closed-loop POSTs on 1 and on 8 connections with 3 ARTICLE readers.",
+        "N = 100,000 on tmpfs once: resumable load units, the warm rows on the loading owner, the reopen as the store stands, a fresh checkpoint and the open from it with the rates, the full replay on a copy without the checkpoint."
+      ],
+      "expected": [
+        "Every row is recorded with the owner's OWNER-OPEN line, owner CPU, VmHWM, disk octets and inodes, the box load and (ZFS) zfs/zpool state; a row past its time budget says `capped`; a case that cannot run (the 40G ceiling, a unit's 30 minutes) is recorded with why, never replaced by a smaller N.",
+        "docs/operator.md publishes the table and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
+      ],
+      "evidence": [
+        "tools/service_envelope.py",
+        "planning/evidence/service-envelope-2026-09-26.md",
+        "planning/evidence/service-envelope-2026-09-26/t10k-after.json",
+        "planning/evidence/service-envelope-2026-09-26/z10k-after.json",
+        "planning/evidence/service-envelope-2026-09-26/driver.log"
+      ],
+      "implementation": {
+        "test": "tools/service_envelope.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/service-envelope-2026-09-26.md",
+        "log": "planning/evidence/service-envelope-2026-09-26/driver.log"
+      }
+    },
+    {
+      "id": "SCN-101",
+      "title": "a peer's carried principals grow past the old 1,024 rows by 1,100 separate requests, and a store publishes checkpoint generation 4097 under a profile whose max-transactions admits it",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-023"
+      ],
+      "steps": [
+        "`operator CONFIG init --max-transactions 1164 --max-config-generations 1164 fn.test`; `peer add far ...`; 1,100 separate `peer carries far HEX`; `peer list`.",
+        "`peer budget far 1048576 3`; `peer budget far 2097152 5`; `peer list`; `peer carries far HEX0` again; `peer list`.",
+        "Developer `store ROOT init --max-transactions 8191`; post; `checkpoint publish`; hard-link generation 0 as generations 1..4096; `checkpoint publish`; `checkpoint status`.",
+        "The same with `--max-transactions 4095` and generations 0..4095."
+      ],
+      "expected": [
+        "Every request exits 0; the listing (a fresh open replaying every configuration record) names the 1,100 principals in request order.",
+        "Both budget requests exit 0 and the 1,100 principals stay; the repeated principal adds no row.",
+        "The second publication prints generation=4097 and status lists 4096 and 4097.",
+        "The publication is refused (exit 1) naming the profile's capacity, and the directory is unchanged."
+      ],
+      "evidence": [
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "planning/evidence/caps-to-profile/native-checkpoint-generations.log",
+        "planning/evidence/caps-to-profile/native-peer-rows-growth.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_rows_growth",
+        "cases": [
+          "test_a_peer_carries_more_than_the_old_row_cap"
+        ],
+        "native": true,
+        "log": "planning/evidence/caps-to-profile/native-peer-rows-growth.log",
+        "record": "planning/evidence/caps-to-profile-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-111",
+      "title": "One served step whose reply is several MiB (the ARTICLE of a 1, 2 and 3 MiB article; an OVER of about 4 MB) is served whole and the owner keeps serving; the exposure's observation of that step decides as over the reply octets",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-031"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 4194304; start the owner; POST articles of 1,048,576, 2,097,152 and 3,145,728 octets and ARTICLE each back on the same connection.",
+        "POST 2,000 articles each carrying about 2,000 octets of folded References; GROUP; OVER over the whole group on one connection; STAT on a new connection; SIGTERM the owner."
+      ],
+      "expected": [
+        "Each POST is 240 and each ARTICLE is 220 with the posted octets as the stored article's suffix; the owner is still running.",
+        "The OVER is 224 with 2,003 lines, more than 3 MiB, and its terminator; the STAT is 223; the owner exits 0. Before PKT-481's fix the 2 MiB ARTICLE and the OVER each stopped the owner with exit 4, `ACL2 error in fn-owner-chunk: Control stack exhausted`."
+      ],
+      "evidence": [
+        "tests/test_native_bounds_join.py",
+        "planning/evidence/exposure-reply-size-2026-09-26.md",
+        "books/public-exposure-reply.lisp",
+        "tests/acl2/public-exposure-reply-tests.lisp",
+        "planning/evidence/exposure-reply-size/test_native_bounds_join.08ca81eb.fn-host.log",
+        "planning/evidence/exposure-reply-size/test_native_bounds_join.08ca81eb.fn-host-developer.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_bounds_join",
+        "cases": [
+          "test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving",
+          "test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it"
+        ],
+        "native": true,
+        "record": "planning/evidence/exposure-reply-size-2026-09-26.md",
+        "log": "planning/evidence/exposure-reply-size/test_native_bounds_join.08ca81eb.fn-host.log"
+      }
+    },
+    {
+      "id": "SCN-114",
+      "title": "An operator reads why an article was withdrawn: `control log` lists the owner's withdrawal record and `control evidence` shows the cancel's decision and the target's withdrawal, live and offline alike",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-011"
+      ],
+      "steps": [
+        "Start an owner with fn.test and control.cancel; enroll a hybrid principal; author a signed target and the same principal's signed cancel of it.",
+        "`operator CONFIG control log`; `control evidence` of the cancel, of the target and of an absent Message-ID; `control evidence not-a-message-id`.",
+        "Stop the owner; run the same three reports offline."
+      ],
+      "expected": [
+        "The target answers 430.",
+        "The log prints `withdrawals=1` and one `withdrawal target=... cause=... principal=... scope=- generation=N` line; the cancel's evidence prints `stored=yes txid=N verdict=verified` and `decision=` followed by the log's line; the target's prints `decision=none` and `withdrawn-by ... effect=author`; the absent one `stored=no`; the malformed argument exits 5.",
+        "The offline words equal the live words."
+      ],
+      "evidence": [
+        "planning/evidence/operator-daily-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_control_evidence",
+        "cases": [
+          "test_log_and_evidence_live_and_offline"
+        ],
+        "native": true,
+        "log": "planning/evidence/operator-daily-3/native-control_evidence.log",
+        "record": "planning/evidence/operator-daily-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-108",
+      "title": "A POST on a store of N committed records reads the count, record octets, completion debt and carriage usage without walking the history: at N=1,000 and N=10,000 x 2 KiB the owner's byte-count term is one record's encoding per POST, and no full re-encoding follows the open",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Build the developer profiling image of dev 5c6825b2 (before) and of lane hot-path-scans-2 (after) on hbox, same scripts (planning/evidence/hot-path-scans-2026-09-26/part1-all.sh).",
+        "For each image and N in 1,000 and 10,000 x 2 KiB: rep_measure (default profile, K=32, R=3, checkpoint skipped), then reopen the owner on the loaded store and take an sb-sprof :alloc profile over 200 POSTs (allocprof.py)."
+      ],
+      "expected": [
+        "The profile's samples under the byte-count term (FN-SBUD-RECORD-OCTETS before; FN-SBUD-OCTETS-ADVANCE after) over the 200 POSTs after a reopen: before, the full re-encoding at the first verdict (growing with N); after, about one record's encoding per POST, the same at both N.",
+        "Steady-state bytes consed per POST (rep_measure alloc_post) do not grow from the removed terms: the len/nthcdr walks allocated nothing."
+      ],
+      "evidence": [
+        "planning/evidence/hot-path-scans-2026-09-26.md",
+        "planning/evidence/hot-path-scans-2026-09-26/part1-all.sh",
+        "tools/rep_measure.py",
+        "planning/evidence/hot-path-scans-2026-09-26/part1-runs.log"
+      ],
+      "implementation": {
+        "test": "tools/rep_measure.py",
+        "cases": [
+          "alloc_post",
+          "allocprof 200 POSTs"
+        ],
+        "native": true,
+        "record": "planning/evidence/hot-path-scans-2026-09-26.md",
+        "log": "planning/evidence/hot-path-scans-2026-09-26/part1-runs.log"
+      }
     }
   ]
 }

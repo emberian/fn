@@ -18,6 +18,14 @@
 ; `fn-cei-msgid-records-of-correspondence').  A lookup walks the Message-ID
 ; by string index down a character trie: its work is bounded by the
 ; Message-ID and the per-node branching, not by the history.
+;
+; Since 2026-09-26 (lane hot-path-scans-2, PRF-180) the index also carries
+; the number of events put into it, so it is a triple
+; (SEQUENCE-TRIE MSGID-TRIE . COUNT).  `fn-cei-put' adds one; the built index
+; of a history holds that history's length (`fn-cei-count-of-build'), so
+; under the correspondence the Store maintains the count is the committed
+; record count (`fn-cei-count-of-correspondence') and the served owner reads
+; it in constant time instead of taking `len' of the history.
 (in-package "ACL2")
 (include-book "consumer-position")
 (include-book "replay")
@@ -92,7 +100,14 @@
 
 (defun fn-cei-msgid-trie (index)
   (declare (xargs :guard t))
-  (if (consp index) (cdr index) nil))
+  (if (and (consp index) (consp (cdr index))) (cadr index) nil))
+
+; The number of events put into INDEX (0 for the empty index).
+(defun fn-cei-count (index)
+  (declare (xargs :guard t))
+  (if (and (consp index) (consp (cdr index)) (natp (cddr index)))
+      (cddr index)
+    0))
 
 ; A Message-ID's list in the trie: the walk by string index, no allocation.
 ; The index only ever stores true lists; the test makes that a type.
@@ -120,11 +135,12 @@
 
 (defun fn-cei-put (sequence event index)
   (declare (xargs :guard t))
-  (cons (if (fn-cp-uintp sequence)
-            (fn-cei-put-digits (fn-cbor-u32-bytes sequence) event
-                               (fn-cei-sequence-trie index))
-          (fn-cei-sequence-trie index))
-        (fn-cei-msgid-add event (fn-cei-msgid-trie index))))
+  (list* (if (fn-cp-uintp sequence)
+             (fn-cei-put-digits (fn-cbor-u32-bytes sequence) event
+                                (fn-cei-sequence-trie index))
+           (fn-cei-sequence-trie index))
+         (fn-cei-msgid-add event (fn-cei-msgid-trie index))
+         (1+ (fn-cei-count index))))
 
 (defun fn-cei-get (sequence index)
   (declare (xargs :guard t))
@@ -246,6 +262,39 @@
             (fn-cei-put (len events) event index)
             (append events (list event))))
   :hints (("Goal" :in-theory (enable fn-cei-correspondencep fn-cei-build))))
+
+;; ---------------------------------------------------------------------------
+;; The count (PRF-180).
+
+(defthm fn-cei-count-is-natural
+  (natp (fn-cei-count index))
+  :rule-classes :type-prescription)
+
+(defthm fn-cei-count-of-put
+  (equal (fn-cei-count (fn-cei-put sequence event index))
+         (1+ (fn-cei-count index)))
+  :hints (("Goal" :in-theory (e/d (fn-cei-count fn-cei-put)
+                                  (fn-cei-msgid-add fn-cei-put-digits)))))
+
+(defthm fn-cei-count-of-build-aux
+  (equal (fn-cei-count (fn-cei-build-aux events sequence index))
+         (+ (fn-cei-count index) (len events)))
+  :hints (("Goal" :induct (fn-cei-build-aux events sequence index)
+           :in-theory (disable fn-cei-put fn-cei-count))))
+
+(defthm fn-cei-count-of-build
+  (equal (fn-cei-count (fn-cei-build events)) (len events))
+  :hints (("Goal" :in-theory (e/d (fn-cei-build) (fn-cei-build-aux)))))
+
+; KEYSTONE (PRF-180, the count half): under the correspondence the Store
+; carries for its derived index, the index's count is the length of the
+; committed history.  No other hypothesis: every put counts, so the built
+; index of any list holds its length.
+(defthm fn-cei-count-of-correspondence
+  (implies (fn-cei-correspondencep index events)
+           (equal (fn-cei-count index) (len events)))
+  :hints (("Goal" :in-theory (e/d (fn-cei-correspondencep)
+                                  (fn-cei-build fn-cei-count)))))
 
 ; The journal sequence is its zero-based position in the dense committed
 ; Store record list.  This is the exact correspondence used by the poll
@@ -393,4 +442,5 @@
 ; transition treats fn-cei-put as one opaque step (they already disabled it
 ; by name), and opened it now unfolds the composite decoder of the
 ; Message-ID half.
-(in-theory (disable fn-cei-put fn-cei-event-article fn-cei-msgid-add))
+(in-theory (disable fn-cei-put fn-cei-event-article fn-cei-msgid-add
+                    fn-cei-count))
