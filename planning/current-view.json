@@ -265,9 +265,10 @@
       "name": "bundles across an outage",
       "contract": "After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.",
       "host": {
-        "function": "fn-bpnp-step",
+        "function": "fn-bpnj-step",
         "file": "host/native/bp-service.lisp"
       },
+      "bridge": "fn-bpnj-step-delegates-every-other-event",
       "keystone": "fn-bpnp-step-session-offer-is-the-scan-choice",
       "tested": {
         "image": "c3420013",
