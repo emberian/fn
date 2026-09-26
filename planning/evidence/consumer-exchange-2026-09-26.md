@@ -209,8 +209,9 @@ implemented consumer.
 `make check-lane` in this worktree: every check passes except the proof-cost
 ratchet on three books this lane did not touch (books/native-admin 15.9 s,
 books/native-operator 11.8 s, books/peer-pull-session 11.7 s, all from dev's
-peer-feeds merge certification certify-20260926T112155Z-967430); dev
-5391f1d9 fails it the same way. Not widened here.
+peer-feeds merge certification certify-20260926T112155Z-967430, merged
+into dev at 5391f1d9); this lane's manifest has no book over 10 s. Not
+widened here.
 
 ## Not done
 
