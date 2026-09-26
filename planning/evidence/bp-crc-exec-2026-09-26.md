@@ -102,7 +102,7 @@ Observed: the bytes below are the base image's, and the costs.
 - hbox, tools/hbox_native.sh d9e3f0321 tests.test_bp_node_native: its certify
   step certified the changed book and the default profile's 82 books above it
   (all 83 passed; bp-primary 8.74 s at 8 jobs with the box at load 12, of it
-  5.4 s the two new encapsulates; manifest planning/evidence/manifests/hbox-certify-20260926T155415Z-2417777.json, bp-primary 8.83 s wall; the books there over 10 s, bp-node-forward-plan 11.2 s and bp-fragment-sweep 10.4 s, are unchanged by this lane).
+  5.4 s the two new encapsulates; manifest planning/evidence/manifests/certify-20260926T155415Z-2417777.json, bp-primary 8.83 s wall; the books there over 10 s, bp-node-forward-plan 11.2 s and bp-fragment-sweep 10.4 s, are unchanged by this lane).
 - tests.test_bp_node_native on the lane's developer image
   (fn-host-developer.core 61fe6a44...): OK (27 ran, 0 skipped); run.log status 0;
   log SHA-256 62470c343abfd3ebb75e0e6a2958f3d8287c95e52fe83c3dfecd1d20230d24e8
