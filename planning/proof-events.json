@@ -7008,6 +7008,35 @@
           "name": "fn-inj-decide-ignores-the-listing"
         }
       ]
+    },
+    {
+      "id": "PRF-197",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-listener-addresses-are-bindable-projections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncfg-listener-plan-ok-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncfg-listener-element-ok-is-a-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncfg-listener-element-classifies-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-ipv6-literal-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-config-ipv4-address-shape"
+        }
+      ]
     }
   ]
 }

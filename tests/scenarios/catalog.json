@@ -3743,6 +3743,38 @@
         "log": "planning/evidence/usenet-headers-2026-09-26-native.log",
         "record": "planning/evidence/usenet-headers-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-126",
+      "title": "A node listens on [::1] and on an IPv4 address at once from one [listener] host list, a TLS client reaches each, and a wildcard, mapped or duplicate address is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_listener_v6",
+        "cases": [
+          "test_every_address_serves_plain_and_implicit_tls",
+          "test_refusals_are_named_before_any_listener"
+        ],
+        "native": true,
+        "log": "planning/evidence/listener-v6-2026-09-26/native-listener-v6-r2.log",
+        "record": "planning/evidence/listener-v6-2026-09-26.md"
+      },
+      "requirements": [
+        "NNT-041"
+      ],
+      "steps": [
+        "fn.toml [listener] host = \"[::1], 127.0.0.1\" with tls_cert, tls_key and tls_port; start the node on a copy with loopback paths.",
+        "Connect over implicit TLS to [::1]:TLS_PORT and to 127.0.0.1:TLS_PORT; each answers the RFC 3977 greeting and CAPABILITIES.",
+        "Replace host with \"::\", \"::ffff:127.0.0.1\" and \"::1,[::1]\" in turn: the operator's load refuses with listener-unspecified, listener-mapped and listener-duplicate."
+      ],
+      "evidence": [
+        "tests/acl2/native-config-tests.lisp",
+        "tests/test_native_listener_v6.py"
+      ],
+      "expected": [
+        "Both implicit-TLS connections answer 200 or 201 and a CAPABILITIES list; the owner prints LISTENING and LISTENING-TLS once each and binds four sockets (ss -ltn shows [::1] and 127.0.0.1 on both ports).",
+        "Each refused host is (:refused :listener-unspecified), (:refused :listener-mapped) and (:refused :listener-duplicate) at load; no store is opened."
+      ]
     }
   ]
 }
