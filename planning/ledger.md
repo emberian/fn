@@ -14,9 +14,9 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 1130 |
 | Books inside the root closure | 1158 |
 | `defthm` and `defthmd` events | 17232 |
-| `defun` events | 11922 |
+| `defun` events | 11924 |
 | Functions with verified guards | 2414 |
-| Functions declared `:verify-guards nil` and never verified | 1181 |
+| Functions declared `:verify-guards nil` and never verified | 1183 |
 | Functions left at the default with an explicit guard | 6577 |
 | Functions left at the default with no guard | 1750 |
 | `assert-event` checks | 17118 |
@@ -960,7 +960,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 46 | 5 | 0 |
 | `tests/acl2/consumer-owner-index-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 2 | 0 |
-| `tests/acl2/consumer-owner-local-progress-tests.lisp` | root | 2 | 9 | 0/1/0/8 | 46 | 9 | 0 |
+| `tests/acl2/consumer-owner-local-progress-tests.lisp` | root | 2 | 10 | 0/2/0/8 | 46 | 9 | 0 |
 | `tests/acl2/consumer-owner-local-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 37 | 1 | 0 |
 | `tests/acl2/consumer-poll-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
@@ -1003,7 +1003,7 @@ that `make certify` requests.
 | `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 0 | 7 | 0 |
 | `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `tests/acl2/held-rows-tests.lisp` | root | 0 | 17 | 0/17/0/0 | 9 | 0 | 0 |
-| `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 30 | 1 | 0 |
+| `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
 | `tests/acl2/hybrid-carrier-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 4 | 0 |
 | `tests/acl2/hybrid-lifecycle-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 2 | 0 |
 | `tests/acl2/hybrid-lifecycle-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |

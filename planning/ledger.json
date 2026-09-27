@@ -1138,14 +1138,14 @@
     "books_in_root_closure": 1158,
     "roots": 1130,
     "theorems": 17232,
-    "functions": 11922,
+    "functions": 11924,
     "assert_events": 17118,
     "must_fails": 2062,
     "prover_refusals": 0,
     "encapsulates": 87,
     "guards": {
       "verified": 2414,
-      "declared-off": 1181,
+      "declared-off": 1183,
       "default-guarded": 6577,
       "default-unguarded": 1750
     },
@@ -25687,10 +25687,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 2,
-      "functions": 9,
+      "functions": 10,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 2,
         "default-guarded": 0,
         "default-unguarded": 8
       },
@@ -25698,7 +25698,7 @@
       "assert_events": 46,
       "must_fails": 9,
       "prover_refusals": 0,
-      "defconsts": 24,
+      "defconsts": 23,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -26898,10 +26898,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 3,
+        "declared-off": 4,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -26909,7 +26909,7 @@
       "assert_events": 30,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 1,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
