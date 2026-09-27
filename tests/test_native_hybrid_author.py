@@ -386,13 +386,15 @@ class NativeHybridAuthorTest(unittest.TestCase):
                     stream.write(b"HDR :fn-verified <codex003-v2@example.invalid>\r\n")
                     hdr = [stream.readline(), stream.readline(), stream.readline()]
         finally:
-            self.stop_owner(owner)
+            diagnostic = stop_and_diagnostics(owner, timeout=60)
+            self.assertEqual(owner.returncode, 0, diagnostic)
         print("NATIVE-CODEX003-WITNESS " + repr(
             {"first": first, "again": again, "beyond": beyond,
              "article": status[:4], "stored": len(returned), "hdr": hdr}))
         self.assertEqual(first, (0, ["accepted hybrid-author ACCEPTED"]))
         self.assertEqual(again, (0, ["accepted hybrid-author DUPLICATE"]))
-        self.assertEqual(beyond, (1, ["refused hybrid-author ARTICLE-EXCEEDS-PROFILE-BOUND"]))
+        self.assertEqual(beyond, (1, ["refused hybrid-author ARTICLE-EXCEEDS-PROFILE-BOUND"]),
+                         diagnostic[-3000:] + self.service_log.read_text()[-3000:])
         self.assertTrue(status.startswith(b"220 "), status)
         self.assertTrue(bytes(returned).endswith(large.read_bytes()))
         self.assertIn(b"FN-Authorship: ", bytes(returned)[:200])
