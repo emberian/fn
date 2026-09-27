@@ -1810,12 +1810,14 @@ it. `fn-bpaj-dispatch-fast`, which `fn-bprj-request-action`
 (`host/bp-receipt-journal-host.lisp`) calls for `fnn-bpapp-action`
 (`host/native/bp-app.lisp`), therefore binds the committed signed record:
 
-- `fn-bpaj-dispatch-never-resubmits-a-stored-article`: once the Store's
+- `fn-bpaj-dispatch-never-resubmits-under-index`: under R (the history
+  stobj is the Store's history, `books/history-columns-relation.lisp`, which
+  the host establishes before each read), once the Store's
   article records hold an article record with the Message-ID the dispatcher
   reads, it never answers `(:submit)`. The first durable commit is the only
   submission; a repeated delivery of the same signed record is the D25
   duplicate (bound, never refused as `history`).
-- `fn-bpaj-dispatch-binds-the-stores-own-record`: what it binds is the
+- `fn-bpaj-dispatch-binds-the-stores-own-record-under-index`: under R, what it binds is the
   article record of an event of the Store's own history, for that
   Message-ID, accepted by the receiver's Store check; when the event is a
   signed composite, the composite binds its verdict to exactly that record
@@ -1838,12 +1840,11 @@ the Store the host dispatches over: `fnn-bpapp-accept-locked` binds the
 installed owner's Store before every action, and that Store is
 `fn-osi-live-store` of the open `fn-owner-recover-extended` runs and the
 owner transitions the host has installed since
-(`books/owner-store-indexed.lisp`). The index relation `fn-ceis-indexedp`
-(the index is the index of the committed history) is a theorem of that
-Store (`fn-osi-live-owner-store-is-indexed`: established at every open path,
-preserved by every installed owner transition; the kernel crash, which the
-host never issues, is the one Store event that breaks it until recovery
-rebuilds it), not a hypothesis of the keystones.
+(`books/owner-store-indexed.lisp`). Since lane history-columns-3 the
+store node's event index is retired: the lookups read the history stobj,
+and the premise is R (`fn-hist-of-storep`, `books/history-columns-relation.lisp`),
+which the host establishes immediately before each read
+(`fn-host-hist-sync`, `host/store-node-host.lisp`; `fn-hist-refresh-is-the-history`).
 
 #### 4.9.3 The contact cursor: a drain examines each job once (2026-09-27, lane bp-cursors, PRF-226)
 

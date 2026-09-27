@@ -480,8 +480,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
-	books/owner-store-indexed \
-	tests/acl2/owner-store-indexed-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -1033,6 +1031,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
+	books/history-columns-relation \
+	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
@@ -1040,8 +1040,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snapshot-segments-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
-	books/consumer-event-index-store-invariants \
-	tests/acl2/consumer-event-index-store-invariants-tests \
 	books/consumer-owner-local \
 	tests/acl2/consumer-owner-local-tests \
 	books/consumer-owner-local-progress \

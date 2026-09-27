@@ -60,11 +60,11 @@
 
 ; The poll a wait runs: a bound wait (SECRET, the account's password) is a
 ; bound poll, a plain wait (no SECRET) a plain poll.
-(defun fn-cwait-poll (oc acfg consumer secret)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-cwait-poll (oc acfg consumer secret fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
   (if secret
-      (fn-cbind-poll oc acfg consumer secret)
-    (fn-cbind-plain-poll oc consumer)))
+      (fn-cbind-poll oc acfg consumer secret fn-hist)
+    (fn-cbind-plain-poll oc consumer fn-hist)))
 
 ; An accepted page that carries no event: the poll's answer when nothing
 ; the consumer can read lies past its position.
@@ -89,9 +89,9 @@
       (list :sleep (- (fn-cwait-deadline-ms seconds) elapsed))
     (list :answer answer)))
 
-(defun fn-cwait-step (oc acfg consumer secret elapsed seconds)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-cwait-decide (fn-cwait-poll oc acfg consumer secret) elapsed seconds))
+(defun fn-cwait-step (oc acfg consumer secret elapsed seconds fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
+  (fn-cwait-decide (fn-cwait-poll oc acfg consumer secret fn-hist) elapsed seconds))
 
 (local
  (defthm fn-cwait-empty-pagep-is-a-list
@@ -104,8 +104,8 @@
 ; only at or after the deadline (the timeout answers the empty page), and at
 ; or after the deadline every step answers.
 (defthm fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page
-  (let ((r (fn-cwait-step oc acfg consumer secret elapsed seconds))
-        (p (fn-cwait-poll oc acfg consumer secret)))
+  (let ((r (fn-cwait-step oc acfg consumer secret elapsed seconds fn-hist))
+        (p (fn-cwait-poll oc acfg consumer secret fn-hist)))
     (and (or (equal r (list :answer p))
              (and (equal (car r) :sleep)
                   (fn-cwait-empty-pagep p)
@@ -131,14 +131,14 @@
 ; admission, each later one after a commit signal or the sleep's end).  It
 ; answers the first step that answers, or nil when the observations run
 ; out before one does.
-(defun fn-cwait-run (observations acfg consumer secret seconds)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-cwait-run (observations acfg consumer secret seconds fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
   (if (consp observations)
       (let* ((o (car observations))
-             (r (fn-cwait-step (car o) acfg consumer secret (cdr o) seconds)))
+             (r (fn-cwait-step (car o) acfg consumer secret (cdr o) seconds fn-hist)))
         (if (equal (car r) :answer)
             (list :answer (cadr r) (car o) (cdr o))
-          (fn-cwait-run (cdr observations) acfg consumer secret seconds)))
+          (fn-cwait-run (cdr observations) acfg consumer secret seconds fn-hist)))
     nil))
 
 ; KEYSTONE 2 (the loop).  When the wait answers, it answers the poll of the
@@ -147,16 +147,16 @@
 ; `fn-cwait-run-sleeps-only-over-empty-pages'); and an empty answer is
 ; given only at or after the deadline.
 (defthm fn-cwait-run-answers-the-poll-at-its-return-point
-  (let ((r (fn-cwait-run observations acfg consumer secret seconds)))
+  (let ((r (fn-cwait-run observations acfg consumer secret seconds fn-hist)))
     (implies r
              (and (equal (car r) :answer)
                   (equal (cadr r)
-                         (fn-cwait-poll (caddr r) acfg consumer secret))
+                         (fn-cwait-poll (caddr r) acfg consumer secret fn-hist))
                   (implies (and (natp (cadddr r))
                                 (fn-cwait-empty-pagep (cadr r)))
                            (<= (fn-cwait-deadline-ms seconds) (cadddr r))))))
   :rule-classes nil
-  :hints (("Goal" :induct (fn-cwait-run observations acfg consumer secret seconds)
+  :hints (("Goal" :induct (fn-cwait-run observations acfg consumer secret seconds fn-hist)
            :in-theory (e/d (fn-cwait-run fn-cwait-step fn-cwait-decide)
                            (fn-cwait-poll fn-cwait-empty-pagep)))))
 
@@ -164,15 +164,15 @@
   (implies (not (equal (car (fn-cwait-step (car (car observations)) acfg
                                            consumer secret
                                            (cdr (car observations))
-                                           seconds))
+                                           seconds fn-hist))
                        :answer))
            (and (fn-cwait-empty-pagep
-                 (fn-cwait-poll (car (car observations)) acfg consumer secret))
+                 (fn-cwait-poll (car (car observations)) acfg consumer secret fn-hist))
                 (natp (cdr (car observations)))
                 (< (cdr (car observations)) (fn-cwait-deadline-ms seconds))
-                (equal (fn-cwait-run observations acfg consumer secret seconds)
+                (equal (fn-cwait-run observations acfg consumer secret seconds fn-hist)
                        (fn-cwait-run (cdr observations) acfg consumer secret
-                                     seconds))))
+                                     seconds fn-hist))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cwait-run fn-cwait-step fn-cwait-decide)
                                   (fn-cwait-poll fn-cwait-empty-pagep)))))
@@ -206,15 +206,15 @@
 ; the owner sealed since the one before it, so the arena each poll reads is
 ; the arena at that observation.
 
-(defun fn-cwait-poll-over (oc acfg consumer secret fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+(defun fn-cwait-poll-over (oc acfg consumer secret fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
   (if secret
-      (fn-cbind-poll-over oc acfg consumer secret fn-arena)
-    (fn-cbind-plain-poll-over oc consumer fn-arena)))
+      (fn-cbind-poll-over oc acfg consumer secret fn-arena fn-hist)
+    (fn-cbind-plain-poll-over oc consumer fn-arena fn-hist)))
 
-(defun fn-cwait-step-over (oc acfg consumer secret elapsed seconds fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-cwait-decide (fn-cwait-poll-over oc acfg consumer secret fn-arena)
+(defun fn-cwait-step-over (oc acfg consumer secret elapsed seconds fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
+  (fn-cwait-decide (fn-cwait-poll-over oc acfg consumer secret fn-arena fn-hist)
                    elapsed seconds))
 
 (verify-guards fn-cwait-poll-over)
@@ -223,9 +223,9 @@
 ; The bridge: on a selection that is no held row the step over the arena is
 ; the step above.
 (defthm fn-cwait-step-over-is-step-unless-a-held-row
-  (implies (not (fn-held-p (caddr (fn-col-poll (fn-ocfg-owner oc) consumer))))
-           (equal (fn-cwait-step-over oc acfg consumer secret elapsed seconds fn-arena)
-                  (fn-cwait-step oc acfg consumer secret elapsed seconds)))
+  (implies (not (fn-held-p (caddr (fn-col-poll (fn-ocfg-owner oc) consumer fn-hist))))
+           (equal (fn-cwait-step-over oc acfg consumer secret elapsed seconds fn-arena fn-hist)
+                  (fn-cwait-step oc acfg consumer secret elapsed seconds fn-hist)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cbind-poll-over-is-poll-unless-a-held-row))
            :in-theory (e/d (fn-cwait-step-over fn-cwait-step
@@ -237,8 +237,8 @@
 ; poll over the arena at that moment, or sleeps only on an accepted empty
 ; page before the deadline, for a positive time that does not pass it.
 (defthm fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page
-  (let ((r (fn-cwait-step-over oc acfg consumer secret elapsed seconds fn-arena))
-        (p (fn-cwait-poll-over oc acfg consumer secret fn-arena)))
+  (let ((r (fn-cwait-step-over oc acfg consumer secret elapsed seconds fn-arena fn-hist))
+        (p (fn-cwait-poll-over oc acfg consumer secret fn-arena fn-hist)))
     (and (or (equal r (list :answer p))
              (and (equal (car r) :sleep)
                   (fn-cwait-empty-pagep p)
@@ -274,17 +274,17 @@
         (fn-cwait-seal-all (cdr seals) fn-arena))
     fn-arena))
 
-(defun fn-cwait-run-over (observations acfg consumer secret seconds fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+(defun fn-cwait-run-over (observations acfg consumer secret seconds fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
   (if (consp observations)
       (let* ((o (car observations))
              (fn-arena (fn-cwait-seal-all (cddr o) fn-arena)))
         (let ((r (fn-cwait-step-over (car o) acfg consumer secret (cadr o) seconds
-                                     fn-arena)))
+                                     fn-arena fn-hist)))
           (if (equal (car r) :answer)
               (mv (list :answer (cadr r) (car o) (cadr o)) fn-arena)
             (fn-cwait-run-over (cdr observations) acfg consumer secret seconds
-                               fn-arena))))
+                               fn-arena fn-hist))))
     (mv nil fn-arena)))
 
 ; KEYSTONE 2 over the arena (the loop the host runs over fn-cwait-step-over).
@@ -293,19 +293,19 @@
 ; there (the run's returned arena); and an empty answer is given only at or
 ; after the deadline.
 (defthm fn-cwait-run-over-answers-the-poll-at-its-return-point
-  (let* ((run (fn-cwait-run-over observations acfg consumer secret seconds fn-arena))
+  (let* ((run (fn-cwait-run-over observations acfg consumer secret seconds fn-arena fn-hist))
          (r (mv-nth 0 run)))
     (implies r
              (and (equal (car r) :answer)
                   (equal (cadr r)
                          (fn-cwait-poll-over (caddr r) acfg consumer secret
-                                             (mv-nth 1 run)))
+                                             (mv-nth 1 run) fn-hist))
                   (implies (and (natp (cadddr r))
                                 (fn-cwait-empty-pagep (cadr r)))
                            (<= (fn-cwait-deadline-ms seconds) (cadddr r))))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-cwait-run-over observations acfg consumer secret seconds
-                                             fn-arena)
+                                             fn-arena fn-hist)
            :in-theory (e/d (fn-cwait-run-over fn-cwait-step-over fn-cwait-decide)
                            (fn-cwait-poll-over fn-cwait-empty-pagep
                             fn-cwait-seal-all)))))
@@ -318,16 +318,16 @@
          (a (fn-cwait-seal-all (cddr o) fn-arena)))
     (implies (and (consp observations)
                   (not (equal (car (fn-cwait-step-over (car o) acfg consumer secret
-                                                       (cadr o) seconds a))
+                                                       (cadr o) seconds a fn-hist))
                               :answer)))
              (and (fn-cwait-empty-pagep
-                   (fn-cwait-poll-over (car o) acfg consumer secret a))
+                   (fn-cwait-poll-over (car o) acfg consumer secret a fn-hist))
                   (natp (cadr o))
                   (< (cadr o) (fn-cwait-deadline-ms seconds))
                   (equal (fn-cwait-run-over observations acfg consumer secret seconds
-                                            fn-arena)
+                                            fn-arena fn-hist)
                          (fn-cwait-run-over (cdr observations) acfg consumer secret
-                                            seconds a)))))
+                                            seconds a fn-hist)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cwait-run-over fn-cwait-step-over fn-cwait-decide)
                                   (fn-cwait-poll-over fn-cwait-empty-pagep

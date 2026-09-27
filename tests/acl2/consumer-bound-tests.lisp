@@ -15,6 +15,56 @@
 (include-book "must-fail-checked")
 (include-book "../../books/consumer-bound")
 
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-cbind-plain-poll-h (oc consumer)
+  ; fn-cbind-plain-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-cbind-plain-poll oc consumer fn-hist) fn-hist))
+      ans)))
+(defun fn-cbind-plain-poll-over-h (oc consumer fn-arena)
+  ; fn-cbind-plain-poll-over over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-cbind-plain-poll-over oc consumer fn-arena fn-hist) fn-hist))
+      ans)))
+(defun fn-cbind-poll-h (oc acfg consumer secret)
+  ; fn-cbind-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-cbind-poll oc acfg consumer secret fn-hist) fn-hist))
+      ans)))
+(defun fn-cbind-poll-over-h (oc acfg consumer secret fn-arena)
+  ; fn-cbind-poll-over over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-cbind-poll-over oc acfg consumer secret fn-arena fn-hist) fn-hist))
+      ans)))
+(defun fn-col-poll-h (o consumer)
+  ; fn-col-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-col-poll o consumer fn-hist) fn-hist))
+      ans)))
+(defun fn-col-poll-report-over-h (o consumer fn-arena)
+  ; fn-col-poll-report-over over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-col-poll-report-over o consumer fn-arena fn-hist) fn-hist))
+      ans)))
+
 ; --- the Store -------------------------------------------------------------
 (defun cbt-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -165,7 +215,7 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
       (let ((fn-arena (cbt-arena fn-arena)))
-        (mv (fn-cbind-poll-over oc acfg id secret fn-arena) fn-arena))
+        (mv (fn-cbind-poll-over-h oc acfg id secret fn-arena) fn-arena))
       r)))
 (defun cbt-poll (oc id secret) (cbt-poll-acfg oc *cbt-acfg* id secret))
 (defun cbt-plain (oc id)
@@ -173,7 +223,7 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
       (let ((fn-arena (cbt-arena fn-arena)))
-        (mv (fn-cbind-plain-poll-over oc id fn-arena) fn-arena))
+        (mv (fn-cbind-plain-poll-over-h oc id fn-arena) fn-arena))
       r)))
 ; The consumer poll's own report over the same arena.
 (defun cbt-report (o id)
@@ -181,19 +231,19 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
       (let ((fn-arena (cbt-arena fn-arena)))
-        (mv (fn-col-poll-report-over o id fn-arena) fn-arena))
+        (mv (fn-col-poll-report-over-h o id fn-arena) fn-arena))
       r)))
 (defun cbt-msgid (poll)
   (fn-record-msgid (fn-col-poll-article (caddr poll))))
 
 ; The operator's consumer poll selects the private article for "1".
-(defconst *cbt-d1* (fn-col-poll *cbt-o* *cbt-c1*))
+(defconst *cbt-d1* (fn-col-poll-h *cbt-o* *cbt-c1*))
 (assert-event (equal (car *cbt-d1*) :poll))
 (assert-event (equal (cbt-msgid *cbt-d1*) "<secret@fn.test>"))
 
 ; "2" (bob, fn.public): served its article, exactly the consumer poll.
 (defun cbt-r2 () (cbt-poll *cbt-oc* *cbt-c2* *cbt-secret*))
-(defconst *cbt-d2* (fn-col-poll *cbt-o* *cbt-c2*))
+(defconst *cbt-d2* (fn-col-poll-h *cbt-o* *cbt-c2*))
 (assert-event (equal (car (cbt-r2)) :poll))
 (assert-event (equal (cbt-r2) (cbt-report *cbt-o* *cbt-c2*)))
 (assert-event (equal (cbt-msgid *cbt-d2*) "<public@fn.test>"))
@@ -204,20 +254,20 @@
 ; The poll that reads no arena refuses a held row (:report): the hypothesis
 ; of fn-cbind-poll-over-is-poll-unless-a-held-row fails, and so does its
 ; conclusion.
-(assert-event (equal (fn-cbind-poll *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-secret*)
+(assert-event (equal (fn-cbind-poll-h *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-secret*)
                      '(:refused :report)))
 (assert-event (not (equal (cbt-r2)
-                          (fn-cbind-poll *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-secret*))))
+                          (fn-cbind-poll-h *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-secret*))))
 ; ... and where the selection is no held row (an unregistered consumer's
 ; refusal selects nothing) the two polls agree.
-(assert-event (not (fn-held-p (caddr (fn-col-poll *cbt-o* '(57))))))
-(assert-event (equal (cbt-plain *cbt-oc* '(57)) (fn-cbind-plain-poll *cbt-oc* '(57))))
+(assert-event (not (fn-held-p (caddr (fn-col-poll-h *cbt-o* '(57))))))
+(assert-event (equal (cbt-plain *cbt-oc* '(57)) (fn-cbind-plain-poll-h *cbt-oc* '(57))))
 ; "1" (bob, fn.private.x): refused :access, whatever the store holds.
 (assert-event (equal (cbt-poll *cbt-oc* *cbt-c1* *cbt-secret*) '(:refused :access)))
 ; "4" (alice, fn.private.x): served the private article.
 (defun cbt-r4 () (cbt-poll *cbt-oc* *cbt-c4* *cbt-secret*))
 (assert-event (equal (cbt-r4) (cbt-report *cbt-o* *cbt-c4*)))
-(assert-event (equal (cbt-msgid (fn-col-poll *cbt-o* *cbt-c4*)) "<secret@fn.test>"))
+(assert-event (equal (cbt-msgid (fn-col-poll-h *cbt-o* *cbt-c4*)) "<secret@fn.test>"))
 ; A wrong password, an unbound consumer, an unregistered bound consumer.
 (assert-event (equal (cbt-poll *cbt-oc* *cbt-c2* *cbt-wrong*) '(:refused :credential)))
 (assert-event (equal (cbt-poll *cbt-oc* *cbt-c3* *cbt-secret*) '(:refused :unbound)))
@@ -255,7 +305,7 @@
 ; operator reads everything).  Bound "2": refused :bound.
 (assert-event (equal (cbt-plain *cbt-oc* *cbt-c3*)
                      (cbt-report *cbt-o* *cbt-c3*)))
-(assert-event (equal (cbt-msgid (fn-col-poll *cbt-o* *cbt-c3*)) "<secret@fn.test>"))
+(assert-event (equal (cbt-msgid (fn-col-poll-h *cbt-o* *cbt-c3*)) "<secret@fn.test>"))
 (assert-event (equal (cbt-plain *cbt-oc* *cbt-c2*) '(:refused :bound)))
 ; With no binding in the configuration, every plain answer is today's.
 (assert-event (equal (cbt-plain *cbt-oc-none* *cbt-c2*)
@@ -299,7 +349,7 @@
 (defun cbt-k1 (oc acfg consumer secret)
   (declare (xargs :verify-guards nil))
   (let ((r (cbt-poll-acfg oc acfg consumer secret))
-        (d (fn-col-poll (fn-ocfg-owner oc) consumer))
+        (d (fn-col-poll-h (fn-ocfg-owner oc) consumer))
         (login (fn-cbind-config-login oc consumer)))
     (and login
          (fn-cbind-authenticp oc acfg login secret)
@@ -312,7 +362,7 @@
 ; Reachable positive witness: the hypothesis holds, a nonempty page, and
 ; the complete conclusion.
 (assert-event (equal (car (cbt-poll *cbt-oc* *cbt-c2* *cbt-secret*)) :poll))
-(assert-event (caddr (fn-col-poll *cbt-o* *cbt-c2*)))
+(assert-event (caddr (fn-col-poll-h *cbt-o* *cbt-c2*)))
 (assert-event (cbt-k1 *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-secret*))
 ; Without the hypothesis (a page): "1" under bob is refused, and the
 ; conclusion fails -- its selected event is not readable under bob's rule.

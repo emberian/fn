@@ -479,15 +479,14 @@
 ; about fn-sbud-prepare is a theorem about the host's call.
 (defthm fn-pidx-sbud-prepare-is-pcar-sbud-prepare
   (implies (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (fn-ceis-indexedp (fn-sbud-oc-store oc)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
            (equal (fn-pidx-sbud-prepare oc record budget)
                   (fn-pcar-sbud-prepare oc record budget)))
   :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pcar-sbud-prepare
                                    fn-pidx-view-okp fn-scar-view-indexedp)
                                   (fn-pcar-opc-prepare fn-sbud-admitp
                                    fn-sbud-used fn-sbud-count fn-ocl-view-visiblep
-                                   fn-midx-correspondencep fn-ceis-indexedp
+                                   fn-midx-correspondencep
                                    fn-sbud-oc-store
                                    fn-pcar-sbud-prepare-is-sbud-prepare))
            :use ((:instance fn-sbud-count-is-used (s (fn-sbud-oc-store oc)))))))

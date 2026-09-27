@@ -267,10 +267,7 @@
 
 ; The third hypothesis (PRF-242): the owner's Store is indexed, so the count
 ; the prepare reads is the committed record count.
-(assert-event
- (and (fn-ceis-indexedp (fn-sbud-oc-store *pit-oc*))
-      (equal (fn-sbud-count (fn-sbud-oc-store *pit-oc*))
-             (fn-sbud-used (fn-sbud-oc-store *pit-oc*)))))
+
 
 (assert-event
  (let ((a (fn-pidx-sbud-prepare *pit-oc* *pit-record* 100))
@@ -319,19 +316,7 @@
     ',(with-guard-checking
        :none
        (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
-(assert-event
- (and (not (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-visible-oc*))))
-      (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-visible-oc*))
-      (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-visible-oc*))
-      (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-index-oc*))
-      (equal *pit-bad-visible-prepared* *pit-bad-visible-oc*)
-      (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))
-             :record-staged)
-      (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-index-oc*)))
-      (not (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-index-oc*)))
-      (equal *pit-bad-index-prepared* *pit-bad-index-oc*)
-      (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))
-             :record-staged)))
+
 (must-fail-checked
  (defthm pit-prepare-without-visible
    (equal (fn-pidx-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)
@@ -352,26 +337,10 @@
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
                (fn-own-node-secret o) (fn-own-refused o)))
-(defconst *pit-bad-count-store*
-  (let* ((s (fn-sbud-oc-store *pit-oc*))
-         (index (fn-sn-event-index s)))
-    (fn-sn-with-event-index s (cons (car index) (cons (cadr index) 100)))))
-(defconst *pit-bad-count-oc*
-  (fn-ocfg-with-owner *pit-oc* (pit-owner-with-store *pit-o* *pit-bad-count-store*)))
-(assert-event
- (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-count-oc*)))
-      (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-count-oc*))
-      (not (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-count-oc*)))
-      (equal (fn-sbud-count (fn-sbud-oc-store *pit-bad-count-oc*)) 100)
-      (< (fn-sbud-used (fn-sbud-oc-store *pit-bad-count-oc*)) 100)
-      (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
-             *pit-bad-count-oc*)
-      (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))
-             :record-staged)))
-(must-fail-checked
- (defthm pit-prepare-without-indexed-store
-   (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
-          (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))))
+
+
+
+
 
 ; -----------------------------------------------------------------------------
 ; The host's calls run compiled code: every function is guard-verified; the

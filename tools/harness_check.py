@@ -781,6 +781,8 @@ RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
 # filled from the tree's formals by raw_arity_findings.
 ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action"}
 ARENA_ENTRIES: dict[str, int] = {}
+# The arena dispatchers (+2 above: the arena and state) pass the whole run.
+ARENA_RUN_DISPATCHERS = {"fnn-core-arena-state", "fnn-owner-feed-arena-step"}
 
 RAW_LAMBDA_KEYWORDS = {"&optional", "&rest", "&body", "&key", "&aux",
                        "&allow-other-keys", "&whole", "&environment"}
@@ -924,7 +926,12 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
             found.append(("'" + callee,
                           len(form) - 2 + RAW_DISPATCHERS[name]
                           + (ARENA_ENTRIES.get(callee, 0)
-                             if name in ARENA_STATE_DISPATCHERS else 0)))
+                             if name in ARENA_STATE_DISPATCHERS else 0)
+                          # an arena dispatcher counts the arena in its 2;
+                          # it passes the entry's whole trailing run
+                          # (fnn-arena-then-state), so add the rest of it
+                          + (max(ARENA_ENTRIES.get(callee, 1) - 1, 0)
+                             if name in ARENA_RUN_DISPATCHERS else 0)))
     if name not in shadowed and not name.startswith((":", "&")):
         found.append((name, len(form) - 1))
     walk(form[1:])

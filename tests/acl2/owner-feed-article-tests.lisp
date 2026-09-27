@@ -8,6 +8,24 @@
 (include-book "../../books/owner-feed-article")
 (include-book "acceptance-payload-ref-tests")
 
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-apr-feed-article-h (o msgid)
+  ; fn-apr-feed-article over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-apr-feed-article o msgid fn-hist) fn-hist))
+      ans)))
+(defun fn-ofa-feed-article-h (o msgid fn-arena)
+  ; fn-ofa-feed-article over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-ofa-feed-article o msgid fn-arena fn-hist) fn-hist))
+      ans)))
+
 (defconst *ofa-t-o* (cons *apr-t-s* nil))
 (defconst *ofa-t-msgid-1* (fn-record-string-octets "<apr-1@example.invalid>"))
 (defconst *ofa-t-msgid-9* (fn-record-string-octets "<apr-9@example.invalid>"))
@@ -23,7 +41,7 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
       (let ((fn-arena (ofa-t-arena fn-arena)))
-        (mv (fn-ofa-feed-article o msgid fn-arena) fn-arena))
+        (mv (fn-ofa-feed-article-h o msgid fn-arena) fn-arena))
       r)))
 
 ; The keystone's right side, executably: fn-ofa-wire-feed-article's body (a
@@ -54,25 +72,34 @@
 (assert-event (equal (ofa-t-wire *ofa-t-o* *ofa-t-msgid-9*) nil))
 ; The defect this replaces: the payload position the host handed the port
 ; before the fix is the HANDLE, not the bytes.
-(assert-event (equal (fn-apr-feed-article *ofa-t-o* *ofa-t-msgid-1*) 1))
-(assert-event (not (equal (fn-apr-feed-article *ofa-t-o* *ofa-t-msgid-1*)
+(assert-event (equal (fn-apr-feed-article-h *ofa-t-o* *ofa-t-msgid-1*) 1))
+(assert-event (not (equal (fn-apr-feed-article-h *ofa-t-o* *ofa-t-msgid-1*)
                           (ofa-t-wire *ofa-t-o* *ofa-t-msgid-1*))))
 
-; Hypothesis removal: fn-apr-store-at-restp.  The same Store with its event
-; index emptied (acceptance-payload-ref-tests' *apr-t-unindexed*): the
-; omitted hypothesis fails and so does the conclusion (the index finds no
-; row; the acceptance field still holds the article).
-(defconst *ofa-t-unindexed* (cons *apr-t-unindexed* nil))
-(assert-event (not (fn-apr-store-at-restp (fn-own-store *ofa-t-unindexed*))))
-(assert-event (equal (ofa-t-article *ofa-t-unindexed* *ofa-t-msgid-1*) nil))
-(assert-event (equal (ofa-t-wire *ofa-t-unindexed* *ofa-t-msgid-1*) '(89 111 13 10)))
-(assert-event (not (equal (ofa-t-article *ofa-t-unindexed* *ofa-t-msgid-1*)
-                          (ofa-t-wire *ofa-t-unindexed* *ofa-t-msgid-1*))))
+; Hypothesis removal: R (lane history-columns-3; the event index is retired).
+; The same owner at rest, read through an EMPTY history stobj: R fails and so
+; does the conclusion (the stobj finds no row; the acceptance field still
+; holds the article).
+(defun ofa-t-article-nohist (o msgid)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (ofa-t-arena fn-arena)))
+        (with-local-stobj fn-hist
+          (mv-let (a fn-hist)
+            (mv (fn-ofa-feed-article o msgid fn-arena fn-hist) fn-hist)
+            (mv a fn-arena))))
+      r)))
+(assert-event (fn-apr-store-at-restp (fn-own-store *ofa-t-o*)))
+(assert-event (consp (fn-sf-records (fn-sn-files (fn-own-store *ofa-t-o*)))))
+(assert-event (equal (ofa-t-article-nohist *ofa-t-o* *ofa-t-msgid-1*) nil))
+(assert-event (not (equal (ofa-t-article-nohist *ofa-t-o* *ofa-t-msgid-1*)
+                          (ofa-t-wire *ofa-t-o* *ofa-t-msgid-1*))))
 
 ; fn-ofa-feed-article-is-an-octet-list: the witness arena is an arena
 ; (fn-arena-p) and the bytes are octets; the handle is not.
 (assert-event (fn-cbor-octet-listp (ofa-t-article *ofa-t-o* *ofa-t-msgid-1*)))
-(assert-event (not (fn-cbor-octet-listp (fn-apr-feed-article *ofa-t-o* *ofa-t-msgid-1*))))
+(assert-event (not (fn-cbor-octet-listp (fn-apr-feed-article-h *ofa-t-o* *ofa-t-msgid-1*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-ofa-publication-command-words-have-octets.

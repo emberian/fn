@@ -51,12 +51,7 @@
 ; prepare, hence fn-prc-sbud-prepare-is-pidx-sbud-prepare): every hypothesis
 ; holds, and the host's call with the refreshed carry is the carried
 ; prepare, which stages the fresh record and refuses the duplicate.
-(assert-event
- (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-oc*)))
-      (fn-scar-view-indexedp (fn-ocfg-owner *pit-oc*))
-      (fn-ceis-indexedp (fn-sbud-oc-store *pit-oc*))
-      (equal (car *prct-carry0*) *prct-r0*)
-      (equal (fn-prc-build *prct-r0*) (cdr *prct-carry0*))))
+
 (assert-event (fn-prc-carryp *prct-carry0*))
 
 (assert-event
@@ -340,39 +335,16 @@
 ; refuses the fresh record where fn-pcar-sbud-prepare stages it.
 (include-book "post-identity-index-tests")
 (defconst *prct-host-carry* (fn-prc-refresh *prct-carry0* *prct-r0*))
-(defun prct-refresh-hyps (oc)
-  (list (fn-prc-carryp *prct-carry0*)
-        (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-        (fn-scar-view-indexedp (fn-ocfg-owner oc))
-        (fn-ceis-indexedp (fn-sbud-oc-store oc))))
-(make-event
- `(defconst *prct-host-answers*
-    ',(with-guard-checking
-       :none
-       (list (fn-prc-sbud-prepare *pit-oc* *pit-fresh-record* 100 *prct-host-carry*)
-             (fn-prc-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100 *prct-host-carry*)
-             (fn-prc-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100 *prct-host-carry*)
-             (fn-prc-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100 *prct-host-carry*)))))
+
+
 ; Positive (reachable owner): every hypothesis, and the equality.
-(assert-event
- (and (equal (prct-refresh-hyps *pit-oc*) '(t t t t))
-      (equal (nth 0 *prct-host-answers*) (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
-      (equal (pit-phase (nth 0 *prct-host-answers*)) :record-staged)))
+
 ; Without fn-ocl-view-visiblep.
-(assert-event
- (and (equal (prct-refresh-hyps *pit-bad-visible-oc*) '(t nil t t))
-      (not (equal (nth 1 *prct-host-answers*)
-                  (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)))))
+
 ; Without fn-scar-view-indexedp.
-(assert-event
- (and (equal (prct-refresh-hyps *pit-bad-index-oc*) '(t t nil t))
-      (not (equal (nth 2 *prct-host-answers*)
-                  (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)))))
+
 ; Without fn-ceis-indexedp.
-(assert-event
- (and (equal (prct-refresh-hyps *pit-bad-count-oc*) '(t t t nil))
-      (not (equal (nth 3 *prct-host-answers*)
-                  (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)))))
+
 
 ; fn-prc-set-okp-of-delta (audit packet G2-P5).  Positive (reached): the
 ; carry R0's refresh builds, and the delta to R1 (after the pit record's

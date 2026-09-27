@@ -51,10 +51,13 @@
  (defthm sco-t-without-topic-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 5) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
-(must-fail-checked
- (defthm sco-t-without-event-index-slot
-   (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 6) *sco-t-configs* 8 *sco-t-suffix*)
-          *sco-t-full*)))
+;; Lane history-columns-3: the open no longer installs the checkpoint's event
+;; index into the Store (field 13 retired), so dropping slot 6 leaves the open
+;; unchanged.  (The slot is still written: the schema-3 table writer reads it.)
+(defthm sco-t-event-index-slot-is-not-read-by-the-open
+  (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 6) *sco-t-configs* 8 *sco-t-suffix*)
+         *sco-t-full*)
+  :rule-classes nil)
 (must-fail-checked
  (defthm sco-t-without-identity-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 3) *sco-t-configs* 8 *sco-t-suffix*)
