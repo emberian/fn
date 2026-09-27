@@ -723,6 +723,29 @@
    "fn-x-step": [
     "docs/proof-style.md"
    ]
+  },
+  "PKT-838": {
+   "fn-bs-k0-step-inputp": [
+    "specs/crash-model-v2.md"
+   ],
+   "fnn-load-frontier": [
+    "specs/host.md"
+   ],
+   "fnn-transaction-name": [
+    "specs/host.md"
+   ],
+   "fnn-pack-extend-chain": [
+    "specs/storage.md"
+   ],
+   "fnn-pack-recover-records": [
+    "specs/storage.md"
+   ],
+   "fnn-pack-walk": [
+    "specs/storage.md"
+   ],
+   "fnn-pack-prefix-reclaim": [
+    "specs/checkpoint.md"
+   ]
   }
  }
 }

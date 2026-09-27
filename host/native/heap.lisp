@@ -187,32 +187,12 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                      (return nil))
                    (incf sum (sb-posix:stat-size entry)))))))))
 
-(defun fnn-heap-directory-count (path limit)
-  "The regular files in PATH (0 when it does not exist), or NIL."
-  (let ((st (fnn-lstat path)))
-    (cond ((null st) 0)
-          ((not (fnn-directory-p st)) nil)
-          (t (let ((count 0))
-               (dolist (name (fnn-list-directory-bounded path limit "history observation")
-                             count)
-                 (let ((entry (fnn-lstat (fnn-join path name))))
-                   (unless (and entry (fnn-regular-p entry))
-                     (return nil))
-                   (incf count))))))))
-
-;; (OCTETS . RECORDS): the history files' octets (below) and the transaction
-;; files' count, one record a file, which is what a full replay reads
-;; (books/heap-figure.lisp: the open's per-record term, lane
-;; reservation-after-flip); OCTETS alone when the count is not observed.
 (defun fnn-heap-history-observation (root profile)
   (let ((octets (fnn-heap-history-octets root profile))
         (records (handler-case
                      (let ((store (make-fnn-store root)))
-                       (if (fnn-lstat (fnn-journal-dir store))
-                           (fnn-heap-log-records store profile)
-                         (fnn-heap-directory-count
-                          (fnn-transactions store)
-                          (fnn-heap-listing-bound profile))))
+                       (and (fnn-lstat (fnn-journal-dir store))
+                            (fnn-heap-log-records store profile)))
                    (error () nil))))
     (if (and (integerp octets) (integerp records))
         (cons octets records)
@@ -239,10 +219,8 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
       (let* ((store (make-fnn-store root))
              (limit (fnn-core 'fn-heap-history-listing-bound profile))
              (state (fnn-lstat (fnn-state-checkpoint-path store)))
-             (parts (list (fnn-heap-directory-octets (fnn-transactions store) limit)
-                          ;; Format 9: the record log's segments.
+             (parts (list ;; The record log's segments.
                           (fnn-heap-directory-octets (fnn-journal-dir store) limit)
-                          (fnn-heap-directory-octets (fnn-join root "packs") limit)
                           (fnn-heap-directory-octets (fnn-join root "checkpoints") limit)
                           (cond ((null state) 0)
                                 ((fnn-regular-p state) (sb-posix:stat-size state))

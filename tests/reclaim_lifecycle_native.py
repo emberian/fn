@@ -11,25 +11,25 @@ and prints one JSON line per observation:
   release-after 1     `store reclaim --dry-run' reclaims nothing (too recent)
   released-by-all-holders
     dry-run           names every article, writes nothing
-    compact + cuts    (--cuts) a copy per cut: kill (SIGSTOP then SIGKILL,
-                      FN_CHECKPOINT_TEST_STOP) at every publication,
-                      selection and retirement cut, kill and EIO at every
-                      reclaim cut (FN_NATIVE_RECLAIM_FAULT); each copy
+    compact + cuts    (--cuts) a copy per cut of the reclaim over the record
+                      log (lane log-recovery-2: the tombstones' state
+                      checkpoint, then the rotation and the drop): kill and
+                      EIO at every state-checkpoint cut
+                      (FN_NATIVE_STATE_CHECKPOINT_FAULT), kill at every
+                      rotation and drop cut (FN_NATIVE_LOG_FAULT); each copy
                       reopens (`status' exit 0), a rerun of `store reclaim'
-                      exits 0, and the copy ends byte-identical to the clean
-                      run's selected pack
+                      exits 0, and the copy ends with the clean run's
+                      reclaimed history (`reclaimed_history')
     clean run           disk octets and inodes before and after, `status'
                       headroom before and after
   served              ARTICLE by id 430, by number 423, OVER 423, NEWNEWS
                       skips, GROUP unchanged, re-POST of the old article 441
   headroom            (HISTORY_OCTETS chosen tight) a POST refused before the
                       reclaim is accepted after it
-  --chain             (pack-chain-join) the reclaim of a chained history: N
-                      articles compacted into one link, N more posted and
-                      compacted into a second link, then `store reclaim':
-                      one reclaiming pack, a first link covering the chain's
-                      boundary, and the old links retired (`status' names
-                      the chain before and after)
+  --chain             the reclaim of a twice-compacted history: N articles
+                      compacted, N more posted and compacted, then `store
+                      reclaim' (on the log: two rotations, then the
+                      reclaim's checkpoint and drop)
 """
 import hashlib, json, os, shutil, signal, subprocess, sys, time
 from pathlib import Path
@@ -114,19 +114,18 @@ def status(cfg):
     return code, lines.get("headroom", ""), lines.get("reclaim", ""), so
 
 
-def selected_pack(store):
-    """The content of every pack generation file present, by digest.  The
-    generation number (the file name and the selection marker) is not
-    compared: a rerun after a cut before the selection publishes the next
-    number over the same bytes."""
-    packs = Path(store) / "packs"
-    if not packs.exists():
-        return []
-    files = [p for p in packs.iterdir() if p.is_file()]
-    sizes = sorted((p.stat().st_size, p) for p in files)
-    marker = sizes[0][1] if len(sizes) > 1 else None
-    return sorted(hashlib.sha256(p.read_bytes()).hexdigest() for p in files if p != marker)
-
+def reclaimed_history(store):
+    """The durable history a reclaim leaves on the record log: the state
+    checkpoint's digest and the segments present (names and digests).  A
+    rerun after an interrupted reclaim converges when this equals the clean
+    run's."""
+    store = Path(store)
+    parts = []
+    for path in sorted(store.glob("store-checkpoint.fnsc")) + sorted((store / "journal").glob("*")):
+        if path.is_file():
+            parts.append((str(path.relative_to(store)),
+                          hashlib.sha256(path.read_bytes()).hexdigest()))
+    return parts
 
 def build(name, n, body=BODY, hist=HIST):
     store = work / name
@@ -223,24 +222,18 @@ def run():
     out(tag="after", footprint=after, status_exit=sc, headroom=head_after, reclaim=rec_after,
         freed_files=before["files"] - after["files"], freed_octets=before["octets"] - after["octets"])
     global CLEAN
-    CLEAN = selected_pack(store)
+    CLEAN = reclaimed_history(store)
     code, so, se = native("operator", cfg, "store", "reclaim")
-    out(tag="rerun", exit=code, stdout=so.strip()[-200:], same_pack=selected_pack(store) == CLEAN)
+    out(tag="rerun", exit=code, stdout=so.strip()[-200:], same_history=reclaimed_history(store) == CLEAN)
     out(tag="served", **served(cfg, port, ids))
     headroom()
-
-
-def chain_line(cfg):
-    code, so, se = native("operator", cfg, "status")
-    return next((l for l in so.splitlines() if l.startswith("pack-chain")), None)
 
 
 def chain_run():
     work.mkdir(parents=True, exist_ok=True)
     store, cfg, port = build("chain", N)
     code, so, se = native("operator", cfg, "store", "compact")
-    out(tag="compact-1", exit=code, stdout=so.strip()[-300:], stderr=se.strip()[-200:],
-        chain=chain_line(cfg))
+    out(tag="compact-1", exit=code, stdout=so.strip()[-300:], stderr=se.strip()[-200:])
     p = owner(cfg)
     refused = []
     try:
@@ -255,8 +248,7 @@ def chain_run():
         stop(p)
     out(tag="built-more", posted=N - len(refused), refused=refused[:1])
     code, so, se = native("operator", cfg, "store", "compact")
-    out(tag="compact-2", exit=code, stdout=so.strip()[-300:], stderr=se.strip()[-200:],
-        chain=chain_line(cfg))
+    out(tag="compact-2", exit=code, stdout=so.strip()[-300:], stderr=se.strip()[-200:])
     code, so, se = native("operator", cfg, "retention", "set", "released-by-all-holders")
     out(tag="retention-set", rule="released-by-all-holders", exit=code, stderr=se.strip()[-300:])
     before = footprint(store)
@@ -265,14 +257,14 @@ def chain_run():
     t0 = time.perf_counter()
     code, so, se = native("operator", cfg, "store", "reclaim")
     out(tag="reclaim", exit=code, wall_s=round(time.perf_counter() - t0, 1),
-        head=so.splitlines()[:1], stderr=se.strip()[-300:], chain=chain_line(cfg))
+        head=so.splitlines()[:1], stderr=se.strip()[-300:])
     after = footprint(store)
     sc, head_after, rec_after, _ = status(cfg)
     out(tag="after", footprint=after, status_exit=sc, headroom=head_after, reclaim=rec_after,
         freed_files=before["files"] - after["files"], freed_octets=before["octets"] - after["octets"])
-    clean = selected_pack(store)
+    clean = reclaimed_history(store)
     code, so, se = native("operator", cfg, "store", "reclaim")
-    out(tag="rerun", exit=code, stdout=so.strip()[-200:], same_pack=selected_pack(store) == clean)
+    out(tag="rerun", exit=code, stdout=so.strip()[-200:], same_history=reclaimed_history(store) == clean)
     # A third link on the reclaimed chain: post, compact, status.
     p = owner(cfg)
     try:
@@ -281,18 +273,19 @@ def chain_run():
         stop(p)
     code, so, se = native("operator", cfg, "store", "compact")
     out(tag="compact-after-reclaim", post=more, exit=code, stdout=so.strip()[-300:],
-        stderr=se.strip()[-200:], chain=chain_line(cfg))
+        stderr=se.strip()[-200:])
     out(tag="served", **served(cfg, port, [msgid(i) for i in range(2 * N)]))
 
 
 CLEAN = None
-RECLAIM_CUTS = [("stop", "candidate-file"), ("stop", "candidate-link"),
-                ("stop", "candidate-directory"), ("stop", "selection-file"),
-                ("stop", "selection-replace"), ("stop", "selection-directory"),
-                ("stop", "pack-retire-unlink"), ("stop", "pack-retire-directory")] + \
-    [(a, c) for c in ("reclaim-state-checkpoint-unlink", "reclaim-state-checkpoint-directory",
-                      "reclaim-pack-published", "reclaim-pack-selected", "reclaim-retired")
-     for a in ("kill", "eio")]
+# The reclaim over the log (host/native/checkpoint.lisp fnn-log-reclaim-steps
+# through fnn-state-checkpoint-publish-steps): fn-bs-scp-program's cuts, then
+# P-ROTATE's and P-DROP's (books/store-log-segments.lisp).
+RECLAIM_CUTS = [(a, "state-checkpoint-" + c)
+                for c in ("created", "written", "staged-durable", "replaced", "durable")
+                for a in ("kill", "eio")] + \
+    [("log", c) for c in ("rotate-created", "rotate-fenced", "rotate-durable",
+                          "drop-unlinked", "drop-durable")]
 
 
 def cuts(base):
@@ -300,33 +293,21 @@ def cuts(base):
     ref = work / "cut-ref"; shutil.rmtree(ref, ignore_errors=True); shutil.copytree(base, ref)
     rcfg, _ = config_for(ref, "cut-ref")
     native("operator", rcfg, "store", "reclaim", expected=0)
-    reference = selected_pack(ref)
+    reference = reclaimed_history(ref)
     for action, point in RECLAIM_CUTS:
         name = "cut-%s-%s" % (action, point)
         copy = work / name; shutil.rmtree(copy, ignore_errors=True); shutil.copytree(base, copy)
         ccfg, _ = config_for(copy, name)
         env = dict(ENV)
-        if action == "stop":
-            env["FN_CHECKPOINT_TEST_STOP"] = point
-            p = subprocess.Popen([image, "--fn", "operator", str(ccfg), "store", "reclaim"],
-                                 env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stopped = False
-            for _ in range(36000):
-                st = open("/proc/%d/stat" % p.pid).read().split(")")[-1].split()[0]
-                if st == "T":
-                    stopped = True; break
-                if p.poll() is not None:
-                    break
-                time.sleep(0.05)
-            p.kill(); p.wait()
-            first = "stopped" if stopped else "exit-%s" % p.returncode
+        if action == "log":
+            env["FN_NATIVE_LOG_FAULT"] = point
         else:
-            env["FN_NATIVE_RECLAIM_FAULT"] = "%s:%s" % (point, action)
-            code, so, se = native("operator", ccfg, "store", "reclaim", env=env)
-            first = "exit-%d" % code
+            env["FN_NATIVE_STATE_CHECKPOINT_FAULT"] = "%s:%s" % (point, action)
+        code, so, se = native("operator", ccfg, "store", "reclaim", env=env)
+        first = "exit-%d" % code
         sc, _, rline, _ = status(ccfg)
         code, so, se = native("operator", ccfg, "store", "reclaim")
-        final = selected_pack(copy)
+        final = reclaimed_history(copy)
         out(tag="cut", action=action, point=point, first=first, reopen_status=sc,
             reopen_reclaim=rline, rerun_exit=code, rerun_head=so.splitlines()[:1],
             converged=final == reference)

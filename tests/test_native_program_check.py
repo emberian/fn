@@ -40,71 +40,57 @@ class NativeProgramCheckTests(unittest.TestCase):
         return report
 
     def test_current_tree_passes_every_program_in_the_cut_table(self):
+        # The per-file programs (P-FRONTIER, P-RECORD, P-RECOVER, P-MARKER)
+        # went with format 8 (lane log-recovery-2, PKT-838); the byte-program
+        # programs the host still runs are the finish and the staging sweep.
+        # The log route's are LogRouteArmTests' below.
         report = npc.check()
         named = {c.program for c in native_cuts.ALL_CUTS} | {
             c.follows for c in native_cuts.ALL_CUTS if c.follows}
-        self.assertEqual(set(self.verdicts(report)), named)
-        self.assertEqual(named, {"fn-bs-frontier-program", "fn-bs-record-program",
-                                 "fn-bs-finish-program", "fn-bs-recover-program",
-                                 "fn-bs-recover-stage-cleanup-program",
-                             "fn-bs-marker-program"})
+        self.assertEqual(set(self.verdicts(report)), named & set(npc.PROGRAM_HOSTS))
+        self.assertEqual(set(self.verdicts(report)),
+                         {"fn-bs-finish-program", "fn-bs-recover-stage-cleanup-program"})
         self.assertTrue(report.ok, npc.render(report))
         for r in report.programs:
             self.assertEqual(r.matched, r.model_steps, r.program)
             self.assertGreater(r.model_steps, 0)
 
-    def test_the_directory_alias_is_derived_not_assumed(self):
-        # :frontier-directory (host) and :frontier-dir (model) both reach
-        # fn-sf-frontier-dir-result; an undispatched host name does not.
-        report = npc.check()
-        frontier = next(r for r in report.programs if r.program == "fn-bs-frontier-program")
-        self.assertIn(":frontier-directory :error -> *fn-bs-frontier-on-dir-error*",
-                      frontier.error_arms)
-        self.assertEqual(frontier.injection_only, ["frontier-barrier"])
+    def test_swapped_cuts_fail(self):
+        body = native_cuts.host_function(self.host, "fnn-finish")
+        swapped = (body.replace("(fnn-at store :finish-consumed)", "(fnn-at store :SWAP)")
+                   .replace("(fnn-at store :finish-durable)", "(fnn-at store :finish-consumed)")
+                   .replace("(fnn-at store :SWAP)", "(fnn-at store :finish-durable)"))
+        self.assertNotEqual(swapped, body)
+        self.assert_fails(self.host.replace(body, swapped), "fn-bs-finish-program")
 
-    def test_swapped_cut_and_link_fails(self):
-        host = mutate(self.host, "          (fnn-at store :record-linked)\n", "",
-                      within="fnn-publish")
-        host = mutate(host, "(handler-case (fnn-link stage final)",
-                      "(fnn-at store :record-linked)\n          (handler-case (fnn-link stage final)",
-                      within="fnn-publish")
-        report = self.assert_fails(host, "fn-bs-record-program")
-        self.assertEqual(self.verdicts(report)["fn-bs-frontier-program"], "PASS")
-
-    def test_deleted_helper_cut_fails_both_callers(self):
-        host = mutate(self.host, "(fnn-at store written)\n", "",
-                      within="fnn-write-staged-at")
-        report = self.assert_fails(host, "fn-bs-record-program")
-        self.assertEqual(self.verdicts(report)["fn-bs-frontier-program"], "FAIL")
-
-    def test_wrong_directory_barrier_fails(self):
-        host = mutate(self.host, "(fnn-fsync-dir (fnn-transactions store))",
-                      "(fnn-fsync-dir (fnn-store-root store))", within="fnn-publish")
-        self.assert_fails(host, "fn-bs-record-program", ":fsync-dir :root")
-
-    def test_error_arm_with_no_model_constant_fails(self):
-        host = mutate(self.host, "(fnn-os-error (e) (fnn-observe store :record-link :error) (error e))",
-                      "(fnn-os-error (e) (fnn-observe store :record-link :error)"
-                      " (fnn-observe store :record-file :error) (error e))",
-                      within="fnn-publish")
-        self.assert_fails(host, "fn-bs-record-program", "no model constant")
-
-    def test_model_event_name_the_kernel_does_not_dispatch_fails(self):
-        # The model's name for the host's operation is not a host operation.
-        host = mutate(self.host, "(fnn-observe store :record-directory :ok)",
-                      "(fnn-observe store :record-dir :ok)", within="fnn-publish")
-        self.assert_fails(host, "fn-bs-record-program", "does not dispatch")
+    def test_deleted_cut_fails(self):
+        host = mutate(self.host, "(handler-case (fnn-at store :finish-durable)",
+                      "(handler-case (progn)", within="fnn-finish")
+        self.assert_fails(host, "fn-bs-finish-program")
 
     def test_declared_model_cut_off_its_program_fails(self):
-        host = mutate(self.host, "'(:frontier-created :frontier-written",
-                      "'(:frontier-barrier :frontier-created :frontier-written")
-        self.assert_fails(host, "fn-bs-frontier-program", "frontier-barrier")
+        # frontier-reserved is a declared post cut (fn-lg-reserve-program's),
+        # not fn-bs-finish-program's.
+        host = mutate(self.host, "(handler-case (fnn-at store :finish-consumed)",
+                      "(fnn-at store :frontier-reserved)\n  (handler-case (fnn-at store :finish-consumed)",
+                      within="fnn-finish")
+        self.assert_fails(host, "fn-bs-finish-program", "frontier-reserved")
 
-    def test_recovery_sweep_before_a_barrier_fails(self):
-        host = mutate(self.host, "(fnn-at store :recover-replayed)",
-                      "(fnn-at store :recover-replayed)\n    (fnn-sweep-staging store)",
-                      within="fnn-recover")
-        self.assert_fails(host, "fn-bs-recover-program", "sequel")
+    def test_a_sweep_before_the_programs_steps_fails(self):
+        host = mutate(self.host, "(handler-case (fnn-at store :finish-consumed)",
+                      "(fnn-sweep-staging store)\n  (handler-case (fnn-at store :finish-consumed)",
+                      within="fnn-finish")
+        self.assert_fails(host, "fn-bs-finish-program", "sequel")
+
+    def test_a_cut_before_the_unlink_fails(self):
+        body = native_cuts.host_function(self.host, "fnn-sweep-staging")
+        moved = body.replace(
+            "                  (fnn-unlink (fnn-join (fnn-staging store) name))\n", "").replace(
+            "                  (fnn-at store :recovery-stage-unlinked))",
+            "                  (fnn-at store :recovery-stage-unlinked)\n"
+            "                  (fnn-unlink (fnn-join (fnn-staging store) name)))")
+        self.assertNotEqual(moved, body)
+        self.assert_fails(self.host.replace(body, moved), "fn-bs-recover-stage-cleanup-program")
 
 
 class UnbalancedFormTests(unittest.TestCase):
