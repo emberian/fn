@@ -2107,12 +2107,16 @@ so the pass comes at once, not at the poll's timeout."
                   (fnn-mux-wake loop))))
 
 (defun fnn-owner-loops-passed-p (service targets)
-  "Every I/O loop reached its target pass: every connection that was ready
-at the snapshot has been stepped, and its submission, if it had one, is
+  "Every I/O loop reached its target pass, or completed the pass before it
+and sleeps in poll(2) again (its wake byte may have been read by the pass
+that was running when it was written): every connection that was ready at
+the snapshot has been stepped, and its submission, if it had one, is
 queued."
   (loop for loop in (fnn-owner-service-mux service)
         for n in targets
-        always (>= (fnn-mux-loop-passes loop) n)))
+        always (let ((passes (fnn-mux-loop-passes loop)))
+                 (or (>= passes n)
+                     (and (fnn-mux-loop-polling loop) (>= passes (- n 1)))))))
 
 (defun fnn-owner-committer-loop (service)
   "The committer thread: one commit quantum whenever a submission is queued,
