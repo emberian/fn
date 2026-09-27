@@ -10955,6 +10955,34 @@
         "fn-provi-of-msgid-unfolds",
         "fn-provi-bad-msgid-has-no-provenance"
       ]
+    },
+    {
+      "id": "PRF-307",
+      "title": "The outbound feed sends the stored article's bytes, read through the arena, and a command word reaches the host only with octets: an unsendable offer is refused by name, never an owner stop",
+      "statement": "books/owner-feed-article.lisp. Subjects: fn-ofa-feed-article (host/owner-host.lisp fn-owner-feed-octets passes it to fn-own-feed-port-observe-peer as the article of a 335 or 238; called by fn-owner-feed-reply-chunk, which host/native/feed-service.lisp fnn-feed-reply-step calls through fnn-owner-feed-arena-step) and fn-ofa-publication (the publication fn-owner-feed-octets and fn-owner-feed-tick return; feed-service.lisp fnn-feed-reply-step and fnn-feed-tick). KEYSTONES: fn-ofa-feed-article-is-the-feed-article-over-alpha (under fn-apr-store-at-restp of the owner's Store, the bytes are the payload of the octet-list model's feed article over ALPHA of the acceptance articles, books/store-intern.lisp fn-articles-wire-of: what fn-own-feed-article read before the records flip); fn-ofa-publication-command-words-have-octets (a publication whose word is :send or :offer has a non-empty command; otherwise its word is :unsendable, its sealed record plan is the port's, and it differs from the input only when the input was a command word without octets). fn-ofa-feed-article-is-an-octet-list: over an arena (fn-arena-p) the bytes are an octet list, never the handle. fn-ofa-publication-is-well-formed: the host's recognizer holds of the output. The host flushes an :unsendable publication's records, writes its ACL2 line (the renderer's reason, or no-article) and drops the link, which fn-feed-lost requeues (PRF-047's composition). The defect this closes: after the records flip (c5808cd72) the feed handed the row's handle to the port, the renderer refused it, and the host stopped the owner on the empty command (tests.test_native_peering 12 of 14 red on dev 2026-09-27). Local policy; RFC 3977 section 6.3.2 (IHAVE: after 335 the article is sent) and RFC 4644 section 2.5 (TAKETHIS carries the article).",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-035"
+      ],
+      "depends_on": [
+        "PRF-047",
+        "PRF-165"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-feed-article.lisp",
+        "tests/acl2/owner-feed-article-tests.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/feed-fault-2026-09-27.md"
+      ],
+      "events": [
+        "fn-ofa-feed-article-is-the-feed-article-over-alpha",
+        "fn-ofa-publication-command-words-have-octets",
+        "fn-ofa-feed-article-is-an-octet-list",
+        "fn-ofa-publication-is-well-formed"
+      ]
     }
   ]
 }

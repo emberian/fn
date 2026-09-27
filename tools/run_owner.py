@@ -527,7 +527,7 @@ class Acl2Owner(Acl2Store):
             self.literal(peer.encode("utf-8")), monotonic))
 
     def feed_octets(self, peer, line, monotonic):
-        return self._feed_step("(fn-owner-feed-octets '{} '{} {} state)".format(
+        return self._feed_step("(fn-owner-feed-octets '{} '{} {} fn-arena state)".format(
             self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
 
     def trailer(self, prefix):

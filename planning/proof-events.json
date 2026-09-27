@@ -10844,6 +10844,27 @@
           "name": "fn-provi-bad-msgid-has-no-provenance"
         }
       ]
+    },
+    {
+      "id": "PRF-307",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-the-feed-article-over-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-publication-command-words-have-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-an-octet-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-publication-is-well-formed"
+        }
+      ]
     }
   ]
 }

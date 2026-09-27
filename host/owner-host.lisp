@@ -126,6 +126,7 @@
 ;; PKT-710: the page and the wait step over it.
 (include-book "../books/consumer-withdrawal")
 (include-book "../books/acceptance-payload-ref")
+(include-book "../books/owner-feed-article")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
@@ -3489,11 +3490,15 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
                  (cons :refused :refused))
            nil state)
           (declare (ignore status))
-          (value publication))))))
+          ;; fn-ofa-publication-command-words-have-octets: an :offer
+          ;; reaches the host only with octets (books/owner-feed-article).
+          (value (fn-ofa-publication publication)))))))
 
-; One reply line from one peer.
-(defun fn-owner-feed-octets (peer-octets line monotonic state)
-  (declare (xargs :stobjs state :mode :program))
+; One reply line from one peer.  The article of a 335/238 is the row's bytes
+; read through the arena (books/owner-feed-article.lisp fn-ofa-feed-article,
+; fn-ofa-feed-article-is-the-feed-article-over-alpha), never its handle.
+(defun fn-owner-feed-octets (peer-octets line monotonic fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value (fn-owner-feed-word-publication nil nil nil))
@@ -3507,11 +3512,15 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
             (value (fn-ores-feed-port-publication :quiet nil nil nil nil))
           (let ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
-                         ; The record's payload by Message-ID through the
-                         ; Store's event index, not the acceptance state's
-                         ; article: fn-apr-feed-article-is-own-feed-article
-                         ; (books/acceptance-payload-ref.lisp).
-                         (fn-apr-feed-article owner msgid) obs)))
+                         ; The record's bytes by Message-ID: its handle
+                         ; through the Store's event index
+                         ; (fn-apr-feed-article-is-own-feed-article,
+                         ; books/acceptance-payload-ref.lisp) read through
+                         ; the arena (fn-ofa-feed-article-is-the-feed-
+                         ; article-over-alpha).  Since the records flip the
+                         ; row holds a handle; handing it to the port sent
+                         ; an empty command (lane feed-fault).
+                         (fn-ofa-feed-article owner msgid fn-arena) obs)))
             ; The sender's one line for this reply (nil for a 335/238),
             ; books/owner-log.lisp fn-olog-feed-reply-line, is the
             ; publication's log line.
@@ -3522,7 +3531,10 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
                      (cons :refused :refused))
                (fn-olog-feed-reply-line owner peer response) state)
               (declare (ignore status))
-              (value publication))))))))
+              ;; fn-ofa-publication-command-words-have-octets: a :send
+              ;; reaches the host only with octets; otherwise :unsendable,
+              ;; its line naming the renderer's reason.
+              (value (fn-ofa-publication publication)))))))))
 
 (defun fn-owner-feed-connection-result-kind (step)
   "Map only a connection-phase refusal away from the feed-port outcome tag.
@@ -3599,7 +3611,7 @@ existing port only after fn-fc has made this connection ready."
                                                                 (and (equal word :ok) fallback-line))))))
                   (:reply
                    (fn-owner-feed-octets peer-octets (fn-fc-line step)
-                                         monotonic state))
+                                         monotonic fn-arena state))
                   (:streaming-refused
                    (value (fn-owner-feed-word-publication :streaming-refused nil stop-line)))
                   ((:need-input :connection-refused :closed :invalid)

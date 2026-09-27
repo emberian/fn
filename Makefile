@@ -882,6 +882,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-join-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
+	books/owner-feed-article \
+	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \

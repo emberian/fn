@@ -533,7 +533,8 @@ class RawArityTests(unittest.TestCase):
                     (fnn-core-state 'fn-stateful o)))
             """
         stale = {"fnn-call", "fnn-owner-core", "fnn-owner-action",
-                 "fnn-bpapp-core-record"}
+                 "fnn-bpapp-core-record", "fnn-core-arena-state",
+                 "fnn-owner-feed-arena-step"}
         found = [row for row in self.scan(source, {"fn-pure": 1, "fn-stateful": 2})
                  if row["callee"] not in stale]
         self.assertEqual([(row["callee"], row["problem"]) for row in found], [
@@ -544,6 +545,69 @@ class RawArityTests(unittest.TestCase):
         self.assertEqual(found, [])
         self.assertGreater(counts["applications"], 1000)
         self.assertGreater(counts["dispatched_applications"], 500)
+
+
+class DuplicateDefunTests(unittest.TestCase):
+    """`duplicate-defun`: a raw name defined twice across one image's files."""
+
+    def scan(self, **files):
+        from tools import ledger
+        return harness_check.duplicate_defun_scan(
+            {"host/native/{}.lisp".format(name): ledger.Reader(
+                textwrap.dedent(source)).top_level()
+             for name, source in files.items()})[0]
+
+    # The break it exists for, in the shape it had at dev 8fd16ef72
+    # (host/native/io.lisp): the service log's writer, then a log rig's
+    # printer under the same name, which replaced it in the image.
+    TWO_LOG_LINES = """
+        (defun fnn-log-line (line)
+          (fnn-out "~a" line))
+        (defun fnn-log-start (log)
+          (fnn-log-line "started"))
+        (defun fnn-log-line (what log size)
+          (fnn-out "~a ~a ~a" what log size))
+        """
+
+    def test_the_fnn_log_line_double_definition_is_caught(self):
+        found = self.scan(io=self.TWO_LOG_LINES)
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["callee"], "fnn-log-line")
+        self.assertEqual(found[0]["where"], "host/native/io.lisp:6")
+        self.assertEqual(found[0]["defined"], "host/native/io.lisp:2")
+
+    def test_the_renamed_rig_printer_is_clean(self):
+        fixed = self.TWO_LOG_LINES.replace(
+            "(defun fnn-log-line (what log size)",
+            "(defun fnn-log-kernel-line (what log size)")
+        self.assertEqual(self.scan(io=fixed), [])
+
+    def test_a_definition_in_another_file_is_caught(self):
+        found = self.scan(a="(defun fnn-x () 1)", b="(defun fnn-x (y) y)")
+        self.assertEqual([(row["callee"], row["where"], row["defined"]) for row in found],
+                         [("fnn-x", "host/native/b.lisp:1", "host/native/a.lisp:1")])
+
+    def test_a_nested_definition_is_a_definition(self):
+        found = self.scan(a="(defun fnn-x () 1)",
+                          b="(eval-when (:load-toplevel) (let ((z 1)) (defun fnn-x () z)))")
+        self.assertEqual([row["callee"] for row in found], ["fnn-x"])
+
+    def test_quoted_data_and_local_functions_are_not_definitions(self):
+        source = """
+            (defun fnn-x () 1)
+            (defun fnn-y () (list '(defun fnn-x () 2) (flet ((fnn-x () 3)) (fnn-x))))
+            """
+        self.assertEqual(self.scan(a=source), [])
+
+    def test_each_images_entry_is_the_named_exemption(self):
+        self.assertEqual(self.scan(build="(defun fn-native-entry (state) state)",
+                                   io="(defun fn-native-entry (st) st)"), [])
+        self.assertIn("fn-native-entry", harness_check.DUPLICATE_ALLOWED)
+
+    def test_the_tree_has_no_duplicate_definition(self):
+        found, counts = harness_check.duplicate_defun_findings(ROOT)
+        self.assertEqual(found, [])
+        self.assertGreater(counts["definitions"], 1000)
 
 
 if __name__ == "__main__":
