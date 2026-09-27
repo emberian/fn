@@ -238,6 +238,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
+	books/heap-store-figure \
 	books/heap-figure \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
@@ -346,6 +347,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-load-index-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
+	books/store-compact-window \
+	tests/acl2/store-compact-window-tests \
 	books/store-history-marker \
 	books/reclaim-tombstone \
 	books/reclaim-rule \

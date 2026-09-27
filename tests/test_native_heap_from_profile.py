@@ -17,9 +17,11 @@ name, outside a limit of at most 2 GiB.
 
 * A fresh node: `init' with no profile word takes a conservative preset
   within the budget and prints it (books/heap-reservation.lisp
-  fn-heap-init-decide): under 2 GiB `init: profile=small sizing=conservative
-  reservation=N MB budget=2048 MB'; `status' prints `heap=N MB profile=small
-  machine=2048 MB'.  The node starts under that figure, takes 100 POSTs of
+  fn-heap-init-decide, judging the first run of the empty store it makes:
+  reservation-after-flip); the small node here is the small preset's fields
+  named at init: `status' prints the next run's figure over the store on
+  disk, `heap=N MB profile=small machine=2048 MB'.  The node starts under
+  that figure, takes 100 POSTs of
   2 KiB, serves them (ARTICLE, OVER), publishes one automatic checkpoint
   (K = 128: at 64), stops, reopens from the checkpoint and serves them
   again.  Each run's VmHWM is printed.
@@ -29,7 +31,7 @@ name, outside a limit of at most 2 GiB.
   refuses its `run' and `status' by name.
 * FreshInitTests (also without a small limit): conservative sizing,
   FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB, and the default mission
-  (inits and runs, under 2 GiB too; refused by name under a 1,000 MB budget).
+  (inits and runs, under 2 GiB too; refused by name under a 500 MB budget).
 """
 import base64
 import hashlib
@@ -47,6 +49,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = os.environ.get("FN_NATIVE_HOST")
 EXIT_OK, EXIT_REFUSED = 0, 1
+SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
+               "--max-history-octets", "8388608", "--max-record-octets", "196608",
+               "--max-groups-per-article", "16", "--max-open-suffix", "128")
 HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB$", re.M)
 REFUSED = re.compile(
     r"refused machine-cannot-hold-profile heap=(\d+) MB machine=(\d+) MB")
@@ -274,7 +279,8 @@ class FreshInitTests(Harness, unittest.TestCase):
     def test_largest_within_the_budget_on_request(self):
         """FN_INIT_SIZING=largest takes the first of scale, development and
         small the budget holds; an operator budget below the machine
-        (FN_INIT_BUDGET_MB=1500) takes small."""
+        (FN_INIT_BUDGET_MB=1500) takes small, or the friend rung whose
+        first run it holds (the word is `custom')."""
         config, _ = self.config("largest")
         made = self.run_fn("operator", config, "init", "local.test",
                            env={"FN_INIT_SIZING": "largest"})
@@ -289,7 +295,8 @@ class FreshInitTests(Harness, unittest.TestCase):
                            env={"FN_INIT_BUDGET_MB": "1500"})
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, _, _, budget = self.init_line(made)
-        self.assertEqual((word, budget), ("small", 1500))
+        self.assertIn(word, ("small", "custom"))
+        self.assertEqual(budget, 1500)
         config, _ = self.config("badbudget")
         refused = self.run_fn("operator", config, "init", "local.test",
                               env={"FN_INIT_BUDGET_MB": "lots"})
@@ -303,13 +310,13 @@ class FreshInitTests(Harness, unittest.TestCase):
         capacity, under 2 GiB (the friend's machine) on the small preset's
         (1,326 MB: the thread stacks are a constant since
         served-line-iterative); it runs and takes POSTs either way.  A
-        budget that cannot hold it (FN_INIT_BUDGET_MB=1000) is refused by
-        name with no store made."""
+        budget that cannot hold its first run (FN_INIT_BUDGET_MB=500) is
+        refused by name with no store made."""
         config, port = self.config("mission")
         with open(config, "a", encoding="ascii") as f:
             f.write('[ops]\nmission = "small-community"\n')
         refused = self.run_fn("operator", config, "init",
-                              env={"FN_INIT_BUDGET_MB": "1000"})
+                              env={"FN_INIT_BUDGET_MB": "500"})
         self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
         found = INIT_REFUSED.search(text(refused))
         self.assertIsNotNone(found, text(refused))
@@ -388,7 +395,9 @@ class FreshInitTests(Harness, unittest.TestCase):
 class HeapFromProfileTests(Harness, unittest.TestCase):
     def test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g(self):
         config, port = self.config("small")
-        made = self.run_fn("operator", config, "init", "local.test")
+        # The small preset's fields, named (a bare init under 2 GiB now takes
+        # the 16 MiB rung, whose first run fits: reservation-after-flip).
+        made = self.run_fn("operator", config, "init", *SMALL_FLAGS, "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))

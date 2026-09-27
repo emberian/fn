@@ -69,6 +69,17 @@
         (fnn-checkpoint-corrupt "pack selection marker does not decode"))
       (second answer))))
 
+(defun fnn-compact-window (records lower)
+  "The octet lists of the records the next link above LOWER takes, as ACL2's
+`fn-store-compact-window-count' names them from the records' lengths: one
+link's window, never the history (PKT-686 item 2)."
+  (let* ((rest (nthcdr lower records))
+         (count (fnn-core 'fn-store-compact-window-count
+                          (mapcar #'length records) lower)))
+    (unless (and (integerp count) (<= 0 count (length rest)))
+      (fnn-fault "ACL2 returned an invalid compaction window: ~s" count))
+    (loop for record in rest repeat count collect (fnn-octet-list record))))
+
 (defun fnn-pack-publish-generation (store records &key chain coverage selected summary)
   "Publish one pack generation, unselected.  The one publication of both pack
 callers:
@@ -88,8 +99,10 @@ covers (the chain's coverage for SUMMARY)."
   (let ((directory (fnn-pack-directory store))
         (captured (if summary
                       (list :ok summary (if coverage (second coverage) 0))
-                      (fnn-core 'fn-store-checkpoint-chain-capture
-                                (mapcar #'fnn-octet-list records)
+                      (fnn-core 'fn-store-checkpoint-chain-capture-window
+                                (length records)
+                                (fnn-compact-window records
+                                                    (if coverage (second coverage) 0))
                                 (if coverage (second coverage) 0)
                                 (if coverage (third coverage) 0)
                                 (or selected 0)
@@ -776,10 +789,11 @@ namespaces, the disk's free octets) and ask ACL2's one compaction decision."
                          (fnn-transactions store) (fnn-config-max-transactions store)
                          "transaction namespace")
                         #'string<))
-           (decision (fnn-core 'fn-store-compact-decide
+           (decision (fnn-core 'fn-store-compact-decide-window
                                (fnn-store-config store)
-                               (mapcar #'fnn-octet-list records)
-                               lower names retirable selected
+                               (length records) lower
+                               (fnn-compact-window records lower)
+                               names retirable selected
                                (fnn-disk-free-octets store))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))

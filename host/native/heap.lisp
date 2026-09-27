@@ -97,6 +97,15 @@
                     (error () nil)))
         0)))
 
+;; The image observation books/heap-store-figure.lisp reads: (FILE . DYNAMIC),
+;; the core file's length and the dynamic space in use now, at the probe's
+;; start -- at least the core's dynamic content (the probe's own garbage
+;; only adds), at most the file (ACL2 takes the least of the two).  Before
+;; the records flip the whole file was counted as heap (a 200 MB production
+;; core holds 109 MiB of dynamic content).
+(defun fnn-heap-image-observation ()
+  (cons (fnn-heap-core-octets) (sb-kernel:dynamic-usage)))
+
 (defun fnn-heap-store-profile (root)
   "The profile ROOT's store was saved with, or NIL when there is no store
 there or its config.json does not decode (the command itself then reports
@@ -107,7 +116,7 @@ that)."
              (progn (fnn-load-config store) (fnn-store-config store))))
     (error () nil)))
 
-(defun fnn-heap-decision (profile)
+(defun fnn-heap-decision (profile &optional observed)
   ;; heap-figure's figure for the store, then the room the served connections'
   ;; heap parts need beside it (books/connection-budget.lisp
   ;; fn-cbud-launch-decide; PKT-605): the connections this machine holds
@@ -115,19 +124,24 @@ that)."
   (let ((observations (fnn-heap-observations))
         (core (fnn-heap-core-octets)))
     (fnn-core 'fn-cbud-launch-decide
-              (fnn-core 'fn-heap-decide profile core +fnn-gc-nursery-octets+
-                        observations)
+              ;; The run's figure over the store on disk (reservation-after-flip).
+              (fnn-core 'fn-heap-operation-decide :run profile (fnn-heap-image-observation)
+                        +fnn-gc-nursery-octets+ observations observed)
               profile core
               (fnn-mux-thread-count nil) (fnn-mux-thread-stack-octets)
               observations)))
 
-(defun fnn-heap-report-line (profile)
-  (fnn-core 'fn-heap-report-line (fnn-heap-decision profile)))
+(defun fnn-heap-report-line (profile &optional observed)
+  (fnn-core 'fn-heap-report-line (fnn-heap-decision profile observed)))
 
 (defun fnn-heap-print-store-line (root)
-  "The `heap=' line `status' and `health' print after their report."
+  "The `heap=' line `status' and `health' print after their report: the next
+run's figure over the store as it is on disk."
   (when (stringp root)
-    (fnn-out "~a" (fnn-heap-report-line (fnn-heap-store-profile root)))))
+    (let ((profile (fnn-heap-store-profile root)))
+      (fnn-out "~a" (fnn-heap-report-line
+                     profile
+                     (and profile (fnn-heap-history-observation root profile)))))))
 
 (defun fnn-heap-env-octets (name)
   "NAME's value in the environment as octets for ACL2 to read (at most 32
@@ -144,7 +158,7 @@ a capacity-free one the preset the budget holds (conservative unless
 FN_INIT_SIZING=largest), within the budget of the physical memory less the
 OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
   (let ((observations (fnn-heap-observations)))
-    (fnn-core 'fn-heap-init-decide request (fnn-heap-core-octets)
+    (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
               +fnn-gc-nursery-octets+ (first observations) (rest observations)
               (fnn-heap-env-octets "FN_INIT_BUDGET_MB")
               (fnn-heap-env-octets "FN_INIT_SIZING"))))
@@ -152,6 +166,68 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
 (defun fnn-heap-init-request (request)
   "The request `init' writes, or NIL when ACL2 refuses it."
   (fnn-core 'fn-heap-init-decision-request (fnn-heap-init-decision request)))
+
+;; The store's history octets on disk (PKT-686 item 1): the sizes of the
+;; regular files directly under transactions/, packs/ and checkpoints/ and
+;; the state checkpoint's, summed before the image starts.  An upper bound
+;; of the stored octets the offline verbs hold copies of (heap-figure's
+;; fn-heap-operation-history-octets states the use).  NIL -- the profile's H
+;; then -- when a directory holds more entries than ACL2's listing bound, an
+;; entry is not a regular file, or anything cannot be observed; the probe
+;; never faults on it.
+(defun fnn-heap-directory-octets (path limit)
+  (let ((st (fnn-lstat path)))
+    (cond ((null st) 0)
+          ((not (fnn-directory-p st)) nil)
+          (t (let ((sum 0))
+               (dolist (name (fnn-list-directory-bounded path limit "history observation")
+                             sum)
+                 (let ((entry (fnn-lstat (fnn-join path name))))
+                   (unless (and entry (fnn-regular-p entry))
+                     (return nil))
+                   (incf sum (sb-posix:stat-size entry)))))))))
+
+(defun fnn-heap-directory-count (path limit)
+  "The regular files in PATH (0 when it does not exist), or NIL."
+  (let ((st (fnn-lstat path)))
+    (cond ((null st) 0)
+          ((not (fnn-directory-p st)) nil)
+          (t (let ((count 0))
+               (dolist (name (fnn-list-directory-bounded path limit "history observation")
+                             count)
+                 (let ((entry (fnn-lstat (fnn-join path name))))
+                   (unless (and entry (fnn-regular-p entry))
+                     (return nil))
+                   (incf count))))))))
+
+;; (OCTETS . RECORDS): the history files' octets (below) and the transaction
+;; files' count, one record a file, which is what a full replay reads
+;; (books/heap-figure.lisp: the open's per-record term, lane
+;; reservation-after-flip); OCTETS alone when the count is not observed.
+(defun fnn-heap-history-observation (root profile)
+  (let ((octets (fnn-heap-history-octets root profile))
+        (records (handler-case
+                     (fnn-heap-directory-count
+                      (fnn-transactions (make-fnn-store root))
+                      (fnn-core 'fn-heap-history-listing-bound profile))
+                   (error () nil))))
+    (if (and (integerp octets) (integerp records))
+        (cons octets records)
+      octets)))
+
+(defun fnn-heap-history-octets (root profile)
+  (handler-case
+      (let* ((store (make-fnn-store root))
+             (limit (fnn-core 'fn-heap-history-listing-bound profile))
+             (state (fnn-lstat (fnn-state-checkpoint-path store)))
+             (parts (list (fnn-heap-directory-octets (fnn-transactions store) limit)
+                          (fnn-heap-directory-octets (fnn-join root "packs") limit)
+                          (fnn-heap-directory-octets (fnn-join root "checkpoints") limit)
+                          (cond ((null state) 0)
+                                ((fnn-regular-p state) (sb-posix:stat-size state))
+                                (t nil)))))
+        (and (every #'integerp parts) (reduce #'+ parts)))
+    (error () nil)))
 
 ;; The profile the command ARGV will run under: the store its operator
 ;; configuration names (the init request's target for `init'), the store a
@@ -199,21 +275,34 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                                      result)))
                ;; ACL2's native action for ARGV: the compaction verbs get
                ;; their own figure (fn-heap-reserve-operation-decide, PKT-686).
-               (fnn-core 'fn-native-operator-host-result-native-action result))))))
+               (fnn-core 'fn-native-operator-host-result-native-action result)
+               ;; The history the offline verbs are sized by, observed only
+               ;; for the actions ACL2 sizes by it (PKT-686 item 1).
+               (let ((action (fnn-core 'fn-native-operator-host-result-native-action
+                                       result)))
+                 (and (fnn-core 'fn-heap-operation-observes-p action)
+                      (let ((profile (fnn-heap-store-profile (fnn-absolute root))))
+                        (and profile
+                             (fnn-heap-history-observation (fnn-absolute root)
+                                                           profile))))))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)
   "The command's store profile (or NIL), the client connections its run
 admits (0 when it is not a run) and ACL2's native action for an operator
 command (NIL otherwise: a developer `store ROOT' verb gets the serve
-figure)."
+figure), and the store's observed history octets for an offline verb ACL2
+sizes by them (NIL otherwise)."
   (cond ((and (string= (or (first argv) "") "operator") (second argv))
-         (multiple-value-bind (profile connections action)
+         (multiple-value-bind (profile connections action observed)
              (fnn-heap-operator-profile (second argv) (cddr argv))
-           (values profile (if (integerp connections) connections 0) action)))
+           (values profile (if (integerp connections) connections 0) action observed)))
         ((and (string= (or (first argv) "") "store") (third argv))
-         (values (fnn-heap-store-profile (second argv)) 0 nil))
-        (t (values nil 0 nil))))
+         (let ((profile (fnn-heap-store-profile (second argv))))
+           (values profile 0 nil
+                   (and profile (fnn-heap-history-observation (fnn-absolute (second argv))
+                                                              profile)))))
+        (t (values nil 0 nil nil))))
 
 ;; The whole reservation (books/heap-reservation.lisp
 ;; fn-heap-reserve-operation-decide, HST-025, PKT-686): heap-figure's heap for
@@ -221,16 +310,16 @@ figure)."
 ;; other command's fn-heap-reserve-decide), then the thread stacks the node's
 ;; threads reserve beside it; the launcher passes `--control-stack-size KB'
 ;; too.
-(defun fnn-heap-reservation (profile connections &optional action)
-  (fnn-core 'fn-heap-reserve-operation-decide action profile (fnn-heap-core-octets)
-            +fnn-gc-nursery-octets+ (fnn-heap-observations) connections))
+(defun fnn-heap-reservation (profile connections &optional action observed)
+  (fnn-core 'fn-heap-reserve-operation-decide action profile (fnn-heap-image-observation)
+            +fnn-gc-nursery-octets+ (fnn-heap-observations) connections observed))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
     (error 'fnn-usage-error :message "heap -- ARGV..."))
-  (let* ((decision (multiple-value-bind (profile connections action)
+  (let* ((decision (multiple-value-bind (profile connections action observed)
                        (fnn-heap-command-profile argv)
-                     (fnn-heap-reservation profile connections action)))
+                     (fnn-heap-reservation profile connections action observed)))
          (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
     (if (eql code +fnn-exit-ok+)
