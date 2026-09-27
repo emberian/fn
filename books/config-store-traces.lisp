@@ -107,7 +107,10 @@
          (expected (fn-cst-replay-node (fn-sn-config-history st)
                                         (fn-sf-records files)
                                         (fn-sf-frontier files))))
-    (if (fn-record-p record)
+    ; The article arm names the HELD row: since the records flip (D33) the
+    ; history retains `fn-held-p' rows, never wire `fn-record-p' ones, and
+    ; fn-sn-finish completes the node on exactly that arm.
+    (if (fn-held-p record)
         (equal (fn-node-complete node (fn-record-txid record)
                                  (fn-record-generation record) :durable)
                expected)
@@ -142,7 +145,7 @@
                 (equal node (fn-cst-replay-node configs events
                                                 (1- frontier)))))
           ((fn-sf-record-phasep phase)
-           (if (fn-record-p (fn-sf-record-candidate files))
+           (if (fn-held-p (fn-sf-record-candidate files))
                (fn-cst-pending-linkp st)
              (fn-cst-deferred-linkp st)))
           ((equal phase :completing)
