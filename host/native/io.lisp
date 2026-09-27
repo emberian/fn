@@ -5011,6 +5011,7 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                        (progn (fnn-out "~a" text) +fnn-exit-ok+)
                      (progn (fnn-err "~a" text) +fnn-exit-refused+)))))
           (unwind-protect
+               (handler-case
                (progn
                  (setq socket (fnn-connect host port :timeout 30))
                  (let ((stage (if tls :greeting-tls :greeting-starttls)))
@@ -5040,6 +5041,15 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                           (setq stage :password))
                          (t (ignore-errors (send "QUIT"))
                             (return (finish step))))))))
+                 ;; A certificate the given trust does not verify, a name
+                 ;; that does not match, or a failed handshake: refused by
+                 ;; name, never an unchecked session.
+                 (fnn-tls-verify-error (e)
+                   (fnn-err "refused redeem tls: ~a; give the node's certificate file with --cafile" e)
+                   +fnn-exit-refused+)
+                 (fnn-tls-handshake-error (e)
+                   (fnn-err "refused redeem tls: ~a" e)
+                   +fnn-exit-refused+))
             (when channel (ignore-errors (fnn-tls-close-channel channel)))
             (when context (ignore-errors (fnn-tls-close-context context)))
             (when socket (ignore-errors (sb-bsd-sockets:socket-close socket)))))))))

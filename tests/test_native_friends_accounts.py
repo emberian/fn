@@ -87,7 +87,7 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         cert, key = self.root / "cert.pem", self.root / "key.pem"
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
                         str(key), "-out", str(cert), "-days", "2", "-nodes",
-                        "-subj", "/CN=127.0.0.1"], check=True,
+                        "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"], check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.config = self.root / "fn.toml"
         self.config.write_text(
@@ -220,7 +220,8 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         # No trust anchor for a self-signed node: the handshake is refused,
         # never an unchecked session.
         untrusted = self.fn_redeem("127.0.0.1:{}".format(self.tls_port), code, "finch3", "--tls")
-        self.assertNotEqual(untrusted.returncode, 0, text(untrusted))
+        self.assertEqual(untrusted.returncode, 1, text(untrusted))
+        self.assertIn(b"refused redeem tls: ", untrusted.stderr)
         self.assertNotIn(b"redeemed", untrusted.stdout)
         self.stop()
 
