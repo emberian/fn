@@ -7573,7 +7573,6 @@
         "fn-heap-init-decide-fits-the-budget-and-the-machine",
         "fn-heap-init-decide-honors-the-operators-request",
         "fn-heap-init-decide-sized-init-is-held",
-        "fn-heap-init-decide-conservative-is-development-or-small",
         "fn-heap-init-decide-largest-takes-scale-when-it-fits",
         "fn-heap-figure-octets-grows-with-history-and-record",
         "fn-heap-article-held-holds-the-article-record",

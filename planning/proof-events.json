@@ -7270,10 +7270,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-init-decide-conservative-is-development-or-small"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-init-decide-largest-takes-scale-when-it-fits"
         },
         {
