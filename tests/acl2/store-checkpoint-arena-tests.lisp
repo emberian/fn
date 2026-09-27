@@ -415,19 +415,6 @@
         (not (equal (sckat-walk-short n)
                     (list nil (reverse (nth 2 r)) (reverse (nth 3 r))))))))
 
-; fn-scka-write-run-is-run-segments without "(fn-arena-p fn-arena)" (a
-; logical value no stobj holds: the recognizer carries the hypothesis): a
-; sealed "payload" that is not an octet list (here an improper list) is
-; copied as it is, and the buffer is then no octet list, which no frame's
-; octets are.  The retained hypotheses hold of the one-source run: its
-; batches sum to its payload count.
-(defthm sckat-a-non-arena-payload-is-not-octets
-  (and (not (fn-arena-p '((1 2 . 3))))
-       (equal (fn-scka-sum '(1)) (len (fn-scka-src-payloads '(0) '((1 2 . 3)))))
-       (not (fn-octets-p (mv-nth 1 (fn-scka-append-batch '(0) 1 '((1 2 . 3)) nil)))))
-  :hints (("Goal" :in-theory (enable fn-arena-p-is-payload-listp)))
-  :rule-classes nil)
-
 ;; -----------------------------------------------------------------------------
 ;; 3c. REPRESENTATION BOUNDS of the load keystone (checkpoint-arena-3).
 ;; fn-scka-load-of-written-file assumes the file's counts fit the codec's

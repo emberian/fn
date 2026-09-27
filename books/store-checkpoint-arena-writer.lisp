@@ -122,11 +122,15 @@
           (cons (fn-scka-src-of (car rows) w fn-arena) (fn-scka-canon-srcs (cdr rows) fn-arena))
         (fn-scka-canon-srcs (cdr rows) fn-arena)))))
 
+; (A true list whatever the value: the writer's step theorems need no
+; hypothesis about the arena; true-list-fix of a true list is the list, one
+; walk and no allocation.)
 (defun fn-scka-src-payload (s fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
-  (if (natp s)
-      (if (< s (fn-arena-count fn-arena)) (fn-arena-payload s fn-arena) nil)
-    s))
+  (true-list-fix
+   (if (natp s)
+       (if (< s (fn-arena-count fn-arena)) (fn-arena-payload s fn-arena) nil)
+     s)))
 
 (defun fn-scka-src-payloads (srcs fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -272,8 +276,7 @@
   :hints (("Goal" :in-theory (e/d (fn-arena-p-is-payload-listp) (fn-scc-nat-encodablep)))))
 
 (defthm fn-scka-append-batch-is-body
-  (implies (and (natp k) (<= k (len srcs)) (true-listp fn-octets)
-                (fn-arena-p fn-arena) (fn-scka-srcs-okp srcs fn-arena))
+  (implies (and (natp k) (<= k (len srcs)) (true-listp fn-octets))
            (let ((r (fn-scka-append-batch srcs k fn-arena fn-octets)))
              (and (equal (mv-nth 1 r)
                          (append fn-octets
@@ -329,10 +332,12 @@
   :hints (("Goal" :cases ((and (fn-held-p row) (fn-record-p (fn-row-wire-of row fn-arena))))
            :in-theory (e/d (fn-scka-src-of fn-scka-src-payload)
                            (fn-scka-sealsp fn-scka-payload-of fn-record-p fn-row-wire-of)))
-          ("Subgoal 1" :in-theory (e/d (fn-scka-src-of fn-scka-src-payload fn-row-wire-of
+          ("Subgoal 1" :use ((:instance fn-scka-payload-of-octets
+                                        (w (fn-row-wire-of row fn-arena))))
+           :in-theory (e/d (fn-scka-src-of fn-scka-src-payload fn-row-wire-of
                                         fn-row-bytes)
                                        (fn-scka-sealsp fn-scka-payload-of fn-record-p
-                                        fn-held-wire)))))
+                                        fn-held-wire fn-scka-payload-of-octets)))))
 
 (defthm fn-scka-src-payloads-of-canon-srcs
   (equal (fn-scka-src-payloads (fn-scka-canon-srcs rows fn-arena) fn-arena)
@@ -589,7 +594,6 @@
          (k (nfix (car (nth 2 pst))))
          (c (fn-scka-body (take k ps))))
     (implies (and (posp (nth 0 pst)) (<= k (len ps))
-                  (fn-arena-p fn-arena) (fn-scka-srcs-okp (nth 1 pst) fn-arena)
                   (equal (mv-nth 0 r) :ok))
              (and (equal (fn-sccb-plan-octets (mv-nth 1 r) (mv-nth 3 r))
                          (fn-scc-concat (fn-scc-frames (list c) (nth 0 pst) count s (nth 3 pst))))
@@ -659,7 +663,6 @@
 (defthm fn-scka-write-run-batches
   (let ((r (fn-scka-write-run pst n count s segment-bound file-bound fuel fn-arena fn-octets)))
     (implies (and (posp (nth 0 pst))
-                  (fn-arena-p fn-arena) (fn-scka-srcs-okp (nth 1 pst) fn-arena)
                   (equal count (+ (nth 0 pst) (len (nth 2 pst))))
                   (equal (fn-scka-sum (nth 2 pst))
                          (len (fn-scka-src-payloads (nth 1 pst) fn-arena)))
@@ -694,7 +697,6 @@
          (r (fn-scka-write-run (fn-scka-initial-state srcs ks total) (len ps) (+ 1 (len ks))
                                s segment-bound file-bound fuel fn-arena fn-octets)))
     (implies (and (equal (fn-scka-sum ks) (len ps))
-                  (fn-arena-p fn-arena) (fn-scka-srcs-okp srcs fn-arena)
                   (equal (mv-nth 0 r) :ok))
              (equal (mv-nth 1 r) (fn-scc-concat (fn-scka-run-segments ps ks s)))))
   :hints (("Goal" :do-not-induct t
@@ -736,7 +738,6 @@
                                (len ps) (+ 1 (len ks))
                                s segment-bound file-bound fuel fn-arena fn-octets)))
     (implies (and (equal (fn-scka-sum ks) (len ps))
-                  (fn-arena-p fn-arena)
                   (equal (mv-nth 0 r) :ok))
              (equal (mv-nth 1 r) (fn-scc-concat (fn-scka-run-segments ps ks s)))))
   :hints (("Goal" :do-not-induct t

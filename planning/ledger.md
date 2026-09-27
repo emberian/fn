@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1248 |
 | Certification roots in the Makefile | 1201 |
 | Books inside the root closure | 1237 |
-| `defthm` and `defthmd` events | 18333 |
+| `defthm` and `defthmd` events | 18332 |
 | `defun` events | 12673 |
 | Functions with verified guards | 2452 |
 | Functions declared `:verify-guards nil` and never verified | 1489 |
@@ -1235,7 +1235,7 @@ that `make certify` requests.
 | `tests/acl2/store-capacity-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 14 | 1 | 0 |
 | `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 1 | 0 |
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 49 | 8 | 0 |
-| `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 4 | 17 | 0/17/0/0 | 24 | 0 | 0 |
+| `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 3 | 17 | 0/17/0/0 | 24 | 0 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 6 | 0/6/0/0 | 15 | 9 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 50 | 8 | 0 |
@@ -1503,7 +1503,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scf-debt-from-of-atom` | `books/store-carried-folds.lisp` | 43 | branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
 | `fn-scf-tally-records-of-atom` | `books/store-carried-folds.lisp` | 49 | branch-of-definition: the hypothesis negates a branch test of fn-pcb-tally-records and the conclusion is that branch's value |
 | `fn-scka-car-run-segments` | `books/store-checkpoint-arena-load.lisp` | 372 | reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-scka-payload-of-record` | `books/store-checkpoint-arena-writer.lisp` | 318 | branch-of-definition: the hypothesis is a branch test of fn-scka-payload-of and the conclusion is that branch's value |
+| `fn-scka-payload-of-record` | `books/store-checkpoint-arena-writer.lisp` | 321 | branch-of-definition: the hypothesis is a branch test of fn-scka-payload-of and the conclusion is that branch's value |
 | `fn-scka-select-named-unfolds` | `books/store-checkpoint-arena-load.lisp` | 708 | branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value |
 | `fn-sco-select-named-unfolds` | `books/store-checkpoint-tables.lisp` | 992 | branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value |
 | `fn-sctr-plan-segments-nil` | `books/store-checkpoint-tables-reader.lisp` | 553 | branch-of-definition: the hypothesis negates a branch test of fn-sccr-plan-segments and the conclusion is that branch's value |

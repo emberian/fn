@@ -1208,7 +1208,7 @@
     "books": 1248,
     "books_in_root_closure": 1237,
     "roots": 1201,
-    "theorems": 18333,
+    "theorems": 18332,
     "functions": 12673,
     "assert_events": 18154,
     "must_fails": 2169,
@@ -33671,7 +33671,7 @@
       "book": "tests/acl2/store-checkpoint-arena-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
+      "theorems": 3,
       "functions": 17,
       "guards": {
         "verified": 0,
@@ -37775,7 +37775,7 @@
     {
       "theorem": "fn-scka-payload-of-record",
       "book": "books/store-checkpoint-arena-writer.lisp",
-      "line": 318,
+      "line": 321,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-scka-payload-of and the conclusion is that branch's value"
       ]
