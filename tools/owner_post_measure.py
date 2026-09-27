@@ -75,8 +75,11 @@ def main() -> int:
         env["FN_OWNER_MEASURE"] = "1"
         err_path = root / "owner.err"
         with open(err_path, "wb") as err:
+            # Unbuffered: a buffered reader would hold the LISTENING line
+            # while select waits on the descriptor.
             owner = subprocess.Popen([image, "--fn", "operator", str(config), "run"],
-                                     env=env, stdout=subprocess.PIPE, stderr=err)
+                                     env=env, stdout=subprocess.PIPE, stderr=err,
+                                     bufsize=0)
         try:
             ready = False
             for _ in range(4):

@@ -91,8 +91,14 @@
 (defvar *fnn-owner-measure-table*
   (make-hash-table :test 'eq :synchronized t))
 
+(defun fnn-owner-measure-now ()
+  "Microseconds on the monotonic clock (get-internal-real-time is coarse here)."
+  (multiple-value-bind (seconds nanoseconds)
+      (sb-unix:clock-gettime sb-unix:clock-monotonic)
+    (+ (* seconds 1000000) (floor nanoseconds 1000))))
+
 (defun fnn-owner-measure-note (label start bytes)
-  (let* ((held (- (get-internal-real-time) start))
+  (let* ((held (- (fnn-owner-measure-now) start))
          (consed (- (sb-ext:get-bytes-consed) bytes))
          (row (or (gethash label *fnn-owner-measure-table*)
                   (setf (gethash label *fnn-owner-measure-table*)
@@ -105,7 +111,7 @@
 (defmacro fnn-owner-measured ((label) &body body)
   (let ((start (gensym "START")) (bytes (gensym "BYTES")))
     `(if *fnn-owner-measure*
-         (let ((,start (get-internal-real-time))
+         (let ((,start (fnn-owner-measure-now))
                (,bytes (sb-ext:get-bytes-consed)))
            (unwind-protect (progn ,@body)
              (fnn-owner-measure-note ,label ,start ,bytes)))
@@ -119,8 +125,7 @@
          (format *error-output*
                  "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d~%"
                  label count
-                 (round (* held 1000000) internal-time-units-per-second)
-                 (round (* most 1000000) internal-time-units-per-second)
+                 held most
                  consed)))
      *fnn-owner-measure-table*)
     (finish-output *error-output*)))
