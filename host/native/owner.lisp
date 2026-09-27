@@ -1838,7 +1838,13 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned a malformed exposure close"))
            (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
                  closing t)))
-       (values reply (or closing uncertain) starttls consumed redeemed)))))
+       ;; PKT-600 (PRF-213): a read that emitted a submission yielded after
+       ;; its article (books/served-tls-prefix.lisp fn-served-feed-counted,
+       ;; the span fold books/served-span.lisp fn-scar-feed-span), so the
+       ;; caller feeds the rest of INCOMING as the next read, after this
+       ;; read's reply and the article's outcome are sent.
+       (values reply (or closing uncertain) starttls consumed redeemed
+               (fnn-owner-bool-global 'fn-owner-submittedp))))))
 
 ;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
 ;;; Before every served step ACL2 answers :proceed or the milliseconds to
@@ -2003,7 +2009,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                          ((zerop (length incoming)) (return))
                          (t (fnn-owner-exposure-wait service cid)
                             (multiple-value-bind (reply closing starttls consumed
-                                                  redeemed)
+                                                  redeemed submitted)
                                 (fnn-owner-handle-chunk service cid incoming socket)
                               (cond
                                 (channel
@@ -2022,8 +2028,11 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                  ;; PRF-164: an XREDEEM PASS stops the fold at
                                  ;; its line; what the client sent after it is
                                  ;; the next step's input, already decrypted.
+                                 ;; PKT-600 (PRF-213): so does an article's
+                                 ;; submission: the next article or command
+                                 ;; in this record is the next step's input.
                                  (cond ((or closing (= consumed (length incoming))))
-                                       (redeemed
+                                       ((or redeemed submitted)
                                         (setq retained (subseq incoming consumed)))
                                        (t (fnn-fault "protected owner read left a TLS suffix"))))
                                 ((fnn-owner-service-tls-context service)
@@ -2035,7 +2044,12 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 ((/= consumed (length incoming))
                                  ;; The suffix is the next step's input, and
                                  ;; it is already in hand.  The served machine
-                                 ;; stops at the octet that closed the wire:
+                                 ;; stops after the octet that completed a
+                                 ;; submission (PKT-600, PRF-213: two
+                                 ;; pipelined TAKETHIS or POST articles in one
+                                 ;; read are two steps, each committed and
+                                 ;; answered before the next is framed), and
+                                 ;; at the octet that closed the wire:
                                  ;; an article over fn-own-body-limit
                                  ;; (books/owner.lisp, the record codec's
                                  ;; *fn-record-max-payload* = 32768) makes fn-wire-after-line answer

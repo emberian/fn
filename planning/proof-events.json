@@ -414,7 +414,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocfg-read-tls-prefix-is-full-read"
+          "name": "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix"
         }
       ]
     },
@@ -6810,12 +6810,113 @@
         {
           "kind": "theorem",
           "name": "fn-cat-relation-of-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-of-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-non-article-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-is-prefix-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-growth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-wire-list-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-wire-list-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-at-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-at-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-article-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-before-article-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-other-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-redecide"
         }
       ]
     },
     {
       "id": "PRF-202",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-view-apply-is-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crf-apply-article-plain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-commit-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-commit-advanced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-withdraw-advanced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdraw-then-commit-view"
+        }
+      ]
     },
     {
       "id": "PRF-203",
@@ -7400,6 +7501,139 @@
         {
           "kind": "theorem",
           "name": "fn-apr-foundp-is-article-found"
+        }
+      ]
+    },
+    {
+      "id": "PRF-209",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-config-replay-of-one-more"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-cpr-replay-of-one-more"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-candidate-open-result-is-the-replayed-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-publication-authorize-is-the-replayed-authorization"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+        }
+      ]
+    },
+    {
+      "id": "PRF-216",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-checkpoint-decode-is-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-selection-plan-is-selection-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-dec-is-dec"
+        }
+      ]
+    },
+    {
+      "id": "PRF-213",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-counted-result-is-step-of-consumed-prefix",
+          "note": "KEYSTONE. Subject fn-served-step-counted (fn-served-step-counted-fast-is-reference; host: fn-owner-chunk-span -> fn-scar-ocfg-read-span, fn-scar-feed-span-is-feed-counted, fn-scar-feed-counted-is-served-feed-counted). Teeth: tests/acl2/served-pipelining-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-drain-is-step",
+          "note": "KEYSTONE. fn-served-drain is the host loop of host/native/owner.lisp fnn-owner-serve-client (retained suffix) over fn-served-step-counted. Teeth: tests/acl2/served-pipelining-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-drain-run-is-the-concatenated-step",
+          "note": "KEYSTONE (boundary independence over the concatenation). Teeth: tests/acl2/served-pipelining-tests.lisp (a TAKETHIS split across two reads)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-drain-run-is-boundary-independent",
+          "note": "KEYSTONE. Hypothesis: equal concatenation; removal witness and must-fail in tests/acl2/served-pipelining-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-counted-carries-at-most-one-submission",
+          "note": "KEYSTONE. Under fn-served-connp; the connp removal has no known witness (PKT-615). Teeth: two POSTs and two TAKETHIS in one read."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-drain-takes-every-submission",
+          "note": "KEYSTONE (no loss). Under fn-served-connp. Teeth: tests/acl2/served-pipelining-tests.lisp; native: test_pipelined_takethis_in_one_read_answers_every_article, test_pipelined_post_in_one_read_answers_every_article."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
+          "note": "Owner-level refinement of the host read over the consumed prefix (was fn-ocfg-read-tls-prefix-is-full-read)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-read-tls-prefix-carries-at-most-one-submission",
+          "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
+        }
+      ]
+    },
+    {
+      "id": "PRF-218",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-stuff-lines-iter-is-stuff-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-body-octets-iter-is-body-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-list-length-onto-is-list-length"
+        }
+      ]
+    },
+    {
+      "id": "PRF-220",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-node-record-committed-carriedp-is-committedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-sn-statep-carries-node-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-store-record-accepted-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-ocl-relation-carries-sn-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-ocl-store-record-accepted-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
         }
       ]
     }
