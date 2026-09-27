@@ -588,7 +588,13 @@ limits it was issued with. While the disk sheds (`slow` or `stalled`): a
 served read runs with posting not permitted, so a POST command is answered
 RFC 3977 section 6.3.1's 440 with the reason before any article is sent
 (`fn-otm-read-span-while-shedding`); an article whose POST was answered 340
-before is answered 441 as in slice 1; an operator post, a live
+before is answered 441 with the reason as in slice 1 (both lines are ACL2's,
+`fn-otm-disk-effects`, in place of the served machine's generic texts, only
+when the connection's posting bit was on before the read); a peer's read is
+a reader-class quantum under the disk-slow posture, so IHAVE is answered 436
+"retry later; the disk is slow" (RFC 3977 section 6.3.2) and CHECK 431 (RFC
+4644 section 2.4), at once and whatever the node holds
+(`fn-peer-shed-offer-is-disk-slow`, PKT-858); an operator post, a live
 configuration change or a moderation request on the control socket is
 answered BUSY at once, before it waits for the gate. Past H the disk is
 `stalled`: once per barrier every poster of the batch in flight and of the
@@ -607,9 +613,9 @@ the barrier's issue (its wait never reaches past H), so every POST is
 answered accepted, refused, uncertain or try-later within H + L + one
 quantum of its article's arrival. `health` and `status` print `disk
 stalled: barrier N ms pending ... members=uncertain`; the service log names
-the stall and the recovery after it. Not yet: IHAVE's 436 and CHECK's 431
-during `slow` (PKT-862: a transit read is not admitted while a barrier is
-pending, so a peer waits, as in slice 1), the inline barrier and
+the stall and the recovery after it. Not yet: a transfer during `slow` (an
+IHAVE article after a 335 given before the disk went slow, a TAKETHIS) waits
+for the barrier as in slice 1, the inline barrier and
 configuration publication as requests (slice 3), `health`'s exit in
 `stalled` (PKT-853 (b)).
 
