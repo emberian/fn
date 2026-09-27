@@ -1023,6 +1023,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-bound-commit \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
+	books/history-columns \
+	tests/acl2/history-columns-tests \
+	books/history-columns-store \
+	tests/acl2/history-columns-store-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
 	books/consumer-event-index-store-invariants \
