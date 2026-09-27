@@ -17,11 +17,11 @@
 (defun bskm-good ()
   (bskm-run (car (bskm-pair)) (cdr (bskm-pair)) ".stage-marker-k0" (fn-hm-after-commit 1)))
 (defun bskm-related-at (run k)
-  (fn-bs-store-relation (car (nth k run)) (cdr (nth k run))))
+  (fn-bs-store-relation (car (nth k run)) (cdr (nth k run)) *bsk5-arena*))
 (defun bskm-k0-conclusion (run)
   (and (equal (len run) 10)
        (bskm-related-at run 1) (bskm-related-at run 3) (bskm-related-at run 5)
-       (fn-bs-store-relation (fn-bs-root-rename-dropped (car (nth 7 run))) (cdr (nth 7 run)))
+       (fn-bs-store-relation (fn-bs-root-rename-dropped (car (nth 7 run))) (cdr (nth 7 run)) *bsk5-arena*)
        (mv-let (r landed) (fn-bs-fsync-dir (car (nth 7 run)) :root :ok)
          (declare (ignore r))
          (equal landed (car (nth 9 run))))
@@ -43,7 +43,7 @@
 (assert-event
  (let ((bs (car (bskm-pair))) (ks (cdr (bskm-pair))) (run (bskm-good))
        (new (list :present (fn-hm-after-commit 1))))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (equal (len (fn-sf-records ks)) 2)
         (fn-bs-finish-inputp ks 1 1)
         (not (fn-bs-lookup bs :staging ".stage-marker-k0"))
@@ -70,7 +70,7 @@
         (old (list :present (fn-hm-after-commit 1)))
         (new (list :present (fn-hm-after-commit 2))))
    (and (fn-bs-marker-inputp bs ".stage-marker-k0b")
-        (fn-bs-store-relation bs (cdr (bskm-pair)))
+        (fn-bs-store-relation bs (cdr (bskm-pair)) *bsk5-arena*)
         (bskm-k0-conclusion run)
         (equal (fn-bs-hm-observation bs) old)
         (equal (bskm-obs run 1 t) old) (equal (bskm-obs run 3 t) old)
@@ -112,7 +112,7 @@
     (and (fn-bs-crash-choicesp choices (fn-bs-pending b) (fn-bs-unit b))
          (equal (fn-bs-crash b choices)
                 (fn-bs-crash target (fn-bs-k0m-drop-rename-choices (fn-bs-pending b) choices)))
-         (fn-bs-store-relation target ks))))
+         (fn-bs-store-relation target ks *bsk5-arena*))))
 (assert-event
  (let* ((run (bskm-second)) (b (car (nth 7 run))) (ks (cdr (nth 7 run)))
         (all (bskm-all-land (fn-bs-pending b) (fn-bs-unit b)))
@@ -187,7 +187,7 @@
 ; Teeth for fn-bs-k0-marker-cuts-relation, one per hypothesis.
 
 ; Drop the relation: the completing kernel over the initial byte image.
-(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskm-pair)))))
+(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskm-pair)) *bsk5-arena*)))
 (must-fail
  (assert-event
   (bskm-k0-conclusion (bskm-run (bsk5-initial) (cdr (bskm-pair))
@@ -206,7 +206,7 @@
                     nil *bsk5-groups* *bsk5-capacity*)))
 (assert-event
  (let ((p (bskm-frontier-pair)))
-   (and (fn-bs-store-relation (car p) (cdr p))
+   (and (fn-bs-store-relation (car p) (cdr p) *bsk5-arena*)
         (not (fn-bs-finish-inputp (cdr p) 1 1))
         (fn-bs-ops-for-dir (fn-bs-pending (car p)) :root)
         (bskm-k0-conclusion (bskm-run (car p) (cdr p) ".stage-marker-k0"

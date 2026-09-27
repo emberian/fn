@@ -97,7 +97,13 @@
 ; resumed from their exact continuations, reach the whole run's answer,
 ; which is the recursive decoder's value over the payload.
 (defun bpnrbt-quanta (n i e goals vals fn-octets-bp)
-  (declare (xargs :stobjs fn-octets-bp :verify-guards nil :measure (nfix n)))
+  ; The machine stays closed in the termination proof (29 s opened, r4 of
+  ; lane header-limits-profile): only N decreases.
+  (declare (xargs :stobjs fn-octets-bp :verify-guards nil :measure (nfix n)
+                  ;; :normalize nil (lane bp-fragments-10mib): normalizing the body through
+                  ;; fn-bpnrb-mrun took 28 s of this book's 30 s at 2 jobs (D26).
+                  :normalize nil
+                  :hints (("Goal" :in-theory (disable fn-bpnrb-mrun)))))
   (if (or (zp n) (atom goals))
       (mv i goals vals)
     (mv-let (ok i2 goals2 vals2) (fn-bpnrb-mrun 5 16 i e goals vals fn-octets-bp)

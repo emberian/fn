@@ -71,86 +71,86 @@
 (include-book "byte-store-k0-window")
 
 (defthm fn-bs-k0s-covered-of-relation
-  (implies (fn-bs-store-relation bs ks) (fn-bs-k0-coveredp bs ks))
+  (implies (fn-bs-store-relation bs ks arena) (fn-bs-k0-coveredp bs ks arena))
   :hints (("Goal" :in-theory '(fn-bs-k0-coveredp))))
 ; The record program's two :ok observations (lane k0-corollaries): each moves
 ; the kernel between two phases whose crash images and pending-entry
 ; conditions agree, so neither needs a byte-state premise.
 (defthm fn-sf-record-file-result-ok-preserves-store-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-record-file-result ks :ok)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-record-file-result ks :ok) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-record-file-result-preserves-state (s ks) (result :ok)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-record-file-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
                              fn-bs-authority-fencedp fn-bs-authority-knownp
                              fn-bs-ops-for-dir)))))
 (defthm fn-sf-record-link-result-ok-preserves-store-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-record-link-result ks :ok)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-record-link-result ks :ok) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-record-link-result-preserves-state (s ks) (result :ok)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-record-link-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
                              fn-bs-authority-fencedp fn-bs-authority-knownp
                              fn-bs-ops-for-dir)))))
-(defun fn-bs-k0-observation-inputp (bs ks event)
+(defun fn-bs-k0-observation-inputp (bs ks event arena)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-bs-frontier-noncommit-observationp event)
       (member-equal event '((:record-file :ok) (:record-link :ok) (:record-link :error) (:record-dir :error)))
       (and (consp event) (member-equal (car event) '(:core-completion :emit-success)))
       (and (equal event '(:record-dir :ok))
            (equal (fn-sf-phase ks) :record-attempted)
-           (fn-bs-record-directory-committedp bs ks))
+           (fn-bs-record-directory-committedp bs ks arena))
       (and (equal event '(:frontier-dir :ok))
            (equal (fn-sf-phase ks) :frontier-attempted)
            (fn-bs-frontier-directory-committedp bs ks))))
-(defun fn-bs-k0-outside-step-inputp (bs ks step outcome)
+(defun fn-bs-k0-outside-step-inputp (bs ks step outcome arena)
   (declare (xargs :guard t :verify-guards nil))
   (let ((d1 (nth 1 step)) (n2 (nth 2 step)) (d3 (nth 3 step)) (n4 (nth 4 step)))
     (and
      (not (fn-bs-replay-visiblep ks))
      (case (car step)
-       (:cut (fn-bs-k0-coveredp bs ks))
-       (:observe (and (fn-bs-store-relation bs ks) (fn-bs-k0-observation-inputp bs ks d1)))
-       (:create (and (fn-bs-store-relation bs ks) (equal d1 :staging) (fn-bs-namep n2)))
-       (:write-all (and (fn-bs-store-relation bs ks) (fn-cbor-octet-listp d3)
+       (:cut (fn-bs-k0-coveredp bs ks arena))
+       (:observe (and (fn-bs-store-relation bs ks arena) (fn-bs-k0-observation-inputp bs ks d1 arena)))
+       (:create (and (fn-bs-store-relation bs ks arena) (equal d1 :staging) (fn-bs-namep n2)))
+       (:write-all (and (fn-bs-store-relation bs ks arena) (fn-cbor-octet-listp d3)
                         (not (member-equal (fn-bs-lookup bs d1 n2) (fn-bs-authority-inode-list bs)))))
        (:fsync-file (let ((x (fn-bs-lookup bs d1 n2)))
-                      (and (fn-bs-store-relation bs ks) (natp x)
+                      (and (fn-bs-store-relation bs ks arena) (natp x)
                            (not (member-equal x (fn-bs-authority-inode-list bs)))
                            (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                            (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
                            (or (equal outcome :ok)
                                (fn-bs-crash-choicesp (cdr outcome) (fn-bs-ops-for-ino (fn-bs-pending bs) x)
                                                      (fn-bs-unit bs))))))
-       (:fsync-dir (or (and (fn-bs-store-relation bs ks) (equal d1 :staging) (equal outcome :ok))
-                       (and (fn-bs-store-relation bs ks) (equal d1 :transactions) (equal outcome :ok)
+       (:fsync-dir (or (and (fn-bs-store-relation bs ks arena) (equal d1 :staging) (equal outcome :ok))
+                       (and (fn-bs-store-relation bs ks arena) (equal d1 :transactions) (equal outcome :ok)
                             (equal (fn-sf-phase ks) :record-attempted)
                             (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
-                       (and (equal d1 :root) (fn-bs-k0s-root-rename-pendingp bs ks))
-                       (and (fn-bs-store-relation bs ks) (equal d1 :root) (equal outcome :ok))
+                       (and (equal d1 :root) (fn-bs-k0s-root-rename-pendingp bs ks arena))
+                       (and (fn-bs-store-relation bs ks arena) (equal d1 :root) (equal outcome :ok))
                        ; k0-steps (PKT-086): the staging barrier's error outcome.
-                       (and (fn-bs-store-relation bs ks) (equal d1 :staging) (not (equal outcome :ok))
+                       (and (fn-bs-store-relation bs ks arena) (equal d1 :staging) (not (equal outcome :ok))
                             (fn-bs-crash-choicesp (cdr outcome)
                                                   (fn-bs-ops-for-dir (fn-bs-pending bs) :staging)
                                                   (fn-bs-unit bs)))
                        ; k0-rest (PKT-086): the authority barriers' error outcomes.
-                       (and (fn-bs-store-relation bs ks) (member-equal d1 '(:root :transactions))
+                       (and (fn-bs-store-relation bs ks arena) (member-equal d1 '(:root :transactions))
                             (not (equal outcome :ok))
                             (or (equal d1 :root)
                                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
                                 (equal (fn-sf-phase ks) :record-attempted)))))
-       (:unlink (and (fn-bs-store-relation bs ks) (not (member-equal d1 '(:root :transactions)))))
-       (:rename (and (fn-bs-store-relation bs ks) (equal d1 :staging) (equal d3 :root)
+       (:unlink (and (fn-bs-store-relation bs ks arena) (not (member-equal d1 '(:root :transactions)))))
+       (:rename (and (fn-bs-store-relation bs ks arena) (equal d1 :staging) (equal d3 :root)
                      (let ((ino (fn-bs-lookup bs :staging n2)))
                        (or (and (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                                 (fn-bs-k0s-root-rename-targetp bs n4 ino))
@@ -164,20 +164,20 @@
                                 (equal (fn-bs-frontier-decode (fn-bs-durable-content bs ino))
                                        (fn-sf-frontier-candidate ks))
                                 (equal (fn-bs-durable-frontier bs) (fn-sf-frontier ks))
-                                (equal (fn-bs-durable-records bs) (fn-sf-records ks)))))))
-       (:link (and (fn-bs-store-relation bs ks) (equal d1 :staging) (equal d3 :transactions)
+                                (equal (fn-bs-durable-records bs) (fn-bs-rows-wire (fn-sf-records ks) arena)))))))
+       (:link (and (fn-bs-store-relation bs ks arena) (equal d1 :staging) (equal d3 :transactions)
                    (let ((ino (fn-bs-lookup bs :staging n2)))
                      (and (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
                           (fn-bs-fencedp bs ino)
                           (consp (assoc-equal ino (fn-bs-inodes bs)))
                           (equal n4 (fn-bs-txn-name (len (fn-bs-durable-names bs :transactions))))
                           (fn-sf-record-present-visiblep ks)
-                          (equal (fn-bs-durable-records bs) (fn-sf-records ks))
-                          (equal (fn-bs-record-of (fn-bs-durable bs) ino) (fn-sf-record-candidate ks))))))
+                          (equal (fn-bs-durable-records bs) (fn-bs-rows-wire (fn-sf-records ks) arena))
+                          (equal (fn-bs-record-of (fn-bs-durable bs) ino) (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))))
        (otherwise nil)))))
 (defthm fn-bs-k0s-observation-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-k0-observation-inputp bs ks event))
-           (fn-bs-store-relation bs (fn-sf-dispatch ks event g c)))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0-observation-inputp bs ks event arena))
+           (fn-bs-store-relation bs (fn-sf-dispatch ks event g c) arena))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-frontier-noncommit-observation-preserves-relation (outcome :ok) (groups g) (capacity c))
                  fn-sf-record-file-result-ok-preserves-store-relation fn-sf-record-link-result-ok-preserves-store-relation
@@ -191,8 +191,8 @@
                             fn-sf-record-dir-result fn-sf-core-completion fn-sf-emit-success
                             fn-bs-record-directory-committedp fn-bs-frontier-directory-committedp)))))
 (defthm fn-bs-k0s-step-create-covered
-  (implies (and (equal (car step) :create) (fn-bs-k0-outside-step-inputp bs ks step outcome))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
+  (implies (and (equal (car step) :create) (fn-bs-k0-outside-step-inputp bs ks step outcome arena))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-create-preserves-relation (b bs) (k ks) (stage (nth 2 step))))
@@ -205,8 +205,8 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-write-all-covered
-  (implies (and (equal (car step) :write-all) (fn-bs-k0-outside-step-inputp bs ks step outcome))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
+  (implies (and (equal (car step) :write-all) (fn-bs-k0-outside-step-inputp bs ks step outcome arena))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-write-preserves-relation (b bs) (k ks) (octets (nth 3 step)) (ino (fn-bs-lookup bs (nth 1 step) (nth 2 step)))))
@@ -219,8 +219,8 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-fsync-file-covered
-  (implies (and (equal (car step) :fsync-file) (fn-bs-k0-outside-step-inputp bs ks step outcome))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
+  (implies (and (equal (car step) :fsync-file) (fn-bs-k0-outside-step-inputp bs ks step outcome arena))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-fsync-file-preserves-relation (b bs) (k ks) (x (fn-bs-lookup bs (nth 1 step) (nth 2 step)))))
@@ -233,8 +233,8 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-fsync-dir-covered
-  (implies (and (equal (car step) :fsync-dir) (fn-bs-k0-outside-step-inputp bs ks step outcome))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
+  (implies (and (equal (car step) :fsync-dir) (fn-bs-k0-outside-step-inputp bs ks step outcome arena))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0-staging-fence-preserves-relation (b bs) (k ks)) (:instance fn-bs-k8-pending-link-fence-preserves-relation) (:instance fn-bs-k0s-root-rename-barrier-resolves (m bs)) fn-bs-k0s-root-fence-preserves-relation
@@ -249,8 +249,8 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-unlink-covered
-  (implies (and (equal (car step) :unlink) (fn-bs-k0-outside-step-inputp bs ks step outcome))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
+  (implies (and (equal (car step) :unlink) (fn-bs-k0-outside-step-inputp bs ks step outcome arena))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-unlink-preserves-relation (b bs) (k ks) (dir (nth 1 step)) (name (nth 2 step))))
@@ -263,8 +263,8 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-rename-covered
-  (implies (and (equal (car step) :rename) (fn-bs-k0-outside-step-inputp bs ks step outcome))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
+  (implies (and (equal (car step) :rename) (fn-bs-k0-outside-step-inputp bs ks step outcome arena))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-root-rename-covered (b bs) (k ks) (stage (nth 2 step)) (name (nth 4 step))) (:instance fn-bs-k0s-frontier-rename-preserves-relation (b bs) (k ks) (stage (nth 2 step))))
@@ -277,8 +277,8 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-k0-coveredp fn-bs-k0s-root-rename-pendingp) (fn-bs-store-relation fn-bs-k0s-root-rename-landed fn-bs-root-rename-dropped fn-bs-fence-dir fn-bs-k0m-has-root-rename fn-bs-k0m-root-rename-onlyp fn-bs-k0s-root-target fn-bs-k0s-root-name fn-bs-k0s-root-rename-targetp fn-bs-lookup))))))
 (defthm fn-bs-k0s-step-link-covered
-  (implies (and (equal (car step) :link) (fn-bs-k0-outside-step-inputp bs ks step outcome))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks))
+  (implies (and (equal (car step) :link) (fn-bs-k0-outside-step-inputp bs ks step outcome arena))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :expand ((:free (o) (fn-bs-step bs ks step o groups capacity)))
            :use ((:instance fn-bs-k0s-link-preserves-relation (b bs) (k ks) (stage (nth 2 step)) (name (nth 4 step))))
@@ -295,15 +295,15 @@
 ; (books/byte-store-k0-window.lisp).  Disabled below: an includer that
 ; discharges this predicate at a pair outside the window proves the first
 ; disjunct.
-(defun fn-bs-k0-step-inputp (bs ks step outcome)
+(defun fn-bs-k0-step-inputp (bs ks step outcome arena)
   (declare (xargs :guard t :verify-guards nil))
-  (or (fn-bs-k0-outside-step-inputp bs ks step outcome)
-      (fn-bs-k0w-step-inputp bs ks step outcome)))
+  (or (fn-bs-k0-outside-step-inputp bs ks step outcome arena)
+      (fn-bs-k0w-step-inputp bs ks step outcome arena)))
 (defthm fn-bs-k0-outside-step-preserves-k0-coverage
-  (implies (fn-bs-k0-outside-step-inputp bs ks step outcome)
+  (implies (fn-bs-k0-outside-step-inputp bs ks step outcome arena)
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
                  (ks1 (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity))))
-             (and (fn-bs-k0-coveredp bs1 ks1)
+             (and (fn-bs-k0-coveredp bs1 ks1 arena)
                   (or (equal ks1 ks) (equal (car step) :observe)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -325,10 +325,10 @@
                             fn-bs-store-relation fn-bs-k0-coveredp fn-sf-dispatch fn-bs-k0-observation-inputp
                             fn-bs-k0s-root-rename-pendingp fn-bs-lookup fn-bs-authority-inode-list))))))
 (defthm fn-bs-step-preserves-k0-coverage
-  (implies (fn-bs-k0-step-inputp bs ks step outcome)
+  (implies (fn-bs-k0-step-inputp bs ks step outcome arena)
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
                  (ks1 (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity))))
-             (and (fn-bs-k0-coveredp bs1 ks1)
+             (and (fn-bs-k0-coveredp bs1 ks1 arena)
                   (or (equal ks1 ks) (equal (car step) :observe)))))
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-outside-step-preserves-k0-coverage fn-bs-k0w-step-preserves-relation

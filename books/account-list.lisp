@@ -13,6 +13,11 @@
 ;   pending expires EXPIRY
 ;   redeemed LOGIN PRINCIPAL-HEX
 ;   binding LOGIN PRINCIPAL-HEX
+;   access LOGIN read READ post POST   (PRF-222, mark 3; LOGIN "" is
+;                                       printed "(anonymous)")
+;   moderator LOGIN GROUP           (P3: LOGIN moderates GROUP)
+;   moderation GROUP QUEUE [ADDRESS]
+;   consumer NAME account LOGIN     (PRF-234, mark 6)
 ;   unknown                         (a mark no writer makes)
 ;
 ; Never a digest or a verifier.
@@ -25,6 +30,11 @@
     (cond ((equal mark 0) :pending)
           ((equal mark 1) :redeemed)
           ((equal mark 2) :binding)
+          ((equal mark 3) :access)
+          ;; P3 (PRF-228): a moderator role and a group's moderation.
+          ((equal mark 4) :moderator)
+          ((equal mark 5) :moderation)
+          ((equal mark 6) :consumer)
           (t :unknown))))
 
 (defun fn-acct-kind-word (kind)
@@ -32,6 +42,10 @@
   (cond ((equal kind :pending) "pending ")
         ((equal kind :redeemed) "redeemed ")
         ((equal kind :binding) "binding ")
+        ((equal kind :access) "access ")
+        ((equal kind :moderator) "moderator ")
+        ((equal kind :moderation) "moderation ")
+        ((equal kind :consumer) "consumer ")
         (t "unknown")))
 
 (defun fn-acct-list-text (x)
@@ -50,6 +64,27 @@
                       (fn-acct-list-text (fn-cfg-row-b row))))
         ((equal kind :pending)
          (concatenate 'string "expires " (fn-acct-list-text (fn-cfg-row-c row))))
+        ((equal kind :access)
+         (concatenate 'string
+                      (if (equal (fn-cfg-row-a row) "")
+                          "(anonymous)"
+                        (fn-acct-list-text (fn-cfg-row-a row)))
+                      " read " (fn-acct-list-text (fn-cfg-row-b row))
+                      " post " (fn-acct-list-text (fn-cfg-row-c row))))
+        ; moderator LOGIN GROUP
+        ((equal kind :moderator)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row)) " "
+                      (fn-acct-list-text (fn-cfg-row-b row))))
+        ; moderation GROUP QUEUE [ADDRESS]
+        ((equal kind :moderation)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row)) " "
+                      (fn-acct-list-text (fn-cfg-row-b row))
+                      (if (equal (fn-cfg-row-c row) "") ""
+                        (concatenate 'string " "
+                                     (fn-acct-list-text (fn-cfg-row-c row))))))
+        ((equal kind :consumer)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row))
+                      " account " (fn-acct-list-text (fn-cfg-row-b row))))
         (t "")))
 
 (defun fn-acct-list-line (row)

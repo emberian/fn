@@ -48,7 +48,7 @@
 ; keys redecide: the statement's composite, retained as a row, is found, and
 ; its wire form is the statement the wire history holds
 ; (fn-ks-find-statement-over-alpha, reached).
-(defconst *hfr-ks* (hfr-run (list *kst-event*) *kst-msgid* "none"))
+(make-event `(defconst *hfr-ks* ',(hfr-run (list *kst-event*) *kst-msgid* "none")))
 (assert-event (equal (hfr :wires *hfr-ks*) (list *kst-event*)))
 (assert-event (fn-hstxa-p (car (hfr :rows *hfr-ks*))))
 (assert-event (equal (hfr :found *hfr-ks*) (car (hfr :rows *hfr-ks*))))
@@ -60,7 +60,7 @@
 
 ; carried usage: the carried composite, retained as a row, is charged
 ; (fn-pcb-usage-over-alpha, reached with a nonzero usage).
-(defconst *hfr-pcb* (hfr-run *pcb-records* "none" *pcb-evidence*))
+(make-event `(defconst *hfr-pcb* ',(hfr-run *pcb-records* "none" *pcb-evidence*)))
 (assert-event (fn-hstxa-p (cadr (hfr :rows *hfr-pcb*))))
 (assert-event (equal (hfr :usage *hfr-pcb*) (cons *pcb-charge* 1)))
 (assert-event (equal (hfr :usage-wire *hfr-pcb*) (hfr :usage *hfr-pcb*)))
@@ -80,7 +80,8 @@
 ; The pre-C1 refusal: the pre-C1 control composite, retained as a row, is
 ; named (fn-sopc-free-p-over-alpha, reached with a history that is NOT free).
 (make-event
- `(defconst *hfr-sopc* (hfr-run (list ',(sopc-r1) ',(sopc-r2)) "none" "none")))
+ `(defconst *hfr-sopc*
+    ',(hfr-run (list (sopc-rec *sopc-txn1*) (sopc-rec *sopc-txn2*)) "none" "none")))
 (assert-event (fn-hstxa-p (cadr (hfr :rows *hfr-sopc*))))
 (assert-event (fn-sopc-pre-c1-control-record-p (cadr (hfr :rows *hfr-sopc*))))
 (assert-event (not (fn-sopc-pre-c1-control-record-p (car (hfr :rows *hfr-sopc*)))))
@@ -92,14 +93,15 @@
 ; the host calls is the same step (fn-rcon-th-prefix-step-is-th-prefix-step,
 ; reached on the row); a bare wire composite is no retained event and
 ; faults the prefix.
-(defconst *hfr-tha-row*
-  (fn-hstxa-make *tha-event*
-                 (fn-held-plain (fn-replay-composite-record *tha-event*) 0)))
+(make-event
+ `(defconst *hfr-tha-row*
+    ',(fn-hstxa-make *tha-event*
+                     (fn-held-plain (fn-replay-composite-record *tha-event*) 0))))
 (assert-event (fn-hstxa-p *hfr-tha-row*))
 (defconst *hfr-th-before*
   (fn-th-prefix-state :ok (fn-stxa-sequence *tha-event*) (list *tha-snapshot*)
                       nil nil nil nil))
-(defconst *hfr-th-after* (fn-th-prefix-step *hfr-th-before* *hfr-tha-row*))
+(make-event `(defconst *hfr-th-after* ',(fn-th-prefix-step *hfr-th-before* *hfr-tha-row*)))
 (assert-event (equal (fn-th-at 0 *hfr-th-after*) :ok))
 (assert-event (equal (fn-th-at 3 *hfr-th-after*) (list *tha-event*)))
 (assert-event (equal (fn-rcon-th-prefix-step *hfr-th-before* *hfr-tha-row*)
@@ -109,13 +111,13 @@
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis removal (fn-row-composite-okp): a composite row whose held row
-; is not the article its composite carries (the plain article's row in its
-; place) breaks the article folds' refinement.
+; is not the article its composite carries (the key statement's article row
+; in the carried composite's place) breaks the article folds' refinement.
 (defun hfr-forged (fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (mv-let (rows fn-arena)
-    (fn-intern-events *pcb-records* nil 0 fn-arena)
-    (let* ((plain (fn-hstxa-held (car rows)))
+    (fn-intern-events (append *pcb-records* (list *kst-event*)) nil 0 fn-arena)
+    (let* ((plain (fn-hstxa-held (caddr rows)))
            (forged (fn-hstxa-make (fn-hstxa-stxa (cadr rows)) plain))
            (rows2 (list forged)))
       (mv (list (fn-hstxa-p forged)
@@ -123,9 +125,11 @@
                 (fn-rows-wire-of (fn-bpr-article-records rows2) fn-arena)
                 (fn-bpr-article-records (fn-rows-wire-of rows2 fn-arena)))
           fn-arena))))
-(defconst *hfr-forged*
+(defun hfr-forged-run ()
+  (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (r fn-arena) (hfr-forged fn-arena) r)))
+(make-event `(defconst *hfr-forged* ',(hfr-forged-run)))
 (assert-event (car *hfr-forged*))
 (assert-event (not (cadr *hfr-forged*)))
 (must-fail

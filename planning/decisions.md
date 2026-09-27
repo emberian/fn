@@ -932,6 +932,15 @@ claim an implemented consumer API or authenticated receipts through untrusted
 relays. Native authorship, retention receipts and application outcomes remain
 distinct evidence.
 
+2026-09-27, PKT-642 DECIDED (ember: "seems reasonable, re identity / login
+bound"): an agent's consumer is bound to the agent's account, the way its
+NNTP sessions are. A bound consumer polls and acks with the account's own
+password and is served only while the account's read rule admits its group
+(CNS-006, PRF-234, specs/consumer-progress.md "Bound consumers"; lane
+consumer-identity). This is the supported way to run agents' consumers;
+the unbound consumer stays the operator's and is unchanged for existing
+setups.
+
 ### 2026-09-22: the eight questions of the trajectory plan
 
 ember answered the eight questions in `plan-2026-09-22-trajectory.md` §0,

@@ -82,12 +82,19 @@
 ; SECONDS ROUNDS').  Single-valued; absent means the book's policy default.
 (defconst *fn-pcb-pull-unavailable-slot* "pull-unavailable-rounds")
 
+; PRF-237 (PKT-675): the peer's outbound Distribution filter, a wildmat over
+; <dist-name>s (`peer distributions NAME WILDMAT'; books/owner-feed.lisp
+; `fn-own-feed-dists-of-rows' reads it).  Single-valued; absent means the
+; peer is fed every distribution.
+(defconst *fn-pcb-distributions-slot* "outbound-distributions")
+
 (defun fn-pcb-budget-slotp (slot)
   ; The single-valued slots: a new row replaces the old one on extension.
   (declare (xargs :guard t))
   (or (equal slot *fn-pcb-charge-slot*) (equal slot *fn-pcb-count-slot*)
       (equal slot *fn-pcb-pull-interval-slot*)
-      (equal slot *fn-pcb-pull-unavailable-slot*)))
+      (equal slot *fn-pcb-pull-unavailable-slot*)
+      (equal slot *fn-pcb-distributions-slot*)))
 
 (defun fn-pcb-slot-memberp (slot rows)
   (declare (xargs :guard t))

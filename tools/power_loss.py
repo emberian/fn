@@ -26,7 +26,10 @@ client run as the invoking user):
            at the end the reference is read (ARTICLE of every Message-ID
            through a fresh owner), `retention set released-by-all-holders`
            and `store reclaim` run between marks, and the reclaimed
-           reference is read.
+           reference is read.  Last, `store export` writes the archive to
+           the same file system and `store import` publishes it as a second
+           store beside the first (phase `import': fn-bs-imp-program; the
+           `init' phase is fn-bs-init-pub-program, see publication_phases).
   index    the log device parsed (dm-log-writes' on-disk format: a super
            sector, then per entry a sector of {sector, nr_sectors, flags,
            data_len} and the data); the full replay must equal the data
@@ -80,6 +83,33 @@ FLUSH, FUA, DISCARD, MARK, METADATA = 1, 2, 4, 8, 16
 GROUP = "fn.test"
 DM = "fn-power-loss"
 CKPT = re.compile(rb"CHECKPOINT auto sequence=(\d+)")
+
+
+# The publication programs' phases (lane import-publication, PKT-647): the
+# campaign config the `cuts' plan names (`init=N,import=N').  A block-level
+# cut is a device position, not a process cut, so each record names the
+# program whose window it fell in and that program's named cuts (the native
+# kill campaign's, tests/campaign/native_cuts.py) with the oracle below.
+def publication_phases():
+    from tests.campaign import native_cuts
+    return {
+        "init": {"program": "fn-bs-init-pub-program",
+                 "book": "books/store-init-publication.lisp",
+                 "cuts": [c.name for c in native_cuts.INIT_PUB_CUTS],
+                 "oracle": "ROOT absent (at most one ROOT.init-*, which the next "
+                           "init names as interrupted-init; init succeeds once it "
+                           "is removed) or ROOT the complete empty store (recover "
+                           "0, status transactions=0)"},
+        "import": {"program": "fn-bs-imp-program",
+                   "book": "books/store-import-publication.lisp",
+                   "cuts": [c.name for c in native_cuts.IMPORT_CUTS],
+                   "oracle": "the source store keeps its reference; ROOT2 absent "
+                             "(at most one ROOT2.import-*, which the next import "
+                             "names as interrupted-import; import succeeds once it "
+                             "is removed) or ROOT2 the complete imported store "
+                             "(status 0, the source's transactions=N, every "
+                             "sampled Message-ID's store inspect equal)"},
+    }
 
 
 def sh(*argv, check=True, **kw):
@@ -152,6 +182,13 @@ def config_for(work, store, port):
     cfg = work / "fn.toml"
     cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
                    '[control]\npath = "%s"\n' % (store, port, work / "c.sock"), encoding="ascii")
+    return cfg
+
+
+def config2_for(work, store, port):
+    cfg = work / "fn2.toml"
+    cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
+                   '[control]\npath = "%s"\n' % (store, port, work / "c2.sock"), encoding="ascii")
     return cfg
 
 
@@ -330,6 +367,20 @@ def workload(a):
         stop_owner(p, err)
     code, so, se = native(image, "operator", cfg, "status")
     out_line(log, tag="status", exit=code, stdout=so, stderr=se[-400:])
+    # The import publication (fn-bs-imp-program): export the store to the
+    # same device, then import it as a second store beside the first.
+    mark("phase:export")
+    archive = Path(rig["mnt"]) / "archive"
+    code, so, se = native(image, "operator", cfg, "store", "export", archive)
+    out_line(log, tag="export", exit=code, stdout=so[-400:], stderr=se[-400:])
+    if code:
+        raise SystemExit("export failed")
+    cfg2 = config2_for(work, Path(rig["mnt"]) / "store2", m.free_port())
+    mark("phase:import")
+    code, so, se = native(image, "operator", cfg2, "store", "import", archive)
+    out_line(log, tag="import", exit=code, stdout=so[-400:], stderr=se[-400:])
+    if code:
+        raise SystemExit("import failed")
     mark("phase:end")
     refdir = work / "reference"
     refdir.mkdir(exist_ok=True)
@@ -598,7 +649,8 @@ def cuts(a):
         # cut: the last answered + 1 (one POST in flight), never past the run.
         answered = acked + refused
         attempted = min(posts, (max(answered) + 2) if answered else 1)
-        if phase in ("reference", "retention", "reclaim", "reference-reclaimed", "end"):
+        if phase in ("reference", "retention", "reclaim", "reference-reclaimed", "end",
+                     "export", "import"):
             attempted = posts
         violations = []
         if phase == "recover-crash" or (a.recover_crash and rrng.random() < a.recover_crash
@@ -645,9 +697,13 @@ def evaluate(ctx, img, rec, phase, acked, refused, attempted, violations):
         # The rig's own chown of the mount point may not have been durable
         # at an early cut; the node runs as this user either way.
         sudo("chown", "%d:%d" % (os.getuid(), os.getgid()), mnt)
+        if phase in publication_phases():
+            rec["program"] = publication_phases()[phase]["program"]
         if phase == "init":
             rec.update(check_init(ctx, violations))
             return
+        if phase == "import":
+            rec.update(check_import(ctx, violations))
         if not store.exists():
             rec["store"] = "absent"
             if acked:
@@ -662,33 +718,98 @@ def evaluate(ctx, img, rec, phase, acked, refused, attempted, violations):
         sudo("losetup", "-d", loop, check=False)
 
 
+def stages_beside(root, kind):
+    return sorted(p for p in root.parent.iterdir() if p.name.startswith(root.name + "." + kind + "-"))
+
+
 def check_init(ctx, violations):
-    """A cut during `init`: nothing was acknowledged.  The operator's path
-    must not be stuck: either `recover` opens the store, or there is no
-    store and `init` makes one, or `init` refuses by name and the record
-    shows which (a half store neither verb accepts is a finding)."""
-    image, cfg = ctx["image"], ctx["cfg"]
-    rec = {"store": "present" if ctx["store"].exists() else "absent"}
-    code, so, se = native(image, "operator", cfg, "recover")
-    rec["recover"], rec["recover_out"] = code, (so + se).strip()[-300:]
-    if code == 0:
+    """A cut during `init` (fn-bs-init-pub-program): nothing was
+    acknowledged.  The keystone: ROOT is absent or the complete empty store.
+    Absent: at most one ROOT.init-*, which the next `init` names
+    (interrupted-init) and after whose removal `init` succeeds; present: it
+    opens (`recover` 0, `status` transactions=0) and no staged directory
+    remains unless the rename's source removal did not land (then the next
+    init refuses STORE-EXISTS, never a second store)."""
+    image, cfg, root = ctx["image"], ctx["cfg"], ctx["store"]
+    stages = stages_beside(root, "init")
+    rec = {"store": "present" if root.exists() else "absent", "stages": len(stages)}
+    if root.exists():
+        code, so, se = native(image, "operator", cfg, "recover")
+        rec["recover"], rec["recover_out"] = code, (so + se).strip()[-300:]
+        code2, so2, se2 = native(image, "operator", cfg, "status")
+        rec["status"] = code2
+        if code or code2 or "transactions=0" not in so2:
+            violations.append("init-partial-store:recover-%d:status-%d" % (code, code2))
+        return rec
+    if len(stages) > 1:
+        violations.append("init-stages-%d" % len(stages))
         return rec
     code, so, se = native(image, "operator", cfg, "init", "--profile", "scale", GROUP)
     rec["reinit"], rec["reinit_out"] = code, (so + se).strip()[-300:]
-    if code == 0:
+    if stages:
+        want = "reason=interrupted-init stage=%s" % stages[0]
+        if code != 1 or want not in so + se:
+            violations.append("init-leftover-not-named:init-%d" % code)
+            return rec
+        shutil.rmtree(stages[0])
+        code, so, se = native(image, "operator", cfg, "init", "--profile", "scale", GROUP)
+        rec["init_after_removal"] = code
+    if code:
+        violations.append("init-stuck:init-%d" % code)
         return rec
-    # The operator verb refuses an existing store (STORE-EXISTS); the store
-    # layer's own init is written to resume a partial one
-    # (tests/test_native_initializer_fidelity.py).  Does it, here?
-    code, so, se = native(image, "store", ctx["store"], "init", GROUP)
-    rec["store_init"] = [code, (so + se).strip()[-200:]]
-    code2, so2, se2 = native(image, "operator", cfg, "recover")
-    rec["recover_after_store_init"] = [code2, (so2 + se2).strip()[-200:]]
-    violations.append("init-stuck:recover-%d:init-%d:store-init-%d:recover-%d"
-                      % (rec["recover"], rec["reinit"], code, code2))
+    code, so, se = native(image, "operator", cfg, "recover")
+    rec["recover_after_init"] = code
+    if code:
+        violations.append("init-unopenable:recover-%d" % code)
     return rec
 
 
+def check_import(ctx, violations):
+    """A cut during `store import` (fn-bs-imp-program) onto ROOT2: ROOT2 is
+    absent (at most one ROOT2.import-*, named by the next import, which
+    succeeds once it is removed) or the complete imported store: it opens,
+    `status` reports the source's transactions=N, and sampled Message-IDs'
+    `store inspect` answers equal the source's.  The source store is checked
+    by check_store as in the `end' phase."""
+    image, cfg, work = ctx["image"], ctx["cfg"], ctx["work"]
+    cfg2 = work / "fn2.toml"
+    root2 = ctx["store"].parent / "store2"
+    archive = ctx["store"].parent / "archive"
+    stages = stages_beside(root2, "import")
+    rec = {"store2": "present" if root2.exists() else "absent", "stages2": len(stages)}
+    if not root2.exists():
+        if len(stages) > 1:
+            violations.append("import-stages-%d" % len(stages))
+            return rec
+        code, so, se = native(image, "operator", cfg2, "store", "import", archive)
+        rec["reimport"], rec["reimport_out"] = code, (so + se).strip()[-300:]
+        if stages:
+            want = "reason=interrupted-import stage=%s" % stages[0]
+            if code != 1 or want not in so + se:
+                violations.append("import-leftover-not-named:import-%d" % code)
+                return rec
+            shutil.rmtree(stages[0])
+            code, so, se = native(image, "operator", cfg2, "store", "import", archive)
+            rec["import_after_removal"] = code
+        if code:
+            violations.append("import-stuck:import-%d" % code)
+            return rec
+    code, so, se = native(image, "operator", cfg, "status")
+    code2, so2, se2 = native(image, "operator", cfg2, "status")
+    rec["status2"] = code2
+    count = re.search(r"transactions=(\d+)", so)
+    count2 = re.search(r"transactions=(\d+)", so2)
+    if code2 or not count or not count2 or count.group(1) != count2.group(1):
+        violations.append("import-incomplete:status-%d" % code2)
+        return rec
+    rng = random.Random(len(so2))
+    for i in sorted(rng.sample(range(len(ctx["ref"])), min(8, len(ctx["ref"])))):
+        a = native(image, "operator", cfg, "store", "inspect", msgid(i))
+        b = native(image, "operator", cfg2, "store", "inspect", msgid(i))
+        if a[:2] != b[:2]:
+            violations.append("import-inspect-differs:%d" % i)
+            break
+    return rec
 
 
 def second_cut(ctx, img, rng, violations):
@@ -779,7 +900,7 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
         served = got[i].startswith(b"220")
         if not ((code == 0 and word == "accepted" and served) or
                 (code == 1 and word == "absent" and got[i].startswith(b"430"))):
-            if phase not in ("reclaim", "reference-reclaimed", "end"):
+            if phase not in ("reclaim", "reference-reclaimed", "end", "export", "import"):
                 violations.append("inflight-unclassified:%d:%s:%s:%r" % (i, code, word, got[i][:40]))
     code, so, se = native(image, "operator", cfg, "status")
     rec["status"] = code
@@ -963,6 +1084,235 @@ def summary(paths):
     print("| all | all | %s |" % " | ".join(str(tot.get(k, 0)) for k in cols))
 
 
+# ---------------------------------------------------------------------------
+# The record log's workload (lane w6-log-core; books/store-log-programs.lisp,
+# host/native/io.lisp fnn-log-*).  The developer image's `fn log append`
+# recovers the segment (fn-lg-recover-program) and appends batches of PER
+# workload records, each written (fn-lg-append-program: one positioned write
+# at the frontier) and fenced (fn-lg-fence-program: fdatasync on the
+# preallocated segment); it prints one `ACK' line after each fence, and the
+# client marks the device then (`logack-N', N the records acknowledged).
+# Three runs: append (it creates the segment), a bare `fn log recover` of the
+# populated segment, append again; each run's recovery lies between the
+# marks `rec-begin-K' and `rec-end-K'.  A cut position is named by its window
+# (LOG_CUTS, tests/campaign/native_cuts.py): in a batch window, `log-written'
+# before the window's first flush (the batch's write may be torn) and
+# `log-fenced' after it; in a recovery window, `log-truncated' before its
+# last flush and `log-recovered' after it (run 1's window also holds the
+# segment's creation and preallocation).
+#
+# The ORACLE, outside the device (the client's own record of the ACK lines):
+# the image is mounted (journal replay), unmounted, `e2fsck -fn`, mounted;
+# `fn log recover` exits 0 and reads R records that are the workload records
+# 1..R (`workload=t', ACL2's check), next txid R + 1, every octet of the
+# segment past the frontier zero; `fn log scan` then reads the same line.
+# R >= the records acknowledged before the cut (ACKED) and R <= ACKED + PER
+# (at most the batch in flight); in a recovery window R = the records the
+# previous run acknowledged (recovery changes no record).  A control cut (the
+# rig's teeth) is the device just after `logack-N' judged as if the next
+# batch were acknowledged too: the oracle must report it.
+
+LOG_LINE = re.compile(r"^(\S+)(?: batch=\d+)? records=(\d+) frontier=(\d+) next=(\d+) "
+                      r"last=([0-9a-f]+) workload=(t|nil)$")
+LOG_UNIT, LOG_MAX = 4096, 65536
+
+
+def log_segment(rig):
+    return Path(rig["mnt"]) / "log" / "segment"
+
+
+def log_argv(seg, extent, size):
+    return [str(seg), str(extent), str(LOG_UNIT), str(LOG_MAX), str(size)]
+
+
+def log_parse(text):
+    out = []
+    for line in text.splitlines():
+        m = LOG_LINE.match(line.strip())
+        if m:
+            out.append({"what": m.group(1), "records": int(m.group(2)),
+                        "frontier": int(m.group(3)), "next": int(m.group(4)),
+                        "workload": m.group(6) == "t"})
+    return out
+
+
+def log_run(image, argv, k, wl):
+    """One `fn log` process; mark the device at its RECOVERED and ACK lines."""
+    mark("rec-begin-%d" % k)
+    p = subprocess.Popen([str(image), "--fn", "log"] + argv, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, text=True)
+    last = None
+    for text in p.stdout:
+        (line,) = log_parse(text) or [None]
+        if line is None:
+            continue
+        if line["what"] == "RECOVERED":
+            mark("rec-end-%d" % k)
+        elif line["what"] == "ACK":
+            mark("logack-%d" % line["records"])
+        out_line(wl, tag="line", run=k, **line)
+        last = line
+    rc = p.wait()
+    err = p.stderr.read()
+    out_line(wl, tag="exit", run=k, rc=rc, stderr=err[-400:])
+    if rc != 0:
+        raise SystemExit("fn log %s exited %d: %s" % (argv[0], rc, err[-400:]))
+    return last
+
+
+def log_workload(a):
+    work = Path(a.work)
+    rig = json.loads((work / "rig.json").read_text())
+    seg = log_segment(rig)
+    seg.parent.mkdir(exist_ok=True)
+    wl = work / "workload.jsonl"
+    if wl.exists():
+        wl.unlink()
+    mark("phase:log")
+    base = log_argv(seg, a.extent, a.size)
+    r1 = log_run(a.image, ["append"] + base + [str(a.batches), str(a.per)], 1, wl)
+    r2 = log_run(a.image, ["recover"] + base, 2, wl)
+    r3 = log_run(a.image, ["append"] + base + [str(a.batches), str(a.per)], 3, wl)
+    mark("log-done")
+    out_line(wl, tag="done", extent=a.extent, size=a.size, per=a.per, batches=a.batches,
+             records=r3["records"], segment=str(seg))
+    if not (r1["records"] == r2["records"] == a.batches * a.per
+            and r3["records"] == 2 * a.batches * a.per):
+        raise SystemExit("workload counts wrong: %r %r %r" % (r1, r2, r3))
+    print(json.dumps({"records": r3["records"], "frontier": r3["frontier"]}))
+
+
+def log_windows(ents, marks):
+    """[(name, lo, hi, acked_before, recovery)] over the entry indices."""
+    order = [(i, t) for i, t in marks
+             if t.startswith(("rec-begin-", "rec-end-", "logack-")) or t == "log-done"]
+    wins, acked = [], 0
+    for (i, t), (j, u) in zip(order, order[1:]):
+        if t.startswith("rec-begin-"):
+            wins.append(("recovery", i, j, acked))
+        else:
+            if t.startswith("logack-"):
+                acked = int(t[len("logack-"):])
+            if not u.startswith("rec-begin-"):
+                wins.append(("batch", i, j, acked))
+    return wins
+
+
+def log_cut_name(ents, kind, lo, p, hi):
+    flushes = [e[0] for e in ents[lo:hi] if e[3] & FLUSH]
+    if kind == "batch":
+        return "log-written" if not flushes or p <= flushes[0] else "log-fenced"
+    return "log-recovered" if flushes and p > flushes[-1] else "log-truncated"
+
+
+def log_cuts(a):
+    work = Path(a.work)
+    rig = json.loads((work / "rig.json").read_text())
+    idx = json.loads((work / "index.json").read_text())
+    L = parse_log(rig["log"])
+    ents, ss = L["entries"], L["sectorsize"]
+    marks = [tuple(x) for x in idx["marks"]]
+    wl = [json.loads(l) for l in (work / "workload.jsonl").read_text().splitlines()]
+    done = [r for r in wl if r["tag"] == "done"][0]
+    per = done["per"]
+    rng = random.Random(a.seed)
+    chosen = []
+    wins = log_windows(ents, marks)
+    for kind, lo, hi, acked in wins:
+        for e in ents[lo:hi]:
+            if not e[3] & MARK:
+                chosen.append((e[0], kind, lo, hi, acked))
+    rng.shuffle(chosen)
+    chosen = sorted(chosen[:a.count])
+    # Controls: just after an ack mark, judged as if PER more were acknowledged.
+    acks = [(i, int(t[len("logack-"):])) for i, t in marks if t.startswith("logack-")]
+    controls = []
+    for i, n in rng.sample(acks, min(a.controls, len(acks))):
+        controls.append((i + 1, "control", i, i + 1, n + per))
+    plan = sorted([(p, kind, lo, hi, acked,
+                    "flush" if kind == "control" else rng.choice(MODES), rng.randrange(1 << 30))
+                   for p, kind, lo, hi, acked in chosen + controls])
+    results = work / ("log-cuts-%s.jsonl" % a.label)
+    base = work / "base.img"
+    sh("truncate", "-s", "0", base)
+    sh("truncate", "-s", str(os.path.getsize(rig["data"])), base)
+    base_upto, img = 0, work / "cut.img"
+    logf = open(rig["log"], "rb")
+    print("log cuts planned: %d (%d controls)" % (len(plan), len(controls)), flush=True)
+    for n, (p, kind, lo, hi, acked, mode, seed) in enumerate(plan):
+        base_upto, tail = build_image(ents, logf, base, base_upto, p, mode, seed, ss, img)
+        name = "control" if kind == "control" else log_cut_name(ents, kind, lo, p, hi)
+        rec = {"cut": p, "window": kind, "name": name, "mode": mode, "seed": seed,
+               "acked": acked, "durable_upto": tail["durable_upto"], "tail": tail["tail"],
+               "kept": len(tail["kept"])}
+        violations = []
+        log_evaluate(a.image, rig, img, rec, kind, acked, per, done, violations)
+        rec["violations"] = violations
+        if kind == "control":
+            rec["control_caught"] = bool(violations)
+        out_line(results, **rec)
+        print("%d/%d cut=%d %s %s acked=%d R=%s v=%s" % (n + 1, len(plan), p, name, mode, acked,
+                                                         rec.get("records"), violations[:3]),
+              flush=True)
+    logf.close()
+
+
+def log_evaluate(image, rig, img, rec, kind, acked, per, done, violations):
+    mnt = Path(rig["mnt"])
+    seg = log_segment(rig)
+    loop = sudo("losetup", "--show", "-f", img, stdout=subprocess.PIPE, text=True).stdout.strip()
+    try:
+        r = sudo("mount", "-t", "ext4", loop, mnt, check=False, stderr=subprocess.PIPE, text=True)
+        if r.returncode:
+            rec["fs"] = "mount-failed: " + r.stderr[-300:]
+            violations.append("fs-mount")
+            return
+        sudo("umount", mnt)
+        fsck = sudo("e2fsck", "-fn", loop, check=False, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, text=True)
+        rec["e2fsck"] = fsck.returncode
+        sudo("mount", "-t", "ext4", loop, mnt)
+        sudo("chown", "%d:%d" % (os.getuid(), os.getgid()), mnt)
+        if seg.parent.exists():
+            sudo("chown", "-R", "%d:%d" % (os.getuid(), os.getgid()), seg.parent)
+        else:
+            seg.parent.mkdir()
+        argv = log_argv(seg, done["extent"], done["size"])
+        rr = subprocess.run([str(image), "--fn", "log", "recover"] + argv,
+                            capture_output=True, text=True, timeout=600)
+        rec["recover_rc"] = rr.returncode
+        if rr.returncode != 0:
+            violations.append("recover-exit-%d" % rr.returncode)
+            rec["recover_err"] = rr.stderr[-400:]
+            return
+        (line,) = log_parse(rr.stdout)
+        R = line["records"]
+        rec.update(records=R, frontier=line["frontier"])
+        if not line["workload"]:
+            violations.append("not-the-workload-records")
+        if line["next"] != R + 1:
+            violations.append("next-txid")
+        if R < acked:
+            violations.append("acknowledged-lost")
+        if kind == "batch" and R > acked + per:
+            violations.append("more-than-attempted")
+        if kind == "recovery" and R != acked:
+            violations.append("recovery-changed-records")
+        data = seg.read_bytes()
+        if len(data) != done["extent"] or any(data[line["frontier"]:]):
+            violations.append("tail-not-zero")
+        ss = subprocess.run([str(image), "--fn", "log", "scan"] + argv,
+                            capture_output=True, text=True, timeout=600)
+        if ss.returncode != 0 or [(l["records"], l["frontier"]) for l in log_parse(ss.stdout)] \
+                != [(R, line["frontier"])]:
+            violations.append("scan-differs")
+    except Exception as e:  # a harness failure is not a verdict
+        rec["harness_error"] = repr(e)[-400:]
+    finally:
+        sudo("umount", mnt, check=False, stderr=subprocess.DEVNULL)
+        sudo("losetup", "-d", loop, check=False)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -989,12 +1339,26 @@ def main(argv=None):
     c = sub.add_parser("cuts")
     c.add_argument("work")
     c.add_argument("--image", required=True)
-    c.add_argument("--plan", default="post=150,compact=30,reclaim=30")
+    c.add_argument("--plan", default="post=150,compact=30,reclaim=30,init=20,import=20")
     c.add_argument("--seed", type=int, default=7)
     c.add_argument("--label", default="main")
     c.add_argument("--limit", type=int, default=0)
     c.add_argument("--recover-crash", type=float, default=0.0,
                    help="the fraction of cuts whose recovery is itself cut")
+    lw = sub.add_parser("log-workload", help="the record log's workload (lane w6-log-core)")
+    lw.add_argument("work")
+    lw.add_argument("--image", required=True, help="the developer image")
+    lw.add_argument("--extent", type=int, default=8 << 20)
+    lw.add_argument("--size", type=int, default=600)
+    lw.add_argument("--batches", type=int, default=150)
+    lw.add_argument("--per", type=int, default=4)
+    lc = sub.add_parser("log-cuts")
+    lc.add_argument("work")
+    lc.add_argument("--image", required=True)
+    lc.add_argument("--count", type=int, default=240)
+    lc.add_argument("--controls", type=int, default=10)
+    lc.add_argument("--seed", type=int, default=7)
+    lc.add_argument("--label", default="log")
     sm = sub.add_parser("summary")
     sm.add_argument("results", nargs="+", help="cuts-*.jsonl files")
     a = ap.parse_args(argv)
@@ -1010,6 +1374,10 @@ def main(argv=None):
         index(a)
     elif a.cmd == "cuts":
         cuts(a)
+    elif a.cmd == "log-workload":
+        log_workload(a)
+    elif a.cmd == "log-cuts":
+        log_cuts(a)
     elif a.cmd == "summary":
         summary(a.results)
 

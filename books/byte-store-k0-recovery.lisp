@@ -190,7 +190,7 @@
             :in-theory (union-theories '(fn-bs-crash-imagep) (theory 'minimal-theory))))))
 (local
  (defthm k0r-crash-image-authority-entries
-   (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+   (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-crash-imagep bs image))
             (and (fn-bs-inop (fn-bs-durable-entry image :root *fn-bs-scan-config-name*))
                  (fn-bs-inop (fn-bs-durable-entry image :root *fn-bs-scan-frontier-name*))))
    :rule-classes nil
@@ -203,12 +203,12 @@
             :in-theory (theory 'minimal-theory)))))
 (local
  (defthm k0r-relation-authority-known
-   (implies (fn-bs-store-relation bs ks) (fn-bs-authority-knownp bs))
+   (implies (fn-bs-store-relation bs ks arena) (fn-bs-authority-knownp bs))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-bs-store-relation)
                                    (fn-bs-authority-knownp fn-bs-statep fn-sf-statep
                                     fn-bs-replay-matches-scan fn-bs-pending-matches-phase
-                                    fn-sf-crash-imagep fn-bs-authority-fencedp
+                                    fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-authority-fencedp
                                     fn-bs-durable-records))))))
 
 ;; ---------------------------------------------------------------------------
@@ -250,9 +250,10 @@
                 (fn-sf-statep k)
                 (fn-bs-replay-visiblep k)
                 (equal (fn-sf-frontier k) (fn-bs-scan-frontier (fn-bs-scan-store img)))
-                (equal (fn-sf-records k) (fn-bs-scan-records (fn-bs-scan-store img)))
+                (equal (fn-bs-rows-wire (fn-sf-records k) arena)
+                       (fn-bs-scan-records (fn-bs-scan-store img)))
                 (equal (fn-sf-successes k) nil))
-           (fn-bs-store-relation img k))
+           (fn-bs-store-relation img k arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-bs-scan-okp-unfolds (s img))
@@ -276,15 +277,16 @@
                 (fn-sf-statep k)
                 (not (fn-bs-replay-visiblep k))
                 (equal (fn-sf-frontier k) (fn-bs-scan-frontier (fn-bs-scan-store img)))
-                (equal (fn-sf-records k) (fn-bs-scan-records (fn-bs-scan-store img))))
-           (fn-bs-store-relation img k))
+                (equal (fn-bs-rows-wire (fn-sf-records k) arena)
+                       (fn-bs-scan-records (fn-bs-scan-store img))))
+           (fn-bs-store-relation img k arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-bs-scan-okp-unfolds (s img))
                  (:instance k0r-quiet-scan-config (s img))
                  (:instance k0r-quiet-scan-names (s img)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase fn-bs-pending-shape-okp
-                            fn-sf-crash-imagep fn-bs-durable-frontier
+                            fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-durable-frontier
                             fn-bs-authority-fencedp fn-bs-durable-records
                             fn-bs-durable-names fn-bs-ops-for-dir
                             fn-bs-quiet-lookup-is-durable-entry fn-bs-quiet-content-is-durable-content
@@ -299,10 +301,17 @@
 ;; The kernel fn-sn-observed-seed installs for the scanned image
 ;; (store-observed.lisp: (fn-sf-make :replaying frontier nil records nil nil
 ;; nil 0)); the input of the model's (:observe (:recover)).
-(defun fn-bs-recovery-entry-kernel (image)
+;; After the records flip the scan reads WIRE events and the kernel holds
+;; RETAINED rows: the recover entry interns the scanned events (store-intern
+;; fn-intern-events) and seeds the kernel with the ROWS, whose alpha through
+;; the arena is the scan (fn-intern-events-materializes).  Every theorem below
+;; takes such rows: (fn-bs-rows-wire rows arena) is the scan, and the rows are
+;; a kernel record list (what the intern's coordinates theorem gives).  The
+;; witness K2 names (byte-store-keystones fn-bs-scanned-rows) is one such list.
+(defun fn-bs-recovery-entry-kernel (image rows)
   (declare (xargs :guard t :verify-guards nil))
   (let ((scan (fn-bs-scan-store image)))
-    (fn-sf-make :replaying (fn-bs-scan-frontier scan) nil (fn-bs-scan-records scan)
+    (fn-sf-make :replaying (fn-bs-scan-frontier scan) nil rows
                 nil nil nil 0)))
 (local
  (defthm k0r-replay-seed-is-state
@@ -310,9 +319,19 @@
             (fn-sf-statep (fn-sf-make :replaying f nil r nil nil nil 0)))
    :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-phase-shapep)))))
 
+;; The recover entry's rows: alpha of them is the scan, and they are a kernel
+;; record list at the scanned frontier.
+(defun fn-bs-recovered-rowsp (image rows arena)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((scan (fn-bs-scan-store image)))
+    (and (equal (fn-bs-rows-wire rows arena) (fn-bs-scan-records scan))
+         (fn-sf-record-listp rows 0 0 (fn-bs-scan-frontier scan)))))
+(in-theory (disable fn-bs-recovered-rowsp))
+
 (defthm fn-bs-crash-image-relates-to-recovery-entry-kernel
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
-           (fn-bs-store-relation image (fn-bs-recovery-entry-kernel image)))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-crash-imagep bs image)
+                (fn-bs-recovered-rowsp image rows arena))
+           (fn-bs-store-relation image (fn-bs-recovery-entry-kernel image rows) arena))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-store-crash-image-scans
@@ -323,29 +342,33 @@
                  fn-bs-store-relation-unfolds
                  fn-bs-store-crash-image-is-kernel-admissible
                  (:instance fn-bs-crash-imagep-preserves-statep (s bs))
+                 fn-bs-store-crash-image-is-alpha-of-a-kernel-admissible-image
                  (:instance fn-sf-recovery-admissible-image-facts (s ks)
                   (frontier (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                  (records (fn-bs-scan-records (fn-bs-scan-store image))))
+                  (records (fn-bs-kernel-image-records
+                            ks (fn-bs-scan-records (fn-bs-scan-store image)) arena)))
+                 (:instance k0r-replay-seed-is-state
+                  (f (fn-bs-scan-frontier (fn-bs-scan-store image))) (r rows))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-a-replay-kernel
-                  (img image) (k (fn-bs-recovery-entry-kernel image))))
+                  (img image) (k (fn-bs-recovery-entry-kernel image rows))))
            :in-theory (e/d (fn-bs-recovery-entry-kernel fn-bs-replay-visiblep
+                            fn-bs-recovered-rowsp
                             fn-bs-quiet-lookup-is-durable-entry)
                            (fn-bs-store-relation
                             fn-bs-crash-imagep fn-sf-statep fn-bs-statep fn-bs-scan-store fn-bs-scan-okp
                             fn-bs-scan-frontier fn-bs-scan-records fn-sf-record-listp
-                            fn-bs-replay-matches-scan fn-bs-pending-matches-phase fn-sf-crash-imagep
+                            fn-bs-replay-matches-scan fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                             fn-bs-authority-knownp fn-bs-authority-fencedp fn-bs-durable-records
-                            fn-sf-recovery-crash-imagep fn-bs-contiguous-namesp)))))
+                            fn-sf-recovery-crash-imagep fn-bs-alpha-recovery-crash-imagep fn-bs-contiguous-namesp)))))
 
 (defthm fn-bs-crash-image-recovery-facts
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-crash-imagep bs image))
            (and (fn-bs-statep image)
                 (equal (fn-bs-pending image) nil)
                 (fn-bs-scan-okp (fn-bs-scan-store image))
                 (fn-bs-authority-knownp image)
                 (fn-record-uint32p (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                (fn-sf-record-listp (fn-bs-scan-records (fn-bs-scan-store image)) 0 0
-                                    (fn-bs-scan-frontier (fn-bs-scan-store image)))))
+                (fn-bs-recovered-rowsp image (fn-bs-scanned-rows ks image arena) arena)))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-store-crash-image-scans
@@ -356,10 +379,12 @@
                  fn-bs-store-relation-unfolds
                  k0r-relation-authority-known
                  (:instance fn-bs-crash-imagep-preserves-statep (s bs))
+                 fn-bs-store-crash-image-is-alpha-of-a-kernel-admissible-image
                  (:instance fn-sf-recovery-admissible-image-facts (s ks)
                   (frontier (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                  (records (fn-bs-scan-records (fn-bs-scan-store image)))))
-           :in-theory (theory 'minimal-theory))))
+                  (records (fn-bs-scanned-rows ks image arena))))
+           :in-theory (union-theories '(fn-bs-recovered-rowsp fn-bs-scanned-rows)
+                                      (theory 'minimal-theory)))))
 
 ;; ---------------------------------------------------------------------------
 ;; 4. The recovery program from a quiet image: the byte state never moves,
@@ -441,23 +466,25 @@
                 (fn-bs-scan-okp (fn-bs-scan-store img))
                 (fn-bs-authority-knownp img)
                 (fn-record-uint32p (fn-bs-scan-frontier (fn-bs-scan-store img)))
-                (fn-sf-record-listp (fn-bs-scan-records (fn-bs-scan-store img)) 0 0
+                (fn-sf-record-listp rows 0 0
                                     (fn-bs-scan-frontier (fn-bs-scan-store img)))
+                (equal (fn-bs-rows-wire rows arena)
+                       (fn-bs-scan-records (fn-bs-scan-store img)))
                 (natp n) (<= n *fn-sf-recovery-barrier-count*))
            (fn-bs-store-relation img (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store img))
-                                                             (fn-bs-scan-records (fn-bs-scan-store img))
-                                                             n)))
+                                                             rows
+                                                             n) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance k0r-recovered-kernel-is-state
                   (f (fn-bs-scan-frontier (fn-bs-scan-store img)))
-                  (r (fn-bs-scan-records (fn-bs-scan-store img))))
+                  (r rows))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-a-replay-kernel
                   (k (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store img))
-                                             (fn-bs-scan-records (fn-bs-scan-store img)) n)))
+                                             rows n)))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-a-ready-kernel
                   (k (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store img))
-                                             (fn-bs-scan-records (fn-bs-scan-store img)) n))))
+                                             rows n))))
            :in-theory (e/d (fn-bs-recovered-kernel fn-bs-replay-visiblep)
                            (fn-bs-statep fn-sf-statep fn-bs-scan-store fn-bs-scan-okp fn-sf-record-listp
                             fn-bs-scan-frontier fn-bs-scan-records fn-bs-store-relation
@@ -467,25 +494,27 @@
 ;; 5. The six recovery-program cuts, from any kernel whose (:recover)
 ;; observation lands on the recovered kernel at zero barriers.
 (defthm fn-bs-recover-program-keeps-relation-at-every-cut
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-crash-imagep bs image)
+                (fn-bs-recovered-rowsp image rows arena)
                 (equal (fn-sf-dispatch k '(:recover) groups capacity)
                        (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                               (fn-bs-scan-records (fn-bs-scan-store image)) 0)))
+                                               rows 0)))
            (let ((run (fn-bs-run image k (fn-bs-recover-program) nil groups capacity)))
-             (and (fn-bs-run-relatedp run)
+             (and (fn-bs-run-relatedp run arena)
                   (equal (len run) 17)
                   (equal (car (nth 16 run)) image)
                   (equal (cdr (nth 16 run))
                          (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                 (fn-bs-scan-records (fn-bs-scan-store image))
+                                                 rows
                                                  *fn-sf-recovery-barrier-count*)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-crash-image-recovery-facts
+                 (:instance fn-bs-recovered-rowsp (image image))
                  (:instance fn-bs-recover-program-run-from-a-quiet-image
                   (f (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                  (r (fn-bs-scan-records (fn-bs-scan-store image))))
+                  (r rows))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 0))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 1))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 2))
@@ -500,33 +529,34 @@
 ;; The model's entry: the :replaying seed over a recoverable scanned history.
 (defthm fn-bs-recovery-entry-kernel-recovers
   (implies (and (fn-record-uint32p (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                (fn-sf-record-listp (fn-bs-scan-records (fn-bs-scan-store image)) 0 0
+                (fn-sf-record-listp rows 0 0
                                     (fn-bs-scan-frontier (fn-bs-scan-store image)))
                 (fn-sf-history-recoverablep groups capacity
-                                            (fn-bs-scan-records (fn-bs-scan-store image))
+                                            rows
                                             (fn-bs-scan-frontier (fn-bs-scan-store image))))
-           (equal (fn-sf-dispatch (fn-bs-recovery-entry-kernel image) '(:recover) groups capacity)
+           (equal (fn-sf-dispatch (fn-bs-recovery-entry-kernel image rows) '(:recover) groups capacity)
                   (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                          (fn-bs-scan-records (fn-bs-scan-store image)) 0)))
+                                          rows 0)))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance k0r-replay-seed-is-state
                   (f (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                  (r (fn-bs-scan-records (fn-bs-scan-store image)))))
+                  (r rows)))
            :in-theory (e/d (fn-sf-dispatch fn-sf-recover fn-bs-recovery-entry-kernel fn-bs-recovered-kernel)
                            (fn-sf-statep fn-sf-history-recoverablep fn-bs-scan-store
                             fn-bs-scan-frontier fn-bs-scan-records fn-sf-record-listp)))))
 
 (defthm fn-bs-scanned-recovery-keeps-relation-at-every-cut
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-crash-imagep bs image)
+                (fn-bs-recovered-rowsp image rows arena)
                 (fn-sf-history-recoverablep groups capacity
-                                            (fn-bs-scan-records (fn-bs-scan-store image))
+                                            rows
                                             (fn-bs-scan-frontier (fn-bs-scan-store image))))
-           (let ((run (fn-bs-run image (fn-bs-recovery-entry-kernel image)
+           (let ((run (fn-bs-run image (fn-bs-recovery-entry-kernel image rows)
                                  (fn-bs-recover-program) nil groups capacity)))
-             (and (fn-bs-store-relation image (fn-bs-recovery-entry-kernel image))
-                  (fn-bs-run-relatedp run)
+             (and (fn-bs-store-relation image (fn-bs-recovery-entry-kernel image rows) arena)
+                  (fn-bs-run-relatedp run arena)
                   (equal (len run) 17)
                   (equal (car (nth 16 run)) image)
                   (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
@@ -534,9 +564,10 @@
   :hints (("Goal"
            :use (fn-bs-crash-image-relates-to-recovery-entry-kernel
                  fn-bs-crash-image-recovery-facts
+                 (:instance fn-bs-recovered-rowsp (image image))
                  fn-bs-recovery-entry-kernel-recovers
                  (:instance fn-bs-recover-program-keeps-relation-at-every-cut
-                  (k (fn-bs-recovery-entry-kernel image))))
+                  (k (fn-bs-recovery-entry-kernel image rows))))
            :in-theory (union-theories '(fn-bs-recovered-kernel fn-sf-phase-of-fn-sf-make)
                                       (theory 'minimal-theory)))))
 
@@ -555,34 +586,36 @@
                  fn-replay-advance-txid fn-sn-with-configuration)))))
 
 (defthm fn-bs-host-recovery-keeps-relation-at-every-cut
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-crash-imagep bs image)
+                (fn-bs-recovered-rowsp image rows arena)
                 (fn-sn-open-okp (fn-cpo-open-observed configs
                                                       (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                      (fn-bs-scan-records (fn-bs-scan-store image)))))
+                                                      rows)))
            (let* ((host (fn-sn-files (fn-sn-open-state
                                       (fn-cpo-open-observed configs
                                                             (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                            (fn-bs-scan-records (fn-bs-scan-store image))))))
+                                                            rows))))
                   (run (fn-bs-run image host (fn-bs-recover-program) nil groups capacity)))
-             (and (fn-bs-store-relation image host)
-                  (fn-bs-run-relatedp run)
+             (and (fn-bs-store-relation image host arena)
+                  (fn-bs-run-relatedp run arena)
                   (equal (len run) 17)
                   (equal (car (nth 16 run)) image)
                   (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-crash-image-recovery-facts
+                 (:instance fn-bs-recovered-rowsp (image image))
                  (:instance fn-bs-host-reopened-kernel-is-the-recovered-kernel
                   (frontier (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                  (events (fn-bs-scan-records (fn-bs-scan-store image))))
+                  (events rows))
                  (:instance fn-bs-recovered-kernel-recover-stutters
                   (f (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                  (r (fn-bs-scan-records (fn-bs-scan-store image))) (g groups) (c capacity))
+                  (r rows) (g groups) (c capacity))
                  (:instance fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (img image) (n 0))
                  (:instance fn-bs-recover-program-keeps-relation-at-every-cut
                   (k (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                             (fn-bs-scan-records (fn-bs-scan-store image)) 0))))
+                                             rows 0))))
            :in-theory (union-theories '(fn-bs-recovered-kernel fn-sf-phase-of-fn-sf-make
                                         (:executable-counterpart natp) (:executable-counterpart <)
                                         (:executable-counterpart equal) (:executable-counterpart if))
@@ -592,26 +625,27 @@
 ;; 6. recovery-stage-unlinked: the sweep starts from the last pair.
 (local
  (defthm k0r-run-relatedp-nth
-   (implies (and (fn-bs-run-relatedp pairs) (natp k) (< k (len pairs)))
-            (fn-bs-store-relation (car (nth k pairs)) (cdr (nth k pairs))))
+   (implies (and (fn-bs-run-relatedp pairs arena) (natp k) (< k (len pairs)))
+            (fn-bs-store-relation (car (nth k pairs)) (cdr (nth k pairs)) arena))
    :hints (("Goal" :in-theory (e/d (fn-bs-run-relatedp nth) (fn-bs-store-relation))))))
 
 (defthm fn-bs-host-recovery-sweep-starts-related
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-crash-imagep bs image)
+                (fn-bs-recovered-rowsp image rows arena)
                 (fn-sn-open-okp (fn-cpo-open-observed configs
                                                       (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                      (fn-bs-scan-records (fn-bs-scan-store image)))))
+                                                      rows)))
            (let* ((host (fn-sn-files (fn-sn-open-state
                                       (fn-cpo-open-observed configs
                                                             (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                            (fn-bs-scan-records (fn-bs-scan-store image))))))
+                                                            rows))))
                   (last (nth 16 (fn-bs-run image host (fn-bs-recover-program) nil groups capacity))))
-             (and (fn-bs-store-relation (car last) (cdr last))
+             (and (fn-bs-store-relation (car last) (cdr last) arena)
                   (fn-bs-sweep-run-okp
                    (fn-bs-run (car last) (cdr last) (fn-bs-recover-sweep-program names) outcomes
                               groups capacity)
-                   (cdr last) (fn-bs-scan-store (car last))))))
+                   (cdr last) (fn-bs-scan-store (car last)) arena))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-host-recovery-keeps-relation-at-every-cut
@@ -620,20 +654,20 @@
                                     (fn-sn-files (fn-sn-open-state
                                                   (fn-cpo-open-observed configs
                                                                         (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                                        (fn-bs-scan-records (fn-bs-scan-store image)))))
+                                                                        rows)))
                                     (fn-bs-recover-program) nil groups capacity)))
                  (:instance fn-bs-recover-sweep-keeps-relation-at-every-cut
                   (bs (car (nth 16 (fn-bs-run image
                                               (fn-sn-files (fn-sn-open-state
                                                             (fn-cpo-open-observed configs
                                                                                   (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                                                  (fn-bs-scan-records (fn-bs-scan-store image)))))
+                                                                                  rows)))
                                               (fn-bs-recover-program) nil groups capacity))))
                   (ks (cdr (nth 16 (fn-bs-run image
                                               (fn-sn-files (fn-sn-open-state
                                                             (fn-cpo-open-observed configs
                                                                                   (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                                                                  (fn-bs-scan-records (fn-bs-scan-store image)))))
+                                                                                  rows)))
                                               (fn-bs-recover-program) nil groups capacity))))))
            :in-theory (union-theories '((:executable-counterpart natp) (:executable-counterpart <))
                                       (theory 'minimal-theory)))))
@@ -664,7 +698,7 @@
                              fn-sf-record-dir-result))))))
 (local
  (defthm k0r-record-link-error-kernel-transport-facts
-   (implies (and (fn-sf-statep ks) (fn-bs-record-inputp ks stage name frame))
+   (implies (and (fn-sf-statep ks) (fn-bs-record-inputp ks stage name frame arena))
             (let* ((k6 (fn-sf-record-file-result ks :ok))
                    (ok (fn-sf-record-link-result k6 :ok))
                    (err (fn-sf-record-link-result k6 :error)))
@@ -688,14 +722,14 @@
 
 (local
  (defthm fn-bs-k0-record-issued-link-error-arm-relation
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage))
                  (equal (cdr outcome) :issued))
             (let ((p6 (nth 6 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
               (fn-bs-store-relation
                (mv-nth 1 (fn-bs-link (car p6) :staging stage :transactions name outcome))
-               (fn-sf-record-link-result (cdr p6) :error))))
+               (fn-sf-record-link-result (cdr p6) :error) arena)))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use (fn-bs-k0-record-attempted-cut-establishes-relation
@@ -726,13 +760,13 @@
 ;; (the byte state of a successful link) -- with the kernel's
 ;; (:record-link :error) observation is related.
 (defthm fn-bs-k0-record-link-error-arm-relation
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((p6 (nth 6 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
              (fn-bs-store-relation
               (mv-nth 1 (fn-bs-link (car p6) :staging stage :transactions name outcome))
-              (fn-sf-record-link-result (cdr p6) :error))))
+              (fn-sf-record-link-result (cdr p6) :error) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-record-error-arms-relation

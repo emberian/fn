@@ -440,6 +440,37 @@
                   (fn-nop-test-argv '("store" "export" "/tmp/a")))
                  '("store" "compact")))))
 
+;; `store rebind-filesystem [--storage-require-durable on|off]' (PKT-579,
+;; PKT-648): the :rebind-filesystem action, keeping (nil) or setting (1, 0)
+;; the store's durability policy; any other word after it is a usage error.
+(defconst *fn-nop-rebind*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "rebind-filesystem"))))
+(defconst *fn-nop-rebind-off*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "rebind-filesystem"
+                                              "--storage-require-durable" "off"))))
+(defconst *fn-nop-rebind-on*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("store" "rebind-filesystem"
+                                              "--storage-require-durable" "on"))))
+(assert-event (and (equal (fn-native-operator-result-native-action *fn-nop-rebind*)
+                          :rebind-filesystem)
+                   (equal (fn-native-operator-result-rebind-policy *fn-nop-rebind*) nil)
+                   (equal (fn-native-operator-result-native-action *fn-nop-rebind-off*)
+                          :rebind-filesystem)
+                   (equal (fn-native-operator-result-rebind-policy *fn-nop-rebind-off*) 0)
+                   (equal (fn-native-operator-result-rebind-policy *fn-nop-rebind-on*) 1)
+                   (equal (fn-native-operator-result-rebind-policy *fn-nop-compact*) nil)))
+;; A configuration with no [ops] mission makes a store of policy 0.
+(assert-event (null (fn-native-operator-result-config-mission *fn-nop-rebind*)))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("store" "rebind-filesystem"
+                                                                  "--storage-require-durable"
+                                                                  "maybe"))))
+                     5))
+
 ;; `store reclaim [--dry-run]' (STO-017): offline store actions; what they
 ;; remove is `fn-rclp-decide' (books/store-reclaim-pack.lisp).
 (defconst *fn-nop-reclaim*

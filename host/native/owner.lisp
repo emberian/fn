@@ -8,6 +8,22 @@
 ;;; and the exclusive Store writer are one process-owned machine; client
 ;;; sockets remain concurrent and never carry semantic state in raw Lisp.
 
+;;;
+;;; The scheduler (planning/design-2026-09-26-owner-scheduler.md; HST-023;
+;;; PRF-248): the mutex is entered through a GATE.  A thread names its
+;;; SERVICE CLASS (:control, :reader, :poster, :transit) and waits at the
+;;; gate; ACL2 decides which class runs next (books/owner-scheduler.lisp
+;;; fn-osch-next: the first waiting class in cyclic order from a cursor, so a
+;;; control request waits at most three quanta of the other classes,
+;;; fn-osch-control-waits-at-most-the-bound), and within a class the host
+;;; serves arrival order.  The mutex itself is uncontended: the gate admits
+;;; one thread.  What a quantum is stays what it was, one bounded semantic
+;;; step; what left the critical section is the reply's rendering: a served
+;;; step returns an immutable render PLAN (books/served-plan.lisp) and the
+;;; I/O loop (host/native/mux.lisp) renders it into a fresh buffer, a window
+;;; at a time, after the mutex is released (fnn-owner-render-next).
+;;; The live octet buffer `fn-octets' is now input-only under the mutex.
+
 (in-package "ACL2")
 
 (defvar *fnn-owner-start-hooks* nil)
@@ -42,12 +58,36 @@
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
   (workers nil) (clients nil) tls-context
+  ;; The scheduler gate in front of LOCK (fnn-owner-gated), and the roster
+  ;; mutex that protects WORKERS, CLIENTS, PUBLISHER and the stop flag's
+  ;; publication to the accept threads: host lists, not owner state, so
+  ;; their edits never queue at the gate.
+  (gate nil) (roster (sb-thread:make-mutex :name "fn owner roster"))
   ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
   (publisher nil)
+  ;; The I/O loops that serve every reader and transit connection
+  ;; (host/native/mux.lisp), and the round-robin cursor over them.
+  (mux nil) (mux-next 0)
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
-  (connection-fault-operation nil))
+  (connection-fault-operation nil)
+  ;; PRF-252: consumer waits (fnn-owner-consumer-local-wait).  COMMITS counts
+  ;; durable Store publications and stops; each raises WAIT-QUEUE under
+  ;; WAIT-LOCK.  WAITERS is the number of waits admitted and not yet
+  ;; answered; ACL2 admits one more (fn-cwait-admit).  Lock order: the owner
+  ;; mutex, then WAIT-LOCK; a waiter never holds the owner mutex while it
+  ;; sleeps.
+  (wait-lock (sb-thread:make-mutex :name "fn consumer wait"))
+  (wait-queue (sb-thread:make-waitqueue :name "fn consumer commit"))
+  (commits 0) (waiters 0))
+
+(defun fnn-owner-signal-commit (service)
+  "Wake every consumer wait: a Store publication is durable, or the owner stops.
+The waiters poll again (ACL2 decides what each answers); this only signals."
+  (sb-thread:with-mutex ((fnn-owner-service-wait-lock service))
+    (incf (fnn-owner-service-commits service))
+    (sb-thread:condition-broadcast (fnn-owner-service-wait-queue service))))
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0))
@@ -76,6 +116,61 @@
       (fnn-refuse "owner startup hook refused")))
   :accepted)
 
+;;; Measurement (adapter-retirement-2; opt-in, FN_OWNER_MEASURE=1 at start):
+;;; per label, how many times the owner mutex was held, for how long, and
+;;; how many octets SBCL allocated while it was (sb-ext:get-bytes-consed is
+;;; process-wide: a measurement run keeps other threads quiet).  The label
+;;; is the dynamic *fnn-owner-measure-label*: :control inside a control
+;;; request (an operator post), :feed-flush for the flush's own cost (nested
+;;; in a hold), :other otherwise.  Off, it costs one special-variable test
+;;; per hold.  The totals go to stderr when the owner stops
+;;; (fnn-owner-measure-report).  It decides nothing and changes no state the
+;;; owner reads.
+(defvar *fnn-owner-measure* nil)
+(defvar *fnn-owner-measure-label* :other)
+(defvar *fnn-owner-measure-table*
+  (make-hash-table :test 'eq :synchronized t))
+
+(defun fnn-owner-measure-now ()
+  "Microseconds from gettimeofday (get-internal-real-time advanced in whole
+milliseconds on hbox). Exported SB-EXT, not an SB-UNIX internal: a raw
+SBCL's SB-UNIX may lack the internal clock symbols."
+  (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
+    (+ (* seconds 1000000) microseconds)))
+
+(defun fnn-owner-measure-note (label start bytes)
+  (let* ((held (- (fnn-owner-measure-now) start))
+         (consed (- (sb-ext:get-bytes-consed) bytes))
+         (row (or (gethash label *fnn-owner-measure-table*)
+                  (setf (gethash label *fnn-owner-measure-table*)
+                        (list 0 0 0 0)))))
+    (incf (first row))
+    (incf (second row) held)
+    (setf (third row) (max (third row) held))
+    (incf (fourth row) consed)))
+
+(defmacro fnn-owner-measured ((label) &body body)
+  (let ((start (gensym "START")) (bytes (gensym "BYTES")))
+    `(if *fnn-owner-measure*
+         (let ((,start (fnn-owner-measure-now))
+               (,bytes (sb-ext:get-bytes-consed)))
+           (unwind-protect (progn ,@body)
+             (fnn-owner-measure-note ,label ,start ,bytes)))
+       (progn ,@body))))
+
+(defun fnn-owner-measure-report ()
+  (when *fnn-owner-measure*
+    (maphash
+     (lambda (label row)
+       (destructuring-bind (count held most consed) row
+         (format *error-output*
+                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d~%"
+                 label count
+                 held most
+                 consed)))
+     *fnn-owner-measure-table*)
+    (finish-output *error-output*)))
+
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
 
@@ -85,27 +180,51 @@
       (fnn-fault "owner returned non-octets in ~a" name))
     (fnn-octets value)))
 
-;;; PRF-192 (books/served-reply-buffer.lisp; PKT-491): the served read's
-;;; reply is never a list.  ACL2 fills the octet buffer `fn-octets' from the
-;;; step's effects (host/owner-host.lisp fn-owner-reply-buffer ->
-;;; fn-served-reply-to-buffer, whose keystone says the range [0, len) is
-;;; fn-served-reply-octets of the effects), and this copies that range out
-;;; ONCE, a byte copy, under the service mutex.  Why a copy and why this
-;;; buffer: the socket write runs after fnn-owner-handle-chunk returns,
-;;; outside the mutex, and the next locked step (this connection's writer
-;;; drain, fnn-owner-attempt's fnn-octets-fill, or another connection's
-;;; read) refills `fn-octets'; `fn-octets-pub' belongs to the publication
-;;; thread off the mutex and is never touched here.
-(defun fnn-owner-reply-from-buffer ()
-  (unless (eq (fnn-owner-buffer-action 'fn-owner-reply-buffer) :ok)
-    (fnn-fault "owner returned non-octets in its served reply"))
-  (let ((st (fnn-live-octets)))
-    (subseq (the fnn-octets (svref st 0)) 0 (svref st 1))))
+;;; The render plan (books/served-plan.lisp; HST-023, PRF-248).  A served
+;;; step answers with an immutable PLAN (the step's effects, whose reply
+;;; octets are pointers into the connection's pinned archive) and the I/O
+;;; loop (host/native/mux.lisp fnn-mux-queue-plan, fnn-mux-flush) renders it
+;;; OFF the mutex, one window at a time into a fresh buffer of the window's
+;;; size, writing each window before it asks for the next.  ACL2 sizes each
+;;; window (fn-splan-window-size): a materialized effect, an octet list the
+;;; arm built inside the step, is rendered whole, because holding its list
+;;; while the socket drains costs sixteen octets per octet where the vector
+;;; costs one (so the per-connection reply term of
+;;; books/connection-budget.lisp stays the reply's size; it becomes a fixed
+;;; window when the arms emit effects that point into the pinned view, the
+;;; design's section 3.3, PKT-644 (a)).  fn-splan-window's keystone says the
+;;; windows concatenate to fn-served-reply-octets of the effects; a
+;;; :malformed status (a reply effect that is not octets) is a core fault, as
+;;; a non-octet reply was before.  The buffer is a private `fn-octets$c'
+;;; object (books/octets-stobj.lisp's foundation), never the live stobj:
+;;; nothing touches the live `fn-octets' outside the mutex.
+(defun fnn-make-render-buffer (n)
+  "A private render buffer that holds N octets."
+  (fn-octets$c-reserve n (create-fn-octets$c)))
 
-(defun fnn-owner-bool-global (name)
+(defun fnn-owner-render-next (plan)
+  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP), OCTETS a
+fresh vector (empty only when nothing remained), DONEP when nothing remains
+after it."
+  (let ((size (fnn-core 'fn-splan-window-size plan)))
+    (unless (and (integerp size) (>= size 0))
+      (fnn-fault "owner returned a malformed render window size"))
+    (destructuring-bind (status rest buf)
+        (fnn-call 'fn-splan-window plan size (fnn-make-render-buffer size))
+      (unless (eq status :ok)
+        (fnn-fault "owner returned non-octets in its served reply"))
+      (let ((array (svref buf 0)) (fill (svref buf 1)))
+        (values (if (= fill (length array))
+                    (the fnn-octets array)
+                  (subseq (the fnn-octets array) 0 fill))
+                rest
+                (and (fnn-core 'fn-splan-donep rest) t))))))
+
+(defun fnn-owner-list-global (name)
+  "An ACL2 octet list left in NAME, as the list (no vector is made)."
   (let ((value (fnn-global name)))
-    (unless (member value '(t nil))
-      (fnn-fault "owner returned non-boolean in ~a" name))
+    (unless (fnn-octet-list-p value)
+      (fnn-fault "owner returned non-octets in ~a" name))
     value))
 
 (defun fnn-owner-action (name &rest args)
@@ -173,23 +292,37 @@ function supplied no observation at all, which is a defect here."
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
   (fnn-owner-action 'fn-owner-finish-submission))
 
-(defun fnn-owner-name-list (octets)
-  "Split ACL2's LF-joined name projection; LF is excluded by the name grammar."
-  (let ((names nil) (current nil))
-    (unless (fnn-octet-list-p octets)
-      (fnn-fault "owner returned a non-octet name table"))
-    (dolist (octet octets)
-      (if (= octet 10)
-          (progn
-            (push (fnn-octets-string (fnn-octets (nreverse current))) names)
-            (setq current nil))
-          (push octet current)))
-    (when current
-      (push (fnn-octets-string (fnn-octets (nreverse current))) names))
-    (nreverse names)))
+;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
+;;; A wrapper that used to answer a keyword and leave the rest of its result
+;;; in f-put-global mailboxes returns ONE value; its recognizer is checked
+;;; here, once, at the boundary -- a shape check, as fnn-owner-action's
+;;; keyword check is, never a semantic one -- and a value that fails it is
+;;; a core fault (exit 4).  Fields are read through ACL2's accessors.
+(defun fnn-owner-result (recognizer name &rest args)
+  (let ((value (apply #'fnn-owner-core name args)))
+    (unless (fnn-core recognizer value)
+      (fnn-fault "owner returned a malformed result from ~(~a~)" name))
+    value))
 
-(defun fnn-owner-config-names (wrapper)
-  (fnn-owner-name-list (fnn-owner-core wrapper)))
+(defun fnn-owner-names (name &rest args)
+  "A wrapper's list of names (strings): no LF grammar, nothing split here."
+  (apply #'fnn-owner-result 'string-listp name args))
+
+;;; FeedPublication: WORD, PEER, the sealed frame PLAN ((PEER . FRAME) ...),
+;;; TOKEN, the rendered COMMAND, its STATUS and the LOG-LINE.
+(defun fnn-owner-feed-step (name &rest args)
+  (apply #'fnn-owner-result 'fn-ores-feed-publication-p name args))
+
+(defun fnn-owner-feed-word (publication)
+  (fnn-core 'fn-ores-feedpub-word publication))
+
+(defun fnn-owner-feed-command (publication)
+  (fnn-octets (fnn-core 'fn-ores-feedpub-command publication)))
+
+(defun fnn-owner-feed-log (publication)
+  "Write the publication's ACL2-rendered line; an empty one is none."
+  (let ((line (fnn-core 'fn-ores-feedpub-log-line publication)))
+    (when line (fnn-log-line line))))
 
 (defun fnn-owner-feed-directory (store)
   (fnn-join (fnn-store-root store) "feed"))
@@ -454,39 +587,34 @@ obligations may still name a peer removed from the current configuration."
 
 Call while holding the owner mutex immediately after a durable configuration
 completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
-  (let ((peers (fnn-owner-core 'fn-owner-feed-configure)))
-    (unless (fnn-octet-list-p peers)
-      (fnn-fault "owner returned a malformed refreshed feed table"))
-    (fnn-owner-feed-open-missing service (fnn-owner-name-list peers))))
+  (fnn-owner-feed-open-missing service (fnn-owner-names 'fn-owner-feed-configure)))
 
-(defun fnn-owner-feed-flush (service)
-  "Persist the exact pending owner frame batch before its authorized effect."
-  (let* ((raw-frames (fnn-global 'fn-owner-feed-frames))
-         (peers (fnn-owner-name-list
-                 (fnn-owner-core 'fn-owner-feed-record-peers))))
-    (unless (listp raw-frames)
-      (fnn-fault "owner returned malformed FNFD frame batch"))
-    (unless (= (length raw-frames) (length peers))
-      (fnn-fault "owner FNFD frame/peer count mismatch"))
-    (loop for peer in peers for index from 0 do
-      (let ((journal (cdr (assoc peer (fnn-owner-service-feeds service)
-                                 :test #'string=)))
-            (frame (fnn-owner-core 'fn-owner-feed-sealed-frame index)))
+(defun fnn-owner-feed-flush (service publication)
+  "Persist PUBLICATION's sealed frame plan before its authorized effect.
+
+Each pair of the plan names its peer's journal and carries the sealed frame,
+in append order (books/owner-results.lisp fn-ores-sealed-plan-is-indexed-fetch:
+the plan is the old by-index fetch); nothing is fetched by index and no name
+list is split.  The recognizer (fnn-owner-feed-step) already checked every
+pair is a string and a non-empty octet list."
+  (fnn-owner-measured (:feed-flush)
+    (dolist (pair (fnn-core 'fn-ores-feedpub-plan publication))
+      (let ((journal (cdr (assoc (car pair) (fnn-owner-service-feeds service)
+                                 :test #'string=))))
         (unless journal
-          (fnn-fault "FNFD obligation has no journal for peer ~a" peer))
-        (unless (fnn-octet-list-p frame)
-          (fnn-fault "owner returned malformed sealed FNFD frame"))
-        (fnn-owner-feed-append journal (fnn-octets frame))))))
+          (fnn-fault "FNFD obligation has no journal for peer ~a" (car pair)))
+        (fnn-owner-feed-append journal (fnn-octets (cdr pair)))))))
 
 (defun fnn-owner-feed-reconcile (service)
   (loop
-    (let ((resolution (fnn-owner-action 'fn-owner-feed-reconcile-next)))
+    (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-reconcile-next))
+           (resolution (fnn-owner-feed-word publication)))
       (case resolution
         (:done (return))
         (:uncertain
          (fnn-indeterminate "feed intent cannot be resolved from recovered store"))
         ((:feed-commit :feed-abort)
-         (fnn-owner-feed-flush service)
+         (fnn-owner-feed-flush service publication)
          (unless (eq (fnn-owner-action 'fn-owner-feed-reconcile-apply) :ok)
            (fnn-fault "owner refused recovered feed resolution")))
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
@@ -511,11 +639,43 @@ checkpoint's S, or NIL."
       (fnn-fault "owner refused the durable checkpoint sequence"))
     s))
 
+;;; SEC-006 (PRF-210): read the node's key ring and hand it to the owner,
+;;; which carries it (books/owner.lisp fn-own-node-secret): the current
+;;; entry from STORE/keys/node-secret.key, then each retained older epoch
+;;; E-1 .. 1 from node-secret-E.key, each read by ACL2
+;;; (host/native/io.lisp fnn-node-secret-read-entry, fn-ns-file-parse).
+;;; Refused by name, and the node does not start, when the current file is
+;;; missing (it is NEVER regenerated here: `store ROOT node-secret create'
+;;; is the only verb that makes one), a retained epoch is missing, a file is
+;;; not regular, is readable or writable by group or others, or does not
+;;; parse, or ACL2 does not accept the ring (fn-owner-install-node-secret
+;;; answers :refused unless fn-ns-ringp).
+(defun fnn-owner-load-node-secret (store)
+  (let* ((path (fnn-node-secret-path store))
+         (current (or (fnn-node-secret-read-entry path "node secret")
+                      (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once (a start never creates one)"
+                                  path (fnn-store-root store))))
+         (epoch (fnn-core 'fn-ns-entry-epoch current))
+         (retained
+           (loop for e downfrom (1- epoch) to 1
+                 collect (let ((older (fnn-node-secret-epoch-path store e)))
+                           (or (fnn-node-secret-read-entry older "retained node secret")
+                               (fnn-refuse "node secret retained epoch ~d missing: ~a"
+                                           e older))))))
+    (unless (eq (fnn-owner-core 'fn-owner-install-node-secret (cons current retained))
+                :installed)
+      (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
+                  (fnn-node-secret-directory store)))))
+
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store records) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (progn
+            ;; PKT-648: the store's durability policy against its mount
+            ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
+            ;; before the owner serves anything.
+            (fnn-check-filesystem-identity store t)
             (fnn-owner-recover-core store records max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
@@ -524,6 +684,9 @@ checkpoint's S, or NIL."
                                         (fnn-store-config store))
                         :installed)
               (fnn-fault "owner refused the store profile"))
+            ;; SEC-006: the node secret, handed to the owner after the
+            ;; recovery that built it (fnn-owner-load-node-secret).
+            (fnn-owner-load-node-secret store)
             ;; Five fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier
@@ -542,30 +705,29 @@ checkpoint's S, or NIL."
                 (fnn-fault "owner did not complete recovery barriers")))
             ;; The first reading, against a clock-less owner.  Every later
             ;; reading is taken at the event that decides under it, in
-            ;; fnn-owner-serve-client and fnn-owner-handle-chunk: this one is
+            ;; fnn-mux-begin and fnn-owner-handle-chunk: this one is
             ;; not an anchor the run is dated against.
             (unless (eq (fnn-owner-advance-clock) :observed)
               (fnn-fault "owner refused its first clock observation"))
-            (let ((peers (fnn-owner-core 'fn-owner-feed-configure)))
-              (unless (fnn-octet-list-p peers)
-                (fnn-fault "owner returned a malformed feed table"))
+            (let ((configured (fnn-owner-names 'fn-owner-feed-configure)))
               (setq service
                     (%make-fnn-owner-service
                      :store store
                      :lock (sb-thread:make-mutex :name "fn owner/store")
+                     :gate (fnn-make-owner-gate)
                      :start-hooks *fnn-owner-start-hooks*
                      :stop-hooks *fnn-owner-stop-hooks*
                      :close-hooks *fnn-owner-close-hooks*
                      :stopping nil))
-              (let ((configured (fnn-owner-name-list peers)))
+              (progn
                 (setf (fnn-owner-service-feeds service)
                       (fnn-owner-feed-open-all service configured))
                 (fnn-owner-feed-reconcile service)
                 (when configured
-                  (let ((count (fnn-owner-core 'fn-owner-feed-restart)))
-                    (unless (and (integerp count) (>= count 0))
-                      (fnn-fault "owner returned malformed feed restart count")))
-                  (fnn-owner-feed-flush service)))
+                  (let ((restart (fnn-owner-feed-step 'fn-owner-feed-restart)))
+                    (unless (eq (fnn-owner-feed-word restart) :restarted)
+                      (fnn-fault "owner refused the feed restart"))
+                    (fnn-owner-feed-flush service restart))))
               (fnn-owner-key-statement-recover service records)
               service))
         (error (e)
@@ -573,8 +735,112 @@ checkpoint's S, or NIL."
           (fnn-store-close store)
           (error e))))))
 
-(defmacro fnn-with-owner ((service) &body body)
-  `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
+(defmacro fnn-with-roster ((service) &body body)
+  `(sb-thread:with-mutex ((fnn-owner-service-roster ,service)) ,@body))
+
+;;; The scheduler gate (books/owner-scheduler.lisp).  Every entry to the owner
+;;; mutex names its class; the gate keeps how many threads of each class wait
+;;; (a host observation), the per-class arrival tickets, whether a thread is
+;;; inside and which, the class ACL2 last admitted, and ACL2's scheduler
+;;; value (the cursor and the hold/wait fold `health' prints).  The class's
+;;; slot is ACL2's (fn-osch-class-index over *fn-osch-order*); the host
+;;; keeps no order of its own.  The gate mutex is held for a list update and
+;;; one ACL2 call, never across a step or any I/O.
+(defstruct (fnn-owner-gate (:constructor %make-fnn-owner-gate))
+  (mutex (sb-thread:make-mutex :name "fn owner gate"))
+  (ready (sb-thread:make-waitqueue :name "fn owner gate ready"))
+  (waiting (make-array 4 :initial-element 0))
+  (next-ticket (make-array 4 :initial-element 0))
+  (serving (make-array 4 :initial-element 0))
+  (busy nil)
+  (holder nil)
+  (turn nil)
+  (sched nil))
+
+(defun fnn-make-owner-gate ()
+  (%make-fnn-owner-gate :sched (fnn-core 'fn-osch-init)))
+
+(defun fnn-owner-class-index (class)
+  "The class's slot, ACL2's (fn-osch-class-index); a name ACL2 does not
+recognise is a host fault."
+  (unless (fnn-core 'fn-osch-classp class)
+    (fnn-fault "unknown owner service class ~a" class))
+  (let ((i (fnn-core 'fn-osch-class-index class)))
+    (unless (and (integerp i) (<= 0 i 3))
+      (fnn-fault "owner returned a malformed service class slot"))
+    i))
+
+(defun fnn-ms-since (started)
+  (round (* 1000 (- (get-internal-real-time) started)) internal-time-units-per-second))
+
+(defun fnn-owner-gate-pick (gate)
+  "The owner is free and nobody was admitted: ask ACL2 which class runs
+(nil when no class waits).  The caller holds the gate mutex."
+  (destructuring-bind (class sched)
+      (fnn-call 'fn-osch-next (fnn-owner-gate-sched gate)
+                (coerce (fnn-owner-gate-waiting gate) 'list))
+    (setf (fnn-owner-gate-sched gate) sched
+          (fnn-owner-gate-turn gate) (and class (fnn-owner-class-index class)))
+    (sb-thread:condition-broadcast (fnn-owner-gate-ready gate))))
+
+(defun fnn-owner-gate-enter (gate class)
+  "Wait at the gate as CLASS until admitted; return the wait in milliseconds.
+A thread already inside cannot enter again: a nested quantum would wait on
+itself for ever, so it is a fault here (as SBCL's recursive-lock error was)."
+  (let* ((i (fnn-owner-class-index class))
+         (started (get-internal-real-time))
+         (ticket nil))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (when (eq (fnn-owner-gate-holder gate) sb-thread:*current-thread*)
+        (fnn-fault "owner re-entered by the thread holding it"))
+      (setq ticket (svref (fnn-owner-gate-next-ticket gate) i))
+      (incf (svref (fnn-owner-gate-next-ticket gate) i))
+      (incf (svref (fnn-owner-gate-waiting gate) i))
+      (loop
+        (when (and (not (fnn-owner-gate-busy gate)) (null (fnn-owner-gate-turn gate)))
+          (fnn-owner-gate-pick gate))
+        (when (and (not (fnn-owner-gate-busy gate))
+                   (eql (fnn-owner-gate-turn gate) i)
+                   (= ticket (svref (fnn-owner-gate-serving gate) i)))
+          (setf (fnn-owner-gate-busy gate) t
+                (fnn-owner-gate-holder gate) sb-thread:*current-thread*
+                (fnn-owner-gate-turn gate) nil)
+          (incf (svref (fnn-owner-gate-serving gate) i))
+          (decf (svref (fnn-owner-gate-waiting gate) i))
+          (return))
+        (sb-thread:condition-wait (fnn-owner-gate-ready gate)
+                                  (fnn-owner-gate-mutex gate))))
+    (fnn-ms-since started)))
+
+(defun fnn-owner-gate-leave (gate class hold-ms wait-ms)
+  "Leave the owner: fold this quantum's hold and wait, and let ACL2 admit
+the next class (none when nothing waits: fn-osch-next answers nil)."
+  (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+    (setf (fnn-owner-gate-busy gate) nil
+          (fnn-owner-gate-holder gate) nil
+          (fnn-owner-gate-sched gate)
+          (fnn-core 'fn-osch-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
+    (fnn-owner-gate-pick gate)))
+
+(defun fnn-owner-sched-snapshot (service)
+  "ACL2's scheduler value, for `health' (fn-osch-health-lines)."
+  (let ((gate (fnn-owner-service-gate service)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (fnn-owner-gate-sched gate))))
+
+(defmacro fnn-owner-gated ((service class) &body body)
+  "Run BODY under the owner mutex, admitted by the gate as CLASS."
+  (let ((g (gensym "GATE")) (c (gensym "CLASS")) (w (gensym "WAITED"))
+        (h (gensym "HELD")))
+    `(let* ((,g (fnn-owner-service-gate ,service))
+            (,c ,class)
+            (,w (fnn-owner-gate-enter ,g ,c))
+            (,h (get-internal-real-time)))
+       (unwind-protect
+            (sb-thread:with-mutex ((fnn-owner-service-lock ,service))
+              ;; adapter-retirement-2's opt-in hold measurement (FN_OWNER_MEASURE)
+              (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
+         (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)))))
 
 (defun fnn-owner-stop-service-locked (service exit-code &optional answering)
   "Fence while the owner mutex is held; the first terminal outcome wins.
@@ -585,9 +851,10 @@ uncertain `441 ... do not repost'), sends it after the mutex is released and
 then closes the connection itself.  Setting STOPPING under this mutex is the
 fence; no semantic action of any worker, that one included, can run after it
 (fnn-owner-serialized refuses once STOPPING is set)."
-  (unless (fnn-owner-service-stopping service)
-    (setf (fnn-owner-service-stopping service) t
-          (fnn-owner-service-exit-code service) exit-code))
+  (fnn-with-roster (service)
+    (unless (fnn-owner-service-stopping service)
+      (setf (fnn-owner-service-stopping service) t
+            (fnn-owner-service-exit-code service) exit-code)))
   (let ((listener (fnn-owner-service-listener service)))
     (when listener
       ;; close(2) in another thread does not reliably wake a blocked accept(2)
@@ -599,17 +866,21 @@ fence; no semantic action of any worker, that one included, can run after it
   ;; journals and Store state remain open until all workers have returned.
   ;; Only the worker that cached the socket fd may close it; shutdown wakes its
   ;; raw read without making that integer available for reuse underneath it.
-  (dolist (socket (fnn-owner-service-clients service))
+  (dolist (socket (fnn-with-roster (service)
+                    (copy-list (fnn-owner-service-clients service))))
     (unless (eq socket answering)
       (ignore-errors
         (sb-bsd-sockets:socket-shutdown socket :direction :io))))
+  ;; PRF-252: a sleeping consumer wait wakes, finds the owner stopping and
+  ;; is answered (its next step is refused by fnn-owner-serialized).
+  (fnn-owner-signal-commit service)
   ;; Hooks only signal external listeners/clients.  They run inside the same
   ;; first-terminal boundary and must be idempotent and nonblocking.
   (dolist (hook (fnn-owner-service-stop-hooks service))
     (ignore-errors (funcall hook service))))
 
 (defun fnn-owner-stop-service (service exit-code)
-  (fnn-with-owner (service)
+  (fnn-owner-gated (service :control)
     (fnn-owner-stop-service-locked service exit-code)))
 
 (defun fnn-owner-fence-service (service)
@@ -618,7 +889,7 @@ fence; no semantic action of any worker, that one included, can run after it
 
 (defun fnn-owner-fault-service (service cid condition)
   "Contain an invalid core/store image, distinct from client refusal or EOF."
-  (fnn-with-owner (service)
+  (fnn-owner-gated (service :control)
     (unless (fnn-owner-service-stopping service)
       (when cid
         (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
@@ -650,16 +921,30 @@ before the mutex can be released, so no queued client can mutate afterward."
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
       (error condition))))
 
-(defun fnn-owner-serialized (service cid thunk)
-  "Run one semantic action, fencing before its mutex can be released."
-  (fnn-with-owner (service)
+(defun fnn-owner-serialized (service cid thunk &optional (class :control))
+  "Run one semantic action, fencing before its mutex can be released.
+
+CLASS is the service class the gate admits this quantum as
+(books/owner-scheduler.lisp *fn-osch-order*): :reader for a reader
+connection's quanta (its open, steps, idle, close and release), :transit for
+a peer connection's and for the feeds', the BP node's and its applications'
+(fnn-owner-transit-serialized), :poster for a submission through the control
+socket, and :control (the default) for the control socket's requests and the
+maintenance steps (the checkpoint capture, the publication's done step, the
+log reopen)."
+  (fnn-owner-gated (service class)
     (when (fnn-owner-service-stopping service)
       (fnn-refuse "owner service is stopping"))
     (fnn-owner-shared-action-locked service cid thunk)))
 
+(defun fnn-owner-transit-serialized (service cid thunk)
+  "fnn-owner-serialized for a peer's quantum (the :transit class): the push
+and pull feeds, the BP node and its applications."
+  (fnn-owner-serialized service cid thunk :transit))
+
 (defun fnn-owner-consume-connection-fault (service operation)
-  "Consume the private injection under the owner mutex, without a core step."
-  (fnn-with-owner (service)
+  "Consume the private injection under the roster mutex, without a core step."
+  (fnn-with-roster (service)
     (when (and (not (fnn-owner-service-stopping service))
                (eq operation
                    (fnn-owner-service-connection-fault-operation service)))
@@ -690,7 +975,7 @@ the current connection."
 (defun fnn-owner-abandon-connection (service cid condition)
   "Apply the ACL2 connection-fault transition unless a global stop won first."
   (let ((reply (fnn-make-octets 0)))
-    (fnn-with-owner (service)
+    (fnn-owner-gated (service :control)
       (unless (fnn-owner-service-stopping service)
         (fnn-owner-shared-action-locked
          service cid
@@ -708,11 +993,34 @@ the current connection."
     (fnn-err "owner connection-local fault; service continues: ~a" condition)
     reply))
 
-(defun fnn-owner-submit-groups ()
-  (let ((groups (fnn-global 'fn-owner-submit-groups)))
+(defun fnn-owner-transit-groups ()
+  "The memberships fn-owner-transit-decide computed for a transit take."
+  (let ((groups (fnn-global 'fn-owner-transit-groups)))
     (unless (and (listp groups) (every #'fnn-octet-list-p groups))
       (fnn-fault "owner returned malformed submission groups"))
     (mapcar #'fnn-octets groups)))
+
+;;; SubmissionTaken (books/owner-results.lisp fn-ores-take-result): WORD
+;;; (:idle, :taken, :taken-control, :taken-transit), the submission's ID,
+;;; MSGID, stored OCTETS and GROUPS, checked once by the recognizer (the
+;;; octet fields are octet lists, the groups lists of them); read here.
+(defun fnn-owner-take ()
+  (fnn-owner-result 'fn-ores-submission-taken-p 'fn-owner-take))
+
+(defun fnn-owner-taken-word (taken)
+  (fnn-core 'fn-ores-taken-word taken))
+
+(defun fnn-owner-taken-id (taken)
+  (fnn-core 'fn-ores-taken-id taken))
+
+(defun fnn-owner-taken-msgid (taken)
+  (fnn-octets (fnn-core 'fn-ores-taken-msgid taken)))
+
+(defun fnn-owner-taken-octets (taken)
+  (fnn-octets (fnn-core 'fn-ores-taken-octets taken)))
+
+(defun fnn-owner-taken-groups (taken)
+  (mapcar #'fnn-octets (fnn-core 'fn-ores-taken-groups taken)))
 
 (defun fnn-owner-publish-prepared (service label)
   "Publish and finish the one ACL2-prepared owner transaction."
@@ -744,6 +1052,8 @@ the current connection."
     (fnn-mark-committed store sequence)
     (setf (fnn-store-fenced store) t)
     (fnn-finish store)
+    ;; PRF-252: the committed delta wakes the consumer waits.
+    (fnn-owner-signal-commit service)
     :durable))
 
 (defun fnn-owner-preflight-publication (service kind)
@@ -1312,15 +1622,30 @@ client, which can issue POSITION after reconnecting."
                  (fnn-owner-core 'fn-owner-consumer-local-status first))
                 (:poll
                  (fnn-owner-core 'fn-owner-consumer-local-poll first))
+                ;; PRF-234: a consumer bound to an account; SECOND is the
+                ;; account's password, which only ACL2 compares.
+                (:bound-poll
+                 (fnn-owner-core 'fn-owner-consumer-local-bound-poll
+                                 first second))
+                (:bound-ack
+                 (fnn-owner-core 'fn-owner-consumer-local-bound-ack
+                                 first second))
                 (:unregister
                  (fnn-owner-core 'fn-owner-consumer-local-unregister first))
                 (otherwise '(:refused :operation))))
             (kind (and (consp proposal) (first proposal))))
        (case kind
          (:refused
-          (if (eq operation :status)
-              (list :consumer-status-reply :refused nil nil nil)
-            (list :consumer-reply :refused nil)))
+          (case operation
+            (:status (list :consumer-status-reply :refused nil nil nil))
+            ;; A refused poll answers on the poll reply kind
+            ;; (fn-ncl-poll-reply-encode :refused), as the non-owner refusal
+            ;; does.  PRF-234: before, a refused plain poll answered a kind-5
+            ;; frame that the poll client cannot decode, so every refused
+            ;; poll (an unknown consumer included) printed `uncertain' (exit
+            ;; 3); a refusal is now `refused' (exit 1).
+            ((:poll :bound-poll) (list :consumer-poll-reply :refused nil nil))
+            (otherwise (list :consumer-reply :refused nil))))
          (:position
           (let ((token (second proposal)))
             (unless (fnn-octet-list-p token)
@@ -1359,7 +1684,7 @@ client, which can issue POSITION after reconnecting."
                                     (eq (first position) :position))
                          (fnn-fault "durable registration has no position"))
                        (second position)))
-                    (:ack first)
+                    ((:ack :bound-ack) first)
                     (:bootstrap nil)
                     (:unregister nil)
                     (otherwise
@@ -1368,6 +1693,86 @@ client, which can issue POSITION after reconnecting."
               (fnn-fault "ACL2 returned malformed durable cursor"))
             (list :consumer-reply :accepted token)))
          (otherwise (fnn-fault "ACL2 returned malformed consumer decision")))))))
+
+(defun fnn-owner-consumer-poll-answer (answer)
+  "Carry an ACL2 poll answer, (:poll TOKEN REPORT) or a refusal, as the poll reply."
+  (case (and (consp answer) (first answer))
+    (:poll
+     (let ((token (second answer)) (report (third answer)))
+       (unless (and (fnn-octet-list-p token) (fnn-octet-list-p report))
+         (fnn-fault "ACL2 returned malformed consumer poll"))
+       (list :consumer-poll-reply :accepted token report)))
+    (:refused (list :consumer-poll-reply :refused nil nil))
+    (otherwise (fnn-fault "ACL2 returned malformed consumer poll decision"))))
+
+(defun fnn-owner-wait-elapsed-ms (start)
+  (floor (* 1000 (max 0 (- (fnn-now) start))) internal-time-units-per-second))
+
+(defun fnn-owner-consumer-local-wait (service operation consumer argument)
+  "Answer one consumer WAIT (PRF-252): what a poll answers when it returns.
+
+OPERATION is :wait (ARGUMENT the timeout in seconds) or :bound-wait (ARGUMENT
+the list (SECONDS PASSWORD)).  ACL2 admits the waiter
+(fn-owner-consumer-local-wait-admit) and decides each step
+(fn-owner-consumer-local-wait-step, books/consumer-wait.lisp): the poll's
+answer, or (:sleep MS) on an empty page before the deadline.  Between steps
+this thread sleeps on the owner's commit signal (fnn-owner-signal-commit,
+raised by every durable publication and by a stop) for at most MS, holding
+no owner lock; a signal that came after the step's poll but before the
+sleep is seen by the commit count, so none is lost.  It never spins: each
+step follows a signal, a spurious wakeup or the sleep's end."
+  (let* ((boundp (eq operation :bound-wait))
+         (seconds (if boundp (first argument) argument))
+         (secret (and boundp (second argument)))
+         (lock (fnn-owner-service-wait-lock service))
+         (queue (fnn-owner-service-wait-queue service))
+         (start (fnn-now))
+         (admission
+           (fnn-owner-serialized
+            service nil
+            (lambda ()
+              (sb-thread:with-mutex (lock)
+                (let ((verdict (fnn-owner-core
+                                'fn-owner-consumer-local-wait-admit
+                                (fnn-owner-service-waiters service))))
+                  (when (eq verdict :admit)
+                    (incf (fnn-owner-service-waiters service)))
+                  verdict))))))
+    (unless (eq admission :admit)
+      (unless (and (consp admission) (eq (first admission) :refused))
+        (fnn-fault "ACL2 returned malformed wait admission"))
+      (fnn-err "consumer wait refused: ~(~a~)" (second admission))
+      (return-from fnn-owner-consumer-local-wait
+        (list :consumer-poll-reply :refused nil nil)))
+    (unwind-protect
+         (loop
+           (let* ((seen (sb-thread:with-mutex (lock)
+                          (fnn-owner-service-commits service)))
+                  (step (fnn-owner-serialized
+                         service nil
+                         (lambda ()
+                           (fnn-owner-core 'fn-owner-consumer-local-wait-step
+                                           consumer secret
+                                           (fnn-owner-wait-elapsed-ms start)
+                                           seconds)))))
+             (case (and (consp step) (first step))
+               (:answer
+                (return (fnn-owner-consumer-poll-answer (second step))))
+               (:sleep
+                (let ((ms (second step)))
+                  (unless (and (integerp ms) (plusp ms))
+                    (fnn-fault "ACL2 returned a malformed wait sleep"))
+                  (sb-thread:grab-mutex lock)
+                  (unwind-protect
+                       (when (= seen (fnn-owner-service-commits service))
+                         (sb-thread:condition-wait queue lock
+                                                   :timeout (/ ms 1000.0d0)))
+                    ;; A timed-out condition-wait may return without the mutex.
+                    (when (sb-thread:holding-mutex-p lock)
+                      (sb-thread:release-mutex lock)))))
+               (otherwise (fnn-fault "ACL2 returned a malformed wait step")))))
+      (sb-thread:with-mutex (lock)
+        (decf (fnn-owner-service-waiters service))))))
 
 (defun fnn-owner-transit-complete (cid kind reason word)
   "Feed a transit outcome to the owner and write its one service-log line.
@@ -1386,21 +1791,22 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
   (fnn-owner-log))
 
 (defun fnn-owner-drain-one (service)
-  "Take and complete at most one queued served submission; return cid/reply."
+  "Take and complete at most one queued served submission; return cid, the
+completion reply (an ACL2 octet list, appended to the step's render plan)
+and whether the outcome was uncertain."
   (setq *fnn-owner-transit-detail* nil
         *fnn-owner-transit-verdict* nil)
-  (let ((taken (fnn-owner-action 'fn-owner-take)))
-    (unless (member taken '(:idle :taken :taken-control :taken-transit))
-      (fnn-fault "owner returned unexpected take result"))
+  (let* ((took (fnn-owner-take))
+         (taken (fnn-owner-taken-word took)))
     (if (eq taken :idle)
-        (values nil (fnn-make-octets 0) nil)
-        (let* ((cid (fnn-nat (fnn-global 'fn-owner-submit-id)))
-               (msgid (fnn-owner-octets-global 'fn-owner-submit-msgid))
-               (payload (fnn-owner-octets-global 'fn-owner-submit-octets)))
+        (values nil nil nil)
+        (let* ((cid (fnn-nat (fnn-owner-taken-id took)))
+               (msgid (fnn-owner-taken-msgid took))
+               (payload (fnn-owner-taken-octets took)))
           (when (eq taken :taken-control)
             (fnn-owner-action 'fn-owner-fault cid)
             (return-from fnn-owner-drain-one
-              (values cid (fnn-owner-octets-global 'fn-owner-output) t)))
+              (values cid (fnn-owner-list-global 'fn-owner-output) t)))
           ;; The identities here serve the transfer decision only (the
           ;; obligation and subject fn-owner-transit-decide takes below); a
           ;; served POST derives them once, from the octet buffer, inside
@@ -1431,8 +1837,10 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
                          (fnn-fault "owner transit payload differs from the staged one"))
                        t))
                    ;; Transit memberships are computed by the ACL2 transfer
-                   ;; decision above and installed in this same global.
-                   (groups (fnn-owner-submit-groups))
+                   ;; decision above; a served POST's are the take's.
+                   (groups (if transitp
+                               (fnn-owner-transit-groups)
+                             (fnn-owner-taken-groups took)))
                    (evidence
                      (fnn-octets
                       (if transitp
@@ -1440,17 +1848,19 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
                         (fnn-owner-core 'fn-owner-prov-post))))
                  (generation (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
                  (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-                 (intent
+                 (intent-publication
                    (when (or (not transitp) (eq transit-kind :want))
-                     (fnn-owner-action 'fn-owner-submission-intent
-                                       (fnn-octet-list evidence)
-                                       generation txid))))
+                     (fnn-owner-feed-step 'fn-owner-submission-intent
+                                          (fnn-octet-list evidence)
+                                          generation txid)))
+                 (intent (and intent-publication
+                              (fnn-owner-feed-word intent-publication))))
             (declare (ignorable transit-checked))
             (if (and transitp (not (eq transit-kind :want)))
                 (progn
                   (fnn-owner-transit-complete
                    cid transit-kind transit-reason :refused)
-                  (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
+                  (values cid (fnn-owner-list-global 'fn-owner-output) nil))
               (if (not (eq intent :ready))
                   (progn
                     (if transitp
@@ -1460,26 +1870,27 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
                            cid :want transit-reason :refused))
                       (progn (fnn-owner-action 'fn-owner-outcome cid :refused)
                              (fnn-owner-log)))
-                    (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
+                    (values cid (fnn-owner-list-global 'fn-owner-output) nil))
                 (progn
                   ;; Durable intent before the first Store mutation.  Empty is
-                  ;; a complete batch when the ACL2 target set is empty.
-                  (fnn-owner-feed-flush service)
+                  ;; a complete plan when the ACL2 target set is empty.
+                  (fnn-owner-feed-flush service intent-publication)
                   (let ((word (if transitp
                                   (fnn-owner-attempt-transit
                                    service msgid payload groups evidence t)
                                 (fnn-owner-attempt-served
                                  service msgid payload groups evidence))))
-                    (fnn-owner-action 'fn-owner-submission-resolution
-                                      word (fnn-octet-list evidence)
-                                      generation txid)
-                    (fnn-owner-feed-flush service)
+                    (fnn-owner-feed-flush
+                     service
+                     (fnn-owner-feed-step 'fn-owner-submission-resolution
+                                          word (fnn-octet-list evidence)
+                                          generation txid))
                     (if transitp
                         (fnn-owner-transit-complete
                          cid :want transit-reason word)
                       (progn (fnn-owner-action 'fn-owner-outcome cid word)
                              (fnn-owner-log)))
-                    (values cid (fnn-owner-octets-global 'fn-owner-output)
+                    (values cid (fnn-owner-list-global 'fn-owner-output)
                             (eq word :uncertain))))))))))))
 
 (defun fnn-owner-bound-commit-word (commit-callback)
@@ -1524,28 +1935,27 @@ own result vocabulary."
       (fnn-fault "owner bound submit returned ~a" submitted))
     (unless (eq submitted :submitted)
       (return-from fnn-owner-complete-bound-submission submitted))
-    (let ((taken (fnn-owner-action 'fn-owner-take)))
+    (let* ((took (fnn-owner-take))
+           (taken (fnn-owner-taken-word took)))
       (unless (eq taken :taken-control)
         (fnn-fault "owner bound take returned ~a" taken))
       (when (eq payload :injected)
-        (setq payload (fnn-owner-octets-global 'fn-owner-submit-octets)))
-      (unless (and (equalp msgid
-                           (fnn-owner-octets-global 'fn-owner-submit-msgid))
-                   (equalp payload
-                           (fnn-owner-octets-global 'fn-owner-submit-octets))
-                   (equalp groups (fnn-owner-submit-groups)))
+        (setq payload (fnn-owner-taken-octets took)))
+      (unless (and (equalp msgid (fnn-owner-taken-msgid took))
+                   (equalp payload (fnn-owner-taken-octets took))
+                   (equalp groups (fnn-owner-taken-groups took)))
         (fnn-fault "owner bound submission changed after admission"))
-      (let ((intent
-              (fnn-owner-action 'fn-owner-submission-intent
-                                (fnn-octet-list evidence) generation txid)))
-        (unless (eq intent :ready)
+      (let ((intent-publication
+              (fnn-owner-feed-step 'fn-owner-submission-intent
+                                   (fnn-octet-list evidence) generation txid)))
+        (unless (eq (fnn-owner-feed-word intent-publication) :ready)
           (let ((result
                   (fnn-owner-action 'fn-owner-control-outcome :refused)))
             (fnn-owner-log)
             (unless (eq result :refused)
               (fnn-fault "owner bound intent refusal changed outcome"))
             (return-from fnn-owner-complete-bound-submission result)))
-        (fnn-owner-feed-flush service)
+        (fnn-owner-feed-flush service intent-publication)
         (let ((word (if commit-callback
                         ;; PKT-069: file first, here, not by the caller's
                         ;; convention.  The callback commits only when ACL2's
@@ -1565,9 +1975,10 @@ own result vocabulary."
                                               gate))))
                       (fnn-owner-attempt-served
                        service msgid payload groups evidence))))
-          (fnn-owner-action 'fn-owner-submission-resolution
-                            word (fnn-octet-list evidence) generation txid)
-          (fnn-owner-feed-flush service)
+          (fnn-owner-feed-flush
+           service
+           (fnn-owner-feed-step 'fn-owner-submission-resolution
+                                word (fnn-octet-list evidence) generation txid))
           (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
             (fnn-owner-log)
             (unless (member result
@@ -1588,13 +1999,12 @@ own result vocabulary."
       (fnn-fault "owner BP transit submit returned ~a" submitted))
     (unless (eq submitted :submitted)
       (return-from fnn-owner-complete-bp-transit-submission submitted))
-    (let ((taken (fnn-owner-action 'fn-owner-take)))
+    (let* ((took (fnn-owner-take))
+           (taken (fnn-owner-taken-word took)))
       (unless (eq taken :taken-transit)
         (fnn-fault "owner BP transit take returned ~a" taken))
-      (unless (and (equalp msgid
-                           (fnn-owner-octets-global 'fn-owner-submit-msgid))
-                   (equalp stored
-                           (fnn-owner-octets-global 'fn-owner-submit-octets)))
+      (unless (and (equalp msgid (fnn-owner-taken-msgid took))
+                   (equalp stored (fnn-owner-taken-octets took)))
         (fnn-fault "owner BP transit changed its pinned Store projection"))
       (multiple-value-bind (actual-id actual-subject ignored)
           (fnn-metadata msgid stored)
@@ -1618,7 +2028,7 @@ own result vocabulary."
           (unless (and (equalp stored
                                (fnn-owner-octets-global
                                 'fn-owner-transit-payload))
-                       (equalp groups (fnn-owner-submit-groups))
+                       (equalp groups (fnn-owner-transit-groups))
                        (equalp evidence
                                (fnn-octets
                                 (fnn-owner-core 'fn-owner-transit-evidence))))
@@ -1627,19 +2037,20 @@ own result vocabulary."
                           (fnn-octets
                            (fnn-owner-core 'fn-owner-bp-transit-raw)))
             (fnn-fault "owner BP transit raw request changed"))
-          (let ((intent
-                  (fnn-owner-action 'fn-owner-submission-intent
-                                    (fnn-octet-list evidence) generation txid)))
-            (unless (eq intent :ready)
+          (let ((intent-publication
+                  (fnn-owner-feed-step 'fn-owner-submission-intent
+                                       (fnn-octet-list evidence) generation txid)))
+            (unless (eq (fnn-owner-feed-word intent-publication) :ready)
               (setq *fnn-owner-transit-detail* :submission-intent)
               (return-from fnn-owner-complete-bp-transit-submission
                 (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
-            (fnn-owner-feed-flush service)
+            (fnn-owner-feed-flush service intent-publication)
             (let ((word (fnn-owner-attempt-transit
                          service msgid stored groups evidence)))
-              (fnn-owner-action 'fn-owner-submission-resolution
-                                word (fnn-octet-list evidence) generation txid)
-              (fnn-owner-feed-flush service)
+              (fnn-owner-feed-flush
+               service
+               (fnn-owner-feed-step 'fn-owner-submission-resolution
+                                    word (fnn-octet-list evidence) generation txid))
               (let ((result
                       (fnn-owner-action 'fn-owner-bp-transit-outcome word)))
                 (unless (member result '(:accepted :duplicate :refused
@@ -1707,6 +2118,44 @@ exactly one submission is affected even if the owner survives it."
           (fnn-store-fault-class store) class
           (fnn-store-fault-message store) message)))
 
+(defun fnn-owner-moderation-serialized (service op login id reason)
+  "PKT-657, PKT-575: one moderation or withdrawal request.
+
+ACL2 decides it over the owner and the configuration it carries, after one
+fresh clock reading (books/moderation-verbs.lisp fn-mvb-plan, through
+host/owner-host.lisp fn-owner-moderation-plan), and names the steps; this
+function runs them in order and answers the first that does not accept.  A
+refusal carries ACL2's reason, as (:reason :refused REASON).  :submit hands
+ACL2's article to the operator submission; :withdraw first publishes ACL2's
+configuration vector through the live administration (the operator's
+withdrawal row, code 26), then submits the cause article.  Each step decides
+again under the owner mutex; nothing here computes a value."
+  (let ((plan (fnn-owner-serialized
+               service nil
+               (lambda ()
+                 (fnn-owner-advance-clock)
+                 (fnn-owner-core 'fn-owner-moderation-plan op login id reason)))))
+    (flet ((submit (msgid groups octets)
+             (unless (and (fnn-octet-list-p msgid) (listp groups)
+                          (every #'fnn-octet-list-p groups)
+                          (fnn-octet-list-p octets))
+               (fnn-fault "ACL2 returned a malformed moderation submission"))
+             (fnn-owner-control-submit-serialized
+              service (fnn-octets msgid) (mapcar #'fnn-octets groups)
+              (fnn-octets octets))))
+      (case (and (consp plan) (first plan))
+        (:refused (list :reason :refused (second plan)))
+        (:submit (submit (second plan) (third plan) (fourth plan)))
+        (:withdraw
+         (let* ((argv (second plan))
+                (admin (if argv (fnn-owner-live-admin-serialized service argv)
+                         :accepted))
+                (word (if (consp admin) (second admin) admin)))
+           (if (eq word :accepted)
+               (submit (third plan) (fourth plan) (fifth plan))
+             admin)))
+        (t (fnn-fault "ACL2 returned a malformed moderation plan"))))))
+
 (defun fnn-owner-control-submit-serialized (service msgid groups payload)
   "Inject, queue and drain the operator's article through the shared owner writer.
 
@@ -1769,10 +2218,22 @@ refused, not injected under a stale time (D10-a)."
                                 reason))
                       status))
                 :clock-unusable))
-         (when armed (fnn-owner-control-disarm-fault store armed)))))))
+         (when armed (fnn-owner-control-disarm-fault store armed)))))
+   :poster))
 
-(defun fnn-owner-handle-chunk (service cid incoming &optional socket)
-  "Run one owner read and its serial writer drain under the service mutex.
+(defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader))
+  "Run one owner read and its serial writer drain under the service mutex,
+admitted by the gate as CLASS (:reader, or :transit for a peer connection).
+
+Returns (values PLAN CLOSING STARTTLS CONSUMED REDEEMED SUBMITTED), PLAN the
+immutable render plan of this step's whole reply (books/served-plan.lisp
+fn-splan-step-plan: the step's effects, then the drain's completion, the
+redeem reply and the exposure close), which the caller renders and writes
+OFF the mutex (host/native/mux.lisp fnn-mux-queue-plan and fnn-mux-flush
+through fnn-owner-render-next); or (values :defer MS) when ACL2's work
+budget defers this step (PRF-161 fn-exp-charge, decided in the same critical
+section as the step it admits: one gate pass per read, not two): the caller
+waits MS and calls again with the same INCOMING.
 
 SOCKET is this connection's own socket.  When the drained outcome is
 uncertain the service stops here, under the mutex, but SOCKET is spared so
@@ -1782,95 +2243,88 @@ EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
-     ;; One reading per read, before the transition that decides under it.
-     ;; books/owner.lisp fn-own-open: "The injection clock is not pinned:
-     ;; fn-own-read supplies the owner's current observation with every read,
-     ;; so each submission is injected at its own time (RFC 5537 section
-     ;; 3.4)."  Without this the owner's current observation is whatever the
-     ;; process started with, and every article of a run carries one Date.
-     (fnn-owner-advance-clock)
-     ;; The observation goes to the core in the octet buffer
-     ;; (books/octets-stobj.lisp): filled once here from the byte vector and
-     ;; read in place by span (books/wire-span.lisp fn-wire-feed-span through
-     ;; books/served-span.lisp fn-scar-ocfg-read-span), never as a list of
-     ;; its octets.  The buffer is free here: the attempt below fills it
-     ;; again for the payload after this read has returned, under the same
-     ;; mutex (fnn-owner-attempt).
-     (fnn-octets-fill incoming)
-     (unless (eq (fnn-owner-buffer-action 'fn-owner-chunk-span cid
-                                          0 (length incoming)) :ok)
-       (fnn-refuse "owner no longer knows connection ~d" cid))
-     ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
-     ;; fn-olog-served-refusal-lines): a POST refused before it became a
-     ;; submission has no outcome line of its own.
-     (let ((lines (fnn-global 'fn-owner-refusal-lines)))
-       (unless (and (listp lines) (every #'fnn-octet-list-p lines))
-         (fnn-fault "owner returned malformed refusal log lines"))
-       (dolist (line lines) (fnn-log-line line)))
-     (let ((reply (fnn-owner-reply-from-buffer))
-           (closing (fnn-owner-bool-global 'fn-owner-closep))
-           (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))
-           (consumed (fnn-global 'fn-owner-consumed))
-           (uncertain nil)
-           (redeemed nil))
-       (unless (and (integerp consumed) (<= 0 consumed (length incoming)))
-         (fnn-fault "owner returned malformed receive-prefix count"))
-       (when (fnn-owner-bool-global 'fn-owner-submittedp)
-         (multiple-value-bind (reply-cid completion stop)
-             (fnn-owner-drain-one service)
-           (when (and reply-cid (not (= reply-cid cid)))
-             (fnn-fault "writer drained a different connection"))
-           (setq reply (concatenate 'fnn-octets reply completion)
-                 uncertain stop)))
-       ;; PRF-164: an XREDEEM PASS left this connection holding; the
-       ;; owner plans and publishes, and only then renders 281 or 482.
-       (when (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
-         (setq reply (concatenate 'fnn-octets reply
-                                  (fnn-owner-account-redeem service cid))
-               redeemed t))
-       (when uncertain
-         (fnn-owner-stop-service-locked service +fnn-exit-uncertain+ socket))
-       ;; PRF-161: the step reached this address's failed-login limit
-       ;; (fn-exp-observe): ACL2's 400, then the close.
-       (let ((exposure-close (fnn-global 'fn-owner-exposure-close)))
-         (when exposure-close
-           (unless (fnn-octet-list-p exposure-close)
-             (fnn-fault "owner returned a malformed exposure close"))
-           (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
-                 closing t)))
-       ;; PKT-600 (PRF-213): a read that emitted a submission yielded after
-       ;; its article (books/served-tls-prefix.lisp fn-served-feed-counted,
-       ;; the span fold books/served-span.lisp fn-scar-feed-span), so the
-       ;; caller feeds the rest of INCOMING as the next read, after this
-       ;; read's reply and the article's outcome are sent.
-       (values reply (or closing uncertain) starttls consumed redeemed
-               (fnn-owner-bool-global 'fn-owner-submittedp))))))
+     (block step
+       ;; One reading per read, before the transition that decides under it.
+       ;; books/owner.lisp fn-own-open: "The injection clock is not pinned:
+       ;; fn-own-read supplies the owner's current observation with every read,
+       ;; so each submission is injected at its own time (RFC 5537 section
+       ;; 3.4)."  Without this the owner's current observation is whatever the
+       ;; process started with, and every article of a run carries one Date.
+       (fnn-owner-advance-clock)
+       ;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge):
+       ;; :proceed, or the milliseconds to wait.  Waiting reads nothing more
+       ;; from this socket, so the client meets TCP backpressure and nothing
+       ;; it sent is dropped or cut.
+       (let ((charge (fnn-owner-core 'fn-owner-exposure-charge cid)))
+         (cond ((eq charge :proceed))
+               ((and (integerp charge) (> charge 0))
+                (return-from step (values :defer charge)))
+               (t (fnn-fault "owner returned a malformed exposure charge"))))
+       ;; The observation goes to the core in the octet buffer
+       ;; (books/octets-stobj.lisp): filled once here from the byte vector and
+       ;; read in place by span (books/wire-span.lisp fn-wire-feed-span through
+       ;; books/served-span.lisp fn-scar-ocfg-read-span), never as a list of
+       ;; its octets.  The buffer is free here: the attempt below fills it
+       ;; again for the payload after this read has returned, under the same
+       ;; mutex (fnn-owner-attempt).  The reply is NOT rendered into it: the
+       ;; step's typed result carries the effects, the plan the caller
+       ;; renders off the mutex.
+       (fnn-octets-fill incoming)
+       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming))))
+         (when (eq step :unknown)
+           (fnn-refuse "owner no longer knows connection ~d" cid))
+         (unless (fnn-core 'fn-splan-step-p step)
+           (fnn-fault "owner returned a malformed served step"))
+         ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
+         ;; fn-olog-served-refusal-lines): a POST refused before it became a
+         ;; submission has no outcome line of its own.
+         (let ((lines (fnn-core 'fn-splan-step-refusal-lines step)))
+           (unless (every #'fnn-octet-list-p lines)
+             (fnn-fault "owner returned malformed refusal log lines"))
+           (dolist (line lines) (fnn-log-line line)))
+         (let ((closing (fnn-core 'fn-splan-step-closep step))
+               (starttls (fnn-core 'fn-splan-step-starttlsp step))
+               (submitted (fnn-core 'fn-splan-step-submittedp step))
+               (consumed (fnn-core 'fn-splan-step-consumed step))
+               (completion nil)
+               (uncertain nil)
+               (redeem nil))
+           (unless (and (integerp consumed) (<= 0 consumed (length incoming)))
+             (fnn-fault "owner returned malformed receive-prefix count"))
+           (when submitted
+             (multiple-value-bind (reply-cid done stop)
+                 (fnn-owner-drain-one service)
+               (when (and reply-cid (not (= reply-cid cid)))
+                 (fnn-fault "writer drained a different connection"))
+               (setq completion done uncertain stop)))
+           ;; PRF-164: an XREDEEM PASS left this connection holding; the
+           ;; owner plans and publishes, and only then renders 281 or 482.
+           (when (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
+             (setq redeem (fnn-octet-list (fnn-owner-account-redeem service cid))))
+           (when uncertain
+             (fnn-owner-stop-service-locked service +fnn-exit-uncertain+ socket))
+           ;; PRF-161: the step reached this address's failed-login limit
+           ;; (fn-exp-observe): ACL2's 400 (the plan's last effect), then the
+           ;; close.
+           (when (fnn-core 'fn-splan-step-exposure-close step)
+             (setq closing t))
+           ;; PKT-600 (PRF-213): a read that emitted a submission yielded after
+           ;; its article (books/served-tls-prefix.lisp fn-served-feed-counted,
+           ;; the span fold books/served-span.lisp fn-scar-feed-span), so the
+           ;; caller feeds the rest of INCOMING as the next read, after this
+           ;; read's reply and the article's outcome are sent.
+           (values (fnn-core 'fn-splan-step-plan step completion redeem)
+                   (or closing uncertain) starttls consumed (and redeem t)
+                   submitted)))))
+   class))
 
-;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
-;;; Before every served step ACL2 answers :proceed or the milliseconds to
-;;; wait; waiting reads nothing more from this socket, so the client meets
-;;; TCP backpressure and nothing it sent is dropped or cut.
-(defun fnn-owner-exposure-wait (service cid)
-  (loop
-    (let ((answer (fnn-owner-serialized
-                   service cid
-                   (lambda ()
-                     (fnn-owner-advance-clock)
-                     (fnn-owner-core 'fn-owner-exposure-charge cid)))))
-      (cond ((eq answer :proceed) (return))
-            ((and (integerp answer) (> answer 0))
-             (when (or *fnn-sigterm-requested*
-                       (fnn-owner-service-stopping service))
-               (return))
-             (sleep (/ (min answer 1000) 1000)))
-            (t (fnn-fault "owner returned a malformed exposure charge"))))))
-
-(defun fnn-owner-exposure-idle (service cid)
+(defun fnn-owner-exposure-idle (service cid &optional (class :reader))
   (let ((answer (fnn-owner-serialized
                  service cid
                  (lambda ()
                    (fnn-owner-advance-clock)
-                   (fnn-owner-action 'fn-owner-exposure-idle cid)))))
+                   (fnn-owner-action 'fn-owner-exposure-idle cid))
+                 class)))
     (unless (member answer '(:keep :close))
       (fnn-fault "owner returned a malformed idle decision"))
     answer))
@@ -1901,305 +2355,60 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
     (values (if (= (length address) 4) :inet :inet6)
             (coerce address 'list))))
 
-(defun fnn-owner-serve-client (service socket &optional implicit-tls)
-  ;; RETAINED is the part of the last socket read the served machine has not
-  ;; consumed yet.  It is this connection's, never the service's, and the
-  ;; socket is read only when it is empty, so it holds at most one
-  ;; +fnn-max-read+ read minus one octet (host/native/io.lisp fnn-recv) and
-  ;; cannot grow while a client keeps sending.
-  (let ((fd (fnn-socket-fd socket)) (cid nil) (channel nil) (retained nil)
-        ;; PRF-161: the id the exposure state registered, released in the
-        ;; unwind whatever path cleared CID.
-        (opened-cid nil))
-    (unwind-protect
-         (handler-case
-             (progn
-               ;; PRF-162: an implicit-TLS connection completes SSL_accept
-               ;; before the owner opens anything, so a failed handshake
-               ;; costs no connection slot and sends no greeting.
-               (when implicit-tls
-                 (setq channel
-                       (fnn-tls-accept (fnn-owner-service-tls-context service)
-                                       fd 10)))
-               (multiple-value-bind (family address)
-                   (fnn-owner-socket-address service socket)
-                 (multiple-value-bind (opened greeting)
-                   (fnn-owner-serialized
-                    service nil
-                    (lambda ()
-                      ;; fn-own-open pins this reading into the connection as
-                      ;; its READER environment (DATE, NEWGROUPS).  Taking it
-                      ;; here is what makes DATE answer when the connection
-                      ;; was accepted rather than when the process started.
-                      (fnn-owner-advance-clock)
-                      (let ((peer
-                              (fnn-owner-core
-                               'fn-owner-peer-for-socket-address
-                               family address)))
-                        (unless (or (null peer) (fnn-octet-list-p peer))
-                          (fnn-fault "owner returned a malformed peer identity"))
-                        ;; PRF-161: ACL2 admits or refuses the connection
-                        ;; under the limits in force (books/public-exposure.lisp
-                        ;; fn-exp-open) and opens it in the same call.  A
-                        ;; refusal leaves the 400 in fn-owner-output.
-                        (let ((opened (fnn-owner-core 'fn-owner-exposure-open
-                                                      family address peer)))
-                          (when opened (fnn-owner-log))
-                          (values opened
-                                  (fnn-owner-octets-global 'fn-owner-output))))))
-                   (unless (and opened (integerp opened))
-                     ;; RFC 3977 5.1.1 note [2]: after a 400 greeting the
-                     ;; server immediately closes the connection.
-                     (when (> (length greeting) 0)
-                       (fnn-owner-connection-call
-                        service :send-greeting
-                        (lambda ()
-                          (fnn-owner-send fd channel greeting 10)
-                          (fnn-graceful-close fd))))
-                     (return-from fnn-owner-serve-client nil))
-                   (setq cid opened opened-cid opened)
-                   ;; The event a STARTTLS connection gets after its
-                   ;; handshake, and nothing else: the connection is then
-                   ;; the STARTTLS session after 382
-                   ;; (fn-served-implicit-tls-is-the-starttls-session).
-                   (when implicit-tls
-                     (fnn-owner-serialized
-                      service cid
-                      (lambda ()
-                        (unless (eq (fnn-owner-action
-                                     'fn-owner-tls-established cid)
-                                    :ok)
-                          (fnn-fault "owner rejected established TLS")))))
-                   (when (> (length greeting) 0)
-                     (fnn-owner-connection-call
-                      service :send-greeting
-                      (lambda () (fnn-owner-send fd channel greeting 10))))))
-               (loop
-                 ;; ONCE serves this client on the accept thread itself.  It
-                 ;; must consume the signal flag here too, or an idle/partial
-                 ;; command prevents that thread from reaching service stop.
-                 (when (or *fnn-sigterm-requested*
-                           (fnn-owner-service-stopping service))
-                   (return))
-                 (let ((incoming
-                         (or retained
-                             (fnn-owner-connection-call
-                              service :receive
-                              (lambda ()
-                                (let ((value (fnn-owner-receive service fd channel 1)))
-                                  (unless (or (eq value :timeout)
-                                              (typep value 'fnn-octets))
-                                    (error "malformed connection receive result"))
-                                  value))))))
-                   ;; Whatever this step does not consume is set again below;
-                   ;; nothing carried here is ever read from the socket twice.
-                   (setq retained nil)
-                   (cond ((eq incoming :timeout)
-                          ;; RFC 3977 3.1's autologout, decided by ACL2
-                          ;; (fn-exp-idle): the close sends nothing.
-                          (when (eq (fnn-owner-exposure-idle service cid) :close)
-                            (fnn-owner-connection-call
-                             service :graceful-close
-                             (lambda ()
-                               (when channel
-                                 (fnn-tls-close-channel channel)
-                                 (setq channel nil))
-                               (fnn-graceful-close fd)))
-                            (return)))
-                         ((zerop (length incoming)) (return))
-                         (t (fnn-owner-exposure-wait service cid)
-                            (multiple-value-bind (reply closing starttls consumed
-                                                  redeemed submitted)
-                                (fnn-owner-handle-chunk service cid incoming socket)
-                              (cond
-                                (channel
-                                 ;; Once protected, no transport suffix may be
-                                 ;; reclassified as a second TLS handshake.
-                                 ;; A step that closes the wire (an article
-                                 ;; over fn-own-body-limit: fn-wire-close
-                                 ;; ... :body-overlimit, books/wire.lisp)
-                                 ;; stops at the octet that closed it, as on
-                                 ;; the plaintext path below: its reply (the
-                                 ;; 441 naming the size) is sent and the
-                                 ;; connection ends with the rest unread.
-                                 ;; Stopping the process there turned one
-                                 ;; client's refusal into every client's
-                                 ;; closed socket (large-article, 2026-09-25).
-                                 ;; PRF-164: an XREDEEM PASS stops the fold at
-                                 ;; its line; what the client sent after it is
-                                 ;; the next step's input, already decrypted.
-                                 ;; PKT-600 (PRF-213): so does an article's
-                                 ;; submission: the next article or command
-                                 ;; in this record is the next step's input.
-                                 (cond ((or closing (= consumed (length incoming))))
-                                       ((or redeemed submitted)
-                                        (setq retained (subseq incoming consumed)))
-                                       (t (fnn-fault "protected owner read left a TLS suffix"))))
-                                ((fnn-owner-service-tls-context service)
-                                 ;; The worker is the sole socket reader.  A
-                                 ;; failed/short consume closes this connection;
-                                 ;; the ACL2 transition is never replayed.
-                                 (fnn-tls-consume-plaintext
-                                  fd (subseq incoming 0 consumed) 10))
-                                ((/= consumed (length incoming))
-                                 ;; The suffix is the next step's input, and
-                                 ;; it is already in hand.  The served machine
-                                 ;; stops after the octet that completed a
-                                 ;; submission (PKT-600, PRF-213: two
-                                 ;; pipelined TAKETHIS or POST articles in one
-                                 ;; read are two steps, each committed and
-                                 ;; answered before the next is framed), and
-                                 ;; at the octet that closed the wire:
-                                 ;; an article over fn-own-body-limit
-                                 ;; (books/owner.lisp, the record codec's
-                                 ;; *fn-record-max-payload* = 32768) makes fn-wire-after-line answer
-                                 ;; (fn-wire-close ... :body-overlimit)
-                                 ;; (books/wire.lisp), and
-                                 ;; fn-served-feed-counted
-                                 ;; (books/served-tls-prefix.lisp) consumes no
-                                 ;; further octet, which
-                                 ;; fn-served-tls-prefix-suffix-accounting
-                                 ;; states as the partition this line honours.
-                                 ;; A client that sends a long article breaks
-                                 ;; no invariant: the 441 below and the close
-                                 ;; that follows it are the answer, and this
-                                 ;; used to stop the whole process instead.
-                                 ;;
-                                 ;; A step that consumes nothing and neither
-                                 ;; closes nor hands the transport over IS a
-                                 ;; broken invariant: the same octets fed
-                                 ;; again cannot make progress.
-                                 (when (and (zerop consumed)
-                                            (not closing) (not starttls))
-                                   (fnn-fault
-                                    "owner consumed no octets and left the connection open"))
-                                 (setq retained (subseq incoming consumed))))
-                              (when (> (length reply) 0)
-                                (fnn-owner-connection-call
-                                 service :send-reply
-                                 (lambda ()
-                                   (fnn-owner-send fd channel reply 10))))
-                              (when starttls
-                                (when channel
-                                  (fnn-fault "owner requested STARTTLS on a protected channel"))
-                                (unless (fnn-owner-service-tls-context service)
-                                  (fnn-fault "owner requested STARTTLS without a TLS context"))
-                                ;; Only successful SSL_accept makes the ACL2
-                                ;; session protected.  Pipelined ClientHello
-                                ;; bytes remained unread after exact consume.
-                                (setq channel
-                                      (fnn-tls-accept
-                                       (fnn-owner-service-tls-context service)
-                                       fd 10))
-                                (fnn-owner-serialized
-                                 service cid
-                                 (lambda ()
-                                   (unless (eq (fnn-owner-action
-                                                'fn-owner-tls-established cid)
-                                               :ok)
-                                     (fnn-fault "owner rejected established TLS")))))
-                              (when closing
-                                ;; The final reply must reach the client
-                                ;; before the close: a peer still sending
-                                ;; (an oversize article) would otherwise
-                                ;; take a reset that discards the 441 in its
-                                ;; receive queue.  On a protected channel the
-                                ;; TLS close_notify goes first, then the same
-                                ;; bounded drain as plaintext.
-                                (fnn-owner-connection-call
-                                 service :graceful-close
-                                 (lambda ()
-                                   (when channel
-                                     (fnn-tls-close-channel channel)
-                                     (setq channel nil))
-                                   (fnn-graceful-close fd)))
-                                (return))))))))
-           (fnn-store-indeterminate (e)
-             ;; The shared boundary has already stopped mutation; prevent the
-             ;; unwind cleanup from attempting a later close transition.
-             (setq cid nil)
-             (fnn-owner-fence-service service)
-             (fnn-err "owner uncertain; recovery required: ~a" e))
-           (fnn-store-fault (e)
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (fnn-owner-fault-service service faulted-cid e)))
-           (fnn-owner-connection-fault (e)
-             ;; Clear CID before any secondary send failure.  Exactly one ACL2
-             ;; fault transition owns semantic cleanup for this connection.
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (handler-case
-                   (let ((reply (and faulted-cid
-                                     (fnn-owner-abandon-connection
-                                      service faulted-cid e))))
-                     (when (and reply (> (length reply) 0))
-                       (ignore-errors (fnn-owner-send fd channel reply 10))))
-                 ;; A failure of the core fault transition is shared.  Its
-                 ;; serialized boundary already fenced before unlocking; this
-                 ;; nested handler keeps the worker available to join cleanly.
-                 (fnn-store-indeterminate (nested)
-                   (fnn-owner-fence-service service)
-                   (fnn-err "owner uncertain while abandoning connection: ~a"
-                            nested))
-                 (serious-condition (nested)
-                   (fnn-owner-fault-service service nil nested)))))
-           ((or fnn-store-error fnn-os-error sb-bsd-sockets:socket-error) (e)
-             (fnn-err "owner connection: ~a" e))
-           (fnn-tls-error (e)
-             ;; Certificate/handshake/record failure is scoped to this peer.
-             ;; The owner connection is removed in the unwind cleanup and the
-             ;; listener and shared TLS context remain live.
-             (fnn-err "owner TLS connection: ~a" e))
-           (serious-condition (e)
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (fnn-owner-fault-service service faulted-cid e))))
-      (when cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
-      (when opened-cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service nil
-           (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid)))))
-      (when channel (fnn-tls-close-channel channel))
-      (fnn-socket-shut socket))))
-
-(defun fnn-owner-client-done (service socket)
-  (fnn-with-owner (service)
-    (setf (fnn-owner-service-clients service)
-          (delete socket (fnn-owner-service-clients service) :test #'eq)
-          (fnn-owner-service-workers service)
-          (delete sb-thread:*current-thread*
-                  (fnn-owner-service-workers service) :test #'eq))))
-
+;;; A connection is served by one of the service's I/O loops
+;;; (host/native/mux.lisp fnn-mux-adopt), not a thread of its own: the
+;;; worker this file used to start per connection held a control stack and
+;;; runtime regions for the connection's whole life (PKT-605).  Everything
+;;; the worker did, in its order and under its handlers, is the loop's
+;;; connection record now.
 (defun fnn-owner-launch-client (service socket &optional implicit-tls)
-  "Register the socket and worker before either can enter the owner core."
-  (fnn-with-owner (service)
-    (if (fnn-owner-service-stopping service)
-        (progn (ignore-errors (fnn-socket-shut socket)) nil)
-      (progn
-        (push socket (fnn-owner-service-clients service))
-        (let ((worker
-                (sb-thread:make-thread
-                 (lambda ()
-                   (unwind-protect (fnn-owner-serve-client service socket
-                                                           implicit-tls)
-                     (fnn-owner-client-done service socket)))
-                 :name "fn owner client")))
-          (push worker (fnn-owner-service-workers service))
-          worker)))))
+  "Register the socket with a loop before it can enter the owner core."
+  (fnn-mux-adopt service socket implicit-tls))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
   (loop
     (let ((workers
-            (fnn-with-owner (service)
+            (fnn-with-roster (service)
               (copy-list (fnn-owner-service-workers service)))))
       (when (null workers) (return))
       (dolist (worker workers) (sb-thread:join-thread worker)))))
+
+;;; Garbage between collections in the owner process.  SBCL's default
+;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
+;;; so 1,600 MiB): the heap census of 2026-09-25
+;;; (planning/evidence/rep-heap-2026-09-25.md) found that headroom to be the
+;;; largest term of the owner's resident set at every size measured, 1.4 to
+;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  During
+;;; recovery and a checkpoint publication the owner uses io.lisp's
+;;; fnn-gc-nursery-octets (64 MiB, less at a reservation under 1 GiB).  This
+;;; bounds collection work and dead memory, not data: the live heap is the
+;;; store's and grows with it; only the garbage allowed to pile up between
+;;; two collections is capped.  It decides nothing ACL2 decides.
+
+;;; The trigger while the owner serves (HST-025, lane image-floor).  The open
+;;; (recovery: the checkpoint decode and the suffix replay) and a checkpoint
+;;; publication allocate in proportion to the retained history and keep
+;;; fnn-gc-nursery-octets (PKT-316: a smaller trigger there slows the
+;;; reopen).  A served command allocates in proportion to one request, so
+;;; between accepts the garbage allowed to pile up is this much, and the
+;;; owner's resident set is the live heap plus this, not plus 64 MiB.  It
+;;; bounds dead memory and collection spacing, never data; it decides nothing
+;;; ACL2 decides.
+(defparameter +fnn-owner-service-nursery-octets+ (* 8 1024 1024))
+
+(defun fnn-owner-service-nursery ()
+  "Serving: the small trigger, unless a publication (which set the large one)
+is running; the publication restores this one when it ends."
+  (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-service-nursery-octets+))
+
+(defun fnn-owner-release-recovery-garbage ()
+  "Recovery is done and nothing is served yet: one full collection, after
+which SBCL returns the pages the recovery's garbage occupied to the system
+(a collection of the oldest generation remaps the free pages), so the
+resident set the owner serves from is its live heap, not the recovery's
+high-water mark.  Work proportional to the live heap, once per start."
+  (sb-ext:gc :full t))
 
 (defun fnn-owner-publish-captured (service captured)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
@@ -2216,10 +2425,18 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
-  (destructuring-bind (base configs records segment count suffix budget frontier free revision)
+  ;; The publication allocates in proportion to the history: the open's
+  ;; trigger while it runs, the service trigger again when it ends.
+  (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
+  (unwind-protect
+  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision)
       captured
     (declare (ignore count))
-    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
+    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
+          ;; the writer's segment: ACL2's choice under the record bound R the
+          ;; capture handed over (fn-ockp-segment-octets, the verb's derivation)
+          (segment (fnn-core 'fn-ockp-segment-octets record-octets
+                             +fnn-checkpoint-batch-octets+)))
       (flet ((elapsed ()
                (round (* 1000 (- (get-internal-real-time) started))
                       internal-time-units-per-second)))
@@ -2261,7 +2478,7 @@ the crash keystone) and serving continues."
             (fnn-err "CHECKPOINT auto failed: ~a" e))))
       (unwind-protect
            (handler-case
-               (fnn-with-owner (service)
+               (fnn-owner-gated (service :control)
                  (when next
                    (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
                                                next durablep verdict)))
@@ -2269,17 +2486,29 @@ the crash keystone) and serving continues."
                        (fnn-err "CHECKPOINT auto: owner refused the durable sequence")))))
              (serious-condition (e)
                (fnn-err "CHECKPOINT auto failed: ~a" e)))
-        (fnn-with-owner (service)
+        (fnn-with-roster (service)
           (setf (fnn-owner-service-publisher service) nil
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq)))))))
+                        (fnn-owner-service-workers service) :test #'eq))))))
+    (fnn-owner-service-nursery))
+  ;; PKT-583 (b): the publication finished; decide again from the newest
+  ;; committed frontier now, not at the next accept (a load's tail has
+  ;; none), so a coalesced request is served as soon as it can be and a
+  ;; store that stopped posting is left with its suffix under K/2.
+  ;; fnn-owner-maybe-publish takes the mutex itself and refuses while
+  ;; stopping; at most one publication is in flight (fn-ock-one-
+  ;; publication-in-flight).  After the service trigger is back, so a
+  ;; publication it starts sets its own.
+  (fnn-owner-maybe-publish service))
 
 (defun fnn-owner-maybe-publish (service)
-  "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
-never inside a command: when fn-ock-publication-duep says the suffix since
-the newest durable checkpoint reached half the profile's K (and no deferred
-publication is blocked on the profile's budget or the space, PKT-492), ACL2
+  "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts
+and when a publication finishes, never inside a command: when
+fn-ock-publication-next says :due (fn-ock-publication-duep: the suffix since
+the newest durable checkpoint reached half the profile's K; no deferred
+publication is blocked on the profile's budget or the space, PKT-492; none in
+flight, else the observation is the one coalesced request, PKT-583 (b)), ACL2
 records the attempt and hands back the values the publication reads
 (fn-owner-sco-capture) under the owner mutex, O(1): the record list by
 pointer, the frontier, the free space the host observed by statvfs and the
@@ -2287,10 +2516,11 @@ source revision.  The tables, the decision and the batched write run on
 their own thread, outside the mutex (fnn-owner-publish-captured), so served
 commands and accepts continue; at most one publication runs at a time, and
 the stop joins it with the client workers.  The owner state is only read
-here, and written only through fn-owner-sco-publication-done."
-  (fnn-with-owner (service)
+here, and written only through fn-owner-sco-publication-done.  The owner
+reads run as a :control quantum; the thread's registration is the roster's."
+  (fnn-owner-gated (service :control)
     (unless (or (fnn-owner-service-stopping service)
-                (fnn-owner-service-publisher service))
+                (fnn-with-roster (service) (fnn-owner-service-publisher service)))
       ;; The budget override is nil but on a developer image with
       ;; FN_NATIVE_CHECKPOINT_BUDGET_TEST set; ACL2 chooses between it and
       ;; the profile's (fn-owner-sco-budget) on the due path and at the
@@ -2305,11 +2535,12 @@ here, and written only through fn-owner-sco-publication-done."
                                           free (fnn-checkpoint-revision))))
             (unless (and (true-listp captured) (= (length captured) 10))
               (fnn-fault "owner returned a malformed checkpoint capture"))
-            (let ((thread (sb-thread:make-thread
-                           (lambda () (fnn-owner-publish-captured service captured))
-                           :name "fn owner checkpoint")))
-              (setf (fnn-owner-service-publisher service) thread)
-              (push thread (fnn-owner-service-workers service)))))))))
+            (fnn-with-roster (service)
+              (let ((thread (sb-thread:make-thread
+                             (lambda () (fnn-owner-publish-captured service captured))
+                             :name "fn owner checkpoint")))
+                (setf (fnn-owner-service-publisher service) thread)
+                (push thread (fnn-owner-service-workers service))))))))))
 
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due
 ;;; (books/owner-log-reopen.lisp fn-olr-decide, through fn-owner-log-reopen).
@@ -2353,7 +2584,7 @@ here, and written only through fn-owner-sco-publication-done."
   "PRF-162: accept implicit-TLS clients on LISTENER until the service stops.
 With IMPLICIT-TLS nil, a further plain listener's clients (NNT-041).  The
 thread is a worker, so the stop joins it with the clients."
-  (fnn-with-owner (service)
+  (fnn-with-roster (service)
     (let ((thread
             (sb-thread:make-thread
              (lambda ()
@@ -2370,7 +2601,7 @@ thread is a worker, so the stop joins it with the clients."
                         (unless (or *fnn-sigterm-requested*
                                     (fnn-owner-service-stopping service))
                           (fnn-err "owner TLS listener: ~a" condition))))
-                 (fnn-with-owner (service)
+                 (fnn-with-roster (service)
                    (setf (fnn-owner-service-workers service)
                          (delete sb-thread:*current-thread*
                                  (fnn-owner-service-workers service) :test #'eq)))))
@@ -2393,7 +2624,7 @@ thread is a worker, so the stop joins it with the clients."
           (unless (eq socket :timeout)
             (if once
                 (progn
-                  (fnn-owner-serve-client service socket)
+                  (fnn-mux-serve-once service socket)
                   (return))
               (fnn-owner-launch-client service socket)))
           ;; Before the next accept: the owner's checkpoint publication,
@@ -2405,24 +2636,15 @@ thread is a worker, so the stop joins it with the clients."
                     (fnn-owner-service-stopping service))
           (error condition))))))
 
-;;; Garbage between collections in the owner process.  SBCL's default
-;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
-;;; so 1,600 MiB): the heap census of 2026-09-25
-;;; (planning/evidence/rep-heap-2026-09-25.md) found that headroom to be the
-;;; largest term of the owner's resident set at every size measured, 1.4 to
-;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  This
-;;; bounds collection work and dead memory, not data: the live heap is the
-;;; store's and grows with it; only the garbage allowed to pile up between
-;;; two collections is capped.  It decides nothing ACL2 decides.
-(defparameter +fnn-owner-gc-nursery-octets+ (* 64 1024 1024))
-
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port more-addresses)
   "Run one service from already-normalized boundary values.
 MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 `[listener] host' list (NNT-041); each gets the same port and TLS port."
-  (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-gc-nursery-octets+)
+  (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
+  (setq *fnn-owner-measure*
+        (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
@@ -2453,6 +2675,11 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)
+                  ;; PKT-605 (PRF-223): the live capacity against this
+                  ;; machine (books/connection-budget.lisp), refused by name
+                  ;; before anything listens; then the I/O loops.
+                  (fnn-mux-budget-install service tls-context)
+                  (fnn-mux-start service)
                   ;; PKT-283's native witness: the Store is recovered and
                   ;; its writer lock held, and no control socket listens
                   ;; yet (the startup hooks start it), so `health' must say
@@ -2504,6 +2731,9 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                                                 :backlog +fnn-owner-listen-backlog+)))
                               (push extra more-listeners)
                               (fnn-owner-start-tls-accept service extra nil))))
+                        ;; Recovery is done: from here the owner serves.
+                        (fnn-owner-release-recovery-garbage)
+                        (fnn-owner-service-nursery)
                         (fnn-out "LISTENING ~d" bound-port)
                         ;; PRF-162: the implicit-TLS listener ACL2 offered
                         ;; (fn-native-operator-result-run-implicit-tls-port),
@@ -2533,6 +2763,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (fnn-owner-stop-service
                      service (fnn-owner-service-exit-code service))
                     (fnn-owner-wait-workers service)
+                    (fnn-owner-measure-report)
                     ;; Keep the captured listener fd live while the focused
                     ;; test delivers a repeated SIGTERM during cleanup.
                     (when (string= (or (fnn-developer-selector

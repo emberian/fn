@@ -101,6 +101,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -134,7 +137,8 @@
                           (fn-served-result-conn
                            (fn-served-dispatch conn (list :command line))))
                          (fn-served-conn-wire conn)))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core
+                                   fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
@@ -159,8 +163,10 @@
                   (archive (fn-served-conn-archive conn))
                   (index (fn-served-conn-pinned-index conn))
                   (verdicts (fn-served-conn-verdicts conn))
-                  (env (fn-post-reader-env (fn-served-conn-config conn)
-                                           (fn-served-conn-observation conn)))
+                  (env (fn-post-reader-env
+                        (fn-auth-moderation-config (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn))
+                        (fn-served-conn-observation conn)))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))))))
 
@@ -191,6 +197,7 @@
                   (fn-nntp-sessionp ns)
                   (equal (fn-nntp-session-openp ns) t)
                   (fn-nntp-session-projected ns)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens))

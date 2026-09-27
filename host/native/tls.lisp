@@ -42,6 +42,12 @@
 (define-condition fnn-tls-config-error (fnn-tls-error) ())
 (define-condition fnn-tls-handshake-error (fnn-tls-error) ())
 (define-condition fnn-tls-io-error (fnn-tls-error) ())
+;;; PKT-613: the chain or the name did not verify.  OUTCOME is the host's
+;;; classification of SSL_get_verify_result: :name-mismatch for
+;;; X509_V_ERR_HOSTNAME_MISMATCH (62) or X509_V_ERR_IP_ADDRESS_MISMATCH (64),
+;;; :certificate for any other nonzero result.  An observation, not a decision.
+(define-condition fnn-tls-verify-error (fnn-tls-handshake-error)
+  ((outcome :initarg :outcome :reader fnn-tls-verify-error-outcome)))
 
 ;;; A server context's POINTER is replaced only by `tls reload'
 ;;; (FNN-TLS-CONTEXT-SWAP, PRF-212), under LOCK, which FNN-TLS-ACCEPT also
@@ -114,7 +120,9 @@ FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
     "SSL_CTX_new" "SSL_CTX_free" "SSL_CTX_ctrl"
     "SSL_CTX_use_certificate_chain_file" "SSL_CTX_use_PrivateKey_file"
     "SSL_CTX_set_default_passwd_cb" "SSL_CTX_check_private_key"
-    "SSL_CTX_set_verify" "SSL_CTX_load_verify_locations" "SSL_new" "SSL_free"
+    "SSL_CTX_set_verify" "SSL_CTX_load_verify_locations"
+    ;; PKT-613: a named peer anchored on the system's public roots.
+    "SSL_CTX_set_default_verify_paths" "SSL_new" "SSL_free"
     "SSL_set_fd" "SSL_accept" "SSL_connect" "SSL_set1_host" "SSL_ctrl"
     "SSL_get_verify_result" "SSL_get_error" "SSL_pending" "SSL_read"
     "SSL_write" "SSL_shutdown"
@@ -181,6 +189,9 @@ through OpenSSL_version_num and names itself in OpenSSL_version)."
     sb-alien:void (context (* t)) (mode sb-alien:int) (callback (* t)))
 (sb-alien:define-alien-routine ("SSL_CTX_load_verify_locations" fnn-%ssl-ctx-load-verify-locations)
     sb-alien:int (context (* t)) (cafile sb-alien:c-string) (capath sb-alien:c-string))
+(sb-alien:define-alien-routine ("SSL_CTX_set_default_verify_paths"
+                                fnn-%ssl-ctx-set-default-verify-paths)
+    sb-alien:int (context (* t)))
 (sb-alien:define-alien-routine ("SSL_new" fnn-%ssl-new)
     (* t)
   (context (* t)))
@@ -472,59 +483,94 @@ so freeing here only drops the context's reference."
     (when old (fnn-%ssl-ctx-free old))
     t))
 
-(defun fnn-tls-open-client-context (trust-anchor-path)
-  "Create a peer-verifying client context rooted only in TRUST-ANCHOR-PATH."
-  (fnn-tls-initialize)
-  (unless (and (stringp trust-anchor-path) (> (length trust-anchor-path) 0)
-               (null (position (code-char 0) trust-anchor-path)))
-    (error 'fnn-tls-config-error :detail "a trust-anchor path is required"))
-  (let* ((method (fnn-%tls-client-method))
-         (pointer (and (not (fnn-tls-null-pointer-p method)) (fnn-%ssl-ctx-new method))))
-    (when (or (fnn-tls-null-pointer-p method) (fnn-tls-null-pointer-p pointer))
-      (error 'fnn-tls-config-error :detail "client context creation failed"))
-    (handler-case
-        (progn
-          (unless (= (fnn-%ssl-ctx-ctrl pointer +fnn-tls-ctrl-set-min-proto-version+
-                                        +fnn-tls-version-1-2+ (fnn-tls-null-pointer)) 1)
-            (error 'fnn-tls-config-error :detail "cannot require TLS 1.2+"))
-          (fnn-%ssl-ctx-set-verify pointer +fnn-tls-verify-peer+ (fnn-tls-null-pointer))
-          (unless (= (fnn-%ssl-ctx-load-verify-locations pointer trust-anchor-path nil) 1)
-            (error 'fnn-tls-config-error
-                   :detail (format nil "trust anchor ~a cannot be loaded: ~a"
-                                   trust-anchor-path (fnn-tls-error-stack))))
-          (fnn-tls-context-make :pointer pointer :certificate-path trust-anchor-path))
-      (error (condition) (fnn-%ssl-ctx-free pointer) (error condition)))))
+(defun fnn-tls-open-client-context (trust)
+  "Create a peer-verifying client context rooted in TRUST.
 
-(defun fnn-tls-connect (context fd server-name seconds)
-  "Complete an authenticated client handshake with chain and hostname checks."
+TRUST is the fourth element of ACL2's `fn-peer-tls-verification' answer:
+(:PINNED PATH) roots the chain only in the certificates of PATH, and
+(:SYSTEM-ROOTS) in the library's default store (SSL_CTX_set_default_verify_paths:
+the system bundle, or SSL_CERT_FILE/SSL_CERT_DIR where the library honours
+them).  Nothing else opens a client context."
+  (fnn-tls-initialize)
+  (let ((pinned (and (consp trust) (eq (first trust) :pinned) (second trust)))
+        (system (equal trust '(:system-roots))))
+    (unless (or system
+                (and (stringp pinned) (> (length pinned) 0)
+                     (null (position (code-char 0) pinned))))
+      (error 'fnn-tls-config-error :detail "a trust-anchor path or the system roots is required"))
+    (let* ((method (fnn-%tls-client-method))
+           (pointer (and (not (fnn-tls-null-pointer-p method)) (fnn-%ssl-ctx-new method))))
+      (when (or (fnn-tls-null-pointer-p method) (fnn-tls-null-pointer-p pointer))
+        (error 'fnn-tls-config-error :detail "client context creation failed"))
+      (handler-case
+          (progn
+            (unless (= (fnn-%ssl-ctx-ctrl pointer +fnn-tls-ctrl-set-min-proto-version+
+                                          +fnn-tls-version-1-2+ (fnn-tls-null-pointer)) 1)
+              (error 'fnn-tls-config-error :detail "cannot require TLS 1.2+"))
+            (fnn-%ssl-ctx-set-verify pointer +fnn-tls-verify-peer+ (fnn-tls-null-pointer))
+            (if system
+                (unless (= (fnn-%ssl-ctx-set-default-verify-paths pointer) 1)
+                  (error 'fnn-tls-config-error
+                         :detail (format nil "the system trust roots cannot be loaded: ~a"
+                                         (fnn-tls-error-stack))))
+              (unless (= (fnn-%ssl-ctx-load-verify-locations pointer pinned nil) 1)
+                (error 'fnn-tls-config-error
+                       :detail (format nil "trust anchor ~a cannot be loaded: ~a"
+                                       pinned (fnn-tls-error-stack)))))
+            (fnn-tls-context-make :pointer pointer
+                                  :certificate-path (or pinned "system-roots")))
+        (error (condition) (fnn-%ssl-ctx-free pointer) (error condition))))))
+
+(defun fnn-tls-verify-failure (ssl)
+  "The verification outcome of a failed client handshake, or NIL."
+  (let ((result (fnn-%ssl-get-verify-result ssl)))
+    (cond ((zerop result) nil)
+          ((member result '(62 64)) (values :name-mismatch result))
+          (t (values :certificate result)))))
+
+(defun fnn-tls-connect (context fd server-name seconds &key (sni t))
+  "Complete an authenticated client handshake with chain and hostname checks.
+
+SERVER-NAME is always the SSL_set1_host name; it is sent as SNI only when SNI
+is true (ACL2 decides: a DNS name, never an address literal, RFC 6066 s3)."
   (unless (and (stringp server-name) (> (length server-name) 0)
                (null (position (code-char 0) server-name)))
     (error 'fnn-tls-config-error :detail "a TLS server name is required"))
   (let ((ssl (fnn-%ssl-new (fnn-tls-context-pointer context)))
         (deadline (fnn-tls-deadline seconds))
-        (sni (fnn-octets (append (map 'list #'char-code server-name) '(0)))))
+        (sni-octets (fnn-octets (append (map 'list #'char-code server-name) '(0)))))
     (when (fnn-tls-null-pointer-p ssl)
       (error 'fnn-tls-handshake-error :detail "SSL_new failed"))
     (handler-case
         (progn
           (unless (and (= (fnn-%ssl-set-fd ssl fd) 1)
                        (= (fnn-%ssl-set1-host ssl server-name) 1)
-                       (sb-sys:with-pinned-objects (sni)
-                         (= (fnn-%ssl-ctrl ssl +fnn-tls-ctrl-set-tlsext-hostname+
-                                           +fnn-tls-tlsext-nametype-host-name+
-                                           (sb-alien:cast (fnn-tls-pointer sni) (* t))) 1)))
+                       (or (not sni)
+                           (sb-sys:with-pinned-objects (sni-octets)
+                             (= (fnn-%ssl-ctrl ssl +fnn-tls-ctrl-set-tlsext-hostname+
+                                               +fnn-tls-tlsext-nametype-host-name+
+                                               (sb-alien:cast (fnn-tls-pointer sni-octets) (* t)))
+                                1))))
             (error 'fnn-tls-handshake-error :detail "client TLS parameters failed"))
           (loop
             (let ((result (fnn-%ssl-connect ssl)))
               (when (= result 1)
-                (unless (zerop (fnn-%ssl-get-verify-result ssl))
-                  (error 'fnn-tls-handshake-error :detail "certificate verification failed"))
+                (multiple-value-bind (outcome code) (fnn-tls-verify-failure ssl)
+                  (when outcome
+                    (error 'fnn-tls-verify-error :outcome outcome
+                           :detail (format nil "certificate verification failed for ~a (~a, ~d)"
+                                           server-name outcome code))))
                 (return (fnn-tls-channel-make :pointer ssl :fd fd)))
               (let ((disposition (fnn-tls-retry-direction ssl result)))
                 (if (member disposition '(:input :output))
                     (fnn-tls-wait fd disposition deadline 'fnn-tls-handshake-error)
-                  (fnn-tls-operation-error 'fnn-tls-handshake-error "client handshake"
-                                           disposition))))))
+                  (multiple-value-bind (outcome code) (fnn-tls-verify-failure ssl)
+                    (if outcome
+                        (error 'fnn-tls-verify-error :outcome outcome
+                               :detail (format nil "certificate refused for ~a (~a, ~d)"
+                                               server-name outcome code))
+                      (fnn-tls-operation-error 'fnn-tls-handshake-error "client handshake"
+                                               disposition))))))))
       (error (condition) (fnn-%ssl-free ssl) (error condition)))))
 
 (defun fnn-tls-close-context (context)
@@ -657,6 +703,89 @@ pointer and length required by SSL_write's retry contract."
                   (fnn-tls-operation-error 'fnn-tls-io-error
                                            "write" disposition))))))))
     nil))
+
+;;; The multiplexed served path (host/native/mux.lisp; lane
+;;; connection-multiplexing, PKT-605).  The loop never waits inside OpenSSL:
+;;; each operation below makes one attempt and answers what the descriptor
+;;; must become ready for (:input or :output), and the loop polls for that.
+;;; SSL_MODE_ENABLE_PARTIAL_WRITE (1) and SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
+;;; (2) let a write that returned WANT_* be retried from a vector the
+;;; collector may have moved, with the remaining count; SSL_MODE_RELEASE_BUFFERS
+;;; (16) frees an idle session's record buffers (the per-connection figure,
+;;; books/connection-budget.lisp *fn-cbud-tls-octets*).  SSL_CTRL_MODE is 33.
+(defconstant +fnn-tls-ctrl-mode+ 33)
+(defconstant +fnn-tls-mux-modes+ (logior 1 2 16))
+
+(defun fnn-tls-accept-begin (context fd)
+  "A server session on FD for the loop's handshake, not yet started."
+  (let ((ssl nil))
+    (fnn-%err-clear-error)
+    ;; Under the context's lock: `tls reload' swaps the pointer (PRF-212).
+    (sb-thread:with-mutex ((fnn-tls-context-lock context))
+      (let ((pointer (fnn-tls-context-pointer context)))
+        (unless pointer
+          (error 'fnn-tls-handshake-error :detail "the TLS context is closed"))
+        (setq ssl (fnn-%ssl-new pointer))))
+    (when (fnn-tls-null-pointer-p ssl)
+      (error 'fnn-tls-handshake-error
+             :detail (format nil "SSL_new failed: ~a" (fnn-tls-error-stack))))
+    (unless (= (fnn-%ssl-set-fd ssl fd) 1)
+      (fnn-%ssl-free ssl)
+      (error 'fnn-tls-handshake-error
+             :detail (format nil "SSL_set_fd failed: ~a" (fnn-tls-error-stack))))
+    (fnn-%ssl-ctrl ssl +fnn-tls-ctrl-mode+ +fnn-tls-mux-modes+ (fnn-tls-null-pointer))
+    ssl))
+
+(defun fnn-tls-accept-step (ssl)
+  "One SSL_accept attempt: :done, or :input/:output to wait for.  A failure
+signals FNN-TLS-HANDSHAKE-ERROR; the caller frees SSL."
+  (fnn-%err-clear-error)
+  (let ((result (fnn-%ssl-accept ssl)))
+    (if (= result 1)
+        :done
+      (let ((disposition (fnn-tls-retry-direction ssl result)))
+        (if (member disposition '(:input :output))
+            disposition
+          (fnn-tls-operation-error 'fnn-tls-handshake-error "handshake"
+                                   disposition))))))
+
+(defun fnn-tls-channel-of (ssl fd)
+  (fnn-tls-channel-make :pointer ssl :fd fd))
+
+(defun fnn-tls-pending-p (channel)
+  (and (fnn-tls-channel-pointer channel)
+       (> (fnn-%ssl-pending (fnn-tls-channel-pointer channel)) 0)))
+
+(defun fnn-tls-read-now (channel &optional (limit +fnn-max-read+))
+  "One SSL_read attempt: decrypted octets (empty at close_notify), or
+:input/:output when the session must wait."
+  (let ((ssl (fnn-tls-channel-pointer channel))
+        (buffer (fnn-make-octets limit)))
+    (sb-sys:with-pinned-objects (buffer)
+      (fnn-%err-clear-error)
+      (let ((result (fnn-%ssl-read ssl (fnn-tls-pointer buffer) (length buffer))))
+        (if (> result 0)
+            (subseq buffer 0 result)
+          (let ((disposition (fnn-tls-retry-direction ssl result)))
+            (cond ((eq disposition :closed) (fnn-make-octets 0))
+                  ((member disposition '(:input :output)) disposition)
+                  (t (fnn-tls-operation-error 'fnn-tls-io-error "read"
+                                              disposition)))))))))
+
+(defun fnn-tls-write-now (channel data offset)
+  "One SSL_write attempt of DATA from OFFSET: the octets written, or
+:input/:output when the session must wait."
+  (let ((ssl (fnn-tls-channel-pointer channel))
+        (count (- (length data) offset)))
+    (sb-sys:with-pinned-objects (data)
+      (fnn-%err-clear-error)
+      (let ((result (fnn-%ssl-write ssl (fnn-tls-pointer data offset) count)))
+        (if (> result 0)
+            result
+          (let ((disposition (fnn-tls-retry-direction ssl result)))
+            (if (member disposition '(:input :output))
+                disposition
+              (fnn-tls-operation-error 'fnn-tls-io-error "write" disposition))))))))
 
 (defun fnn-tls-close-channel (channel)
   "Fast shutdown is intentional: NNTP has already ended and the underlying

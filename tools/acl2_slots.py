@@ -12,7 +12,7 @@ for any reason, including a kill: a crashed run leaks no slot.  The pool is
 per-machine, not per-worktree, so lanes running in different worktrees and
 different shells still share one cap.
 
-``FN_ACL2_SLOTS`` sets the pool size (default 6 on darwin, 16 elsewhere);
+``FN_ACL2_SLOTS`` sets the pool size (default: the host file ~/.config/fn/acl2-slots if present, else 6 on darwin, 16 elsewhere);
 ``FN_ACL2_DYNAMIC_SPACE_MB`` sets the heap cap every pooled ACL2 gets (default
 8,000 on darwin, none elsewhere: the farm launchers carry their own);
 ``FN_ACL2_SLOT_DIR`` relocates the lock files, which tests use to get a private
@@ -142,6 +142,14 @@ class Slot:
 def slot_count() -> int:
     """The pool size.  An unparsable or non-positive setting falls back."""
     default = DEFAULT_SLOTS.get(sys.platform, FALLBACK_SLOTS)
+    host_file = Path(os.environ.get("FN_ACL2_SLOTS_FILE",
+                                    "~/.config/fn/acl2-slots")).expanduser()
+    try:
+        host_value = host_file.read_text().strip()
+        if host_value:
+            default = int(host_value)
+    except (OSError, ValueError):
+        pass
     try:
         configured = int(os.environ.get("FN_ACL2_SLOTS", default))
     except ValueError:

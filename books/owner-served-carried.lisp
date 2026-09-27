@@ -41,17 +41,19 @@
   (let* ((effects (fn-served-result-effects result))
          (sconn (fn-served-result-conn result))
          (id (fn-own-conn-id conn))
+         (pinned (fn-served-conn-pinned sconn))
          (next (fn-own-conn-make-group-indexed id
-                                 (fn-own-conn-version conn)
-                                 (fn-own-conn-frontier conn)
+                                 (fn-served-pinned-version pinned)
+                                 (fn-served-pinned-frontier pinned)
                                  (fn-served-conn-wire sconn)
                                  (fn-served-conn-session sconn)
-                                 (fn-own-conn-archive conn)
+                                 (fn-served-conn-archive sconn)
                                  (fn-own-conn-config conn)
                                  (fn-own-conn-observation conn)
-                                 (fn-own-conn-verdicts conn)
-                                 (fn-own-conn-index conn)
-                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
+                                 (fn-served-conn-verdicts sconn)
+                                 (fn-served-conn-index sconn)
+                                 (fn-served-conn-group-index sconn)
+                                 (fn-served-conn-control sconn)))
          (decision (fn-served-submission effects)))
     (cons effects
           (if (and (fn-scar-conn-boundedp
@@ -62,8 +64,10 @@
                          o (fn-own-replace-conn next (fn-own-conns o)))))
                 (if decision
                     (fn-own-enqueue
-                     o2 (fn-own-sub-make id (fn-own-conn-version conn)
-                                         nil decision))
+                     o2 (fn-own-sub-make-author
+                         id (fn-own-conn-version conn) nil decision
+                         (fn-served-submission-login effects)
+                         (fn-served-submission-account effects)))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 
@@ -103,8 +107,9 @@
                  (fn-scar-finish-read
                   o conn (fn-served-counted-result counted) live)))
           (fn-own-tls-make-result
-           (fn-served-counted-consumed counted) (car result) (cdr result)))
-      (fn-own-tls-make-result (len octets) nil o))))
+           (fn-served-counted-consumed counted) (car result) (cdr result)
+           (fn-own-result-repinned (fn-served-counted-result counted))))
+      (fn-own-tls-make-result (len octets) nil o nil))))
 
 (defthm fn-scar-own-read-tls-prefix-is-own-read-tls-prefix
   (implies (and (fn-node-statep (fn-sn-node (fn-own-store o)))
@@ -126,7 +131,9 @@
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed result)
      (fn-own-tls-result-effects result)
-     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)))))
+     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)
+                              (fn-own-tls-result-repinned result))
+     (fn-own-tls-result-repinned result))))
 
 (defthm fn-scar-ocfg-read-tls-prefix-is-ocfg-read-tls-prefix
   (implies (and (fn-node-statep (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))

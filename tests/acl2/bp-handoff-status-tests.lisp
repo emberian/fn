@@ -45,7 +45,7 @@
 (make-event `(defconst *bphs-replay* ',(fn-bpah-replay-rows (bphs-rows)
                                                        4 1048576)))
 (defconst *bphs-handoff* (car (nth 2 *bphs-replay*)))
-(defconst *bphs-receipt-adu* (fn-bpr-receipt-adu *bpr-committed* *bpr-request*))
+(make-event `(defconst *bphs-receipt-adu* ',(fn-bpr-receipt-adu *bpr-committed* *bpr-request*)))
 (defconst *bphs-route*
   (list :route (fn-record-string-octets "127.0.0.1") 4556
         (fn-record-string-octets "dtn://fn.lab/inbox") 4 1024 1048576))

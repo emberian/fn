@@ -466,7 +466,11 @@ class Acl2Store:
             self.poisoned = True
             raise StoreError("ACL2 bridge transport failed: {}".format(error)) from error
         upper = output.upper()
-        if b"ACL2 ERROR" in upper or b"HARD ACL2 ERROR" in upper or b"FAILED" in upper:
+        # A raw Lisp abort (a control stack exhausted by a large literal, say)
+        # returns to the prompt too: it is a refusal named by its own text,
+        # never a form for a reader to parse.
+        if (b"ACL2 ERROR" in upper or b"HARD ACL2 ERROR" in upper or b"FAILED" in upper
+                or b"ABORTING FROM RAW LISP" in upper):
             # A correlated reply that reports an ACL2 error leaves the pipe
             # synchronized; the refusal is the answer, not a lost result.
             raise StoreError(output.decode("utf-8", "replace"))

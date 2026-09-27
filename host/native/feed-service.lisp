@@ -103,10 +103,10 @@ closed by this worker, preserving the one-closer rule."
   (fnn-octets value))
 
 (defun fnn-feed-peer-list (service)
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
-     (fnn-owner-name-list (fnn-owner-core 'fn-owner-feed-peers)))))
+     (fnn-owner-names 'fn-owner-feed-peers))))
 
 (defun fnn-feed-read-limit (service)
   (declare (ignore service))
@@ -124,7 +124,7 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-dial-plan (service peer-octets)
   "Read ACL2's endpoint, queue, retry delay, and TCP completion deadline."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (let ((queued (fnn-owner-core 'fn-owner-feed-has-queued peer-octets))
@@ -179,7 +179,7 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-connect-core (service peer-octets fd user pass allow-clear)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (fnn-feed-checked-word
@@ -187,27 +187,39 @@ closed by this worker, preserving the one-closer rule."
       '(:await-greeting :await-tls) 'fn-owner-feed-dial-open))))
 
 (defun fnn-feed-tls-established-core (service link)
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-tls-established
-                                    (fnn-feed-link-peer-octets link))
-                  '(:auth-user :mode :ready :need-input) 'fn-owner-feed-tls-established)))
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-tls-established
+                                              (fnn-feed-link-peer-octets link)))
+            (word (fnn-feed-checked-word
+                   (fnn-owner-feed-word publication)
+                   '(:auth-user :mode :ready :need-input) 'fn-owner-feed-tls-established)))
        (values word (if (member word '(:auth-user :mode))
-                        (fnn-owner-octets-global 'fn-owner-feed-command)
+                        (fnn-owner-feed-command publication)
                       (fnn-make-octets 0)))))))
 
 (defun fnn-feed-enable-tls (runtime link security)
   (unless (and (equal (car security) :tls) (= (length security) 4))
     (fnn-fault "TLS transition without a TLS peer policy"))
-  (let* ((server-name (third security)) (anchor (fourth security))
-         (context (fnn-tls-open-client-context anchor)))
+  ;; PKT-613 (PRF-231): which check the transport selects is ACL2's
+  ;; (`fn-peer-tls-verification'): the configured name, SNI for a DNS name
+  ;; only, and a pinned anchor file or the system's public roots.
+  (let* ((verification (fnn-core 'fn-peer-tls-verification (third security)
+                                 (fourth security)))
+         (server-name (and (eq (first verification) :verify) (second verification)))
+         (context (progn
+                    (unless server-name
+                      (error 'fnn-peer-dial-error
+                             :outcome (if (eq (second verification) :trust)
+                                          :trust :server-name)))
+                    (fnn-tls-open-client-context (fourth verification)))))
     ;; Publish ownership before SSL_connect: every failure path can now close
     ;; the context through the link, including a repeated certificate failure.
     (setf (fnn-feed-link-tls-context link) context)
     (handler-case
-        (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10)))
+        (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10
+                                        :sni (third verification))))
           (setf (fnn-feed-link-tls-channel link) channel)
           (multiple-value-bind (word command)
               (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
@@ -231,17 +243,18 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-tick (service link now)
   "One ACL2 tick.  Its command, if any, is copied only after FNFD append."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-tick
-                                    (fnn-feed-link-peer-octets link) now)
-                  '(:offer :idle :refused) 'fn-owner-feed-tick)))
-       (fnn-owner-feed-flush service)
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-tick
+                                              (fnn-feed-link-peer-octets link) now))
+            (word (fnn-feed-checked-word
+                   (fnn-owner-feed-word publication)
+                   '(:offer :idle :refused) 'fn-owner-feed-tick)))
+       (fnn-owner-feed-flush service publication)
        (values word
                (if (eq word :offer)
-                   (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))
+                   (let ((command (fnn-owner-feed-command publication)))
                      (when (zerop (length command))
                        (fnn-fault "feed tick authorized an empty command"))
                      command)
@@ -249,13 +262,14 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-reply-step (service link octets now)
   "Apply one ACL2-framed reply event, never a host-parsed line."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-reply-chunk
-                                    (fnn-feed-link-peer-octets link)
-                                    (fnn-octet-list octets) now)
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-reply-chunk
+                                              (fnn-feed-link-peer-octets link)
+                                              (fnn-octet-list octets) now))
+            (word (fnn-feed-checked-word
+                  (fnn-owner-feed-word publication)
                   '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :connection-refused :streaming-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
@@ -264,20 +278,20 @@ closed by this worker, preserving the one-closer rule."
        ;; its FNFD projection.  MODE is a connection-phase command, not a
        ;; delivery effect, and :ready has no socket bytes.
        (when (member word '(:send :quiet :refused))
-         (fnn-owner-feed-flush service)
+         (fnn-owner-feed-flush service publication)
          ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
          ;; line: a peer's refusal or deferral is never silent.
-         (fnn-owner-log 'fn-owner-feed-log-line t))
+         (fnn-owner-feed-log publication))
        ;; The peer refused MODE STREAM: ACL2 recorded the stop and its line.
        (when (eq word :streaming-refused)
-         (fnn-owner-log 'fn-owner-feed-log-line t))
+         (fnn-owner-feed-log publication))
        ;; Ready: after a 500/501 to MODE STREAM ACL2 rendered the IHAVE
-       ;; fallback line (PRF-207); otherwise there is none.
+       ;; fallback line (PRF-207) into the publication; otherwise there is none.
        (when (eq word :ready)
-         (fnn-owner-log 'fn-owner-feed-log-line t))
+         (fnn-owner-feed-log publication))
        (values word
                (if (member word '(:starttls :auth-user :auth-pass :mode :send))
-                   (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))
+                   (let ((command (fnn-owner-feed-command publication)))
                      (when (zerop (length command))
                        (fnn-fault "feed connection/reply authorized an empty command"))
                      command)
@@ -285,14 +299,15 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-lost (service link now)
   "Record one peer-local loss before closing or retrying its socket."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-lost
-                                    (fnn-feed-link-peer-octets link) now)
-                  '(:ok :refused) 'fn-owner-feed-lost)))
-       (fnn-owner-feed-flush service)
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-lost
+                                              (fnn-feed-link-peer-octets link) now))
+            (word (fnn-feed-checked-word
+                   (fnn-owner-feed-word publication)
+                   '(:ok :refused) 'fn-owner-feed-lost)))
+       (fnn-owner-feed-flush service publication)
        word))))
 
 (defun fnn-feed-publish-socket (runtime link socket fd)
@@ -356,7 +371,7 @@ the shared link table."
         (let ((socket nil) (published nil))
           (handler-case
               (progn
-                (setq socket (fnn-connect host port :timeout timeout))
+                (setq socket (fnn-peer-connect host port :timeout timeout))
                 (let ((fd (fnn-socket-fd socket)))
                   (multiple-value-bind (user pass allow-clear)
                       (fnn-feed-auth-profile auth)
@@ -370,8 +385,9 @@ the shared link table."
                   (unless published
                     (fnn-socket-shut socket))))
             ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
-                 fnn-feed-auth-error) ()
+                 fnn-feed-auth-error fnn-peer-dial-error) (condition)
               (when (and socket (not published)) (fnn-socket-shut socket))
+              (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition)
               ;; A failed open has no outgoing bytes, but it is still the
               ;; named peer-loss observation that advances the ACL2 backoff.
               (unless (fnn-feed-stoppingp runtime)
@@ -446,13 +462,19 @@ ACL2 framer."
                     ((zerop (length incoming))
                      (fnn-feed-consume runtime link nil t now))
                     (t (fnn-feed-consume runtime link incoming nil now))))))
-      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) ()
+      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
+           fnn-peer-dial-error) (condition)
         (if (fnn-feed-stoppingp runtime)
             (fnn-feed-close-link runtime link)
           (multiple-value-bind (ignored host port backoff timeout security auth)
               (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                                   (fnn-feed-link-peer-octets link))
-            (declare (ignore ignored host port timeout security auth))
+            (declare (ignore ignored port timeout security auth))
+            ;; PKT-613: a refused STARTTLS handshake (the name, the chain, the
+            ;; configured check) is a dial outcome and is logged by name; a
+            ;; later I/O loss on an established link is not a dial.
+            (when (typep condition '(or fnn-tls-handshake-error fnn-peer-dial-error))
+              (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition))
             (fnn-feed-drop-link runtime link now backoff)))))))
 
 (defun fnn-feed-worker (runtime)

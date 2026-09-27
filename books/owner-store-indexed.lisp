@@ -358,6 +358,26 @@
 ; -----------------------------------------------------------------------------
 ; The configured owner.
 
+; The configured read arms take the owner from the full read (fn-own-read-full
+; and fn-own-read-step-full, with their REPINNED flag: NNT-042); fn-own-read
+; and fn-own-read-step are that result's projections, and the store facts
+; over them lift to the full reads.
+(defthm fn-osi-own-read-full-keeps-store
+  (equal (fn-own-store (car (cdr (fn-own-read-full o id octets))))
+         (fn-own-store o))
+  :hints (("Goal" :use ((:instance fn-own-connection-events-keep-store-bound-and-ledger))
+           :in-theory (e/d (fn-own-read)
+                           (fn-own-read-full fn-own-read-step-full
+                            fn-own-connection-events-keep-store-bound-and-ledger)))))
+
+(defthm fn-osi-own-read-step-full-keeps-store
+  (equal (fn-own-store (car (cdr (fn-own-read-step-full o id event))))
+         (fn-own-store o))
+  :hints (("Goal" :use ((:instance fn-own-connection-events-keep-store-bound-and-ledger))
+           :in-theory (e/d (fn-own-read-step)
+                           (fn-own-read-full fn-own-read-step-full
+                            fn-own-connection-events-keep-store-bound-and-ledger)))))
+
 (defthm fn-osi-ocfg-step-keeps-indexed
   (implies (and (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
                 (fn-osi-host-own-eventp event))
@@ -373,6 +393,7 @@
                                    fn-own-open fn-own-reader-context
                                    fn-own-advance-result fn-own-close
                                    fn-own-read fn-own-read-step fn-own-open-peer
+                                   fn-own-read-full fn-own-read-step-full
                                    fn-own-fault fn-ocfg-reconfig-okp))
            :use ((:instance fn-osi-own-step-keeps-indexed
                             (o (fn-ocfg-owner oc)))
@@ -431,7 +452,8 @@
   :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pidx-opc-prepare
                                    fn-pidx-opc-owner-prepare)
                                   (fn-ceis-indexedp fn-pidx-spc-prepare
-                                   fn-own-refresh fn-sbud-admitp fn-sbud-used)))))
+                                   fn-own-refresh fn-sbud-admitp fn-sbud-used
+                                   fn-sbud-count)))))
 
 ;; The view trie (fn-scar-view-indexedp, books/owner-offer-indexed.lisp) is
 ;; kept alike: only the refresh changes the view.
@@ -444,7 +466,7 @@
                                    fn-ocfg-with-owner)
                                   (fn-midx-correspondencep fn-own-refresh
                                    fn-pidx-spc-prepare
-                                   fn-sbud-admitp fn-sbud-used)))))
+                                   fn-sbud-admitp fn-sbud-used fn-sbud-count)))))
 
 (defthm fn-osi-ccar-ocfg-prepare-identity-keeps-indexed
   (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
@@ -504,6 +526,7 @@
                                    fn-ocfg-with-read-owner)
                                   (fn-own-open fn-own-open-peer
                                    fn-own-reader-context fn-own-read-step
+                                   fn-own-read-step-full
                                    fn-own-fault fn-own-observe)))))
 
 (defthm fn-osi-exp-at-one
@@ -730,7 +753,8 @@
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 ; The fast/checked equalities over the live Store: the Store record check,
-; the two Message-ID lookups and the dispatcher they compose into are the
+; the direct and transit Message-ID lookups (the direct one the receipt
+; hosts call, PRF-220) and the dispatcher they compose into are the
 ; checked walks over the history.
 (defthm fn-osi-live-store-record-accepted-fast-is-checked
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))

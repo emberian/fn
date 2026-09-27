@@ -50,14 +50,12 @@
 (include-book "bp-native-app-fast")
 
 ;; The Message-ID the dispatcher's lookup reads: the relaying agent's check
-;; for a transit intent, the injecting agent's for a direct one.
+;; (every intent is a transit intent, D34, PKT-646).
 (defun fn-bpaj-dispatch-msgid (joined request-octets)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t :verify-guards nil)
+           (ignorable joined))
   (let* ((request (fn-bpaj-request request-octets))
-         (intent (fn-bpaj-request-intent joined request-octets))
-         (fields (if (equal (fn-bpaj-nth 0 intent) :request-transit-intent)
-                     (fn-bpaj-transit-article-fields request)
-                   (fn-bpaj-article-fields request))))
+         (fields (fn-bpaj-transit-article-fields request)))
     (and (equal (car fields) :ok)
          (fn-record-octets-string (cadr fields)))))
 
@@ -88,8 +86,7 @@
                                    (events (fn-sf-records (fn-sn-files store)))
                                    (msgid (fn-record-msgid record))))
            :in-theory (e/d (fn-bpaj-dispatch-fast fn-bpaj-dispatch-msgid
-                            fn-bpaj-transit-record-lookup-fast
-                            fn-bpaj-record-lookup-fast)
+                            fn-bpaj-transit-record-lookup-fast)
                            (fn-bpsb-record-for-msgid-finds-a-member
                             fn-bpaj-record-for-msgid fn-held-p fn-row-wire-of
                             fn-record-octets-string fn-sn-event-index
@@ -98,8 +95,7 @@
                             fn-bpaj-transit-article-fields fn-bpaj-article-fields
                             fn-bpaj-transit-intentp fn-bpaj-request-intent
                             fn-bpaj-request fn-bpaj-request-status-fast
-                            fn-bpaj-store-record-accepted-fast
-                            fn-bpaj-record-matches-request-fast)))))
+                            fn-bpaj-store-record-accepted-fast)))))
 
 ;; The first event of EVENTS whose article record is the retained row that
 ;; stands for RECORD (a held row whose wire form through the arena is RECORD).
@@ -183,32 +179,6 @@
                                    fn-bpaj-transit-intentp
                                    fn-bpaj-store-record-accepted-fast))))))
 
-(local (defthm fn-bpsb-direct-lookup-found
-  (implies (and (fn-ceis-indexedp store)
-                (equal (car (fn-bpaj-record-lookup-fast store request fn-arena)) :found))
-           (let ((fields (fn-bpaj-article-fields request))
-                 (record (cadr (fn-bpaj-record-lookup-fast store request fn-arena))))
-             (and (equal (car fields) :ok)
-                  (member-equal (car (fn-bpaj-record-for-msgid
-                                      (fn-record-octets-string (cadr fields))
-                                      (fn-sf-records (fn-sn-files store))))
-                                (fn-bpaj-record-for-msgid
-                                 (fn-record-octets-string (cadr fields))
-                                 (fn-sf-records (fn-sn-files store))))
-                  (equal record (fn-row-wire-of
-                                 (car (fn-bpaj-record-for-msgid
-                                       (fn-record-octets-string (cadr fields))
-                                       (fn-sf-records (fn-sn-files store))))
-                                 fn-arena))
-                  (fn-bpaj-store-record-accepted-fast store record fn-arena))))
-  :hints (("Goal" :in-theory (e/d (fn-bpaj-record-lookup-fast
-                                   fn-bpaj-record-matches-request-fast)
-                                  (fn-bpaj-record-for-msgid fn-record-p
-                                   fn-sn-event-index fn-cei-msgid-records
-                                   fn-bpa-requestp fn-record-octets-string
-                                   fn-bpaj-article-fields
-                                   fn-bpaj-store-record-accepted-fast))))))
-
 (local (defthm fn-bpsb-dispatch-bind-is-a-found-lookup
   (implies (equal (car (fn-bpaj-dispatch-fast joined store request-octets
                                               generation fn-arena))
@@ -217,17 +187,12 @@
                  (intent (fn-bpaj-request-intent joined request-octets))
                  (record (cadr (fn-bpaj-dispatch-fast joined store request-octets
                                                       generation fn-arena))))
-             (if (equal (fn-bpaj-nth 0 intent) :request-transit-intent)
-                 (and (equal (car (fn-bpaj-transit-record-lookup-fast
-                                   store request intent fn-arena)) :found)
-                      (equal (cadr (fn-bpaj-transit-record-lookup-fast
-                                    store request intent fn-arena)) record))
-               (and (equal (car (fn-bpaj-record-lookup-fast store request fn-arena)) :found)
-                    (equal (cadr (fn-bpaj-record-lookup-fast store request fn-arena))
-                           record)))))
+             (and (equal (car (fn-bpaj-transit-record-lookup-fast
+                               store request intent fn-arena)) :found)
+                  (equal (cadr (fn-bpaj-transit-record-lookup-fast
+                                store request intent fn-arena)) record))))
   :hints (("Goal" :in-theory (e/d (fn-bpaj-dispatch-fast)
                                   (fn-bpaj-transit-record-lookup-fast
-                                   fn-bpaj-record-lookup-fast
                                    fn-bpaj-request fn-bpaj-request-intent
                                    fn-bpaj-request-status-fast
                                    fn-bpaj-request-generation
@@ -272,8 +237,6 @@
                  (:instance fn-bpsb-transit-lookup-found
                             (request (fn-bpaj-request request-octets))
                             (intent (fn-bpaj-request-intent joined request-octets)))
-                 (:instance fn-bpsb-direct-lookup-found
-                            (request (fn-bpaj-request request-octets)))
                  (:instance fn-bpsb-record-for-msgid-members
                             (row (car (fn-bpaj-record-for-msgid
                                        (fn-record-octets-string
@@ -283,16 +246,6 @@
                             (events (fn-sf-records (fn-sn-files store)))
                             (msgid (fn-record-octets-string
                                     (cadr (fn-bpaj-transit-article-fields
-                                           (fn-bpaj-request request-octets))))))
-                 (:instance fn-bpsb-record-for-msgid-members
-                            (row (car (fn-bpaj-record-for-msgid
-                                       (fn-record-octets-string
-                                        (cadr (fn-bpaj-article-fields
-                                               (fn-bpaj-request request-octets))))
-                                       (fn-sf-records (fn-sn-files store)))))
-                            (events (fn-sf-records (fn-sn-files store)))
-                            (msgid (fn-record-octets-string
-                                    (cadr (fn-bpaj-article-fields
                                            (fn-bpaj-request request-octets))))))
                  (:instance fn-bpsb-article-event-of-member
                             (row (car (fn-bpaj-record-for-msgid
@@ -325,10 +278,9 @@
                             fn-bpsb-composite-row-binds
                             fn-stxa-p fn-stxa-bindsp fn-held-p fn-held-wire fn-hstxa-p
                             fn-bpsb-dispatch-bind-is-a-found-lookup
-                            fn-bpsb-transit-lookup-found fn-bpsb-direct-lookup-found
+                            fn-bpsb-transit-lookup-found
                             fn-bpaj-dispatch-fast
                             fn-bpaj-transit-record-lookup-fast
-                            fn-bpaj-record-lookup-fast
                             fn-bpaj-record-for-msgid fn-record-p
                             fn-bpr-article-records fn-bpr-event-article
                             fn-bpaj-article-event fn-record-octets-string

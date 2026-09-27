@@ -94,16 +94,16 @@
   (implies (and (true-listp octets)
                 (true-listp header-rev)
                 (fn-article-result-okp
-                 (fn-article-parse-lines octets lines-left header-bytes
+                 (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                          fields-rev current header-rev)))
            (equal
             (fn-article-source
              (fn-article-result-article
-              (fn-article-parse-lines octets lines-left header-bytes
+              (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                       fields-rev current header-rev)))
             (append (rev header-rev) octets)))
   :hints (("Goal"
-           :induct (fn-article-parse-lines octets lines-left header-bytes
+           :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                            fields-rev current header-rev)
            :in-theory (disable fn-article-next-line fn-article-next-line-aux
                                fn-article-new-field fn-article-add-fold
@@ -121,8 +121,8 @@
                   octets))
   :hints (("Goal"
            :use ((:instance fn-article-parse-lines-preserves-source
-                  (lines-left (1+ *fn-article-max-header-lines*))
-                  (header-bytes 0) (fields-rev nil) (current nil) (header-rev nil)))
+                  (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+                  (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
            :in-theory (disable fn-article-parse-lines fn-cbor-at-mostp))))
 
 ; -----------------------------------------------------------------------------
@@ -535,15 +535,15 @@
                 (fn-article-fields-correspondp
                  (fn-article-finish-fields fields-rev current))
                 (fn-article-result-okp
-                 (fn-article-parse-lines octets lines-left header-bytes
+                 (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                          fields-rev current header-rev)))
            (fn-article-fields-correspondp
             (fn-article-fields
              (fn-article-result-article
-              (fn-article-parse-lines octets lines-left header-bytes
+              (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                       fields-rev current header-rev)))))
   :hints (("Goal"
-           :induct (fn-article-parse-lines octets lines-left header-bytes
+           :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                            fields-rev current header-rev)
            :in-theory (e/d (fn-article-parse-lines
                             fn-article-ok
@@ -570,19 +570,19 @@
                         (fn-article-finish-fields fields-rev current))
                        (rev header-rev))
                 (fn-article-result-okp
-                 (fn-article-parse-lines octets lines-left header-bytes
+                 (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                          fields-rev current header-rev)))
            (equal (fn-article-fields-octets
                    (fn-article-fields
                     (fn-article-result-article
-                     (fn-article-parse-lines octets lines-left header-bytes
+                     (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                              fields-rev current header-rev))))
                   (fn-article-header
                    (fn-article-result-article
-                    (fn-article-parse-lines octets lines-left header-bytes
+                    (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                             fields-rev current header-rev)))))
   :hints (("Goal"
-           :induct (fn-article-parse-lines octets lines-left header-bytes
+           :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields
                                            fields-rev current header-rev)
            :in-theory (e/d (fn-article-parse-lines
                             fn-article-ok
@@ -613,10 +613,10 @@
              (fn-article-result-article (fn-article-parse octets)))))
   :hints (("Goal"
            :use ((:instance fn-article-parse-lines-fields-correspond
-                  (lines-left (1+ *fn-article-max-header-lines*))
-                  (header-bytes 0) (fields-rev nil) (current nil)
+                  (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+                  (header-bytes 0) (nfields 0) (fields-rev nil) (current nil)
                   (header-rev nil)))
-           :in-theory (e/d (fn-article-parse)
+           :in-theory (e/d (fn-article-parse fn-article-parse-under)
                            (fn-article-parse-lines fn-cbor-at-mostp
                             fn-article-fields-correspondp)))))
 
@@ -632,9 +632,9 @@
                    (fn-article-result-article (fn-article-parse octets)))))
   :hints (("Goal"
            :use ((:instance fn-article-parse-lines-fields-recompose-header
-                  (lines-left (1+ *fn-article-max-header-lines*))
-                  (header-bytes 0) (fields-rev nil) (current nil)
+                  (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+                  (header-bytes 0) (nfields 0) (fields-rev nil) (current nil)
                   (header-rev nil)))
-           :in-theory (e/d (fn-article-parse)
+           :in-theory (e/d (fn-article-parse fn-article-parse-under)
                            (fn-article-parse-lines fn-cbor-at-mostp
                             fn-article-fields-octets)))))

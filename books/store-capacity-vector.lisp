@@ -496,7 +496,7 @@ vector holds after it at its worst case, its own promise included."
                 (or (not (equal kind :release)) (posp debt))))
          (if (equal kind :article)
              (fn-record-uint32p (fn-record-charge record))
-           (<= (len (fn-store-event-encode record))
+           (<= (fn-sbud-row-octets record)
                (fn-store-publication-ceiling kind))))))
 
 (defun fn-cvec-history-admittedp (profile used bytes-used debt records)
@@ -505,7 +505,7 @@ vector holds after it at its worst case, its own promise included."
       (let ((rest (fn-cvec-history-admittedp
                    profile (+ 1 (nfix used))
                    (+ (nfix bytes-used)
-                      (len (fn-store-event-encode (car records))))
+                      (fn-sbud-row-octets (car records)))
                    (fn-cvec-debt-step (fn-store-event-kind (car records)) debt)
                    (cdr records))))
         (and (fn-cvec-record-admittedp profile used bytes-used debt
@@ -528,7 +528,7 @@ vector holds after it at its worst case, its own promise included."
                 (natp debt)
                 (fn-cvec-record-admittedp profile used bytes-used debt record))
            (fn-cvec-roomp profile (+ 1 used)
-                          (+ bytes-used (len (fn-store-event-encode record)))
+                          (+ bytes-used (fn-sbud-row-octets record))
                           (fn-cvec-debt-step (fn-store-event-kind record) debt)))
   :rule-classes nil
   :hints (("Goal"
@@ -536,10 +536,10 @@ vector holds after it at its worst case, its own promise included."
                             (payload-length (len (fn-record-payload record)))
                             (group-count (len (fn-record-groups record))))
                  (:instance fn-cvec-release-keeps-the-vector
-                            (octets (len (fn-store-event-encode record))))
+                            (octets (fn-sbud-row-octets record)))
                  (:instance fn-cvec-admission-keeps-the-vector
                             (kind (fn-store-event-kind record))
-                            (octets (len (fn-store-event-encode record)))))
+                            (octets (fn-sbud-row-octets record))))
            :in-theory (e/d (fn-cvec-record-admittedp fn-cvec-debt-step
                             fn-store-event-article-encoding-is-legacy-record-encoding)
                            (fn-cvec-roomp fn-cvec-verdict-at
@@ -554,7 +554,7 @@ vector holds after it at its worst case, its own promise included."
    (declare (xargs :measure (len records)))
    (if (consp records)
        (fn-cvec-history-induction
-        (+ 1 used) (+ bytes-used (len (fn-store-event-encode (car records))))
+        (+ 1 used) (+ bytes-used (fn-sbud-row-octets (car records)))
         (fn-cvec-debt-step (fn-store-event-kind (car records)) debt)
         (cdr records))
      (list used bytes-used debt))))
@@ -568,7 +568,7 @@ vector holds after it at its worst case, its own promise included."
                         (fn-cvec-history-admittedp
                          profile (+ 1 (nfix used))
                          (+ (nfix bytes-used)
-                            (len (fn-store-event-encode (car records))))
+                            (fn-sbud-row-octets (car records)))
                          (fn-cvec-debt-step (fn-store-event-kind (car records))
                                             debt)
                          (cdr records)))))
@@ -582,7 +582,7 @@ vector holds after it at its worst case, its own promise included."
  (defthm fn-cvec-record-octets-of-cons
    (implies (consp records)
             (equal (fn-sbud-record-octets records)
-                   (+ (len (fn-store-event-encode (car records)))
+                   (+ (fn-sbud-row-octets (car records))
                       (fn-sbud-record-octets (cdr records)))))
    :hints (("Goal" :expand ((fn-sbud-record-octets records))
             :in-theory (disable fn-sbud-record-octets fn-store-event-encode)))))
@@ -618,7 +618,7 @@ vector holds after it at its worst case, its own promise included."
                  (natp debt)
                  (fn-cvec-record-admittedp profile used bytes-used debt record))
             (fn-cvec-roomp profile (+ 1 used)
-                           (+ bytes-used (len (fn-store-event-encode record)))
+                           (+ bytes-used (fn-sbud-row-octets record))
                            (fn-cvec-debt-step (fn-store-event-kind record) debt)))
    :hints (("Goal" :use fn-cvec-record-keeps-the-vector
             :in-theory (disable fn-cvec-roomp fn-cvec-record-admittedp

@@ -123,6 +123,70 @@
                             (stamp (nth 8 (fn-peer-injection-arguments
                                            node cfg peer msgid octets generation id subject clock))))))))
 
+;; P3 (PRF-228): the relay refusal.  Whether the article the octets parse to
+;; carries an Approved header field, read as fn-peer-decide-transfer reads it.
+(defun fn-peer-article-approvedp (octets)
+  (declare (xargs :guard t))
+  (let* ((parsed (fn-article-parse octets))
+         (article (if (and (fn-article-result-okp parsed) (true-listp parsed))
+                      (fn-article-result-article parsed)
+                    nil)))
+    (and article (fn-article-syntax-p article)
+         (not (fn-inj-absentp article *fn-mod-approved-name*)))))
+
+;; A transfer the decision wants names no moderated group among the groups
+;; it stages, unless the article carries Approved.
+(defthm fn-peer-wanted-transfer-is-approved-or-unmoderated
+  (implies (equal (fn-peer-decision-kind
+                   (fn-peer-decide-transfer node cfg peer msgid octets clock
+                                            id subject))
+                  :want)
+           (or (fn-peer-article-approvedp octets)
+               (not (fn-peer-moderated-namesp
+                     (nth 3 (fn-peer-injection-arguments
+                             node cfg peer msgid octets generation id subject
+                             clock))
+                     (fn-cfg-value cfg) (fn-cfg-generation cfg)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-peer-decide-transfer
+                                   fn-peer-injection-arguments
+                                   fn-peer-article-approvedp)
+                                  (fn-article-parse fn-af-relayed-article-check
+                                   fn-peer-scope-groups fn-peer-moderated-namesp
+                                   fn-inj-absentp fn-peer-relayed-octets
+                                   fn-path-names-p fn-retain-admissiblep
+                                   fn-peer-history-hasp fn-peer-stagedp
+                                   fn-af-message-idp fn-article-syntax-p
+                                   fn-path-date-presentp
+                                   fn-af-message-id-equalp)))))
+
+;; KEYSTONE (RFC 5537 sections 3.6 item 6 and 3.7 item 5) over the owner's
+;; transit port fn-peer-transfer (host/owner-host.lisp, through the served
+;; transit and BP join paths): a transfer that changes the node stages the
+;; article in a moderated group only when it carries Approved.
+(defthm fn-peer-transfer-never-stages-an-unapproved-moderated-article
+  (implies (not (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets
+                                                   clock generation id subject))
+                       node))
+           (or (fn-peer-article-approvedp octets)
+               (not (fn-peer-moderated-namesp
+                     (fn-pending-groups
+                      (fn-state-pending
+                       (fn-node-acceptance
+                        (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets
+                                                    clock generation id
+                                                    subject)))))
+                     (fn-cfg-value cfg) (fn-cfg-generation cfg)))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-peer-refused-transfer-leaves-the-node
+                        fn-peer-transfer-stages-only-scope-groups
+                        fn-peer-wanted-transfer-is-approved-or-unmoderated)
+           :in-theory (disable fn-peer-transfer fn-peer-decide-transfer
+                               fn-peer-injection-arguments
+                               fn-peer-article-approvedp
+                               fn-peer-moderated-namesp
+                               fn-peer-transfer-stages-only-scope-groups))))
+
 ; Every group staged through transit is live at the configuration's
 ; generation: fn-peer-scope-groups admits nothing else.
 (defthm fn-peer-scope-groups-are-live

@@ -291,6 +291,97 @@ a node restart mid-poll produce no second application transition.
 Carriage over BP through the relay network is not part of CNS-004 yet
 (PKT-333 phase 2, after the multi-peer relay).
 
+## Bound consumers
+
+The local consumer runs over the owner's 0600 control socket as the one
+local principal, so an unbound consumer reads every group: the operator's
+power. The operator may bind a consumer to an account (decided by ember,
+2026-09-27, PKT-642: the supported way to run an agent's consumer):
+
+    fn operator CONFIG consumer bind NAME --account LOGIN
+    fn operator CONFIG consumer unbind NAME
+    fn operator CONFIG consumer show
+
+A binding is a configuration record (`:consumer-bind`, delta code 24; a row
+`(NAME LOGIN "" 6)` of the accounts slot), offline or live, and reaches the
+consumer at its next request: every consumer request reads the latest
+configuration. A bound consumer polls and acknowledges with
+`fn consumer bound-poll CONTROL NAME SECRET-FILE CURSOR REPORT` and
+`fn consumer bound-ack CONTROL CURSOR-FILE SECRET-FILE` (local-control
+request codes 7 and 8), carrying the account's own password, read from a
+file (one final line end is not part of it). There is no consumer-specific
+secret: the password is checked against the credential AUTHINFO checks
+(`auth.toml`'s credentials, then the redeemed accounts), so changing or
+revoking the account's credential changes or revokes the consumer with it,
+and nothing new needs issuing, storing or rotating.
+
+CNS-006: a consumer bound to an account is served an event only while the
+account's read rule (specs/nntp.md "Group access", NNT-046) admits the
+consumer's query group, so every event it receives has an article with a
+group the account reads; a request without the account's password, or a
+plain `poll`/`ack` of a bound consumer, is refused; a refusal writes nothing
+and keeps the position, so the events a bound consumer receives are the
+unbound consumer's events in order, each delivered at least once and each
+ack a forward declaration in scope whose repeat is a no-op; an unbound
+consumer is served exactly as before.
+
+ACL2 names each refusal (`:unbound`, `:credential`, `:access`, `:bound`,
+`:scope`); the kind-5 and kind-6 replies carry only the status, so the
+command line prints `consumer refused` and exits 1 (the reason on the wire
+is PKT-672).
+Why the rule refuses rather than skips: a consumer's query is one group
+(`register NAME GROUP`), so under one configuration the rule admits all of
+its events or none; skipping would move the position past events a later
+rule may admit again, losing them silently. A refused consumer resumes where
+it stopped when the rule admits the group again.
+
+Not guarantees: the report is the event's exact Store encoding, so the
+article's own header names every group it was posted to (as SEC-007 says of
+NNTP). The socket stays the operator's: a process that can open it (the
+owner's uid) can still register and poll unbound consumers, so a bound
+consumer confines an agent that holds only its account's password, not a
+process running as the operator; carrying bound requests to a non-owner
+peer is PKT-673.
+([evidence](../planning/evidence/consumer-identity-2026-09-27.md))
+
+## Waiting
+
+An agent's consumer should sleep until there is news for it, not poll on a
+timer. A WAIT is a poll that may sleep first:
+
+    fn consumer wait CONTROL NAME CURSOR REPORT --timeout S
+    fn consumer bound-wait CONTROL NAME SECRET-FILE CURSOR REPORT --timeout S
+
+(local-control request codes 9 and 10, a timeout of 0 to 3600 seconds; the
+answer is the poll reply, kind 6, and the files are the poll's). The owner
+polls the consumer exactly as `poll` / `bound-poll` would. If the answer is
+an empty page and the deadline has not passed, the waiting thread sleeps on
+the owner's commit signal, raised after every durable Store publication, for
+at most the time left, and polls again; it never polls on a timer. The owner
+answers the first poll that is not an empty page, or the empty page at the
+deadline.
+
+CNS-007: a wait's answer is the answer a poll of the same consumer gives at
+the moment the wait returns: a refusal at once (a bound consumer outside its
+account's rule is refused, not left asleep), an event the consumer can read
+as soon as one is committed, and the empty page only when its timeout
+passes; a wait writes nothing, so every guarantee of the poll (CNS-006, and
+at-least-once delivery with one transition per repeated delivery, which is
+the ack's) holds of it unchanged. At most 12 waits are admitted at once
+(four fewer than the owner's 16 local-control workers, so other requests are
+always served); one more is refused by name (`:waiters`, exit 1), never
+queued.
+
+Every waiter wakes at every commit and polls once (ACL2 decides what each
+answers), so a commit costs at most 12 polls. An owner stop wakes every
+waiter, whose next poll is refused. A wait holds its control connection for
+up to its timeout; the client allows the timeout plus the ordinary ten
+seconds for the reply. `tools/fn_agent.py` is a small agent client over
+this: `next` (a bound wait, printed as one JSON line), `reply` (a follow-up
+over NNTP as the consumer's account, with References) and `ack`
+([docs/agents.md](../docs/agents.md#an-agent-in-five-minutes)).
+([evidence](../planning/evidence/agent-wait-2026-09-27.md))
+
 ## Executable seam and obligations
 
 The selected remote, multi-item E2 poll/fetch interface is not served. The

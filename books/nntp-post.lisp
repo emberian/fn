@@ -41,6 +41,8 @@
 (include-book "nntp-effects")
 (include-book "injection")
 (include-book "group-status")
+; P3 (PRF-228): the moderated-group gate.
+(include-book "moderation")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
@@ -157,8 +159,15 @@
   (declare (xargs :guard t))
   (cond
    ((equal reason :unparsable) "441 posting failed; the article is not valid syntax")
+   ;; PRF-230: the store profile's header limits, each by its field name.
+   ((equal reason :header-fields-limit) "441 posting failed; the header has more fields than the profile's max-header-fields")
+   ((equal reason :header-lines-limit) "441 posting failed; the header has more lines than the profile's max-header-lines")
+   ((equal reason :header-octets-limit) "441 posting failed; the header has more octets than the profile's max-header-octets")
    ;; O2 (books/group-status.lisp): RFC 3977 section 7.6.3 status "n".
    ((equal reason :group-read-only) "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
+   ;; P3 (books/moderation.lisp): RFC 5537 section 3.5 item 7 and section 7.
+   ((equal reason :approval-not-moderator) "441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)")
+   ((equal reason :moderation-unavailable) "441 posting failed; a moderated group is named and the article could not be forwarded to its moderation queue")
    ((equal reason :injection-info) "441 posting failed; Injection-Info must not be supplied")
    ((equal reason :xref) "441 posting failed; Xref must not be supplied")
    ((equal reason :injection-date-present) "441 posting failed; Injection-Date must not be supplied")
@@ -252,30 +261,123 @@
 ; This is the function the serving host calls, once per wire event, at
 ; host/reader-host.lisp `fn-reader-chunk`.
 
+; P3: an accepted article the read-only gate passes goes through the
+; moderated-group gate (books/moderation.lisp `fn-mod-gate'), which returns
+; the decision unchanged unless the article names a moderated group.
 (defun fn-post-gated-decision (source config injection)
   (declare (xargs :guard t))
   (let ((decision (fn-inj-decide source config injection)))
-    (if (and (fn-inj-injectedp decision)
-             (fn-gst-post-gate source config))
-        (fn-inj-refuse :group-read-only)
+    (if (fn-inj-injectedp decision)
+        (if (fn-gst-post-gate source config)
+            (fn-inj-refuse :group-read-only)
+          (fn-mod-gate source config injection decision))
       decision)))
 
 ; A refusal of the decision is unchanged; an accepted article is refused
-; :group-read-only exactly when the gate names a closed group.
+; :group-read-only exactly when the gate names a closed group, and is
+; otherwise what the moderated-group gate makes of it.
 (defthm fn-post-gated-decision-unfolds
   (equal (fn-post-gated-decision source config injection)
-         (if (and (fn-inj-injectedp (fn-inj-decide source config injection))
-                  (fn-gst-post-gate source config))
-             (fn-inj-refuse :group-read-only)
+         (if (fn-inj-injectedp (fn-inj-decide source config injection))
+             (if (fn-gst-post-gate source config)
+                 (fn-inj-refuse :group-read-only)
+               (fn-mod-gate source config injection
+                            (fn-inj-decide source config injection)))
            (fn-inj-decide source config injection))))
 
+; KEYSTONE (P3, PRF-228): an unapproved article is never visible in a
+; moderated group.  Whatever the served POST's decision commits of an
+; ordinary article without an Approved field names no group whose status in
+; the connection's configuration is moderated: the committed memberships are
+; the decision's groups (books/owner.lisp `fn-own-sub-feed-base-groups'),
+; so the article is held (in its queue's envelope) or refused, never posted.
+; Subject: `fn-post-gated-decision', called by `fn-nntp-post-step' below
+; (host line: host/reader-host.lisp `fn-reader-chunk' through
+; books/served.lisp).
+(defthm fn-post-unapproved-article-is-never-in-a-moderated-group
+  (implies (and (fn-mod-facts source config)
+                (not (fn-mod-facts-approvedp (fn-mod-facts source config))))
+           (not (and (fn-inj-injectedp (fn-post-gated-decision source config
+                                                               injection))
+                     (fn-mod-named-entries
+                      (fn-inj-decision-groups
+                       (fn-post-gated-decision source config injection))
+                      (fn-inj-config-closed config)))))
+  :hints (("Goal" :in-theory (e/d (fn-post-gated-decision)
+                                  (fn-mod-gate fn-inj-decide fn-mod-facts
+                                   fn-gst-post-gate fn-mod-named-entries))
+           :use ((:instance fn-mod-gate-unapproved-names-no-moderated-group
+                            (observation injection)
+                            (decision (fn-inj-decide source config
+                                                     injection)))))))
+
+; KEYSTONE (P3, PRF-228): an approved article from a moderator is visible.
+; An ordinary article the injection accepts and the read-only gate passes,
+; carrying an Approved field, every named moderated group of which the
+; connection's configuration marks :approver (its login moderates it,
+; books/nntp-auth.lisp `fn-auth-moderation-config'), is committed exactly as
+; the injection decides: into every group it names, the moderated ones
+; included.
+(defthm fn-post-moderator-approved-article-is-committed
+  (implies (and (not (fn-gst-post-gate source config))
+                (fn-mod-facts-approvedp (fn-mod-facts source config))
+                (fn-mod-all-approverp
+                 (fn-mod-named-entries
+                  (fn-inj-decision-groups (fn-inj-decide source config injection))
+                  (fn-inj-config-closed config))))
+           (equal (fn-post-gated-decision source config injection)
+                  (fn-inj-decide source config injection)))
+  :hints (("Goal" :in-theory (e/d (fn-post-gated-decision fn-mod-gate
+                                   fn-mod-facts-approvedp)
+                                  (fn-inj-decide fn-mod-facts
+                                   fn-gst-post-gate fn-mod-named-entries
+                                   fn-mod-all-approverp)))))
+
+; KEYSTONE (P3, PRF-228): an Approved field from anyone else is refused by
+; name.  When a named group is moderated and some named moderated group is
+; not :approver on this connection, the decision is the refusal
+; :approval-not-moderator (441, `fn-post-refusal-line').
+(defthm fn-post-forged-approval-is-refused-by-name
+  (implies (and (not (fn-gst-post-gate source config))
+                (fn-mod-facts-approvedp (fn-mod-facts source config))
+                (consp (fn-mod-named-entries
+                        (fn-inj-decision-groups
+                         (fn-inj-decide source config injection))
+                        (fn-inj-config-closed config)))
+                (not (fn-mod-all-approverp
+                      (fn-mod-named-entries
+                       (fn-inj-decision-groups
+                        (fn-inj-decide source config injection))
+                       (fn-inj-config-closed config)))))
+           (equal (fn-post-gated-decision source config injection)
+                  (fn-inj-refuse :approval-not-moderator)))
+  :hints (("Goal" :in-theory (e/d (fn-post-gated-decision fn-mod-gate
+                                   fn-mod-facts-approvedp)
+                                  (fn-inj-decide fn-mod-facts
+                                   fn-gst-post-gate fn-mod-named-entries
+                                   fn-mod-all-approverp fn-inj-refuse))
+           :cases ((fn-inj-injectedp (fn-inj-decide source config injection))))))
+
+; The fifth element of the reader listing (PRF-243): the served groups'
+; creation facts (PKT-665), projected by books/owner-agent.lisp
+; `fn-oag-listing'.
+(defun fn-nntp-listing-facts (listing)
+  (declare (xargs :guard t))
+  (if (and (consp listing) (consp (cdr listing)) (consp (cddr listing))
+           (consp (cdddr listing)) (consp (cddddr listing)))
+      (car (cddddr listing))
+    nil))
+
 ; The reader environment of the served step: the connection's pinned clock
-; observation, no creation facts, the posting bit, the reader listing
-; (PRF-195) and the closed groups (O2, PRF-196), all from the connection's
-; pinned configuration.
+; observation, the served groups' creation facts (PKT-665, PRF-243: the
+; listing's fifth element), the posting bit, the reader listing (PRF-195)
+; and the closed groups (O2, PRF-196), all from the connection's pinned
+; configuration.
 (defun fn-post-reader-env (config observation)
   (declare (xargs :guard t))
-  (fn-nntp-env-full observation nil (and (fn-inj-config-allow config) t)
+  (fn-nntp-env-full observation
+                    (fn-nntp-listing-facts (fn-inj-config-listing config))
+                    (and (fn-inj-config-allow config) t)
                     (fn-inj-config-listing config)
                     (fn-inj-config-closed config)))
 
@@ -298,7 +400,8 @@
                                      fn-nntp-env-observation))))
 
 (defthm fn-post-reader-env-facts
-  (equal (fn-nntp-env-facts (fn-post-reader-env config observation)) nil)
+  (equal (fn-nntp-env-facts (fn-post-reader-env config observation))
+         (fn-nntp-listing-facts (fn-inj-config-listing config)))
   :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
                                      fn-nntp-env-full
                                      fn-nntp-env-facts))))
@@ -774,18 +877,77 @@
 ; submission this step emits for an article body is the injection decision
 ; over that body, this connection's configuration and the injection clock
 ; supplied with the event.
-(defthm fn-post-submission-is-the-decision-by-definition
+;; What the served step submits for an article body is the gated decision
+;; on its octets.
+(defthm fn-post-submission-is-the-gated-decision-by-definition
   (implies (fn-post-result-submission
             (fn-nntp-post-step ps archive config observation injection
                                (list :article body)))
            (equal (fn-post-result-submission
                    (fn-nntp-post-step ps archive config observation injection
                                       (list :article body)))
-                  (fn-inj-decide (fn-post-body-octets body) config injection)))
+                  (fn-post-gated-decision (fn-post-body-octets body) config
+                                          injection)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-post-step)
+                                  (fn-post-gated-decision
+                                   fn-post-gated-decision-unfolds
+                                   fn-inj-injectedp
+                                   fn-nntp-step fn-post-offeredp
+                                   fn-post-refusal-line
+                                   fn-post-sessionp fn-post-body-octets))))
+  :rule-classes nil)
+
+; P3: the gated decision, when injected, is the injection's decision on the
+; source or the envelope that forwards it to a moderation queue, whose
+; Message-ID is the source's with the envelope prefix
+; (books/moderation.lisp `fn-mod-gate-is-the-decision-or-its-envelope'); in
+; both cases the injection accepted the source.
+(defthm fn-post-gated-decision-is-the-decision-or-its-envelope
+  (implies (fn-inj-injectedp (fn-post-gated-decision source config injection))
+           (and (fn-inj-injectedp (fn-inj-decide source config injection))
+                (or (equal (fn-post-gated-decision source config injection)
+                           (fn-inj-decide source config injection))
+                    (equal (fn-inj-decision-msgid
+                            (fn-post-gated-decision source config injection))
+                           (fn-mod-envelope-msgid
+                            (fn-inj-decision-msgid
+                             (fn-inj-decide source config injection)))))))
+  :hints (("Goal" :in-theory (e/d (fn-post-gated-decision)
+                                  (fn-inj-decide fn-mod-gate fn-gst-post-gate
+                                   fn-mod-envelope-msgid))
+           :use ((:instance fn-mod-gate-is-the-decision-or-its-envelope
+                            (observation injection)
+                            (decision (fn-inj-decide source config
+                                                     injection))))))
+  :rule-classes nil)
+
+(defthm fn-post-submission-is-the-decision-or-its-envelope
+  (implies (fn-post-result-submission
+            (fn-nntp-post-step ps archive config observation injection
+                               (list :article body)))
+           (and (fn-inj-injectedp
+                 (fn-inj-decide (fn-post-body-octets body) config injection))
+                (or (equal (fn-post-result-submission
+                            (fn-nntp-post-step ps archive config observation
+                                               injection (list :article body)))
+                           (fn-inj-decide (fn-post-body-octets body) config
+                                          injection))
+                    (equal (fn-inj-decision-msgid
+                            (fn-post-result-submission
+                             (fn-nntp-post-step ps archive config observation
+                                                injection (list :article body))))
+                           (fn-mod-envelope-msgid
+                            (fn-inj-decision-msgid
+                             (fn-inj-decide (fn-post-body-octets body) config
+                                            injection)))))))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
-                                      fn-nntp-step fn-post-offeredp
-                                      fn-post-refusal-line
-                                      fn-post-sessionp)))
+                                      fn-nntp-post-step fn-post-gated-decision
+                                      fn-mod-envelope-msgid)
+           :use ((:instance fn-post-submission-is-the-gated-decision-by-definition)
+                 (:instance fn-post-submission-is-an-injected-article
+                            (wire-event (list :article body)))
+                 (:instance fn-post-gated-decision-is-the-decision-or-its-envelope
+                            (source (fn-post-body-octets body))))))
   :rule-classes nil)
 
 ; The keystone the owner's POST seam rests on.  One connection is one
@@ -827,10 +989,23 @@
                          (fn-nntp-post-step ps archive config observation cb
                                             (list :article b2)))))))
   :hints (("Goal"
-           :use ((:instance fn-post-submission-is-the-decision-by-definition
+           :use ((:instance fn-post-submission-is-the-decision-or-its-envelope
                             (injection ca) (body b1))
-                 (:instance fn-post-submission-is-the-decision-by-definition
+                 (:instance fn-post-submission-is-the-decision-or-its-envelope
                             (injection cb) (body b2))
+                 (:instance fn-mod-generated-id-opens
+                            (observation ca))
+                 (:instance fn-mod-generated-id-opens
+                            (observation cb))
+                 (:instance fn-mod-envelope-msgid-injective
+                            (a (fn-inj-generated-message-id ca config))
+                            (b (fn-inj-generated-message-id cb config)))
+                 (:instance fn-mod-envelope-msgid-is-not-a-generated-id
+                            (m (fn-inj-generated-message-id ca config))
+                            (observation cb))
+                 (:instance fn-mod-envelope-msgid-is-not-a-generated-id
+                            (m (fn-inj-generated-message-id cb config))
+                            (observation ca))
                  (:instance fn-post-submission-is-an-injected-article
                             (injection ca) (wire-event (list :article b1)))
                  (:instance fn-post-submission-is-an-injected-article
@@ -849,6 +1024,9 @@
                                fn-inj-generated-message-id
                                fn-inj-generated-identity-is-the-clock-identity
                                fn-post-submission-is-an-injected-article
+                               fn-mod-envelope-msgid
+                               fn-mod-envelope-msgid-injective
+                               fn-mod-envelope-msgid-is-not-a-generated-id
                                fn-clock-observationp fn-clock-wall
                                fn-clock-monotonic fn-article-parse
                                fn-af-proto-article-check

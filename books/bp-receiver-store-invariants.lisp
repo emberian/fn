@@ -33,7 +33,7 @@
  fn-bpr-context-incarnation
  fn-bpr-context-auth-context
  fn-bpr-context-terms-id
- fn-bpr-context-request
+ fn-bpr-context-request-ref
  fn-bpr-make-context
  fn-bpr-contextp
  fn-bpr-context-listp
@@ -259,9 +259,10 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (consp record)
        (fn-bpr-request-acceptablep store config record
-                                   (fn-bpr-context-request context) t fn-arena)
+                                   (fn-bpr-context-resolve context record) t fn-arena)
        (equal context
-              (fn-bpr-context-from-request record (fn-bpr-context-request context)))))
+              (fn-bpr-context-from-request
+               record (fn-bpr-context-resolve context record)))))
 ;; RECORDS are the history's article records: retained rows (records-flip).
 ;; The search answers the WIRE form of the first held row that binds CONTEXT,
 ;; its bytes read through the arena: the record the receiver was handed.
@@ -286,8 +287,9 @@
     t))
 
 (defthm fn-bprv-request-of-derived-context
-  (equal (fn-bpr-context-request (fn-bpr-context-from-request record request)) request)
-  :hints (("Goal" :in-theory (enable fn-bpr-context-request
+  (equal (fn-bpr-context-request-ref (fn-bpr-context-from-request record request))
+         (fn-bpaj-request-ref request))
+  :hints (("Goal" :in-theory (enable fn-bpr-context-request-ref
     fn-bpr-context-from-request fn-bpr-make-context fn-bpa-nth))))
 (defthm fn-bprv-acceptable-implies-consp-record
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
@@ -297,8 +299,12 @@
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-record-binds store config
                                  (fn-bpr-context-from-request record request) record fn-arena))
-  :hints (("Goal" :use fn-bprv-acceptable-implies-consp-record
-   :in-theory (e/d (fn-bprv-record-binds fn-bpr-request-acceptablep) (fn-bprv-acceptable-implies-consp-record)))))
+  :hints (("Goal" :use (fn-bprv-acceptable-implies-consp-record
+                        (:instance fn-bpr-context-resolve-of-derived-context))
+   :in-theory (e/d (fn-bprv-record-binds fn-bpr-request-acceptablep)
+                   (fn-bprv-acceptable-implies-consp-record
+                    fn-bpr-context-resolve-of-derived-context
+                    fn-bpr-context-resolve)))))
 (defthm fn-bprv-record-binds-consp
  (implies (fn-bprv-record-binds store config context record fn-arena) (consp record))
  :rule-classes :forward-chaining)
@@ -317,7 +323,7 @@
                                   (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))
                                   fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp)
-                                  (fn-bpr-rows-stand-for)))))
+                                  (fn-bpr-rows-stand-for fn-arena)))))
 (defthm fn-bprv-derived-context-backed
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-context-backedp store config (fn-bpr-context-from-request record request) fn-arena))
@@ -357,10 +363,11 @@
           (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))
                                  fn-arena)
           (fn-bpi-node-wire-committedp (fn-sn-node store) record fn-arena)
-          (equal context (fn-bpr-context-from-request record (fn-bpr-context-request context)))
-          (equal (fn-bpa-request-article (fn-bpr-context-request context))
+          (equal context (fn-bpr-context-from-request
+                          record (fn-bpr-context-resolve context record)))
+          (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
                  (fn-record-payload record))
-          (equal (fn-bpa-request-subject (fn-bpr-context-request context))
+          (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
                  (fn-record-content-subject record)))))
   :rule-classes nil
   :hints (("Goal"

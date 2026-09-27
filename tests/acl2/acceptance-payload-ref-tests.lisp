@@ -11,13 +11,19 @@
 (include-book "../../books/acceptance-payload-ref")
 ; The host's open (fn-sco-finalize), for the witness only.
 (include-book "../../books/store-checkpoint-open")
+(include-book "held-rows-tests")
 
 (defconst *apr-t-configs* (list *fn-cfg-default-record*))
-(defconst *apr-t-records*
+(defconst *apr-t-wire*
   (list (fn-record-make 0 0 0 "<apr-0@example.invalid>" '(72 105 13 10)
                         '("fn.test") "o0" "s0" "e0" 4 841000000)
         (fn-record-make 1 1 1 "<apr-1@example.invalid>" '(89 111 13 10)
                         '("fn.test") "o1" "s1" "e1" 4 841000001)))
+; The store retains held rows (records-flip): the open interns the decoded
+; history (store-intern fn-intern-events, keyring nil at generation 0), so
+; the two articles are rows at handles 0 and 1 of the open's arena.
+(defconst *apr-t-records* (fn-hrt-rows *apr-t-wire* nil 0))
+(assert-event (and (fn-held-p (car *apr-t-records*)) (fn-held-p (cadr *apr-t-records*))))
 (defconst *apr-t-open*
   (fn-sco-finalize (fn-sco-extend (fn-sco-capture *apr-t-configs* nil)
                                   *apr-t-configs* *apr-t-records*)
@@ -45,7 +51,11 @@
                                 (fn-stx-store (fn-replay-result-node *apr-t-replay*))))
 
 ; The keystone's antecedent and conclusion, present and absent.
-(assert-event (equal (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-s*)
+; by specification: the flip: the payload found through the reference is the
+; article's handle (1); the bytes under it are the article's octets.
+(assert-event (equal (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-s*) 1))
+(assert-event (equal (fn-hrt-bytes *apr-t-wire*
+                                   (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-s*))
                      '(89 111 13 10)))
 (assert-event (equal (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-s*)
                      (fn-apr-field-payload "<apr-1@example.invalid>" *apr-t-s*)))

@@ -265,14 +265,14 @@
                         (fn-bsi-current-init-program config config-record frontier
                                                      config-stage record-stage frontier-stage)
                         nil nil nil))))
-            (fn-sf-initial-state)))
+            (fn-sf-initial-state) arena))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bsi-current-init-program-establishes-current-image)
            :in-theory (e/d (fn-bsi-current-initial-image fn-bs-store-relation
                               fn-bs-statep fn-bs-durable-entry fn-bs-durable-content
                               fn-bs-fencedp fn-bs-dir-quietp fn-bs-view fn-bs-content
-                              fn-bs-lookup fn-sf-statep fn-sf-crash-imagep
+                              fn-bs-lookup fn-sf-statep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                               fn-bs-durable fn-bs-durable-names
                               fn-bs-durable-frontier fn-bs-durable-records
                               fn-bs-replay-visiblep fn-bs-pending-shape-okp

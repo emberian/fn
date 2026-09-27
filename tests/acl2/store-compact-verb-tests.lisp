@@ -224,11 +224,15 @@
 (assert-event (fn-bs-profile-validp *fn-bs-profile-defaults*))
 (assert-event (< *fn-cc-max-events*
                  (fn-bs-profile-max-transactions *fn-bs-profile-defaults*)))
+; The relation stays closed in the search: the defaults above are the
+; counterexample, and opened (seventeen fields, lane header-limits-profile)
+; the failing search took 16.8 s of case splits.
 (local
  (must-fail
   (defthm cvt-count-without-preset
     (implies (fn-bs-profile-validp profile)
-             (<= (fn-bs-profile-max-transactions profile) *fn-cc-max-events*)))))
+             (<= (fn-bs-profile-max-transactions profile) *fn-cc-max-events*))
+    :hints (("Goal" :in-theory (disable fn-bs-profile-validp))))))
 (assert-event (equal (fn-cverb-decide '(7 1048576 32768 805306368 5000 1)
                                       *cvt-records* 0 *cvt-names* nil nil nil)
                      '(:refused :profile)))

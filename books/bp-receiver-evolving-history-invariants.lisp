@@ -36,7 +36,7 @@
  fn-bpr-context-incarnation
  fn-bpr-context-auth-context
  fn-bpr-context-terms-id
- fn-bpr-context-request
+ fn-bpr-context-request-ref
  fn-bpr-make-context
  fn-bpr-contextp
  fn-bpr-context-listp
@@ -270,7 +270,7 @@
 ; record, or the one a signed kind-4 composite carries) and the
 ; trusted-policy argument already at t.
 (defun fn-bprv-record-grounds (config context record)
-  (let ((request (fn-bpr-context-request context)))
+  (let ((request (fn-bpr-context-resolve context record)))
     (and (consp record) (fn-record-p record)
          (fn-bpa-requestp request)
          (equal (fn-bpa-request-destination-eid request)
@@ -454,9 +454,12 @@
 (defthm fn-bprv-acceptable-grounds
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-record-grounds config (fn-bpr-context-from-request record request) record))
-  :hints (("Goal" :use fn-bprv-acceptable-implies-consp-record
+  :hints (("Goal" :use (fn-bprv-acceptable-implies-consp-record
+                        (:instance fn-bpr-context-resolve-of-derived-context))
            :in-theory (e/d (fn-bprv-record-grounds fn-bpr-request-acceptablep)
-                           (fn-bprv-acceptable-implies-consp-record)))))
+                           (fn-bprv-acceptable-implies-consp-record
+                            fn-bpr-context-resolve-of-derived-context
+                            fn-bpr-context-resolve)))))
 (defthm fn-bprv-acceptable-implies-grounded
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-context-groundedp config (fn-bpr-context-from-request record request)
@@ -581,10 +584,10 @@
              (and (fn-record-p record)
                   (fn-bpr-rows-stand-for record (fn-bpr-article-records h) fn-arena)
                   (equal context (fn-bpr-context-from-request
-                                  record (fn-bpr-context-request context)))
-                  (equal (fn-bpa-request-article (fn-bpr-context-request context))
+                                  record (fn-bpr-context-resolve context record)))
+                  (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
                          (fn-record-payload record))
-                  (equal (fn-bpa-request-subject (fn-bpr-context-request context))
+                  (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
                          (fn-record-content-subject record)))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-bprv-found-grounding-record-grounds
@@ -603,7 +606,8 @@
                   (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                               (fn-bpr-state-receipts st))))
              (and (consp context)
-                  (equal request (fn-bpr-context-request context))
+                  (equal (fn-bpaj-request-ref request)
+                         (fn-bpr-context-request-ref context))
                   (member-equal entry (fn-bpr-state-receipts st))
                   (equal context (fn-bpr-receipt-entry-context entry))
                   (fn-bprv-context-groundedp (fn-bpr-state-config st) context h fn-arena)
@@ -631,13 +635,16 @@
                            (fn-bpr-state-config st) context
                            (fn-bpr-article-records (fn-bprv-history store)) fn-arena)))
              (and (consp context)
-                  (equal request (fn-bpr-context-request context))
+                  (equal (fn-bpaj-request-ref request)
+                         (fn-bpr-context-request-ref context))
                   (fn-record-p record)
                   (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-bprv-history store))
                                          fn-arena)
-                  (equal context (fn-bpr-context-from-request record request))
-                  (equal (fn-bpa-request-article request) (fn-record-payload record))
-                  (equal (fn-bpa-request-subject request)
+                  (equal context (fn-bpr-context-from-request
+                                  record (fn-bpr-context-resolve context record)))
+                  (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+                         (fn-record-payload record))
+                  (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
                          (fn-record-content-subject record))
                   (member-equal entry (fn-bpr-state-receipts st))
                   (fn-bprv-entry-decidedp entry journal)

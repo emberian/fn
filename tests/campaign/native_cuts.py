@@ -95,6 +95,43 @@ STATE_CHECKPOINT_CUTS = tuple(
                             ("state-checkpoint-replaced", "either"),
                             ("state-checkpoint-durable", "new")))
 
+# `store import DIR' (host/native/io.lisp `fnn-command-store-import'):
+# books/store-import-publication.lisp fn-bs-imp-program, selected by
+# FN_NATIVE_IMPORT_FAULT.  The program is its parts in IMPORT_PROGRAMS order;
+# a repeated cut (per subdirectory, per file) is selected at its first
+# occurrence.  The candidate column is whether ROOT holds the imported store
+# after a death at the cut: absent before the no-replace rename, either at
+# it, present once ROOT's parent is fenced.
+IMPORT_BOOK = "store-import-publication.lisp"
+IMPORT_PROGRAMS = ("fn-bs-imp-stage-steps", "fn-bs-imp-subdir-steps",
+                   "fn-bs-imp-file-steps", "fn-bs-imp-fence-steps",
+                   "fn-bs-imp-seal-steps", "fn-bs-imp-publication-program")
+IMPORT_CUTS = tuple(
+    NativeCut(name, program, candidate, book=IMPORT_BOOK)
+    for name, program, candidate in (
+        ("import-stage-created", "fn-bs-imp-stage-steps", "absent"),
+        ("import-subdir-created", "fn-bs-imp-subdir-steps", "absent"),
+        ("import-file-created", "fn-bs-imp-file-steps", "absent"),
+        ("import-file-written", "fn-bs-imp-file-steps", "absent"),
+        ("import-file-durable", "fn-bs-imp-file-steps", "absent"),
+        ("import-subdir-durable", "fn-bs-imp-fence-steps", "absent"),
+        ("import-staged-durable", "fn-bs-imp-seal-steps", "absent"),
+        ("import-validated", "fn-bs-imp-publication-program", "absent"),
+        ("import-published", "fn-bs-imp-publication-program", "either"),
+        ("import-durable", "fn-bs-imp-publication-program", "present")))
+
+# The suffixes of the publication program's cuts, in its order.
+PUBLICATION_SUFFIXES = tuple(c.name[len("import-"):] for c in IMPORT_CUTS)
+
+# `operator CONFIG init' (host/native/io.lisp `fnn-command-init-published',
+# PKT-647): books/store-init-publication.lisp fn-bs-init-pub-program, the
+# import's program with init's cut names, selected by FN_NATIVE_INIT_FAULT.
+INIT_PUB_BOOK = "store-init-publication.lisp"
+INIT_PUB_CUTS = tuple(
+    NativeCut("init-" + c.name[len("import-"):], "fn-bs-init-pub-program", c.candidate,
+              book=INIT_PUB_BOOK)
+    for c in IMPORT_CUTS)
+
 # The chained-packs program (lane pack-chain-cut, PKT-459).
 CHAIN_BOOK = "checkpoint-pack-chain.lisp"
 
@@ -146,6 +183,29 @@ COMPACT_CHAIN_LINK = ("fnn-pack-publish-generation", "fnn-pack-select",
                       '(fnn-checkpoint-test-stop "pack-chain-link")')
 
 
+# The record log (lane w6-log-core; books/store-log-programs.lisp).  Each cut
+# is a named point of one log program, hosted by one function of
+# host/native/io.lisp (LOG_PROGRAM_HOSTS); the candidate is the batch's fate
+# at the cut: at log-written a crash image scans to the committed records and
+# a prefix of the batch (T2, "either"); at log-fenced the batch is committed;
+# the recovery cuts keep the scanned records ("present": the zeroing write
+# lies past the frontier).
+LOG_BOOK = "store-log-programs.lisp"
+LOG_PROGRAM_HOSTS = {
+    "fn-lg-append-program": "fnn-log-append",
+    "fn-lg-fence-program": "fnn-log-fence",
+    "fn-lg-recover-program": "fnn-log-recover",
+}
+LOG_CUTS = (
+    NativeCut("log-written", "fn-lg-append-program", "either", book=LOG_BOOK),
+    NativeCut("log-fenced", "fn-lg-fence-program", "present",
+              follows="fn-lg-append-program", book=LOG_BOOK),
+    NativeCut("log-truncated", "fn-lg-recover-program", "present", book=LOG_BOOK),
+    NativeCut("log-recovered", "fn-lg-recover-program", "present", book=LOG_BOOK),
+)
+# The host primitive that performs each log step kind, and its cut call.
+LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync "}
+
 def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
     source = (ROOT / "host/native/io.lisp").read_text()
     match = re.search(r"\(defparameter \+{}\+\s+'\((.*?)\)\)".format(parameter),
@@ -178,7 +238,11 @@ def model_cut_names(program: str, book: str = "byte-store-programs.lisp") -> tup
 # The byte-program step kinds (books/byte-store-programs.lisp, the step table
 # at its head).  `observe' and `cut' issue no syscall.
 STEP_KINDS = ("observe", "cut", "create", "write-all", "fsync-file", "fsync-dir",
-              "rename", "link", "unlink")
+              "rename", "link", "unlink",
+              # books/store-import-publication.lisp's two directory steps.
+              "mkdir", "rename-dir-noreplace",
+              # books/store-log-programs.lisp's positioned write and barrier.
+              "write-at", "fence")
 SYSCALL_KINDS = frozenset(STEP_KINDS[2:])
 
 
@@ -190,7 +254,7 @@ class ModelStep:
     @property
     def directory(self) -> str | None:
         """The directory the step acts in: the target of a rename or link."""
-        if self.kind in ("rename", "link"):
+        if self.kind in ("rename", "link", "rename-dir-noreplace"):
             return self.args[2]
         return self.args[0] if self.kind in SYSCALL_KINDS else None
 
@@ -248,6 +312,7 @@ def verify_native_cut_map() -> None:
     verify_swallowed_cuts()
     verify_state_checkpoint_cut_map()
     verify_marker_cut_map()
+    verify_import_cut_map()
 
 
 def verify_state_checkpoint_cut_map() -> None:
@@ -279,9 +344,156 @@ def verify_state_checkpoint_cut_map() -> None:
                 cut.name, cut.candidate, expected))
 
 
+def verify_import_cut_map() -> None:
+    """The host's import cuts are fn-bs-imp-program's, in its order: the
+    declared names are the program's cuts, fn-bs-imp-program runs its parts in
+    IMPORT_PROGRAMS order, `fnn-command-store-import' reaches the cuts, the
+    no-replace rename and the parent fence in that order (the three file cuts
+    inside `fnn-import-write-file', between its open, write and fence), and
+    the candidate column is the one the program's steps give."""
+    declared = tuple(c.name for c in IMPORT_CUTS)
+    if declared != native_declared_cut_names("fnn-import-model-cuts"):
+        raise AssertionError("native/model import cuts differ")
+    program_cuts = tuple(name for program in IMPORT_PROGRAMS
+                         for name in model_cut_names(program, IMPORT_BOOK))
+    if declared != program_cuts:
+        raise AssertionError("import cuts are not fn-bs-imp-program's: {!r}".format(
+            program_cuts))
+    for cut in IMPORT_CUTS:
+        if cut.name not in model_cut_names(cut.program, cut.book):
+            raise AssertionError("{} absent from {}".format(cut.name, cut.program))
+    book = (ROOT / "books" / IMPORT_BOOK).read_text()
+    staging = host_function(book, "fn-bs-imp-staging-program")
+    order = [staging.index("(fn-bs-imp-stage-steps "),
+             staging.index("(fn-bs-imp-subdir-steps "),
+             staging.index("(fn-bs-imp-files-steps "),
+             staging.index("(fn-bs-imp-fence-steps "),
+             staging.index("(fn-bs-imp-seal-steps)")]
+    whole = host_function(book, "fn-bs-imp-program")
+    if (order != sorted(order)
+            or whole.index("(fn-bs-imp-staging-program ")
+            > whole.index("(fn-bs-imp-publication-program ")):
+        raise AssertionError("fn-bs-imp-program no longer runs its parts in order")
+    if "(fn-bs-imp-file-steps (car files))" not in host_function(book, "fn-bs-imp-files-steps"):
+        raise AssertionError("fn-bs-imp-files-steps no longer runs fn-bs-imp-file-steps")
+    source = (ROOT / "host/native/io.lisp").read_text()
+    body = host_function(source, "fnn-command-store-import")
+    if "(fnn-core 'fn-bs-imp-classify" not in host_function(source, "fnn-import-classify"):
+        raise AssertionError("fnn-import-classify does not call fn-bs-imp-classify")
+    if not (body.index("(fnn-import-leftover-stage root-path)")
+            < body.index("(fnn-staged-publication\n         \"import\"")):
+        raise AssertionError("fnn-command-store-import does not classify before publishing")
+    verify_staged_publication(source, "import", declared)
+    _import_candidates()
+
+
+def verify_staged_publication(source: str, kind: str, declared: tuple) -> None:
+    """`fnn-staged-publication' reaches fn-bs-imp-program's steps and cuts in
+    its order (the three file cuts inside `fnn-import-write-file', between its
+    open, write and fence), each cut named KIND-SUFFIX, and publishes with a
+    no-replace rename only."""
+    if declared != tuple("{}-{}".format(kind, s) for s in PUBLICATION_SUFFIXES):
+        raise AssertionError("{} cuts are not the publication program's".format(kind))
+    body = host_function(source, "fnn-staged-publication")
+    at = '(fnn-pub-at stage kind "{}")'.format
+    order = [body.index("(fnn-publication-lock root-path)"),
+             body.index("(fnn-mkdir stage-root #o700)"),
+             body.index(at("stage-created")),
+             body.index("(fnn-mkdir (fnn-join stage-root sub) #o700)"),
+             body.index(at("subdir-created")),
+             body.index("(fnn-import-write-file stage (car file) (cdr file) kind)"),
+             body.index("(fnn-fsync-dir (fnn-join stage-root sub))"),
+             body.index(at("subdir-durable")),
+             body.index("(fnn-fsync-dir stage-root)"),
+             body.index(at("staged-durable")),
+             body.index("(fnn-open-live-store stage-root t)"),
+             body.index(at("validated")),
+             body.index("(fnn-rename-no-replace stage-root root-path)"),
+             body.index(at("published")),
+             body.index("(fnn-fsync-dir parent)"),
+             body.index(at("durable")),
+             body.index("(fnn-publication-unlock lock)")]
+    if order != sorted(order):
+        raise AssertionError("fnn-staged-publication is out of fn-bs-imp-program's order")
+    if "(fnn-replace " in body:
+        raise AssertionError("fnn-staged-publication publishes with a replacing rename")
+    write = host_function(source, "fnn-import-write-file")
+    order = [write.index("(fnn-open path"),
+             write.index('(fnn-pub-at store kind "file-created")'),
+             write.index("(fnn-write-all fd"),
+             write.index('(fnn-pub-at store kind "file-written")'),
+             write.index("(fnn-fsync-file fd)"),
+             write.index('(fnn-pub-at store kind "file-durable")')]
+    if order != sorted(order):
+        raise AssertionError("fnn-import-write-file is out of fn-bs-imp-file-steps order")
+    if "sb-posix:o-excl" not in write:
+        raise AssertionError("fnn-import-write-file does not create exclusively")
+
+
+def init_publication_cut_names() -> dict:
+    """books/store-init-publication.lisp *fn-bs-init-pub-cut-names*: each
+    fn-bs-imp-program cut to init's name for it."""
+    book = (ROOT / "books" / INIT_PUB_BOOK).read_text()
+    table = book[book.index("(defconst *fn-bs-init-pub-cut-names*"):]
+    table = table[:table.index("\n\n")]
+    return dict(re.findall(r'\("([a-z-]+)" \. "([a-z-]+)"\)', table))
+
+
+def verify_init_publication_cut_map() -> None:
+    """`operator init' (fnn-command-init-published) runs the import's
+    program with init's cut names: the host's +fnn-init-publication-cuts+ are
+    *fn-bs-init-pub-cut-names* applied to fn-bs-imp-program's cuts in order,
+    fn-bs-init-pub-program renames the cuts of fn-bs-imp-program, the host
+    asks ACL2's admission before publishing through fnn-staged-publication,
+    and the candidate column is the import's."""
+    declared = tuple(c.name for c in INIT_PUB_CUTS)
+    if declared != native_declared_cut_names("fnn-init-publication-cuts"):
+        raise AssertionError("native/model init publication cuts differ")
+    renamed = init_publication_cut_names()
+    if declared != tuple(renamed[c.name] for c in IMPORT_CUTS):
+        raise AssertionError("init cuts are not the import program's, renamed")
+    book = (ROOT / "books" / INIT_PUB_BOOK).read_text()
+    program = host_function(book, "fn-bs-init-pub-program")
+    if "(fn-bs-init-pub-rename-cuts\n   (fn-bs-imp-program " not in program:
+        raise AssertionError("fn-bs-init-pub-program is not fn-bs-imp-program renamed")
+    if tuple(c.candidate for c in INIT_PUB_CUTS) != tuple(c.candidate for c in IMPORT_CUTS):
+        raise AssertionError("init candidates differ from the import program's")
+    source = (ROOT / "host/native/io.lisp").read_text()
+    body = host_function(source, "fnn-command-init-published")
+    order = [body.index('(fnn-import-leftover-stage root-path "init")'),
+             body.index("(fnn-import-classify leftover root-path)"),
+             body.index("(fnn-core 'fn-bs-init-pub-admission"),
+             body.index('(fnn-staged-publication\n       "init"')]
+    if order != sorted(order):
+        raise AssertionError("fnn-command-init-published publishes before ACL2 admits")
+    operator = (ROOT / "host/native/operator.lisp").read_text()
+    # The call, whitespace collapsed: the root, the groups, the profile and
+    # (since batch AS's merge of store-mount-identity) the mission's
+    # durability policy.
+    if "(fnn-command-init-published root groups profile" not in " ".join(host_function(
+            operator, "fnn-operator-execute-init").split()):
+        raise AssertionError("operator init does not run the publication program")
+    verify_staged_publication(source, "init", declared)
+
+
+def _import_candidates() -> None:
+    for cut in IMPORT_CUTS:
+        own = IMPORT_PROGRAMS.index(cut.program)
+        before = [step for program in IMPORT_PROGRAMS[:own]
+                  for step in model_steps(program, IMPORT_BOOK)]
+        before += list(model_steps(cut.program, cut.book)[:cut_step_index(cut)])
+        kinds = [step.kind for step in before]
+        renamed = "rename-dir-noreplace" in kinds
+        fenced = renamed and "fsync-dir" in kinds[kinds.index("rename-dir-noreplace"):]
+        expected = "present" if fenced else ("either" if renamed else "absent")
+        if cut.candidate != expected:
+            raise AssertionError("{}: candidate {} but the program says {}".format(
+                cut.name, cut.candidate, expected))
+
+
 def program_book(program: str) -> str:
     """The book whose defun holds PROGRAM, from the cut table."""
-    return next((c.book for c in ALL_CUTS + STATE_CHECKPOINT_CUTS
+    return next((c.book for c in ALL_CUTS + STATE_CHECKPOINT_CUTS + IMPORT_CUTS
                  if c.program == program),
                 "byte-store-programs.lisp")
 
@@ -610,3 +822,41 @@ def verify_swallowed_cuts(source: str | None = None) -> None:
             raise AssertionError("{}: model says swallowed={}, host ignore-errors "
                                  "says {}".format(cut.name, cut.name in swallowed,
                                                   site in inside))
+
+
+def verify_log_cut_map() -> None:
+    """The host's log cuts are the log programs', in their order: the declared
+    names (+fnn-log-model-cuts+) are LOG_CUTS's and the programs' cuts in
+    LOG_PROGRAM_HOSTS order; each hosting function performs its program's
+    steps (fnn-log-pwrite for :write-at, fnn-log-fdatasync for :fence, and
+    `(fnn-log-at :NAME)' for each cut) in the program's order, and every
+    `fnn-log-at' in it is one of the program's cuts."""
+    declared = tuple(c.name for c in LOG_CUTS)
+    if declared != native_declared_cut_names("fnn-log-model-cuts"):
+        raise AssertionError("native/model log cuts differ")
+    program_cuts = tuple(name for program in LOG_PROGRAM_HOSTS
+                         for name in model_cut_names(program, LOG_BOOK))
+    if declared != program_cuts:
+        raise AssertionError("log cuts are not the log programs': {!r}".format(program_cuts))
+    source = (ROOT / "host/native/io.lisp").read_text()
+    for program, host in LOG_PROGRAM_HOSTS.items():
+        body = host_function(source, host)
+        at, order = 0, []
+        for step in model_steps(program, LOG_BOOK):
+            needle = ("(fnn-log-at :{})".format(step.args[0]) if step.kind == "cut"
+                      else LOG_STEP_HOST[step.kind])
+            found = body.find(needle, at)
+            if found < 0:
+                raise AssertionError("{}: {} {} missing or out of order".format(
+                    host, step.kind, step.args))
+            order.append(found)
+            at = found + len(needle)
+        cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
+        if cuts != set(model_cut_names(program, LOG_BOOK)):
+            raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
+        for kind, needle in LOG_STEP_HOST.items():
+            if body.count(needle) != sum(1 for s in model_steps(program, LOG_BOOK)
+                                         if s.kind == kind):
+                raise AssertionError("{}: {} count differs from {}".format(host, kind, program))
+    for cut in LOG_CUTS:
+        cut_step_index(cut)

@@ -94,6 +94,50 @@
   (declare (xargs :guard t))
   (fn-nop-result :refused reason command config arguments))
 
+;; PKT-657, PKT-575 (books/moderation-verbs.lisp): `moderation approve ID
+;; --moderator LOGIN', `moderation reject ID --moderator LOGIN [--reason
+;; TEXT]' and `article withdraw ID --reason TEXT' are one request to the
+;; running owner (FNCT kind 21), planned as (:moderate OP LOGIN ID REASON),
+;; each an octet list.  ID is a bracketed Message-ID; the owner decides the
+;; rest (who moderates, what is held, what the configuration can carry).
+(defun fn-nop-moderate-plan (command op id login reason config words)
+  (declare (xargs :guard t))
+  (if (and (fn-cevg-msgidp id)
+           (or (equal op :withdraw) (fn-cfg-account-loginp login))
+           (stringp reason))
+      (fn-nop-result :accepted :plan command config
+                     (list :moderate op
+                           (if (stringp login) (fn-record-string-octets login) nil)
+                           (fn-record-string-octets id)
+                           (fn-record-string-octets reason)))
+    (fn-nop-usage :moderation-verb command config words)))
+
+(defun fn-nop-parse-moderate (command words config)
+  (declare (xargs :guard t))
+  (let ((verb (fn-ncfg-first words)) (rest (fn-ncfg-rest words)))
+    (cond ((and (equal command "moderation") (equal verb "approve")
+                (equal (len rest) 3) (equal (fn-ncfg-second rest) "--moderator"))
+           (fn-nop-moderate-plan command :approve (fn-ncfg-first rest)
+                                 (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest rest)))
+                                 "" config words))
+          ((and (equal command "moderation") (equal verb "reject")
+                (member-equal (len rest) '(3 5))
+                (equal (fn-ncfg-second rest) "--moderator")
+                (or (equal (len rest) 3)
+                    (equal (fn-ncfg-first (nthcdr 3 (true-list-fix rest))) "--reason")))
+           (fn-nop-moderate-plan command :reject (fn-ncfg-first rest)
+                                 (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest rest)))
+                                 (if (equal (len rest) 5)
+                                     (fn-ncfg-first (nthcdr 4 (true-list-fix rest)))
+                                   "")
+                                 config words))
+          ((and (equal command "article") (equal verb "withdraw")
+                (equal (len rest) 3) (equal (fn-ncfg-second rest) "--reason"))
+           (fn-nop-moderate-plan command :withdraw (fn-ncfg-first rest) nil
+                                 (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest rest)))
+                                 config words))
+          (t (fn-nop-usage :moderation-verb command config words)))))
+
 (defun fn-nop-parse-run (words once)
   (declare (xargs :guard t))
   (if (consp words)
@@ -467,6 +511,21 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((and (consp words) (equal (car words) "reclaim")
               (equal (cdr words) '("--dry-run")))
          (fn-nop-result :accepted :plan "store" config (list :reclaim-dry-run)))
+        ; PKT-579: record the filesystem the store is on now
+        ; (books/store-mount-identity.lisp fn-smid-rebind-plan), keeping the
+        ; store's durability policy (PKT-648) or setting it.
+        ((and (consp words) (equal (car words) "rebind-filesystem")
+              (null (cdr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rebind-filesystem nil)))
+        ((and (consp words) (equal (car words) "rebind-filesystem")
+              (equal (cdr words) '("--storage-require-durable" "on")))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rebind-filesystem 1)))
+        ((and (consp words) (equal (car words) "rebind-filesystem")
+              (equal (cdr words) '("--storage-require-durable" "off")))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rebind-filesystem 0)))
         (t (fn-nop-usage :invalid-store-command "store" config words))))
 
 ;; `status --watch N': the seconds between two asks.  A work bound on the
@@ -480,7 +539,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -504,13 +563,17 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID} (offline; refused while an owner runs; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
-        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it)")
+         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
+        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
         ((equal subject "motd")
          "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
          "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
+        ((equal subject "moderation")
+         "usage: fn operator CONFIG moderation {list GROUP | approve MESSAGE-ID --moderator LOGIN | reject MESSAGE-ID --moderator LOGIN [--reason TEXT]} (list: the posts held for moderated GROUP in its queue, held, approved or rejected, from the running owner or offline from the store; approve posts the held article with Approved: LOGIN, reject withdraws its envelope; both need the running owner and a LOGIN that moderates the group)")
+        ((equal subject "article")
+         "usage: fn operator CONFIG article withdraw MESSAGE-ID --reason TEXT (withdraws the stored article under this node's own authority: a configuration record, then a cancel the node injects; needs the running owner)")
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list | log | evidence MESSAGE-ID} (NAMESPACE is a group name or one ending in .*; spec peering 8; log lists the withdrawal records, evidence shows one article's decision context)")
         ((equal subject "peer")
@@ -523,14 +586,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
+        ((equal subject "consumer")
+         "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
-         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers; spec nntp Invitation-code accounts)")
+         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "tls")
          "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -654,6 +719,19 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                               (fn-nop-profile-decimal
                                (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest words)))))))
         ((equal words '("list")) (fn-nop-parse-administration "account" argv config))
+        ;; PRF-222: `account access show' and `account access LOGIN|--anonymous
+        ;; --read WILDMAT --post WILDMAT' (books/native-admin.lisp).
+        ((equal (fn-ncfg-first words) "access")
+         (fn-nop-parse-administration "account" argv config))
+        ;; PKT-597: `account hash LOGIN' prints the posting-account value an
+        ;; article posted under LOGIN carries (books/injection-info-policy.lisp
+        ;; fn-ipp-account-hash): the host reads the node secret, ACL2
+        ;; computes the value.  Nothing is written.
+        ((and (equal (fn-ncfg-first words) "hash")
+              (fn-ipp-login-wordp (fn-ncfg-second words))
+              (null (fn-ncfg-rest (fn-ncfg-rest words))))
+         (fn-nop-result :accepted :plan "account" config
+                        (list :account-hash (fn-ncfg-second words))))
         (t (fn-nop-usage :invalid-account-command "account" config words))))
 
 (defun fn-nop-parse-command (words config argv)
@@ -732,11 +810,25 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                   (equal (fn-ncfg-first (fn-cevg-parse rest)) :usage))
              (fn-nop-usage (list :control-report (fn-ncfg-second (fn-cevg-parse rest)))
                            "control" config rest))
+            ; PKT-657, PKT-575: the owner's moderation and withdrawal verbs.
+            ((and (equal command "moderation")
+                  (member-equal (fn-ncfg-first rest) '("approve" "reject")))
+             (fn-nop-parse-moderate command rest config))
+            ((equal command "article") (fn-nop-parse-moderate command rest config))
+            ; PKT-657: `moderation list GROUP' is a status report too.
+            ((and (equal command "moderation")
+                  (equal (fn-ncfg-first (fn-cevg-moderation-parse rest)) :kind))
+             (fn-nop-result :accepted :plan "moderation" config
+                            (list (fn-ncfg-second (fn-cevg-moderation-parse rest)))))
+            ((equal command "moderation")
+             (fn-nop-usage (list :moderation-report
+                                 (fn-ncfg-second (fn-cevg-moderation-parse rest)))
+                           "moderation" config rest))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
                  (equal command "control") (equal command "retention")
-                 (equal command "motd"))
+                 (equal command "motd") (equal command "consumer"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -1026,6 +1118,30 @@ is installed into the owner for both served and control submission."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+; The moderation request (books/moderation-verbs.lisp): OP LOGIN ID REASON,
+; and the control socket it goes to.
+(defun fn-native-operator-result-moderate-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (member-equal (fn-native-operator-result-command result)
+                     '("moderation" "article"))
+       (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+              :moderate)
+       t))
+
+(defun fn-native-operator-result-moderate-request (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-moderate-planp result)
+      (fn-ncfg-rest (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-moderate-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-moderate-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-post-msgid-octets (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-post-planp result)
@@ -1086,6 +1202,15 @@ is installed into the owner for both served and control submission."
   (and (equal (fn-native-operator-result-status result) :accepted)
        (equal (fn-native-operator-result-command result) "init")))
 
+(defun fn-native-operator-result-config-mission (result)
+  "The mission an accepted plan's configuration names (the durability policy
+of the store `init' or `store import' makes, books/store-mount-identity.lisp
+fn-smid-init-policy), else nil."
+  (declare (xargs :guard t))
+  (if (equal (fn-native-operator-result-status result) :accepted)
+      (fn-native-config-ops-mission (fn-native-operator-result-config result))
+    nil))
+
 (defun fn-native-operator-result-init-store-octets (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-init-planp result)
@@ -1125,6 +1250,16 @@ names, as octets, else nil."
            (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
       (fn-record-string-octets
        (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-rebind-policy (result)
+  "The durability policy an accepted `store rebind-filesystem' plan sets (1
+or 0), or nil to keep the store's."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-nop-store-plan-word result) :rebind-filesystem)
+           (member-equal (fn-ncfg-second (fn-native-operator-result-arguments result))
+                         '(0 1)))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-import-request (result)
@@ -1171,10 +1306,21 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")
            (equal (fn-native-operator-result-command result) "motd")
+           (equal (fn-native-operator-result-command result) "consumer")
            (and (equal (fn-native-operator-result-command result) "account")
-                (not (equal (fn-ncfg-first
-                             (fn-native-operator-result-arguments result))
-                            :account-invite))))))
+                (not (member-equal (fn-ncfg-first
+                                    (fn-native-operator-result-arguments result))
+                                   '(:account-invite :account-hash)))))))
+
+;; PKT-597: the login of an accepted `account hash' plan, or nil.
+(defun fn-native-operator-result-account-hash-login (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "account")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :account-hash))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
+    nil))
 
 ;; PRF-164: the seconds of an accepted `account invite' plan, or nil.
 (defun fn-native-operator-result-account-invite-seconds (result)
@@ -1305,10 +1451,16 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "pins") :status)
           ((equal (fn-native-operator-result-command result) "health") :health)
           ((equal (fn-native-operator-result-command result) "obligations") :status)
-          ((and (equal (fn-native-operator-result-command result) "control")
+          ((and (member-equal (fn-native-operator-result-command result)
+                              '("control" "moderation"))
                 (fn-cevg-kindp (fn-ncfg-first
                                 (fn-native-operator-result-arguments result))))
            :status)
+          ((and (member-equal (fn-native-operator-result-command result)
+                              '("moderation" "article"))
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :moderate))
+           :moderate)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((equal (fn-native-operator-result-command result) "store")
            (cond ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1332,6 +1484,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :inspect)
                   :inspect)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :rebind-filesystem)
+                  :rebind-filesystem)
                  (t :none)))
           ((and (equal (fn-native-operator-result-command result) "peer")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
@@ -1345,11 +1500,16 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "policy")
                (equal (fn-native-operator-result-command result) "retention")
                (equal (fn-native-operator-result-command result) "motd")
+               (equal (fn-native-operator-result-command result) "consumer")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((and (equal (fn-native-operator-result-command result) "account")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                        :account-invite))
            :account-invite)
+          ((and (equal (fn-native-operator-result-command result) "account")
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :account-hash))
+           :account-hash)
           ((equal (fn-native-operator-result-command result) "account") :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "keys") :keys)
@@ -1944,7 +2104,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
        (or (member-equal (fn-native-operator-result-command result)
                          '("status" "health" "pins" "obligations"))
            ;; PKT-209: `control log', `control evidence MSGID'.
-           (and (equal (fn-native-operator-result-command result) "control")
+           (and (member-equal (fn-native-operator-result-command result)
+                              '("control" "moderation"))
                 (fn-cevg-kindp (fn-ncfg-first
                                 (fn-native-operator-result-arguments result)))))
        t))

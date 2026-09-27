@@ -57,13 +57,13 @@
          (fn-record-p record)
          (equal (fn-record-msgid record)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-stored-octets *osi-cfg* sub))
+         (equal (fn-record-payload record) (fn-own-sub-stored-octets *osi-cfg* sub (fn-own-node-secret o)))
          (fn-sf-record-has-pairp pair (fn-sf-records (fn-sn-files (fn-own-store o2))))
          t)))
 
 ; The record the host should stage for the submission in flight: its
 ; Message-ID and octets, with the metadata own-record derives.
-(defun osi-record-of (sequence txid sub payload)
+(defun osi-record-of-wire (sequence txid sub payload)
   (let ((msgid (fn-record-octets-string (fn-own-sub-msgid sub))))
     (fn-record-make sequence txid txid msgid payload
                     '("fn.letters")
@@ -71,6 +71,19 @@
                     (concatenate 'string "own-content:" msgid)
                     (concatenate 'string "own-release:" msgid)
                     2 841000000)))
+; The store retains held rows (records-flip): the owner stages the row the
+; entry interns (owner-tests' convention: handle = journal sequence).
+(defun osi-record-of (sequence txid sub payload)
+  (fn-hrt-row-at (osi-record-of-wire sequence txid sub payload) sequence))
+; ALPHA of a completion row staged on *own-taken* (whose history is
+; owner-tests' "<one@example>" and "<two@example>" at handles 0 and 1): the
+; bytes under its handle in the arena that interned the journal in order,
+; the staged record WIRE last.
+(defun osi-completion-bytes (o wire)
+  (fn-hrt-bytes (list (own-record-wire 0 0 "<one@example>")
+                      (own-record-wire 1 1 "<two@example>")
+                      wire)
+                (fn-record-payload (fn-sn-completion-record (fn-own-store o)))))
 (defun osi-sub-record (sequence txid sub)
   (osi-record-of sequence txid sub (fn-own-sub-octets sub)))
 
@@ -113,8 +126,10 @@
                      "<three@example>"))
 (assert-event (not (equal (fn-record-octets-string (fn-own-sub-msgid *osi-sub*))
                           "<three@example>")))
-(assert-event (not (equal (fn-record-payload (fn-sn-completion-record
-                                              (fn-own-store *osi-mismatch-completing*)))
+; by specification: the flip: the payload is a handle; the completed row's
+; bytes (alpha) are <three@example>'s, not the submission's octets.
+(assert-event (not (equal (osi-completion-bytes *osi-mismatch-completing*
+                                                (own-record-wire 2 2 "<three@example>"))
                           (fn-own-sub-octets *osi-sub*))))
 (assert-event (equal (car (fn-own-finish *osi-mismatch-completing* *osi-cfg*)) :fault))
 (assert-event (equal (fn-own-take 4 (fn-served-reply-octets
@@ -165,7 +180,7 @@
                       "p" :ihave *own-transit-msgid*
                       (own-transit-octets "peer.example!x")))))
 (defconst *osi-transit-stored*
-  (fn-own-sub-stored-octets *osi-cfg* *osi-transit-sub*))
+  (fn-own-sub-stored-octets *osi-cfg* *osi-transit-sub* nil))
 (defconst *osi-transit-received* (fn-own-sub-octets *osi-transit-sub*))
 (assert-event (fn-own-transit-subp *osi-transit-sub*))
 ; Non-degenerate: the staged octets are not the received ones; they begin
@@ -194,14 +209,16 @@
 ; with the received octets (fn-own-sub-octets).  On this durable completion
 ; that comparison is false, so it answered :fault, which the host reported
 ; as `436 ... uncertain' and a recovery stop.
-(assert-event (not (equal (fn-record-payload
-                           (fn-sn-completion-record
-                            (fn-own-store *osi-transit-completing*)))
+; by specification: the flip: the completed row's payload is a handle; its
+; bytes (alpha over the journal's arena) are the staged octets, not the
+; received ones.
+(defconst *osi-transit-wire* (osi-record-of-wire 2 2 *osi-transit-sub* *osi-transit-stored*))
+(assert-event (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
+                     *osi-transit-stored*))
+(assert-event (not (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
                           *osi-transit-received*)))
 (must-fail
- (assert-event (equal (fn-record-payload
-                       (fn-sn-completion-record
-                        (fn-own-store *osi-transit-completing*)))
+ (assert-event (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
                       *osi-transit-received*)))
 
 ; Negative: the Store completes a record carrying the received octets, which
@@ -221,12 +238,14 @@
   (fn-own-run (own-with-inflight *own-taken* *osi-transit-sub*)
               (osi-drop-last
                (own-post-events
-                (fn-record-make 2 2 2 "<other@example.invalid>"
-                                *osi-transit-stored* '("fn.letters")
-                                "own-pin:<other@example.invalid>"
-                                "own-content:<other@example.invalid>"
-                                "own-release:<other@example.invalid>"
-                                2 841000000)))))
+                (fn-hrt-row-at
+                 (fn-record-make 2 2 2 "<other@example.invalid>"
+                                 *osi-transit-stored* '("fn.letters")
+                                 "own-pin:<other@example.invalid>"
+                                 "own-content:<other@example.invalid>"
+                                 "own-release:<other@example.invalid>"
+                                 2 841000000)
+                 2)))))
 (assert-event (fn-own-relation *osi-transit-other*))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-other*)))
 (assert-event (equal (car (fn-own-finish *osi-transit-other* *osi-cfg*)) :fault))
@@ -247,7 +266,10 @@
                                tail))))
 
 ; -----------------------------------------------------------------------------
-; P3: fn-own-pinned-view-survives-other-post.
+; P3: fn-own-pinned-view-survives-other-post (restated under NNT-042 on
+; 2026-09-27: the reader's PIN survives another post; its served chunk answers
+; as before unless it selects a group, when it acquires the fresh view BY
+; SPECIFICATION) and fn-own-other-post-keeps-a-non-selecting-read-step.
 
 (defun osi-oc (o) (fn-ocfg-make o *own-config* nil nil))
 
@@ -255,12 +277,27 @@
   (let ((oc1 (fn-ocfg-run oc events)))
     (fn-ocfg-with-owner oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
 
-(defun osi-p3-conclusion (oc events sub-id word id octets)
+; The chunk read answers as before (the pre-NNT-042 conclusion; now the
+; not-yet-proved chunk form for chunks framing no selection).
+(defun osi-p3-read-conclusion (oc events sub-id word id octets)
   (let ((oc2 (osi-after-post oc events sub-id word)))
     (and (equal (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc2 id octets))
                 (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets)))
          (equal (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc2 id octets))
                 (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc id octets))))))
+
+; The theorem's conclusion: the connection record and the clock survive.
+(defun osi-p3-pin-conclusion (oc events sub-id word id)
+  (let ((oc2 (osi-after-post oc events sub-id word)))
+    (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
+                (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+         (equal (fn-own-clock (fn-ocfg-owner oc2)) (fn-own-clock (fn-ocfg-owner oc))))))
+
+; The corollary's conclusion: one framed event answers as before.
+(defun osi-p3-step-conclusion (oc events sub-id word id event)
+  (let ((oc2 (osi-after-post oc events sub-id word)))
+    (equal (car (fn-ocfg-read-step oc2 id event))
+           (car (fn-ocfg-read-step oc id event)))))
 
 (defun osi-reader-p (oc id)
   (not (fn-peer-session-cfg
@@ -271,53 +308,76 @@
 (defconst *osi-post-events*
   (cons '(:take) (own-post-events (osi-sub-record 2 2 *osi-sub*))))
 (defconst *osi-group* *own-group-octets*)
+(defconst *osi-group-event* (list :command (butlast *own-group-octets* 2)))
+(defconst *osi-stat-event* (list :command (butlast *own-stat-octets* 2)))
+(defconst *osi-after* (osi-after-post *osi-q* *osi-post-events* 4 :durable))
 
 ; Witness: reader 3 pinned at version 2; connection 4's POST is taken,
 ; staged, completed and answered 240; the view the store publishes moves to
-; version 3, and reader 3's GROUP answers exactly as before.
+; version 3.  Reader 3's record, its pin included, and the clock are what
+; they were.
 (assert-event (fn-ocfg-writer-eventsp *osi-post-events*))
 (assert-event (osi-reader-p *osi-q* 3))
 (assert-event (fn-own-find-conn 3 (fn-own-conns *own-q*)))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 3 (fn-own-conns *own-q*))) 2))
-(assert-event (equal (fn-own-view-version
-                      (fn-own-view (fn-ocfg-owner (osi-after-post *osi-q* *osi-post-events*
-                                                                  4 :durable))))
-                     3))
+(assert-event (equal (fn-own-view-version (fn-own-view (fn-ocfg-owner *osi-after*))) 3))
 (assert-event (equal (fn-own-take 4 (fn-served-reply-octets
                                      (car (fn-own-outcome
                                            (fn-ocfg-owner (fn-ocfg-run *osi-q* *osi-post-events*))
                                            4 :durable))))
                      (fn-nntp-string-octets "240 ")))
-(assert-event (osi-p3-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-group*))
+(assert-event (osi-p3-pin-conclusion *osi-q* *osi-post-events* 4 :durable 3))
+(assert-event (equal (fn-own-conn-version
+                      (fn-own-find-conn 3 (fn-own-conns (fn-ocfg-owner *osi-after*))))
+                     2))
+; BY SPECIFICATION (NNT-042): reader 3's GROUP after the post acquires the
+; fresh view (version 3) and counts connection 4's article, so the GROUP
+; chunk no longer answers as before.  A STAT does: it is answered from the
+; pin (the corollary, per framed event; and the chunk form as executable
+; evidence).
+(assert-event (fn-served-advance-eventp *osi-group-event*))
+(assert-event (not (fn-served-advance-eventp *osi-stat-event*)))
+(assert-event (not (osi-p3-read-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-group*)))
 (assert-event (consp (fn-served-reply-octets
                       (fn-own-tls-result-effects
-                       (fn-ocfg-read-tls-prefix *osi-q* 3 *osi-group*)))))
+                       (fn-ocfg-read-tls-prefix *osi-after* 3 *osi-group*)))))
+(assert-event (osi-p3-step-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-stat-event*))
+(assert-event (consp (fn-served-reply-octets (car (fn-ocfg-read-step *osi-q* 3 *osi-stat-event*)))))
+(assert-event (osi-p3-read-conclusion *osi-q* *osi-post-events* 4 :durable 3 *own-stat-octets*))
+
+; Hypothesis (not (fn-served-advance-eventp event)) of the corollary: the
+; GROUP event is answered from the fresh view.
+(assert-event (not (osi-p3-step-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
+(must-fail (assert-event (osi-p3-step-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
 
 ; Hypothesis (not (equal id sub-id)).  The poster itself is re-pinned by
-; the 240, and its GROUP now counts its own article.
+; the 240: its record changes.
 (assert-event (osi-reader-p *osi-q* 4))
-(assert-event (not (osi-p3-conclusion *osi-q* *osi-post-events* 4 :durable 4 *osi-group*)))
-(must-fail (assert-event (osi-p3-conclusion *osi-q* *osi-post-events* 4 :durable 4 *osi-group*)))
+(assert-event (not (osi-p3-pin-conclusion *osi-q* *osi-post-events* 4 :durable 4)))
+(must-fail (assert-event (osi-p3-pin-conclusion *osi-q* *osi-post-events* 4 :durable 4)))
 
 ; Hypothesis (fn-ocfg-writer-eventsp events).  An (:advance 3) among the
 ; events re-pins reader 3 itself.
 (defconst *osi-advance-events* (append *osi-post-events* '((:advance 3))))
 (assert-event (not (fn-ocfg-writer-eventsp *osi-advance-events*)))
-(assert-event (not (osi-p3-conclusion *osi-q* *osi-advance-events* 4 :durable 3 *osi-group*)))
-(must-fail (assert-event (osi-p3-conclusion *osi-q* *osi-advance-events* 4 :durable 3 *osi-group*)))
+(assert-event (not (osi-p3-pin-conclusion *osi-q* *osi-advance-events* 4 :durable 3)))
+(must-fail (assert-event (osi-p3-pin-conclusion *osi-q* *osi-advance-events* 4 :durable 3)))
 
-; Hypothesis (reader connection).  A peer connection opened before the post
-; answers IHAVE from the live node: 335 before, 435 after.  The post here
+; A peer connection's record survives another post too (P3 no longer needs
+; the reader hypothesis), but its chunk read is not pin-stable: IHAVE answers
+; from the live node (fn-own-conn-live-session), 335 before and 435 after.
+; This is the reader hypothesis of the chunk read statements.  The post here
 ; is owner-tests' CLI post by connection 1.
 (defconst *osi-peered* (osi-oc *own-peered-begun*))
 (defconst *osi-peer-events* (own-post-events (own-record 0 0 "<one@example>")))
 (assert-event (fn-ocfg-writer-eventsp *osi-peer-events*))
 (assert-event (not (osi-reader-p *osi-peered* *own-peer-id*)))
 (assert-event (not (equal *own-peer-id* 1)))
-(assert-event (not (osi-p3-conclusion *osi-peered* *osi-peer-events* 1 :durable
-                                      *own-peer-id* *own-ihave-octets*)))
-(must-fail (assert-event (osi-p3-conclusion *osi-peered* *osi-peer-events* 1 :durable
-                                            *own-peer-id* *own-ihave-octets*)))
+(assert-event (osi-p3-pin-conclusion *osi-peered* *osi-peer-events* 1 :durable *own-peer-id*))
+(assert-event (not (osi-p3-read-conclusion *osi-peered* *osi-peer-events* 1 :durable
+                                           *own-peer-id* *own-ihave-octets*)))
+(must-fail (assert-event (osi-p3-read-conclusion *osi-peered* *osi-peer-events* 1 :durable
+                                                 *own-peer-id* *own-ihave-octets*)))
 
 ; -----------------------------------------------------------------------------
 ; P5: the bound, and the fault wrapper.
@@ -347,7 +407,7 @@
                                0 (fn-own-max-conns o) (fn-own-pending o)
                                (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
                                (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                               (fn-own-feeds o))
+                               (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
                   (fn-ocfg-config *osi-full*) nil nil)))
 (assert-event (not (fn-ocfg-statep *osi-wound*)))
 (assert-event (<= (fn-own-max-conns (fn-ocfg-owner *osi-wound*))

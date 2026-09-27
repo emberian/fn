@@ -1172,6 +1172,26 @@
                                fn-nntp-result-session
                                fn-nntp-session-consistentp))))
 
+; PRF-243: the served compatibility arms leave the generic retrieval's
+; session for ARTICLE/HEAD and the given session otherwise
+; (fn-rcompat-reply-session, books/nntp-reader-compat.lisp).
+(defthm fn-rcompat-reply-preserves-consistent-session
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-nntp-projectionp archive)
+                (fn-rcompat-reply session archive index env keyword args))
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-rcompat-reply session archive index env keyword args))
+            archive))
+  :hints (("Goal" :use ((:instance fn-nntp-retrieval-preserves-consistent-session
+                                   (kind (fn-rcompat-retrieval-kind keyword)))
+                        (:instance fn-rcompat-reply-session))
+           :in-theory (disable fn-rcompat-reply fn-nntp-retrieval
+                               fn-rcompat-reply-session
+                               fn-nntp-retrieval-preserves-consistent-session
+                               fn-nntp-session-consistentp
+                               fn-nntp-projectionp))))
+
 (defthm fn-nntp-archive-command-pinned-preserves-consistent-session
   (implies (and (fn-nntp-session-consistentp session archive)
                 (fn-nntp-projectionp archive)
@@ -1186,7 +1206,7 @@
                  fn-nntp-over-range-indexed
                  fn-nntp-over-range-served fn-nntp-over-current-served
                  fn-nntp-over-msgid-served fn-nntp-list-overview-fmt-served
-                 fn-nntp-xref-reply
+                 fn-nntp-xref-reply fn-rcompat-reply
                  fn-gidx-listgroup-command
                  fn-nntp-verdict-hdr-response fn-nntp-result-session
                  fn-nntp-session-consistentp))

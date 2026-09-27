@@ -9,7 +9,7 @@
   :hints (("Goal" :in-theory (enable fn-bs-inode-list-knownp))))
 
 (defthm fn-bs-related-allocation-is-fresh
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (not (member-equal (fn-bs-next-ino bs) (fn-bs-authority-inode-list bs))))
   :rule-classes nil
   :hints (("Goal"
@@ -22,7 +22,7 @@
                            (fn-bs-authority-inode-list fn-bs-inode-list-knownp)))))
 
 (defthm fn-bs-ready-relation-authority-is-quiet
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :ready))
            (and (equal (fn-bs-ops-for-dir (fn-bs-pending bs) :root) nil)
                 (equal (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions) nil)))
@@ -34,15 +34,15 @@
                                    (fn-bs-statep fn-sf-statep fn-bs-ops-for-dir)))))
 
 (defthm fn-bs-start-frontier-preserves-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-start-frontier ks)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-start-frontier ks) arena))
   :rule-classes nil
   :hints (("Goal"
            :cases ((equal (fn-sf-phase ks) :ready))
            :use (fn-bs-ready-relation-authority-is-quiet
                  (:instance fn-sf-start-frontier-preserves-state (s ks)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-start-frontier)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
@@ -51,13 +51,13 @@
 
 
 (defthm fn-bs-frontier-file-result-preserves-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-frontier-file-result ks result)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-frontier-file-result ks result) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-frontier-file-result-preserves-state (s ks)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-frontier-file-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
@@ -65,13 +65,13 @@
                              fn-bs-ops-for-dir)))))
 
 (defthm fn-bs-frontier-replace-result-preserves-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-frontier-replace-result ks result)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-frontier-replace-result ks result) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-frontier-replace-result-preserves-state (s ks)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-frontier-replace-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
@@ -79,14 +79,14 @@
                              fn-bs-ops-for-dir)))))
 
 (defthm fn-bs-frontier-dir-error-preserves-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-frontier-dir-result ks :error)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-frontier-dir-result ks :error) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-frontier-dir-result-preserves-state (s ks)
                            (result :error)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-frontier-dir-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
@@ -105,11 +105,11 @@
                   (:frontier-replace :error) (:frontier-dir :error))))
 
 (defthm fn-bs-frontier-noncommit-observation-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-noncommit-observationp event))
            (fn-bs-store-relation
             (mv-nth 1 (fn-bs-step bs ks (list :observe event) outcome groups capacity))
-            (mv-nth 2 (fn-bs-step bs ks (list :observe event) outcome groups capacity))))
+            (mv-nth 2 (fn-bs-step bs ks (list :observe event) outcome groups capacity)) arena))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-start-frontier-preserves-relation
@@ -130,17 +130,17 @@
        (equal (fn-bs-durable-frontier bs) (fn-sf-frontier-candidate ks))))
 
 (defthm fn-bs-frontier-directory-commit-observation-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :frontier-attempted)
                 (fn-bs-frontier-directory-committedp bs ks))
-           (and (fn-bs-store-relation bs (fn-sf-frontier-dir-result ks :ok))
+           (and (fn-bs-store-relation bs (fn-sf-frontier-dir-result ks :ok) arena)
                 (equal (fn-sf-phase (fn-sf-frontier-dir-result ks :ok)) :reserved)))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-frontier-dir-result-preserves-state
                            (s ks) (result :ok)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-bs-dir-quietp fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-bs-dir-quietp fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-frontier-dir-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
@@ -160,7 +160,7 @@
 ; configuration/frontier pair. This is the retained-history side of staging
 ; isolation; it does not iterate through or revalidate records on a served path.
 (defthm fn-bs-related-allocation-is-not-a-transaction-target
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (not (equal (fn-bs-next-ino bs)
                        (fn-bs-durable-entry bs :transactions name))))
   :rule-classes nil

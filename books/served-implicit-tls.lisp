@@ -65,7 +65,7 @@
    (implies (fn-auth-configp acfg)
             (fn-auth-sessionp
              (fn-auth-make-session
-              (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil)
+              (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil nil)
               acfg nil nil nil nil)))
    :hints (("Goal" :use ((:instance fn-auth-open-session-is-consistent
                                     (peer nil) (node nil) (cfg nil) (tlsp nil)))
@@ -77,7 +77,7 @@
  (defthm fn-sit-fresh-open-session-is-a-session
    (fn-auth-sessionp
     (fn-auth-make-session
-     (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil)
+     (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil nil)
      (fn-auth-open-config) nil nil nil nil))
    :hints (("Goal" :use ((:instance fn-sit-fresh-session-is-a-session
                                     (acfg (fn-auth-open-config))))
@@ -113,7 +113,7 @@
                            (fn-served-result-conn
                             (fn-served-dispatch c0 *fn-sit-starttls-event*))
                            *fn-sit-established-event*))))))
-  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch
+  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch fn-served-dispatch-core
                                      fn-served-open-group-indexed
                                      fn-served-open-indexed
                                      fn-served-pin-group-index
@@ -139,7 +139,7 @@
          (fn-auth-session-tlsp (fn-served-conn-session (fn-served-result-conn r)))
          (not (fn-auth-session-handshakingp
                (fn-served-conn-session (fn-served-result-conn r))))))
-  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch
+  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch fn-served-dispatch-core
                                      fn-served-open-group-indexed
                                      fn-served-open-indexed
                                      fn-served-pin-group-index

@@ -271,6 +271,37 @@ order, and the names it found handed straight back."
          (fnn-operator-status-of-exit-code code) "post" condition)
         code))))
 
+(defun fnn-operator-execute-moderate (result)
+  "PKT-657, PKT-575: `moderation approve|reject' and `article withdraw'.
+ACL2 frames the request (FNCT kind 21) from its normalized plan; the running
+owner decides it and answers the reasoned reply."
+  (let ((command (fnn-core 'fn-native-operator-host-result-command result)))
+    (handler-case
+        (let* ((request (fnn-core 'fn-native-operator-host-result-moderate-request
+                                  result))
+               (path (fnn-core
+                      'fn-native-operator-host-result-moderate-control-path-octets
+                      result))
+               (encoded (fnn-core 'fn-native-control-host-moderation-encode
+                                  (first request) (second request)
+                                  (third request) (fourth request))))
+          (unless (and (fnn-octet-list-p encoded) (fnn-octet-list-p path)
+                       (consp path))
+            (fnn-fault "ACL2 refused the moderation request"))
+          (multiple-value-bind (status word)
+              (fnn-control-reasoned-exchange (fnn-octets-string (fnn-octets path))
+                                             encoded (lambda () encoded))
+            (let ((class (fnn-core 'fn-native-control-host-status-class status))
+                  (code (fnn-core 'fn-native-control-host-status-exit-code status)))
+              (fnn-operator-emit-status class command
+                                        (fnn-operator-status-detail status word))
+              code)))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status
+           (fnn-operator-status-of-exit-code code) command condition)
+          code)))))
+
 (defun fnn-operator-execute-init (result)
   "Initialise the store the configuration names, through the ACL2 plan.
 
@@ -298,15 +329,28 @@ observation into the outcome and this function only carries it out."
                              result))))
               (unless (consp groups)
                 (fnn-fault "ACL2 accepted an init plan that names no group"))
-              ;; PKT-016: a bare request on a machine under 4 GiB is the small
-              ;; preset (books/heap-figure.lisp fn-heap-init-request).
-              (let* ((profile (fnn-heap-init-request
-                               (fnn-core
-                                'fn-native-operator-host-result-init-profile result)))
-                     (code (progn
-                             (unless (consp profile)
-                               (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                             (fnn-command-init root groups profile))))
+              ;; PKT-582: ACL2 decides what init writes within the budget and
+              ;; says so (books/heap-reservation.lisp fn-heap-init-decide);
+              ;; a refusal is printed by name and nothing is created.
+              (let* ((request (fnn-core
+                               'fn-native-operator-host-result-init-profile result))
+                     (decision (progn
+                                 (unless (consp request)
+                                   (fnn-fault "ACL2 accepted an init plan with no store profile"))
+                                 (fnn-heap-init-decision request)))
+                     (line (fnn-core 'fn-heap-init-report-line decision))
+                     (profile (fnn-core 'fn-heap-init-decision-request decision))
+                     (code (if (consp profile)
+                               (progn (fnn-out "~a" line)
+                                      (fnn-command-init-published
+                                       root groups profile
+                                       ;; PKT-648: the store's durability policy,
+                                       ;; 1 under a mission (fn-smid-init-policy).
+                                       (fnn-core 'fn-smid-init-policy
+                                                 (fnn-core 'fn-native-operator-host-result-config-mission
+                                                           result))))
+                             (progn (fnn-err "fn: ~a" line)
+                                    (fnn-core 'fn-heap-init-exit-code decision)))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
                 code))))
@@ -456,6 +500,37 @@ observation into the outcome and this function only carries it out."
                                     "account" condition)
           code)))))
 
+;;; PKT-597: `account hash LOGIN'.  The host reads the current key file
+;;; STORE/keys/node-secret.key through fnn-node-secret-read-entry (the checks
+;;; the owner makes at start; ACL2 parses it), ACL2 computes the
+;;; posting-account value of LOGIN under the current epoch's
+;;; `fn/posting-account/v1' key
+;;; (books/injection-info-policy.lisp fn-ipp-account-hash), and the value is
+;;; printed to stdout.  The secret is never printed; nothing is written.
+(defun fnn-operator-execute-account-hash (result)
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+        (login (fnn-core 'fn-native-operator-host-result-account-hash-login result)))
+    (handler-case
+        (let* ((store (make-fnn-store root :writable nil))
+               (path (fnn-node-secret-path store))
+               (current (or (fnn-node-secret-read-entry path "node secret")
+                            (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once"
+                                        path root))))
+          (let ((text (fnn-core 'fn-native-operator-host-account-hash-text
+                                (list current) login)))
+            (unless (stringp text)
+              (fnn-refuse "node secret ~a is not a node secret" path))
+            (write-sequence (fnn-octets (fnn-ascii-octet-list (format nil "~a~%" text)))
+                            *fnn-stdout*)
+            (finish-output *fnn-stdout*)
+            (fnn-operator-emit-status :accepted "account")
+            +fnn-exit-ok+))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "account" condition)
+          code)))))
+
 ; host/native/checkpoint.lisp installs `fnn-command-compact' here after it
 ; loads.  An image built without it (the DTN image) has no compaction.
 (defvar *fnn-compact-callback* nil)
@@ -472,6 +547,10 @@ observation into the outcome and this function only carries it out."
                       (:reclaim (funcall *fnn-reclaim-callback* root nil))
                       (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))
                       (:checkpoint (fnn-command-state-checkpoint root))
+                      (:rebind-filesystem
+                       (fnn-command-rebind-filesystem
+                        root
+                        (fnn-core 'fn-native-operator-host-result-rebind-policy result)))
                       (:export
                        (fnn-command-store-export
                         root
@@ -484,7 +563,10 @@ observation into the outcome and this function only carries it out."
                         (fnn-octets-string
                          (fnn-core 'fn-native-operator-host-result-archive-path-octets
                                    result))
-                        (fnn-core 'fn-native-operator-host-result-import-request result)))
+                        (fnn-core 'fn-native-operator-host-result-import-request result)
+                        (fnn-core 'fn-smid-init-policy
+                                  (fnn-core 'fn-native-operator-host-result-config-mission
+                                            result))))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     (string-downcase (symbol-name action)))
@@ -537,6 +619,8 @@ observation into the outcome and this function only carries it out."
                      result))
          (control-path (and (fnn-octet-list-p path-list) (consp path-list)
                             (fnn-octets path-list))))
+    ;; PKT-648: the store's mount, as this process observes it (live or not).
+    (ignore-errors (fnn-filesystem-durability-warn root))
     (loop
       (let ((code (handler-case (fnn-operator-status-once root control-path kind)
                     (error (condition)
@@ -599,6 +683,8 @@ observation into the outcome and this function only carries it out."
          (control-path (and (fnn-octet-list-p path-list) (consp path-list)
                             (fnn-octets path-list)))
          (min (fnn-core 'fn-native-operator-host-result-health-min-percent result)))
+    ;; PKT-648: the store's mount, as this process observes it (live or not).
+    (ignore-errors (fnn-filesystem-durability-warn root))
     (handler-case
         (let ((report (fnn-operator-health-report root control-path min)))
           (if (eq report :refused)
@@ -725,7 +811,10 @@ one `init' makes; nothing is opened or locked."
                          (:keys :control)
                          ;; tls reload reaches the owner as control
                          ;; request 19 (host/native/tls-reload.lisp).
-                         (:tls :control))))
+                         (:tls :control)
+                         ;; moderation approve|reject and article withdraw
+                         ;; reach the owner as control request 21.
+                         (:moderate :control))))
           (when (and (member action '(:reclaim :reclaim-dry-run))
                      (null *fnn-reclaim-callback*))
             (fnn-operator-emit-status
@@ -747,10 +836,11 @@ one `init' makes; nothing is opened or locked."
           (:init (fnn-operator-execute-init result))
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
+          (:moderate (fnn-operator-execute-moderate result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :import
-            :reclaim :reclaim-dry-run)
+            :reclaim :reclaim-dry-run :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))
@@ -759,6 +849,7 @@ one `init' makes; nothing is opened or locked."
           (:keys (fnn-keys-execute result))
           (:tls (fnn-tls-execute result))
           (:account-invite (fnn-operator-execute-account-invite result))
+          (:account-hash (fnn-operator-execute-account-hash result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)

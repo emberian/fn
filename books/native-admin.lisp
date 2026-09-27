@@ -17,6 +17,8 @@
 (include-book "peer-config")
 ; PRF-161: the exposure slots and the anonymous words `policy set' admits.
 (include-book "public-exposure-rows")
+; PRF-235, PRF-236: the transit hygiene limit slots.
+(include-book "relay-checks")
 (include-book "identity")
 (include-book "bp-eid-shape")
 ; The argv, decimal, result and config-name vocabulary, and the peer and
@@ -32,6 +34,7 @@
 (include-book "bp-route")
 ; D13: `retention set RULE [DAYS]' (books/reclaim-rule).
 (include-book "reclaim-rule")
+(include-book "injection-info-policy")
 
 ;; RFC 5536 s3.1.4 reserved names, a rule about CREATING a group (the
 ;; RFC requirement): "Groups whose first (or only) <component> is
@@ -169,6 +172,108 @@
        (fn-native-admin-decimalp (cadddr words))
        (fn-native-admin-decimal-value (coerce (cadddr words) 'list))))
 
+;; Moderated groups (P3, PRF-228, NNT-047; RFC 5537 sections 3.5 and 3.5.1,
+;; RFC 6048 section 2.1.1):
+;;
+;;   group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE]
+;;                       [--submission ADDRESS]
+;;   group moderate NAME --off
+;;
+;; One :set-group-moderation delta (code 23, books/config.lisp): NAME is
+;; moderated by the LOGINs (accounts), and an unapproved article posted to it
+;; is forwarded into QUEUE (default NAME.moderation, a live group the
+;; operator created); ADDRESS is the optional submission address.  `--off'
+;; ends the moderation.  The delta's admission (the group and the queue
+;; live, the queue not moderated, the logins' spelling) is the store core's
+;; (`fn-cfg-set-group-moderation-reason').
+(defun fn-native-admin-split-commas-aux (octets piece-rev)
+  (declare (xargs :guard t))
+  (if (consp octets)
+      (if (equal (car octets) 44)
+          (cons (reverse (true-list-fix piece-rev))
+                (fn-native-admin-split-commas-aux (cdr octets) nil))
+        (fn-native-admin-split-commas-aux (cdr octets)
+                                          (cons (car octets) piece-rev)))
+    (list (reverse (true-list-fix piece-rev)))))
+
+; The comma-separated pieces of OCTETS, in order (an empty piece included).
+(defun fn-native-admin-split-commas (octets)
+  (declare (xargs :guard t))
+  (fn-native-admin-split-commas-aux octets nil))
+
+(defun fn-native-admin-loginsp (pieces)
+  (declare (xargs :guard t))
+  (if (consp pieces)
+      (and (fn-cfg-account-loginp (fn-record-octets-string (car pieces)))
+           (fn-native-admin-loginsp (cdr pieces)))
+    (null pieces)))
+
+; The options after `group moderate NAME', as (MODS QUEUE ADDRESS) octets,
+; or :bad.  Each option at most once.
+(defun fn-native-admin-moderate-options (words argv mods queue address)
+  (declare (xargs :guard t :measure (len words)))
+  (if (consp words)
+      (if (and (consp (cdr words)) (consp argv) (consp (cdr argv)))
+          (let ((w (car words)) (v (cadr argv)))
+            (cond ((and (equal w "--moderators") (null mods))
+                   (fn-native-admin-moderate-options (cddr words) (cddr argv)
+                                                     (list v) queue address))
+                  ((and (equal w "--queue") (null queue))
+                   (fn-native-admin-moderate-options (cddr words) (cddr argv)
+                                                     mods (list v) address))
+                  ((and (equal w "--submission") (null address))
+                   (fn-native-admin-moderate-options (cddr words) (cddr argv)
+                                                     mods queue (list v)))
+                  (t :bad)))
+        :bad)
+    (list mods queue address)))
+
+(defun fn-native-admin-octets-strings (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (cons (fn-record-octets-string (car xs))
+            (fn-native-admin-octets-strings (cdr xs)))
+    nil))
+
+(defun fn-native-admin-moderate-plan (words argv)
+  (declare (xargs :guard t))
+  (let ((name (fn-native-admin-arg 2 words))
+        (name-octets (fn-native-admin-arg 2 argv)))
+    (cond ((not (fn-record-group-namep name))
+           (fn-native-admin-result :refused :group-name nil nil 0 nil nil))
+          ((and (equal (len words) 4) (equal (fn-native-admin-arg 3 words) "--off"))
+           (fn-native-admin-result :accepted nil :set-group-moderation
+                                   name-octets 0 nil nil))
+          (t
+           (let ((opts (fn-native-admin-moderate-options
+                        (nthcdr 3 (true-list-fix words))
+                        (nthcdr 3 (true-list-fix argv)) nil nil nil)))
+             (if (or (not (consp opts))
+                     (not (consp (fn-native-admin-arg 0 opts))))
+                 (fn-native-admin-result :refused :syntax nil nil nil nil nil)
+               (let* ((m (fn-native-admin-arg 0 opts))
+                      (q (fn-native-admin-arg 1 opts))
+                      (a (fn-native-admin-arg 2 opts))
+                      (mods (fn-native-admin-split-commas
+                             (true-list-fix (fn-native-admin-arg 0 m))))
+                      (queue (if (consp q)
+                                 (true-list-fix (fn-native-admin-arg 0 q))
+                               (append (true-list-fix name-octets)
+                                       '(46 109 111 100 101 114 97 116 105 111 110))))
+                      (address (if (consp a)
+                                   (true-list-fix (fn-native-admin-arg 0 a))
+                                 nil)))
+                 (cond ((not (fn-native-admin-loginsp mods))
+                        (fn-native-admin-result :refused :moderator-login
+                                                nil nil 0 nil nil))
+                       ((not (fn-record-group-namep
+                              (fn-record-octets-string queue)))
+                        (fn-native-admin-result :refused :group-name
+                                                nil nil 0 nil nil))
+                       (t (fn-native-admin-result
+                           :accepted nil :set-group-moderation name-octets 0 nil
+                           (cons queue (cons address mods))))))))))))
+
 ;; Group descriptions and the node's message (PRF-195, NNT-039; RFC 3977
 ;; section 7.6.6, RFC 6048 section 2.5):
 ;;
@@ -206,6 +311,13 @@
   (if (consp lines)
       (and (<= (len (car lines)) *fn-cfg-max-label*)
            (fn-native-admin-lines-fitp (cdr lines)))
+    t))
+
+(defun fn-native-admin-group-namesp (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (fn-record-group-namep (car words))
+           (fn-native-admin-group-namesp (cdr words)))
     t))
 
 (defun fn-native-admin-describe-plan (words argv)
@@ -256,6 +368,87 @@
       (cons (fn-record-octets-string (car lines))
             (fn-native-admin-line-pieces (cdr lines)))
     nil))
+
+;; PRF-222: `account access LOGIN|--anonymous --read R --post P'.  A
+;; pattern is admitted only when it is an RFC 3977 section 4.2 wildmat over
+;; newsgroup names (`fn-wildmat-parse', the grammar LIST ACTIVE's argument
+;; is read with) and a configuration label; the login is the account
+;; grammar of books/config.lisp.
+(defun fn-native-admin-access-patternp (word)
+  (declare (xargs :guard t))
+  (and (fn-cfg-access-patternp word)
+       (fn-wildmat-result-okp
+        (fn-wildmat-parse (fn-record-string-octets word)))
+       t))
+
+(defun fn-native-admin-access-plan (words argv)
+  (declare (xargs :guard t))
+  (if (and (equal (len words) 5)
+           (equal (fn-native-admin-arg 1 words) "--read")
+           (equal (fn-native-admin-arg 3 words) "--post"))
+      (let ((login (fn-native-admin-arg 0 words))
+            (read (fn-native-admin-arg 2 words))
+            (post (fn-native-admin-arg 4 words)))
+        (cond ((not (or (equal login "--anonymous")
+                        (fn-cfg-account-loginp login)))
+               (fn-native-admin-result :refused :access-login nil nil 0 nil nil))
+              ((not (and (fn-native-admin-access-patternp read)
+                         (fn-native-admin-access-patternp post)))
+               (fn-native-admin-result :refused :access-pattern nil nil 0 nil nil))
+              (t (fn-native-admin-result
+                  :accepted nil :account-access
+                  (if (equal login "--anonymous") nil (fn-native-admin-arg 0 argv))
+                  0 (fn-native-admin-arg 2 argv) (fn-native-admin-arg 4 argv)))))
+    (fn-native-admin-result :refused :syntax nil nil nil nil nil)))
+
+;; PRF-234 (CNS-006): `consumer bind NAME --account LOGIN' and `consumer
+;; unbind NAME'.  NAME is a local consumer id as `fn consumer register'
+;; spells it; LOGIN is the account grammar of books/config.lisp.  One
+;; :consumer-bind record (code 24), offline or live; the unbind is the
+;; record with LOGIN "" and no row.
+(defun fn-native-admin-consumer-plan (words argv)
+  (declare (xargs :guard t))
+  ;; WORDS and ARGV start at the verb: (bind NAME --account LOGIN),
+  ;; (unbind NAME), (show).
+  (cond ((and (equal (len words) 2)
+              (equal (fn-native-admin-arg 0 words) "unbind"))
+         (if (fn-cfg-consumer-namep (fn-native-admin-arg 1 words))
+             (fn-native-admin-result :accepted nil :consumer-bind
+                                     (fn-native-admin-arg 1 argv) 0 nil nil)
+           (fn-native-admin-result :refused :consumer-name nil nil 0 nil nil)))
+        ((and (equal (len words) 4)
+              (equal (fn-native-admin-arg 0 words) "bind")
+              (equal (fn-native-admin-arg 2 words) "--account"))
+         (cond ((not (fn-cfg-consumer-namep (fn-native-admin-arg 1 words)))
+                (fn-native-admin-result :refused :consumer-name nil nil 0 nil nil))
+               ((not (fn-cfg-account-loginp (fn-native-admin-arg 3 words)))
+                (fn-native-admin-result :refused :consumer-login nil nil 0 nil nil))
+               (t (fn-native-admin-result :accepted nil :consumer-bind
+                                          (fn-native-admin-arg 1 argv) 0 nil
+                                          (fn-native-admin-arg 3 argv)))))
+        ((equal words '("show"))
+         (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+        (t (fn-native-admin-result :refused :consumer nil nil 0 nil nil))))
+
+;; PKT-597: `policy set complaints-to ADDR' with ADDR an addr-spec
+;; (books/injection-info-policy.lisp).  One opaque test in the plan, so the
+;; plan's theorems do not case-split on the address grammar.
+(defun fn-native-admin-complaints-wordsp (words argv)
+  (declare (xargs :guard t))
+  (and (true-listp words) (equal (len words) 4)
+       (equal (car words) "policy")
+       (equal (cadr words) "set")
+       (equal (caddr words) *fn-ipp-complaints-slot*)
+       (consp argv) (consp (cdr argv)) (consp (cddr argv)) (consp (cdddr argv))
+       (fn-ipp-addr-specp (fn-ipp-octets (cadddr argv)))))
+
+(defthm fn-native-admin-complaints-wordsp-names-the-slot
+  (implies (fn-native-admin-complaints-wordsp words argv)
+           (and (equal (len words) 4)
+                (equal (caddr words) *fn-ipp-complaints-slot*)))
+  :rule-classes :forward-chaining)
+
+(in-theory (disable fn-native-admin-complaints-wordsp))
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
@@ -317,6 +510,14 @@
              (fn-path-identityp (cadddr argv)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
+       ; PKT-597 (books/injection-info-policy.lisp): the mailbox the node's
+       ; Injection-Info names as mail-complaints-to (RFC 5536 section
+       ; 3.2.8), a durable `:set-policy' row like path-identity, applied
+       ; live; the value must be an <addr-spec> of two dot-atoms, so it
+       ; stands in the header's quoted-string as it is.
+       ((fn-native-admin-complaints-wordsp words argv)
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
        ; The served POST posting policy (books/login-binding.lisp):
        ; `bound-logins' refuses a bound login's article unless it is signed
        ; by the login's bound principal; `open' is the default behaviour.
@@ -359,6 +560,23 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; PRF-235 / PRF-236 (books/relay-checks.lisp): `policy set
+       ; relay-date-skew SECONDS' (RFC 5537 section 3.6 step 2's margin, at
+       ; most its 86400) and `policy set refused-offer-capacity N' (the
+       ; refused-offer memory's bound), each a `:set-limit' row keyed
+       ; (SLOT, ""), staged, published and replayed like the exposure limits.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (fn-rck-limit-slotp (caddr words))
+             (fn-native-admin-decimalp (cadddr words))
+             (fn-rck-limit-valuep (caddr words)
+                                  (fn-native-admin-decimal-value
+                                   (coerce (cadddr words) 'list))))
+        (fn-native-admin-result :accepted nil :set-transit-limit (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two
@@ -389,7 +607,7 @@
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
-               (member-equal (cadr words) '("budget" "carries" "pull")))
+               (member-equal (cadr words) '("budget" "carries" "pull" "distributions")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
@@ -414,14 +632,59 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; PRF-222 (NNT-046): group access.  `account access show' is the
+       ; `account list' report, whose access lines are the rules
+       ; (books/account-list.lisp).  `account access LOGIN --read R --post P'
+       ; and `account access --anonymous --read R --post P' stage one
+       ; :account-access record (code 22), offline or live.
+       ((and (equal (len words) 3)
+             (equal (car words) "account")
+             (equal (cadr words) "access")
+             (equal (caddr words) "show"))
+        (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+       ((and (<= 3 (len words))
+             (equal (car words) "account")
+             (equal (cadr words) "access"))
+        (fn-native-admin-access-plan (cddr words) (cddr argv)))
        ((and (consp words) (equal (car words) "account"))
         (fn-native-admin-result :refused :account nil nil 0 nil nil))
+       ; PRF-234: consumer bindings (books/consumer-bound.lisp).  `consumer
+       ; show' is the `account list' report, whose consumer lines are the
+       ; bindings.
+       ((and (consp words) (equal (car words) "consumer"))
+        (fn-native-admin-consumer-plan (cdr words) (cdr argv)))
+       ; PKT-575 (CT3): the node operator's withdrawal authorization, the
+       ; :withdraw-article record (code 26): `article withdraw-record CAUSE
+       ; TARGET REASON'.  The owner's `article withdraw' and `moderation
+       ; reject' name this vector (books/moderation-verbs.lisp
+       ; `fn-mvb-withdraw-plan') before injecting CAUSE; the row alone
+       ; withdraws nothing.
+       ((and (equal (len words) 5)
+             (equal (car words) "article")
+             (equal (cadr words) "withdraw-record"))
+        (fn-native-admin-result :accepted nil :withdraw-article (caddr argv) 0
+                                (cadddr argv) (car (cddddr argv))))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
        ((and (<= 3 (len words))
              (equal (car words) "group")
              (equal (cadr words) "describe"))
         (fn-native-admin-describe-plan words argv))
+       ((and (<= 4 (len words))
+             (equal (car words) "group")
+             (equal (cadr words) "moderate"))
+        (fn-native-admin-moderate-plan words argv))
+       ; PRF-243 (RFC 6048 section 2.6): `group subscribe-default [NAME ...]'
+       ; sets the list LIST SUBSCRIPTIONS recommends, in order; no NAME
+       ; clears it.  One :set-default-subscriptions record (code 25); that
+       ; each NAME is a live group named once is the delta's admission.
+       ((and (<= 2 (len words))
+             (equal (car words) "group")
+             (equal (cadr words) "subscribe-default"))
+        (if (fn-native-admin-group-namesp (nthcdr 2 words))
+            (fn-native-admin-result :accepted nil :set-default-subscriptions
+                                    nil 0 nil (nthcdr 2 (true-list-fix argv)))
+          (fn-native-admin-result :refused :group-name nil nil 0 nil nil)))
        ((and (consp words) (equal (car words) "motd"))
         (fn-native-admin-motd-plan words argv))
        ((and (consp words) (equal (car words) "bp-boundary"))
@@ -472,8 +735,29 @@
                (if (equal name "release-after")
                    (fn-native-admin-result-capacity plan)
                  nil))))
-            ((equal kind :set-exposure)
+            ((member-equal kind '(:set-exposure :set-transit-limit))
              (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
+            ((equal kind :consumer-bind)
+             (list (fn-cfg-consumer-bind
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :account-access)
+             (list (fn-cfg-account-access
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan))
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :set-group-moderation)
+             (let ((v (true-list-fix (fn-native-admin-result-value plan))))
+               (list (fn-cfg-set-group-moderation
+                      name
+                      (fn-record-octets-string (car v))
+                      (fn-record-octets-string (cadr v))
+                      (fn-native-admin-octets-strings (cddr v))))))
+            ((equal kind :withdraw-article)
+             (list (fn-cfg-withdraw-article
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan))
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :set-group-status)
              (list (fn-cfg-set-group-status
                     name
@@ -492,6 +776,10 @@
                     name
                     (fn-native-admin-text-pieces
                      (true-list-fix (fn-native-admin-result-value plan))))))
+            ((equal kind :set-default-subscriptions)
+             (list (fn-cfg-set-default-subscriptions
+                    (fn-native-admin-line-pieces
+                     (fn-native-admin-result-value plan)))))
             ((equal kind :set-motd)
              (list (fn-cfg-set-group-description
                     "" (fn-native-admin-line-pieces
@@ -526,6 +814,69 @@
   (implies (not (equal (fn-native-admin-result-kind plan) :extend-peer))
            (equal (fn-native-admin-plan-deltas-over plan peers)
                   (fn-native-admin-plan-deltas plan))))
+
+; The sub-plans, closed (D26): none plans a group creation or retirement,
+; so the plan theorems below need not open them (merged with group-access's
+; access plan, opening all five cost 15 s of native-admin's 23 s at 2 jobs).
+(local (defthm fn-native-admin-sub-plans-neither-create-nor-retire
+  (and
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-control-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-control-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-control-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-moderate-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-moderate-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-moderate-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-describe-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-describe-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-describe-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-motd-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-motd-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-motd-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-access-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-access-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-access-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-control-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-moderate-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-describe-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-motd-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-access-plan words argv))
+                   :set-bp-boundary)))
+  :hints (("Goal" :in-theory (enable fn-native-admin-result-kind
+                                     fn-native-admin-result)))))
 
 (encapsulate ()
 (local (defthm kind-of-result
@@ -585,7 +936,12 @@
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-bp-boundary-split
                                    fn-native-admin-bp-boundary-rows
-                                   fn-native-admin-bp-boundary-plan))
+                                   fn-native-admin-bp-boundary-plan
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv)))
                  (:instance accepted-bp-boundary-plan-is-a-boundary
@@ -698,7 +1054,12 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-record-group-namep fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
-                                   fn-native-admin-words))
+                                   fn-native-admin-words
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv))))))))
 (local (defthm delta-rows-of-set-bp-boundary
@@ -1006,8 +1367,13 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-peer-extend-plan
                                    fn-native-admin-bp-boundary-plan
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
                                    fn-native-admin-decimal-value))
@@ -1034,8 +1400,13 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-peer-extend-plan
                                    fn-native-admin-bp-boundary-plan
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
                                    fn-native-admin-decimal-value

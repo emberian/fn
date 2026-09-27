@@ -398,7 +398,7 @@
                 (fn-own-pending o) (fn-own-ledger o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (defthm fn-pidx-opc-owner-prepare-is-pcar-opc-owner-prepare
   (implies (fn-pidx-view-okp (fn-own-view o))
@@ -429,29 +429,38 @@
 
 (in-theory (disable fn-pidx-opc-prepare))
 
-; The function host/owner-host.lisp fn-owner-prepare-buffer installs.
+; The function host/owner-host.lisp fn-owner-prepare-buffer installs.  The
+; budget test reads the committed count the Store's event index carries
+; (fn-sbud-count, books/store-budget.lisp), not fn-sbud-used's LEN of the
+; history (PRF-242): equal under fn-ceis-indexedp (fn-sbud-count-is-used),
+; which every owner the host reaches carries (PRF-144,
+; fn-osi-live-owner-store-is-indexed).
 (defun fn-pidx-sbud-prepare (oc record budget)
   (declare (xargs :guard (and (fn-sn-statep (fn-sbud-oc-store oc))
                               (fn-pidx-view-okp
                                (fn-own-view (fn-ocfg-owner oc))))))
-  (if (fn-sbud-admitp budget (fn-sbud-used (fn-sbud-oc-store oc)))
+  (if (fn-sbud-admitp budget (fn-sbud-count (fn-sbud-oc-store oc)))
       (fn-pidx-opc-prepare oc record)
     oc))
 
 ; KEYSTONE (2, 3).  The host's prepare is the carried prepare it replaced,
 ; for every record and budget, on every configured owner whose view the two
-; carried relations describe; so, by fn-pcar-sbud-prepare-is-sbud-prepare,
-; every theorem about fn-sbud-prepare is a theorem about the host's call.
+; carried relations describe and whose Store's event index is the index of
+; its history; so, by fn-pcar-sbud-prepare-is-sbud-prepare, every theorem
+; about fn-sbud-prepare is a theorem about the host's call.
 (defthm fn-pidx-sbud-prepare-is-pcar-sbud-prepare
   (implies (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc))
+                (fn-ceis-indexedp (fn-sbud-oc-store oc)))
            (equal (fn-pidx-sbud-prepare oc record budget)
                   (fn-pcar-sbud-prepare oc record budget)))
   :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pcar-sbud-prepare
                                    fn-pidx-view-okp fn-scar-view-indexedp)
                                   (fn-pcar-opc-prepare fn-sbud-admitp
-                                   fn-sbud-used fn-ocl-view-visiblep
-                                   fn-midx-correspondencep
-                                   fn-pcar-sbud-prepare-is-sbud-prepare)))))
+                                   fn-sbud-used fn-sbud-count fn-ocl-view-visiblep
+                                   fn-midx-correspondencep fn-ceis-indexedp
+                                   fn-sbud-oc-store
+                                   fn-pcar-sbud-prepare-is-sbud-prepare))
+           :use ((:instance fn-sbud-count-is-used (s (fn-sbud-oc-store oc)))))))
 
 (in-theory (disable fn-pidx-sbud-prepare))

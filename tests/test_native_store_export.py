@@ -73,6 +73,13 @@ class StoreExportTests(ProfileFixture):
         self.assertEqual(exported.returncode, EXIT_OK, exported.stderr.decode())
         self.assertIn("exported records=".encode(), exported.stdout)
         self.assertTrue((archive / "MANIFEST").is_file())
+        # SEC-006: an export is Store history, not a node backup: the key
+        # files never leave STORE/keys/.
+        secret = (self.store / "keys" / "node-secret.key").read_bytes()
+        for path in archive.rglob("*"):
+            self.assertNotEqual(path.name, "keys", path)
+            if path.is_file():
+                self.assertNotIn(secret[-32:], path.read_bytes(), path)
         # The MANIFEST is sha256sum's: every line names a file of the archive.
         for line in (archive / "MANIFEST").read_text(encoding="ascii").splitlines():
             digest, name = line.split("  ", 1)

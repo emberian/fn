@@ -135,13 +135,33 @@
   (append (fn-nntp-string-octets "LISTGROUP fn.letters 1-9") '(13 10)))
 (defconst *own-listgroup-old* (fn-own-read *own-c* 0 *own-listgroup-octets*))
 (defconst *own-listgroup-new* (fn-own-read *own-c* 2 *own-listgroup-octets*))
-(assert-event (not (equal (fn-served-reply-octets (car *own-listgroup-old*))
-                          (fn-served-reply-octets (car *own-listgroup-new*)))))
+; NNT-042 (catalog-slice-5, 2026-09-26): LISTGROUP advances the connection
+; to the committed view before it answers, so the reader pinned at version 0
+; now lists the article too -- BY SPECIFICATION (specs/nntp.md "The
+; reader's view is a version"; PKT-571's R1).  This assertion said `not
+; equal' while the pin was fixed for a connection's whole life.
+(assert-event (equal (fn-served-reply-octets (car *own-listgroup-old*))
+                     (fn-served-reply-octets (car *own-listgroup-new*))))
 (assert-event (equal (fn-served-reply-octets (car *own-listgroup-new*))
                      (append (fn-nntp-string-octets
                               "211 1 1 1 fn.letters list follows")
                              '(13 10 49 13 10 46 13 10))))
 (assert-event (fn-own-relation (cdr *own-listgroup-new*)))
+(assert-event (fn-own-relation (cdr *own-listgroup-old*)))
+; The advanced connection is pinned at the view: version 1, the view's
+; archive, trie and buckets (what a connection opened now would pin).
+(assert-event
+ (let ((conn (fn-own-find-conn 0 (fn-own-conns (cdr *own-listgroup-old*))))
+       (view (fn-own-view *own-c*)))
+   (and (equal (fn-own-conn-version conn) (fn-own-view-version view))
+        (equal (fn-own-conn-frontier conn) (fn-own-view-frontier view))
+        (equal (fn-own-conn-archive conn) (fn-own-view-archive view))
+        (equal (fn-own-conn-index conn) (fn-own-view-index view))
+        (equal (fn-own-conn-group-index conn) (fn-own-view-group-index view))
+        (equal (fn-own-conn-control conn) (fn-own-view-control view)))))
+; The flag the configured owner reads (fn-ocfg-with-read-owner): the pin moved.
+(assert-event (equal (fn-own-read-repinned *own-c* 0 *own-listgroup-octets*) t))
+(assert-event (equal (fn-own-read-repinned *own-c* 2 *own-listgroup-octets*) t))
 
 ; A forged tagged pin with an empty bucket has the correct Message-ID trie
 ; but loses the committed membership.  The correspondence premise in the
@@ -163,19 +183,34 @@
         (fn-nntp-string-octets "LISTGROUP")
         (list (fn-nntp-string-octets "fn.letters"))))))
 
-; The same read answers differently on the two pins: A sees an empty group,
-; C sees one article.  This is the two-readers-at-different-versions witness
-; for the served port (fn-own-read-is-served-step-on-pinned-prefix) and for
-; its per-event law (fn-own-reader-sees-pinned-prefix-replay).
+; GROUP on the two connections.  Before NNT-042 the reader pinned at version
+; 0 answered `211 0' here (the two-readers-at-different-versions witness);
+; GROUP now advances it first, so both answer the committed view.  The
+; different-versions witness is STAT below (*own-stat-a*): a command that
+; moves no pin still answers the pinned prefix.
 (defconst *own-read-a* (fn-own-read *own-c* 0 *own-group-octets*))
 (defconst *own-read-c* (fn-own-read *own-c* 2 *own-group-octets*))
-(assert-event (not (equal (car *own-read-a*) (car *own-read-c*))))
+(assert-event (equal (car *own-read-a*) (car *own-read-c*)))
 (assert-event (equal (fn-served-reply-octets (car *own-read-c*))
                      (append (fn-nntp-string-octets "211 1 1 1 fn.letters") (list 13 10))))
-(assert-event (equal (fn-own-take 5 (fn-served-reply-octets (car *own-read-a*)))
-                     (fn-nntp-string-octets "211 0")))
 (assert-event (not (fn-served-closingp (car *own-read-a*))))
 (assert-event (fn-own-relation (cdr *own-read-a*)))
+(assert-event (equal (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns (cdr *own-read-a*)))) 1))
+; C3 within a command and between non-advancing commands: STAT <msgid> on the
+; reader still pinned at version 0 answers 430 (the article is not in its
+; view) and moves no pin; on the reader at version 1 it answers 223.
+(defconst *own-stat-octets*
+  (append (fn-nntp-string-octets "STAT <one@example>") '(13 10)))
+(defconst *own-stat-a* (fn-own-read *own-c* 0 *own-stat-octets*))
+(defconst *own-stat-c* (fn-own-read *own-c* 2 *own-stat-octets*))
+(assert-event (not (equal (car *own-stat-a*) (car *own-stat-c*))))
+(assert-event (equal (fn-own-take 3 (fn-served-reply-octets (car *own-stat-a*)))
+                     (fn-nntp-string-octets "430")))
+(assert-event (equal (fn-own-take 3 (fn-served-reply-octets (car *own-stat-c*)))
+                     (fn-nntp-string-octets "223")))
+(assert-event (equal (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns (cdr *own-stat-a*)))) 0))
+(assert-event (equal (fn-own-read-repinned *own-c* 0 *own-stat-octets*) nil))
+(assert-event (fn-own-relation (cdr *own-stat-a*)))
 ; The served port keeps the wire state: a read cut inside the command line
 ; frames nothing, the rest of the line completes it (fn-served-run-is-the-
 ; concatenated-step, books/served.lisp).
@@ -359,45 +394,74 @@
 
 (defconst *own-reply-a* (car (fn-own-read-step *own-c* 0 *own-group-command*)))
 (defconst *own-reply-c* (car (fn-own-read-step *own-c* 2 *own-group-command*)))
-(assert-event (not (equal *own-reply-a* *own-reply-c*)))
+; NNT-042: the per-event law advances at GROUP too (see *own-read-a*).
+(assert-event (equal *own-reply-a* *own-reply-c*))
 (assert-event (equal *own-reply-c*
                      (list (fn-nntp-reply-effect
                             (append (fn-nntp-string-octets "211 1 1 1 fn.letters") (list 13 10))))))
 (assert-event (equal (car *own-read-c*) *own-reply-c*))
 
-; K1 (served) and K1 (per event) hold on the witness in their stated forms.
+; K1 (served) and K1 (per event) hold on the witness in their stated forms:
+; the served step over the connection pinned at the REPLAYED prefix, with the
+; owner's committed view as the live pin GROUP advances to (NNT-042).  A
+; served connection without the live pin (fn-served-make-conn) still answers
+; the pinned prefix: the last assertion of the three.
 (assert-event
  (let* ((conn (fn-own-find-conn 0 (fn-own-conns *own-c*)))
-        (s (fn-own-store *own-c*)))
+        (s (fn-own-store *own-c*))
+        (archive (fn-node-acceptance
+                  (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                     (fn-own-take (fn-own-conn-version conn)
+                                                  (fn-sf-records (fn-sn-files s)))
+                                     (fn-own-conn-frontier conn)))))
    (equal (car *own-read-a*)
           (fn-served-result-effects
            (fn-served-step
-            (fn-served-make-conn
-             (fn-own-conn-wire conn) (fn-own-conn-session conn)
-             (fn-node-acceptance
-              (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
-                                 (fn-own-take (fn-own-conn-version conn)
-                                              (fn-sf-records (fn-sn-files s)))
-                                 (fn-own-conn-frontier conn)))
+            (fn-served-make-conn-live
+             (fn-own-conn-wire conn) (fn-own-conn-session conn) archive
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
-             (fn-own-clock *own-c*))
+             (fn-own-clock *own-c*) nil
+             (fn-midx-build (fn-state-articles archive)) nil nil
+             (fn-served-pinned-make (fn-own-conn-version conn) (fn-own-conn-frontier conn) nil)
+             (fn-own-view-live (fn-own-view *own-c*)))
             *own-group-octets*)))))
 (assert-event
  (let* ((conn (fn-own-find-conn 0 (fn-own-conns *own-c*)))
-        (s (fn-own-store *own-c*)))
+        (s (fn-own-store *own-c*))
+        (archive (fn-node-acceptance
+                  (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                     (fn-own-take (fn-own-conn-version conn)
+                                                  (fn-sf-records (fn-sn-files s)))
+                                     (fn-own-conn-frontier conn)))))
    (equal *own-reply-a*
           (fn-served-result-effects
            (fn-served-dispatch
-            (fn-served-make-conn
-             (fn-own-conn-wire conn) (fn-own-conn-session conn)
-             (fn-node-acceptance
-              (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
-                                 (fn-own-take (fn-own-conn-version conn)
-                                              (fn-sf-records (fn-sn-files s)))
-                                 (fn-own-conn-frontier conn)))
+            (fn-served-make-conn-live
+             (fn-own-conn-wire conn) (fn-own-conn-session conn) archive
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
-             (fn-own-clock *own-c*))
+             (fn-own-clock *own-c*) nil
+             (fn-midx-build (fn-state-articles archive)) nil nil
+             (fn-served-pinned-make (fn-own-conn-version conn) (fn-own-conn-frontier conn) nil)
+             (fn-own-view-live (fn-own-view *own-c*)))
             *own-group-command*)))))
+(assert-event
+ (let* ((conn (fn-own-find-conn 0 (fn-own-conns *own-c*)))
+        (s (fn-own-store *own-c*)))
+   (equal (fn-own-take 5
+           (fn-served-reply-octets
+            (fn-served-result-effects
+             (fn-served-step
+              (fn-served-make-conn
+               (fn-own-conn-wire conn) (fn-own-conn-session conn)
+               (fn-node-acceptance
+                (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                   (fn-own-take (fn-own-conn-version conn)
+                                                (fn-sf-records (fn-sn-files s)))
+                                   (fn-own-conn-frontier conn)))
+               (fn-own-conn-config conn) (fn-own-conn-observation conn)
+               (fn-own-clock *own-c*))
+              *own-group-octets*))))
+          (fn-nntp-string-octets "211 0"))))
 
 ; Reader A advances and now sees the newest version.
 (defconst *own-advanced* (fn-own-step *own-c* '(:advance 0)))
@@ -611,7 +675,7 @@
                (list :fn-clock-observation 'x 1600000000000 5000 t)
                (fn-own-facts *own-clocked*) (fn-own-config *own-clocked*)
                (fn-own-queue *own-clocked*) (fn-own-inflight *own-clocked*)
-               (fn-own-feeds *own-clocked*)))
+               (fn-own-feeds *own-clocked*) (fn-own-node-secret *own-clocked*) (fn-own-refused *own-clocked*)))
 (assert-event (not (fn-own-relation *own-clock-garbage*)))
 (assert-event (equal (fn-own-observe-outcome *own-clock-garbage* *own-obs*) :refused))
 (assert-event
@@ -852,7 +916,7 @@
                                    (fn-own-sub-make *fn-own-control-id* 0 2
                                                     (fn-own-sub-decision
                                                      (fn-own-inflight *own-p-done*)))
-                                   (fn-own-feeds *own-p-done*))
+                                   (fn-own-feeds *own-p-done*) (fn-own-node-secret *own-p-done*) (fn-own-refused *own-p-done*))
                       :duplicate)
                      :uncertain))
 ; Teeth: one violating value per hypothesis, the others holding.
@@ -873,7 +937,7 @@
   `(fn-own-make (fn-own-store ,o) (fn-own-view ,o) ,conns (fn-own-next-id ,o)
                 (fn-own-max-conns ,o) (fn-own-pending ,o) (fn-own-ledger ,o)
                 (fn-own-clock ,o) (fn-own-facts ,o) (fn-own-config ,o)
-                (fn-own-queue ,o) ,inflight (fn-own-feeds ,o)))
+                (fn-own-queue ,o) ,inflight (fn-own-feeds ,o) (fn-own-node-secret ,o) nil))
 (assert-event (equal (car (fn-own-outcome *own-p-done* 4 :refused))
                      (own-w2-rhs *own-p-done* 4 :refused)))
 ; mark below the ledger: *own-taken* has consumed nothing, so :refused refuses.
@@ -1104,7 +1168,7 @@
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-               (fn-own-config o) (fn-own-queue o) sub (fn-own-feeds o)))
+               (fn-own-config o) (fn-own-queue o) sub (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 (defun own-fed-local-on-connection ()
   (let ((sub (fn-own-inflight *own-control-fed-done*)))
     (own-with-inflight
@@ -1242,11 +1306,28 @@
                         (fn-own-feeds *own-control-fed-taken*))
        *own-control-msgid*)))
 
-; R, pinned before the post, still sees two articles; a reader opened after
-; the post sees three; R's pinned prefix is unchanged.
+; R, pinned before the post, is still at version 2; a reader opened after
+; the post sees three.  NNT-042 (catalog-slice-5, 2026-09-26): R's GROUP
+; acquires the committed view and answers three, and R is pinned at version 3
+; afterwards; a command that is not a refresh boundary (STAT) still answers
+; R's pinned prefix (430 for the third article) and moves nothing.  Before
+; NNT-042 this GROUP answered `211 2 1 2' and R kept its pin for life.
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 3 (fn-own-conns *own-after-post*))) 2))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *own-after-post* 3 *own-group-octets*)))
-                     (append (fn-nntp-string-octets "211 2 1 2 fn.letters") '(13 10))))
+                     (append (fn-nntp-string-octets "211 3 1 3 fn.letters") '(13 10))))
+(assert-event (equal (fn-own-conn-version
+                      (fn-own-find-conn 3 (fn-own-conns (cdr (fn-own-read *own-after-post* 3 *own-group-octets*)))))
+                     3))
+(assert-event (equal (fn-own-read-repinned *own-after-post* 3 *own-group-octets*) t))
+(defconst *own-stat-three-octets*
+  (append (fn-nntp-string-octets "STAT <three@example>") '(13 10)))
+(assert-event (equal (fn-own-take 3 (fn-served-reply-octets
+                                    (car (fn-own-read *own-after-post* 3 *own-stat-three-octets*))))
+                     (fn-nntp-string-octets "430")))
+(assert-event (equal (fn-own-conn-version
+                      (fn-own-find-conn 3 (fn-own-conns (cdr (fn-own-read *own-after-post* 3 *own-stat-three-octets*)))))
+                     2))
+(assert-event (fn-own-relation (cdr (fn-own-read *own-after-post* 3 *own-group-octets*))))
 (defconst *own-late* (fn-own-run *own-after-post* '((:close 0) (:open))))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 5 (fn-own-conns *own-late*))) 3))
 (assert-event
@@ -1425,7 +1506,7 @@
     (fn-own-make (fn-own-store *own-after*) (fn-own-view *own-after*)
                  (list (fn-own-conn-make 0 0 0 (fn-served-conn-wire sconn)
                                          (fn-served-conn-session sconn) archive nil nil))
-                 1 4 nil nil nil nil nil nil nil nil)))
+                 1 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-after*))))
 (assert-event (not (fn-own-relation *own-bogus*)))
 
 ; K1 (served) without (fn-own-relation o): the reply is not the served step
@@ -1511,7 +1592,7 @@
 (defconst *own-bogus-pin*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*)
                (list (fn-own-conn-make 0 7 0 nil nil nil nil nil))
-               1 4 nil nil nil nil nil nil nil nil))
+               1 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-0*)))
 (assert-event
  (not (equal (fn-own-take 7 (fn-sf-records (fn-sn-files (fn-own-store
                                                          (fn-own-run *own-bogus-pin* *own-trace*)))))
@@ -1530,7 +1611,7 @@
  (with-guard-checking :none
   (let ((o (fn-own-make (fn-own-store *own-0*) (fn-own-view-make 3 0 nil)
                         (list (fn-own-conn-make 0 "seven" 0 nil nil nil nil nil))
-                        1 4 nil nil nil nil nil nil nil nil)))
+                        1 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-0*))))
     (not (<= (fn-own-reclaim-floor o)
              (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns o))))))))
 
@@ -1543,7 +1624,7 @@
                      (fn-own-conn-make 2 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 3 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 4 2 2 nil nil nil nil nil))
-               5 4 nil nil nil nil nil nil nil nil))
+               5 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-after*)))
 (assert-event (not (<= (len (fn-own-conns (fn-own-run *own-over* nil)))
                        (fn-own-max-conns *own-over*))))
 (assert-event (not (fn-own-conns-boundedp (fn-own-conns (fn-own-run *own-over* nil))
@@ -1552,7 +1633,7 @@
 ; K5 without (fn-own-relation o): a ledger entry with no record.
 (defconst *own-forged*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil
-               (list (cons 0 0)) nil nil nil nil nil nil))
+               (list (cons 0 0)) nil nil nil nil nil nil nil (fn-own-refused *own-0*)))
 (assert-event
  (not (fn-sf-record-has-pairp (cons 0 0)
                               (fn-sf-records (fn-sn-files (fn-own-store
@@ -1569,7 +1650,7 @@
 (assert-event (not (fn-own-relation (fn-own-run *own-bogus* nil))))
 (assert-event
  (with-guard-checking :none
-  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil nil)
+  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil nil nil nil)
                                                   nil))))))
 
 ; Root without open-okp: a rejected image (malformed frontier) has kind
@@ -1601,7 +1682,7 @@
 ; stamped nil; without (member-equal fact facts): a fact the log never held.
 (defconst *own-unstamped*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil nil nil
-               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil nil))
+               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil nil nil (fn-own-refused *own-0*)))
 (assert-event (not (fn-own-relation *own-unstamped*)))
 (assert-event (not (fn-clock-observationp
                     (fn-own-group-fact-stamp (car (fn-own-facts *own-unstamped*))))))
@@ -1616,7 +1697,7 @@
   (fn-own-make (fn-own-store *own-p1*) (fn-own-view *own-p1*) (fn-own-conns *own-p1*)
                5 4 4 (list (cons 9 9)) (fn-own-clock *own-p1*) nil *own-config* nil
                (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)))
-               nil))
+               nil nil (fn-own-refused *own-p1*)))
 (assert-event (not (fn-own-relation *own-forged-post*)))
 (assert-event
  (let ((conn (fn-own-find-conn 4 (fn-own-conns *own-forged-post*))))
@@ -1959,8 +2040,13 @@
                                (fn-record-string-octets
                                 (fn-cfg-peer-path-identity rec))))
          (not (equal (fn-own-sub-origin sub) name))
+         (fn-own-feed-distribution-admitsp
+          (fn-own-feed-dists-of name tbl)
+          (fn-own-feed-distributions-of octets))
          (not (consp (fn-feed-find (fn-own-sub-msgid sub)
                                    (fn-feed-queue (fn-own-feed-find name tbl)))))
+         (not (fn-mod-names-a-queuep (fn-own-sub-feed-groups sub)
+                                     (fn-inj-config-closed (fn-own-config o))))
          t)))
 
 ; Witness A (the Newsgroups arm; the two-machine session's case).  A signed
@@ -2069,3 +2155,227 @@
 (assert-event (null (fn-own-inflight (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
 (assert-event (null (fn-own-submission-targets
                      (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
+
+; -----------------------------------------------------------------------------
+; PKT-658 (PRF-228): a submission naming a moderation queue group is offered to
+; no peer (books/owner-feed-subject.lisp fn-own-submission-targets-of-a-queue-by-definition,
+; fn-own-feed-durable-never-enqueues-a-queue).  *own-cancel-queued* is
+; *own-cancel-a* under a posting configuration whose status list names
+; fn.letters as the queue of a moderated group (the entry the owner installs,
+; books/owner-agent.lisp fn-oag-moderation-entries).
+(defun own-with-queue (o queue)
+  (let ((c (fn-own-config o)))
+    (fn-own-configure
+     o (fn-inj-make-config-full
+        (fn-inj-config-allow c) (fn-inj-config-agent c) (fn-inj-config-groups c)
+        (fn-inj-config-max-octets c) (fn-inj-config-listing c)
+        (list (list :moderated (fn-nntp-string-octets "fn.mod")
+                    (fn-nntp-string-octets queue)
+                    (list (fn-nntp-string-octets "alice"))))))))
+(defconst *own-cancel-queued* (own-with-queue *own-cancel-a* "fn.letters"))
+; Positive witness: the hypothesis holds and there is no target, where the
+; same submission without the queue entry has the target "out".
+(assert-event (fn-mod-names-a-queuep
+               (fn-own-sub-feed-groups (fn-own-inflight *own-cancel-queued*))
+               (fn-inj-config-closed (fn-own-config *own-cancel-queued*))))
+(assert-event (equal (fn-own-submission-targets *own-cancel-queued*) nil))
+(assert-event (equal (fn-own-feed-durable *own-cancel-queued*
+                                          (fn-own-inflight *own-cancel-queued*))
+                     (fn-own-feeds *own-cancel-queued*)))
+; Hypothesis removal: *own-cancel-a* names no queue, and both conclusions fail.
+(assert-event (not (fn-mod-names-a-queuep
+                    (fn-own-sub-feed-groups (fn-own-inflight *own-cancel-a*))
+                    (fn-inj-config-closed (fn-own-config *own-cancel-a*)))))
+(must-fail (assert-event (equal (fn-own-submission-targets *own-cancel-a*) nil)))
+(must-fail (assert-event (equal (fn-own-feed-durable *own-cancel-a*
+                                                     (fn-own-inflight *own-cancel-a*))
+                                (fn-own-feeds *own-cancel-a*))))
+; The PKT-400 keystone's new literal, removed: every other literal of its
+; antecedent holds for "out" on *own-cancel-queued* (the same octets, table
+; and Path as *own-cancel-a*), the queue literal fails, and so does the
+; conclusion.
+(assert-event (equal (fn-own-inflight *own-cancel-queued*) (fn-own-inflight *own-cancel-a*)))
+(assert-event (equal (fn-own-feeds *own-cancel-queued*) (fn-own-feeds *own-cancel-a*)))
+(must-fail (assert-event (own-pkt400-antecedent *own-cancel-queued* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))
+; A queue the submission does not name leaves the target.
+(assert-event (equal (fn-own-submission-targets (own-with-queue *own-cancel-a* "fn.other"))
+                     '("out")))
+; PRF-237 (PKT-675): per-peer Distribution filtering, RFC 5536 section 3.2.4
+; and RFC 5537 section 3.6 paragraph 2, over the function the host calls
+; (fn-own-submission-targets: the intent at host/owner-host.lisp
+; fn-owner-submission-intent and the durable enqueue).
+
+; The peer "out" of *own-out-cfg* with the row `peer distributions out fn'
+; writes (books/native-admin-peer.lisp), and the same peer without it.
+(defconst *own-dist-row*
+  (fn-cfg-row-make "out" *fn-pcb-distributions-slot* "fn" 0))
+(defconst *own-dist-cfg*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy
+                                          "path-identity" "own.example")
+                                         (fn-cfg-set-peer
+                                          "out"
+                                          (append (fn-cfg-peer-rows *own-out-peer-record*)
+                                                  (list *own-dist-row*)))))
+                           *fn-cfg-default-stamp*))))
+(assert-event (fn-cfgp *own-dist-cfg*))
+; The typed record is unchanged by the extension row.
+(assert-event (equal (fn-cfg-peer-find "out" (fn-cfg-peers (fn-cfg-value *own-dist-cfg*)))
+                     *own-out-peer-record*))
+(defun own-dist-article (dist)
+  (append (fn-nntp-string-octets "From: cli@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: distribution") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "Message-ID: <cancel@example.invalid>") '(13 10)
+          (if dist
+              (append (fn-nntp-string-octets (string-append "Distribution:" dist))
+                      '(13 10))
+            nil)
+          '(13 10)
+          (fn-nntp-string-octets "A distributed article.") '(13 10)))
+(defun own-dist-taken (cfg dist)
+  (own-local-taken cfg (list (fn-nntp-string-octets "fn.letters"))
+                   (own-dist-article dist)))
+
+; The article's own Distribution, read once from the parse.
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " fn"))
+                     (list (fn-nntp-string-octets "fn"))))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " US , Fn_x+1"))
+                     (list (fn-nntp-string-octets "us") (fn-nntp-string-octets "fn_x+1"))))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article nil)) :absent))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " fn,,us")) :malformed))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " -fn")) :malformed))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " fn us")) :malformed))
+; The decision's cases (fn-own-feed-distribution-admitsp-unfolds).
+(assert-event (fn-own-feed-distribution-admitsp nil :malformed))
+(assert-event (fn-own-feed-distribution-admitsp "fn" :absent))
+(assert-event (not (fn-own-feed-distribution-admitsp "fn" :malformed)))
+(assert-event (fn-own-feed-distribution-admitsp "FN" (list (fn-nntp-string-octets "fn"))))
+(assert-event (fn-own-feed-distribution-admitsp "*,!local" (list (fn-nntp-string-octets "world"))))
+(assert-event (not (fn-own-feed-distribution-admitsp "*,!local" (list (fn-nntp-string-octets "local")))))
+
+; The table the owner builds from the configuration carries the filter.
+(defconst *own-dist-fn* (own-dist-taken *own-dist-cfg* " fn"))
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-fn*)) "fn"))
+(assert-event (fn-own-feed-tablep (fn-own-feeds *own-dist-fn*)))
+
+; KEYSTONE fn-own-submission-targets-respect-the-distribution and
+; fn-own-submission-targets-keep-an-admitted-peer, positive witness: every
+; literal of the antecedent and the conclusion.
+(defun own-dist-antecedent (o name)
+  (let* ((sub (fn-own-inflight o)) (tbl (fn-own-feeds o)))
+    (and sub
+         (member-equal name (fn-own-feed-targets
+                             tbl (fn-own-sub-origin sub) (fn-own-sub-feed-groups sub)
+                             (fn-own-feed-path-of (fn-own-sub-octets sub))))
+         (fn-own-feed-distribution-admitsp
+          (fn-own-feed-dists-of name tbl)
+          (fn-own-feed-distributions-of (fn-own-sub-octets sub)))
+         (not (consp (fn-feed-find (fn-own-sub-msgid sub)
+                                   (fn-feed-queue (fn-own-feed-find name tbl)))))
+         t)))
+; With PKT-658's literal (moderated-groups, merged in batch AR): the
+; submission names no moderation queue group.
+(defun own-dist-antecedent-q (o name)
+  (and (own-dist-antecedent o name)
+       (not (fn-mod-names-a-queuep
+             (fn-own-sub-feed-groups (fn-own-inflight o))
+             (fn-inj-config-closed (fn-own-config o))))))
+(assert-event (own-dist-antecedent-q *own-dist-fn* "out"))
+(assert-event (equal (fn-own-submission-targets *own-dist-fn*) '("out")))
+; Two distributions, one of them fn: still fed.
+(defconst *own-dist-two* (own-dist-taken *own-dist-cfg* " us,fn"))
+(assert-event (own-dist-antecedent-q *own-dist-two* "out"))
+(assert-event (equal (fn-own-submission-targets *own-dist-two*) '("out")))
+; No Distribution: "world", fed.
+(defconst *own-dist-none* (own-dist-taken *own-dist-cfg* nil))
+(assert-event (equal (fn-own-submission-targets *own-dist-none*) '("out")))
+
+; Hypothesis removal for keep-an-admitted-peer: the filter literal.  An
+; article whose Distribution the peer's filter does not name: every other
+; literal holds, the filter literal fails, and the conclusion fails; this is
+; also the reachable witness that the filter removes a peer the scope
+; decision names.
+(defconst *own-dist-world* (own-dist-taken *own-dist-cfg* " world"))
+(assert-event (member-equal "out" (fn-own-feed-targets
+                                   (fn-own-feeds *own-dist-world*) nil
+                                   (fn-own-sub-feed-groups (fn-own-inflight *own-dist-world*))
+                                   (fn-own-feed-path-of (own-sub-octets-of *own-dist-world*)))))
+(assert-event (not (consp (fn-feed-find (fn-own-sub-msgid (fn-own-inflight *own-dist-world*))
+                                        (fn-feed-queue (fn-own-feed-find "out" (fn-own-feeds *own-dist-world*)))))))
+(must-fail (assert-event (fn-own-feed-distribution-admitsp
+                          (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-world*))
+                          (fn-own-feed-distributions-of (own-sub-octets-of *own-dist-world*)))))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-world*))))
+; A malformed Distribution matches no filter.
+(defconst *own-dist-bad* (own-dist-taken *own-dist-cfg* " fn,,us"))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-bad*))))
+; The same article without the row: no filter, fed (the filter is the row's).
+(defconst *own-dist-world-unfiltered* (own-dist-taken *own-out-cfg* " world"))
+(assert-event (null (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-world-unfiltered*))))
+(assert-event (equal (fn-own-submission-targets *own-dist-world-unfiltered*) '("out")))
+; The queue literal: once "out" holds the Message-ID the conclusion fails
+; though the filter admits it.
+(defconst *own-dist-held*
+  (fn-own-with-feeds *own-dist-fn* (fn-own-feed-durable *own-dist-fn*
+                                                       (fn-own-inflight *own-dist-fn*))))
+(assert-event (fn-own-feed-distribution-admitsp
+               (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-held*))
+               (fn-own-feed-distributions-of (own-sub-octets-of *own-dist-held*))))
+(must-fail (assert-event (own-dist-antecedent *own-dist-held* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-held*))))
+; The scope literal: "q" is no peer of the table.
+(must-fail (assert-event (own-dist-antecedent *own-dist-fn* "q")))
+(assert-event (not (member-equal "q" (fn-own-submission-targets *own-dist-fn*))))
+; The in-flight literal: nothing in flight, no target.
+(assert-event (null (fn-own-submission-targets
+                     (fn-own-feeds-reconfigure *own-after-post* *own-dist-cfg*))))
+
+; The PKT-400 keystone's distribution literal: a control article whose
+; Distribution the filter does not name.  Every other literal is the one
+; witness A checks; the omitted one fails and so does the conclusion.
+(defconst *own-dist-cancel*
+  (own-local-taken *own-dist-cfg* *own-cancel-filed*
+                   (append (fn-nntp-string-octets "Distribution: world") '(13 10)
+                           (own-article-octets nil "fn.letters" t))))
+(assert-event (equal (car (fn-own-feed-control-of (own-sub-octets-of *own-dist-cancel*)))
+                     :control))
+(assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
+                                             (own-sub-octets-of *own-dist-cancel*))))
+(must-fail (assert-event (own-pkt400-antecedent *own-dist-cancel* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-cancel*))))
+
+; fn-own-feed-dists-of-reconfigure: a peer the reconfiguration binds carries
+; its rows' filter; without the binding hypothesis the conclusion fails (a
+; peer whose rows name a filter but that has no outbound half has no entry).
+(defconst *own-dist-peers* (fn-cfg-peers (fn-cfg-value *own-dist-cfg*)))
+(assert-event (fn-own-feed-boundp "out" (fn-own-feed-reconfigure nil *own-dist-peers*)))
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feed-reconfigure nil *own-dist-peers*))
+                     (fn-own-feed-dists-of-rows "out" *own-dist-peers*)))
+(defconst *own-dist-inbound-peers*
+  (list (fn-cfg-row-make "in" "path-identity" "in.example" 0)
+        (fn-cfg-row-make "in" *fn-pcb-distributions-slot* "fn" 0)))
+(assert-event (equal (fn-own-feed-dists-of-rows "in" *own-dist-inbound-peers*) "fn"))
+(must-fail (assert-event (fn-own-feed-boundp "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))))
+(must-fail (assert-event (equal (fn-own-feed-dists-of "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))
+                                (fn-own-feed-dists-of-rows "in" *own-dist-inbound-peers*))))
+; A second `peer distributions' request replaces the first (single-valued).
+(defconst *own-dist-row-2* (fn-cfg-row-make "out" *fn-pcb-distributions-slot* "us" 0))
+(assert-event (equal (fn-own-feed-dists-of-rows
+                      "out" (fn-pcb-extend-rows (fn-cfg-rows-with-key *own-dist-peers* "out")
+                                                (list *own-dist-row-2*)))
+                     "us"))
+; A put and a restart keep the filter.
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feed-restart-all (fn-own-feeds *own-dist-fn*)))
+                     "fn"))
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-held*)) "fn"))
+; Hypothesis removal for keep-an-admitted-peer: the queue literal
+; (PKT-658).  *own-cancel-queued*: every other literal holds for "out", the
+; queue literal fails, and so does the conclusion.
+(assert-event (own-dist-antecedent *own-cancel-queued* "out"))
+(must-fail (assert-event (own-dist-antecedent-q *own-cancel-queued* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))

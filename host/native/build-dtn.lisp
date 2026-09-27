@@ -90,6 +90,7 @@
 ;; The fair base job offer, the named attempt result and the status-report
 ;; effect join (PRF-120): fnn-bps-foundation-step calls fn-bpnj-step.
 (include-book "books/bp-node-job-offer")
+(include-book "books/bp-node-job-cursor")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
@@ -127,8 +128,14 @@
 (include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan.
+;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; publication (staged, validated, no-replace rename, parent fenced) and
+;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
+(include-book "books/store-import-publication")
+;; `operator init` publishes the empty store by the same program (PKT-647):
+;; fnn-command-init-published asks fn-bs-init-pub-admission.
+(include-book "books/store-init-publication")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
@@ -152,6 +159,10 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
+;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
+;; tries and the one-dispatch history recognizer).
+(include-book "books/replay-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
@@ -175,6 +186,8 @@
 ; the DTN images could not `store init' (native-subsets-6c0626c5, failure 2).
 ; Every host file build.lisp loads and this one omits is listed, with its
 ; reason, in tools/build_lists_check.py, which `make check' runs.
+; The pack chain's walk, coverage and observation (PRF-240).
+(include-book "books/checkpoint-pack-chain-once")
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
@@ -209,6 +222,7 @@
 ; which the operator loaded below calls.  After every `ld': no host wrapper
 ; above uses it, and it would otherwise serve their books transitively.
 (include-book "books/heap-figure")
+(include-book "books/heap-reservation")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -228,6 +242,10 @@
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
+        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; into the image for `fn --version'; a missing or malformed file
+        ; stops the build.
+        (fnn-select-release-version)
         (load "host/native/tls.lisp")
         (fnn-tls-initialize)
         (load "host/native/signatures.lisp")
@@ -248,6 +266,8 @@
         ; The BP node's Store owner and its configuration (path identity,
         ; enrolled BP boundaries) through the one public operator entry.
         (load "host/native/owner.lisp")
+        ; Its connections on a fixed set of I/O loops (PKT-605).
+        (load "host/native/mux.lisp")
         (load "host/native/operator.lisp")
         ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
         ; line `status' and `health' print; after operator.lisp, whose plan it reads.
@@ -282,6 +302,17 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
+; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD
+; (tools/build_native_host.sh sets it: `stripped' for the production release,
+; `full' for the developer image and the production reference image, gpt-6's
+; wave-5 review s.4) selects it.  Stripped: what execution reads, at its
+; current value, and nothing the prover, the undo stack or the history
+; commands read, with the build-derived dependency set written beside the
+; image (IMAGE.world-deps).  Full: the certified session's world as loaded.
+; After the last event, before the save.
+(load "host/native/strip-world.lisp")
+(fnn-save-world-flavor (sb-ext:posix-getenv "FN_NATIVE_WORLD")
+                       (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host-dtn"))
 (save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host-dtn")
            "fn native host (DTN only, no NNTP reader)"
            :return-from-lp '(fn-native-entry state)

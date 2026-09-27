@@ -192,7 +192,8 @@ class NativeFriendsFeedTests(unittest.TestCase):
             if command is self.friend and FRIEND_FN:
                 self.assertEqual(version.returncode, EXIT_OK, text(version))
             if version.returncode == EXIT_OK:
-                self.assertRegex(version.stdout.decode(), r"^fn [0-9a-f]{40}\n$")
+                self.assertRegex(version.stdout.decode(),
+                                 r"^fn 6\.7\.(0|[1-9][0-9]*) \([0-9a-f]{12}\)\n$")
             else:
                 self.assertEqual(version.returncode, EXIT_REFUSED, text(version))
                 self.assertIn("records no source revision", text(version))

@@ -211,7 +211,7 @@
 (assert-event
  (and (equal (car *bpnmt-n03-publication*) :persist-delivery)
       (equal (fn-bpnf-answer-effects *bpnmt-n03-durable*)
-             '((:delivery-answer :durable)))
+             '((:delivery-answer :durable :request-accepted)))
       (equal (fn-bpnf-find-held
               *bpnmt-n03-old-key*
               (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-durable*)))
