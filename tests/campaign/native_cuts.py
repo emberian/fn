@@ -902,6 +902,38 @@ def verify_log_cut_map() -> None:
         cut_step_index(cut)
 
 
+# The log's segment programs (lane log-recovery; books/store-log-segments.lisp):
+# the rotation at a checkpoint's capture and the drop after its install.
+SEGMENT_BOOK = "store-log-segments.lisp"
+SEGMENT_PROGRAM_HOSTS = {
+    "fn-lgs-rotate-program": "fnn-log-rotate",
+    "fn-lgs-drop-program": "fnn-log-drop",
+}
+SEGMENT_STEP_HOST = {"create": "(fnn-open path", "fsync-file": "(fnn-fsync-file ",
+                     "fsync-dir": "(fnn-fsync-dir ", "unlink": "(fnn-unlink "}
+
+
+def verify_log_segment_cut_map() -> None:
+    """Each segment program's hosting function performs its steps in the
+    program's order (the syscall's call, then `(fnn-log-at :NAME)' for each
+    cut), and every `fnn-log-at' in it is one of the program's cuts."""
+    source = (ROOT / "host/native/io.lisp").read_text()
+    for program, host in SEGMENT_PROGRAM_HOSTS.items():
+        body = host_function(source, host)
+        at = 0
+        for step in model_steps(program, SEGMENT_BOOK):
+            needle = ("(fnn-log-at :{})".format(step.args[0]) if step.kind == "cut"
+                      else SEGMENT_STEP_HOST[step.kind])
+            found = body.find(needle, at)
+            if found < 0:
+                raise AssertionError("{}: {} {} missing or out of order".format(
+                    host, step.kind, step.args))
+            at = found + len(needle)
+        cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
+        if cuts != set(model_cut_names(program, SEGMENT_BOOK)):
+            raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
+
+
 def verify_post_log_cut_map() -> None:
     """The served log route's cuts: the declared names (+fnn-post-log-model-
     cuts+) are POST_LOG_CUTS's; the log programs' own cuts are its last two,
@@ -992,11 +1024,14 @@ LOG_ROUTE_ARMS = {
     "fnn-mark-committed": (None, ()),
     "fnn-recover": ("fnn-recover-log", (("fn-lg-open-program", LOG_ROUTE_BOOK),)),
 }
+# fnn-log-scan-segments (lane log-recovery): the multi-segment open reads the
+# closed segments only (no step) and recovers the active one through
+# fnn-log-recover; a rotation it completes is P-ROTATE's, not the open's.
 LOG_ROUTE_EXPAND = ("fnn-log-commit-open-batch", "fnn-log-append", "fnn-log-fence",
-                    "fnn-log-recover")
+                    "fnn-log-recover", "fnn-log-scan-segments")
 _LOG_ROUTE_TOKEN = re.compile(
     r"\((fnn-log-pwrite|fnn-log-fdatasync|fnn-log-commit-open-batch|fnn-log-append|"
-    r"fnn-log-fence|fnn-log-recover)[\s)]"
+    r"fnn-log-fence|fnn-log-recover|fnn-log-scan-segments)[\s)]"
     r"|\(fnn-at store :([a-z0-9-]+)\)|\(fnn-log-at :([a-z0-9-]+)\)"
     r"|\(funcall barrier\)|RECOVER-BARRIER-")
 

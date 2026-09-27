@@ -1,8 +1,9 @@
 """The native operator fixture for the store profile (kept from the removed
 tests/test_native_profile_upgrade.py when D34 removed the offline upgrade):
 one scratch node with a configured store, listener and control socket, the
-two preset frames `init --profile development|scale` writes (format 8, the
-one format), and the operator's `status` profile line.  No test lives here.
+two preset frames `init --profile development|scale` writes (format 9, the
+record log: the one format init writes), and the operator's `status` profile
+line.  No test lives here.
 """
 import fcntl
 import hashlib
@@ -19,13 +20,15 @@ IMAGE = verbs.IMAGE
 DEVELOPER = verbs.DEVELOPER
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs.EXIT_UNCERTAIN
 
-# The two preset frames `init --profile development|scale` writes in format 8
+# The two preset frames `init --profile development|scale` writes in format 9
+# (lane log-recovery: re-measured on 878a8dbde's images, hbox native-s1b; the
+# format-8 frames were 61802dbb... and 0d1757e3...)
 # (planning/evidence/bounds-join-2026-09-25.md: the presets carry the
 # codec-ceiling G and R = the article record; since header-limits-profile,
 # PRF-230, fields 15 to 17 the header limits: re-measured on batch AS's
 # image, `operator init --profile development|scale`).
-DEVELOPMENT_FRAME = "61802dbbbc943e84306c226d806bc7d9f458e487609c127f1b4a2fc402372cdf"
-SCALE_FRAME = "0d1757e3aa361602041f4869d683a286911426c91c00881ea75a1cd24fb5c83a"
+DEVELOPMENT_FRAME = "226969fe1866a247f4a7316df3b9c2e0d24feb7ee55f6b9029ddb3f881d05697"
+SCALE_FRAME = "d11edbf6c9688800495e24a6035ce4231203f3443053ac239220bf3c600f7bb8"
 BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 

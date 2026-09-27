@@ -39,6 +39,7 @@ import tempfile
 import unittest
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get(
@@ -69,7 +70,7 @@ class Conn:
         self.sock = socket.create_connection(
             ("127.0.0.1", port), timeout=30,
             source_address=(source, 0) if source else None)
-        self.stream = self.sock.makefile("rwb", buffering=0)
+        self.stream = whole_stream(self.sock)
         self.greeting = self.line()
 
     def line(self):

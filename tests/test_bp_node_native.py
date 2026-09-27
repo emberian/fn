@@ -19,6 +19,7 @@ import unittest
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
 from tests.test_bp_contact_relay_native import ByteRelay
 from tools import run_bp_ingress, run_store
+from tools.wire_stream import whole_stream
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is exit 6 (connection-local: the job stays
@@ -1101,7 +1102,7 @@ class NativeBpNodeTests(unittest.TestCase):
         try:
             wait_for_announcement(process, b"LISTENING ", timeout=60)
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 replies = []
                 for group in groups:

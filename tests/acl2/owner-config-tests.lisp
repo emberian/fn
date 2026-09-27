@@ -92,7 +92,15 @@
 ; A read that keeps a connection keeps its pin.  The owner may also remove
 ; an invalid connection while reading; the configured wrapper must remove
 ; exactly that ID's pin in the same logical transition.
-(defconst *ocfg-t-idle-read* (cdr (fn-ocfg-read *ocfg-t-3* 0 nil)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read 3)
+(bpr-lift fn-ocfg-run 2)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
+(defconst *ocfg-t-idle-read* (cdr (in-arena-fn-ocfg-read *sr-arena* *ocfg-t-3* 0 nil)))
 (assert-event (fn-own-find-conn 0
                             (fn-own-conns (fn-ocfg-owner *ocfg-t-idle-read*))))
 (assert-event (equal (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-idle-read*))
@@ -128,7 +136,7 @@
  (equal (fn-ocfg-pins (fn-ocfg-advance *ocfg-t-invalid-reader* 0))
         (fn-ocfg-pins *ocfg-t-invalid-reader*)))
 (defconst *ocfg-t-closed-by-read*
-  (cdr (fn-ocfg-read *ocfg-t-invalid-reader* 0 nil)))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocfg-t-invalid-reader* 0 nil)))
 (assert-event
  (not (fn-own-find-conn
        0 (fn-own-conns (fn-ocfg-owner *ocfg-t-closed-by-read*)))))
@@ -247,7 +255,7 @@
 (assert-event (with-guard-checking :none
                (not (fn-ocfg-repins-forp 0 *ocfg-t-quiet*))))
 (defconst *ocfg-t-quiet-run*
-  (with-guard-checking :none (fn-ocfg-run *ocfg-t-3* *ocfg-t-quiet*)))
+  (with-guard-checking :none (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* *ocfg-t-quiet*)))
 (assert-event (equal (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-quiet-run*))
                      (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-3*))))
 (assert-event (equal (fn-ocfg-conn-generation *ocfg-t-quiet-run* 0) 1))
@@ -262,11 +270,11 @@
                (not (fn-ocfg-repins-forp 2 (list '(:open))))))
 (assert-event (with-guard-checking :none
                (not (equal (fn-ocfg-pin-find
-                            2 (fn-ocfg-pins (fn-ocfg-run *ocfg-t-3* (list '(:open)))))
+                            2 (fn-ocfg-pins (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* (list '(:open)))))
                            (fn-ocfg-pin-find 2 (fn-ocfg-pins *ocfg-t-3*))))))
 (assert-event (with-guard-checking :none
                (equal (cdr (fn-ocfg-pin-find
-                            2 (fn-ocfg-pins (fn-ocfg-run *ocfg-t-3* (list '(:open))))))
+                            2 (fn-ocfg-pins (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* (list '(:open))))))
                       *ocfg-t-g2*)))
 
 ; Hypothesis 2, (not (fn-ocfg-repins-forp id events)): a list that DOES
@@ -275,11 +283,11 @@
 (assert-event (with-guard-checking :none (fn-ocfg-repins-forp 0 *ocfg-t-loud*)))
 (assert-event (with-guard-checking :none
                (not (equal (fn-ocfg-pin-find
-                            0 (fn-ocfg-pins (fn-ocfg-run *ocfg-t-3* *ocfg-t-loud*)))
+                            0 (fn-ocfg-pins (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* *ocfg-t-loud*)))
                            (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-3*))))))
 (assert-event (with-guard-checking :none
                (equal (fn-ocfg-conn-generation
-                       (fn-ocfg-run *ocfg-t-3* *ocfg-t-loud*) 0)
+                       (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* *ocfg-t-loud*) 0)
                       2)))
 
 ; -----------------------------------------------------------------------------
@@ -339,21 +347,21 @@
                               4)
                 *ocfg-t-g1* nil nil))
 (defconst *ocfg-l-clocked*
-  (fn-ocfg-step *ocfg-l-0*
-                (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
+  (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-0* (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
 (defconst *ocfg-l-reader* (cdr (fn-ocfg-open *ocfg-l-clocked* nil)))
 (assert-event (fn-ocfg-statep *ocfg-l-reader*))
 (assert-event (equal (fn-ocfg-conn-generation *ocfg-l-reader* 0) 1))
 
-(defun ocfg-l-live-admin (oc deltas)
+(defun ocfg-l-live-admin (oc deltas fn-arena)
   ; The host's three events around one private connection, returning the
   ; state at the instant before durability and the published state.
-  (declare (xargs :mode :program))
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((cid (fn-own-next-id (fn-ocfg-owner oc)))
          (opened (cdr (fn-ocfg-open oc nil)))
-         (staged (fn-ocfg-step (fn-ocfg-step opened (list :reconfigure cid deltas))
-                               (list :close cid))))
-    (list opened staged (fn-ocfg-step staged (list :complete)))))
+         (staged (fn-ocfg-step (fn-ocfg-step opened (list :reconfigure cid deltas) fn-arena)
+                               (list :close cid) fn-arena)))
+    (list opened staged (fn-ocfg-step staged (list :complete) fn-arena))))
+(bpr-lift ocfg-l-live-admin 2)
 
 (defconst *ocfg-l-deltas1*
   (list (fn-cfg-create-group "fn.dtn" *fn-cfg-default-policy-id*)))
@@ -365,7 +373,7 @@
 (assert-event (fn-cfg-peerp *ocfg-l-peer*))
 (defconst *ocfg-l-deltas2* (list (fn-cfg-set-peer-delta *ocfg-l-peer*)))
 
-(defconst *ocfg-l-run1* (ocfg-l-live-admin *ocfg-l-reader* *ocfg-l-deltas1*))
+(defconst *ocfg-l-run1* (in-arena-ocfg-l-live-admin *sr-arena* *ocfg-l-reader* *ocfg-l-deltas1*))
 (defconst *ocfg-l-open1* (first *ocfg-l-run1*))
 (defconst *ocfg-l-staged1* (second *ocfg-l-run1*))
 (defconst *ocfg-l-pub1* (third *ocfg-l-run1*))
@@ -375,7 +383,7 @@
 (assert-event (equal (fn-cnode-served-of (fn-ocfg-config *ocfg-l-pub1*))
                      '("fn.letters" "fn.test" "fn.dtn")))
 
-(defconst *ocfg-l-run2* (ocfg-l-live-admin *ocfg-l-pub1* *ocfg-l-deltas2*))
+(defconst *ocfg-l-run2* (in-arena-ocfg-l-live-admin *sr-arena* *ocfg-l-pub1* *ocfg-l-deltas2*))
 (defconst *ocfg-l-open2* (first *ocfg-l-run2*))
 (defconst *ocfg-l-staged2* (second *ocfg-l-run2*))
 (defconst *ocfg-l-pub2* (third *ocfg-l-run2*))
@@ -402,11 +410,11 @@
 (assert-event (not (equal (fn-ocfg-config *ocfg-l-pub2*) (fn-ocfg-conn-config *ocfg-l-pub2* 0))))
 ; The theorem's own instance over the two events that carry the change.
 (defconst *ocfg-l-cid2* (fn-own-next-id (fn-ocfg-owner *ocfg-l-pub1*)))
-(defconst *ocfg-l-s2* (fn-ocfg-step *ocfg-l-open2* (list :reconfigure *ocfg-l-cid2* *ocfg-l-deltas2*)))
+(defconst *ocfg-l-s2* (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-open2* (list :reconfigure *ocfg-l-cid2* *ocfg-l-deltas2*)))
 (assert-event (fn-ocfg-staged *ocfg-l-s2*))
-(assert-event (equal (fn-ocfg-owner (fn-ocfg-step *ocfg-l-s2* '(:complete)))
+(assert-event (equal (fn-ocfg-owner (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-s2* '(:complete)))
                      (fn-ocfg-owner *ocfg-l-open2*)))
-(assert-event (equal (fn-ocfg-pins (fn-ocfg-step *ocfg-l-s2* '(:complete)))
+(assert-event (equal (fn-ocfg-pins (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-s2* '(:complete)))
                      (fn-ocfg-pins *ocfg-l-open2*)))
 (assert-event (equal (fn-ocfg-config *ocfg-l-s2*) (fn-ocfg-config *ocfg-l-open2*)))
 ; published is the WHOLE record: every intermediate value of the delta list
@@ -414,8 +422,8 @@
 (defconst *ocfg-l-two*
   (list (fn-cfg-create-group "fn.two" *fn-cfg-default-policy-id*)
         (fn-cfg-set-capacity 2000000)))
-(defconst *ocfg-l-s3* (fn-ocfg-step *ocfg-l-open2* (list :reconfigure *ocfg-l-cid2* *ocfg-l-two*)))
-(defconst *ocfg-l-p3* (fn-ocfg-config (fn-ocfg-step *ocfg-l-s3* '(:complete))))
+(defconst *ocfg-l-s3* (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-open2* (list :reconfigure *ocfg-l-cid2* *ocfg-l-two*)))
+(defconst *ocfg-l-p3* (fn-ocfg-config (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-s3* '(:complete))))
 (assert-event (equal (fn-cnode-served-of *ocfg-l-p3*)
                      '("fn.letters" "fn.test" "fn.dtn" "fn.two")))
 (assert-event (equal (fn-cfg-capacity (fn-cfg-value *ocfg-l-p3*)) 2000000))
@@ -441,10 +449,7 @@
   (fn-hrt-row-at (ocfg-l-record-wire sequence txid msgid) sequence))
 (defconst *ocfg-l-completing*
   (fn-ocfg-make
-   (fn-own-run (fn-own-step (fn-own-step (fn-own-start (fn-sn-initial *ocfg-t-groups* 10) 4)
-                                         '(:open))
-                            '(:begin 0))
-               (list '(:store (:io :start-frontier nil))
+   (in-arena-fn-own-run *sr-arena* (in-arena-fn-own-step *sr-arena* (in-arena-fn-own-step *sr-arena* (fn-own-start (fn-sn-initial *ocfg-t-groups* 10) 4) '(:open)) '(:begin 0)) (list '(:store (:io :start-frontier nil))
                      '(:store (:io :frontier-file :ok))
                      '(:store (:io :frontier-replace :ok))
                      '(:store (:io :frontier-directory :ok))
@@ -455,9 +460,9 @@
    *ocfg-t-g1* (list (cons 0 *ocfg-t-g1*)) nil))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner *ocfg-l-completing*))))
                      :completing))
-(defconst *ocfg-l-refused* (fn-ocfg-step *ocfg-l-completing* (list :reconfigure 0 nil)))
+(defconst *ocfg-l-refused* (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-completing* (list :reconfigure 0 nil)))
 (assert-event (not (fn-ocfg-staged *ocfg-l-refused*)))
-(assert-event (not (equal (fn-ocfg-owner (fn-ocfg-step *ocfg-l-refused* '(:complete)))
+(assert-event (not (equal (fn-ocfg-owner (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-refused* '(:complete)))
                           (fn-ocfg-owner *ocfg-l-completing*))))
 
 ; ---- fn-ocfg-crash-at-any-instant-recovers-the-live-generation: witness ----
@@ -497,8 +502,7 @@
   (fn-ocfg-make (fn-ocfg-owner *ocfg-l-reader*) *ocfg-t-g1*
                 (fn-ocfg-pins *ocfg-l-reader*) *ocfg-l-stale-record*))
 (defconst *ocfg-l-stale-staged*
-  (fn-ocfg-step (fn-ocfg-step *ocfg-l-stale* (list :reconfigure 0 *ocfg-l-deltas2*))
-                (list :close 0)))
+  (in-arena-fn-ocfg-step *sr-arena* (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-stale* (list :reconfigure 0 *ocfg-l-deltas2*)) (list :close 0)))
 (assert-event (equal (fn-ocfg-staged *ocfg-l-stale-staged*) *ocfg-l-stale-record*))
 (assert-event (not (equal (fn-replay-result-kind
                            (fn-cnode-config-replay
@@ -603,7 +607,7 @@
   (append (fn-nntp-string-octets "AUTHINFO USER reader") '(13 10)
           (fn-nntp-string-octets "AUTHINFO PASS correct-horse") '(13 10)))
 (defmacro ocfg-r-bound ()
-  '(cdr (fn-ocfg-read *ocfg-r-1* 0 *ocfg-r-login*)))
+  '(cdr (in-arena-fn-ocfg-read *sr-arena* *ocfg-r-1* 0 *ocfg-r-login*)))
 (assert-event (equal (fn-auth-session-peer (ocfg-r-session (ocfg-r-bound) 0))
                      "principal-peer"))
 (assert-event (equal (fn-auth-session-subject (ocfg-r-session (ocfg-r-bound) 0))

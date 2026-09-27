@@ -30,35 +30,24 @@
 
 ; All four actual dispatch arms agree with the original response and return
 ; a nonempty article/cursor answer.  They take the index on the executed path.
+(include-book "arena-lift")
+;; The arena: handle 0 = *fn-pidx-body*.
+(defconst *sr-arena* (list *fn-pidx-body*))
+(bpr-lift fn-nntp-step 4)
+(bpr-lift fn-nntp-step-pinned 6)
 (assert-event
- (and (equal (fn-nntp-step-pinned
-              *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil
-              *fn-pidx-env* (list :command (fn-pidx-line "ARTICLE")))
-             (fn-nntp-step *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env*
-                           (list :command (fn-pidx-line "ARTICLE"))))
-      (equal (fn-nntp-step-pinned
-              *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil
-              *fn-pidx-env* (list :command (fn-pidx-line "HEAD")))
-             (fn-nntp-step *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env*
-                           (list :command (fn-pidx-line "HEAD"))))
-      (equal (fn-nntp-step-pinned
-              *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil
-              *fn-pidx-env* (list :command (fn-pidx-line "BODY")))
-             (fn-nntp-step *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env*
-                           (list :command (fn-pidx-line "BODY"))))
-      (equal (fn-nntp-step-pinned
-              *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil
-              *fn-pidx-env* (list :command (fn-pidx-line "STAT")))
-             (fn-nntp-step *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env*
-                           (list :command (fn-pidx-line "STAT"))))))
+ (and (equal (in-arena-fn-nntp-step-pinned *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil *fn-pidx-env* (list :command (fn-pidx-line "ARTICLE")))
+             (in-arena-fn-nntp-step *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env* (list :command (fn-pidx-line "ARTICLE"))))
+      (equal (in-arena-fn-nntp-step-pinned *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil *fn-pidx-env* (list :command (fn-pidx-line "HEAD")))
+             (in-arena-fn-nntp-step *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env* (list :command (fn-pidx-line "HEAD"))))
+      (equal (in-arena-fn-nntp-step-pinned *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil *fn-pidx-env* (list :command (fn-pidx-line "BODY")))
+             (in-arena-fn-nntp-step *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env* (list :command (fn-pidx-line "BODY"))))
+      (equal (in-arena-fn-nntp-step-pinned *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-index* nil *fn-pidx-env* (list :command (fn-pidx-line "STAT")))
+             (in-arena-fn-nntp-step *sr-arena* *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env* (list :command (fn-pidx-line "STAT"))))))
 
 ; The correspondence premise is load-bearing: a stale pin gives a 430 where
 ; the accepted archive gives a 223 success.
 (must-fail
  (defthm fn-pidx-false-stale-index-refines-accepted-stat
-   (equal (fn-nntp-step-pinned
-           *fn-pidx-session* *fn-pidx-archive* nil nil *fn-pidx-env*
-           (list :command (fn-pidx-line "STAT")))
-          (fn-nntp-step
-           *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env*
-           (list :command (fn-pidx-line "STAT"))))))
+   (equal (fn-nntp-step-pinned *fn-pidx-session* *fn-pidx-archive* nil nil *fn-pidx-env* (list :command (fn-pidx-line "STAT")) fn-arena)
+          (fn-nntp-step *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env* (list :command (fn-pidx-line "STAT")) fn-arena))))

@@ -34,7 +34,16 @@
   (fn-make-article "<xrt-b@example.invalid>" 1
                    '("fn.three") (list (cons "fn.three" 9))
                    t 841000000))
-(assert-event (equal (car (fn-nov-overview *xrt-a-wire*)) :ok))
+(include-book "arena-lift")
+;; The arena: handle 0 = A's bytes, 1 = B's bytes.
+(defconst *sr-arena*
+  (list (fn-xrt-payload "<xrt-a@example.invalid>" "A")
+        (fn-xrt-payload "<xrt-b@example.invalid>" "B")))
+(bpr-lift fn-nntp-archive-command 5)
+(bpr-lift fn-nntp-archive-command-pinned 7)
+(bpr-lift fn-nntp-over-range-served 6)
+(bpr-lift fn-nov-overview 1)
+(assert-event (equal (car (in-arena-fn-nov-overview *sr-arena* *xrt-a-wire*)) :ok))
 (defconst *xrt-articles* (list *xrt-a* *xrt-b*))
 (defconst *xrt-state*
   (fn-make-state *xrt-groups*
@@ -62,7 +71,7 @@
                       "Xref: news.example.org fn.one:2 fn.two:70")))
 
 (defconst *xrt-a-line*
-  (append (fn-nov-line 70 (fn-nov-overview *xrt-a-wire*))
+  (append (fn-nov-line 70 (in-arena-fn-nov-overview *sr-arena* *xrt-a-wire*))
           (cons 9 (fn-nntp-string-octets
                    "Xref: news.example.org fn.one:2 fn.two:70"))))
 
@@ -70,38 +79,25 @@
 ; by Message-ID (number 0), through the pinned dispatcher with a server.
 (defconst *xrt-224* "224 overview information follows")
 (assert-event
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env*
-         (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
         (fn-nntp-multi *xrt-session* *xrt-224* (list *xrt-a-line*))))
 (assert-event
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env*
-         (fn-nntp-string-octets "XOVER") nil)
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env* (fn-nntp-string-octets "XOVER") nil)
         (fn-nntp-multi *xrt-session* *xrt-224* (list *xrt-a-line*))))
 (assert-event
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env*
-         (fn-nntp-string-octets "OVER")
-         (list (fn-nntp-string-octets "<xrt-a@example.invalid>")))
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "<xrt-a@example.invalid>")))
         (fn-nntp-multi
          *xrt-session* *xrt-224*
-         (list (append (fn-nov-line 0 (fn-nov-overview *xrt-a-wire*))
+         (list (append (fn-nov-line 0 (in-arena-fn-nov-overview *sr-arena* *xrt-a-wire*))
                        (cons 9 (fn-nntp-string-octets
                                 "Xref: news.example.org fn.one:2 fn.two:70")))))))
 ; XOVER has no message-id form (RFC 2980 section 2.8): still 501.
 (assert-event
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env*
-         (fn-nntp-string-octets "XOVER")
-         (list (fn-nntp-string-octets "<xrt-a@example.invalid>")))
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env* (fn-nntp-string-octets "XOVER") (list (fn-nntp-string-octets "<xrt-a@example.invalid>")))
         (fn-nntp-single *xrt-session* "501 syntax error")))
 ; LIST OVERVIEW.FMT names Xref:full with a server, not without.
 (assert-event
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env*
-         (fn-nntp-string-octets "LIST")
-         (list (fn-nntp-string-octets "OVERVIEW.FMT")))
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env* (fn-nntp-string-octets "LIST") (list (fn-nntp-string-octets "OVERVIEW.FMT")))
         (fn-nntp-multi-octets
          *xrt-session*
          (fn-nntp-string-octets "215 order of fields in overview database")
@@ -111,16 +107,11 @@
 ; A blind environment answers the eight-field lines and the seven-line
 ; format exactly as before (the without-a-server theorems).
 (assert-event
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind*
-         (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
         (fn-nntp-multi *xrt-session* *xrt-224*
-                       (list (fn-nov-line 70 (fn-nov-overview *xrt-a-wire*))))))
+                       (list (fn-nov-line 70 (in-arena-fn-nov-overview *sr-arena* *xrt-a-wire*))))))
 (assert-event
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind*
-         (fn-nntp-string-octets "LIST")
-         (list (fn-nntp-string-octets "OVERVIEW.FMT")))
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind* (fn-nntp-string-octets "LIST") (list (fn-nntp-string-octets "OVERVIEW.FMT")))
         (fn-nntp-list-overview-fmt *xrt-session*)))
 
 ; Reachable witness of fn-xref-pairs-exact, both directions.
@@ -160,7 +151,7 @@
 ; server carrying LF would split the line).
 (assert-event
  (not (fn-nov-clean-linep
-       (fn-nov-served-line 1 (fn-nov-overview *xrt-a-wire*) '(97 10 98) *xrt-a-wire*))))
+       (fn-nov-served-line 1 (in-arena-fn-nov-overview *sr-arena* *xrt-a-wire*) '(97 10 98) *xrt-a-wire*))))
 (must-fail
  (defthm fn-xrt-served-line-clean-without-server-word
    (implies (fn-nov-overviewp over)
@@ -173,26 +164,14 @@
                  (fn-gidx-pinp index)
                  (consp args) (null (cdr args))
                  (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
-            (equal (fn-nntp-archive-command-pinned
-                    session archive index verdicts env keyword args)
-                   (fn-nntp-over-range-served
-                    session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
-                    (car args) nil (fn-nntp-xref-server env))))))
+            (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena)
+                   (fn-nntp-over-range-served session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index) (car args) nil (fn-nntp-xref-server env) fn-arena)))))
 (assert-event ; the blind-env witness: the unserved answer differs
- (not (equal (fn-nntp-archive-command-pinned
-              *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env*
-              (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
-             (fn-nntp-archive-command-pinned
-              *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind*
-              (fn-nntp-string-octets "OVER")
-              (list (fn-nntp-string-octets "1-100"))))))
+ (not (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
+             (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100"))))))
 (assert-event ; without a pin the served range arm is not taken
- (equal (fn-nntp-archive-command-pinned
-         *xrt-session* *xrt-state* nil nil *xrt-env*
-         (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
-        (fn-nntp-archive-command
-         *xrt-session* *xrt-state* *xrt-env*
-         (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))))
+ (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* nil nil *xrt-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
+        (in-arena-fn-nntp-archive-command *sr-arena* *xrt-session* *xrt-state* *xrt-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))))
 
 ; fn-oag-listing-server-is-the-path-identity: its hypothesis.  Unset, the
 ; server is the .invalid agent, not the (empty) identity.

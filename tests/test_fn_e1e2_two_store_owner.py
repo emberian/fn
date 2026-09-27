@@ -12,6 +12,7 @@ import unittest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from tests.test_native_protected_peering import NativeProtectedPeeringTests, IMAGE, free_port
+from tools.wire_stream import whole_stream
 
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 HANDOFF_TEXT = os.environ.get("FN_E1E2_HANDOFF")
@@ -83,13 +84,13 @@ class NativeTwoStoreMiniHandoff(NativeProtectedPeeringTests):
 
     def verified_header(self, node, message_id):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as raw:
-            with raw.makefile("rwb", buffering=0) as stream:
+            with whole_stream(raw) as stream:
                 self.assertTrue(stream.readline().startswith((b"200 ", b"201 ")))
                 stream.write(b"STARTTLS\r\n")
                 self.assertTrue(stream.readline().startswith(b"382 "))
             context = ssl.create_default_context(cafile=str(node["certificate"]))
             with context.wrap_socket(raw, server_hostname="localhost") as tls:
-                with tls.makefile("rwb", buffering=0) as stream:
+                with whole_stream(tls) as stream:
                     stream.write(b"AUTHINFO USER " + node["login"].encode() + b"\r\n")
                     self.assertTrue(stream.readline().startswith(b"381 "))
                     stream.write(b"AUTHINFO PASS " + node["password"].encode() + b"\r\n")

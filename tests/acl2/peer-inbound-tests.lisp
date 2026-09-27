@@ -225,13 +225,17 @@
 ; -----------------------------------------------------------------------------
 ; Transcript: IHAVE accepted (RFC 3977 section 6.3.2.3, first example)
 
-(defconst *pt-r1* (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-peer-step 6)
+(defconst *pt-r1* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
 (assert-event (equal (fn-post-result-effects *pt-r1*)
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>") (fn-nntp-begin-article-effect))))
 (assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-r1*)))
 (assert-event (equal (fn-peer-session-transfer (fn-post-result-session *pt-r1*)) (list :ihave *pt-id1*)))
 (assert-event (null (fn-post-result-submission *pt-r1*)))
-(defconst *pt-r2* (fn-peer-step (fn-post-result-session *pt-r1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-a1-lines*)))
+(defconst *pt-r2* (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-r1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-a1-lines*)))
 (assert-event (null (fn-post-result-effects *pt-r2*)))
 (assert-event (equal (fn-post-result-submission *pt-r2*) (fn-peer-make-submission "innA" :ihave *pt-id1* *pt-a1*)))
 (assert-event (fn-peer-submissionp (fn-post-result-submission *pt-r2*)))
@@ -348,8 +352,8 @@
 ; Unparsable octets are :proto-article, not :loop: the reasons separate.
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* (pt-o "garbage") nil "ob" "s") (fn-peer-decision :refuse :proto-article)))
 ; The IHAVE transcript of a loop: 335, the article, 437 with the reason.
-(defconst *pt-l1* (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>")))
-(defconst *pt-l2* (fn-peer-step (fn-post-result-session *pt-l1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-loop-lines*)))
+(defconst *pt-l1* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>")))
+(defconst *pt-l2* (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-l1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-loop-lines*)))
 (defconst *pt-lt* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s" 0)))
 (assert-event (equal (fn-post-result-effects (fn-peer-transit-outcome (fn-post-result-session *pt-l2*) (fn-post-result-submission *pt-l2*) (nth 1 *pt-lt*) nil))
                      (list (pt-reply "437 transfer rejected; path loop"))))
@@ -359,9 +363,9 @@
 
 (defconst *pt-ps1* (fn-peer-open-session (fn-node-acceptance *pt-node1*) "innA" *pt-node1* *pt-cfg*))
 (assert-event (equal (fn-peer-decide-offer *pt-node1* *pt-cfg* "innA" *pt-ps1* *pt-id1* nil 0) (fn-peer-decision :have :history)))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps1* (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps1* (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "435 duplicate"))))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps1* (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps1* (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "438 " *pt-id1*))))
 (assert-event (equal (fn-peer-decide-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* nil "ob-a1" "subject-a1") (fn-peer-decision :have :history)))
 (assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob-a1" "subject-a1" 1))) *pt-node1*))
@@ -384,8 +388,7 @@
 ; 6fb30ca (planning/evidence/v0-matrix-2026-09-21.md).
 
 (defconst *pt-ps0-stale*
-  (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                (pt-cmd "IHAVE <a1@example.invalid>")))
+  (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
 (assert-event (equal (fn-post-result-effects *pt-ps0-stale*)
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
@@ -403,16 +406,13 @@
 
 ; The reply, and no article mode: the peer pays no bytes for what we hold.
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "435 duplicate"))))
 (assert-event (null (fn-peer-session-transfer
                      (fn-post-result-session
-                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "IHAVE <a1@example.invalid>"))))))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>"))))))
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "CHECK <a1@example.invalid>")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "438 " *pt-id1*))))
 
 ; Teeth for fn-peer-ihave-of-a-held-message-id-is-435-and-no-article and
@@ -422,13 +422,11 @@
 ;
 ; (a) the history hypothesis: a Message-ID the live node does not hold.
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "IHAVE <loop@example.invalid>")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>")))
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "CHECK <loop@example.invalid>")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <loop@example.invalid>")))
                      (list (pt-echo "238 " *pt-idloop*))))
 ; (b) the peer hypothesis: a reader connection carries no node and gets the
 ; reader's answer to a transit keyword, not a duplicate refusal.
@@ -450,14 +448,10 @@
 ; the answer a REAL reader session gets and it is asserted of `*pt-reader*'
 ; further down, where it belongs.
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step (fn-peer-with-node *pt-reader* *pt-node1*)
-                                    (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                      (in-arena-fn-peer-step *sr-arena* (fn-peer-with-node *pt-reader* *pt-node1*) (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      nil))
 (assert-event (null (fn-post-result-submission
-                     (fn-peer-step (fn-peer-with-node *pt-reader* *pt-node1*)
-                                   (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs*
-                                   (pt-cmd "IHAVE <a1@example.invalid>")))))
+                     (in-arena-fn-peer-step *sr-arena* (fn-peer-with-node *pt-reader* *pt-node1*) (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))))
 ; (c) the peer-record hypothesis: a connection whose name is in no peer
 ; table answers :not-a-peer, which is a 435 with a different text and a 438
 ; with the same code for a different reason.
@@ -465,8 +459,7 @@
                       (fn-peer-open-session *pt-archive* "ghost" *pt-node1* *pt-cfg*)
                       *pt-node1*))
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ghost* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ghost* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "435 not wanted; not a peer"))))
 ; (d) the inbound-half hypothesis: a feed-only peer record.
 (defconst *pt-feedonly*
@@ -487,31 +480,28 @@
    (fn-peer-open-session *pt-archive* "outC" *pt-node1* *pt-cfg-feedonly*)
    *pt-node1*))
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ps-feedonly* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps-feedonly* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "435 not wanted; no inbound feed configured"))))
 ; (e) the Message-ID hypothesis: a token that is not one is a syntax error,
 ; never a duplicate refusal.
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "IHAVE not-a-message-id")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE not-a-message-id")))
                      (list (pt-reply "501 syntax error"))))
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
-                                    (pt-cmd "CHECK not-a-message-id")))
+                      (in-arena-fn-peer-step *sr-arena* *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK not-a-message-id")))
                      (list (pt-reply "501 syntax error"))))
 
 ; -----------------------------------------------------------------------------
 ; Transcript: CHECK/TAKETHIS refused by groups (RFC 4644 section 2.4.3 shape)
 
-(defconst *pt-c1* (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <alt@example.invalid>")))
+(defconst *pt-c1* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <alt@example.invalid>")))
 (assert-event (equal (fn-post-result-effects *pt-c1*) (list (pt-echo "238 " *pt-idalt*))))
 (assert-event (equal (fn-peer-session-inflight (fn-post-result-session *pt-c1*)) 1))
-(defconst *pt-c2* (fn-peer-step (fn-post-result-session *pt-c1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS <alt@example.invalid>")))
+(defconst *pt-c2* (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS <alt@example.invalid>")))
 (assert-event (equal (fn-post-result-effects *pt-c2*) (list (fn-nntp-begin-article-effect))))
 (assert-event (equal (fn-peer-session-transfer (fn-post-result-session *pt-c2*)) (list :takethis *pt-idalt*)))
 (assert-event (equal (fn-peer-session-inflight (fn-post-result-session *pt-c2*)) 0))
-(defconst *pt-c3* (fn-peer-step (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-alt-lines*)))
+(defconst *pt-c3* (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-alt-lines*)))
 (assert-event (equal (fn-post-result-submission *pt-c3*) (fn-peer-make-submission "innA" :takethis *pt-idalt* *pt-alt*)))
 (defconst *pt-ct* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idalt* *pt-alt* *pt-obs* 1 "ob" "s" 0)))
 (assert-event (equal (nth 1 *pt-ct*) (fn-peer-decision :refuse :out-of-scope)))
@@ -576,18 +566,18 @@
 ; The remaining offer cells: 436 (defer at offer: the inflight limit) and
 ; 431, 435 not wanted / 438 for a refusal (not a peer).
 (defconst *pt-ps-full* (fn-peer-make-session (fn-peer-session-base *pt-ps0*) "innA" nil 16 *pt-node0* *pt-cfg* nil))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "436 retry later; too many offers outstanding"))))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "431 " *pt-id1*))))
 (defconst *pt-ps-ghost* (fn-peer-open-session *pt-archive* "ghost" *pt-node0* *pt-cfg*))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-ghost* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps-ghost* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "435 not wanted; not a peer"))))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-ghost* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps-ghost* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "438 " *pt-id1*))))
 ; A feed-only peer cannot inject.
 (defconst *pt-ps-dtn* (fn-peer-open-session *pt-archive* "dtnB" *pt-node0* *pt-cfg*))
-(assert-event (equal (fn-post-result-effects (fn-peer-step (fn-peer-make-session (fn-peer-session-base *pt-ps-dtn*) "dtnB" nil 0 *pt-node0* *pt-cfg3* nil) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-peer-make-session (fn-peer-session-base *pt-ps-dtn*) "dtnB" nil 0 *pt-node0* *pt-cfg3* nil) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "238 " *pt-id1*))))
 ; Transfer refusals by article: no date, and an offered id that is not the article's.
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idnodate* *pt-nodate* nil "ob" "s") (fn-peer-decision :refuse :no-date)))
@@ -597,7 +587,7 @@
 ; -----------------------------------------------------------------------------
 ; MODE STREAM, CAPABILITIES, the reader connection, the not-received article
 
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "MODE STREAM")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "MODE STREAM")))
                      (list (pt-reply "203 streaming permitted"))))
 ; The second argument is the pinned configuration's posting bit, which
 ; fn-nntp-capability-lines gates the POST label on.  fn-peer-command passes
@@ -609,24 +599,24 @@
 (assert-event (not (member-equal (pt-o "IHAVE") (fn-peer-capability-lines nil nil))))
 (assert-event (not (member-equal (pt-o "POST") (fn-peer-capability-lines *pt-peer* nil))))
 (assert-event (member-equal (pt-o "POST") (fn-peer-capability-lines *pt-peer* t)))
-(assert-event (fn-nntp-effectsp (fn-post-result-effects (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CAPABILITIES")))))
+(assert-event (fn-nntp-effectsp (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CAPABILITIES")))))
 ; A reader connection: the dispatcher's 502, and MODE STREAM is 501 as before.
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "502 transit is not permitted on this connection"))))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "MODE STREAM")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "MODE STREAM")))
                      (list (pt-reply "501 syntax error"))))
 ; A reader's POST still goes through the POST-composed step.
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "POST")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "POST")))
                      (list (pt-reply "340 send article to be posted") (fn-nntp-begin-article-effect))))
 ; Malformed transit lines: 501, no article mode.
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS")))
                      (list (pt-reply "501 syntax error"))))
-(assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE a1")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE a1")))
                      (list (pt-reply "501 syntax error"))))
 ; Awaiting the article and something else arrives: retry code and close.
-(assert-event (equal (fn-post-result-effects (fn-peer-step (fn-post-result-session *pt-r1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "QUIT")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-r1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "QUIT")))
                      (list (pt-reply "436 transfer failed; the article was not received") (fn-nntp-close-effect))))
-(assert-event (equal (fn-post-result-effects (fn-peer-step (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "QUIT")))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "QUIT")))
                      (list (pt-reply "436 the article was not received; closing") (fn-nntp-close-effect))))
 ; Every transit reply above is a typed effect list.
 (assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-c1*)))

@@ -60,11 +60,12 @@
             (fn-nntp-string-list-octets (cdr xs)))
     nil))
 
-(defun fn-rct-cmd (env keyword args)
+(defun fn-rct-cmd (env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-nntp-archive-command-pinned
    *rct-session* *rct-state* *rct-pin* nil env
    (fn-nntp-string-octets keyword)
-   (fn-nntp-string-list-octets args)))
+   (fn-nntp-string-list-octets args) fn-arena))
 
 (assert-event (and (fn-statep *rct-state*) (fn-nntp-sessionp *rct-session*)
                    (fn-gidx-pinp *rct-pin*)
@@ -77,13 +78,23 @@
 ; since the date, and never fn.gone.
 
 ; 2026-08-26 00:00:00 is DTN 841017600000 ms: fn.two only.
+(include-book "arena-lift")
+;; The arena: handle 0 = A's bytes, 1 = the unnumbered U's bytes.
+(defconst *sr-arena*
+  (list (fn-rct-payload "<rct-a@example.invalid>" "A")
+        (fn-rct-payload "<rct-u@example.invalid>" "U")))
+(bpr-lift fn-nntp-article-response 6)
+(bpr-lift fn-nntp-retrieval 4)
+(bpr-lift fn-rcompat-retrieval 6)
+(bpr-lift fn-rcompat-served-payload 2)
+(bpr-lift fn-rct-cmd 3)
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "NEWGROUPS" '("20260826" "000000"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "NEWGROUPS" '("20260826" "000000"))
         (fn-nntp-multi *rct-session* "231 list of new newsgroups follows"
                        (fn-nntp-active-lines *rct-state* '("fn.two")))))
 ; From 2000: both groups of the view, not fn.gone.
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "NEWGROUPS" '("20000101" "000000" "GMT"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "NEWGROUPS" '("20000101" "000000" "GMT"))
         (fn-nntp-multi *rct-session* "231 list of new newsgroups follows"
                        (fn-nntp-active-lines *rct-state* '("fn.one" "fn.two")))))
 ; The generic (blind) reply names fn.gone: the held filter is what drops it.
@@ -95,7 +106,7 @@
                        (fn-nntp-active-lines *rct-state*
                                              '("fn.one" "fn.gone" "fn.two")))))
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "LIST" '("ACTIVE.TIMES"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "LIST" '("ACTIVE.TIMES"))
         (fn-nntp-list-active-times
          *rct-session*
          (fn-nntp-env-full *rct-obs*
@@ -129,26 +140,24 @@
 
 ; Nothing configured: the view's groups.
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "LIST" '("SUBSCRIPTIONS"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "LIST" '("SUBSCRIPTIONS"))
         (fn-nntp-multi *rct-session* "215 list of recommended newsgroups follows"
                        (list (fn-nntp-string-octets "fn.one")
                              (fn-nntp-string-octets "fn.two")))))
 ; Configured (fn.two, fn.gone, fn.one): in that order, fn.gone dropped.
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env '("fn.two" "fn.gone" "fn.one")) "LIST"
-                    '("SUBSCRIPTIONS"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env '("fn.two" "fn.gone" "fn.one")) "LIST" '("SUBSCRIPTIONS"))
         (fn-nntp-multi *rct-session* "215 list of recommended newsgroups follows"
                        (list (fn-nntp-string-octets "fn.two")
                              (fn-nntp-string-octets "fn.one")))))
 ; With a wildmat (RFC 6048 section 2.6.3).
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env '("fn.two" "fn.one")) "LIST"
-                    '("SUBSCRIPTIONS" "*.one"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env '("fn.two" "fn.one")) "LIST" '("SUBSCRIPTIONS" "*.one"))
         (fn-nntp-multi *rct-session* "215 list of recommended newsgroups follows"
                        (list (fn-nntp-string-octets "fn.one")))))
 ; A blind environment keeps the unmaintained 503.
 (assert-event
- (equal (fn-rct-cmd *rct-blind* "LIST" '("SUBSCRIPTIONS"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* *rct-blind* "LIST" '("SUBSCRIPTIONS"))
         (fn-nntp-single *rct-session* "503 data item not stored")))
 ; fn-rcompat-subscription-names-keep-the-configured-order: its hypothesis.
 (assert-event
@@ -162,7 +171,7 @@
 ; -----------------------------------------------------------------------------
 ; PKT-667: the served OVERVIEW.FMT is the compatibility form.
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "LIST" '("OVERVIEW.FMT"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "LIST" '("OVERVIEW.FMT"))
         (fn-nntp-multi-octets
          *rct-session*
          (fn-nntp-string-octets "215 order of fields in overview database")
@@ -185,20 +194,16 @@
  (equal (nthcdr (+ 2 (length *rct-xref*)) *rct-served-payload*)
         (fn-article-payload *rct-a-wire*)))
 (assert-event
- (equal (fn-rcompat-served-payload *rct-server* *rct-a*) *rct-served-payload*))
+ (equal (in-arena-fn-rcompat-served-payload *sr-arena* *rct-server* *rct-a*) *rct-served-payload*))
 ; HEAD 7 in fn.two: the Xref line, then the stored header lines.
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "HEAD" '("7"))
-        (fn-nntp-article-response
-         *rct-session*
-         (fn-make-article "<rct-a@example.invalid>" *rct-served-payload*
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "HEAD" '("7"))
+        (in-arena-fn-nntp-article-response *sr-arena* *rct-session* (fn-make-article "<rct-a@example.invalid>" *rct-served-payload*
                           '("fn.one" "fn.two")
                           (list (cons "fn.one" 2) (cons "fn.two" 7))
-                          t 841000000)
-         7 :head t "fn.two")))
+                          t 841000000) 7 :head t "fn.two")))
 (assert-event
- (let ((reply (fn-rct-cmd (fn-rct-env nil) "ARTICLE"
-                          '("<rct-a@example.invalid>"))))
+ (let ((reply (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "ARTICLE" '("<rct-a@example.invalid>"))))
    (equal (fn-nntp-result-effects reply)
           (list (fn-nntp-reply-effect
                  (append (fn-nntp-string-octets
@@ -207,33 +212,35 @@
                          '(46 13 10)))))))
 ; BODY is unchanged, and the blind environment serves the stored octets.
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "BODY" '("7"))
-        (fn-rct-cmd *rct-blind* "BODY" '("7"))))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "BODY" '("7"))
+        (in-arena-fn-rct-cmd *sr-arena* *rct-blind* "BODY" '("7"))))
 (assert-event
- (equal (fn-rct-cmd *rct-blind* "HEAD" '("7"))
-        (fn-nntp-article-response *rct-session* *rct-a* 7 :head t "fn.two")))
+ (equal (in-arena-fn-rct-cmd *sr-arena* *rct-blind* "HEAD" '("7"))
+        (in-arena-fn-nntp-article-response *sr-arena* *rct-session* *rct-a* 7 :head t "fn.two")))
 ; XHDR Xref 1-10 and HDR Xref <msgid>: the field's value.
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "XHDR" '("Xref" "1-10"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "XHDR" '("Xref" "1-10"))
         (fn-nntp-multi *rct-session* "221 header follows"
                        (list (fn-nntp-string-octets
                               "7 news.example.org fn.one:2 fn.two:7")))))
 (assert-event
- (equal (fn-rct-cmd (fn-rct-env nil) "HDR" '("XREF" "<rct-a@example.invalid>"))
+ (equal (in-arena-fn-rct-cmd *sr-arena* (fn-rct-env nil) "HDR" '("XREF" "<rct-a@example.invalid>"))
         (fn-nntp-multi *rct-session* "225 headers follow"
                        (list (fn-nntp-string-octets
                               "0 news.example.org fn.one:2 fn.two:7")))))
 
 ; fn-rcompat-served-payload-inserts-one-line, reachable in its first branch.
+(bpr-lift fn-nntp-article-bytes 1)
 (assert-event
- (let ((split (fn-nntp-split-article (fn-article-payload *rct-a*))))
+ (let* ((bytes (in-arena-fn-nntp-article-bytes *sr-arena* *rct-a*))
+        (split (fn-nntp-split-article bytes)))
    (and (consp (fn-xref-pairs *rct-a*))
-        (not (fn-rcl-tombstonep (fn-article-payload *rct-a*)))
+        (not (fn-rcl-tombstonep bytes))
         (fn-nntp-split-okp split)
-        (equal (fn-article-payload *rct-a*)
+        (equal bytes
                (append (fn-nntp-split-head split) (list 13 10)
                        (fn-nntp-split-body split)))
-        (equal (fn-rcompat-served-payload *rct-server* *rct-a*)
+        (equal (in-arena-fn-rcompat-served-payload *sr-arena* *rct-server* *rct-a*)
                (append (fn-xref-field *rct-server* (fn-xref-pairs *rct-a*))
                        (list 13 10)
                        (fn-nntp-split-head split) (list 13 10)
@@ -243,8 +250,10 @@
   (fn-make-article "<rct-u@example.invalid>" 1 nil nil t 0))
 (assert-event
  (and (not (consp (fn-xref-pairs *rct-unnumbered*)))
-      (equal (fn-rcompat-served-payload *rct-server* *rct-unnumbered*)
-             (fn-article-payload *rct-unnumbered*))))
+      (equal (in-arena-fn-rcompat-served-payload *sr-arena* *rct-server* *rct-unnumbered*)
+             (in-arena-fn-nntp-article-bytes *sr-arena* *rct-unnumbered*))
+      (equal (in-arena-fn-nntp-article-bytes *sr-arena* *rct-unnumbered*)
+             (fn-rct-payload "<rct-u@example.invalid>" "U"))))
 
 ; The session of a served retrieval is the generic one (cursor to 7 in
 ; fn.two), and the hypothesis on the argument list is needed: with two
@@ -252,28 +261,21 @@
 ; first.
 (assert-event
  (equal (fn-nntp-result-session
-         (fn-rcompat-retrieval *rct-session* *rct-state*
-                               (fn-gidx-pin-trie *rct-pin*) :head
-                               (fn-nntp-string-list-octets '("2")) *rct-server*))
+         (in-arena-fn-rcompat-retrieval *sr-arena* *rct-session* *rct-state* (fn-gidx-pin-trie *rct-pin*) :head (fn-nntp-string-list-octets '("2")) *rct-server*))
         (fn-nntp-result-session
-         (fn-nntp-retrieval *rct-session* *rct-state* :head
-                            (fn-nntp-string-list-octets '("2"))))))
+         (in-arena-fn-nntp-retrieval *sr-arena* *rct-session* *rct-state* :head (fn-nntp-string-list-octets '("2"))))))
 (defconst *rct-no-cursor*
   (fn-nntp-set-cursor (fn-nntp-open-session *rct-state*) "fn.two" nil))
 (assert-event
  (not (equal (fn-nntp-result-session
-              (fn-rcompat-retrieval *rct-no-cursor* *rct-state*
-                                    (fn-gidx-pin-trie *rct-pin*) :head
-                                    (fn-nntp-string-list-octets '("7" "x"))
-                                    *rct-server*))
+              (in-arena-fn-rcompat-retrieval *sr-arena* *rct-no-cursor* *rct-state* (fn-gidx-pin-trie *rct-pin*) :head (fn-nntp-string-list-octets '("7" "x")) *rct-server*))
              (fn-nntp-result-session
-              (fn-nntp-retrieval *rct-no-cursor* *rct-state* :head
-                                 (fn-nntp-string-list-octets '("7" "x")))))))
+              (in-arena-fn-nntp-retrieval *sr-arena* *rct-no-cursor* *rct-state* :head (fn-nntp-string-list-octets '("7" "x")))))))
 (must-fail
  (thm (equal (fn-nntp-result-session
-              (fn-rcompat-retrieval session archive trie kind args server))
+              (fn-rcompat-retrieval session archive trie kind args server fn-arena))
              (fn-nntp-result-session
-              (fn-nntp-retrieval session archive kind args)))))
+              (fn-nntp-retrieval session archive kind args fn-arena)))))
 
 ; The owner's projection (PKT-665): a live entry whose stamp has a wall
 ; reading yields its fact; the zero stamp of an old `init' yields none.

@@ -22,10 +22,12 @@
 ; generation 3.  Two configuration records and two Store events, so the
 ; replay interleaves both journals.
 (assert-event (fn-ocl-config-historyp *ocp-admin*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
 (assert-event (equal *ocp-closed*
-                     (fn-ocfg-step (fn-ocfg-step *ocp-admin*
-                                                 (list :reconfigure 1 *ocp-deltas*))
-                                   (list :close 1))))
+                     (in-arena-fn-ocfg-step *sr-arena* (in-arena-fn-ocfg-step *sr-arena* *ocp-admin* (list :reconfigure 1 *ocp-deltas*)) (list :close 1))))
 (assert-event (equal (len *ccr-h*) 2))
 (assert-event (equal (len *ccr-e*) 2))
 (assert-event (fn-cfg-recordp *ccr-record*))
@@ -58,7 +60,7 @@
 ; applied: the model's publication, generation 3, the new group served.
 (assert-event (equal (fn-replay-result-kind (fn-cpr-replay *ccr-durable* *ccr-e*)) :ok))
 (assert-event (equal (fn-ccr-recovered *ccr-durable* *ccr-e*)
-                     (fn-ocfg-config (fn-ocfg-step *ocp-closed* (list :complete)))))
+                     (fn-ocfg-config (in-arena-fn-ocfg-step *sr-arena* *ocp-closed* (list :complete)))))
 (assert-event (equal (fn-ccr-recovered *ccr-durable* *ccr-e*)
                      (fn-cfg-apply-record (fn-ocfg-config *ocp-admin*) *ccr-record*)))
 (assert-event (equal (fn-cfg-generation (fn-ccr-recovered *ccr-durable* *ccr-e*)) 3))
@@ -107,16 +109,14 @@
   (fn-ocfg-make (fn-ocfg-owner *ocp-admin*) (fn-cfg-initial)
                 (fn-ocfg-pins *ocp-admin*) nil))
 (defconst *ccr-forged-staged*
-  (fn-ocfg-step (fn-ocfg-step *ccr-forged* (list :reconfigure 1 *ocp-deltas*))
-                (list :close 1)))
+  (in-arena-fn-ocfg-step *sr-arena* (in-arena-fn-ocfg-step *sr-arena* *ccr-forged* (list :reconfigure 1 *ocp-deltas*)) (list :close 1)))
 (assert-event (not (fn-ocl-config-historyp *ccr-forged*)))
 (assert-event (not (equal (fn-ccr-recovered *ccr-h* *ccr-e*)
                           (fn-ocfg-config *ccr-forged-staged*))))
 (local
  (must-fail
   (defthm fn-ocl-crash-recovers-the-live-generation-without-history
-    (let ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas))
-                                (list :close id))))
+    (let ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena) (list :close id) fn-arena)))
       (equal (fn-cnode-config
               (fn-replay-result-node
                (fn-cpr-replay (fn-sn-config-history

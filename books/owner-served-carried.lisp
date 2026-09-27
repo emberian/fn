@@ -93,8 +93,8 @@
 ; fn-own-read-tls-prefix (books/owner-tls-prefix.lisp) with the store's node
 ; passed as `live', and the view's trie and articles as `trie' and `arts'
 ; for the IHAVE/CHECK history test (books/peer-offer-indexed.lisp).
-(defun fn-scar-own-read-tls-prefix (o id octets)
-  (declare (xargs :guard t))
+(defun fn-scar-own-read-tls-prefix (o id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
         (live (fn-sn-node (fn-own-store o)))
         (trie (fn-own-view-index (fn-own-view o)))
@@ -102,7 +102,7 @@
     (if conn
         (let* ((counted
                  (fn-scar-step-counted-fast
-                  (fn-own-tls-served-conn o conn) octets live trie arts))
+                  (fn-own-tls-served-conn o conn) octets live trie arts fn-arena))
                (result
                  (fn-scar-finish-read
                   o conn (fn-served-counted-result counted) live)))
@@ -114,8 +114,8 @@
 (defthm fn-scar-own-read-tls-prefix-is-own-read-tls-prefix
   (implies (and (fn-node-statep (fn-sn-node (fn-own-store o)))
                 (fn-scar-view-indexedp o))
-           (equal (fn-scar-own-read-tls-prefix o id octets)
-                  (fn-own-read-tls-prefix o id octets)))
+           (equal (fn-scar-own-read-tls-prefix o id octets fn-arena)
+                  (fn-own-read-tls-prefix o id octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-own-read-tls-prefix
                                    fn-own-read-tls-prefix)
                                   (fn-scar-step-counted-fast
@@ -125,9 +125,9 @@
                                    fn-midx-correspondencep)))))
 
 ; The function host/owner-host.lisp fn-owner-chunk calls.
-(defun fn-scar-ocfg-read-tls-prefix (oc id octets)
-  (declare (xargs :guard (fn-wire-octet-listp octets)))
-  (let ((result (fn-scar-own-read-tls-prefix (fn-ocfg-owner oc) id octets)))
+(defun fn-scar-ocfg-read-tls-prefix (oc id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-wire-octet-listp octets)))
+  (let ((result (fn-scar-own-read-tls-prefix (fn-ocfg-owner oc) id octets fn-arena)))
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed result)
      (fn-own-tls-result-effects result)
@@ -138,8 +138,8 @@
 (defthm fn-scar-ocfg-read-tls-prefix-is-ocfg-read-tls-prefix
   (implies (and (fn-node-statep (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
                 (fn-scar-view-indexedp (fn-ocfg-owner oc)))
-           (equal (fn-scar-ocfg-read-tls-prefix oc id octets)
-                  (fn-ocfg-read-tls-prefix oc id octets)))
+           (equal (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)
+                  (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-ocfg-read-tls-prefix
                                    fn-ocfg-read-tls-prefix)
                                   (fn-scar-own-read-tls-prefix
@@ -165,8 +165,8 @@
 ; the reference read, whatever the connection, the octets and the session.
 (defthm fn-scar-ocfg-read-tls-prefix-is-reference-under-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
-           (equal (fn-scar-ocfg-read-tls-prefix oc id octets)
-                  (fn-ocfg-read-tls-prefix oc id octets)))
+           (equal (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)
+                  (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
   :hints (("Goal" :in-theory (disable fn-scar-ocfg-read-tls-prefix
                                       fn-ocfg-read-tls-prefix fn-own-relation
                                       fn-scar-view-indexedp))))
@@ -175,7 +175,7 @@
 ; premise, exactly as it found them.  No hypothesis.
 (defthm fn-scar-own-read-keeps-store
   (equal (fn-own-store
-          (fn-own-tls-result-owner (fn-scar-own-read-tls-prefix o id octets)))
+          (fn-own-tls-result-owner (fn-scar-own-read-tls-prefix o id octets fn-arena)))
          (fn-own-store o))
   :hints (("Goal" :in-theory (e/d (fn-scar-own-read-tls-prefix
                                    fn-scar-finish-read fn-own-tls-make-result
@@ -187,7 +187,7 @@
 (defthm fn-scar-ocfg-read-keeps-store
   (equal (fn-own-store
           (fn-ocfg-owner
-           (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc id octets))))
+           (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena))))
          (fn-own-store (fn-ocfg-owner oc)))
   :hints (("Goal" :in-theory (e/d (fn-scar-ocfg-read-tls-prefix
                                    fn-ocfg-with-read-owner fn-own-tls-make-result
@@ -204,7 +204,7 @@
              (fn-own-store
               (fn-ocfg-owner
                (fn-own-tls-result-owner
-                (fn-scar-ocfg-read-tls-prefix oc id octets)))))))
+                (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)))))))
   :hints (("Goal" :in-theory (disable fn-scar-ocfg-read-tls-prefix
                                       fn-node-statep))))
 
@@ -226,8 +226,8 @@
 (defthm fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation
   (implies (and (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc)))
-           (equal (fn-scar-ocfg-read-tls-prefix oc id octets)
-                  (fn-ocfg-read-tls-prefix oc id octets)))
+           (equal (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)
+                  (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
   :hints (("Goal" :in-theory (disable fn-scar-ocfg-read-tls-prefix
                                       fn-ocfg-read-tls-prefix fn-ocl-relation
                                       fn-scar-view-indexedp))))

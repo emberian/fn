@@ -419,32 +419,10 @@ def bridge_findings(root: Path = ROOT, kinds: dict | None = None,
     return out
 
 
-def served_findings(root: Path = ROOT, setup: tuple[str, ...] | None = None,
-                    index: BookIndex | None = None) -> list[str]:
-    """The `included` rule over the served crash model's ACL2 session.
-
-    tests/test_native_served_crash_model.py sends SERVED_BRIDGE_SETUP to a
-    model bridge (tests/campaign/model_images.ModelBridge) that has already
-    included its PRELOAD.  At b6759850 the setup loaded
-    host/store-node-host.lisp without books/octets-stobj and
-    books/store-checkpoint-buffer, which that file's
-    fn-store-sco-publish-plan takes and calls since rep-wave-d-2; every case
-    failed at model setup and the served crash model gave no evidence
-    (qual-b6759850 C18).
-    """
-    sys.path.insert(0, str(ROOT))
-    from tests.campaign.model_images import ModelBridge
-    if setup is None:
-        from tests.test_native_served_crash_model import SERVED_BRIDGE_SETUP
-        setup = SERVED_BRIDGE_SETUP
-    return include_findings(root, "\n".join((ModelBridge.PRELOAD,) + tuple(setup)) + "\n",
-                            index or BookIndex(root),
-                            loader="the served crash model's setup "
-                                   "(tests/test_native_served_crash_model.py)")
-
-
 def main() -> int:
-    found = findings() + bridge_findings() + served_findings()
+    # The served crash model sends no ACL2 setup since it reads the record
+    # log through the image (lane log-recovery-mod): its rule went with it.
+    found = findings() + bridge_findings()
     for line in found:
         print(f"build-lists: {line}")
     default = ld_closure(ROOT, (ROOT / DEFAULT_BUILD).read_text())

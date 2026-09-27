@@ -83,8 +83,12 @@
 
 ; The owner over a fresh store serving fn.letters, configured and clocked.
 (defconst *opt-bare* (fn-own-start (fn-sn-initial '("fn.letters") 10) 4))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-run 2)
 (defconst *opt-0*
-  (fn-own-run *opt-bare* (list (list :configure *opt-config*)
+  (in-arena-fn-own-run *sr-arena* *opt-bare* (list (list :configure *opt-config*)
                                (list :observe *opt-obs*))))
 (assert-event (fn-own-relation *opt-0*))
 (assert-event (equal (fn-own-clock *opt-0*) *opt-obs*))
@@ -234,8 +238,7 @@
 (defconst *opt-taken* (fn-own-take-submission *opt-queued*))
 (assert-event (fn-own-control-submissionp (fn-own-inflight *opt-taken*)))
 (defconst *opt-done*
-  (fn-own-run *opt-taken*
-              (list '(:store (:io :start-frontier nil))
+  (in-arena-fn-own-run *sr-arena* *opt-taken* (list '(:store (:io :start-frontier nil))
                     '(:store (:io :frontier-file :ok))
                     '(:store (:io :frontier-replace :ok))
                     '(:store (:io :frontier-directory :ok))
@@ -298,8 +301,7 @@
 (defconst *opt-nd-stored*
   (fn-own-observe
    (fn-own-control-outcome
-    (fn-own-run (fn-own-take-submission *opt-nd-queued*)
-                (list '(:store (:io :start-frontier nil))
+    (in-arena-fn-own-run *sr-arena* (fn-own-take-submission *opt-nd-queued*) (list '(:store (:io :start-frontier nil))
                       '(:store (:io :frontier-file :ok))
                       '(:store (:io :frontier-replace :ok))
                       '(:store (:io :frontier-directory :ok))

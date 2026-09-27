@@ -37,8 +37,9 @@
                      *bspv1-saved-development*))
 ; Since lane commit-onto-log the presets are format 9: the same values under
 ; the record log's format word.
-(assert-event (equal (fn-bs-profile-as-format-8 *fn-bs-profile-scale*) *bspv1-saved-scale*))
-(assert-event (equal (fn-bs-profile-as-format-8 *fn-bs-profile-development*)
+(assert-event (equal (cons *fn-bs-meta-format-8* (cdr *fn-bs-profile-scale*))
+                     *bspv1-saved-scale*))
+(assert-event (equal (cons *fn-bs-meta-format-8* (cdr *fn-bs-profile-development*))
                      *bspv1-saved-development*))
 (assert-event (equal (car *fn-bs-profile-scale*) *fn-bs-meta-format-9*))
 ; R is tight there: the article record of (A, G) is exactly R.

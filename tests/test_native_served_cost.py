@@ -31,7 +31,7 @@ class NativeServedCostTests(unittest.TestCase):
         span = (ROOT / "books/served-span.lisp").read_text()
         handoff = definition(native, "fnn-owner-handle-chunk")
         self.assertIn("(fnn-octets-fill incoming)", handoff)
-        self.assertIn("(fnn-owner-buffer-action 'fn-owner-chunk-span cid", handoff)
+        self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid", handoff)
         self.assertNotIn("fnn-octet-list incoming", handoff)
         self.assertNotIn("'fn-owner-chunk cid", handoff)
         self.assertIn("(fn-scar-ocfg-read-span", definition(host, "fn-owner-chunk-span"))
@@ -44,13 +44,22 @@ class NativeServedCostTests(unittest.TestCase):
         # The served span fold reads each octet of the range from the buffer
         # by index (fn-octets-get); the list of the range's octets
         # (fn-oct-slice-list) is the logical model in the theorems only.
-        # The per-line index scan (no wire state inside a line) is PKT-479
-        # and has no static check until it lands.
+        # PKT-479: the fold is the LOGIC of the host-called core; it is
+        # executed by the served scan, one framed event at a time
+        # (books/served-scan.lisp, fn-scar-scan-span-is-feed-counted).
         span = (ROOT / "books/served-span.lisp").read_text()
         fold = definition(span, "fn-scar-feed-span")
         self.assertIn("(fn-octets-get i fn-octets)", fold)
         self.assertNotIn("fn-oct-slice-list", fold)
         self.assertNotIn("fn-octets-list", fold)
+        core = definition(span, "fn-scar-step-span-core")
+        self.assertRegex(core, re.compile(
+            r"\(mbe :logic \(fn-scar-feed-span conn i end [^)]*\)\s+"
+            r":exec \(fn-scar-scan-span conn i end [^)]*\)\)"))
+        scan = (ROOT / "books/wire-scan.lisp").read_text()
+        plain = definition(scan, "fn-wscan-plain-end")
+        self.assertIn("fn-octets-get", plain)
+        self.assertNotRegex(plain, re.compile(r"\(cons |fn-oct-slice-list|fn-octets-list"))
 
     def test_fast_predicate_has_fixed_spine_and_scalar_scope(self) -> None:
         wire = (ROOT / "books/wire.lisp").read_text()

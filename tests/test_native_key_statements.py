@@ -24,6 +24,7 @@ import time
 import unittest
 
 from tests.native_process import wait_for_announcement, stop_and_diagnostics
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host-developer"))
@@ -175,7 +176,7 @@ class NativeKeyStatementTests(unittest.TestCase):
 
     def post(self, node, article, expect_reply=True):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             greeting = stream.readline()
             self.assertTrue(greeting.startswith(b"200 "), greeting)
             stream.write(b"POST\r\n")
@@ -190,7 +191,7 @@ class NativeKeyStatementTests(unittest.TestCase):
 
     def ihave(self, node, msgid, article):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"IHAVE " + msgid.encode("ascii") + b"\r\n")
             offered = stream.readline()
@@ -202,7 +203,7 @@ class NativeKeyStatementTests(unittest.TestCase):
 
     def hdr_verified(self, node, msgid):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=60) as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"HDR :fn-verified " + msgid.encode("ascii") + b"\r\n")
             status = stream.readline()

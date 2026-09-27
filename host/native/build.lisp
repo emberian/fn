@@ -60,6 +60,9 @@
 ;; The record log's kernel, decode and programs (lane w6-log-core): the host
 ;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).
 (include-book "books/store-log-programs")
+;; Its segments, rotation and drop (lane log-recovery): fnn-recover-log,
+;; fnn-log-rotate and fnn-log-drop call them.
+(include-book "books/store-log-segments")
 (include-book "books/store-observed")
 (include-book "books/store-node-resolution")
 (include-book "books/store-observed-traces")
@@ -86,6 +89,7 @@
 (include-book "books/owner-served-carried")
 (include-book "books/served-span")
 (include-book "books/owner-commit-carried")
+(include-book "books/owner-refresh-indexed")
 (include-book "books/owner-prepare-carried")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
 (include-book "books/records-concrete-owner")
@@ -107,6 +111,8 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
+(include-book "books/post-retain-carried")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).

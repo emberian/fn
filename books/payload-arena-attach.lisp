@@ -1,13 +1,18 @@
-; fn: the arena's byte-array implementation ATTACHED to the generic (the
+; fn: the arena's PAGED implementation ATTACHED to the generic (the
 ; records freeze, lane records-freeze 2026-09-26; the consolidation design
 ; section 3; gpt-6's section 4: the concrete handle behind an explicit
-; abstraction).
+; abstraction).  Lane arena-offheap (2026-09-27) replaced the byte-array
+; attachment `fn-arena-bytes' (one array doubled when full: at the last
+; doubling the old and the new array were live together) by `fn-arena-paged'
+; (books/payload-arena-paged.lisp: fixed 64 KiB pages, a sealed octet never
+; moves, growth allocates one page).  The logical side is the same, so no
+; book above the generic recertifies.
 ;
 ; Three events, in this order, are the whole mechanism:
-;   1. the implementation is introduced (`fn-arena-bytes',
-;      books/payload-arena-bytes.lisp: the byte array with an offset and a
+;   1. the implementation is introduced (`fn-arena-paged',
+;      books/payload-arena-paged.lisp: the page table with an offset and a
 ;      size per handle);
-;   2. `(attach-stobj fn-arena fn-arena-bytes)' names it as the attachment of
+;   2. `(attach-stobj fn-arena fn-arena-paged)' names it as the attachment of
 ;      a stobj not yet introduced;
 ;   3. the generic is introduced (`fn-arena', books/payload-arena.lisp,
 ;      `:attachable t'), and BECAUSE the attachment precedes it, its
@@ -17,20 +22,21 @@
 ; A book certified over the generic -- the held record and its interns
 ; (books/catalog-record.lisp), the catalog and everything above it -- is then
 ; included unchanged: its certificate is the generic's, and its functions
-; run over the byte array.  The image (host/native/build.lisp) includes THIS
+; run over the pages.  The image (host/native/build.lisp) includes THIS
 ; book before any book that names `fn-arena', so the node's arena is one
-; byte per payload octet.  Nothing above this book names `fn-arena-bytes'.
+; byte per payload octet.  Nothing above this book names an implementation.
 ;
 ; What runs at certification time (skipped by include-book): the intern of a
 ; ground wire record into the live `fn-arena', whose foundation is now the
-; byte array (five fields: buf, off, size, count, fill; the list foundation
-; has one), and its materialization by handle, asserted equal to the record;
+; page table (six fields: pages, off, size, count, fill, npages; the list
+; foundation has one), and its materialization by handle, asserted equal to
+; the record;
 ; the fold `fn-arn-seal-many' and the reads.  The values are the logical
-; ones either way; the foundation is the byte array's.
+; ones either way; the foundation is the pages'.
 
 (in-package "ACL2")
-(include-book "payload-arena-bytes")
-(attach-stobj fn-arena fn-arena-bytes)
+(include-book "payload-arena-paged")
+(attach-stobj fn-arena fn-arena-paged)
 (include-book "payload-arena")
 (include-book "catalog-record")
 

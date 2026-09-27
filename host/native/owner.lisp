@@ -91,6 +91,11 @@
   ;; AWAITING maps a connection id to the mux connection waiting for its
   ;; completion, DONE a completion that arrived before its connection
   ;; registered; SPARING the member sockets a failed batch's stop spares.
+  ;; The octets the next served read may take: ACL2's
+  ;; fn-cbud-step-read-octets (host/owner-host.lisp fn-owner-read-octets),
+  ;; read under the owner mutex (fnn-owner-refresh-read-octets) and read
+  ;; here, without the mutex, by the I/O loops (host/native/mux.lisp).
+  (read-octets nil)
   (batching nil) (committer nil) (queued 0)
   ;; SYNCED: the syncer thread returned (lane log-2; fnn-owner-start-syncer).
   (synced nil)
@@ -200,6 +205,15 @@ SBCL's SB-UNIX may lack the internal clock symbols."
 
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
+
+(defun fnn-owner-refresh-read-octets (service)
+  "Install ACL2's read size for the next served read (under the owner mutex:
+the exposure install, and every served step, so a live change of the step
+rate reaches the next read)."
+  (let ((octets (fnn-owner-core 'fn-owner-read-octets)))
+    (unless (and (integerp octets) (> octets 0))
+      (fnn-fault "owner returned a malformed read size"))
+    (setf (fnn-owner-service-read-octets service) octets)))
 
 (defun fnn-owner-octets-global (name)
   (let ((value (fnn-global name)))
@@ -681,6 +695,12 @@ checkpoint's S, or NIL."
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
       (fnn-fault "owner refused the durable checkpoint sequence"))
+    ;; The base's canonical payload count: the arena's count after the open
+    ;; (host/owner-host.lisp fn-owner-sco-note-base-payloads).
+    (unless (eq (fnn-owner-core 'fn-owner-sco-note-base-payloads
+                                (first (fnn-call 'fn-arena-count (fnn-live-arena))))
+                :noted)
+      (fnn-fault "owner refused the base payload count"))
     s))
 
 ;;; SEC-006 (PRF-210): read the node's key ring and hand it to the owner,
@@ -712,7 +732,10 @@ checkpoint's S, or NIL."
                   (fnn-node-secret-directory store)))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  (multiple-value-bind (store records) (fnn-open-live-store root t fault)
+  ;; The owner does not take the history's octets (fnn-owner-recover-core
+  ;; installs from the Store open's extension): after a state-checkpoint open
+  ;; the covered prefix is not re-encoded (checkpoint-arena-2).
+  (multiple-value-bind (store records) (fnn-open-live-store root t fault nil)
     (let ((service nil))
       (handler-case
           (progn
@@ -769,7 +792,13 @@ checkpoint's S, or NIL."
                     (unless (eq (fnn-owner-feed-word restart) :restarted)
                       (fnn-fault "owner refused the feed restart"))
                     (fnn-owner-feed-flush service restart))))
-              (fnn-owner-key-statement-recover service records)
+              (fnn-owner-key-statement-recover
+               service (let ((last (fnn-open-last-record store records))) (and last (list last))))
+              ;; The Store open's loaded checkpoint is consumed (the owner's
+              ;; base is the open's extension, fn-owner-sco-base): release it,
+              ;; so the reopened owner does not hold the checkpoint's capture
+              ;; beside the extension (checkpoint-arena-2's reopen heap).
+              (fnn-core-state 'fn-store-sco-clear)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))
@@ -1228,9 +1257,21 @@ follows is justified only by this line."
 ;;; submission with the detail.
 (defvar *fnn-owner-transit-verdict* nil)
 
+;;; (PAYLOAD . OCTET-LIST) for the transit attempt in flight: its payload
+;;; vector converted once (bound by fnn-owner-attempt-transit).  ACL2 never
+;;; mutates an argument, so its calls share the one list; the parse carry
+;;; (books/owner-parse-carried.lisp) compares it with the take's octets.
+(defvar *fnn-owner-payload-list* nil)
+
+(defun fnn-owner-payload-octets (payload)
+  (if (and (consp *fnn-owner-payload-list*)
+           (eq (car *fnn-owner-payload-list*) payload))
+      (cdr *fnn-owner-payload-list*)
+    (fnn-octet-list payload)))
+
 (defun fnn-owner-note-transit-verdict (payload nntp-transit-p ed ml)
   (setq *fnn-owner-transit-verdict*
-        (fnn-owner-core 'fn-owner-transit-verdict (fnn-octet-list payload)
+        (fnn-owner-core 'fn-owner-transit-verdict (fnn-owner-payload-octets payload)
                         (and nntp-transit-p t) ed ml)))
 
 (defun fnn-owner-transit-refused (detail)
@@ -1250,7 +1291,7 @@ follows is justified only by this line."
   (if (not nntp-transit-p) plan
     ;; PKT-433 (d): ACL2's (CLASS VERDICT); the log prints both.
     (let ((detail (fnn-owner-core 'fn-owner-transit-refusal-class
-                                  (fnn-octet-list payload) t ed ml)))
+                                  (fnn-owner-payload-octets payload) t ed ml)))
       (if (and (consp detail) (keywordp (first detail)))
           (list :refused detail)
         plan))))
@@ -1270,8 +1311,12 @@ First, for every ingress, ACL2's filing step (C1, fn-pa-filing-plan through
 fn-owner-control-filing): a control article's groups become exactly its
 control.<verb> filing group, or the attempt is refused with the plan's
 reason before any Store call.  An ordinary article's groups are unchanged."
+  ;; The payload's octet list, converted once for the ACL2 calls below
+  ;; (fnn-owner-payload-octets): each call used to convert the vector
+  ;; again, 16 bytes a cons per octet.
+  (let ((*fnn-owner-payload-list* (cons payload (fnn-octet-list payload))))
   (let ((filing (fnn-owner-core 'fn-owner-control-filing
-                                (fnn-octet-list payload)
+                                (fnn-owner-payload-octets payload)
                                 (mapcar #'fnn-octet-list groups))))
     (unless (and (consp filing)
                  (member (first filing) '(:file :refused))
@@ -1285,7 +1330,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (fnn-fault "owner returned malformed filed groups"))
     (setq groups (mapcar #'fnn-octets (second filing))))
   (let ((form (fnn-owner-core 'fn-owner-peer-carrier-form
-                              (fnn-octet-list payload))))
+                              (fnn-owner-payload-octets payload))))
     (cond
       ((eq form :absent)
        (fnn-owner-note-transit-verdict payload nntp-transit-p nil nil)
@@ -1309,12 +1354,12 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                               (length payload) (length codes) charge))
              (case (fnn-owner-arena-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
-                                     (fnn-octet-list payload) codes)
+                                     (fnn-owner-payload-octets payload) codes)
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
                (:conflict (return-from fnn-owner-attempt-transit
                             (fnn-owner-transit-refused :conflict))))
              (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
-                                         (fnn-octet-list payload)
+                                         (fnn-owner-payload-octets payload)
                                          (and nntp-transit-p t))))
                (when (and (consp plan) (eq (first plan) :carried))
                  (unless (eq (fnn-owner-advance-clock) :observed)
@@ -1327,7 +1372,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                           (event
                             (fnn-owner-core
                              'fn-owner-peer-carried-relay-event coordinates
-                             (fnn-octet-list msgid) (fnn-octet-list payload)
+                             (fnn-octet-list msgid) (fnn-owner-payload-octets payload)
                              codes (fnn-octet-list obligation)
                              (fnn-octet-list subject) (fnn-octet-list evidence)
                              charge)))
@@ -1397,7 +1442,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                                'fn-owner-peer-revoked-event
                              'fn-owner-peer-carried-event)
                            coordinates
-                           (fnn-octet-list msgid) (fnn-octet-list payload)
+                           (fnn-octet-list msgid) (fnn-owner-payload-octets payload)
                            codes (fnn-octet-list obligation)
                            (fnn-octet-list subject) (fnn-octet-list evidence)
                            charge (coerce observed-ml-key 'list)
@@ -1417,7 +1462,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                                                    (first ml-observation))
                    (fnn-owner-statement-committed
                     service event
-                    (fnn-owner-identity-commit service event))))))))))))
+                    (fnn-owner-identity-commit service event)))))))))))))
 
 ;;; PRF-098: the key-statement executor, run by the owner right after it
 ;;; committed a kind-4 composite (books/key-statements.lisp, through
@@ -2842,6 +2887,7 @@ EPIPE and the client saw a bare close)."
        (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming))))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
+         (fnn-owner-refresh-read-octets service)
          (unless (fnn-core 'fn-splan-step-p step)
            (fnn-fault "owner returned a malformed served step"))
          ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
@@ -3001,7 +3047,7 @@ resident set the owner serves from is its live heap, not the recovery's
 high-water mark.  Work proportional to the live heap, once per start."
   (sb-ext:gc :full t))
 
-(defun fnn-owner-publish-captured (service captured)
+(defun fnn-owner-publish-captured (service captured &optional position)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
 capture point: fn-ock-next-checkpoint-is-the-capture), then fn-ockp-setup
@@ -3020,10 +3066,12 @@ the crash keystone) and serving continues."
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (unwind-protect
-  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision)
+  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
+                        base-payloads)
       captured
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
+          (payloads nil)
           ;; the writer's segment: ACL2's choice under the record bound R the
           ;; capture handed over (fn-ockp-segment-octets, the verb's derivation)
           (segment (fnn-core 'fn-ockp-segment-octets record-octets
@@ -3033,10 +3081,16 @@ the crash keystone) and serving continues."
                       internal-time-units-per-second)))
         (handler-case
             (let ((sequence (length records)))
-              (setq next (fnn-core 'fn-ock-next-checkpoint base configs records))
-              (let ((setup (fnn-core 'fn-ockp-setup next frontier revision segment budget free)))
+              ;; Records-flip: NEXT is the capture of the captured rows'
+              ;; canonical rows and the file opens with their canonical
+              ;; payloads (host/owner-host.lisp fn-owner-sco-prepare, which
+              ;; READS the live arena below the captured count).
+              (destructuring-bind (setup prepared-next n arun)
+                  (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
+                            frontier revision position segment budget free (fnn-live-arena))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
+                (setq next prepared-next payloads n)
                 (setq verdict (first setup))
                 (cond
                   ((eq verdict :unencodable)
@@ -3058,10 +3112,18 @@ the crash keystone) and serving continues."
                             (lambda (fd)
                               (setq steps (fnn-checkpoint-write-steps
                                            fd setup segment sequence (fnn-store-config store)
-                                           (fnn-live-octets-pub)))))
+                                           (fnn-live-octets-pub) arun))))
                            (setq durablep t)
-                           (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d steps=~d ms=~d"
-                                    sequence suffix octets steps (elapsed)))
+                           ;; T8: the installed checkpoint covers the segments
+                           ;; below its first suffix segment; they go now,
+                           ;; off the mutex (none is the active one).
+                           (let ((dropped (if position
+                                              (fnn-log-drop store (fnn-log-covered-indices
+                                                                   store (first position)))
+                                            0)))
+                             (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d steps=~d ms=~d~@[ segment=~d~]~:[~; dropped=~d~]"
+                                      sequence suffix octets steps (elapsed)
+                                      (first position) position dropped)))
                        ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
                          (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
                   (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
@@ -3072,7 +3134,7 @@ the crash keystone) and serving continues."
                (fnn-owner-gated (service :control)
                  (when next
                    (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
-                                               next durablep verdict)))
+                                               next payloads durablep verdict)))
                      (when (and durablep (not (integerp done)))
                        (fnn-err "CHECKPOINT auto: owner refused the durable sequence")))))
              (serious-condition (e)
@@ -3121,15 +3183,30 @@ reads run as a :control quantum; the thread's registration is the roster's."
         (when (eq (fnn-owner-core 'fn-owner-sco-due
                                   (fnn-checkpoint-budget-test-override nil) free)
                   :due)
-          (let ((captured (fnn-owner-core 'fn-owner-sco-capture
-                                          (fnn-checkpoint-budget-test-override nil)
-                                          free (fnn-checkpoint-revision))))
-            (unless (and (true-listp captured) (= (length captured) 10))
+          ;; Format 9: the capture rotates the log (fnn-log-rotate, under
+          ;; the owner mutex: no batch is open in a :control quantum), so
+          ;; the captured history is exactly the closed segments' records
+          ;; and the checkpoint's F row names the new segment.  A failed
+          ;; rotation is a failed publication: logged, serving continues.
+          (let* ((store (fnn-owner-service-store service))
+                 (position (and (fnn-store-logp store)
+                                (handler-case (fnn-log-rotate store)
+                                  ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+                                  (fnn-store-error (e)
+                                    (fnn-err "CHECKPOINT auto failed: ~a" e)
+                                    :failed))))
+                 (captured (and (not (eq position :failed))
+                                (fnn-owner-core 'fn-owner-sco-capture
+                                                (fnn-checkpoint-budget-test-override nil)
+                                                free (fnn-checkpoint-revision)))))
+            (unless (or (eq position :failed)
+                        (and (true-listp captured) (= (length captured) 11)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             (fnn-with-roster (service)
-              (let ((thread (sb-thread:make-thread
-                             (lambda () (fnn-owner-publish-captured service captured))
-                             :name "fn owner checkpoint")))
+              (let ((thread (and (not (eq position :failed))
+                                 (sb-thread:make-thread
+                                  (lambda () (fnn-owner-publish-captured service captured position))
+                                  :name "fn owner checkpoint"))))
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service))))))))))
 
@@ -3263,6 +3340,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                                                   more-addresses)))
                                   '(:public :loopback))
                     (fnn-fault "owner refused the exposure install"))
+                  (fnn-owner-refresh-read-octets service)
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)

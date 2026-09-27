@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import tempfile
+import threading
 import json
 import os
 import shutil
@@ -239,6 +240,11 @@ def main():
                                 env=environment(max(fig_mb, a.big)), stdout=subprocess.PIPE,
                                 stderr=open(work / "owner.stderr", "wb"))
         wait_for_announcement(proc, b"LISTENING ")
+        # Drain the owner's output for the whole run: a full pipe blocks the
+        # owner (its CHECKPOINT lines), and a closed one kills it (EPIPE).
+        drain_out = open(work / "owner.stdout", "wb")
+        threading.Thread(target=lambda: shutil.copyfileobj(proc.stdout, drain_out),
+                         daemon=True).start()
         started = time.perf_counter()
         c = m.Conn(port)
         for i in range(a.articles):

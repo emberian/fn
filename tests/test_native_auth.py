@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
@@ -78,7 +79,7 @@ class NativeAuthTests(unittest.TestCase):
         process = self.start()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"201 "))
 
                 stream.write(b"GROUP fn.test\r\n")
@@ -137,7 +138,7 @@ class NativeAuthTests(unittest.TestCase):
         process = self.start()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"201 "))
 
                 stream.write(b"POST\r\n")
@@ -285,7 +286,7 @@ class NativeAuthTests(unittest.TestCase):
 
         def session():
             client = socket.create_connection(("127.0.0.1", self.port), timeout=60)
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"20"))
             stream.write(b"AUTHINFO USER native-reader\r\n")
             self.assertTrue(stream.readline().startswith(b"381"))

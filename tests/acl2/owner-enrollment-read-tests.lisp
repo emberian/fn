@@ -48,47 +48,51 @@
         '(:store (:io :record-link :ok))
         '(:store (:io :record-directory :ok))
         '(:complete)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-read 3)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
 (make-event `(defconst *oer-revoked*
-               ',(fn-own-run (fn-own-step *oer-base* '(:begin 1))
-                             *oer-revocation-events*)))
+               ',(in-arena-fn-own-run *sr-arena* (in-arena-fn-own-step *sr-arena* *oer-base* '(:begin 1)) *oer-revocation-events*)))
 (defconst *oer-reader-d* (cdr (fn-own-open *oer-revoked* nil)))
 
 ; ---------------------------------------------------------------------------
 ; The three reachable states, over the host-called fn-own-read.
 (defconst *oer-hex* (fn-oert-hex *sit-principal*))
 (assert-event
- (equal (fn-served-reply-octets (car (fn-own-read *ov-reader-b* 2 *oer-hdr*)))
+ (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *oer-hdr*)))
         (fn-oert-reply (concatenate 'string "active " *oer-hex* " keyring 1"))))
 (assert-event
- (equal (fn-served-reply-octets (car (fn-own-read *ov-reader-c* 3 *oer-hdr*)))
+ (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *ov-reader-c* 3 *oer-hdr*)))
         (fn-oert-reply (concatenate 'string "retired " *oer-hex* " keyring 2"))))
 (assert-event
- (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 4 *oer-hdr*)))
+ (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *oer-hdr*)))
         (fn-oert-reply (concatenate 'string "revoked " *oer-hex* " keyring 3"))))
 ; The historical verdict is the same line on all three readers.
 (assert-event
- (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 4 *ov-hdr*)))
+ (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *ov-hdr*)))
         (fn-served-reply-octets (car *ov-read-b*))))
 ; Pinning: reader B, opened before the rotation and the revocation, still
 ; sees the enrollment its view was committed with.
 (assert-event
- (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 2 *oer-hdr*)))
+ (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 2 *oer-hdr*)))
         (fn-oert-reply (concatenate 'string "active " *oer-hex* " keyring 1"))))
 ; Reader A, pinned before the publication, has no such article: 430.
 (assert-event
- (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 0 *oer-hdr*)))
+ (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 0 *oer-hdr*)))
         (fn-oert-line "430 no article with that message-id")))
 
 ; fn-own-reader-opened-after-completion-pins-the-finished-keyring, witnessed:
 ; the revocation's completing owner, a reader opened after (:complete).
 (make-event
  `(defconst *oer-completing*
-    ',(fn-own-run (fn-own-step *oer-base* '(:begin 1))
-                  (butlast *oer-revocation-events* 1))))
+    ',(in-arena-fn-own-run *sr-arena* (in-arena-fn-own-step *sr-arena* *oer-base* '(:begin 1)) (butlast *oer-revocation-events* 1))))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *oer-completing*)))
 (make-event
  `(defconst *oer-after*
-    ',(cdr (fn-own-open (fn-own-step *oer-completing* '(:complete)) nil))))
+    ',(cdr (fn-own-open (in-arena-fn-own-step *sr-arena* *oer-completing* '(:complete)) nil))))
 (assert-event
  (equal (fn-enr-pin-keyring
          (fn-own-conn-control
@@ -168,11 +172,11 @@
 (assert-event (equal (fn-oert-hyps *ov-reader-b* 2 *oer-prefix* *oer-lf*) (fn-oert-all 16)))
 (assert-event (equal (fn-oert-hyps *ov-reader-c* 3 *oer-prefix* *oer-lf*) (fn-oert-all 16)))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-prefix* *oer-lf*) (fn-oert-all 16)))
-(assert-event (equal (car (fn-own-read *ov-reader-b* 2 *oer-hdr*))
+(assert-event (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *oer-hdr*))
                      (fn-oert-rhs *ov-reader-b* 2 *oer-prefix* *oer-lf*)))
-(assert-event (equal (car (fn-own-read *ov-reader-c* 3 *oer-hdr*))
+(assert-event (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-c* 3 *oer-hdr*))
                      (fn-oert-rhs *ov-reader-c* 3 *oer-prefix* *oer-lf*)))
-(assert-event (equal (car (fn-own-read *oer-reader-d* 4 *oer-hdr*))
+(assert-event (equal (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *oer-hdr*))
                      (fn-oert-rhs *oer-reader-d* 4 *oer-prefix* *oer-lf*)))
 
 ; Without the article in the pinned trie (premise 15): a Message-ID reader D's
@@ -182,10 +186,10 @@
 (defconst *oer-nosuch-prefix* (butlast *oer-nosuch* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-nosuch-prefix* *oer-lf*)
                      (fn-oert-only-false 15 16)))
-(assert-event (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 4 *oer-nosuch*)))
+(assert-event (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *oer-nosuch*)))
                      (fn-oert-line "430 no article with that message-id")))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-nosuch*))
+ (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-nosuch* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-nosuch-prefix* *oer-lf*))))
 
 ; Without the framing premise (5): the read stops before its LF.
@@ -195,7 +199,7 @@
                      (fn-oert-all 4)))
 (assert-event (not (nth 4 (fn-oert-hyps *oer-reader-d* 4 *oer-cut* *oer-cr*))))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 4 (append *oer-cut* (list *oer-cr*))))
+ (thm (equal (car (fn-own-read *oer-reader-d* 4 (append *oer-cut* (list *oer-cr*)) fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-cut* *oer-cr*))))
 
 ; Without :FN-ENROLLMENT (premise 11): HDR :fn-verified on the same article
@@ -204,7 +208,7 @@
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-verified-prefix* *oer-lf*)
                      (fn-oert-only-false 11 16)))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 4 *ov-hdr*))
+ (thm (equal (car (fn-own-read *oer-reader-d* 4 *ov-hdr* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-verified-prefix* *oer-lf*))))
 
 ; Without HDR (premise 10): OVER on the same Message-ID-shaped argument list.
@@ -213,7 +217,7 @@
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-xhdr-prefix* *oer-lf*)
                      (fn-oert-only-false 10 16)))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-xhdr*))
+ (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-xhdr* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-xhdr-prefix* *oer-lf*))))
 
 ; Without the Message-ID token (premise 12): a range argument answers 501.
@@ -223,10 +227,10 @@
 (defconst *oer-range-prefix* (butlast *oer-range* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-range-prefix* *oer-lf*)
                      (update-nth 15 nil (fn-oert-only-false 12 16))))
-(assert-event (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 4 *oer-range*)))
+(assert-event (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *oer-range*)))
                      (fn-oert-line "501 syntax error")))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-range*))
+ (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-range* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-range-prefix* *oer-lf*))))
 
 ; Without the one-argument shape (premise 9): a trailing argument.
@@ -235,7 +239,7 @@
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-extra-prefix* *oer-lf*)
                      (fn-oert-only-false 9 16)))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-extra*))
+ (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-extra* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-extra-prefix* *oer-lf*))))
 
 ; Without an argument (premise 9): `HDR :fn-enrollment' alone answers 501.
@@ -243,11 +247,11 @@
 (defconst *oer-bare-prefix* (butlast *oer-bare* 1))
 (assert-event (equal (nth 8 (fn-oert-hyps *oer-reader-d* 4 *oer-bare-prefix* *oer-lf*)) nil))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-bare*))
+ (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-bare* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-bare-prefix* *oer-lf*))))
 
 ; Without a connection (premise 1): an unknown id reads nothing.
-(assert-event (null (car (fn-own-read *oer-reader-d* 99 *oer-hdr*))))
+(assert-event (null (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 99 *oer-hdr*))))
 (must-fail
- (thm (equal (car (fn-own-read *oer-reader-d* 99 (append *oer-prefix* (list *oer-lf*))))
+ (thm (equal (car (fn-own-read *oer-reader-d* 99 (append *oer-prefix* (list *oer-lf*)) fn-arena))
              (fn-oert-rhs *oer-reader-d* 99 *oer-prefix* *oer-lf*))))

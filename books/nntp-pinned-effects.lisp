@@ -13,7 +13,7 @@
   (implies (fn-midx-correspondencep index (fn-state-articles archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-msgid-retrieval-indexed session archive index kind token))))
+             (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena))))
   :hints (("Goal" :use ((:instance fn-nntp-effects-msgid-retrieval))
            :in-theory (disable fn-nntp-effectsp fn-nntp-msgid-retrieval-indexed
                                fn-nntp-msgid-retrieval
@@ -21,15 +21,15 @@
 
 (defthm fn-nov-indexed-lines-are-clean
   (fn-nov-clean-line-listp
-   (fn-nov-lines-for-numbers-indexed group numbers entries trie))
+   (fn-nov-lines-for-numbers-indexed group numbers entries trie fn-arena))
   :hints (("Goal" :induct (fn-nov-lines-for-numbers-indexed
-                            group numbers entries trie)
+                            group numbers entries trie fn-arena)
            :in-theory (e/d (fn-nov-lines-for-numbers-indexed)
                            (fn-nov-overview fn-nov-line)))))
 
 (defthm fn-nntp-indexed-over-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nov-lines-for-numbers-indexed group numbers entries trie))
+   (fn-nov-lines-for-numbers-indexed group numbers entries trie fn-arena))
   :hints (("Goal" :use ((:instance fn-nov-indexed-lines-are-clean
                             (entries entries)))
            :in-theory (disable fn-nov-indexed-lines-are-clean
@@ -39,14 +39,14 @@
 ; renderer is the indexed one's, so its lines are clean whatever the index.
 (defthm fn-nov-numbered-lines-are-clean
   (fn-nov-clean-line-listp
-   (fn-nov-lines-for-numbers-numbered numbers nidx trie))
-  :hints (("Goal" :induct (fn-nov-lines-for-numbers-numbered numbers nidx trie)
+   (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena))
+  :hints (("Goal" :induct (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena)
            :in-theory (e/d (fn-nov-lines-for-numbers-numbered)
                            (fn-nov-overview fn-nov-line)))))
 
 (defthm fn-nntp-numbered-over-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nov-lines-for-numbers-numbered numbers nidx trie))
+   (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena))
   :hints (("Goal" :use ((:instance fn-nov-numbered-lines-are-clean))
            :in-theory (disable fn-nov-numbered-lines-are-clean
                                fn-nov-lines-for-numbers-numbered))))
@@ -54,7 +54,7 @@
 (defthm fn-nntp-effects-over-range-indexed
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-over-range-indexed session buckets trie token legacyp)))
+    (fn-nntp-over-range-indexed session buckets trie token legacyp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed)
                                   (fn-nov-lines-for-numbers-indexed
                                    fn-nov-lines-for-numbers-numbered
@@ -67,19 +67,19 @@
 (defthm fn-nntp-served-over-block-is-block-text
   (implies (or (null server) (fn-xref-serverp server))
            (fn-nntp-block-textp
-            (fn-nov-served-lines-numbered numbers nidx trie server)))
+            (fn-nov-served-lines-numbered numbers nidx trie server fn-arena)))
   :hints (("Goal" :use ((:instance fn-nov-served-lines-numbered-are-clean))
            :in-theory (disable fn-nov-served-lines-numbered-are-clean
                                fn-nov-served-lines-numbered fn-xref-serverp))))
 
 (defthm fn-nntp-served-over-one-line-is-block-text
-  (implies (and (fn-nov-okp (fn-nov-overview article))
+  (implies (and (fn-nov-okp (fn-nov-overview article fn-arena))
                 (or (null server) (fn-xref-serverp server)))
            (fn-nntp-block-textp
-            (list (fn-nov-served-line number (fn-nov-overview article)
+            (list (fn-nov-served-line number (fn-nov-overview article fn-arena)
                                       server article2))))
   :hints (("Goal" :use ((:instance fn-nov-served-line-is-a-clean-line
-                         (over (fn-nov-overview article))
+                         (over (fn-nov-overview article fn-arena))
                          (article article2))
                         (:instance fn-nov-overview-is-an-overview))
            :in-theory (e/d (fn-nntp-block-textp)
@@ -92,7 +92,7 @@
            (fn-nntp-effectsp
             (fn-nntp-result-effects
              (fn-nntp-over-range-served session buckets trie token legacyp
-                                        server))))
+                                        server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
                                   (fn-nov-served-lines-numbered fn-xref-serverp
                                    fn-nntp-index-group-range-numbers
@@ -102,7 +102,7 @@
   (implies (or (null server) (fn-xref-serverp server))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-over-current-served session archive server))))
+             (fn-nntp-over-current-served session archive server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-current-served)
                                   (fn-nov-overview fn-nov-served-line
                                    fn-xref-serverp
@@ -112,7 +112,7 @@
   (implies (or (null server) (fn-xref-serverp server))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-over-msgid-served session archive token server))))
+             (fn-nntp-over-msgid-served session archive token server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-msgid-served)
                                   (fn-nov-overview fn-nov-served-line
                                    fn-xref-serverp
@@ -127,10 +127,10 @@
                            (fn-nov-fmt-xref-lines-are-clean)))))
 
 (defthm fn-nntp-effects-xref-reply
-  (implies (fn-nntp-xref-reply session archive index env keyword args)
+  (implies (fn-nntp-xref-reply session archive index env keyword args fn-arena)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-xref-reply session archive index env keyword args))))
+             (fn-nntp-xref-reply session archive index env keyword args fn-arena))))
   :hints (("Goal" :use ((:instance fn-nntp-xref-server-is-a-server))
            :in-theory (e/d (fn-nntp-xref-reply)
                            (fn-nntp-xref-server fn-xref-serverp fn-nntp-keywordp
@@ -227,15 +227,15 @@
 (defthm fn-rcompat-xref-content-is-clean
   (implies (fn-xref-serverp server)
            (fn-nov-clean-fieldp
-            (fn-nntp-hdr-octets (fn-rcompat-xref-content server article))))
+            (fn-nntp-hdr-octets (fn-rcompat-xref-content server article fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-rcompat-xref-content fn-nntp-hdr-octets)
                                   (fn-rcompat-xref-value fn-xref-serverp)))))
 
 (defthm fn-rcompat-hdr-lines-are-clean
   (implies (fn-xref-serverp server)
            (fn-nntp-hdr-clean-field-listp
-            (fn-rcompat-hdr-lines group numbers articles server)))
-  :hints (("Goal" :induct (fn-rcompat-hdr-lines group numbers articles server)
+            (fn-rcompat-hdr-lines group numbers articles server fn-arena)))
+  :hints (("Goal" :induct (fn-rcompat-hdr-lines group numbers articles server fn-arena)
            :in-theory (e/d (fn-nntp-hdr-clean-field-listp)
                            (fn-rcompat-xref-content fn-rcompat-xref-value
                             fn-xref-serverp fn-nntp-available-article
@@ -247,7 +247,7 @@
                             (content (fn-nntp-hdr-octets
                                       (fn-rcompat-xref-content
                                        server (fn-nntp-available-article
-                                               group (car numbers) articles)))))
+                                               group (car numbers) articles) fn-arena))))
                  (:instance fn-rcompat-xref-content-is-clean
                             (article (fn-nntp-available-article
                                       group (car numbers) articles)))))))
@@ -267,22 +267,22 @@
 (defthm fn-rcompat-hdr-lines-are-block-text
   (implies (fn-xref-serverp server)
            (fn-nntp-block-textp
-            (fn-rcompat-hdr-lines group numbers articles server)))
+            (fn-rcompat-hdr-lines group numbers articles server fn-arena)))
   :hints (("Goal" :in-theory (disable fn-rcompat-hdr-lines fn-nntp-block-textp
                                       fn-nov-clean-line-listp fn-xref-serverp)
            :use ((:instance fn-rcompat-hdr-lines-are-clean)
                  (:instance fn-nntp-hdr-clean-fields-are-clean-lines
                             (lines (fn-rcompat-hdr-lines group numbers articles
-                                                         server)))
+                                                         server fn-arena)))
                  (:instance fn-nntp-clean-lines-are-block-text
                             (lines (fn-rcompat-hdr-lines group numbers articles
-                                                         server)))))))
+                                                         server fn-arena)))))))
 
 (defthm fn-nntp-effects-rcompat-hdr
   (implies (fn-xref-serverp server)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-rcompat-hdr session archive trie args legacyp server))))
+             (fn-rcompat-hdr session archive trie args legacyp server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-rcompat-hdr fn-nntp-hdr-initial)
                                   (fn-rcompat-hdr-lines fn-rcompat-xref-content
                                    fn-nntp-hdr-line fn-nntp-hdr-octets
@@ -307,10 +307,10 @@
   (fn-nntp-block-textp (fn-rcompat-name-lines names)))
 
 (defthm fn-nntp-effects-rcompat-reply
-  (implies (fn-rcompat-reply session archive index env keyword args)
+  (implies (fn-rcompat-reply session archive index env keyword args fn-arena)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-rcompat-reply session archive index env keyword args))))
+             (fn-rcompat-reply session archive index env keyword args fn-arena))))
   :hints (("Goal" :use ((:instance fn-nntp-xref-server-is-a-server))
            :in-theory (e/d (fn-rcompat-reply fn-rcompat-newgroups
                             fn-rcompat-active-times fn-rcompat-subscriptions
@@ -333,7 +333,7 @@
            (fn-nntp-effectsp
             (fn-nntp-result-effects
              (fn-nntp-archive-command-pinned
-              session archive index verdicts env keyword args))))
+              session archive index verdicts env keyword args fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-nntp-archive-command-effects-well-formed)
                  (:instance fn-gidx-listgroup-command-of-build)
@@ -384,7 +384,7 @@
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-command-pinned session archive index verdicts env tokens))))
+             (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena))))
   :hints (("Goal"
            :in-theory
            (e/d (fn-nntp-command-pinned)
@@ -401,7 +401,7 @@
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-step-pinned session archive index verdicts env wire-event))))
+             (fn-nntp-step-pinned session archive index verdicts env wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-step-pinned)
                 (fn-nntp-result-effects fn-nntp-make-result fn-nntp-single
@@ -418,7 +418,7 @@
            (fn-nntp-effectsp
             (fn-post-result-effects
              (fn-nntp-post-step-pinned ps archive index verdicts config
-                                       observation injection wire-event))))
+                                       observation injection wire-event fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-pinned-effects-well-formed
                             (session (fn-post-session-base ps))
@@ -435,11 +435,11 @@
 (defthm fn-post-step-pinned-submission-is-an-injected-article
   (implies (fn-post-result-submission
             (fn-nntp-post-step-pinned ps archive index verdicts config
-                                      observation injection wire-event))
+                                      observation injection wire-event fn-arena))
            (fn-inj-injectedp
             (fn-post-result-submission
              (fn-nntp-post-step-pinned ps archive index verdicts config
-                                       observation injection wire-event))))
+                                       observation injection wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-post-step-pinned)
                 (fn-nntp-post-step fn-inj-decide fn-inj-injectedp

@@ -85,12 +85,89 @@
   (natp (fn-nntp-numbers-max-below current numbers))
   :rule-classes (:type-prescription :rewrite))
 
+;; A group's bucket lists its entries newest first, so the numbers of a range
+;; arrive strictly descending and the insertion sort was quadratic (OVER 1-2000
+;; inserted each number at the end of the sorted rest: lane served-readers'
+;; profile, 2026-09-27).  A strictly descending list sorts to its reverse
+;; (fn-nntp-numbers-sort-of-descending); any other order takes the insertion.
+(defun fn-nntp-descending-integersp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (integerp (car xs))
+           (or (not (consp (cdr xs)))
+               (and (integerp (car (cdr xs)))
+                    (< (car (cdr xs)) (car xs))))
+           (fn-nntp-descending-integersp (cdr xs)))
+    t))
+
 (defun fn-nntp-numbers-sort (numbers)
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp numbers)
-      (fn-nntp-insert-number (fn-ag-car numbers)
-                             (fn-nntp-numbers-sort (fn-ag-cdr numbers)))
-    nil))
+  (mbe :logic (if (consp numbers)
+                  (fn-nntp-insert-number (fn-ag-car numbers)
+                                         (fn-nntp-numbers-sort (fn-ag-cdr numbers)))
+                nil)
+       :exec (if (fn-nntp-descending-integersp numbers)
+                 (fn-ng-revappend numbers nil)
+               (if (consp numbers)
+                   (fn-nntp-insert-number (fn-ag-car numbers)
+                                          (fn-nntp-numbers-sort (fn-ag-cdr numbers)))
+                 nil))))
+
+(local (defun fn-nntp-all-below (xs n)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp xs) (and (< (car xs) n) (fn-nntp-all-below (cdr xs) n)) t)))
+(local (defthm fn-nntp-insert-number-above-all
+  (implies (fn-nntp-all-below ys n)
+           (equal (fn-nntp-insert-number n ys) (append ys (list n))))
+  :hints (("Goal" :in-theory (enable fn-nntp-insert-number)))))
+(local (defthm fn-nntp-all-below-append
+  (equal (fn-nntp-all-below (append a b) n)
+         (and (fn-nntp-all-below a n) (fn-nntp-all-below b n)))))
+(local (defthm fn-nntp-all-below-revappend
+  (equal (fn-nntp-all-below (revappend xs acc) n)
+         (and (fn-nntp-all-below xs n) (fn-nntp-all-below acc n)))
+  :hints (("Goal" :induct (revappend xs acc)))))
+(local (defthm fn-nntp-all-below-reverse
+  (implies (true-listp xs)
+           (equal (fn-nntp-all-below (reverse xs) n) (fn-nntp-all-below xs n)))
+  :hints (("Goal" :in-theory (enable reverse revappend)))))
+(local (defthm fn-nntp-descending-all-below
+  (implies (and (fn-nntp-descending-integersp (cons x xs)))
+           (fn-nntp-all-below xs x))
+  :hints (("Goal" :induct (fn-nntp-descending-integersp xs)))))
+(local (defthm fn-nntp-revappend-of-append
+  (equal (revappend xs (append a b)) (append (revappend xs a) b))
+  :hints (("Goal" :induct (revappend xs a)))))
+(local (defthm fn-nntp-revappend-cons-nil
+  (implies (consp xs)
+           (equal (revappend xs nil)
+                  (append (revappend (cdr xs) nil) (list (car xs)))))
+  :hints (("Goal" :expand ((revappend xs nil))
+           :in-theory (disable fn-nntp-revappend-of-append)
+           :use ((:instance fn-nntp-revappend-of-append
+                            (xs (cdr xs)) (a nil) (b (list (car xs)))))))))
+(local (defthm fn-nntp-revappend-of-atom
+  (implies (not (consp xs)) (equal (revappend xs acc) acc))
+  :hints (("Goal" :expand ((revappend xs acc))))))
+(local (defthm fn-nntp-descending-all-below-cdr
+  (implies (and (consp numbers) (fn-nntp-descending-integersp numbers))
+           (fn-nntp-all-below (cdr numbers) (car numbers)))
+  :hints (("Goal" :use ((:instance fn-nntp-descending-all-below
+                                   (x (car numbers)) (xs (cdr numbers))))))))
+(local (in-theory (disable revappend)))
+(local (defthm fn-nntp-all-below-insert
+  (equal (fn-nntp-all-below (fn-nntp-insert-number x ys) n)
+         (and (< x n) (fn-nntp-all-below ys n)))
+  :hints (("Goal" :in-theory (enable fn-nntp-insert-number)))))
+(local (defthm fn-nntp-all-below-sort
+  (implies (fn-nntp-all-below xs n)
+           (fn-nntp-all-below (fn-nntp-numbers-sort xs) n))
+  :hints (("Goal" :in-theory (enable fn-nntp-numbers-sort)))))
+(defthm fn-nntp-numbers-sort-of-descending
+  (implies (fn-nntp-descending-integersp numbers)
+           (equal (fn-nntp-numbers-sort numbers) (revappend numbers nil)))
+  :hints (("Goal" :induct (fn-nntp-numbers-sort numbers)
+           :in-theory (enable fn-nntp-numbers-sort))))
 
 (defconst *fn-nntp-index-all-low* 1)
 
@@ -135,7 +212,8 @@
 (verify-guards fn-nntp-numbers-max)
 (verify-guards fn-nntp-numbers-min-above)
 (verify-guards fn-nntp-numbers-max-below)
-(verify-guards fn-nntp-numbers-sort)
+(verify-guards fn-nntp-numbers-sort
+  :hints (("Goal" :use ((:instance fn-nntp-numbers-sort-of-descending)))))
 (verify-guards fn-nntp-index-group-numbers)
 (verify-guards fn-nntp-index-group-count)
 (verify-guards fn-nntp-index-group-low)

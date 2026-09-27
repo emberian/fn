@@ -49,6 +49,8 @@ import threading
 import tempfile
 import time
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -117,8 +119,7 @@ class Session:
     def __init__(self, wire, port, cafile):
         context = ssl.create_default_context(cafile=str(cafile))
         raw = socket.create_connection(("127.0.0.1", port), timeout=120)
-        self.stream = context.wrap_socket(raw, server_hostname="127.0.0.1").makefile(
-            "rwb", buffering=0)
+        self.stream = whole_stream(context.wrap_socket(raw, server_hostname="127.0.0.1"))
         wire.conn += 1
         self.wire, self.conn = wire, wire.conn
         wire.out.write("%.3f %d --- connection (TLS, verified against the scratch CA)\n"

@@ -5229,6 +5229,79 @@
       ]
     },
     {
+      "id": "SCN-179",
+      "title": "Compaction over the record log: a checkpoint rotates the log and the covered segments are dropped; every article is served as before, and a process death at each rotation and drop cut reopens to the same history; a missing, spliced or uncovered segment is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-034",
+        "STO-007"
+      ],
+      "steps": [
+        "A format-9 store filled by the served node (12 articles); `store compact`; 6 more articles; `store compact` again.",
+        "On the developer image, `store compact` killed at rotate-created, rotate-fenced, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`.",
+        "A stale copy of the active segment as the next one; the checkpoint's first segment renamed away; the checkpoint removed after a drop."
+      ],
+      "expected": [
+        "journal/ holds 000002.log then 000003.log only; `store inspect` answers for every article as before each compaction; the node commits after it.",
+        "The recover exits 0 and serves every article as before; after a drop cut the covered segment is gone, before rotate-durable segments 1 and 2 remain; the later compaction succeeds and leaves one segment.",
+        "`store recover` exits 1 naming log-chain-broken, history-short-of-checkpoint and checkpoint-damaged."
+      ],
+      "implementation": {
+        "test": "tests/test_native_log_compaction.py",
+        "cases": [
+          "test_compaction_rotates_drops_and_serves_the_same_history",
+          "test_a_death_at_each_rotation_and_drop_cut",
+          "test_refusals_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/log-recovery-2026-09-27.md",
+        "log": "planning/evidence/log-recovery-2026-09-27/s2c-test_native_log_compaction.log"
+      },
+      "evidence": [
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27/s2c-test_native_log_compaction.log",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ]
+    },
+    {
+      "id": "SCN-180",
+      "title": "Export and import over the record log: a compacted format-9 store exports the checkpoint's records then the log's; the import writes a format-9 store whose export is the same archive; a death at the import's log cuts publishes no store",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-028",
+        "STO-034"
+      ],
+      "steps": [
+        "Export a format-9 store served by the node; import it; export the import.",
+        "Export a store compacted twice; import; export the import.",
+        "Import with FN_NATIVE_LOG_FAULT=log-written and =log-fenced (developer image); import again; remove the stage; import."
+      ],
+      "expected": [
+        "The two archives are equal file for file; the imported store holds journal/000001.log and no transaction file; `store inspect` answers the same.",
+        "The same, over the checkpoint's records and the remaining segment.",
+        "The killed import leaves ROOT.import-XXXX and no store at ROOT; the next import is refused interrupted-import (exit 1); after the stage is removed the import succeeds."
+      ],
+      "implementation": {
+        "test": "tests/test_native_store_export.py",
+        "cases": [
+          "test_export_then_import_serves_the_same_history",
+          "test_an_import_killed_in_the_log_publishes_no_store",
+          "tests.test_native_log_compaction test_compaction_rotates_drops_and_serves_the_same_history"
+        ],
+        "native": true,
+        "record": "planning/evidence/log-recovery-2026-09-27.md",
+        "log": "planning/evidence/log-recovery-2026-09-27/s2c-test_native_store_export.log"
+      },
+      "evidence": [
+        "tests/test_native_store_export.py",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27/s2c-test_native_store_export.log",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ]
+    },
+    {
       "id": "SCN-178",
       "title": "The mixed hour before and after the commit's barrier leaves the owner (PKT-688 (4) slice 2) on the same box: status/health p50 and p99, POST p50 and p99",
       "milestone": "M5",
@@ -5258,6 +5331,29 @@
         "native": true,
         "record": "planning/evidence/owner-scheduler-2-2026-09-27.md"
       }
+    },
+    {
+      "id": "SCN-181",
+      "title": "A live group create and control grant hold the owner for a quantum that does not grow with the store: idle at 1,000 and 10,000 articles, and the mixed hour's status/health p50 and p99 with a live group create and grant every 120 s, before and after the carried completion (PRF-274)",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Idle: load format-9 stores of 1,000 and 10,000 2,048-octet articles (planning/evidence/over-number-index-2026-09-26/measure.py load, fixture CAPACITY flags); for the before image (owner-scheduler-2's measurement tree 39ce24036) and the after image (control-quanta-m: the same tree plus books/config-owner-carried.lisp and the host line) run tools/profile/control_quanta.py: two rounds of `operator group create' and `operator control grant' on an otherwise idle owner, each op's client time and exit code, the time until `operator health' answers after it, and health's control-row hold-max-ms.",
+        "Profile: tools/profile/build_native_profile.sh images of both trees; tools/profile/prof_control.py samples the owner (sb-sprof, CPU and allocation) across each op.",
+        "Mixed hour: owner-scheduler-2's mixed.py (FN_MIXED_AGENTS=0, FN_MIXED_CONTROL=1: 3 tight-loop readers, 1 unsigned POST every 0.5 s, status and health every 30 s, a live group create and control grant every 120 s) for 3,600 s on both images concurrently on hbox."
+      ],
+      "expected": [
+        "Idle: the after quantum does not grow with N (no fn-cpr-replay, no fn-sn-statep of the store in its samples); every op exits 0 within the client's 10 s at 10,000 articles.",
+        "Mixed hour: the after status/health p50 and p99 are under 10 s; group create and grant exit 0; recover rc 0."
+      ],
+      "evidence": [
+        "planning/evidence/control-quanta-2026-09-27.md",
+        "tools/profile/control_quanta.py",
+        "tools/profile/prof_control.py"
+      ]
     }
   ]
 }

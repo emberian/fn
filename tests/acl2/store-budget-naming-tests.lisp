@@ -37,11 +37,11 @@
                   "sbnt-release-2" 1 841000000))
 (defconst *sbnt-second* (fn-hrt-row-at *sbnt-second-wire* 1))
 
-(defun sbnt-run (oc events)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+(defun sbnt-run (oc events fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
   (if (consp events)
-      (sbnt-run (fn-ocfg-step oc (car events)) (cdr events))
+      (sbnt-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))
 
 (defconst *sbnt-reserve-events*
@@ -54,15 +54,17 @@
    (fn-own-configure (fn-own-start (fn-sn-initial *sbnt-groups* 10) 3)
                      *sbnt-post-config*)
    *sbnt-config* nil nil))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift sbnt-run 2)
 (defconst *sbnt-ready-one*
-  (fn-ocfg-step
-   (sbnt-run (fn-opc-prepare (sbnt-run *sbnt-0* *sbnt-reserve-events*)
-                             *sbnt-first*)
-             '((:store (:io :record-file :ok))
+  (in-arena-fn-ocfg-step *sr-arena* (in-arena-sbnt-run *sr-arena* (fn-opc-prepare (in-arena-sbnt-run *sr-arena* *sbnt-0* *sbnt-reserve-events*)
+                             *sbnt-first*) '((:store (:io :record-file :ok))
                (:store (:io :record-link :ok))
-               (:store (:io :record-directory :ok))))
-   '(:complete)))
-(defconst *sbnt-reserved* (sbnt-run *sbnt-ready-one* *sbnt-reserve-events*))
+               (:store (:io :record-directory :ok)))) '(:complete)))
+(defconst *sbnt-reserved* (in-arena-sbnt-run *sr-arena* *sbnt-ready-one* *sbnt-reserve-events*))
 (defconst *sbnt-staged*
   (fn-sbud-oc-store (fn-opc-prepare *sbnt-reserved* *sbnt-second*)))
 (defconst *sbnt-reserved-store* (fn-sbud-oc-store *sbnt-reserved*))
@@ -125,7 +127,7 @@
 ; accept after zero committed names.
 (defconst *sbnt-misnumbered*
   (list nil nil
-        (list :store-files :record-staged 6 nil nil
+        (fn-sf-make :record-staged 6 nil nil
               (fn-hrt-row-at
                (fn-record-make 5 5 5 "<sbnt-five@example.invalid>" '(69)
                                '("fn.test") "p" "s" "r" 1 841000000)

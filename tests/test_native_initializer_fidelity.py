@@ -173,10 +173,22 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # The injection happens after the actual fsync returned.  This checks
         # source-cut routing only; it does not assert a platform EIO outcome.
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
-        # Format 9: the open finds no segment and refuses by name.
+        # Format 9: the store is complete when its record log's segment is
+        # (init's last step); before it the open faults naming the journal,
+        # and init again completes the store.
+        self.assert_incomplete_then_completed_by_init(store)
+
+    def assert_incomplete_then_completed_by_init(self, store):
         reopened = self.invoke(store, "recover")
-        self.assertNotEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
-        self.assertIn(b"log segment", reopened.stderr)
+        self.assertEqual(reopened.returncode, run_store.EXIT_FAULT, reopened.stderr)
+        self.assertIn(b"missing store directory", reopened.stderr)
+        self.assertIn(b"journal", reopened.stderr)
+        self.assertFalse((store / "journal" / "000001.log").exists())
+        retried = self.invoke(store, "init")
+        self.assertEqual(retried.returncode, run_store.EXIT_OK, retried.stderr)
+        recovered = self.invoke(store, "recover")
+        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
 
     def test_second_config_enumeration_eacces_is_not_empty_history(self):
         store = self.base / "enumeration"
@@ -192,8 +204,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
             if config_dir.exists():
                 os.chmod(config_dir, 0o700)
         self.assertTrue((config_dir / "00000001.cfg").is_file())
-        reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
+        self.assert_incomplete_then_completed_by_init(store)
 
     def test_sigkill_at_history_fence_is_process_death_then_faulted_restart(self):
         store = self.base / "killed-history"
@@ -203,11 +214,19 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # This is a separate executable process.  It is deliberately not an
         # exception retry within fnn-initialize, whose unwind-protect could
         # erase the staging evidence before the restart.
-        reopened = self.invoke(store, "recover")
-        self.assertNotEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
-        self.assertIn(b"log segment", reopened.stderr)
+        self.assert_incomplete_then_completed_by_init(store)
+
+    def test_sigkill_after_frontier_publication_is_completed_by_init(self):
+        # Format 9: the per-file part of init is published, the segment is
+        # not yet created: incomplete until init runs again.
+        store = self.base / "killed-frontier"
+        killed = self.invoke(store, "init", "init-final-frontier-file-fenced:kill")
+        self.assertEqual(killed.returncode, -9, killed.stderr)
+        self.assert_incomplete_then_completed_by_init(store)
 
     def test_sigkill_after_the_segment_recovers_in_a_new_process(self):
+        # Lane log-2: init's last cut is the fenced segment; the store is
+        # complete and a new process recovers it empty.
         store = self.base / "killed-segment"
         killed = self.invoke(store, "init", "init-journal-segment-fenced:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
