@@ -777,6 +777,72 @@ class NativePeeringTests(unittest.TestCase):
                              self.article(message_id, message_id[1:-1]))
         self.assertIsNone(target["process"].poll())
 
+    def test_a_full_store_defers_transit_and_the_sender_is_not_healthy(self):
+        """PKT-711 (the stranger rehearsal, 2026-09-27): a receiver whose
+        Store is full answered TAKETHIS 439 (drop) with `reason=none', and
+        the sender forgot the article and stayed healthy.  Now a full Store
+        answers 436 (retry; books/peer-inbound.lisp
+        fn-peer-full-store-is-a-retry-code), its log names
+        reason=unaffordable, and a sender whose peer defers holds
+        unavailable-peer (books/native-health.lisp
+        fn-nh-deferring-peer-is-held)."""
+        source = self.initialize("full-source", free_port())
+        target = self.base / "full-target"
+        target.mkdir()
+        port = free_port()
+        self.command([IMAGE, "--fn", "store", target / "store", "init",
+                      "--max-transactions", "12", "fn.test"])
+        (target / "fn.toml").write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(target / "store", port,
+                                             target / "control.sock"),
+            encoding="ascii")
+        full = {"name": "full-target", "root": target, "store": target / "store",
+                "control": target / "control.sock", "config": target / "fn.toml",
+                "port": port}
+        self.configure_peer(full, source, outbound="-")
+        self.start(full)
+        ids = ["<full-{}@example.invalid>".format(n) for n in range(16)]
+        replies = []
+        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            for message_id in ids:
+                stream.write(b"TAKETHIS " + message_id.encode() + b"\r\n"
+                             + self.article(message_id, message_id[1:-1]) + b".\r\n")
+                replies.append(stream.readline())
+            stream.write(b"QUIT\r\n")
+        codes = [r[:3] for r in replies]
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "full-store-defers-pkt-711",
+            "replies": [r.decode("ascii", "replace") for r in replies]}))
+        self.assertIn(b"239", codes, replies)
+        self.assertIn(b"436", codes, replies)
+        self.assertNotIn(b"439", codes, replies)
+        first = codes.index(b"436")
+        self.assertEqual(set(codes[first:]), {b"436"}, replies)
+        # The sender: a peer that defers is not healthy.
+        self.configure_peer(source, full)
+        self.start(source)
+        self.post(source, "<full-sent@example.invalid>", "full-sent")
+        deadline = time.monotonic() + 90
+        health = None
+        while time.monotonic() < deadline:
+            health = subprocess.run(
+                [str(IMAGE), "--fn", "operator", str(source["config"]), "health"],
+                cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=60, check=False)
+            if b"unavailable-peer held" in health.stdout:
+                break
+            time.sleep(1)
+        self.assertIsNotNone(health)
+        self.assertIn(b"unavailable-peer held deferred=", health.stdout, health.stdout)
+        self.assertNotEqual(health.returncode, 0, health.stdout)
+        # The receiver's log names why it deferred.
+        full["process"].terminate()
+        _, log = full["process"].communicate(timeout=60)
+        self.assertIn(b"reason=unaffordable", log, log[-2000:])
+
     def test_fragmented_takethis_without_check_answers_every_article(self):
         """PKT-600 under fragmentation (PRF-213, SCN-144; the gpt-6 review of
         2026-09-26, section 6): four TAKETHIS with no CHECK before them (RFC
