@@ -204,6 +204,43 @@
                                      fn-cfg-row-a fn-cfg-row-b fn-cfg-row-c
                                      fn-cfg-row-n))))
 
+;; PKT-575 (CT3; PRF-196): the operator's withdrawal authorization.
+(defthm fn-cfg-withdrawal-row-of-row-upsert
+  (implies (and (not (fn-cfg-withdrawal-row rows cause))
+                (equal (fn-cfg-row-n row) 1)
+                (equal (fn-cfg-row-a row) cause))
+           (equal (fn-cfg-withdrawal-row (fn-cfg-row-upsert rows row) c)
+                  (if (equal c cause)
+                      row
+                    (fn-cfg-withdrawal-row rows c))))
+  :hints (("Goal" :induct (fn-cfg-row-upsert rows row)
+           :in-theory (enable fn-cfg-row-upsert))))
+
+; KEYSTONE (PKT-575, CT3; PRF-196).  An admitted `article withdraw' row
+; (:withdraw-article, code 26) makes CAUSE authorize exactly TARGET and
+; changes what no other cause authorizes.  Subject: `fn-cfg-apply-delta', the
+; fold replay and live publication both run; the delta is staged by
+; books/native-admin.lisp `fn-native-admin-plan-deltas' (argv
+; `article withdraw-record CAUSE TARGET REASON', which the owner's
+; moderation-verbs plan names, books/moderation-verbs.lisp).  The hypothesis
+; is what `fn-cfg-delta-reason' admits.
+(defthm fn-cfg-withdraw-article-authorizes-the-cause
+  (implies (not (fn-cfg-withdraw-article-reason
+                 v (fn-cfg-withdraw-article cause target reason)))
+           (equal (fn-cfg-withdrawal-target
+                   (fn-cfg-authorities
+                    (fn-cfg-apply-delta v gen stamp
+                                        (fn-cfg-withdraw-article cause target reason)))
+                   c)
+                  (if (equal c cause)
+                      target
+                    (fn-cfg-withdrawal-target (fn-cfg-authorities v) c))))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-withdraw-article fn-cfg-ag-car
+                                     fn-cfg-withdraw-article-reason)
+           :use ((:instance fn-cfg-withdrawal-row-of-row-upsert
+                  (rows (fn-cfg-authorities v))
+                  (row (fn-cfg-row-make cause target reason 1)))))))
+
 ; The closed list is exactly the served groups whose status is "n".
 (defthm fn-cfg-closed-filter-member
   (iff (member-equal x (fn-cfg-closed-filter names v gen))

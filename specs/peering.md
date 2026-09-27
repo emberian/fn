@@ -1614,6 +1614,26 @@ withdraws its target from newly published reader views only for the
 target's author or an authority whose grant covers every group the target
 is served in, decided once under the configuration it committed under.
 
+**The node's own withdrawal (PKT-575, CT3; PRF-253).** A fourth basis
+beside author, authority and poster: `article withdraw ID --reason TEXT`
+(and `moderation reject`, specs/nntp.md) writes the configuration row
+(CAUSE ID REASON 1) in the authorities slot (delta code 26,
+`fn-cfg-withdraw-article-authorizes-the-cause`), then the node injects the
+cancel CAUSE (`<fn-withdraw.` then ID after its `<`; `Control: cancel ID`)
+into ID's groups through the operator submission. The refresh that first
+publishes CAUSE decides it under the configuration in force at CAUSE's
+txid, which holds the row, so the record is `(:withdrawal ID CAUSE :node
+nil GEN)` whatever CAUSE's verdict and keys, and it withdraws exactly ID
+from every view holding CAUSE (`fn-ctl-node-withdrawal-withdraws-exactly-
+its-target`); `control evidence` names it `principal=node`, HDR :fn-control
+`executed withdrawal ID node`. The decision is durable configuration the
+operator wrote, never the cause's octets: a peer's article with that
+Message-ID withdraws ID only because the row already says so. The cause is
+stored in ID's groups (for a rejection, the hidden queue) by the operator
+path, not filed in `control.cancel` (NNT-010's filing is the ingress
+paths'; PKT-715). A stronger fn guarantee: RFC 5537 section 5.3 leaves
+cancel authority to local policy.
+
 **Filing (implemented, C1).** `fn-ctl-classify`
 (`books/control-classify.lisp`) reads only the `Control` field, and the
 `Supersedes` field RFC 5536 §3.2.3 forbids beside it

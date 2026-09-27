@@ -1796,8 +1796,45 @@ prints `moderation group=fn.announce queue=fn.announce.moderation held=N`
 and one line per envelope in the queue, `held`, `approved` (the post's own
 Message-ID is stored) or `rejected` (a withdrawal record withdraws the
 envelope), with `envelope=<fn-moderate....>` and the post's `message-id=`.
-It asks the running owner, or reads the store offline. There is no
-`moderation approve/reject` verb yet (PKT-657): approve over NNTP as above.
+It asks the running owner, or reads the store offline.
+
+To approve or reject a held post from the operator's shell, naming the
+moderator whose decision it is:
+
+```
+fn operator /etc/fn/fn.toml moderation approve '<post@example.org>' --moderator alice
+fn operator /etc/fn/fn.toml moderation reject '<post@example.org>' --moderator alice --reason off-topic
+```
+
+The Message-ID is the post's or its envelope's (`<fn-moderate....>`).
+`approve` posts the held article with `Approved: alice` first, exactly as
+alice's approval over NNTP would (the served POST's decision under her
+view). `reject` withdraws the envelope under the node's own authority (see
+`article withdraw` below; the reason defaults to `rejected by the
+moderator`); `moderation list` then shows it `rejected`. A login that does
+not moderate the group is refused by name (`REFUSED ... not-a-moderator`,
+exit 1), as is a post already approved or rejected. Both need the running
+owner (the control socket).
+
+### Withdrawing an article: `article withdraw`
+
+```
+fn operator /etc/fn/fn.toml article withdraw '<spam@example.net>' --reason takedown
+```
+
+withdraws a stored article from every reader view under the node's own
+authority, whoever posted it and wherever it is served. The node records
+the operator's decision in the configuration (`article withdraw-record`, a
+row the reader never sees), then injects a cancel control article
+(`Control: cancel <spam@example.net>`, Message-ID
+`<fn-withdraw.spam@example.net>`) into the article's groups; a connection
+opened before the cancel keeps its view until it advances, and the article
+stays withdrawn after a restart. `control evidence` names such a record
+`principal=node`. Nothing is deleted from the store. The reason is ASCII
+text of at most 256 octets; the Message-ID must fit a configuration label
+(256 octets with its `<fn-withdraw.` prefix). A second withdrawal of the
+same article is refused `already-withdrawn`; one of an article the store
+does not hold, `no-such-article`. It needs the running owner.
 
 ## Accounts for friends (invitation codes)
 

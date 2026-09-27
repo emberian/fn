@@ -1850,6 +1850,44 @@ exactly one submission is affected even if the owner survives it."
           (fnn-store-fault-class store) class
           (fnn-store-fault-message store) message)))
 
+(defun fnn-owner-moderation-serialized (service op login id reason)
+  "PKT-657, PKT-575: one moderation or withdrawal request.
+
+ACL2 decides it over the owner and the configuration it carries, after one
+fresh clock reading (books/moderation-verbs.lisp fn-mvb-plan, through
+host/owner-host.lisp fn-owner-moderation-plan), and names the steps; this
+function runs them in order and answers the first that does not accept.  A
+refusal carries ACL2's reason, as (:reason :refused REASON).  :submit hands
+ACL2's article to the operator submission; :withdraw first publishes ACL2's
+configuration vector through the live administration (the operator's
+withdrawal row, code 26), then submits the cause article.  Each step decides
+again under the owner mutex; nothing here computes a value."
+  (let ((plan (fnn-owner-serialized
+               service nil
+               (lambda ()
+                 (fnn-owner-advance-clock)
+                 (fnn-owner-core 'fn-owner-moderation-plan op login id reason)))))
+    (flet ((submit (msgid groups octets)
+             (unless (and (fnn-octet-list-p msgid) (listp groups)
+                          (every #'fnn-octet-list-p groups)
+                          (fnn-octet-list-p octets))
+               (fnn-fault "ACL2 returned a malformed moderation submission"))
+             (fnn-owner-control-submit-serialized
+              service (fnn-octets msgid) (mapcar #'fnn-octets groups)
+              (fnn-octets octets))))
+      (case (and (consp plan) (first plan))
+        (:refused (list :reason :refused (second plan)))
+        (:submit (submit (second plan) (third plan) (fourth plan)))
+        (:withdraw
+         (let* ((argv (second plan))
+                (admin (if argv (fnn-owner-live-admin-serialized service argv)
+                         :accepted))
+                (word (if (consp admin) (second admin) admin)))
+           (if (eq word :accepted)
+               (submit (third plan) (fourth plan) (fifth plan))
+             admin)))
+        (t (fnn-fault "ACL2 returned a malformed moderation plan"))))))
+
 (defun fnn-owner-control-submit-serialized (service msgid groups payload)
   "Inject, queue and drain the operator's article through the shared owner writer.
 

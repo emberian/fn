@@ -94,6 +94,50 @@
   (declare (xargs :guard t))
   (fn-nop-result :refused reason command config arguments))
 
+;; PKT-657, PKT-575 (books/moderation-verbs.lisp): `moderation approve ID
+;; --moderator LOGIN', `moderation reject ID --moderator LOGIN [--reason
+;; TEXT]' and `article withdraw ID --reason TEXT' are one request to the
+;; running owner (FNCT kind 21), planned as (:moderate OP LOGIN ID REASON),
+;; each an octet list.  ID is a bracketed Message-ID; the owner decides the
+;; rest (who moderates, what is held, what the configuration can carry).
+(defun fn-nop-moderate-plan (command op id login reason config words)
+  (declare (xargs :guard t))
+  (if (and (fn-cevg-msgidp id)
+           (or (equal op :withdraw) (fn-cfg-account-loginp login))
+           (stringp reason))
+      (fn-nop-result :accepted :plan command config
+                     (list :moderate op
+                           (if (stringp login) (fn-record-string-octets login) nil)
+                           (fn-record-string-octets id)
+                           (fn-record-string-octets reason)))
+    (fn-nop-usage :moderation-verb command config words)))
+
+(defun fn-nop-parse-moderate (command words config)
+  (declare (xargs :guard t))
+  (let ((verb (fn-ncfg-first words)) (rest (fn-ncfg-rest words)))
+    (cond ((and (equal command "moderation") (equal verb "approve")
+                (equal (len rest) 3) (equal (fn-ncfg-second rest) "--moderator"))
+           (fn-nop-moderate-plan command :approve (fn-ncfg-first rest)
+                                 (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest rest)))
+                                 "" config words))
+          ((and (equal command "moderation") (equal verb "reject")
+                (member-equal (len rest) '(3 5))
+                (equal (fn-ncfg-second rest) "--moderator")
+                (or (equal (len rest) 3)
+                    (equal (fn-ncfg-first (nthcdr 3 (true-list-fix rest))) "--reason")))
+           (fn-nop-moderate-plan command :reject (fn-ncfg-first rest)
+                                 (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest rest)))
+                                 (if (equal (len rest) 5)
+                                     (fn-ncfg-first (nthcdr 4 (true-list-fix rest)))
+                                   "")
+                                 config words))
+          ((and (equal command "article") (equal verb "withdraw")
+                (equal (len rest) 3) (equal (fn-ncfg-second rest) "--reason"))
+           (fn-nop-moderate-plan command :withdraw (fn-ncfg-first rest) nil
+                                 (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest rest)))
+                                 config words))
+          (t (fn-nop-usage :moderation-verb command config words)))))
+
 (defun fn-nop-parse-run (words once)
   (declare (xargs :guard t))
   (if (consp words)
@@ -495,7 +539,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "consumer")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -527,7 +571,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "retention")
          "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
         ((equal subject "moderation")
-         "usage: fn operator CONFIG moderation list GROUP (the posts held for moderated GROUP in its queue: held, approved or rejected; asks the running owner, offline reads the store)")
+         "usage: fn operator CONFIG moderation {list GROUP | approve MESSAGE-ID --moderator LOGIN | reject MESSAGE-ID --moderator LOGIN [--reason TEXT]} (list: the posts held for moderated GROUP in its queue, held, approved or rejected, from the running owner or offline from the store; approve posts the held article with Approved: LOGIN, reject withdraws its envelope; both need the running owner and a LOGIN that moderates the group)")
+        ((equal subject "article")
+         "usage: fn operator CONFIG article withdraw MESSAGE-ID --reason TEXT (withdraws the stored article under this node's own authority: a configuration record, then a cancel the node injects; needs the running owner)")
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list | log | evidence MESSAGE-ID} (NAMESPACE is a group name or one ending in .*; spec peering 8; log lists the withdrawal records, evidence shows one article's decision context)")
         ((equal subject "peer")
@@ -764,6 +810,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                   (equal (fn-ncfg-first (fn-cevg-parse rest)) :usage))
              (fn-nop-usage (list :control-report (fn-ncfg-second (fn-cevg-parse rest)))
                            "control" config rest))
+            ; PKT-657, PKT-575: the owner's moderation and withdrawal verbs.
+            ((and (equal command "moderation")
+                  (member-equal (fn-ncfg-first rest) '("approve" "reject")))
+             (fn-nop-parse-moderate command rest config))
+            ((equal command "article") (fn-nop-parse-moderate command rest config))
             ; PKT-657: `moderation list GROUP' is a status report too.
             ((and (equal command "moderation")
                   (equal (fn-ncfg-first (fn-cevg-moderation-parse rest)) :kind))
@@ -1063,6 +1114,30 @@ is installed into the owner for both served and control submission."
 (defun fn-native-operator-result-post-control-path-octets (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-post-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
+; The moderation request (books/moderation-verbs.lisp): OP LOGIN ID REASON,
+; and the control socket it goes to.
+(defun fn-native-operator-result-moderate-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (member-equal (fn-native-operator-result-command result)
+                     '("moderation" "article"))
+       (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+              :moderate)
+       t))
+
+(defun fn-native-operator-result-moderate-request (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-moderate-planp result)
+      (fn-ncfg-rest (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-moderate-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-moderate-planp result)
       (fn-record-string-octets
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
@@ -1381,6 +1456,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
                 (fn-cevg-kindp (fn-ncfg-first
                                 (fn-native-operator-result-arguments result))))
            :status)
+          ((and (member-equal (fn-native-operator-result-command result)
+                              '("moderation" "article"))
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :moderate))
+           :moderate)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((equal (fn-native-operator-result-command result) "store")
            (cond ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))

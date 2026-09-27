@@ -232,10 +232,30 @@
 ; the author basis can apply).  RFC 5537 section 5.4: a Supersedes field
 ; withdraws its target "exactly as a cancel would", under the same
 ; authentication, so the two share this decision.
+;
+; PKT-575 (CT3): the node's own authority.  A cause the configuration CFG
+; authorizes for exactly this TARGET (an authorities row (CAUSE TARGET
+; REASON 1), `fn-cfg-withdrawal-target', written by the operator's
+; :withdraw-article delta before the node injected CAUSE) yields the record
+; (:withdrawal TARGET CAUSE :node nil GEN), whatever the cause's verdict and
+; keys: the operator's decision is durable configuration, never the cause's
+; octets, so a peer's article claiming it gains nothing a matching row does
+; not already say.
+(defun fn-ctl-node-authorizesp (cause-msgid target cfg)
+  (declare (xargs :guard t))
+  (and target
+       (not (equal target cause-msgid))
+       (equal (fn-cfg-withdrawal-target (fn-cfg-authorities (fn-cfg-value cfg))
+                                        cause-msgid)
+              target)))
+
 (defun fn-ctl-withdrawal-plan (cause-msgid cause-verdict target keys cfg)
   (declare (xargs :guard t))
   (let ((principal (fn-ctl-verified-principal cause-verdict)))
-    (cond ((and (not principal) (not (consp keys)))
+    (cond ((fn-ctl-node-authorizesp cause-msgid target cfg)
+           (fn-ctl-withdrawal-make target cause-msgid :node nil
+                                   (fn-cfg-generation cfg)))
+          ((and (not principal) (not (consp keys)))
            (list :decline (fn-ctl-unverified-reason cause-verdict)))
           ((not target) (list :decline :no-target))
           ((equal target cause-msgid) (list :decline :self-target))
@@ -405,6 +425,8 @@
 ;               the target's sha256 Cancel-Locks (RFC 8315; SEC-006);
 ;   :authority  the record's scope covers EVERY group the target is served
 ;               in (the conservative cross-post rule, D29);
+;   :node       the record is the node's own (PKT-575: the operator's
+;               withdrawal, principal :node), whatever the target's groups;
 ;   (:decline REASON) otherwise.  A key record has no scope: it never
 ;   reaches the authority arm.
 (defun fn-ctl-withdrawal-effect (w t-groups t-verdict t-received)
@@ -412,6 +434,7 @@
   (let ((named (fn-ctl-named-principal t-verdict))
         (scope (fn-ctl-w-scope w)))
     (cond ((not (fn-ctl-withdrawalp w)) (list :decline :no-record))
+          ((eq (fn-ctl-w-principal w) :node) :node)
           ((and named (equal named (fn-ctl-w-principal w))) :author)
           ((fn-ctl-key-principalp (fn-ctl-w-principal w))
            (if (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))
@@ -426,7 +449,8 @@
 
 (defun fn-ctl-effect-withdrawsp (effect)
   (declare (xargs :guard t))
-  (or (eq effect :author) (eq effect :authority) (eq effect :poster)))
+  (or (eq effect :author) (eq effect :authority) (eq effect :poster)
+      (eq effect :node)))
 
 ; -----------------------------------------------------------------------------
 ; The visible view.  ARTICLES is an acceptance archive's article list,
@@ -701,7 +725,9 @@
 ; principal's cancel grants in the configuration it commits under, and that
 ; configuration's generation.
 (defthm fn-ctl-cancel-plan-record-is-bound
-  (implies (fn-ctl-withdrawalp (fn-ctl-cancel-plan cause verdict classified cfg))
+  (implies (and (fn-ctl-withdrawalp (fn-ctl-cancel-plan cause verdict classified cfg))
+                (not (fn-ctl-node-authorizesp cause (fn-ctl-cancel-target classified)
+                                              cfg)))
            (let ((w (fn-ctl-cancel-plan cause verdict classified cfg)))
              (and (equal (fn-ctl-w-cause w) cause)
                   (equal (fn-ctl-w-target w) (fn-ctl-cancel-target classified))
@@ -715,7 +741,8 @@
                   (equal (fn-ctl-w-generation w) (fn-cfg-generation cfg)))))
   :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
                                       fn-ctl-cancel-target
-                                      fn-ctl-grant-scope))))
+                                      fn-ctl-grant-scope
+                                      fn-ctl-node-authorizesp))))
 
 ; The same binding for the general plan (a cancel or a Supersedes field):
 ; a verified cause's record names its principal and grants; an unverified
@@ -727,18 +754,23 @@
              (and (equal (fn-ctl-w-cause w) cause)
                   (equal (fn-ctl-w-target w) target)
                   (equal (fn-ctl-w-generation w) (fn-cfg-generation cfg))
-                  (if (fn-ctl-verified-principal verdict)
-                      (and (equal (fn-ctl-w-principal w)
-                                  (fn-ctl-verified-principal verdict))
-                           (equal (fn-ctl-w-scope w)
-                                  (fn-ctl-grant-scope
-                                   (fn-ctl-verified-principal verdict) "cancel"
-                                   (fn-cfg-authorities (fn-cfg-value cfg)))))
-                    (and (consp keys)
-                         (equal (fn-ctl-w-principal w) (cons :cancel-key keys))
-                         (equal (fn-ctl-w-scope w) nil))))))
+                  (cond ((fn-ctl-node-authorizesp cause target cfg)
+                         (and (equal (fn-ctl-w-principal w) :node)
+                              (equal (fn-ctl-w-scope w) nil)))
+                        ((fn-ctl-verified-principal verdict)
+                         (and (equal (fn-ctl-w-principal w)
+                                     (fn-ctl-verified-principal verdict))
+                              (equal (fn-ctl-w-scope w)
+                                     (fn-ctl-grant-scope
+                                      (fn-ctl-verified-principal verdict) "cancel"
+                                      (fn-cfg-authorities (fn-cfg-value cfg))))))
+                        (t
+                         (and (consp keys)
+                              (equal (fn-ctl-w-principal w) (cons :cancel-key keys))
+                              (equal (fn-ctl-w-scope w) nil)))))))
   :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
-                                      fn-ctl-grant-scope))))
+                                      fn-ctl-grant-scope
+                                      fn-ctl-node-authorizesp))))
 
 ;; The cause alone, for callers that need only it.
 (defthm fn-ctl-withdrawal-plan-names-its-cause
@@ -748,7 +780,8 @@
                                                           keys cfg))
                   cause))
   :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
-                                      fn-ctl-grant-scope))))
+                                      fn-ctl-grant-scope
+                                      fn-ctl-node-authorizesp))))
 
 ; SEC-006, the signed canceller unchanged: a cause this node verified is
 ; decided exactly as without keys, whatever Cancel-Key it carries.
@@ -798,7 +831,8 @@
 (defthm fn-ctl-cancel-executes-only-for-author-or-authority
   (implies (fn-ctl-effect-withdrawsp (fn-ctl-withdrawal-effect w t-groups t-verdict
                                                                t-received))
-           (or (and (fn-ctl-named-principal t-verdict)
+           (or (eq (fn-ctl-w-principal w) :node)
+               (and (fn-ctl-named-principal t-verdict)
                     (equal (fn-ctl-named-principal t-verdict)
                            (fn-ctl-w-principal w)))
                (and (fn-ctl-key-principalp (fn-ctl-w-principal w))
@@ -834,6 +868,8 @@
                (fn-ctl-withdrawal-effect w t-groups t-verdict t-received)))
          (and target
               (not (equal target cause))
+              (if (fn-ctl-node-authorizesp cause target cfg)
+                  t
               (if (fn-ctl-verified-principal verdict)
                   (or (equal (fn-ctl-named-principal t-verdict)
                              (fn-ctl-verified-principal verdict))
@@ -843,7 +879,7 @@
                         (and (consp scope) (consp t-groups)
                              (fn-ctl-covers-every-p scope t-groups))))
                 (fn-ctl-some-key-opens-p keys
-                                         (fn-ctl-locks-octets t-received))))))
+                                         (fn-ctl-locks-octets t-received)))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-ctl-named-principal
                                       fn-ctl-covers-every-p
@@ -874,6 +910,27 @@
   (implies (not (fn-ctl-has-msgid-p (fn-ctl-w-cause w) articles))
            (equal (fn-ctl-visible-articles articles (cons w ws) verdicts)
                   (fn-ctl-visible-articles articles ws verdicts))))
+
+; KEYSTONE (PKT-575, CT3; PRF-196).  THE NODE'S WITHDRAWAL WITHDRAWS EXACTLY
+; ITS TARGET.  When the configuration in force at the cause's txid holds the
+; operator's row (CAUSE TARGET REASON 1), the plan's record is the node's,
+; and an article is withdrawn by it within ARTICLES exactly when it is the
+; TARGET and CAUSE is itself among ARTICLES (a view pinned before the cause
+; keeps the target).  No other article, whatever its groups or verdict.
+; Subject: `fn-ctl-withdrawal-plan' and `fn-ctl-withdrawn-by-p' as the owner
+; refresh composes them (books/control-visible.lisp
+; `fn-ctl-refresh-withdrawals', called by books/owner.lisp fn-own-refresh).
+(defthm fn-ctl-node-withdrawal-withdraws-exactly-its-target
+  (implies (fn-ctl-node-authorizesp cause target cfg)
+           (let ((w (fn-ctl-withdrawal-plan cause verdict target keys cfg)))
+             (and (fn-ctl-withdrawalp w)
+                  (equal (fn-ctl-w-principal w) :node)
+                  (iff (fn-ctl-withdrawn-by-p a (list w) articles verdicts)
+                       (and (consp a)
+                            (equal (fn-article-msgid a) target)
+                            (fn-ctl-has-msgid-p cause articles))))))
+  :hints (("Goal" :in-theory (disable fn-ctl-has-msgid-p fn-ctl-node-authorizesp
+                                      fn-ctl-verified-principal))))
 
 (defthm fn-ctl-visible-filter-member
   (iff (member-equal a (fn-ctl-visible-filter xs ws articles verdicts))

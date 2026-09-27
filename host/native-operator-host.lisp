@@ -131,6 +131,14 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-post-control-path-octets result))
 
+(defun fn-native-operator-host-result-moderate-request (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-moderate-request result))
+
+(defun fn-native-operator-host-result-moderate-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-moderate-control-path-octets result))
+
 (defun fn-native-operator-host-result-post-msgid-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-post-msgid-octets result))

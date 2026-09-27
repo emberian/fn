@@ -162,6 +162,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/control-evidence-grammar \
 	books/control-evidence \
 	tests/acl2/control-evidence-tests \
+	books/moderation-verbs \
+	tests/acl2/moderation-verbs-tests \
 	books/log-sink \
 	tests/acl2/log-sink-tests \
 	books/native-health \

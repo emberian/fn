@@ -8178,6 +8178,18 @@
         {
           "kind": "theorem",
           "name": "fn-auth-access-text-of-moderation-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-approve-commits-the-held-article-approved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-only-a-moderator-approves-or-rejects"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-reject-withdraws-the-held-envelope"
         }
       ]
     },
@@ -8697,6 +8709,35 @@
         {
           "kind": "theorem",
           "name": "fn-ores-take-idle-is-a-result"
+        }
+      ]
+    },
+    {
+      "id": "PRF-253",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-withdraw-article-authorizes-the-cause"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-withdrawal-row-of-row-upsert"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-node-withdrawal-withdraws-exactly-its-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-withdraw-names-exactly-its-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-plan-unfolds"
         }
       ]
     }
