@@ -282,7 +282,8 @@
     (if (or (equal records :bad) (equal config-records :bad))
         (value :fault)
       (fn-owner-recover-extended
-       (fn-sco-extend (fn-sco-capture config-records nil) config-records records)
+       ; fn-rii-sco-extend-is-sco-extend (PRF-242): the replay's identity tries.
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records records)
        config-records frontier max-conns state))))
 
 ; The open from the checkpoint the Store open decoded and verified
@@ -297,7 +298,8 @@
     (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
         (value :fault)
       (fn-owner-recover-extended
-       (fn-sco-extend checkpoint config-records records)
+       ; fn-rii-sco-extend-is-sco-extend (PRF-242).
+       (fn-rii-sco-extend checkpoint config-records records)
        config-records frontier max-conns state))))
 
 (defun fn-owner-store (state)
@@ -812,7 +814,10 @@
                            ; fn-pcar-sbud-prepare over the owner's carried
                            ; view (fn-pidx-sbud-prepare-is-pcar-sbud-prepare):
                            ; the duplicate test reads the view trie and the
-                           ; retention admission is decided once.
+                           ; retention admission is decided once; the budget
+                           ; test reads the event index's count (PRF-242,
+                           ; under fn-ceis-indexedp, which the live owner
+                           ; carries: fn-osi-live-owner-store-is-indexed).
                            (fn-pidx-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)

@@ -420,6 +420,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
 	tests/acl2/post-identity-index-tests \
+	books/replay-identity-index \
+	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
 	tests/acl2/owner-store-indexed-tests \
 	books/bp-fnbs-delivery-codec \

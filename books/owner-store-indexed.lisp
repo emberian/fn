@@ -431,7 +431,8 @@
   :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pidx-opc-prepare
                                    fn-pidx-opc-owner-prepare)
                                   (fn-ceis-indexedp fn-pidx-spc-prepare
-                                   fn-own-refresh fn-sbud-admitp fn-sbud-used)))))
+                                   fn-own-refresh fn-sbud-admitp fn-sbud-used
+                                   fn-sbud-count)))))
 
 ;; The view trie (fn-scar-view-indexedp, books/owner-offer-indexed.lisp) is
 ;; kept alike: only the refresh changes the view.
@@ -444,7 +445,7 @@
                                    fn-ocfg-with-owner)
                                   (fn-midx-correspondencep fn-own-refresh
                                    fn-pidx-spc-prepare
-                                   fn-sbud-admitp fn-sbud-used)))))
+                                   fn-sbud-admitp fn-sbud-used fn-sbud-count)))))
 
 (defthm fn-osi-ccar-ocfg-prepare-identity-keeps-indexed
   (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))

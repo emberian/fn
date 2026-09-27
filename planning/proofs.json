@@ -7022,7 +7022,7 @@
     {
       "id": "PRF-191",
       "title": "A POST's three Message-ID tests do not walk the history: the held-article lookup and the acceptance machine's duplicate test read the owner's view Message-ID trie, and the retention admission is decided once, each equal to the reference under the two carried view relations",
-      "statement": "Subjects, called by host/owner-host.lisp (both from host/native/owner.lisp fnn-owner-attempt): fn-pidx-existing-action (books/post-identity-index.lisp) from fn-owner-existing-action-buffer and fn-owner-prepare-buffer; fn-pidx-sbud-prepare from fn-owner-prepare-buffer. fn-pidx-find-article answers fn-find-article MSGID ARTS from the view's trie (fn-mxc-lookup of fn-own-view-index) when MSGID is a non-empty string, ARTS is EQUAL to the view's raw list (one pointer comparison after fn-own-refresh) and no withdrawal record targets MSGID (fn-pidx-targetedp); otherwise it scans. KEYSTONE fn-pidx-find-article-is-find-article: under fn-ocl-view-visiblep (the visible list is fn-ctl-visible-articles of the raw list) and fn-midx-correspondencep of the trie to the visible list, the lookup equals fn-find-article for every Message-ID and every article list (fn-pidx-find-in-visible-is-find: an untargeted Message-ID is found alike in the visible list and the list it filters). KEYSTONE fn-pidx-existing-action-is-rclb-existing-action: under fn-ocl-view-visiblep of the owner's view and fn-scar-view-indexedp of the owner, the host's call equals fn-rclb-existing-action over (fn-own-store o), hence the tombstone-aware verdict (fn-rclb-existing-action-is-rcl-existing-action). KEYSTONE fn-pidx-sbud-prepare-is-pcar-sbud-prepare: under the same two relations of (fn-ocfg-owner oc), fn-pidx-sbud-prepare equals fn-pcar-sbud-prepare for every record and budget, hence fn-sbud-prepare (fn-pcar-sbud-prepare-is-sbud-prepare); the chain fn-pidx-opc-prepare / -opc-owner-prepare / -spc-prepare / -sn-prepare-node / -node-prepare / -accept-prepare replaces fn-acceptedp by the view lookup and builds the admitted retention ledger in the branch where fn-retain-admissiblep has just held (fn-retain-admit's body there) instead of deciding it again. Both relations are carried: fn-ocl-view-visiblep by fn-ocl-relation (fn-ocl-view-historyp-is-visible), fn-scar-view-indexedp by every owner transition the host installs (books/owner-offer-indexed.lisp; fn-osi-pidx-prepare-keeps-view-indexed for the new prepare); fn-pidx-view-okp-of-live-owner discharges the prepare chain's guard premise from them. books/owner-store-indexed.lisp's host-step model names fn-pidx-sbud-prepare in a :prepare-buffer arm, kept by fn-osi-pidx-prepare-keeps-indexed with no hypothesis, so PRF-144's fn-osi-live-owner-store-is-indexed still describes the host. Every function is guard-verified; the lookup and the buffer decision under guard t, each prepare twin under its reference's guard, the chain the host enters also under fn-pidx-view-okp. Teeth: tests/acl2/post-identity-index-tests.lisp (the reachable owner-prepare-carried-tests owner *pcar-t-o*: a held and a fresh Message-ID through the trie; a constructed targeting record sends the lookup to the scan; :duplicate/:conflict/nil on a live local buffer; the submission's own and a fresh record stage, a record under the held Message-ID with an admissible obligation is refused by the duplicate test; the staged ledger is fn-retain-admit's; per keystone and hypothesis a CORRUPTED view (the fake article on the visible side only, or in the trie only) with each retained hypothesis asserted, the omitted one failing, the conclusion failing, and a must-fail); tests/acl2/owner-store-indexed-tests.lisp (the host's open satisfies fn-pidx-view-okp and the lookup answers the signed composite's article). Not covered: the first retention admissibility scan (fn-retain-known-id-scanp over the pins, keyed by obligation id, which no carried index answers: PKT-549).",
+      "statement": "Subjects, called by host/owner-host.lisp (both from host/native/owner.lisp fnn-owner-attempt): fn-pidx-existing-action (books/post-identity-index.lisp) from fn-owner-existing-action-buffer and fn-owner-prepare-buffer; fn-pidx-sbud-prepare from fn-owner-prepare-buffer. fn-pidx-find-article answers fn-find-article MSGID ARTS from the view's trie (fn-mxc-lookup of fn-own-view-index) when MSGID is a non-empty string, ARTS is EQUAL to the view's raw list (one pointer comparison after fn-own-refresh) and no withdrawal record targets MSGID (fn-pidx-targetedp); otherwise it scans. KEYSTONE fn-pidx-find-article-is-find-article: under fn-ocl-view-visiblep (the visible list is fn-ctl-visible-articles of the raw list) and fn-midx-correspondencep of the trie to the visible list, the lookup equals fn-find-article for every Message-ID and every article list (fn-pidx-find-in-visible-is-find: an untargeted Message-ID is found alike in the visible list and the list it filters). KEYSTONE fn-pidx-existing-action-is-rclb-existing-action: under fn-ocl-view-visiblep of the owner's view and fn-scar-view-indexedp of the owner, the host's call equals fn-rclb-existing-action over (fn-own-store o), hence the tombstone-aware verdict (fn-rclb-existing-action-is-rcl-existing-action). KEYSTONE fn-pidx-sbud-prepare-is-pcar-sbud-prepare: under the same two relations of (fn-ocfg-owner oc) and (PRF-242, the budget test reads the event index's count) fn-ceis-indexedp of its Store, fn-pidx-sbud-prepare equals fn-pcar-sbud-prepare for every record and budget, hence fn-sbud-prepare (fn-pcar-sbud-prepare-is-sbud-prepare); the chain fn-pidx-opc-prepare / -opc-owner-prepare / -spc-prepare / -sn-prepare-node / -node-prepare / -accept-prepare replaces fn-acceptedp by the view lookup and builds the admitted retention ledger in the branch where fn-retain-admissiblep has just held (fn-retain-admit's body there) instead of deciding it again. Both relations are carried: fn-ocl-view-visiblep by fn-ocl-relation (fn-ocl-view-historyp-is-visible), fn-scar-view-indexedp by every owner transition the host installs (books/owner-offer-indexed.lisp; fn-osi-pidx-prepare-keeps-view-indexed for the new prepare); fn-pidx-view-okp-of-live-owner discharges the prepare chain's guard premise from them. books/owner-store-indexed.lisp's host-step model names fn-pidx-sbud-prepare in a :prepare-buffer arm, kept by fn-osi-pidx-prepare-keeps-indexed with no hypothesis, so PRF-144's fn-osi-live-owner-store-is-indexed still describes the host. Every function is guard-verified; the lookup and the buffer decision under guard t, each prepare twin under its reference's guard, the chain the host enters also under fn-pidx-view-okp. Teeth: tests/acl2/post-identity-index-tests.lisp (the reachable owner-prepare-carried-tests owner *pcar-t-o*: a held and a fresh Message-ID through the trie; a constructed targeting record sends the lookup to the scan; :duplicate/:conflict/nil on a live local buffer; the submission's own and a fresh record stage, a record under the held Message-ID with an admissible obligation is refused by the duplicate test; the staged ledger is fn-retain-admit's; per keystone and hypothesis a CORRUPTED view (the fake article on the visible side only, or in the trie only) with each retained hypothesis asserted, the omitted one failing, the conclusion failing, and a must-fail); tests/acl2/owner-store-indexed-tests.lisp (the host's open satisfies fn-pidx-view-okp and the lookup answers the signed composite's article). Not covered: the first retention admissibility scan (fn-retain-known-id-scanp over the pins, keyed by obligation id, which no carried index answers: PKT-549).",
       "milestone": "M5",
       "requirements": [
         "HST-001"
@@ -7992,7 +7992,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
@@ -8011,6 +8011,54 @@
         "fn-bpaj-ocl-relation-carries-sn-statep",
         "fn-osi-ocl-store-record-accepted-fast-is-checked",
         "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+      ]
+    },
+    {
+      "id": "PRF-242",
+      "title": "The open's replay answers its known-id and accepted tests from tries it builds as it advances, and the history recognizer reads each record's kind once, each equal to the reference; a POST's budget test reads the event index's carried count",
+      "statement": "Subjects, called by the host: fn-rii-sco-extend (books/replay-identity-index.lisp) from host/store-node-host.lisp fn-store-sn-recover and fn-store-sn-recover-from-checkpoint and host/owner-host.lisp fn-owner-recover and fn-owner-recover-from-checkpoint; fn-rii-classified-open from host/store-node-host.lisp fn-store-sn-open-extended; fn-pidx-sbud-prepare (books/post-identity-index.lisp) from host/owner-host.lisp fn-owner-prepare-buffer. (1) The open's replay fold carries IX, a pair of tries beside the configured node: a Message-ID trie EQUAL to fn-midx-build of the node's articles and an obligation-id trie that holds exactly the ledger's known ids for every string (fn-rii-known-okp, a guard-verified defun-sk); fn-rii-okp is the pair. fn-rii-acceptedp-is-acceptedp, fn-rii-admissiblep-is-admissiblep, fn-rii-node-prepare-is-node-prepare, fn-rii-apply-retention-event-is-apply-retention-event, fn-rii-apply-record-is-apply-record and fn-rii-cpr-apply-event-is-cpr-apply-event: under fn-rii-okp each twin equals its reference. fn-rii-ix-next-keeps-okp: the tries after a step (Message-ID trie by fn-midx-refresh; id trie kept when the ledger is unchanged or the step was a release, one id added when the step consed one pin, else rebuilt) are related to the new node, given the relation before and, for a release event, that the new node is the replay's step (fn-rii-release-step-keeps-known: a replayed release keeps what the ledger knows). fn-rii-okp-of-ix-of: the tries built from any node are related to it. KEYSTONE fn-rii-sco-cpr-prefix-is-sco-cpr-prefix: under fn-rii-okp of the starting node the carried fold equals fn-sco-cpr-prefix for every configuration and event history; fn-rii-sco-cpr-resume-is-sco-cpr-resume (no hypothesis: the resume builds the tries from the paused node); KEYSTONE fn-rii-sco-extend-is-sco-extend: (fn-rii-sco-extend c configs suffix) = (fn-sco-extend c configs suffix), no hypothesis. (2) fn-rii-event-fields-are-the-dispatchers: one dispatch answers fn-store-event-p, -sequence, -txid and -generation; fn-rii-sf-record-listp-is-sf-record-listp, fn-rii-sf-statep-is-sf-statep, fn-rii-sn-statep-is-sn-statep, fn-rii-observed-historyp-is-observed-historyp, fn-rii-sco-finalize-from-is-sco-finalize-from, fn-rii-sco-store-open-is-sco-store-open, KEYSTONE fn-rii-classified-open-is-classified-open: (fn-rii-classified-open e configs frontier) = (fn-sopc-classified-open e configs frontier), no hypothesis. (3) fn-pidx-sbud-prepare's budget test reads fn-sbud-count (the event index's carried count); fn-pidx-sbud-prepare-is-pcar-sbud-prepare gains the hypothesis fn-ceis-indexedp of the owner's Store (fn-sbud-count-is-used), which every owner the host reaches carries (PRF-144 fn-osi-live-owner-store-is-indexed). Every function is guard-verified. Teeth: tests/acl2/replay-identity-index-tests.lisp (a mixed history: undertaking, release, two configuration records, two articles; both host paths; each identity refusal decided alike; corrupted tries holding a fake Message-ID or a fake id make the twin refuse the article the scan admits, for the step, the configured step and the fold; the release condition removed by a node that is not the release's step; the relation removed with a fake id kept), tests/acl2/post-identity-index-tests.lisp (a Store whose event index claims 100 records refuses at budget 100 where the reference stages).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180",
+        "PRF-191",
+        "PRF-199"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/replay-identity-index.lisp",
+        "tests/acl2/replay-identity-index-tests.lisp",
+        "books/post-identity-index.lisp",
+        "tests/acl2/post-identity-index-tests.lisp",
+        "books/owner-store-indexed.lisp",
+        "host/store-node-host.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/replay-identity-2026-09-27.md"
+      ],
+      "progress_note": "Lane replay-identity (2026-09-27): REPL-admitted on persvati (every form of both books and both test books).",
+      "events": [
+        "fn-rii-sco-extend-is-sco-extend",
+        "fn-rii-classified-open-is-classified-open",
+        "fn-rii-sco-cpr-prefix-is-sco-cpr-prefix",
+        "fn-rii-sco-cpr-resume-is-sco-cpr-resume",
+        "fn-rii-ix-next-keeps-okp",
+        "fn-rii-okp-of-ix-of",
+        "fn-rii-release-step-keeps-known",
+        "fn-rii-apply-record-is-apply-record",
+        "fn-rii-cpr-apply-event-is-cpr-apply-event",
+        "fn-rii-node-prepare-is-node-prepare",
+        "fn-rii-acceptedp-is-acceptedp",
+        "fn-rii-admissiblep-is-admissiblep",
+        "fn-rii-event-fields-are-the-dispatchers",
+        "fn-rii-sf-record-listp-is-sf-record-listp",
+        "fn-rii-sco-finalize-from-is-sco-finalize-from",
+        "fn-sbud-count-is-used",
+        "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
       ]
     }
   ]
