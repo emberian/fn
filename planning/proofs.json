@@ -11442,7 +11442,10 @@
       "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs). Lane log-leftovers (2026-09-27): REPL-admitted on hbox (books/owner-time-admission, tests/acl2/owner-time-model-tests, books/peer-inbound-invariants, tests/acl2/peer-inbound-tests); certification: see the lane's manifests.",
       "events": [
         "fn-otm-read-span-while-shedding",
-        "fn-otm-closed-posting-never-awaits-an-article"
+        "fn-otm-closed-posting-never-awaits-an-article",
+        "fn-peer-shed-offer-is-disk-slow",
+        "fn-otm-disk-effects-names-the-disk",
+        "fn-otm-peer-reader-read-only-while-shedding"
       ]
     }
   ]
