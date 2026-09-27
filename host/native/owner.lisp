@@ -984,8 +984,17 @@ fence; no semantic action of any worker, that one included, can run after it
   "Stop this owner image after an ambiguous Store or FNFD observation."
   (fnn-owner-stop-service service +fnn-exit-uncertain+))
 
+(defvar *fnn-owner-last-fault* nil
+  "The first owner fault's text in this run (friend-path-2): `run' writes it
+into the service log's stop line and its own result line, so `health',
+`status' and the service manager's journal say why the node stopped.")
+
 (defun fnn-owner-fault-service (service cid condition)
   "Contain an invalid core/store image, distinct from client refusal or EOF."
+  (unless *fnn-owner-last-fault*
+    (setq *fnn-owner-last-fault*
+          (ignore-errors
+           (format nil "owner core/store fault; process stopped: ~a" condition))))
   (fnn-owner-gated (service :control)
     (unless (fnn-owner-service-stopping service)
       (when cid

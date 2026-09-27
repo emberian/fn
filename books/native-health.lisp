@@ -910,7 +910,14 @@ and feed table, with the committed octets extended from the carried sum."
           (list :refused)
         (let ((reason (fn-nh-fence-of route lock clone-fence-present
                                       listener-expected)))
-          (if reason (list :fenced reason) (list :offline)))))))
+          (cond (reason (list :fenced reason))
+                ;; friend-path-2: where an owner would listen, nothing
+                ;; answers and nothing holds the lock, the node is not
+                ;; running; the host prints `fn-nh-not-running-report'.
+                ((and (equal route :offline) listener-expected
+                      (member-equal lock '(:free :absent)))
+                 (list :not-running))
+                (t (list :offline))))))))
 
 ;; KEYSTONE (PKT-454: starting is a reason of the fenced state, exit 20, and it
 ;; clears on LISTENING).  The subject is `fn-nh-health-step', the host's whole
@@ -1035,3 +1042,277 @@ and feed table, with the committed octets extended from the carried sum."
 (verify-guards fn-nh-offline-report)
 (verify-guards fn-nh-fenced-report)
 (verify-guards fn-nh-live-report)
+
+; -----------------------------------------------------------------------------
+; The node that is not running (lane friend-path-2, 2026-09-27).
+;
+; A friend's node crash-looped under systemd and `health' said
+; `exit=19 state=none-held (some states unobserved)': nothing said the node
+; was not running, or why.  Now `fn-nh-health-step' answers (:not-running)
+; when an owner would listen (a control socket is configured), nothing
+; answers on it and nothing holds the writer lock; `health' then prints
+; `fn-nh-not-running-report' (exit 18) and `status' prints
+; `fn-nh-not-running-lines' before the store's facts.
+;
+; Why it stopped comes from the service log (`[log] path').  `run' writes
+; `fn-nh-run-started-line' when it opens the log and `fn-nh-run-stopped-line'
+; (its exit code and, when it did not stop cleanly, the reason: the owner's
+; fault or the condition that ended the run) before it closes it.  The host
+; reads at most `*fn-nh-log-tail-octets*' octets from the log's end and ACL2
+; takes the last of those lines (`fn-nh-last-run'): the file is external
+; data, scanned once, never read by the Lisp reader.
+
+(defconst *fn-nh-not-running-exit* 18)
+(defconst *fn-nh-log-tail-octets* 65536)
+(defconst *fn-nh-reason-max-octets* 480)
+
+(defun fn-nh-log-tail-octets ()
+  (declare (xargs :guard t))
+  *fn-nh-log-tail-octets*)
+
+; A reason as one printable line: a control octet becomes a space, an octet
+; outside ASCII a `?', and at most N octets are kept.
+(defun fn-nh-clean-octets (x n)
+  (declare (xargs :guard (natp n)))
+  (if (and (consp x) (not (zp n)))
+      (cons (let ((c (car x)))
+              (cond ((not (natp c)) 63)
+                    ((< c 32) 32)
+                    ((< 126 c) 63)
+                    (t c)))
+            (fn-nh-clean-octets (cdr x) (1- n)))
+    nil))
+
+(defconst *fn-nh-run-started* (fn-record-string-octets "run started"))
+(defconst *fn-nh-run-stopped-prefix* (fn-record-string-octets "run stopped "))
+
+(defun fn-nh-run-started-line ()
+  (declare (xargs :guard t))
+  *fn-nh-run-started*)
+
+; `run stopped exit=NN', then ` reason=' and the reason when one is given.
+(defun fn-nh-code-octet (d)
+  (declare (xargs :guard t))
+  (if (and (natp d) (< d 10)) (+ 48 d) 63))
+
+(defun fn-nh-code-words (code)
+  (declare (xargs :guard t))
+  (let ((c (nfix code)))
+    (list (fn-nh-code-octet (floor (mod c 100) 10)) (fn-nh-code-octet (mod c 10)))))
+
+(defun fn-nh-run-stopped-line (code reason)
+  (declare (xargs :guard t))
+  (append *fn-nh-run-stopped-prefix*
+          (fn-nls-text "exit=") (fn-nh-code-words code)
+          (if (consp reason)
+              (append (fn-nls-text " reason=")
+                      (fn-nh-clean-octets reason *fn-nh-reason-max-octets*))
+            nil)))
+
+(defun fn-nh-octet-prefixp (p x)
+  (declare (xargs :guard t))
+  (if (consp p)
+      (and (consp x) (equal (car p) (car x)) (fn-nh-octet-prefixp (cdr p) (cdr x)))
+    t))
+
+(defun fn-nh-drop (n x)
+  (declare (xargs :guard (natp n)))
+  (if (and (consp x) (not (zp n))) (fn-nh-drop (1- n) (cdr x)) x))
+
+; One log line (octets, no LF) over the last run line seen before it.
+(defun fn-nh-run-of-line (line last)
+  (declare (xargs :guard t))
+  (cond ((equal line *fn-nh-run-started*) (list :started))
+        ((fn-nh-octet-prefixp *fn-nh-run-stopped-prefix* line)
+         (cons :stopped (fn-nh-clean-octets
+                         (fn-nh-drop (len *fn-nh-run-stopped-prefix*) line)
+                         (+ 16 *fn-nh-reason-max-octets*))))
+        (t last)))
+
+(defun fn-nh-hd (x) (declare (xargs :guard t)) (if (consp x) (car x) nil))
+(defun fn-nh-tl (x) (declare (xargs :guard t)) (if (consp x) (cdr x) nil))
+
+(defun fn-nh-rev (x acc)
+  (declare (xargs :guard t))
+  (if (consp x) (fn-nh-rev (cdr x) (cons (car x) acc)) acc))
+
+; The scan's state: (the current line's octets, newest first . the last run
+; line seen).  One pass, one step per octet.
+(defun fn-nh-scan (octets st)
+  (declare (xargs :guard t))
+  (if (consp octets)
+      (fn-nh-scan (cdr octets)
+                  (if (equal (car octets) 10)
+                      (cons nil (fn-nh-run-of-line (fn-nh-rev (fn-nh-hd st) nil)
+                                                   (fn-nh-tl st)))
+                    (cons (cons (car octets) (fn-nh-hd st)) (fn-nh-tl st))))
+    st))
+
+; KEYSTONE SUBJECT.  The last run line in the log's tail: (:started),
+; (:stopped . WORDS) (the line after `run stopped '), or nil.  The host
+; (host/native/operator.lisp fnn-operator-last-run) passes the tail's octets.
+(defun fn-nh-last-run (tail)
+  (declare (xargs :guard t))
+  (let ((st (fn-nh-scan tail (cons nil nil))))
+    (fn-nh-run-of-line (fn-nh-rev (fn-nh-hd st) nil) (fn-nh-tl st))))
+
+(defun fn-nh-last-run-words (last)
+  (declare (xargs :guard t))
+  (append
+   (cond ((and (consp last) (equal (car last) :stopped))
+          (append (fn-nls-text "last-stop ")
+                  (fn-nh-clean-octets (cdr last) (+ 16 *fn-nh-reason-max-octets*))))
+         ((equal last '(:started))
+          (fn-nls-text "last-stop none: the log's last run line is its start (the process was killed, or the machine stopped)"))
+         (t (fn-nls-text "last-stop unrecorded: the service log holds no run line (no [log] path, or an older release)")))
+   *fn-nls-lf*))
+
+(defconst *fn-nh-not-running-words*
+  " (no process holds the store and nothing answers on its control socket: the node is not running)")
+
+; What `status' prints first when no owner runs where one would listen.
+(defun fn-nh-not-running-lines (last)
+  (declare (xargs :guard t))
+  (append (fn-nls-text "not-running") (fn-nls-text *fn-nh-not-running-words*)
+          *fn-nls-lf*
+          (fn-nh-last-run-words last)))
+
+(defun fn-nh-not-running-header ()
+  (declare (xargs :guard t))
+  (append (fn-nh-exit-prefix) (fn-nh-digit2 *fn-nh-not-running-exit*)
+          (fn-nls-text " state=not-running") (fn-nls-text *fn-nh-not-running-words*)
+          *fn-nls-lf*))
+
+; `health' when the step says (:not-running): the header, why it stopped,
+; then the eight states over the Store this process opened read-only.
+(defun fn-nh-not-running-report (profile s cfg min last)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (fn-nh-not-running-header)
+          (fn-nh-last-run-words last)
+          (fn-nh-lines (fn-nh-verdict nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
+                                      min :unobserved)
+                       *fn-nh-states*)))
+
+(verify-guards fn-nh-not-running-report)
+
+(defthm fn-nh-true-listp-of-lines
+  (true-listp (fn-nh-lines v names)))
+
+(defthm fn-nh-true-listp-of-last-run-words
+  (true-listp (fn-nh-last-run-words last)))
+
+; KEYSTONE (friend-path-2).  The subject is `fn-nh-health-step', the host's
+; whole decision for one `health' (host/native/operator.lisp
+; fnn-operator-health-report) and the same decision `status' takes
+; (fnn-operator-status-once): it answers not-running exactly when an owner
+; would listen, no clone fence is present, the lock is seen free or absent
+; and nothing answered (the route is :offline); a node that answers, or a
+; process that holds the lock, is never reported not running.
+(defthm fn-nh-not-running-exactly-when-nothing-runs
+  (iff (equal (fn-nh-health-step sp outcome lock clone listener) '(:not-running))
+       (and (not clone) listener (member-equal lock '(:free :absent))
+            (equal (fn-nls-route sp outcome) :offline)))
+  :hints (("Goal" :in-theory (enable fn-nh-health-step fn-nh-answeredp
+                                     fn-nh-fence-of fn-nls-route))))
+
+(defthm fn-nh-true-listp-of-not-running-tail
+  (true-listp (append (fn-nh-last-run-words last) (fn-nh-lines v names))))
+
+(defthm fn-nh-report-exit-of-not-running-header-and-more
+  (implies (true-listp more)
+           (equal (fn-nh-report-exit (append (fn-nh-not-running-header) more))
+                  *fn-nh-not-running-exit*))
+  :hints (("Goal" :use ((:instance fn-nh-report-exit-of-append
+                                   (x (fn-nh-not-running-header))))
+           :in-theory (disable fn-nh-report-exit-of-append))))
+
+; KEYSTONE.  The not-running report's exit is 18, its own code: never 0,
+; never 19 (some state unobserved), never a held state's 20 to 27.
+(defthm fn-nh-not-running-report-exit
+  (equal (fn-nh-report-exit (fn-nh-not-running-report profile s cfg min last))
+         *fn-nh-not-running-exit*)
+  :hints (("Goal" :use ((:instance fn-nh-report-exit-of-not-running-header-and-more
+                                   (more (append (fn-nh-last-run-words last)
+                                                 (fn-nh-lines
+                                                  (fn-nh-verdict
+                                                   nil (fn-nh-store-inputs profile s (fn-sbud-bytes-used s) cfg)
+                                                   min :unobserved)
+                                                  *fn-nh-states*)))))
+           :in-theory (union-theories
+                       '(fn-nh-not-running-report fn-nh-true-listp-of-not-running-tail)
+                       (theory 'minimal-theory)))))
+
+; The round trip.  Lemmas: the scan composes over append, runs over an
+;; LF-free stretch by pushing it, and the stop line holds no LF.
+(defthm fn-nh-scan-of-append
+  (equal (fn-nh-scan (append a b) st) (fn-nh-scan b (fn-nh-scan a st))))
+
+(defun fn-nh-no-lf-p (x)
+  (declare (xargs :guard t))
+  (if (consp x) (and (not (equal (car x) 10)) (fn-nh-no-lf-p (cdr x))) t))
+
+(defthm fn-nh-scan-of-no-lf
+  (implies (fn-nh-no-lf-p x)
+           (equal (fn-nh-scan x st)
+                  (if (consp x)
+                      (cons (fn-nh-rev x (fn-nh-hd st)) (fn-nh-tl st))
+                    st))))
+
+(defthm fn-nh-no-lf-p-of-append
+  (equal (fn-nh-no-lf-p (append a b)) (and (fn-nh-no-lf-p a) (fn-nh-no-lf-p b))))
+
+(defthm fn-nh-no-lf-p-of-clean
+  (fn-nh-no-lf-p (fn-nh-clean-octets x n)))
+
+(defthm fn-nh-no-lf-p-of-stopped-line
+  (fn-nh-no-lf-p (fn-nh-run-stopped-line code reason)))
+
+(defthm fn-nh-rev-rev
+  (implies (true-listp x) (equal (fn-nh-rev (fn-nh-rev x acc) nil) (fn-nh-rev acc x))))
+
+(defthm fn-nh-true-listp-of-stopped-line
+  (true-listp (fn-nh-run-stopped-line code reason)))
+
+(defthm fn-nh-stopped-line-has-its-prefix
+  (fn-nh-octet-prefixp *fn-nh-run-stopped-prefix* (fn-nh-run-stopped-line code reason)))
+
+(defthm fn-nh-stopped-line-is-not-started
+  (not (equal (fn-nh-run-stopped-line code reason) *fn-nh-run-started*)))
+
+(defthm fn-nh-scan-line-then-lf
+  (implies (and (fn-nh-no-lf-p x) (true-listp x))
+           (equal (fn-nh-scan (append x (list 10)) (cons nil l))
+                  (cons nil (fn-nh-run-of-line x l))))
+  :hints (("Goal" :in-theory (disable fn-nh-run-of-line))))
+
+(defthm fn-nh-run-of-line-of-stopped
+  (equal (fn-nh-run-of-line (fn-nh-run-stopped-line code reason) l)
+         (cons :stopped
+               (fn-nh-clean-octets
+                (fn-nh-drop (len *fn-nh-run-stopped-prefix*)
+                            (fn-nh-run-stopped-line code reason))
+                (+ 16 *fn-nh-reason-max-octets*))))
+  :hints (("Goal" :in-theory (disable fn-nh-run-stopped-line fn-nh-octet-prefixp
+                                      (:e fn-nh-octet-prefixp) fn-nh-clean-octets
+                                      fn-nh-drop))))
+
+(defthm fn-nh-run-of-line-of-nil
+  (equal (fn-nh-run-of-line nil l) l))
+
+(defthm fn-nh-consp-of-stopped-line
+  (consp (fn-nh-run-stopped-line code reason)))
+
+; KEYSTONE (teeth for the log's round trip).  Whatever lines precede it,
+; when the log's tail ends with the line `run' writes as it stops, the
+; stop is what `fn-nh-last-run' reads: its words are the stop line's own
+; words after `run stopped ' (the exit code and the reason).
+(defthm fn-nh-last-run-reads-the-stop-line
+  (equal (fn-nh-last-run (append pre (list 10) (fn-nh-run-stopped-line code reason) (list 10)))
+         (cons :stopped
+               (fn-nh-clean-octets
+                (fn-nh-drop (len *fn-nh-run-stopped-prefix*)
+                            (fn-nh-run-stopped-line code reason))
+                (+ 16 *fn-nh-reason-max-octets*))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-nh-run-stopped-line fn-nh-clean-octets
+                               fn-nh-drop fn-nh-run-of-line))))

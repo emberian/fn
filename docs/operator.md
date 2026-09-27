@@ -352,9 +352,11 @@ fn operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
 
 `principal unbind alice` removes the tie. `policy set posting-policy open`
-turns the rule off. The command's last word says when the change applies:
-`applied` (now), `effective-at-next-start`, `restart-required`, or
-`uncertain`.
+turns the rule off. The last word of `principal set-password`, `bind` and
+`unbind` says when the change applies: `applied` (now: the running node
+reloaded its logins), `effective-at-next-start` (the node was not running),
+`restart-required` (the node runs but `fn.toml` names no `[control] path`
+to reach it), or `uncertain`.
 
 ## 5. Agents' consumers
 
@@ -561,6 +563,22 @@ journalctl -u fn -n 20
 Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
 names a `[log] path`. A program that starts fn and keeps its error output
 in a file must show that file: the reason is there.
+
+`health` and `status` say so too. When nothing runs where the node should
+(its control socket does not answer and nothing holds the store), `health`
+answers exit 18 and `status` begins the same way:
+
+```text
+health exit=18 state=not-running (no process holds the store and nothing answers on its control socket: the node is not running)
+last-stop exit=04 reason=owner core/store fault; process stopped: ...
+```
+
+The second line comes from the `[log] path` file: `run` writes `run
+started` when it starts and `run stopped exit=NN reason=...` when it
+stops. `last-stop none` means the last run was killed (or the machine
+stopped) before it could write its stop line; `last-stop unrecorded` means
+the log has no run line (no `[log] path`, or a node from an older
+release).
 
 The memory refusals, and what to do:
 

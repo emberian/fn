@@ -303,3 +303,87 @@
 (assert-event (null (fn-pull-r-unavailable
                      (fn-pull-s-round (car (ps-run *ps-u-s0* (list (cons :remote (ps-line "430 no")))))))))
 (must-fail (assert-event (fn-pull-session-readyp *ps-u-s0*)))
+
+; -----------------------------------------------------------------------------
+; friend-path-2: every failed step names why
+; (fn-pull-session-failure-names-every-failed-step).  The host carries the
+; first failure of a round (fn-pull-session-step-triple) into its log line.
+(defun ps-why-run (s es why)
+  (if (consp es)
+      (let ((tr (fn-pull-session-step-triple s (car es))))
+        (ps-why-run (car tr) (cdr es) (or why (caddr tr))))
+    (list s why)))
+
+; Positive: the peer refuses the login after the password (481): the round
+; fails in the preamble, and the reason is the refusal, its code and phase.
+(defconst *ps-481*
+  (ps-why-run *ps-s0* (list (cons :remote (ps-line "200 A ready"))
+                            (cons :remote (ps-line "382 begin TLS"))
+                            (list :tls-up)
+                            (cons :remote (ps-line "381 password"))
+                            (cons :remote (ps-line "481 authentication failed")))
+              nil))
+(assert-event (fn-pull-session-done-p (car *ps-481*)))
+(assert-event (equal (cadr *ps-481*) '("login-refused" 481 "auth-pass")))
+(assert-event (equal (fn-pull-session-log-line-why (car *ps-481*) (cadr *ps-481*))
+                     (fn-record-string-octets
+                      "pull peer=A round=failed cursor=held at=preamble reason=login-refused code=481 phase=auth-pass")))
+; The old mutation, now with its reason: 381 where 382 was due.
+(defconst *ps-381*
+  (ps-why-run *ps-s0* (list (cons :remote (append (ps-line "200 A ready")
+                                                  (ps-line "381 send it"))))
+              nil))
+(assert-event (equal (cadr *ps-381*) '("starttls-refused" 381 "starttls")))
+; A lost connection names its cause, before and after :ready.
+(assert-event (equal (cadr (ps-why-run *ps-s0* (list (list :lost :dial)) nil))
+                     '("lost-dial" nil "preamble")))
+(defconst *ps-lost-after*
+  (ps-why-run *ps-s0* (append *ps-preamble* (list (list :lost :timeout))) nil))
+(assert-event (fn-pull-session-done-p (car *ps-lost-after*)))
+(assert-event (equal (car (cadr *ps-lost-after*)) "lost-timeout"))
+(assert-event (equal (fn-pull-session-log-line-why (car *ps-lost-after*) (cadr *ps-lost-after*))
+                     (append (fn-pull-session-log-line (car *ps-lost-after*))
+                             (fn-record-string-octets " reason=lost-timeout")
+                             (fn-record-string-octets " phase=")
+                             (fn-record-string-octets (caddr (cadr *ps-lost-after*))))))
+; A bare (:lost) still fails and is named `lost'.
+(assert-event (equal (cadr (ps-why-run *ps-s0* (list (list :lost)) nil))
+                     '("lost" nil "preamble")))
+; Teeth: a round that completes names no failure at any step, and its line
+; is the line it always was.
+(defconst *ps-ok* (ps-why-run *ps-s0* *ps-events* nil))
+(assert-event (null (cadr *ps-ok*)))
+(assert-event (equal (fn-pull-session-log-line-why (car *ps-ok*) (cadr *ps-ok*))
+                     (fn-pull-session-log-line (car *ps-ok*))))
+; A step on a round that already ended names nothing (the done hypothesis).
+(assert-event (null (caddr (fn-pull-session-step-triple (car *ps-481*) (list :lost :eof)))))
+; The iff without its done conjunct fails: the ended round's own phase is :failed.
+(must-fail
+ (defthm ps-failure-without-done
+   (let* ((s2 (car (fn-pull-session-step s event))))
+     (iff (fn-pull-session-failure s event s2)
+          (equal (fn-pull-r-phase (fn-pull-s-round s2)) :failed)))
+   :hints (("Goal" :in-theory (e/d (fn-pull-session-failure)
+                                   (fn-pull-session-step fn-pull-done-p
+                                    fn-pull-session-readyp fn-pull-preamble-why
+                                    fn-pull-session-fc-events))))
+   :rule-classes nil))
+
+; The feed's line for a refused login (fn-peer-feed-failure-line): the same
+; words, from the machine before the chunk and its step on it.
+(defconst *ps-auth-pass-fc*
+  (fn-pull-s-fc (car (ps-why-run *ps-s0* (list (cons :remote (ps-line "200 A ready"))
+                                               (cons :remote (ps-line "382 begin TLS"))
+                                               (list :tls-up)
+                                               (cons :remote (ps-line "381 password")))
+                                 nil))))
+(assert-event (equal (fn-fc-phase *ps-auth-pass-fc*) :auth-pass))
+(assert-event
+ (equal (fn-peer-feed-failure-line "A" *ps-auth-pass-fc*
+                                   (fn-fc-step *ps-auth-pass-fc* (ps-line "481 no"))
+                                   (ps-line "481 no"))
+        (fn-record-string-octets
+         "refused feed peer=A connection=failed reason=login-refused code=481 phase=auth-pass")))
+(assert-event (equal (fn-peer-feed-lost-line "A" :eof)
+                     (fn-record-string-octets
+                      "refused feed peer=A connection=failed reason=lost-eof")))

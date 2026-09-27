@@ -47,6 +47,7 @@ import calendar
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
@@ -765,6 +766,12 @@ class NativePeerPullTests(unittest.TestCase):
                      [a, b])
         self.assertFalse(stored)
         self.assertFalse(any("cursor=advanced" in l for l in lines), lines)
+        # friend-path-2 (PRF-310): each failed round names the refusal, the
+        # serving node's reply code and the phase it came in.
+        failed = [l for l in lines if "round=failed" in l]
+        self.assertTrue(failed, lines)
+        self.assertTrue(all(re.search(r"at=preamble reason=login-refused code=48[12] "
+                                      r"phase=auth-(user|pass)", l) for l in failed), failed)
         self.assertEqual(journal, journal_later)
         self.assertEqual(first, ["STARTTLS"])
         self.assertEqual(private, [])
