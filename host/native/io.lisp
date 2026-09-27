@@ -4925,6 +4925,40 @@ largest reply line)."
           (fnn-refuse "refused redeem connection: the server closed or did not answer"))
         (setq buffer (concatenate 'fnn-octets buffer chunk))))))
 
+(defun fnn-redeem-read-password ()
+  "The new account's password: from the terminal without echo, else one line
+of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
+  (let* ((tty (handler-case
+                  (open "/dev/tty" :direction :io :element-type 'character
+                                   :external-format :latin-1)
+                (error () nil)))
+         (stream (or tty *standard-input*))
+         (attributes nil) (old-flags nil))
+    (unwind-protect
+         (progn
+           (format *error-output* "Password for the new account: ")
+           (finish-output *error-output*)
+           (when tty
+             (let ((fd (sb-sys:fd-stream-fd tty)))
+               (setq attributes (sb-posix:tcgetattr fd)
+                     old-flags (sb-posix:termios-lflag attributes))
+               (setf (sb-posix:termios-lflag attributes) (logandc2 old-flags sb-posix:echo))
+               (sb-posix:tcsetattr fd sb-posix:tcsanow attributes)))
+           (let ((line (read-line stream nil nil)))
+             (when (null line)
+               (fnn-refuse "refused redeem password: no password was given"))
+             (let ((text (string-right-trim '(#\Return) line)))
+               (when (or (zerop (length text)) (> (length text) 512))
+                 (fnn-refuse "refused redeem password: it must be 1 to 512 characters"))
+               (map 'list #'char-code text))))
+      (when tty
+        (when attributes
+          (setf (sb-posix:termios-lflag attributes) old-flags)
+          (sb-posix:tcsetattr (sb-sys:fd-stream-fd tty) sb-posix:tcsanow attributes)
+          (format *error-output* "~%")
+          (finish-output *error-output*))
+        (close tty)))))
+
 (defun fnn-command-redeem (args)
   (let ((tls nil) (cafile nil) (words nil))
     (loop while args
@@ -4947,18 +4981,7 @@ largest reply line)."
                      (if tls 563 119)))
              (verification (fnn-core 'fn-peer-tls-verification host
                                      (or cafile :system-roots)))
-             (password (let ((tty (handler-case
-                                      (open "/dev/tty" :direction :io :element-type 'character
-                                                       :external-format :latin-1)
-                                    (error () nil))))
-                         (if tty
-                             (unwind-protect
-                                  (fnn-native-auth-admin-read-secret-from
-                                   tty "Password for the new account: " 512
-                                   (sb-sys:fd-stream-fd tty))
-                               (close tty))
-                           (fnn-native-auth-admin-read-secret-from
-                            *standard-input* "Password for the new account: " 512 nil))))
+             (password (fnn-redeem-read-password))
              (socket nil) (context nil) (channel nil) (pending (fnn-make-octets 0))
              (last nil))
         (unless (eq (first verification) :verify)
