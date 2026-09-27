@@ -864,6 +864,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-refresh \
 	books/catalog-number-index \
 	books/served-catalog \
+	books/served-catalog-chain \
+	books/served-catalog-owner \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -888,6 +890,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-catalog-chain-tests \
+	tests/acl2/served-catalog-owner-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	tests/acl2/catalog-number-index-tests \
@@ -1134,6 +1138,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-steps-tests \
 	books/owner-commit-pipeline \
 	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-reader-view \
+	tests/acl2/owner-reader-view-tests \
 	books/store-log-route-programs \
 	tests/acl2/store-log-route-programs-tests \
 	books/owner-open-carried \

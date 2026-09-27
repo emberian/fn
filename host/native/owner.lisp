@@ -348,7 +348,7 @@ function supplied no observation at all, which is a defect here."
 
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
-  (fnn-owner-arena-action 'fn-owner-finish-submission))
+  (fnn-owner-core 'fn-owner-finish-submission))
 
 ;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
 ;;; A wrapper that used to answer a keyword and leave the rest of its result
@@ -690,7 +690,7 @@ checkpoint's S, or NIL."
   (declare (ignore records))
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
-         (result (fnn-owner-core 'fn-owner-recover-from-store-open max-connections)))
+         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
     (unless (eq result :recovering)
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
@@ -1232,7 +1232,9 @@ follows is justified only by this line."
                 ;; (host/owner-host.lisp fn-owner-prepare-buffer).
                 (when (eq prepared :seal-buffer)
                   (fnn-seal-live-buffer)
-                  (setq prepared :prepared))
+                  ;; Step 8: the catalog prepares the store's row, which names
+                  ;; the handle just sealed (one seal per POST).
+                  (setq prepared (fnn-owner-action 'fn-owner-cat-prepare-sealed)))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
@@ -2142,6 +2144,11 @@ nil when nothing was queued (or the store does not commit through the log)."
                 (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
                   (setf (fnn-owner-service-queued service)
                         (max 1 (fnn-owner-service-queued service)))))
+              ;; Developer image only: the START's member count against
+              ;; the operator's bound (the pipelined native cases).
+              (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
+                (fnn-err "start: seal=~a bmax=~d members=~d" seal (fnn-log-bmax log)
+                         (length members)))
               (when (and seal members (not uncertain))
                 (fnn-log-seal-open-batch store)))
           (fnn-store-indeterminate (e)
@@ -2265,6 +2272,14 @@ was queued)."
         (t (fnn-fault "owner named ~a for an inline commit" action))))
     (length members)))
 
+(defun fnn-owner-reader-capture (event)
+  "The reader view's capture at the committer's EVENT (host/owner-host.lisp
+fn-owner-reader-views-capture, books/owner-reader-view.lisp fn-ocv-capture):
+:start before a START's drain, :next before a START-NEXT's, :unnext after a
+START-NEXT that took nobody, :complete after a COMPLETE's replies, :drop
+after a START that took nobody or a stop.  The caller holds the owner."
+  (fnn-owner-core 'fn-owner-reader-views-capture event))
+
 (defun fnn-owner-commit-event (service event)
   "Apply the commit's EVENT to ACL2's scheduler value (books/owner-commit-pipeline.lisp
 fn-ocp-commit-event) and return the ACTION it names; the gate's next pick
@@ -2326,14 +2341,17 @@ leave only in its COMPLETE, after its barrier returned
     (fnn-owner-serialized
      service nil
      (lambda ()
+       ;; PKT-828: the view the readers read while this batch is in flight.
+       (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred)
          (fnn-owner-commit-start-locked service))
        (setq action (fnn-owner-commit-event
                      service (fnn-owner-commit-start-event members uncertain)))
        (case action
          (:sync nil)
-         (:stop (fnn-owner-commit-complete-locked service :stop members deferred))
-         (:none nil)
+         (:stop (fnn-owner-reader-capture :drop)
+                (fnn-owner-commit-complete-locked service :stop members deferred))
+         (:none (fnn-owner-reader-capture :drop))
          (t (fnn-fault "owner named ~a after a START" action))))
      :commit)
     (loop while (eq action :sync) do
@@ -2358,6 +2376,9 @@ leave only in its COMPLETE, after its barrier returned
               (fnn-owner-shared-action-locked
                service nil
                (lambda ()
+                 ;; PKT-828: the next batch's reader view, taken before its
+                 ;; members join the working view.
+                 (fnn-owner-reader-capture :next)
                  (multiple-value-bind (m u d)
                      (fnn-owner-commit-start-locked service :seal nil)
                    (setq next m next-deferred d)
@@ -2369,7 +2390,9 @@ leave only in its COMPLETE, after its barrier returned
                                service (cond (u :next-uncertain)
                                              ((null m) :next-none)
                                              (t :next-started))))
+                   (when (and (null m) (not u)) (fnn-owner-reader-capture :unnext))
                    (when (eq step :stop)
+                     (fnn-owner-reader-capture :drop)
                      ;; Every member of both batches is uncertain; the owner
                      ;; stops (its COMPLETE below finds it stopping).
                      (fnn-owner-commit-complete-locked
@@ -2396,10 +2419,16 @@ leave only in its COMPLETE, after its barrier returned
                       (cond ((fnn-owner-service-stopping service)
                              ;; Stopped during the barrier: no member is
                              ;; answered (uncertain to its client).
+                             (fnn-owner-reader-capture :drop)
                              (dolist (m (append members next))
                                (fnn-owner-deliver service (first m) :uncertain)))
                             ((eq step :complete)
                              (fnn-owner-commit-complete-locked service :complete members deferred)
+                             ;; PKT-828: in the same quantum as the replies,
+                             ;; the readers' view advances past this batch
+                             ;; (to the next batch's capture, or the working
+                             ;; view when none is open).
+                             (fnn-owner-reader-capture :complete)
                              ;; The next batch, prepared behind the barrier,
                              ;; is sealed now and becomes the batch in flight.
                              (when next
@@ -2407,9 +2436,11 @@ leave only in its COMPLETE, after its barrier returned
                                  (handler-case (fnn-log-seal-open-batch store)
                                    (fnn-store-indeterminate (e)
                                      (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+                                     (fnn-owner-reader-capture :drop)
                                      (fnn-owner-commit-complete-locked service :stop next next-deferred)
                                      (setq next nil))))))
                             ((eq step :stop)
+                             (fnn-owner-reader-capture :drop)
                              (fnn-owner-commit-complete-locked
                               service :stop (append members next) deferred)
                              (setq next nil))

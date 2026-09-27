@@ -1317,3 +1317,9 @@
                             fn-nntp-printable-tokenp fn-nntp-token-string
                             fn-nntp-single fn-gidx-build fn-midx-build fn-statep
                             fn-nntp-over-range-indexed-is-walk)))))
+
+; Guards of the arms the lift executes (books/served-catalog-chain.lisp
+; fn-scr-command calls the dispatcher): the whole -cat path is guard-verified.
+(verify-guards fn-nntp-xpat-lines-for-numbers-cat)
+(verify-guards fn-nntp-xpat-response-cat)
+(verify-guards fn-nntp-archive-command-cat)

@@ -430,6 +430,83 @@
                             (n (fn-cat-count fn-cat)) (h (fn-pc-held pending))))
            :do-not-induct t)))
 
+; The hidden completion (R1, step 8): the same append; the row's wire ignores
+; its withdrawal.
+(local (defthm fn-crl-wire-of-with-withdrawn
+   (equal (fn-held-wire-of (fn-held-with-withdrawn h w) fn-arena) (fn-held-wire-of h fn-arena))
+   :hints (("Goal" :in-theory (enable fn-held-wire-of)))))
+
+(defthm fn-cat-relation-of-complete-hidden
+  (implies (and (fn-cat-history-relation records fn-arena fn-cat)
+                (fn-pc-p pending)
+                (equal token (fn-pc-token pending))
+                (equal (fn-pc-expected pending) (fn-cat-count fn-cat))
+                (< (fn-record-payload (fn-pc-held pending)) (fn-arena-count fn-arena))
+                (equal (fn-held-wire-of (fn-pc-held pending) fn-arena) w)
+                (fn-record-p w)
+                (natp by))
+           (fn-cat-history-relation (append records (list w)) fn-arena
+                                    (mv-nth 2 (fn-cat-complete-hidden token pending by fn-cat))))
+  :hints (("Goal" :in-theory (e/d (fn-cat-complete-hidden fn-cat-history-relation fn-held-withdrawnp)
+                                  (fn-pc-p fn-arena-payload-is-nth fn-arena-count-is-len
+                                   fn-held-wire-of fn-cat-commit-is-append fn-cat-count-is-len
+                                   fn-cat-at-is-nth fn-cat-p-is-rowsp fn-cat-handles-inp
+                                   fn-held-with-withdrawn))
+           :use ((:instance fn-cat-handles-inp-extend
+                            (n (fn-cat-count fn-cat))
+                            (h (fn-held-with-withdrawn (fn-pc-held pending)
+                                                       (cons (fn-pc-expected pending) by)))))
+           :do-not-induct t)))
+
+; The load of a row the owner's view hides (E, step 8: a recovery over a
+; history with effective cancels; books/served-catalog-owner.lisp
+; fn-sco-load-history): the held record is committed withdrawn at its own
+; index, as fn-cat-complete-hidden commits it, so no view shows it.
+(defun fn-cat-load-row-hidden (w keyring generation fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (fn-record-p w) (fn-prin-keyringp keyring) (natp generation))
+                  :guard-hints (("Goal"
+                                 :in-theory (e/d (fn-held-withdrawnp)
+                                                 (fn-held-p fn-held-with-withdrawn
+                                                  fn-cat-intern-list))
+                                 :use ((:instance fn-held-p-of-intern-list)
+                                       (:instance fn-held-p-of-fn-held-with-withdrawn
+                                                  (h (mv-nth 0 (fn-cat-intern-list
+                                                                w keyring generation fn-arena)))
+                                                  (w (cons (fn-cat-count fn-cat) 0))))))))
+  (mv-let (held fn-arena)
+    (fn-cat-intern-list w keyring generation fn-arena)
+    (let ((fn-cat (fn-cat-commit (fn-held-with-withdrawn held (cons (fn-cat-count fn-cat) 0))
+                                 fn-cat)))
+      (mv fn-arena fn-cat))))
+
+(defthm fn-cat-load-row-hidden-keeps-relation
+  (implies (and (fn-cat-history-relation records fn-arena fn-cat)
+                (fn-record-p w) (natp generation))
+           (mv-let (fn-arena2 fn-cat2)
+             (fn-cat-load-row-hidden w keyring generation fn-arena fn-cat)
+             (fn-cat-history-relation (append records (list w)) fn-arena2 fn-cat2)))
+  :hints (("Goal" :in-theory (e/d (fn-cat-load-row-hidden fn-cat-history-relation
+                                   fn-held-withdrawnp)
+                                  (fn-cat-intern-list fn-held-wire-of
+                                   fn-arena-payload-is-nth fn-arena-count-is-len
+                                   fn-arena-seal-list-is-append fn-arena-p-is-payload-listp
+                                   fn-cat-commit-is-append fn-cat-count-is-len fn-cat-at-is-nth
+                                   fn-cat-p-is-rowsp fn-cat-handles-inp
+                                   fn-held-with-withdrawn))
+           :use ((:instance fn-cat-intern-list-materializes)
+                 (:instance fn-held-p-of-intern-list)
+                 (:instance fn-intern-list-handle)
+                 (:instance fn-cat-handles-inp-of-seal
+                            (n (fn-cat-count fn-cat)) (xs (fn-record-payload w)))
+                 (:instance fn-cat-handles-inp-extend
+                            (n (fn-cat-count fn-cat))
+                            (fn-arena (fn-arena-seal-list (fn-record-payload w) fn-arena))
+                            (h (fn-held-with-withdrawn
+                                (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena))
+                                (cons (fn-cat-count fn-cat) 0)))))
+           :do-not-induct t)))
+
 ; -----------------------------------------------------------------------------
 ; R against the owner: the history relation over the owner's store, with the
 ; owner's own relation (books/owner-invariants.lisp).  Its establishment at

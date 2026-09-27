@@ -31,15 +31,22 @@
 ; owner and every arrival at an idle one) decides from it:
 ;
 ;   - while a batch is IN FLIGHT (staged, fenced or failed, not yet
-;     completed) only :commit (its COMPLETE) and :inspect are admitted.
-;     :inspect is the class of the live status and health pages
-;     (host/native/control.lisp fnn-control-live-status-answer, chosen when
-;     ACL2's fn-native-live-status-host-requestp accepts the frame): the
-;     render changes nothing the owner holds and touches no record, no log
-;     and no feed.  Readers, posters, transit and mutating control wait, so
-;     no reply, read, feed resolution or log line reveals a record before
-;     its barrier (the invariant the one-quantum commit kept by holding the
-;     mutex).
+;     completed) only :commit (its COMPLETE, or the START-NEXT that prepares
+;     the next batch behind the barrier), :inspect and :reader are
+;     admitted (coordinator decision PKT-828, 2026-09-27: the fsync holds no
+;     owner-level exclusion; only the in-flight batch's members wait for
+;     their replies).  :inspect is the class of the live status and health
+;     pages (host/native/control.lisp fnn-control-live-status-answer, chosen
+;     when ACL2's fn-native-live-status-host-requestp accepts the frame):
+;     the render changes nothing the owner holds and touches no record, no
+;     log and no feed.  :reader is a served NNTP connection's quantum: its
+;     reads run at the READER VIEW, the view captured before the batch in
+;     flight was prepared (books/owner-reader-view.lisp), so nothing of the
+;     batch in flight or of the next one is revealed before its COMPLETE,
+;     and its POST only queues a submission, which a later START (or the
+;     START-NEXT) takes into the open batch, never the one in flight.
+;     Posters through the control socket, transit (peer sessions re-pin to
+;     the live store node) and mutating control wait.
 ;   - otherwise the pick is books/owner-commit-class.lisp's `fn-ocm-next'
 ;     over the four classes and the commit class, unchanged.
 ;   - in both regimes a waiting :inspect is admitted unless the pick before
@@ -140,16 +147,25 @@
   (declare (xargs :guard t))
   (posp (fn-osch-waits 5 w)))
 
-; The pick.  Answers (mv CLASS S'), CLASS one of the six or nil.
+(defun fn-ocs-reader-waits-p (w)
+  (declare (xargs :guard t))
+  (posp (fn-osch-waits 1 w)))
+
+; The pick.  Answers (mv CLASS S'), CLASS one of the six or nil.  In flight
+; the commit's steps go first (a START-NEXT or the COMPLETE: at most one
+; waits at a time, the committer's), then the readers; the four classes'
+; cursor is not moved by an in-flight pick.
 (defun fn-ocs-next (s w)
   (declare (xargs :guard t))
   (let ((inspect (fn-ocs-inspect-waits-p w))
         (commit (fn-ocs-commit-waits-p w))
+        (reader (fn-ocs-reader-waits-p w))
         (phase (fn-ocs-phase s)))
     (if (fn-ocs-in-flight-p phase)
-        (cond ((and inspect (or (not commit) (not (fn-ocs-lasti s))))
+        (cond ((and inspect (or (not (or commit reader)) (not (fn-ocs-lasti s))))
                (mv :inspect (fn-ocs-make (fn-ocs-ocm s) phase t)))
               (commit (mv :commit (fn-ocs-make (fn-ocs-ocm s) phase nil)))
+              (reader (mv :reader (fn-ocs-make (fn-ocs-ocm s) phase nil)))
               (t (mv nil s)))
       (mv-let (class ocm) (fn-ocm-next (fn-ocs-ocm s) (fn-ocs-w4 w) commit)
         (cond ((and inspect (or (null class) (not (fn-ocs-lasti s))))
@@ -196,25 +212,40 @@
 (local (in-theory (disable fn-ocm-next fn-ocm-next-otherwise-is-osch-next
                            fn-ocm-commit-pick-keeps-the-sched fn-ocs-w4)))
 
-; While a batch is in flight only :inspect and :commit are admitted (or
-; nobody): no reader, poster, transit or mutating control quantum runs
-; between a batch's START and its COMPLETE.
-(defthm fn-ocs-in-flight-admits-only-inspect-and-commit
+; While a batch is in flight only :inspect, :commit and :reader are
+; admitted (or nobody): no control-socket poster, transit or mutating
+; control quantum runs between a batch's START and its COMPLETE.
+(defthm fn-ocs-in-flight-admits-only-inspect-commit-and-reader
   (implies (fn-ocs-in-flight-p (fn-ocs-phase s))
-           (member-equal (mv-nth 0 (fn-ocs-next s w)) '(:inspect :commit nil)))
+           (member-equal (mv-nth 0 (fn-ocs-next s w)) '(:inspect :commit :reader nil)))
   :hints (("Goal" :in-theory (disable fn-ocm-next fn-ocs-phase))))
 
-; The pick names a class that waits: :inspect and :commit by their counts
-; (the four classes' by PRF-248's fn-osch-pick-has-a-waiter through
-; fn-ocm-next).
+; The pick names a class that waits: :inspect, and in flight :commit and
+; :reader, by their counts (the four classes' by PRF-248's
+; fn-osch-pick-has-a-waiter through fn-ocm-next).
 (defthm fn-ocs-inspect-and-commit-picks-wait
   (and (implies (equal (mv-nth 0 (fn-ocs-next s w)) :inspect)
                 (fn-ocs-inspect-waits-p w))
        (implies (and (equal (mv-nth 0 (fn-ocs-next s w)) :commit)
                      (fn-ocs-in-flight-p (fn-ocs-phase s)))
-                (fn-ocs-commit-waits-p w)))
+                (fn-ocs-commit-waits-p w))
+       (implies (and (equal (mv-nth 0 (fn-ocs-next s w)) :reader)
+                     (fn-ocs-in-flight-p (fn-ocs-phase s)))
+                (fn-ocs-reader-waits-p w)))
   :hints (("Goal" :in-theory (disable fn-ocm-next fn-ocs-phase fn-ocs-w4
-                                      fn-ocs-inspect-waits-p fn-ocs-commit-waits-p))))
+                                      fn-ocs-inspect-waits-p fn-ocs-commit-waits-p
+                                      fn-ocs-reader-waits-p))))
+
+; In flight a waiting commit step is never passed over for a reader: the
+; START-NEXT and the COMPLETE are not delayed by the readers the barrier
+; admits (at most one :inspect runs before it).
+(defthm fn-ocs-in-flight-commit-before-reader
+  (implies (and (fn-ocs-in-flight-p (fn-ocs-phase s))
+                (fn-ocs-commit-waits-p w))
+           (member-equal (mv-nth 0 (fn-ocs-next s w)) '(:inspect :commit)))
+  :hints (("Goal" :in-theory (disable fn-ocm-next fn-ocs-phase fn-ocs-w4
+                                      fn-ocs-inspect-waits-p fn-ocs-commit-waits-p
+                                      fn-ocs-reader-waits-p))))
 
 ; Outside a batch, every pick that is not an :inspect is fn-ocm-next's own
 ; pick from the same state, and it leaves fn-ocm-next's state: PRF-248's
