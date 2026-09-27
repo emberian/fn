@@ -824,6 +824,9 @@ whatever the descriptor says."
             do (setf (aref fds i) (fnn-mux-conn-fd conn)
                      (aref events i) (fnn-mux-interest conn)))
       (let ((revents (progn (setf (fnn-mux-loop-polling loop) t)
+                            ;; A committer waiting for this loop's pass sees
+                            ;; it idle now (fnn-owner-loops-passed-p).
+                            (fnn-mux-signal-committer loop)
                             (unwind-protect (fnn-mux-poll fds events timeout)
                               (setf (fnn-mux-loop-polling loop) nil)))))
         (unless (zerop (aref revents 0)) (fnn-mux-drain-wake loop))
@@ -834,6 +837,11 @@ whatever the descriptor says."
   ;; A pass is complete: every connection ready in it was stepped.  A
   ;; committer waiting for the passes (format 9) looks again.
   (incf (fnn-mux-loop-passes loop))
+  (fnn-mux-signal-committer loop))
+
+(defun fnn-mux-signal-committer (loop)
+  "Wake a committer waiting on this loop's pass (format 9, a submission
+queued); nothing otherwise."
   (let ((service (fnn-mux-service loop)))
     (when (and (fnn-owner-service-batching service)
                (plusp (fnn-owner-service-queued service)))
