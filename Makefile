@@ -406,6 +406,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
 	tests/acl2/payload-lz-tests \
+	books/payload-lz-value \
+	books/payload-lz-record \
+	tests/acl2/payload-lz-record-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
