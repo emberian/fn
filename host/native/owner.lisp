@@ -94,7 +94,7 @@
 (defun fnn-owner-measure-now ()
   "Microseconds on the monotonic clock (get-internal-real-time is coarse here)."
   (multiple-value-bind (seconds nanoseconds)
-      (sb-unix:clock-gettime sb-unix:clock-monotonic)
+      (sb-unix::clock-gettime sb-unix::clock-monotonic)
     (+ (* seconds 1000000) (floor nanoseconds 1000))))
 
 (defun fnn-owner-measure-note (label start bytes)
