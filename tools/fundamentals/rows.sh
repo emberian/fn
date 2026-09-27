@@ -38,6 +38,11 @@ if [ -z "${OPENSSL_TEST:-}" ]; then
   printf '%s\n' '#!/bin/sh' 'LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib exec /tank/fn/toolchains/openssl-3.5.8/bin/openssl "$@"' > "$O/bin/openssl-test"
   chmod 0755 "$O/bin/openssl-test"; OPENSSL_TEST=$O/bin/openssl-test
 fi
+# The environment hbox_native.sh gives its modules (a module that runs ACL2,
+# as the BP bridge does, needs FN_ACL2 and the certificate cache).
+export FN_ACL2=${FN_ACL2:-/tank/fn/toolchains/w28/acl2-literal-4g} FN_CERT_CACHE=${FN_CERT_CACHE:-/tank/fn/certcache} FN_CERT_ORIGIN_KIND=run
+export FN_TEST_OPENSSL_BIN=$OPENSSL_TEST
+unset FN_OPENSSL_PREFIX
 box() { echo "$(date -u +%FT%TZ) $1 load: $(cut -d' ' -f1-3 /proc/loadavg); arc=$(awk '/^size/{print $3}' /proc/spl/kstat/zfs/arcstats 2>/dev/null); top: $(ps -eo rss,comm --sort=-rss | sed -n 2,4p | tr '\n' ';')" >> "$O/driver.log"; }
 scope() { mem=$1; cores=$2; shift 2; systemd-run --user --scope -q -p MemoryMax=$mem -p MemorySwapMax=0 taskset -c "$cores" "$@"; }
 done_() { echo "$(date -u +%FT%TZ) $1 rc=$2" >> "$O/driver.log"; }
