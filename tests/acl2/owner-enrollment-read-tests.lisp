@@ -238,10 +238,10 @@
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-extra*))
              (fn-oert-rhs *oer-reader-d* 4 *oer-extra-prefix* *oer-lf*))))
 
-; Without an argument (premise 8): `HDR :fn-enrollment' alone answers 501.
+; Without an argument (premise 9): `HDR :fn-enrollment' alone answers 501.
 (defconst *oer-bare* (fn-oert-line "HDR :fn-enrollment"))
 (defconst *oer-bare-prefix* (butlast *oer-bare* 1))
-(assert-event (equal (nth 7 (fn-oert-hyps *oer-reader-d* 4 *oer-bare-prefix* *oer-lf*)) nil))
+(assert-event (equal (nth 8 (fn-oert-hyps *oer-reader-d* 4 *oer-bare-prefix* *oer-lf*)) nil))
 (must-fail
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-bare*))
              (fn-oert-rhs *oer-reader-d* 4 *oer-bare-prefix* *oer-lf*))))

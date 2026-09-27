@@ -194,6 +194,7 @@
                   (fn-nntp-sessionp ns)
                   (equal (fn-nntp-session-openp ns) t)
                   (fn-nntp-session-projected ns)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens))
