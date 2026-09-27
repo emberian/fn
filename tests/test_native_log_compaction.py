@@ -114,7 +114,10 @@ class LogCompactionMixin:
         self.assertEqual(reexported.returncode, 0, reexported.stderr[-800:])
         files = lambda d: {p.relative_to(d): p.read_bytes() for p in sorted(d.rglob("*")) if p.is_file()}
         self.assertEqual(files(again), files(archive))
-        self.assertEqual(self.inspect_all(node, range(18), store=imported_root), before)
+        # `store ROOT inspect` on both stores (the operator's form prints
+        # another report).
+        self.assertEqual(self.inspect_all(node, range(18), store=imported_root),
+                         self.inspect_all(node, range(18), store=node.store))
 
     def store_holds(self, node: Node, needle: bytes) -> bool:
         return any(needle in p.read_bytes() for p in node.store.rglob("*") if p.is_file())
