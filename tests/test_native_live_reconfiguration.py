@@ -128,10 +128,19 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         # fn-cpo-open-observed); the owner installs from that open.
         # Over the held rows since the records flip: fn-rii-sco-extend, EQUAL
         # to fn-sco-extend (books/replay-identity-index.lisp
-        # fn-rii-sco-extend-is-sco-extend).
-        self.assertIn("(fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)", store)
-        self.assertIn("(defthm fn-rii-sco-extend-is-sco-extend",
-                      (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii"))
+        # fn-rii-sco-extend-is-sco-extend).  Since snapshot-open-2 the full
+        # open (fn-store-sn-recover-rows) calls the extension and its open as
+        # one, fn-rii-sco-extend-open, which is that extension then
+        # fn-rii-classified-open of it (KEYSTONE
+        # fn-rii-sco-extend-open-is-extend-then-open).  The call is read from
+        # the host function, not from the file's layout.
+        recover_rows = " ".join(native_cuts.host_function(store, "fn-store-sn-recover-rows").split())
+        self.assertIn("(fn-rii-sco-extend-open (fn-sco-capture config-records nil) "
+                      "config-records rows frontier)", recover_rows)
+        rii = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
+        for name in ("fn-rii-sco-extend-is-sco-extend", "fn-rii-sco-extend-open-is-extend-then-open"):
+            self.assertIn("(defthm " + name, rii)
+        self.assertIn("(fn-rii-sco-extend ", native_cuts.book_function("fn-rii-sco-extend-open")[1])
         # Directly or through the book wrapper the host calls in its place
         # (fn-sopc-classified-open since 2e25e21b; since replay-identity the
         # host calls fn-rii-classified-open, EQUAL to it by the keystone
