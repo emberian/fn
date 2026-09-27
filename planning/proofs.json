@@ -11119,7 +11119,12 @@
         "fn-otm-return-records-the-latency",
         "fn-otm-wait-reaches-the-deadline",
         "fn-otm-issue-only-when-none-pending",
-        "fn-otm-issue-is-pending-and-admits"
+        "fn-otm-issue-is-pending-and-admits",
+        "fn-otm-admit-is-the-mode",
+        "fn-otm-return-after-a-stall-is-named",
+        "fn-otm-stall-tells-no-member-its-outcome",
+        "fn-otm-wait-stays-within-the-stall",
+        "fn-otm-f4w-stall-within-h"
       ]
     },
     {
