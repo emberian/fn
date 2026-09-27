@@ -989,14 +989,30 @@ that is no saved profile stays a fault."
 (defun fnn-bridge-recover (records frontier config-records)
   "Replay the configuration history and then the article history.
 
-The core (host/store-node-host.lisp `fn-store-sn-recover') replays
-`config-records' with the article records through `fn-cpr-replay', takes the
-allocation domain and the capacity from the configured node, and opens the
-observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
-here.  The host supplies octets and decides nothing about them."
-  (fnn-action (fnn-core-arena-state 'fn-store-sn-recover
-                                    (mapcar #'fnn-octet-list records) frontier
-                                    (mapcar #'fnn-octet-list config-records))))
+The core (host/store-node-host.lisp `fn-store-sn-recover-begin', `-step',
+`-finish') replays `config-records' with the article records through
+`fn-cpr-replay', takes the allocation domain and the capacity from the
+configured node, and opens the observed store through `fn-cpo-open-observed';
+a store with no configuration record never reaches here.  The records go over
+in chunks that close where ACL2 says (`fn-store-recover-chunk-fullp'), each
+converted to octet lists only for its own step, so no list of the whole
+history exists (PKT-823; books/store-recover-stream.lisp: any chunking opens
+the same Store).  The host supplies octets and decides nothing about them."
+  (let ((begun (fnn-core-arena-state 'fn-store-sn-recover-begin
+                                     (mapcar #'fnn-octet-list config-records))))
+    (unless (eq begun :begun)
+      (return-from fnn-bridge-recover (fnn-action begun)))
+    (loop while records do
+      (let ((chunk nil) (octets 0))
+        (loop while (and records (not (fnn-core 'fn-store-recover-chunk-fullp octets))) do
+          (let ((record (pop records)))
+            (incf octets (length record))
+            (push (fnn-octet-list record) chunk)))
+        (let ((stepped (fnn-core-arena-state 'fn-store-sn-recover-step (nreverse chunk))))
+          (unless (eq stepped :stepped)
+            (fnn-core-arena-state 'fn-store-sn-recover-finish frontier)
+            (return-from fnn-bridge-recover (fnn-action stepped))))))
+    (fnn-action (fnn-core-arena-state 'fn-store-sn-recover-finish frontier))))
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."

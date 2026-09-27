@@ -340,29 +340,88 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; rows; alpha of the opened history is the decoded journal
 ; (fn-intern-events-materializes), which is what the byte-store relation
 ; compares (books/byte-store-k0-recovery: fn-bs-recovered-rowsp).  The answer
-; is (mv nil KEYWORD fn-arena state).
+;
+; THE CHUNKED OPEN (lane recover-memory, PKT-823; books/store-recover-stream):
+; the host hands the history over in chunks, so no octet list and no decoded
+; event of the whole history ever exists at once.  `-begin' decodes the
+; configuration history and empties the arena; `-step' is fn-srs-step over one
+; chunk (decode, intern, rows accumulated newest first in the global
+; `fn-store-srs'); `-finish' opens over the rows oldest first.  KEYSTONE
+; fn-srs-steps-are-one-step-of-the-concatenation: any chunking answers what one
+; step over the whole history answers, and fn-srs-one-step-is-the-intern-of-
+; the-decode says that one step is the intern of the decoded history, which is
+; what this open computed before.  `fn-store-sn-recover' is begin, one step,
+; finish (tools/run_store.py calls it).  Each answer is (mv nil KEYWORD
+; fn-arena state): :begun, :stepped, then the open's :recovering / :refused,
+; or :fault.
+(defun fn-store-srs-current (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-store-srs state)
+      (f-get-global 'fn-store-srs state)
+    nil))
+
+(defun fn-store-sn-recover-begin (config-octet-records fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal config-records :bad) (null config-records))
+        (let ((state (f-put-global 'fn-store-srs nil state)))
+          (mv nil :fault fn-arena state))
+      (let* ((fn-arena (fn-arena-clear fn-arena))
+             (state (f-put-global 'fn-store-srs
+                                  (list :rows nil config-records) state)))
+        (mv nil :begun fn-arena state)))))
+
+(defun fn-store-sn-recover-step (octet-records fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((srs (fn-store-srs-current state)))
+    (if (not (and (true-listp srs) (equal (len srs) 3) (eq (car srs) :rows)))
+        (mv nil :fault fn-arena state)
+      (mv-let (acc fn-arena)
+        (fn-srs-step (cadr srs) octet-records fn-arena)
+        (let ((state (f-put-global 'fn-store-srs
+                                   (list :rows acc (caddr srs)) state)))
+          (mv nil (if (eq acc :bad) :fault :stepped) fn-arena state))))))
+
+; The quantum the host closes a chunk at (books/store-recover-stream.lisp
+; fn-srs-chunk-fullp): T once the chunk holds OCTETS record octets.
+(defun fn-store-recover-chunk-fullp (octets)
+  (declare (xargs :mode :program))
+  (fn-srs-chunk-fullp octets))
+
+(defun fn-store-sn-recover-finish (frontier fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let* ((srs (fn-store-srs-current state))
+         (state (f-put-global 'fn-store-srs nil state)))
+    (if (not (and (true-listp srs) (equal (len srs) 3) (eq (car srs) :rows)
+                  (not (eq (cadr srs) :bad))))
+        (mv nil :fault fn-arena state)
+      (let ((rows (reverse (cadr srs)))
+            (config-records (caddr srs)))
+        ; The full open is the empty capture extended over the whole
+        ; history, opened once (fn-store-sn-open-extended below).  It is
+        ; the full open fn-cpo-open-observed and the full replay
+        ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
+        ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
+        (mv-let (erp val state)
+          (fn-store-sn-open-extended
+           (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+           config-records frontier state)
+          (mv erp val fn-arena state))))))
+
 (defun fn-store-sn-recover (octet-records frontier config-octet-records fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (let ((records (fn-store-decode-records octet-records))
-        (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (equal records :bad) (equal config-records :bad)
-            (null config-records))
+  (mv-let (erp begun fn-arena state)
+    (fn-store-sn-recover-begin config-octet-records fn-arena state)
+    (declare (ignore erp))
+    (if (not (eq begun :begun))
         (mv nil :fault fn-arena state)
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-          (fn-store-intern-records records fn-arena)
-          (if (equal rows :bad)
-              (mv nil :fault fn-arena state)
-            ; The full open is the empty capture extended over the whole
-            ; history, opened once (fn-store-sn-open-extended below).  It is
-            ; the full open fn-cpo-open-observed and the full replay
-            ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
-            ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
-            (mv-let (erp val state)
-              (fn-store-sn-open-extended
-               (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-               config-records frontier state)
-              (mv erp val fn-arena state))))))))
+      (mv-let (erp stepped fn-arena state)
+        (fn-store-sn-recover-step octet-records fn-arena state)
+        (declare (ignore erp))
+        (if (not (eq stepped :stepped))
+            (let ((state (f-put-global 'fn-store-srs nil state)))
+              (mv nil :fault fn-arena state))
+          (fn-store-sn-recover-finish frontier fn-arena state))))))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
