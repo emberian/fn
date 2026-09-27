@@ -767,7 +767,7 @@ RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
 # The state dispatchers pass the live payload arena before state to an entry
 # whose ACL2 formals end in (fn-arena state) (host/native/io.lisp
 # fnn-arena-then-state, read off the entry's stobjs-in: lane served-readers).
-# (or (fn-arena fn-cat state): both).  ARENA_ENTRIES (name -> how many) is
+# (or any run of fn-arena, fn-cat and fn-hist before state).  ARENA_ENTRIES (name -> how many) is
 # filled from the tree's formals by raw_arity_findings.
 ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action"}
 ARENA_ENTRIES: dict[str, int] = {}
@@ -1048,12 +1048,18 @@ def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
         seen.setdefault(definition.name, set()).add(len(definition.formals))
     ARENA_ENTRIES.clear()
     def trailing(formals):
-        tail = [str(f).lower() for f in formals[-3:]]
-        if tail == ["fn-arena", "fn-cat", "state"]:
-            return 2
-        if tail[-2:] == ["fn-arena", "state"]:
-            return 1
-        return 0
+        # the run of fn-arena, fn-cat and fn-hist just before state
+        # (host/native/io.lisp fnn-trailing-kind; fn-hist: lane
+        # history-columns-2)
+        names = [str(f).lower() for f in formals]
+        if not names or names[-1] != "state":
+            return 0
+        count = 0
+        for name in reversed(names[:-1]):
+            if name not in ("fn-arena", "fn-cat", "fn-hist"):
+                break
+            count += 1
+        return count
     for name, function in tree.functions.items():
         if isinstance(function.formals, list) and trailing(function.formals):
             ARENA_ENTRIES[name] = trailing(function.formals)
