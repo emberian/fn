@@ -2918,7 +2918,9 @@ buffer at once."
           (funcall *fnn-checkpoint-recover-callback* store
                    (if (and (not (fnn-store-history store))
                             (eq (first (fnn-store-open-mode store)) :checkpoint)
-                            (fnn-lstat (fnn-checkpoints store)))
+                            ;; the generation directory (checkpoint.lisp
+                            ;; fnn-checkpoints; this layer is optional)
+                            (fnn-lstat (fnn-join (fnn-store-root store) "checkpoints")))
                        (append (fnn-state-checkpoint-prefix-octets) records)
                        records)))
     (setf (fnn-store-fenced store) nil)
