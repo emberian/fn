@@ -27,9 +27,10 @@
 (assert-event (fn-auth-sessionp *nht-s*))
 
 (defun nht-line (text) (fn-nntp-string-octets text))
-(defun nht-step (as line)
-  (fn-auth-step-pinned as *nht-archive* nil nil *nht-config* *nht-obs* *nht-obs*
+(defun nht-step-under (as line config)
+  (fn-auth-step-pinned as *nht-archive* nil nil config *nht-obs* *nht-obs*
                        (list :command line)))
+(defun nht-step (as line) (nht-step-under as line *nht-config*))
 (defun nht-effects (as text) (fn-post-result-effects (nht-step as (nht-line text))))
 (defun nht-crlf-lines (texts)
   (if (consp texts)
@@ -86,7 +87,7 @@
 ; verb fn refuses to implement (it would publish storage filenames); it is
 ; not in the table.
 (defconst *nht-xpath* (nht-line "XPATH <a@b.invalid>"))
-(defun nht-antecedent (as line)
+(defun nht-antecedent-under (as line config)
   (and (fn-auth-sessionp as)
        (not (fn-auth-session-handshakingp as))
        (not (fn-peer-session-transfer (fn-auth-session-base as)))
@@ -95,12 +96,15 @@
        (fn-nntp-command-inputp line)
        (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
        (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-       (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))))
-(defun nht-conclusion (as line)
-  (let ((r (nht-step as line)))
+       (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+       (fn-auth-selection-in-viewp as config)))
+(defun nht-antecedent (as line) (nht-antecedent-under as line *nht-config*))
+(defun nht-conclusion-under (as line config)
+  (let ((r (nht-step-under as line config)))
     (and (equal (fn-post-result-effects r) *nht-500*)
          (null (fn-post-result-submission r))
          (equal (fn-post-result-session r) as))))
+(defun nht-conclusion (as line) (nht-conclusion-under as line *nht-config*))
 (assert-event (nht-antecedent *nht-s* *nht-xpath*))
 (assert-event (nht-conclusion *nht-s* *nht-xpath*))
 ; Not degenerate: the conclusion's 500 line is the one the witness wrote.
@@ -109,7 +113,7 @@
 
 ; Hypothesis-removal witnesses.  Each: every retained hypothesis holds, the
 ; dropped one fails, the conclusion fails.
-(defun nht-retained-but (k as line)
+(defun nht-retained-but-under (k as line config)
   (and (or (equal k 1) (fn-auth-sessionp as))
        (or (equal k 2) (not (fn-auth-session-handshakingp as)))
        (or (equal k 3) (not (fn-peer-session-transfer (fn-auth-session-base as))))
@@ -119,8 +123,28 @@
        (or (equal k 7) (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line))))
        (or (equal k 8) (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
        (or (equal k 9) (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
-       (not (nht-antecedent as line))
-       (not (nht-conclusion as line))))
+       (or (equal k 10) (fn-auth-selection-in-viewp as config))
+       (not (nht-antecedent-under as line config))
+       (not (nht-conclusion-under as line config))))
+(defun nht-retained-but (k as line) (nht-retained-but-under k as line *nht-config*))
+
+; (10) the selection is in the session's view (PRF-222): a session that
+; selected fn.letters and whose rule (the anonymous row, read fn.other)
+; does not read it is deselected by its next delegated command -- a change
+; of state, so "changes nothing" needs the selection in view.
+(defconst *nht-ruled-config*
+  (fn-inj-make-config-full t (fn-nntp-string-octets "fn.example.invalid")
+                           (list (fn-nntp-string-octets "fn.letters")) 32768
+                           (list nil nil nil (list (list "" "fn.other" "*" 3)))
+                           nil))
+(defconst *nht-selected*
+  (fn-post-result-session (nht-step *nht-s* (nht-line "GROUP fn.letters"))))
+(assert-event (fn-nntp-session-group (fn-auth-reader-session *nht-selected*)))
+(assert-event (fn-auth-access-read *nht-selected* *nht-ruled-config*))
+(assert-event (nht-retained-but-under 10 *nht-selected* *nht-xpath* *nht-ruled-config*))
+; and in view under the connection's own (unruled) configuration:
+(assert-event (nht-antecedent *nht-selected* *nht-xpath*))
+(assert-event (nht-conclusion *nht-selected* *nht-xpath*))
 
 ; (2) handshaking: STARTTLS's 382 leaves the session handshaking; nothing
 ; is served until the handshake ends.
@@ -170,7 +194,8 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -214,7 +239,8 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -258,7 +284,8 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -302,7 +329,8 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -346,7 +374,8 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -390,7 +419,8 @@
                 (equal (fn-nntp-session-openp (fn-auth-reader-session as)) t)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -434,7 +464,8 @@
                 (equal (fn-nntp-session-openp (fn-auth-reader-session as)) t)
                 (fn-nntp-command-inputp line)
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -478,7 +509,8 @@
                 (equal (fn-nntp-session-openp (fn-auth-reader-session as)) t)
                 (fn-nntp-command-inputp line)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -554,6 +586,54 @@
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
                             fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
+           :use ((:instance fn-auth-sessionp (x as))
+                 (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
+                 (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
+
+; (10) without the selection in view: a ruled session selected outside its
+; view is deselected (the ground case above).
+(must-fail
+(defthm nht-without-selection-in-view
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (not (fn-peer-session-transfer (fn-auth-session-base as)))
+                (not (fn-post-session-awaiting (fn-auth-post-session as)))
+                (equal (fn-nntp-session-openp (fn-auth-reader-session as)) t)
+                (fn-nntp-command-inputp line)
+                (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+           (and (equal (fn-post-result-effects
+                        (fn-auth-step-pinned as archive index verdicts config
+                                             observation injection
+                                             (list :command line)))
+                       (fn-auth-single as "500 command not recognized"))
+                (null (fn-post-result-submission
+                       (fn-auth-step-pinned as archive index verdicts config
+                                            observation injection
+                                            (list :command line))))
+                (equal (fn-post-result-session
+                        (fn-auth-step-pinned as archive index verdicts config
+                                             observation injection
+                                             (list :command line)))
+                       as)))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
+                            fn-auth-restricted-keywordp fn-auth-tls-eventp
+                            fn-auth-redeem-eventp
+                            fn-auth-delegate-pinned fn-peer-step-pinned
+                            fn-peer-command fn-peer-delegate-pinned
+                            fn-nntp-post-step-pinned fn-nntp-step-pinned
+                            fn-nntp-command-pinned fn-nntp-archive-keywordp
+                            fn-nntp-session-command fn-auth-single
+                            fn-nntp-single)
+                           (fn-nntp-keywordp fn-nntp-tokenize
+                            fn-nntp-command-inputp fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
            :use ((:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))

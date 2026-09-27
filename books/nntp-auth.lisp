@@ -3236,23 +3236,40 @@
                                    fn-gac-restrict-index fn-auth-access-text
                                    fn-gidx-pin-correspondencep)))))
 
+; A rule reads only through a projected session, and a projected session
+; consistent with the store makes the store a projection.
+(defthm fn-auth-access-read-gives-projection
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-auth-access-read as config))
+           (fn-nntp-projectionp archive))
+  :hints (("Goal" :in-theory (e/d (fn-auth-access-read fn-auth-session-consistentp
+                                   fn-peer-session-consistentp
+                                   fn-post-session-consistentp
+                                   fn-nntp-session-consistentp)
+                                  (fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                                   fn-nntp-projectionp fn-auth-access-text)))))
+
 (defthm fn-auth-view-consistent-back
   (implies (and (fn-auth-session-consistentp as archive)
                 (fn-peer-session-consistentp
                  ps (fn-auth-view-archive as config archive)))
            (fn-peer-session-consistentp ps archive))
-  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read
-                                   fn-auth-session-consistentp
-                                   fn-peer-session-consistentp
-                                   fn-post-session-consistentp
-                                   fn-nntp-session-consistentp)
-                                  (fn-auth-sessionp fn-gac-restrict-state
-                                   fn-auth-access-text fn-peer-sessionp
-                                   fn-post-sessionp fn-nntp-projectionp
-                                   fn-gac-consistent-back))
-           :use ((:instance fn-gac-consistent-back
-                            (text (fn-auth-access-text as config 1))
+  :hints (("Goal" :cases ((fn-auth-access-read as config))
+           :in-theory '(fn-auth-view-archive)
+           :use ((:instance fn-auth-access-read-gives-projection)
+                 (:instance fn-gac-consistent-back
+                            (text (fn-auth-access-read as config))
                             (s archive))))))
+
+(defthm fn-auth-with-base-consistent
+  (implies (and (fn-auth-sessionp as)
+                (fn-peer-session-consistentp base archive))
+           (fn-auth-session-consistentp (fn-auth-with-base as base) archive))
+  :hints (("Goal" :in-theory (e/d (fn-auth-with-base fn-auth-session-consistentp
+                                   fn-auth-sessionp fn-peer-session-consistentp)
+                                  (fn-peer-sessionp fn-post-session-consistentp
+                                   fn-auth-configp fn-nntp-printable-tokenp
+                                   fn-prin-idp)))))
 
 (defthm fn-auth-delegate-pinned-preserves-consistentp
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3263,14 +3280,10 @@
                                       observation injection wire-event))
             archive))
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base
-                            fn-auth-session-consistentp fn-auth-sessionp)
-                           (fn-peer-step-pinned fn-peer-sessionp
-                            fn-peer-session-consistentp fn-auth-configp
-                            fn-peer-step-pinned-preserves-consistent-session
-                            fn-auth-view-consistent fn-auth-view-consistent-back
-                            fn-nntp-printable-tokenp fn-prin-idp))
-           :use ((:instance fn-auth-view-consistent)
+           :in-theory '(fn-auth-delegate-pinned
+                        fn-post-result-session-of-fn-post-make-result)
+           :use ((:instance fn-auth-consistent-forward)
+                 (:instance fn-auth-view-consistent)
                  (:instance fn-peer-step-pinned-preserves-consistent-session
                             (ps (fn-auth-view-session as config))
                             (archive (fn-auth-view-archive as config archive))
@@ -3278,6 +3291,15 @@
                             (config (fn-auth-view-config as config archive)))
                  (:instance fn-auth-view-consistent-back
                             (ps (fn-post-result-session
+                                 (fn-peer-step-pinned
+                                  (fn-auth-view-session as config)
+                                  (fn-auth-view-archive as config archive)
+                                  (fn-auth-view-index as config archive index)
+                                  verdicts
+                                  (fn-auth-view-config as config archive)
+                                  observation injection wire-event))))
+                 (:instance fn-auth-with-base-consistent
+                            (base (fn-post-result-session
                                  (fn-peer-step-pinned
                                   (fn-auth-view-session as config)
                                   (fn-auth-view-archive as config archive)
@@ -3388,6 +3410,36 @@
            (fn-peer-sessionp (fn-auth-view-session as config)))
   :hints (("Goal" :in-theory (e/d (fn-auth-view-session fn-auth-sessionp)
                                   (fn-peer-sessionp fn-gac-deselect)))))
+
+; Deselection keeps the POST state (books/nntp-auth-fold.lisp reads it).
+(defthm fn-auth-view-session-keeps-awaiting
+  (equal (fn-post-session-awaiting
+          (fn-peer-session-base (fn-auth-view-session as config)))
+         (fn-post-session-awaiting
+          (fn-peer-session-base (fn-auth-session-base as))))
+  :hints (("Goal" :in-theory (enable fn-auth-view-session fn-gac-deselect))))
+
+; A session is within its view when its rule restricts nothing or its
+; selected group (if any) is one the rule reads: the view session is then the
+; session itself.  A session selected outside its view (a login changed
+; under a selection) is deselected by its next delegated command, which is a
+; change of state (books/nntp-help.lisp states "changes nothing" in view).
+(defun fn-auth-selection-in-viewp (as config)
+  (declare (xargs :guard t))
+  (let ((read (fn-auth-access-read as config))
+        (group (fn-nntp-session-group
+                (fn-post-session-base
+                 (fn-peer-session-base (fn-auth-session-base as))))))
+    (or (null read) (null group) (fn-gac-readablep read group))))
+
+(defthm fn-auth-view-session-when-selection-in-view
+  (implies (fn-auth-selection-in-viewp as config)
+           (equal (fn-auth-view-session as config)
+                  (fn-auth-session-base as)))
+  :hints (("Goal" :in-theory (enable fn-auth-selection-in-viewp
+                                     fn-auth-view-session fn-gac-deselect))))
+
+(in-theory (disable fn-auth-selection-in-viewp))
 
 (defthm fn-auth-step-pinned-submission-is-typed
   (implies (and (fn-auth-sessionp as)
