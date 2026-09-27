@@ -320,7 +320,7 @@
 
 ; The range seal is the list seal of the slice (no hypothesis: both are
 ; fn-oct-snoc), and an append under the recognizer.  The intern from a
-; buffer range (books/catalog-load-index.lisp fn-obi-seal-range) is this
+; buffer range (lane open-by-index's fn-obi-seal-range, batch AQ) is this
 ; export: its theorem fn-obi-seal-range-is-seal-of-slice is the first.
 (defthm fn-arena-seal-range-is-seal-list
   (equal (fn-arena-seal-range a b fn-octets fn-arena)

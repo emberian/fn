@@ -448,8 +448,8 @@
   nil)
 
 ; The octet buffer's cells [A, B) sealed as one payload (the intern from a
-; buffer range: books/catalog-load-index.lisp fn-obi-seal-range, lane
-; open-by-index, is this export's caller).
+; buffer range: lane open-by-index's fn-obi-seal-range, its book landing in
+; batch AQ, is this export's caller).
 (defun fn-arena$a-seal-range (a b fn-octets fn-arena$a)
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))))

@@ -215,11 +215,6 @@
 ;; from the certificates it was certified with.  It must precede every
 ;; include that names fn-arena.
 (include-book "books/payload-arena-attach")
-;; Wave 5's attach-stobj prototype (planning/design-2026-09-26-consolidation.md
-;; section 3): the attachable generic fn-pcat (books/proto-catalog.lisp) with
-;; the arena's byte array attached before it is introduced; host/native/proto-catalog.lisp
-;; registers the developer verb `proto-catalog' that calls fn-pcat-smoke.
-(include-book "books/proto-catalog-arena")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
@@ -350,7 +345,6 @@
         (load "host/native/tls-reload.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).
-        (load "host/native/proto-catalog.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

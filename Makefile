@@ -756,10 +756,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/records-freeze-tests \
-	books/proto-catalog \
-	books/proto-catalog-fold \
-	books/proto-catalog-arena \
-	tests/acl2/proto-catalog-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
 	tests/acl2/catalog-commit-tests \

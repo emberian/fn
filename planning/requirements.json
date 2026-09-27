@@ -3906,7 +3906,8 @@
         "books/payload-arena.lisp",
         "books/payload-arena-bytes.lisp",
         "books/payload-arena-attach.lisp",
-        "books/records-freeze.lisp"
+        "books/records-freeze.lisp",
+        "planning/evidence/manifests/certify-20260927T025222Z-2357872.json"
       ],
       "implementation_note": "Lane records-freeze (2026-09-26/27, PKT-293): the generic, its byte-array attachment, the intern's coordinates, the replay theorems and the reclamation identity are certified (PRF-221); the image attaches the byte array (host/native/build.lisp includes books/payload-arena-attach before any book naming fn-arena). Not yet served: no host line seals into the arena or loads the catalog (catalog-slice-5 step 8; acceptance-payload-arena PKT-635), so the retained bytes per stored octet are still sixteen on the running node until that join; the measurement belongs to it."
     },

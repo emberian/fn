@@ -7472,6 +7472,18 @@
         {
           "kind": "theorem",
           "name": "fn-arena-bytes-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-bytes-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-range-is-seal-list"
         }
       ]
     },
