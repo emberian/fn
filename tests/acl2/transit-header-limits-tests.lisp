@@ -146,19 +146,19 @@
                            octets))
 (assert-event (fn-thl-control-gatep (thlt-config '(6 6 1000)) *pt-id1*
                                     (list (pt-o "fn.letters")) *pt-a1*))
-(assert-event (equal (fn-article-header-census *pt-a1*) '(6 6 178)))
-(assert-event (fn-inj-injectedp (thlt-ctl '(6 6 178) *pt-a1*)))
-(assert-event (equal (fn-inj-decision-reason (thlt-ctl '(5 6 178) *pt-a1*)) :header-fields-limit))
-(assert-event (equal (fn-inj-decision-reason (thlt-ctl '(6 5 178) *pt-a1*)) :header-lines-limit))
-(assert-event (equal (fn-inj-decision-reason (thlt-ctl '(6 6 177) *pt-a1*)) :header-octets-limit))
-(assert-event (not (fn-inj-injectedp (thlt-ctl '(5 6 178) *pt-a1*))))
+(assert-event (equal (fn-article-header-census *pt-a1*) '(6 6 186)))
+(assert-event (fn-inj-injectedp (thlt-ctl '(6 6 186) *pt-a1*)))
+(assert-event (equal (fn-inj-decision-reason (thlt-ctl '(5 6 186) *pt-a1*)) :header-fields-limit))
+(assert-event (equal (fn-inj-decision-reason (thlt-ctl '(6 5 186) *pt-a1*)) :header-lines-limit))
+(assert-event (equal (fn-inj-decision-reason (thlt-ctl '(6 6 185) *pt-a1*)) :header-octets-limit))
+(assert-event (not (fn-inj-injectedp (thlt-ctl '(5 6 186) *pt-a1*))))
 ; Without the gate: an owner that does not allow posting refuses
 ; :control-invalid, which is not a limit's name.
 (assert-event (equal (fn-inj-decision-reason
                       (fn-own-control-decision
                        (fn-inj-make-config-full nil (pt-o "fn.example.invalid")
                                                 (list (pt-o "fn.letters"))
-                                                (fn-inj-post-bound 32768 '(5 6 178)) nil nil)
+                                                (fn-inj-post-bound 32768 '(5 6 186)) nil nil)
                        *pt-id1* (list (pt-o "fn.letters")) *pt-a1*))
                      :control-invalid))
 (must-fail
@@ -181,8 +181,8 @@
 ; their parse under the limits fails.
 (defconst *thlt-garbage* (pt-o "garbage"))
 (assert-event (not (fn-article-result-okp (fn-article-parse *thlt-garbage*))))
-(assert-event (fn-inj-injectedp (thlt-ctl '(6 6 178) *thlt-garbage*)))
-(assert-event (not (fn-article-result-okp (fn-article-parse-under *thlt-garbage* '(6 6 178)))))
+(assert-event (fn-inj-injectedp (thlt-ctl '(6 6 186) *thlt-garbage*)))
+(assert-event (not (fn-article-result-okp (fn-article-parse-under *thlt-garbage* '(6 6 186)))))
 (must-fail
  (defthm thlt-ctl-inject-without-reading-parse
    (implies (fn-inj-injectedp (fn-own-control-decision cfg msgid groups octets))
@@ -197,7 +197,7 @@
                              fn-article-census-refusal fn-own-config-header-limits
                              fn-af-message-idp fn-inj-group-namesp fn-octet-listp))))))
 ; Without the injection: the refusal past the fields limit.
-(assert-event (not (fn-article-result-okp (fn-article-parse-under *pt-a1* '(5 6 178)))))
+(assert-event (not (fn-article-result-okp (fn-article-parse-under *pt-a1* '(5 6 186)))))
 (must-fail
  (defthm thlt-ctl-without-injected
    (implies (fn-article-result-okp (fn-article-parse octets))

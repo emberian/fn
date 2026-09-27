@@ -105,10 +105,11 @@
     (implies (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets
                                                      id subject)
                     :submitted)
-             (and (equal (fn-peer-decide-transfer
-                          (fn-sn-node (fn-own-store o)) cfg peer msgid octets
-                          (fn-own-clock o) id subject)
-                         (fn-peer-decision :want nil))
+             (and (equal (fn-peer-decision-kind
+                          (fn-peer-decide-transfer
+                           (fn-sn-node (fn-own-store o)) cfg peer msgid octets
+                           (fn-own-clock o) id subject))
+                         :want)
                   (fn-article-result-okp
                    (fn-article-parse-under
                     (fn-peer-relayed-octets cfg peer octets) limits)))))
@@ -134,13 +135,18 @@
                                                    id subject)
                   :refused))
   :hints (("Goal"
-           :use ((:instance fn-own-bp-transit-submits-only-within-the-limits))
-           :in-theory (e/d (fn-own-bp-transit-submit-result)
-                           (fn-own-bp-transit-submits-only-within-the-limits
-                            fn-peer-decide-transfer-under
-                            fn-peer-decide-transfer fn-peer-relayed-octets
-                            fn-article-parse-under fn-article-parse
-                            fn-own-config-header-limits)))))
+           :use ((:instance fn-peer-decide-transfer-under-admits-exactly-the-limits
+                            (node (fn-sn-node (fn-own-store o)))
+                            (clock (fn-own-clock o))
+                            (limits (fn-own-config-header-limits (fn-own-config o))))
+                 (:instance fn-peer-decide-transfer-under-keeps-refusals-and-duplicates-by-definition
+                            (node (fn-sn-node (fn-own-store o)))
+                            (clock (fn-own-clock o))
+                            (limits (fn-own-config-header-limits (fn-own-config o)))))
+           :in-theory (union-theories
+                       '(fn-own-bp-transit-submit-result member-equal
+                         (:executable-counterpart equal))
+                       (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; The owner's control delivery (a BP application's article, the CLI's)
