@@ -5,6 +5,26 @@
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-indeterminate (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-indeterminate "host/native/io.lisp"))
+(defun fnn-owner-transit-refused (detail)
+  (declare (ignorable detail))
+  (harness-stub-reached 'fnn-owner-transit-refused "host/native/owner.lisp"))
+;;; ---- derived stubs: END ----
 (define-condition boundary-fault (error) ())
 (defvar *calls* nil)
 (defun fnn-fault (&rest args)
@@ -55,7 +75,20 @@
   (declare (ignore service publication)) (push :flush *calls*))
 (defun fnn-owner-attempt-transit (&rest args)
   (declare (ignore args)) (push :attempt-transit *calls*) :durable)
+;; A BP transit commits what the owner has queued before its own record
+;; (host/native/owner.lisp fnn-owner-commit-queued-locked).  Nothing is
+;; queued here: the deployed answer for an empty queue is 0 members; it is
+;; counted apart from *calls*, whose order the checks below assert.
+(defvar *queued-commits* 0)
+(defun fnn-owner-commit-queued-locked (service)
+  (declare (ignore service)) (incf *queued-commits*) 0)
 
+(with-open-file (stream "host/native/owner.lisp")
+  ;; The owner's own transit-detail global (the refusal arms set it).
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defvar)
+                  (eq (cadr form) '*fnn-owner-transit-detail*))
+          do (eval form) (return)))
 (with-open-file (stream "host/native/owner.lisp")
   (let ((found nil))
     (loop for form = (read stream nil :eof) until (eq form :eof)
@@ -80,4 +113,5 @@
   (assert (handler-case (progn (apply #'invoke-transit bad) nil)
             (boundary-fault () t)))
   (assert (equal *calls* '(fn-owner-take))))
+(assert (= *queued-commits* 5))
 (format t "native BP transit identity regression passed~%")

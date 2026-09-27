@@ -368,6 +368,6 @@
                    ; (fn-octets-p) and the Store entry's (fn-arena-p), the
                    ; two stobj recognizers and nothing more.
                    (equal (guard 'fn-pidx-existing-action nil (w state))
-                          (list 'if (guard 'fn-rclb-existing-action nil (w state))
+                          (list 'if (guard 'fn-rclb-same-articlep nil (w state))
                                 (guard 'fn-store-existing-action nil (w state))
                                 ''nil))))
