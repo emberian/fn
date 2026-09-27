@@ -7292,6 +7292,45 @@
           "name": "fn-bphh-octets-at-p-is-equal-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-229",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-view-seq-is-walk",
+          "pending_subject": "Subject is fn-cnx-view-seq / fn-cnx-view-range over fn-cat; the host calls neither yet (the served retrieval arms read the list indexes until catalog-slice step 7b threads fn-cat; LANEDUMP request)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-view-range-is-walk",
+          "pending_subject": "Subject is fn-cnx-view-seq / fn-cnx-view-range over fn-cat; the host calls neither yet (the served retrieval arms read the list indexes until catalog-slice step 7b threads fn-cat; LANEDUMP request)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-number-seq-unique"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-create-and-clear"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-cat-writers"
+        }
+      ]
     }
   ]
 }
