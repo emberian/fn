@@ -4215,14 +4215,24 @@ presence of the two names is classified by fn-bs-imp-classify."
         (fnn-staged-publication
          "import" stage root-path
          ;; fn-sxp-import-plan's files, in its order.  The plan's profile is
-         ;; format 9 (fn-sxp-log-profile): the records go into the log
-         ;; below, not into transaction files.
-         (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values))
-                       (cons (fnn-frontier-path stage) frontier))
-                 (mapcar (lambda (config)
-                           (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
-                         configs)
-                 (unless logp
+         ;; format 9 (fn-sxp-log-profile): as a format-9 init stages its
+         ;; files (books/store-init-log-publication.lisp fn-bs-init-log-files:
+         ;; the profile, the configuration records, the segment's ACL2 extent
+         ;; of zeros; no allocator file, no transactions/), and the records go
+         ;; into the log below, not into transaction files.
+         (if logp
+             (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values)))
+                     (mapcar (lambda (config)
+                               (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
+                             configs)
+                     (list (cons (fnn-segment-path stage)
+                                 (fnn-make-octets
+                                  (fnn-nat (fnn-core 'fn-store-log-initial-extent))))))
+           (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values))
+                         (cons (fnn-frontier-path stage) frontier))
+                   (mapcar (lambda (config)
+                             (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
+                           configs)
                    (mapcar (lambda (record)
                              (cons (fnn-join (fnn-transactions stage)
                                              (fnn-transaction-name (car record)))
@@ -4232,8 +4242,9 @@ presence of the two names is classified by fn-bs-imp-classify."
          ;; The imported store is a new store on the filesystem ROOT is on
          ;; (its stage is ROOT's sibling): its record, under the import's
          ;; policy (fn-smid-init-policy: 1), before the ordinary open.  On
-         ;; format 9 the stage's segment is then written from the genesis
-         ;; (fnn-log-write-history) before that open admits it.
+         ;; format 9 the stage's segment (staged above) then receives the
+         ;; history from the genesis (fnn-log-write-history) before that open
+         ;; admits it.
          (lambda (stage)
            (fnn-record-filesystem-at-init stage request policy)
            (when logp
@@ -5560,11 +5571,15 @@ concrete input of fn-lg-decode (its model is fn-lgd-octets)."
 that stops at an entry validating under another predecessor is a splice or
 a stale segment, refused by name (fn-lgs-chain-broken-string-p), never read
 as a torn tail."
-  (let ((text (fnn-log-read-string fd extent)))
-    (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
+  (let* ((text (fnn-log-read-string fd extent))
+         (ks (fnn-core 'fn-lg-open-kernel text genesis unit max 1)))
+    ;; The check at the kernel's own stop (fn-lgs-chain-broken-at-is-the-
+    ;; model): one decode of the segment, not two.
+    (when (fnn-core 'fn-lgs-chain-broken-at text (fnn-core 'fn-lgk-frontier ks)
+                    genesis unit max)
       (error 'fnn-store-open-refusal
              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-    (fnn-core 'fn-lg-open-kernel text genesis unit max 1)))
+    ks))
 
 (defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*))
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
@@ -5774,6 +5789,21 @@ parent."
         (lambda () (fnn-fsync-dir (fnn-store-root store)))
         (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
 
+(defconstant +fnn-log-next-txid-chunk+ 1024
+  "Records per ACL2 call of the frontier's fold at an open (a work quantum per
+call, never a bound on the store).")
+
+(defun fnn-log-next-txid-streamed (records floor)
+  "ACL2's fn-store-log-next-txid over RECORDS (octet vectors) a chunk at a
+time, the fold's floor carried: the fold is a running maximum, so the chunks'
+answer is the whole list's; only one chunk is an octet list at a time."
+  (let ((next floor))
+    (loop while records do
+      (let ((chunk (loop repeat +fnn-log-next-txid-chunk+ while records
+                         collect (fnn-octet-list (pop records)))))
+        (setq next (fnn-nat (fnn-core 'fn-store-log-next-txid chunk next)))))
+    next))
+
 (defun fnn-log-segment-names (store)
   "journal/'s entries (bounded by the segment index's width)."
   (fnn-list-directory-bounded (fnn-journal-dir store)
@@ -5965,6 +5995,11 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                  (first log-position))))
             (unless (and (consp plan) (member (first plan) '(:scan :refused)))
               (fnn-fault "ACL2 returned a malformed log open plan"))
+            ;; No segment and no checkpoint: an init that did not finish
+            ;; (the segment is its last step); init again completes it.
+            (when (equal plan '(:refused :no-segment))
+              (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
+                         (fnn-journal-dir store)))
             (when (eq (first plan) :refused)
               (error 'fnn-store-open-refusal
                      :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
@@ -5978,10 +6013,8 @@ does, and records how the log holds the history (fnn-store-log-history) for
               ;; scan holds, of every event kind (ACL2's fn-store-log-next-
               ;; txid), at least the checkpoint's frontier at S (the dropped
               ;; segments' txids), and the log kernel caught up to it.
-              (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
-                                             scanned
-                                             (max floor (fnn-core 'fn-lgk-next-txid
-                                                                  (fnn-log-kernel log)))))))
+              (let ((next (fnn-log-next-txid-streamed
+                           scanned (max floor (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log))))))
                 (setf (fnn-log-kernel log) (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) next)
                       (fnn-store-log store) log
                       (fnn-store-frontier store) next))
@@ -6167,9 +6200,9 @@ fenced (fn-lgk-fence-failed) and the store with it."
 5.3): the fresh segment of the staged STORE (profile VALUES) receives
 RECORDS, a list of (SEQUENCE . OCTETS) in increasing sequence, from the
 genesis, through the kernel the open recovered from it and the commit
-route's own steps: per record the kernel catches up to its txid
-(fn-store-log-record-txid; fn-olr-consume-to: the archive's burned
-reservations stay burned) and takes it (fn-olr-take, at the bounds of a configuration naming none: fn-olr-bmax,
+route's own steps: per record the take (fn-olr-take at the kernel's own next
+txid: the import allocates nothing; the open derives the frontier from the
+records, so the archive's burned reservations stay burned) (fn-olr-take, at the bounds of a configuration naming none: fn-olr-bmax,
 fn-olr-omax); a full batch, and the last, is P-BATCH's append and barrier
 (fnn-log-commit-open-batch, cuts log-written and log-fenced) and is
 acknowledged.  The stage is unpublished throughout: a death here leaves
@@ -6184,16 +6217,15 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
     (unwind-protect
          (let ((*fnn-log-batch* t))
            (dolist (record records)
-             ;; The record's own txid (every event kind: ACL2's decode), as
-             ;; the owner reserved it when it committed.
-             (let ((txid (fnn-core 'fn-store-log-record-txid (cdr record))))
-               (unless (and (integerp txid) (>= txid 0))
-                 (fnn-fault "ACL2 found no txid in an archived record"))
-               (setf (fnn-log-kernel log)
-                     (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) txid)
-                     (fnn-log-reserved log) txid)
-               (fnn-log-take store (cdr record))
-               (fnn-log-batch-finish store)))
+             ;; The import appends the archive's records in their order and
+             ;; allocates nothing: each is taken at the kernel's own next txid
+             ;; (an archived history may hold several records of one
+             ;; transaction, as the per-file layout's did); the ordinary open
+             ;; that admits the stage derives the frontier from the records
+             ;; (fn-store-log-next-txid).
+             (setf (fnn-log-reserved log) (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log)))
+             (fnn-log-take store (cdr record))
+             (fnn-log-batch-finish store))
            (fnn-log-commit-open-batch store)
            (fnn-log-batch-finish store))
       (fnn-close (fnn-log-fd log))

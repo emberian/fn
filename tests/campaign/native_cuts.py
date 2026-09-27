@@ -747,8 +747,11 @@ def verify_compact_entries(native: str) -> None:
         if "(fnn-marker-replace " not in host_function(native, caller):
             raise AssertionError("{} does not share the marker loop".format(caller))
     decide = host_function(native, "fnn-compact-decide")
-    if re.findall(r"\(fnn-core '([a-z0-9-]+)", decide) != ["fn-store-compact-decide"]:
-        raise AssertionError("fnn-compact-decide does not ask exactly fn-store-compact-decide")
+    # Lane compact-arena: the host asks the window twin, which answers what
+    # fn-store-compact-decide answers (books/store-compact-window.lisp KEYSTONE
+    # fn-cverb-decide-window-is-cverb-decide), over one link's window.
+    if re.findall(r"\(fnn-core '([a-z0-9-]+)", decide) != ["fn-store-compact-decide-window"]:
+        raise AssertionError("fnn-compact-decide does not ask exactly fn-store-compact-decide-window")
     steps = host_function(native, "fnn-compact-steps")
     if "(fnn-core " in steps:
         raise AssertionError("fnn-compact-steps asks a decision other than fnn-compact-decide")
@@ -983,7 +986,14 @@ def verify_post_log_cut_map() -> None:
     if not (0 <= start.find("(fnn-owner-drain-one ") < start.find("(fnn-log-seal-open-batch ")):
         raise AssertionError("START does not drain its members before the seal")
     complete = host_function(owner, "fnn-owner-commit-complete-locked")
-    if not (0 <= complete.find("(fnn-log-batch-finish ") < complete.rfind("(fnn-owner-deliver ")):
+    # Each member's reply goes out through fnn-owner-commit-release-member
+    # (lane log-2), which delivers; the acknowledgement precedes the last
+    # release (the :complete arm's).
+    release = host_function(owner, "fnn-owner-commit-release-member")
+    if not re.search(r"\(fnn-owner-deliver\s", release):
+        raise AssertionError("the member release does not deliver")
+    if not (0 <= complete.find("(fnn-log-batch-finish ")
+            < complete.rfind("(fnn-owner-commit-release-member ")):
         raise AssertionError("COMPLETE does not acknowledge before it delivers")
     quantum = host_function(owner, "fnn-owner-commit-queued-locked")
     order = [quantum.find(x) for x in ("(fnn-owner-commit-start-locked ",
@@ -994,7 +1004,7 @@ def verify_post_log_cut_map() -> None:
     pipeline = host_function(owner, "fnn-owner-commit-pipeline")
     order = [pipeline.find(x) for x in ("(fnn-owner-start-syncer ",
                                         "(sb-thread:join-thread syncer",
-                                        "(fnn-owner-commit-complete-locked service members nil deferred)",
+                                        "(fnn-owner-commit-complete-locked service :complete members deferred)",
                                         "(fnn-log-seal-open-batch store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):
         raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
