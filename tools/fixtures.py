@@ -38,7 +38,9 @@ A static fixture (a corpus, no store) is not rebuilt: `rebuild` and `check`
 verify its SHA256SUMS.  `check` verifies every registered fixture's
 SHA256SUMS and names each one whose MANIFEST row is missing or (with --rev)
 was built from another revision; exit 1 if any is missing or mismatched.
-`opens` copies each store a fixture holds and runs `store COPY recover`
+`opens` copies each store a fixture holds, rebinds the copy
+(`store COPY rebind-filesystem`, as every consumer's copy must be) and runs
+`store COPY recover`
 with IMAGE (the second image of a batch, or a later one): exit 1 unless every
 copy recovers.  Names in RETIRED are fixtures the rebuild replaces or D34 removed; `rebuild`
 moves any still present to ROOT/.previous.
@@ -53,6 +55,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -62,6 +65,7 @@ ROOT = Path("/tank/fn/scratch/fixtures")
 WORK = Path("/dev/shm/fn-fixtures")
 PY = sys.executable or "python3"
 EVIDENCE = "planning/evidence"
+OPENSSL_TEST = "/tank/fn/toolchains/openssl-3.5.8"
 # The capacity the posting recipes init with: `--profile default` was the
 # old defaults (T = 2^32-1); the preset now holds 128 transactions, and its
 # record and article bounds (R 64 MiB, A 16 MiB) charge each connection more
@@ -73,6 +77,11 @@ EVIDENCE = "planning/evidence"
 CAPACITY = ("--max-transactions", "1048576", "--max-history-octets", "536870912",
             "--max-open-suffix", "65536", "--max-record-octets", "17138486",
             "--max-article-octets", "32768", "--max-groups-per-article", "65535")
+# rep_measure.py's articles of "about 32 KiB" exceed A = 32768: A 64 KiB, R
+# 32 MiB (the article record's bound for it), H 1 GiB.
+CAPACITY_32K = ("--max-transactions", "1048576", "--max-history-octets", "1073741824",
+                "--max-open-suffix", "65536", "--max-record-octets", "33554432",
+                "--max-article-octets", "65536", "--max-groups-per-article", "65535")
 
 # Fixtures a rebuild replaces under a stable name, or that D34 retired.
 RETIRED = {
@@ -140,6 +149,12 @@ class Context:
         self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE",
                         FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev)
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
+        # The ACL2 bridge the BP recipe's harness starts (as hbox_native.sh
+        # exports it).
+        for name, value in (("FN_ACL2", "/tank/fn/toolchains/w28/acl2-literal-4g"),
+                            ("FN_CERT_CACHE", "/tank/fn/certcache")):
+            if name not in self.env and Path(value).exists():
+                self.env[name] = value
         self.log = work.parent / (work.name + ".log")
 
     def run(self, argv, env=None, ok=(0,), timeout=4 * 3600) -> int:
@@ -193,8 +208,13 @@ def recipe_signed(ctx: Context, n: int) -> None:
     profile scale, one hybrid author enrolled, N POSTs with 32 signed, 40
     signed and 40 unsigned probes."""
     work = ctx.work / "signed"
+    # The test OpenSSL (ML-DSA-65 keys made independently of the node) needs
+    # its own libraries, as tools/service_envelope.py gives them.
+    lib = OPENSSL_TEST + "/lib"
+    env = dict(ctx.env, LD_LIBRARY_PATH=lib + (":" + ctx.env["LD_LIBRARY_PATH"]
+                                                if ctx.env.get("LD_LIBRARY_PATH") else ""))
     ctx.run([PY, TREE / EVIDENCE / "signed-post-linear-2026-09-26/prof_signed.py", "load",
-             TREE, ctx.image, work, "--n", n, "--signed", 32, "--probes", 40])
+             TREE, ctx.image, work, "--n", n, "--signed", 32, "--probes", 40], env=env)
     copy_entries(work, ctx.dest, ["store", "keys", "probes"])
 
 
@@ -221,7 +241,7 @@ def recipe_rep_store(ctx: Context, n: int, octets: int) -> None:
     ctx.run([PY, TREE / "tools/rep_measure.py", "--image", ctx.image, "--work", work / "m",
              "--articles", n, "--octets", octets, "--samples", 32, "--readers", 3,
              "--json", work / "rep.json", "--skip-reopen", "--skip-checkpoint",
-             *("--init-flag=" + w for w in CAPACITY)])
+             *("--init-flag=" + w for w in CAPACITY_32K)])
     store = work / "m" / "store"
     copy_entries(store, ctx.dest, sorted(p.name for p in store.iterdir()
                                          if not p.name.startswith("store-checkpoint")
@@ -276,7 +296,7 @@ REGISTRY = [
                    "(their paths name the build directory: rewrite them in a copy)."),
     Fixture("checkpoint-pipeline-n10k-32k", lambda c: recipe_rep_store(c, 10000, 32768),
             stores=(".",),
-            readme="10,000 articles of 32 KiB (--profile default with CAPACITY) by "
+            readme="10,000 articles of 32 KiB (--profile default with CAPACITY_32K) by "
                    "tools/rep_measure.py; the "
                    "directory is the store, with no state checkpoint (the first open is a full "
                    "replay). Copy it before use: the verbs write writer.lock and a checkpoint."),
@@ -349,7 +369,8 @@ def rebuild_one(fixture: Fixture, args, core_sha: str) -> tuple[str, str]:
     (staging / "FIXTURE.json").write_text(json.dumps(record, indent=1) + "\n")
     (staging / "README").write_text(
         "{}\n\n{}\nBuilt by tools/fixtures.py rebuild from revision {} (FIXTURE.json). "
-        "Never open it in place: copy it.\n".format(fixture.name, fixture.readme, args.rev))
+        "Never open it in place: copy it, and run `fn store COPY rebind-filesystem` on a "
+        "copy that is on another filesystem than the one it was built on (PKT-579).\n".format(fixture.name, fixture.readme, args.rev))
     write_sums(staging)
     retire(root, fixture.name)
     os.rename(staging, root / fixture.name)
@@ -437,6 +458,10 @@ def cmd_opens(args) -> int:
             ctx = Context(image, "", work / "ctx", copy, fixture.mem)
             started = time.time()
             try:
+                # A copy is a store placed elsewhere deliberately (PKT-579):
+                # it is rebound to its filesystem before use, as a consumer's
+                # copy must be.
+                ctx.run([image, "--fn", "store", copy, "rebind-filesystem"])
                 ctx.run([image, "--fn", "store", copy, "recover"])
                 verdict = "recovers in {:.1f} s: {}".format(
                     time.time() - started,
@@ -459,7 +484,14 @@ def cmd_list(_args) -> int:
     return 0
 
 
+def _terminated(signum, _frame):
+    # A SIGTERM (earlyoom, a stopped unit) unwinds through subprocess.run,
+    # which kills the recipe's process instead of leaving it orphaned.
+    raise SystemExit(128 + signum)
+
+
 def main(argv=None) -> int:
+    signal.signal(signal.SIGTERM, _terminated)
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
