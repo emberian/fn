@@ -325,14 +325,14 @@ octets the host reported, is a natural at least OCTETS."
  (defthm fn-cverb-event-list-head-integer-fc
    (implies (and (fn-cc-octet-event-listp records sequence lower frontier)
                  (consp records))
-            (integerp (fn-store-event-generation
+            (integerp (fn-wire-event-generation
                        (fn-cc-nth 1 (fn-store-event-decode-exact (car records))))))
    :rule-classes ((:forward-chaining
                    :trigger-terms ((fn-cc-octet-event-listp records sequence lower frontier))))
    :hints (("Goal" :in-theory (e/d (fn-cc-octet-event-listp)
                                    (fn-store-event-decode-exact))
-            :use ((:instance fn-replay-record-counters-are-natural
-                   (record (fn-cc-nth 1 (fn-store-event-decode-exact (car records))))))))))
+            :use ((:instance fn-cc-wire-counters-are-natural
+                   (e (fn-cc-nth 1 (fn-store-event-decode-exact (car records))))))))))
 
 (local
  (defthm fn-cverb-event-list-within-frontier

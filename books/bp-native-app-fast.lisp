@@ -558,15 +558,34 @@
 ;; index's answer is the walk's.  The record codec and the composite decoder
 ;; stay closed.
 
+; After the records flip the history's articles are held rows: a wire
+; record (a composite's decoded article, or a raw kind-4 composite) is none.
+(local (defthm fn-bpaj-record-is-not-held
+  (implies (fn-record-p x) (not (fn-held-p x)))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-held-p fn-held-shapep
+                                     fn-record-payloadp)))))
+(local (defthm fn-bpaj-composite-record-is-not-held
+  (not (fn-held-p (fn-replay-composite-record e)))
+  :hints (("Goal" :in-theory (e/d (fn-replay-composite-record) (fn-held-p fn-record-p))
+           :use ((:instance fn-bpaj-record-is-not-held
+                            (x (fn-replay-composite-record e)))
+                 (:instance fn-record-decode-exact-yields-a-record
+                            (octets (fn-stxa-article-record e))))))))
+(local (defthm fn-bpaj-stxa-is-not-held
+  (implies (fn-stxa-p x) (not (fn-held-p x)))
+  :hints (("Goal" :use fn-held-p-forward-natural-head
+           :in-theory (enable fn-stxa-p fn-stxa-shapep fn-held-p fn-held-shapep)))))
+
 (defthm fn-bpaj-record-for-msgid-is-cei-fold
   (equal (fn-bpaj-record-for-msgid msgid events)
          (fn-cei-article-records-for msgid events))
   :hints (("Goal" :induct (fn-bpaj-record-for-msgid msgid events)
            :in-theory (e/d (fn-bpaj-record-for-msgid
                             fn-cei-article-records-for
-                            fn-bpr-event-article fn-cei-event-article)
+                            fn-bpr-event-article fn-cei-event-article
+                            fn-replay-composite-held)
                            (fn-record-p fn-replay-composite-record
-                            fn-stxa-p)))))
+                            fn-stxa-p fn-held-p fn-hstxa-p)))))
 
 (local
  (defthm fn-bpaj-member-fold-is-member-article-records

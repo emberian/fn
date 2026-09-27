@@ -69,7 +69,7 @@
 (defthm fn-delta-p-of-delta-of-row
   (implies (and (natp seq) (fn-held-p row))
            (fn-delta-p (fn-delta-of-row seq row)))
-  :hints (("Goal" :in-theory (enable fn-delta-of-row fn-dart-internals))))
+  :hints (("Goal" :in-theory (enable fn-delta-of-row fn-dart-internals fn-held-p))))
 
 ; -----------------------------------------------------------------------------
 ; Re-deciding a row's context from its bytes under a generation.
