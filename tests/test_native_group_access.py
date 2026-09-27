@@ -34,8 +34,10 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-IMAGES = [(name, Path(os.environ[name])) for name in
-          ("FN_NATIVE_HOST", "FN_NATIVE_DEVELOPER_HOST") if os.environ.get(name)]
+PRODUCTION = os.environ.get("FN_NATIVE_HOST")
+DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
+IMAGES = [(name, Path(value)) for name, value in
+          (("production", PRODUCTION), ("developer", DEVELOPER)) if value]
 READY = bool(IMAGES) and all(p.is_file() and os.access(p, os.X_OK) for _, p in IMAGES)
 
 
