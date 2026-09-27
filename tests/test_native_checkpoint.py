@@ -1,4 +1,38 @@
-"""Actual saved-image checkpoint publication, selection, and recovery."""
+"""Actual saved-image checkpoint publication, selection, and recovery (format 9).
+
+The generation checkpoints (checkpoint publish / select / status and their
+cuts) and `operator CONFIG store compact' (format 9: rotation and drop) run
+over a record-log store; "the history" a case keeps is the `store export'
+archive of it (transaction_bytes).  Retired with the per-file layout and the
+pack chain (design 2026-09-27 storage-log section 9 row 5; the pack books go
+in lane log-recovery's pack deletion; `checkpoint pack*' refuses
+reason=record-log on format 9):
+* test_native_and_python_frames_cross_open_byte_identically -- the Python
+  store (tools/run_store.py, tools/checkpoint.py) reads only the per-file
+  layout; it has no record-log reader;
+* test_selected_lossless_pack_splices_before_generic_replay -- packs;
+* test_retiring_old_pack_generations_keeps_exact_retained_sources -- pack-retire;
+* test_pack_generation_retirement_death_reopens_and_retries -- pack-retire cuts;
+* test_selected_pack_missing_or_corrupt_fails_closed -- a selected pack (the
+  log's refusals by name are tests.test_native_log_compaction's);
+* test_surviving_covered_transaction_conflict_fails_closed -- transaction files
+  under a pack;
+* test_selected_pack_reclaims_physical_prefix_and_replays_suffix,
+  test_pack_prefix_reclaim_process_death_recovers_from_selected_pack,
+  test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack,
+  test_death_after_each_covered_unlink_preserves_exact_suffix_and_resumes,
+  test_missing_retained_suffix_gap_fails_closed_without_reclamation,
+  test_arbitrary_covered_deletion_image_recovers_and_resumes,
+  test_reclaim_keeps_served_view_watermarks_and_next_number,
+  test_reclaim_cuts_keep_served_view_and_next_number -- pack-reclaim of the
+  covered transaction files (the log's drop and its cuts:
+  tests.test_native_log_compaction);
+* test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin -- the
+  reader's pin on a pack generation.
+The clone cases (opt-in FN_RUN_NATIVE_CLONE) still build their source with
+packs and compare pack files: not re-targeted here (clone over the log is the
+parent lane's REQUEST list).
+"""
 
 import os
 from pathlib import Path
@@ -393,31 +427,6 @@ class NativeCheckpointTests(unittest.TestCase):
             diagnostic = stop_and_diagnostics(owner, timeout=60)
             self.assertEqual(owner.returncode, 0, diagnostic)
 
-    def test_native_and_python_frames_cross_open_byte_identically(self):
-        source = self.initialized("source")
-        native_store = self.base / "native"
-        python_store = self.base / "python"
-        shutil.copytree(source, native_store)
-        shutil.copytree(source, python_store)
-
-        published = self.native("checkpoint", "publish", native_store, "select")
-        self.assertIn("published generation=0 records=1 selected=yes", published.stdout)
-        py_status = self.python_checkpoint(native_store, "status")
-        self.assertIn("checkpoint=ok generation=0 suffix-from=1 differential=equal",
-                      py_status.stdout)
-        py_recover = self.python_store(native_store, "recover")
-        self.assertIn("transactions=1 articles=1", py_recover.stdout)
-
-        self.python_checkpoint(python_store, "publish", "--select")
-        native_status = self.native("checkpoint", "status", python_store)
-        self.assertIn("generations=0 checkpoint=ok generation=0", native_status.stdout)
-        self.assertEqual(
-            (native_store / "checkpoints" / "generation-0.fncp").read_bytes(),
-            (python_store / "checkpoints" / "generation-0.fncp").read_bytes())
-        self.assertEqual(
-            (native_store / "checkpoints" / "selected.fncp").read_bytes(),
-            (python_store / "checkpoints" / "selected.fncp").read_bytes())
-
     def test_selected_corruption_is_reported_without_rollback_or_lost_replay(self):
         original = self.initialized("original")
         self.native("checkpoint", "publish", original, "select")
@@ -531,8 +540,17 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertIn("checkpoint=ok generation=0", reopened.stdout)
 
     def transaction_bytes(self, store):
-        return {path.name: path.read_bytes()
-                for path in sorted((store / "transactions").glob("*.txn"))}
+        """The committed history the store's open reads (format 9: the record
+        log), as `store export' writes it: the archive's files and their
+        octets.  Equal exactly when no record changed."""
+        archive = self.base / "history-archive"
+        shutil.rmtree(archive, ignore_errors=True)
+        exported = self.native("store", store, "export", archive)
+        self.assertIn("exported records=", exported.stdout)
+        tree = {str(path.relative_to(archive)): path.read_bytes()
+                for path in sorted(archive.rglob("*")) if path.is_file()}
+        shutil.rmtree(archive)
+        return tree
 
     def stopped_then_killed(self, args, point, occurrence=1):
         env = dict(self.env)
@@ -597,358 +615,6 @@ class NativeCheckpointTests(unittest.TestCase):
                 recovered = self.native("store", store, "recover")
                 self.assertIn("transactions=1 articles=1", recovered.stdout)
                 self.assertEqual(self.transaction_bytes(store), before)
-
-    def test_selected_lossless_pack_splices_before_generic_replay(self):
-        store = self.initialized("pack")
-        packed = self.native("checkpoint", "pack", store, "select")
-        self.assertIn("packed generation=0 records=1 selected=yes", packed.stdout)
-        recovered = self.native("store", store, "recover")
-        self.assertIn("transactions=1 articles=1", recovered.stdout)
-
-    def test_retiring_old_pack_generations_keeps_exact_retained_sources(self):
-        store = self.initialized("pack-retire")
-        before_first = self.native("store", store, "inspect",
-                                   "<checkpoint@example.invalid>").stdout
-        # An unselected generation is outside every chain (P5), so retire
-        # removes it; a selected chain's links are never retired.
-        self.native("checkpoint", "pack", store)
-        older = store / "packs" / "generation-0.fncp"
-        old_bytes = older.stat().st_size
-        self.native("store", store, "post", "<retired-pack-suffix@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        before_second = self.native("store", store, "inspect",
-                                    "<retired-pack-suffix@example.invalid>").stdout
-        before_retention = self.native("store", store, "retention").stdout
-        self.native("checkpoint", "pack", store, "select")
-        selected = store / "packs" / "generation-1.fncp"
-        selected_bytes = selected.read_bytes()
-        before_total = sum(p.stat().st_size for p in
-                           (store / "packs").glob("generation-*.fncp"))
-
-        retired = self.native("checkpoint", "pack-retire", store)
-        self.assertIn("retired pack-generations=1", retired.stdout)
-        self.assertFalse(older.exists())
-        self.assertEqual(selected.read_bytes(), selected_bytes)
-        self.assertEqual(sum(p.stat().st_size for p in
-                             (store / "packs").glob("generation-*.fncp")),
-                         before_total - old_bytes)
-        self.assertIn("transactions=2 articles=2",
-                      self.native("store", store, "recover").stdout)
-        self.assertEqual(self.native("store", store, "inspect",
-                                     "<checkpoint@example.invalid>").stdout,
-                         before_first)
-        self.assertEqual(self.native("store", store, "inspect",
-                                     "<retired-pack-suffix@example.invalid>").stdout,
-                         before_second)
-        self.assertEqual(self.native("store", store, "retention").stdout,
-                         before_retention)
-        # With no older generation, the command has no directory barrier or
-        # process-death cut; a selected stop hook must never be reached.
-        no_op_env = dict(self.env)
-        no_op_env["FN_CHECKPOINT_TEST_STOP"] = "pack-retire-directory"
-        self.assertIn("retired pack-generations=0",
-                      self.native("checkpoint", "pack-retire", store,
-                                  env=no_op_env).stdout)
-        # With the selected chain covering every record, a pack is ACL2's
-        # named no-op: exit 0, the no-op line, no new generation file and the
-        # marker unchanged.
-        marker = (store / "packs" / "selected.fncp").read_bytes()
-        names = sorted(p.name for p in (store / "packs").glob("generation-*.fncp"))
-        for argv in (("checkpoint", "pack", store),
-                     ("checkpoint", "pack", store, "select")):
-            nothing = self.native(*argv)
-            self.assertEqual(nothing.returncode, 0)
-            self.assertIn("packed nothing-uncovered boundary=2 records=2",
-                          nothing.stdout)
-            self.assertNotIn("generation=", nothing.stdout)
-            self.assertEqual(sorted(p.name for p in
-                                    (store / "packs").glob("generation-*.fncp")),
-                             names)
-            self.assertEqual((store / "packs" / "selected.fncp").read_bytes(), marker)
-        # A later publication must advance to generation 2, never reuse 0.
-        self.native("store", store, "post", "<after-retire@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        self.assertIn("generation=2",
-                      self.native("checkpoint", "pack", store).stdout)
-
-    def test_pack_generation_retirement_death_reopens_and_retries(self):
-        for point, occurrence in (("pack-retire-unlink", 1),
-                                  ("pack-retire-unlink", 2),
-                                  ("pack-retire-directory", 1)):
-            with self.subTest(point=point, occurrence=occurrence):
-                store = self.initialized(f"{point}-{occurrence}")
-                self.native("checkpoint", "pack", store)
-                self.native("checkpoint", "pack", store)
-                self.native("checkpoint", "pack", store, "select")
-                selected = store / "packs" / "generation-2.fncp"
-                selected_bytes = selected.read_bytes()
-                before_source = self.native("store", store, "inspect",
-                                            "<checkpoint@example.invalid>").stdout
-                self.stopped_then_killed(("checkpoint", "pack-retire", store),
-                                         point, occurrence=occurrence)
-                self.assertEqual(selected.read_bytes(), selected_bytes)
-                self.assertIn("transactions=1 articles=1",
-                              self.native("store", store, "recover").stdout)
-                self.assertEqual(self.native("store", store, "inspect",
-                                             "<checkpoint@example.invalid>").stdout,
-                                 before_source)
-                self.native("checkpoint", "pack-retire", store)
-                self.assertFalse((store / "packs" / "generation-0.fncp").exists())
-                self.assertFalse((store / "packs" / "generation-1.fncp").exists())
-                self.assertEqual(selected.read_bytes(), selected_bytes)
-
-    def test_selected_pack_missing_or_corrupt_fails_closed(self):
-        for mode in ("missing", "corrupt"):
-            with self.subTest(mode=mode):
-                store = self.initialized("pack-" + mode)
-                self.native("checkpoint", "pack", store, "select")
-                generation = store / "packs" / "generation-0.fncp"
-                if mode == "missing":
-                    generation.unlink()
-                else:
-                    raw = bytearray(generation.read_bytes())
-                    raw[len(raw) // 2] ^= 1
-                    generation.write_bytes(raw)
-                refused = self.native("store", store, "recover",
-                                      expected=run_store.EXIT_FAULT)
-                self.assertNotIn("articles=", refused.stdout)
-
-    def test_surviving_covered_transaction_conflict_fails_closed(self):
-        store = self.initialized("pack-conflict")
-        other = self.initialized("pack-conflict-other", article=False)
-        self.native("store", other, "post", "<other@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        self.native("checkpoint", "pack", store, "select")
-        source = other / "transactions" / "00000000000000000000.txn"
-        target = store / "transactions" / "00000000000000000000.txn"
-        target.write_bytes(source.read_bytes())
-        refused = self.native("store", store, "recover",
-                              expected=run_store.EXIT_FAULT)
-        self.assertNotIn("articles=", refused.stdout)
-
-    def test_selected_pack_reclaims_physical_prefix_and_replays_suffix(self):
-        store = self.initialized("pack-reclaim")
-        self.native("checkpoint", "pack", store, "select")
-        self.native("store", store, "post", "<suffix@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        reclaimed = self.native("checkpoint", "pack-reclaim", store)
-        self.assertIn("reclaimed transaction-prefix=1", reclaimed.stdout)
-        self.assertEqual([p.name for p in (store / "transactions").iterdir()],
-                         ["00000000000000000001.txn"])
-        recovered = self.native("store", store, "recover")
-        self.assertIn("transactions=2 articles=2", recovered.stdout)
-
-    def test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin(self):
-        store = self.initialized("pack-active-reader", article=False)
-        msgid = "<pack-active-reader@example.invalid>"
-        article = self.base / "active-reader.eml"
-        article.write_bytes(
-            b"From: author@example.invalid\r\n"
-            b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
-            b"Newsgroups: fn.letters\r\n"
-            b"Subject: pinned before reclaim\r\n"
-            b"Message-ID: " + msgid.encode("ascii") +
-            b"\r\n\r\naccepted source survives reclaim\r\n")
-        control = self.base / "active-reader-control.sock"
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
-        config = self.base / "active-reader.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
-            encoding="ascii")
-
-        def start_owner():
-            process = subprocess.Popen(
-                [str(IMAGE), "--fn", "operator", str(config), "run"],
-                cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-            wait_for_announcement(process, b"LISTENING ")
-            return process
-
-        owner = start_owner()
-        try:
-            posted = self.native("operator", config, "post", "--message-id",
-                                 msgid, "--payload", article, "--group",
-                                 "fn.letters")
-            self.assertIn("accepted operator post", posted.stderr)
-        finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
-
-        def inspect_source():
-            result = subprocess.run(
-                [str(IMAGE), "--fn", "store", str(store), "inspect", msgid],
-                cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, timeout=30, check=False)
-            self.assertEqual(result.returncode, 0, result.stderr.decode())
-            return result.stdout
-
-        before_source = inspect_source()
-        self.assertTrue(before_source.endswith(article.read_bytes()))
-        before_retention = self.native("store", store, "retention").stdout
-        self.assertRegex(before_retention, r"^pins=1 reserved=[1-9][0-9]*\n$")
-        self.native("checkpoint", "pack", store, "select")
-        before_transactions = self.transaction_bytes(store)
-        selected_pack = store / "packs" / "generation-0.fncp"
-        before_pack = selected_pack.read_bytes()
-
-        owner = start_owner()
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
-                sock.settimeout(10)
-                with sock.makefile("rwb", buffering=0) as stream:
-                    self.assertTrue(stream.readline().startswith(b"200 "))
-
-                    def read_pinned_article():
-                        stream.write(("ARTICLE {}\r\n".format(msgid)).encode("ascii"))
-                        self.assertTrue(stream.readline().startswith(b"220 "))
-                        received = bytearray()
-                        while True:
-                            line = stream.readline()
-                            self.assertTrue(line, "pinned ARTICLE ended early")
-                            if line == b".\r\n":
-                                break
-                            received.extend(line[1:] if line.startswith(b"..") else line)
-                        return bytes(received)
-
-                    first_read = read_pinned_article()
-                    self.assertTrue(first_read.endswith(article.read_bytes()))
-                    # The operator holds the exclusive Store lock for the
-                    # lifetime of this pinned connection. Reclaim must refuse
-                    # before any unlink, with a definite refusal exit.
-                    refused = self.native("checkpoint", "pack-reclaim", store,
-                                          expected=run_store.EXIT_REFUSED)
-                    self.assertIn("store is already locked", refused.stderr)
-                    retire_refused = self.native("checkpoint", "pack-retire", store,
-                                                 expected=run_store.EXIT_REFUSED)
-                    self.assertIn("store is already locked", retire_refused.stderr)
-                    self.assertEqual(self.transaction_bytes(store), before_transactions)
-                    self.assertEqual(selected_pack.read_bytes(), before_pack)
-                    self.assertEqual(read_pinned_article(), first_read)
-        finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
-
-        reclaimed = self.native("checkpoint", "pack-reclaim", store)
-        self.assertIn("reclaimed transaction-prefix=1", reclaimed.stdout)
-        self.assertEqual(self.transaction_bytes(store), {})
-        self.assertEqual(selected_pack.read_bytes(), before_pack)
-        self.assertIn("transactions=1 articles=1",
-                      self.native("store", store, "recover").stdout)
-        self.assertEqual(inspect_source(), before_source)
-        self.assertEqual(self.native("store", store, "retention").stdout,
-                         before_retention)
-
-    def test_pack_prefix_reclaim_process_death_recovers_from_selected_pack(self):
-        for point in ("pack-reclaim-unlink", "pack-reclaim-directory"):
-            with self.subTest(point=point):
-                store = self.initialized(point)
-                self.native("checkpoint", "pack", store, "select")
-                before = self.transaction_bytes(store)
-                self.stopped_then_killed(("checkpoint", "pack-reclaim", store), point)
-                recovered = self.native("store", store, "recover")
-                self.assertIn("transactions=1 articles=1", recovered.stdout)
-                # Recovery observes the selected packed bytes; any transaction
-                # file that survived the cut remains byte-identical.
-                after = self.transaction_bytes(store)
-                self.assertEqual(after, {name: before[name] for name in after})
-
-    def test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack(self):
-        store = self.initialized("pack-partial")
-        self.native("store", store, "post", "<prefix-two@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        self.native("checkpoint", "pack", store, "select")
-        self.native("store", store, "post", "<suffix-three@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        before = self.transaction_bytes(store)
-        suffix_name = "00000000000000000002.txn"
-        self.stopped_then_killed(("checkpoint", "pack-reclaim", store),
-                                 "pack-reclaim-unlink")
-        recovered = self.native("store", store, "recover")
-        self.assertIn("transactions=3 articles=3", recovered.stdout)
-        self.native("checkpoint", "pack-reclaim", store)
-        self.assertEqual(sorted((store / "transactions").glob("*.txn")),
-                         [store / "transactions" / "00000000000000000002.txn"])
-        self.assertEqual((store / "transactions" / suffix_name).read_bytes(),
-                         before[suffix_name])
-
-    def test_death_after_each_covered_unlink_preserves_exact_suffix_and_resumes(self):
-        for occurrence in range(1, 5):
-            with self.subTest(occurrence=occurrence):
-                store = self.initialized(f"pack-unlink-{occurrence}")
-                for number in range(1, 4):
-                    self.native("store", store, "post",
-                                f"<covered-{number}@example.invalid>",
-                                self.payload, "-", "-", "fn.letters")
-                self.native("checkpoint", "pack", store, "select")
-                self.native("store", store, "post", "<retained@example.invalid>",
-                            self.payload, "-", "-", "fn.letters")
-                before = self.transaction_bytes(store)
-                suffix_name = "00000000000000000004.txn"
-
-                self.stopped_then_killed(
-                    ("checkpoint", "pack-reclaim", store),
-                    "pack-reclaim-unlink", occurrence=occurrence)
-                recovered = self.native("store", store, "recover")
-                self.assertIn("transactions=5 articles=5", recovered.stdout)
-                self.assertEqual((store / "transactions" / suffix_name).read_bytes(),
-                                 before[suffix_name])
-
-                # Retry removes exactly the remaining covered prefix and does
-                # not expire or rewrite the retained suffix event.
-                self.native("checkpoint", "pack-reclaim", store)
-                self.assertEqual(self.transaction_bytes(store),
-                                 {suffix_name: before[suffix_name]})
-
-    def test_missing_retained_suffix_gap_fails_closed_without_reclamation(self):
-        store = self.initialized("pack-suffix-gap")
-        self.native("checkpoint", "pack", store, "select")
-        self.native("store", store, "post", "<suffix-one@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        self.native("store", store, "post", "<suffix-two@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        transactions = store / "transactions"
-        (transactions / "00000000000000000001.txn").unlink()
-        before = self.transaction_bytes(store)
-
-        refused = self.native("store", store, "recover",
-                              expected=run_store.EXIT_FAULT)
-        self.assertNotIn("articles=", refused.stdout)
-        self.assertEqual(self.transaction_bytes(store), before)
-        reclaim = self.native("checkpoint", "pack-reclaim", store,
-                              expected=run_store.EXIT_FAULT)
-        self.assertNotEqual(reclaim.returncode, 0)
-        self.assertEqual(self.transaction_bytes(store), before)
-
-    def test_arbitrary_covered_deletion_image_recovers_and_resumes(self):
-        store = self.initialized("pack-subset")
-        for number in range(1, 4):
-            self.native("store", store, "post",
-                        f"<prefix-{number}@example.invalid>",
-                        self.payload, "-", "-", "fn.letters")
-        self.native("checkpoint", "pack", store, "select")
-        self.native("store", store, "post", "<suffix-4@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        before = self.transaction_bytes(store)
-
-        # A process-death image may contain any subset of already-issued
-        # covered unlinks.  Keep covered 1 and 3, remove covered 0 and 2, and
-        # retain the complete suffix at 4.
-        for sequence in (0, 2):
-            (store / "transactions" /
-             f"{sequence:020d}.txn").unlink()
-        recovered = self.native("store", store, "recover")
-        self.assertIn("transactions=5 articles=5", recovered.stdout)
-        for name, raw in self.transaction_bytes(store).items():
-            self.assertEqual(raw, before[name])
-        self.native("checkpoint", "pack-reclaim", store)
-        suffix_name = "00000000000000000004.txn"
-        self.assertEqual(self.transaction_bytes(store),
-                         {suffix_name: before[suffix_name]})
-
-    # -- M5 compaction: the served view across a reclaim -------------------
 
     def owner_config(self, store, name):
         control = self.base / (name + "-control.sock")
@@ -1033,29 +699,6 @@ class NativeCheckpointTests(unittest.TestCase):
             self.stop_owner(owner)
         return view
 
-    def compaction_fixture(self, name, covered=4, suffix=2):
-        store = self.initialized(name, article=False)
-        config, port = self.owner_config(store, name)
-        msgids = []
-        owner = self.run_owner(config)
-        try:
-            for number in range(covered):
-                msgids.append("<{}-c{}@example.invalid>".format(name, number))
-                self.operator_post(config, msgids[-1], "{}-c{}".format(name, number))
-        finally:
-            self.stop_owner(owner)
-        packed = self.native("checkpoint", "pack", store, "select")
-        self.assertIn("selected=yes", packed.stdout)
-        self.covered_names = set(self.transaction_bytes(store))
-        owner = self.run_owner(config)
-        try:
-            for number in range(suffix):
-                msgids.append("<{}-s{}@example.invalid>".format(name, number))
-                self.operator_post(config, msgids[-1], "{}-s{}".format(name, number))
-        finally:
-            self.stop_owner(owner)
-        return store, config, port, msgids
-
     def assert_view_kept_and_next_number(self, store, config, port, msgids,
                                          before, before_retention, name):
         after = self.served_view(config, port, msgids)
@@ -1077,49 +720,6 @@ class NativeCheckpointTests(unittest.TestCase):
         for key, value in before.items():
             if key not in ("group", "hdr"):
                 self.assertEqual(grown[key], value)
-
-    def test_reclaim_keeps_served_view_watermarks_and_next_number(self):
-        name = "reclaim-view"
-        store, config, port, msgids = self.compaction_fixture(name)
-        before = self.served_view(config, port, msgids)
-        self.assertEqual(int(before["group"].split()[1]), 6)
-        before_retention = self.native("store", store, "retention").stdout
-        suffix = {n: raw for n, raw in self.transaction_bytes(store).items()
-                  if n not in self.covered_names}
-        self.assertTrue(suffix)
-        reclaimed = self.native("checkpoint", "pack-reclaim", store)
-        self.assertIn("reclaimed transaction-prefix=", reclaimed.stdout)
-        self.assertIn("reclaimed transaction-prefix={}".format(
-            len(self.covered_names)), reclaimed.stdout)
-        self.assertEqual(self.transaction_bytes(store), suffix)
-        self.assert_view_kept_and_next_number(store, config, port, msgids,
-                                              before, before_retention, name)
-
-    def test_reclaim_cuts_keep_served_view_and_next_number(self):
-        # Every reclaim cut of fn-bs-pack-reclaim-steps: each covered unlink
-        # (by occurrence) and the closing directory barrier.
-        self.compaction_fixture("reclaim-count")
-        covered = len(self.covered_names)
-        self.assertGreater(covered, 1)
-        cuts = [("pack-reclaim-unlink", k) for k in range(1, covered + 1)]
-        cuts.append(("pack-reclaim-directory", 1))
-        for point, occurrence in cuts:
-            with self.subTest(point=point, occurrence=occurrence):
-                name = "cut-{}-{}".format(point.split("-")[-1], occurrence)
-                store, config, port, msgids = self.compaction_fixture(name)
-                before = self.served_view(config, port, msgids)
-                before_retention = self.native("store", store, "retention").stdout
-                suffix = {n: raw for n, raw in self.transaction_bytes(store).items()
-                          if n not in self.covered_names}
-                self.stopped_then_killed(("checkpoint", "pack-reclaim", store),
-                                         point, occurrence=occurrence)
-                after_cut = self.transaction_bytes(store)
-                # Old-or-new per covered name, the suffix byte for byte.
-                self.assertEqual({n: after_cut[n] for n in suffix}, suffix)
-                self.assertTrue(set(after_cut) - set(suffix) <= self.covered_names)
-                self.assert_view_kept_and_next_number(
-                    store, config, port, msgids, before, before_retention, name)
-                self.native("checkpoint", "pack-reclaim", store)
 
 
 @unittest.skipUnless(PRODUCTION_IMAGE.is_file() and os.access(PRODUCTION_IMAGE, os.X_OK),
@@ -1143,6 +743,12 @@ class NativeProductionCompactTests(unittest.TestCase):
     assert_view_kept_and_next_number = NativeCheckpointTests.assert_view_kept_and_next_number
 
     def test_operator_compact_keeps_every_article_and_next_number(self):
+        # Format 9: compaction is the checkpoint with the log rotated and the
+        # covered segments dropped (lane log-recovery; T8).  The history the
+        # open reads (the export archive) and the served view are unchanged,
+        # the next POST takes the next number, a second compaction covers
+        # only the new suffix, and a third with nothing new keeps the one
+        # segment it has.
         name = "prod-compact"
         store = self.base / name
         config, port = self.owner_config(store, name)
@@ -1159,32 +765,32 @@ class NativeProductionCompactTests(unittest.TestCase):
             self.assertIn("locked", held.stderr)
         finally:
             self.stop_owner(owner)
-        files = self.transaction_bytes(store)
-        self.assertGreaterEqual(len(files), 5)
+        segments = lambda: sorted(p.name for p in (store / "journal").iterdir())
+        history = self.transaction_bytes(store)
+        records = sum(1 for n in history if n.startswith("records/"))
+        self.assertGreaterEqual(records, 5)
+        self.assertEqual(segments(), ["000001.log"])
         before = self.served_view(config, port, msgids)
         before_retention = self.native("store", store, "retention").stdout
         compacted = self.native("operator", config, "store", "compact")
-        self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
-                      "generation=0 links=1 reclaimed={} retired=0".format(len(files), len(files)),
+        self.assertIn("compacted steps=checkpoint,drop records={} ".format(records),
                       compacted.stdout)
+        self.assertIn("segment=2 dropped=1", compacted.stdout)
         self.assertIn("accepted operator compact", compacted.stderr)
-        self.assertEqual(self.transaction_bytes(store), {})
+        self.assertEqual(segments(), ["000002.log"])
+        self.assertEqual(self.transaction_bytes(store), history)
         self.assert_view_kept_and_next_number(store, config, port, msgids,
                                               before, before_retention, name)
-        # The post after the first compaction is the new suffix: a second
-        # compaction packs only that suffix into a second link of the chain
-        # (P5), reclaims it and retires nothing: generation 0 is the chain's
-        # first link.
-        suffix = len(self.transaction_bytes(store))
-        self.assertGreaterEqual(suffix, 1)
         again = self.native("operator", config, "store", "compact")
-        self.assertIn("compacted steps=pack,select,reclaim,retire records={} "
-                      "generation=1 links=1 reclaimed={} retired=0".format(len(files) + suffix, suffix),
+        self.assertIn("compacted steps=checkpoint,drop records={} ".format(records + 1),
                       again.stdout)
-        self.assertEqual(self.transaction_bytes(store), {})
-        refused = self.native("operator", config, "store", "compact", expected=1)
-        self.assertIn("refused operator compact", refused.stderr)
-        self.assertIn("already-compact", refused.stderr)
+        self.assertIn("segment=3 dropped=1", again.stdout)
+        self.assertEqual(segments(), ["000003.log"])
+        grown = self.transaction_bytes(store)
+        idle = self.native("operator", config, "store", "compact")
+        self.assertIn("accepted operator compact", idle.stderr)
+        self.assertEqual(segments(), ["000003.log"])
+        self.assertEqual(self.transaction_bytes(store), grown)
         usage = self.native("operator", config, "store", "compact", "now", expected=5)
         self.assertIn("usage operator store", usage.stderr)
         grown_ids = msgids + ["<{}-next@example.invalid>".format(name)]
@@ -1194,9 +800,6 @@ class NativeProductionCompactTests(unittest.TestCase):
         for key, value in before.items():
             if key not in ("group", "hdr"):
                 self.assertEqual(view[key], value)
-        self.assert_view_kept_and_next_number(
-            store, config, port, grown_ids, view,
-            self.native("store", store, "retention").stdout, name + "-2")
 
 
 if __name__ == "__main__":
