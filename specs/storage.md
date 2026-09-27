@@ -37,7 +37,7 @@ bounds the work of opening a store before any configuration record is replayed:
 the transaction-namespace observation (`fn-profile-txn-observation`), the
 aggregate replay input (`fn-profile-replay-within-boundp`) and the per-record
 publication ceiling. Since D27 its values are the operator's (format
-`fn-store-8`: transactions, history octets, record octets, article octets,
+`fn-store-9`, or `fn-store-8` while STO-028's transition stands: transactions, history octets, record octets, article octets,
 groups per article, group-name octets, open suffix and five namespace counts,
 docs/operator.md), set at `init` by flags and validated by the relations of
 `fn-bs-profile-validp`; ACL2 fixes no value except the codec ceilings above
@@ -1135,10 +1135,19 @@ invent independently inside a file-writing adapter.
 
 ## One format and the archive
 
-STO-028: A store has one format, `fn-store-8` (D34, fresh deploys). The open
-refuses a profile frame of any other format by name (`open refused
-reason=store-format: reinstall from the release and import`, exit 1) and
-translates nothing. `store export DIR` writes the committed history the open
+STO-028: A store has one format, `fn-store-9` (D34, fresh deploys): `init`
+writes it, and its committed history is the record log (`journal/000001.log`,
+one self-checking chained entry per record, one barrier per batch of commits;
+planning/design-2026-09-27-storage-log.md, lane commit-onto-log). The
+per-file layout `fn-store-8` (the allocation frontier, `transactions/`, the
+committed-history marker) is still opened and committed through its own
+programs while the native modules that read that layout are retired
+(PKT-COL-1, the coordinator numbers it); a developer image writes it under
+`FN_NATIVE_STORE_FORMAT=8`. The open refuses a profile frame of any other
+format by name (`open refused reason=store-format: reinstall from the release
+and import`, exit 1) and translates nothing. On a `fn-store-9` store,
+`store compact`, `store reclaim` and `store export` refuse by name
+(`reason=record-log`) until segment rotation lands (PKT-750). `store export DIR` writes the committed history the open
 reads (the profile frame, the allocation frontier, each configuration record
 and each committed record, packs included, in sequence order) with a
 MANIFEST whose names and SHA-256 lines ACL2 renders; `store import DIR
