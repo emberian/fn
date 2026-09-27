@@ -4879,6 +4879,14 @@ tree root), or stop the build."
        (min +fnn-gc-nursery-octets+ (floor (sb-ext:dynamic-space-size) 16))))
 
 (defun fnn-main ()
+  ;; Invariant-risk mode T (ACL2 :doc set-check-invariant-risk): the same
+  ;; protection as the default :WARNING -- a :program-mode host wrapper that
+  ;; updates the catalog or arena stobjs (host/owner-host.lisp: the recovery
+  ;; load, fn-owner-prepare-buffer, fn-owner-finish-submission) still runs
+  ;; with the guard checks that keep every stobj update well-guarded -- but no
+  ;; warning text on standard output, which carries the LISTENING line and
+  ;; the `model' verb's reply octets and nothing else.  Never NIL (unsafe).
+  (f-put-global 'check-invariant-risk t *the-live-state*)
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (fnn-open-streams)
   ;; A peer that closed first must surface as EPIPE, never as a signal that
