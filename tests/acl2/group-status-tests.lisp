@@ -178,42 +178,49 @@
 ; The host-called step: an archive serving both groups.
 (defconst *gst-archive* (fn-initial-state '("fn.announce" "fn.test")))
 (defconst *gst-s0* (fn-post-open-session *gst-archive*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-nntp-post-step 6)
 (defconst *gst-awaiting*
   (fn-post-result-session
-   (fn-nntp-post-step *gst-s0* *gst-archive* *gst-cfg* *gst-obs* *gst-obs*
-                      (list :command (gst-o "POST")))))
+   (in-arena-fn-nntp-post-step *sr-arena* *gst-s0* *gst-archive* *gst-cfg* *gst-obs* *gst-obs* (list :command (gst-o "POST")))))
 (assert-event (fn-post-session-awaiting *gst-awaiting*))
-(defun gst-post (source cfg)
+(defun gst-post (source cfg fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-nntp-post-step *gst-awaiting* *gst-archive* cfg *gst-obs* *gst-obs*
-                     (list :article (list source))))
+                     (list :article (list source)) fn-arena))
+(bpr-lift gst-post 2)
 (defconst *gst-read-only-line*
   "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
 (defun gst-reply (text)
   (list (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets text)))))
 ; POST to the closed group: 441 by name, no submission.
-(assert-event (equal (fn-post-result-effects (gst-post *gst-to-announce* *gst-cfg*))
+(assert-event (equal (fn-post-result-effects (in-arena-gst-post *sr-arena* *gst-to-announce* *gst-cfg*))
                      (gst-reply *gst-read-only-line*)))
-(assert-event (null (fn-post-result-submission (gst-post *gst-to-announce* *gst-cfg*))))
+(assert-event (null (fn-post-result-submission (in-arena-gst-post *sr-arena* *gst-to-announce* *gst-cfg*))))
 ; POST to the open group: a submission (the host owes the durable attempt).
-(assert-event (fn-post-result-submission (gst-post *gst-to-test* *gst-cfg*)))
+(assert-event (fn-post-result-submission (in-arena-gst-post *sr-arena* *gst-to-test* *gst-cfg*)))
 ; The same article with no closed group: a submission.
-(assert-event (fn-post-result-submission (gst-post *gst-to-announce* *gst-open-cfg*)))
+(assert-event (fn-post-result-submission (in-arena-gst-post *sr-arena* *gst-to-announce* *gst-open-cfg*)))
 
 ; LIST ACTIVE on the same connection configuration: fn.announce is "n",
 ; fn.test is "y"; with none closed, both "y" (the earlier answer).
-(defun gst-list (cfg words)
+(defun gst-list (cfg words fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
    (fn-nntp-post-step *gst-s0* *gst-archive* cfg *gst-obs* *gst-obs*
-                      (list :command (gst-o words)))))
+                      (list :command (gst-o words)) fn-arena)))
+(bpr-lift gst-list 2)
 (defun gst-listing (lines)
   (fn-nntp-result-effects
    (fn-nntp-multi nil "215 list of active newsgroups follows" lines)))
-(assert-event (equal (gst-list *gst-cfg* "LIST")
+(assert-event (equal (in-arena-gst-list *sr-arena* *gst-cfg* "LIST")
                      (gst-listing (list (gst-o "fn.announce 0 1 n")
                                         (gst-o "fn.test 0 1 y")))))
-(assert-event (equal (gst-list *gst-cfg* "LIST") (gst-list *gst-cfg* "LIST ACTIVE")))
-(assert-event (equal (gst-list *gst-cfg* "LIST ACTIVE fn.a*")
+(assert-event (equal (in-arena-gst-list *sr-arena* *gst-cfg* "LIST") (in-arena-gst-list *sr-arena* *gst-cfg* "LIST ACTIVE")))
+(assert-event (equal (in-arena-gst-list *sr-arena* *gst-cfg* "LIST ACTIVE fn.a*")
                      (gst-listing (list (gst-o "fn.announce 0 1 n")))))
-(assert-event (equal (gst-list *gst-open-cfg* "LIST ACTIVE")
+(assert-event (equal (in-arena-gst-list *sr-arena* *gst-open-cfg* "LIST ACTIVE")
                      (gst-listing (list (gst-o "fn.announce 0 1 y")
                                         (gst-o "fn.test 0 1 y")))))

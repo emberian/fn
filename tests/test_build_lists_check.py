@@ -39,7 +39,11 @@ BUFFER_INCLUDES = ('(include-book "books/octets-stobj")\n'
                    ';; PRF-191: fn-owner-existing-action-buffer and '
                    'fn-owner-prepare-buffer call\n'
                    ';; fn-pidx-existing-action and fn-pidx-sbud-prepare.\n'
-                   '(include-book "books/post-identity-index")\n')
+                   '(include-book "books/post-identity-index")\n'
+                   # post-alloc-2: the served POST's retention admission.
+                   ';; fn-owner-prepare-buffer calls fn-prc-refresh and '
+                   'fn-prc-sbud-prepare.\n'
+                   '(include-book "books/post-retain-carried")\n')
 # rep-wave-d-2: the state checkpoint's publication over the buffer.  The book
 # includes books/octets-stobj itself, so a fixture that omits the buffer
 # includes omits this one too, or the omission is served transitively.
@@ -70,6 +74,8 @@ CHECKPOINT_BUFFER_INCLUDES = (
 # post-identity-index (PRF-191): the served POST's owner-host calls are now
 # fn-pidx-existing-action and fn-pidx-sbud-prepare (books/post-identity-index,
 # which includes store-reclaim-buffer), so those two are the findings.
+# post-alloc-2: the prepare is fn-prc-sbud-prepare over fn-prc-refresh's
+# carry (books/post-retain-carried), which replaced fn-pidx-sbud-prepare.
 # commit-onto-log: the bare copy drops books/owner-log-route too, so the
 # owner's four log-route names are findings in any loader.
 LOG_ROUTE_NAMES = ("fn-olr-bmax", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve", "fn-olr-omax")
@@ -79,9 +85,12 @@ BUFFER_FINDINGS = [
     "included when it loads host/owner-host.lisp"
     for name in LOG_ROUTE_NAMES] + [
     f"included: host/owner-host.lisp uses {name}, defined in "
-    "books/post-identity-index.lisp, which host/native/build-dtn.lisp has not "
+    f"{book}, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"
-    for name in ("fn-pidx-existing-action", "fn-pidx-sbud-prepare")] + [
+    for name, book in (
+        ("fn-pidx-existing-action", "books/post-identity-index.lisp"),
+        ("fn-prc-refresh", "books/post-retain-carried.lisp"),
+        ("fn-prc-sbud-prepare", "books/post-retain-carried.lisp"))] + [
     "included: host/owner-host.lisp uses fn-scar-ocfg-read-span, defined in "
     "books/served-span.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"]
@@ -109,7 +118,12 @@ OWNER_HOST_SELF_INCLUDES = ('(include-book "../books/records-concrete-owner")\n'
                             '(include-book "../books/store-reclaim-buffer")\n')
 # post-identity-index (PRF-191): the book of the two calls that replaced
 # fn-rclb-existing-action and fn-pcar-sbud-prepare in the served POST.
-OWNER_HOST_PIDX_INCLUDE = ('(include-book "../books/post-identity-index")\n')
+# post-alloc-2: the carried obligation-id trie's book (it includes
+# post-identity-index, so it is removed with it).
+OWNER_HOST_PIDX_INCLUDE = ('(include-book "../books/post-identity-index")\n'
+                           '; The retention admission of a POST through a carried obligation-id trie\n'
+                           '; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).\n'
+                           '(include-book "../books/post-retain-carried")\n')
 # commit-onto-log: the owner's log-route composites (it includes
 # books/records-concrete-owner too, so the bare copy drops it with the rest).
 OWNER_HOST_LOG_ROUTE_INCLUDE = ('(include-book "../books/owner-log-route")\n')
@@ -255,7 +269,9 @@ class BuildListsCheckTests(unittest.TestCase):
                 # post-identity-index: the served POST calls the two below
                 # instead of fn-rclb-existing-action.
                 ("fn-pidx-existing-action", "books/post-identity-index.lisp"),
-                ("fn-pidx-sbud-prepare", "books/post-identity-index.lisp"),
+                # post-alloc-2: the prepare through the carried id trie.
+                ("fn-prc-refresh", "books/post-retain-carried.lisp"),
+                ("fn-prc-sbud-prepare", "books/post-retain-carried.lisp"),
                 ("fn-rcon-ocfg-io", "books/records-concrete-owner.lisp"))])
 
     def test_a_nested_ld_serves_its_loader(self):

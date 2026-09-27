@@ -71,7 +71,7 @@
 ; The arm the host runs (`fn-owner-feed-connect' steps the owner with
 ; (:feed-conn peer conn form)) is the function the theorems are about.
 (defthm off-feed-conn-arm-is-feed-connect
-  (equal (fn-own-step o (list :feed-conn peer conn form))
+  (equal (fn-own-step o (list :feed-conn peer conn form) fn-arena)
          (fn-own-feed-connect o peer conn form))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-step) (fn-own-feed-connect)))))

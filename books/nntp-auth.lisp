@@ -1290,18 +1290,18 @@
 
 (in-theory (disable fn-auth-moderation-login fn-auth-moderation-config))
 
-(defun fn-auth-delegate (as archive config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-auth-delegate (as archive config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((r (fn-peer-step (fn-auth-session-base as) archive
                          (fn-auth-moderation-config as config) observation
-                         injection wire-event)))
+                         injection wire-event fn-arena)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
 
 ; The step.  Exactly fn-peer-step's signature.
-(defun fn-auth-step (as archive config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-auth-step (as archive config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((not (fn-auth-sessionp as)) (fn-post-make-result as nil nil))
    ; RFC 4642 section 2.2.2: the host's re-entry after the handshake.
@@ -1326,9 +1326,9 @@
           (let ((r (fn-auth-command as config (car tokens) (cdr tokens))))
             (if r r
               (fn-auth-delegate as archive config observation injection
-                                wire-event)))
-        (fn-auth-delegate as archive config observation injection wire-event))))
-   (t (fn-auth-delegate as archive config observation injection wire-event))))
+                                wire-event fn-arena)))
+        (fn-auth-delegate as archive config observation injection wire-event fn-arena))))
+   (t (fn-auth-delegate as archive config observation injection wire-event fn-arena))))
 
 (verify-guards fn-auth-cred-shapep)
 (verify-guards fn-auth-make-cred)
@@ -1607,7 +1607,7 @@
            (fn-auth-effectsp
             (fn-post-result-effects
              (fn-auth-step as archive config observation injection
-                           wire-event))))
+                           wire-event fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-delegate
                                    fn-auth-session-consistentp)
                                   (fn-auth-command fn-peer-step
@@ -1742,7 +1742,7 @@
            (fn-auth-session-consistentp
             (fn-post-result-session
              (fn-auth-delegate as archive config observation injection
-                               wire-event))
+                               wire-event fn-arena))
             archive))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-delegate fn-auth-with-base
@@ -1761,7 +1761,7 @@
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
             (fn-post-result-session
-             (fn-auth-step as archive config observation injection wire-event))
+             (fn-auth-step as archive config observation injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :do-not-induct t
@@ -1832,7 +1832,7 @@
   (equal (fn-auth-session-config
           (fn-post-result-session
            (fn-auth-delegate as archive config observation injection
-                             wire-event)))
+                             wire-event fn-arena)))
          (fn-auth-session-config as))
   :hints (("Goal" :in-theory (e/d (fn-auth-delegate fn-auth-with-base)
                                   (fn-peer-step))))))
@@ -1840,7 +1840,7 @@
 (defthm fn-auth-step-preserves-the-config
   (equal (fn-auth-session-config
           (fn-post-result-session
-           (fn-auth-step as archive config observation injection wire-event)))
+           (fn-auth-step as archive config observation injection wire-event fn-arena)))
          (fn-auth-session-config as))
   :hints (("Goal"
            :do-not-induct t
@@ -1884,14 +1884,14 @@
 
 (defthm fn-auth-submission-is-the-delegated-submission
   (implies (fn-post-result-submission
-            (fn-auth-step as archive config observation injection wire-event))
+            (fn-auth-step as archive config observation injection wire-event fn-arena))
            (equal (fn-post-result-submission
                    (fn-auth-step as archive config observation injection
-                                 wire-event))
+                                 wire-event fn-arena))
                   (fn-post-result-submission
                    (fn-peer-step (fn-auth-session-base as) archive
                                  (fn-auth-moderation-config as config)
-                                 observation injection wire-event))))
+                                 observation injection wire-event fn-arena))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-delegate
                                    fn-auth-tls-established)
@@ -1917,9 +1917,9 @@
                 (fn-auth-transit-keywordp
                  (car (fn-nntp-tokenize line))))
            (equal (fn-auth-step as archive config observation injection
-                                (list :command line))
+                                (list :command line) fn-arena)
                   (fn-auth-delegate as archive config observation injection
-                                    (list :command line))))
+                                    (list :command line) fn-arena)))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
@@ -1937,15 +1937,15 @@
   (implies (and (fn-auth-sessionp as)
                 (fn-post-result-submission
                  (fn-auth-step as archive config observation injection
-                               wire-event)))
+                               wire-event fn-arena)))
            (or (fn-inj-injectedp
                 (fn-post-result-submission
                  (fn-auth-step as archive config observation injection
-                               wire-event)))
+                               wire-event fn-arena)))
                (fn-peer-submissionp
                 (fn-post-result-submission
                  (fn-auth-step as archive config observation injection
-                               wire-event)))))
+                               wire-event fn-arena)))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-sessionp)
@@ -2054,18 +2054,18 @@
                 (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
            (and (null (fn-post-result-submission
                        (fn-auth-step as archive config observation injection
-                                     (list :command line))))
+                                     (list :command line) fn-arena)))
                 (not (fn-post-offeredp
                       (fn-post-result-effects
                        (fn-auth-step as archive config observation injection
-                                     (list :command line)))))
+                                     (list :command line) fn-arena))))
                 (equal (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        as)
                 (equal (fn-post-result-effects
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        (fn-auth-single as "480 authentication required"))))
   :hints (("Goal"
            :do-not-induct t
@@ -2125,13 +2125,13 @@
            (and (not (fn-post-offeredp
                       (fn-post-result-effects
                        (fn-auth-step as archive config observation injection
-                                     (list :command line)))))
+                                     (list :command line) fn-arena))))
                 (null (fn-post-result-submission
                        (fn-auth-step as archive config observation injection
-                                     (list :command line))))
+                                     (list :command line) fn-arena)))
                 (equal (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        as)))
   :hints (("Goal"
            :do-not-induct t
@@ -2249,7 +2249,7 @@
                 (null (cdr (fn-nntp-tokenize line))))
            (equal (fn-post-result-effects
                    (fn-auth-step as archive config observation injection
-                                 (list :command line)))
+                                 (list :command line) fn-arena))
                   (fn-nntp-result-effects
                    (fn-nntp-multi (fn-auth-reader-session as)
                                   "101 capability list follows"
@@ -2323,15 +2323,15 @@
                           (fn-auth-redeem-waitp as))))
            (and (equal (fn-post-result-effects
                         (fn-auth-step as archive config observation injection
-                                      wire-event))
+                                      wire-event fn-arena))
                        nil)
                 (equal (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      wire-event))
+                                      wire-event fn-arena))
                        as)
                 (null (fn-post-result-submission
                        (fn-auth-step as archive config observation injection
-                                     wire-event)))))
+                                     wire-event fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-auth-step)
                                   (fn-peer-step fn-auth-delegate
                                    fn-auth-command fn-auth-sessionp
@@ -2349,14 +2349,14 @@
            (and (fn-auth-session-tlsp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                (list :tls-established))))
+                                (list :tls-established) fn-arena)))
                 (not (fn-auth-session-handshakingp
                       (fn-post-result-session
                        (fn-auth-step as archive config observation injection
-                                     (list :tls-established)))))
+                                     (list :tls-established) fn-arena))))
                 (null (fn-post-result-effects
                        (fn-auth-step as archive config observation injection
-                                     (list :tls-established))))))
+                                     (list :tls-established) fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-tls-eventp
                                    fn-auth-tls-established)
                                   (fn-auth-sessionp fn-peer-step
@@ -2523,17 +2523,17 @@
                 (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))
            (and (equal (fn-post-result-effects
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        (fn-auth-single
                         as
                         "483 a protected channel is required; use STARTTLS"))
                 (equal (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        as)
                 (null (fn-post-result-submission
                        (fn-auth-step as archive config observation injection
-                                     (list :command line))))))
+                                     (list :command line) fn-arena)))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
@@ -2576,7 +2576,7 @@
 (local (defthm fn-auth-peer-step-keeps-the-peer
   (equal (fn-peer-session-peer
           (fn-post-result-session
-           (fn-peer-step ps archive config observation injection wire-event)))
+           (fn-peer-step ps archive config observation injection wire-event fn-arena)))
          (fn-peer-session-peer ps))
   :hints (("Goal"
            :do-not-induct t
@@ -2731,12 +2731,12 @@
   (and (equal (fn-auth-session-peer
                (fn-post-result-session
                 (fn-auth-delegate as archive config observation injection
-                                  wire-event)))
+                                  wire-event fn-arena)))
               (fn-auth-session-peer as))
        (equal (fn-auth-session-handshakingp
                (fn-post-result-session
                 (fn-auth-delegate as archive config observation injection
-                                  wire-event)))
+                                  wire-event fn-arena)))
               (fn-auth-session-handshakingp as)))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-delegate fn-auth-with-base
@@ -2788,7 +2788,7 @@
                 (fn-auth-session-peer
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event))))
+                                wire-event fn-arena))))
            (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
                 (not (fn-auth-session-subject as))
@@ -2810,7 +2810,7 @@
                 (equal (fn-auth-session-subject
                         (fn-post-result-session
                          (fn-auth-step as archive config observation injection
-                                       wire-event)))
+                                       wire-event fn-arena)))
                        (fn-auth-cred-principal
                         (fn-auth-find-cred (fn-auth-session-pending as)
                                            (fn-auth-config-creds
@@ -2818,7 +2818,7 @@
                 (equal (fn-auth-session-peer
                         (fn-post-result-session
                          (fn-auth-step as archive config observation injection
-                                       wire-event)))
+                                       wire-event fn-arena)))
                        (fn-auth-principal-match
                         (fn-auth-cred-principal
                          (fn-auth-find-cred (fn-auth-session-pending as)
@@ -2828,7 +2828,7 @@
                 (fn-auth-principal-rolep
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event)))))
+                                wire-event fn-arena)))))
   :rule-classes nil
   :hints (("Goal"
            :do-not-induct t
@@ -2957,12 +2957,12 @@
                  (caddr (fn-nntp-tokenize line))))
            (and (equal (fn-post-result-effects
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        (fn-auth-single as "281 authentication accepted"))
                 (equal (fn-auth-session-subject
                         (fn-post-result-session
                          (fn-auth-step as archive config observation injection
-                                       (list :command line))))
+                                       (list :command line) fn-arena)))
                        (fn-auth-cred-principal
                         (fn-auth-find-cred (fn-auth-session-pending as)
                                            (fn-auth-config-creds
@@ -2970,7 +2970,7 @@
                 (equal (fn-auth-session-peer
                         (fn-post-result-session
                          (fn-auth-step as archive config observation injection
-                                       (list :command line))))
+                                       (list :command line) fn-arena)))
                        (fn-auth-principal-match
                         (fn-auth-cred-principal
                          (fn-auth-find-cred (fn-auth-session-pending as)
@@ -3021,27 +3021,27 @@
                 (fn-auth-session-handshakingp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event)))
+                                wire-event fn-arena)))
                 (not (fn-auth-redeem-waitp
                       (fn-post-result-session
                        (fn-auth-step as archive config observation injection
-                                     wire-event)))))
+                                     wire-event fn-arena)))))
            (and (null (fn-auth-session-subject
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      wire-event))))
+                                      wire-event fn-arena))))
                 (null (fn-auth-session-pending
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      wire-event))))
+                                      wire-event fn-arena))))
                 (not (fn-auth-principal-rolep
                       (fn-post-result-session
                        (fn-auth-step as archive config observation injection
-                                     wire-event))))
+                                     wire-event fn-arena))))
                 (equal (fn-auth-session-peer
                         (fn-post-result-session
                          (fn-auth-step as archive config observation injection
-                                       wire-event)))
+                                       wire-event fn-arena)))
                        (if (fn-auth-principal-rolep as)
                            nil
                          (fn-auth-session-peer as)))))
@@ -3074,19 +3074,19 @@
                 (fn-auth-session-handshakingp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event)))
+                                wire-event fn-arena)))
                 (fn-auth-redeem-waitp
                  (fn-post-result-session
                   (fn-auth-step as archive config observation injection
-                                wire-event))))
+                                wire-event fn-arena))))
            (and (null (fn-auth-session-subject
                        (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      wire-event))))
+                                      wire-event fn-arena))))
                 (equal (fn-auth-session-peer
                         (fn-post-result-session
                          (fn-auth-step as archive config observation injection
-                                       wire-event)))
+                                       wire-event fn-arena)))
                        (fn-auth-session-peer as))))
   :rule-classes nil
   :hints (("Goal"
@@ -3337,15 +3337,15 @@
                     fn-auth-view-config))
 
 (defun fn-auth-delegate-pinned
-    (as archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (as archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((r (fn-peer-step-pinned
             (fn-auth-view-session as config)
             (fn-auth-view-archive as config archive)
             (fn-auth-view-index as config archive index)
             verdicts
             (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-            observation injection wire-event)))
+            observation injection wire-event fn-arena)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
@@ -3353,8 +3353,8 @@
 ; Authentication and STARTTLS decisions remain the same.  Only a command
 ; delegated past that gate can reach the trie or historical verdict pin.
 (defun fn-auth-step-pinned
-    (as archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (as archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((not (fn-auth-sessionp as)) (fn-post-make-result as nil nil))
    ((fn-auth-tls-eventp wire-event) (fn-auth-tls-established as))
@@ -3374,11 +3374,11 @@
           (let ((r (fn-auth-command as config (car tokens) (cdr tokens))))
             (if r r
               (fn-auth-delegate-pinned as archive index verdicts config
-                                        observation injection wire-event)))
+                                        observation injection wire-event fn-arena)))
         (fn-auth-delegate-pinned as archive index verdicts config observation
-                                  injection wire-event))))
+                                  injection wire-event fn-arena))))
    (t (fn-auth-delegate-pinned as archive index verdicts config observation
-                                injection wire-event))))
+                                injection wire-event fn-arena))))
 
 (verify-guards fn-auth-delegate-pinned)
 (verify-guards fn-auth-step-pinned)
@@ -3446,7 +3446,7 @@
            (fn-auth-session-consistentp
             (fn-post-result-session
              (fn-auth-delegate-pinned as archive index verdicts config
-                                      observation injection wire-event))
+                                      observation injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :in-theory '(fn-auth-delegate-pinned
@@ -3466,7 +3466,7 @@
                                   (fn-auth-view-index as config archive index)
                                   verdicts
                                   (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-                                  observation injection wire-event))))
+                                  observation injection wire-event fn-arena))))
                  (:instance fn-auth-with-base-consistent
                             (base (fn-post-result-session
                                  (fn-peer-step-pinned
@@ -3475,7 +3475,7 @@
                                   (fn-auth-view-index as config archive index)
                                   verdicts
                                   (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-                                  observation injection wire-event))))))))
+                                  observation injection wire-event fn-arena))))))))
 
 (defthm fn-auth-step-pinned-preserves-consistent-session
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3483,7 +3483,7 @@
            (fn-auth-session-consistentp
             (fn-post-result-session
              (fn-auth-step-pinned as archive index verdicts config observation
-                                  injection wire-event))
+                                  injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :do-not-induct t
@@ -3516,7 +3516,7 @@
            (fn-auth-effectsp
             (fn-post-result-effects
              (fn-auth-delegate-pinned as archive index verdicts config
-                                      observation injection wire-event))))
+                                      observation injection wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-auth-delegate-pinned fn-auth-session-consistentp)
                 (fn-peer-step-pinned fn-peer-session-consistentp
@@ -3539,7 +3539,7 @@
            (fn-auth-effectsp
             (fn-post-result-effects
              (fn-auth-step-pinned as archive index verdicts config observation
-                                  injection wire-event))))
+                                  injection wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-auth-step-pinned)
                 (fn-auth-delegate-pinned fn-auth-command
@@ -3553,10 +3553,10 @@
 (defthm fn-auth-pinned-submission-is-the-delegated-submission
   (implies (fn-post-result-submission
             (fn-auth-step-pinned as archive index verdicts config observation
-                                 injection wire-event))
+                                 injection wire-event fn-arena))
            (equal (fn-post-result-submission
                    (fn-auth-step-pinned as archive index verdicts config
-                                        observation injection wire-event))
+                                        observation injection wire-event fn-arena))
                   (fn-post-result-submission
                    (fn-peer-step-pinned
                     (fn-auth-view-session as config)
@@ -3564,7 +3564,7 @@
                     (fn-auth-view-index as config archive index)
                     verdicts
                     (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-                    observation injection wire-event))))
+                    observation injection wire-event fn-arena))))
   :rule-classes nil
   :hints (("Goal" :in-theory
            (e/d (fn-auth-step-pinned fn-auth-delegate-pinned
@@ -3637,15 +3637,15 @@
   (implies (and (fn-auth-sessionp as)
                 (fn-post-result-submission
                  (fn-auth-step-pinned as archive index verdicts config
-                                      observation injection wire-event)))
+                                      observation injection wire-event fn-arena)))
            (or (fn-inj-injectedp
                 (fn-post-result-submission
                  (fn-auth-step-pinned as archive index verdicts config
-                                      observation injection wire-event)))
+                                      observation injection wire-event fn-arena)))
                (fn-peer-submissionp
                 (fn-post-result-submission
                  (fn-auth-step-pinned as archive index verdicts config
-                                      observation injection wire-event)))))
+                                      observation injection wire-event fn-arena)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-auth-sessionp)
                            (fn-auth-step-pinned fn-peer-step-pinned
@@ -3704,19 +3704,19 @@
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        (fn-auth-single
                         as
                         "483 a protected channel is required; use STARTTLS"))
                 (equal (fn-post-result-session
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        as)
                 (null (fn-post-result-submission
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line))))))
+                                            (list :command line) fn-arena)))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
@@ -3749,7 +3749,7 @@
                 (fn-auth-token-argp (cddr (fn-nntp-tokenize line))))
            (let ((r (fn-auth-step-pinned as archive index verdicts config
                                          observation injection
-                                         (list :command line))))
+                                         (list :command line) fn-arena)))
              (and (null (fn-post-result-effects r))
                   (null (fn-post-result-submission r))
                   (fn-auth-redeem-waitp (fn-post-result-session r))
@@ -3785,7 +3785,7 @@
                 (fn-auth-redeem-waitp as))
            (let ((r (fn-auth-step-pinned as archive index verdicts config
                                          observation injection
-                                         (list :account-outcome word))))
+                                         (list :account-outcome word) fn-arena)))
              (and (equal (fn-post-result-effects r)
                          (if (equal word :bound)
                              (fn-auth-single

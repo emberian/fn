@@ -226,7 +226,7 @@
  (defthm fn-lgkc-scan-records-true-listp
    (true-listp (car (fn-lg-scan octets prev unit max)))
    :hints (("Goal" :induct (fn-lg-scan octets prev unit max)
-            :in-theory (disable fn-lg-slice fn-lg-entry-okp fn-lg-slice-record
+            :in-theory (disable fn-lg-slice fn-lg-entry-okp fn-lg-slice-records
                                 fn-lg-declared-len fn-lg-trailer fn-lg-pad-len)))))
 
 (local
@@ -246,50 +246,78 @@
      (implies (and (natp f) (posp unit)) (natp (floor f unit)))
      :rule-classes :type-prescription)))
 
+(local
+ (defthm fn-lgkc-entry-len-aligned
+   (implies (and (fn-frame-digestp prev) (fn-lg-chunkp chunk max) (posp unit))
+            (equal (mod (len (fn-lg-entry prev chunk unit)) unit) 0))
+   :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-entry-len fn-lg-frame fn-lg-chunkp)
+            :use (fn-lg-chunk-body-octets fn-lg-entry-len-is-units)))))
+
 (defthm fn-lg-log-len-aligned
   (implies (and (fn-frame-digestp prev) (fn-lg-recordsp records max) (posp unit))
            (equal (mod (len (fn-lg-log records prev unit)) unit) 0))
   :hints (("Goal" :induct (fn-lg-log records prev unit)
-           :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-recordp
-                               fn-lg-entry-units))))
+           :in-theory (e/d (fn-lg-log-unfolds fn-lg-last-trailer-unfolds)
+                           (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-recordp fn-lg-recordsp
+                            fn-lg-chunkp (:definition fn-lg-log) (:definition fn-lg-last-trailer)
+                            fn-lg-entry-units fn-lg-entry-len fn-lg-entry-len-is-units
+                            fn-lg-pad-len fn-lg-slice fn-lg-entry-okp
+                            fn-lg-trailer-of-frame-digestp)))
+          ("Subgoal *1/2" :expand ((fn-lg-log records prev unit) (fn-lg-log nil prev unit)
+                                   (fn-lg-last-trailer records prev) (fn-lg-last-trailer nil prev)))
+          ("Subgoal *1/1"
+           :use ((:instance fn-lg-chunkp-of-first-chunk)
+                 (:instance fn-lg-recordsp-of-nthcdr (k (fn-lg-chunk-len records)))
+                 (:instance fn-lg-trailer-of-frame-digestp (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-chunk-body-octets (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-entry-true-listp (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lgkc-entry-len-aligned (chunk (fn-bs-take (fn-lg-chunk-len records) records)))))))
 
-; -----------------------------------------------------------------------------
-; The scan's last trailer.
+(local
+ (defthm fn-lgkc-scan-last-step
+   (implies (and (fn-frame-digestp prev) (fn-lg-chunkp chunk max))
+            (equal (fn-lg-scan-last (append (fn-lg-entry prev chunk unit) y) prev unit max)
+                   (fn-lg-scan-last y (fn-lg-trailer (fn-lg-frame prev chunk)) unit max)))
+   :hints (("Goal" :do-not-induct t
+            :expand ((fn-lg-scan-last (append (fn-lg-entry prev chunk unit) y) prev unit max))
+            :in-theory (disable fn-lg-entry fn-lg-trailer fn-lg-entry-len fn-lg-entry-len-is-units
+                                fn-lg-frame fn-lg-pad-len fn-lg-slice fn-lg-entry-okp fn-lg-chunkp)
+            :use ((:instance fn-lg-slice-of-entry-append (x y))
+                  fn-lg-entry-okp-of-frame fn-lg-entry-len fn-lg-chunk-body-octets
+                  (:instance fn-lg-nthcdr-of-entry-append (x y)))))))
 
 (defthm fn-lg-scan-last-of-log-append
   (implies (and (fn-frame-digestp prev) (fn-lg-recordsp records max))
            (equal (fn-lg-scan-last (append (fn-lg-log records prev unit) x) prev unit max)
                   (fn-lg-scan-last x (fn-lg-last-trailer records prev) unit max)))
   :hints (("Goal" :induct (fn-lg-log records prev unit)
-           :in-theory (disable fn-lg-entry fn-lg-trailer fn-lg-entry-len fn-lg-entry-len-is-units
-                               fn-lg-recordp fn-lg-frame fn-lg-pad-len fn-lg-slice
-                               fn-lg-entry-okp))
+           :in-theory (e/d (fn-lg-log-unfolds fn-lg-last-trailer-unfolds)
+                           (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-recordp fn-lg-recordsp
+                            fn-lg-chunkp (:definition fn-lg-log) (:definition fn-lg-last-trailer)
+                            fn-lg-entry-units fn-lg-entry-len fn-lg-entry-len-is-units
+                            fn-lg-pad-len fn-lg-slice fn-lg-entry-okp
+                            fn-lg-trailer-of-frame-digestp)))
+          ("Subgoal *1/2" :expand ((fn-lg-log records prev unit) (fn-lg-log nil prev unit)
+                                   (fn-lg-last-trailer records prev) (fn-lg-last-trailer nil prev)))
           ("Subgoal *1/1"
-           :expand ((fn-lg-scan-last (append (fn-lg-entry prev (car records) unit)
-                                             (append (fn-lg-log (cdr records)
-                                                                (fn-lg-trailer (fn-lg-frame prev (car records)))
-                                                                unit)
-                                                     x))
-                                     prev unit max))
-           :use ((:instance fn-lg-slice-of-entry-append (record (car records))
-                            (x (append (fn-lg-log (cdr records)
-                                                  (fn-lg-trailer (fn-lg-frame prev (car records)))
-                                                  unit)
-                                       x)))
-                 (:instance fn-lg-entry-okp-of-frame (record (car records)))
-                 (:instance fn-lg-entry-len (record (car records)))
-                 (:instance fn-lg-nthcdr-of-entry-append (record (car records))
-                            (x (append (fn-lg-log (cdr records)
-                                                  (fn-lg-trailer (fn-lg-frame prev (car records)))
-                                                  unit)
-                                       x)))))))
+           :use ((:instance fn-lg-chunkp-of-first-chunk)
+                 (:instance fn-lg-recordsp-of-nthcdr (k (fn-lg-chunk-len records)))
+                 (:instance fn-lg-trailer-of-frame-digestp (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-chunk-body-octets (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-entry-true-listp (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lgkc-scan-last-step (chunk (fn-bs-take (fn-lg-chunk-len records) records))
+                            (y (append (fn-lg-log (nthcdr (fn-lg-chunk-len records) records) (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len records) records))) unit) x)))))))
+
+(local
+ (defthm fn-lgkc-slice-of-zeros
+   (implies (fn-lg-zerosp z) (equal (fn-lg-slice z) nil))
+   :hints (("Goal" :expand ((fn-lg-slice z) (fn-lg-declared-len z) (fn-bs-take 4 z))))))
 
 (defthm fn-lg-scan-last-of-zeros
   (implies (fn-lg-zerosp z)
            (equal (fn-lg-scan-last z prev unit max) prev))
   :hints (("Goal" :expand ((fn-lg-scan-last z prev unit max))
-           :use fn-lg-scan-of-zeros
-           :in-theory (disable fn-lg-scan-of-zeros fn-lg-entry-okp))))
+           :in-theory (disable fn-lg-slice fn-lg-entry-okp fn-lg-scan-of-zeros))))
 
 (local
  (defthm fn-lgkc-declared-len-of-append
@@ -321,7 +349,7 @@
            :expand ((fn-lg-scan-last (append d x) prev unit max)
                     (fn-lg-scan d prev unit max)
                     (fn-lg-scan-last d prev unit max))
-           :in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-record
+           :in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-records
                                fn-lg-trailer fn-lg-pad-len fn-lg-slice)
            :do-not '(generalize))
           ("Subgoal *1/2" :use ((:instance fn-lg-slice-len (octets d))
@@ -339,11 +367,14 @@
   (implies (and (fn-frame-digestp prev) (fn-lg-recordsp records max) (consp records))
            (< 0 (len (fn-lg-log records prev unit))))
   :rule-classes :linear
-  :hints (("Goal" :expand ((fn-lg-log records prev unit))
-           :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-recordp
-                               fn-lg-entry-len-is-units fn-lg-frame-len)
-           :use ((:instance fn-lg-entry-len (record (car records)))
-                 (:instance fn-lg-frame-len (record (car records)))))))
+  :hints (("Goal" :in-theory (e/d (fn-lg-log-unfolds)
+                                  (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-recordp
+                                   fn-lg-entry-len-is-units fn-lg-frame-len fn-lg-recordsp
+                                   fn-lg-chunkp (:definition fn-lg-log)))
+           :use ((:instance fn-lg-chunkp-of-first-chunk)
+                 (:instance fn-lg-chunk-body-octets (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-entry-len (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-frame-len (chunk (fn-bs-take (fn-lg-chunk-len records) records)))))))
 
 (local
  (defthm fn-lgkc-recordsp-nil

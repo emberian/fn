@@ -36,6 +36,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -152,7 +153,7 @@ class Node:
 
     def article_status(self, message_id):
         with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             stream.readline()
             stream.write(b"STAT " + message_id.encode("ascii") + b"\r\n")
             return stream.readline().decode("ascii", "replace").strip()

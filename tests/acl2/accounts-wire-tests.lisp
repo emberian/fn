@@ -26,9 +26,10 @@
 (assert-event (fn-auth-sessionp *awt-prot*))
 (assert-event (fn-auth-sessionp *awt-prot-tls*))
 
-(defun awt-step (as event)
+(defun awt-step (as event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-auth-step-pinned as *awt-archive* nil nil *awt-config* *awt-obs* *awt-obs*
-                       event))
+                       event fn-arena))
 (defun awt-line (text) (fn-nntp-string-octets text))
 (defun awt-cmd (text) (list :command (awt-line text)))
 (defun awt-single (text)
@@ -50,17 +51,21 @@
         (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line ,text)))
         (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line ,text))) "XREDEEM")))
 (defmacro awt-483-concl (as text)
-  `(and (equal (fn-post-result-effects (awt-step ,as (awt-cmd ,text)))
+  `(and (equal (fn-post-result-effects (in-arena-awt-step *sr-arena* ,as (awt-cmd ,text)))
                (awt-single *awt-483*))
-        (equal (fn-post-result-session (awt-step ,as (awt-cmd ,text))) ,as)
-        (null (fn-post-result-submission (awt-step ,as (awt-cmd ,text))))))
+        (equal (fn-post-result-session (in-arena-awt-step *sr-arena* ,as (awt-cmd ,text))) ,as)
+        (null (fn-post-result-submission (in-arena-awt-step *sr-arena* ,as (awt-cmd ,text))))))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift awt-step 2)
 (assert-event (and (awt-483-hyps *awt-prot* *awt-redeem*)
                    (awt-483-concl *awt-prot* *awt-redeem*)))
 ; H5 removed: over TLS the same line answers 381.
 (assert-event (and (fn-auth-session-tlsp *awt-prot-tls*)
                    (not (awt-483-concl *awt-prot-tls* *awt-redeem*))
                    (equal (fn-post-result-effects
-                           (awt-step *awt-prot-tls* (awt-cmd *awt-redeem*)))
+                           (in-arena-awt-step *sr-arena* *awt-prot-tls* (awt-cmd *awt-redeem*)))
                           (awt-single "381 send the password with XREDEEM PASS"))))
 ; H4 removed: a listener that does not require TLS answers 381 in cleartext.
 (assert-event (and (not (fn-auth-config-protected-onlyp
@@ -84,7 +89,7 @@
 (assert-event (and (fn-auth-sessionp *awt-authed*)
                    (fn-auth-session-subject *awt-authed*)
                    (equal (fn-post-result-effects
-                           (awt-step *awt-authed* (awt-cmd *awt-redeem*)))
+                           (in-arena-awt-step *sr-arena* *awt-authed* (awt-cmd *awt-redeem*)))
                           (awt-single "502 already authenticated"))
                    (not (awt-483-concl *awt-authed* *awt-redeem*))))
 ; H1 removed: a value that is not a session is answered nothing.
@@ -95,8 +100,7 @@
 (assert-event (and (not (fn-nntp-command-inputp
                          (append (awt-line "XREDEEM a") '(0) (awt-line " b"))))
                    (not (equal (fn-post-result-effects
-                                (awt-step *awt-prot*
-                                          (list :command
+                                (in-arena-awt-step *sr-arena* *awt-prot* (list :command
                                                 (append (awt-line "XREDEEM a")
                                                         '(0) (awt-line " b")))))
                                (awt-single *awt-483*)))))
@@ -109,13 +113,13 @@
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-auth-step-pinned-xredeem-pass-holds-for-the-owner
 (defconst *awt-381* (fn-post-result-session
-                     (awt-step *awt-prot-tls* (awt-cmd *awt-redeem*))))
+                     (in-arena-awt-step *sr-arena* *awt-prot-tls* (awt-cmd *awt-redeem*))))
 (assert-event (equal (fn-auth-session-pending *awt-381*)
                      (list :xredeem (awt-line "000102030405060708090a0b0c0d0efa")
                            (awt-line "robin"))))
 (defconst *awt-pass* "XREDEEM PASS correct-horse")
-(defconst *awt-wait* (fn-post-result-session (awt-step *awt-381* (awt-cmd *awt-pass*))))
-(assert-event (null (fn-post-result-effects (awt-step *awt-381* (awt-cmd *awt-pass*)))))
+(defconst *awt-wait* (fn-post-result-session (in-arena-awt-step *sr-arena* *awt-381* (awt-cmd *awt-pass*))))
+(assert-event (null (fn-post-result-effects (in-arena-awt-step *sr-arena* *awt-381* (awt-cmd *awt-pass*)))))
 (assert-event (fn-auth-redeem-waitp *awt-wait*))
 (assert-event (fn-auth-session-handshakingp *awt-wait*))
 (assert-event (fn-auth-sessionp *awt-wait*))
@@ -126,11 +130,11 @@
 ; does not hold.
 (assert-event (and (null (fn-auth-session-pending *awt-prot-tls*))
                    (equal (fn-post-result-effects
-                           (awt-step *awt-prot-tls* (awt-cmd *awt-pass*)))
+                           (in-arena-awt-step *sr-arena* *awt-prot-tls* (awt-cmd *awt-pass*)))
                           (awt-single "482 redemption commands issued out of sequence"))
                    (not (fn-auth-redeem-waitp
                          (fn-post-result-session
-                          (awt-step *awt-prot-tls* (awt-cmd *awt-pass*)))))))
+                          (in-arena-awt-step *sr-arena* *awt-prot-tls* (awt-cmd *awt-pass*)))))))
 ; The TLS-or-open hypothesis removed: before TLS on the protected listener,
 ; the cached exchange is refused 483 and nothing is held.
 (defconst *awt-381-clear*
@@ -139,25 +143,25 @@
 (assert-event (and (fn-auth-sessionp *awt-381-clear*)
                    (not (fn-auth-redeem-waitp
                          (fn-post-result-session
-                          (awt-step *awt-381-clear* (awt-cmd *awt-pass*)))))))
+                          (in-arena-awt-step *sr-arena* *awt-381-clear* (awt-cmd *awt-pass*)))))))
 ; The one-token-password hypothesis removed: two words are 501.
 (assert-event (equal (fn-post-result-effects
-                      (awt-step *awt-381* (awt-cmd "XREDEEM PASS a b")))
+                      (in-arena-awt-step *sr-arena* *awt-381* (awt-cmd "XREDEEM PASS a b")))
                      (awt-single "501 syntax error")))
 ; The session holds: the served fold stops, so a command after the PASS line
 ; in the same read is not answered by the step.
-(assert-event (null (fn-post-result-effects (awt-step *awt-wait* (awt-cmd "DATE")))))
+(assert-event (null (fn-post-result-effects (in-arena-awt-step *sr-arena* *awt-wait* (awt-cmd "DATE")))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-auth-step-pinned-redeem-outcome-answers-the-word
 (assert-event (equal (fn-post-result-effects
-                      (awt-step *awt-wait* '(:account-outcome :bound)))
+                      (in-arena-awt-step *sr-arena* *awt-wait* '(:account-outcome :bound)))
                      (awt-single "281 account bound; authenticate with AUTHINFO on a new connection")))
 (assert-event (equal (fn-post-result-effects
-                      (awt-step *awt-wait* '(:account-outcome :refused)))
+                      (in-arena-awt-step *sr-arena* *awt-wait* '(:account-outcome :refused)))
                      (awt-single "482 invitation code refused")))
 (assert-event (let ((s (fn-post-result-session
-                        (awt-step *awt-wait* '(:account-outcome :bound)))))
+                        (in-arena-awt-step *sr-arena* *awt-wait* '(:account-outcome :bound)))))
                 (and (null (fn-auth-session-pending s))
                      (not (fn-auth-session-handshakingp s))
                      (null (fn-auth-session-subject s))
@@ -167,10 +171,10 @@
 (assert-event (and (fn-auth-sessionp *awt-381*)
                    (not (fn-auth-redeem-waitp *awt-381*))
                    (null (fn-post-result-effects
-                          (awt-step *awt-381* '(:account-outcome :bound))))))
+                          (in-arena-awt-step *sr-arena* *awt-381* '(:account-outcome :bound))))))
 ; A STARTTLS handshake is not a redemption hold: the outcome event does not
 ; answer it (fn-auth-handshaking-session-serves-nothing).
 (assert-event (and (fn-auth-session-handshakingp *awt-held*)
                    (not (fn-auth-redeem-waitp *awt-held*))
                    (null (fn-post-result-effects
-                          (awt-step *awt-held* '(:account-outcome :bound))))))
+                          (in-arena-awt-step *sr-arena* *awt-held* '(:account-outcome :bound))))))

@@ -32,6 +32,7 @@ import tempfile
 import unittest
 
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -138,7 +139,7 @@ class NativeInjectionInfoTests(unittest.TestCase):
     def connect(self, node, login=None):
         client = socket.create_connection(("127.0.0.1", node["port"]), timeout=30)
         self.addCleanup(client.close)
-        stream = client.makefile("rwb", buffering=0)
+        stream = whole_stream(client)
         self.assertTrue(stream.readline()[:1] == b"2")
         if login:
             stream.write(b"AUTHINFO USER " + login.encode() + b"\r\n")

@@ -29,11 +29,14 @@
 ; The session the served step holds after GROUP fn.letters.
 (defconst *xp-session* (fn-nntp-make-session t "fn.letters" nil t))
 (assert-event (fn-nntp-sessionp *xp-session*))
+(include-book "arena-lift")
+;; The arena: handle 0 = *xp-payload*.
+(defconst *sr-arena* (list *xp-payload*))
+(bpr-lift fn-nntp-step-pinned 6)
+(bpr-lift fn-nntp-xpat-response 3)
 (assert-event
  (equal (fn-nntp-result-session
-         (fn-nntp-step-pinned (fn-nntp-open-session *xp-archive*) *xp-archive*
-                              nil nil *xp-env*
-                              (list :command
+         (in-arena-fn-nntp-step-pinned *sr-arena* (fn-nntp-open-session *xp-archive*) *xp-archive* nil nil *xp-env* (list :command
                                     (fn-nntp-string-octets "GROUP fn.letters"))))
         (fn-nntp-make-session t "fn.letters" 1 t)))
 
@@ -48,8 +51,7 @@
   (list (list :reply (append (fn-nntp-string-octets text) '(13 10)))))
 (defmacro xp-reply (text)
   `(fn-nntp-result-effects
-    (fn-nntp-step-pinned *xp-session* *xp-archive* nil nil *xp-env*
-                         (list :command (fn-nntp-string-octets ,text)))))
+    (in-arena-fn-nntp-step-pinned *sr-arena* *xp-session* *xp-archive* nil nil *xp-env* (list :command (fn-nntp-string-octets ,text)))))
 
 ; -----------------------------------------------------------------------------
 ; Reachable witnesses on the served reader step.
@@ -82,32 +84,27 @@
 ; fn-nntp-step-pinned-xpat-is-the-xpat-response: the witness and one
 ; counterexample per hypothesis, every other hypothesis holding.
 
-(defun xp-subject-conclusion (session line)
-  (declare (xargs :verify-guards nil))
+(defun xp-subject-conclusion (session line fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (equal (fn-nntp-step-pinned session *xp-archive* nil nil *xp-env*
-                              (list :command line))
-         (fn-nntp-xpat-response session *xp-archive* (cdr (fn-nntp-tokenize line)))))
+                              (list :command line) fn-arena)
+         (fn-nntp-xpat-response session *xp-archive* (cdr (fn-nntp-tokenize line)) fn-arena)))
+(bpr-lift xp-subject-conclusion 2)
 
 (defconst *xp-line* (fn-nntp-string-octets "XPAT Subject 1-1 *root*"))
-(assert-event (xp-subject-conclusion *xp-session* *xp-line*))
+(assert-event (in-arena-xp-subject-conclusion *sr-arena* *xp-session* *xp-line*))
 (assert-event (equal (fn-nntp-result-effects
-                      (fn-nntp-xpat-response *xp-session* *xp-archive*
-                                             (cdr (fn-nntp-tokenize *xp-line*))))
+                      (in-arena-fn-nntp-xpat-response *sr-arena* *xp-session* *xp-archive* (cdr (fn-nntp-tokenize *xp-line*))))
                      (xp-block "221 header follows" (list "1 probe root"))))
 ; Without fn-nntp-sessionp: a five-element record whose open and projected
 ; slots read t.  The step answers nothing; XPAT alone would answer.
-(assert-event (not (xp-subject-conclusion (list t "fn.letters" nil t :extra)
-                                          *xp-line*)))
+(assert-event (not (in-arena-xp-subject-conclusion *sr-arena* (list t "fn.letters" nil t :extra) *xp-line*)))
 ; Without an open session.
-(assert-event (not (xp-subject-conclusion
-                    (fn-nntp-make-session nil "fn.letters" nil t) *xp-line*)))
+(assert-event (not (in-arena-xp-subject-conclusion *sr-arena* (fn-nntp-make-session nil "fn.letters" nil t) *xp-line*)))
 ; Without the projection: the step's 503.
-(assert-event (not (xp-subject-conclusion
-                    (fn-nntp-make-session t "fn.letters" nil nil) *xp-line*)))
+(assert-event (not (in-arena-xp-subject-conclusion *sr-arena* (fn-nntp-make-session t "fn.letters" nil nil) *xp-line*)))
 (assert-event (equal (fn-nntp-result-effects
-                      (fn-nntp-step-pinned (fn-nntp-make-session t "fn.letters" nil nil)
-                                           *xp-archive* nil nil *xp-env*
-                                           (list :command *xp-line*)))
+                      (in-arena-fn-nntp-step-pinned *sr-arena* (fn-nntp-make-session t "fn.letters" nil nil) *xp-archive* nil nil *xp-env* (list :command *xp-line*)))
                      (xp-single "503 archive projection unavailable")))
 ; Without fn-nntp-command-inputp: the same four tokens on a line past the
 ; 510-octet preflight (the separator run is long).  The step's 501.
@@ -117,10 +114,9 @@
           (fn-nntp-string-octets "*root*")))
 (assert-event (equal (fn-nntp-tokenize *xp-long-line*) (fn-nntp-tokenize *xp-line*)))
 (assert-event (not (fn-nntp-command-inputp *xp-long-line*)))
-(assert-event (not (xp-subject-conclusion *xp-session* *xp-long-line*)))
+(assert-event (not (in-arena-xp-subject-conclusion *sr-arena* *xp-session* *xp-long-line*)))
 ; Without the XPAT keyword: HDR's 225 is not XPAT's 221.
-(assert-event (not (xp-subject-conclusion
-                    *xp-session* (fn-nntp-string-octets "HDR Subject 1-1 *root*"))))
+(assert-event (not (in-arena-xp-subject-conclusion *sr-arena* *xp-session* (fn-nntp-string-octets "HDR Subject 1-1 *root*"))))
 
 ; -----------------------------------------------------------------------------
 ; fn-nntp-xpat-alternation-is-or: witness and its one hypothesis.
@@ -158,8 +154,7 @@
                             (fn-nntp-capability-lines nil)))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step-pinned *xp-session* *xp-archive* nil nil *xp-env*
-                              (list :command (fn-nntp-string-octets "CAPABILITIES"))))
+         (in-arena-fn-nntp-step-pinned *sr-arena* *xp-session* *xp-archive* nil nil *xp-env* (list :command (fn-nntp-string-octets "CAPABILITIES"))))
         (xp-block "101 capability list follows"
                   '("VERSION 2" "READER" "OVER MSGID" "HDR" "XPAT" "NEWNEWS"
                     "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT"

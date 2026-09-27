@@ -78,10 +78,21 @@
           (dry (list :dry-run msgids freed counts))
           (t (list :reclaim msgids freed counts)))))
 
+; The per-record rewrites the host collects are the rewritten history.
+(defthm fn-lgr-rewrites-are-the-events
+  (equal (fn-rclp-events records ctx)
+         (if (consp records)
+             (cons (fn-rclp-event (car records) ctx) (fn-rclp-events (cdr records) ctx))
+           records))
+  ;; The definition's own body: one expansion, nothing else (in the batch's
+  ;; union world the default theory ran past 300 s here).
+  :hints (("Goal" :expand ((fn-rclp-events records ctx))
+                  :in-theory (theory 'minimal-theory)))
+  :rule-classes nil)
+
 ; KEYSTONE: over the fold of the history from fn-rcls-init under the store's
 ; context, the streamed decision is the whole-history decision without its
-; RECORDS element, fn-rclp-events of the history: by its definition the list
-; of the per-record rewrites fn-rclp-event the host collects, in order (so
+; RECORDS element, which is the list of the per-record rewrites (so
 ; fn-lgr-decide-checkpoints-the-rewrite is about what the host checkpoints).
 (defthm fn-lgr-decide-stream-is-lgr-decide
   (implies (and (true-listp records)

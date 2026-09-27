@@ -197,26 +197,26 @@
 ; -----------------------------------------------------------------------------
 ; The served renderers
 
-(defun fn-nov-served-lines-numbered (numbers nidx trie server)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nov-served-lines-numbered (numbers nidx trie server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-gidx-nidx-number-article number nidx trie))
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-article-payload article))))
-                       (fn-nov-overview article)
+                            (not (fn-nntp-article-tombstonep article fn-arena)))
+                       (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
             (cons (fn-nov-served-line number over server article)
-                  (fn-nov-served-lines-numbered (cdr numbers) nidx trie server))
-          (fn-nov-served-lines-numbered (cdr numbers) nidx trie server)))
+                  (fn-nov-served-lines-numbered (cdr numbers) nidx trie server fn-arena))
+          (fn-nov-served-lines-numbered (cdr numbers) nidx trie server fn-arena)))
     nil))
 
 ; With no server the served renderer is the eight-field renderer, so every
 ; keystone of `fn-nov-lines-for-numbers-numbered' holds of it.
 (defthm fn-nov-served-lines-numbered-without-a-server
-  (equal (fn-nov-served-lines-numbered numbers nidx trie nil)
-         (fn-nov-lines-for-numbers-numbered numbers nidx trie))
+  (equal (fn-nov-served-lines-numbered numbers nidx trie nil fn-arena)
+         (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena))
   :hints (("Goal" :in-theory (disable fn-nov-overview fn-nov-okp fn-nov-line
                                       fn-gidx-nidx-number-article
                                       fn-rcl-tombstonep))))
@@ -228,12 +228,12 @@
   (let ((article (fn-gidx-nidx-number-article n nidx trie)))
     (implies (and (member-equal n numbers)
                   (consp article)
-                  (not (fn-rcl-tombstonep (fn-article-payload article)))
-                  (fn-nov-okp (fn-nov-overview article)))
-             (member-equal (fn-nov-served-line n (fn-nov-overview article)
+                  (not (fn-nntp-article-tombstonep article fn-arena))
+                  (fn-nov-okp (fn-nov-overview article fn-arena)))
+             (member-equal (fn-nov-served-line n (fn-nov-overview article fn-arena)
                                                server article)
                            (fn-nov-served-lines-numbered numbers nidx trie
-                                                         server))))
+                                                         server fn-arena))))
   :hints (("Goal" :in-theory (disable fn-nov-overview fn-nov-okp
                                       fn-nov-served-line
                                       fn-gidx-nidx-number-article
@@ -243,21 +243,21 @@
 ;; the eight fields of every served OVER line are what
 ;; `fn-nov-lines-for-numbers-numbered' renders, which
 ;; books/nntp-range-indexed-invariants.lisp ties to the archive fold.
-(defun fn-nov-served-suffixes (numbers nidx trie server)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nov-served-suffixes (numbers nidx trie server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-gidx-nidx-number-article number nidx trie))
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-article-payload article))))
-                       (fn-nov-overview article)
+                            (not (fn-nntp-article-tombstonep article fn-arena)))
+                       (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
             (cons (if server
                       (cons 9 (fn-xref-field server (fn-xref-pairs article)))
                     nil)
-                  (fn-nov-served-suffixes (cdr numbers) nidx trie server))
-          (fn-nov-served-suffixes (cdr numbers) nidx trie server)))
+                  (fn-nov-served-suffixes (cdr numbers) nidx trie server fn-arena))
+          (fn-nov-served-suffixes (cdr numbers) nidx trie server fn-arena)))
     nil))
 
 (defun fn-nov-append-each (lines suffixes)
@@ -272,19 +272,19 @@
     nil))
 
 (defthmd fn-nov-served-lines-numbered-extend-the-eight-fields
-  (equal (fn-nov-served-lines-numbered numbers nidx trie server)
+  (equal (fn-nov-served-lines-numbered numbers nidx trie server fn-arena)
          (fn-nov-append-each
-          (fn-nov-lines-for-numbers-numbered numbers nidx trie)
-          (fn-nov-served-suffixes numbers nidx trie server)))
-  :hints (("Goal" :induct (fn-nov-served-lines-numbered numbers nidx trie server)
+          (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena)
+          (fn-nov-served-suffixes numbers nidx trie server fn-arena)))
+  :hints (("Goal" :induct (fn-nov-served-lines-numbered numbers nidx trie server fn-arena)
            :in-theory (disable fn-nov-overview fn-nov-okp fn-nov-line
                                fn-xref-field fn-xref-pairs
                                fn-gidx-nidx-number-article
                                fn-rcl-tombstonep))))
 
 ; OVER/XOVER of a range: `fn-nntp-over-range-indexed' with the served line.
-(defun fn-nntp-over-range-served (session buckets trie token legacyp server)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-over-range-served (session buckets trie token legacyp server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
@@ -295,7 +295,7 @@
                        (fn-nntp-range-high range)))
              (lines (fn-nov-served-lines-numbered
                      numbers (fn-gidx-bucket-numbers group buckets) trie
-                     server)))
+                     server fn-arena)))
         (if (consp lines)
             (fn-nntp-multi session "224 overview information follows" lines)
           (fn-nntp-single
@@ -303,8 +303,8 @@
                      "423 no articles in that range")))))))
 
 (defthm fn-nntp-over-range-served-without-a-server
-  (equal (fn-nntp-over-range-served session buckets trie token legacyp nil)
-         (fn-nntp-over-range-indexed session buckets trie token legacyp))
+  (equal (fn-nntp-over-range-served session buckets trie token legacyp nil fn-arena)
+         (fn-nntp-over-range-indexed session buckets trie token legacyp fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed)
                                   (fn-nov-served-lines-numbered
                                    fn-nov-lines-for-numbers-numbered
@@ -314,8 +314,8 @@
                                    fn-nntp-parse-range)))))
 
 ; OVER/XOVER with no argument: the current article's line.
-(defun fn-nntp-over-current-served (session archive server)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-over-current-served (session archive server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (current (fn-nntp-session-current session)))
     (if (null group)
@@ -326,9 +326,9 @@
                         group current (fn-state-articles archive))))
           (if (not (consp article))
               (fn-nntp-single session "420 no current article")
-            (if (fn-rcl-tombstonep (fn-article-payload article))
+            (if (fn-nntp-article-tombstonep article fn-arena)
                 (fn-nntp-single session "423 article reclaimed")
-              (let ((over (fn-nov-overview article)))
+              (let ((over (fn-nov-overview article fn-arena)))
                 (if (fn-nov-okp over)
                     (fn-nntp-multi session "224 overview information follows"
                                    (list (fn-nov-served-line current over
@@ -337,23 +337,23 @@
                    session "503 stored article framing unavailable"))))))))))
 
 (defthm fn-nntp-over-current-served-without-a-server
-  (equal (fn-nntp-over-current-served session archive nil)
-         (fn-nntp-over-current session archive))
+  (equal (fn-nntp-over-current-served session archive nil fn-arena)
+         (fn-nntp-over-current session archive fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-current)
                                   (fn-nov-overview fn-nov-okp fn-nov-line
                                    fn-nntp-available-article fn-rcl-tombstonep
                                    fn-nntp-multi fn-nntp-single)))))
 
 ; OVER <message-id>: number 0 (RFC 3977 section 8.3.2).
-(defun fn-nntp-over-msgid-served (session archive token server)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-over-msgid-served (session archive token server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((article (fn-find-article (fn-nntp-token-string token)
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
-      (if (fn-rcl-tombstonep (fn-article-payload article))
+      (if (fn-nntp-article-tombstonep article fn-arena)
           (fn-nntp-single session "430 article reclaimed")
-        (let ((over (fn-nov-overview article)))
+        (let ((over (fn-nov-overview article fn-arena)))
           (if (fn-nov-okp over)
               (fn-nntp-multi session "224 overview information follows"
                              (list (fn-nov-served-line 0 over server article)))
@@ -361,8 +361,8 @@
                             "503 stored article framing unavailable")))))))
 
 (defthm fn-nntp-over-msgid-served-without-a-server
-  (equal (fn-nntp-over-msgid-served session archive token nil)
-         (fn-nntp-over-msgid session archive token))
+  (equal (fn-nntp-over-msgid-served session archive token nil fn-arena)
+         (fn-nntp-over-msgid session archive token fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-msgid)
                                   (fn-nov-overview fn-nov-okp fn-nov-line
                                    fn-find-article fn-rcl-tombstonep
@@ -390,7 +390,7 @@
 
 (defthm fn-nntp-over-range-served-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-over-range-served session buckets trie token legacyp server))
+          (fn-nntp-over-range-served session buckets trie token legacyp server fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-single fn-nntp-multi
                                    fn-nntp-result-session fn-nntp-make-result)
@@ -398,7 +398,7 @@
 
 (defthm fn-nntp-over-current-served-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-over-current-served session archive server))
+          (fn-nntp-over-current-served session archive server fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-single fn-nntp-multi
                                    fn-nntp-result-session fn-nntp-make-result)
@@ -406,7 +406,7 @@
 
 (defthm fn-nntp-over-msgid-served-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-over-msgid-served session archive token server))
+          (fn-nntp-over-msgid-served session archive token server fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-single fn-nntp-multi
                                    fn-nntp-result-session fn-nntp-make-result)
@@ -425,8 +425,8 @@
 ;; line carries the Xref field; otherwise nil, and the dispatcher answers
 ;; as before.  One call in the dispatcher, so a proof that unfolds the
 ;; dispatcher splits on it once (the lemmas below), not on four arms.
-(defun fn-nntp-xref-reply (session archive index env keyword args)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-xref-reply (session archive index env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((and (fn-nntp-keywordp keyword "LIST")
          (fn-nntp-xref-server env)
@@ -442,25 +442,25 @@
          (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
     (fn-nntp-over-range-served
      session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
-     (car args) (fn-nntp-keywordp keyword "XOVER") (fn-nntp-xref-server env)))
+     (car args) (fn-nntp-keywordp keyword "XOVER") (fn-nntp-xref-server env) fn-arena))
    ((and (or (fn-nntp-keywordp keyword "OVER")
              (fn-nntp-keywordp keyword "XOVER"))
          (fn-nntp-xref-server env)
          (null args))
-    (fn-nntp-over-current-served session archive (fn-nntp-xref-server env)))
+    (fn-nntp-over-current-served session archive (fn-nntp-xref-server env) fn-arena))
    ((and (fn-nntp-keywordp keyword "OVER")
          (fn-nntp-xref-server env)
          (consp args) (null (cdr args))
          (not (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
          (fn-nntp-message-id-tokenp (car args)))
     (fn-nntp-over-msgid-served session archive (car args)
-                               (fn-nntp-xref-server env)))
+                               (fn-nntp-xref-server env) fn-arena))
    (t nil)))
 
 (defthm fn-nntp-xref-reply-preserves-session
-  (implies (fn-nntp-xref-reply session archive index env keyword args)
+  (implies (fn-nntp-xref-reply session archive index env keyword args fn-arena)
            (equal (fn-nntp-result-session
-                   (fn-nntp-xref-reply session archive index env keyword args))
+                   (fn-nntp-xref-reply session archive index env keyword args fn-arena))
                   session))
   :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server
                                       fn-gidx-pinp fn-nntp-parse-range
@@ -474,13 +474,13 @@
 
 (defthm fn-nntp-xref-reply-without-a-server
   (implies (not (fn-nntp-xref-server env))
-           (not (fn-nntp-xref-reply session archive index env keyword args))))
+           (not (fn-nntp-xref-reply session archive index env keyword args fn-arena))))
 
 (defthm fn-nntp-xref-reply-only-for-over-and-list
   (implies (and (not (fn-nntp-keywordp keyword "OVER"))
                 (not (fn-nntp-keywordp keyword "XOVER"))
                 (not (fn-nntp-keywordp keyword "LIST")))
-           (not (fn-nntp-xref-reply session archive index env keyword args)))
+           (not (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
   :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server))))
 
 (defthm fn-nntp-xref-reply-only-for-over-and-overview-fmt
@@ -488,7 +488,7 @@
                 (not (fn-nntp-keywordp keyword "XOVER"))
                 (not (and (consp args)
                           (fn-nntp-keywordp (car args) "OVERVIEW.FMT"))))
-           (not (fn-nntp-xref-reply session archive index env keyword args)))
+           (not (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
   :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server))))
 
 (verify-guards fn-nntp-xref-server)

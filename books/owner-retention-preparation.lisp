@@ -7,7 +7,7 @@
 (local
  (defthm fn-orpr-owner-store-of-prepare-retention
    (equal
-    (fn-own-store (fn-own-step o (list :store (list :prepare-retention event))))
+    (fn-own-store (fn-own-step o (list :store (list :prepare-retention event)) fn-arena))
    (fn-sn-prepare-retention (fn-own-store o) event))
    :hints (("Goal"
             :in-theory (e/d (fn-own-step fn-own-store-step fn-own-refresh
@@ -18,7 +18,7 @@
   (equal
    (fn-own-store
     (fn-ocfg-owner
-     (fn-ocfg-step oc (list :store (list :prepare-retention event)))))
+     (fn-ocfg-step oc (list :store (list :prepare-retention event)) fn-arena)))
    (fn-sn-prepare-retention
     (fn-own-store (fn-ocfg-owner oc)) event))
   :hints (("Goal"
@@ -79,7 +79,7 @@
                   (fn-record-octets-string subject-octets)
                   (fn-record-octets-string evidence-octets) charge))
           (next (fn-ocfg-step oc
-                              (list :store (list :prepare-retention event))))
+                              (list :store (list :prepare-retention event)) fn-arena))
           (prepared (fn-own-store (fn-ocfg-owner next))))
      (and (equal prepared (fn-sn-prepare-retention s event))
           (if (equal prepared s)

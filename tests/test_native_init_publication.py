@@ -70,7 +70,18 @@ class InitFixture(ProfileFixture):
         status = self.op("status")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         self.assertIn(b"transactions=0", status.stdout)
-        self.assertEqual(sorted(p.name for p in (self.store / "transactions").iterdir()), [])
+        segment = self.store / "journal" / "000001.log"
+        if segment.exists():
+            # Format 9 (books/store-init-log-publication.lisp): the segment is
+            # the plan's third file, its ACL2 extent of zeros; no allocator
+            # file and no transactions/ are written.
+            data = segment.read_bytes()
+            self.assertEqual(len(data), 1048576)
+            self.assertEqual(data.count(0), len(data))
+            self.assertFalse((self.store / "transactions").exists())
+            self.assertFalse((self.store / "allocation-frontier.json").exists())
+        else:
+            self.assertEqual(sorted(p.name for p in (self.store / "transactions").iterdir()), [])
 
 
 class InitPublicationTests(InitFixture):

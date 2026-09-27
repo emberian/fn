@@ -38,6 +38,8 @@ import subprocess
 import sys
 import threading
 import time
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 GROUP = "fn.test"
 LINE = b"x" * 76 + b"\r\n"
@@ -88,7 +90,7 @@ class Conn:
         sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.sock = tls.wrap_socket(sock, server_hostname="localhost") if tls else sock
-        self.stream = self.sock.makefile("rwb", buffering=0)
+        self.stream = whole_stream(self.sock)
         self.greeting = self.stream.readline()
 
     def line(self, text):

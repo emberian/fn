@@ -28,7 +28,7 @@
 ; every obs, with no hypothesis.  It unfolds the otherwise arm of
 ; fn-ocfg-step through fn-ocfg-pass and fn-own-step's :observe arm.
 (defthm fn-ocfg-step-observe-is-fn-ocfg-observe
-  (equal (fn-ocfg-step oc (list :observe obs))
+  (equal (fn-ocfg-step oc (list :observe obs) fn-arena)
          (fn-ocfg-observe oc obs))
   :hints (("Goal" :in-theory (enable fn-ocfg-step fn-ocfg-pass fn-own-step
                                       fn-ocfg-observe))))

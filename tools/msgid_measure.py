@@ -29,6 +29,8 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from tests.native_process import wait_for_announcement  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 
 def digest(path):
@@ -73,7 +75,7 @@ class Conn:
     def __init__(self, port):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=600)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.stream = self.sock.makefile("rwb", buffering=0)
+        self.stream = whole_stream(self.sock)
         self.greeting = self.readline()
 
     def quickack(self):

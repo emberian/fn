@@ -13,6 +13,7 @@ import time
 import unittest
 
 from tests.native_process import runtime_sbcl
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get(
@@ -203,7 +204,7 @@ class NativeOwnerTests(unittest.TestCase):
     def connect_owner(self, port):
         client = socket.create_connection(("127.0.0.1", port), timeout=30)
         self.addCleanup(client.close)
-        stream = client.makefile("rwb", buffering=0)
+        stream = whole_stream(client)
         self.addCleanup(stream.close)
         self.assertTrue(stream.readline().startswith(b"200 "))
         return client, stream
@@ -258,7 +259,7 @@ class NativeOwnerTests(unittest.TestCase):
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
                 self.assertTrue(client.makefile("rb", buffering=0).readline().startswith(b"200 "))
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"QUIT\r\n")
                 self.assertTrue(stream.readline().startswith(b"205 "))
@@ -347,7 +348,7 @@ class NativeOwnerTests(unittest.TestCase):
         process, port = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"CAPABILITIES\r\n")
                 self.assertTrue(stream.readline().startswith(b"101 "))
@@ -376,7 +377,7 @@ class NativeOwnerTests(unittest.TestCase):
         process, port = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                with client.makefile("rwb", buffering=0) as stream:
+                with whole_stream(client) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"POST\r\n")
                     self.assertTrue(stream.readline().startswith(b"340 "))
@@ -399,8 +400,8 @@ class NativeOwnerTests(unittest.TestCase):
         second = socket.create_connection(("127.0.0.1", port), timeout=30)
         self.addCleanup(first.close)
         self.addCleanup(second.close)
-        one = first.makefile("rwb", buffering=0)
-        two = second.makefile("rwb", buffering=0)
+        one = whole_stream(first)
+        two = whole_stream(second)
         try:
             self.assertTrue(one.readline().startswith(b"200 "))
             self.assertTrue(two.readline().startswith(b"200 "))
@@ -463,7 +464,7 @@ class NativeOwnerTests(unittest.TestCase):
         process, port = self.start_owner(once=False, fault="postpublish")
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"POST\r\n")
                 self.assertTrue(stream.readline().startswith(b"340 "))
@@ -487,7 +488,7 @@ class NativeOwnerTests(unittest.TestCase):
         restarted, port = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"QUIT\r\n")
                 self.assertTrue(stream.readline().startswith(b"205 "))
@@ -518,7 +519,7 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertLessEqual(len(article), 32768)
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"POST\r\n")
                 self.assertTrue(stream.readline().startswith(b"340 "))
@@ -571,7 +572,7 @@ class NativeOwnerTests(unittest.TestCase):
         try:
             client = socket.create_connection(("127.0.0.1", port), timeout=30)
             self.addCleanup(client.close)
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"POST\r\n")
             self.assertTrue(stream.readline().startswith(b"340 "))
@@ -594,7 +595,7 @@ class NativeOwnerTests(unittest.TestCase):
             # The listener is still there and still serves, which is the whole
             # point: one long article is not a reason to stop the node.
             with socket.create_connection(("127.0.0.1", port), timeout=30) as later:
-                after = later.makefile("rwb", buffering=0)
+                after = whole_stream(later)
                 self.assertTrue(after.readline().startswith(b"200 "))
                 after.write(b"QUIT\r\n")
                 self.assertTrue(after.readline().startswith(b"205 "))
@@ -617,7 +618,7 @@ class NativeOwnerTests(unittest.TestCase):
 
     def date_reading(self, port):
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"DATE\r\n")
             line = stream.readline()
@@ -634,7 +635,7 @@ class NativeOwnerTests(unittest.TestCase):
         if not dated:
             article = article.replace(b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n", b"")
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"POST\r\n")
             self.assertTrue(stream.readline().startswith(b"340 "))

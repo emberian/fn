@@ -399,6 +399,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-reclaim \
 	tests/acl2/store-log-reclaim-tests \
 	books/store-log-route-phases \
+	books/store-log-extend \
+	tests/acl2/store-log-extend-tests \
+	books/store-init-log-publication \
+	tests/acl2/store-init-log-publication-tests \
+	books/owner-feed-txid-reuse \
+	tests/acl2/owner-feed-txid-reuse-tests \
+	books/byte-store-log-initializer \
+	tests/acl2/byte-store-log-initializer-tests \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
@@ -432,7 +440,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
 	books/bp-ingress-carried \
+	books/snoc-list \
 	tests/acl2/bp-ingress-carried-tests \
+	tests/acl2/snoc-list-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
 	tests/acl2/profile-monotonicity-tests \
@@ -498,6 +508,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
 	tests/acl2/post-identity-index-tests \
+	books/post-retain-carried \
+	tests/acl2/post-retain-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
@@ -824,6 +836,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-carried \
 	books/owner-served-carried \
 	books/wire-span \
+	books/wire-scan \
+	books/served-scan \
 	books/served-span \
 	books/owner-offer-indexed \
 	books/store-events-carried \
@@ -836,6 +850,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/msgid-index-concrete \
 	books/octets-stobj \
 	books/payload-arena-bytes \
+	books/payload-arena-paged \
 	books/payload-arena \
 	books/payload-arena-attach \
 	books/records-freeze \
@@ -862,6 +877,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
+	tests/acl2/payload-arena-paged-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
@@ -911,6 +927,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-served-carried-tests \
 	tests/acl2/wire-span-tests \
 	tests/acl2/served-span-tests \
+	tests/acl2/served-scan-tests \
 	tests/acl2/peer-offer-indexed-tests \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
@@ -925,6 +942,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-recover-ocl-tests \
 	books/config-owner-publish \
 	tests/acl2/config-owner-publish-tests \
+	books/config-owner-carried \
+	tests/acl2/config-owner-carried-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1051,6 +1070,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-authored-accept-tests \
 	books/peer-carriage-rows \
 	books/peer-carriage \
+	books/owner-parse-carried \
+	tests/acl2/owner-parse-carried-tests \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
@@ -1067,6 +1088,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/control-visible-indexed \
+	tests/acl2/control-visible-indexed-tests \
+	books/owner-refresh-indexed \
+	tests/acl2/owner-refresh-indexed-tests \
 	books/node-secret \
 	tests/acl2/node-secret-tests \
 	books/cancel-lock-lines \
@@ -1102,6 +1127,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-scheduler-tests \
 	books/owner-commit-class \
 	tests/acl2/owner-commit-class-tests \
+	books/owner-commit-steps \
+	tests/acl2/owner-commit-steps-tests \
+	books/owner-commit-pipeline \
+	tests/acl2/owner-commit-pipeline-tests \
+	books/store-log-route-programs \
+	tests/acl2/store-log-route-programs-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \

@@ -101,8 +101,8 @@
 ; session's node is tested once per event by a pointer comparison against
 ; `live' and never by fn-node-statep when the session holds the owner's node.
 (defun fn-scar-peer-step-pinned
-    (ps live trie arts archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t
+    (ps live trie arts archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-scar-peer-sessionp)))))
   (cond
    ((not (fn-scar-peer-sessionp ps live)) (fn-post-make-result ps nil nil))
@@ -110,17 +110,17 @@
    ; (fn-pix-peer-delegate-pinned-is-peer-delegate-pinned, no hypothesis).
    ((null (fn-peer-session-peer ps))
     (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
-                                 injection wire-event))
+                                 injection wire-event fn-arena))
    (t (fn-pgc-peer-arm ps trie arts archive index verdicts config
-                       observation injection wire-event))))
+                       observation injection wire-event fn-arena))))
 
 (defthm fn-scar-peer-step-pinned-is-peer-step-pinned
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
            (equal (fn-scar-peer-step-pinned ps live trie arts archive index verdicts config
-                                            observation injection wire-event)
+                                            observation injection wire-event fn-arena)
                   (fn-peer-step-pinned ps archive index verdicts config
-                                       observation injection wire-event)))
+                                       observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-peer-step-pinned fn-peer-step-pinned
                                    fn-pix-peer-delegate-pinned-is-peer-delegate-pinned)
                                   (fn-midx-correspondencep fn-scar-peer-sessionp fn-peer-sessionp
@@ -129,8 +129,8 @@
                                    fn-peer-step fn-peer-command fn-pgc-peer-arm)))))
 
 (defun fn-scar-auth-delegate-pinned
-    (as live trie arts archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t))
+    (as live trie arts archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   ;; PRF-222: the session's group-access view, as fn-auth-delegate-pinned
   ;; (books/nntp-auth.lisp); every view input is its argument for an
   ;; unrestricted session.
@@ -140,7 +140,7 @@
             (fn-auth-view-index as config archive index)
             verdicts
             (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-            observation injection wire-event)))
+            observation injection wire-event fn-arena)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
@@ -148,14 +148,14 @@
 (defthm fn-scar-auth-delegate-pinned-is-auth-delegate-pinned
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation injection wire-event)
-                  (fn-auth-delegate-pinned as archive index verdicts config observation injection wire-event)))
+           (equal (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation injection wire-event fn-arena)
+                  (fn-auth-delegate-pinned as archive index verdicts config observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-delegate-pinned fn-auth-delegate-pinned)
                                   (fn-midx-correspondencep fn-scar-peer-step-pinned fn-peer-step-pinned fn-node-statep)))))
 
 (defun fn-scar-auth-step-pinned
-    (as live trie arts archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t))
+    (as live trie arts archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (cond
    ((not (fn-scar-auth-sessionp as live)) (fn-post-make-result as nil nil))
    ((fn-auth-tls-eventp wire-event) (fn-auth-tls-established as))
@@ -174,24 +174,24 @@
           (let ((r (fn-auth-command as config (car tokens) (cdr tokens))))
             (if r r
               (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config
-                                        observation injection wire-event)))
+                                        observation injection wire-event fn-arena)))
         (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation
-                                  injection wire-event))))
+                                  injection wire-event fn-arena))))
    (t (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config observation
-                                injection wire-event))))
+                                injection wire-event fn-arena))))
 
 (defthm fn-scar-auth-step-pinned-is-auth-step-pinned
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-auth-step-pinned as live trie arts archive index verdicts config observation injection wire-event)
-                  (fn-auth-step-pinned as archive index verdicts config observation injection wire-event)))
+           (equal (fn-scar-auth-step-pinned as live trie arts archive index verdicts config observation injection wire-event fn-arena)
+                  (fn-auth-step-pinned as archive index verdicts config observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-step-pinned fn-auth-step-pinned)
                                   (fn-midx-correspondencep fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-auth-redeem-outcome fn-node-statep)))))
 
 ; The dispatch proper (fn-served-dispatch-core carried); fn-scar-dispatch
 ; below puts NNT-042's advance in front of it exactly as fn-served-dispatch does.
-(defun fn-scar-dispatch-core (conn event live trie arts)
-  (declare (xargs :guard t))
+(defun fn-scar-dispatch-core (conn event live trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((r (fn-scar-auth-step-pinned (fn-served-conn-session conn) live trie arts
                                (fn-served-conn-archive conn)
                                (fn-served-conn-pinned-index conn)
@@ -199,7 +199,7 @@
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
                                (fn-served-conn-injection conn)
-                               event))
+                               event fn-arena))
          (effects (fn-post-result-effects r))
          (submission (fn-post-result-submission r))
          (wire (fn-served-conn-wire conn))
@@ -232,39 +232,39 @@
 (defthm fn-scar-dispatch-core-is-served-dispatch-core
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-dispatch-core conn event live trie arts)
-                  (fn-served-dispatch-core conn event)))
+           (equal (fn-scar-dispatch-core conn event live trie arts fn-arena)
+                  (fn-served-dispatch-core conn event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-dispatch-core fn-served-dispatch-core)
                                   (fn-midx-correspondencep fn-scar-auth-step-pinned fn-auth-step-pinned fn-node-statep)))))
 
-(defun fn-scar-dispatch (conn event live trie arts)
-  (declare (xargs :guard t))
+(defun fn-scar-dispatch (conn event live trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (fn-served-advance-eventp event)
-      (let ((r (fn-scar-dispatch-core (fn-served-repin conn) event live trie arts)))
+      (let ((r (fn-scar-dispatch-core (fn-served-repin conn) event live trie arts fn-arena)))
         (if (fn-served-selectedp (fn-served-result-effects r))
             r
           (fn-served-make-result
            (fn-served-conn-with-wire conn (fn-served-conn-wire (fn-served-result-conn r)))
            (fn-served-result-effects r))))
-    (fn-scar-dispatch-core conn event live trie arts)))
+    (fn-scar-dispatch-core conn event live trie arts fn-arena)))
 
 (defthm fn-scar-dispatch-is-served-dispatch
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-dispatch conn event live trie arts)
-                  (fn-served-dispatch conn event)))
+           (equal (fn-scar-dispatch conn event live trie arts fn-arena)
+                  (fn-served-dispatch conn event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-dispatch fn-served-dispatch)
                                   (fn-midx-correspondencep fn-scar-dispatch-core
                                    fn-served-dispatch-core fn-node-statep
                                    fn-served-repin fn-served-advance-eventp
                                    fn-served-selectedp)))))
 
-(defun fn-scar-dispatch-events (conn events live trie arts)
-  (declare (xargs :guard t))
+(defun fn-scar-dispatch-events (conn events live trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (consp events)
-      (let* ((here (fn-scar-dispatch conn (car events) live trie arts))
+      (let* ((here (fn-scar-dispatch conn (car events) live trie arts fn-arena))
              (tail (fn-scar-dispatch-events (fn-served-result-conn here)
-                                              (cdr events) live trie arts)))
+                                              (cdr events) live trie arts fn-arena)))
         (fn-served-make-result
          (fn-served-result-conn tail)
          (mbe :logic (append (fn-served-result-effects here)
@@ -276,9 +276,9 @@
 (defthm fn-scar-dispatch-events-is-served-dispatch-events
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-dispatch-events conn events live trie arts)
-                  (fn-served-dispatch-events conn events)))
-  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+           (equal (fn-scar-dispatch-events conn events live trie arts fn-arena)
+                  (fn-served-dispatch-events conn events fn-arena)))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (e/d (fn-scar-dispatch-events fn-served-dispatch-events)
                            (fn-midx-correspondencep fn-scar-dispatch fn-served-dispatch fn-node-statep)))))
 
@@ -288,7 +288,7 @@
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-scar-dispatch conn event live trie arts)))))
+             (fn-served-result-conn (fn-scar-dispatch conn event live trie arts fn-arena)))))
   :hints (("Goal"
            :in-theory (disable fn-wire-fast-statep
                                fn-wire-begin-article-with-line-limit
@@ -305,22 +305,22 @@
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-scar-dispatch-events conn events live trie arts)))))
-  :hints (("Goal" :induct (fn-scar-dispatch-events conn events live trie arts)
+             (fn-served-result-conn (fn-scar-dispatch-events conn events live trie arts fn-arena)))))
+  :hints (("Goal" :induct (fn-scar-dispatch-events conn events live trie arts fn-arena)
            :in-theory (disable fn-scar-dispatch fn-wire-fast-statep))))
 
-(defun fn-scar-feed-byte (conn byte live trie arts)
-  (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))))
+(defun fn-scar-feed-byte (conn byte live trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
     (fn-scar-dispatch-events
      (fn-served-conn-with-wire conn (fn-wire-result-state fed))
-     (fn-wire-result-events fed) live trie arts)))
+     (fn-wire-result-events fed) live trie arts fn-arena)))
 
 (defthm fn-scar-feed-byte-is-served-feed-byte
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-feed-byte conn byte live trie arts)
-                  (fn-served-feed-byte conn byte)))
+           (equal (fn-scar-feed-byte conn byte live trie arts fn-arena)
+                  (fn-served-feed-byte conn byte fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-feed-byte fn-served-feed-byte)
                                   (fn-midx-correspondencep fn-scar-dispatch-events fn-served-dispatch-events fn-wire-feed-byte fn-node-statep)))))
 
@@ -329,7 +329,7 @@
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-scar-feed-byte conn byte live trie arts)))))
+             (fn-served-result-conn (fn-scar-feed-byte conn byte live trie arts fn-arena)))))
   :hints (("Goal"
            :in-theory (e/d (fn-scar-feed-byte)
                            (fn-served-feed-byte-preserves-fast-statep
@@ -349,8 +349,8 @@
                               (fn-wire-feed-byte
                                (fn-served-conn-wire conn) byte))))))))
 
-(defun fn-scar-feed-counted (conn octets live trie arts)
-  (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))
+(defun fn-scar-feed-counted (conn octets live trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-wire-fast-statep (fn-served-conn-wire conn))
                   :verify-guards nil
                   :measure (len octets)
                   :hints (("Goal" :in-theory (disable fn-scar-feed-byte
@@ -359,7 +359,7 @@
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-tls-handshakingp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (let ((here (fn-scar-feed-byte conn (car octets) live trie arts)))
+    (let ((here (fn-scar-feed-byte conn (car octets) live trie arts fn-arena)))
       ;; PKT-600: yield after the octet that completed a submission, as
       ;; fn-served-feed-counted does (books/served-tls-prefix.lisp).
       (if (fn-served-submission (fn-served-result-effects here))
@@ -367,7 +367,7 @@
            1 (fn-served-make-result (fn-served-result-conn here)
                                     (fn-served-result-effects here)))
         (let* ((tail (fn-scar-feed-counted
-                      (fn-served-result-conn here) (cdr octets) live trie arts))
+                      (fn-served-result-conn here) (cdr octets) live trie arts fn-arena))
                (tail-result (fn-served-counted-result tail)))
           (fn-served-counted-make
            (+ 1 (fn-served-counted-consumed tail))
@@ -380,9 +380,9 @@
 
 (defthm fn-scar-feed-counted-consumed-is-natural
   (natp (fn-served-counted-consumed
-         (fn-scar-feed-counted conn octets live trie arts)))
+         (fn-scar-feed-counted conn octets live trie arts fn-arena)))
   :rule-classes :type-prescription
-  :hints (("Goal" :induct (fn-scar-feed-counted conn octets live trie arts)
+  :hints (("Goal" :induct (fn-scar-feed-counted conn octets live trie arts fn-arena)
            :in-theory (e/d (fn-scar-feed-counted
                             fn-served-counted-make
                             fn-served-counted-consumed)
@@ -399,18 +399,18 @@
 (defthm fn-scar-feed-counted-is-served-feed-counted
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-feed-counted conn octets live trie arts)
-                  (fn-served-feed-counted conn octets)))
-  :hints (("Goal" :induct (fn-served-feed-counted conn octets)
+           (equal (fn-scar-feed-counted conn octets live trie arts fn-arena)
+                  (fn-served-feed-counted conn octets fn-arena)))
+  :hints (("Goal" :induct (fn-served-feed-counted conn octets fn-arena)
            :in-theory (e/d (fn-scar-feed-counted fn-served-feed-counted)
                            (fn-midx-correspondencep fn-scar-feed-byte fn-served-feed-byte
                             fn-node-statep)))))
 
-(defun fn-scar-step-counted-core (conn octets live trie arts)
-  (declare (xargs :guard
+(defun fn-scar-step-counted-core (conn octets live trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :guard
                   (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let* ((wire (fn-served-conn-wire conn))
-         (fed (fn-scar-feed-counted conn octets live trie arts))
+         (fed (fn-scar-feed-counted conn octets live trie arts fn-arena))
          (result (fn-served-counted-result fed))
          (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
     (fn-served-counted-make
@@ -434,23 +434,23 @@
 (defthm fn-scar-step-counted-core-is-served-step-counted-core
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-step-counted-core conn octets live trie arts)
-                  (fn-served-step-counted-core conn octets)))
+           (equal (fn-scar-step-counted-core conn octets live trie arts fn-arena)
+                  (fn-served-step-counted-core conn octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-counted-core fn-served-step-counted-core)
                                   (fn-midx-correspondencep fn-scar-feed-counted fn-served-feed-counted fn-node-statep)))))
 
-(defun fn-scar-step-counted-fast (conn octets live trie arts)
-  (declare (xargs :guard t))
+(defun fn-scar-step-counted-fast (conn octets live trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (fn-scar-step-counted-core conn octets live trie arts)))
+    (fn-scar-step-counted-core conn octets live trie arts fn-arena)))
 
 
 (defthm fn-scar-step-counted-fast-is-served-step-counted-fast
   (implies (and (fn-node-statep live)
                 (fn-midx-correspondencep trie arts))
-           (equal (fn-scar-step-counted-fast conn octets live trie arts)
-                  (fn-served-step-counted-fast conn octets)))
+           (equal (fn-scar-step-counted-fast conn octets live trie arts fn-arena)
+                  (fn-served-step-counted-fast conn octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-counted-fast fn-served-step-counted-fast)
                                   (fn-midx-correspondencep fn-scar-step-counted-core fn-served-step-counted-core fn-node-statep)))))
 

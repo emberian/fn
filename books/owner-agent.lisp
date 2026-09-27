@@ -311,7 +311,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 (defthm fn-oag-post-step-submission-names-the-configured-agent
   (fn-oag-names-agentp
    (fn-post-result-submission
-    (fn-nntp-post-step ps archive config observation injection wire-event))
+    (fn-nntp-post-step ps archive config observation injection wire-event fn-arena))
    (fn-inj-config-agent config))
   :hints (("Goal" :in-theory (e/d (fn-nntp-post-step)
                                   (fn-inj-decide fn-inj-injectedp
@@ -330,7 +330,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 (defthm fn-oag-peer-step-submission-names-the-configured-agent
   (fn-oag-names-agentp
    (fn-post-result-submission
-    (fn-peer-step ps archive config observation injection wire-event))
+    (fn-peer-step ps archive config observation injection wire-event fn-arena))
    (fn-inj-config-agent config))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate fn-peer-command
                                    fn-peer-transferp fn-peer-msgid-argp)
@@ -354,14 +354,14 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 (defthm fn-oag-auth-step-submission-names-the-configured-agent
   (fn-oag-names-agentp
    (fn-post-result-submission
-    (fn-auth-step as archive config observation injection wire-event))
+    (fn-auth-step as archive config observation injection wire-event fn-arena))
    (fn-inj-config-agent config))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (disable fn-auth-step fn-peer-step fn-oag-names-agentp
                                fn-oag-peer-step-submission-names-the-configured-agent)
            :cases ((fn-post-result-submission
-                    (fn-auth-step as archive config observation injection wire-event)))
+                    (fn-auth-step as archive config observation injection wire-event fn-arena)))
            :use ((:instance fn-auth-submission-is-the-delegated-submission)
                  (:instance fn-oag-peer-step-submission-names-the-configured-agent
                             (ps (fn-auth-session-base as))
@@ -379,7 +379,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (fn-oag-names-agentp
    (fn-post-result-submission
     (fn-nntp-post-step-pinned ps archive index verdicts config observation
-                              injection wire-event))
+                              injection wire-event fn-arena))
    (fn-inj-config-agent config))
   :hints (("Goal"
            :in-theory (e/d (fn-nntp-post-step-pinned)
@@ -392,7 +392,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (fn-oag-names-agentp
    (fn-post-result-submission
     (fn-peer-step-pinned ps archive index verdicts config observation
-                         injection wire-event))
+                         injection wire-event fn-arena))
    (fn-inj-config-agent config))
   :hints (("Goal"
            :in-theory (e/d (fn-peer-step-pinned fn-peer-delegate-pinned
@@ -418,7 +418,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (fn-oag-names-agentp
    (fn-post-result-submission
     (fn-auth-step-pinned as archive index verdicts config observation
-                         injection wire-event))
+                         injection wire-event fn-arena))
    (fn-inj-config-agent config))
   :hints (("Goal"
            :do-not-induct t
@@ -427,7 +427,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                                fn-oag-peer-step-pinned-submission-names-the-configured-agent)
            :cases ((fn-post-result-submission
                     (fn-auth-step-pinned as archive index verdicts config
-                                         observation injection wire-event)))
+                                         observation injection wire-event fn-arena)))
            :use ((:instance fn-auth-pinned-submission-is-the-delegated-submission)
                  ;; PRF-222: the delegate serves the session's view, whose
                  ;; posting configuration keeps the agent (fn-auth-view-config-keeps).
@@ -452,7 +452,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (implies (fn-served-connp conn)
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-served-result-effects (fn-served-dispatch-core conn event)))
+             (fn-served-result-effects (fn-served-dispatch-core conn event fn-arena)))
             (fn-inj-config-agent (fn-served-conn-config conn))))
   :hints (("Goal"
            :do-not-induct t
@@ -510,7 +510,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (implies (fn-served-connp conn)
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-served-result-effects (fn-served-dispatch conn event)))
+             (fn-served-result-effects (fn-served-dispatch conn event fn-arena)))
             (fn-inj-config-agent (fn-served-conn-config conn))))
   :hints (("Goal"
            :do-not-induct t
@@ -527,7 +527,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 
 (defthm fn-oag-dispatch-core-keeps-the-config
   (equal (fn-served-conn-config
-          (fn-served-result-conn (fn-served-dispatch-core conn event)))
+          (fn-served-result-conn (fn-served-dispatch-core conn event fn-arena)))
          (fn-served-conn-config conn))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch-core)
                                   (fn-auth-step-pinned fn-post-offeredp
@@ -536,7 +536,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 
 (defthm fn-oag-dispatch-keeps-the-config
   (equal (fn-served-conn-config
-          (fn-served-result-conn (fn-served-dispatch conn event)))
+          (fn-served-result-conn (fn-served-dispatch conn event fn-arena)))
          (fn-served-conn-config conn))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
                                   (fn-served-dispatch-core fn-served-repin
@@ -545,18 +545,18 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 
 (defthm fn-oag-dispatch-events-keep-the-config
   (equal (fn-served-conn-config
-          (fn-served-result-conn (fn-served-dispatch-events conn events)))
+          (fn-served-result-conn (fn-served-dispatch-events conn events fn-arena)))
          (fn-served-conn-config conn))
-  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (disable fn-served-dispatch))))
 
 (defthm fn-oag-dispatch-events-submission-names-the-configured-agent
   (implies (fn-served-connp conn)
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-served-result-effects (fn-served-dispatch-events conn events)))
+             (fn-served-result-effects (fn-served-dispatch-events conn events fn-arena)))
             (fn-inj-config-agent (fn-served-conn-config conn))))
-  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (disable fn-served-dispatch fn-served-connp
                                fn-oag-names-agentp fn-served-effectsp
                                fn-served-submission))))
@@ -566,7 +566,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                 (equal agent (fn-inj-config-agent (fn-served-conn-config conn))))
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-served-result-effects (fn-served-dispatch-events conn events)))
+             (fn-served-result-effects (fn-served-dispatch-events conn events fn-arena)))
             agent))
   :hints (("Goal" :in-theory (disable fn-served-dispatch-events fn-served-connp
                                       fn-oag-names-agentp))))
@@ -585,9 +585,9 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 
 (defthm fn-oag-feed-keeps-the-config
   (equal (fn-served-conn-config
-          (fn-served-result-conn (fn-served-feed conn octets)))
+          (fn-served-result-conn (fn-served-feed conn octets fn-arena)))
          (fn-served-conn-config conn))
-  :hints (("Goal" :induct (fn-served-feed conn octets)
+  :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
            :in-theory (e/d (fn-served-feed) (fn-served-dispatch-events fn-wire-feed-byte
                                fn-wire-statep)))))
 
@@ -595,9 +595,9 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (implies (fn-served-connp conn)
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-served-result-effects (fn-served-feed conn octets)))
+             (fn-served-result-effects (fn-served-feed conn octets fn-arena)))
             (fn-inj-config-agent (fn-served-conn-config conn))))
-  :hints (("Goal" :induct (fn-served-feed conn octets)
+  :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
            :in-theory (e/d (fn-served-feed) (fn-served-dispatch-events fn-wire-feed-byte
                                fn-wire-statep fn-served-connp
                                fn-oag-names-agentp fn-served-effectsp
@@ -608,14 +608,14 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                 (equal agent (fn-inj-config-agent (fn-served-conn-config conn))))
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-served-result-effects (fn-served-step conn octets)))
+             (fn-served-result-effects (fn-served-step conn octets fn-arena)))
             agent))
   :hints (("Goal" :in-theory (e/d (fn-served-step)
                                   (fn-served-feed fn-served-connp
                                    fn-oag-names-agentp fn-served-effectsp
                                    fn-served-submission))
            :use ((:instance fn-served-submission-of-append
-                            (left (fn-served-result-effects (fn-served-feed conn octets)))
+                            (left (fn-served-result-effects (fn-served-feed conn octets fn-arena)))
                             (right (list (fn-nntp-close-effect))))))))
 
 ; -----------------------------------------------------------------------------
@@ -631,7 +631,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
             (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o))))
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-own-tls-result-effects (fn-own-read-tls-prefix o id octets)))
+             (fn-own-tls-result-effects (fn-own-read-tls-prefix o id octets fn-arena)))
             (fn-inj-config-agent
              (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o))))))
   :hints (("Goal"
@@ -655,7 +655,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                                            (fn-served-step-counted
                                             (fn-own-tls-served-conn
                                              o (fn-own-find-conn id (fn-own-conns o)))
-                                            octets))
+                                            octets fn-arena))
                                           octets))
                             (agent (fn-inj-config-agent
                                     (fn-own-conn-config
@@ -675,7 +675,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
     (implies (fn-served-connp (fn-own-tls-served-conn (fn-ocfg-owner oc) conn))
              (fn-oag-names-agentp
               (fn-served-submission
-               (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets)))
+               (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
               (fn-inj-config-agent (fn-own-conn-config conn)))))
   :hints (("Goal"
            :in-theory (e/d (fn-ocfg-read-tls-prefix fn-own-tls-make-result

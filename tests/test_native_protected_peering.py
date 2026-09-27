@@ -25,6 +25,7 @@ import unittest
 from tests import test_native_peering as peer
 from tests.test_feed_journal_live import BookBridge
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ACTUAL_CORE = peer.ACTUAL_CORE
 ACTUAL_LAUNCHER = peer.ACTUAL_LAUNCHER
@@ -216,7 +217,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             self.assertTrue(response.startswith(b"382 "), response)
             context = ssl.create_default_context(cafile=str(node["certificate"]))
             with context.wrap_socket(raw, server_hostname="localhost") as tls:
-                with tls.makefile("rwb", buffering=0) as stream:
+                with whole_stream(tls) as stream:
                     stream.write(b"AUTHINFO USER " + node["login"].encode() + b"\r\n")
                     response = stream.readline()
                     self.assertTrue(response.startswith(b"381 "), response)
@@ -239,7 +240,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
     def unauthenticated_offer(self, node, message_id):
         """Probe the protected ingress after TLS, without AUTHINFO."""
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as raw:
-            stream = raw.makefile("rwb", buffering=0)
+            stream = whole_stream(raw)
             greeting = stream.readline()
             self.assertTrue(greeting.startswith((b"200 ", b"201 ")), greeting)
             stream.write(b"STARTTLS\r\n")
@@ -248,7 +249,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             stream.close()
             context = ssl.create_default_context(cafile=str(node["certificate"]))
             with context.wrap_socket(raw, server_hostname="localhost") as tls:
-                with tls.makefile("rwb", buffering=0) as protected:
+                with whole_stream(tls) as protected:
                     protected.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
                     return protected.readline()
 

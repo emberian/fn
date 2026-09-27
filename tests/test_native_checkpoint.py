@@ -13,6 +13,7 @@ import unittest
 
 from tools import run_store
 from tests.native_process import wait_for_announcement, stop_and_diagnostics
+from tools.wire_stream import whole_stream
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -367,7 +368,7 @@ class NativeCheckpointTests(unittest.TestCase):
             wait_for_announcement(owner, b"LISTENING ")
             with socket.create_connection(("127.0.0.1", target_port),
                                           timeout=30) as sock:
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(("ARTICLE {}\r\n".format(msgid)).encode())
                     self.assertTrue(stream.readline().startswith(b"220 "))
@@ -798,7 +799,7 @@ class NativeCheckpointTests(unittest.TestCase):
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
                 sock.settimeout(10)
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
 
                     def read_pinned_article():
@@ -997,7 +998,7 @@ class NativeCheckpointTests(unittest.TestCase):
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
                 sock.settimeout(getattr(self, "served_timeout", 10))
-                with sock.makefile("rwb", buffering=0) as stream:
+                with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
 
                     def command(line):

@@ -8347,6 +8347,14 @@
         {
           "kind": "theorem",
           "name": "fn-cbud-launch-decide-keeps-the-store-figure"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-step-read-octets-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-read-covers-the-step"
         }
       ]
     },
@@ -9832,40 +9840,6 @@
       ]
     },
     {
-      "id": "PRF-266",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-scw-window-count-is-fit"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cverb-decide-window-is-cverb-decide"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-capture-link-window-is-capture-link"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rcls-decide-is-rclp-decide"
-        }
-      ]
-    },
-    {
-      "id": "PRF-267",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-srb-admitted-history-is-within-the-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-srb-within-h-is-within-the-bound"
-        }
-      ]
-    },
-    {
       "id": "PRF-270",
       "events": [
         {
@@ -9907,6 +9881,419 @@
           "kind": "theorem",
           "name": "fn-lgr-decide-checkpoints-the-rewrite",
           "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/store-log-reclaim-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-admits-only-inspect-and-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-next-otherwise-is-ocm-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-pick-keeps-the-ocm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-complete-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-barrier-only-from-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-staged-only-by-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-until-completed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-first-when-not-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waiting-picks-someone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-other-pick-clears-lasti"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-members-told-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-failed-barrier-stops-telling-no-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-rendered-only-in-a-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-otherwise-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-uncertain-word-told-uncertain"
+        }
+      ]
+    },
+    {
+      "id": "PRF-272",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-open-only-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-commit-event-completes-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-complete-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-sync-only-when-none-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-opens-only-behind-a-sync"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-start-next-only-behind-a-sync"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-is-ocs-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-in-flight-admits-only-inspect-and-commit"
+        }
+      ]
+    },
+    {
+      "id": "PRF-273",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-reserve-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-order-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-suffix-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        }
+      ]
+    },
+    {
+      "id": "PRF-268",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-extend-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-extension-written-crash-reads-the-committed-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olr-extension-target-is-an-extent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-classify-by-what-is-known"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-segment-is-the-empty-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bsi-log-init-program-establishes-the-empty-log"
+        }
+      ]
+    },
+    {
+      "id": "PRF-269",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-intent-reconcile-kind-reads-no-txid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-intent-reuse-is-a-fresh-intent"
+        }
+      ]
+    },
+    {
+      "id": "PRF-274",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-publish-is-publish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-publish-carries-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-configure-is-configure-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-configure-config-is-store-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-complete-is-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-ready-cst-relation-is-history-relation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-275",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sl-list-of-fn-sl-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-list-of-fn-sl-snoc"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-snoc-of-fn-sl-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-count-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-last-is-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-nth-is-nth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-make-fields-is-make"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-make-fields-snoc-records-is-make"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-make-fields-snoc-successes-is-make"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcar-files-candidatep-is-candidatep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcar-records-count-is-sbud-used"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccar-seek-at-is-seek"
+        }
+      ]
+    },
+    {
+      "id": "PRF-276",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apc-parse-is-article-parse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-take-is-take-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-intern-row-at-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-held-facts-of-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-own-finish-is-ccar-own-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-own-outcome-is-acar-own-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-submission-intent-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-carrier-form-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-current-plan-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apc-filing-plan-is-reference"
+        }
+      ]
+    },
+    {
+      "id": "PRF-277",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-carryp-of-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare"
+        }
+      ]
+    },
+    {
+      "id": "PRF-278",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-row-event-ix-is-row-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-refresh-ix-is-own-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-own-finish-is-ccar-own-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-ocfg-complete-is-ccar-ocfg-complete"
+        }
+      ]
+    },
+    {
+      "id": "PRF-279",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scw-window-count-is-fit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-decide-window-is-cverb-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-capture-link-window-is-capture-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcls-decide-is-rclp-decide"
+        }
+      ]
+    },
+    {
+      "id": "PRF-280",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-srb-admitted-history-is-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srb-within-h-is-within-the-bound"
+        }
+      ]
+    },
+    {
+      "id": "PRF-281",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arp-add-page-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arp-write-octet-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arp-seal-list-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-payload{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-clear{correspondence}"
         }
       ]
     }
