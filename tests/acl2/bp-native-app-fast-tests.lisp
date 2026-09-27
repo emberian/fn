@@ -2,6 +2,7 @@
 (include-book "../../books/bp-native-app-fast")
 (include-book "bp-native-app-tests")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; Recovery is the one deep validation boundary.  Its successful result carries
 ; the invariant used by every subsequent served projection.
@@ -115,3 +116,67 @@
 (assert-event
  (equal (fn-bpaj-config-status-fast nil "dtn://b.lab/fn" "policy-v1" "node-b")
         (fn-bpaj-config-status nil "dtn://b.lab/fn" "policy-v1" "node-b")))
+
+; -----------------------------------------------------------------------------
+; PRF-220.
+; fn-bpaj-record-lookup-fast-found-is-an-accepted-match (books/bp-native-app-fast.lisp).
+; Positive witness: the receiver fixture's Store finds the request's record for the request.
+(defconst *bpaj-lookup* (fn-bpaj-record-lookup-fast *bpr-store* *bpaj-request*))
+(assert-event (and (fn-sn-statep *bpr-store*) (fn-ceis-indexedp *bpr-store*)
+                   (equal (car *bpaj-lookup*) :found)))
+(assert-event
+ (let ((record (cadr *bpaj-lookup*)))
+   (and (fn-record-p record)
+        (equal (fn-record-payload record) (fn-bpa-request-article *bpaj-request*))
+        (equal (fn-record-content-subject record)
+               (fn-bpa-request-subject *bpaj-request*))
+        (fn-bpr-store-record-acceptedp *bpr-store* record))))
+; Without fn-sn-statep (a CORRUPTED node: the Store's node with a junk binding after its real
+; ones, which no host transition builds): the index still finds the
+; record and the carried check accepts it; the checked Store predicate does
+; not, so the conclusion fails.
+(defconst *bpaj-live-node* (fn-sn-node *bpr-store*))
+(defconst *bpaj-bad-node*
+  (fn-node-make-state (fn-node-acceptance *bpaj-live-node*)
+                      (fn-node-retention *bpaj-live-node*)
+                      (fn-node-stage *bpaj-live-node*)
+                      (append (fn-node-bindings *bpaj-live-node*) (list 'junk))))
+(defconst *bpaj-bad-store* (update-nth 3 *bpaj-bad-node* *bpr-store*))
+(assert-event (and (not (fn-sn-statep *bpaj-bad-store*))
+                   (fn-ceis-indexedp *bpaj-bad-store*)
+                   (equal (car (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))
+                          :found)
+                   (not (fn-bpr-store-record-acceptedp
+                         *bpaj-bad-store*
+                         (cadr (fn-bpaj-record-lookup-fast *bpaj-bad-store*
+                                                           *bpaj-request*))))))
+(must-fail
+ (thm (implies (and (fn-ceis-indexedp *bpaj-bad-store*)
+                    (equal (car (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))
+                           :found))
+               (fn-bpr-store-record-acceptedp
+                *bpaj-bad-store*
+                (cadr (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))))))
+; Without fn-ceis-indexedp (a STALE index, a state no host transition
+; reaches): the Store with its history intact and an index built from the
+; same record at another transaction id.  The Store recognizer holds; the
+; lookup finds that record (the node's article and binding agree with it);
+; it is not in the history, so the checked predicate refuses it.
+(defconst *bpaj-stale-record* (update-nth 0 99 (cadr *bpaj-lookup*)))
+(defconst *bpaj-cut-store*
+  (update-nth 13 (fn-cei-build (list *bpaj-stale-record*)) *bpr-store*))
+(assert-event (and (fn-sn-statep *bpaj-cut-store*)
+                   (not (fn-ceis-indexedp *bpaj-cut-store*))
+                   (equal (car (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))
+                          :found)
+                   (not (fn-bpr-store-record-acceptedp
+                         *bpaj-cut-store*
+                         (cadr (fn-bpaj-record-lookup-fast *bpaj-cut-store*
+                                                           *bpaj-request*))))))
+(must-fail
+ (thm (implies (and (fn-sn-statep *bpaj-cut-store*)
+                    (equal (car (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))
+                           :found))
+               (fn-bpr-store-record-acceptedp
+                *bpaj-cut-store*
+                (cadr (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))))))

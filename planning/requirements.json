@@ -402,7 +402,8 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/lanes/HANDOFF-w13-storage-initializer.md",
         "planning/lanes/HANDOFF-w13-transaction-name-codec.md",
-        "planning/evidence/native-initializer-composition-w18-2026-09-21.md"
+        "planning/evidence/native-initializer-composition-w18-2026-09-21.md",
+        "planning/evidence/power-loss-2026-09-26.md"
       ],
       "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; the followup classifier covers expected-EEXIST links, and separate link/barrier handlers preserve uncertainty for post-link errors. Integrated raw-handler tests also exercise the named post-link error cut. Whole-image validation of these later corrections remains separate.",
       "keystones": [
@@ -516,7 +517,8 @@
         "planning/evidence/m5-profile-upgrade-2026-09-24.md",
         "books/store-budget-naming.lisp",
         "tests/acl2/store-budget-naming-tests.lisp",
-        "planning/evidence/bounds-p1-2026-09-25.md"
+        "planning/evidence/bounds-p1-2026-09-25.md",
+        "planning/evidence/power-loss-2026-09-26.md"
       ],
       "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, with designated process-death cuts represented in the experimental model. Complete current-host syscall/cut fidelity remains open: the metadata initializer omits lock/config-history operations and helper parent barriers (PRF-044). Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; the followup classifier covers expected-EEXIST links, and separate link/barrier handlers preserve uncertainty for post-link errors. Integrated raw-handler tests also exercise the named post-link error cut. Whole-image validation of these later corrections remains separate. Native transaction recovery now observes a bounded namespace and consumes ACL2-issued sequence/name pairs before binding each decoded record. The source-matched developer store image passed malformed-name and sequence-mismatch cases; configuration namespace recovery and general physical correspondence remain open. Native publication uncertainty now has focused byte-transition and exact fn-sn-io fence theorems for issued link, issued rename, and both authority-directory barrier errors. This is logical K7 scope; the exact-octet native SIGKILL run, general K0/K5/K6/K8, filesystem qualification and hardware power-loss correspondence remain open. 2026-09-22 (t5/sweep, campaign finding F2): recovery sweeps every staging prefix a host program uses, in bounded rounds decided by fn-sn-sweep-round; a store of N crash orphans opens for every N (fn-sn-sweep-rounds-collect-every-orphan), and the sweep is a stutter of the byte relation at every cut (K-sweep, PRF-041). More than one observation of unrecognized staging names is refused (exit 1), not faulted.",
       "keystones": [
@@ -1079,7 +1081,8 @@
         "PRF-046",
         "PRF-081",
         "PRF-214",
-        "PRF-215"
+        "PRF-215",
+        "PRF-216"
       ],
       "verification": [
         "proof",
@@ -1455,7 +1458,8 @@
         "PRF-094",
         "PRF-188",
         "PRF-191",
-        "PRF-192"
+        "PRF-192",
+        "PRF-218"
       ],
       "verification": [
         "proof",
@@ -1553,7 +1557,8 @@
         "PRF-087",
         "PRF-106",
         "PRF-144",
-        "PRF-193"
+        "PRF-193",
+        "PRF-220"
       ],
       "verification": [
         "proof",
@@ -2553,7 +2558,8 @@
         "PRF-128",
         "PRF-132",
         "PRF-144",
-        "PRF-139"
+        "PRF-139",
+        "PRF-220"
       ],
       "verification": [
         "proof",
@@ -2758,7 +2764,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-201"
+        "PRF-201",
+        "PRF-219"
       ],
       "verification": [
         "proof",
@@ -2767,7 +2774,8 @@
       ],
       "evidence": [
         "planning/evidence/rep-wave-d-2-2026-09-26.md",
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "planning/evidence/acceptance-payload-arena-2026-09-26.md"
       ],
       "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator. Partial (catalog-slice, 2026-09-26): the held record fn-held-p carries a natp handle with the byte facts and the context (books/catalog-record.lisp), alpha (fn-held-wire-of) and the two interns are proved (fn-cat-intern-list-materializes); the acceptance state's payloads and the transition over the held record are PKT-585.",
       "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."
@@ -3409,7 +3417,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-186"
+        "PRF-186",
+        "PRF-209"
       ],
       "verification": [
         "proof",
@@ -3419,9 +3428,10 @@
         "books/node-config.lisp",
         "books/config-physical-replay.lisp",
         "books/store-checkpoint-open.lisp",
-        "planning/evidence/caps-to-profile-2026-09-26.md"
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "books/config-carried-candidate.lisp"
       ],
-      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). Open: a configuration checkpoint so an open reads only the records after it (PKT-510)."
+      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold (PRF-209, SCN-140): one open and one candidate open per request. Open: a configuration checkpoint so an open reads only the records after it, and the candidate open extended from the open (PKT-510, PKT-601)."
     },
     {
       "id": "REP-013",
@@ -3873,6 +3883,28 @@
         "planning/evidence/tls-reload-2026-09-26.md"
       ],
       "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
+    },
+    {
+      "id": "NNT-044",
+      "title": "Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut",
+      "specification": "specs/nntp.md#pipelined-articles-nnt-044",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-213"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/served-tls-prefix.lisp",
+        "books/served-span.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-pipelining-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
     }
   ]
 }

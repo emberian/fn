@@ -72,6 +72,29 @@ set, exact record, candidate replay/open result and generated final name."
       (fnn-refuse "ACL2 refused administrative publication: ~a"
                   (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
+(defun fnn-admin-authorize-carried (store config-records record observed-names)
+  "The offline request's authorization from the open's carried fold
+(PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
+fn-store-cfg-native-admin-authorize over the history the open replayed
+(books/config-carried-candidate.lisp
+fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization) without
+replaying it again.  When ACL2 answers NIL (no carried open, or a
+configuration history that is not the open's) the request authorizes over the
+history it read, as before."
+  (let ((result (fnn-core-state
+                 'fn-store-cfg-native-admin-authorize-carried
+                 (fnn-store-frontier store)
+                 (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
+                 (fnn-admin-lock-observation store)
+                 (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
+                         observed-names)
+                 (fnn-store-config store))))
+    (cond ((null result) nil)
+          ((eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
+           result)
+          (t (fnn-refuse "ACL2 refused administrative publication: ~a"
+                         (fnn-core 'fn-native-admin-host-publication-reason result))))))
+
 (defun fnn-admin-stage-path (store)
   ; Reuse the admitted `.stage-' ephemeral namespace.  Recovery's ACL2-owned
   ; sweep recognizes this exact prefix; administrative publication has no
@@ -295,7 +318,9 @@ turning a refusal into a physical mutation."
                (let* ((observation (fnn-config-record-observation store))
                       (names (mapcar #'car observation))
                       (config-records (fnn-config-records-from-observation observation))
-                      (authorization (fnn-admin-authorize store records config-records record names)))
+                      (authorization
+                        (or (fnn-admin-authorize-carried store config-records record names)
+                            (fnn-admin-authorize store records config-records record names))))
                  (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
                  ; The durable publisher is the acceptance boundary.  Verify
                  ; its candidate under the retained exclusive lock: releasing

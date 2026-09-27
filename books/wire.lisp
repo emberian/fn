@@ -381,11 +381,37 @@
 
 (in-theory (disable (:d fn-wire-state-shapep) (:d fn-wire-make-state) (:d fn-wire-state-mode) (:d fn-wire-state-line-rev) (:d fn-wire-state-line-len) (:d fn-wire-state-body-rev) (:d fn-wire-state-pending-crp) (:d fn-wire-state-body-size) (:d fn-wire-state-line-limit) (:d fn-wire-state-body-limit)))
 
-(defun fn-wire-list-length (xs)
-  (declare (xargs :guard t))
+;; The length of one article line, for the body budget (fn-wire-after-line).
+;; The executable is a loop: the profile admits a line as long as the article
+;; (fn-wire-article-line-limit), and the recursion it replaced took one
+;; control-stack frame per octet of the line, so an article of one 4 MiB
+;; line stopped the owner at 1 MiB of stack (lane served-line-iterative,
+;; D27; planning/evidence/served-line-iterative-2026-09-26.md).
+(defun fn-wire-list-length-onto (xs n)
+  (declare (xargs :guard (natp n)))
   (if (consp xs)
-      (+ 1 (fn-wire-list-length (cdr xs)))
-    0))
+      (fn-wire-list-length-onto (cdr xs) (+ 1 n))
+    n))
+
+(defun fn-wire-list-length (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (+ 1 (fn-wire-list-length (cdr xs)))
+                0)
+       :exec (fn-wire-list-length-onto xs 0)))
+
+(local (defthm fn-wire-list-length-onto-adds
+         (implies (acl2-numberp n)
+                  (equal (fn-wire-list-length-onto xs n)
+                         (+ n (fn-wire-list-length xs))))))
+
+;  KEYSTONE (D27, constant stack on the served POST's line budget).  The
+; loop the host runs is the length the specification defines.
+(defthm fn-wire-list-length-onto-is-list-length
+  (equal (fn-wire-list-length-onto xs 0)
+         (fn-wire-list-length xs)))
+
+(verify-guards fn-wire-list-length)
 
 (defun fn-wire-line-cost (line)
   (declare (xargs :guard t))
