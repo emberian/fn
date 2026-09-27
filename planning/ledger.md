@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1269 |
 | Certification roots in the Makefile | 1222 |
 | Books inside the root closure | 1258 |
-| `defthm` and `defthmd` events | 18866 |
-| `defun` events | 12889 |
+| `defthm` and `defthmd` events | 18867 |
+| `defun` events | 12890 |
 | Functions with verified guards | 2474 |
-| Functions declared `:verify-guards nil` and never verified | 1522 |
+| Functions declared `:verify-guards nil` and never verified | 1523 |
 | Functions left at the default with an explicit guard | 7106 |
 | Functions left at the default with no guard | 1787 |
-| `assert-event` checks | 18451 |
+| `assert-event` checks | 18452 |
 | `must-fail` checks | 2182 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 221 |
 | Include-hygiene warnings | 1353 |
-| Host-names warnings | 1392 |
+| Host-names warnings | 1395 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -720,7 +720,7 @@ that `make certify` requests.
 | `books/store-log-route-phases.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-log-route-programs.lisp` | root | 5 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-log-route.lisp` | root | 27 | 11 | 0/3/8/0 | 0 | 0 | 0 |
-| `books/store-log-segments.lisp` | root | 29 | 29 | 0/8/20/1 | 0 | 0 | 0 |
+| `books/store-log-segments.lisp` | root | 30 | 30 | 0/9/20/1 | 0 | 0 | 0 |
 | `books/store-log-txid.lisp` | root | 25 | 7 | 0/1/6/0 | 0 | 0 | 0 |
 | `books/store-log.lisp` | root | 104 | 29 | 0/19/10/0 | 0 | 0 | 2 |
 | `books/store-maintenance-reserve.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -1283,7 +1283,7 @@ that `make certify` requests.
 | `tests/acl2/store-log-reclaim-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 3 | 0 |
 | `tests/acl2/store-log-route-programs-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 5 | 0 | 0 |
 | `tests/acl2/store-log-route-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 31 | 2 | 0 |
-| `tests/acl2/store-log-segments-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 59 | 4 | 0 |
+| `tests/acl2/store-log-segments-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 60 | 4 | 0 |
 | `tests/acl2/store-log-tests.lisp` | root | 0 | 14 | 0/8/6/0 | 16 | 0 | 0 |
 | `tests/acl2/store-log-txid-tests.lisp` | root | 0 | 16 | 0/13/3/0 | 5 | 0 | 0 |
 | `tests/acl2/store-maintenance-reserve-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 2 | 0 |
