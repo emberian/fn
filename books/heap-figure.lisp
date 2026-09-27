@@ -9,8 +9,9 @@
 ; representation, plus the process's fixed terms, and it is refused by name
 ; when the machine cannot hold it.  The host observes (the core file's length,
 ; its collection trigger, the machine's memory in each form the OS gives it);
-; ACL2 decides.  The host entries: host/native/heap.lisp `fnn-heap-decision'
-; (the installed launcher's probe, `status' and `health').
+; ACL2 decides.  The host entries: host/native/heap.lisp `fnn-heap-reservation'
+; (the installed launcher's probe, through books/heap-reservation.lisp) and
+; `fnn-heap-print-store-line' (`status' and `health': fn-heap-status-decide).
 ;
 ; THE FIGURE, in octets (`fn-heap-figure-octets'):
 ;
