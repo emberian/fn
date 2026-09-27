@@ -191,12 +191,12 @@
 (local
  (defthm store-event-fields-of-a-record
    (implies (fn-record-p r)
-            (and (fn-store-event-p r)
-                 (equal (fn-store-event-sequence r) (fn-record-sequence r))
-                 (equal (fn-store-event-txid r) (fn-record-txid r))
-                 (equal (fn-store-event-generation r) (fn-record-generation r))))
-   :hints (("Goal" :in-theory (enable fn-store-event-p fn-store-event-sequence
-                                      fn-store-event-txid fn-store-event-generation)))))
+            (and (fn-wire-event-p r)
+                 (equal (fn-wire-event-sequence r) (fn-record-sequence r))
+                 (equal (fn-wire-event-txid r) (fn-record-txid r))
+                 (equal (fn-wire-event-generation r) (fn-record-generation r))))
+   :hints (("Goal" :in-theory (enable fn-wire-event-p fn-wire-event-sequence
+                                      fn-wire-event-txid fn-wire-event-generation)))))
 
 (local
  (defthm rewritten-event-facts
@@ -205,20 +205,20 @@
               (and (fn-cbor-octet-listp new)
                    (fn-cbor-octet-listp octets)
                    (equal (car (fn-store-event-decode-exact octets)) :ok)
-                   (fn-store-event-p (fn-cc-nth 1 (fn-store-event-decode-exact octets)))
+                   (fn-wire-event-p (fn-cc-nth 1 (fn-store-event-decode-exact octets)))
                    (equal (car (fn-store-event-decode-exact new)) :ok)
-                   (fn-store-event-p (fn-cc-nth 1 (fn-store-event-decode-exact new)))
-                   (equal (fn-store-event-sequence
+                   (fn-wire-event-p (fn-cc-nth 1 (fn-store-event-decode-exact new)))
+                   (equal (fn-wire-event-sequence
                            (fn-cc-nth 1 (fn-store-event-decode-exact new)))
-                          (fn-store-event-sequence
+                          (fn-wire-event-sequence
                            (fn-cc-nth 1 (fn-store-event-decode-exact octets))))
-                   (equal (fn-store-event-txid
+                   (equal (fn-wire-event-txid
                            (fn-cc-nth 1 (fn-store-event-decode-exact new)))
-                          (fn-store-event-txid
+                          (fn-wire-event-txid
                            (fn-cc-nth 1 (fn-store-event-decode-exact octets))))
-                   (equal (fn-store-event-generation
+                   (equal (fn-wire-event-generation
                            (fn-cc-nth 1 (fn-store-event-decode-exact new)))
-                          (fn-store-event-generation
+                          (fn-wire-event-generation
                            (fn-cc-nth 1 (fn-store-event-decode-exact octets)))))))
    :hints (("Goal" :in-theory (disable fn-rclp-event fn-rclp-tombstoned
                                        fn-rclp-event-decodes-to-the-tombstoned-record)
