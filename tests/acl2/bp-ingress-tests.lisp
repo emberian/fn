@@ -62,6 +62,27 @@
 (defconst *bpi-entry-rejected* (bpi-entry *bpi-reserved* *bpi-policy* *bpi-context* '(1 2 3)))
 (assert-event (equal (fn-bpi-result-kind (nth 0 *bpi-entry-rejected*)) :rejected))
 (assert-event (equal (nth 1 *bpi-entry-rejected*) 0))
+; The host's two calls (host/bp-ingress-host.lisp fn-bpi-host-prepare reads
+; the arena's count; the host then seals the ADU it names) are the entry
+; (fn-bpi-ingress-prepare-interned-unfolds): same result, same arena reads.
+(defun bpi-host-in (store policy context adu fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((r (fn-bpi-ingress-prepare store policy context adu (fn-arena-count fn-arena)))
+         (fn-arena (if (equal (fn-bpi-result-kind r) :prepared)
+                       (fn-arena-seal-list adu fn-arena)
+                     fn-arena)))
+    (mv (list r (fn-arena-count fn-arena)
+              (fn-row-wire-of (fn-bpi-result-record r) fn-arena)
+              (fn-row-bytes (fn-bpi-result-record r) fn-arena))
+        fn-arena)))
+(defun bpi-host (store policy context adu)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (x fn-arena) (bpi-host-in store policy context adu fn-arena) x)))
+(assert-event (equal (bpi-host *bpi-reserved* *bpi-policy* *bpi-context* *bpi-adu*)
+                     *bpi-entry*))
+(assert-event (equal (bpi-host *bpi-reserved* *bpi-policy* *bpi-context* '(1 2 3))
+                     *bpi-entry-rejected*))
 ; The durable query over an arena holding the ADU at handle 0.
 (defun bpi-durable-in (store policy context adu fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))

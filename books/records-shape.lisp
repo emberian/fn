@@ -132,10 +132,34 @@
   (declare (xargs :guard (natp bound)))
   (and (consp xs) (<= (len xs) bound)))
 
+; The string recognizers below execute over the string in place (lane
+; post-alloc, 2026-09-27): their logical definitions convert the string to its
+; octet list (a coerce and one cons per character), and every held row's
+; recognizer (fn-held-p) ran them on each accessor dispatch -- 35 KB per
+; stored record of a standalone verdict's history fold, 0.3 MB of an owner
+; POST.  An ACL2 character has a code in 0..255, so the octet-domain test is
+; stringp, the length bound is `length', and the ASCII test walks the string
+; by index (fn-record-ascii-from).  The :exec branches are equal to the
+; :logic ones for every input (the guards are t); the verify-guards events
+; below prove it.
+(defun fn-record-ascii-from (text i)
+  (declare (xargs :guard (and (stringp text) (natp i))
+                  :measure (nfix (- (length text) (nfix i)))
+                  :verify-guards nil))
+  (if (and (stringp text) (natp i) (< i (length text)))
+      (and (<= (char-code (char text i)) 127)
+           (fn-record-ascii-from text (1+ i)))
+    t))
+
 (defun fn-record-msgidp (text)
-  (and (fn-record-ascii-stringp text)
-       (fn-record-nonempty-at-mostp (fn-record-string-octets text)
-                                    *fn-record-max-msgid*)))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (and (fn-record-ascii-stringp text)
+                   (fn-record-nonempty-at-mostp (fn-record-string-octets text)
+                                                *fn-record-max-msgid*))
+       :exec (and (stringp text)
+                  (< 0 (length text))
+                  (<= (length text) *fn-record-max-msgid*)
+                  (fn-record-ascii-from text 0))))
 
 ; The worst-case encoded length of a record with PAYLOAD-OCTETS of payload
 ; and GROUP-COUNT groups whose integer fields fit u32: what a profile's
@@ -385,9 +409,13 @@
   (fn-record-groupsp groups))
 
 (defun fn-record-metadata-bytes-p (text)
-  (and (fn-record-octet-stringp text)
-       (fn-record-nonempty-at-mostp (fn-record-string-octets text)
-                                    *fn-record-max-metadata*)))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (and (fn-record-octet-stringp text)
+                   (fn-record-nonempty-at-mostp (fn-record-string-octets text)
+                                                *fn-record-max-metadata*))
+       :exec (and (stringp text)
+                  (< 0 (length text))
+                  (<= (length text) *fn-record-max-metadata*))))
 
 (defun fn-record-uint32p (n)
   (and (natp n) (<= n *fn-cbor-max-uint*)))
@@ -540,14 +568,84 @@
 (verify-guards fn-record-ascii-stringp)
 (verify-guards fn-record-octet-stringp)
 (verify-guards fn-record-nonempty-at-mostp)
-(verify-guards fn-record-msgidp)
+;; The in-place recognizers' :exec branches (fn-record-msgidp,
+;; fn-record-metadata-bytes-p): a string's characters are octets, its octet
+;; list is as long as the string, and the index walk from I is the ASCII test
+;; of the octets past I.
+(local (defthm fn-record-string-octets-aux-is-octets
+  (fn-cbor-octet-listp (fn-record-string-octets-aux chars))))
+
+(local (defthm fn-record-string-octets-aux-len
+  (equal (len (fn-record-string-octets-aux chars)) (len chars))))
+
+(local (defthm fn-record-string-octets-aux-consp
+  (equal (consp (fn-record-string-octets-aux chars)) (consp chars))))
+
+(local (defthm fn-record-positive-len-is-consp
+  (equal (< 0 (len x)) (consp x))))
+
+(local (include-book "arithmetic/top" :dir :system))
+
+(local (defthm fn-record-shift-less
+  (implies (and (integerp i) (integerp n))
+           (equal (< (+ -1 i) n) (< i (+ 1 n))))
+  :hints (("Goal" :cases ((< i (+ 1 n)))))))
+
+(local (defthm fn-record-consp-of-nthcdr
+  (implies (natp i)
+           (equal (consp (nthcdr i l)) (< i (len l))))
+  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr len)))))
+
+(local (defthm fn-record-nthcdr-past-true-list
+  (implies (and (true-listp l) (natp i) (<= (len l) i))
+           (equal (nthcdr i l) nil))
+  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr len)))))
+
+(local (defthm fn-record-car-of-nthcdr
+  (equal (car (nthcdr i l)) (nth i l))
+  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr nth)))))
+
+(local (defthm fn-record-cdr-of-nthcdr
+  (equal (cdr (nthcdr i l)) (nthcdr i (cdr l)))
+  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr)))))
+
+(local (defthm fn-record-nthcdr-of-1+
+  (implies (natp i)
+           (equal (nthcdr (+ 1 i) l) (nthcdr i (cdr l))))
+  :hints (("Goal" :induct (nthcdr i l) :in-theory (enable nthcdr)))))
+
+(local (defthm fn-record-character-listp-true-listp
+  (implies (character-listp l) (true-listp l))))
+
+(local (defthm fn-record-coerce-true-listp
+  (true-listp (coerce text 'list))))
+
+(local (defthm fn-record-ascii-from-is-ascii-octet-listp-of-nthcdr
+  (implies (and (stringp text) (natp i))
+           (equal (fn-record-ascii-from text i)
+                  (fn-record-ascii-octet-listp
+                   (fn-record-string-octets-aux (nthcdr i (coerce text 'list))))))
+  :hints (("Goal" :induct (fn-record-ascii-from text i)
+           :in-theory (e/d (fn-record-ascii-from) (nth fn-record-shift-less))
+           :expand ((fn-record-string-octets-aux (nthcdr i (coerce text 'list)))
+                    (fn-record-ascii-octet-listp
+                     (fn-record-string-octets-aux
+                      (nthcdr i (coerce text 'list)))))))))
+
+(verify-guards fn-record-ascii-from)
+
+(verify-guards fn-record-msgidp
+  :hints (("Goal" :in-theory (enable fn-record-ascii-stringp
+                                     fn-record-nonempty-at-mostp))))
 (verify-guards fn-record-payloadp)
 (verify-guards fn-record-group-namep)
 (verify-guards fn-record-no-duplicatesp)
 (verify-guards fn-record-group-listp)
 (verify-guards fn-record-groupsp)
 (verify-guards fn-record-groups-validp)
-(verify-guards fn-record-metadata-bytes-p)
+(verify-guards fn-record-metadata-bytes-p
+  :hints (("Goal" :in-theory (enable fn-record-octet-stringp
+                                     fn-record-nonempty-at-mostp))))
 (verify-guards fn-record-stampp)
 (verify-guards fn-record-p)
 (defthm fn-record-cbor-octet-list-true-listp

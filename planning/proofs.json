@@ -747,7 +747,8 @@
         "fn-rcon-store-event-encode-is-store-event-encode",
         "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "fn-rcon-sn-io-is-sn-io",
-        "fn-rcon-ocfg-io-is-ocfg-step"
+        "fn-rcon-ocfg-io-is-ocfg-step",
+        "fn-bpi-ingress-prepare-carried-is-prepare"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -843,9 +844,15 @@
         "planning/evidence/manifests/certify-20260926T093114Z-1141563.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
         "books/store-prepare-carried.lisp",
-        "tests/acl2/store-prepare-carried-tests.lisp"
+        "tests/acl2/store-prepare-carried-tests.lisp",
+        "books/bp-ingress-carried.lisp",
+        "tests/acl2/bp-ingress-carried-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T092428Z-2079703.json",
+        "planning/evidence/manifests/certify-20260927T093543Z-2143530.json",
+        "planning/evidence/manifests/certify-20260927T094826Z-2218211.json",
+        "planning/evidence/manifests/certify-20260927T100243Z-2299686.json"
       ],
-      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, second boundary (2026-09-25): fn-icar-intent-id-is-intent-id (books/owner-intent-carried) proves that the intent identity carried from take equals fn-own-feed-intent-id of the Message-ID and octets of the submission it is used for, under fn-icar-carryp (the carry's identity is the digest of the carry's own submission), which mentions no owner and holds for every carry fn-icar-carry-of builds and for nil; host/owner-host.lisp fn-owner-take writes that carry (the global's only writer, an A-HOST discipline), and fn-icar-submission-intent (fn-owner-submission-intent) and fn-icar-submission-resolution-records (fn-owner-submission-resolution) equal their owner.lisp references under it (fn-icar-submission-intent-is-reference, fn-icar-submission-resolution-records-is-reference). Four payload digests per POST become one; owner.lisp and the submission record are unchanged. Constant stack (large-article, 2026-09-25): fn-frame-split (books/frame-octets.lisp) executes as fn-frame-split-acc and fn-ag-append (books/acceptance-alloc.lisp) as fn-ag-append-exec, each a tail-recursive twin equal to the list definition on every argument (fn-frame-split-acc-is-split, fn-ag-append-exec-is-append, no hypothesis), both guard-verified; the host reaches them through fn-store-frame-store-decode (host/native/io.lisp:910 fnn-unframe, on store inspect and owner recovery) and fn-owner-chunk (the ARTICLE reply), which ran one control-stack frame per octet and exhausted the image's 64 MB stack on a 3 MiB article. The octet list stays the representation at these boundaries (boundaries 6 and 8 of the representation plan). Owner open from the checkpoint (2026-09-25, lane owner-checkpoint-open): fn-owner-recover now installs through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended), and fn-ock-recover-installs-ocl-relation transfers the OCL premise through fn-owner-recover-from-checkpoint-equals-full-recover to both open paths. The replay fold fn-cpr-loop and its step fn-cpr-apply-event carry fn-cnode-statep in their guards; the executable path tests a one-event refusal by NIL (fn-cpr-apply-event-statep-iff-consp) instead of running the whole-node recognizer three times per event. Standalone POST prepare over the held row (2026-09-27, flip-L6-2): host/store-node-host.lisp fn-store-sn-prepare calls fn-store-prepare-interned-carried (books/store-prepare-carried.lisp), the intern followed by fn-pcar-spc-prepare, with no replay of the durable history; KEYSTONE fn-store-prepare-interned-carried-is-prepare-interned: under fn-snt-relation it equals books/store-intern.lisp fn-store-prepare-interned (both the store and the arena), by fn-pcar-spc-prepare-is-spc-prepare and fn-spc-prepare-equals-specification-under-relation. Teeth tests/acl2/store-prepare-carried-tests.lisp: a related reserved store (one article committed) stages and seals alike in both; a CORRUPTED stale-node store (fn-sn-statep, not fn-snt-relation) stages the duplicate in the carried entry while the entry refuses it. The host calls it as two steps (8665b74a8): fn-store-sn-prepare decides with fn-store-prepare-carried-next over the arena's count and answers (:seal OCTETS), and the host seals those octets with fn-arena-seal-list; KEYSTONE fn-store-prepare-interned-carried-is-next-then-seal: the two steps are the carried entry, both results. The split is what keeps the :program host entry free of ACL2's invariant-risk (an entry that updated the arena ran through its *1* body, and the guard check of fn-sn-statep cost 0.79 s and 1.21 GB per POST at N = 10,000 on hbox); measured after it: the prepare 2 ms and 262 KB at N = 10,000. The remaining per-POST walk is fn-pcar-next-lower's to the last cons of the history (no record decoded)."
+      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, second boundary (2026-09-25): fn-icar-intent-id-is-intent-id (books/owner-intent-carried) proves that the intent identity carried from take equals fn-own-feed-intent-id of the Message-ID and octets of the submission it is used for, under fn-icar-carryp (the carry's identity is the digest of the carry's own submission), which mentions no owner and holds for every carry fn-icar-carry-of builds and for nil; host/owner-host.lisp fn-owner-take writes that carry (the global's only writer, an A-HOST discipline), and fn-icar-submission-intent (fn-owner-submission-intent) and fn-icar-submission-resolution-records (fn-owner-submission-resolution) equal their owner.lisp references under it (fn-icar-submission-intent-is-reference, fn-icar-submission-resolution-records-is-reference). Four payload digests per POST become one; owner.lisp and the submission record are unchanged. Constant stack (large-article, 2026-09-25): fn-frame-split (books/frame-octets.lisp) executes as fn-frame-split-acc and fn-ag-append (books/acceptance-alloc.lisp) as fn-ag-append-exec, each a tail-recursive twin equal to the list definition on every argument (fn-frame-split-acc-is-split, fn-ag-append-exec-is-append, no hypothesis), both guard-verified; the host reaches them through fn-store-frame-store-decode (host/native/io.lisp:910 fnn-unframe, on store inspect and owner recovery) and fn-owner-chunk (the ARTICLE reply), which ran one control-stack frame per octet and exhausted the image's 64 MB stack on a 3 MiB article. The octet list stays the representation at these boundaries (boundaries 6 and 8 of the representation plan). Owner open from the checkpoint (2026-09-25, lane owner-checkpoint-open): fn-owner-recover now installs through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended), and fn-ock-recover-installs-ocl-relation transfers the OCL premise through fn-owner-recover-from-checkpoint-equals-full-recover to both open paths. The replay fold fn-cpr-loop and its step fn-cpr-apply-event carry fn-cnode-statep in their guards; the executable path tests a one-event refusal by NIL (fn-cpr-apply-event-statep-iff-consp) instead of running the whole-node recognizer three times per event. Standalone POST prepare over the held row (2026-09-27, flip-L6-2): host/store-node-host.lisp fn-store-sn-prepare calls fn-store-prepare-interned-carried (books/store-prepare-carried.lisp), the intern followed by fn-pcar-spc-prepare, with no replay of the durable history; KEYSTONE fn-store-prepare-interned-carried-is-prepare-interned: under fn-snt-relation it equals books/store-intern.lisp fn-store-prepare-interned (both the store and the arena), by fn-pcar-spc-prepare-is-spc-prepare and fn-spc-prepare-equals-specification-under-relation. Teeth tests/acl2/store-prepare-carried-tests.lisp: a related reserved store (one article committed) stages and seals alike in both; a CORRUPTED stale-node store (fn-sn-statep, not fn-snt-relation) stages the duplicate in the carried entry while the entry refuses it. The host calls it as two steps (8665b74a8): fn-store-sn-prepare decides with fn-store-prepare-carried-next over the arena's count and answers (:seal OCTETS), and the host seals those octets with fn-arena-seal-list; KEYSTONE fn-store-prepare-interned-carried-is-next-then-seal: the two steps are the carried entry, both results. The split is what keeps the :program host entry free of ACL2's invariant-risk (an entry that updated the arena ran through its *1* body, and the guard check of fn-sn-statep cost 0.79 s and 1.21 GB per POST at N = 10,000 on hbox); measured after it: the prepare 2 ms and 262 KB at N = 10,000. The remaining per-POST walk is fn-pcar-next-lower's to the last cons of the history (no record decoded). BP ingress prepare over the held row (2026-09-27, post-alloc): host/bp-ingress-host.lisp fn-bpi-host-prepare calls fn-bpi-ingress-prepare-carried (books/bp-ingress-carried.lisp) at the arena's count and answers (:seal ADU); the bridge seals the ADU with fn-arena-seal-list. KEYSTONE fn-bpi-ingress-prepare-carried-is-prepare: under fn-snt-relation it is fn-bpi-ingress-prepare (the policy test without fn-sn-statep, fn-pcar-spc-prepare for fn-sn-prepare); fn-bpi-ingress-prepare-interned-unfolds (books/bp-ingress.lisp) makes the two host calls the entry. Measured through tools/run_bp_ingress.py on hbox (200 ADUs of about 2 KiB, one bridge): the prepare's median over the first ten and last ten ADUs was 2.9 ms and 278 ms before, 3.9 ms and 4.0 ms after. The record's string recognizers in place (2026-09-27, post-alloc): books/records-shape.lisp fn-record-msgidp and fn-record-metadata-bytes-p execute their mbe :exec branches (stringp, length, an index walk for ASCII, fn-record-ascii-from); their :logic definitions are unchanged and the verify-guards events prove exec = logic for every input (guards t). fn-held-p runs them on every store-event accessor dispatch; before, each dispatch converted every string of the row to an octet list. Measured on hbox (developer and store-test prof images, fixtures n1k-2k/n10k-2k): owner POST 2.56 -> 2.19 MB consed per POST at N = 1,000 and 2.70 -> 2.33 MB at N = 10,000; standalone store post at N = 10,000: the verdict 346 MB -> 13.5 MB (with the carried folds, host/store-node-host.lisp fn-store-sn-record-octets / -record-debt over fn-sbud-bytes-carried and fn-scf-debt-carried), the open 8.95 -> 5.92 GB. Witnesses: tests/acl2/records-shape-tests.lisp (each boundary executed)."
     },
     {
       "id": "PRF-015",
@@ -3954,7 +3961,8 @@
         "planning/evidence/octets-bulk-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T083159Z-2421230.json",
         "planning/evidence/manifests/certify-20260927T083453Z-1812536.json",
-        "planning/evidence/manifests/certify-20260927T084736Z-1904284.json"
+        "planning/evidence/manifests/certify-20260927T084736Z-1904284.json",
+        "planning/evidence/manifests/certify-20260927T094826Z-2218211.json"
       ],
       "progress_note": "Consumers on the buffer: the existing-article test and the prepare of the served POST (fn-pbb-existing-action-is-pb-existing-action, host/owner-host.lisp fn-owner-existing-action-buffer and fn-owner-prepare-buffer). Since 2026-09-25 (pbb-d32) the buffer twin reads a recipe v3 record (D32, a supplied Path): the source is a description (K A B) of buffer positions, st[K..A) then st[B..) with the AGENT! insertion cut out, found by the index Path scan (fn-pbb-path-scan-is-inj-path-scan, fn-pbb-unsplice-at-is-inj-unsplice, fn-pbb-source-index-is-inj-source-of) and compared in place (fn-pbb-range-match-is-equal-of-append, fn-pbb-desc-equalp-is-equal); the agent of a v3 record is read from its block (fn-pbb-block-agent-is-pb-block-agent, fn-pbb-path-agent-is-pb-path-agent). Open: the payload digest over the buffer needs a SHA-256 reader by index (books/sha256-stobj.lisp, a third message reader beside the string and list readers); the chunk read (fn-owner-chunk) and the accumulated body are the owner's logical state (wave C); the record encoder, the frame and the article parser over the buffer are boundaries 7 to 9 of planning/design-2026-09-25-representation.md.",
       "events": [
@@ -9523,37 +9531,6 @@
       ]
     },
     {
-      "id": "PRF-261",
-      "title": "The full replay takes the history in chunks, and any chunking opens the Store one step over the whole history opens",
-      "statement": "Subject, called by the host: fn-srs-step (books/store-recover-stream.lisp), whose body is the two calls host/native/io.lisp fnn-bridge-recover makes once per chunk (fnn-recover-full-replay, fnn-recover: every full-replay open, the store verbs and the owner start): fn-store-decode-records (host/store-host.lisp, which is fn-srs-decode) and the guard-verified fn-srs-intern-step with the live arena (the intern into the arena, keyring NIL and generation 0, rows accumulated newest first); the host clears the arena first and then opens over fn-srs-rows (the rows oldest first) with host/store-node-host.lisp fn-store-sn-recover-rows (flip-L6-2's open, unchanged). No :program entry updates the arena. The host closes a chunk where fn-srs-chunk-fullp says (1 MiB of record octets, a work quantum: one record is always taken first, so a record above it is a chunk by itself and nothing is refused or split for its size), converting only that chunk to octet lists. fn-srs-decode-of-append and fn-srs-intern-events-of-append: the decode and the intern (fn-intern-events, the arena threaded) of a concatenation are those of its parts. KEYSTONE fn-srs-steps-are-one-step-of-the-concatenation: for every list of chunks each a true list (fn-srs-chunksp) and any accumulator, the fold of fn-srs-step over the chunks is :bad exactly when one step over their concatenation is, and otherwise equal to it (rows and arena). fn-srs-one-step-is-the-intern-of-the-decode: one step from no rows, when not :bad, is the decode of the history interned (fn-srs-rows of it is fn-intern-events' rows, the same arena): what the one-shot open computed before the chunking. Scope: the full-replay path only; the checkpoint path's suffix (fn-store-sn-recover-from-checkpoint) and the owner's recovers still take their input at once.",
-      "milestone": "M5",
-      "requirements": [
-        "STO-025",
-        "HST-001"
-      ],
-      "depends_on": [
-        "PRF-242"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-recover-stream.lisp",
-        "tests/acl2/store-recover-stream-tests.lisp",
-        "host/native/io.lisp",
-        "host/store-host.lisp",
-        "planning/evidence/recover-memory-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T094014Z-2171763.json",
-        "planning/evidence/manifests/certify-20260927T091028Z-2009960.json"
-      ],
-      "progress_note": "Lane recover-memory (2026-09-27, PKT-823): every form REPL-admitted on hbox; certified on hbox at the lane's final bytes (run-20260927T093905Z-d480, certify-20260927T094014Z-2171763; both books in run-20260927T090826Z-d6d2, certify-20260927T091028Z-2009960). Measured on the 32 KiB fixture (10,064 records) post-flip: peak dynamic 11,437 -> 1,817 MB, RSS 17.0 -> 2.13 GB; native SCN-077 10 MiB OK on the post-flip image.",
-      "events": [
-        "fn-srs-steps-are-one-step-of-the-concatenation",
-        "fn-srs-one-step-is-the-intern-of-the-decode",
-        "fn-srs-decode-of-append",
-        "fn-srs-intern-events-of-append"
-      ]
-    },
-    {
       "id": "PRF-260",
       "title": "After the records flip, the store's duplicate verdict is D25's source-keyed decision over alpha (the held rows' bytes read through the arena)",
       "statement": "Subject fn-store-existing-action (books/store-intern.lisp), the entry flip-L6 routes host/store-node-host.lisp fn-store-sn-existing-action and the owner's POST duplicate test (fn-pidx-existing-action, fn-pidx-existing-action-is-store-existing-action) to; on dev at batch AV the host still calls the pre-flip forms, so the host line lands with flip-L6. fn-store-existing-action-is-pb-over-alpha (books/store-existing-alpha.lisp, KEYSTONE): for a string Message-ID whose held bytes (fn-handle-bytes of the found article's payload handle) are no tombstone, the entry equals fn-pb-action-over of the store's acceptance articles with each payload replaced by its bytes (fn-sn-alpha-articles through fn-articles-wire-of), i.e. the answer fn-pb-existing-action gave when the store retained bytes. fn-store-existing-action-refines-byte-identity-over-alpha (KEYSTONE): the entry is non-nil at exactly the Message-IDs the byte-identity decision over alpha answers, and where the held bytes are no tombstone a byte-identical resend with the same groups is :duplicate. fn-sn-existing-action-is-action-over-by-definition and fn-pb-existing-action-is-action-over-by-definition name the store forms. A tombstone's resend is decided by digest (PRF-117, fn-rcl-same-as-tombstonep). Teeth: tests/acl2/store-existing-alpha-tests.lisp (a reachable witness; per hypothesis a separating positive and a must-fail; the live-store regression: comparing offered octets with the handle answered wrongly). Id assigned by batch AV (flip-L8 took none; PRF-257 went to codec-c1 by its brief and PRF-258 to fixtures-refresh).",
@@ -9661,6 +9638,37 @@
       ]
     },
     {
+      "id": "PRF-261",
+      "title": "The full replay takes the history in chunks, and any chunking opens the Store one step over the whole history opens",
+      "statement": "Subject, called by the host: fn-srs-step (books/store-recover-stream.lisp), whose body is the two calls host/native/io.lisp fnn-bridge-recover makes once per chunk (fnn-recover-full-replay, fnn-recover: every full-replay open, the store verbs and the owner start): fn-store-decode-records (host/store-host.lisp, which is fn-srs-decode) and the guard-verified fn-srs-intern-step with the live arena (the intern into the arena, keyring NIL and generation 0, rows accumulated newest first); the host clears the arena first and then opens over fn-srs-rows (the rows oldest first) with host/store-node-host.lisp fn-store-sn-recover-rows (flip-L6-2's open, unchanged). No :program entry updates the arena. The host closes a chunk where fn-srs-chunk-fullp says (1 MiB of record octets, a work quantum: one record is always taken first, so a record above it is a chunk by itself and nothing is refused or split for its size), converting only that chunk to octet lists. fn-srs-decode-of-append and fn-srs-intern-events-of-append: the decode and the intern (fn-intern-events, the arena threaded) of a concatenation are those of its parts. KEYSTONE fn-srs-steps-are-one-step-of-the-concatenation: for every list of chunks each a true list (fn-srs-chunksp) and any accumulator, the fold of fn-srs-step over the chunks is :bad exactly when one step over their concatenation is, and otherwise equal to it (rows and arena). fn-srs-one-step-is-the-intern-of-the-decode: one step from no rows, when not :bad, is the decode of the history interned (fn-srs-rows of it is fn-intern-events' rows, the same arena): what the one-shot open computed before the chunking. Scope: the full-replay path only; the checkpoint path's suffix (fn-store-sn-recover-from-checkpoint) and the owner's recovers still take their input at once.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-242"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-recover-stream.lisp",
+        "tests/acl2/store-recover-stream-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "planning/evidence/recover-memory-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T094014Z-2171763.json",
+        "planning/evidence/manifests/certify-20260927T091028Z-2009960.json"
+      ],
+      "progress_note": "Lane recover-memory (2026-09-27, PKT-823): every form REPL-admitted on hbox; certified on hbox at the lane's final bytes (run-20260927T093905Z-d480, certify-20260927T094014Z-2171763; both books in run-20260927T090826Z-d6d2, certify-20260927T091028Z-2009960). Measured on the 32 KiB fixture (10,064 records) post-flip: peak dynamic 11,437 -> 1,817 MB, RSS 17.0 -> 2.13 GB; native SCN-077 10 MiB OK on the post-flip image.",
+      "events": [
+        "fn-srs-steps-are-one-step-of-the-concatenation",
+        "fn-srs-one-step-is-the-intern-of-the-decode",
+        "fn-srs-decode-of-append",
+        "fn-srs-intern-events-of-append"
+      ]
+    },
+    {
       "id": "PRF-263",
       "title": "A local consumer command's refusal names the owner's reason on the wire, a bind of an unregistered consumer is refused by name, and the command's JSON line is ACL2's, all printable ASCII",
       "statement": "books/consumer-reason.lisp and books/consumer-owner-local.lisp. Subjects: fn-ncr-request-encode / -decode / fn-ncr-framep (host/native-control-host.lisp fn-native-control-host-consumer-reasoned-request-encode / -decode and fn-native-control-host-reasoned-framep, called by host/native/control.lisp fnn-control-consumer-local (client) and fnn-control-handle-client (owner)); fn-ncr-client-read (fn-native-control-host-consumer-client-read, fnn-control-consumer-local); fn-ncr-cli-after (fn-native-control-host-consumer-cli-after, host/native/consumer-local.lisp fnn-command-consumer-local); fn-ncr-cli-plan, fn-ncr-json-line, fn-ncr-report-summary, fn-ncr-article-json (host/native/consumer-local.lisp); fn-col-bind-refusal (host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure live and fn-native-admin-host-apply offline). KEYSTONES: fn-ncr-printed-reason-is-the-decisions (for every status, the client's read of the reasoned reply the owner seals is that status and the reason's word, and a refusal that named a reason prints exactly that word); fn-ncr-request-decode-is-the-plain-decode (the kind-22 frame is decided as the kind-4 request with the same payload); fn-ncr-cli-after-retries-only-an-unbootstrapped-register; fn-col-bind-refusal-refuses-exactly-an-unregistered-bind; fn-ncr-json-object-is-ascii; fn-ncr-withdrawal-roundtrip and fn-ncr-withdrawal-report-fits-the-poll-reply (the withdrawal report's byte form, PRF-262's). fn-ncr-cli-plan-without-the-flag-by-definition: without --json the plan is the wait codec's. Local policy; no RFC requirement. The reasoned consumer request is FNCT kind 22; an old owner's plain refusal of it is resent once as kind 4 (PKT-453's pattern).",
@@ -9725,6 +9733,56 @@
         "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal",
         "fn-cwd-page-of-a-refusal",
         "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
+      ]
+    },
+    {
+      "id": "PRF-264",
+      "title": "A format-9 store's commit goes through the record log, and any crash with a batch in flight reads back a prefix of the history that extends the committed records",
+      "statement": "Subjects: the log kernel's transitions the host calls (host/native/io.lisp fnn-log-take -> fn-olr-take, fnn-log-append -> fn-lgk-append, fnn-log-fence -> fn-lgk-fence), over the state fn-olr-linkp relates to the store node's history. fn-olr-crash-reads-a-prefix-of-the-history (books/store-log-route.lisp, KEYSTONE): under fn-lgk-relp, a batch in flight, an admissible crash image (fn-bs-crash-imagep) and the link, the scan of the durable content is a prefix of the history and extends fn-lgk-committed, or the damaged entry is a forgery (A-CRYPTO-TRAILER, T2). The link is kept by every transition (fn-olr-linkp-of-recovery, -of-take, -of-append, -of-fence, -of-finish-one, -of-consume-to); fn-olr-take-is-the-prepare-at-the-owners-txid, fn-olr-take-agrees-with-the-owner, fn-olr-take-keeps-the-bounds and fn-olr-take-preserves-relation tie the take to the owner's prepare; fn-olr-consume-to-reaches-the-owner and -preserves-relation/-okp the replies after the barrier; fn-olr-sn-reserve-reaches-reserved and fn-olr-sn-order-reaches-completing (books/store-log-route-phases.lisp) the node's phases; fn-olr-sn-reserve/-order-is-the-file-route-by-definition and the owner's fn-olr-ocfg-*-is-the-file-route-by-definition name the unchanged route. Measured (pre-flip base, hbox): fsyncs per POST 7.0 -> 0.27 (NVMe) / 0.31 (tank); 200 power cuts, 0 violations (planning/evidence/commit-onto-log-2026-09-27.md). Ids assigned by batch AV (commit-onto-log took none).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-244",
+        "PRF-245"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-route.lisp",
+        "books/store-log-route-phases.lisp",
+        "books/owner-log-route.lisp",
+        "tests/acl2/store-log-route-tests.lisp",
+        "tests/acl2/owner-log-route-tests.lisp",
+        "tests/test_native_commit_log.py",
+        "planning/evidence/commit-onto-log-2026-09-27.md"
+      ],
+      "events": [
+        "fn-olr-crash-reads-a-prefix-of-the-history"
+      ]
+    },
+    {
+      "id": "PRF-265",
+      "title": "A waiting commit batch is taken within a bounded number of the owner scheduler's picks",
+      "statement": "Subject fn-ocm-next (books/owner-commit-class.lisp), the :commit class beside the scheduler's (fn-osch-next otherwise: fn-ocm-next-otherwise-is-osch-next), which the owner's gate asks. fn-ocm-commit-waits-at-most-the-bound (KEYSTONE): for any sequence of wake-ups the number of picks before :commit (fn-ocm-commit-delay) is at most *fn-ocm-bound* less the picks already skipped; fn-ocm-commit-only-when-idle-or-due and fn-ocm-commit-pick-keeps-the-sched say when it is taken and that the scheduler's own state is kept. Teeth: tests/acl2/owner-commit-class-tests.lisp. Ids assigned by batch AV (commit-onto-log took none).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-248"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-commit-class.lisp",
+        "tests/acl2/owner-commit-class-tests.lisp",
+        "planning/evidence/commit-onto-log-2026-09-27.md"
+      ],
+      "events": [
+        "fn-ocm-commit-waits-at-most-the-bound"
       ]
     }
   ]
