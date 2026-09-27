@@ -1146,10 +1146,10 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1182,
-    "books_in_root_closure": 1171,
+    "books": 1189,
+    "books_in_root_closure": 1178,
     "roots": 1142,
-    "theorems": 17500,
+    "theorems": 17510,
     "functions": 12128,
     "assert_events": 17472,
     "must_fails": 2133,
@@ -1165,7 +1165,7 @@
     "export_hygiene_warnings": 201,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 206,
-    "include_hygiene_warnings": 1206,
+    "include_hygiene_warnings": 1214,
     "host_names_warnings": 1342,
     "hand_written_record_warnings": 18
   },
@@ -8391,10 +8391,10 @@
       "read_error": null
     },
     {
-      "book": "books/config-owner-live.lisp",
+      "book": "books/config-owner-live-complete.lisp",
       "in_root_closure": true,
-      "is_root": true,
-      "theorems": 126,
+      "is_root": false,
+      "theorems": 29,
       "functions": 11,
       "guards": {
         "verified": 0,
@@ -8412,6 +8412,86 @@
       "includes": [
         "config-store-traces",
         "owner-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-live-open.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 52,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live-complete"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-live-read.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 47,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live-open"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-live.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live-complete",
+        "config-owner-live-open",
+        "config-owner-live-read"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8448,7 +8528,7 @@
       "book": "books/config-owner-read-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
+      "theorems": 20,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -13466,16 +13546,45 @@
       "read_error": null
     },
     {
-      "book": "books/owner-invariants.lisp",
+      "book": "books/owner-invariants-outcome.lisp",
       "in_root_closure": true,
-      "is_root": true,
-      "theorems": 174,
-      "functions": 9,
+      "is_root": false,
+      "theorems": 45,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "injection-invariants",
+        "owner-invariants-served"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-invariants-relation.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 65,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 7,
-        "default-unguarded": 2
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -13494,6 +13603,93 @@
       "suspects": [
         "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-invariants-served.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 28,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "injection-invariants",
+        "owner-invariants-step"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-invariants-step.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 42,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "injection-invariants",
+        "owner-invariants-relation"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-invariants-outcome",
+        "owner-invariants-relation",
+        "owner-invariants-served",
+        "owner-invariants-step"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -35291,7 +35487,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 878,
+      "line": 888,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -35370,8 +35566,8 @@
     },
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
-      "book": "books/owner-invariants.lisp",
-      "line": 948,
+      "book": "books/owner-invariants-relation.lisp",
+      "line": 922,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]
@@ -36351,14 +36547,14 @@
       },
       {
         "theorem": "fn-ocl-connection-archive-has-pinned-domain",
-        "book": "books/config-owner-live.lisp",
-        "line": 1464,
+        "book": "books/config-owner-live-read.lisp",
+        "line": 42,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ocl-view-archive-has-current-domain",
-        "book": "books/config-owner-live.lisp",
-        "line": 1792,
+        "book": "books/config-owner-live-read.lisp",
+        "line": 397,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -36687,8 +36883,8 @@
       },
       {
         "theorem": "fn-own-served-conn-wire",
-        "book": "books/owner-invariants.lisp",
-        "line": 2624,
+        "book": "books/owner-invariants-outcome.lisp",
+        "line": 366,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -40815,6 +41011,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/config-owner-live-read.lisp",
+        "line": 6,
+        "include": "config-owner-live-open",
+        "included": "books/config-owner-live-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/config-owner-live.lisp",
+        "line": 12,
+        "include": "config-owner-live-open",
+        "included": "books/config-owner-live-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/config-owner-live.lisp",
+        "line": 13,
+        "include": "config-owner-live-read",
+        "included": "books/config-owner-live-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/config-owner-publish.lisp",
         "line": 23,
         "include": "owner-agent",
@@ -41554,6 +41771,41 @@
         "line": 52,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-invariants-outcome.lisp",
+        "line": 7,
+        "include": "owner-invariants-served",
+        "included": "books/owner-invariants-served.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-invariants-served.lisp",
+        "line": 8,
+        "include": "owner-invariants-step",
+        "included": "books/owner-invariants-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-invariants.lisp",
+        "line": 64,
+        "include": "owner-invariants-step",
+        "included": "books/owner-invariants-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-invariants.lisp",
+        "line": 65,
+        "include": "owner-invariants-served",
+        "included": "books/owner-invariants-served.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-invariants.lisp",
+        "line": 66,
+        "include": "owner-invariants-outcome",
+        "included": "books/owner-invariants-outcome.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
