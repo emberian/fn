@@ -326,3 +326,64 @@
 ; Tooth (membership in the scan): the reclaimed id is not a live id.
 (must-fail (assert-event (member-equal (fn-nntp-string-octets "<w1@x>")
                                        (in-arena-fn-nntp-newnews-live-ids *sr-arena* *rt-warts*))))
+
+; -----------------------------------------------------------------------------
+; The served keystones over the FLIPPED store (keystone-audit 2026-09-27): the
+; witnesses above drive the served view (octet payloads, the non-handle arm
+; of fn-nntp-payload-bytes), so the arena arm the running server takes was
+; never exercised.  *rt-s1* is the reclaimed store itself: its articles carry
+; arena handles (a1 the tombstone at handle 2, a2 its payload at handle 1),
+; read through *sr-arena*.
+(bpr-lift fn-nntp-msgid-retrieval-indexed 5)
+(bpr-lift fn-nntp-article-tombstonep 1)
+(defconst *rt-h-arts* (fn-state-articles *rt-s1*))
+(defconst *rt-h-r1* (fn-find-article "<a1@x>" *rt-h-arts*))
+(assert-event (and (natp (fn-article-payload *rt-h-r1*))
+                   (fn-nntp-article-idp *rt-h-r1*)
+                   (in-arena-fn-nntp-article-tombstonep *sr-arena* *rt-h-r1*)))
+; fn-nntp-number-retrieval-answers-reclaimed over handles: ARTICLE 1 in "g".
+(assert-event (and (fn-nntp-number-tokenp *rt-tok1*)
+                   (fn-nntp-session-group *rt-session*)
+                   (equal (fn-nntp-find-group-number "g" 1 *rt-h-arts*) *rt-h-r1*)
+                   (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *rt-session* *rt-s1* :article *rt-tok1*)
+                          (fn-nntp-single *rt-session* "423 article reclaimed"))))
+; Tooth (tombstone): the live a2 (handle 1) is not answered so.
+(assert-event (and (not (in-arena-fn-nntp-article-tombstonep
+                         *sr-arena* (fn-nntp-find-group-number "g" 2 *rt-h-arts*)))
+                   (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *rt-session* *rt-s1* :article '(50))
+                               (fn-nntp-single *rt-session* "423 article reclaimed")))))
+; fn-nntp-msgid-retrieval-answers-reclaimed: its subject is the INDEXED
+; lookup the host calls; the index is fn-midx-build of the store's articles
+; (the correspondence hypothesis asserted).
+(defconst *rt-h-index* (fn-midx-build *rt-h-arts*))
+(assert-event (and (fn-midx-correspondencep *rt-h-index* *rt-h-arts*)
+                   (fn-nntp-message-id-tokenp (fn-record-string-octets "<a1@x>"))
+                   (equal (in-arena-fn-nntp-msgid-retrieval-indexed
+                           *sr-arena* *rt-session* *rt-s1* *rt-h-index* :article (fn-record-string-octets "<a1@x>"))
+                          (fn-nntp-single *rt-session* "430 article reclaimed"))))
+; Tooth (tombstone): a2 by Message-ID is served, not 430.
+(assert-event (not (equal (in-arena-fn-nntp-msgid-retrieval-indexed
+                           *sr-arena* *rt-session* *rt-s1* *rt-h-index* :article
+                           (fn-record-string-octets "<a2@x>"))
+                          (fn-nntp-single *rt-session* "430 article reclaimed"))))
+; Tooth (the correspondence): an empty index misses a1 (430 is not answered).
+(assert-event (and (not (fn-midx-correspondencep nil *rt-h-arts*))
+                   (not (equal (in-arena-fn-nntp-msgid-retrieval-indexed
+                                *sr-arena* *rt-session* *rt-s1* nil :article (fn-record-string-octets "<a1@x>"))
+                               (fn-nntp-single *rt-session* "430 article reclaimed")))))
+; fn-nntp-over-by-msgid-answers-reclaimed and fn-nntp-over-current-answers-
+; reclaimed over handles.
+(assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-s1* (list (fn-record-string-octets "<a1@x>")))
+                     (fn-nntp-single *rt-session* "430 article reclaimed")))
+(assert-event (not (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-s1*
+                                                          (list (fn-record-string-octets "<a2@x>")))
+                          (fn-nntp-single *rt-session* "430 article reclaimed"))))
+(assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-cur1* *rt-s1* nil)
+                     (fn-nntp-single *rt-cur1* "423 article reclaimed")))
+(assert-event (not (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t "g" 2 t) *rt-s1* nil)
+                          (fn-nntp-single (fn-nntp-make-session t "g" 2 t) "423 article reclaimed"))))
+; fn-nov-lines-skip-a-reclaimed-article over handles.
+(assert-event (equal (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(1 2) *rt-h-arts*)
+                     (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(2) *rt-h-arts*)))
+(assert-event (not (equal (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(1 2) *rt-h-arts*)
+                          (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(1) *rt-h-arts*))))

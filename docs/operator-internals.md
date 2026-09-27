@@ -162,7 +162,8 @@ result line, so `init` with a stray word shows the full `init` grammar.
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
 (format `fn-store-9`, `books/byte-store-frame.lisp`, the one store format:
-D34; `fn-store-8`, the per-file layout, is still read, STO-028) and nothing
+D34; a `fn-store-8` profile, the retired per-file layout, is refused at the
+open by name, STO-028) and nothing
 rewrites in place; a different profile is a reinstall and an
 import. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
@@ -203,7 +204,7 @@ flags override its fields. `status` prints the profile the store runs under
 and the headroom against it:
 
 ```text
-profile format=8 max-transactions=100000 max-history-octets=1099511627776 max-record-octets=196608 max-article-octets=20000 ...
+profile format=9 max-transactions=100000 max-history-octets=1099511627776 max-record-octets=196608 max-article-octets=20000 ...
 headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-bound=1099511627776 charge-reserved=... charge-capacity=...
 ```
 
@@ -211,37 +212,59 @@ headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-
 node the heap its store profile needs on this machine, and refuses a profile
 the machine cannot hold before anything runs (exit 1, on stderr
 `fn: refused machine-cannot-hold-profile heap=MB MB machine=M MB`). The
-figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp): the image, a
-64 MiB collection nursery, sixteen bytes per octet for twice the history
-bound H plus one record bound R, doubled for the collector, and two
-checkpoint buffers of three times H; the machine is the least of its physical
-memory, the cgroup's `memory.max` (Linux) and the data-size limit (`ulimit
--d`; OpenBSD's login class). `status` and `health` end with
-`heap=MB MB profile=WORD machine=M MB`. The presets on today's image (a
-389 MB core):
+figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp and
+books/heap-store-figure.lisp): the image's dynamic content, the state of the
+profile's largest store (its payloads in the paged arena, one octet each; 12
+KiB a record and 320 octets a group membership, twice for the collector:
+the measured live state of per-record-state and catalog-columns), the open's
+transient (the open streams one entry and one 1 MiB chunk at a time: no copy
+of the history), the record and header in flight, two checkpoint buffers of
+three times H, and the collector's room at the trigger the host sets; the
+machine is the least of its physical memory, the cgroup's `memory.max`
+(Linux) and the data-size limit (`ulimit -d`; OpenBSD's login class).
+`status` and `health` end with the reservation the launcher makes for the
+store's next `run` over the store on disk (`fn-heap-status-decide`, the same
+decision as the launcher's probe): `heap=MB MB profile=WORD machine=M MB
+stack=KB KB threads=N`. The thread stacks are added by
+books/heap-reservation.lisp (30 threads: 12 fixed, 2 I/O loops, 16 control
+clients; a connection is no thread since connection-multiplexing). The
+installed launcher ignores the caller's `SBCL_USER_ARGS` and
+`FN_TEST_HEAP_MB`; a checkout's `packaging/fn` takes the tests'
+`FN_TEST_HEAP_MB`. The presets' full-store figures on a 389 MB core:
 
 | preset | T | H | R | A | G | K | heap |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,002 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
-| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 2,671 MB: refused on a 2 GB machine |
-| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 54,751 MB |
-| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 70 TiB: refused on every machine today (PKT-582) |
+| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,232 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
+| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 7,506 MB: refused on a 2 GB machine |
+| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 173,021 MB |
+| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 10 PiB: refused on every machine (PKT-582) |
 
-`init` with no `--profile` and no field flag (and every `init` under a
-`mission`, which fixes the profile) sizes conservatively: it writes the
-**development** preset (128 transactions: the node refuses every post after
-about 125 articles with `441 posting failed; the store has no capacity for
-this article`) when the machine's budget holds its reservation, else the
-**small** one; `status` prints `profile=custom` for either
-(books/heap-reservation.lisp, `fn-heap-init-decide`). A node for people
-needs its fields named. The small preset has no
-`--profile` word yet (PKT-581); on a larger machine name its fields:
+The development and scale figures are their group memberships: a record may
+be posted to G = 65,535 groups and nothing else bounds a store's
+memberships, so the state is 2 x T x 320 x G octets (scale at T = 1,048,576:
+about 40 TiB). A node sized for many records names
+`--max-groups-per-article` (16 in the small preset).
+
+`init` with no `--profile` and no capacity field (and every `init` under a
+`mission`, which fixes the profile) takes the largest friend-sized rung the
+machine's budget holds (books/heap-reservation.lisp `fn-heap-init-decide`
+over `fn-heap-friend-candidate`, PKT-707, decided 2026-09-27): the
+development base with H = 64, 32 or 16 MiB, one transaction slot per 512
+octets of history (T = H / 512), R raised to what the article bound needs;
+else the floor, H = 8 MiB with 16,384 transactions (the small preset). A
+short post with its headers is a record of about 860 octets, so the floor
+holds about 9,700 such posts and the top rung about 78,000; a friend's feed
+spends the same history. `init` prints its decision (`init:
+profile=custom sizing=... reservation=MB MB budget=MB MB within-budget=...`)
+and `status` prints `profile=custom`. A request naming T, H or R, or
+`--profile development|scale`, is written as named and never resized. The
+small preset has no `--profile` word (PKT-581); name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16
---max-open-suffix 128`. A store outgrows its machine only through `store
-upgrade-profile`, which raises H: check the new figure with `status` before
-restarting. A checkout's `packaging/fn` takes the tests' `FN_TEST_HEAP_MB`
-instead; the installed one ignores it.
+--max-open-suffix 128`. A store's bounds rise only through `store export`
+and `store import --FIELD N`; each command's launcher re-sizes the heap from
+the store it opens, and refuses by name one whose replay the machine cannot
+hold.
 
 Every committed transaction (an article, a retention, keyring, consumer or
 topic event) takes one of T, and its record octets count against H. The owner
@@ -255,7 +278,7 @@ the record octets it carries (each record encoded once per owner process,
 `fn-sbud-bytes-used-is-kernel-sum`). A POST whose payload is longer than A is
 refused by name (`payload exceeds the modelled bound`). The profile cannot be
 raised by a configuration record: it bounds the work of opening the store
-(the transaction directory is enumerated up to T, the replay input up to H)
+(the log's replay is bounded by T and H)
 before any configuration record is read. Raising it is a reinstall (D34, fresh
 deploys): export the store, remove it, and import the archive with the raised
 field:
@@ -269,8 +292,9 @@ imported records=7 configuration=1
 ```
 
 `store export` is a Store-history export, not a node backup. It carries the
-profile, the allocation frontier, the configuration records and the Store
-records, and nothing else: not the node's private state and secrets (the TLS
+profile, the frontier (on format 9 the txid frontier the log derives), the
+configuration records and the Store records (the checkpoint's records, then
+the log's: the history the open recovers), and nothing else: not the node's private state and secrets (the TLS
 keys, credentials, the HKDF and pseudonym roots), not peer journals, not
 consumer or application state held outside the Store, and not the other
 persistence domains (the BP and TCPCL stores). The MANIFEST's SHA-256 per
@@ -281,8 +305,8 @@ the archive is the newest history of that node.
 is already locked`) while an owner runs; DIR must not exist (`export refused
 reason=archive-exists`). The archive is a directory: `profile` (config.json's
 exact octets), `frontier`, `config/NAME` (each configuration record's
-octets), `records/NAME` (each committed record's octets, packs included, in
-sequence order) and `MANIFEST` (one `sha256  name` line per file, `sha256sum
+octets), `records/NAME` (each committed record's octets, in sequence
+order) and `MANIFEST` (one `sha256  name` line per file, `sha256sum
 -c` reads it); ACL2 renders every name and the MANIFEST
 (`books/store-export.lisp`). `store import DIR [--FIELD N ...]` makes a NEW
 store: the configured store must not exist (`import refused
@@ -295,7 +319,12 @@ The import then publishes the store in the order of the byte program
 `fn-bs-imp-program` (`books/store-import-publication.lisp`): it stages the
 store in a new directory `ROOT.import-XXXX` beside the configured store ROOT
 (each file created exclusively, written and fenced, then the subdirectories
-and the staged directory fenced), opens the staged store the ordinary way
+and the staged directory fenced; the store is always written as format 9,
+whatever format word the archive's profile carries (`fn-sxp-log-profile`),
+its records appended to `journal/000001.log` through the log's own take,
+append and barrier, so an archive the previous release exported from a
+format-8 store imports as a format-9 store with the same history: the
+migration across a reinstall), opens the staged store the ordinary way
 (full replay), renames it onto ROOT with a rename that never replaces an
 existing ROOT (`renameat2` with `RENAME_NOREPLACE` on Linux; on OpenBSD, which
 has no such rename, see below), and fences ROOT's parent directory.
@@ -334,7 +363,7 @@ upward in practice (the records were committed under the old bounds, and the
 import's open refuses a history the new profile cannot hold). The retention
 charge capacity is a different number and IS reconfigurable
 (`capacity DECIMAL-UINT32`). A repeated field or a
-value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `open refused reason=max-record-octets-above-the-poll-reply: ... reinstall from the release and import`), and a store of any other format (a format-7 store, JSON metadata) likewise (`open refused reason=store-format: reinstall from the release and import`); nothing is translated or repaired in place.
+value that is not a decimal below 2^64 is a usage error (5). A store saved before PKT-467 with R above 4,294,966,940 is refused by name at every open (1, `open refused reason=max-record-octets-above-the-poll-reply: ... reinstall from the release and import`), and a store of any other format (a format-8 store of the per-file layout, which every store made before 2026-09-27 is; a format-7 store; JSON metadata) likewise (`open refused reason=store-format: reinstall from the release and import`; books/store-profile-open.lisp `fn-spo-config-open`). A sealed profile of another field width (the run of u64 fields grew from 13 to 16 with header-limits-profile) is refused `open refused reason=older-release: store made by an older release (profile layout 13 fields, this release expects 16): export it with the release that made it, then import it here` (`newer-release` above 16; planning/evidence/fixtures-refresh-2026-09-27.md). Nothing is translated or repaired in place: export with the release that made the store, import with this one.
 
 ### Settle a client's lost post: `store inspect`
 
@@ -361,46 +390,58 @@ The store node's lookup decides and ACL2 renders the line
 `books/native-operator.lisp`). It does not compare the stored text with the
 client's copy; tell the client which answer you got.
 
-Compaction is the other offline store step. It replaces the transaction
-files of the committed history with one lossless pack:
+Compaction is the other offline store step. On the record log (format 9,
+the one format) it is a state checkpoint that rotates the log, followed by
+the drop of the segments that checkpoint covers
+(`fnn-command-compact`, host/native/checkpoint.lisp;
+`fnn-state-checkpoint-publish-steps`, host/native/io.lisp):
 
 ```text
 fn operator /path/to/fn.toml store compact
-compacted steps=pack,select,reclaim,retire records=7 generation=0 links=1 reclaimed=7 retired=0
+compacted steps=checkpoint,drop records=N checkpoint sequence=... octets=... steps=... segment=K dropped=D open=...
 ```
 
 It opens the store as `recover` does, so it is refused (1, `store is already
-locked`) while an owner runs. ACL2 decides what it does
-(`fn-cverb-decide`, `books/store-compact-verb.lisp`) and the host carries out
-exactly that:
+locked`) while an owner runs. The order: with no batch open, rotate the log
+(`fnn-log-rotate`: a new segment `journal/NNNNNN.log`, preallocated,
+fenced, then `journal/` fenced; cuts `rotate-created`, `rotate-fenced`,
+`rotate-durable`); write and install the checkpoint, whose F row names that
+segment and the trailer its first entry chains from; then unlink every
+segment below it (`fnn-log-drop`; cuts `drop-unlinked`, `drop-durable`). The
+running owner's automatic checkpoint does the same under the owner mutex,
+so a node that runs rarely needs the verb. The open reads the checkpoint
+first and scans from the segment its F row names, with the chain carried
+across segments; the drop preserves the history that open replays (KEYSTONE
+`fn-lg-segment-drop-preserves-the-open`, books/store-log-segments.lisp,
+PRF-270). A checkpoint ACL2 will not write is refused by name before
+anything is allocated (`checkpoint deferred reason=... estimate=...
+budget=...`, the profile's checkpoint budget and the free space). The open
+refuses by name, exit 1: `history-short-of-checkpoint` (a segment the
+checkpoint does not cover is missing), `checkpoint-damaged`,
+`log-chain-broken` (a segment that validates under another predecessor);
+a writable open finishes an interrupted drop. An I/O error in the drop is
+uncertain (3); rerunning `store compact` finishes it.
 
-- `pack,select,reclaim,retire`: extend the selected chain of packs over the
-  committed records it does not cover yet, one link (at most 4,096 records
-  or 4 MiB, and at least one record) at a time, publishing and selecting
-  each link; then unlink the transaction files the chain covers and retire
-  the pack generations outside it. The open afterwards hands replay the
-  identical record list (`fn-ccc-chain-reconstructs-the-history`), so every
-  article, number, watermark, retention pin and the next article number are
-  unchanged. `status` prints `pack-chain links=L boundary=B generations=...`.
-- `reclaim,retire`: the selected chain already covers every committed record
-  (a rerun after an interrupted compaction); no new link is written.
-- refused (1), with the reason: `already-compact` (nothing to pack, reclaim
-  or retire), `empty-history`, `temporary-space` (the next link would not
-  fit the free space of the store's filesystem, as the image observes it
-  before every link; each link is written beside the files it covers, so
-  leave at least one link, about 4 MiB, free). Nothing of the refused link
-  is written; links already selected by the same run stay (the message says
-  `links=K`), and a rerun continues from them. No size of the history is
-  refused.
+Compaction relieves disk and the open's work, not the budget: `transactions-used`
+counts committed records and is unchanged. Measured on 40,000 articles of
+2 KiB: 40 to 139 s at 4.7 GB, against 2,963 s at 16.4 GB for the format-8
+pack compaction it replaced (planning/evidence/log-recovery-2026-09-27.md).
 
-A death or an I/O error at any step leaves a store the next `recover` opens
-with the same history; an I/O error after a durable change is uncertain (3),
-and rerunning `store compact` finishes the job. Compaction removes transaction
-files, not transactions: the budget above counts committed records, and a
-compacted store has the same `transactions-used` as before. A lost newest
-transaction file is not detected at open (the allocation frontier is reserved
-before the record is written, so the loss looks like an abandoned
-reservation; `planning/evidence/m5-compact-verb-2026-09-24.md`, finding 1).
+`store reclaim [--dry-run]` is content reclamation over the log
+(`fnn-log-reclaim-steps`): the history is streamed one record at a time into
+ACL2's fold, each released article's record rewritten to a tombstone
+(STO-014's per-article decision over every holder); the rewritten history is
+replayed, checkpointed with the log rotated, and the covered segments
+dropped, so the released payloads leave the disk with them (KEYSTONE
+`fn-lgr-decide-checkpoints-the-rewrite`, books/store-log-reclaim.lisp,
+PRF-271, equated with the streamed decision the host calls by
+`fn-lgr-decide-stream-is-lgr-decide`). It prints `reclaimed=N
+freed-octets=F ...` and one `reclaimed MSGID` line each; `--dry-run` prints
+`dry-run would-reclaim=N ...` and changes nothing; nothing to do is
+`reclaimed=0`. `store checkpoint` publishes the checkpoint alone (the same
+rotate and drop). The per-file layout's `pack`, `pack-reclaim` and
+`pack-retire` refuse by name on every store an image opens
+(`... refused reason=record-log: a format-9 store has no packs`).
 
 `status` prints the headroom beside the counts, from ACL2
 (`fn-sbud-headroom`), not from a host count:
@@ -457,7 +498,7 @@ books/native-live-status.lisp) whoever answers:
 ```
 $ fn-native operator fn.toml status
 transactions=12 articles=12 staging-orphans=0 unsigned-legacy-experiment
-profile format=8 max-transactions=4294967295 max-history-octets=1099511627776 ... history-marker=unmarked
+profile format=9 max-transactions=4294967295 max-history-octets=1099511627776 ... history-marker=unmarked
 open-cost replay-records=4294967295 list-memory-octets=35184372088832
 headroom transactions-used=12 transactions-budget=4294967295 bytes-used=5321 history-bound=1099511627776 charge-reserved=24 charge-capacity=...
 open=full-replay reason=no-checkpoint
@@ -569,7 +610,7 @@ $ fn-native operator fn.toml health
 health exit=22 state=unqualified-profile
 fenced clear
 exhausted clear
-unqualified-profile held format=8 development
+unqualified-profile held format=9 development
 space-pressure clear
 no-route clear
 stranded-transfer clear
@@ -582,11 +623,11 @@ accepted operator health
 |---|---|---|---|
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
 | 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
-| 22 | `unqualified-profile` | the persisted profile is not format 8, or it is the development profile | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
+| 22 | `unqualified-profile` | the persisted profile is not valid (`fn-bs-profile-validp`), or it is the development profile. The line prints the store's format (`format=9` for the record log) | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
 | 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
-| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection | check the peer's host and port (`peer list`) and its reachability |
+| 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
 | 27 | `receipt-debt` | forwarding obligations are held, awaiting the receipt that releases them | `bp-obligation status`; the receipt releases each |
 | 19 | (none held) | some state is `unobserved` | offline, the two feed states need a running owner |
 | 0 | (healthy) | every state is `clear` | |
@@ -692,11 +733,17 @@ Four OpenBSD rules decide where it lives, how it starts and what keeps its store
   file system mounted `wxallowed`. The default install mounts `/usr/local`
   that way (check with `mount | grep wxallowed`), so unpack under
   `/usr/local`. Elsewhere it fails at start with `Cannot allocate memory`.
-- **Heap.** The launcher reserves `--dynamic-space-size 1024` (MB), not the
-  32,000 the Linux tarball inherits: OpenBSD counts the reservation against
-  the login class's `datasize` (1,536 MB for `default`, 4,096 MB for
-  `daemon`, the class rc.d uses). `SBCL_USER_ARGS="--dynamic-space-size N"`
-  overrides it per invocation.
+- **Heap.** As on Linux, the installed launcher sizes the heap from the
+  store's profile and the history on disk (the `heap --` probe, PKT-016
+  above) and ignores the caller's `SBCL_USER_ARGS`. OpenBSD counts the
+  reservation against the login class's `datasize` (1,536 MB for
+  `default`, 4,096 MB for `daemon`, the class rc.d uses), which is one of
+  the machine observations the figure takes the least of, so `init` on a
+  small machine picks a smaller rung. Open finding (no packet id yet;
+  planning/evidence/openbsd-release-fixes-2026-09-27.md section 1): for a
+  command naming no store the figure is the whole machine, here
+  RLIMIT_DATA, so under a 4 GiB datasize `bin/fn --version` died with
+  `mmap: Cannot allocate memory`.
 - **Working directory.** The image reads its working directory at start;
   run it from a directory its user can read (`cd /var/fn`), or it halts with
   `getcwd: Permission denied`. The rc.d script starts the node in `/var/fn`
@@ -714,9 +761,14 @@ Four OpenBSD rules decide where it lives, how it starts and what keeps its store
     durable. After a crash the boot-time `fsck` can remove files that were
     created and fsynced in the last half minute or so (their inodes lie
     past the cylinder group's initialized inode blocks, a count the kernel
-    writes back later); the store's newest transactions and its allocation
-    frontier go, and the node refuses to open (`fault ... invalid durable
-    allocation frontier`) until restored from a backup or an export.
+    writes back later). On the per-file layout the campaign measured, the
+    store's newest transactions and its allocation frontier went, and the
+    node refused to open (`fault ... invalid durable allocation frontier`)
+    until restored from a backup or an export. The record log (format 9,
+    the one format since 2026-09-27) creates fewer files, but no OpenBSD
+    power-loss campaign has run on it yet (its ext4 campaign on hbox: 250
+    cuts, 0 violations, planning/evidence/kernel-concrete-2-2026-09-27.md
+    section 4), so FFS1 stays the only file system for an OpenBSD store.
   - *A disk, or a hypervisor's virtual disk, with a volatile write cache*:
     NOT durable, on either format. OpenBSD's fsync never asks the disk to
     flush its cache (sd(4) enables the cache at attach), so a power loss can
@@ -769,11 +821,21 @@ under rc.d, answers STARTTLS over LibreSSL (TLS 1.3), logs in, accepts a
 post and serves it on a fresh connection to a Linux client; `peer keygen`,
 `peer accept` of a Linux node's invitation and the Linux node's `peer
 confirm` of the acceptance succeed. Resident size 37 MB at start and 90 MB
-after 100 posts, with the 1,024 MB reservation. The smallest heap that
-served a post and a read on a fresh development-profile node was 288 MB;
-256 MB refuses at start (`dynamic space too small for core: 272320KiB
-required`) and 280 MB started but died in the first session, so the
-default keeps 1,024.
+after 100 posts, with the then-fixed 1,024 MB reservation (the launcher now
+sizes the heap from the profile). The smallest heap that served a post and
+a read on a fresh development-profile node was 288 MB; 256 MB refused at
+start (`dynamic space too small for core: 272320KiB required`) and 280 MB
+started but died in the first session. That measurement was of a format-8
+image (2026-09-26).
+
+Release building for OpenBSD (planning/evidence/openbsd-release-fixes-2026-09-27.md):
+`tools/runpath_check.py --tree` applies the target platform's rules
+(`--platform linux|openbsd`, else the runtime's program interpreter), and
+the libsodium and TLS candidate lists are chosen at read time, so an
+OpenBSD core carries only OpenBSD's names (PKT-723); `init` and `import`
+draw their stage suffix per process from the OS's entropy, so two runs of a
+saved image no longer stage under the same `ROOT.init-XXXX` (PKT-819). The
+gated OpenBSD 6.7.0 tarball of d663400f3 was built this way.
 
 ### Install the native production entry
 
@@ -841,7 +903,7 @@ which answers nothing on a production image.
 
 | selector | value | what it arms |
 | --- | --- | --- |
-| `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`) |
+| `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+`; or `record-prepublish:refuse` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`); `record-prepublish:refuse` is injection only (no process-death cut): every publication (`fnn-publish`, either route) is refused before its first write, which the owner resolves by ACL2's known abort (tests/test_native_known_abort.py) |
 | `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
 | `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-pub-program`, eio or kill) |
 | `FN_NATIVE_IMPORT_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-import-model-cuts+` (a repeated cut at its first occurrence) | `store import`'s publication cuts (`fn-bs-imp-program`) |
@@ -854,7 +916,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN` | any value | the owner holds the recovered Store and waits for SIGTERM before its control socket and listener start (`health` reads `starting`) |
 | `FN_NATIVE_OWNER_TEST_BARRIER_MS` | decimal milliseconds | a sleep before each batch's barrier (`fnn-owner-commit-sync`), holding a batch in flight for the scheduler's native cases |
 | `FN_NATIVE_OWNER_TEST_PIPELINE_TRACE` | any value | one stderr line per START (`start: seal=S bmax=N members=K`) and per batch prepared behind a barrier (`pipeline: K members prepared behind the barrier`) |
-| `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4 |
+| `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4; a control-stack exhaustion on any thread prints `fault backtrace (thread NAME): control stack exhausted` and every frame as run-length rows `frames FUNCTION xDEPTH`, innermost first (a per-line recursion is one deep row; the rows under it are its callers) |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 `FN_NATIVE_FAULT_BACKTRACE` changes no outcome: the fence, the exit code and
@@ -1107,10 +1169,19 @@ name instead of serving or starting another history there:
 store filesystem changed: expected ext4 at /srv/fn-public from /dev/nvme1n1p1 (fsid ...), found ext4 at / from /dev/nvme0n1p4 (fsid ...); mount the node volume or run `store rebind-filesystem` after moving the store deliberately
 ```
 
+The comparison is ACL2's (books/store-mount-identity.lisp
+`fn-smid-same-filesystemp`, called on every open and at the owner's start by
+host/native/io.lisp `fnn-check-filesystem-identity`): type and fsid where
+both fsids are reported, the mount point and source only where an fsid is
+not (OpenBSD reports zeros). So the shipped systemd unit
+(`ProtectSystem=strict`, `ReadWritePaths=/var/lib/fn`), whose namespace
+bind-mounts `/var/lib/fn` onto itself and shows a mount point `init` never
+saw, starts on the store `init` made with no rebind (PKT-820; the stranger
+rehearsal's first stop, fixed and rerun on Debian 12:
+planning/evidence/friend-blockers-2026-09-27.md).
+
 An empty directory where the volume should be is refused as `store
-filesystem unrecorded`. A store made before the record (every store before
-2026-09-27) opens offline with a warning, and its owner does not start until
-it is rebound once. After a deliberate move (another volume, a restored
+filesystem unrecorded`. After a deliberate move (another volume, a restored
 backup, a copy to another machine) record the new place:
 
 ```
@@ -1258,7 +1329,10 @@ deliberate stop stays stopped.
 
 `ProtectSystem=strict` in the unit makes the whole filesystem read-only
 except the paths named in `ReadWritePaths`. If you move `[store] path` or
-`[log] path`, add the new location there or the service cannot write.
+`[log] path`, add the new location there or the service cannot write. The
+namespace this makes (a bind mount of `/var/lib/fn` onto itself) does not
+trip the store's filesystem check, which compares type and fsid
+([The node volume](#the-node-volume); PKT-820).
 `MemoryDenyWriteExecute` is deliberately absent: the Lisp runtime under ACL2
 maps writable-executable pages and will not start with it set.
 
@@ -1390,6 +1464,14 @@ line per matching article; a reclaimed article is not listed. A `501` from
 needs a wall clock reading` means the date was given with two digits and the
 node holds no wall-clock reading to place its century; a poller should not
 retry the first.
+
+ARTICLE and HEAD of an article this node numbers carry this node's `Xref:`
+as the first header line, generated at serve time (it leads the header
+block, as the injected Path does, so the stored octets, a signed source
+among them, stay a suffix of what ARTICLE serves; books/nntp-reader-compat.lisp
+`fn-rcompat-served-payload`, batch AR); HDR and XHDR Xref answer its value,
+and a relayed article's own Xref is deleted on receipt. A test comparing
+served bytes to stored ones drops that one leading line.
 
 `LIST NEWSGROUPS` lists the served groups with a description field. fn's
 group table carries no description, so every line reads
@@ -1741,7 +1823,12 @@ table in `specs/nntp.md` ("Public exposure"). In short:
   octets resets the timer. With the timer at 5 s, silent and trickling
   connections closed at 5.0 s.
 - **Work.** Each source address may start `exposure-steps-per-second`
-  served steps a second (a step is one read of at most one buffer). Past it
+  served steps a second. A step is one host read, of a size ACL2 decides
+  (books/connection-budget.lisp `fn-cbud-step-read-octets`, lane
+  input-loop-2): 512 octets under a step rate, so the rate keeps its
+  meaning in octets per second (the public default 64 admits about 32 KiB a
+  second per address: a 1 MiB POST takes about half a minute), and 4 KiB
+  without one (loopback, or the row set to 0). Past it
   the connection is not refused: the owner stops reading it until the next
   second, so the client slows down and loses nothing. At 20 a second an
   anonymous `STAT` loop ran at 22 a second including its first burst.
@@ -1883,7 +1970,9 @@ the operator's decision in the configuration (`article withdraw-record`, a
 row the reader never sees), then injects a cancel control article
 (`Control: cancel <spam@example.net>`, Message-ID
 `<fn-withdraw.spam@example.net>`), filed like every control message in
-`control.cancel`, which must exist (`group create control.cancel`; without
+`control.cancel`, which must exist (a mission's `init` serves it,
+`fn-nop-mission-init-serves-control-cancel`, PKT-708; otherwise `group
+create control.cancel`; without
 it the verb is refused `control-not-filed` before anything is written); a connection
 opened before the cancel keeps its view until it advances, and the article
 stays withdrawn after a restart. `control evidence` names such a record
@@ -1986,7 +2075,9 @@ file.
 ```
 
 Only when the store itself must be rebuilt (a store of another format is
-refused at open, below) does its history go through an archive. The archive is
+refused at open, below: every store made before 2026-09-27 is format 8)
+does its history go through an archive, exported with the release that made
+the store, before the new one is installed. The archive is
 Store history, not a node backup: it never carries `STORE/keys/`, so the key
 files are moved into the new store directory before its first start:
 
@@ -2027,19 +2118,21 @@ a start never creates a secret. A store imported without its key files needs
 `node-secret create`, and the posts its accounts made before then cancel only
 by a signed canceller or the poster's own RFC 8315 key.
 
-The store has one format (`fn-store-9`: its commits go to the record log,
-`journal/000001.log`, one fsync per batch of POSTs; `store compact`,
-`store reclaim` and `store export` refuse such a store by name,
-`reason=record-log`, until segment rotation lands, PKT-750). A store of the
-per-file layout (`fn-store-8`) still opens and commits as before. A store of
-any other format is refused at open by name (`open refused reason=store-format: reinstall from
-the release and import`, exit 1). The archive carries the committed records,
-the configuration records, the profile and the allocation frontier; the
-store identity and consumer state are records, so they travel with them.
-Feed journals and BP spools do not: a reinstalled node re-peers. It is a
-Store-history export, not a node backup: the node's secrets and private
-state (TLS keys, credentials, the HKDF and pseudonym roots), peer journals
-and the BP and TCPCL stores are kept separately, and the MANIFEST does not
+The store has one format, `fn-store-9`: its commits go to the record log,
+`journal/NNNNNN.log` segments (six digits, the highest present the active
+one), one fsync per batch of POSTs; a checkpoint names the first segment it
+does not cover and the covered ones are dropped (`store compact` above).
+A store of the per-file layout (`fn-store-8`, every store made before
+2026-09-27) or of any other format is refused at open by name (`open
+refused reason=store-format: reinstall from the release and import`, exit
+1); its archive, exported by the release that made it, imports here as
+format 9 (`fn-sxp-log-profile`). The archive carries the committed records,
+the configuration records, the profile and the frontier; the store identity
+and consumer state are records, so they travel with them. Feed journals and
+BP spools do not: a reinstalled node re-peers. It is a Store-history
+export, not a node backup: the node's secrets and private state (TLS keys,
+credentials, the HKDF and pseudonym roots), peer journals and the BP and
+TCPCL stores are kept separately, and the MANIFEST does not
 say the archive is the node's newest history. Keep the archive until the new
 node serves; it is the only copy of that history.
 
@@ -2076,7 +2169,7 @@ configuration log holds either is refused at open by releases before them
 (the deployed bbf52159 image exits 4; rehearsed on a copy, planning/evidence/
 caps-to-profile-2026-09-26.md), so roll back only from the pre-upgrade
 snapshot. A store that never extended a peer after the upgrade is unaffected.
-The same holds for a checkpoint or pack directory that has published
+The same held for a checkpoint or (format-8) pack directory that published
 generation 4096 or more (the numbering is a uint32 since then): an older
 release refuses that directory.
 
@@ -2084,16 +2177,18 @@ release refuses that directory.
 
 Stop the service, then copy the store directory.
 
-The store is an append-only journal of immutable transaction files plus a
-small set of small metadata files (the configuration records, the allocation
-frontier, the freshness anchor). A transaction file is written, made durable
-and never modified afterwards, so a copy of a file is either the whole
-record or absent -- there is no such thing as half-updated content inside
-one. That is why a plain file copy is enough and no database-aware dump tool
-is needed. Copying while the service runs can catch a transaction mid-write;
-recovery on the copy will discard that partial record, which means the copy
-silently loses the newest article rather than being corrupt. Stopping first
-avoids the question.
+The store is an append-only record log (`journal/NNNNNN.log`: each batch
+one chained, trailer-checked entry, fsynced before its replies) plus a
+state checkpoint and a small set of metadata files (the profile, the
+configuration records, the filesystem identity, the freshness anchor).
+Recovery keeps the longest prefix of entries whose chain and trailers
+check and zeroes a torn tail, so a copy taken while the service runs can
+silently lose the newest articles, and one taken across a compaction can
+pair a checkpoint with segments it does not match, which the open refuses
+by name (`history-short-of-checkpoint`, `checkpoint-damaged`); this is
+reasoned from the open's recovery rules (planning/evidence/log-recovery-2026-09-27.md),
+not measured on a hot copy. Stopping first avoids the question.
+Keep `STORE/keys/` with the copy, privately.
 
 What a copy does not give you is freshness. A restored image cannot tell by
 itself that it is not an old snapshot, which is what `fn anchor` and the
@@ -2102,8 +2197,9 @@ backup and check it after the restore.
 
 ## Recover after a crash
 
-A crash needs no special action: the next `fn run` replays the journal
-through ACL2 and reopens. Run `fn recover` first when you want the report
+A crash needs no special action: the next start reads the checkpoint and
+replays the log after it through ACL2, streaming one entry at a time
+(log-open-stream), and reopens. Run `fn recover` first when you want the report
 before the service starts.
 
 An owner killed without its cleanup (SIGKILL, a power cut) leaves its
@@ -2126,9 +2222,11 @@ server could be reached, `refused` when the anchor says the image is older
 than the one its own records stand under. A refused recover is a signal to
 stop and work out which image you are holding, not to retry.
 
-A store written by a release before 2026-09-25 (C1) that holds a signed
-control article, such as a cancel, filed under its Newsgroups is refused
-by name by every open (`recover`, `run`, `health`, `inspect`, `checkpoint`):
+(Historical: a store written by a release before 2026-09-25 is format 8,
+refused at open by `reason=store-format` before this check can run.) A store
+written by a release before 2026-09-25 (C1) that holds a signed control
+article, such as a cancel, filed under its Newsgroups is refused by name by
+every open (`recover`, `run`, `health`, `inspect`, `checkpoint`):
 `pre-C1 control record (txid N, <message-id>): run store repair-control`,
 exit 1. Nothing is changed or replayed. The repair verb
 `fn store ROOT repair-control` exists but refuses (`repair semantics
@@ -2206,7 +2304,46 @@ When you see it:
    cron job around fn must keep 0, 1 and 3 apart. Collapsing them is how a
    node ends up reporting an article as accepted that it never stored.
 
-## What one node sustains (the measured envelope)
+## What one node sustains: the measured envelope
+
+### Since 2026-09-27: the record log and the paged arena
+
+The full envelope below (2026-09-26) was taken on a per-file (format 8)
+image and has not been re-run on the record log. What was measured since,
+each on hbox (shared, loaded), one lane each, each figure with its scope:
+
+- **ARTICLE, served.** Median 0.406 ms, p95 0.528 ms for a 2,048-octet
+  article over loopback with a buffered client, under the throughput gate's
+  matched load, against 0.445 / 0.484 ms on the baseline f370581bf; POST
+  median 3.6 ms in the same run (image 1ee0953ab,
+  planning/evidence/gate-regress-2026-09-27.md).
+- **OVER.** A 2,000-article range 212 to 299 ms median and a 40-article
+  window about 4 ms, on a 10,000-article store (images native-b3/b4, box
+  load 12 to 19; planning/evidence/served-readers-2026-09-27.md), against
+  317 ms p95 for 40 articles in the 2026-09-26 table below.
+- **Reopen from a state checkpoint.** 40,000 articles of 2 KiB, format 9:
+  13.6 s to `LISTENING` against 55.2 s for the full replay; live heap
+  579 MB against 2,138 MB; peak RSS (VmHWM) 1,323 MB against 7,181 MB. The
+  checkpoint verb itself took 77.5 s at 6.8 GB RSS
+  (planning/evidence/checkpoint-arena-3-2026-09-27.md).
+- **Full replay of the record log.** 10,000 articles of 32 KiB: 55 s, live
+  heap 640 MB (about 310 MB of it the image's own world), peak RSS 1.25 GB,
+  after the open began reading one entry at a time (was 4:38 and 14.1 GB;
+  planning/evidence/log-open-stream-2026-09-27.md).
+- **Compaction.** `store compact` at 40,000 articles of 2 KiB: 40 to 139 s
+  at 4.6 to 7.5 GB peak RSS depending on the image and whether the store
+  was already compacted, against 2,963 s at 16.4 GB for the format-8
+  compaction; `store reclaim` of every article 348 s at 1.5 GB
+  (planning/evidence/log-recovery-2026-09-27.md section 4). A compaction's
+  memory is not yet bounded by the step.
+
+`operator CONFIG health` prints the store's format: `format=9` for the
+record log (`fn-nh-profile-words`, books/native-health.lisp, reads it from
+the profile). Every image refuses a format-8 store at the open by name
+(`open refused reason=store-format`), so a store `health` opened is format
+9 (its root holds `journal/`).
+
+### The 2026-09-26 envelope (per-file image)
 
 These figures are measured, not promised. They were taken for one named
 profile on one box, by `tools/service_envelope.py`, on 2026-09-26. Each

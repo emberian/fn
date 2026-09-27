@@ -251,10 +251,10 @@
       "name": "keep until release, refuse the unaffordable",
       "contract": "An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.",
       "host": {
-        "function": "fn-psrv-prepare",
+        "function": "fn-pout-prepare-article",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-psrv-prepare-is-sbud-prepare-when-served",
+      "bridge": "fn-pout-prepare-article-is-sbud-prepare-when-served",
       "keystone": "fn-sbud-prepare-refuses-at-budget",
       "tested": {
         "image": "69046a76",
@@ -323,22 +323,23 @@
     },
     {
       "id": "M5",
-      "name": "maintenance: operator compaction",
-      "contract": "`operator CONFIG store compact` is decided in ACL2: the pack it writes fits the free space the host observes on the store's filesystem (PKT-169), and a reclaim keeps the reconstructed history.",
+      "name": "maintenance: compaction and reclaim over the record log",
+      "contract": "`operator CONFIG store compact` checkpoints the store with the log rotated and drops the segments the checkpoint covers, and `store reclaim` checkpoints exactly the reclaiming pack's rewrite of the committed history (a held article is never touched), both decided in ACL2 over the one store format, 9.",
       "host": {
-        "function": "fn-cverb-decide",
+        "function": "fn-lgr-decide-stream",
         "file": "host/checkpoint-host.lisp"
       },
-      "keystone": "fn-cverb-pack-fits-the-disk",
+      "keystone": "fn-lgr-decide-checkpoints-the-rewrite",
       "tested": {
-        "record": "planning/evidence/m5-compact-verb-2026-09-24.md",
-        "profile": "developer image, checkpoint cuts through both entries (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section)",
-        "image": "69046a76"
+        "record": "planning/evidence/log-recovery-2026-09-27.md",
+        "source": "10674f330",
+        "profile": "developer and production lane images (s2c): log_compaction 7/7 (rotation and drop kill cuts, reclaim, refusals), store_export 4/4"
       },
       "profile": "default",
-      "latest": "10 of 10 checkpoint cuts pass through both entries on the developer image ([m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)).",
-      "obstruction": "a lost newest transaction file is not detectable at open (a post-commit witness is ember's decision); the pack unit caps compaction at 4 MiB of history; covered files are checked at open, not proved.",
-      "next": "the deployed store compacted offline by the procedure in the record, with headroom stated before and after and which bound it does not relieve."
+      "latest": "log_compaction 7/7 and store_export 4/4 on both lane images; a 40,000-article compact 40-139 s at 4.7 GB, from 2,963 s and 16.4 GB on the per-file layout ([log-recovery](evidence/log-recovery-2026-09-27.md)); the verb's own open streams the log since log-open-stream.",
+      "obstruction": "the drop's keystone fn-lg-segment-drop-preserves-the-open (PRF-270) is stated over fn-lgs-open-chain-records, which the streamed open (log-open-stream, fn-lgw-run-is-the-open) no longer calls, and no theorem on dev composes fn-lgw-run-is-the-open over segments into that fold: the equation is owed; the power-loss rig's log route over compaction was NOT RUN in the log-recovery record.",
+      "next": "the compaction and reclaim cases on one shared qualified format-9 image, and the power-loss rig's log route (compaction, reclaim, export, import) run.",
+      "bridge": "fn-lgr-decide-stream-is-lgr-decide"
     },
     {
       "id": "M6",

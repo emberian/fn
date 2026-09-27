@@ -1083,7 +1083,9 @@ def bindings(port, got, acked, violations, attempted=0):
 def classify(got, phase, acked, ref, ref2, violations):
     """Acked: the reference octets (the reclaimed reference once the reclaim
     completed; either during it).  Unacked: those, or 430."""
-    if phase in ("reference-reclaimed", "end"):
+    # After the reclaim completed (its reference, the end, and the export
+    # and import that follow it) the store serves the reclaimed reference.
+    if phase in ("reference-reclaimed", "end", "export", "import"):
         allowed = lambda i, g: g == ref2[i]
     elif phase == "reclaim":
         allowed = lambda i, g: g == ref[i] or g == ref2[i]

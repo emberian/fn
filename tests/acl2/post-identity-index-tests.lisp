@@ -141,38 +141,68 @@
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
+; by specification: the flip -- the host's call reads the stored bytes
+; through the arena by the article's handle, and its keystone's reference is
+; the Store's entry fn-store-existing-action over that arena
+; (books/store-intern.lisp).  The arena here is the one that interned the
+; owner's journal in order (owner-served-invariants-tests osi-prior: the two
+; records "<one@example>" and "<two@example>" at handles 0 and 1).
+(defconst *pit-prior* (osi-prior nil))
+
+(defun pit-existing-in (msgid payload groups o fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena) :verify-guards nil))
+  (mv-let (ignored fn-arena)
+    (fn-hrt-events *pit-prior* nil 0 fn-arena)
+    (declare (ignore ignored))
+    (let ((fn-octets (fn-octets-from-list payload fn-octets)))
+      (mv (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
+          fn-octets fn-arena))))
+
 (defun pit-existing (msgid payload groups o)
   (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
   (with-local-stobj fn-octets
     (mv-let (r fn-octets)
-      (let ((fn-octets (fn-octets-from-list payload fn-octets)))
-        (mv (fn-pidx-existing-action msgid fn-octets groups o) fn-octets))
+      (with-local-stobj fn-arena
+        (mv-let (r fn-octets fn-arena)
+          (pit-existing-in msgid payload groups o fn-octets fn-arena)
+          (mv r fn-octets)))
       r)))
 
-(defun pit-rclb-existing (msgid payload groups s)
+(defun pit-store-existing-in (msgid payload groups s fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (ignored fn-arena)
+    (fn-hrt-events *pit-prior* nil 0 fn-arena)
+    (declare (ignore ignored))
+    (mv (fn-store-existing-action msgid payload groups s fn-arena) fn-arena)))
+
+(defun pit-store-existing (msgid payload groups s)
   (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
-  (with-local-stobj fn-octets
-    (mv-let (r fn-octets)
-      (let ((fn-octets (fn-octets-from-list payload fn-octets)))
-        (mv (fn-rclb-existing-action msgid fn-octets groups s) fn-octets))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (pit-store-existing-in msgid payload groups s fn-arena)
       r)))
 
-(defconst *pit-payload* (fn-article-payload *pit-held-article*))
+; The held article's own bytes: those under its handle.
+(assert-event (natp (fn-article-payload *pit-held-article*)))
+(defconst *pit-payload*
+  (fn-hrt-bytes *pit-prior* (fn-article-payload *pit-held-article*)))
+(assert-event (consp *pit-payload*))
 (defconst *pit-groups* (fn-article-groups *pit-held-article*))
 (defconst *pit-changed* (append *pit-payload* (list 88)))
 (defconst *pit-store* (fn-own-store *pit-o*))
 
 ; Reachable: the held article's own bytes are :duplicate, changed bytes
-; :conflict, a fresh Message-ID nil; each equal to the buffer decision.
+; :conflict, a fresh Message-ID nil; each equal to the Store's entry over the
+; arena (the keystone's reference).
 (assert-event
  (and (equal (pit-existing *pit-held* *pit-payload* *pit-groups* *pit-o*) :duplicate)
-      (equal (pit-rclb-existing *pit-held* *pit-payload* *pit-groups* *pit-store*)
+      (equal (pit-store-existing *pit-held* *pit-payload* *pit-groups* *pit-store*)
              :duplicate)
       (equal (pit-existing *pit-held* *pit-changed* *pit-groups* *pit-o*) :conflict)
-      (equal (pit-rclb-existing *pit-held* *pit-changed* *pit-groups* *pit-store*)
+      (equal (pit-store-existing *pit-held* *pit-changed* *pit-groups* *pit-store*)
              :conflict)
       (null (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-o*))
-      (null (pit-rclb-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
+      (null (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 
 ; Hypothesis removal (corrupted views, as above): the fresh Message-ID is
 ; answered :duplicate from the fake article where the Store holds none.
@@ -192,11 +222,11 @@
 (must-fail
  (defthm pit-existing-without-visible
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-visible-o*)
-          (pit-rclb-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
+          (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 (must-fail
  (defthm pit-existing-without-index
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
-          (pit-rclb-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
+          (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 
 ; -----------------------------------------------------------------------------
 ; fn-pidx-sbud-prepare-is-pcar-sbud-prepare, reachable: the submission's own
@@ -205,9 +235,15 @@
 ; both are the identity.
 
 (defconst *pit-record* *pcar-t-record*)
-(defun pit-record-under (msgid)
+(defun pit-record-wire-under (msgid)
   (fn-record-make 2 2 2 msgid (fn-own-sub-octets *osi-sub*) '("fn.letters")
                   "own-pin:pit" "own-content:pit" "own-release:pit" 2 841000000))
+; by specification: the flip -- the owner stages the held row the entry
+; interns (host/owner-host.lisp fn-owner-prepare-buffer: fn-apc-intern-row-at
+; at the arena's next handle), here handle 2 after owner-tests' two records
+; (owner-served-invariants-tests osi-record-of's convention).
+(defun pit-record-under (msgid)
+  (fn-hrt-row-at (pit-record-wire-under msgid) 2))
 (defconst *pit-dup-record* (pit-record-under *pit-held*))
 (defconst *pit-fresh-record* (pit-record-under *pit-fresh*))
 
@@ -297,9 +333,10 @@
 ; budget is spent) where the reference, counting the history, stages.
 (defun pit-owner-with-store (o s)
   (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+               (fn-own-node-secret o) (fn-own-refused o)))
 (defconst *pit-bad-count-store*
   (let* ((s (fn-sbud-oc-store *pit-oc*))
          (index (fn-sn-event-index s)))
@@ -342,5 +379,11 @@
                           (guard 'fn-accept-prepare nil (w state)))
                    (equal (guard 'fn-pidx-node-prepare nil (w state))
                           (guard 'fn-node-prepare nil (w state)))
+                   ; by specification: the flip -- the decision also reads
+                   ; the arena, so its guard is the buffer decision's
+                   ; (fn-octets-p) and the Store entry's (fn-arena-p), the
+                   ; two stobj recognizers and nothing more.
                    (equal (guard 'fn-pidx-existing-action nil (w state))
-                          (guard 'fn-rclb-existing-action nil (w state)))))
+                          (list 'if (guard 'fn-rclb-existing-action nil (w state))
+                                (guard 'fn-store-existing-action nil (w state))
+                                ''nil))))

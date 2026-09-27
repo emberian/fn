@@ -973,20 +973,23 @@ dynamic space when the process starts, so the installed `bin/fn`
 (through `SBCL_USER_ARGS`, which every image launcher splices after its own
 figure; SBCL takes the last). ACL2 decides the figure
 (books/heap-figure.lisp `fn-heap-operation-decide` over
-books/heap-store-figure.lisp, host/native/heap.lisp `fnn-heap-reservation`
-and `fnn-heap-decision`; re-derived from the records flip's payload arena by
-lane reservation-after-flip, 2026-09-27): the image's dynamic content (the
-least of the core file's length and the dynamic space in use when the probe
-starts); the store's state at the profile's bounds -- the arena's byte array
-at three bytes per history octet (it doubles, and the old array is live
-during a resize), 48 octets of handles and, twice for the collector, 5,120
-octets per record and 320 per group membership (measured 3.5 to 4.8 KiB and
-0.25 KiB); the open's transient over the history on disk, which the probe
-observes (the history files' octets and the transaction files' count): two
-list copies of each octet at sixteen bytes, and 16 KiB per record, twice for
-the collector (a full replay decodes the records as octet lists); the
-request in flight (the record and three header copies as lists) and the two
-checkpoint buffers at the profile's file bound (`fn-ock-capture-budget`);
+books/heap-store-figure.lisp, host/native/heap.lisp `fnn-heap-reservation`;
+re-derived from the records flip's payload arena by lane
+reservation-after-flip and re-measured by lane reservation-figure,
+2026-09-27): the image's dynamic content (the least of the core file's
+length and the dynamic space in use when the probe starts); the store's
+state at the profile's bounds -- the paged arena (the payload octets, one
+page of slack and its page table: `fn-heap-arena-octets`), 48 octets of
+handles and, twice for the collector, 12,288 octets per record and 320 per
+group membership (the measured live state a record less its payload, 8 to 10
+KB, and 0.18 KB a membership: per-record-state, catalog-columns); the
+open's transient over the history on disk, which the probe observes (the
+history files' octets and the transaction files' count): the open streams
+one log entry and one 1 MiB chunk at a time, so one chunk and one record as
+lists with their decode, the checkpoint suffix's record vectors and 1 KiB
+per record, twice for the collector; the request in flight (the record and
+three header copies as lists) and the two checkpoint buffers at the
+profile's file bound (`fn-ock-capture-budget`);
 and twice the collection trigger the host sets in the space it gets
 (`fn-heap-nursery-trigger`: a sixteenth of it, at least 8 MiB, at most the
 host's 64 MiB), the figure being the least space that holds all of it
@@ -1003,17 +1006,22 @@ command does not run. An accepted figure holds every store the profile
 admits with an open of the store on disk
 (`fn-heap-operation-decide-holds-the-store`,
 `fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
-`health` end with `heap=MB MB profile=WORD machine=M MB`, the next run's
-figure over the store on disk. The small preset (T 16,384, H 8 MiB, R
-196,608, A 32,768, G 16, K 128) reserves 583 MB of heap for the run of an
-empty store on the production image and 1,662 MB at its bounds;
+`health` end with `heap=MB MB profile=WORD machine=M MB stack=KB KB
+threads=N`, the reservation the launcher's probe makes for the store's next
+`run` over the store on disk (books/heap-reservation.lisp
+`fn-heap-status-decide`, `fn-heap-status-decide-is-the-launchers-run-reservation`). The small preset (T 16,384, H 8 MiB, R
+196,608, A 32,768, G 16, K 128) reserves 908 MB of heap for the run of an
+empty store on the production image and 963 MB at its bounds;
 `fn-heap-small-profile-run-fits-a-small-machine`: its empty store's run
 fits 1,536 MiB for any image of up to 512 MiB of dynamic content. The probe itself runs in the core's size plus 128 MB,
 a bound on its work (it reads `fn.toml` and `config.json`, 16 KiB each). A
 checkout's `packaging/fn` passes `FN_TEST_HEAP_MB` when set and otherwise
 the image launcher's own figure; the installed launcher ignores both
 `FN_TEST_HEAP_MB` and the caller's `SBCL_USER_ARGS`. The D27 default profile
-(H = 1 TiB) needs about 70 TiB and is refused on every machine (PKT-582).
+(H = 1 TiB, T = 2^32 - 1 records of up to 4,096 groups) needs about 10 PiB
+and is refused on every machine (PKT-582); the development and scale
+presets' figures are their G = 65,535 group memberships a record (2 x T x
+320 x G octets: nothing else bounds a store's memberships).
 PRF-198; the native case is SCN-127.
 
 
@@ -1030,7 +1038,14 @@ changed is who waits. host/native/mux.lisp runs `+fnn-mux-loops+` (2)
 threads, each polling (poll(2), Linux and OpenBSD alike) the connections it
 owns and a wake pipe; the accept threads hand each accepted socket to a loop
 instead of starting a thread for it. A connection is a record: the input the
-next step is handed (one `+fnn-max-read+` read, or the suffix a step left),
+next step is handed (one read, or the suffix a step left; the read size is
+ACL2's per step since lane input-loop-2, 2026-09-27: `fn-cbud-step-read-octets`,
+books/connection-budget.lisp, installed by `fnn-owner-refresh-read-octets`
+after every served step, reads 512 octets under a step rate such as the
+public listener's default `exposure-steps-per-second` of 64, so the rate
+keeps its meaning in octets per second, and 4 KiB without one (loopback, or
+the rate row set to 0); each loop reads into one buffer of that size,
+`fnn-mux-read-buffer`),
 the one reply being written (the connection is neither read nor stepped
 while it is queued, so a client that does not read meets TCP backpressure
 and holds one reply), and its timers: the exposure wait (`fn-exp-charge`'s
@@ -1059,7 +1074,11 @@ after recovery and before listen, ACL2 decides the live capacity against it
 (`fn-cbud-run-decide`, host `fn-owner-connection-budget`): `connections
 holds=B per-connection=K KiB` to the service log, or `refused
 connections-exceed-memory capacity=C holds=B per-connection=K KiB machine=M
-MB` and exit 1. A live reconfiguration whose capacity passes the bound the
+MB` and exit 1; when the base itself does not fit (neither the store's heap
+figure nor the process's dynamic space, each with the fixed threads and the
+core, is within the machine: holds=0 whatever the capacity), the line goes
+on ` base-exceeds-machine heap-figure=F MB dynamic=D MB fixed=R MB`
+(`fn-cbud-run-refusal-line`). A live reconfiguration whose capacity passes the bound the
 run held is refused `:connections-exceed-memory` before anything is staged
 (`fn-owner-reconfigure-deltas`). Trusted sources count in the capacity like
 every other (the trusted range exempts a source from the per-address rule

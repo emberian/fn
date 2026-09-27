@@ -156,3 +156,52 @@
    (and (equal (fn-own-ledger o) (list nil nil (cons 0 7)))
         (equal (fn-own-ledger-count o) 3)
         (equal (fn-own-ledger-count o) (len (fn-own-ledger o))))))
+
+; -----------------------------------------------------------------------------
+; keystone-audit 2026-09-27: the host-line twins fn-rix-ocfg-complete and
+; fn-rix-own-finish had no witness.  Reachable positive: the live owner
+; before C's completion (its Store indexed), unstaged.  Teeth (CORRUPTED,
+; labelled): the same Store with the index of another history
+; (*ori-rc-plain*), fn-sn-statep and completion-enabled, not indexed; the
+; twin and the carried completion then differ.
+(defconst *ori-pre-bad-s*
+  (fn-sn-with-event-index (fn-own-store *ori-pre*)
+                          (fn-cei-build (list *ocr-rt0* *ori-rc-plain*))))
+(defconst *ori-oc* (fn-ocfg-make *ori-pre* nil nil nil))
+(defconst *ori-bad-oc* (fn-ocfg-make (ori-with-store *ori-pre* *ori-pre-bad-s*) nil nil nil))
+(assert-event
+ (and (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner *ori-oc*)))
+      (equal (fn-rix-ocfg-complete *ori-oc*) (fn-ccar-ocfg-complete *ori-oc*))
+      (equal (fn-own-ledger (fn-ocfg-owner (fn-rix-ocfg-complete *ori-oc*)))
+             (fn-own-ledger *ori-done*))))
+(assert-event
+ (and (fn-sn-statep *ori-pre-bad-s*)
+      (fn-ccar-completion-enabledp *ori-pre-bad-s*)
+      (not (fn-ceis-indexedp *ori-pre-bad-s*))
+      (not (equal (fn-rix-ocfg-complete *ori-bad-oc*)
+                  (fn-ccar-ocfg-complete *ori-bad-oc*)))))
+
+; fn-rix-own-finish-is-ccar-own-finish over a fresh arena (the word is
+; :fault on both sides: no row stands for the completion; the owner
+; component is the completion's).
+(defun ori-finish-pair (o)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (mv (list (fn-rix-own-finish o nil fn-arena) (fn-ccar-own-finish o nil fn-arena))
+          fn-arena)
+      r)))
+(assert-event
+ (let ((p (ori-finish-pair *ori-pre*)))
+   (and (equal (nth 0 p) (nth 1 p))
+        (equal (cdr (nth 0 p)) *ori-done*))))
+(assert-event
+ (let ((p (ori-finish-pair (ori-with-store *ori-pre* *ori-pre-bad-s*))))
+   (not (equal (nth 0 p) (nth 1 p)))))
+
+; fn-own-refresh-ix-keeps-ledger-field (no hypothesis): the refresh of the
+; live owner holding a one-pair ledger leaves that field, and its view moves.
+(assert-event
+ (and (equal (fn-own-ledger-count *ori-pre*) 1)
+      (equal (fn-own-ledger-field (fn-own-refresh-ix *ori-pre*))
+             (fn-own-ledger-field *ori-pre*))))

@@ -353,6 +353,45 @@
   (or (fn-cbud-fits-figure machine hneed core threads stack)
       (fn-cbud-fits-dynamic machine dynamic core threads stack)))
 
+; The run's refusal as the owner prints it (host/owner-host.lisp
+; fn-owner-connection-budget).  When the base itself does not fit (holds=0
+; whatever the capacity), the line names the parts, so a node started under
+; a memory limit that its dynamic space and its store's heap figure both
+; exceed says so instead of blaming the connections: `base-exceeds-machine
+; heap-figure=F MB dynamic=D MB fixed=R MB'.  bin/fn sizes the dynamic space
+; from the store; a raw image keeps its build's size (lane ops-fixes: three
+; lanes read `holds=0' as a silent or unexplained start failure).
+(defun fn-cbud-mb-up (octets)
+  (declare (xargs :guard t))
+  (floor (+ (nfix octets) (- *fn-heap-mib* 1)) *fn-heap-mib*))
+
+(defthm fn-cbud-mb-up-natp
+  (natp (fn-cbud-mb-up octets))
+  :rule-classes :type-prescription)
+
+(defun fn-cbud-base-line (dynamic hneed core threads stack)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-cbud-mb-up
+                                                            fn-cbud-rest-octets)))))
+  (concatenate 'string
+               " base-exceeds-machine heap-figure=" (fn-heap-decimal (fn-cbud-mb-up hneed))
+               " MB dynamic=" (fn-heap-decimal (fn-cbud-mb-up dynamic))
+               " MB fixed=" (fn-heap-decimal
+                             (fn-cbud-mb-up (fn-cbud-rest-octets core threads stack)))
+               " MB"))
+
+(defun fn-cbud-run-refusal-line (decision article tlsp machine dynamic hneed core
+                                          threads stack)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-cbud-base-fitsp
+                                                            fn-cbud-refusal-line
+                                                            fn-cbud-base-line)))))
+  (if (fn-cbud-base-fitsp machine dynamic hneed core threads stack)
+      (fn-cbud-refusal-line decision article tlsp machine)
+    (concatenate 'string
+                 (fn-cbud-refusal-line decision article tlsp machine)
+                 (fn-cbud-base-line dynamic hneed core threads stack))))
+
 (defthm fn-cbud-limit-natp
   (natp (fn-cbud-limit machine dynamic hneed core threads stack article tlsp))
   :rule-classes :type-prescription)

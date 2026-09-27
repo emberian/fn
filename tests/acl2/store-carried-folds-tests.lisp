@@ -23,8 +23,10 @@
 (defconst *scft-after-records* (fn-sf-records (fn-sn-files *osi-after*)))
 (assert-event (equal (len *scft-before-records*) 1))
 (assert-event (equal (len *scft-after-records*) 2))
+; by specification: the flip -- the commit appends the composite ROW
+; (bp-signed-binding-tests *bsb-row-composite*), not the wire composite.
 (assert-event (equal *scft-after-records*
-                     (append *scft-before-records* (list *bsb-composite*))))
+                     (append *scft-before-records* (list *bsb-row-composite*))))
 
 ; -----------------------------------------------------------------------------
 ; fn-sbud-count-is-used: antecedent and conclusion, before and after.

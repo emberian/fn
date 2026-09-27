@@ -95,3 +95,39 @@
 (assert-event (equal (fn-ocp-wake :staged t nil t) :wait))
 (assert-event (equal (fn-ocp-wake :staged nil t t) :collect))
 (assert-event (equal (fn-ocp-wake :staged nil nil nil) :wait))
+
+; -----------------------------------------------------------------------------
+; keystone-audit 2026-09-27.
+; fn-ocp-next-is-ocs-next (no hypothesis): the host's pick is the ocs pick
+; with the open-next flag kept, at a reached state with a next batch open.
+(assert-event
+ (and (fn-ocp-open-next *ocpt-s2*)
+      (equal (ocpt-class *ocpt-s2* *ocpt-readers-commit*)
+             (mv-let (c s2) (fn-ocs-next (fn-ocp-ocs *ocpt-s2*) *ocpt-readers-commit*)
+               (declare (ignore s2)) c))
+      (equal (fn-ocp-ocs (ocpt-pick *ocpt-s2* *ocpt-readers-commit*))
+             (mv-let (c s2) (fn-ocs-next (fn-ocp-ocs *ocpt-s2*) *ocpt-readers-commit*)
+               (declare (ignore c)) s2))
+      (fn-ocp-open-next (ocpt-pick *ocpt-s2* *ocpt-readers-commit*))))
+; fn-ocp-in-flight-admits-only-inspect-commit-and-reader: in flight (above)
+; control waiting is admitted by nobody; its hypothesis removed -- the idle
+; owner after both COMPLETEs picks control.
+(assert-event (and (fn-ocs-in-flight-p (ocpt-phase *ocpt-s2*))
+                   (member-equal (ocpt-class *ocpt-s2* '(1 0 0 0 0 0))
+                                 '(:inspect :commit :reader nil))))
+(assert-event (and (not (fn-ocs-in-flight-p (ocpt-phase *ocpt-s5*)))
+                   (equal (ocpt-class *ocpt-s5* '(1 0 0 0 0 0)) :control)
+                   (not (member-equal (ocpt-class *ocpt-s5* '(1 0 0 0 0 0))
+                                      '(:inspect :commit :reader nil)))))
+; fn-ocp-next-opens-only-behind-a-sync: reached (the START-NEXT at a staged
+; batch), and its hypothesis (not NEXT) removed -- an open next batch stays
+; open across the barrier's :fenced, a step that is not a START-NEXT.
+(assert-event (and (equal (ocpt-step-action :staged nil :next-started) :wait)
+                   (fn-ocp-open-next *ocpt-s2*)))
+(assert-event (and (fn-ocp-open-next *ocpt-s2*)
+                   (fn-ocp-open-next *ocpt-s3*)
+                   (equal (ocpt-phase *ocpt-s2*) :staged)))
+; fn-ocp-complete-only-after-the-barrier over the step: the reached COMPLETE,
+; and a :fenced word at an already-failed batch is the stop, not COMPLETE.
+(assert-event (equal (ocpt-step-action :staged nil :fenced) :complete))
+(assert-event (equal (ocpt-step-action :failed t :fenced) :stop))

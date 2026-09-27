@@ -5,11 +5,15 @@
 ; must-fail of the keystone without it.
 (in-package "ACL2")
 (include-book "../../books/store-replay-bound")
-(include-book "../../books/heap-figure")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "std/testing/assert-bang" :dir :system)
 
-(defconst *srt-small* *fn-heap-small-profile*)
+; The small preset (books/heap-figure.lisp *fn-heap-small-request*, the same
+; fields; heap-figure is not included: its closure was most of this book's
+; certification time, 11.4 s at 2 jobs; lane reservation-figure).
+(defconst *srt-small*
+  (fn-bs-profile-resolve
+   '(:development ((2 . 16384) (3 . 8388608) (4 . 196608) (6 . 16) (8 . 128))) nil))
 (defconst *srt-h* 8388608)
 (defconst *srt-o* (fn-srb-record-overhead *srt-small*))
 
@@ -91,3 +95,15 @@
                (fn-bs-profile-admittedp profile)
                (<= (len encoded) (fn-bs-profile-max-transactions profile))
                (<= (fn-srb-sum stored) (fn-bs-profile-max-history-octets profile)))
+
+; -----------------------------------------------------------------------------
+; Lane keystone-audit (2026-09-27).  fn-srb-within-h-is-within-the-bound:
+; the reachable witness (a history of H octets under the small preset: the
+; hypothesis and the conclusion), and without the hypothesis (a history one
+; octet past the derived bound, which H does not admit) the conclusion fails.
+(assert! (fn-profile-replay-within-boundp *srt-small* (fn-bs-profile-max-history-octets *srt-small*)))
+(assert! (fn-srb-replay-within-boundp *srt-small* (fn-bs-profile-max-history-octets *srt-small*)))
+(assert! (not (fn-profile-replay-within-boundp *srt-small*
+                                               (+ 1 (fn-srb-replay-input-bound *srt-small*)))))
+(assert! (not (fn-srb-replay-within-boundp *srt-small*
+                                           (+ 1 (fn-srb-replay-input-bound *srt-small*)))))

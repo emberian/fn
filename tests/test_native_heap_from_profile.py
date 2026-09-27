@@ -52,7 +52,10 @@ EXIT_OK, EXIT_REFUSED = 0, 1
 SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
                "--max-history-octets", "8388608", "--max-record-octets", "196608",
                "--max-groups-per-article", "16", "--max-open-suffix", "128")
-HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB$", re.M)
+# `status' prints the launcher's run reservation (books/heap-reservation.lisp
+# fn-heap-status-decide): the heap line with the stack and the threads.
+HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB"
+                       r" stack=\d+ KB threads=\d+$", re.M)
 REFUSED = re.compile(
     r"refused machine-cannot-hold-profile heap=(\d+) MB machine=(\d+) MB")
 # What `init' prints (books/heap-reservation.lisp fn-heap-init-report-line).
@@ -124,8 +127,15 @@ class Harness:
     def config(self, name):
         store, port = self.tmp / name, free_port()
         path = self.tmp / (name + ".toml")
+        # The control socket in a short directory: under a deep scratch tree
+        # store/control.sock passes the 103 octets a Unix socket binds whole
+        # everywhere, and `run' is refused :control-path-too-long
+        # (books/native-operator.lisp; lane ops-fixes).
+        control = Path(tempfile.mkdtemp(prefix="fnh-")) / "c.sock"
+        self.addCleanup(shutil.rmtree, control.parent, True)
         path.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                        'port = {}\n'.format(store, port), encoding="ascii")
+                        'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
+                        encoding="ascii")
         return path, port
 
     def env(self, **extra):

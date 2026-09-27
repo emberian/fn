@@ -509,12 +509,16 @@ transition."
 (defun fnn-control-launch-client (control socket)
   (let ((disposition nil))
     (fnn-with-control (control)
-      (cond ((fnn-control-state-stopping control)
-             (setq disposition :stopping))
-            ((>= (length (fnn-control-state-workers control))
-                 (fnn-control-state-max-clients control))
-             (setq disposition :busy))
-            (t
+      ;; ACL2's disposition over the stop flag and the live worker count
+      ;; (books/native-control-launch.lisp fn-ncla-launch-disposition): the
+      ;; ceiling comparison is not the host's.
+      (setq disposition
+            (fnn-core 'fn-native-control-host-launch-disposition
+                      (and (fnn-control-state-stopping control) t)
+                      (length (fnn-control-state-workers control))))
+      (case disposition
+            ((:stopping :busy) nil)
+            (:launch
              (push socket (fnn-control-state-clients control))
              (let ((worker
                      (sb-thread:make-thread
@@ -525,7 +529,8 @@ transition."
                           (fnn-control-client-done control socket)))
                       :name "fn local control client")))
                (push worker (fnn-control-state-workers control))
-               (setq disposition :launched)))))
+               (setq disposition :launched)))
+            (t (fnn-fault "ACL2 returned an invalid control launch disposition"))))
     (case disposition
       (:stopping (fnn-socket-shut socket))
       (:busy
@@ -751,7 +756,10 @@ octets, or NIL.  PLAIN-THUNK encodes the plain request, only for a resend."
                          (fnn-fault "ACL2 refused the plain control request"))
                        (fnn-control-exchange path plain))
                    (values (fnn-control-plain-status plain plain-stage) nil)))
-        (t (values (fnn-control-transport-outcome stage) nil))))))
+        ;; No reply: ACL2's outcome of the stage reached and its word
+        ;; (no-owner when the connect itself failed).
+        (t (values (fnn-control-transport-outcome stage)
+                   (fnn-core 'fn-native-control-host-transport-word stage)))))))
 
 (defun fnn-control-admin (path-octets argv)
   "Send one ACL2-bounded administrative vector to the live owner.

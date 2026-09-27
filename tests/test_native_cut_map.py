@@ -12,12 +12,17 @@ class NativeCutMapTests(unittest.TestCase):
         native_cuts.verify_post_log_cut_map()
         native_cuts.verify_log_segment_cut_map()
 
-    def test_checkpoint_cuts_match_native_and_reclaim_program(self):
+    def test_checkpoint_cuts_match_native_and_compaction_is_rotation(self):
         native_cuts.verify_checkpoint_cut_map()
 
     def test_outcomes_remain_explicit(self):
         self.assertEqual({cut.outcome for cut in native_cuts.ALL_CUTS}, {"kill"})
+        # Outside a batch the record is absent before its append and present
+        # after (a batch of one commits before its place); "either" is the
+        # served batch's log-written (POST_LOG_CUTS).
         self.assertEqual({cut.candidate for cut in native_cuts.POST_CUTS},
+                         {"absent", "present"})
+        self.assertEqual({cut.candidate for cut in native_cuts.POST_LOG_CUTS},
                          {"absent", "either", "present"})
 
 

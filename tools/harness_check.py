@@ -762,12 +762,13 @@ def acl2_findings(root: Path) -> tuple[list[dict], dict]:
 # lambda list (name &rest args), or the lint reports the table as stale.
 RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
                    "fnn-owner-core": 1, "fnn-owner-action": 1,
-                   "fnn-bpapp-core-record": 1}
+                   "fnn-bpapp-core-record": 1,
+                   "fnn-core-arena-state": 2, "fnn-owner-feed-arena-step": 2}
 
 # The state dispatchers pass the live payload arena before state to an entry
 # whose ACL2 formals end in (fn-arena state) (host/native/io.lisp
 # fnn-arena-then-state, read off the entry's stobjs-in: lane served-readers).
-# (or (fn-arena fn-cat state): both).  ARENA_ENTRIES (name -> how many) is
+# (or any run of fn-arena, fn-cat and fn-hist before state).  ARENA_ENTRIES (name -> how many) is
 # filled from the tree's formals by raw_arity_findings.
 ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action"}
 ARENA_ENTRIES: dict[str, int] = {}
@@ -1048,12 +1049,18 @@ def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
         seen.setdefault(definition.name, set()).add(len(definition.formals))
     ARENA_ENTRIES.clear()
     def trailing(formals):
-        tail = [str(f).lower() for f in formals[-3:]]
-        if tail == ["fn-arena", "fn-cat", "state"]:
-            return 2
-        if tail[-2:] == ["fn-arena", "state"]:
-            return 1
-        return 0
+        # the run of fn-arena, fn-cat and fn-hist just before state
+        # (host/native/io.lisp fnn-trailing-kind; fn-hist: lane
+        # history-columns-2)
+        names = [str(f).lower() for f in formals]
+        if not names or names[-1] != "state":
+            return 0
+        count = 0
+        for name in reversed(names[:-1]):
+            if name not in ("fn-arena", "fn-cat", "fn-hist"):
+                break
+            count += 1
+        return count
     for name, function in tree.functions.items():
         if isinstance(function.formals, list) and trailing(function.formals):
             ARENA_ENTRIES[name] = trailing(function.formals)
@@ -1066,6 +1073,79 @@ def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
         if len(lengths) == 1:
             arity[name] = lengths.pop()
     return raw_arity_scan(sources, set(tree.functions) | set(seen), arity)
+
+
+# --------------------------------------------------------------------------
+# duplicate raw definitions
+# --------------------------------------------------------------------------
+#
+# The raw host files are LOADED into one image, one after another; a second
+# `defun' of a name silently replaces the first, in whatever file loads
+# later.  On 2026-09-27 host/native/io.lisp defined `fnn-log-line' twice: the
+# service log's one-argument writer and a log rig's three-argument printer
+# (w6-log-core-3).  The rig's won, every owner start faulted in fn-lgk-acked,
+# and dev had no owner for most of a batch (friend-blockers-2, batch AV).
+# `raw-arity' saw two lambda lists and set the name aside as undecided, so
+# nothing reported it.  ACL2-mode host files need no such check: ACL2 refuses
+# a redefinition itself.
+#
+# Each image's build file defines its own `fn-native-entry' (the entry of that
+# image); that is the one exemption, and it names why.
+DUPLICATE_DEFINERS = ("defun", "defmacro", "defgeneric")
+DUPLICATE_ALLOWED = {
+    "fn-native-entry": "each image's build file (host/native/build*.lisp) "
+                       "defines that image's entry; the last loaded is the image's",
+}
+
+
+def raw_definition_sites(form, line: int, relative: str, found: dict) -> None:
+    """Every raw `defun'/`defmacro'/`defgeneric' in FORM, at any depth
+    (a definition inside a `let' or `eval-when' replaces the name as well);
+    quoted data is not walked."""
+    if not isinstance(form, list) or not form:
+        return
+    head_ = str(form[0]) if isinstance(form[0], str) else None
+    if head_ in ("quote", "function"):
+        return
+    if head_ in DUPLICATE_DEFINERS and len(form) >= 2 and isinstance(form[1], str):
+        found.setdefault(str(form[1]).lower(), []).append(
+            "{}:{}".format(relative, line))
+    for item in form[1:] if head_ in DUPLICATE_DEFINERS else form:
+        raw_definition_sites(item, line, relative, found)
+
+
+def duplicate_defun_scan(sources: dict[str, list]) -> tuple[list[dict], dict]:
+    """Findings over SOURCES (relative path -> [(form, line)]): a name defined
+    more than once across the raw files one image loads."""
+    sites: dict[str, list] = {}
+    for relative, forms in sorted(sources.items()):
+        for form, line in forms:
+            raw_definition_sites(form, line, relative, sites)
+    findings = []
+    exempt = 0
+    for name, where in sorted(sites.items()):
+        if len(where) < 2:
+            continue
+        if name in DUPLICATE_ALLOWED:
+            exempt += 1
+            continue
+        findings.append({
+            "lint": "duplicate-defun", "where": where[-1], "callee": name,
+            "defined": ", ".join(where[:-1]),
+            "problem": "defined {} times across the raw host files; the one "
+                       "loaded last silently replaces the others".format(len(where))})
+    counts = {"raw_files": len(sources), "definitions": len(sites),
+              "exempt": exempt}
+    return findings, counts
+
+
+def duplicate_defun_findings(root: Path) -> tuple[list[dict], dict]:
+    from tools import ledger
+
+    tree = ledger.load_tree()
+    raw = ledger.raw_host_paths(tree)
+    return duplicate_defun_scan({relative: tree.hosts[relative].forms
+                                 for relative in raw})
 
 
 # --------------------------------------------------------------------------
@@ -1263,6 +1343,7 @@ LINTS = {
     "signatures": (signature_findings, True),
     "acl2-arity": (acl2_findings, True),
     "raw-arity": (raw_arity_findings, True),
+    "duplicate-defun": (duplicate_defun_findings, True),
     "waivers": (waiver_findings, True),
 }
 

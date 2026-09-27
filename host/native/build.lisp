@@ -123,6 +123,9 @@
 ;; fn-owner-prepare-identity, fn-owner-prepare-topic, fn-owner-reconfigure-unstage
 ;; call books/owner-prepare-served (fn-psrv-).
 (include-book "books/owner-prepare-served")
+;; Stage 2b (lane history-columns-2): host/owner-host.lisp loads and syncs the
+;; history stobj fn-hist and reads the carried budget folds from it.
+(include-book "books/history-columns-store")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
@@ -231,13 +234,6 @@
 (include-book "books/anchor-servers")
 (include-book "books/anchor-replace")
 
-;; The committed-history boundary: io.lisp fnn-mark-committed and
-;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
-(include-book "books/store-history-marker")
-;; D31: the history requirement and the recovery catch-up: io.lisp
-;; fnn-check-history-marker and fnn-recover call
-;; fn-hmr-open-verdict and fn-hmr-catch-up.
-(include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
 ;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's

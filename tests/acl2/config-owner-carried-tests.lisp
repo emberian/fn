@@ -63,3 +63,69 @@
     (fn-ocl-relation (mv-nth 1 (fn-oclc-publish oc generation max-octets)))
     :rule-classes nil
     :hints (("Goal" :do-not-induct t)))))
+
+; -----------------------------------------------------------------------------
+; The steps fn-oclc-publish-is-publish is proved through, each a registry
+; event of PRF-274 (keystone-audit 2026-09-27: none had a witness).  The
+; store is the recovered owner's (*ocp-closed*), ready, with the group request
+; staged; *ocp-forged* is the same store under an owner claiming the initial
+; configuration (a CORRUPTED owner: its configuration is not the replayed one).
+(defconst *oclct-st* (fn-own-store (fn-ocfg-owner *ocp-closed*)))
+(defconst *oclct-rec* (fn-ocfg-staged *ocp-closed*))
+(defconst *oclct-cfg*
+  (mv-list 2 (fn-oclc-configure *oclct-st* (fn-ocfg-config *ocp-closed*) *oclct-rec*)))
+(assert-event (equal (fn-own-store (fn-ocfg-owner *ocp-forged*)) *oclct-st*))
+
+; fn-oclc-ready-cst-relation-is-history-relation: both hypotheses (the carried
+; relation, the ready phase) and the conclusion.  No removal witness here: an
+; unready store and a store outside fn-cst-relation were not constructed.
+(assert-event (and (fn-cst-relation *oclct-st*)
+                   (equal (fn-sf-phase (fn-sn-files *oclct-st*)) :ready)
+                   (fn-cpo-history-relation *oclct-st*)))
+
+; fn-oclc-configure-is-configure-durable: the history relation, the owner's
+; configuration the replayed one, and the carried configure is
+; fn-cpo-configure-durable's store (non-vacuous: the history grows).
+(assert-event (and (fn-cpo-history-relation *oclct-st*)
+                   (equal (fn-ocfg-config *ocp-closed*)
+                          (fn-cnode-config (fn-oclc-replayed *oclct-st*)))
+                   (equal (car *oclct-cfg*) (fn-cpo-configure-durable *oclct-st* *oclct-rec*))
+                   (not (equal (fn-sn-config-history (car *oclct-cfg*))
+                               (fn-sn-config-history *oclct-st*)))))
+; Hypothesis removal (configuration): the forged owner's configuration on the
+; same store (the history relation holds) is not the replayed one, and the
+; carried configure is not fn-cpo-configure-durable's.
+(assert-event
+ (let ((c (mv-list 2 (fn-oclc-configure *oclct-st* (fn-ocfg-config *ocp-forged*) *oclct-rec*))))
+   (and (fn-cpo-history-relation *oclct-st*)
+        (not (equal (fn-ocfg-config *ocp-forged*)
+                    (fn-cnode-config (fn-oclc-replayed *oclct-st*))))
+        (not (equal (car c) (fn-cpo-configure-durable *oclct-st* *oclct-rec*))))))
+
+; fn-oclc-configure-config-is-store-config: every hypothesis (the history
+; grew) and the conclusion.  The history-changed hypothesis has no removal
+; witness: with the configuration the replayed one an unchanged configure
+; answers that configuration, which is the store's (the refused record nil
+; below), so it may be redundant; the weakened theorem is NOT proved here.
+(assert-event (equal (cadr *oclct-cfg*) (fn-ocl-store-config (car *oclct-cfg*))))
+(assert-event
+ (let ((c (mv-list 2 (fn-oclc-configure *oclct-st* (fn-ocfg-config *ocp-closed*) nil))))
+   (and (equal (car c) *oclct-st*)
+        (equal (cadr c) (fn-ocl-store-config (car c))))))
+
+; fn-oclc-complete-is-complete: staged, the store in fn-cst-relation, the
+; owner's configuration history (fn-ocl-config-historyp), and the carried
+; completion is fn-ocl-complete's (non-vacuous: the owner changes).
+(assert-event (and (fn-ocfg-staged *ocp-closed*)
+                   (fn-cst-relation *oclct-st*)
+                   (fn-ocl-config-historyp *ocp-closed*)
+                   (equal (fn-oclc-complete *ocp-closed*) (fn-ocl-complete *ocp-closed*))
+                   (not (equal (fn-oclc-complete *ocp-closed*) *ocp-closed*))))
+; Hypothesis removal (fn-ocl-config-historyp), CORRUPTED owner: staged and
+; the store's relation hold, the forged configuration fails it, and the two
+; completions differ.
+(assert-event (and (fn-ocfg-staged *ocp-forged*)
+                   (fn-cst-relation (fn-own-store (fn-ocfg-owner *ocp-forged*)))
+                   (not (fn-ocl-config-historyp *ocp-forged*))
+                   (not (equal (fn-oclc-complete *ocp-forged*)
+                               (fn-ocl-complete *ocp-forged*)))))

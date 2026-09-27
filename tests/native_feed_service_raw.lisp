@@ -46,10 +46,13 @@
 (defun fnn-owner-serialized (service cid thunk)
   (declare (ignore service cid))
   (funcall thunk))
+(defun fnn-owner-transit-serialized (service cid thunk)
+  (declare (ignore service cid))
+  (funcall thunk))
 ;; The ACL2 reply wrapper answers a FeedPublication (books/owner-results.lisp);
 ;; here the publication is stood for by its word, and its command, log line
 ;; and flush are the recording stubs below.
-(defun fnn-owner-feed-step (name &rest args)
+(defun fnn-owner-feed-arena-step (name &rest args)
   (unless (eq name 'fn-owner-feed-reply-chunk)
     (error "unexpected owner feed step: ~s" name))
   (push (second args) *test-reply-inputs*)
@@ -170,6 +173,41 @@
              (error "connection refusal reappended an FNFD batch")))
       (setf (symbol-function 'fnn-feed-dial-plan) old-plan
             (symbol-function 'fnn-feed-lost) old-lost))))
+
+;; :unsendable (books/owner-feed-article.lisp fn-ofa-publication; lane
+;; feed-fault): the port moved, so its records are flushed and its ACL2 line
+;; offered; nothing is sent, the owner is not stopped, and the link is
+;; dropped through fnn-feed-lost (the offer requeues).  Before the fix a 335
+;; whose article was a handle stopped the owner with "authorized an empty
+;; command".
+(let* ((*test-words* '(:unsendable))
+       (*test-sends* nil)
+       (flushes *test-flushes*) (logs *test-logs*) (lost 0) (closed 0)
+       (runtime (%make-fnn-feed-runtime :service :unsendable-test
+                                        :lock (sb-thread:make-mutex)
+                                        :limit 512))
+       (link (%make-fnn-feed-link :peer "unsendable" :peer-octets #(118)
+                                  :socket :fake :fd 31 :ready t))
+       (old-plan (symbol-function 'fnn-feed-dial-plan))
+       (old-lost (symbol-function 'fnn-feed-lost))
+       (old-close (symbol-function 'fnn-feed-close-link)))
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-feed-dial-plan)
+               (lambda (&rest ignored)
+                 (declare (ignore ignored)) (values nil nil 0 0))
+               (symbol-function 'fnn-feed-lost)
+               (lambda (&rest ignored) (declare (ignore ignored)) (incf lost) :ok)
+               (symbol-function 'fnn-feed-close-link)
+               (lambda (&rest ignored) (declare (ignore ignored)) (incf closed) nil))
+         (fnn-feed-consume runtime link '(51 51 53 13 10) nil 5)
+         (unless (and (= (- *test-flushes* flushes) 1) (= (- *test-logs* logs) 1)
+                      (= lost 1) (= closed 1) (null *test-sends*))
+           (error "an :unsendable reply must flush, log, drop the link and send nothing: flushes ~s logs ~s lost ~s closed ~s sends ~s"
+                  (- *test-flushes* flushes) (- *test-logs* logs) lost closed *test-sends*)))
+    (setf (symbol-function 'fnn-feed-dial-plan) old-plan
+          (symbol-function 'fnn-feed-lost) old-lost
+          (symbol-function 'fnn-feed-close-link) old-close)))
 
 ;; The raw adapter sends each ACL2-produced AUTHINFO command and does not mark
 ;; the link ready until ACL2 has accepted PASS and the following MODE reply.

@@ -436,3 +436,59 @@
                                      fn-lz-out)))
           fn-lz-out)
    :hints (("Goal" :do-not-induct t))))
+
+; -----------------------------------------------------------------------------
+; Lane keystone-audit (2026-09-27): the two :exec equalities.  Ground
+; witnesses proved by evaluation (the out-of-guard teeth by expanding the
+; stobj wrappers, whose guards hide a ground call).
+;
+; fn-lz-lits-words-is-append: nine literals from 1 (a word of 7, then 2)
+; after one output octet; every hypothesis holds.  Without the bound
+; (+ IP N) <= (len octets): the words past the end read 0 where take pads
+; nil.  Without an octet list: a cell of 256 carries into the next octet.
+; (true-listp out), (natp ip) and (natp n) are kept from the guard: at the
+; instances tried, an improper output and a negative index still agree.
+(defthm plz-lits-words-witness
+  (and (fn-cbor-octet-listp '(1 2 3 4 5 6 7 8 9 10 11)) (true-listp '(0))
+       (natp 1) (natp 9) (<= (+ 1 9) (len '(1 2 3 4 5 6 7 8 9 10 11)))
+       (equal (fn-lz-lits-words 1 9 '(1 2 3 4 5 6 7 8 9 10 11) '(0))
+              (append '(0) (take 9 (nthcdr 1 '(1 2 3 4 5 6 7 8 9 10 11)))))
+       (equal (fn-lz-lits-words 1 9 '(1 2 3 4 5 6 7 8 9 10 11) '(0))
+              '(0 2 3 4 5 6 7 8 9 10)))
+  :rule-classes nil)
+(defthm plz-lits-words-without-the-bound
+  (and (not (<= (+ 5 9) (len '(1 2 3 4 5 6 7 8 9 10 11))))
+       (not (equal (fn-lz-lits-words 5 9 '(1 2 3 4 5 6 7 8 9 10 11) '(0))
+                   (append '(0) (take 9 (nthcdr 5 '(1 2 3 4 5 6 7 8 9 10 11)))))))
+  :hints (("Goal" :expand ((:free (ip n o out) (fn-lz-lits-words ip n o out)))))
+  :rule-classes nil)
+(defthm plz-lits-words-without-octets
+  (and (not (fn-cbor-octet-listp '(1 256 3)))
+       (not (equal (fn-lz-lits-words 0 3 '(1 256 3) '(0))
+                   (append '(0) (take 3 (nthcdr 0 '(1 256 3)))))))
+  :rule-classes nil)
+
+; fn-lz-match-bulk-is-copy-match: a match of 4 at offset 5 over a 3-octet
+; output and a 3-octet dictionary (two octets from the dictionary, then two
+; overlapping from the output); every hypothesis holds.  Without the bound
+; OFF <= (len out) + (len dict): offset 7 reaches before the dictionary; the
+; per-octet copy stops and the bulk copy does not.  The other hypotheses are
+; kept from the guard (no counterexample claimed).
+(defthm plz-match-bulk-witness
+  (and (fn-cbor-octet-listp '(7 8 9)) (true-listp '(1 2 3))
+       (natp 5) (<= 1 5) (natp 4) (<= 5 (+ (len '(1 2 3)) (len '(7 8 9))))
+       (equal (fn-lz-match-bulk 5 4 '(7 8 9) '(1 2 3))
+              (fn-lz-copy-match 5 4 '(7 8 9) '(1 2 3)))
+       (equal (fn-lz-match-bulk 5 4 '(7 8 9) '(1 2 3)) '(1 2 3 8 9 1 2)))
+  :hints (("Goal" :expand ((:free (off n d out) (fn-lz-match-bulk off n d out))
+                           (:free (off n d out) (fn-lz-copy-match off n d out))
+                           (:free (s n d out) (fn-lz-dict-words s n d out)))))
+  :rule-classes nil)
+(defthm plz-match-bulk-without-the-bound
+  (and (not (<= 7 (+ (len '(1 2 3)) (len '(7 8 9)))))
+       (not (equal (fn-lz-match-bulk 7 2 '(7 8 9) '(1 2 3))
+                   (fn-lz-copy-match 7 2 '(7 8 9) '(1 2 3)))))
+  :hints (("Goal" :expand ((:free (off n d out) (fn-lz-match-bulk off n d out))
+                           (:free (off n d out) (fn-lz-copy-match off n d out))
+                           (:free (s n d out) (fn-lz-dict-words s n d out)))))
+  :rule-classes nil)

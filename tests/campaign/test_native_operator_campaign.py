@@ -43,26 +43,32 @@ class NativeCutTableTests(unittest.TestCase):
                           "recover-barrier-2", "recover-barrier-3",
                           "recover-barrier-4", "recover-barrier-5",
                           "recovery-stage-unlinked"])
+        # The log's open (fn-lg-open-program, books/store-log-route-programs.lisp):
+        # the per-file fn-bs-recover-program went with format 8 (PKT-838).
         self.assertEqual({cut.program for cut in native_cuts.RECOVERY_CUTS[:-1]},
-                         {"fn-bs-recover-program"})
+                         {"fn-lg-open-program"})
         self.assertEqual([(cut.model_name, cut.occurrence)
                           for cut in native_cuts.RECOVERY_CUTS[1:-1]],
                          [("recover-barrier", i) for i in range(1, 6)])
         unlinked = native_cuts.RECOVERY_CUTS[-1]
-        self.assertEqual(unlinked.follows, "fn-bs-recover-program")
+        self.assertEqual(unlinked.follows, "fn-lg-open-program")
 
     def test_every_developer_selector_is_registered(self):
         self.assertEqual(set(native_cuts.developer_selectors()), {
             "FN_NATIVE_INIT_FAULT", "FN_NATIVE_RECOVERY_FAULT",
-            "FN_NATIVE_POST_FAULT", "FN_NATIVE_PROFILE_FAULT",
+            "FN_NATIVE_POST_FAULT",
             "FN_NATIVE_STATE_CHECKPOINT_FAULT",
+            # The checkpoint pipeline's batch fault and budget override, and
+            # the committer's barrier delay and pipeline trace (log-2).
+            "FN_NATIVE_CHECKPOINT_BATCH_FAULT", "FN_NATIVE_CHECKPOINT_BUDGET_TEST",
+            "FN_NATIVE_OWNER_TEST_BARRIER_MS", "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE",
             # `store import''s publication cuts (fn-bs-imp-program).
             "FN_NATIVE_IMPORT_FAULT",
-            # reclaim-lifecycle 1 and 2: the disk-free observation and the
-            # reclaim fault.  Each is refused at start by the production
-            # image like the rest (test_served_owner_cuts_stop_and_production_
-            # refusals iterates this table).
-            "FN_NATIVE_DISK_FREE", "FN_NATIVE_RECLAIM_FAULT",
+            # reclaim-lifecycle 1 and 2: the disk-free observation.  It is
+            # refused at start by the production image like the rest
+            # (test_served_owner_cuts_stop_and_production_refusals iterates
+            # this table).  The reclaiming pack's fault went with the packs.
+            "FN_NATIVE_DISK_FREE",
             "FN_NATIVE_CONTROL_FAULT",
             "FN_NATIVE_CONTROL_TEST_STOP", "FN_NATIVE_AUTH_ADMIN_FAULT",
             "FN_NATIVE_KEY_STATEMENT_FAULT",
