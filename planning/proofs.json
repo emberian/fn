@@ -10663,6 +10663,38 @@
         "fn-oii-seal-is-the-intern-arena",
         "fn-oii-composite-row-is-held"
       ]
+    },
+    {
+      "id": "PRF-294",
+      "title": "The catalog and the owner's view stay joined across the host's article finish (T4 then T2), and T2 holds at the identity finish",
+      "statement": "books/served-catalog-join.lisp fn-scj-joinp (the catalog's view at its count is the owner's visible archive; every withdrawal mark below the count; every row's sequence below the view's version) gives fn-sca-join, the served chain's open hypothesis (fn-scj-joinp-gives-sca-join), and is preserved by the host's finish (host/owner-host.lisp fn-owner-finish-submission and fn-owner-finish-identity: fn-sca-finish over the refreshed view's index and fn-sca-targets-of the completed Message-ID over its withdrawals) against the refreshed view fn-crf-apply-article, which is fn-own-refresh after an article completion (PRF-202): KEYSTONE fn-scj-joinp-of-article-finish, from the list-level KEYSTONE fn-scj-join-of-finish-lists (books/served-catalog-join-step.lisp). Hypotheses: the join before; the old index corresponds to the old visible list; string Message-IDs in both visible lists; the completed Message-ID new and the old visible Message-IDs distinct (acceptance fn-articles-freshp); the pending row is the completed article's row, not withdrawn, with its sequence below the new version; THE ROW EQUATION: the committed row read as an article (fn-cat-row-article) is the installed article, numbers included (OPEN: catalog numbers are one past each group's high over the rows, the acceptance's its watermarks). The identity finish's owner (fn-rix-ocfg-complete, no staged record, the event index carried) is the article finish's (fn-scj-identity-finish-owner-is-article-finish-owner), so fn-sca-ocl-relation-of-finish holds there (fn-scj-ocl-relation-of-identity-finish). fn-sca-targets-of now scans the whole withdrawal list (it stopped at the first record of another cause, an ordering no invariant carries).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013",
+        "NNT-042"
+      ],
+      "depends_on": [
+        "PRF-202",
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/served-catalog-join-refresh.lisp",
+        "books/served-catalog-join-step.lisp",
+        "books/served-catalog-join.lisp",
+        "books/served-catalog-owner.lisp",
+        "tests/acl2/served-catalog-join-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T163615Z-3295996.json"
+      ],
+      "progress_note": "Lane sca-join (Opus 5.5, 2026-09-27). PROVED: the join's preservation at the article finish and at the identity finish (over the owner the host installs), and the join's sufficiency for fn-sca-join. OPEN (the chain's fn-scr-catalogp stays a hypothesis of fn-scr-ocfg-read-span-is-reference-under-ocl-relation until these land): (1) the row equation (numbering: fn-cat-assign-numbers over the rows = fn-allocate-memberships at the watermarks, and the pending row's fields = the store's pending); (2) E: fn-sca-load-held-rows establishes fn-scj-joinp at recover / full open / checkpoint open (needs the rows-as-articles = raw equation, the same numbering fact at open); (3) every pinned connection: fn-scr-owner-catalogp needs the join at each connection's version (the catalog keeps every version at or below the count: fn-sca-finish-keeps-pinned-views) plus the pin correspondences and fn-cnx-freshp; (4) steps that touch neither view nor catalog keep fn-scj-joinp by construction (no view change when the acceptance and verdicts are unchanged: fn-ctl-refresh-visible's first arm; config keeps the article list: fn-cnode-apply-config-keeps-watermarks-and-articles) but are not yet stated over fn-ocfg-step. No counterexample found: live E over cancel-after-target, key-declines, cancel-before-target and plain histories joins (REPL, owner-cancel-refresh-tests); verdicts are historical (fn-sn-verdicts is only extended), reclaim is an offline command re-entering by E. Teeth: tests/acl2/served-catalog-join-tests.lisp (reachable cancel-after-target witness, every hypothesis and conclusion; corrupted catalog; pending-row-withdrawn removal; targets mutation).",
+      "events": [
+        "fn-scj-joinp-of-article-finish",
+        "fn-scj-join-of-finish-lists",
+        "fn-scj-joinp-gives-sca-join",
+        "fn-scj-ocl-relation-of-identity-finish",
+        "fn-scj-identity-finish-owner-is-article-finish-owner"
+      ]
     }
   ]
 }

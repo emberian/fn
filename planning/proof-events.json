@@ -10749,6 +10749,36 @@
           "note": "A composite whose article decodes interns to a retained composite carrying it unchanged, and seals. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-294",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scj-joinp-of-article-finish",
+          "note": "KEYSTONE. The join after the host's fn-sca-finish against the refreshed view (fn-crf-apply-article = fn-own-refresh, PRF-202). Row equation open. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-join-of-finish-lists",
+          "note": "KEYSTONE (list level). T4 then T2 shows at the new count exactly fn-ctl-visible-add's list. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-joinp-gives-sca-join",
+          "note": "The invariant gives the chain's fn-sca-join. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-ocl-relation-of-identity-finish",
+          "note": "KEYSTONE. T2 (fn-sca-ocl-relation-of-finish) at the owner fn-owner-finish-identity installs. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-identity-finish-owner-is-article-finish-owner",
+          "note": "fn-rix-ocfg-complete is the article finish's owner with no staged record and the event index carried. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        }
+      ]
     }
   ]
 }
