@@ -62,3 +62,33 @@
 (assert-event (equal (fn-olr-next-extent 1048576 10 4096) 2097152))
 (assert-event (equal (fn-olr-next-extent 4096 1000000 4096) 1003520))
 (assert-event (fn-lg-extent-okp (fn-olr-next-extent 1048576 5000000 4096) 4096))
+
+; The link (fn-olr-linkp): the log kernel's committed ++ in flight ++ open
+; batch is the store node's history.  A reachable chain from a recovered empty
+; log: the take of r1 (history (r1)), the append (r1 in flight), the barrier
+; (r1 committed), the acknowledgement, the take of r2 -- the link holds at
+; every step.  The crash half of fn-olr-crash-reads-a-prefix-of-the-history is
+; T2's (fn-lgk-crash-of-related-state-is-a-prefix; its witnesses are
+; tests/acl2/store-log-kernel-tests.lisp and store-log-programs-tests.lisp).
+(defun slrt-k1 () (declare (xargs :guard t :verify-guards nil)) (cadr (fn-olr-take *slrt-ks* *slrt-r1* 0 0 64 16777216 4096)))
+(defun slrt-k2 () (declare (xargs :guard t :verify-guards nil)) (fn-lgk-append (slrt-k1) 4096 1048576))
+(defun slrt-k3 () (declare (xargs :guard t :verify-guards nil)) (fn-lgk-fence (slrt-k2) 4096))
+(defun slrt-k4 () (declare (xargs :guard t :verify-guards nil)) (fn-lgk-finish-one (slrt-k3)))
+(defun slrt-k5 () (declare (xargs :guard t :verify-guards nil)) (cadr (fn-olr-take (slrt-k4) *slrt-r2* 0 0 64 16777216 4096)))
+(assert-event (fn-olr-linkp nil *slrt-ks*))
+(assert-event (fn-olr-linkp (list *slrt-r1*) (slrt-k1)))
+(assert-event (and (equal (fn-lgk-inflight (slrt-k2)) (list *slrt-r1*))
+                   (fn-olr-linkp (list *slrt-r1*) (slrt-k2))))
+(assert-event (and (equal (fn-lgk-committed (slrt-k3)) (list *slrt-r1*))
+                   (fn-olr-linkp (list *slrt-r1*) (slrt-k3))))
+(assert-event (and (equal (fn-lgk-acked (slrt-k4)) 1)
+                   (fn-olr-linkp (list *slrt-r1*) (slrt-k4))))
+(assert-event (fn-olr-linkp (list *slrt-r1* *slrt-r2*) (slrt-k5)))
+; Teeth: the link names ONE history; the store node's history without the
+; batch's record (the file kernel not yet ordered it) is not linked, and a
+; take that was not :taken (a refused record) does not extend it.
+(assert-event (not (fn-olr-linkp nil (slrt-k1))))
+(assert-event (not (fn-olr-linkp (list *slrt-r1* *slrt-r1*) (slrt-k5))))
+(must-fail
+ (assert-event (fn-olr-linkp (list *slrt-r2*)
+                             (cadr (fn-olr-take *slrt-ks* *slrt-r2* 0 0 64 16777216 4096)))))

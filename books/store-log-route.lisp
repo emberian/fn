@@ -176,3 +176,114 @@
   (implies (natp txid)
            (<= txid (fn-lgk-next-txid (fn-olr-consume-to ks txid))))
   :rule-classes :linear)
+
+; =============================================================================
+; The refinement: a crash of the log reads a prefix of the sequential history.
+;
+; On the log route the store node's history (the records the file kernel
+; holds, in order, as the host hands them to the log: fn-owner-pending-octets
+; of each staged record, taken just before its :log-order step,
+; host/native/io.lisp fnn-log-publish) runs AHEAD of the log's durable content
+; inside a commit quantum.  The link: the log kernel's committed ++ in flight
+; ++ open batch IS that history.  Recovery establishes it (the history is the
+; scan's committed records, nothing in flight), the member step, the append,
+; the barrier, the acknowledgement and the catch-up keep it; and under it
+; every crash image of the segment reads a prefix of the history that
+; extends the committed records: the state of the sequential machine after
+; some member of the batch (T2 through fn-lgk-crash-of-related-state-is-a-
+; prefix; the forgery disjunct is A-CRYPTO-TRAILER's, as there).  A member is
+; answered only after the barrier (fn-lgk-finish-one, and the host releases
+; its reply after log-fenced), so an acknowledged member is below every such
+; prefix (T1).
+
+(defun fn-olr-linkp (history ks)
+  (declare (xargs :guard (true-listp ks)))
+  (equal (append (true-list-fix (fn-lgk-committed ks))
+                 (true-list-fix (fn-lgk-inflight ks))
+                 (true-list-fix (fn-lgk-batch ks)))
+         history))
+
+(local
+ (defthm fn-olr-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthm fn-olr-true-list-fix-append
+   (equal (true-list-fix (append a b)) (append a (true-list-fix b)))))
+
+(local
+ (defthm fn-olr-append-nil
+   (equal (append a nil) (true-list-fix a))))
+
+(defthm fn-olr-linkp-of-recovery
+  (fn-olr-linkp (true-list-fix (car (fn-lg-scan c genesis unit max)))
+                (fn-lgk-recover c genesis unit max next-txid))
+  :hints (("Goal" :in-theory (enable fn-lgk-recover))))
+
+(defthm fn-olr-linkp-of-take
+  (implies (and (fn-olr-linkp history ks)
+                (equal (car (fn-olr-take ks record count octets bmax omax unit)) :taken))
+           (fn-olr-linkp (append history (list record))
+                         (cadr (fn-olr-take ks record count octets bmax omax unit))))
+  :hints (("Goal" :in-theory (enable fn-lgt-prepare fn-lgk-prepare))))
+
+(defthm fn-olr-linkp-of-append
+  (implies (and (fn-olr-linkp history ks) (not (consp (fn-lgk-inflight ks))))
+           (fn-olr-linkp history (fn-lgk-append ks unit extent)))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-append) (fn-lgk-fitsp)))))
+
+(defthm fn-olr-linkp-of-fence
+  (implies (fn-olr-linkp history ks)
+           (fn-olr-linkp history (fn-lgk-fence ks unit)))
+  :hints (("Goal" :in-theory (enable fn-lgk-fence))))
+
+(defthm fn-olr-linkp-of-finish-one
+  (implies (fn-olr-linkp history ks)
+           (fn-olr-linkp history (fn-lgk-finish-one ks)))
+  :hints (("Goal" :in-theory (enable fn-lgk-finish-one))))
+
+(defthm fn-olr-linkp-of-consume-to
+  (implies (fn-olr-linkp history ks)
+           (fn-olr-linkp history (fn-olr-consume-to ks txid))))
+
+(local
+ (defthm fn-olr-prefixp-of-append-prefix
+   (implies (fn-lg-prefixp p b)
+            (fn-lg-prefixp (append a p) (append a b c)))
+   :hints (("Goal" :induct (append a p)))))
+
+(local
+ (defthm fn-olr-prefixp-of-self-append
+   (fn-lg-prefixp a (append a b))
+   :hints (("Goal" :induct (append a b)))))
+
+(local
+ (defthm fn-olr-prefixp-true-list-fix
+   (equal (fn-lg-prefixp p (true-list-fix b)) (fn-lg-prefixp p b))))
+
+; KEYSTONE.  The subjects are the log kernel's transitions the host calls
+; (host/native/io.lisp fnn-log-take -> fn-olr-take, fnn-log-append ->
+; fn-lgk-append, fnn-log-fence -> fn-lgk-fence) over the state the link
+; relates to the store node's history.  At any cut with a batch in flight,
+; every admissible crash image's scan is a prefix of the history, and it
+; extends the committed records; or the damaged entry is a forgery (the
+; A-CRYPTO-TRAILER case of T2).
+(defthm fn-olr-crash-reads-a-prefix-of-the-history
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (consp (fn-lgk-inflight ks))
+                (fn-bs-crash-imagep bs image)
+                (fn-olr-linkp history ks))
+           (let* ((content (fn-bs-durable-content image ino))
+                  (scan (fn-lg-scan content genesis (fn-bs-unit bs) max)))
+             (or (and (fn-lg-prefixp (car scan) history)
+                      (fn-lg-prefixp (fn-lgk-committed ks) (car scan)))
+                 (fn-lg-forgery-in (nthcdr (fn-lgk-frontier ks) content)
+                                   (fn-lgk-inflight ks) (fn-lgk-last ks)
+                                   (fn-bs-unit bs) max))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-lgk-crash-of-related-state-is-a-prefix)
+                 (:instance fn-lgk-relp-forward))
+           :in-theory (e/d (fn-lg-crash-verdictp)
+                           (fn-lgk-relp fn-lg-scan fn-lg-forgery-in
+                            fn-bs-durable-content fn-lg-log)))))
