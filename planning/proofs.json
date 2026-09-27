@@ -11675,7 +11675,7 @@
         "books/records.lisp",
         "tests/acl2/records-teeth-tests.lisp"
       ],
-      "progress_note": "Lane served-columns (sub-lane served-columns-rec, 2026-09-27): snapshot-open-3 section 9's 'the record decode validates each payload twice'.",
+      "progress_note": "Lane served-columns (sub-lane served-columns-rec, 2026-09-27): snapshot-open-3 section 9's 'the record decode validates each payload twice'. Certified at 9e6d74369 over records.lisp's 1005 affected roots, split across the boxes: persvati certify-20260927T225417Z-2698332 (822 passed, 0 failed), hbox certify-20260927T225521Z-2956521 (821 passed, 0 failed). Both equations are withdrawn on export: enabled, the payload equation stalled books/store-checkpoint-arena-writer past 300 s on both boxes (certify-20260927T223451Z-2518854, -223609Z-2920078); withdrawn it certifies in 15 to 20 s at 20 jobs.",
       "events": [
         "fn-record-p-of-make-is-without-payload"
       ]
