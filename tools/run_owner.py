@@ -135,7 +135,7 @@ class Acl2Owner(Acl2Store):
     def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
         config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
-        form = "(fn-owner-recover '{} {} '{} {} state)".format(
+        form = "(fn-owner-recover '{} {} '{} {} fn-arena state)".format(
             literal, frontier, config, self.max_conns)
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
@@ -154,16 +154,16 @@ class Acl2Owner(Acl2Store):
         form = "(fn-owner-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
-        form += " " + str(charge) + " state)"
+        form += " " + str(charge) + " fn-arena state)"
         return self._symbol(form)
 
     def existing_action(self, msgid, payload, group_codes):
         form = "(fn-owner-existing-action '" + self.literal(msgid)
-        form += " '" + self.literal(payload) + " '" + self.numeric_list(group_codes) + " state)"
+        form += " '" + self.literal(payload) + " '" + self.numeric_list(group_codes) + " fn-arena state)"
         return self._symbol(form)
 
     def pending_record(self):
-        return acl2_octets(self.call("(fn-owner-pending-octets state)"))
+        return acl2_octets(self.call("(fn-owner-pending-octets fn-arena state)"))
 
     def known_abort(self):
         return self._symbol("(fn-owner-known-abort state)")

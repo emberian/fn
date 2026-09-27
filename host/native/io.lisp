@@ -270,6 +270,17 @@ reader (mv erp val state); the arena is updated in place either way."
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
 
+(defun fnn-core-buffer-arena-state (name &rest args)
+  "A wrapper over the octet buffer, the arena and state (in that order, after
+ARGS): its value.  The owner's POST entries read the payload from the buffer
+and seal it into the arena (host/owner-host.lisp fn-owner-prepare-buffer)."
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name (append args (list (fnn-live-octets) (fnn-live-arena)
+                                                *the-live-state*)))
+    (declare (ignore ignored))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
 (defun fnn-core-buffer-state (name &rest args)
   "A `state`-returning wrapper over the buffer, (mv erp value state) with the
 live buffer passed before state: its value."
@@ -983,9 +994,9 @@ The core (host/store-node-host.lisp `fn-store-sn-recover') replays
 allocation domain and the capacity from the configured node, and opens the
 observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
 here.  The host supplies octets and decides nothing about them."
-  (fnn-action (fnn-core-state 'fn-store-sn-recover
-                              (mapcar #'fnn-octet-list records) frontier
-                              (mapcar #'fnn-octet-list config-records))))
+  (fnn-action (fnn-core-arena-state 'fn-store-sn-recover
+                                    (mapcar #'fnn-octet-list records) frontier
+                                    (mapcar #'fnn-octet-list config-records))))
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."
@@ -1106,15 +1117,16 @@ round policy."
               wall +fnn-owner-wall-error-ms+ has-wall)))
 
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
-  (fnn-action (fnn-core-state 'fn-store-sn-prepare (fnn-octet-list msgid) (fnn-octet-list payload)
-                              codes (fnn-octet-list obligation) (fnn-octet-list subject)
-                              (fnn-octet-list evidence) charge
-                              (fnn-store-prepare-observation))))
+  (fnn-action (fnn-core-arena-state 'fn-store-sn-prepare (fnn-octet-list msgid)
+                                    (fnn-octet-list payload)
+                                    codes (fnn-octet-list obligation) (fnn-octet-list subject)
+                                    (fnn-octet-list evidence) charge
+                                    (fnn-store-prepare-observation))))
 (defun fnn-bridge-existing-action (msgid payload codes)
-  (fnn-action (fnn-core-state 'fn-store-sn-existing-action (fnn-octet-list msgid)
-                              (fnn-octet-list payload) codes)))
+  (fnn-action (fnn-core-arena-state 'fn-store-sn-existing-action (fnn-octet-list msgid)
+                                    (fnn-octet-list payload) codes)))
 (defun fnn-bridge-pending-record ()
-  (let ((value (fnn-core-state 'fn-store-sn-pending-octets)))
+  (let ((value (fnn-core-arena-state 'fn-store-sn-pending-octets)))
     (if (null value) (fnn-make-octets 0) (fnn-as-octets value))))
 (defun fnn-bridge-known-abort () (fnn-action (fnn-core-state 'fn-store-sn-known-abort)))
 (defun fnn-bridge-refuse-reservation ()
@@ -1152,7 +1164,7 @@ round policy."
 (defun fnn-bridge-pin-count () (fnn-nat (fnn-core-state 'fn-store-sn-pin-count)))
 (defun fnn-bridge-reserved () (fnn-nat (fnn-core-state 'fn-store-sn-reserved)))
 (defun fnn-bridge-lookup (msgid)
-  (let ((value (fnn-core-state 'fn-store-sn-lookup (fnn-octet-list msgid))))
+  (let ((value (fnn-core-arena-state 'fn-store-sn-lookup (fnn-octet-list msgid))))
     (if (null value) (fnn-make-octets 0) (fnn-as-octets value))))
 (defun fnn-bridge-config-generation ()
   (fnn-nat (fnn-core-state 'fn-store-cfg-generation)))
@@ -2071,7 +2083,7 @@ after recording why not in open-mode (the caller then replays in full)."
                                         store physical sequences actual-lower))))))
         (fnn-check-history-marker store (+ s (length suffix)))
         (unless (eq (fnn-action
-                     (fnn-core-state 'fn-store-sn-recover-from-checkpoint
+                     (fnn-core-arena-state 'fn-store-sn-recover-from-checkpoint
                                      (mapcar #'fnn-octet-list suffix)
                                      (fnn-store-frontier store)
                                      (mapcar #'fnn-octet-list config-records)))
@@ -2083,7 +2095,7 @@ after recording why not in open-mode (the caller then replays in full)."
           (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
           (return-from fnn-recover-from-state-checkpoint nil))
         (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (append (mapcar #'fnn-as-octets (fnn-core-state 'fn-store-sco-prefix-octets))
+        (append (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets))
                 suffix)))))
 
 (defun fnn-open-report (store)

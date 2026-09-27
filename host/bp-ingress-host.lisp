@@ -115,10 +115,11 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-store-sn-reset state))
 
-;; The records flip (flip-L4, books/bp-ingress.lisp): the entry is
-;; fn-bpi-ingress-prepare-interned over the live payload arena: the prepared
-;; row's handle is the arena's next one and the ADU is sealed there on
-;; :prepared (nothing is sealed otherwise).  (mv nil WORD fn-arena state).
+; The records flip (flip-L4's entry): the ADU is staged as the ROW interned at
+; the arena's count and sealed into the arena exactly when the Store staged it
+; (books/bp-ingress.lisp fn-bpi-ingress-prepare-interned, KEYSTONE
+; fn-bpi-ingress-prepare-interned-row-is-the-received-adu).  The answer is
+; (mv nil KEYWORD fn-arena state).
 (defun fn-bpi-host-prepare (destination source-eid bundle-id lifetime
                                          archive-id subject evidence charge adu
                                          monotonic-ns wall-ns wall-error-ms has-wall
@@ -129,30 +130,26 @@
       (mv nil :invalid fn-arena state)
     (mv-let (result fn-arena)
       (fn-bpi-ingress-prepare-interned
-       (f-get-global 'fn-store-sn state)
-       (fn-bpi-host-policy (fn-store-octets->string archive-id)
-                           (fn-store-octets->string subject)
-                           (fn-store-octets->string evidence) charge)
-       (fn-bpi-host-context destination source-eid bundle-id lifetime
-                            monotonic-ns wall-ns wall-error-ms has-wall)
-       adu fn-arena)
+                   (f-get-global 'fn-store-sn state)
+                   (fn-bpi-host-policy (fn-store-octets->string archive-id)
+                                       (fn-store-octets->string subject)
+                                       (fn-store-octets->string evidence) charge)
+                   (fn-bpi-host-context destination source-eid bundle-id lifetime
+                                        monotonic-ns wall-ns wall-error-ms has-wall)
+                   adu fn-arena)
       (if (equal (fn-bpi-result-kind result) :prepared)
           (let ((state (f-put-global 'fn-store-sn
                                      (fn-bpi-result-store result) state)))
             (mv nil :prepared fn-arena state))
-        (mv nil
-            (if (equal (fn-bpi-result-store result) :clock-unusable)
-                :clock-unusable
-              :rejected)
+        (mv nil (if (equal (fn-bpi-result-store result) :clock-unusable)
+                    :clock-unusable
+                  :rejected)
             fn-arena state)))))
 
 ; An exact durable replay is recognized by the certified parser/field/group
 ; composition and node binding before another allocator reservation is made.
 ; This gives a host a narrow basis to delete a still-staged BPA BID after a
 ; prior durable article acceptance; malformed and conflicting ADUs stay staged.
-; The durable check reads the accepted row's bytes through the arena
-; (books/bp-ingress.lisp fn-bpi-adu-durably-acceptedp; the arena is read, not
-; changed).
 (defun fn-bpi-host-already-durablep (destination source-eid bundle-id lifetime
                                                  archive-id subject evidence charge
                                                  adu monotonic-ns wall-ns wall-error-ms
