@@ -22,6 +22,12 @@
 ; Build it with:  FN_NATIVE_BUILD=host/native/build-dtn.lisp \
 ;                 FN_NATIVE_IMAGE=build/fn-host-dtn sh tools/build_native_host.sh
 
+;; The records flip: `(attach-stobj fn-arena fn-arena-bytes)'
+;; (books/payload-arena-attach.lisp) must precede the first include whose
+;; closure holds books/payload-arena's defstobj, and books/served and
+;; books/bp-receipt-records hold it since batch AU: the attachment is the
+;; image's FIRST include.
+(include-book "books/payload-arena-attach")
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/replay")
@@ -163,11 +169,6 @@
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
 (include-book "books/replay-identity-index")
-;; The records flip: host/store-host.lisp includes books/store-intern (the
-;; intern at the entries), which names the payload arena `fn-arena'; the
-;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
-;; first include that introduces the generic, so it comes here.
-(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
