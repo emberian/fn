@@ -1112,7 +1112,49 @@
                             (fn-served-pin-old-or-live-p fn-served-conn-pin
                              fn-served-live-pin fn-own-view-live))))))
 
-; The rebuilt connection of fn-own-finish-read is okp in either case.
+; The rebuilt connection of fn-own-finish-read is okp in either case: with
+; the found connection's pin it is okp as that connection was (field by
+; field, fn-own-conn-okp opened once with the pin equalities in hand); with
+; the view's pin it is fn-own-conn-okp-of-view-pin (the :advance argument).
+; Two lemmas, then the disjunction, so fn-own-conn-okp is never opened under
+; a disjunctive hypothesis (D26: the one-lemma form took 43 s).
+(local
+ (defthm fn-own-finish-read-conn-okp-old-pin
+   (implies (and (fn-own-conn-okp conn groups capacity records)
+                 (equal archive (fn-own-conn-archive conn))
+                 (equal verdicts (fn-own-conn-verdicts conn))
+                 (equal index (fn-own-conn-index conn))
+                 (equal buckets (fn-own-conn-group-index conn))
+                 (equal control (fn-own-conn-control conn))
+                 (fn-own-conn-boundedp
+                  (fn-own-conn-make-group-indexed
+                   (fn-own-conn-id conn) (fn-own-conn-version conn) (fn-own-conn-frontier conn)
+                   wire session2 archive
+                   (fn-own-conn-config conn) (fn-own-conn-observation conn)
+                   verdicts index buckets control)
+                  groups))
+            (fn-own-conn-okp
+             (fn-own-conn-make-group-indexed
+              (fn-own-conn-id conn) (fn-own-conn-version conn) (fn-own-conn-frontier conn)
+              wire session2 archive
+              (fn-own-conn-config conn) (fn-own-conn-observation conn)
+              verdicts index buckets control)
+             groups capacity records))
+   :hints (("Goal" :in-theory (e/d (fn-own-conn-okp)
+                                   (fn-own-conn-make-group-indexed fn-own-conn-boundedp
+                                    fn-ctl-projectionp fn-midx-correspondencep fn-gidx-build
+                                    fn-own-control-okp fn-own-prefix-archive))))))
+
+(local
+ (defthm fn-own-conn-okp-has-a-natural-id
+   (implies (fn-own-conn-okp conn groups capacity records)
+            (natp (fn-own-conn-id conn)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-own-conn-okp)
+                                   (fn-ctl-projectionp fn-midx-correspondencep fn-gidx-build
+                                    fn-own-control-okp fn-own-prefix-archive
+                                    fn-own-conn-boundedp))))))
+
 (local
  (defthm fn-own-finish-read-conn-okp
    (implies (and (fn-own-conn-okp conn groups capacity records)
@@ -1142,17 +1184,24 @@
              groups capacity records))
    :hints (("Goal"
             :use ((:instance fn-own-served-conn-pin-cases)
+                  (:instance fn-own-conn-okp-has-a-natural-id)
+                  (:instance fn-own-finish-read-conn-okp-old-pin
+                             (archive (fn-served-conn-archive sconn))
+                             (verdicts (fn-served-conn-verdicts sconn))
+                             (index (fn-served-conn-index sconn))
+                             (buckets (fn-served-conn-group-index sconn))
+                             (control (fn-served-conn-control sconn)))
                   (:instance fn-own-conn-okp-of-view-pin
                              (view (fn-own-view o)) (id (fn-own-conn-id conn))
                              (wire wire) (session session2)
                              (config (fn-own-conn-config conn))
                              (obs (fn-own-conn-observation conn))))
-            :in-theory (e/d (fn-own-conn-okp)
-                            (fn-own-conn-make-group-indexed fn-own-conn-boundedp
-                             fn-own-view-okp fn-own-conn-okp-of-view-pin
-                             fn-ctl-projectionp fn-midx-correspondencep fn-gidx-build
-                             fn-own-control-okp fn-own-prefix-archive
-                             fn-served-pin-old-or-live-p))))))
+            :in-theory (disable fn-own-conn-okp fn-own-conn-make-group-indexed
+                                fn-own-conn-boundedp fn-own-view-okp
+                                fn-own-conn-okp-of-view-pin
+                                fn-own-finish-read-conn-okp-old-pin
+                                fn-served-pin-old-or-live-p fn-own-served-conn
+                                fn-served-pinned-make)))))
 
 (defthm fn-own-read-preserves-relation
   (implies (fn-own-relation o)
