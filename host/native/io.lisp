@@ -3931,10 +3931,7 @@ covered prefix's last (fn-store-sco-last-record-octets)."
         ;; The open's own newest record, while no record was committed
         ;; since (the rotation check is fnn-log-history-plan's).
         (when (and noted
-                   (let ((log (fnn-store-log store)))
-                     (eql (first noted)
-                          (fnn-core 'fn-lgc-count
-                                    (fnn-log-with-kernel (log) (fnn-log-kernel log))))))
+                   (eql (first noted) (fnn-log-committed-count store)))
           (return-from fnn-history-last-record (fnn-octets (second noted))))
         (fnn-log-read-active-segment store (lambda (r) (setq last (fnn-octets r))))
         (cond (last last)
@@ -6074,6 +6071,13 @@ genesis."
     (unwind-protect
          (fnn-core 'fn-lgc-last (fnn-log-stream-segment fd extent unit max genesis sink))
       (fnn-close fd))))
+
+(defun fnn-log-committed-count (store)
+  "The active segment's committed record count (the log kernel's, read under
+its lock): fnn-history-last-record's test that nothing was committed since
+the open noted its newest record."
+  (let ((log (fnn-store-log store)))
+    (fnn-core 'fn-lgc-count (fnn-log-with-kernel (log) (fnn-log-kernel log)))))
 
 (defun fnn-log-read-active-segment (store sink)
   "The active segment's COMMITTED records again, one entry at a time, each to
