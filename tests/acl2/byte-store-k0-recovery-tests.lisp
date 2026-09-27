@@ -12,7 +12,17 @@
 (defconst *bsk0r-configs* (list *fn-cfg-default-record*))
 
 (defun bsk0r-scan-f (image) (fn-bs-scan-frontier (fn-bs-scan-store image)))
-(defun bsk0r-scan-r (image) (fn-bs-scan-records (fn-bs-scan-store image)))
+;; The records flip: the scan reads wire events; the recover entry interns them
+;; into rows (here the fixture's rows over *bsk5-arena*), and the kernel and the
+;; host's open run over the rows.
+(defun bsk0r-scan-w (image) (fn-bs-scan-records (fn-bs-scan-store image)))
+(defun bsk0r-row-of (w)
+  (cond ((equal w *bsk5-record*) *bsk5-row*)
+        ((equal w *bsk5-record-2*) *bsk5-row-2*)
+        (t w)))
+(defun bsk0r-rows-of (ws)
+  (if (atom ws) nil (cons (bsk0r-row-of (car ws)) (bsk0r-rows-of (cdr ws)))))
+(defun bsk0r-scan-r (image) (bsk0r-rows-of (bsk0r-scan-w image)))
 (defun bsk0r-open (configs image)
   (fn-cpo-open-observed configs (bsk0r-scan-f image) (bsk0r-scan-r image)))
 (defun bsk0r-host (configs image) (fn-sn-files (fn-sn-open-state (bsk0r-open configs image))))
@@ -41,11 +51,12 @@
 (defun bsk0r-lose (pair) (fn-bs-crash (car pair) nil))
 
 (defun bsk0r-witness-okp (pair image)
-  (let* ((entry (fn-bs-recovery-entry-kernel image))
+  (let* ((entry (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)))
          (seed-run (bsk0r-run image entry *bsk5-groups* *bsk5-capacity*))
          (host (bsk0r-host *bsk0r-configs* image))
          (host-run (bsk0r-run image host *bsk5-groups* *bsk5-capacity*)))
     (and (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*)
+         (fn-bs-recovered-rowsp image (bsk0r-scan-r image) *bsk5-arena*)
          (fn-bs-store-relation image entry *bsk5-arena*)
          (fn-sf-history-recoverablep *bsk5-groups* *bsk5-capacity*
                                      (bsk0r-scan-r image) (bsk0r-scan-f image))
@@ -105,11 +116,11 @@
 (must-fail
  (assert-event
   (fn-bs-store-relation *fn-bs-empty-store*
-                        (fn-bs-recovery-entry-kernel *fn-bs-empty-store*) *bsk5-arena*)))
+                        (fn-bs-recovery-entry-kernel *fn-bs-empty-store* nil) *bsk5-arena*)))
 (must-fail
  (assert-event
   (bsk0r-cuts-related (bsk0r-run *fn-bs-empty-store*
-                                 (fn-bs-recovery-entry-kernel *fn-bs-empty-store*)
+                                 (fn-bs-recovery-entry-kernel *fn-bs-empty-store* nil)
                                  *bsk5-groups* *bsk5-capacity*))))
 
 ; Drop the crash-image premise.  A store whose first transaction is torn:
@@ -130,7 +141,7 @@
         (not (equal (fn-bs-content (bsk0r-torn) ino) (fn-bs-durable-content bs ino))))))
 (must-fail
  (assert-event
-  (fn-bs-store-relation (bsk0r-torn) (fn-bs-recovery-entry-kernel (bsk0r-torn)) *bsk5-arena*)))
+  (fn-bs-store-relation (bsk0r-torn) (fn-bs-recovery-entry-kernel (bsk0r-torn) (bsk0r-scan-r (bsk0r-torn))) *bsk5-arena*)))
 
 ; Drop recoverability (the model's entry).  With no groups the scanned
 ; history does not replay and (:recover) lands in :fault, so the program never
@@ -143,13 +154,13 @@
                                   (bsk0r-scan-f (bsk0r-keep (bsk0r-linked))))))
 (assert-event
  (let* ((image (bsk0r-keep (bsk0r-linked)))
-        (run (bsk0r-run image (fn-bs-recovery-entry-kernel image) nil *bsk5-capacity*)))
+        (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
    (and (fn-bs-run-relatedp run *bsk5-arena*)
         (equal (fn-sf-phase (cdr (nth 16 run))) :fault))))
 (must-fail
  (assert-event
   (let* ((image (bsk0r-keep (bsk0r-linked)))
-         (run (bsk0r-run image (fn-bs-recovery-entry-kernel image) nil *bsk5-capacity*)))
+         (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
     (and (fn-bs-run-relatedp run *bsk5-arena*)
          (equal (fn-sf-phase (cdr (nth 16 run))) :ready)))))
 
