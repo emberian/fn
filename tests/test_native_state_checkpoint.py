@@ -60,8 +60,19 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # books/store-open-pre-c1.lisp, which refuses a pre-C1 control
         # record first and otherwise answers fn-sco-store-open's open).
         extended = native_cuts.host_function(node_host, "fn-store-sn-open-extended")
-        self.assertTrue(native_cuts.calls_through_book(
-            extended, "fn-sco-store-open", "e config-records frontier"), extended[:400])
+        # Since flip-bridge the host calls the replay-identity twin
+        # fn-rii-classified-open (books/replay-identity-index.lisp), which
+        # calls fn-rii-sco-store-open; its keystone
+        # fn-rii-classified-open-is-classified-open equates it with
+        # fn-sopc-classified-open, which calls fn-sco-store-open.
+        self.assertTrue(
+            native_cuts.calls_through_book(
+                extended, "fn-sco-store-open", "e config-records frontier")
+            or native_cuts.calls_through_book(
+                extended, "fn-rii-sco-store-open", "e config-records frontier"),
+            extended[:400])
+        rii = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
+        self.assertIn("(defthm fn-rii-classified-open-is-classified-open", rii)
         opened = native_cuts.host_function(io, "fnn-recover-from-state-checkpoint")
         self.assertIn("'fn-store-sco-select", opened)
         self.assertIn("(fnn-recover-suffix-rows store suffix config-records)", opened)

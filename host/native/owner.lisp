@@ -2587,7 +2587,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
           (let ((captured (fnn-owner-core 'fn-owner-sco-capture
                                           (fnn-checkpoint-budget-test-override nil)
                                           free (fnn-checkpoint-revision))))
-            (unless (and (true-listp captured) (= (length captured) 10))
+            (unless (and (true-listp captured) (= (length captured) 11))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             (fnn-with-roster (service)
               (let ((thread (sb-thread:make-thread
