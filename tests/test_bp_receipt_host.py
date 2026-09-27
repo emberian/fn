@@ -59,7 +59,7 @@ class BpReceiptHostTests(unittest.TestCase):
                 self.text_form(b"dtn://fn.lab/issuer"))
             self.assertEqual(self.symbol(bridge, "(fn-bpr-host-reset {} state)".format(config)), "ready")
             request = self.request_adu(bridge, subject)
-            self.assertEqual(self.symbol(bridge, "(fn-bpr-host-accept '" + bridge.literal(request) + " t fn-arena state)"), "accepted")
+            self.assertEqual(self.symbol(bridge, "(fn-bpr-host-accept '" + bridge.literal(request) + " t fn-arena fn-hist state)"), "accepted")
             self.assertEqual(self.symbol(bridge, "(fn-bpr-host-prepare-receipt \"work-host-1\" \"receipt-host-1\" nil state)"), "refused")
             self.assertEqual(self.symbol(bridge, "(fn-bpr-host-prepare-receipt \"work-host-1\" \"receipt-host-1\" t state)"), "pending")
             self.assertEqual(run_store.acl2_octets(

@@ -41,9 +41,9 @@
 ; -----------------------------------------------------------------------------
 ; The bytes.
 
-(defun fn-ofa-feed-article (o msgid fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (fn-handle-bytes (fn-apr-feed-article o msgid) fn-arena))
+(defun fn-ofa-feed-article (o msgid fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :guard t))
+  (fn-handle-bytes (fn-apr-feed-article o msgid fn-hist) fn-arena))
 
 (local
  (defthm fn-ofa-find-article-of-articles-wire-of
@@ -70,6 +70,7 @@
 
 ; The octet-list model's feed article: `fn-own-feed-article' (books/owner.lisp)
 ; over ALPHA of the acceptance articles, the bytes it read before the flip.
+(fn-payload-kind fn-ofa-wire-feed-article :wire "over fn-articles-wire-of: the octet model's articles")
 (defun-nx fn-ofa-wire-feed-article (o msgid fn-arena)
   (let ((a (fn-find-article
             (fn-record-octets-string msgid)
@@ -84,8 +85,9 @@
 ; relation; books/acceptance-payload-ref.lisp) it is the octet-list model's
 ; article bytes over the live arena.
 (defthm fn-ofa-feed-article-is-the-feed-article-over-alpha
-  (implies (fn-apr-store-at-restp (fn-own-store o))
-           (equal (fn-ofa-feed-article o msgid fn-arena)
+  (implies (and (fn-apr-store-at-restp (fn-own-store o))
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-ofa-feed-article o msgid fn-arena fn-hist)
                   (fn-ofa-wire-feed-article o msgid fn-arena)))
   :hints (("Goal" :use ((:instance fn-apr-feed-article-is-own-feed-article))
            :in-theory (e/d (fn-own-feed-article)
@@ -93,11 +95,24 @@
                             fn-apr-feed-article fn-handle-bytes
                             fn-apr-store-at-restp)))))
 
+;  KEYSTONE (PKT-EG-2b).  The book owner's feed step (books/owner.lisp
+; fn-own-feed-reply, which fn-own-step runs on a :feed-octets event) hands
+; the feed the bytes at fn-own-feed-article's handle; at rest those are the
+; bytes the host entry sends (fn-ofa-feed-article, host/owner-host.lisp
+; fn-owner-feed-octets).  Before the fix the model handed the handle itself.
+(defthm fn-ofa-feed-article-is-the-owner-step-article
+  (implies (and (fn-apr-store-at-restp (fn-own-store o))
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-ofa-feed-article o msgid fn-arena fn-hist)
+                  (fn-handle-bytes (fn-own-feed-article o msgid) fn-arena)))
+  :hints (("Goal" :use ((:instance fn-apr-feed-article-is-own-feed-article))
+           :in-theory '(fn-ofa-feed-article))))
+
 ; The bytes are the payload sealed at the handle: never the handle, and an
 ; octet list whenever the arena is one (fn-arena-p).
 (defthm fn-ofa-feed-article-is-an-octet-list
   (implies (fn-arena-p fn-arena)
-           (fn-cbor-octet-listp (fn-ofa-feed-article o msgid fn-arena)))
+           (fn-cbor-octet-listp (fn-ofa-feed-article o msgid fn-arena fn-hist)))
   :hints (("Goal" :in-theory (e/d (fn-arena-p-is-payload-listp fn-arena-count-is-len
                                    fn-arena-payload-is-nth)
                                   (fn-apr-feed-article)))))

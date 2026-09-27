@@ -195,7 +195,7 @@ class Acl2Owner(Acl2Store):
         return self._symbol("(fn-owner-refuse-reservation fn-arena state)")
 
     def finish(self):
-        return self._symbol("(fn-owner-finish state)")
+        return self._symbol("(fn-owner-finish fn-hist state)")
 
     def config_generation(self):
         return self._nat("(fn-owner-config-generation state)")
@@ -527,8 +527,13 @@ class Acl2Owner(Acl2Store):
             self.literal(peer.encode("utf-8")), monotonic))
 
     def feed_octets(self, peer, line, monotonic):
-        return self._feed_step("(fn-owner-feed-octets '{} '{} {} fn-arena state)".format(
-            self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
+        # The history stobj refreshed against the owner's Store first (R holds
+        # at the read: host/store-node-host.lisp fn-host-hist-sync).
+        return self._feed_step(
+            "(mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)"
+            " (mv-let (erp val state) (fn-owner-feed-octets '{} '{} {} fn-arena fn-hist state)"
+            " (mv erp val fn-hist state)))".format(
+                self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
 
     def trailer(self, prefix):
         """The integrity trailer over a protected prefix, computed by ACL2.

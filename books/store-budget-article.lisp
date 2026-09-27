@@ -26,11 +26,24 @@
                            fn-bs-profile-of fn-bs-profile-admittedp
                            fn-bs-profile-max-history-octets)))
 
-(defun fn-sbud-article-figure (payload-length group-count)
-  "The history octets one article of PAYLOAD-LENGTH octets in GROUP-COUNT
-groups is charged: its record ceiling at the produced widths."
+;; Lane membership-budget (2026-09-27, ember's decision): the figure adds
+;; the article's MEMBERSHIP CHARGE, `*fn-sbud-membership-octets*' (320) per
+;; group (books/store-budget.lisp, where the figure is derived), the same
+;; charge the committed row carries (`fn-sbud-row-octets'), so the history
+;; bound H bounds a store's memberships and a crosspost is paid for.
+(defun fn-sbud-article-record-figure (payload-length group-count)
+  "The record ceiling of one article at the produced widths, without its
+membership charge."
   (declare (xargs :guard t))
   (fn-record-encoded-octets-ceiling (nfix payload-length) (nfix group-count)))
+
+(defun fn-sbud-article-figure (payload-length group-count)
+  "The history octets one article of PAYLOAD-LENGTH octets in GROUP-COUNT
+groups is charged: its record ceiling at the produced widths and its
+memberships."
+  (declare (xargs :guard t))
+  (+ (fn-record-encoded-octets-ceiling (nfix payload-length) (nfix group-count))
+     (* *fn-sbud-membership-octets* (nfix group-count))))
 
 (defun fn-sbud-article-verdict-at (profile used bytes-used payload-length
                                            group-count)

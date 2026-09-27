@@ -1,5 +1,8 @@
-;;; `principal bind|unbind' against a running owner (PKT-221; control request
-;;; 14, books/peer-invite.lisp fn-pinv-bindings-request-*).
+;;; `principal set-password|bind|unbind' against a running owner (PKT-221;
+;;; control request 14, books/peer-invite.lisp fn-pinv-bindings-request-*).
+;;; The owner rebuilds its credential table from the file (ACL2's
+;;; fn-native-auth-host-load, host/native/auth.lisp
+;;; fnn-native-auth-reload-config), then republishes the bindings.
 ;;;
 ;;; I/O only.  After the verb made the credential file durable
 ;;; (host/native/auth-admin.lisp), it asks the owner, over the control socket,
@@ -25,8 +28,14 @@
            (multiple-value-bind (octets presentp)
                (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets
                                                     max-credentials))
-             (fnn-native-auth-publish-bindings service octets presentp
-                                               max-credentials))))))))
+             ;; The passwords first (a `principal set-password'), then the
+             ;; bindings; a refused file leaves both as they were.
+             (if (eq (fnn-native-auth-reload-config service octets presentp
+                                                    max-credentials)
+                     :accepted)
+                 (fnn-native-auth-publish-bindings service octets presentp
+                                                   max-credentials)
+               :refused))))))))
 
 (defvar *fnn-login-bindings-next-handler* *fnn-hybrid-control-handler*)
 

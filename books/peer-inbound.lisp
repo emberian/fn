@@ -944,6 +944,7 @@
           ((equal completion :uncertain) 436)
           ((equal completion :clock-unusable) 436)
           ((equal completion :unaffordable) 436)
+          ((equal completion :memberships) 436)
           ((fn-post-store-refusalp completion) (if (equal kind :ihave) 437 439))
           ((equal dk :defer) 436)
           (t (if (equal kind :ihave) 437 439)))))
@@ -974,7 +975,7 @@
                        (list (fn-nntp-close-effect))))
               ((equal completion :clock-unusable)
                (fn-peer-single ps "436 retry later; no usable clock reading"))
-              ((equal completion :unaffordable)
+              ((or (equal completion :unaffordable) (equal completion :memberships))
                (fn-peer-single ps (string-append "436 retry later; "
                                                  (fn-post-store-refusal-text completion))))
               ((fn-post-store-refusalp completion)

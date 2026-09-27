@@ -4,6 +4,9 @@
 (include-book "nntp-verdict-effects")
 (include-book "group-bucket-invariants")
 (include-book "nntp-xref-invariants")
+; PRF-325: the XFNCATCHUP arm's reply is well formed
+; (`fn-cu-serve-reply-effects-well-formed').
+(include-book "peer-catchup-effects")
 
 (local (defthm fn-pinned-effects-projection-is-state
          (implies (fn-nntp-projectionp archive) (fn-statep archive))
@@ -184,7 +187,7 @@
 (defthm fn-nntp-control-hdr-response-effects
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-control-hdr-response session archive index verdicts args)))
+    (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
                                   (fn-nntp-single fn-nntp-hdr-line
                                    fn-ctl-control-item fn-ctl-served-status

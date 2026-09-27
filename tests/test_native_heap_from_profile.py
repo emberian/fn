@@ -26,11 +26,14 @@ name, outside a limit of at most 2 GiB.
   (K = 128: at 64), stops, reopens from the checkpoint and serves them
   again.  Each run's VmHWM is printed.
 * The refusal: `init --profile development' is the operator's request,
-  honored, never resized: the launcher's probe refuses it by name under 2
-  GiB; the image's own init writes it (`within-budget=no'), and the launcher
-  refuses its `run' and `status' by name.
+  never resized: under the launcher and run directly, init refuses it by
+  name with both numbers (lane
+  membership-budget), and with FN_INIT_BUDGET_MB=4096 writes it for that
+  target (`within-budget=no target-budget=4096 MB'); the launcher refuses
+  its `run' and `status' by name.
 * FreshInitTests (also without a small limit): conservative sizing,
-  FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB, and the default mission
+  FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB (below the machine: init
+  warns by name with both figures), and the default mission
   (inits and runs, under 2 GiB too; refused by name under a 500 MB budget).
 """
 import base64
@@ -62,6 +65,10 @@ REFUSED = re.compile(
 INIT_LINE = re.compile(r"^init: profile=([a-z]+) sizing=([a-z]+) "
                        r"reservation=(\d+) MB budget=(\d+) MB within-budget=(yes|no)$",
                        re.M)
+# A named budget below the machine init observes (finding R1 of the
+# public-node rehearsal: books/heap-reservation.lisp fn-heap-init-budget-note-line).
+INIT_NAMED_BELOW = re.compile(r"fn: warning init-budget-below-machine named-budget=(\d+) MB "
+                              r"machine-budget=(\d+) MB: ")
 INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-z]+) "
                           r"sizing=([a-z]+) reservation=(\d+) MB budget=(\d+) MB")
 
@@ -295,6 +302,7 @@ class FreshInitTests(Harness, unittest.TestCase):
         made = self.run_fn("operator", config, "init", "local.test",
                            env={"FN_INIT_SIZING": "largest"})
         self.assertEqual(made.returncode, EXIT_OK, text(made))
+        self.assertNotIn(b"init-budget-below-machine", made.stderr)
         word, sizing, _, budget = self.init_line(made)
         self.assertEqual(sizing, "largest")
         self.assertIn(word, ("small", "development", "scale"))
@@ -307,6 +315,14 @@ class FreshInitTests(Harness, unittest.TestCase):
         word, _, _, budget = self.init_line(made)
         self.assertIn(word, ("small", "custom"))
         self.assertEqual(budget, 1500)
+        # The machine gives more than the named 1,500 MB (under 2 GiB or not):
+        # init says so by name with both figures, on stderr, and still writes.
+        below = INIT_NAMED_BELOW.search(made.stderr.decode())
+        self.assertIsNotNone(below, text(made))
+        self.assertEqual(int(below.group(1)), 1500)
+        self.assertGreater(int(below.group(2)), 1500)
+        if LIMIT:
+            self.assertLessEqual(int(below.group(2)), LIMIT // (1024 * 1024))
         config, _ = self.config("badbudget")
         refused = self.run_fn("operator", config, "init", "local.test",
                               env={"FN_INIT_BUDGET_MB": "lots"})
@@ -443,23 +459,110 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         print("NATIVE-HEAP vmhwm run=2 kB={}".format(hwm2))
         self.assertLess(max(hwm1, hwm2) * 1024, LIMIT)
 
+    def test_a_store_init_admitted_fills_to_its_limit_and_still_restarts(self):
+        """The coordinator's release blocker (friend-path, packet A): a store
+        `init' sized within this machine's budget must reopen on this machine
+        however full it gets.  A bare init under 2 GiB (the conservative
+        rung the budget holds, judged by its FULL store since lane
+        membership-budget: books/heap-reservation.lisp
+        `fn-heap-init-accepted-store-always-reopens'), filled with 30 KiB
+        articles until the store refuses by name (the history budget, which
+        now also pays for every group membership), then `status' and a
+        restart are accepted and the articles are served."""
+        config, port = self.config("fill")
+        made = self.run_fn("operator", config, "init", "local.test")
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        found = INIT_LINE.search(made.stdout.decode())
+        self.assertIsNotNone(found, text(made))
+        self.assertEqual(found.group(5), "yes")
+        reservation = int(found.group(3))
+        body = ("y" * 72 + "\r\n") * 400  # 29,600 octets
+        log1 = self.tmp / "fill-1.log"
+        self.start(config, port, log1)
+        stored, reply = [], b""
+        with socket.create_connection(("127.0.0.1", port), timeout=600) as conn:
+            stream = conn.makefile("rwb")
+            self.assertTrue(stream.readline().startswith(b"20"))
+            for n in range(20000):
+                message_id = "<fill-{}@example.invalid>".format(n)
+                stream.write(b"POST\r\n")
+                stream.flush()
+                self.assertTrue(stream.readline().startswith(b"340"))
+                stream.write(("From: author@example.invalid\r\nNewsgroups: local.test\r\n"
+                              "Subject: fill\r\nMessage-ID: {}\r\n\r\n{}.\r\n"
+                              .format(message_id, body)).encode("ascii"))
+                stream.flush()
+                reply = stream.readline().rstrip(b"\r\n")
+                if not reply.startswith(b"240"):
+                    break
+                stored.append(message_id)
+            stream.write(b"QUIT\r\n")
+            stream.flush()
+        self.assertEqual(reply.decode("ascii"),
+                         "441 posting failed; the store is full: no capacity for this "
+                         "article (unaffordable); the node's operator can raise it")
+        hwm1 = self.stop()
+        print("NATIVE-HEAP fill posts={} vmhwm kB={} init-reservation={} MB".format(
+            len(stored), hwm1, reservation))
+        status = self.run_fn("operator", config, "status")
+        self.assertEqual(status.returncode, EXIT_OK, text(status))
+        heap = HEAP_LINE.search(status.stdout.decode())
+        self.assertIsNotNone(heap, text(status))
+        self.assertLessEqual(int(heap.group(1)), int(heap.group(3)))
+        print("NATIVE-HEAP full store: {}".format(heap.group(0)))
+        log2 = self.tmp / "fill-2.log"
+        self.start(config, port, log2)
+        with socket.create_connection(("127.0.0.1", port), timeout=300) as conn:
+            stream = conn.makefile("rwb")
+            self.assertTrue(stream.readline().startswith(b"20"))
+            for message_id in (stored[0], stored[-1]):
+                stream.write("ARTICLE {}\r\n".format(message_id).encode("ascii"))
+                stream.flush()
+                self.assertTrue(stream.readline().startswith(b"220"))
+                while stream.readline() != b".\r\n":
+                    pass
+            stream.write(b"QUIT\r\n")
+            stream.flush()
+        hwm2 = self.stop()
+        print("NATIVE-HEAP restart vmhwm kB={}".format(hwm2))
+        self.assertLess(max(hwm1, hwm2) * 1024, LIMIT)
+
     def test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start(self):
-        """`--profile development' is the operator's request: honored, never
-        resized.  Under the launcher its probe refuses it by name here; the
-        image's own init writes it and says the budget does not hold it; the
-        launcher then refuses its run and status by name."""
+        """`--profile development' is the operator's request: never resized.
+        Under the launcher its probe refuses it by name here; the image's own
+        init REFUSES it by name with both numbers and makes nothing (ember,
+        2026-09-27: lane membership-budget), unless FN_INIT_BUDGET_MB names a
+        target budget that holds it: then it is written for that machine
+        (`within-budget=no target-budget=4096 MB') and the launcher refuses
+        its run and status here by name."""
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
+        # The launcher's probe of `init' sizes the empty store's first run
+        # (it fits under 2 GiB since the memberships are charged to H); the
+        # refusal is init's own, by name with both numbers.
         self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
-        self.assertRegex(text(refused), REFUSED)
+        self.assertRegex(text(refused), INIT_REFUSED)
         self.assertFalse((self.tmp / "development").exists())
+        own = self.run_fn("operator", config, "init", "--profile", "development",
+                          "local.test", command=[IMAGE, "--fn"])
+        self.assertEqual(own.returncode, EXIT_REFUSED, text(own))
+        found = INIT_REFUSED.search(text(own))
+        self.assertIsNotNone(found, text(own))
+        self.assertEqual(found.group(1), "development")
+        self.assertEqual(found.group(2), "requested")
+        self.assertGreater(int(found.group(3)), int(found.group(4)))
+        self.assertEqual(own.stdout, b"")
+        self.assertFalse((self.tmp / "development").exists())
+        print("NATIVE-HEAP init refused reservation={} MB budget={} MB".format(
+            found.group(3), found.group(4)))
         made = self.run_fn("operator", config, "init", "--profile", "development",
-                           "local.test", command=[IMAGE, "--fn"])
+                           "local.test", command=[IMAGE, "--fn"],
+                           env={"FN_INIT_BUDGET_MB": "4096"})
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         self.assertRegex(made.stdout.decode(),
                          r"init: profile=development sizing=requested reservation=\d+ MB "
-                         r"budget=\d+ MB within-budget=no")
+                         r"budget=\d+ MB within-budget=no target-budget=4096 MB")
         for verb in ("run", "status"):
             result = self.run_fn("operator", config, verb)
             self.assertEqual(result.returncode, EXIT_REFUSED, text(result))

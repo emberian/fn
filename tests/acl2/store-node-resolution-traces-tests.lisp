@@ -67,7 +67,6 @@
            *snrt-reserve* (list (list :prepare *snrt-later-abort*))
            '((:known-abort) (:crash :old :absent) (:recover)
              (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-             (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
              (:io :recovery-barrier :ok)))))
 (assert-event (fn-snt-relation *snrt-final*))
 (assert-event (equal (fn-sf-phase (fn-sn-files *snrt-final*)) :ready))

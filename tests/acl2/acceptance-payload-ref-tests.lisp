@@ -13,6 +13,42 @@
 (include-book "../../books/store-checkpoint-open")
 (include-book "held-rows-tests")
 
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-apr-foundp-hx (msgid s hist)
+  ; fn-apr-foundp over a history stobj loaded with HIST (R holds when HIST is the history it reads).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix hist) 0 fn-hist)))
+        (mv (fn-apr-foundp msgid s fn-hist) fn-hist))
+      ans)))
+(defun fn-apr-payload-of-hx (msgid s hist)
+  ; fn-apr-payload-of over a history stobj loaded with HIST (R holds when HIST is the history it reads).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix hist) 0 fn-hist)))
+        (mv (fn-apr-payload-of msgid s fn-hist) fn-hist))
+      ans)))
+
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-apr-foundp-h (msgid s)
+  ; fn-apr-foundp over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files s))) 0 fn-hist)))
+        (mv (fn-apr-foundp msgid s fn-hist) fn-hist))
+      ans)))
+(defun fn-apr-payload-of-h (msgid s)
+  ; fn-apr-payload-of over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files s))) 0 fn-hist)))
+        (mv (fn-apr-payload-of msgid s fn-hist) fn-hist))
+      ans)))
+
 (defconst *apr-t-configs* (list *fn-cfg-default-record*))
 (defconst *apr-t-wire*
   (list (fn-record-make 0 0 0 "<apr-0@example.invalid>" '(72 105 13 10)
@@ -53,31 +89,28 @@
 ; The keystone's antecedent and conclusion, present and absent.
 ; by specification: the flip: the payload found through the reference is the
 ; article's handle (1); the bytes under it are the article's octets.
-(assert-event (equal (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-s*) 1))
+(assert-event (equal (fn-apr-payload-of-h "<apr-1@example.invalid>" *apr-t-s*) 1))
 (assert-event (equal (fn-hrt-bytes *apr-t-wire*
-                                   (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-s*))
+                                   (fn-apr-payload-of-h "<apr-1@example.invalid>" *apr-t-s*))
                      '(89 111 13 10)))
-(assert-event (equal (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-s*)
+(assert-event (equal (fn-apr-payload-of-h "<apr-1@example.invalid>" *apr-t-s*)
                      (fn-apr-field-payload "<apr-1@example.invalid>" *apr-t-s*)))
-(assert-event (equal (fn-apr-payload-of "<apr-9@example.invalid>" *apr-t-s*) nil))
+(assert-event (equal (fn-apr-payload-of-h "<apr-9@example.invalid>" *apr-t-s*) nil))
 (assert-event (equal (fn-apr-field-payload "<apr-9@example.invalid>" *apr-t-s*) nil))
-(assert-event (equal (fn-apr-foundp "<apr-0@example.invalid>" *apr-t-s*) t))
-(assert-event (equal (fn-apr-foundp "<apr-9@example.invalid>" *apr-t-s*) nil))
+(assert-event (equal (fn-apr-foundp-h "<apr-0@example.invalid>" *apr-t-s*) t))
+(assert-event (equal (fn-apr-foundp-h "<apr-9@example.invalid>" *apr-t-s*) nil))
 
-; Hypothesis removal: fn-apr-store-at-restp.  The same Store with its event
-; index emptied keeps the retained hypothesis (a string Message-ID), fails
-; the omitted one (the index no longer corresponds), and the conclusion
-; fails: the field holds the article's bytes, the index finds nothing.
-(defconst *apr-t-unindexed*
-  (update-nth 13 nil *apr-t-s*))
-(assert-event (equal (fn-stx-store (fn-sn-node *apr-t-unindexed*))
-                     (fn-stx-store (fn-sn-node *apr-t-s*))))
+; Hypothesis removal: R (lane history-columns-3; the store node's event
+; index is retired).  The same Store at rest, read through a history stobj
+; that is NOT its history (empty): the retained hypotheses hold (at rest, a
+; string Message-ID), R fails, and the conclusion fails: the field holds the
+; article's bytes, the stobj finds nothing.
+(assert-event (fn-apr-store-at-restp *apr-t-s*))
 (assert-event (stringp "<apr-1@example.invalid>"))
-(assert-event (not (fn-apr-store-at-restp *apr-t-unindexed*)))
-(assert-event (not (equal (fn-apr-payload-of "<apr-1@example.invalid>" *apr-t-unindexed*)
-                          (fn-apr-field-payload "<apr-1@example.invalid>"
-                                                *apr-t-unindexed*))))
-(assert-event (not (equal (fn-apr-foundp "<apr-1@example.invalid>" *apr-t-unindexed*)
+(assert-event (consp (fn-sf-records (fn-sn-files *apr-t-s*))))
+(assert-event (not (equal (fn-apr-payload-of-hx "<apr-1@example.invalid>" *apr-t-s* nil)
+                          (fn-apr-field-payload "<apr-1@example.invalid>" *apr-t-s*))))
+(assert-event (not (equal (fn-apr-foundp-hx "<apr-1@example.invalid>" *apr-t-s* nil)
                           (if (fn-find-article "<apr-1@example.invalid>"
-                                               (fn-stx-store (fn-sn-node *apr-t-unindexed*)))
+                                               (fn-stx-store (fn-sn-node *apr-t-s*)))
                               t nil))))

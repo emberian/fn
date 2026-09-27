@@ -127,7 +127,7 @@
 (assert-event
  (equal (in-arena-fn-nls-reclaim-words *rht-payloads* *rht-caught* (fn-cfg-initial) '(nil nil (:full-replay :absent) nil))
         (fn-record-string-octets
-         "reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0")))
+         "reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0 signed=0 kept=3")))
 
 ; -----------------------------------------------------------------------------
 ; The counts over the arena (audit-fixes, 2026-09-27; KEYSTONE
@@ -195,4 +195,79 @@
                                        '(nil nil (:full-replay :absent) nil))
         (append (fn-record-string-octets "reclaim rule=released-by-all-holders reclaimable=3")
                 (fn-record-string-octets " reclaimable-octets=374")
-                (fn-record-string-octets " held=0 reclaimed=0 freed-octets=0"))))
+                (fn-record-string-octets " held=0 reclaimed=0 freed-octets=0 signed=0 kept=0"))))
+
+; -----------------------------------------------------------------------------
+; The retention classes (PKT-844, lane bp-retention-leftovers).  The same
+; caught-up store with an :unverified authorship verdict recorded for
+; *rht-art* (a signed article: what a kind-4 composite's verdict is): the
+; article is :signed under every rule, the other two stay where the rule
+; puts them, and the five counts sum to the three articles.
+(bpr-lift fn-rcl-store-classes 3)
+(defconst *rht-signed*
+  (update-nth 7 (cons (cons *rht-msgid* '(:unverified :signature 0))
+                      (fn-sn-verdicts *rht-caught*))
+              *rht-caught*))
+(assert-event (fn-rcl-verdict-heldp *rht-msgid* (fn-sn-verdicts *rht-signed*)))
+(defun rht-sum (counts classes)
+  (+ (nth 0 counts) (nth 2 counts) (nth 4 counts) (nth 0 classes) (nth 1 classes)))
+
+; KEYSTONE fn-rcl-store-classes-partition-the-articles: witnesses under the
+; releasing rule (two reclaimable, one signed), keep-forever (one signed, two
+; kept), a lagging consumer (two held, one signed) and a tombstone (one
+; reclaimed, two reclaimable, none signed on the unsigned store).
+(defconst *rht-sc* (in-arena-fn-rcl-store-counts *rht-payloads* *rht-rule* 0 *rht-signed*))
+(defconst *rht-sk* (in-arena-fn-rcl-store-classes *rht-payloads* *rht-rule* 0 *rht-signed*))
+(assert-event (and (equal (nth 0 *rht-sc*) 2) (equal *rht-sk* '(1 0))
+                   (equal (rht-sum *rht-sc* *rht-sk*) (len *rht-articles*))))
+(assert-event
+ (let ((c (in-arena-fn-rcl-store-counts *rht-payloads* '(:keep-forever) 0 *rht-signed*))
+       (k (in-arena-fn-rcl-store-classes *rht-payloads* '(:keep-forever) 0 *rht-signed*)))
+   (and (equal c '(0 0 0 0 0)) (equal k '(1 2)) (equal (rht-sum c k) 3))))
+(defconst *rht-signed-lag*
+  (update-nth 7 (fn-sn-verdicts *rht-signed*) *rht-lag*))
+(assert-event
+ (let ((c (in-arena-fn-rcl-store-counts *rht-payloads* *rht-rule* 0 *rht-signed-lag*))
+       (k (in-arena-fn-rcl-store-classes *rht-payloads* *rht-rule* 0 *rht-signed-lag*)))
+   (and (equal (nth 4 c) 2) (equal k '(1 0)) (equal (rht-sum c k) 3))))
+(assert-event
+ (let ((c (in-arena-fn-rcl-store-counts *rht-tomb-payloads* *rht-rule* 0 *rht-caught*))
+       (k (in-arena-fn-rcl-store-classes *rht-tomb-payloads* *rht-rule* 0 *rht-caught*)))
+   (and (equal (nth 2 c) 1) (equal k '(0 0)) (equal (rht-sum c k) 3))))
+; Tooth (the signed class): without it the statement article is in no
+; class and the counts fall short of the articles, as the power-loss
+; campaign's status did (articles=232 against 208).
+(must-fail-checked
+ (assert-event (equal (+ (nth 0 *rht-sc*) (nth 2 *rht-sc*) (nth 4 *rht-sc*)
+                         (nth 1 *rht-sk*))
+                      (len *rht-articles*))))
+; Tooth (the kept class): under keep-forever the rule-kept articles are the
+; rest.
+(must-fail-checked
+ (assert-event
+  (let ((c (in-arena-fn-rcl-store-counts *rht-payloads* '(:keep-forever) 0 *rht-signed*))
+        (k (in-arena-fn-rcl-store-classes *rht-payloads* '(:keep-forever) 0 *rht-signed*)))
+    (equal (+ (nth 0 c) (nth 2 c) (nth 4 c) (nth 0 k)) 3))))
+
+; fn-rcl-signed-article-is-never-reclaimable.  Witness: under the releasing
+; rule with every holder caught up, the signed article is not reclaimable.
+(assert-event
+ (and (fn-rcl-verdict-heldp *rht-msgid* (fn-sn-verdicts *rht-signed*))
+      (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-signed*)
+                               (fn-sn-verdicts *rht-signed*) *rht-art*))))
+; Tooth (the verdict is held): the store's own :absent verdicts release it.
+(must-fail-checked
+ (assert-event (and (fn-rcl-verdict-heldp *rht-msgid* (fn-sn-verdicts *rht-caught*))
+                    (not (fn-rcl-reclaimable *rht-rule* 0
+                                             (fn-rcl-store-holders *rht-caught*)
+                                             (fn-sn-verdicts *rht-caught*)
+                                             *rht-art*)))))
+
+; The status line: `signed' and `kept' beside the reclaim counts.
+(assert-event
+ (equal (in-arena-fn-nls-reclaim-words *rht-payloads* *rht-signed* *rht-release-cfg*
+                                       '(nil nil (:full-replay :absent) nil))
+        (append (fn-record-string-octets "reclaim rule=released-by-all-holders reclaimable=2")
+                (fn-record-string-octets " reclaimable-octets=")
+                (fn-nls-nat (- 374 (len *rht-bytes*)))
+                (fn-record-string-octets " held=0 reclaimed=0 freed-octets=0 signed=1 kept=0"))))

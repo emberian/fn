@@ -434,10 +434,16 @@ library cannot create at all is a config error."
           (fnn-%err-clear-error)
           (let* ((key (= (fnn-%ssl-ctx-use-private-key-file
                           pointer private-key-path +fnn-tls-filetype-pem+) 1))
+                 ;; friend-path-2: a missing key file said "encrypted keys
+                 ;; are unsupported" (OpenSSL's error 0x80000002 is ENOENT);
+                 ;; the observation names which it is.
                  (key-detail
                    (unless key
-                     (format nil "private key ~a cannot be loaded; encrypted keys are unsupported: ~a"
-                             private-key-path (fnn-tls-error-stack))))
+                     (if (null (ignore-errors (sb-posix:stat private-key-path)))
+                         (format nil "private key ~a does not exist or cannot be read: ~a"
+                                 private-key-path (fnn-tls-error-stack))
+                       (format nil "private key ~a cannot be loaded; encrypted keys are unsupported (fn takes an unencrypted PEM key): ~a"
+                               private-key-path (fnn-tls-error-stack)))))
                  (chain (progn (fnn-%err-clear-error)
                                (= (fnn-%ssl-ctx-use-chain-file pointer certificate-path) 1)))
                  (chain-detail

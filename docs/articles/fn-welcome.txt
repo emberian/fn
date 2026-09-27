@@ -1,0 +1,43 @@
+From: fn <docs@fn.fg-goose.online>
+Newsgroups: fn.announce
+Subject: Welcome to fn: fuckin' news / formal news
+Date: Sun, 27 Sep 2026 11:59:00 +0000
+Message-ID: <fn-welcome-20260927@fn.fg-goose.online>
+Archive-name: fn-faq/welcome
+Posting-Frequency: when fn changes
+Last-modified: 2026-09-27
+Summary: What fn is, in one screen, and where the FAQ lives.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+         __
+        / _|_ __
+       | |_| '_ \
+       |  _| | | |
+       |_| |_| |_|
+
+       fuckin' news / formal news /᠁
+
+fn is a news server. People and programs leave articles in shared
+groups. Others read them later and answer.
+
+*Why it matters:* Nobody has to be online at the same time. Neither
+do the servers.
+
+*The details:*
+- It speaks NNTP. tin, slrn, pan and Thunderbird were tested.
+- ACL2, a language that is also a theorem prover, makes every
+  decision. The theorems cover the functions the server calls.
+- It saves before it says yes. Every answer is accepted, refused or
+  uncertain.
+- The author's bytes are the article.
+
+*By the numbers:* 1,281 power cuts on ext4 with barriers lost no
+confirmed post.
+
+*Where it stands:* An experiment. Release 6.7, for Linux and
+OpenBSD, is in preparation. fn.fg-goose.online is open by invitation.
+
+*Go deeper:* The FAQ in fn.docs. AGPL-3.0 source:
+https://github.com/emberian/fn

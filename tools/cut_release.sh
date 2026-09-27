@@ -5,7 +5,8 @@
 #       [--to N] [--runtime-from DIR] [--openbsd-vm NAME]
 #
 # The checklist is planning/release-vVERSION.md (VERSION is the one line of
-# the file VERSION at REV, 6.7.N); this script is its mechanical half, and
+# the file VERSION at REV, an entry of planning/release-sequence.json, D37);
+# this script is its mechanical half, and
 # each gate below is one of its numbered gates.  Run it from a clean
 # checkout whose HEAD is REV (the coordinator's cut worktree), never the
 # shared ~/dev/fn.  It writes OUT (default build/cut/vVERSION-REV12/):
@@ -27,8 +28,11 @@
 # every red precondition, and the verdict names the first.
 #
 #   gate  what                                            where
-#   01    version: VERSION is 6.7.N, tag vVERSION free    local
-#         or at REV, N above every earlier v6.7.* tag
+#   01    version: VERSION is the next entry of the       local
+#         release sequence after the newest v* tag (by
+#         sequence position, never by number; the first
+#         entry, 6.6.0, when there is none), its tag free
+#         or at REV (tools/release_sequence.py cut-check)
 #   02    tree: HEAD is REV, no tracked change            local
 #   03    fundamentals: every row of the checklist's      local
 #         fundamentals table MET with evidence at REV
@@ -192,21 +196,14 @@ gate() {
 # ---------------------------------------------------------------- the gates
 
 g_version() {
-  case $VERSION in
-    6.7.0) n=0 ;;
-    6.7.[1-9]*) n=${VERSION#6.7.}; case $n in *[!0-9]*) echo "VERSION at $REV is '$VERSION', not 6.7.N"; return 1 ;; esac ;;
-    *) echo "VERSION at $REV is '$VERSION', not 6.7.N"; return 1 ;;
-  esac
+  # Release order is D37's sequence (planning/release-sequence.json), never a
+  # numeric comparison: tools/release_sequence.py decides it.
   tagged=$(git rev-parse -q --verify "refs/tags/v$VERSION^{commit}" || true)
   if [ -n "$tagged" ] && [ "$tagged" != "$REV" ]; then
-    echo "tag v$VERSION exists at $tagged, not $REV: bump VERSION"; return 1
+    echo "tag v$VERSION exists at $tagged, not $REV: VERSION must be the next entry of the sequence"; return 1
   fi
-  for t in $(git tag -l 'v6.7.*'); do
-    [ "$t" = "v$VERSION" ] && continue
-    m=${t#v6.7.}
-    case $m in ''|*[!0-9]*) continue ;; esac
-    if [ "$m" -ge "$n" ]; then echo "tag $t is not below v$VERSION: bump VERSION"; return 1; fi
-  done
+  # shellcheck disable=SC2046
+  "$PY" tools/release_sequence.py cut-check "$VERSION" $(git tag -l 'v*') || return 1
   [ -n "$(git show "$REV:$CHECKLIST" 2>/dev/null | head -1)" ] || { echo "no $CHECKLIST at $REV"; return 1; }
   echo "version $VERSION; tag v$VERSION $( [ -n "$tagged" ] && echo "at REV" || echo free ); checklist $CHECKLIST"
 }

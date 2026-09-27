@@ -505,8 +505,9 @@
 ; its reason").  The owner renders the word it was handed only when the
 ; completion is a refusal (books/owner.lisp fn-own-outcome-rendering), so a
 ; kind here is never reached after a consumed completion.  :duplicate and
-; :conflict are fn-pb-existing-action's two answers (books/poster-bytes.lisp,
-; the decision the host calls since D25);
+; :conflict are D25's two answers (books/poster-bytes.lisp fn-pb-action-over,
+; which the host's books/store-intern.lisp fn-store-existing-action is over
+; alpha);
 ; :malformed is fn-owner-prepare's :invalid; :unaffordable is a refusal of
 ; the persisted profile (fn-store-publication-admissibility) or of the
 ; transaction capacity; :storage-failed is a Store write that failed before
@@ -519,6 +520,12 @@
   (declare (xargs :guard t))
   (and (member-equal completion
                      '(:refused :duplicate :conflict :malformed :unaffordable
+                       ;; A crosspost whose group memberships the history
+                       ;; budget cannot pay for, the article alone fitting
+                       ;; (books/store-capacity-vector.lisp
+                       ;; fn-cvec-article-refusal-word; lane membership-budget):
+                       ;; "441 posting failed; the store cannot pay for this article's groups: ..."
+                       :memberships
                        :storage-failed
                        ;; A signed POST refused at its FN-Authorship carrier
                        ;; (books/peer-authored-accept.lisp fn-pa-served-word):
@@ -553,6 +560,8 @@
     "the store refused the article as malformed")
    ((equal kind :unaffordable)
     "the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
+   ((equal kind :memberships)
+    "the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")
    ((equal kind :storage-failed)
     "the store could not write the article, nothing was stored")
    ((equal kind :article)

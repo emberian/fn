@@ -135,7 +135,11 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         # tests/native_owner_chunk_loop_raw.lisp evaluates the deployed
         # connection life (host/native/mux.lisp), fnn-owner-handle-chunk and
         # fnn-owner-advance-clock against recording stubs, so the two 915
-        # defects have a check that needs no image.
+        # defects have a check that needs no image.  The harness extracts the
+        # closure of its roots from the host and refuses a stale stub or an
+        # unstubbed callee by name, so a host change fails it at load, not as
+        # a scenario's wrong answer; and it checks the time model's disk
+        # clock event on the batched POST path.
         runtime = runtime_sbcl(IMAGE)
         if runtime is None:
             raise unittest.SkipTest("no SBCL runtime for the image and none on PATH")
@@ -145,8 +149,9 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
              "tests/native_owner_chunk_loop_raw.lisp"],
             cwd=ROOT, env=sbcl_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=180, check=False)
-        self.assertEqual(result.returncode, 0,
-                         result.stdout.decode("utf-8", "replace"))
+        output = result.stdout.decode("utf-8", "replace")
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("suffix, refusal, no-progress, clock and time-event passed", output)
 
 
     def test_developer_selectors_gate_arm_the_owner_and_stop_synchronously(self):

@@ -806,7 +806,7 @@
 ; nil when the octets do not say which source that was.  It is the D25
 ; comparison subject: two submissions under one Message-ID are one article
 ; when their sources are one, whatever the clock read at either injection
-; (books/poster-bytes.lisp fn-pb-existing-action).
+; (books/poster-bytes.lisp fn-pb-action-over).
 ;
 ; Recipe v2 (fn-inj-prefix above): this agent's Path line; then, when a field
 ; was generated, an Injection-Date line with some 31-octet date, the

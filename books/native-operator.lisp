@@ -531,14 +531,14 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; those records.  DIR is an absolute path within the path bound.  The import's
 ; flags are field overrides over the archive's profile (base :current; no
 ; --profile), resolved at the import by `fn-bs-profile-resolve', not here.
-; `store compact': the offline compaction (books/store-compact-verb.lisp).
-; It takes no argument; what it does to the store (pack and reclaim, resume a
-; reclaim, or refuse) is `fn-cverb-decide' at the store, not here.
+; `store compact': the offline compaction (host/native/checkpoint.lisp
+; `fnn-command-compact': a state checkpoint with the log rotated, then the
+; covered segments dropped).  It takes no argument.
 ; `store checkpoint': publish the exact-state checkpoint (P3,
 ; books/store-checkpoint-open.lisp).  It takes no argument.
 ; `store reclaim [--dry-run]': content reclamation's durable step (D13,
-; STO-017, books/store-reclaim-pack.lisp).  What it removes is
-; `fn-rclp-decide' at the store, not here; `--dry-run' writes nothing.
+; STO-017, books/store-log-reclaim.lisp).  What it removes is
+; `fn-lgr-decide-stream' at the store, not here; `--dry-run' writes nothing.
 ; A Message-ID as a command word: "<", printable US-ASCII, ">" (RFC 3977
 ; section 3.6), within the store's Message-ID bound (fn-record-msgidp).
 (defun fn-nop-msgid-wordp (word)
@@ -639,7 +639,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG pins (retention pins and each open connection's configuration pin)")
         ((equal subject "obligations")
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
-        ((equal subject "recover") "usage: fn operator CONFIG recover")
+        ((equal subject "recover") "usage: fn operator CONFIG recover [--repair truncate SEGMENT:OFFSET] (the repair only as a log-damaged refusal names it: the damaged segment is kept under quarantine/, then the log is truncated before the damage)")
         ((equal subject "store")
          "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
@@ -655,7 +655,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list | log | evidence MESSAGE-ID} (NAMESPACE is a group name or one ending in .*; spec peering 8; log lists the withdrawal records, evidence shows one article's decision context)")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
+         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- source-address|principal VALUE [PROFILE ALLOW-CLEAR] STREAMING [starttls|implicit SERVER-NAME ANCHOR-PEM] | peer remove NAME | peer list | peer pull NAME SECONDS | peer catch-up NAME SECONDS | peer budget NAME OCTETS COUNT | peer keygen KEYDIR | peer genesis KEYDIR | peer invite NAME GROUPS HOST PORT PATH KEYDIR OUT MY-HOST|- MY-PORT|- | peer accept FILE KEYDIR PATH REACHABLE|- OUT | peer confirm ACCEPTANCE INVITATION (KEYDIR, FILE and OUT absolute; keygen makes a new KEYDIR with both key pairs and runs genesis; spec peering 9)")
         ((equal subject "bp-boundary")
          "usage: fn operator CONFIG bp-boundary add NAME PATH BP-EID PORT [INBOUND-GROUPS MAX-OCTETS MAX-INFLIGHT] [carries SOURCE-EID ...] (IPv4 loopback; the short form grants no inbound articles; carries lists the source EIDs this neighbour may relay, each judged under its own enrollment here)")
         ((equal subject "bp-route")
@@ -857,9 +857,19 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                 (list (if (equal command "pins") :pins :obligations)))
                (fn-nop-usage :unexpected-arguments command config rest)))
             ((equal command "recover")
-             (if (null rest)
-                 (fn-nop-result :accepted :plan "recover" config (list :recover))
-               (fn-nop-usage :unexpected-arguments "recover" config rest)))
+             ; Lane log-corruption: `recover --repair truncate SEGMENT:OFFSET',
+             ; the operator's confirmation of the one repair a log-damaged
+             ; refusal names (books/store-log-damage.lisp admits it only for
+             ; exactly that damage).
+             (cond ((null rest)
+                    (fn-nop-result :accepted :plan "recover" config (list :recover)))
+                   ((and (equal (fn-ncfg-first rest) "--repair")
+                         (equal (fn-ncfg-second rest) "truncate")
+                         (stringp (fn-ncfg-nth 2 rest))
+                         (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest rest)))))
+                    (fn-nop-result :accepted :plan "recover" config
+                                   (list :recover (fn-ncfg-nth 2 rest))))
+                   (t (fn-nop-usage :unexpected-arguments "recover" config rest))))
             ((equal command "store") (fn-nop-parse-store rest config))
             ; PKT-096: the normalized configuration, rendered by ACL2
             ; (books/native-config-show.lisp fn-native-config-show).
@@ -2208,6 +2218,18 @@ when that store already exists is `fn-native-operator-init-outcome'."
           (fn-native-operator-result-admin-planp result))
       (fn-record-string-octets
        (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
+; friend-path-2: the service log `status' and `health' read the last run
+; line from when no owner runs (books/native-health.lisp fn-nh-last-run), or
+; nil when the configuration names none (stderr).
+(defun fn-native-operator-result-status-log-path-octets (result)
+  (declare (xargs :guard t))
+  (if (and (or (fn-native-operator-result-status-planp result)
+               (fn-native-operator-result-admin-planp result))
+           (fn-native-config-log-path (fn-native-operator-result-config result)))
+      (fn-record-string-octets
+       (fn-native-config-log-path (fn-native-operator-result-config result)))
     nil))
 
 ; PRF-112: the operator's [alerts] headroom_min_percent, the threshold of the

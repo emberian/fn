@@ -305,17 +305,25 @@ whether a checkpoint served this process's open."
 
 (defun fn-nls-reclaim-words (s cfg obs fn-arena)
   "`reclaim rule=R reclaimable=N reclaimable-octets=N held=N reclaimed=N
-freed-octets=N'."
+freed-octets=N signed=N kept=N'.  PKT-844: reclaimable + held + reclaimed +
+signed + kept is the report's articles=N
+(`fn-rcl-store-classes-partition-the-articles'); signed counts the articles an
+authorship verdict keeps (key statements among them), kept those the rule
+keeps."
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let* ((rule (fn-rcl-config-rule (fn-cfg-value cfg)))
          (stamp (fn-record-stamp-of-observation (fn-nls-obs-clock obs)))
-         (counts (fn-rcl-store-counts rule (if (natp stamp) stamp nil) s fn-arena)))
+         (now (if (natp stamp) stamp nil))
+         (counts (fn-rcl-store-counts rule now s fn-arena))
+         (classes (fn-rcl-store-classes rule now s fn-arena)))
     (append (fn-nls-text "reclaim rule=") (fn-nls-rule-words rule)
             (fn-nls-field "reclaimable" (nth 0 counts))
             (fn-nls-field "reclaimable-octets" (nth 1 counts))
             (fn-nls-field "held" (nth 4 counts))
             (fn-nls-field "reclaimed" (nth 2 counts))
-            (fn-nls-field "freed-octets" (nth 3 counts)))))
+            (fn-nls-field "freed-octets" (nth 3 counts))
+            (fn-nls-field "signed" (nth 0 classes))
+            (fn-nls-field "kept" (nth 1 classes)))))
 
 ; -----------------------------------------------------------------------------
 ; The report

@@ -8,7 +8,8 @@
 # on (the image is built here, and the installer executes it).  REV is the
 # full 40-digit commit.  OUT_DIR (absolute) receives
 #   fn-VERSION-PLATFORM.tar.gz one top directory fn/ (below); VERSION is the
-#                              release version 6.7.N, read from the file
+#                              release version (D37's sequence: 6.6.0 first),
+#                              read from the file
 #                              VERSION at the root of REV's tree (the one
 #                              place it is written; the image build reads
 #                              the same file, host/native/io.lisp
@@ -56,9 +57,57 @@
 #                                (libsodium, libfn-mldsa65; libzstd on
 #                                OpenBSD).  TLS is the system's libssl.
 #   fn/share/fn/                 fn.toml.example, systemd/fn.service.in or
-#                                rc.d/fn.rc.in, docs/install.md,
-#                                native-artifacts.txt, release-gate.txt,
-#                                runpath-check.txt
+#                                rc.d/fn.rc.in, docs/install.md, web.md,
+#                                agents.md, the guides' articles
+#                                (docs/articles/*.txt), native-artifacts.txt,
+#                                release-gate.txt, runpath-check.txt
+#   fn/clients/                  fn's client programs, separate from the node
+#                                (packaging/install-clients.sh): the friends'
+#                                web reader with its service template, its
+#                                settings example and a Caddy snippet, and
+#                                fn-web, fn-client, fn-agent, fn-consumer,
+#                                fn-verify.  They need Python 3.9+
+#                                (clients/README.txt); the node never runs
+#                                them, and the runpath check holds the rest
+#                                of the tree to that (its clients rule).
+#
+# Building the OpenBSD release (openbsd-amd64).  It is built on OpenBSD 7.9
+# amd64 itself, with SBCL (pkg_add sbcl), libsodium, zstd and python3, and an
+# ACL2 8.7 built there with its system books certified.  Three requirements
+# no error message states plainly (each cost a failed build, 2026-09-27):
+#   a. FN_ACL2 must be a LITERAL launcher: a sh script that execs sbcl with
+#      every runtime option written out (--tls-limit, --dynamic-space-size,
+#      --control-stack-size, --core PATH/saved_acl2.core ...), not ACL2's
+#      generated saved_acl2, which expands ${SBCL_USER_ARGS}.  Certificates
+#      made under the generated one carry no qualified launcher/core/runtime
+#      fingerprint: nothing publishes to FN_CERT_CACHE and step 2 acquires
+#      nothing (`no qualified ACL2 launcher/core/runtime fingerprint').
+#   b. FN_IMAGE_ACL2 must name the same launcher at --tls-limit 65536 (a
+#      copy of (a) with only that number changed): the production world
+#      passes SBCL's default 16384 (`Thread local storage exhausted' in
+#      native-build.log).
+#   c. Where step 4 stages and runs bin/fn must be on a file system mounted
+#      wxallowed (`mount -o wxallowed,nodev DEV DIR', or under /usr/local):
+#      OUT_DIR for the first form, TMPDIR (default /tmp, never wxallowed)
+#      for --frozen.  Otherwise install-native's probe dies with `RWX mmap
+#      not supported' (under --frozen, then `GC invariant lost'), and step 4
+#      may report only `image did not identify itself as the production
+#      profile'.
+# The order: certify the default closure with (a) into FN_CERT_CACHE, from a
+# git archive of REV unpacked on its own (python3 tools/certify_books.py
+# --jobs N --closure $(python3 tools/proof_artifacts.py roots --profile
+# default), FN_ACL2, ACL2_SYSTEM_BOOKS and FN_CERT_CACHE set); move that
+# certifying tree aside (rename it), since a live origin is not acquired for
+# another tree (tools/certs.py usable_origin); then run this script with
+# FN_ACL2=(a), FN_IMAGE_ACL2=(b), FN_CERT_CACHE,
+# FN_FREEZE_SODIUM=/usr/local/lib/libsodium.so.11.1 (the 7.9 package) and
+# FN_FREEZE_DYNAMIC_SPACE_MB=1024 (the launchers' default heap; the node
+# replaces it with the figure from the store's profile).  Raise the data
+# size limit first (`ulimit -d unlimited', or the login class's hard
+# limit): root's class caps it at 4 GiB and the literal launchers ask for
+# 4096 MB.  Step 1 still needs REV's committed manifests to cover the
+# closure (tools/green_check.py); the guest's own certification does not
+# replace them.
 set -eu
 usage() {
   echo 'usage: release-tarball.sh [--runtime-from DIR] PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]' >&2
@@ -90,16 +139,14 @@ case $rev in *[!0-9a-f]*|'') echo 'release-tarball: REV must be a lowercase hex 
 [ "${#rev}" -eq 40 ] || { echo 'release-tarball: REV must be the full 40-digit commit' >&2; exit 2; }
 case $out in /*) ;; *) echo 'release-tarball: OUT_DIR must be absolute' >&2; exit 2;; esac
 short=$(printf '%s' "$rev" | cut -c1-12)
-# The release version: 6.7.N, N a numeral without a leading zero.
+# The release version: an entry of the release sequence (D37,
+# planning/release-sequence.json; tools/release_sequence.py decides it, any
+# number of dotted components, never compared as numbers).
 release_version() {
   [ -r "$1" ] || { echo "release-tarball: no $1" >&2; exit 4; }
   v=$(sed -n 1p "$1")
-  case $v in
-    6.7.0) ;;
-    6.7.[1-9]*) case ${v#6.7.} in *[!0-9]*) v= ;; esac ;;
-    *) v= ;;
-  esac
-  [ -n "$v" ] || { echo "release-tarball: $1 does not hold a release version 6.7.N" >&2; exit 4; }
+  "${PYTHON:-python3}" tools/release_sequence.py position "$v" >/dev/null || {
+    echo "release-tarball: $1 holds '$v', not an entry of the release sequence" >&2; exit 4; }
   printf '%s\n' "$v"
 }
 if [ "$system" = Linux ]; then sums=sha256sum; else sums=sha256; fi
@@ -185,16 +232,18 @@ FN_NATIVE_HOST=$frozen/fn-host FN_NATIVE_CORE=$frozen/fn-host.core \
   FN_NATIVE_SOURCE_REVISION=$rev DESTDIR=$stage PREFIX=$base/fn \
   sh packaging/install-native.sh
 top=$stage$base/fn
+sh packaging/install-clients.sh "$top"
 mkdir -p "$top/share/fn/docs"
 install -m 0644 packaging/fn.toml.example "$top/share/fn/fn.toml.example"
 install -m 0644 docs/install.md "$top/share/fn/docs/install.md"
+install -m 0644 docs/articles/*.txt "$top/share/fn/docs/"
 install -m 0644 "$gate" "$top/share/fn/release-gate.txt"
 printed=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
 [ "$printed" = "fn $version ($short)" ] || {
   echo "release-tarball: bin/fn --version printed '$printed', not 'fn $version ($short)'" >&2; exit 4; }
 "${PYTHON:-python3}" tools/runpath_check.py --tree "$top" --platform "${platform%%-*}" > "$stage/runpath-check.txt" 2>&1 || {
   cat "$stage/runpath-check.txt" >&2
-  echo 'release-tarball: the runpath check failed (Python on the deployed path, or a bundled object above the glibc floor: --runtime-from)' >&2; exit 4; }
+  echo 'release-tarball: the runpath check failed (Python on the deployed path, a client the node could run, or a bundled object above the glibc floor: --runtime-from)' >&2; exit 4; }
 install -m 0644 "$stage/runpath-check.txt" "$top/share/fn/runpath-check.txt"
 tail -1 "$stage/runpath-check.txt"
 (cd "$top" && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | xargs $sums > SHA256SUMS)

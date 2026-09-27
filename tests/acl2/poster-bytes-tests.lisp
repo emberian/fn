@@ -2,8 +2,9 @@
 ; duplicate-versus-conflict verdict keys on the poster's source, recovered by
 ; the injection inverse (books/injection.lisp fn-inj-source-of).
 ;
-; The subjects are the functions the host calls: fn-pb-existing-action
-; (host/owner-host.lisp fn-owner-existing-action and fn-owner-prepare,
+; The subjects are the functions the host calls: fn-store-existing-action,
+; which is D25's fn-pb-action-over over alpha (host/owner-host.lisp
+; fn-owner-existing-action and fn-owner-prepare,
 ; host/store-node-host.lisp) and fn-own-outcome (fn-owner-outcome).  The
 ; witnesses are proto-articles injected by the real fn-inj-decide at two
 ; clock readings 37 s apart, the held one committed through the real Store.

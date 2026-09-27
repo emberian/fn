@@ -147,7 +147,8 @@
       (fn-col-result-event
        o (fn-cp-unregister s *fn-col-principal* consumer)))))
 
-(defun fn-col-poll (o consumer)
+(defun fn-col-poll (o consumer fn-hist)
+  (declare (xargs :stobjs fn-hist :verify-guards nil))
   (let* ((store (fn-own-store o))
          (s (fn-sn-consumer store))
          (scoped (fn-col-scope-entry s consumer)))
@@ -158,7 +159,7 @@
              (frontier (fn-cp-nth 3 s))
              (scan (fn-col-poll-scan
                     (fn-col-poll-index-window
-                     (fn-sn-event-index store) position frontier
+                     fn-hist position frontier
                      *fn-col-poll-max-scan*)
                     (fn-cp-nth 3 entry) position frontier
                     *fn-col-poll-max-scan*)))
@@ -196,8 +197,9 @@
         ((fn-record-p event) (fn-rcon-record-encode-impl event))
         (t nil)))
 
-(defun fn-col-poll-report (o consumer)
-  (let ((decision (fn-col-poll o consumer)))
+(defun fn-col-poll-report (o consumer fn-hist)
+  (declare (xargs :stobjs fn-hist :verify-guards nil))
+  (let ((decision (fn-col-poll o consumer fn-hist)))
     (if (and (eq (car decision) :poll) (caddr decision))
         (let ((report (fn-col-poll-report-octets (caddr decision))))
           (cond ((fn-ncl-poll-event-bytesp report)

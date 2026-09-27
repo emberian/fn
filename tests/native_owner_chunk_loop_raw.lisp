@@ -1,20 +1,38 @@
 ;;; The deployed owner chunk loop, driven without an image.
 ;;;
-;;; The served connection's life (host/native/mux.lisp: fnn-mux-begin,
-;;; fnn-mux-readable, fnn-mux-work, fnn-mux-step, fnn-mux-queue, fnn-mux-flush,
-;;; fnn-mux-after, fnn-mux-finish and the handlers of fnn-mux-guarded; lane
-;;; connection-multiplexing, 2026-09-26; fnn-mux-queue-plan and the windowed
-;;; fnn-mux-flush, lane owner-scheduler, 2026-09-27) and
-;;; `fnn-owner-handle-chunk' and `fnn-owner-advance-clock'
-;;; (host/native/owner.lisp) are read out of the files that ship them; the
-;;; shared wall-clock helper out of host/native/io.lisp.  This exercises the shipped functions and not copies
-;;; of them; the driver below plays the loop's poll, handing the connection
-;;; each readiness it waits for.  Everything they
-;;; call that touches a socket, the owner mutex or ACL2 is stubbed, and the
-;;; stubs record what the loop did and what the owner was handed.
+;;; The served connection's life (host/native/mux.lisp) and the served step
+;;; (host/native/owner.lisp fnn-owner-handle-chunk and what it calls) are
+;;; read out of the files that ship them.  This exercises the shipped
+;;; functions and not copies of them; the driver below plays the loop's poll
+;;; and the committer, handing the connection each readiness and each
+;;; completion it waits for.
 ;;;
-;;; Three properties, each a defect found against the native 915 node on
-;;; 2026-09-22 (planning/evidence/owner-defects-2026-09-22.md):
+;;; The harness is BUILT FROM DECLARATIONS, so the host cannot drift away from
+;;; it silently (lane served-leftovers, 2026-09-27: the harness had been red
+;;; all day on four independent drifts -- a stub's arity, a renamed dispatcher,
+;;; a split function and two new callees -- each reported only as "the suffix
+;;; was not the next step's input: NIL").  It declares three things:
+;;;
+;;;   *ROOTS*      the host functions the driver and the checks call;
+;;;   the STUBS    every definition below whose name the host also defines:
+;;;                the ACL2 boundary (fnn-core, fnn-owner-core, ...), the
+;;;                socket, the TLS library and the owner mutex, each recording
+;;;                what the loop did;
+;;;   *UNREACHED*  host functions on branches these scenarios never take,
+;;;                each a stub that fails the scenario if it is ever called.
+;;;
+;;; Everything else a root reaches, transitively, that host/native/io.lisp,
+;;; owner.lisp or mux.lisp defines is EXTRACTED from the host source (a new
+;;; callee, a split function, a struct's real slots come along by
+;;; themselves).  At load the harness refuses, by name:
+;;;   - a stub whose lambda list does not accept every arity the host's
+;;;     definition accepts (a stale stub), or that stubs a name the host no
+;;;     longer defines;
+;;;   - a reached host function from any other file that is neither stubbed
+;;;     nor declared unreached (a stale harness).
+;;;
+;;; Five properties, the first four each a defect found against the native
+;;; 915 node on 2026-09-22 (planning/evidence/owner-defects-2026-09-22.md):
 ;;;
 ;;;   1. a step that consumes a prefix leaves the rest as the NEXT step's
 ;;;      input.  It is not a fault, and it is not read from the socket again.
@@ -23,159 +41,342 @@
 ;;;      `fn-wire-close ... :body-overlimit' and
 ;;;      books/served-tls-prefix.lisp `fn-served-feed-counted' stops there);
 ;;;      the old line faulted and the whole process stopped.
-;;;   2. a step that consumes nothing and neither closes nor hands the
+;;;   2. the oversize article's closing step delivers its refusal and closes
+;;;      gracefully; its suffix is not fed back.
+;;;   3. a step that consumes nothing and neither closes nor hands the
 ;;;      transport over IS a fault: the same octets fed again cannot make
 ;;;      progress.
-;;;   3. one clock reading reaches the owner at open and one before every
+;;;   4. one clock reading reaches the owner at open and one before every
 ;;;      chunk, which is what gives each submission its own Injection-Date
 ;;;      (books/owner.lisp `fn-own-open'; RFC 5537 section 3.4).  A run whose
 ;;;      articles all carry one Date is exactly a host that read the clock
 ;;;      once.
+;;;   5. the time model (planning/design-time-model-2026-09-27.md section
+;;;      3.7, "who appends clock events"): on the format-9 path a served
+;;;      POST's step appends exactly ONE disk clock event, on demand, and it
+;;;      is recorded immediately before the admission that reads it
+;;;      (fnn-owner-disk-admit, fn-otm-admit-post); a step that submits
+;;;      nothing appends none.  The injection reading of property 4 is still
+;;;      taken once per step, before the step's transition.  The submission
+;;;      then waits for its batch and the reply follows the completion.
 
 (require :sb-posix)
 (require :sb-bsd-sockets)
+(require :sb-introspect)
 (defpackage "ACL2" (:use "CL"))
+(defpackage "ACL2_*1*_ACL2" (:use))
 (in-package "ACL2")
 
-;;; ---------------------------------------------------------------------------
-;;; The boundary host/native/io.lisp and host/native/tls.lisp define.
-
-(deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
-(defun fnn-make-octets (n)
-  (make-array n :element-type '(unsigned-byte 8) :initial-element 0))
-(defun fnn-octets (sequence)
-  (if (typep sequence 'fnn-octets)
-      sequence
-      (let ((out (fnn-make-octets (length sequence)))) (replace out sequence) out)))
-(defun fnn-octet-list (x) (coerce x 'list))
-(defun fnn-octet-list-p (x)
-  (and (listp x) (every (lambda (o) (and (integerp o) (<= 0 o 255))) x)))
-(defun fnn-ascii (string) (fnn-octets (map 'list #'char-code string)))
-(defun fnn-text (octets) (map 'string #'code-char octets))
-
-(defconstant +fnn-exit-uncertain+ 3)
-
-(define-condition fnn-store-error (error)
-  ((message :initarg :message :reader fnn-message))
-  (:report (lambda (c s) (write-string (fnn-message c) s))))
-(define-condition fnn-store-fault (fnn-store-error) ())
-(define-condition fnn-store-indeterminate (fnn-store-error) ())
-(define-condition fnn-os-error (error) ())
-(define-condition fnn-tls-error (error) ())
-(define-condition fnn-owner-connection-fault (error)
-  ((operation :initarg :operation) (cause :initarg :cause)))
-
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
 (defun fnn-fault (control &rest args)
-  (error 'fnn-store-fault :message (apply #'format nil control args)))
-(defun fnn-refuse (control &rest args)
-  (error 'fnn-store-error :message (apply #'format nil control args)))
-(defun fnn-err (control &rest args)
-  (format *error-output* "~a~%" (apply #'format nil control args)))
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
+(defun fnn-log-sync-collected (log)
+  (declare (ignorable log))
+  (harness-stub-reached 'fnn-log-sync-collected "host/native/io.lisp"))
+(defun fnn-metadata (msgid payload)
+  (declare (ignorable msgid payload))
+  (harness-stub-reached 'fnn-metadata "host/native/io.lisp"))
+(defun fnn-mux-admit (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-admit "host/native/mux.lisp"))
+(defun fnn-mux-await-done (loop conn completion)
+  (declare (ignorable loop conn completion))
+  (harness-stub-reached 'fnn-mux-await-done "host/native/mux.lisp"))
+(defun fnn-mux-drain-readable (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-drain-readable "host/native/mux.lisp"))
+(defun fnn-mux-finish (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-finish "host/native/mux.lisp"))
+(defun fnn-mux-flush (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-flush "host/native/mux.lisp"))
+(defun fnn-mux-handshake-step (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-handshake-step "host/native/mux.lisp"))
+(defun fnn-mux-readable (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-readable "host/native/mux.lisp"))
+(defun fnn-mux-slot-free-p (loop)
+  (declare (ignorable loop))
+  (harness-stub-reached 'fnn-mux-slot-free-p "host/native/mux.lisp"))
+(defun fnn-mux-ticks (seconds)
+  (declare (ignorable seconds))
+  (harness-stub-reached 'fnn-mux-ticks "host/native/mux.lisp"))
+(defun fnn-mux-tls-log (loop conn reason)
+  (declare (ignorable loop conn reason))
+  (harness-stub-reached 'fnn-mux-tls-log "host/native/mux.lisp"))
+(defun fnn-nat (value)
+  (declare (ignorable value))
+  (harness-stub-reached 'fnn-nat "host/native/io.lisp"))
+(defun fnn-octet-list (octets)
+  (declare (ignorable octets))
+  (harness-stub-reached 'fnn-octet-list "host/native/io.lisp"))
+(defun fnn-owner-account-redeem (service cid)
+  (declare (ignorable service cid))
+  (harness-stub-reached 'fnn-owner-account-redeem "host/native/admin.lisp"))
+(defun fnn-owner-attempt-served (service msgid payload groups evidence)
+  (declare (ignorable service msgid payload groups evidence))
+  (harness-stub-reached 'fnn-owner-attempt-served "host/native/owner.lisp"))
+(defun fnn-owner-attempt-transit (service msgid payload groups evidence &optional nntp-transit-p)
+  (declare (ignorable service msgid payload groups evidence nntp-transit-p))
+  (harness-stub-reached 'fnn-owner-attempt-transit "host/native/owner.lisp"))
+(defun fnn-owner-commit-complete-locked (service action members deferred)
+  (declare (ignorable service action members deferred))
+  (harness-stub-reached 'fnn-owner-commit-complete-locked "host/native/owner.lisp"))
+(defun fnn-owner-commit-start-event (members uncertain)
+  (declare (ignorable members uncertain))
+  (harness-stub-reached 'fnn-owner-commit-start-event "host/native/owner.lisp"))
+(defun fnn-owner-commit-start-locked (service &key seal)
+  (declare (ignorable service seal))
+  (harness-stub-reached 'fnn-owner-commit-start-locked "host/native/owner.lisp"))
+(defun fnn-owner-commit-step-action (phase event)
+  (declare (ignorable phase event))
+  (harness-stub-reached 'fnn-owner-commit-step-action "host/native/owner.lisp"))
+(defun fnn-owner-commit-sync (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-commit-sync "host/native/owner.lisp"))
+(defun fnn-owner-disk-admission (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-disk-admission "host/native/owner.lisp"))
+(defun fnn-owner-disk-event (service kind &optional arg)
+  (declare (ignorable service kind arg))
+  (harness-stub-reached 'fnn-owner-disk-event "host/native/owner.lisp"))
+(defun fnn-owner-feed-flush (service publication)
+  (declare (ignorable service publication))
+  (harness-stub-reached 'fnn-owner-feed-flush "host/native/owner.lisp"))
+(defun fnn-owner-feed-flush-after-barrier (service publication)
+  (declare (ignorable service publication))
+  (harness-stub-reached 'fnn-owner-feed-flush-after-barrier "host/native/owner.lisp"))
+(defun fnn-owner-feed-step (name &rest args)
+  (declare (ignorable name args))
+  (harness-stub-reached 'fnn-owner-feed-step "host/native/owner.lisp"))
+(defun fnn-owner-feed-word (publication)
+  (declare (ignorable publication))
+  (harness-stub-reached 'fnn-owner-feed-word "host/native/owner.lisp"))
+(defun fnn-owner-handle-chunk-read (service cid incoming socket class)
+  (declare (ignorable service cid incoming socket class))
+  (harness-stub-reached 'fnn-owner-handle-chunk-read "host/native/owner.lisp"))
+(defun fnn-owner-list-global (name)
+  (declare (ignorable name))
+  (harness-stub-reached 'fnn-owner-list-global "host/native/owner.lisp"))
+(defun fnn-owner-take ()
+  (harness-stub-reached 'fnn-owner-take "host/native/owner.lisp"))
+(defun fnn-owner-taken-groups (taken)
+  (declare (ignorable taken))
+  (harness-stub-reached 'fnn-owner-taken-groups "host/native/owner.lisp"))
+(defun fnn-owner-taken-id (taken)
+  (declare (ignorable taken))
+  (harness-stub-reached 'fnn-owner-taken-id "host/native/owner.lisp"))
+(defun fnn-owner-taken-msgid (taken)
+  (declare (ignorable taken))
+  (harness-stub-reached 'fnn-owner-taken-msgid "host/native/owner.lisp"))
+(defun fnn-owner-taken-octets (taken)
+  (declare (ignorable taken))
+  (harness-stub-reached 'fnn-owner-taken-octets "host/native/owner.lisp"))
+(defun fnn-owner-taken-word (taken)
+  (declare (ignorable taken))
+  (harness-stub-reached 'fnn-owner-taken-word "host/native/owner.lisp"))
+(defun fnn-owner-transit-complete (cid kind reason word)
+  (declare (ignorable cid kind reason word))
+  (harness-stub-reached 'fnn-owner-transit-complete "host/native/owner.lisp"))
+(defun fnn-owner-transit-groups ()
+  (harness-stub-reached 'fnn-owner-transit-groups "host/native/owner.lisp"))
+(defun fnn-tls-error-stack ()
+  (harness-stub-reached 'fnn-tls-error-stack "host/native/tls.lisp"))
+(defun fnn-tls-null-pointer ()
+  (harness-stub-reached 'fnn-tls-null-pointer "host/native/tls.lisp"))
+(defun fnn-tls-null-pointer-p (pointer)
+  (declare (ignorable pointer))
+  (harness-stub-reached 'fnn-tls-null-pointer-p "host/native/tls.lisp"))
+(defun fnn-tls-operation-error (kind operation disposition)
+  (declare (ignorable kind operation disposition))
+  (harness-stub-reached 'fnn-tls-operation-error "host/native/tls.lisp"))
+(defun fnn-tls-retry-direction (ssl result)
+  (declare (ignorable ssl result))
+  (harness-stub-reached 'fnn-tls-retry-direction "host/native/tls.lisp"))
+;;; ---- derived stubs: END ----
 
 ;;; ---------------------------------------------------------------------------
-;;; The recording stubs.
+;;; The host's definitions, indexed.  Every top-level definition in
+;;; host/native/*.lisp, by name and kind; EXTRACTABLE is where the harness may
+;;; take a definition from (outside it, a reached function must be stubbed or
+;;; declared unreached).
 
-(defvar *fnn-sigterm-requested* nil)
+(defparameter *extractable*
+  '("host/native/io.lisp" "host/native/owner.lisp" "host/native/mux.lisp"))
+
+(defvar *host* (make-hash-table :test 'eq))   ; name -> list of (kind file form)
+
+(defun index-form (form file)
+  (when (consp form)
+    (let ((head (car form)))
+      (flet ((note (name kind)
+               (when (symbolp name)
+                 (push (list kind file form) (gethash name *host*)))))
+        (cond
+          ((member head '(progn eval-when))
+           (dolist (item (if (eq head 'eval-when) (cddr form) (cdr form)))
+             (index-form item file)))
+          ((eq head 'defun) (note (second form) :function))
+          ((eq head 'defmacro) (note (second form) :macro))
+          ((member head '(defconstant defvar defparameter)) (note (second form) :variable))
+          ((eq head 'deftype) (note (second form) :type))
+          ((eq head 'define-condition) (note (second form) :condition))
+          ((eq head 'sb-alien:define-alien-routine)
+           (let ((spec (second form)))
+             (note (if (consp spec) (second spec) spec) :alien)))
+          ((eq head 'defstruct)
+           (let* ((spec (second form))
+                  (name (if (consp spec) (car spec) spec))
+                  (options (if (consp spec) (cdr spec) nil))
+                  (conc (format nil "~a-" name))
+                  (constructors nil) (predicate (format nil "~a-P" name)))
+             (dolist (option options)
+               (let ((key (if (consp option) (car option) option)))
+                 (case key
+                   (:conc-name (setq conc (if (and (consp option) (second option))
+                                              (string (second option)) "")))
+                   (:constructor (when (and (consp option) (second option))
+                                   (push (second option) constructors)))
+                   (:predicate (when (and (consp option) (second option))
+                                 (setq predicate (string (second option))))))))
+             (unless constructors (push (intern (format nil "MAKE-~a" name)) constructors))
+             (note name :struct)
+             (dolist (c constructors) (note c :struct))
+             (note (intern predicate) :struct)
+             (dolist (slot (cddr form))
+               (unless (stringp slot)
+                 (note (intern (format nil "~a~a" conc
+                                       (if (consp slot) (car slot) slot)))
+                       :struct))))))))))
+
+(let ((*read-eval* nil))
+  (dolist (path (directory "host/native/*.lisp"))
+    (let ((file (format nil "host/native/~a" (file-namestring path))))
+      (with-open-file (stream path)
+        (loop for form = (read stream nil :eof)
+              until (eq form :eof)
+              do (index-form form file))))))
+
+(defun host-entries (name) (gethash name *host*))
+
+(defun host-lambda-list (name)
+  "The lambda list the host gives the function NAME, or :none."
+  (let ((entry (find-if (lambda (e) (member (first e) '(:function :alien)))
+                        (host-entries name))))
+    (cond ((null entry) :none)
+          ((eq (first entry) :function) (third (third entry)))
+          (t (mapcar #'first (cdddr (third entry)))))))
+
+(defun arity-range (lambda-list)
+  "(MIN . MAX) of the positional arguments LAMBDA-LIST accepts; MAX nil when
+unbounded (&rest or &key)."
+  (let ((min 0) (max 0) (mode :required))
+    (dolist (item lambda-list (cons min max))
+      (case item
+        (&optional (setq mode :optional))
+        ((&rest &body &key) (return (cons min nil)))
+        (&aux (return (cons min max)))
+        (t (when (eq mode :required) (incf min))
+           (when max (incf max)))))))
+
+;;; ---------------------------------------------------------------------------
+;;; The recording stubs: the ACL2 boundary, the socket, the TLS library, the
+;;; owner mutex and the log.  Every one is checked against the host below.
 
 (defparameter *reads* nil)          ; octet vectors the socket will hand out
 (defparameter *read-count* 0)       ; how many times the socket was read
 (defparameter *chunks* nil)         ; each INCOMING the owner was handed
-(defparameter *plans* nil)          ; (consumed closing starttls reply) per step
+(defparameter *plans* nil)          ; (consumed closing starttls reply submitted) per step
 (defparameter *step* nil)           ; the plan the current step is running
 (defparameter *output* nil)         ; the octets fn-owner-output holds now
 (defparameter *sent* nil)           ; each reply written to the socket
 (defparameter *faults* nil)         ; each fault the service was stopped with
 (defparameter *graceful* 0)         ; graceful closes
 (defparameter *observations* nil)   ; (monotonic wall error has-wall) per reading
+(defparameter *timeline* nil)       ; the owner's clock and admission events, in order
+(defparameter *completion* nil)     ; what the committer answers a queued submission
+
+(defconstant +fnn-exit-ok+ 0)
+(defconstant +fnn-exit-uncertain+ 3)
+(defconstant +fnn-exit-fault+ 4)
 
 (defun fnn-socket-fd (socket) (declare (ignore socket)) 7)
 (defun fnn-socket-shut (socket) (declare (ignore socket)) nil)
 (defun fnn-tls-close-channel (channel) (declare (ignore channel)) nil)
 (defun fnn-now () (get-internal-real-time))
-(defconstant +fnn-shut-wr+ 1)
 ;; The graceful close's shutdown(2) of the output side.
 (defun fnn-%shutdown (fd how) (declare (ignore fd how)) (incf *graceful*) 0)
-(defstruct fnn-owner-service (lock (sb-thread:make-mutex)) clients)
-;; The roster mutex (host/native/owner.lisp fnn-with-roster): the host lists.
-(defmacro fnn-with-roster ((service) &body body)
-  `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
-(defun fnn-owner-service-stopping (service) (declare (ignore service)) nil)
-(defun fnn-owner-service-tls-context (service) (declare (ignore service)) nil)
-(defun fnn-owner-stop-service-locked (service code &optional answering)
-  (declare (ignore service code answering)) nil)
+;; The owner mutex and its gate: the quantum runs at once.
 (defun fnn-owner-serialized (service cid thunk &optional class)
   (declare (ignore service cid class)) (funcall thunk))
+(defun fnn-owner-stop-service-locked (service code &optional answering)
+  (declare (ignore service code answering)) nil)
 (defun fnn-log-line (line) (declare (ignore line)) nil)
-(defun fnn-owner-connection-call (service operation thunk)
-  (declare (ignore service operation)) (funcall thunk))
+(defun fnn-owner-log (&optional global optional) (declare (ignore global optional)) nil)
 (defun fnn-owner-socket-address (service socket)
   (declare (ignore service socket)) (values :inet (list 127 0 0 1)))
-(defun fnn-owner-drain-one (service) (declare (ignore service)) (values nil nil nil))
 (defun fnn-owner-fence-service (service) (declare (ignore service)) nil)
-(defun fnn-owner-log () nil)
 (defun fnn-owner-fault-service (service cid condition)
   (declare (ignore service cid))
   (push (princ-to-string condition) *faults*))
 (defun fnn-owner-abandon-connection (service cid condition)
   (declare (ignore service cid condition)) nil)
-(defun fnn-tls-consume-plaintext (fd expected seconds)
-  (declare (ignore fd seconds)) expected)
 (defun fnn-owner-send (fd channel octets seconds)
   (declare (ignore fd channel seconds))
-  (push (fnn-text octets) *sent*))
+  (push (text octets) *sent*))
+(defun fnn-tls-consume-plaintext (fd expected seconds)
+  (declare (ignore fd seconds)) expected)
 
-;; The transport, one attempt each (fnn-mux-receive-now, fnn-mux-write-now):
-;; a read takes the next scripted chunk (empty when the script ends: the
-;; peer closed); a write takes the whole reply.
-(defun fnn-mux-receive-now (service conn)
-  (declare (ignore service conn))
+;; The transport, one attempt each (fnn-mux-receive-now, fnn-mux-write-now,
+;; and the drain's fnn-mux-read-plain): a read takes the next scripted chunk
+;; (empty when the script ends: the peer closed); a write takes the whole
+;; reply.
+(defun fnn-mux-receive-now (service loop conn)
+  (declare (ignore service loop conn))
   (incf *read-count*)
   (if *reads* (pop *reads*) (fnn-make-octets 0)))
 (defun fnn-mux-write-now (conn)
   (let ((data (fnn-mux-conn-out conn)) (at (fnn-mux-conn-out-at conn)))
-    (push (fnn-text (subseq data at)) *sent*)
+    (push (text (subseq data at)) *sent*)
     (- (length data) at)))
+(defun fnn-mux-read-plain (fd &optional buffer)
+  (declare (ignore fd buffer))
+  (fnn-make-octets 0))
+(defun fnn-mux-wake (loop) (declare (ignore loop)) nil)
 
+;; The ACL2 boundary.  fnn-owner-core, fnn-owner-action and fnn-core answer
+;; the scenario's plan; each call the time model cares about is recorded on
+;; *timeline* in the order the owner made it.
 (defun fnn-owner-core (name &rest args)
   (declare (ignore args))
   (ecase name
     (fn-owner-peer-for-socket-address nil)
     ;; PRF-161: the accept is admitted and opened by one ACL2 call, and every
     ;; step is charged against the address's budget first.
-    (fn-owner-exposure-open (setq *output* (fnn-ascii "200 ready")) 1)
+    (fn-owner-exposure-open (setq *output* (ascii "200 ready")) 1)
     (fn-owner-exposure-charge :proceed)
+    ;; The served read size (fn-cbud-step-read-octets).
+    (fn-owner-read-octets 4096)
     ;; PRF-164: no XREDEEM in these scenarios, so no connection waits.
     (fn-acct-host-owner-redeem-waitingp nil)))
 
-;; The octet buffer (books/octets-stobj.lisp fn-octets): the host fills it
-;; once per read (fnn-octets-fill) and hands the owner the range [start, end)
-;; (PRF-181, fn-owner-chunk-span); the stub records the range's octets as the
-;; INCOMING that step was handed.
-(defparameter *buffer* nil)
-(defun fnn-octets-fill (vector) (setq *buffer* (fnn-octets vector)) (length *buffer*))
-
-(defun fnn-owner-take-step (incoming)
-  (push (fnn-text incoming) *chunks*)
-  (setq *step* (pop *plans*))
-  (unless *step* (error "the loop took a step this scenario did not plan"))
-  (setq *output* (fnn-ascii (fourth *step*)))
-  :ok)
-
-(defun fnn-core-buffer-catalog-state (name &rest args)
-  (ecase name
-    (fn-owner-chunk-span
-     (destructuring-bind (cid start end) args
-       (declare (ignore cid))
-       (fnn-owner-take-step (subseq *buffer* start end))))))
-
-;; The step's typed result (books/served-plan.lisp fn-splan-step-*): the
-;; scenario's plan supplies it, so the loop reads it exactly where
-;; host/native/owner.lisp reads it (fnn-core over the step).  The render
-;; (fnn-owner-render-next: ACL2's fn-splan-window into a private buffer) is
-;; a stub over a plan that is the list of the reply's remaining windows.
 (defun fnn-owner-action (name &rest args)
   (ecase name
-    (fn-owner-observe (push args *observations*) :observed)
+    (fn-owner-observe (push args *observations*) (push :observe *timeline*) :observed)
     (fn-owner-close :closed)
     (fn-owner-exposure-idle :keep)
     (fn-owner-exposure-release :released)
@@ -183,13 +384,63 @@
 
 (defun fnn-owner-octets-global (name)
   (ecase name (fn-owner-output *output*)))
-(defun fnn-core (name &rest args)
-  (declare (ignore args))
+
+;; The octet buffer (books/octets-stobj.lisp fn-octets): the host fills it
+;; once per read (fnn-octets-fill) and hands the owner the range [start, end)
+;; (PRF-181, fn-owner-chunk-span); the stub records the range's octets as the
+;; INCOMING that step was handed.
+(defparameter *buffer* nil)
+(defun fnn-octets-fill (vector) (setq *buffer* (fnn-octets vector)) *buffer*)
+
+(defun take-step (incoming)
+  (push (text incoming) *chunks*)
+  (setq *step* (pop *plans*))
+  (unless *step* (error "the loop took a step this scenario did not plan"))
+  (setq *output* (ascii (fourth *step*)))
+  :ok)
+
+(defun fnn-core-buffer-state (name &rest args)
   (ecase name
+    (fn-owner-chunk-span
+     ;; ADMIT is the disk's write admission at this read's recorded time
+     ;; (lane time-model-2); no disk here is slow, so every read admits.
+     (destructuring-bind (cid start end admit replies) args
+       (declare (ignore cid))
+       (unless (and (eq admit :admit) (null replies))
+         (error "a read was handed the admission ~s ~s; no disk here sheds" admit replies))
+       (take-step (subseq *buffer* start end))))))
+
+;; The disk's clock and admission (books/owner-time-model.lisp): the event is
+;; recorded with its reading; the admission reads the recorded time.
+(defun fnn-call (name &rest args)
+  (ecase name
+    (fn-otm-disk-event
+     (destructuring-bind (sched kind now deadline) args
+       (declare (ignore deadline))
+       (push (list :disk kind now) *timeline*)
+       (list :none sched)))))
+
+;; The step's typed result (books/served-plan.lisp fn-splan-step-*): the
+;; scenario's plan supplies it, so the loop reads it exactly where
+;; host/native/owner.lisp reads it.  The render (fnn-owner-render-next:
+;; ACL2's fn-splan-window into a private buffer) is a stub over a plan that
+;; is the list of the reply's remaining windows.
+(defun fnn-core (name &rest args)
+  (ecase name
+    ;; The wall reading's validity is ACL2's (books/owner-time-model.lisp
+    ;; fn-otm-wall-reading, lane time-model-2): milliseconds since the DTN
+    ;; epoch and T at or after it, else (0 NIL).  The stub answers the
+    ;; model's value on the host's raw reading.
+    (fn-otm-wall-reading
+     (destructuring-bind (seconds microseconds offset) args
+       (if (and (integerp seconds) (integerp microseconds) (<= 0 microseconds)
+                (<= offset seconds))
+           (list (+ (* 1000 (- seconds offset)) (floor microseconds 1000)) t)
+         (list 0 nil))))
     (fn-splan-step-p t)
     (fn-splan-step-closep (second *step*))
-    (fn-splan-step-starttlsp (third *step*))
-    (fn-splan-step-submittedp nil)
+    (fn-splan-step-handshake-owed (third *step*))
+    (fn-splan-step-submittedp (fifth *step*))
     (fn-splan-step-consumed
      (if (eq (first *step*) :all) (length (first *chunks*)) (first *step*)))
     ;; No read in these scenarios sends a 441 (books/owner-log.lisp
@@ -197,73 +448,190 @@
     (fn-splan-step-refusal-lines nil)
     ;; No step here reaches the failed-login limit (fn-exp-observe).
     (fn-splan-step-exposure-close nil)
-    ;; The plan: the reply as its one window, or nothing to write.
-    (fn-splan-step-plan (if (> (length *output*) 0) (list *output*) nil))))
+    ;; The plan: the reply (the completion, once a batch answered) as its one
+    ;; window, or nothing to write.
+    (fn-splan-step-plan
+     (let ((octets (if (second args) (fnn-octets (second args)) *output*)))
+       (if (> (length octets) 0) (list octets) nil)))
+    (fn-otm-admit-post (push :admit *timeline*) :admit)
+    ;; The disk admits, so no reply names a reason (fn-otm-shed-replies).
+    (fn-otm-shed-replies nil)
+    (fn-otm-log-line nil)))
 (defun fnn-owner-render-next (plan)
   (if plan
       (values (first plan) (rest plan) (null (rest plan)))
     (values (fnn-make-octets 0) nil t)))
 
 ;;; ---------------------------------------------------------------------------
-;;; The functions under test, read out of the file that ships them.
+;;; The declarations.
 
-(dolist (source-and-names
-         '(("host/native/io.lisp"
-            +fnn-owner-wall-error-ms+ +fnn-owner-unix-dtn-offset-seconds+
-            fnn-owner-wall-milliseconds)
-           ("host/native/owner.lisp"
-            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-exposure-idle)
-           ("host/native/mux.lisp"
-            +fnn-mux-send-seconds+ +fnn-mux-idle-seconds+ +fnn-mux-drain-seconds+
-            +fnn-mux-handshakes-per-loop+ +fnn-mux-handshake-seconds+ +fnn-mux-queued-per-loop+
-            fnn-mux-loop fnn-mux-conn fnn-mux-ticks fnn-mux-service fnn-mux-guarded
-            fnn-mux-tls-log fnn-mux-finish fnn-mux-arm-idle fnn-mux-queue
-            fnn-mux-queue-plan fnn-mux-flush fnn-mux-begin-drain fnn-mux-after
-            fnn-mux-step fnn-mux-work fnn-mux-readable fnn-mux-idle
-            fnn-mux-slot-free-p fnn-mux-start-waiting-handshake fnn-mux-begin
-            fnn-mux-admit)))
-  (destructuring-bind (source . wanted) source-and-names
-    (let ((found nil))
-      (with-open-file (stream source)
-        (loop for form = (read stream nil :eof)
-              until (eq form :eof)
-              when (and (consp form)
-                        (member (car form) '(defun defconstant defmacro defstruct))
-                        (member (if (consp (cadr form)) (car (cadr form)) (cadr form))
-                                wanted))
-                do (eval form)
-                   (push (if (consp (cadr form)) (car (cadr form)) (cadr form)) found)))
-      (let ((missing (set-difference wanted found)))
-        (when missing
-          (error "~a does not define ~{~a~^, ~}" source missing))))))
+(defparameter *roots*
+  '(;; The connection's life, as the loop drives it.
+    fnn-mux-begin fnn-mux-dispatch fnn-mux-take-arrived fnn-mux-guarded
+    %make-fnn-mux-loop %make-fnn-mux-conn fnn-mux-loop-conns fnn-mux-conn-phase
+    fnn-mux-conn-out fnn-mux-conn-out-at fnn-mux-conn-await fnn-mux-conn-cid
+    ;; The committer's hand-over (host/native/owner.lisp).
+    fnn-owner-deliver %make-fnn-owner-service %make-fnn-owner-gate
+    ;; What the checks read.
+    fnn-owner-wall-milliseconds fnn-octets fnn-make-octets fnn-ascii-octet-list))
 
-;;; The loop's part: hand the connection each readiness it waits for until it
-;;; is done (a draining connection then reads the peer's end of input).
+(defparameter *unreached*
+  '(;; Implicit TLS and STARTTLS: no scenario negotiates TLS.
+    fnn-tls-accept-begin fnn-tls-accept-step fnn-tls-channel-of fnn-%ssl-free
+    ;; The pull feed's own-quantum commit (a logical connection has no socket).
+    fnn-owner-commit-queued-locked
+    ;; The slow disk sheds the queued POSTs (every admission here is :admit).
+    fnn-owner-shed-queued-locked
+    ;; A submission drained in its own quantum (these scenarios batch).
+    fnn-owner-drain-one
+    ;; XREDEEM (PRF-164): no connection here waits for a redeem.
+    fnn-owner-redeem-quantum))
+
+(dolist (name *unreached*)
+  (let ((name name))
+    (when (fboundp name)
+      (error "~a is both stubbed and declared unreached" name))
+    (when (eq (host-lambda-list name) :none)
+      (error "stale harness: ~a is declared unreached, and the host no longer ~
+              defines it" name))
+    (setf (fdefinition name)
+          (lambda (&rest args)
+            (declare (ignore args))
+            (error "the harness reached ~a, which it declares unreached" name)))))
+
+;;; The stubs are checked against the host: each names a host function, and
+;;; accepts every arity the host's definition accepts.
+(let ((problems nil))
+  (do-symbols (symbol "ACL2")
+    (when (and (eq (symbol-package symbol) (find-package "ACL2"))
+               (fboundp symbol) (not (macro-function symbol))
+               (not (member symbol *unreached*))
+               (>= (length (symbol-name symbol)) 4)
+               (string= "FNN-" (symbol-name symbol) :end2 4))
+      (let ((host (host-lambda-list symbol)))
+        (if (eq host :none)
+            (push (format nil "stale stub: the host defines no function ~(~a~)" symbol)
+                  problems)
+          (let ((want (arity-range host))
+                (have (arity-range (sb-introspect:function-lambda-list symbol))))
+            (unless (and (<= (car have) (car want))
+                         (or (null (cdr have))
+                             (and (cdr want) (<= (cdr want) (cdr have)))))
+              (push (format nil "stale stub: ~(~a~) takes ~(~s~) in the harness and ~
+                                 ~(~s~) in the host" symbol
+                            (sb-introspect:function-lambda-list symbol) host)
+                    problems)))))))
+  (when problems
+    (error "~{~a~^~%~}" (sort problems #'string<))))
+
+;;; ---------------------------------------------------------------------------
+;;; The extraction: the closure of *ROOTS* over the host's definitions, minus
+;;; what the harness provides.
+
+(defun provided-p (name kind)
+  (case kind
+    ((:function :alien) (fboundp name))
+    (:macro (macro-function name))
+    (:variable (boundp name))
+    (:condition (find-class name nil))
+    (t nil)))
+
+(defun symbols-of (form fn)
+  (cond ((symbolp form) (funcall fn form))
+        ((consp form) (symbols-of (car form) fn) (symbols-of (cdr form) fn))
+        ((typep form 'sb-impl::comma) (symbols-of (sb-impl::comma-expr form) fn))))
+
+(defparameter *extracted* nil)        ; (file . form), each form once
+(defparameter *unresolved* nil)
+(defparameter *reached* (make-hash-table :test 'eq))
+
+(let ((seen *reached*) (queue (copy-list *roots*)))
+  (loop while queue
+        do (let ((name (pop queue)))
+             (unless (gethash name seen)
+               (setf (gethash name seen) t)
+               (dolist (entry (host-entries name))
+                 (destructuring-bind (kind file form) entry
+                   (cond
+                     ((provided-p name kind))
+                     ((not (member file *extractable* :test #'string=))
+                      (when (member kind '(:function :alien :macro :struct))
+                        (pushnew (format nil "~(~a~) (~a)" name file) *unresolved*
+                                 :test #'string=)))
+                     ((eq kind :alien)
+                      (pushnew (format nil "~(~a~) (~a, a foreign routine)" name file)
+                               *unresolved* :test #'string=))
+                     ((not (find form *extracted* :key #'cdr :test #'eq))
+                      (push (cons file form) *extracted*)
+                      (symbols-of form (lambda (s)
+                                         (when (and (host-entries s)
+                                                    (not (gethash s seen)))
+                                           (push s queue))))))))))))
+
+(let ((idle (remove-if (lambda (name) (gethash name *reached*)) *unreached*)))
+  (when idle
+    (error "stale harness: declared unreached, and nothing reaches them: ~(~{~a~^ ~}~)"
+           idle)))
+
+(when *unresolved*
+  (error "stale harness: the connection life reaches host functions this harness ~
+          neither extracts, stubs nor declares unreached:~%~{  ~a~%~}"
+         (sort *unresolved* #'string<)))
+
+;;; Evaluate what was extracted: definitions that others expand or read first
+;;; (constants, types, conditions, structures, macros), then the functions,
+;;; each group in the host's own order.
+(let* ((files *extractable*)
+       (rank (lambda (form)
+               (case (car form)
+                 ((defconstant defvar defparameter) 0) (deftype 1)
+                 (define-condition 2) (defstruct 3) (defmacro 4) (t 5))))
+       (ordered (stable-sort
+                 (reverse *extracted*)
+                 (lambda (a b)
+                   (let ((ra (funcall rank (cdr a))) (rb (funcall rank (cdr b))))
+                     (or (< ra rb)
+                         (and (= ra rb)
+                              (< (position (car a) files :test #'string=)
+                                 (position (car b) files :test #'string=)))))))))
+  (handler-bind ((style-warning #'muffle-warning)
+                 (sb-ext:compiler-note #'muffle-warning))
+    (dolist (item ordered) (eval (cdr item)))))
+
+;;; ---------------------------------------------------------------------------
+;;; The driver: the loop's poll and the committer.  Each pass hands the
+;;; connection what it waits for -- a committed completion when it waits for
+;;; its batch, else the readiness of its descriptor (a draining connection
+;;; then reads the peer's end of input).
+
 (defun drive (loop conn)
-  (loop repeat 1000
-        until (eq (fnn-mux-conn-phase conn) :done)
-        do (fnn-mux-guarded (loop conn)
-             (case (fnn-mux-conn-phase conn)
-               (:draining (fnn-mux-finish loop conn))
-               (:serving (if (fnn-mux-conn-out conn)
-                             (fnn-mux-flush loop conn)
-                           (fnn-mux-readable loop conn)))
-               (t (error "the connection is in phase ~s" (fnn-mux-conn-phase conn))))))
+  (let ((service (fnn-mux-loop-service loop)))
+    (loop repeat 1000
+          until (eq (fnn-mux-conn-phase conn) :done)
+          do (if (fnn-mux-conn-await conn)
+                 (progn (fnn-owner-deliver service (fnn-mux-conn-cid conn) *completion*)
+                        (fnn-mux-take-arrived loop))
+               (fnn-mux-dispatch loop conn))))
   (unless (eq (fnn-mux-conn-phase conn) :done)
     (error "the connection did not end")))
 
-(defun run-scenario (reads plans)
-  (setq *reads* (mapcar #'fnn-ascii reads)
+(defun ascii (string) (fnn-octets (fnn-ascii-octet-list string)))
+(defun text (octets) (map 'string #'code-char octets))
+
+(defun run-scenario (reads plans &key batching)
+  (setq *reads* (mapcar #'ascii reads)
         *read-count* 0 *chunks* nil *plans* plans *step* nil *output* nil
-        *sent* nil *faults* nil *graceful* 0 *observations* nil)
-  (let* ((service (make-fnn-owner-service))
+        *sent* nil *faults* nil *graceful* 0 *observations* nil *timeline* nil
+        *completion* (fnn-ascii-octet-list "240 article received"))
+  (let* ((service (%make-fnn-owner-service :batching batching
+                                           :gate (%make-fnn-owner-gate :sched :sched)))
          (loop (%make-fnn-mux-loop :service service))
          (conn (%make-fnn-mux-conn :socket :socket)))
     (push conn (fnn-mux-loop-conns loop))
     (fnn-mux-guarded (loop conn) (fnn-mux-begin loop conn))
     (drive loop conn))
   (setq *chunks* (reverse *chunks*) *sent* (reverse *sent*)
-        *observations* (reverse *observations*)))
+        *observations* (reverse *observations*) *timeline* (reverse *timeline*)))
 
 (defun check (test control &rest args)
   (unless test (error (apply #'format nil control args))))
@@ -275,9 +643,9 @@
               (list (list :all nil nil "")
                     (list 2 nil nil "")
                     (list :all nil nil "")))
+(check (null *faults*) "a partial consume faulted: ~s" *faults*)
 (check (equal *chunks* '("AAA" "BBBBB" "BBB"))
        "the suffix was not the next step's input: ~s" *chunks*)
-(check (null *faults*) "a partial consume faulted: ~s" *faults*)
 ;; Three planned steps, then one read that ends the input: four reads would
 ;; mean the suffix had been taken from the socket a second time.
 (check (= *read-count* 3) "the suffix was read from the socket again: ~d reads"
@@ -313,6 +681,8 @@
 (check (= (length *observations*) 3)
        "the owner was handed ~d clock readings for an open and two chunks"
        (length *observations*))
+(check (notany #'consp *timeline*)
+       "a step that submitted nothing appended a disk clock event: ~s" *timeline*)
 (let ((now (fnn-owner-wall-milliseconds)))
   (dolist (observation *observations*)
     (destructuring-bind (monotonic wall error has-wall) observation
@@ -332,4 +702,30 @@
   (check (<= (+ before 1000) (fnn-owner-wall-milliseconds))
          "the wall reading did not advance over 1.1 seconds"))
 
-(format t "native owner chunk loop: suffix, refusal, no-progress and clock passed~%")
+;;; 5. The format-9 path: a read, then a POST's step that submits, then a
+;;;    read.  Per step one injection reading before the transition; the
+;;;    POST's step alone appends one disk clock event, immediately before its
+;;;    admission; its reply is the batch's completion.
+(run-scenario '("GROUP" "POST-ARTICLE" "QUIT")
+              (list (list :all nil nil "211 group")
+                    (list :all nil nil "" t)
+                    (list :all t nil "205 bye"))
+              :batching t)
+(check (null *faults*) "a batched POST faulted: ~s" *faults*)
+(check (equal *sent* '("200 ready" "211 group" "240 article received" "205 bye"))
+       "the batched POST's completion did not follow its step: ~s" *sent*)
+(check (= (length *observations*) 4)
+       "the owner was handed ~d injection readings for an open and three steps"
+       (length *observations*))
+; Lane time-model-2: the write admission is read at every read's recorded
+; time, after that read's clock reading and before its step (host/native/
+; owner.lisp fnn-owner-handle-chunk: a POST command is answered 440 while the
+; disk sheds, a submitted POST 441); the POST's submission appends no clock
+; event of its own.  With no time service bound (*fnn-owner-time-service*)
+; a reading is the plain monotonic one, so no :served disk event is made.
+(check (equal *timeline* '(:observe :observe :admit :observe :admit :observe :admit))
+       "each read's admission does not follow its own clock reading: ~s" *timeline*)
+
+(format t "native owner chunk loop: ~d host definitions extracted, ~d declared ~
+           unreached; suffix, refusal, no-progress, clock and time-event passed~%"
+        (length *extracted*) (length *unreached*))

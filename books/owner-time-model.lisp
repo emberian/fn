@@ -39,37 +39,73 @@
 ; scheduler books holds of the host's calls as it did.
 (in-package "ACL2")
 (include-book "owner-commit-pipeline")
+; N3 of lane proto-determinism: the wall reading's validity (fn-otm-wall-reading).
+(include-book "clock-wall-reading")
+
 
 ; -----------------------------------------------------------------------------
-; The deadline: an operator profile field (D27: admission policy belongs to
-; the profile), the live configuration's `barrier-deadline-ms' limit row,
-; read like `log-batch-records' (books/owner-log-route.lisp fn-olr-bmax).  An
-; absent or zero row is this default (PKT-853 (a)).
+; The deadlines and the cadence: operator profile fields (D27: admission
+; policy belongs to the profile), the live configuration's `:set-limit'
+; rows, read like `log-batch-records' (books/owner-log-route.lisp
+; fn-olr-bmax) and set by `policy set SLOT N' (books/native-admin.lisp).  An
+; absent or zero row is the default (PKT-853 (a)):
+;   barrier-deadline-ms  D: a barrier pending this long makes the disk :slow
+;   barrier-stall-ms     H: pending this long, :stalled (slice 2; never below D)
+;   clock-event-ms       the committer's clock-event cadence (slice 2)
 
 (defconst *fn-otm-deadline-default-ms* 5000)
+(defconst *fn-otm-stall-default-ms* 30000)
+(defconst *fn-otm-cadence-default-ms* 1000)
 
 (defun fn-otm-deadline-of-limit (n)
   (declare (xargs :guard t))
   (if (posp n) n *fn-otm-deadline-default-ms*))
 
+(defun fn-otm-stall-of-limit (n)
+  (declare (xargs :guard t))
+  (if (posp n) n *fn-otm-stall-default-ms*))
+
+(defun fn-otm-cadence-of-limit (n)
+  (declare (xargs :guard t))
+  (if (posp n) n *fn-otm-cadence-default-ms*))
+
+; The limits an :issue carries, (D H C), each its row's value or its
+; default, H raised to D when a profile sets it below (the stall deadline
+; never precedes the slow one).  A bare number is D alone (slice 1's
+; argument; H and C then their defaults).
+(defun fn-otm-limits (arg)
+  (declare (xargs :guard t))
+  (let* ((d (fn-otm-deadline-of-limit (if (consp arg) (car arg) arg)))
+         (h (fn-otm-stall-of-limit (if (and (consp arg) (consp (cdr arg))) (cadr arg) 0)))
+         (c (fn-otm-cadence-of-limit
+             (if (and (consp arg) (consp (cdr arg)) (consp (cddr arg))) (caddr arg) 0))))
+    (list d (max d h) c)))
+
 ; -----------------------------------------------------------------------------
-; The disk's observed state: (PENDING SINCE DEADLINE SLOW LAST MAXL EPISODES)
+; The disk's observed state:
+;   (PENDING SINCE DEADLINE SLOW LAST MAXL EPISODES STALL CADENCE STALLED STALLS)
 ;   PENDING   a barrier was issued and its completion has not been reported
-;   SINCE     the reading at its issue
-;   DEADLINE  its deadline in milliseconds (positive)
-;   SLOW      the mode :slow was entered for it (a tick past the deadline)
+;   SINCE     the recorded time of its issue
+;   DEADLINE  D for it (positive)
+;   SLOW      the mode :slow was entered for it (a clock event past D)
 ;   LAST      the latency of the last completed barrier
 ;   MAXL      the largest completed latency
-;   EPISODES  how many barriers went past their deadline
+;   EPISODES  how many barriers went past D
+;   STALL     H for it (at least D)
+;   CADENCE   the committer's clock-event cadence for it
+;   STALLED   the mode :stalled was entered for it (a clock event past H:
+;             its posters were told uncertain)
+;   STALLS    how many barriers went past H
 
 (defun fn-otm-nth-nat (i d)
   (declare (xargs :guard (natp i)))
   (nfix (nth i (if (true-listp d) d nil))))
 
-(defun fn-otm-disk-make (pending since deadline slow last maxl episodes)
+(defun fn-otm-disk-make (pending since deadline slow last maxl episodes stall cadence
+                                 stalled stalls)
   (declare (xargs :guard t))
-  (list (if pending t nil) (nfix since) (fn-otm-deadline-of-limit deadline)
-        (if slow t nil) (nfix last) (nfix maxl) (nfix episodes)))
+  ;; The fields as given; every accessor normalizes what it reads.
+  (list pending since deadline slow last maxl episodes stall cadence stalled stalls))
 
 (defun fn-otm-disk-pending (d)
   (declare (xargs :guard t))
@@ -84,10 +120,20 @@
 (defun fn-otm-disk-last (d) (declare (xargs :guard t)) (fn-otm-nth-nat 4 d))
 (defun fn-otm-disk-max (d) (declare (xargs :guard t)) (fn-otm-nth-nat 5 d))
 (defun fn-otm-disk-episodes (d) (declare (xargs :guard t)) (fn-otm-nth-nat 6 d))
+(defun fn-otm-disk-stall (d)
+  (declare (xargs :guard t))
+  (max (fn-otm-disk-deadline d) (fn-otm-stall-of-limit (fn-otm-nth-nat 7 d))))
+(defun fn-otm-disk-cadence (d)
+  (declare (xargs :guard t))
+  (fn-otm-cadence-of-limit (fn-otm-nth-nat 8 d)))
+(defun fn-otm-disk-stalled (d)
+  (declare (xargs :guard t))
+  (if (and (true-listp d) (nth 9 d)) t nil))
+(defun fn-otm-disk-stalls (d) (declare (xargs :guard t)) (fn-otm-nth-nat 10 d))
 
 (defun fn-otm-disk-init ()
   (declare (xargs :guard t))
-  (fn-otm-disk-make nil 0 0 nil 0 0 0))
+  (fn-otm-disk-make nil 0 0 nil 0 0 0 0 0 nil 0))
 
 ; How long the pending barrier has waited at NOW (0 with none pending, and 0
 ; for a reading before its issue: the clock is monotonic, a smaller reading
@@ -103,74 +149,102 @@
   (and (fn-otm-disk-pending d)
        (<= (fn-otm-disk-deadline d) (fn-otm-disk-elapsed d now))))
 
-; The disk's mode at NOW.  :slow exactly when a barrier is pending past its
-; deadline; it depends on the reading, not on whether the committer's tick
-; has run yet, so a POST's admission and a health render agree at every
+(defun fn-otm-disk-stall-due-p (d now)
+  (declare (xargs :guard t))
+  (and (fn-otm-disk-pending d)
+       (<= (fn-otm-disk-stall d) (fn-otm-disk-elapsed d now))))
+
+; The disk's mode at NOW: :stalled past H, :slow past D, else :ok.  It
+; depends on the reading, not on whether the committer's clock event has
+; run yet, so a POST's admission and a health render agree at every
 ; reading (fn-otm-shed-iff-slow).
 (defun fn-otm-disk-mode (d now)
   (declare (xargs :guard t))
-  (if (fn-otm-disk-overdue-p d now) :slow :ok))
+  (cond ((fn-otm-disk-stall-due-p d now) :stalled)
+        ((fn-otm-disk-overdue-p d now) :slow)
+        (t :ok)))
 
-; A served POST's admission: :shed (refused try-later, nothing stored) while
-; the disk is slow, :admit otherwise.
+; A write's admission (a served POST's, at its command and after its
+; article; a mutating control request's): :shed (refused try-later,
+; nothing stored) while the disk is :slow or :stalled, :admit otherwise.
 (defun fn-otm-disk-admit (d now)
   (declare (xargs :guard t))
-  (if (eq (fn-otm-disk-mode d now) :slow) :shed :admit))
+  (if (fn-otm-disk-overdue-p d now) :shed :admit))
 
 ; The events at the recorded time NOW.  Each answers (mv WORD D'):
 ;   issue   (:issued) the barrier was handed to the syncer at NOW with the
-;           configured DEADLINE; (:fault) one was already pending (the
-;           pipeline has at most one batch in flight)
-;   tick    a clock event recorded NOW: (:became-slow) the first time past
-;           the pending barrier's deadline, else (:none)
-;   return  the syncer's completion was observed at NOW: (:recovered) after
-;           a slow episode, (:returned) otherwise, (:fault) with none pending
+;           LIMITS (D H C); (:fault) one was already pending (the pipeline
+;           has at most one batch in flight)
+;   tick    a clock event recorded NOW: (:became-stalled) the first time
+;           past the pending barrier's H -- the host then tells the batch's
+;           posters uncertain -- (:became-slow) the first time past its D,
+;           else (:none)
+;   return  the syncer's completion was observed at NOW: (:recovered-from-
+;           stall) after a stall, (:recovered) after a slow episode,
+;           (:returned) otherwise, (:fault) with none pending
 
-(defun fn-otm-disk-issue (d now deadline)
+(defun fn-otm-disk-issue (d now limits)
   (declare (xargs :guard t))
   (if (fn-otm-disk-pending d)
       (mv :fault d)
-    (mv :issued (fn-otm-disk-make t now deadline nil (fn-otm-disk-last d)
-                                  (fn-otm-disk-max d) (fn-otm-disk-episodes d)))))
+    (let ((l (fn-otm-limits limits)))
+      (mv :issued (fn-otm-disk-make t now (car l) nil (fn-otm-disk-last d)
+                                    (fn-otm-disk-max d) (fn-otm-disk-episodes d)
+                                    (cadr l) (caddr l) nil (fn-otm-disk-stalls d))))))
 
 (defun fn-otm-disk-tick (d now)
   (declare (xargs :guard t))
-  (if (and (fn-otm-disk-overdue-p d now) (not (fn-otm-disk-slow d)))
-      (mv :became-slow
-          (fn-otm-disk-make t (fn-otm-disk-since d) (fn-otm-disk-deadline d) t
-                            (fn-otm-disk-last d) (fn-otm-disk-max d)
-                            (+ 1 (fn-otm-disk-episodes d))))
-    (mv :none d)))
+  (cond ((and (fn-otm-disk-stall-due-p d now) (not (fn-otm-disk-stalled d)))
+         (mv :became-stalled
+             (fn-otm-disk-make t (fn-otm-disk-since d) (fn-otm-disk-deadline d) t
+                               (fn-otm-disk-last d) (fn-otm-disk-max d)
+                               (if (fn-otm-disk-slow d)
+                                   (fn-otm-disk-episodes d)
+                                 (+ 1 (fn-otm-disk-episodes d)))
+                               (fn-otm-disk-stall d) (fn-otm-disk-cadence d) t
+                               (+ 1 (fn-otm-disk-stalls d)))))
+        ((and (fn-otm-disk-overdue-p d now) (not (fn-otm-disk-slow d)))
+         (mv :became-slow
+             (fn-otm-disk-make t (fn-otm-disk-since d) (fn-otm-disk-deadline d) t
+                               (fn-otm-disk-last d) (fn-otm-disk-max d)
+                               (+ 1 (fn-otm-disk-episodes d))
+                               (fn-otm-disk-stall d) (fn-otm-disk-cadence d)
+                               (fn-otm-disk-stalled d) (fn-otm-disk-stalls d))))
+        (t (mv :none d))))
 
 (defun fn-otm-disk-return (d now)
   (declare (xargs :guard t))
   (if (fn-otm-disk-pending d)
       (let ((latency (fn-otm-disk-elapsed d now)))
-        (mv (if (or (fn-otm-disk-slow d) (fn-otm-disk-overdue-p d now))
-                :recovered
-              :returned)
+        (mv (cond ((fn-otm-disk-stalled d) :recovered-from-stall)
+                  ((or (fn-otm-disk-slow d) (fn-otm-disk-overdue-p d now)) :recovered)
+                  (t :returned))
             (fn-otm-disk-make nil 0 (fn-otm-disk-deadline d) nil latency
                               (max latency (fn-otm-disk-max d))
                               (if (and (fn-otm-disk-overdue-p d now)
                                        (not (fn-otm-disk-slow d)))
                                   (+ 1 (fn-otm-disk-episodes d))
-                                (fn-otm-disk-episodes d)))))
+                                (fn-otm-disk-episodes d))
+                              (fn-otm-disk-stall d) (fn-otm-disk-cadence d) nil
+                              (fn-otm-disk-stalls d))))
     (mv :fault d)))
 
-; The clock-event cadence while a barrier is pending past its deadline
-; (design section 3.7; the profile field `clock-event-ms' is slice 2's).
-(defconst *fn-otm-clock-cadence-ms* 1000)
-
 ; The committer's timed wait for the syncer: the milliseconds until the
-; pending barrier's deadline (at least 1), then the cadence; nil (wait for
-; the completion's notification alone) when none is pending.  At its expiry
-; the committer appends a clock event.
+; pending barrier's next boundary -- its D, then its H, each at least 1 --
+; with at most the cadence between clock events once past D; the cadence
+; past H; nil (wait for the completion's notification alone) when none is
+; pending.  At its expiry, and at every other wake while a barrier is
+; pending, the committer appends a clock event.  The wait never reaches
+; past H (fn-otm-wait-stays-within-the-stall), which is what bounds the
+; posters' answer (F4-W).
 (defun fn-otm-disk-wait-ms (d now)
   (declare (xargs :guard t))
   (if (fn-otm-disk-pending d)
-      (if (fn-otm-disk-overdue-p d now)
-          *fn-otm-clock-cadence-ms*
-        (max 1 (- (fn-otm-disk-deadline d) (fn-otm-disk-elapsed d now))))
+      (cond ((fn-otm-disk-stall-due-p d now) (fn-otm-disk-cadence d))
+            ((fn-otm-disk-overdue-p d now)
+             (max 1 (min (fn-otm-disk-cadence d)
+                         (- (fn-otm-disk-stall d) (fn-otm-disk-elapsed d now)))))
+            (t (max 1 (- (fn-otm-disk-deadline d) (fn-otm-disk-elapsed d now)))))
     nil))
 
 ; -----------------------------------------------------------------------------
@@ -179,9 +253,9 @@
 ;; health and status: one line, a tag that names the mode and its figures.
 (defun fn-otm-disk-tag (d now)
   (declare (xargs :guard t))
-  (if (fn-otm-disk-overdue-p d now)
-      (fn-osch-text "disk slow: barrier ")
-    (fn-osch-text "disk ok:")))
+  (cond ((fn-otm-disk-stall-due-p d now) (fn-osch-text "disk stalled: barrier "))
+        ((fn-otm-disk-overdue-p d now) (fn-osch-text "disk slow: barrier "))
+        (t (fn-osch-text "disk ok:"))))
 
 (defun fn-otm-disk-body (d now)
   (declare (xargs :guard t))
@@ -189,14 +263,19 @@
       (append (fn-osch-decimal (fn-otm-disk-elapsed d now))
               (fn-osch-text " ms pending")
               (fn-osch-kv "deadline-ms" (fn-otm-disk-deadline d))
+              (fn-osch-kv "stall-ms" (fn-otm-disk-stall d))
               (fn-osch-kv "slow-episodes" (fn-otm-disk-episodes d))
+              (fn-osch-kv "stalls" (fn-otm-disk-stalls d))
               (fn-osch-text " posts=try-later")
+              (if (fn-otm-disk-stall-due-p d now) (fn-osch-text " members=uncertain") nil)
               (list 10))
     (append (fn-osch-kv "pending-ms" (fn-otm-disk-elapsed d now))
             (fn-osch-kv "last-barrier-ms" (fn-otm-disk-last d))
             (fn-osch-kv "max-barrier-ms" (fn-otm-disk-max d))
             (fn-osch-kv "deadline-ms" (fn-otm-disk-deadline d))
+            (fn-osch-kv "stall-ms" (fn-otm-disk-stall d))
             (fn-osch-kv "slow-episodes" (fn-otm-disk-episodes d))
+            (fn-osch-kv "stalls" (fn-otm-disk-stalls d))
             (list 10))))
 
 (defun fn-otm-disk-line (d now)
@@ -212,28 +291,60 @@
                  (fn-osch-text " ms (deadline ")
                  (fn-osch-decimal (fn-otm-disk-deadline d))
                  (fn-osch-text " ms); new posts are refused try-later until it completes")))
+        ((eq word :became-stalled)
+         (append (fn-osch-text "disk stalled: a barrier has waited ")
+                 (fn-osch-decimal (fn-otm-disk-elapsed d now))
+                 (fn-osch-text " ms (stall deadline ")
+                 (fn-osch-decimal (fn-otm-disk-stall d))
+                 (fn-osch-text " ms); its posters are told the outcome is uncertain: it may still complete")))
         ((eq word :recovered)
          (append (fn-osch-text "disk recovered: the barrier completed after ")
                  (fn-osch-decimal (fn-otm-disk-last d))
                  (fn-osch-text " ms")))
+        ((eq word :recovered-from-stall)
+         (append (fn-osch-text "disk recovered after a stall: the barrier completed after ")
+                 (fn-osch-decimal (fn-otm-disk-last d))
+                 (fn-osch-text " ms; the articles whose posters were told uncertain are stored")))
         (t nil)))
 
-; The shed POST's reply: RFC 3977 section 6.3.1's subsequent refusal (441;
-; 436 is IHAVE's code, section 6.3.2), with the reason.  Nothing was stored.
-(defun fn-otm-shed-line (d now)
+; The reason every try-later names: how long the write has waited and the
+; deadline it passed.
+(defun fn-otm-reason (d now)
   (declare (xargs :guard t))
-  (append (fn-osch-text "441 posting failed; the disk is slow (a write has waited ")
+  (append (fn-osch-text (if (fn-otm-disk-stall-due-p d now)
+                            "the disk is stalled (a write has waited "
+                          "the disk is slow (a write has waited "))
           (fn-osch-decimal (fn-otm-disk-elapsed d now))
           (fn-osch-text " ms, deadline ")
           (fn-osch-decimal (fn-otm-disk-deadline d))
-          (fn-osch-text " ms): nothing was stored, try again later")
+          (fn-osch-text " ms)")))
+
+; The shed POST's reply after its article: RFC 3977 section 6.3.1's
+; subsequent refusal (441; 436 is IHAVE's code, section 6.3.2), with the
+; reason.  Nothing was stored.
+(defun fn-otm-shed-line (d now)
+  (declare (xargs :guard t))
+  (append (fn-osch-text "441 posting failed; ")
+          (fn-otm-reason d now)
+          (fn-osch-text ": nothing was stored, try again later")
+          (list 13 10)))
+
+; The POST command's reply while the disk sheds (slice 2): RFC 3977 section
+; 6.3.1's initial refusal, 440, before the client sends the article.
+(defun fn-otm-post-command-line (d now)
+  (declare (xargs :guard t))
+  (append (fn-osch-text "440 posting not permitted now; ")
+          (fn-otm-reason d now)
+          (fn-osch-text ", try again later")
           (list 13 10)))
 
 ; -----------------------------------------------------------------------------
 ; The scheduler's value: (OCP DISK CLOCK).  CLOCK is the recorded time
-; (design section 3.7): (NOW REGRESSIONS), NOW the largest reading the host
-; appended, REGRESSIONS how many readings came in below it.  Every disk
-; decision reads NOW; no entry below takes the environment's time.
+; (design section 3.7): (NOW REGRESSIONS JSEQ), NOW the largest reading the
+; host appended, REGRESSIONS how many readings came in below it, JSEQ the
+; decision journal's sequence number (every event the value takes is one
+; journal entry).  Every disk decision reads NOW; no entry below takes the
+; environment's time.
 
 (defun fn-otm-ocp (s)
   (declare (xargs :guard t))
@@ -247,13 +358,29 @@
   (declare (xargs :guard t))
   (if (and (consp s) (consp (cdr s)) (consp (cddr s))) (caddr s) nil))
 
+(defun fn-otm-c-now (c)
+  (declare (xargs :guard t))
+  (if (consp c) (nfix (car c)) 0))
+
+(defun fn-otm-c-regressions (c)
+  (declare (xargs :guard t))
+  (if (and (consp c) (consp (cdr c))) (nfix (cadr c)) 0))
+
+(defun fn-otm-c-jseq (c)
+  (declare (xargs :guard t))
+  (if (and (consp c) (consp (cdr c)) (consp (cddr c))) (nfix (caddr c)) 0))
+
 (defun fn-otm-now (s)
   (declare (xargs :guard t))
-  (let ((c (fn-otm-clock s))) (if (consp c) (nfix (car c)) 0)))
+  (fn-otm-c-now (fn-otm-clock s)))
 
 (defun fn-otm-regressions (s)
   (declare (xargs :guard t))
-  (let ((c (fn-otm-clock s))) (if (and (consp c) (consp (cdr c))) (nfix (cadr c)) 0)))
+  (fn-otm-c-regressions (fn-otm-clock s)))
+
+(defun fn-otm-jseq (s)
+  (declare (xargs :guard t))
+  (fn-otm-c-jseq (fn-otm-clock s)))
 
 (defun fn-otm-make (ocp d clock)
   (declare (xargs :guard t))
@@ -261,7 +388,7 @@
 
 (defun fn-otm-init ()
   (declare (xargs :guard t))
-  (fn-otm-make (fn-ocp-init) (fn-otm-disk-init) (list 0 0)))
+  (fn-otm-make (fn-ocp-init) (fn-otm-disk-init) (list 0 0 0)))
 
 ; The host's entries.  The four the gate and the committer already made are
 ; the pipeline's over OCP, the disk and the clock kept.
@@ -284,38 +411,45 @@
   (declare (xargs :guard t))
   (fn-ocp-committer-wake (fn-otm-ocp s) returned queued))
 
-; Recording a reading: kept monotone; a reading below the recorded time is
-; counted by name (:clock-regressed) and moves nothing back.
-(defun fn-otm-record-clock (s reading)
+; The disk's events.  Each carries the host's READING, recorded first --
+; kept monotone: a reading below the recorded time is counted by name
+; (:clock-regressed) and moves nothing back -- and the event then applies at
+; the recorded time; the journal sequence advances by one (the event is one
+; entry).  KIND :clock (a clock event: the committer's, at each wake while
+; a barrier is pending, or on demand before a decision), :served (a served
+; read's clock reading, host/native/owner.lisp fnn-owner-advance-clock: a
+; clock event whose ARG, the wall reading, the journal keeps for the
+; owner's own clock), :issue (ARG the limits (D H C)) or :return.  The core
+; reads the disk D and the clock C only: (mv WORD D' C').
+(defun fn-otm-dc-event (d c kind reading arg)
   (declare (xargs :guard t))
-  (if (< (nfix reading) (fn-otm-now s))
-      (mv :clock-regressed
-          (fn-otm-make (fn-otm-ocp s) (fn-otm-disk s)
-                       (list (fn-otm-now s) (+ 1 (fn-otm-regressions s)))))
-    (mv :recorded
-        (fn-otm-make (fn-otm-ocp s) (fn-otm-disk s)
-                     (list (nfix reading) (fn-otm-regressions s))))))
+  (let* ((r (nfix reading))
+         (before (fn-otm-c-now c))
+         (regressed (< r before))
+         (now (if regressed before r))
+         (c2 (list now
+                   (if regressed (+ 1 (fn-otm-c-regressions c)) (fn-otm-c-regressions c))
+                   (+ 1 (fn-otm-c-jseq c)))))
+    (mv-let (word d2)
+      (cond ((or (eq kind :clock) (eq kind :served)) (fn-otm-disk-tick d now))
+            ((eq kind :issue) (fn-otm-disk-issue d now arg))
+            ((eq kind :return) (fn-otm-disk-return d now))
+            (t (mv :fault d)))
+      (mv (if (and (eq word :none) regressed) :clock-regressed word) d2 c2))))
 
-; The disk's events, over the whole value.  Each carries the host's READING,
-; recorded first; the event then applies at the recorded time.  KIND :clock
-; (a clock event: the committer's cadence, or on demand before a decision;
-; :became-slow the first time the pending barrier is past its deadline),
-; :issue (DEADLINE the configured limit) or :return.  Answers (mv WORD S').
-(defun fn-otm-disk-event (s kind reading deadline)
+; Over the whole value: (mv WORD S'), the pipeline's value kept.
+(defun fn-otm-disk-event (s kind reading arg)
   (declare (xargs :guard t))
-  (mv-let (cw s1) (fn-otm-record-clock s reading)
-    (let ((d (fn-otm-disk s1)) (now (fn-otm-now s1)))
-      (mv-let (word d2)
-        (cond ((eq kind :clock) (fn-otm-disk-tick d now))
-              ((eq kind :issue) (fn-otm-disk-issue d now deadline))
-              ((eq kind :return) (fn-otm-disk-return d now))
-              (t (mv :fault d)))
-        (mv (if (and (eq word :none) (eq cw :clock-regressed)) :clock-regressed word)
-            (fn-otm-make (fn-otm-ocp s1) d2 (fn-otm-clock s1)))))))
+  (mv-let (word d2 c2) (fn-otm-dc-event (fn-otm-disk s) (fn-otm-clock s) kind reading arg)
+    (mv word (fn-otm-make (fn-otm-ocp s) d2 c2))))
 
 (defun fn-otm-admit-post (s)
   (declare (xargs :guard t))
   (fn-otm-disk-admit (fn-otm-disk s) (fn-otm-now s)))
+
+(defun fn-otm-mode (s)
+  (declare (xargs :guard t))
+  (fn-otm-disk-mode (fn-otm-disk s) (fn-otm-now s)))
 
 (defun fn-otm-wait-ms (s)
   (declare (xargs :guard t))
@@ -328,6 +462,22 @@
 (defun fn-otm-shed-reply (s)
   (declare (xargs :guard t))
   (fn-otm-shed-line (fn-otm-disk s) (fn-otm-now s)))
+
+(defun fn-otm-post-command-reply (s)
+  (declare (xargs :guard t))
+  (fn-otm-post-command-line (fn-otm-disk s) (fn-otm-now s)))
+
+; The two replies a served read gives while the disk sheds, each naming the
+; disk's reason (lane ax-fix/reply-text): (LINE-440 . LINE-441), the POST
+; command's 440 and the 441 of an article whose POST got 340 before; NIL when
+; the disk admits.  The host reads it with the admission, from the same value
+; (host/native/owner.lisp fnn-owner-read-admission), and hands it to the read
+; (books/owner-time-admission.lisp fn-otm-read-span); it never looks inside.
+(defun fn-otm-shed-replies (s)
+  (declare (xargs :guard t))
+  (if (eq (fn-otm-admit-post s) :shed)
+      (cons (fn-otm-post-command-reply s) (fn-otm-shed-reply s))
+    nil))
 
 ; health's lines and status's, at the recorded time (the host appends a
 ; clock event on demand before the render).
@@ -348,31 +498,54 @@
 ;; Theorems.  The disk's record through its accessors, never reopened.
 
 (defthm fn-otm-disk-pending-of-make
-  (equal (fn-otm-disk-pending (fn-otm-disk-make p since dl slow last maxl ep)) (if p t nil)))
+  (equal (fn-otm-disk-pending (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (if p t nil)))
 
 (defthm fn-otm-disk-since-of-make
-  (equal (fn-otm-disk-since (fn-otm-disk-make p since dl slow last maxl ep)) (nfix since)))
+  (equal (fn-otm-disk-since (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (nfix since)))
 
 (defthm fn-otm-disk-deadline-of-make
-  (equal (fn-otm-disk-deadline (fn-otm-disk-make p since dl slow last maxl ep)) (fn-otm-deadline-of-limit dl)))
+  (equal (fn-otm-disk-deadline (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (fn-otm-deadline-of-limit dl)))
 
 (defthm fn-otm-disk-slow-of-make
-  (equal (fn-otm-disk-slow (fn-otm-disk-make p since dl slow last maxl ep)) (if slow t nil)))
+  (equal (fn-otm-disk-slow (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (if slow t nil)))
 
 (defthm fn-otm-disk-last-of-make
-  (equal (fn-otm-disk-last (fn-otm-disk-make p since dl slow last maxl ep)) (nfix last)))
+  (equal (fn-otm-disk-last (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (nfix last)))
 
 (defthm fn-otm-disk-max-of-make
-  (equal (fn-otm-disk-max (fn-otm-disk-make p since dl slow last maxl ep)) (nfix maxl)))
+  (equal (fn-otm-disk-max (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (nfix maxl)))
 
 (defthm fn-otm-disk-episodes-of-make
-  (equal (fn-otm-disk-episodes (fn-otm-disk-make p since dl slow last maxl ep)) (nfix ep)))
+  (equal (fn-otm-disk-episodes (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (nfix ep)))
+
+(defthm fn-otm-disk-stall-of-make
+  (equal (fn-otm-disk-stall (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (max (fn-otm-deadline-of-limit dl) (fn-otm-stall-of-limit (nfix stall)))))
+
+(defthm fn-otm-disk-cadence-of-make
+  (equal (fn-otm-disk-cadence (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (fn-otm-cadence-of-limit cad)))
+
+(defthm fn-otm-disk-stalled-of-make
+  (equal (fn-otm-disk-stalled (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (if stalled t nil)))
+
+(defthm fn-otm-disk-stalls-of-make
+  (equal (fn-otm-disk-stalls (fn-otm-disk-make p since dl slow last maxl ep stall cad stalled stalls)) (nfix stalls)))
 
 (defthm fn-otm-deadline-of-limit-of-deadline
   (equal (fn-otm-deadline-of-limit (fn-otm-disk-deadline d)) (fn-otm-disk-deadline d)))
 
+(defthm fn-otm-cadence-of-limit-of-cadence
+  (equal (fn-otm-cadence-of-limit (fn-otm-disk-cadence d)) (fn-otm-disk-cadence d)))
+
 (defthm fn-otm-disk-deadline-posp
   (posp (fn-otm-disk-deadline d))
+  :rule-classes :type-prescription)
+
+(defthm fn-otm-disk-cadence-posp
+  (posp (fn-otm-disk-cadence d))
+  :rule-classes :type-prescription)
+
+(defthm fn-otm-disk-stall-posp
+  (posp (fn-otm-disk-stall d))
   :rule-classes :type-prescription)
 
 (defthm fn-otm-deadline-of-limit-posp
@@ -383,24 +556,52 @@
   (natp (fn-otm-disk-since d))
   :rule-classes :type-prescription)
 
+;; The stall deadline is never below the slow one.
+(defthm fn-otm-disk-deadline-at-most-stall
+  (<= (fn-otm-disk-deadline d) (fn-otm-disk-stall d))
+  :rule-classes :linear)
+
+(defthm fn-otm-stall-of-limit-of-stall
+  (equal (fn-otm-stall-of-limit (fn-otm-disk-stall d)) (fn-otm-disk-stall d))
+  :hints (("Goal" :in-theory (enable fn-otm-stall-of-limit))))
+
+;; A stall recorded from the disk's own accessor reads back unchanged.
+(defthm fn-otm-stall-of-make-of-stall
+  (equal (max (fn-otm-deadline-of-limit (fn-otm-disk-deadline d))
+              (fn-otm-stall-of-limit (nfix (fn-otm-disk-stall d))))
+         (fn-otm-disk-stall d)))
+
 (defthm fn-otm-of-make
   (and (equal (fn-otm-ocp (fn-otm-make ocp d c)) ocp)
        (equal (fn-otm-disk (fn-otm-make ocp d c)) d)
        (equal (fn-otm-clock (fn-otm-make ocp d c)) c)))
 
 (defthm fn-otm-now-of-list
-  (and (equal (fn-otm-now (fn-otm-make ocp d (list n r))) (nfix n))
-       (equal (fn-otm-regressions (fn-otm-make ocp d (list n r))) (nfix r))))
+  (and (equal (fn-otm-now (fn-otm-make ocp d (list n r j))) (nfix n))
+       (equal (fn-otm-regressions (fn-otm-make ocp d (list n r j))) (nfix r))
+       (equal (fn-otm-jseq (fn-otm-make ocp d (list n r j))) (nfix j))))
+
+(defthm fn-otm-c-of-list
+  (and (equal (fn-otm-c-now (list n r j)) (nfix n))
+       (equal (fn-otm-c-regressions (list n r j)) (nfix r))
+       (equal (fn-otm-c-jseq (list n r j)) (nfix j))))
 
 (defthm fn-otm-now-natp
   (natp (fn-otm-now s))
   :rule-classes :type-prescription)
 
+(defthm fn-otm-jseq-natp
+  (natp (fn-otm-jseq s))
+  :rule-classes :type-prescription)
+
 (local (in-theory (disable fn-otm-disk-make fn-otm-disk-pending fn-otm-disk-since
                            fn-otm-disk-deadline fn-otm-disk-slow fn-otm-disk-last
                            fn-otm-disk-max fn-otm-disk-episodes fn-otm-deadline-of-limit
+                           fn-otm-disk-stall fn-otm-disk-cadence fn-otm-disk-stalled
+                           fn-otm-disk-stalls fn-otm-stall-of-limit fn-otm-cadence-of-limit
                            fn-otm-make fn-otm-ocp fn-otm-disk fn-otm-clock fn-otm-now
-                           fn-otm-regressions
+                           fn-otm-regressions fn-otm-jseq fn-otm-c-now fn-otm-c-regressions
+                           fn-otm-c-jseq
                            fn-ocp-next fn-ocp-commit-event fn-ocp-observe
                            fn-osch-text fn-osch-decimal fn-osch-kv)))
 
@@ -432,52 +633,58 @@
 ;; change, so fn-ocs-members-told-only-after-the-barrier and
 ;; fn-ocp-complete-only-after-the-barrier hold of every run with deadlines.
 ;; The subject is fn-otm-disk-event, which host/native/owner.lisp
-;; fnn-owner-disk-event calls from the committer.
+;; fnn-owner-disk-event calls from the committer through fn-otm-disk-step
+;; (fn-otm-disk-step-unfolds).
 (defthm fn-otm-disk-event-keeps-the-pipeline
-  (equal (fn-otm-ocp (mv-nth 1 (fn-otm-disk-event s kind reading deadline)))
+  (equal (fn-otm-ocp (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
          (fn-otm-ocp s))
-  :hints (("Goal" :in-theory (disable fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq)
+                                  (fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return)))))
 
-;; The recorded time is monotone, and a reading below it is counted by name
-;; and moves nothing back (design section 3.7).  The subject is
-;; fn-otm-disk-event, every clock event the host appends.
+;; KEYSTONE (the recorded time never goes backwards).  The recorded time is
+;; monotone, a reading below it is counted by name and moves nothing back,
+;; and every event is one journal entry (design section 3.7).  The subject
+;; is fn-otm-disk-event, every clock event the host appends.
 (defthm fn-otm-recorded-time-is-monotone
-  (let ((s2 (mv-nth 1 (fn-otm-disk-event s kind reading deadline))))
+  (let ((s2 (mv-nth 1 (fn-otm-disk-event s kind reading arg))))
     (and (<= (fn-otm-now s) (fn-otm-now s2))
          (equal (fn-otm-now s2) (max (fn-otm-now s) (nfix reading)))
          (equal (fn-otm-regressions s2)
                 (if (< (nfix reading) (fn-otm-now s))
                     (+ 1 (fn-otm-regressions s))
-                  (fn-otm-regressions s)))))
-  :hints (("Goal" :in-theory (disable fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return))))
+                  (fn-otm-regressions s)))
+         (equal (fn-otm-jseq s2) (+ 1 (fn-otm-jseq s)))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq)
+                                  (fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return)))))
 
 ;; The disk event at a reading: the core step at the recorded time.
 (defthm fn-otm-disk-event-unfolds
   (implies (<= (fn-otm-now s) (nfix reading))
-           (and (equal (fn-otm-disk (mv-nth 1 (fn-otm-disk-event s kind reading deadline)))
-                       (cond ((eq kind :clock)
+           (and (equal (fn-otm-disk (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
+                       (cond ((or (eq kind :clock) (eq kind :served))
                               (mv-nth 1 (fn-otm-disk-tick (fn-otm-disk s) (nfix reading))))
                              ((eq kind :issue)
-                              (mv-nth 1 (fn-otm-disk-issue (fn-otm-disk s) (nfix reading) deadline)))
+                              (mv-nth 1 (fn-otm-disk-issue (fn-otm-disk s) (nfix reading) arg)))
                              ((eq kind :return)
                               (mv-nth 1 (fn-otm-disk-return (fn-otm-disk s) (nfix reading))))
                              (t (fn-otm-disk s))))
-                (equal (fn-otm-now (mv-nth 1 (fn-otm-disk-event s kind reading deadline)))
+                (equal (fn-otm-now (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
                        (nfix reading))
-                (equal (mv-nth 0 (fn-otm-disk-event s kind reading deadline))
-                       (cond ((eq kind :clock)
+                (equal (mv-nth 0 (fn-otm-disk-event s kind reading arg))
+                       (cond ((or (eq kind :clock) (eq kind :served))
                               (mv-nth 0 (fn-otm-disk-tick (fn-otm-disk s) (nfix reading))))
                              ((eq kind :issue)
-                              (mv-nth 0 (fn-otm-disk-issue (fn-otm-disk s) (nfix reading) deadline)))
+                              (mv-nth 0 (fn-otm-disk-issue (fn-otm-disk s) (nfix reading) arg)))
                              ((eq kind :return)
                               (mv-nth 0 (fn-otm-disk-return (fn-otm-disk s) (nfix reading))))
                              (t :fault)))))
-  :hints (("Goal" :in-theory (disable fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq)
+                                  (fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return)))))
 
 ;; -----------------------------------------------------------------------------
 ;; The disk machine.
 
-(local (in-theory (disable fn-otm-disk-elapsed)))
+(local (in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq) (fn-otm-disk-elapsed))))
 
 (local
  (defthm fn-otm-disk-elapsed-when-pending
@@ -495,6 +702,11 @@
  (defthm fn-otm-disk-elapsed-when-not-pending
    (implies (not (fn-otm-disk-pending d)) (equal (fn-otm-disk-elapsed d now) 0))
    :hints (("Goal" :in-theory (enable fn-otm-disk-elapsed)))))
+
+;; A stalled disk is a slow one: past H is past D.
+(defthm fn-otm-stall-due-is-overdue
+  (implies (fn-otm-disk-stall-due-p d now) (fn-otm-disk-overdue-p d now))
+  :rule-classes :forward-chaining)
 
 ;; A shed happens only while a barrier is pending past its deadline at the
 ;; recorded time.
@@ -514,9 +726,15 @@
                     (fn-otm-now s)))
            (equal (fn-otm-admit-post s) :shed)))
 
+;; The admission is the mode's: shed exactly in :slow and :stalled.
+(defthm fn-otm-admit-is-the-mode
+  (iff (equal (fn-otm-admit-post s) :shed)
+         (member-equal (fn-otm-mode s) '(:slow :stalled)))
+  :hints (("Goal" :use ((:instance fn-otm-disk-deadline-at-most-stall (d (fn-otm-disk s)))))))
+
 ;; The backpressure always has its reason on the page: a POST is shed
 ;; exactly when health and status, rendered from the same value, print the
-;; disk-slow line.
+;; disk-slow or disk-stalled line.
 (defun fn-otm-slow-line-p (line)
   (declare (xargs :guard t))
   (and (true-listp line)
@@ -529,8 +747,26 @@
             (equal (take n (append a b)) (take n a)))))
 
 (local
+ (defthm fn-otm-take-of-append-append
+   (implies (and (true-listp a) (<= (nfix n) (len a)))
+            (equal (take n (append (append a b) c)) (take n a)))))
+
+(local
+ (defthm fn-otm-len-of-append-left
+   (<= (len a) (len (append a b)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-otm-len-of-append-append
+   (<= (len a) (len (append (append a b) c)))
+   :rule-classes :linear))
+
+(local
  (defthm fn-otm-disk-tag-cases
-   (and (implies (fn-otm-disk-overdue-p d now)
+   (and (implies (fn-otm-disk-stall-due-p d now)
+                 (equal (fn-otm-disk-tag d now)
+                        (fn-osch-chars-octets (coerce "disk stalled: barrier " 'list))))
+        (implies (and (fn-otm-disk-overdue-p d now) (not (fn-otm-disk-stall-due-p d now)))
                  (equal (fn-otm-disk-tag d now)
                         (fn-osch-chars-octets (coerce "disk slow: barrier " 'list))))
         (implies (not (fn-otm-disk-overdue-p d now))
@@ -540,30 +776,52 @@
 
 (local
  (defthm fn-otm-disk-overdue-p-of-nfix
-   (equal (fn-otm-disk-overdue-p d (nfix now)) (fn-otm-disk-overdue-p d now))
+   (and (equal (fn-otm-disk-overdue-p d (nfix now)) (fn-otm-disk-overdue-p d now))
+        (equal (fn-otm-disk-stall-due-p d (nfix now)) (fn-otm-disk-stall-due-p d now)))
    :hints (("Goal" :in-theory (enable fn-otm-disk-elapsed)))))
+
+;; The tag's first six octets say which: "disk s" (slow or stalled) or not.
+(local
+ (defthm fn-otm-disk-tag-prefix
+   (and (true-listp (fn-otm-disk-tag d now))
+        (iff (equal (take 6 (fn-otm-disk-tag d now)) '(100 105 115 107 32 115))
+             (fn-otm-disk-overdue-p d now)))
+   :hints (("Goal" :in-theory (e/d (fn-osch-text) (fn-otm-disk-overdue-p fn-otm-disk-stall-due-p))
+            :cases ((fn-otm-disk-stall-due-p d now) (fn-otm-disk-overdue-p d now))))))
+
+(local
+ (defthm fn-otm-disk-tag-len
+   (<= 6 (len (fn-otm-disk-tag d now)))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (e/d (fn-osch-text) (fn-otm-disk-overdue-p fn-otm-disk-stall-due-p))))))
 
 (defthm fn-otm-shed-iff-slow
   (iff (equal (fn-otm-admit-post s) :shed)
        (fn-otm-slow-line-p (fn-otm-disk-lines s)))
   :hints (("Goal" :in-theory (disable fn-otm-disk-body fn-otm-disk-tag fn-otm-disk-overdue-p
-                                      fn-osch-chars-octets)
-           :cases ((fn-otm-disk-overdue-p (fn-otm-disk s) (fn-otm-now s))))))
+                                      fn-otm-disk-stall-due-p fn-osch-chars-octets))))
 
 ;; Recovery needs no operator action: after the completion event the node
 ;; admits every POST, and no later clock event makes the disk slow again
 ;; until the next barrier is issued.
 (defthm fn-otm-return-recovers
   (implies (fn-otm-disk-pending (fn-otm-disk s))
-           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :return reading deadline))))
+           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :return reading arg))))
              (and (equal (fn-otm-admit-post s2) :admit)
                   (not (fn-otm-disk-pending (fn-otm-disk s2)))
-                  (member-equal (mv-nth 0 (fn-otm-disk-event s :return reading deadline))
-                                '(:returned :recovered))))))
+                  (not (fn-otm-disk-stalled (fn-otm-disk s2)))
+                  (member-equal (mv-nth 0 (fn-otm-disk-event s :return reading arg))
+                                '(:returned :recovered :recovered-from-stall))))))
+
+;; The completion after a stall is named: the host's log says the articles
+;; whose posters were told uncertain are stored.
+(defthm fn-otm-return-after-a-stall-is-named
+  (implies (and (fn-otm-disk-pending (fn-otm-disk s)) (fn-otm-disk-stalled (fn-otm-disk s)))
+           (equal (mv-nth 0 (fn-otm-disk-event s :return reading arg)) :recovered-from-stall)))
 
 (defthm fn-otm-clock-event-never-issues
   (implies (not (fn-otm-disk-pending (fn-otm-disk s)))
-           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :clock reading deadline))))
+           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :clock reading arg))))
              (and (not (fn-otm-disk-pending (fn-otm-disk s2)))
                   (equal (fn-otm-admit-post s2) :admit)))))
 
@@ -574,39 +832,48 @@
                 (<= (fn-otm-now s) reading)
                 (<= (fn-otm-disk-since (fn-otm-disk s)) reading))
            (equal (fn-otm-disk-last
-                   (fn-otm-disk (mv-nth 1 (fn-otm-disk-event s :return reading deadline))))
+                   (fn-otm-disk (mv-nth 1 (fn-otm-disk-event s :return reading arg))))
                   (- reading (fn-otm-disk-since (fn-otm-disk s))))))
 
 ;; The committer's timed wait reaches the deadline: a clock event appended
-;; WAIT-MS after the recorded time (or later) finds the barrier past its
-;; deadline -- the POSTs after it are shed -- and enters :slow (once per
-;; barrier: a disk already marked slow answers :none).
+;; WAIT-MS after the recorded time (or later) from a pending barrier not yet
+;; past D finds it past D -- the POSTs after it are shed -- and enters :slow
+;; or, when the same reading is past H, :stalled.
 (defthm fn-otm-wait-reaches-the-deadline
   (implies (and (fn-otm-wait-ms s)
+                (not (fn-otm-disk-overdue-p (fn-otm-disk s) (fn-otm-now s)))
                 (natp reading)
                 (<= (fn-otm-disk-since (fn-otm-disk s)) (fn-otm-now s))
                 (<= (+ (fn-otm-now s) (fn-otm-wait-ms s)) reading))
-           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :clock reading deadline))))
+           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :clock reading arg))))
              (and (posp (fn-otm-wait-ms s))
                   (equal (fn-otm-admit-post s2) :shed)
-                  (equal (mv-nth 0 (fn-otm-disk-event s :clock reading deadline))
-                         (if (fn-otm-disk-slow (fn-otm-disk s)) :none :became-slow))))))
+                  (member-equal (mv-nth 0 (fn-otm-disk-event s :clock reading arg))
+                                '(:became-slow :became-stalled :none))))))
 
 ;; A barrier is issued only when none is pending (one in flight at a time),
-;; and an issued barrier is pending from the recorded time of its issue.
+;; and an issued barrier is pending from the recorded time of its issue,
+;; with the limits the host read.
 (defthm fn-otm-issue-only-when-none-pending
-  (iff (equal (mv-nth 0 (fn-otm-disk-event s :issue reading deadline)) :issued)
+  (iff (equal (mv-nth 0 (fn-otm-disk-event s :issue reading arg)) :issued)
        (not (fn-otm-disk-pending (fn-otm-disk s)))))
 
 (defthm fn-otm-issue-is-pending-and-admits
   (implies (and (not (fn-otm-disk-pending (fn-otm-disk s))) (natp reading)
                 (<= (fn-otm-now s) reading))
-           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :issue reading deadline))))
+           (let ((s2 (mv-nth 1 (fn-otm-disk-event s :issue reading arg))))
              (and (fn-otm-disk-pending (fn-otm-disk s2))
+                  (not (fn-otm-disk-stalled (fn-otm-disk s2)))
                   (equal (fn-otm-disk-since (fn-otm-disk s2)) reading)
                   (equal (fn-otm-disk-deadline (fn-otm-disk s2))
-                         (fn-otm-deadline-of-limit deadline))
-                  (equal (fn-otm-admit-post s2) :admit)))))
+                         (car (fn-otm-limits arg)))
+                  (equal (fn-otm-disk-stall (fn-otm-disk s2))
+                         (cadr (fn-otm-limits arg)))
+                  (equal (fn-otm-disk-cadence (fn-otm-disk s2))
+                         (caddr (fn-otm-limits arg)))
+                  (equal (fn-otm-admit-post s2) :admit))))
+  :hints (("Goal" :in-theory (enable fn-otm-limits fn-otm-deadline-of-limit
+                                     fn-otm-stall-of-limit fn-otm-cadence-of-limit))))
 
 ; KEYSTONE (PRF-311): reads and status never wait for the barrier.
 ;
@@ -874,6 +1141,189 @@
   :hints (("Goal" :in-theory (enable fn-ocs-in-flight-p)
            :use (fn-otm-walk-started-bound fn-otm-walk-inspect-bound))))
 
+
+;; =============================================================================
+;; Slice 2: the stall deadline H, the posters' uncertain answer, and F4-W.
+
+;; The stall's release (host/native/owner.lisp fnn-owner-commit-pipeline, at
+;; the :became-stalled word): every member of the batch in flight and of
+;; the next batch START-NEXT staged is answered as fn-ocs-member-release
+;; names under the action :stalled -- its own uncertain reply and a close,
+;; or the close alone -- never its acceptance or refusal.  Their bytes may
+;; still become durable: the barrier is pending, not failed.  RFC 3977
+;; section 6.3.1 asks exactly that of the client ("SHOULD either check
+;; whether the article was successfully posted before resending"), which is
+;; what the uncertain reply says.
+(defun fn-otm-stall-releases (outcomes)
+  (declare (xargs :guard t))
+  (fn-ocs-member-releases :stalled outcomes))
+
+(local
+ (defthm fn-otm-stall-release-is-uncertain
+   (member-equal (fn-ocs-member-release :stalled word renderable)
+                 '(:own-uncertain :uncertain-reply :close))
+   :hints (("Goal" :in-theory (enable fn-ocs-member-release)))))
+
+(local
+ (defthm fn-otm-stall-release-never-rendered
+   (not (equal (fn-ocs-member-release :stalled word renderable) :rendered))
+   :hints (("Goal" :in-theory (enable fn-ocs-member-release)))))
+
+(defun fn-otm-uncertain-releases-p (rs)
+  (declare (xargs :guard t))
+  (if (consp rs)
+      (and (member-equal (car rs) '(:own-uncertain :uncertain-reply :close))
+           (fn-otm-uncertain-releases-p (cdr rs)))
+    t))
+
+;; KEYSTONE (PRF-311, slice 2).  When H fires no member is told acceptance
+;; or refusal: every release is uncertain (:own-uncertain, :uncertain-reply
+;; or :close), one per member.  With fn-otm-disk-event-keeps-the-pipeline
+;; (the stall produced no :complete and no phase change), a member's own
+;; outcome is still told only in a COMPLETE after a fenced barrier
+;; (fn-ocs-members-told-only-after-the-barrier) -- and a member told
+;; uncertain here is not answered again (the host drops it from the
+;; batch's members).  The subject is fn-otm-stall-releases, which the
+;; committer calls.
+(defthm fn-otm-stall-tells-no-member-its-outcome
+  (and (not (member-equal :rendered (fn-otm-stall-releases outcomes)))
+       (equal (len (fn-otm-stall-releases outcomes)) (len outcomes))
+       (fn-otm-uncertain-releases-p (fn-otm-stall-releases outcomes)))
+  :hints (("Goal" :in-theory (e/d (fn-otm-stall-releases fn-ocs-member-releases)
+                                  (fn-ocs-member-release))
+           :induct (len outcomes))))
+
+;; -----------------------------------------------------------------------------
+;; F4-W: every POST is answered accepted, refused, uncertain or try-later
+;; within H + L of its article's arrival (design section 4), L the lateness
+;; of one committer wake -- its timed wait expiring later than asked (the
+;; thread descheduled).  The design's H + quantum + cadence is this bound
+;; with L <= cadence and the release's quantum added: the wait below never
+;; reaches past H, so the cadence does not appear.
+;;
+;; A POST whose article arrived while the disk sheds is refused at once
+;; (fn-otm-shed-iff-slow; its command answered 440 first).  One admitted
+;; before D joined the batch in flight or the next one (both pending on
+;; this barrier), or is queued behind them; each is told at the barrier's
+;; completion (accepted or refused, or uncertain after a failed barrier),
+;; or, if that has not come, at the stall: the members uncertain, the
+;; queued ones refused try-later.  What is proved here is the model half:
+;; the committer's clock events, each within its wait plus L of the recorded
+;; time, reach the stall -- the :became-stalled word -- at a recorded time at
+;; most since + H + L, however long the device takes; the host answers the
+;; members in that wake.  Hypothesis (h5) of the design: the committer is
+;; not blocked on the device (it never is: the syncer is).
+
+;; The committer's wait never reaches past H.
+(defthm fn-otm-wait-stays-within-the-stall
+  (implies (and (fn-otm-disk-pending (fn-otm-disk s))
+                (<= (fn-otm-disk-since (fn-otm-disk s)) (fn-otm-now s))
+                (not (fn-otm-disk-stall-due-p (fn-otm-disk s) (fn-otm-now s))))
+           (<= (+ (fn-otm-now s) (fn-otm-wait-ms s))
+               (+ (fn-otm-disk-since (fn-otm-disk s)) (fn-otm-disk-stall (fn-otm-disk s)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-otm-disk-elapsed))))
+
+;; One committer clock event at reading R: the value after it.
+(defun fn-otm-clock-step (s r)
+  (declare (xargs :guard t))
+  (mv-let (w s2) (fn-otm-disk-event s :clock r nil)
+    (declare (ignore w))
+    s2))
+
+(defun fn-otm-clock-word (s r)
+  (declare (xargs :guard t))
+  (mv-let (w s2) (fn-otm-disk-event s :clock r nil)
+    (declare (ignore s2))
+    w))
+
+;; The committer's clock events: RS the readings, in order.
+(defun fn-otm-clock-run (s rs)
+  (declare (xargs :guard t :measure (len rs)))
+  (if (consp rs)
+      (fn-otm-clock-run (fn-otm-clock-step s (car rs)) (cdr rs))
+    s))
+
+;; The reading whose clock event entered :stalled, or nil.
+(defun fn-otm-stall-reading (s rs)
+  (declare (xargs :guard t :measure (len rs)))
+  (if (consp rs)
+      (if (eq (fn-otm-clock-word s (car rs)) :became-stalled)
+          (nfix (car rs))
+        (fn-otm-stall-reading (fn-otm-clock-step s (car rs)) (cdr rs)))
+    nil))
+
+;; Each reading is at or after the recorded time and at most the wait plus
+;; LATE after it (the timed wait's expiry, or an earlier wake).
+(defun fn-otm-clock-run-okp (s rs late)
+  (declare (xargs :guard t :measure (len rs)))
+  (if (consp rs)
+      (and (natp (car rs))
+           (<= (fn-otm-now s) (car rs))
+           (<= (car rs) (+ (fn-otm-now s) (nfix (fn-otm-wait-ms s)) (nfix late)))
+           (fn-otm-clock-run-okp (fn-otm-clock-step s (car rs)) (cdr rs) late))
+    t))
+
+(local
+ (defthm fn-otm-tick-step-facts
+   (implies (and (fn-otm-disk-pending (fn-otm-disk s))
+                 (not (fn-otm-disk-stalled (fn-otm-disk s)))
+                 (natp r) (<= (fn-otm-now s) r))
+            (let ((w (fn-otm-clock-word s r))
+                  (d2 (fn-otm-disk (fn-otm-clock-step s r))))
+              (and (iff (equal w :became-stalled)
+                        (fn-otm-disk-stall-due-p (fn-otm-disk s) r))
+                   (equal (fn-otm-now (fn-otm-clock-step s r)) r)
+                   (fn-otm-disk-pending d2)
+                   (equal (fn-otm-disk-since d2) (fn-otm-disk-since (fn-otm-disk s)))
+                   (equal (fn-otm-disk-stall d2) (fn-otm-disk-stall (fn-otm-disk s)))
+                   (equal (fn-otm-disk-deadline d2) (fn-otm-disk-deadline (fn-otm-disk s)))
+                   (equal (fn-otm-disk-cadence d2) (fn-otm-disk-cadence (fn-otm-disk s)))
+                   (implies (not (fn-otm-disk-stall-due-p (fn-otm-disk s) r))
+                            (not (fn-otm-disk-stalled d2)))
+                   (iff (fn-otm-disk-stall-due-p d2 r)
+                        (fn-otm-disk-stall-due-p (fn-otm-disk s) r)))))
+   :hints (("Goal" :in-theory (enable fn-otm-clock-word fn-otm-clock-step
+                                      fn-otm-disk-stall-due-p fn-otm-disk-overdue-p
+                                      fn-otm-disk-elapsed)))))
+
+(local
+ (defthm fn-otm-stall-due-of-since
+   (implies (and (fn-otm-disk-pending d) (natp r) (<= (fn-otm-disk-since d) r))
+            (iff (fn-otm-disk-stall-due-p d r)
+                 (<= (+ (fn-otm-disk-since d) (fn-otm-disk-stall d)) r)))
+   :hints (("Goal" :in-theory (enable fn-otm-disk-stall-due-p fn-otm-disk-elapsed)))))
+
+(local (in-theory (disable fn-otm-disk-event fn-otm-disk-stall-due-p fn-otm-clock-word
+                           fn-otm-clock-step fn-otm-now fn-otm-regressions fn-otm-jseq)))
+
+;; KEYSTONE F4-W (PRF-311, slice 2).  From a barrier pending and not yet past
+;; H (since <= the recorded time), committer clock events each within its
+;; wait plus LATE: if one of them entered :stalled (the posters told) its
+;; reading is at most since + H + LATE; if none did, every reading so far
+;; is before since + H.  The device's latency is not a quantity here.  The
+;; subject is fn-otm-disk-event (the committer's :clock through
+;; fn-otm-disk-step) with the wait fn-otm-wait-ms, both host-called in
+;; host/native/owner.lisp fnn-owner-commit-pipeline.
+(defthm fn-otm-f4w-stall-within-h
+  (implies (and (fn-otm-disk-pending (fn-otm-disk s))
+                (not (fn-otm-disk-stalled (fn-otm-disk s)))
+                (<= (fn-otm-disk-since (fn-otm-disk s)) (fn-otm-now s))
+                (not (fn-otm-disk-stall-due-p (fn-otm-disk s) (fn-otm-now s)))
+                (fn-otm-clock-run-okp s rs late))
+           (let ((r (fn-otm-stall-reading s rs))
+                 (h (+ (fn-otm-disk-since (fn-otm-disk s))
+                       (fn-otm-disk-stall (fn-otm-disk s)))))
+             (and (implies r (<= r (+ h (nfix late))))
+                  (implies (not r)
+                           (and (not (fn-otm-disk-stalled (fn-otm-disk (fn-otm-clock-run s rs))))
+                                (< (fn-otm-now (fn-otm-clock-run s rs)) h))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-otm-clock-run-okp s rs late)
+           :in-theory (enable fn-otm-stall-reading fn-otm-clock-run fn-otm-clock-run-okp))
+          ("Subgoal *1/1" :use ((:instance fn-otm-wait-stays-within-the-stall)))))
+
 (in-theory (disable fn-otm-next fn-otm-observe fn-otm-commit-event fn-otm-committer-wake
-                    fn-otm-disk-event fn-otm-admit-post fn-otm-wait-ms fn-otm-log-line
-                    fn-otm-shed-reply fn-otm-health-lines fn-otm-disk-lines))
+                    fn-otm-disk-event fn-otm-admit-post fn-otm-mode fn-otm-wait-ms fn-otm-log-line
+                    fn-otm-shed-reply fn-otm-post-command-reply fn-otm-shed-replies
+                    fn-otm-health-lines fn-otm-disk-lines fn-otm-stall-releases))

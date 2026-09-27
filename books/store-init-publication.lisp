@@ -6,11 +6,21 @@
 ; refused (STORE-EXISTS) and recovery faulted on (power-loss 2026-09-26,
 ; PKT-647).  It now builds the empty store beside ROOT, in ROOT.init-XXXX,
 ; and publishes it by the import's program: the SAME steps as
-; books/store-import-publication.lisp fn-bs-imp-program, with init's plan
-; (the three subdirectories; config.json, the allocation frontier and the
-; generation-1 configuration record; no transaction file) and init's cut
+; books/store-import-publication.lisp fn-bs-imp-program, with init's cut
 ; names.  The host is host/native/io.lisp `fnn-command-init-published', which
 ; `operator init' calls (host/native/operator.lisp fnn-operator-execute-init).
+;
+; What the host publishes is books/store-init-log-publication.lisp's plan
+; (the record log's: staging/, config/, journal/; config.json, the
+; generation-1 configuration record and journal/000001.log), under that
+; book's keystone `fn-bs-init-log-program-crash-is-no-store-or-the-complete-
+; empty-log'.  This book keeps the cut names, the renaming and the
+; admission, which that plan reuses.  Its own plan below
+; (`fn-bs-init-pub-program': transactions/ and allocation-frontier.json) is
+; the per-file layout's, which no image publishes since 2026-09-27; it stays
+; only as the model the native cut map still names (packet in lane
+; flip-cleanup's LANEDUMP: retarget the cut map to fn-bs-init-log-program
+; and delete it).
 ;
 ; Keystone fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store:
 ; a crash at any point of any run, any syscall outcome, leaves no store at

@@ -26,6 +26,15 @@
 ;                               article: executed (author or authority),
 ;                               owed (target not held), declined, or none.
 ;
+; The withdrawing article's target and Cancel-Key entries are parsed from
+; CBYTES, its octets, which the caller reads: after the records flip an
+; archive article's payload position is an arena HANDLE (books/store-
+; intern.lisp), so the served adapter passes the bytes the handle names
+; (books/nntp.lisp fn-nntp-control-hdr-response, through books/nntp-
+; session.lisp fn-nntp-article-bytes; lane matrix-reds).  Before, the kernel
+; parsed the handle itself, found no target, and answered `none' for every
+; executed withdrawal.
+;
 ; Prefix `fn-ctl-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "control-authority")
@@ -294,14 +303,14 @@
   (implies (and (member-equal x arts) (consp x))
            (fn-ctl-has-msgid-p (fn-article-msgid x) arts)))
 
-(defun fn-ctl-control-status (c visible withdrawn ws verdicts)
+(defun fn-ctl-control-status (c cbytes visible withdrawn ws verdicts)
   (declare (xargs :guard t))
   (let* ((msgid (and (consp c) (fn-article-msgid c)))
-         (target (and (consp c) (fn-ctl-target-octets (fn-article-payload c))))
+         (target (and (consp c) (fn-ctl-target-octets cbytes)))
          (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
                                        target
                                        (and (consp c)
-                                            (fn-ctl-keys-octets (fn-article-payload c)))
+                                            (fn-ctl-keys-octets cbytes))
                                        nil)))
     (cond ((not target) (list :none))
           ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
@@ -357,10 +366,10 @@
 ; RAW and its status is executed, the target is held in RAW and the view does
 ; not serve it, and the record C caused withdraws it on the stated basis.
 (defthm fn-ctl-executed-status-means-withdrawn
-  (let ((st (fn-ctl-control-status c (fn-ctl-visible-articles raw ws verdicts)
+  (let ((st (fn-ctl-control-status c cbytes (fn-ctl-visible-articles raw ws verdicts)
                                    (fn-ctl-withdrawn-articles raw ws verdicts)
                                    ws verdicts))
-        (target (fn-ctl-target-octets (fn-article-payload c))))
+        (target (fn-ctl-target-octets cbytes)))
     (implies (and (equal (car st) :executed)
                   (member-equal c raw))
              (let ((held (fn-ctl-find-held target
@@ -386,19 +395,19 @@
                                       fn-ctl-target-is-never-visible-beside-its-cancel
                                       fn-ctl-has-msgid-p fn-ctl-w-cause fn-ctl-w-target)
            :use ((:instance fn-ctl-find-held-is-held
-                            (m (fn-ctl-target-octets (fn-article-payload c)))
+                            (m (fn-ctl-target-octets cbytes))
                             (visible (fn-ctl-visible-articles raw ws verdicts))
                             (withdrawn (fn-ctl-withdrawn-articles raw ws verdicts)))
                  (:instance fn-ctl-cause-record-is-a-member
                             (cause (fn-article-msgid c))
-                            (target (fn-ctl-target-octets (fn-article-payload c))))
+                            (target (fn-ctl-target-octets cbytes)))
                  (:instance fn-ctl-has-msgid-p-of-member (x c) (arts raw))
                  (:instance fn-ctl-target-is-never-visible-beside-its-cancel
                             (w (fn-ctl-cause-record ws (fn-article-msgid c)
                                                     (fn-ctl-target-octets
-                                                     (fn-article-payload c))))
+                                                     cbytes)))
                             (article (fn-ctl-find-held
-                                      (fn-ctl-target-octets (fn-article-payload c))
+                                      (fn-ctl-target-octets cbytes)
                                       (fn-ctl-visible-articles raw ws verdicts)
                                       (fn-ctl-withdrawn-articles raw ws verdicts)))
                             (articles raw))))))
@@ -407,12 +416,12 @@
 ; the target's Message-ID.
 (defthm fn-ctl-owed-status-means-not-held
   (implies (and (equal (car (fn-ctl-control-status
-                             c (fn-ctl-visible-articles raw ws verdicts)
+                             c cbytes (fn-ctl-visible-articles raw ws verdicts)
                              (fn-ctl-withdrawn-articles raw ws verdicts) ws verdicts))
                        :owed)
                 (member-equal x raw))
            (not (equal (fn-article-msgid x)
-                       (fn-ctl-target-octets (fn-article-payload c)))))
+                       (fn-ctl-target-octets cbytes))))
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
                                       fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
                                       fn-ctl-cause-record fn-ctl-msgid-withdrawn
@@ -515,14 +524,14 @@
 
 ; The served :fn-control status: `fn-ctl-control-status' with the held
 ; target found through the trie.
-(defun fn-ctl-served-status (c trie visible withdrawn ws verdicts)
+(defun fn-ctl-served-status (c cbytes trie visible withdrawn ws verdicts)
   (declare (xargs :guard t))
   (let* ((msgid (and (consp c) (fn-article-msgid c)))
-         (target (and (consp c) (fn-ctl-target-octets (fn-article-payload c))))
+         (target (and (consp c) (fn-ctl-target-octets cbytes)))
          (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
                                        target
                                        (and (consp c)
-                                            (fn-ctl-keys-octets (fn-article-payload c)))
+                                            (fn-ctl-keys-octets cbytes))
                                        nil)))
     (cond ((not target) (list :none))
           ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
@@ -542,8 +551,8 @@
 
 (defthm fn-ctl-served-status-is-control-status
   (implies (fn-midx-correspondencep trie visible)
-           (equal (fn-ctl-served-status c trie visible withdrawn ws verdicts)
-                  (fn-ctl-control-status c visible withdrawn ws verdicts)))
+           (equal (fn-ctl-served-status c cbytes trie visible withdrawn ws verdicts)
+                  (fn-ctl-control-status c cbytes visible withdrawn ws verdicts)))
   :hints (("Goal" :in-theory (e/d (fn-ctl-control-status)
                                   (fn-ctl-served-held fn-ctl-find-held
                                    fn-midx-correspondencep

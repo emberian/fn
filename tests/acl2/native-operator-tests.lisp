@@ -34,6 +34,27 @@
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("recover"))))
                      :accepted))
+;; Lane log-corruption: the operator's confirmed repair of a log-damaged
+;; refusal is `recover --repair truncate SEGMENT:OFFSET' (the AT passed on);
+;; anything short of those three words is a usage refusal.
+(assert-event
+ (let ((r (fn-native-operator-run *fn-nop-minimal-config*
+                                  (fn-nop-test-argv '("recover" "--repair" "truncate" "000001.log:0")))))
+   (and (equal (fn-native-operator-result-status r) :accepted)
+        (equal (fn-native-operator-result-arguments r) '(:recover "000001.log:0")))))
+(assert-event
+ (and (not (equal (fn-native-operator-result-status
+                   (fn-native-operator-run *fn-nop-minimal-config*
+                                           (fn-nop-test-argv '("recover" "--repair" "truncate"))))
+                  :accepted))
+      (not (equal (fn-native-operator-result-status
+                   (fn-native-operator-run *fn-nop-minimal-config*
+                                           (fn-nop-test-argv '("recover" "--repair" "restore" "000001.log:0"))))
+                  :accepted))
+      (not (equal (fn-native-operator-result-status
+                   (fn-native-operator-run *fn-nop-minimal-config*
+                                           (fn-nop-test-argv '("recover" "--repair" "truncate" "000001.log:0" "x"))))
+                  :accepted))))
 
 ; TLS paths are now an executable native run profile.  ACL2 projects the
 ; exact paths; protected-only remains unavailable without such a pair.
@@ -406,7 +427,7 @@
 
 ;
 ; `store compact': an offline store action with no argument; what it does to
-; the store is `fn-cverb-decide' (books/store-compact-verb.lisp).
+; the store is host/native/checkpoint.lisp `fnn-command-compact''s.
 (defconst *fn-nop-compact*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv '("store" "compact"))))
@@ -472,7 +493,7 @@
                      5))
 
 ;; `store reclaim [--dry-run]' (STO-017): offline store actions; what they
-;; remove is `fn-rclp-decide' (books/store-reclaim-pack.lisp).
+;; remove is `fn-lgr-decide-stream' (books/store-log-reclaim.lisp).
 (defconst *fn-nop-reclaim*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv '("store" "reclaim"))))

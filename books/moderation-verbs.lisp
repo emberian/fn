@@ -45,6 +45,7 @@
 (include-book "nntp-post")
 (include-book "config-invariants")
 (include-book "peer-authored-accept")
+(include-book "nntp-session")      ; fn-nntp-article-bytes, fn-nntp-article-alpha
 
 ; -----------------------------------------------------------------------------
 ; Identities
@@ -200,18 +201,24 @@
                      ((equal state "approved") (list :refused :already-approved))
                      (t (list :refused :already-rejected))))))))
 
-; The held proto-article of envelope A: its body.
-(defun fn-mvb-held-article (a)
-  (declare (xargs :guard t))
-  (fn-mvb-after-blank (fn-article-payload a)))
+; The held proto-article of envelope A: the body of its octets.  A is an
+; archive article, whose payload position is an arena HANDLE since the
+; records flip (books/store-intern.lisp); its octets are read through the
+; arena (books/nntp-session.lisp fn-nntp-article-bytes, which passes a
+; payload that is not a handle through), never parsed from the handle.  The
+; arena is only read (flip-L6-2's rule).  Before lane matrix-reds this read
+; the handle itself and every approve answered :envelope-malformed.
+(defun fn-mvb-held-article (a fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-mvb-after-blank (fn-nntp-article-bytes a fn-arena)))
 
-(defun fn-mvb-approve (raw ws verdicts cfg clock login id)
-  (declare (xargs :guard t))
+(defun fn-mvb-approve (raw ws verdicts cfg clock login id fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((e (fn-mvb-held-envelope raw ws verdicts (fn-inj-config-closed cfg)
                                  login id)))
     (if (not (equal (car e) :envelope))
         e
-      (let ((held (fn-mvb-held-article (cadr e))))
+      (let ((held (fn-mvb-held-article (cadr e) fn-arena)))
         (if (not (consp held))
             (list :refused :envelope-malformed)
           (let* ((octets (fn-mvb-approved-article login held))
@@ -297,9 +304,8 @@
       (fn-mvb-withdraw raw cfg clock node rows (fn-article-msgid (cadr e))
                        (fn-mvb-reject-reason reason)))))
 
-; The operator decision a plan checks is the fresh one (STORED :absent):
-; the plan is pure and holds no arena, so it cannot read the octets a held
-; article's handle names (records flip).  It is a pre-check: the host then
+; The operator decision a plan checks is the fresh one (STORED :absent): the
+; plan reads the arena only for the held envelope's own octets (approve).  It is a pre-check: the host then
 ; runs the planned submission through the operator path, whose decision
 ; reads the stored octets (books/owner.lisp fn-own-operator-decision over
 ; books/owner-served-invariants.lisp fn-own-operator-stored-octets) and
@@ -307,8 +313,8 @@
 ;
 ; OP is :approve, :reject or :withdraw; LOGIN, ID and REASON are the
 ; request's octets; OC the owner and its configuration (books/owner-config).
-(defun fn-mvb-plan (op login id reason oc)
-  (declare (xargs :guard t))
+(defun fn-mvb-plan (op login id reason oc fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((o (fn-ocfg-owner oc))
          (v (fn-own-view o))
          (raw (fn-own-view-raw v))
@@ -319,7 +325,7 @@
          (id (fn-record-octets-string id))
          (reason (fn-record-octets-string reason)))
     (cond ((equal op :approve)
-           (fn-mvb-approve raw ws verdicts cfg (fn-own-clock o) login id))
+           (fn-mvb-approve raw ws verdicts cfg (fn-own-clock o) login id fn-arena))
           ((equal op :reject)
            (fn-mvb-reject raw ws verdicts cfg (fn-own-clock o)
                           (fn-sn-node (fn-own-store o)) rows login id reason))
@@ -334,7 +340,7 @@
 ; The host calls `fn-mvb-plan' (host/owner-host.lisp fn-owner-moderation-
 ; plan); it is the three decisions below over what the owner carries.
 (defthm fn-mvb-plan-unfolds
-  (equal (fn-mvb-plan op login id reason oc)
+  (equal (fn-mvb-plan op login id reason oc fn-arena)
          (let* ((o (fn-ocfg-owner oc))
                 (v (fn-own-view o))
                 (cfg (fn-own-config o))
@@ -342,7 +348,7 @@
            (cond ((equal op :approve)
                   (fn-mvb-approve (fn-own-view-raw v) (fn-own-view-withdrawals v)
                                   (fn-own-view-verdicts v) cfg (fn-own-clock o) login
-                                  (fn-record-octets-string id)))
+                                  (fn-record-octets-string id) fn-arena))
                  ((equal op :reject)
                   (fn-mvb-reject (fn-own-view-raw v) (fn-own-view-withdrawals v)
                                  (fn-own-view-verdicts v) cfg (fn-own-clock o)
@@ -371,11 +377,11 @@
 ; `fn-own-operator-decision-is-an-injection-of-the-payload').  Subject:
 ; `fn-mvb-approve', called by `fn-mvb-plan'.
 (defthm fn-mvb-approve-commits-the-held-article-approved
-  (implies (equal (car (fn-mvb-approve raw ws verdicts cfg clock login id))
+  (implies (equal (car (fn-mvb-approve raw ws verdicts cfg clock login id fn-arena))
                   :submit)
-           (let* ((plan (fn-mvb-approve raw ws verdicts cfg clock login id))
+           (let* ((plan (fn-mvb-approve raw ws verdicts cfg clock login id fn-arena))
                   (a (fn-cev-find-article (fn-mvb-envelope-id id) raw))
-                  (octets (fn-mvb-approved-article login (fn-mvb-held-article a)))
+                  (octets (fn-mvb-approved-article login (fn-mvb-held-article a fn-arena)))
                   (d (fn-post-gated-decision octets (fn-mvb-login-config cfg login)
                                              clock)))
              (and (fn-mvb-moderates-some login (fn-article-groups a)
@@ -395,6 +401,18 @@
                                       fn-mvb-envelope-id))))
 
 
+; The representation boundary (PKT-657, lane matrix-reds), by definition:
+; the ledger reads both sides as the same term, so it is cited as the
+; bridge, not as a keystone.  The held proto-article the approval commits is the body of
+; the envelope's OCTET MODEL (books/nntp-session.lisp fn-nntp-article-alpha:
+; the archive article with its handle replaced by the bytes it names), the
+; body the pre-flip plan parsed from the envelope's own payload.  With the
+; keystone above: the approved octets are `Approved: LOGIN' and that body.
+(defthm fn-mvb-held-article-is-the-model-body-by-definition
+  (equal (fn-mvb-held-article a fn-arena)
+         (fn-mvb-after-blank (fn-article-payload (fn-nntp-article-alpha a fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-article-alpha) (fn-nntp-article-bytes fn-mvb-after-blank)))))
+
 ; KEYSTONE (PKT-657; PRF-228).  ONLY A MODERATOR OF THE GROUP APPROVES OR
 ; REJECTS.  A LOGIN that moderates no group the envelope queues for is
 ; refused (by name, :not-a-moderator, when the envelope exists).
@@ -402,7 +420,7 @@
   (implies (not (fn-mvb-moderates-some
                  login (fn-article-groups (fn-cev-find-article (fn-mvb-envelope-id id) raw))
                  (fn-inj-config-closed cfg)))
-           (and (equal (car (fn-mvb-approve raw ws verdicts cfg clock login id))
+           (and (equal (car (fn-mvb-approve raw ws verdicts cfg clock login id fn-arena))
                        :refused)
                 (equal (car (fn-mvb-reject raw ws verdicts cfg clock node rows login id reason))
                        :refused)))

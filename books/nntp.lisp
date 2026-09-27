@@ -268,6 +268,9 @@
 ; HDR :fn-enrollment (PKT-175): the verdict principal's current enrollment
 ; in the keyring view the control pin carries (books/nntp-enrollment.lisp).
 (include-book "nntp-enrollment")
+; PRF-325 (NNT-053): XFNCATCHUP, a peer's batched catch-up stream over the
+; pinned view (books/peer-catchup-serve.lisp).
+(include-book "peer-catchup-serve")
 
 (defun fn-nntp-number-withdrawn-p (session archive index token)
   (declare (xargs :guard t))
@@ -307,8 +310,12 @@
            (fn-nntp-control-cleanp (cdr bytes)))
     (null bytes)))
 
-(defun fn-nntp-control-hdr-response (session archive index verdicts args)
-  (declare (xargs :guard t))
+;; The withdrawing article C's octets are read through the arena
+;; (fn-nntp-article-bytes): its payload position is a handle since the
+;; records flip.  Lane matrix-reds (the served `0 none' for every executed
+;; withdrawal: the kernel parsed the handle).
+(defun fn-nntp-control-hdr-response (session archive index verdicts args fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (and (consp args) (consp (cdr args)) (null (cddr args))
            (fn-nntp-message-id-tokenp (cadr args))
            (fn-octet-listp (cadr args)))
@@ -320,11 +327,12 @@
                                     trie visible withdrawn)))
         (if (not (consp c))
             (fn-nntp-single session "430 no article with that message-id")
-          (let ((item (fn-nntp-string-octets
-                       (fn-ctl-control-item
-                        (fn-ctl-served-status c trie visible withdrawn
-                                              (fn-ctl-pin-ws control) verdicts)
-                        (fn-ctl-target-octets (fn-article-payload c))))))
+          (let* ((cbytes (fn-nntp-article-bytes c fn-arena))
+                 (item (fn-nntp-string-octets
+                        (fn-ctl-control-item
+                         (fn-ctl-served-status c cbytes trie visible withdrawn
+                                               (fn-ctl-pin-ws control) verdicts)
+                         (fn-ctl-target-octets cbytes)))))
             (if (fn-nntp-control-cleanp item)
                 (fn-nntp-multi
                  session (fn-nntp-hdr-initial nil)
@@ -397,7 +405,7 @@
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-CONTROL"))
-        (fn-nntp-control-hdr-response session archive index verdicts args))
+        (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
@@ -410,12 +418,18 @@
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
         (fn-nntp-single session "501 syntax error")
-      (if (not (fn-nntp-archive-keywordp keyword))
-          (fn-nntp-session-command session env keyword args)
-        (if (fn-nntp-session-projected session)
-            (fn-nntp-archive-command-pinned
-             session archive index verdicts env keyword args fn-arena)
-          (fn-nntp-single session "503 archive projection unavailable"))))))
+      ;; PRF-325: XFNCATCHUP answers over the pinned view, as the archive
+      ;; readers do; books/nntp-auth.lisp gates it with them.
+      (if (fn-nntp-keywordp keyword "XFNCATCHUP")
+          (if (fn-nntp-session-projected session)
+              (fn-cu-serve-reply session archive index args fn-arena)
+            (fn-nntp-single session "503 archive projection unavailable"))
+        (if (not (fn-nntp-archive-keywordp keyword))
+            (fn-nntp-session-command session env keyword args)
+          (if (fn-nntp-session-projected session)
+              (fn-nntp-archive-command-pinned
+               session archive index verdicts env keyword args fn-arena)
+            (fn-nntp-single session "503 archive projection unavailable")))))))
 
 (defun fn-nntp-step-pinned (session archive index verdicts env wire-event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -443,7 +457,7 @@
 
 (defthm fn-nntp-control-hdr-response-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-control-hdr-response session archive index verdicts args))
+          (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
                                   (fn-ctl-control-item fn-ctl-served-status

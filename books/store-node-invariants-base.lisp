@@ -543,6 +543,7 @@
                   (equal (fn-record-stamp record) (fn-pending-stamp p)))))
   :rule-classes nil)
 
+(fn-payload-kind fn-sn-committed-recordp :handle "compares the article's handle with the held record's handle")
 (defun fn-sn-committed-recordp (node record)
   (let* ((article (fn-find-article (fn-record-msgid record)
                                   (fn-state-articles (fn-node-acceptance node))))

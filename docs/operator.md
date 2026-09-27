@@ -1,8 +1,18 @@
 # Running your node
 
+The short version is in Usenet articles: [part 4, running a node](articles/fn-faq-4.txt)
+(the disk, groups, logins, certificates, exposure) and
+[part 5, when things go wrong](articles/fn-faq-5.txt) (uncertain answers,
+when the store is full, backups, new releases). Storage requirements are
+part 4's "The disk". Every health code and refusal:
+[part 6](articles/fn-faq-6.txt). The engineers' reference:
+[operator-internals.md](operator-internals.md).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 This page is for the person who looks after an fn node. It assumes you set
 the node up with [Installing fn](install.md). Words you may not know are in
-[the short glossary](README.md#words-you-will-meet). The exact details, and
+[the short glossary](articles/fn-faq-1.txt). The exact details, and
 material for developers, are in [the engineers' reference](operator-internals.md).
 
 In the commands, `CONFIG` is your settings file, for example
@@ -85,7 +95,9 @@ newfs -O 1 /dev/rsd1a
 mkdir -p /var/fn
 echo '/dev/sd1a /var/fn ffs rw,nodev,nosuid 1 2' >> /etc/fstab
 mount /var/fn
-``` To see a partition's format, as root:
+```
+
+To see a partition's format, as root:
 `dumpfs /dev/rsd0X | head -1` prints `FFS1` or `FFS2`. To move a store off
 FFS2: `store export`, make the FFS1 partition, then `store import`
 ([moving data](install.md#4-reinstalling)).
@@ -112,8 +124,18 @@ Start and stop fn with the service manager:
 | stop | `systemctl stop fn` | `rcctl stop fn` |
 | is it running? | `systemctl status fn` | `rcctl check fn` |
 
-A stop is always clean: fn finishes its work, then exits. The service
-restarts fn only after a failure, never after a stop.
+A stop is always clean: fn finishes its work, then exits. On Linux the
+service restarts fn only after a failure, never after a stop.
+
+On OpenBSD, rc.d never restarts fn: after a crash (or `kill -9`),
+`rcctl check fn` says `fn(failed)` and the node stays down until you run
+`rcctl start fn`. At boot `rcctl enable fn` starts it. To have it started
+again within five minutes of a crash, add to root's crontab
+(`crontab -e`):
+
+```
+*/5 * * * * rcctl check fn >/dev/null || rcctl start fn >/dev/null
+```
 
 If fn fails to start five times in a minute, systemd stops trying. After
 that, every `restart` is quietly refused while looking like success. Run
@@ -290,7 +312,8 @@ fn operator CONFIG account list
    ```
 
    `--cafile` names your node's certificate file, when it is your own
-   (self-made) one. Add `--tls` and the port (`news.example.org:563`) for a
+   (self-made) one. A node on another port than 119 is named with it
+   (`news.example.org:11563`). Add `--tls` and the port (`news.example.org:563`) for a
    node that speaks TLS from the start. `redeemed: the account carol is
    ready` means it worked. A newsreader cannot do this step; a program can
    send `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, over TLS.
@@ -352,9 +375,11 @@ fn operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
 
 `principal unbind alice` removes the tie. `policy set posting-policy open`
-turns the rule off. The command's last word says when the change applies:
-`applied` (now), `effective-at-next-start`, `restart-required`, or
-`uncertain`.
+turns the rule off. The last word of `principal set-password`, `bind` and
+`unbind` says when the change applies: `applied` (now: the running node
+reloaded its logins), `effective-at-next-start` (the node was not running),
+`restart-required` (the node runs but `fn.toml` names no `[control] path`
+to reach it), or `uncertain`.
 
 ## 5. Agents' consumers
 
@@ -548,6 +573,32 @@ If `recover` refuses with `pre-C1 control record ... run store repair-control`,
 the store was made by a release before 2026-09-25 and holds a cancel filed
 in an old way. Keep the store as it is and ask the developers.
 
+### A damaged record log
+
+A crash can only leave the last write unfinished. fn drops that write at the
+next start and says so: `log torn-tail at=000001.log:OFFSET`.
+
+If saved data is damaged and saved data follows it (a failing disk, a bad
+copy), fn does not guess. `status`, `recover` and `run` all refuse:
+
+```
+refused ... reason=log-damaged at=000001.log:4096 first-valid=8192 valid-after=11 records=11 ...
+```
+
+Nothing is written, and the node does not start. First copy the whole store
+somewhere safe, and check the disk. If you have a good copy of the store
+(a backup, or a peer that holds the articles), use it. Otherwise you can keep
+everything before the damage and drop the rest, by naming the place exactly
+as the refusal names it:
+
+```
+fn operator CONFIG recover --repair truncate 000001.log:4096
+```
+
+fn keeps the damaged file as `quarantine/000001.log.damaged-at-4096` first,
+then answers `log repaired at=... dropped-valid-entries=N dropped-records=M`.
+The dropped articles are gone from this store; a peer may offer them again.
+
 ### The node does not start
 
 fn never stops without saying why. The reason is one line starting
@@ -561,6 +612,25 @@ journalctl -u fn -n 20
 Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
 names a `[log] path`. A program that starts fn and keeps its error output
 in a file must show that file: the reason is there.
+
+`health` and `status` say so too. When nothing runs where the node should
+(its control socket does not answer and nothing holds the store), `health`
+answers exit 18 and `status` begins the same way:
+
+```text
+health exit=18 state=not-running (no process holds the store and nothing answers on its control socket: the node is not running)
+last-stop exit=04 reason=owner core/store fault; process stopped: ...
+```
+
+The second line comes from the `[log] path` file: `run` writes `run
+started` when it starts and `run stopped exit=NN reason=...` when it
+stops. `last-stop none` means the last run was killed (or the machine
+stopped) before it could write its stop line; `last-stop unrecorded` means
+the log has no run line (the node has not run since it was set up, there
+is no `[log] path`, or it last ran an older release). Under systemd, after
+five failed starts in a minute the service stays down (`Start request
+repeated too quickly`); once the cause is fixed, `systemctl restart fn`
+starts it again.
 
 The memory refusals, and what to do:
 
@@ -633,7 +703,10 @@ fn operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
 ### When the store is full
 
 `init` sizes the store for the machine: the more memory, the more room.
-On a small machine that is still about ten thousand short posts. `status`
+On a small machine that is still about seven thousand short posts.
+A store `init` made always starts again on the same machine, however
+full it gets: `init` counts the memory of the store at its limits, not
+of the empty store. `status`
 has a line `capacity articles-left=N`: about how many more posts fit.
 `health` shows `space-pressure` when it gets low.
 
@@ -643,16 +716,24 @@ Nothing is lost. A friend's node that feeds you is told "try later"
 (`436`). It keeps the articles and tries again, and its `health` shows
 `unavailable-peer`.
 
+Each group a post goes to costs room too: about 320 bytes of the
+store's history per group, as well as the post itself. Posting to many
+groups at once is allowed, but paid for. When the post would fit but its
+groups would not, it is refused with
+`441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)`.
+A feeding node is told "try later" (`436`) for this too.
+
 The store's size limits are fixed when it is made. To raise them, move to a
 new store with bigger limits: `store export`, a fresh install, then
 `store import DIR --max-transactions N --max-history-octets N` (see
 [reinstalling](install.md#4-reinstalling) and
 [store settings](#store-settings)).
 
-With the node stopped, `store compact` writes a checkpoint of the store and
-drops the log segments it covers, so the next start opens from the
-checkpoint (`OWNER-OPEN open=checkpoint:N`) instead of replaying the whole
-log. It changes no article. It needs about 4 MiB free.
+The store is a log that grows with each post. Now and then the running
+node saves a summary (a checkpoint) and deletes the parts of the log it
+covers, so a restart reads less. You can do the same by hand, with the node
+stopped. It changes no article, and the next start opens from the
+checkpoint (`OWNER-OPEN open=checkpoint:N`). It needs about 4 MiB free:
 
 ```text
 fn operator /path/to/fn.toml store compact
@@ -712,7 +793,7 @@ A store's size limits are set by `init` and never change. Under a `mission`,
 choose them yourself, or to raise them later through an export:
 
 ```text
-fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters
+fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
 fn operator /path/to/fn.toml store export /srv/fn-archive
 fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
 ```
@@ -721,25 +802,43 @@ Limits: `--max-transactions`, `--max-history-octets`,
 `--max-record-octets`, `--max-article-octets`, `--max-groups-per-article`,
 `--max-open-suffix`, `--max-consumers`, `--max-config-generations`,
 `--max-credentials`. `--profile scale|development|default` names a starting
-set. `init` writes limits you name even when this machine's memory cannot
-hold them, and says so (`within-budget=no`); fn then refuses to run that
+set. When this machine's memory cannot hold the limits you name, `init`
+refuses and makes nothing:
+`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=10866 MB budget=2048 MB`
+(exit code 1). The first number is what the store would need at its
+limits, the second what this machine can give. Choose smaller limits, or,
+to make a store for a bigger machine, name that machine's memory with
+`FN_INIT_BUDGET_MB=16384`: `init` then writes it and says
+`within-budget=no target-budget=16384 MB`, and fn refuses to run that
 store here, with `fn: refused machine-cannot-hold-profile`.
+
+The same variable sizes a store for a memory limit smaller than this
+machine: a service under `MemoryMax=1536M` needs a store `init` made with
+`FN_INIT_BUDGET_MB=1536`, or made by an `init` run under that limit. When
+the named budget is below what this machine gives (an `init` run outside
+the service's limit), `init` writes the store for the named budget and
+warns on stderr with both numbers, exit code 0:
+`fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: the store is sized for FN_INIT_BUDGET_MB, not this machine; run init under the service's memory limit, and give the service at least 1536 MB`.
 
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
-64, 32 or 16 MiB of articles, else 8 MiB. A short post takes about 860
-bytes, so that is about 78,000 posts at the top and about 9,700 at the
-bottom. A friend's feed uses the same room. For more, remove the `mission`
+64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group
+takes about 1,180 bytes (860 for the post, 320 for its group), so that is
+about 56,000 posts at the top and about 7,000 at the bottom. `status`
+shows the limits on its `profile` line and about how many posts still fit
+on its `capacity articles-left=N` line. A friend's feed uses the same room. For more, remove the `mission`
 line from `fn.toml` and `init` with the limits above, or raise them later
 with `store export` and `store import --max-... N`.
-`status` then shows the limits on its `profile` line and about how many
-posts still fit on its `capacity articles-left=N` line.
 
 ### Other commands
 
 - `fn operator CONFIG help VERB`: explains any command.
 - `peer pull NAME SECONDS [ROUNDS]`: fetch from a peer every SECONDS
   (0 stops).
+- `peer catch-up NAME SECONDS`: every SECONDS (0 stops), copy the peer's articles
+  in batches (XFNCATCHUP), each batch checked against the peer's digest before
+  any article is offered to this node's own verdict; the round resumes after a
+  restart ([catching up](peering-with-a-friend.md#catching-up); spec peering 1.2.9).
 - `capacity N`: the room reserved for held articles.
 - `pins`, `obligations`: what the store is holding, and why.
 - `run`: what the service runs.

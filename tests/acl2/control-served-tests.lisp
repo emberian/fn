@@ -142,11 +142,11 @@
 ; C is executed by the author basis; D is owed (U never arrived); O names
 ; no target; the item texts.
 (assert-event
- (and (equal (fn-ctl-control-status *csv-c* *csv-vis* *csv-w* *csv-ws* *csv-verdicts*)
+ (and (equal (fn-ctl-control-status *csv-c* (fn-article-payload *csv-c*) *csv-vis* *csv-w* *csv-ws* *csv-verdicts*)
              (list :executed :author))
-      (equal (fn-ctl-control-status *csv-d* *csv-vis* *csv-w* *csv-ws* *csv-verdicts*)
+      (equal (fn-ctl-control-status *csv-d* (fn-article-payload *csv-d*) *csv-vis* *csv-w* *csv-ws* *csv-verdicts*)
              (list :owed))
-      (equal (fn-ctl-control-status *csv-o* *csv-vis* *csv-w* *csv-ws* *csv-verdicts*)
+      (equal (fn-ctl-control-status *csv-o* (fn-article-payload *csv-o*) *csv-vis* *csv-w* *csv-ws* *csv-verdicts*)
              (list :none))
       (equal (fn-ctl-control-item (list :executed :author) "<t@example.invalid>")
              "executed withdrawal <t@example.invalid> author")
@@ -158,7 +158,7 @@
  (let* ((raw (list *csv-t* *csv-o*))
         (vis (fn-ctl-visible-articles raw *csv-ws* *csv-verdicts*))
         (w (fn-ctl-withdrawn-articles raw *csv-ws* *csv-verdicts*)))
-   (equal (car (fn-ctl-control-status *csv-c* vis w *csv-ws* *csv-verdicts*))
+   (equal (car (fn-ctl-control-status *csv-c* (fn-article-payload *csv-c*) vis w *csv-ws* *csv-verdicts*))
           :executed)))
 (must-fail-checked
  (assert-event

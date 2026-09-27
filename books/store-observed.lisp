@@ -5,7 +5,7 @@
 ; fresh process image detects rollback.  It validates the decoded logical image,
 ; enters the existing :replaying file state with no inherited acknowledgements,
 ; and calls the actual fn-sn-recover transition.  Recovered operation remains
-; gated on five subsequent host fsync observations through fn-sn-io.
+; gated on *fn-sf-recovery-barrier-count* (three) subsequent host fsync observations through fn-sn-io.
 ;
 ; This was the root of every process.  The host now calls
 ; fn-cpo-open-observed (books/config-observed.lisp) on each start
@@ -300,7 +300,7 @@
                 (equal (fn-sf-phase (fn-sn-files st)) :recovering)
                 (natp barriers)
                 (equal (fn-sf-barriers (fn-sn-files st)) barriers)
-                (< barriers 4))
+                (< (1+ barriers) *fn-sf-recovery-barrier-count*))
            (and (fn-sn-statep (fn-sn-io st :recovery-barrier :ok))
                 (equal (fn-sf-phase
                         (fn-sn-files
@@ -318,10 +318,11 @@
                                       fn-sn-update  )
                             (fn-sn-statep fn-sf-statep)))))
 
-(defthm fn-sn-observed-fifth-ok-barrier-is-ready
+(defthm fn-sn-observed-last-ok-barrier-is-ready
   (implies (and (fn-sn-statep st)
                 (equal (fn-sf-phase (fn-sn-files st)) :recovering)
-                (equal (fn-sf-barriers (fn-sn-files st)) 4))
+                (equal (fn-sf-barriers (fn-sn-files st))
+                       (1- *fn-sf-recovery-barrier-count*)))
            (equal (fn-sf-phase
                    (fn-sn-files (fn-sn-io st :recovery-barrier :ok)))
                   :ready))
@@ -341,45 +342,42 @@
            :in-theory (e/d (fn-sn-observed-rebarrier)
                             (fn-sn-io)))))
 
-(defthm fn-sn-observed-four-ok-barriers-remain-recovering
+(defthm fn-sn-observed-ok-barriers-before-the-last-remain-recovering
   (implies (and (fn-sn-statep st)
                 (equal (fn-sf-phase (fn-sn-files st)) :recovering)
                 (equal (fn-sf-barriers (fn-sn-files st)) 0))
            (and (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 0))) :recovering)
                 (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 1))) :recovering)
                 (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 2))) :recovering)
-                (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 3))) :recovering)
-                (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 4))) :recovering)
-                (fn-sn-statep (fn-sn-observed-rebarrier st 4))
-                (equal (fn-sf-barriers (fn-sn-files (fn-sn-observed-rebarrier st 4))) 4)))
+                (fn-sn-statep (fn-sn-observed-rebarrier st 2))
+                (equal (fn-sf-barriers (fn-sn-files (fn-sn-observed-rebarrier st 2)))
+                       (1- *fn-sf-recovery-barrier-count*))))
   :hints (("Goal"
            :use ((:instance fn-sn-observed-one-ok-barrier (st st) (barriers 0))
-                 (:instance fn-sn-observed-one-ok-barrier (st (fn-sn-io st :recovery-barrier :ok)) (barriers 1))
-                 (:instance fn-sn-observed-one-ok-barrier (st (fn-sn-io (fn-sn-io st :recovery-barrier :ok) :recovery-barrier :ok)) (barriers 2))
-                 (:instance fn-sn-observed-one-ok-barrier (st (fn-sn-io (fn-sn-io (fn-sn-io st :recovery-barrier :ok) :recovery-barrier :ok) :recovery-barrier :ok)) (barriers 3)))
+                 (:instance fn-sn-observed-one-ok-barrier (st (fn-sn-io st :recovery-barrier :ok)) (barriers 1)))
            :in-theory (e/d (fn-sn-observed-rebarrier)
                             (fn-sn-observed-one-ok-barrier fn-sn-io
-                             fn-sn-statep fn-sf-statep 
-                              )))))
+                             fn-sn-statep fn-sf-statep)))))
 
-(defthm fn-sn-observed-five-ok-barriers-is-ready
+(defthm fn-sn-observed-all-ok-barriers-is-ready
   (implies (and (fn-sn-statep st)
                 (equal (fn-sf-phase (fn-sn-files st)) :recovering)
                 (equal (fn-sf-barriers (fn-sn-files st)) 0))
            (equal (fn-sf-phase
-                   (fn-sn-files (fn-sn-observed-rebarrier st 5))) :ready))
+                   (fn-sn-files (fn-sn-observed-rebarrier st *fn-sf-recovery-barrier-count*)))
+                  :ready))
   :hints (("Goal"
-           :use ((:instance fn-sn-observed-rebarrier-successor (count 4))
-                 (:instance fn-sn-observed-four-ok-barriers-remain-recovering)
-                 (:instance fn-sn-observed-fifth-ok-barrier-is-ready
-                            (st (fn-sn-observed-rebarrier st 4))))
+           :use ((:instance fn-sn-observed-rebarrier-successor (count 2))
+                 (:instance fn-sn-observed-ok-barriers-before-the-last-remain-recovering)
+                 (:instance fn-sn-observed-last-ok-barrier-is-ready
+                            (st (fn-sn-observed-rebarrier st 2))))
            :in-theory (e/d ()
                             (fn-sn-observed-rebarrier
                              fn-sn-observed-rebarrier-successor
-                             fn-sn-observed-four-ok-barriers-remain-recovering
-                             fn-sn-observed-fifth-ok-barrier-is-ready
-                             fn-sn-statep fn-sf-statep 
-                             fn-sn-io  )))))
+                             fn-sn-observed-ok-barriers-before-the-last-remain-recovering
+                             fn-sn-observed-last-ok-barrier-is-ready
+                             fn-sn-statep fn-sf-statep
+                             fn-sn-io)))))
 
 (defthm fn-sn-open-observed-success-is-state
   (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
@@ -505,10 +503,11 @@
                   (fn-sn-open-error :history)))
   :hints (("Goal" :in-theory (enable fn-sn-open-observed))))
 
-; Four actual successful fsync observations leave recovery closed; the fifth
-; is the first transition to :ready.  No constructor or host result can bypass
+; The actual successful fsync observations before the last leave recovery
+; closed; the last (the third, *fn-sf-recovery-barrier-count*) is the first
+; transition to :ready.  No constructor or host result can bypass
 ; fn-sn-io/fn-sf-recovery-barrier in these statements.
-(defthm fn-sn-open-observed-not-ready-before-five-barriers
+(defthm fn-sn-open-observed-not-ready-before-the-barriers
   (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
            (and
             (equal (fn-sf-phase
@@ -528,52 +527,39 @@
                      (fn-sn-observed-rebarrier
                       (fn-sn-open-state
                        (fn-sn-open-observed groups capacity frontier records)) 2)))
-                   :recovering)
-            (equal (fn-sf-phase
-                    (fn-sn-files
-                     (fn-sn-observed-rebarrier
-                      (fn-sn-open-state
-                       (fn-sn-open-observed groups capacity frontier records)) 3)))
-                   :recovering)
-            (equal (fn-sf-phase
-                    (fn-sn-files
-                     (fn-sn-observed-rebarrier
-                      (fn-sn-open-state
-                       (fn-sn-open-observed groups capacity frontier records)) 4)))
                    :recovering)))
   :hints (("Goal"
            :use ((:instance fn-sn-open-observed-success-is-state)
                  (:instance fn-sn-open-observed-success-remains-recovering)
-                 (:instance fn-sn-observed-four-ok-barriers-remain-recovering
+                 (:instance fn-sn-observed-ok-barriers-before-the-last-remain-recovering
                             (st (fn-sn-open-state
                                  (fn-sn-open-observed groups capacity frontier records)))))
            :in-theory (disable fn-sn-open-observed-success-is-state
                                fn-sn-open-observed-success-remains-recovering
-                               fn-sn-observed-four-ok-barriers-remain-recovering
+                               fn-sn-observed-ok-barriers-before-the-last-remain-recovering
                                fn-sn-open-observed
-                               fn-sn-open-okp fn-sn-observed-rebarrier
-                                ))))
+                               fn-sn-open-okp fn-sn-observed-rebarrier))))
 
-(defthm fn-sn-open-observed-five-barriers-open-ready
+(defthm fn-sn-open-observed-barriers-open-ready
   (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
            (equal (fn-sf-phase
                    (fn-sn-files
                     (fn-sn-observed-rebarrier
                      (fn-sn-open-state
-                      (fn-sn-open-observed groups capacity frontier records)) 5)))
+                      (fn-sn-open-observed groups capacity frontier records))
+                     *fn-sf-recovery-barrier-count*)))
                   :ready))
   :hints (("Goal"
            :use ((:instance fn-sn-open-observed-success-is-state)
                  (:instance fn-sn-open-observed-success-remains-recovering)
-                 (:instance fn-sn-observed-five-ok-barriers-is-ready
+                 (:instance fn-sn-observed-all-ok-barriers-is-ready
                             (st (fn-sn-open-state
                                  (fn-sn-open-observed groups capacity frontier records)))))
            :in-theory (disable fn-sn-open-observed-success-is-state
                                fn-sn-open-observed-success-remains-recovering
-                               fn-sn-observed-five-ok-barriers-is-ready
+                               fn-sn-observed-all-ok-barriers-is-ready
                                fn-sn-open-observed
-                               fn-sn-open-okp fn-sn-observed-rebarrier
-                                ))))
+                               fn-sn-open-okp fn-sn-observed-rebarrier))))
 
 ; =============================================================================
 ; Trace theorems rooted at the observed physical-image entry (folded from
@@ -902,14 +888,14 @@
 ; and the rebarrier helper, and under a name the barrier-counting and
 ; recovery-projection lemmas.  Enabled on include: the open-result record
 ; lemmas, the seed and success keystones, the refusal keystones, the
-; five-barrier keystones, the process-root relation keystone (D6), the
+; recovery-barrier keystones, the process-root relation keystone (D6), the
 ; reopen retention keystones (D5) and the re-rooted trace keystones.
 (deftheory fn-store-observed-vocabulary
   '(fn-sn-recover-replaying-output-is-exact fn-sn-statep-implies-files-statep
-    fn-sn-observed-one-ok-barrier fn-sn-observed-fifth-ok-barrier-is-ready
+    fn-sn-observed-one-ok-barrier fn-sn-observed-last-ok-barrier-is-ready
     fn-sn-observed-rebarrier-successor
-    fn-sn-observed-four-ok-barriers-remain-recovering
-    fn-sn-observed-five-ok-barriers-is-ready
+    fn-sn-observed-ok-barriers-before-the-last-remain-recovering
+    fn-sn-observed-all-ok-barriers-is-ready
     fn-sn-open-observed-success-configuration
     fn-sn-open-observed-success-implies-recoverable-history
     fn-sn-recover-of-recoverable-replaying-is-recovering))

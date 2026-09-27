@@ -218,5 +218,38 @@ class RawPostEntryWitnesses(unittest.TestCase):
                 self.assertIn(b"committed sequence=", posted.stdout)
 
 
+class DtnOperatorSurfaceWitness(unittest.TestCase):
+    """Batch AX: the DTN images do not load host/native/operator-live.lisp.
+
+    Their operator has no executor for `run' (the NNTP service) or `tls'
+    (the control socket) and refuses each by the surface's name, the usage
+    exit, before anything runs; `status' and `health' take the offline arm
+    with a control path configured, and call nothing the image lacks
+    (`tools/host_check.py --load --build host/native/build-dtn.lisp').
+    """
+
+    def test_the_dtn_operator_refuses_what_it_does_not_load_and_reports_offline(self):
+        for image in (DTN, DTN_DEVELOPER):
+            if not (image.is_file() and os.access(image, os.X_OK)):
+                self.skipTest(f"build {image} for the DTN operator witness")
+            with self.subTest(image=image), tempfile.TemporaryDirectory() as tmp:
+                store = Path(tmp) / "store"
+                initialized = invoke(image, "store", str(store), "init", "fn.test")
+                self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+                config = Path(tmp) / "fn.toml"
+                config.write_text('[store]\npath = "{}"\n'.format(store), encoding="ascii")
+                for words, surface in ((("run", "--once"), b"nntp-service"),
+                                       (("tls", "reload"), b"control")):
+                    refused = invoke(image, "operator", str(config), *words)
+                    self.assertEqual(refused.returncode, 5, refused.stderr.decode())
+                    self.assertIn(b"needs the " + surface + b" surface, which this image omits",
+                                  refused.stderr)
+                for verb in ("status", "health"):
+                    report = invoke(image, "operator", str(config), verb)
+                    self.assertNotIn(b"undefined", report.stderr.lower())
+                    self.assertNotIn(b"fault", report.stderr.lower())
+                    self.assertIn(b"operator " + verb.encode(), report.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

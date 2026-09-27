@@ -54,7 +54,7 @@ RECOVERY_CUTS = (
     NativeCut("recover-replayed", "fn-lg-open-program", "n/a", book=LOG_ROUTE_BOOK),
     *(NativeCut("recover-barrier-{}".format(i), "fn-lg-open-program", "n/a",
                 model_name="recover-barrier", occurrence=i, book=LOG_ROUTE_BOOK)
-      for i in range(1, 6)),
+      for i in range(1, 4)),  # *fn-sf-recovery-barrier-count*: journal/, root, parent
     NativeCut("recovery-stage-unlinked", "fn-bs-recover-stage-cleanup-program", "n/a",
               follows="fn-lg-open-program"),
 )
@@ -114,20 +114,13 @@ INIT_PUB_CUTS = tuple(
               book=INIT_PUB_BOOK)
     for c in IMPORT_CUTS)
 
-# The generation checkpoint's publication and selection (host/native/checkpoint.lisp
-# `checkpoint publish/select'), driven by their ACL2 phase machines.  The pack
+# The generation checkpoint's publication and selection cuts (candidate-*,
+# selection-*) went with `checkpoint publish/select' (lane matrix-reds,
+# 2026-09-27: the capture could not represent the flipped node).  The pack
 # chain, the prefix reclaim and the retirement went with the per-file layout
 # (lane log-recovery-2, PKT-838): compaction and reclaim on the log are the
-# checkpoint's rotation and the segments' drop (SEGMENT_PROGRAM_HOSTS below).
-CHECKPOINT_CUTS = (
-    NativeCut("candidate-file", "fn-cpp-publication-step", "absent"),
-    NativeCut("candidate-link", "fn-cpp-publication-step", "either"),
-    NativeCut("candidate-directory", "fn-cpp-publication-step", "present"),
-    NativeCut("selection-file", "fn-cpp-marker-step", "absent"),
-    NativeCut("selection-replace", "fn-cpp-marker-step", "present"),
-    NativeCut("selection-directory", "fn-cpp-marker-step", "present"),
-)
-
+# checkpoint's rotation and the segments' drop (SEGMENT_PROGRAM_HOSTS below);
+# format 9's checkpoint is the state checkpoint (STATE_CHECKPOINT_CUTS).
 
 # The record log (lane w6-log-core; books/store-log-programs.lisp).  Each cut
 # is a named point of one log program, hosted by one function of
@@ -559,18 +552,10 @@ def verify_recovery_order() -> None:
                     cut.follows))
 
 
-def verify_checkpoint_cut_map() -> None:
-    """Every generation-checkpoint cut is a hook of host/native/checkpoint.lisp,
-    and publication and selection share the marker loop (the selection-*
-    cuts).  Compaction and reclaim on the log are checked by
-    verify_log_segment_cut_map (the rotation and the drop)."""
+def verify_compact_is_rotation() -> None:
+    """`store compact' on the log is the state checkpoint's rotation and the
+    covered segments' drop (verify_log_segment_cut_map checks their cuts)."""
     native = (ROOT / "host/native/checkpoint.lisp").read_text()
-    for cut in CHECKPOINT_CUTS:
-        hook = '(fnn-checkpoint-test-stop "{}")'.format(cut.name)
-        if hook not in native:
-            raise AssertionError("native checkpoint cut absent: {}".format(cut.name))
-    if "(fnn-marker-replace " not in host_function(native, "fnn-checkpoint-select"):
-        raise AssertionError("fnn-checkpoint-select does not use the marker loop")
     command = host_function(native, "fnn-command-compact")
     if "(fnn-state-checkpoint-publish-steps store" not in command:
         raise AssertionError("store compact is not the checkpoint's rotation and drop")
@@ -715,10 +700,14 @@ def verify_post_log_cut_map() -> None:
     if not (0 <= order[0] < order[1] < order[2]):
         raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
     pipeline = host_function(owner, "fnn-owner-commit-pipeline")
-    order = [pipeline.find(x) for x in ("(fnn-owner-start-syncer ",
-                                        "(sb-thread:join-thread syncer",
-                                        "(fnn-owner-commit-complete-locked service :complete members deferred)",
-                                        "(fnn-log-seal-open-batch store)")]
+    # The :complete call's member list is the batch's members less those a
+    # stall already released (lane time-model-2: fnn-owner-unreleased), so
+    # it is found by its phase word, not its argument text.
+    complete_at = re.search(r"\(fnn-owner-commit-complete-locked\s+service\s+:complete\s", pipeline)
+    order = [pipeline.find("(fnn-owner-start-syncer "),
+             pipeline.find("(sb-thread:join-thread syncer"),
+             complete_at.start() if complete_at else -1,
+             pipeline.find("(fnn-log-seal-open-batch store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):
         raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
     for cut in POST_LOG_CUTS[3:]:

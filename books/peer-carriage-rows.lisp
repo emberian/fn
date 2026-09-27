@@ -88,13 +88,19 @@
 ; peer is fed every distribution.
 (defconst *fn-pcb-distributions-slot* "outbound-distributions")
 
+; PRF-325: the peer's catch-up interval in seconds (books/peer-catchup.lisp;
+; `peer catch-up NAME SECONDS', 0 stops).  Single-valued: a new interval
+; supersedes the old one on extension.
+(defconst *fn-pcb-catch-up-interval-slot* "catch-up-interval")
+
 (defun fn-pcb-budget-slotp (slot)
   ; The single-valued slots: a new row replaces the old one on extension.
   (declare (xargs :guard t))
   (or (equal slot *fn-pcb-charge-slot*) (equal slot *fn-pcb-count-slot*)
       (equal slot *fn-pcb-pull-interval-slot*)
       (equal slot *fn-pcb-pull-unavailable-slot*)
-      (equal slot *fn-pcb-distributions-slot*)))
+      (equal slot *fn-pcb-distributions-slot*)
+      (equal slot *fn-pcb-catch-up-interval-slot*)))
 
 (defun fn-pcb-slot-memberp (slot rows)
   (declare (xargs :guard t))

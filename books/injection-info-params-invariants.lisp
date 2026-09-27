@@ -792,7 +792,7 @@
 ; KEYSTONE (D25 with parameters; subject books/poster-bytes.lisp
 ; fn-pb-subject, the comparison subject fn-pb-same-articlep reads for the
 ; Store's duplicate test, which host/owner-host.lisp fn-owner-existing-action-
-; buffer runs through the buffer twin fn-pbb-existing-action).  The stored
+; buffer runs through fn-pidx-existing-action's fn-rclb-same-articlep).  The stored
 ; octets of an injection, with whatever parameters the owner writes, have the
 ; same D25 subject as the injection without them: the poster's source.  The
 ; node's Injection-Info line (and its parameters) is injecting-node metadata

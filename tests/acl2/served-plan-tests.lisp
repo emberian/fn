@@ -171,3 +171,25 @@
 (assert-event
  (let ((r (spt-window nil (fn-splan-of-effects *spt-big-effects*) 65536)))
    (and (equal (first r) :ok) (equal (third r) 65536))))
+
+; -----------------------------------------------------------------------------
+; fn-splan-step-handshake-owed (lane served-leftovers): the step the host
+; reads for its handshake.  Reachable positive: a STARTTLS step (the 382 and
+; the effect) that neither closes nor meets the exposure close owes the
+; handshake, and every conjunct of the lemma's conclusion holds.  Each
+; conjunct's failure: a step that also closes (its own :close), one the
+; exposure closes (its 400), and one with no 382 owe none.
+(defconst *spt-382* (list (list :reply '(51 56 50 13 10)) (fn-auth-starttls-effect)))
+(defconst *spt-400* '(52 48 48 13 10))
+(defconst *spt-tls* (fn-splan-step-make *spt-382* nil t nil 10 nil nil))
+(assert-event (fn-splan-step-p *spt-tls*))
+(assert-event (fn-splan-step-handshake-owed *spt-tls*))
+(assert-event (and (fn-splan-step-starttlsp *spt-tls*)
+                   (not (fn-splan-step-closep *spt-tls*))
+                   (not (fn-splan-step-exposure-close *spt-tls*))))
+(assert-event (not (fn-splan-step-handshake-owed
+                    (fn-splan-step-make *spt-382* t t nil 10 nil nil))))
+(assert-event (not (fn-splan-step-handshake-owed
+                    (fn-splan-step-make *spt-382* nil t nil 10 nil *spt-400*))))
+(assert-event (not (fn-splan-step-handshake-owed
+                    (fn-splan-step-make *spt-382* nil nil nil 10 nil nil))))

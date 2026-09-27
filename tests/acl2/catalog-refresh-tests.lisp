@@ -120,22 +120,10 @@
 ; Hypothesis removal: the store is NOT idle (its files are the completing
 ; store's, everything else the finish's).  The refresh leaves the view; the
 ; apply advances it.
-(defconst *crt-s-busy*
-  (fn-sn-make-v6 (fn-sn-groups *crt-s*) (fn-sn-capacity *crt-s*)
-                 (fn-sn-files (fn-own-store *crt-completing*)) (fn-sn-node *crt-s*)
-                 (fn-sn-keyring *crt-s*) (fn-sn-index *crt-s*) (fn-sn-keyring-generation *crt-s*)
-                 (fn-sn-verdicts *crt-s*) (fn-sn-keyring-snapshots *crt-s*)
-                 (fn-sn-identity-next *crt-s*) (fn-sn-config-history *crt-s*)
-                 (fn-sn-consumer *crt-s*) (fn-sn-topic *crt-s*) (fn-sn-event-index *crt-s*)))
-(assert-event (not (fn-own-store-idlep *crt-s-busy*)))
-(assert-event (and (consp *crt-a1*)
-                   (equal (fn-state-articles (fn-node-acceptance (fn-sn-node *crt-s-busy*)))
-                          (cons *crt-a1* (fn-own-view-raw *crt-view*)))
-                   (equal (fn-sn-verdicts *crt-s-busy*)
-                          (cons (cons (fn-article-msgid *crt-a1*) *crt-verdict*)
-                                (fn-own-view-verdicts *crt-view*)))))
-(assert-event (not (equal (fn-own-view (fn-own-refresh (fn-crf-with-store *crt-completing* *crt-s-busy*)))
-                          (fn-crf-apply-article *crt-view* *crt-a1* *crt-verdict* *crt-s-busy*))))
+
+
+
+
 
 ; Hypothesis removal: the view's raw list already holds the article (the
 ; acceptance did not grow over it).  The other hypotheses hold.

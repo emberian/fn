@@ -82,9 +82,9 @@
  (equal (fn-sn-open-observed *fn-so-groups* 10 3 *fn-so-duplicate-admin*)
         '(:error :replay)))
 
-(defconst *fn-so-four*
-  (fn-sn-observed-rebarrier (fn-sn-open-state *fn-so-replayed*) 4))
-(defconst *fn-so-five*
-  (fn-sn-observed-rebarrier (fn-sn-open-state *fn-so-replayed*) 5))
-(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-four*)) :recovering))
-(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-five*)) :ready))
+(defconst *fn-so-two*
+  (fn-sn-observed-rebarrier (fn-sn-open-state *fn-so-replayed*) 2))
+(defconst *fn-so-three*
+  (fn-sn-observed-rebarrier (fn-sn-open-state *fn-so-replayed*) 3))
+(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-two*)) :recovering))
+(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-three*)) :ready))

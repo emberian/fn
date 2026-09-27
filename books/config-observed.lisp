@@ -45,12 +45,13 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                (fn-stx-index-empty)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))
                              topic)
-                            (fn-cei-build events))))
+                            ; field 13 retired (lane history-columns-3)
+                            nil)))
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (eq (car consumer) :ok)
                        (eq (fn-th-at 0 topic) :ok)
@@ -171,7 +172,7 @@
                   (equal (fn-sf-phase (fn-sn-files st)) :recovering)
                   (equal (fn-sf-barriers (fn-sn-files st)) 0)
                   (equal (fn-sn-config-history st) configs)
-                  (equal (fn-sn-event-index st) (fn-cei-build events))
+                  (equal (fn-sn-event-index st) nil)
                   (equal (fn-sn-groups st) (fn-cnode-domain cn))
                   (equal (fn-sn-capacity st)
                          (fn-cfg-capacity
