@@ -66,7 +66,7 @@
 (defthm fn-nov-served-lines-numbered-are-clean
   (implies (or (null server) (fn-xref-serverp server))
            (fn-nov-clean-line-listp
-            (fn-nov-served-lines-numbered numbers nidx trie server)))
+            (fn-nov-served-lines-numbered numbers nidx trie server fn-arena)))
   :hints (("Goal" :in-theory (disable fn-nov-overview fn-nov-served-line
                                       fn-gidx-nidx-number-article
                                       fn-rcl-tombstonep fn-xref-serverp))))

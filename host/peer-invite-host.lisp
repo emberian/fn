@@ -78,9 +78,9 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-invitations (fn-cfg-value (fn-owner-config state)))))
 
-(defun fn-pinv-host-owner-reconfigure (id delta state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-reconfigure-deltas id (list delta) state))
+(defun fn-pinv-host-owner-reconfigure (id delta fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (fn-owner-reconfigure-deltas id (list delta) fn-arena state))
 
 ; PRF-124: the confirm's plan over both documents and the live peers table,
 ; and its record's deltas (the consumption and the peer, one record).
@@ -94,9 +94,9 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))
 
-(defun fn-pinv-host-owner-reconfigure-deltas (id deltas state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-reconfigure-deltas id deltas state))
+(defun fn-pinv-host-owner-reconfigure-deltas (id deltas fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (fn-owner-reconfigure-deltas id deltas fn-arena state))
 
 (defun fn-pinv-host-confirm-request-encode (acceptance invitation)
   (declare (xargs :mode :program))

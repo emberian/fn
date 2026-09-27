@@ -19,8 +19,8 @@
 ; loadable on its own and host/native/build.lisp's order is not a decision.
 (ld "../reader-host.lisp" :ld-error-action :error)
 
-(defun fn-reader-model-octets (chunks state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-reader-model-octets (chunks fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((archive (if (boundp-global 'fn-reader-archive state)
                       (f-get-global 'fn-reader-archive state)
                     nil))
@@ -33,7 +33,7 @@
                   nil))
          (opened (fn-served-open archive 510 8192 config clock clock
                                   (fn-auth-open-config)))
-         (ran (fn-served-run (fn-served-result-conn opened) chunks)))
+         (ran (fn-served-run (fn-served-result-conn opened) chunks fn-arena)))
     (value (fn-served-reply-octets
             (append (fn-served-result-effects opened)
                     (fn-served-result-effects ran))))))

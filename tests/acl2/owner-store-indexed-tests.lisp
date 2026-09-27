@@ -54,10 +54,14 @@
 ; The live Store after the recovery barriers: :ready, indexed, and the
 ; dispatcher binds the signed record (both PRF-132 keystones, antecedent and
 ; conclusion asserted literally).
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-osi-live-owner 6)
+(bpr-lift fn-osi-live-store 6)
 (make-event
  `(defconst *osi-store*
-    ',(fn-osi-live-store *osi-configs* nil *osi-events* *osi-frontier* 4
-                     *osi-barriers*)))
+    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *osi-store*)) :ready))
 (assert-event (fn-sn-statep *osi-store*))
 (assert-event (fn-ceis-indexedp *osi-store*))
@@ -115,10 +119,10 @@
             (:io :record-directory :ok) (:complete))))
 (make-event
  `(defconst *osi-before*
-    ',(fn-osi-live-store *osi-configs* nil *osi-enrolment* 1 4 *osi-barriers*)))
+    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-enrolment* 1 4 *osi-barriers*)))
 (make-event
  `(defconst *osi-after*
-    ',(fn-osi-live-store *osi-configs* nil *osi-enrolment* 1 4 *osi-commit*)))
+    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-enrolment* 1 4 *osi-commit*)))
 (assert-event (fn-ceis-indexedp *osi-before*))
 (assert-event (equal (fn-bpaj-dispatch-fast *bsb-joined* *osi-before*
                                             *bsb-request-octets* 1)
@@ -304,8 +308,7 @@
 ; both checks.
 (make-event
  `(defconst *osi-live-oc*
-    ',(fn-osi-live-owner *osi-configs* nil *osi-events* *osi-frontier* 4
-                         *osi-barriers*)))
+    ',(in-arena-fn-osi-live-owner *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers*)))
 (defconst *osi-live-oc-store* (fn-own-store (fn-ocfg-owner *osi-live-oc*)))
 (assert-event (equal *osi-live-oc-store* *osi-store*))
 (assert-event (fn-ocl-relation *osi-live-oc*))

@@ -204,7 +204,11 @@
   (list (list :reconfigure 6 (list (fn-lb-binding-delta *lblt-guest* nil)))))
 (assert-event (fn-ocfg-pin-find 5 (fn-ocfg-pins *lblt-oc*)))
 (assert-event (not (fn-ocfg-repins-forp 5 *lblt-events*)))
-(defmacro lblt-run () '(fn-ocfg-run *lblt-oc* *lblt-events*))
+(defmacro lblt-run () '(in-arena-fn-ocfg-run *sr-arena* *lblt-oc* *lblt-events*))
+(include-book "arena-lift")
+;; *sr-arena* (no payload: no byte is read here) is config-owner-live-tests'.
+(bpr-lift fn-ocfg-run 2)
+(bpr-lift fn-ocfg-step 2)
 (assert-event
  (with-guard-checking :none
   (equal (fn-lb-inflight-id (fn-ocfg-owner (lblt-run))) 5)))
@@ -240,10 +244,10 @@
 (must-fail
  (defthm lblt-pinned-without-no-repin
    (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-                 (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events))) id))
-            (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events) received)
-                   (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events))
-                                     (fn-ocfg-config (fn-ocfg-run oc events))
+                 (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))) id))
+            (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events fn-arena) received)
+                   (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))
+                                     (fn-ocfg-config (fn-ocfg-run oc events fn-arena))
                                      (fn-lb-conn-bindings oc id)
                                      received)))
    :hints (("Goal" :in-theory (disable fn-ocfg-run fn-lb-owner-gate)))))
@@ -252,9 +256,9 @@
  (defthm lblt-pinned-without-inflight
    (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
                  (not (fn-ocfg-repins-forp id events)))
-            (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events) received)
-                   (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events))
-                                     (fn-ocfg-config (fn-ocfg-run oc events))
+            (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events fn-arena) received)
+                   (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))
+                                     (fn-ocfg-config (fn-ocfg-run oc events fn-arena))
                                      (fn-lb-conn-bindings oc id)
                                      received)))
    :hints (("Goal" :in-theory (disable fn-ocfg-run fn-lb-owner-gate)))))
@@ -262,10 +266,10 @@
 (must-fail
  (defthm lblt-pinned-without-pin
    (implies (and (not (fn-ocfg-repins-forp id events))
-                 (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events))) id))
-            (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events) received)
-                   (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events))
-                                     (fn-ocfg-config (fn-ocfg-run oc events))
+                 (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))) id))
+            (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events fn-arena) received)
+                   (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))
+                                     (fn-ocfg-config (fn-ocfg-run oc events fn-arena))
                                      (fn-lb-conn-bindings oc id)
                                      received)))
    :hints (("Goal" :in-theory (disable fn-ocfg-run fn-lb-owner-gate)))))
@@ -278,15 +282,13 @@
 (defconst *lblt-max* 32768)
 (defconst *lblt-0* (fn-ocfg-make (fn-own-start *cpo-t-ready* 4) *ocl-t-cfg* nil nil))
 (defconst *lblt-clocked*
-  (fn-ocfg-step *lblt-0*
-                (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
+  (in-arena-fn-ocfg-step *sr-arena* *lblt-0* (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
 (defconst *lblt-a* (cdr (fn-ocfg-open *lblt-clocked* nil)))
 (defconst *lblt-admin* (cdr (fn-ocfg-open *lblt-a* nil)))
 (defconst *lblt-pairs-q* (list (cons *lblt-name* *lblt-q*)))
 (defconst *lblt-file-q* (list (cons *lblt-name* *lblt-q*)))
 (defconst *lblt-staged*
-  (fn-ocfg-step *lblt-admin*
-                (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+  (in-arena-fn-ocfg-step *sr-arena* *lblt-admin* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
 (assert-event (fn-ocfg-staged *lblt-staged*))
 (defconst *lblt-pub*
   (mv-list 2 (fn-ocl-publish *lblt-staged*
@@ -329,7 +331,7 @@
 (must-fail
  (defthm lblt-anew-without-durable
    (let* ((staged (fn-ocfg-step oc (list :reconfigure other
-                                         (fn-lb-pairs-deltas pairs))))
+                                         (fn-lb-pairs-deltas pairs)) fn-arena))
           (result (fn-ocl-publish staged generation max-octets))
           (published (mv-nth 1 result))
           (opened (cdr (fn-ocfg-open published acfg)))
@@ -371,10 +373,8 @@
 ; (1) Nothing staged before: OC already stages ember -> P.  The re-binding
 ; to Q does not replace it; the durable record binds P.
 (defconst *lblt-p-pairs* (list (cons *lblt-name* *lblt-p*)))
-(defconst *lblt-oc1* (fn-ocfg-step *lblt-admin*
-                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-p-pairs*))))
-(defconst *lblt-st1* (fn-ocfg-step *lblt-oc1*
-                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(defconst *lblt-oc1* (in-arena-fn-ocfg-step *sr-arena* *lblt-admin* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-p-pairs*))))
+(defconst *lblt-st1* (in-arena-fn-ocfg-step *sr-arena* *lblt-oc1* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
 (defconst *lblt-pub1*
   (mv-list 2 (fn-ocl-publish *lblt-st1* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st1*))
                              *lblt-max*)))
@@ -395,8 +395,7 @@
   (fn-ocfg-make (fn-ocfg-owner *lblt-admin*) (fn-ocfg-config *lblt-admin*)
                 (fn-ocfg-pin-add 2 (fn-ocfg-config *lblt-admin*) (fn-ocfg-pins *lblt-admin*))
                 nil))
-(defconst *lblt-st4* (fn-ocfg-step *lblt-oc4*
-                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(defconst *lblt-st4* (in-arena-fn-ocfg-step *sr-arena* *lblt-oc4* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
 (defconst *lblt-pub4*
   (mv-list 2 (fn-ocl-publish *lblt-st4* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st4*))
                              *lblt-max*)))
@@ -414,8 +413,7 @@
 ; opened before the re-binding), so the open after the publication admits
 ; nothing and no pin is made for the identifier.
 (defconst *lblt-oc5* (cdr (fn-ocfg-open (cdr (fn-ocfg-open *lblt-admin* nil)) nil)))
-(defconst *lblt-st5* (fn-ocfg-step *lblt-oc5*
-                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(defconst *lblt-st5* (in-arena-fn-ocfg-step *sr-arena* *lblt-oc5* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
 (defconst *lblt-pub5*
   (mv-list 2 (fn-ocl-publish *lblt-st5* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st5*))
                              *lblt-max*)))
@@ -443,8 +441,7 @@
 (defconst *lblt-oc3*
   (fn-ocfg-make (fn-ocfg-owner (cadr *lblt-pubp*)) (fn-ocfg-config *lblt-admin*)
                 (fn-ocfg-pins (cadr *lblt-pubp*)) nil))
-(defconst *lblt-st3* (fn-ocfg-step *lblt-oc3*
-                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
+(defconst *lblt-st3* (in-arena-fn-ocfg-step *sr-arena* *lblt-oc3* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
 (assert-event (not (fn-ocl-config-historyp *lblt-st3*)))
 (assert-event (equal (car (mv-list 2 (fn-ocl-publish *lblt-st3*
                                                      (fn-cfg-record-generation
@@ -452,8 +449,7 @@
                                                      *lblt-max*)))
                      :recovery-required))
 (defconst *lblt-bad-pairs* (list (cons *lblt-name* (make-list 31 :initial-element 9))))
-(defconst *lblt-st6* (fn-ocfg-step *lblt-admin*
-                                   (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-bad-pairs*))))
+(defconst *lblt-st6* (in-arena-fn-ocfg-step *sr-arena* *lblt-admin* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-bad-pairs*))))
 (assert-event (not (fn-lb-pairs-okp *lblt-bad-pairs*)))
 (assert-event (fn-lb-pairs-targetp *lblt-bad-pairs* *lblt-bad-pairs*))
 (assert-event (not (fn-ocfg-staged *lblt-st6*)))

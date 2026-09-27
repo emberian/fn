@@ -43,8 +43,8 @@
                          (or (fn-nntp-keywordp keyword "ARTICLE")
                              (fn-nntp-keywordp keyword "HEAD")))))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
-                  (fn-nntp-archive-command session archive env keyword args)))
+                   session archive index verdicts env keyword args fn-arena)
+                  (fn-nntp-archive-command session archive env keyword args fn-arena)))
   :hints (("Goal"
            :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-xref-reply
                             fn-rcompat-reply
@@ -74,10 +74,10 @@
                 (or (fn-nntp-keywordp keyword "ARTICLE")
                     (fn-nntp-keywordp keyword "HEAD")))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
+                   session archive index verdicts env keyword args fn-arena)
                   (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index)
                                         (fn-rcompat-retrieval-kind keyword)
-                                        args (fn-nntp-xref-server env))))
+                                        args (fn-nntp-xref-server env) fn-arena)))
   :hints (("Goal"
            :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-xref-reply
                             fn-rcompat-reply fn-nntp-keywordp)

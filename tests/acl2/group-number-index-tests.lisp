@@ -191,26 +191,26 @@
 (defconst *tgn-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *tgn-state*) "fn.one" 2))
 (defconst *tgn-range* (fn-nntp-string-octets "1-2147483647"))
+(include-book "arena-lift")
+;; The arena: handles 0, 1, 2 = A's, B's and C's bytes.
+(defconst *sr-arena*
+  (list (fn-tgn-payload "<tgn-a@example.invalid>" "A")
+        (fn-tgn-payload "<tgn-b@example.invalid>" "B")
+        (fn-tgn-payload "<tgn-c@example.invalid>" "C")))
+(bpr-lift fn-nntp-over-range-indexed 5)
+(bpr-lift fn-nntp-over-range-walk 5)
+(bpr-lift fn-nov-lines-for-numbers-numbered 3)
 (assert-event
  (and (fn-gidx-numbers-okp *tgn-new-buckets*)
-      (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-new-buckets*
-                                         *tgn-trie* *tgn-range* nil)
-             (fn-nntp-over-range-walk *tgn-session* *tgn-new-buckets*
-                                      *tgn-trie* *tgn-range* nil))
-      (equal (len (fn-nov-lines-for-numbers-numbered
-                   '(2 3 2147483647)
-                   (fn-gidx-bucket-numbers "fn.one" *tgn-new-buckets*)
-                   *tgn-trie*))
+      (equal (in-arena-fn-nntp-over-range-indexed *sr-arena* *tgn-session* *tgn-new-buckets* *tgn-trie* *tgn-range* nil)
+             (in-arena-fn-nntp-over-range-walk *sr-arena* *tgn-session* *tgn-new-buckets* *tgn-trie* *tgn-range* nil))
+      (equal (len (in-arena-fn-nov-lines-for-numbers-numbered *sr-arena* '(2 3 2147483647) (fn-gidx-bucket-numbers "fn.one" *tgn-new-buckets*) *tgn-trie*))
              3)))
 (assert-event
  (and (not (fn-gidx-numbers-okp *tgn-corrupt-buckets*))
-      (not (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-corrupt-buckets*
-                                              *tgn-trie* *tgn-range* nil)
-                  (fn-nntp-over-range-walk *tgn-session* *tgn-corrupt-buckets*
-                                           *tgn-trie* *tgn-range* nil)))))
+      (not (equal (in-arena-fn-nntp-over-range-indexed *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil)
+                  (in-arena-fn-nntp-over-range-walk *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil)))))
 (must-fail
  (defthm fn-tgn-over-range-without-relation
-   (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-corrupt-buckets*
-                                      *tgn-trie* *tgn-range* nil)
-          (fn-nntp-over-range-walk *tgn-session* *tgn-corrupt-buckets*
-                                   *tgn-trie* *tgn-range* nil))))
+   (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil fn-arena)
+          (fn-nntp-over-range-walk *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil fn-arena))))

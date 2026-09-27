@@ -275,8 +275,9 @@
                       (fn-find-article "<a5@fn.invalid>" *nn-articles*))
                      820540800))
 
-(defun nn-ids (groups threshold horizon)
-  (fn-nntp-newnews-scan groups threshold *nn-articles* horizon))
+(defun nn-ids (groups threshold horizon fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-nntp-newnews-scan groups threshold *nn-articles* horizon fn-arena))
 
 (defconst *nn-a1-article* (fn-find-article "<a1@fn.invalid>" *nn-articles*))
 (defconst *nn-a3-article* (fn-find-article "<a3@fn.invalid>" *nn-articles*))
@@ -285,25 +286,31 @@
 
 ; At the owner's stamped second the article qualifies; one second later it
 ; does not.  a5 has no Date header, but its accepted stamp still decides.
-(assert-event (equal (nn-ids '("fn.letters") *nn-midnight* :none)
+(include-book "arena-lift")
+;; The arena: handles 0..4 = *nn-a1-payload*..*nn-a5-payload*, 5 = the 32 KiB
+;; zero payload (*nn-large-payload*, defined below).
+(defconst *sr-arena*
+  (list *nn-a1-payload* *nn-a2-payload* *nn-a3-payload* *nn-a4-payload*
+        *nn-a5-payload* (make-list 32768 :initial-element 0)))
+(bpr-lift fn-nntp-newnews-accepted-since 5)
+(bpr-lift fn-nntp-newnews-scan 4)
+(bpr-lift fn-nntp-newnews-without-payload 1)
+(bpr-lift fn-nntp-step 4)
+(bpr-lift nn-ids 3)
+(assert-event (equal (in-arena-nn-ids *sr-arena* '("fn.letters") *nn-midnight* :none)
                      (list *nn-a4-id* *nn-a1-id*)))
-(assert-event (equal (nn-ids *nn-groups* *nn-midnight* :none)
+(assert-event (equal (in-arena-nn-ids *sr-arena* *nn-groups* *nn-midnight* :none)
                      (list *nn-a4-id* *nn-a3-id* *nn-a1-id*)))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") *nn-january*
-                      (list *nn-a5-article*) :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") *nn-january* (list *nn-a5-article*) :none)
                      (list *nn-a5-id*)))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") (+ *nn-january* 1000)
-                      (list *nn-a5-article*) :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") (+ *nn-january* 1000) (list *nn-a5-article*) :none)
                      nil))
-(assert-event (equal (nn-ids '("fn.letters") *nn-afternoon* :none)
+(assert-event (equal (in-arena-nn-ids *sr-arena* '("fn.letters") *nn-afternoon* :none)
                      (list *nn-a4-id*)))
-(assert-event (equal (nn-ids '("fn.letters")
-                             (fn-nntp-civil-dtn-ms 2026 9 20 0 0 0) :none)
+(assert-event (equal (in-arena-nn-ids *sr-arena* '("fn.letters") (fn-nntp-civil-dtn-ms 2026 9 20 0 0 0) :none)
                      nil))
 (assert-event (fn-nov-clean-line-listp
-               (nn-ids '("fn.letters") *nn-midnight* :none)))
+               (in-arena-nn-ids *sr-arena* '("fn.letters") *nn-midnight* :none)))
 
 (defun nn-with-stamp (a stamp)
   (fn-make-article (fn-article-msgid a) (fn-article-payload a)
@@ -313,39 +320,25 @@
 ; The newest stamped article is outside the matched group but still supplies
 ; the nearest later-acceptance horizon for this older legacy article.
 (defconst *nn-mixed* (list *nn-a3-article* *nn-legacy*))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") *nn-noon* *nn-mixed* :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") *nn-noon* *nn-mixed* :none)
                      (list *nn-a5-id*)))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") (+ *nn-noon* 1000) *nn-mixed* :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") (+ *nn-noon* 1000) *nn-mixed* :none)
                      nil))
 ; A lone legacy article uses the reader's pinned wall, or stays visible
 ; without any wall.  The served path does not guess from its payload.
 (assert-event (equal (fn-nntp-newnews-reader-horizon *nn-env*) 843136496))
 (assert-event (equal (fn-nntp-newnews-reader-horizon *nn-blind-env*) :none))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") 843136496000
-                      (list *nn-legacy*)
-                      (fn-nntp-newnews-reader-horizon *nn-env*))
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") 843136496000 (list *nn-legacy*) (fn-nntp-newnews-reader-horizon *nn-env*))
                      (list *nn-a5-id*)))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") 843136497000
-                      (list *nn-legacy*)
-                      (fn-nntp-newnews-reader-horizon *nn-env*))
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") 843136497000 (list *nn-legacy*) (fn-nntp-newnews-reader-horizon *nn-env*))
                      nil))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") 999999999999
-                      (list *nn-legacy*)
-                      (fn-nntp-newnews-reader-horizon *nn-blind-env*))
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") 999999999999 (list *nn-legacy*) (fn-nntp-newnews-reader-horizon *nn-blind-env*))
                      (list *nn-a5-id*)))
 
 ; Both sides of the independent filter equation make real decisions.
-(assert-event (equal (fn-nntp-newnews-accepted-since
-                      '("fn.letters") *nn-midnight* *nn-articles* nil :none)
-                     (nn-ids '("fn.letters") *nn-midnight* :none)))
-(assert-event (equal (fn-nntp-newnews-accepted-since
-                      '("fn.letters") (+ *nn-noon* 1000)
-                      *nn-articles* nil :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-accepted-since *sr-arena* '("fn.letters") *nn-midnight* *nn-articles* nil :none)
+                     (in-arena-nn-ids *sr-arena* '("fn.letters") *nn-midnight* :none)))
+(assert-event (equal (in-arena-fn-nntp-newnews-accepted-since *sr-arena* '("fn.letters") (+ *nn-noon* 1000) *nn-articles* nil :none)
                      (list *nn-a4-id*)))
 (local
  (must-fail
@@ -354,25 +347,23 @@
 (local
  (must-fail
   (defthm nn-teeth-every-stamp-is-new
-    (equal (nn-ids '("fn.letters") (+ *nn-noon* 1000) :none)
-           (nn-ids '("fn.letters") *nn-midnight* :none)))))
+    (equal (nn-ids '("fn.letters") (+ *nn-noon* 1000) :none fn-arena)
+           (nn-ids '("fn.letters") *nn-midnight* :none fn-arena)))))
 (local
  (must-fail
   (defthm nn-teeth-payload-decides-the-answer
     (not (equal
-          (fn-nntp-newnews-scan
-           '("fn.letters") *nn-midnight*
-           (fn-nntp-newnews-without-payload *nn-articles*) :none)
-          (nn-ids '("fn.letters") *nn-midnight* :none))))))
+          (fn-nntp-newnews-scan '("fn.letters") *nn-midnight* (fn-nntp-newnews-without-payload *nn-articles* fn-arena) :none fn-arena)
+          (nn-ids '("fn.letters") *nn-midnight* :none fn-arena))))))
 (assert-event (equal (fn-nntp-newnews-candidate-count
                       '("fn.letters") *nn-articles*) 4))
-(assert-event (equal (len (nn-ids '("fn.letters") *nn-midnight* :none)) 2))
+(assert-event (equal (len (in-arena-nn-ids *sr-arena* '("fn.letters") *nn-midnight* :none)) 2))
 (local
  (must-fail
   (defthm nn-teeth-lines-exceed-candidates
     (< (fn-nntp-newnews-candidate-count
         '("fn.letters") *nn-articles*)
-       (len (nn-ids '("fn.letters") *nn-midnight* :none))))))
+       (len (nn-ids '("fn.letters") *nn-midnight* :none fn-arena))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-nntp-step-dispatches-newnews-to-the-newnews-response: one ground case
@@ -438,9 +429,9 @@
                                 "NEWNEWS"))
 
 (defmacro nn-dispatch-claim (session line)
-  `(equal (fn-nntp-step ,session *nn-archive* *nn-env* (list :command ,line))
+  `(equal (fn-nntp-step ,session *nn-archive* *nn-env* (list :command ,line) fn-arena)
           (fn-nntp-newnews-response ,session *nn-archive* *nn-env*
-                                    (cdr (fn-nntp-tokenize ,line)))))
+                                    (cdr (fn-nntp-tokenize ,line)) fn-arena)))
 
 ; The witness: with every hypothesis met the two sides are the same object.
 (assert-event (nn-dispatch-claim *nn-session* *nn-line-letters*))
@@ -475,7 +466,7 @@
 
 (defmacro nn-reply (env line)
   `(fn-nntp-result-effects
-    (fn-nntp-step *nn-session* *nn-archive* ,env (list :command ,line))))
+    (in-arena-fn-nntp-step *sr-arena* *nn-session* *nn-archive* ,env (list :command ,line))))
 
 (defun nn-only-reply (effects)
   (and (consp effects)
@@ -517,8 +508,7 @@
 (assert-event (fn-nntp-effectsp (nn-reply *nn-env* *nn-line-badwildmat*)))
 ; RFC 3977 section 7.4.2 assigns NEWNEWS no state change, and it makes none.
 (assert-event (equal (fn-nntp-result-session
-                      (fn-nntp-step *nn-session* *nn-archive* *nn-env*
-                                    (list :command *nn-line-letters*)))
+                      (in-arena-fn-nntp-step *sr-arena* *nn-session* *nn-archive* *nn-env* (list :command *nn-line-letters*)))
                      *nn-session*))
 
 ; -----------------------------------------------------------------------------
@@ -541,14 +531,9 @@
 ; under it are the 32 KiB payload.
 (assert-event (equal (fn-article-payload *nn-large-article*) *nn-large-handle*))
 (assert-event (equal (len *nn-large-payload*) 32768))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") *nn-noon*
-                      (list *nn-large-article*) :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") *nn-noon* (list *nn-large-article*) :none)
                      (list *nn-a1-id*)))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") *nn-noon*
-                      (fn-nntp-newnews-without-payload
-                       (list *nn-large-article*)) :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") *nn-noon* (in-arena-fn-nntp-newnews-without-payload *sr-arena* (list *nn-large-article*)) :none)
                      (list *nn-a1-id*)))
 
 ; A candidate-free archive of 300 articles has a complete empty answer.  No
@@ -573,14 +558,11 @@
 (assert-event (equal (fn-nntp-newnews-candidate-count
                       '("fn.letters")
                       (fn-state-articles *nn-bulk-archive*)) 0))
-(assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") *nn-midnight*
-                      (fn-state-articles *nn-bulk-archive*) :none)
+(assert-event (equal (in-arena-fn-nntp-newnews-scan *sr-arena* '("fn.letters") *nn-midnight* (fn-state-articles *nn-bulk-archive*) :none)
                      nil))
 (defconst *nn-bulk-session* (fn-nntp-open-session *nn-bulk-archive*))
 (assert-event
  (equal (nn-only-reply
          (fn-nntp-result-effects
-          (fn-nntp-step *nn-bulk-session* *nn-bulk-archive* *nn-env*
-                        (list :command *nn-line-letters*))))
+          (in-arena-fn-nntp-step *sr-arena* *nn-bulk-session* *nn-bulk-archive* *nn-env* (list :command *nn-line-letters*))))
         *nn-expected-empty-reply*))

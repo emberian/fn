@@ -261,18 +261,18 @@
                                       fn-peer-single fn-peer-msgid-argp))))
 
 (defun fn-pix-peer-step-pinned
-    (ps trie arts archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (ps trie arts archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((not (fn-peer-sessionp ps)) (fn-post-make-result ps nil nil))
    ((null (fn-peer-session-peer ps))
     (fn-peer-delegate-pinned ps archive index verdicts config observation
-                             injection wire-event))
+                             injection wire-event fn-arena))
    ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
     (fn-peer-delegate-pinned ps archive index verdicts config observation
-                             injection wire-event))
+                             injection wire-event fn-arena))
    ((fn-peer-session-transfer ps)
-    (fn-peer-step ps archive config observation injection wire-event))
+    (fn-peer-step ps archive config observation injection wire-event fn-arena))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
          (consp (cdr wire-event))
@@ -285,19 +285,19 @@
           (let ((r (fn-pix-peer-command ps (car tokens) (cdr tokens) trie arts)))
             (if r r
               (fn-peer-delegate-pinned ps archive index verdicts config
-                                       observation injection wire-event)))
+                                       observation injection wire-event fn-arena)))
         (fn-peer-delegate-pinned ps archive index verdicts config observation
-                                 injection wire-event))))
+                                 injection wire-event fn-arena))))
    (t (fn-peer-delegate-pinned ps archive index verdicts config observation
-                               injection wire-event))))
+                               injection wire-event fn-arena))))
 
 (defthm fn-pix-peer-step-pinned-is-peer-step-pinned
   (implies (fn-midx-correspondencep trie arts)
            (equal (fn-pix-peer-step-pinned ps trie arts archive index verdicts
                                            config observation injection
-                                           wire-event)
+                                           wire-event fn-arena)
                   (fn-peer-step-pinned ps archive index verdicts config
-                                       observation injection wire-event)))
+                                       observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-pix-peer-step-pinned fn-peer-step-pinned)
                                   (fn-pix-peer-command fn-peer-command
                                    fn-peer-sessionp fn-midx-correspondencep
@@ -325,24 +325,25 @@
 ; guard-verified.  books/served-carried.lisp fn-scar-peer-step-pinned calls
 ; the top one for a reader session.
 
-(defun fn-pix-msgid-retrieval-indexed (session archive index kind token)
+(defun fn-pix-msgid-retrieval-indexed (session archive index kind token fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (fn-nntp-message-id-tokenp token))
       (fn-nntp-single session "501 syntax error")
     ; A raw direct caller can supply a dotted token accepted by the older
     ; token predicate.  Wire tokenization never does, but retaining the old
     ; answer on that malformed shape makes this refinement unconditional.
     (if (not (fn-octet-listp token))
-        (fn-nntp-msgid-retrieval session archive kind token)
+        (fn-nntp-msgid-retrieval session archive kind token fn-arena)
       (let ((article (fn-mxc-lookup (fn-nntp-token-string token) index)))
         (if (consp article)
             (fn-nntp-article-response
              session article (fn-nntp-msgid-local-number session article)
-             kind nil nil)
+             kind nil nil fn-arena)
           (fn-nntp-single session "430 no article with that message-id"))))))
 
 (defthm fn-pix-msgid-retrieval-indexed-is-msgid-retrieval-indexed
-  (equal (fn-pix-msgid-retrieval-indexed session archive index kind token)
-         (fn-nntp-msgid-retrieval-indexed session archive index kind token))
+  (equal (fn-pix-msgid-retrieval-indexed session archive index kind token fn-arena)
+         (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-pix-msgid-retrieval-indexed fn-nntp-msgid-retrieval-indexed
                                 fn-midx-concrete-lookup-is-lookup)
@@ -351,9 +352,10 @@
 (verify-guards fn-pix-msgid-retrieval-indexed)
 
 (defun fn-pix-archive-command-pinned
-    (session archive index verdicts env keyword args)
+    (session archive index verdicts env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   ;; R3 (PRF-206): the Xref arms first (books/nntp-xref.lisp).
-  (let ((xref (fn-nntp-xref-reply session archive index env keyword args)))
+  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -379,8 +381,8 @@
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
        ;; PRF-243: the served compatibility arms, as in the dispatcher.
-       ((fn-rcompat-reply session archive index env keyword args)
-        (fn-rcompat-reply session archive index env keyword args))
+       ((fn-rcompat-reply session archive index env keyword args fn-arena)
+        (fn-rcompat-reply session archive index env keyword args fn-arena))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")
@@ -393,7 +395,7 @@
                ((fn-nntp-keywordp keyword "HEAD") :head)
                ((fn-nntp-keywordp keyword "BODY") :body)
                (t :stat))
-         (car args)))
+         (car args) fn-arena))
        ((and (fn-nntp-keywordp keyword "LISTGROUP")
              (fn-gidx-pinp index))
         (fn-gidx-listgroup-command
@@ -405,7 +407,7 @@
              (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
         (fn-nntp-over-range-indexed
          session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
-         (car args) (fn-nntp-keywordp keyword "XOVER")))
+         (car args) (fn-nntp-keywordp keyword "XOVER") fn-arena))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
@@ -418,11 +420,11 @@
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
         (fn-nntp-enrollment-hdr-response session archive index verdicts args))
-       (t (fn-nntp-archive-command session archive env keyword args))))))
+       (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
 (defthm fn-pix-archive-command-pinned-is-archive-command-pinned
-  (equal (fn-pix-archive-command-pinned session archive index verdicts env keyword args)
-         (fn-nntp-archive-command-pinned session archive index verdicts env keyword args))
+  (equal (fn-pix-archive-command-pinned session archive index verdicts env keyword args fn-arena)
+         (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-pix-archive-command-pinned fn-nntp-archive-command-pinned
                                 fn-pix-msgid-retrieval-indexed-is-msgid-retrieval-indexed)
@@ -430,7 +432,8 @@
 
 (verify-guards fn-pix-archive-command-pinned)
 
-(defun fn-pix-command-pinned (session archive index verdicts env tokens)
+(defun fn-pix-command-pinned (session archive index verdicts env tokens fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
@@ -439,12 +442,12 @@
           (fn-nntp-session-command session env keyword args)
         (if (fn-nntp-session-projected session)
             (fn-pix-archive-command-pinned
-             session archive index verdicts env keyword args)
+             session archive index verdicts env keyword args fn-arena)
           (fn-nntp-single session "503 archive projection unavailable"))))))
 
 (defthm fn-pix-command-pinned-is-command-pinned
-  (equal (fn-pix-command-pinned session archive index verdicts env tokens)
-         (fn-nntp-command-pinned session archive index verdicts env tokens))
+  (equal (fn-pix-command-pinned session archive index verdicts env tokens fn-arena)
+         (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-pix-command-pinned fn-nntp-command-pinned
                                 fn-pix-archive-command-pinned-is-archive-command-pinned)
@@ -452,7 +455,8 @@
 
 (verify-guards fn-pix-command-pinned)
 
-(defun fn-pix-step-pinned (session archive index verdicts env wire-event)
+(defun fn-pix-step-pinned (session archive index verdicts env wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (or (not (fn-nntp-sessionp session))
           (not (equal (fn-nntp-session-openp session) t)))
       (fn-nntp-make-result session nil)
@@ -467,13 +471,13 @@
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
                   (fn-pix-command-pinned
-                   session archive index verdicts env tokens)
+                   session archive index verdicts env tokens fn-arena)
                 (fn-nntp-single session "501 syntax error")))))
       (fn-nntp-single session "501 syntax error"))))
 
 (defthm fn-pix-step-pinned-is-step-pinned
-  (equal (fn-pix-step-pinned session archive index verdicts env wire-event)
-         (fn-nntp-step-pinned session archive index verdicts env wire-event))
+  (equal (fn-pix-step-pinned session archive index verdicts env wire-event fn-arena)
+         (fn-nntp-step-pinned session archive index verdicts env wire-event fn-arena))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-pix-step-pinned fn-nntp-step-pinned
                                 fn-pix-command-pinned-is-command-pinned)
@@ -482,14 +486,14 @@
 (verify-guards fn-pix-step-pinned)
 
 (defun fn-pix-post-step-pinned
-    (ps archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (ps archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (or (not (fn-post-sessionp ps)) (fn-post-session-awaiting ps))
-      (fn-nntp-post-step ps archive config observation injection wire-event)
+      (fn-nntp-post-step ps archive config observation injection wire-event fn-arena)
     (let ((r (fn-pix-step-pinned
               (fn-post-session-base ps) archive index verdicts
               (fn-post-reader-env config observation)
-              wire-event)))
+              wire-event fn-arena)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)
               (fn-post-make-result
@@ -503,8 +507,8 @@
          (fn-nntp-result-effects r) nil)))))
 
 (defthm fn-pix-post-step-pinned-is-post-step-pinned
-  (equal (fn-pix-post-step-pinned ps archive index verdicts config observation injection wire-event)
-         (fn-nntp-post-step-pinned ps archive index verdicts config observation injection wire-event))
+  (equal (fn-pix-post-step-pinned ps archive index verdicts config observation injection wire-event fn-arena)
+         (fn-nntp-post-step-pinned ps archive index verdicts config observation injection wire-event fn-arena))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-pix-post-step-pinned fn-nntp-post-step-pinned
                                 fn-pix-step-pinned-is-step-pinned)
@@ -513,18 +517,18 @@
 (verify-guards fn-pix-post-step-pinned)
 
 (defun fn-pix-peer-delegate-pinned
-    (ps archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (ps archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((r (fn-pix-post-step-pinned
             (fn-peer-session-base ps) archive index verdicts config
-            observation injection wire-event)))
+            observation injection wire-event fn-arena)))
     (fn-post-make-result (fn-peer-with-base ps (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
 
 (defthm fn-pix-peer-delegate-pinned-is-peer-delegate-pinned
-  (equal (fn-pix-peer-delegate-pinned ps archive index verdicts config observation injection wire-event)
-         (fn-peer-delegate-pinned ps archive index verdicts config observation injection wire-event))
+  (equal (fn-pix-peer-delegate-pinned ps archive index verdicts config observation injection wire-event fn-arena)
+         (fn-peer-delegate-pinned ps archive index verdicts config observation injection wire-event fn-arena))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-pix-peer-delegate-pinned fn-peer-delegate-pinned
                                 fn-pix-post-step-pinned-is-post-step-pinned)

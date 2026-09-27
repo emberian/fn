@@ -119,13 +119,13 @@
                   (fn-nntp-keyword-tokenp (cadr tokens))
                   (fn-nntp-keywordp (cadr tokens) "COUNTS"))
              (and (equal (fn-served-result-effects
-                          (fn-served-dispatch conn (list :command line)))
+                          (fn-served-dispatch conn (list :command line) fn-arena))
                          (fn-nntp-result-effects
                           (fn-nntp-list-counts-command
                            ns (fn-served-conn-archive conn) (cddr tokens))))
                   (equal (fn-served-conn-wire
                           (fn-served-result-conn
-                           (fn-served-dispatch conn (list :command line))))
+                           (fn-served-dispatch conn (list :command line) fn-arena)))
                          (fn-served-conn-wire conn)))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
@@ -201,7 +201,7 @@
                   (fn-nntp-keyword-tokenp (cadr tokens))
                   (fn-nntp-keywordp (cadr tokens) "COUNTS"))
              (equal (fn-served-result-effects
-                     (fn-served-step conn (append prefix (list byte))))
+                     (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-list-counts-command
                       ns (fn-served-conn-archive conn) (cddr tokens))))))
@@ -253,7 +253,7 @@
  (defthm fn-olc-msgid-retrieval-has-no-offer
    (not (fn-post-offeredp
          (fn-nntp-result-effects
-          (fn-nntp-msgid-retrieval session archive kind token))))
+          (fn-nntp-msgid-retrieval session archive kind token fn-arena))))
    :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval
                                     fn-nntp-article-response fn-post-offeredp
                                     fn-nntp-reply-effect)
@@ -263,7 +263,7 @@
 (local
  (defthm fn-olc-msgid-retrieval-effects-true-listp
    (true-listp (fn-nntp-result-effects
-                (fn-nntp-msgid-retrieval session archive kind token)))
+                (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
    :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval
                                     fn-nntp-article-response fn-nntp-single
                                     fn-nntp-make-result fn-nntp-result-effects)
@@ -300,15 +300,15 @@
                   (not (fn-nntp-msgid-withdrawn-p (fn-served-conn-pinned-index conn)
                                                   (cadr tokens))))
              (and (equal (fn-served-result-effects
-                          (fn-served-dispatch conn (list :command line)))
+                          (fn-served-dispatch conn (list :command line) fn-arena))
                          (fn-nntp-result-effects
                           (fn-nntp-msgid-retrieval
                            ns (fn-served-conn-archive conn)
                            (fn-olc-retrieval-kind (car tokens))
-                           (cadr tokens))))
+                           (cadr tokens) fn-arena)))
                   (equal (fn-served-conn-wire
                           (fn-served-result-conn
-                           (fn-served-dispatch conn (list :command line))))
+                           (fn-served-dispatch conn (list :command line) fn-arena)))
                          (fn-served-conn-wire conn)))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
@@ -381,11 +381,11 @@
                                                   (cadr tokens)))
                   (consp article))
              (equal (fn-served-result-effects
-                     (fn-served-step conn (append prefix (list byte))))
+                     (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-article-response
                       ns article (fn-nntp-msgid-local-number ns article)
-                      (fn-olc-retrieval-kind (car tokens)) nil nil)))))
+                      (fn-olc-retrieval-kind (car tokens)) nil nil fn-arena)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-served-step-of-one-framed-event
                   (event (list :command line)))

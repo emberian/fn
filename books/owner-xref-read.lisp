@@ -41,11 +41,11 @@
                 (consp args) (null (cdr args))
                 (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
+                   session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-over-range-served
                    session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
                    (car args) (fn-nntp-keywordp keyword "XOVER")
-                   (fn-nntp-xref-server env))))
+                   (fn-nntp-xref-server env) fn-arena)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-xref-reply
                             fn-nntp-keywordp)
@@ -75,7 +75,7 @@
  (defthm fn-oxr-over-range-served-has-no-offer
    (not (fn-post-offeredp
          (fn-nntp-result-effects
-          (fn-nntp-over-range-served session buckets trie token legacyp server))))
+          (fn-nntp-over-range-served session buckets trie token legacyp server fn-arena))))
    :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
                                    (fn-nov-served-lines-numbered fn-post-offeredp
                                     fn-nntp-index-group-range-numbers
@@ -86,7 +86,7 @@
  (defthm fn-oxr-over-range-served-effects-true-listp
    (true-listp (fn-nntp-result-effects
                 (fn-nntp-over-range-served session buckets trie token legacyp
-                                           server)))
+                                           server fn-arena)))
    :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served
                                     fn-nntp-single fn-nntp-multi
                                     fn-nntp-make-result fn-nntp-result-effects)
@@ -125,17 +125,17 @@
                    (fn-nntp-listing-server
                     (fn-inj-config-listing (fn-served-conn-config conn)))))
              (and (equal (fn-served-result-effects
-                          (fn-served-dispatch conn (list :command line)))
+                          (fn-served-dispatch conn (list :command line) fn-arena))
                          (fn-nntp-result-effects
                           (fn-nntp-over-range-served
                            ns (fn-gidx-pin-buckets (fn-served-conn-pinned-index conn))
                            (fn-gidx-pin-trie (fn-served-conn-pinned-index conn))
                            (cadr tokens) nil
                            (fn-nntp-listing-server
-                            (fn-inj-config-listing (fn-served-conn-config conn))))))
+                            (fn-inj-config-listing (fn-served-conn-config conn))) fn-arena)))
                   (equal (fn-served-conn-wire
                           (fn-served-result-conn
-                           (fn-served-dispatch conn (list :command line))))
+                           (fn-served-dispatch conn (list :command line) fn-arena)))
                          (fn-served-conn-wire conn)))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core
                                    fn-auth-step-pinned
@@ -210,14 +210,14 @@
                    (fn-nntp-listing-server
                     (fn-inj-config-listing (fn-served-conn-config conn)))))
              (equal (fn-served-result-effects
-                     (fn-served-step conn (append prefix (list byte))))
+                     (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-over-range-served
                       ns (fn-gidx-pin-buckets (fn-served-conn-pinned-index conn))
                       (fn-gidx-pin-trie (fn-served-conn-pinned-index conn))
                       (cadr tokens) nil
                       (fn-nntp-listing-server
-                       (fn-inj-config-listing (fn-served-conn-config conn))))))))
+                       (fn-inj-config-listing (fn-served-conn-config conn))) fn-arena)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-served-step-of-one-framed-event
                   (event (list :command line)))

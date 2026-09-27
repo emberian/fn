@@ -272,7 +272,7 @@
 
 (defthm fn-osi-own-step-store-of-other-events
   (implies (not (member-equal (car event) '(:store :complete :reopen)))
-           (equal (fn-own-store (fn-own-step o event)) (fn-own-store o)))
+           (equal (fn-own-store (fn-own-step o event fn-arena)) (fn-own-store o)))
   :hints (("Goal" :in-theory (e/d (fn-own-step fn-own-invariants-vocabulary
                                    fn-own-feed-reply fn-own-tick fn-own-tick-peer
                                    fn-own-feed-connect fn-own-feed-lost
@@ -320,11 +320,11 @@
 
 (defthm fn-osi-own-step-of-store-changing-events
   (and (implies (equal (car event) :store)
-                (equal (fn-own-step o event) (fn-own-store-step o (cadr event))))
+                (equal (fn-own-step o event fn-arena) (fn-own-store-step o (cadr event))))
        (implies (equal (car event) :complete)
-                (equal (fn-own-step o event) (fn-own-complete o)))
+                (equal (fn-own-step o event fn-arena) (fn-own-complete o)))
        (implies (equal (car event) :reopen)
-                (equal (fn-own-step o event)
+                (equal (fn-own-step o event fn-arena)
                        (fn-own-reopen o (cadr event) (caddr event)))))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-own-step))))
@@ -332,7 +332,7 @@
 (defthm fn-osi-own-step-keeps-indexed
   (implies (and (fn-ceis-indexedp (fn-own-store o))
                 (fn-osi-host-own-eventp event))
-           (fn-ceis-indexedp (fn-own-store (fn-own-step o event))))
+           (fn-ceis-indexedp (fn-own-store (fn-own-step o event fn-arena))))
   :hints (("Goal"
            :cases ((equal (car event) :store) (equal (car event) :complete)
                    (equal (car event) :reopen))
@@ -363,7 +363,7 @@
 ; and fn-own-read-step are that result's projections, and the store facts
 ; over them lift to the full reads.
 (defthm fn-osi-own-read-full-keeps-store
-  (equal (fn-own-store (car (cdr (fn-own-read-full o id octets))))
+  (equal (fn-own-store (car (cdr (fn-own-read-full o id octets fn-arena))))
          (fn-own-store o))
   :hints (("Goal" :use ((:instance fn-own-connection-events-keep-store-bound-and-ledger))
            :in-theory (e/d (fn-own-read)
@@ -371,7 +371,7 @@
                             fn-own-connection-events-keep-store-bound-and-ledger)))))
 
 (defthm fn-osi-own-read-step-full-keeps-store
-  (equal (fn-own-store (car (cdr (fn-own-read-step-full o id event))))
+  (equal (fn-own-store (car (cdr (fn-own-read-step-full o id event fn-arena))))
          (fn-own-store o))
   :hints (("Goal" :use ((:instance fn-own-connection-events-keep-store-bound-and-ledger))
            :in-theory (e/d (fn-own-read-step)
@@ -381,7 +381,7 @@
 (defthm fn-osi-ocfg-step-keeps-indexed
   (implies (and (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
                 (fn-osi-host-own-eventp event))
-           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event)))))
+           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step fn-ocfg-open fn-ocfg-advance
                                    fn-ocfg-close fn-ocfg-read fn-ocfg-read-step
                                    fn-ocfg-open-peer fn-ocfg-fault
@@ -514,7 +514,7 @@
               (fn-own-store (fn-ocfg-owner oc)))
        (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
               (fn-own-store (fn-ocfg-owner oc)))
-       (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event))))
+       (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event fn-arena))))
               (fn-own-store (fn-ocfg-owner oc)))
        (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-fault oc id))))
               (fn-own-store (fn-ocfg-owner oc)))
@@ -587,11 +587,11 @@
 ;
 ; The :step arm admits every owner event but the kernel crash
 ; (fn-osi-host-own-eventp), a superset of the events the host sends.
-(defun fn-osi-host-step (oc ev)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-osi-host-step (oc ev fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((a (cadr ev)) (b (caddr ev)) (c (cadddr ev)))
     (case (car ev)
-      (:step (if (fn-osi-host-own-eventp a) (fn-ocfg-step oc a) oc))
+      (:step (if (fn-osi-host-own-eventp a) (fn-ocfg-step oc a fn-arena) oc))
       (:io (fn-rcon-ocfg-io oc a b))
       (:prepare (fn-pcar-sbud-prepare oc a b))
       (:prepare-buffer (fn-pidx-sbud-prepare oc a b))
@@ -615,21 +615,21 @@
       (:outcome (fn-ocfg-with-owner
                  oc (cdr (fn-acar-own-outcome (fn-ocfg-owner oc) a b))))
       (:open-peer (cdr (fn-ocfg-open-peer oc a b)))
-      (:read-step (cdr (fn-ocfg-read-step oc a b)))
+      (:read-step (cdr (fn-ocfg-read-step oc a b fn-arena)))
       (:open (cdr (fn-ocar-ocfg-open oc a)))
       (:exposure-open
        (fn-exp-open-ocfg (fn-ocar-exp-open oc a b c (car (cddddr ev))
                                       (cadr (cddddr ev))
                                       (caddr (cddddr ev)))))
-      (:read (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc a b)))
+      (:read (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc a b fn-arena)))
       (:fault (cdr (fn-ocfg-fault oc a)))
       (:observe (fn-ocfg-observe oc a))
       (otherwise oc))))
 
-(defun fn-osi-host-run (oc evs)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-osi-host-run (oc evs fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp evs)
-      (fn-osi-host-run (fn-osi-host-step oc (car evs)) (cdr evs))
+      (fn-osi-host-run (fn-osi-host-step oc (car evs) fn-arena) (cdr evs) fn-arena)
     oc))
 
 (defthm fn-osi-osb-install-keeps-store
@@ -640,7 +640,7 @@
 
 (defthm fn-osi-host-step-keeps-indexed
   (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-osi-host-step oc ev)))))
+           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-osi-host-step oc ev fn-arena)))))
   :hints (("Goal"
            :use ((:instance fn-osi-own-finish-keeps-indexed
                             (o (fn-ocfg-owner oc)) (cfg (fn-ocfg-config oc))))
@@ -662,19 +662,19 @@
 
 (defthm fn-osi-host-run-keeps-indexed
   (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-osi-host-run oc evs)))))
-  :hints (("Goal" :induct (fn-osi-host-run oc evs)
+           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-osi-host-run oc evs fn-arena)))))
+  :hints (("Goal" :induct (fn-osi-host-run oc evs fn-arena)
            :in-theory (e/d (fn-osi-host-run)
                            (fn-ceis-indexedp fn-osi-host-step)))))
 
-(defun fn-osi-live-owner (configs prefix suffix frontier max-conns evs)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-osi-host-run (fn-osi-open configs prefix suffix frontier max-conns) evs))
+(defun fn-osi-live-owner (configs prefix suffix frontier max-conns evs fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (fn-osi-host-run (fn-osi-open configs prefix suffix frontier max-conns) evs fn-arena))
 
-(defun fn-osi-live-store (configs prefix suffix frontier max-conns evs)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-osi-live-store (configs prefix suffix frontier max-conns evs fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (fn-own-store (fn-ocfg-owner (fn-osi-live-owner configs prefix suffix
-                                                  frontier max-conns evs))))
+                                                  frontier max-conns evs fn-arena))))
 
 ; KEYSTONE (PRF-144): the Store of every owner the host reaches from its
 ; open, by any sequence of the owners it installs, is indexed.  No
@@ -682,7 +682,7 @@
 ; dispatch.
 (defthm fn-osi-live-owner-store-is-indexed
   (fn-ceis-indexedp (fn-osi-live-store configs prefix suffix frontier
-                                       max-conns evs))
+                                       max-conns evs fn-arena))
   :hints (("Goal" :use (fn-osi-open-installs-indexed-store
                         (:instance fn-osi-host-run-keeps-indexed
                                    (oc (fn-osi-open configs prefix suffix
@@ -706,7 +706,7 @@
 ; signed; after the records flip, the held row it retains) with the
 ; Message-ID the dispatcher reads, the dispatcher never answers (:submit).
 (defthm fn-bpaj-dispatch-never-resubmits-a-stored-article
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
+  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
     (implies (and (member-equal record
                                 (fn-bpr-article-records
                                  (fn-sf-records (fn-sn-files store))))
@@ -720,7 +720,7 @@
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-dispatch-never-resubmits-under-index
                             (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs))))
+                                                      frontier max-conns evs fn-arena))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 ; KEYSTONE: whatever the dispatcher binds over the live Store is the wire
@@ -729,7 +729,7 @@
 ; the receiver's Store check; a composite row whose article record decodes
 ; binds its verdict to that article.
 (defthm fn-bpaj-dispatch-binds-the-stores-own-record
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
+  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
     (implies (equal (car (fn-bpaj-dispatch-fast joined store request-octets
                                                 generation fn-arena))
                     :bind)
@@ -750,7 +750,7 @@
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-dispatch-binds-the-stores-own-record-under-index
                             (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs))))
+                                                      frontier max-conns evs fn-arena))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 ; The fast/checked equalities over the live Store: the Store record check,
@@ -758,7 +758,7 @@
 ; hosts call, PRF-220) and the dispatcher they compose into are the
 ; checked walks over the history.
 (defthm fn-osi-live-store-record-accepted-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
+  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
     (implies (fn-sn-statep store)
              (equal (fn-bpaj-store-record-accepted-fast store record fn-arena)
                     (fn-bpr-store-record-acceptedp store record fn-arena))))
@@ -766,7 +766,7 @@
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-store-record-accepted-fast-is-checked
                             (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs))))
+                                                      frontier max-conns evs fn-arena))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 ;; PRF-220: the premise of the Store check is carried, never evaluated on
@@ -801,7 +801,7 @@
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 (defthm fn-osi-live-record-lookup-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
+  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
     (implies (fn-sn-statep store)
              (equal (fn-bpaj-record-lookup-fast store request fn-arena)
                     (fn-bpaj-record-lookup store request fn-arena))))
@@ -809,11 +809,11 @@
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-record-lookup-fast-is-checked
                             (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs))))
+                                                      frontier max-conns evs fn-arena))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 (defthm fn-osi-live-transit-record-lookup-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
+  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
     (implies (fn-sn-statep store)
              (equal (fn-bpaj-transit-record-lookup-fast store request intent fn-arena)
                     (fn-bpaj-transit-record-lookup store request intent fn-arena))))
@@ -821,11 +821,11 @@
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-transit-record-lookup-fast-is-checked
                             (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs))))
+                                                      frontier max-conns evs fn-arena))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 (defthm fn-osi-live-dispatch-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
+  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
     (implies (and (fn-bpaj-statep joined) (fn-sn-statep store))
              (equal (fn-bpaj-dispatch-fast joined store request-octets
                                            current-generation fn-arena)
@@ -835,7 +835,7 @@
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-dispatch-fast-is-checked
                             (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs))))
+                                                      frontier max-conns evs fn-arena))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 (in-theory (disable fn-osi-open fn-osi-live-owner fn-osi-live-store

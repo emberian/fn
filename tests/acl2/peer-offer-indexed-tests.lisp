@@ -30,36 +30,46 @@
 (assert-event (fn-midx-lookup "<a1@example.invalid>" *pix-t-trie*))
 (assert-event (not (fn-midx-lookup "<loop@example.invalid>" *pix-t-trie*)))
 
-(defun pix-step (event trie arts)
+(defun pix-step (event trie arts fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
    (fn-pix-peer-step-pinned *pt-ps1* trie arts *pix-t-archive* nil nil
-                            *pt-inj* *pt-obs* *pt-obs* event)))
-(defun pix-ref (event)
+                            *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
+(defun pix-ref (event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
    (fn-peer-step-pinned *pt-ps1* *pix-t-archive* nil nil
-                        *pt-inj* *pt-obs* *pt-obs* event)))
+                        *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
 
 ; An offer of the held Message-ID is refused: IHAVE 435, CHECK 438.
-(assert-event (equal (pix-step (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-nntp-msgid-retrieval-indexed 5)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift fn-pix-msgid-retrieval-indexed 5)
+(bpr-lift pix-ref 1)
+(bpr-lift pix-step 3)
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
                      (list (pt-reply "435 duplicate"))))
-(assert-event (equal (pix-step (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
                      (list (pt-echo "438 " *pt-id1*))))
 ; An offer of an absent Message-ID is accepted: IHAVE 335, CHECK 238.
-(assert-event (equal (pix-step (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
-(assert-event (equal (pix-step (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
                      (list (pt-echo "238 " *pt-idloop*))))
 ; Each equals the reference step (fn-pix-peer-step-pinned-is-peer-step-pinned
 ; on the witness).
-(assert-event (equal (pix-step (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (pix-ref (pt-cmd "IHAVE <a1@example.invalid>"))))
-(assert-event (equal (pix-step (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (pix-ref (pt-cmd "CHECK <a1@example.invalid>"))))
-(assert-event (equal (pix-step (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (pix-ref (pt-cmd "IHAVE <loop@example.invalid>"))))
-(assert-event (equal (pix-step (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (pix-ref (pt-cmd "CHECK <loop@example.invalid>"))))
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+                     (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>"))))
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+                     (in-arena-pix-ref *sr-arena* (pt-cmd "CHECK <a1@example.invalid>"))))
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+                     (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <loop@example.invalid>"))))
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+                     (in-arena-pix-ref *sr-arena* (pt-cmd "CHECK <loop@example.invalid>"))))
 
 ; The host's call runs compiled code: the copies are guard-verified.
 (assert-event
@@ -88,12 +98,12 @@
                       (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))))
 ; At the step: the same session with the wrong trie takes the held article
 ; (335) where the reference refuses it (435).
-(assert-event (equal (pix-step (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
+(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
 (must-fail
- (assert-event (equal (pix-step (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
-                      (pix-ref (pt-cmd "IHAVE <a1@example.invalid>")))))
+ (assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
+                      (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>")))))
 
 ; Node hypothesis: a node whose binding names a Message-ID no article has
 ; (fn-node-statep's binding-subset conjunct fails).  Trie and list agree
@@ -128,7 +138,7 @@
 (assert-event (fn-scar-view-indexedp
                (fn-ocfg-owner (fn-own-tls-result-owner *scar-t-carried*))))
 (assert-event (fn-scar-view-indexedp
-               (fn-ocfg-owner (fn-ocfg-step *scar-t-oc* (list :close 1)))))
+               (fn-ocfg-owner (in-arena-fn-ocfg-step *sr-arena* *scar-t-oc* (list :close 1)))))
 (assert-event (fn-scar-view-indexedp (fn-own-start (fn-own-store *scar-t-o*) 4)))
 (defconst *pix-t-bad-view-owner*
   (fn-own-make (fn-own-store *scar-t-o*)
@@ -159,21 +169,16 @@
 
 (defconst *pix-t-session* (fn-post-session-base (fn-peer-session-base *pt-ps1*)))
 (defconst *pix-t-stat-held*
-  (fn-pix-msgid-retrieval-indexed *pix-t-session* *pix-t-archive* *pix-t-trie*
-                                  :stat *pt-id1*))
+  (in-arena-fn-pix-msgid-retrieval-indexed *sr-arena* *pix-t-session* *pix-t-archive* *pix-t-trie* :stat *pt-id1*))
 (assert-event (equal *pix-t-stat-held*
-                     (fn-nntp-msgid-retrieval-indexed *pix-t-session* *pix-t-archive*
-                                                      *pix-t-trie* :stat *pt-id1*)))
+                     (in-arena-fn-nntp-msgid-retrieval-indexed *sr-arena* *pix-t-session* *pix-t-archive* *pix-t-trie* :stat *pt-id1*)))
 (assert-event (equal (take 3 (cadr
                               (car (fn-nntp-result-effects *pix-t-stat-held*))))
                      (pt-o "223")))
 (defconst *pix-t-stat-absent*
-  (fn-pix-msgid-retrieval-indexed *pix-t-session* *pix-t-archive* *pix-t-trie*
-                                  :stat (pt-o "<loop@example.invalid>")))
+  (in-arena-fn-pix-msgid-retrieval-indexed *sr-arena* *pix-t-session* *pix-t-archive* *pix-t-trie* :stat (pt-o "<loop@example.invalid>")))
 (assert-event (equal *pix-t-stat-absent*
-                     (fn-nntp-msgid-retrieval-indexed *pix-t-session* *pix-t-archive*
-                                                      *pix-t-trie* :stat
-                                                      (pt-o "<loop@example.invalid>"))))
+                     (in-arena-fn-nntp-msgid-retrieval-indexed *sr-arena* *pix-t-session* *pix-t-archive* *pix-t-trie* :stat (pt-o "<loop@example.invalid>"))))
 (assert-event (equal (take 3 (cadr
                               (car (fn-nntp-result-effects *pix-t-stat-absent*))))
                      (pt-o "430")))
@@ -181,22 +186,23 @@
 ; finds it): the lookup is what answers.
 (assert-event (equal (take 3 (cadr
                               (car (fn-nntp-result-effects
-                                    (fn-pix-msgid-retrieval-indexed
-                                     *pix-t-session* *pix-t-archive* nil :stat *pt-id1*)))))
+                                    (in-arena-fn-pix-msgid-retrieval-indexed *sr-arena* *pix-t-session* *pix-t-archive* nil :stat *pt-id1*)))))
                      (pt-o "430")))
 
 (defconst *pix-t-pin* (fn-gidx-pin *pix-t-trie* (fn-gidx-build *pix-t-arts*)))
-(defun pix-t-delegate (event)
+(defun pix-t-delegate (event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (equal (fn-pix-peer-delegate-pinned *pt-ps1* *pix-t-archive* *pix-t-pin* nil
-                                      *pt-inj* *pt-obs* *pt-obs* event)
+                                      *pt-inj* *pt-obs* *pt-obs* event fn-arena)
          (fn-peer-delegate-pinned *pt-ps1* *pix-t-archive* *pix-t-pin* nil
-                                  *pt-inj* *pt-obs* *pt-obs* event)))
-(assert-event (and (pix-t-delegate (pt-cmd "STAT <a1@example.invalid>"))
-                   (pix-t-delegate (pt-cmd "STAT <loop@example.invalid>"))
-                   (pix-t-delegate (pt-cmd "ARTICLE <a1@example.invalid>"))
-                   (pix-t-delegate (pt-cmd "HEAD <a1@example.invalid>"))
-                   (pix-t-delegate (pt-cmd "GROUP fn.test"))
-                   (pix-t-delegate (pt-cmd "STAT"))))
+                                  *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
+(bpr-lift pix-t-delegate 1)
+(assert-event (and (in-arena-pix-t-delegate *sr-arena* (pt-cmd "STAT <a1@example.invalid>"))
+                   (in-arena-pix-t-delegate *sr-arena* (pt-cmd "STAT <loop@example.invalid>"))
+                   (in-arena-pix-t-delegate *sr-arena* (pt-cmd "ARTICLE <a1@example.invalid>"))
+                   (in-arena-pix-t-delegate *sr-arena* (pt-cmd "HEAD <a1@example.invalid>"))
+                   (in-arena-pix-t-delegate *sr-arena* (pt-cmd "GROUP fn.test"))
+                   (in-arena-pix-t-delegate *sr-arena* (pt-cmd "STAT"))))
 
 (assert-event
  (and (eq (symbol-class 'fn-pix-msgid-retrieval-indexed (w state)) :common-lisp-compliant)

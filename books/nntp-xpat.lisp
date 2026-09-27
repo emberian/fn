@@ -47,9 +47,9 @@
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "XPAT"))
            (equal (fn-nntp-step-pinned session archive index verdicts env
-                                       (list :command line))
+                                       (list :command line) fn-arena)
                   (fn-nntp-xpat-response session archive
-                                         (cdr (fn-nntp-tokenize line)))))
+                                         (cdr (fn-nntp-tokenize line)) fn-arena)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-step-pinned fn-nntp-command-pinned
                             fn-nntp-archive-command-pinned fn-nntp-xref-reply
