@@ -9785,6 +9785,16 @@
           "note": "Teeth: tests/acl2/owner-commit-class-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-276",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-run-refines-the-kernel",
+          "note": "Subject: the concrete kernel transitions host/native/io.lisp fnn-log-* call (fn-lgc-open, -t-prepare, -take, -consume-to, -append, -fence, -fence-failed, -finish-one); equal under fn-lgc-of to the fn-lgk-* run PRF-264 speaks of."
+        }
+      ]
     }
   ]
 }
