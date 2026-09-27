@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1207 |
-| Certification roots in the Makefile | 1160 |
-| Books inside the root closure | 1196 |
-| `defthm` and `defthmd` events | 17656 |
-| `defun` events | 12265 |
+| Books read | 1210 |
+| Certification roots in the Makefile | 1163 |
+| Books inside the root closure | 1199 |
+| `defthm` and `defthmd` events | 17711 |
+| `defun` events | 12303 |
 | Functions with verified guards | 2433 |
-| Functions declared `:verify-guards nil` and never verified | 1285 |
-| Functions left at the default with an explicit guard | 6762 |
-| Functions left at the default with no guard | 1785 |
-| `assert-event` checks | 17710 |
-| `must-fail` checks | 2141 |
+| Functions declared `:verify-guards nil` and never verified | 1291 |
+| Functions left at the default with an explicit guard | 6788 |
+| Functions left at the default with no guard | 1791 |
+| `assert-event` checks | 17731 |
+| `must-fail` checks | 2142 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 91 |
 | Theorems flagged SUSPECT by shape | 188 |
 | Export-hygiene warnings | 204 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 206 |
-| Include-hygiene warnings | 1233 |
-| Host-names warnings | 1350 |
+| Teeth-form warnings | 210 |
+| Include-hygiene warnings | 1235 |
+| Host-names warnings | 1357 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -419,8 +419,9 @@ that `make certify` requests.
 | `books/group-bucket-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/group-number-index.lisp` | root | 2 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/group-status.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/heap-figure.lisp` | root | 15 | 19 | 0/0/19/0 | 0 | 0 | 0 |
-| `books/heap-reservation.lisp` | root | 62 | 43 | 0/0/43/0 | 0 | 0 | 1 |
+| `books/heap-figure.lisp` | root | 30 | 26 | 0/0/26/0 | 0 | 0 | 0 |
+| `books/heap-reservation.lisp` | root | 64 | 46 | 0/0/46/0 | 0 | 0 | 0 |
+| `books/heap-store-figure.lisp` | root | 28 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/held-record.lisp` | closure | 57 | 46 | 23/0/23/0 | 0 | 0 | 1 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
@@ -669,6 +670,7 @@ that `make certify` requests.
 | `books/store-checkpoint-tables-reader.lisp` | root | 42 | 12 | 1/0/10/1 | 0 | 0 | 1 |
 | `books/store-checkpoint-tables.lisp` | root | 62 | 37 | 2/4/30/1 | 1 | 0 | 1 |
 | `books/store-compact-verb.lisp` | root | 24 | 6 | 0/3/3/0 | 0 | 0 | 0 |
+| `books/store-compact-window.lisp` | root | 10 | 7 | 0/6/1/0 | 0 | 0 | 1 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-event-fields.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/store-events-carried.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 1 |
@@ -1025,7 +1027,7 @@ that `make certify` requests.
 | `tests/acl2/group-descriptions-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 1 | 0 |
 | `tests/acl2/group-number-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 7 | 0 |
 | `tests/acl2/group-status-tests.lisp` | - | 0 | 7 | 0/0/2/5 | 42 | 2 | 0 |
-| `tests/acl2/heap-figure-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 0 | 6 | 0 |
+| `tests/acl2/heap-figure-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 0 | 3 | 0 |
 | `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 0 | 14 | 0 |
 | `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `tests/acl2/held-rows-tests.lisp` | root | 0 | 17 | 0/17/0/0 | 9 | 0 | 0 |
@@ -1204,6 +1206,7 @@ that `make certify` requests.
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 6 | 0/6/0/0 | 13 | 8 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 50 | 8 | 0 |
+| `tests/acl2/store-compact-window-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 4 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 56 | 11 | 0 |
 | `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
@@ -1364,6 +1367,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cvec-history-admittedp-of-cons` | `books/store-capacity-vector.lisp` | 623 | branch-of-definition: the hypothesis is a branch test of fn-cvec-history-admittedp and the conclusion is that branch's value |
 | `fn-cvec-record-octets-of-atom` | `books/store-capacity-vector.lisp` | 651 | branch-of-definition: the hypothesis negates a branch test of fn-sbud-record-octets and the conclusion is that branch's value |
 | `fn-cvec-record-octets-of-cons` | `books/store-capacity-vector.lisp` | 642 | branch-of-definition: the hypothesis is a branch test of fn-sbud-record-octets and the conclusion is that branch's value |
+| `fn-cverb-link-octets-of-window` | `books/store-compact-window.lisp` | 122 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 169 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 174 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-evc-event-nth-of-atom` | `books/store-events-carried.lisp` | 185 | branch-of-definition: the hypothesis negates a branch test of fn-store-event-nth and the conclusion is that branch's value |
@@ -1374,7 +1378,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-fc-wire-next-unconsumed-is-bounded-linear` | `books/feed-connection-invariants.lisp` | 26 | instance-corollary: the statement is fn-wire-next-unconsumed-is-bounded instantiated, discharging nothing |
 | `fn-fr-disjointp-of-all-memberships-left` | `books/acceptance.lisp` | 259 | instance-corollary: the statement is fn-fr-disjointp-commutes instantiated, discharging nothing |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 697 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
-| `fn-heap-reserve-operation-decide-of-a-serve-action-by-definition` | `books/heap-reservation.lisp` | 279 | branch-of-definition: the hypothesis negates a branch test of fn-heap-reserve-operation-decide and the conclusion is that branch's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 128 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-hrt-event-is-intern-event-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 9 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-hrt-row-at-is-intern-row-at-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 30 | reflexive-conclusion: a conjunct is (equal X X) |
