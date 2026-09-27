@@ -206,9 +206,11 @@
      ((fn-evc-stxkp event)
       (fn-th-prefix-state :ok (1+ (nfix next)) (cons event snapshots)
                           accepted anchors installed nil))
+     ; The retained composite row: the statement recorded is its wire
+     ; composite, as fn-th-prefix-step records it (the records flip).
      ((fn-evc-stxap event)
       (fn-th-prefix-state :ok (1+ (nfix next)) snapshots
-                          (cons event accepted) anchors installed nil))
+                          (cons (fn-hstxa-stxa event) accepted) anchors installed nil))
      ((fn-th-local-admin-eventp event)
       (let ((updated (fn-th-local-admin-commit event installed)))
         (if (fn-stmt-okp updated)
