@@ -109,6 +109,7 @@ MANUAL = {
     "FN_NATIVE_READER_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST",
     "FN_NATIVE_SOURCE_ROOT": "defaults to the tree the module runs from",
     "FN_OLD_NATIVE_HOST": "an older image (upgrade cases)",
+    "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
     "FN_OLD_IMAGE": "an older image (upgrade cases)",
     "FN_PRE_T2_NATIVE_DEVELOPER_HOST": "a pre-T2 developer image (migration)",
     "FN_T2_NATIVE_DEVELOPER_HOST": "a T2 developer image (migration)",
