@@ -74,7 +74,12 @@
             (fn-lz-dict-from-list :logic fn-octets$a-from-list
                                   :exec fn-octets$c-from-list :protect t)
             (fn-lz-dict-append-list :logic fn-octets$a-append-list
-                                    :exec fn-oct-write-list :protect t))
+                                    :exec fn-oct-write-list :protect t)
+            (fn-lz-dict-append-back :logic fn-octets$a-append-back
+                                    :exec fn-octets$c-append-back :protect t)
+            (fn-lz-dict-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
+            (fn-lz-dict-append-word :logic fn-octets$a-append-word
+                                    :exec fn-octets$c-append-word :protect t))
   :congruent-to fn-octets)
 
 (defabsstobj fn-lz-out
@@ -93,7 +98,12 @@
             (fn-lz-out-from-list :logic fn-octets$a-from-list
                                  :exec fn-octets$c-from-list :protect t)
             (fn-lz-out-append-list :logic fn-octets$a-append-list
-                                   :exec fn-oct-write-list :protect t))
+                                   :exec fn-oct-write-list :protect t)
+            (fn-lz-out-append-back :logic fn-octets$a-append-back
+                                   :exec fn-octets$c-append-back :protect t)
+            (fn-lz-out-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
+            (fn-lz-out-append-word :logic fn-octets$a-append-word
+                                   :exec fn-octets$c-append-word :protect t))
   :congruent-to fn-octets)
 
 (local
@@ -299,28 +309,212 @@
  (defthm fn-lz-nfix-when-natp
    (implies (natp x) (equal (nfix x) x))))
 
-(defun fn-lz-copy-lits (ip n fn-octets fn-lz-out)
+;; The bulk executables (lane octets-bulk).  A literal run moves from the
+;; block to the output, and a match's dictionary part from the dictionary,
+;; seven octets per word (`fn-octets-get-word', `fn-octets-append-word':
+;; an export cannot name a second buffer); a match's part within the
+;; output is one `append-back', whose logic is octet by octet, so an
+;; overlapping match repeats as LZ4 requires.  Each is the :exec of the
+;; octet-at-a-time definition below it, and the `-is-' theorems between
+;; them are the equalities its guard proof uses.
+
+(defun fn-lz-lits-words (ip n fn-octets fn-lz-out)
   (declare (xargs :stobjs (fn-octets fn-lz-out)
                   :guard (and (natp ip) (natp n)
                               (<= (+ ip n) (fn-octets-len fn-octets)))
                   :measure (nfix n)))
   (if (zp n)
       fn-lz-out
-    (let ((fn-lz-out (fn-lz-out-append-octet (fn-octets-get ip fn-octets) fn-lz-out)))
-      (fn-lz-copy-lits (1+ (nfix ip)) (1- n) fn-octets fn-lz-out))))
+    (let* ((k (min n 7))
+           (fn-lz-out (fn-lz-out-append-word (fn-octets-get-word ip k fn-octets) k
+                                             fn-lz-out)))
+      (fn-lz-lits-words (+ (nfix ip) k) (- n k) fn-octets fn-lz-out))))
+
+(defun fn-lz-dict-words (s n fn-lz-dict fn-lz-out)
+  (declare (xargs :stobjs (fn-lz-dict fn-lz-out)
+                  :guard (and (natp s) (natp n)
+                              (<= (+ s n) (fn-lz-dict-len fn-lz-dict)))
+                  :measure (nfix n)))
+  (if (zp n)
+      fn-lz-out
+    (let* ((k (min n 7))
+           (fn-lz-out (fn-lz-out-append-word (fn-lz-dict-get-word s k fn-lz-dict) k
+                                             fn-lz-out)))
+      (fn-lz-dict-words (+ (nfix s) k) (- n k) fn-lz-dict fn-lz-out))))
+
+(defthm fn-lz-len-of-dict-words
+  (implies (natp n)
+           (equal (len (fn-lz-dict-words s n fn-lz-dict fn-lz-out))
+                  (+ (len fn-lz-out) n))))
+
+(defun fn-lz-match-bulk (off n fn-lz-dict fn-lz-out)
+  (declare (xargs :stobjs (fn-lz-dict fn-lz-out)
+                  :guard (and (natp off) (<= 1 off) (natp n)
+                              (<= off (+ (fn-lz-out-len fn-lz-out)
+                                         (fn-lz-dict-len fn-lz-dict))))))
+  (let ((olen (fn-lz-out-len fn-lz-out)))
+    (if (<= off olen)
+        (fn-lz-out-append-back off n fn-lz-out)
+      (let* ((d (- off olen))
+             (j (min d n))
+             (fn-lz-out (fn-lz-dict-words (- (fn-lz-dict-len fn-lz-dict) d) j
+                                          fn-lz-dict fn-lz-out)))
+        (if (< j n)
+            (fn-lz-out-append-back off (- n j) fn-lz-out)
+          fn-lz-out)))))
+
+(defun fn-lz-copy-lits (ip n fn-octets fn-lz-out)
+  (declare (xargs :stobjs (fn-octets fn-lz-out)
+                  :guard (and (natp ip) (natp n)
+                              (<= (+ ip n) (fn-octets-len fn-octets)))
+                  :measure (nfix n)
+                  :verify-guards nil))
+  (mbe :logic
+       (if (zp n)
+           fn-lz-out
+         (let ((fn-lz-out (fn-lz-out-append-octet (fn-octets-get ip fn-octets) fn-lz-out)))
+           (fn-lz-copy-lits (1+ (nfix ip)) (1- n) fn-octets fn-lz-out)))
+       :exec (fn-lz-lits-words ip n fn-octets fn-lz-out)))
 
 (defun fn-lz-copy-match (off n fn-lz-dict fn-lz-out)
   (declare (xargs :stobjs (fn-lz-dict fn-lz-out)
                   :guard (and (natp off) (<= 1 off) (natp n)
                               (<= off (+ (fn-lz-out-len fn-lz-out)
                                          (fn-lz-dict-len fn-lz-dict))))
-                  :measure (nfix n)))
-  (if (or (zp n) (zp off)
-          (< (+ (fn-lz-out-len fn-lz-out) (fn-lz-dict-len fn-lz-dict)) off))
-      fn-lz-out
-    (let ((fn-lz-out (fn-lz-out-append-octet (fn-lz-back-octet off fn-lz-dict fn-lz-out)
-                                             fn-lz-out)))
-      (fn-lz-copy-match off (1- n) fn-lz-dict fn-lz-out))))
+                  :measure (nfix n)
+                  :verify-guards nil))
+  (mbe :logic
+       (if (or (zp n) (zp off)
+               (< (+ (fn-lz-out-len fn-lz-out) (fn-lz-dict-len fn-lz-dict)) off))
+           fn-lz-out
+         (let ((fn-lz-out (fn-lz-out-append-octet (fn-lz-back-octet off fn-lz-dict fn-lz-out)
+                                                  fn-lz-out)))
+           (fn-lz-copy-match off (1- n) fn-lz-dict fn-lz-out)))
+       :exec (fn-lz-match-bulk off n fn-lz-dict fn-lz-out)))
+
+; The equalities the two :exec bodies rest on, over octet lists.
+(local
+ (defthm fn-lz-append-assoc-early
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthmd fn-lz-nthcdr-cons-split
+   (implies (and (natp i) (< i (len xs)))
+            (equal (nthcdr i xs) (cons (nth i xs) (nthcdr (1+ i) xs))))
+   :hints (("Goal" :in-theory (enable nth nthcdr)))))
+
+(local
+ (defun fn-lz-ts-ind (i k)
+   (if (zp k) i (fn-lz-ts-ind (1+ i) (1- k)))))
+
+(local
+ (defthm fn-lz-take-nthcdr-split
+   (implies (and (equal j (+ i k))
+                 (natp i) (natp k) (natp m) (<= (+ i k m) (len xs)))
+            (equal (append (take k (nthcdr i xs)) (take m (nthcdr j xs)))
+                   (take (+ k m) (nthcdr i xs))))
+   :hints (("Goal" :induct (fn-lz-ts-ind i k)
+            :in-theory (enable fn-lz-nthcdr-cons-split)))))
+
+(local
+ (defthm fn-lz-take-zero
+   (equal (take 0 x) nil)))
+
+(local
+ (defthm fn-lz-copy-lits-is-append
+   (implies (and (natp ip) (natp n) (<= (+ ip n) (len fn-octets)) (true-listp fn-lz-out))
+            (equal (fn-lz-copy-lits ip n fn-octets fn-lz-out)
+                   (append fn-lz-out (take n (nthcdr ip fn-octets)))))
+   :hints (("Goal" :induct (fn-lz-copy-lits ip n fn-octets fn-lz-out)
+            :in-theory (enable fn-lz-nthcdr-cons-split)))))
+
+(local
+ (defthm fn-lz-lits-words-is-append
+   (implies (and (fn-cbor-octet-listp fn-octets) (true-listp fn-lz-out)
+                 (natp ip) (natp n) (<= (+ ip n) (len fn-octets)))
+            (equal (fn-lz-lits-words ip n fn-octets fn-lz-out)
+                   (append fn-lz-out (take n (nthcdr ip fn-octets)))))
+   :hints (("Goal" :induct (fn-lz-lits-words ip n fn-octets fn-lz-out)
+            :in-theory (disable take)))))
+
+(local
+ (defthm fn-lz-dict-words-is-append
+   (implies (and (fn-cbor-octet-listp fn-lz-dict) (true-listp fn-lz-out)
+                 (natp s) (natp n) (<= (+ s n) (len fn-lz-dict)))
+            (equal (fn-lz-dict-words s n fn-lz-dict fn-lz-out)
+                   (append fn-lz-out (take n (nthcdr s fn-lz-dict)))))
+   :hints (("Goal" :induct (fn-lz-dict-words s n fn-lz-dict fn-lz-out)
+            :in-theory (disable take)))))
+
+(local
+ (defthm fn-lz-copy-match-within-out
+   (implies (and (posp off) (<= off (len fn-lz-out)) (true-listp fn-lz-out))
+            (equal (fn-lz-copy-match off n fn-lz-dict fn-lz-out)
+                   (fn-oct-back-copy off n fn-lz-out)))
+   :hints (("Goal" :induct (fn-lz-copy-match off n fn-lz-dict fn-lz-out)
+            :in-theory (enable fn-lz-back-octet)
+            :expand ((fn-oct-back-copy off n fn-lz-out))))))
+
+(local
+ (defthm fn-lz-copy-match-within-dict
+   (implies (and (natp n) (posp off) (<= (+ (len fn-lz-out) n) off)
+                 (<= off (+ (len fn-lz-out) (len fn-lz-dict)))
+                 (true-listp fn-lz-out))
+            (equal (fn-lz-copy-match off n fn-lz-dict fn-lz-out)
+                   (append fn-lz-out
+                           (take n (nthcdr (+ (len fn-lz-dict) (len fn-lz-out) (- off))
+                                           fn-lz-dict)))))
+   :hints (("Goal" :induct (fn-lz-copy-match off n fn-lz-dict fn-lz-out)
+            :in-theory (e/d (fn-lz-back-octet fn-lz-nthcdr-cons-split) (nth nthcdr))))))
+
+(local
+ (defthm fn-lz-copy-match-split
+   (implies (and (natp a) (natp b))
+            (equal (fn-lz-copy-match off (+ a b) fn-lz-dict fn-lz-out)
+                   (fn-lz-copy-match off b fn-lz-dict
+                                     (fn-lz-copy-match off a fn-lz-dict fn-lz-out))))
+   :hints (("Goal" :induct (fn-lz-copy-match off a fn-lz-dict fn-lz-out)))))
+
+(local
+ (defthm fn-lz-dict-words-is-copy-match
+   (implies (and (natp n) (posp off) (<= (+ (len fn-lz-out) n) off)
+                 (<= off (+ (len fn-lz-out) (len fn-lz-dict)))
+                 (fn-cbor-octet-listp fn-lz-dict) (true-listp fn-lz-out)
+                 (equal s (+ (len fn-lz-dict) (len fn-lz-out) (- off))))
+            (equal (fn-lz-dict-words s n fn-lz-dict fn-lz-out)
+                   (fn-lz-copy-match off n fn-lz-dict fn-lz-out)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-lz-true-listp-of-copy-match
+   (implies (true-listp fn-lz-out)
+            (true-listp (fn-lz-copy-match off n fn-lz-dict fn-lz-out)))))
+
+(local
+ (defthm fn-lz-match-bulk-is-copy-match
+   (implies (and (fn-cbor-octet-listp fn-lz-dict) (true-listp fn-lz-out)
+                 (natp off) (<= 1 off) (natp n)
+                 (<= off (+ (len fn-lz-out) (len fn-lz-dict))))
+            (equal (fn-lz-match-bulk off n fn-lz-dict fn-lz-out)
+                   (fn-lz-copy-match off n fn-lz-dict fn-lz-out)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-lz-copy-match fn-lz-copy-match-split
+                                fn-lz-dict-words-is-append fn-lz-copy-match-within-dict)
+            :use ((:instance fn-lz-dict-words-is-copy-match
+                             (s (+ (len fn-lz-dict) (len fn-lz-out) (- off)))
+                             (n (min n (- off (len fn-lz-out)))))
+                  (:instance fn-lz-copy-match-split
+                             (a (- off (len fn-lz-out))) (b (- n (- off (len fn-lz-out)))))
+                  (:instance fn-lz-copy-match-within-dict
+                             (n (- off (len fn-lz-out)))))))))
+
+(verify-guards fn-lz-copy-lits)
+(verify-guards fn-lz-copy-match)
+
+(local (in-theory (disable fn-lz-copy-lits-is-append fn-lz-lits-words-is-append
+                           fn-lz-dict-words-is-append fn-lz-copy-match-within-out
+                           fn-lz-copy-match-within-dict fn-lz-copy-match-split
+                           fn-lz-match-bulk-is-copy-match)))
 
 (defthm fn-lz-copy-lits-octet-listp
   (implies (and (fn-cbor-octet-listp fn-octets) (fn-cbor-octet-listp fn-lz-out)
