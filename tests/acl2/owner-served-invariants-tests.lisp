@@ -137,7 +137,8 @@
 ; served POST finish answered :fault (436/441 uncertain).
 (assert-event (natp (fn-record-payload (fn-sn-completion-record (fn-own-store *osi-completing*)))))
 (assert-event (not (equal (fn-record-payload (fn-sn-completion-record (fn-own-store *osi-completing*)))
-                          (fn-own-sub-stored-octets *osi-cfg* *osi-sub*))))
+                          (fn-own-sub-stored-octets *osi-cfg* *osi-sub*
+                                                    (fn-own-node-secret *osi-completing*)))))
 ; The finish is the (:complete) event on the owner.
 (assert-event (equal (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))
                      (fn-own-step *osi-completing* '(:complete))))
