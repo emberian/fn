@@ -40168,13 +40168,13 @@
       {
         "theorem": "fn-nh-report-exit-of-render",
         "book": "books/native-health.lisp",
-        "line": 780,
+        "line": 785,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-nh-report-exit-of-render-and-more",
         "book": "books/native-health.lisp",
-        "line": 1004,
+        "line": 1009,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
