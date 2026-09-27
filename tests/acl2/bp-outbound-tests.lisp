@@ -6,10 +6,16 @@
 (defconst *bpo-groups* '("fn.test"))
 (defconst *bpo-msgid* "<out@example.invalid>")
 (defconst *bpo-article* '(72 101 108 108 111 13 10))
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).  The
+; article's octets *bpo-article* are the arena's extent 0, so the node holds
+; handle 0; the request ADU below must still carry the octets.
+(defconst *bpo-article-handle* 0)
 (defconst *bpo-node-prepared*
   (fn-node-prepare
    (fn-node-initial-state *bpo-groups* 32)
-   4 *bpo-msgid* *bpo-article* *bpo-groups*
+   4 *bpo-msgid* *bpo-article-handle* *bpo-groups*
    "archive:out" "subject:out" "release:out" 1 841000000))
 (defconst *bpo-node*
   (fn-node-complete *bpo-node-prepared* 0 4 :durable))
