@@ -1042,57 +1042,34 @@
 ; through four globals read off the injection decision; the host passes them
 ; back through fn-owner-prepare exactly as the CLI passes its own.
 (defun fn-owner-take (state)
+  ; One SubmissionTaken (books/owner-results.lisp fn-ores-take-result; its
+  ; fields are what the seven fn-owner-submit-* globals held,
+  ; fn-ores-take-result-by-definition).  The octets are fn-own-sub-stored-
+  ; octets of the live configuration: a transit article is stored, served
+  ; and fed on as fn-peer-relayed-octets makes it (its Path updated with this
+  ; node's identity, its Xref removed; RFC 5537 3.6/3.7,
+  ; books/path-update.lisp); fn-owner-transit-decide stages the same function
+  ; of the same octets in fn-owner-transit-payload, which the native drain
+  ; compares with these before the store attempt, and
+  ; fn-owner-finish-submission compares the completed record with the same
+  ; function of the same configuration.
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-core state))
          (state (fn-owner-step (list :take) state))
          (after (fn-owner-core state))
          (sub (fn-own-inflight after)))
     (if (or (equal after before) (null sub))
-        (value :idle)
-      (let* ((decision (fn-own-sub-decision sub))
-             (transitp (fn-own-transit-subp sub))
-             (state (f-put-global 'fn-owner-submit-id (fn-own-sub-id sub) state))
-             (state (f-put-global 'fn-owner-submit-transitp transitp state))
-             (state (f-put-global 'fn-owner-submit-peer
-                                  (if transitp (fn-peer-submission-peer decision) nil)
-                                  state))
-             (state (f-put-global 'fn-owner-submit-msgid
-                                  (if transitp
-                                      (fn-peer-submission-msgid decision)
-                                    (fn-inj-decision-msgid decision))
-                                  state))
-             ; A transit article is stored, served and fed on as
-             ; fn-peer-relayed-octets makes it: its Path updated with this
-             ; node's identity and its Xref removed (RFC 5537 3.6/3.7,
-             ; books/path-update.lisp).  These are the octets the host
-             ; digests and stores; fn-owner-transit-decide stages the same
-             ; function of the same octets (fn-peer-injection-arguments'
-             ; payload) and leaves it in fn-owner-transit-payload, which the
-             ; native drain compares with this before the store attempt.
-             ; fn-own-sub-stored-octets is the one definition of these
-             ; octets; fn-owner-finish-submission compares the completed
-             ; record with the same function of the same configuration.
-             (state (f-put-global 'fn-owner-submit-octets
-                                  (fn-own-sub-stored-octets
-                                   (fn-owner-config state) sub)
-                                  state))
-             ; A transit submission's memberships are not in the submission:
-             ; they are fn-peer-scope-groups of the article's Newsgroups and
-             ; the peer record, computed by fn-owner-transit-decide below
-             ; over the live node, never here and never in Python.
-             (state (f-put-global 'fn-owner-submit-groups
-                                  (if transitp nil (fn-inj-decision-groups decision))
-                                  state))
-             ; The submission's intent identity, digested once here and
-             ; carried to the intent and the resolution below
-             ; (books/owner-intent-carried.lisp).  This is the only writer of
-             ; the global, so its value always satisfies fn-icar-carryp
-             ; (fn-icar-carryp-of-carry-of; nil before the first take).
-             (state (f-put-global 'fn-owner-submit-intent
-                                  (fn-icar-carry-of sub) state)))
-        (value (cond (transitp :taken-transit)
-                     ((fn-own-control-submissionp sub) :taken-control)
-                     (t :taken)))))))
+        (value *fn-ores-take-idle*)
+      ; The submission's intent identity, digested once here and carried to
+      ; the intent and the resolution (books/owner-intent-carried.lisp).  It
+      ; stays ACL2's own state: this is the only writer of the global and
+      ; only fn-owner-intent-carry reads it, so its value always satisfies
+      ; fn-icar-carryp (fn-icar-carryp-of-carry-of; nil before the first
+      ; take).  The host never sees it as an input.
+      (let ((state (f-put-global 'fn-owner-submit-intent
+                                 (fn-icar-carry-of sub) state)))
+        (value (fn-ores-take-result
+                sub (fn-own-sub-stored-octets (fn-owner-config state) sub)))))))
 
 ; The hybrid-signed author path and the BP application path submit an
 ; already-authored article object whose octets a signature or a journal
@@ -1373,7 +1350,7 @@
                  ; fixes differed only in which of two identical helpers they
                  ; called.  The duplicate is folded into ACL2:
                  ; `fn-oag-group-octets' (books/owner-agent.lisp) is the one.
-                 (state (f-put-global 'fn-owner-submit-groups
+                 (state (f-put-global 'fn-owner-transit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
                                           (fn-oag-group-octets (nth 3 args))
                                         nil)

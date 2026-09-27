@@ -73,6 +73,7 @@ OWNER_WORDS = {b":OBSERVED", b":REFUSED", b":INVALID", b":DECLARED", b":BEGUN",
 # kind (books/owner-results.lisp); the native host has no such variable.
 FEED_PUBLICATION = "fn-bridge-feed-publication"
 CONFIG_RESULT = "fn-bridge-config-result"
+SUBMISSION_TAKEN = "fn-bridge-submission-taken"
 
 
 def acl2_owner_symbol(output):
@@ -305,7 +306,8 @@ class Acl2Owner(Acl2Store):
 
     def take(self):
         """The writer step: `taken', `taken-control', `taken-transit' or `idle'."""
-        return self._symbol_any("(fn-owner-take state)")
+        return self._result_word("(fn-owner-take state)", SUBMISSION_TAKEN,
+                                 "fn-ores-taken-word")
 
     def control_submit(self, msgid, groups, payload):
         """One ACL2 control-submission event over exact authored octets."""
@@ -322,16 +324,18 @@ class Acl2Owner(Acl2Store):
         the fault boundary in `Owner.drain' always knows WHOSE fault it is:
         the rest of `inflight' is exactly where the 2026-09-20 crash was.
         """
-        return self._nat("(@ fn-owner-submit-id)")
+        return self._nat("(fn-ores-taken-id (@ {}))".format(SUBMISSION_TAKEN))
 
     def inflight(self):
         """The submission in flight: (cid, msgid, octets, groups), all ACL2's."""
         cid = self.submit_id()
-        msgid = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-msgid)")))
-        octets = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-octets)")))
+        msgid = bytes(acl2_octet_list(self.call(
+            "(fn-ores-taken-msgid (@ {}))".format(SUBMISSION_TAKEN))))
+        octets = bytes(acl2_octet_list(self.call(
+            "(fn-ores-taken-octets (@ {}))".format(SUBMISSION_TAKEN))))
         return cid, msgid, octets, self.submit_groups()
 
-    def submit_groups(self):
+    def submit_groups(self, transit=False):
         """The memberships ACL2 staged: the injection decision's for a POST,
         fn-peer-scope-groups' for a transit transfer, never Python's.
 
@@ -342,11 +346,13 @@ class Acl2Owner(Acl2Store):
         now renders them, and `Owner.guard` below means a shape this does not
         expect costs one connection instead of the service.
         """
-        count = self._nat("(len (@ fn-owner-submit-groups))")
+        groups = ("(@ fn-owner-transit-groups)" if transit else
+                  "(fn-ores-taken-groups (@ {}))".format(SUBMISSION_TAKEN))
+        count = self._nat("(len {})".format(groups))
         if count > 64:
             raise StoreError("ACL2 reported an implausible group count")
         return [bytes(acl2_octet_list(self.call(
-            "(fn-inj-nth {} (@ fn-owner-submit-groups))".format(index))))
+            "(fn-inj-nth {} {})".format(index, groups))))
             for index in range(count)]
 
     def fault(self, cid):
@@ -1423,7 +1429,7 @@ class Owner:
         # The intent and the store record bind the same ACL2-derived transit
         # provenance.  The host transports it and makes no provenance choice.
         intent = self.submission_intent(evidence)
-        word = (self.attempt(msgid, payload, self.bridge.submit_groups(),
+        word = (self.attempt(msgid, payload, self.bridge.submit_groups(transit=True),
                              evidence=evidence)
                 if intent is not None else "refused")
         if intent is not None:

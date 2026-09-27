@@ -17,14 +17,19 @@
   (sb-ext:string-to-octets x :external-format :utf-8))
 (defun fnn-owner-octets-global (name)
   (case name
-    (fn-owner-submit-msgid #(60 120 62))
-    ((fn-owner-submit-octets fn-owner-transit-payload) #(65 66))
+    (fn-owner-transit-payload #(65 66))
     (otherwise (error "unexpected global ~s" name))))
+;; A SubmissionTaken (books/owner-results.lisp) is stood for by its word;
+;; its msgid and stored octets are the ones below.
+(defun fnn-owner-take () (fnn-owner-action 'fn-owner-take))
+(defun fnn-owner-taken-word (taken) taken)
+(defun fnn-owner-taken-msgid (taken) (declare (ignore taken)) #(60 120 62))
+(defun fnn-owner-taken-octets (taken) (declare (ignore taken)) #(65 66))
 (defun fnn-metadata (msgid stored)
   (assert (equalp msgid #(60 120 62)))
   (assert (equalp stored #(65 66)))
   (values (fnn-octets '(54 54 97)) (fnn-octets '(55 55 98)) nil))
-(defun fnn-owner-submit-groups () (list #(103)))
+(defun fnn-owner-transit-groups () (list #(103)))
 (defun fnn-owner-core (name)
   (case name
     (fn-owner-transit-evidence '(69))

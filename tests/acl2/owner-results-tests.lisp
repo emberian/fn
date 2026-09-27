@@ -212,3 +212,27 @@
  (and (fn-ores-records-sealp *ort-records*)
       (fn-ores-feed-publication-p
        (fn-ores-feed-port-publication :ready *ort-records* nil :control nil))))
+
+; SubmissionTaken from the take (fn-ores-take-result; host/owner-host.lisp
+; fn-owner-take, host/native/owner.lisp fnn-owner-take): an operator post's
+; control submission and a served one are accepted with their ids; the idle
+; answer is accepted; a take whose stored octets are not octets is refused.
+(defconst *ort-inj* (fn-inj-make-decision :injected nil *ort-msgid* (list *ort-inn*) '(65 66)))
+(assert-event
+ (let ((x (fn-ores-take-result (fn-own-sub-make :control 0 nil *ort-inj*) '(65 66))))
+   (and (fn-ores-submission-taken-p x)
+        (equal (fn-ores-taken-word x) :taken-control)
+        (equal (fn-ores-taken-id x) :control)
+        (equal (fn-ores-taken-msgid x) *ort-msgid*)
+        (equal (fn-ores-taken-groups x) (list *ort-inn*))
+        (equal (fn-ores-taken-transitp x) nil))))
+(assert-event
+ (let ((x (fn-ores-take-result (fn-own-sub-make 3 0 nil *ort-inj*) '(65 66))))
+   (and (fn-ores-submission-taken-p x)
+        (equal (fn-ores-taken-word x) :taken)
+        (equal (fn-ores-taken-id x) 3))))
+(assert-event (fn-ores-submission-taken-p *fn-ores-take-idle*))
+(assert-event (not (fn-ores-submission-taken-p
+                    (fn-ores-take-result (fn-own-sub-make 3 0 nil *ort-inj*) '(300)))))
+(assert-event (not (fn-ores-submission-taken-p
+                    (fn-ores-take-result (fn-own-sub-make "3" 0 nil *ort-inj*) '(65 66)))))

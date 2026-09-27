@@ -298,10 +298,11 @@
        (fn-cbor-octet-listp (nth 3 x))
        (fn-cbor-octet-listp (nth 4 x))
        (fn-ores-octet-lists-p (nth 5 x))
-       ; INTENT (nth 6) is the carry the wrapper hands back to ACL2 at the
-       ; intent and the resolution; the host never reads it.
-       (booleanp (nth 7 x))
-       (or (null (nth 8 x)) (stringp (nth 8 x)))))
+       ; INTENT (nth 6) is the carry ACL2 keeps for the intent and the
+       ; resolution, and PEER (nth 8) the transit submission's peer; the
+       ; host reads neither, so neither is checked here (the batch AM
+       ; fault: a check on a field the host does not read only adds faults).
+       (booleanp (nth 7 x))))
 
 (defun fn-ores-taken-word (x) (declare (xargs :guard t)) (fn-frame-item 1 x))
 (defun fn-ores-taken-id (x) (declare (xargs :guard t)) (fn-frame-item 2 x))
@@ -315,6 +316,77 @@
 (defun fn-ores-submission-taken (word id msgid octets groups intent transitp peer)
   (declare (xargs :guard t))
   (list :submission-taken word id msgid octets groups intent transitp peer))
+
+;; The take (host/owner-host.lisp fn-owner-take; host/native/owner.lisp
+;; fnn-owner-take checks the recognizer).  This is what fn-owner-take wrote
+;; into fn-owner-submit-id, -transitp, -peer, -msgid, -octets, -groups and
+;; -intent (fn-ores-take-result-by-definition).  STORED is
+;; fn-own-sub-stored-octets of the live configuration, computed by the
+;; wrapper (books/owner-served-invariants.lisp is not in this book's closure).
+;; A transit take's groups are nil: fn-owner-transit-decide computes them
+;; over the live node afterwards.
+(defun fn-ores-take-word (sub)
+  (declare (xargs :guard t))
+  (cond ((fn-own-transit-subp sub) :taken-transit)
+        ((fn-own-control-submissionp sub) :taken-control)
+        (t :taken)))
+
+(defun fn-ores-take-result (sub stored)
+  (declare (xargs :guard t))
+  (let ((decision (fn-own-sub-decision sub))
+        (transitp (fn-own-transit-subp sub)))
+    (fn-ores-submission-taken
+     (fn-ores-take-word sub)
+     (fn-own-sub-id sub)
+     (if transitp
+         (fn-peer-submission-msgid decision)
+       (fn-inj-decision-msgid decision))
+     stored
+     (if transitp nil (fn-inj-decision-groups decision))
+     (fn-icar-carry-of sub)
+     transitp
+     (if transitp (fn-peer-submission-peer decision) nil))))
+
+(defconst *fn-ores-take-idle*
+  '(:submission-taken :idle nil nil nil nil nil nil nil))
+
+(defthm fn-ores-take-result-by-definition
+  (let ((x (fn-ores-take-result sub stored))
+        (decision (fn-own-sub-decision sub)))
+    (and (equal (fn-ores-taken-word x)
+                (cond ((fn-own-transit-subp sub) :taken-transit)
+                      ((fn-own-control-submissionp sub) :taken-control)
+                      (t :taken)))
+         ; fn-owner-submit-id
+         (equal (fn-ores-taken-id x) (fn-own-sub-id sub))
+         ; fn-owner-submit-msgid
+         (equal (fn-ores-taken-msgid x)
+                (if (fn-own-transit-subp sub)
+                    (fn-peer-submission-msgid decision)
+                  (fn-inj-decision-msgid decision)))
+         ; fn-owner-submit-octets
+         (equal (fn-ores-taken-octets x) stored)
+         ; fn-owner-submit-groups (as the take wrote it)
+         (equal (fn-ores-taken-groups x)
+                (if (fn-own-transit-subp sub) nil
+                  (fn-inj-decision-groups decision)))
+         ; fn-owner-submit-intent
+         (equal (fn-ores-taken-intent x) (fn-icar-carry-of sub))
+         ; fn-owner-submit-transitp, fn-owner-submit-peer
+         (equal (fn-ores-taken-transitp x) (fn-own-transit-subp sub))
+         (equal (fn-ores-taken-peer x)
+                (if (fn-own-transit-subp sub)
+                    (fn-peer-submission-peer decision)
+                  nil))))
+  :hints (("Goal" :in-theory (disable fn-own-transit-subp fn-own-control-submissionp
+                                      fn-own-sub-decision fn-own-sub-id
+                                      fn-icar-carry-of))))
+
+; The take's id is the in-flight id the submission path's keystones name: a
+; take whose submission's id is a submission id answers a well-formed id
+; field, and the idle answer is well-formed.
+(defthm fn-ores-take-idle-is-a-result
+  (fn-ores-submission-taken-p *fn-ores-take-idle*))
 
 ; ---------------------------------------------------------------------------
 ; ServedStep: the served step's reply and flags (fn-owner-install-effects,
