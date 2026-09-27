@@ -145,9 +145,16 @@ def commits(since: str, rev: str) -> list[tuple[str, int, str, str]]:
 def render(rev: str, since: str) -> str:
     full = git("rev-parse", rev).strip()
     base = git("rev-parse", since).strip()
-    version = git("show", f"{full}:VERSION").splitlines()[0].strip() if \
-        subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{full}:VERSION"],
-                       capture_output=True).returncode == 0 else "unversioned"
+    # The version is VERSION at REV; for HEAD it is the working tree's file,
+    # so a commit that changes VERSION and CHANGELOG.md together agrees with
+    # itself (the cut's own commit).
+    if full == git("rev-parse", "HEAD").strip() and (ROOT / "VERSION").exists():
+        version = (ROOT / "VERSION").read_text().splitlines()[0].strip()
+    elif subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{full}:VERSION"],
+                        capture_output=True).returncode == 0:
+        version = git("show", f"{full}:VERSION").splitlines()[0].strip()
+    else:
+        version = "unversioned"
     history = commits(base, full)
     reverted: set[str] = set()
     for h, _, subject, body in history:
@@ -157,9 +164,12 @@ def render(rev: str, since: str) -> str:
             m = re.search(r"merge \(([0-9a-f]{7,40})\)", subject)
             if m:
                 reverted.add(m.group(1))
-    # The range ends at the last lane merge, so the file a cut commits (after
-    # that merge) is what this writes again at the cut commit itself.
-    last = max((i for i, (_, n, s, _) in enumerate(history) if n > 1 and merge_parts(s)),
+    # The range ends at the last lane merge (or the revert of one), so the
+    # file a cut commits after it is what this writes again at the cut.
+    def ends_range(n: int, s: str) -> bool:
+        return (n > 1 and merge_parts(s) is not None) or bool(
+            re.search(r"\brevert the \S+ merge\b", s, re.I))
+    last = max((i for i, (_, n, s, _) in enumerate(history) if ends_range(n, s)),
                default=len(history) - 1)
     history = history[:last + 1]
     end = history[-1][0] if history else base
