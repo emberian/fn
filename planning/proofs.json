@@ -11222,6 +11222,33 @@
         "pgs-g-reclaim-sound",
         "pgs-x-words-digest-is-sha256"
       ]
+    },
+    {
+      "id": "PRF-342",
+      "title": "The store's history as an FNADTSN1 image on the page store's pages: the decoder inverts it, the page store's page digest is the image's page-digest leaf, and an append changes only O(K + columns) pages while no region doubles",
+      "statement": "books/history-pages.lisp. The image of a history H (fn-hp-image H SALT) is adt-ser (proto-adt-2's FNADTSN1 bytes) over the schema ((:u64) (:u64) (:octets)): per event MKEY (1 + fn-hist-hash of fn-hist-key-msgid, 0 when none), the length of its fn-scc-encode tree octets, and those octets zero-padded to a multiple of 8. KEYSTONES: fn-hp-decode-image (fn-hp-events-okp H, (len H) and (len (fn-hp-image H SALT)) below 2^64 => (fn-hp-decode (fn-hp-image H SALT) SALT) = (:ok H)); fn-hp-page-digest-is-leaf ((fn-shs-p fn-shs), (natp K), page K's words LE = page K of the image => (pgs-x-page-digest K ...) = the be-nat of leaf K of adt-page-digests: the page store's table-entry digest IS the image's per-page leaf, no second digest table); fn-hp-append-changes-only-dirty ((natp K), K not in (fn-hp-append-dirty H NEW SALT) => page K of (fn-hp-image (append H NEW) SALT) = page K of (fn-hp-image H SALT)); fn-hp-append-dirty-bound ((fn-hp-caps-same ...) => 16384 * |dirty| <= 11 * 16384 + 32 |NEW| + NEW's padded tree octets). Generic lemmas over any in-place region growth: fn-hp-body-page-same, fn-hp-ser-page-same, fn-hp-regs-of-append, fn-hp-body-dirty-in-pages, fn-hp-dirty-pages-bound. Named limit L-HP-DOUBLING: FNADTSN1 v1 places regions contiguously, so a doubling moves every later region.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-035"
+      ],
+      "depends_on": [
+        "PRF-314"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-pages.lisp",
+        "tests/acl2/history-pages-tests.lisp",
+        "planning/evidence/arena-store-2-2026-09-28.md"
+      ],
+      "pending_subject": "No host function calls the image yet (milestone 1 is the specification): the owner's open and snapshot through the page store (fnps-open / fnps-commit over the fn-hist image) are milestones 2 and 3 of lane arena-store-2.",
+      "progress_note": "Milestone 1 (lane arena-store-2): the image, its round trip, the one digest theorem and the region plan. Open: the executable writer and reader over pgs-mem, the open's header check (m2), host wiring (m3), measurement (m4); the Message-ID bucket heads are not in the image (FNADTSN1's keyed bytes carry the live records, not the index; no served path reads fn-hist-msgid-records).",
+      "events": [
+        "fn-hp-decode-image",
+        "fn-hp-page-digest-is-leaf",
+        "fn-hp-append-changes-only-dirty",
+        "fn-hp-append-dirty-bound"
+      ]
     }
   ]
 }

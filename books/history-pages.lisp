@@ -6,24 +6,35 @@
 ;   field 0  (:u64)     MKEY: 1 + the salted FNV hash of the event's key
 ;                       Message-ID (`fn-hist-key-msgid', books/history-columns),
 ;                       0 when the event has none
-;   field 1  (:octets)  the event's tree bytes (`fn-scc-encode',
+;   field 1  (:u64)     the length of the event's tree octets
+;   field 2  (:octets)  the event's tree octets (`fn-scc-encode',
 ;                       books/store-checkpoint-codec: a proved codec,
-;                       `fn-scc-decode-tree-of-encode'), decoded on access
-; one row per retained event, oldest first.  So the image has four regions:
-; the MKEY column, the offset and length columns of field 1, and the pool.
-; Every cell is 8 octets, so cell I of a column region is word I of the
-; region's first page: a column read is one word.
+;                       `fn-scc-decode-tree-of-encode'), zero-padded to a
+;                       multiple of 8; decoded on access
+; one row per retained event, oldest first.  So the image has five regions:
+; the MKEY and length columns, the offset and length columns of field 2,
+; and the pool.  Every cell is 8 octets and every pool entry starts on a
+; word, so an append writes whole words and a column read is one word.
 ;
 ; Image pages are the page store's logical pages 1:1 (image page K = page
-; store logical page K).  The page store's per-page digest (the table entry
-; a commit writes, `pgs-x-page-digest' over the page's words) IS the
-; FNADTSN1 page-digest leaf of the same page (`fn-hp-page-digest-is-leaf'):
-; there is no second per-page digest table.
+; store logical page K; the store's physical page 0, its root slots, is
+; another thing).  The page store's per-page digest (the table entry a
+; commit writes, `pgs-x-page-digest' over the page's words) IS the FNADTSN1
+; page-digest leaf of the same page (`fn-hp-page-digest-is-leaf'): there is
+; no second per-page digest table.
 ;
-; Sections:
-;   A. the rows and the schema          fn-hp-row, fn-hp-rows, *fn-hp-schema*
-;   B. the image and its decoder        fn-hp-image, fn-hp-decode;
-;                                       KEYSTONE fn-hp-decode-image
+; KEYSTONES
+;   fn-hp-decode-image               the decoder inverts the image
+;   fn-hp-page-digest-is-leaf        the store's page digest = the leaf
+;   fn-hp-append-changes-only-dirty  an append changes only the dirty list
+;   fn-hp-append-dirty-bound         the dirty list is O(K + columns) pages
+;                                    while no region doubles
+; Named limit L-HP-DOUBLING: FNADTSN1 v1 places regions contiguously, so a
+; region that doubles moves every region after it (one larger commit;
+; amortized O(1) per row).
+;
+; Sections: A. rows and schema; B. image and decoder; C. the digest
+; theorem; D. the region plan.
 (in-package "ACL2")
 (include-book "proto/adt-bytes")
 (include-book "store-checkpoint-buffer")
@@ -250,8 +261,9 @@
    :hints (("Goal" :use ((:instance fn-hp-car-le-octets-natp)) :in-theory (disable fn-hp-car-le-octets-natp)
             :expand ((take n nil))))))
 
-; THE digest theorem.  (A page past the image's end cannot satisfy the
-; hypothesis: its octets would be NILs, the words' are naturals.)
+; KEYSTONE (the digest): the store's page digest is the leaf.  (A page
+; past the image's end cannot satisfy the hypothesis: its octets would be
+; NILs, the words' are naturals.)
 (defthm fn-hp-page-digest-is-leaf
   (implies (and (fn-shs-p fn-shs) (natp k)
                 (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 k) (pgs-x-arr 0 pgs-mem))))
