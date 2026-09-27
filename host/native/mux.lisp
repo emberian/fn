@@ -548,15 +548,13 @@ no exposure wait pending."
 (defun fnn-mux-idle (loop conn)
   "RFC 3977 3.1's autologout, decided by ACL2 (fn-exp-idle): the close sends
 nothing."
-  ;; PKT-858: a peer connection's idle quantum (every second, exposure
-  ;; accounting only: no offer, no store) enters as ACL2's class for its
-  ;; reads (fnn-owner-peer-read-class): as :transit while the disk sheds it
-  ;; would hold this whole I/O loop at the gate until the barrier completed,
-  ;; every connection the loop serves included.
-  (if (eq (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn)
-                                   (if (eq (fnn-mux-conn-class conn) :transit)
-                                       (fnn-owner-peer-read-class (fnn-mux-service loop))
-                                     (fnn-mux-conn-class conn)))
+  ;; PKT-858: the idle quantum is exposure accounting only (fn-exp-idle: no
+  ;; offer, no session, no store), a reader-class quantum for a peer
+  ;; connection as for a reader: as :transit it waited at the gate for the
+  ;; batch in flight -- the whole barrier when the disk stalls -- and held
+  ;; this I/O loop, every connection it serves included (the native case
+  ;; found it: the peer's IHAVE during a stall was never read).
+  (if (eq (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn) :reader)
           :close)
       (progn (setf (fnn-mux-conn-idle-at conn) nil)
              (fnn-mux-begin-drain loop conn))
