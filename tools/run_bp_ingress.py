@@ -48,6 +48,10 @@ class IngressResult:
     outcome: str  # accepted | duplicate | rejected | refused-clock-unusable
     bid: str
     staged_path: Path
+    # The name ACL2 gave a rejection, when it gave one (a header limit of the
+    # store profile: header-fields-limit, header-lines-limit,
+    # header-octets-limit).
+    reason: str | None = None
 
 
 def load_workflow_journal(path: Path):
@@ -109,6 +113,9 @@ class Acl2BpIngress(run_store.Acl2Store):
             return "unaffordable"
         if value == b":REJECTED":
             return "rejected"
+        if value in (b":HEADER-FIELDS-LIMIT", b":HEADER-LINES-LIMIT",
+                     b":HEADER-OCTETS-LIMIT"):
+            return value[1:].decode("ascii").lower()
         raise BpIngressError("unexpected ACL2 BP article verdict")
 
     def ingress_prepare(self, destination: bytes, source_eid: bytes, bid: bytes,
@@ -304,6 +311,8 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
         verdict = bridge.article_verdict(store.config["profile"], adu)
         if verdict == "rejected":
             return IngressResult("rejected", bid, staged_path)
+        if verdict.startswith("header-"):
+            return IngressResult("rejected", bid, staged_path, verdict)
         if verdict != "admissible":
             raise BpIngressError("Store budget refuses the article "
                                  "(transaction count or history bound)")

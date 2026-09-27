@@ -38,9 +38,9 @@
   (equal (append (append a b) c) (append a (append b c)))))
 
 (local
- (defun fn-spj-ind (x l l2 b b2 fr cur hr hr2)
+ (defun fn-spj-ind (x l l2 b b2 na ns fr cur hr hr2)
    (declare (xargs :measure (nfix l)))
-   (if (zp l) (list x l2 b b2 fr cur hr hr2)
+   (if (zp l) (list x l2 b b2 na ns fr cur hr hr2)
      (let ((next (fn-article-next-line x)))
        (if (not (fn-article-line-okp next)) nil
          (let ((line (fn-article-line-value next))
@@ -48,10 +48,11 @@
            (if (null line) nil
              (if (fn-article-wspp (car line))
                  (fn-spj-ind rest (1- l) (1- l2) (+ b (len line) 2) (+ b2 (len line) 2)
-                             fr (fn-article-add-fold cur line)
+                             na ns fr (fn-article-add-fold cur line)
                              (fn-article-header-rev-add-line hr line)
                              (fn-article-header-rev-add-line hr2 line))
                (fn-spj-ind rest (1- l) (1- l2) (+ b (len line) 2) (+ b2 (len line) 2)
+                           (if cur (+ 1 (nfix na)) na) (if cur (+ 1 (nfix ns)) ns)
                            (if cur (cons cur fr) fr)
                            (fn-article-line-value (fn-article-new-field line))
                            (fn-article-header-rev-add-line hr line)
@@ -60,19 +61,20 @@
 (local
  (defthm fn-spj-parse-lines-with-older-fields
    (implies (and (fn-article-result-okp
-                  (fn-article-parse-lines x l b (append fr tl) cur hr))
+                  (fn-article-parse-lines x lim l b na (append fr tl) cur hr))
                  (true-listp fr) (true-listp tl)
+                 (natp na) (natp ns) (<= ns na)
                  (natp l) (natp l2) (<= l l2)
                  (natp b) (natp b2) (<= b2 b))
-            (let ((a (fn-article-parse-lines x l b (append fr tl) cur hr))
-                  (s (fn-article-parse-lines x l2 b2 fr cur hr2)))
+            (let ((a (fn-article-parse-lines x lim l b na (append fr tl) cur hr))
+                  (s (fn-article-parse-lines x lim l2 b2 ns fr cur hr2)))
               (and (fn-article-result-okp s)
                    (equal (fn-article-fields (fn-article-result-article a))
                           (append (reverse tl)
                                   (fn-article-fields (fn-article-result-article s))))
                    (equal (fn-article-body (fn-article-result-article a))
                           (fn-article-body (fn-article-result-article s))))))
-   :hints (("Goal" :induct (fn-spj-ind x l l2 b b2 fr cur hr hr2)
+   :hints (("Goal" :induct (fn-spj-ind x l l2 b b2 na ns fr cur hr hr2)
             :in-theory (e/d (fn-article-parse-lines fn-article-finish-fields)
                             (fn-article-next-line fn-article-new-field
                              fn-article-add-fold fn-article-header-rev-add-line
@@ -112,26 +114,29 @@
 
 (local
  (defthm fn-spj-parse-lines-after-two-fields
-   (implies (and (fn-article-result-okp (fn-article-parse-lines x l b (list f1) f2 hr))
-                 (fn-article-result-okp (fn-article-parse-lines x l2 b2 nil nil hr2))
+   (implies (and (fn-article-result-okp (fn-article-parse-lines x lim l b 1 (list f1) f2 hr))
+                 (fn-article-result-okp (fn-article-parse-lines x lim l2 b2 0 nil nil hr2))
                  f2
                  (natp l) (natp l2) (<= l l2)
                  (natp b) (natp b2) (<= b2 b))
-            (let ((a (fn-article-parse-lines x l b (list f1) f2 hr))
-                  (s (fn-article-parse-lines x l2 b2 nil nil hr2)))
+            (let ((a (fn-article-parse-lines x lim l b 1 (list f1) f2 hr))
+                  (s (fn-article-parse-lines x lim l2 b2 0 nil nil hr2)))
               (and (equal (fn-article-fields (fn-article-result-article a))
                           (list* f1 f2 (fn-article-fields (fn-article-result-article s))))
                    (equal (fn-article-body (fn-article-result-article a))
                           (fn-article-body (fn-article-result-article s))))))
    :hints (("Goal"
-            :expand ((fn-article-parse-lines x l b (list f1) f2 hr)
-                     (fn-article-parse-lines x l2 b2 nil nil hr2))
+            :expand ((fn-article-parse-lines x lim l b 1 (list f1) f2 hr)
+                     (fn-article-parse-lines x lim l2 b2 0 nil nil hr2))
             :use ((:instance fn-spj-parse-lines-with-older-fields
                              (x (fn-article-line-rest (fn-article-next-line x)))
                              (l (1- l)) (l2 (1- l2))
                              (b (+ b (len (fn-article-line-value (fn-article-next-line x))) 2))
                              (b2 (+ b2 (len (fn-article-line-value (fn-article-next-line x))) 2))
-                             (fr nil) (tl (list f2 f1))
+                             (fr nil) (tl (list f2 f1)) (ns 0)
+                             (na (if (fn-article-wspp
+                                      (car (fn-article-line-value (fn-article-next-line x))))
+                                     1 2))
                              (cur (fn-article-line-value
                                    (fn-article-new-field
                                     (fn-article-line-value (fn-article-next-line x)))))
@@ -150,14 +155,15 @@
    (implies (and (fn-spj-line-freep l) (true-listp l) (consp l)
                  (not (fn-article-wspp (car l)))
                  (fn-article-result-okp
-                  (fn-article-parse-lines (append l (list* 13 10 rest)) n b fr cur hr)))
-            (equal (fn-article-parse-lines (append l (list* 13 10 rest)) n b fr cur hr)
-                   (fn-article-parse-lines rest (1- n) (+ b (len l) 2)
+                  (fn-article-parse-lines (append l (list* 13 10 rest)) lim n b nf fr cur hr)))
+            (equal (fn-article-parse-lines (append l (list* 13 10 rest)) lim n b nf fr cur hr)
+                   (fn-article-parse-lines rest lim (1- n) (+ b (len l) 2)
+                                           (if cur (+ 1 (nfix nf)) nf)
                                            (if cur (cons cur fr) fr)
                                            (fn-article-line-value (fn-article-new-field l))
                                            (fn-article-header-rev-add-line hr l))))
    :rule-classes nil
-   :hints (("Goal" :expand ((fn-article-parse-lines (append l (list* 13 10 rest)) n b fr cur hr))
+   :hints (("Goal" :expand ((fn-article-parse-lines (append l (list* 13 10 rest)) lim n b nf fr cur hr))
             :in-theory (e/d () (fn-article-parse-lines fn-article-new-field
                                 fn-article-header-rev-add-line fn-article-wspp))))))
 
@@ -173,9 +179,9 @@
 
 (local
  (defthm fn-spj-parsed-article-is-a-true-list
-   (implies (fn-article-result-okp (fn-article-parse-lines x l b fr cur hr))
-            (true-listp (fn-article-result-article (fn-article-parse-lines x l b fr cur hr))))
-   :hints (("Goal" :induct (fn-article-parse-lines x l b fr cur hr)
+   (implies (fn-article-result-okp (fn-article-parse-lines x lim l b nf fr cur hr))
+            (true-listp (fn-article-result-article (fn-article-parse-lines x lim l b nf fr cur hr))))
+   :hints (("Goal" :induct (fn-article-parse-lines x lim l b nf fr cur hr)
             :in-theory (e/d (fn-article-parse-lines)
                             (fn-article-next-line fn-article-new-field
                              fn-article-add-fold fn-article-header-rev-add-line
@@ -186,9 +192,10 @@
    (implies (fn-article-result-okp (fn-article-parse x))
             (true-listp (fn-article-result-article (fn-article-parse x))))
    :hints (("Goal" :use ((:instance fn-spj-parsed-article-is-a-true-list
-                                    (l (1+ *fn-article-max-header-lines*)) (b 0)
+                                    (lim *fn-article-ceiling-limits*)
+                                    (l (1+ *fn-article-max-octets*)) (b 0) (nf 0)
                                     (fr nil) (cur nil) (hr nil)))
-            :in-theory (e/d (fn-article-parse)
+            :in-theory (e/d (fn-article-parse fn-article-parse-under)
                             (fn-article-parse-lines fn-spj-parsed-article-is-a-true-list))))))
 
 (defthm fn-spj-two-lines-then-the-source
@@ -211,23 +218,26 @@
   :hints (("Goal"
            :use ((:instance fn-spj-parse-lines-of-a-field-line
                             (l l1) (rest (append l2 (list* 13 10 src)))
-                            (n (1+ *fn-article-max-header-lines*)) (b 0)
+                            (lim *fn-article-ceiling-limits*)
+                            (n (1+ *fn-article-max-octets*)) (b 0) (nf 0)
                             (fr nil) (cur nil) (hr nil))
                  (:instance fn-spj-parse-lines-of-a-field-line
                             (l l2) (rest src)
-                            (n *fn-article-max-header-lines*) (b (+ (len l1) 2))
+                            (lim *fn-article-ceiling-limits*)
+                            (n *fn-article-max-octets*) (b (+ (len l1) 2)) (nf 0)
                             (fr nil)
                             (cur (fn-article-line-value (fn-article-new-field l1)))
                             (hr (fn-article-header-rev-add-line nil l1)))
                  (:instance fn-spj-parse-lines-after-two-fields
-                            (x src) (l (1- *fn-article-max-header-lines*))
+                            (lim *fn-article-ceiling-limits*)
+                            (x src) (l (1- *fn-article-max-octets*))
                             (b (+ (len l1) 2 (len l2) 2))
                             (f1 (fn-article-line-value (fn-article-new-field l1)))
                             (f2 (fn-article-line-value (fn-article-new-field l2)))
                             (hr (fn-article-header-rev-add-line
                                  (fn-article-header-rev-add-line nil l1) l2))
-                            (l2 (1+ *fn-article-max-header-lines*)) (b2 0) (hr2 nil)))
-           :in-theory (e/d (fn-article-parse)
+                            (l2 (1+ *fn-article-max-octets*)) (b2 0) (hr2 nil)))
+           :in-theory (e/d (fn-article-parse fn-article-parse-under)
                            (fn-article-parse-lines fn-article-new-field binary-append
                             fn-article-header-rev-add-line fn-article-wspp)))))
 

@@ -309,7 +309,8 @@ fn-pcb-transit-verdict (PKT-473), or nil."
 ; The injection reasons fn-post-refusal-line names.  A 441 whose text is none
 ; of theirs is logged with reason `unnamed'.
 (defconst *fn-olog-post-refusal-reasons*
-  '(:unparsable :injection-info :xref :injection-date-present :path-present
+  '(:unparsable :header-fields-limit :header-lines-limit :header-octets-limit
+    :injection-info :xref :injection-date-present :path-present
     :newsgroups-missing :newsgroups-duplicate :newsgroups-invalid
     :message-id-duplicate :message-id-invalid :from-missing :from-duplicate
     :from-invalid :subject-missing :subject-duplicate :date-duplicate

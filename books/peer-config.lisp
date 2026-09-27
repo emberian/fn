@@ -152,7 +152,10 @@
                       (equal (car security) :tls)
                       (member-equal (cadr security) '(:implicit :starttls))
                       (fn-cfg-cstringp (caddr security))
-                      (fn-cfg-cstringp (cadddr security))))))
+                      ; PKT-613 (PRF-231): the trust is a pinned anchor file
+                      ; or the system's public roots.
+                      (or (fn-cfg-cstringp (cadddr security))
+                          (equal (cadddr security) :system-roots))))))
       ; Legacy durable peers decode as explicit cleartext.
       (and (true-listp x) (equal (len x) 3) (equal (car x) :nntp)
            (fn-cfg-labelp (car (cdr x)))
@@ -242,6 +245,19 @@
 ; -----------------------------------------------------------------------------
 ; The row codec
 
+;; PKT-613 (PRF-231): the trust-anchor row.  A pinned anchor is its path with
+;; n = 0 (the row every earlier record wrote); the system's public roots are
+;; the empty label with n = 1.  No wire or delta code changes.
+(defun fn-cfg-peer-trust-row (name trust)
+  (declare (xargs :guard t))
+  (if (equal trust :system-roots)
+      (fn-cfg-row-make name "transport-trust-anchor" "" 1)
+    (fn-cfg-row-make name "transport-trust-anchor" trust 0)))
+
+(defun fn-cfg-peer-trust-of-row (row)
+  (declare (xargs :guard t))
+  (if (equal (fn-cfg-row-n row) 1) :system-roots (fn-cfg-row-c row)))
+
 (defun fn-cfg-peer-rows (p)
   (declare (xargs :guard t))
   (let ((name (fn-cfg-peer-name p))
@@ -272,9 +288,9 @@
                   (list (fn-cfg-row-make name "transport-server-name"
                                          (fn-cfg-ag-car (fn-cfg-ag-cdr
                                           (fn-cfg-ag-cdr security))) 0)
-                        (fn-cfg-row-make name "transport-trust-anchor"
-                                         (fn-cfg-ag-car (fn-cfg-ag-cdr
-                                          (fn-cfg-ag-cdr (fn-cfg-ag-cdr security)))) 0)))))
+                        (fn-cfg-peer-trust-row name
+                                               (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                                (fn-cfg-ag-cdr (fn-cfg-ag-cdr security)))))))))
            (list (fn-cfg-row-make name "transport-nntp"
                                   (fn-cfg-ag-car (fn-cfg-ag-cdr transport))
                                   (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport))))))
@@ -344,9 +360,9 @@
                          (list :nntp 1 (fn-cfg-row-c tn) (fn-cfg-row-n tn)
                                (cond ((equal (fn-cfg-row-c ts) "clear") '(:clear))
                                      ((and tname ta (equal (fn-cfg-row-c ts) "implicit"))
-                                      (list :tls :implicit (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                      (list :tls :implicit (fn-cfg-row-c tname) (fn-cfg-peer-trust-of-row ta)))
                                      ((and tname ta (equal (fn-cfg-row-c ts) "starttls"))
-                                      (list :tls :starttls (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                      (list :tls :starttls (fn-cfg-row-c tname) (fn-cfg-peer-trust-of-row ta)))
                                      (t nil)))))
                    (tb (list :bp (fn-cfg-row-c tb)))
                    (t nil))
@@ -468,9 +484,9 @@
                (list (fn-cfg-row-make name "transport-server-name"
                                       (fn-cfg-ag-car (fn-cfg-ag-cdr
                                        (fn-cfg-ag-cdr security))) 0)
-                     (fn-cfg-row-make name "transport-trust-anchor"
-                                      (fn-cfg-ag-car (fn-cfg-ag-cdr
-                                       (fn-cfg-ag-cdr (fn-cfg-ag-cdr security)))) 0)))))
+                     (fn-cfg-peer-trust-row name
+                                            (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                             (fn-cfg-ag-cdr (fn-cfg-ag-cdr security)))))))))
         (list (fn-cfg-row-make name "transport-nntp"
                                (fn-cfg-ag-car (fn-cfg-ag-cdr transport))
                                (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport))))))
@@ -691,9 +707,9 @@
                          (list :nntp 1 (fn-cfg-row-c tn) (fn-cfg-row-n tn)
                                (cond ((equal (fn-cfg-row-c ts) "clear") '(:clear))
                                      ((and tname ta (equal (fn-cfg-row-c ts) "implicit"))
-                                      (list :tls :implicit (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                      (list :tls :implicit (fn-cfg-row-c tname) (fn-cfg-peer-trust-of-row ta)))
                                      ((and tname ta (equal (fn-cfg-row-c ts) "starttls"))
-                                      (list :tls :starttls (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                      (list :tls :starttls (fn-cfg-row-c tname) (fn-cfg-peer-trust-of-row ta)))
                                      (t nil)))))
                    (tb (list :bp (fn-cfg-row-c tb)))
                    (t nil))

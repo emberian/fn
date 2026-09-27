@@ -142,7 +142,7 @@
 (defun crt-owner-with-view (o view)
   (fn-own-make (fn-own-store o) view (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-               (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+               (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))
 
 (defconst *crt-view-raw* (crt-view-with-raw *crt-view* (cons *crt-a1* (fn-own-view-raw *crt-view*))))
 (defconst *crt-o-raw* (crt-owner-with-view *crt-completing* *crt-view-raw*))

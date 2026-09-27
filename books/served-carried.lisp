@@ -213,11 +213,13 @@
                           (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (mbe :logic (append effects
                          (if submission
-                             (list (fn-served-submit-effect submission))
+                             (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))
+                                (fn-served-account (fn-served-conn-session conn))))
                            nil))
           :exec (fn-ag-append effects
                               (if submission
-                                  (list (fn-served-submit-effect submission))
+                                  (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))
+                                (fn-served-account (fn-served-conn-session conn))))
                                 nil))))))
 
 (defthm fn-scar-dispatch-core-is-served-dispatch-core

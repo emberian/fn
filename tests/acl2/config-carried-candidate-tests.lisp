@@ -1,5 +1,7 @@
-; Teeth for books/config-carried-candidate.lisp (PKT-510 (1)): the offline
-; request's candidate and authorization from the open's carried fold.
+; Teeth for books/config-carried-candidate.lisp (PKT-510 (1)): the folds'
+; one-step extensions and the candidate from the open's carried folds.  The
+; authorization, the carried open result and the readback are
+; tests/acl2/config-carried-open-tests.lisp.
 (in-package "ACL2")
 (include-book "../../books/config-carried-candidate")
 (include-book "../../books/codec-attach")
@@ -82,20 +84,6 @@
                                            *fn-cfgct-record* *fn-cfgct-configuration*
                                            *fn-cfgct-open*))
         :accepted))
-
-; fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization: the
-; conclusion over the default profile, accepted at generation 51.
-(defconst *fn-cfgct-profile* *fn-bs-profile-defaults*)
-(defconst *fn-cfgct-carried*
-  (fn-cfgc-cvec-native-admin-authorize *fn-cfgct-events* 2 *fn-cfgct-history*
-                                      *fn-cfgct-record* t nil *fn-cfgct-profile*
-                                      *fn-cfgct-open*))
-(assert-event
- (equal *fn-cfgct-carried*
-        (fn-cvec-native-admin-authorize *fn-cfgct-events* 2 *fn-cfgct-history*
-                                        *fn-cfgct-record* t nil *fn-cfgct-profile*)))
-(assert-event (equal (fn-native-admin-publication-status *fn-cfgct-carried*) :accepted))
-(assert-event (equal (fn-native-admin-publication-generation *fn-cfgct-carried*) 51))
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis removal.  Each omitted hypothesis: the retained ones hold, the
@@ -190,36 +178,6 @@
                                       configs events record)))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-cpr-replay) (fn-cpr-loop fn-cnode-statep))))))
-
-; (4) the carried fold is the open's replay.  A carried fold of another
-; history (the fold of the first 49 records) and the authorization differs:
-; the candidate is refused where the replayed one is accepted.
-(defconst *fn-cfgct-stale* (fn-cpr-replay (fn-cfgct-configs 0 0) *fn-cfgct-events*))
-(assert-event (true-listp *fn-cfgct-history*))
-(assert-event (not (equal *fn-cfgct-stale* *fn-cfgct-open*)))
-(assert-event
- (not (equal (fn-cfgc-cvec-native-admin-authorize
-              *fn-cfgct-events* 2 *fn-cfgct-history* *fn-cfgct-record* t nil
-              *fn-cfgct-profile* *fn-cfgct-stale*)
-             (fn-cvec-native-admin-authorize
-              *fn-cfgct-events* 2 *fn-cfgct-history* *fn-cfgct-record* t nil
-              *fn-cfgct-profile*))))
-(must-fail
- (defthm fn-cfgct-authorize-without-the-open
-   (implies (true-listp config-records)
-            (equal (fn-cfgc-cvec-native-admin-authorize
-                    records frontier config-records record lock-owned
-                    observed-names profile replayed)
-                   (fn-cvec-native-admin-authorize
-                    records frontier config-records record lock-owned
-                    observed-names profile)))
-   :hints (("Goal"
-            :do-not-induct t
-            :in-theory (e/d (fn-cvec-native-admin-authorize)
-                            (fn-cfgc-publication-authorize
-                             fn-native-admin-publication-authorize
-                             fn-cpr-replay fn-cvec-group-names-within
-                             fn-cvec-config-generations))))))
 
 ; (5) true-listp of the configuration records, for the authorization: the
 ; improper history's carried fold is its (faulting) replay, and the

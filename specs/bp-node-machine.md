@@ -1819,6 +1819,59 @@ preserved by every installed owner transition; the kernel crash, which the
 host never issues, is the one Store event that breaks it until recovery
 rebuilds it), not a hypothesis of the keystones.
 
+#### 4.9.3 The contact cursor: a drain examines each job once (2026-09-27, lane bp-cursors, PRF-226)
+
+`fn-bpnj-contact-next` answers one ask in one traversal, but the host asks
+before every offer and every ask started at the head of the job list: it
+walked the whole list for the gate's ready-peer set
+(`fn-bpn-ready-peers`), re-scanned the jobs already offered, and read its
+answer back by key from the head (`fn-bpnj-own-entryp`). Draining a
+contact that offers N jobs examined about 2N^2 job records (2,002,000 at
+N = 1,000; 200,020,000 at N = 10,000). This is a local cost property; RFC
+9171 section 5.4 leaves forwarding order and retry to the node, and the
+answer is unchanged.
+
+The host now asks `fn-bpnjc-contact-next` (books/bp-node-job-cursor.lisp)
+with a cursor `(F C HELD)` it threads between asks, as it threads OFFERED:
+F is the peer's frontier (every job ahead of it is another peer's or
+`:forwarded`/`:expired`, which no lifecycle record changes), C the
+contact's position (no job ahead of it is ready on this contact and every
+offered key is ahead of it), HELD the first held job ahead of C. The ask
+reads the jobs from C on, each once, and the gate without the ready-peer
+walk. Under the relation `fn-bpnjc-contact-relp` its answer is the head
+scan's (`fn-bpnjc-contact-next-is-the-head-scan`), so PRF-120's and
+PRF-079's theorems describe it. The relation is established at the
+contact's opening from the peer's frontier
+(`fn-bpnjc-open-establishes-the-relation`; the host's table is empty at
+open, where every frontier is 0), kept by each offer for the next ask
+(`fn-bpnjc-offer-keeps-the-relation`) and by the machine's change of the
+jobs ahead of the cursor between asks when that change is an evolution
+(`fn-bpnjc-evolution-keeps-the-relation`: same keys, and a job changed only
+if offered on this contact or not queued for the peer before and after;
+the offer's own records and a `:queued` append are such evolutions,
+`fn-bpnjc-offered-record-evolves`). Along a contact the cursor's answers
+are the head scan's, ask for ask (`fn-bpnjc-drain-is-the-head-drain`), and
+the positions all asks examine add up to at most the job list's length less
+the start (`fn-bpnjc-drain-visits-are-linear`). The contact's close
+advances the peer's frontier over the settled jobs it examined
+(`fn-bpnjc-contact-close`, `fn-bpnjc-close-keeps-the-frontiers`); every
+lifecycle record keeps every frontier
+(`fn-bpnjc-lifecycle-record-keeps-the-frontier`). The frontier is not
+persisted: a restarted node opens every contact at 0, one linear pass.
+
+Covered scope: the base job offer (`fnn-bpc-drive-contact`,
+`fnn-bpnode-send-receipts`). Not covered: a frame theorem that every served
+event (`fn-bpnj-step`) changes the base jobs only through
+`fn-bpn-apply-record` (the host drives only the offer's own events between
+two asks; the drain theorem takes the evolution as its hypothesis, as
+PRF-120's progress theorem takes A-BP-CONTACT); the machine's own per-offer
+work is still linear in the job's position (`fn-bpn-find-job`,
+`fn-bpn-replace-job` over the job list) and each ask walks to C
+(`fn-bpnjc-drop`, pointer steps, no record read): PKT-653. The job list
+cannot reach 10,000 jobs through the machine's events: the lower machine
+numbers at most 4,096 lifecycle records (`*fn-bpn-machine-max-records*`),
+PKT-654.
+
 ## 5. The theorems
 
 Notation, fixed for every statement:

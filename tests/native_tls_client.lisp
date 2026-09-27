@@ -25,13 +25,18 @@
            (progn
              (unless (handler-case
                          (progn (fnn-tls-open-client-context
-                                 (coerce (list #\/ #\t #\m #\p (code-char 0)
-                                               #\/ #\c #\a) 'string))
+                                 (list :pinned
+                                       (coerce (list #\/ #\t #\m #\p (code-char 0)
+                                                     #\/ #\c #\a) 'string)))
                                 nil)
                        (fnn-tls-config-error () t))
                (error "embedded-NUL trust anchor reached OpenSSL"))
              (sb-bsd-sockets:socket-connect socket #(127 0 0 1) port)
-             (setq context (fnn-tls-open-client-context anchor))
+             ;; PKT-613: FN_TLS_CLIENT_CA=system selects the library's default
+             ;; roots (the test points SSL_CERT_FILE at its scratch CA).
+             (setq context (fnn-tls-open-client-context
+                            (if (string= anchor "system") '(:system-roots)
+                              (list :pinned anchor))))
              (unless (handler-case
                          (progn (fnn-tls-connect
                                  context (sb-bsd-sockets:socket-file-descriptor socket)

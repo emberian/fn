@@ -1076,7 +1076,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-article-parse-work-input-bound"
+          "name": "fn-article-parse-under-work-input-bound"
         },
         {
           "kind": "theorem",
@@ -2084,7 +2084,7 @@
         {
           "kind": "theorem",
           "name": "fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut",
-          "note": "Host subject: the in-process re-recovery at host/native/admin.lisp:107 (fnn-admin-verify-under-lock: fnn-bridge-reset, then fnn-recover, which reads the live view and opens through fn-cpo-open-observed via fnn-bridge-recover and fn-store-sn-recover). From a related pair with :root and :transactions quiet, when that open succeeds its kernel is related to the live byte state (not a crash image) and every step and pair of the recovery program run from it is covered and related. The quiet hypothesis is what the admin process has after its own recovery; it is sufficient, not shown necessary. The administrative publication's own syscalls are not modelled.",
+          "note": "Retired host subject (PKT-601 (2), config-consumer-catalog-2): the in-process re-recovery that host/native/admin.lisp fnn-admin-verify-under-lock ran (fnn-bridge-reset, then fnn-recover, which reads the live view and opens through fn-cpo-open-observed via fnn-bridge-recover and fn-store-sn-recover) is replaced by the readback of the published record (PRF-209, fn-cfgc-readback-verified-is-the-reopen); no host line calls this re-recovery now and the theorem is model-level. From a related pair with :root and :transactions quiet, when that open succeeds its kernel is related to the live byte state (not a crash image) and every step and pair of the recovery program run from it is covered and related. The quiet hypothesis is what the admin process has after its own recovery; it is sufficient, not shown necessary. The administrative publication's own syscalls are not modelled.",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
         },
         {
@@ -3405,6 +3405,22 @@
         {
           "kind": "theorem",
           "name": "fn-bs-read-ranges-concatenate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-one-publication-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-next-decides-by-the-rule"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-finish-binds-the-captured-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-fast-path-within-k-by-definition"
         }
       ]
     },
@@ -5094,7 +5110,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-seal-buffer{correspondence}"
+          "name": "fn-arena-bytes-seal-buffer{correspondence}"
         },
         {
           "kind": "theorem",
@@ -7339,6 +7355,26 @@
         {
           "kind": "theorem",
           "name": "fn-ockp-run-is-the-remaining"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-encode-batch-ok-is-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-of-encodable-never-refuses-a-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-setup-not-unencodable-never-refuses-a-row"
         }
       ]
     },
@@ -7433,6 +7469,78 @@
         {
           "kind": "theorem",
           "name": "fn-oag-listing-server-is-the-path-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-injected-octets-carry-the-parameters"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-with-params-of-an-injection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-with-params-keeps-the-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-params-of-a-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-params-without-a-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-params-are-a-parameter-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-injected-octets-without-parameters"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-addr-spec-has-no-quote-or-line-break"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-account-value-is-hex"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-account-value-depends-only-on-the-mac"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pa-account-value-determines-the-mac"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-injected-octets-keep-the-d25-subject"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-a-same-source-retry-is-the-same-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-stored-octets-keep-the-d25-subject"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-an-injection-does-not-open-with-c"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-same-articlep-of-two-injections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-path-agent-of-the-injected-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-an-injection-opens-with-p-or-i"
         }
       ]
     },
@@ -7509,6 +7617,22 @@
         {
           "kind": "theorem",
           "name": "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-advance-okp-is-replay-advance-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-cpo-open-of-other-configs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-candidate-open-carried-is-the-replayed-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-readback-verified-is-the-reopen"
         }
       ]
     },
@@ -7646,6 +7770,562 @@
         {
           "kind": "theorem",
           "name": "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+        }
+      ]
+    },
+    {
+      "id": "PRF-221",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-served-bytes-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-intern-extent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-projection-bytes-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-replay-index-over-both-views"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-replay-verdicts-over-both-views"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-intern-context"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-handles-inp-survives-seals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-contexts-okp-survives-seals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-load-establishes-contexts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-load-from-empty-establishes-contexts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-pinned-rows-survive-seals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-reclaim-old-view-reads-the-original"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-reclaim-new-row-reads-the-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-resolve-before-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-resolve-after-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-bytes-seal-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-bytes-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-bytes-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-range-is-seal-list"
+        }
+      ]
+    },
+    {
+      "id": "PRF-217",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import writes fn-bs-imp-program step for step (native_cuts.verify_import_cut_map). Teeth: tests/acl2/store-import-publication-tests.lisp (reachable run, every landing at import-published, six hypothesis-removal witnesses)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-imp-classify-by-what-is-known",
+          "note": "The recovery classification over every crash image; host: fnn-command-store-import calls fn-bs-imp-classify (fnn-import-classify). Teeth: the four verdicts reached at import-published in the test book."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store",
+          "note": "KEYSTONE (PKT-647). Host: host/native/io.lisp fnn-command-init-published (operator init, host/native/operator.lisp fnn-operator-execute-init) writes fn-bs-init-pub-program through fnn-staged-publication (native_cuts.verify_init_publication_cut_map). Teeth: tests/acl2/store-init-publication-tests.lisp (reachable run with the transactions directory empty, every verdict at init-published, fresh-transactions-id and honest-outcome hypothesis-removal witnesses)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-classify-by-what-is-known",
+          "note": "Host: fnn-command-init-published classifies a leftover ROOT.init-* through fnn-import-classify (fn-bs-imp-classify) and asks fn-bs-init-pub-admission. Teeth: every admission arm in the test book."
+        }
+      ]
+    },
+    {
+      "id": "PRF-246",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-log-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-torn-variant-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-torn-entry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-log-then-torn-entry"
+        }
+      ]
+    },
+    {
+      "id": "PRF-230",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-admits-exactly-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-within-its-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-raised-limits-agree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-census-refusal-is-the-parse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-work-input-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-under-admits-exactly-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-under-wants-only-what-transfer-wants"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-bp-transit-submits-only-within-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-bp-transit-refuses-past-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-control-decision-injects-only-within-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-control-decision-refuses-past-the-limits-by-name"
+        }
+      ]
+    },
+    {
+      "id": "PRF-210",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-verified-cause-ignores-its-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-plan-record-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cancel-executes-only-for-author-or-authority"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-stored-octets-carry-the-account-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-stored-octets-keep-the-injected-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-account-key-opens-exactly-its-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-served-payload-writes-one-account-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-served-payload-projects-to-the-injected-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-ring-keys-open-every-retained-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cll-skip-of-the-generated-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-expand-input-separates-info"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-cancel-lock-and-posting-account-inputs-differ"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-file-parse-of-render"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        }
+      ]
+    },
+    {
+      "id": "PRF-229",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-view-seq-is-walk",
+          "pending_subject": "Subject is fn-cnx-view-seq / fn-cnx-view-range over fn-cat; the host calls neither yet (the served retrieval arms read the list indexes until catalog-slice step 7b threads fn-cat; LANEDUMP request)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-view-range-is-walk",
+          "pending_subject": "Subject is fn-cnx-view-seq / fn-cnx-view-range over fn-cat; the host calls neither yet (the served retrieval arms read the list indexes until catalog-slice step 7b threads fn-cat; LANEDUMP request)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-number-seq-unique"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-create-and-clear"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cnx-freshp-of-cat-writers"
+        }
+      ]
+    },
+    {
+      "id": "PRF-226",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-contact-next-is-the-head-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-offer-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-evolution-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-open-establishes-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-drain-is-the-head-drain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-drain-visits-are-linear"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-offered-record-evolves"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-lifecycle-record-keeps-the-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-close-keeps-the-frontiers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-ask-position-bounds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-227",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-reset-is-served-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-selection-establishes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-selection-ready-iff-projectable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-served-open-is-served-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-projection-is-a-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-advance-preserves-node-statep"
+        }
+      ]
+    },
+    {
+      "id": "PRF-240",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-entry-step-is-entry-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-coverage-chain-is-coverage-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-observe-chain-is-observe-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-links-okp-of-decoded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-remember-keeps-sound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-remember-all-keeps-sound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-framed-link-fast-is-framed-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-octet-event-listp-is-octet-event-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-event-fields-are-the-dispatchers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-linkp-is-linkp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-decode-link-is-decode-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obi-load-is-cat-load"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obi-intern-range-is-intern-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obi-load-from-empty-establishes-relation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-241",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfgp-recontext-range-split"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgp-policy-in-quanta-is-the-range"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgp-apply-in-quanta-is-apply-delta"
+        }
+      ]
+    },
+    {
+      "id": "PRF-231",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-peer-dial-target-decides-the-path",
+          "note": "KEYSTONE. Subject fn-peer-dial-target; host host/native/io.lisp fnn-peer-connect (feed and pull dials). Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-verification-selects-one-check",
+          "note": "KEYSTONE. Subject fn-peer-tls-verification; host fnn-feed-enable-tls and fnn-pull-round's (:tls) effect. Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-verification-sni-is-never-a-literal",
+          "note": "RFC 6066 section 3 over the same subject. Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-select-named-default",
+          "note": "KEYSTONE. Subject fn-peer-tls-select, called by fn-native-admin-peer-plan-base (peer add). Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-select-is-a-check",
+          "note": "Every selection is a check fn-peer-tls-verification accepts. Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-host-name-is-not-an-ipv4-literal",
+          "note": "A name never parses as an IPv4 literal (RFC 1123 s2.1). Used by the dial keystone."
+        }
+      ]
+    },
+    {
+      "id": "PRF-232",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smid-record-decode-of-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-payload-decode-of-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-mountinfo-step-preserves-best-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-recorded-store-opens-iff-same-filesystem"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-moved-mount-point-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-absent-record-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-open-verdict-opens-only-on-a-match"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-start-refused-iff-required-and-unsafe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-rebound-store-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-refusal-text-is-nil-exactly-for-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-refusal-text-is-nil-exactly-for-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-open-decision-is-the-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-empty-root-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-unrecorded-store-never-starts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
         }
       ]
     }

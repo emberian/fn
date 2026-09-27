@@ -26,7 +26,10 @@ client run as the invoking user):
            at the end the reference is read (ARTICLE of every Message-ID
            through a fresh owner), `retention set released-by-all-holders`
            and `store reclaim` run between marks, and the reclaimed
-           reference is read.
+           reference is read.  Last, `store export` writes the archive to
+           the same file system and `store import` publishes it as a second
+           store beside the first (phase `import': fn-bs-imp-program; the
+           `init' phase is fn-bs-init-pub-program, see publication_phases).
   index    the log device parsed (dm-log-writes' on-disk format: a super
            sector, then per entry a sector of {sector, nr_sectors, flags,
            data_len} and the data); the full replay must equal the data
@@ -80,6 +83,33 @@ FLUSH, FUA, DISCARD, MARK, METADATA = 1, 2, 4, 8, 16
 GROUP = "fn.test"
 DM = "fn-power-loss"
 CKPT = re.compile(rb"CHECKPOINT auto sequence=(\d+)")
+
+
+# The publication programs' phases (lane import-publication, PKT-647): the
+# campaign config the `cuts' plan names (`init=N,import=N').  A block-level
+# cut is a device position, not a process cut, so each record names the
+# program whose window it fell in and that program's named cuts (the native
+# kill campaign's, tests/campaign/native_cuts.py) with the oracle below.
+def publication_phases():
+    from tests.campaign import native_cuts
+    return {
+        "init": {"program": "fn-bs-init-pub-program",
+                 "book": "books/store-init-publication.lisp",
+                 "cuts": [c.name for c in native_cuts.INIT_PUB_CUTS],
+                 "oracle": "ROOT absent (at most one ROOT.init-*, which the next "
+                           "init names as interrupted-init; init succeeds once it "
+                           "is removed) or ROOT the complete empty store (recover "
+                           "0, status transactions=0)"},
+        "import": {"program": "fn-bs-imp-program",
+                   "book": "books/store-import-publication.lisp",
+                   "cuts": [c.name for c in native_cuts.IMPORT_CUTS],
+                   "oracle": "the source store keeps its reference; ROOT2 absent "
+                             "(at most one ROOT2.import-*, which the next import "
+                             "names as interrupted-import; import succeeds once it "
+                             "is removed) or ROOT2 the complete imported store "
+                             "(status 0, the source's transactions=N, every "
+                             "sampled Message-ID's store inspect equal)"},
+    }
 
 
 def sh(*argv, check=True, **kw):
@@ -152,6 +182,13 @@ def config_for(work, store, port):
     cfg = work / "fn.toml"
     cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
                    '[control]\npath = "%s"\n' % (store, port, work / "c.sock"), encoding="ascii")
+    return cfg
+
+
+def config2_for(work, store, port):
+    cfg = work / "fn2.toml"
+    cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
+                   '[control]\npath = "%s"\n' % (store, port, work / "c2.sock"), encoding="ascii")
     return cfg
 
 
@@ -330,6 +367,20 @@ def workload(a):
         stop_owner(p, err)
     code, so, se = native(image, "operator", cfg, "status")
     out_line(log, tag="status", exit=code, stdout=so, stderr=se[-400:])
+    # The import publication (fn-bs-imp-program): export the store to the
+    # same device, then import it as a second store beside the first.
+    mark("phase:export")
+    archive = Path(rig["mnt"]) / "archive"
+    code, so, se = native(image, "operator", cfg, "store", "export", archive)
+    out_line(log, tag="export", exit=code, stdout=so[-400:], stderr=se[-400:])
+    if code:
+        raise SystemExit("export failed")
+    cfg2 = config2_for(work, Path(rig["mnt"]) / "store2", m.free_port())
+    mark("phase:import")
+    code, so, se = native(image, "operator", cfg2, "store", "import", archive)
+    out_line(log, tag="import", exit=code, stdout=so[-400:], stderr=se[-400:])
+    if code:
+        raise SystemExit("import failed")
     mark("phase:end")
     refdir = work / "reference"
     refdir.mkdir(exist_ok=True)
@@ -598,7 +649,8 @@ def cuts(a):
         # cut: the last answered + 1 (one POST in flight), never past the run.
         answered = acked + refused
         attempted = min(posts, (max(answered) + 2) if answered else 1)
-        if phase in ("reference", "retention", "reclaim", "reference-reclaimed", "end"):
+        if phase in ("reference", "retention", "reclaim", "reference-reclaimed", "end",
+                     "export", "import"):
             attempted = posts
         violations = []
         if phase == "recover-crash" or (a.recover_crash and rrng.random() < a.recover_crash
@@ -645,9 +697,13 @@ def evaluate(ctx, img, rec, phase, acked, refused, attempted, violations):
         # The rig's own chown of the mount point may not have been durable
         # at an early cut; the node runs as this user either way.
         sudo("chown", "%d:%d" % (os.getuid(), os.getgid()), mnt)
+        if phase in publication_phases():
+            rec["program"] = publication_phases()[phase]["program"]
         if phase == "init":
             rec.update(check_init(ctx, violations))
             return
+        if phase == "import":
+            rec.update(check_import(ctx, violations))
         if not store.exists():
             rec["store"] = "absent"
             if acked:
@@ -662,33 +718,98 @@ def evaluate(ctx, img, rec, phase, acked, refused, attempted, violations):
         sudo("losetup", "-d", loop, check=False)
 
 
+def stages_beside(root, kind):
+    return sorted(p for p in root.parent.iterdir() if p.name.startswith(root.name + "." + kind + "-"))
+
+
 def check_init(ctx, violations):
-    """A cut during `init`: nothing was acknowledged.  The operator's path
-    must not be stuck: either `recover` opens the store, or there is no
-    store and `init` makes one, or `init` refuses by name and the record
-    shows which (a half store neither verb accepts is a finding)."""
-    image, cfg = ctx["image"], ctx["cfg"]
-    rec = {"store": "present" if ctx["store"].exists() else "absent"}
-    code, so, se = native(image, "operator", cfg, "recover")
-    rec["recover"], rec["recover_out"] = code, (so + se).strip()[-300:]
-    if code == 0:
+    """A cut during `init` (fn-bs-init-pub-program): nothing was
+    acknowledged.  The keystone: ROOT is absent or the complete empty store.
+    Absent: at most one ROOT.init-*, which the next `init` names
+    (interrupted-init) and after whose removal `init` succeeds; present: it
+    opens (`recover` 0, `status` transactions=0) and no staged directory
+    remains unless the rename's source removal did not land (then the next
+    init refuses STORE-EXISTS, never a second store)."""
+    image, cfg, root = ctx["image"], ctx["cfg"], ctx["store"]
+    stages = stages_beside(root, "init")
+    rec = {"store": "present" if root.exists() else "absent", "stages": len(stages)}
+    if root.exists():
+        code, so, se = native(image, "operator", cfg, "recover")
+        rec["recover"], rec["recover_out"] = code, (so + se).strip()[-300:]
+        code2, so2, se2 = native(image, "operator", cfg, "status")
+        rec["status"] = code2
+        if code or code2 or "transactions=0" not in so2:
+            violations.append("init-partial-store:recover-%d:status-%d" % (code, code2))
+        return rec
+    if len(stages) > 1:
+        violations.append("init-stages-%d" % len(stages))
         return rec
     code, so, se = native(image, "operator", cfg, "init", "--profile", "scale", GROUP)
     rec["reinit"], rec["reinit_out"] = code, (so + se).strip()[-300:]
-    if code == 0:
+    if stages:
+        want = "reason=interrupted-init stage=%s" % stages[0]
+        if code != 1 or want not in so + se:
+            violations.append("init-leftover-not-named:init-%d" % code)
+            return rec
+        shutil.rmtree(stages[0])
+        code, so, se = native(image, "operator", cfg, "init", "--profile", "scale", GROUP)
+        rec["init_after_removal"] = code
+    if code:
+        violations.append("init-stuck:init-%d" % code)
         return rec
-    # The operator verb refuses an existing store (STORE-EXISTS); the store
-    # layer's own init is written to resume a partial one
-    # (tests/test_native_initializer_fidelity.py).  Does it, here?
-    code, so, se = native(image, "store", ctx["store"], "init", GROUP)
-    rec["store_init"] = [code, (so + se).strip()[-200:]]
-    code2, so2, se2 = native(image, "operator", cfg, "recover")
-    rec["recover_after_store_init"] = [code2, (so2 + se2).strip()[-200:]]
-    violations.append("init-stuck:recover-%d:init-%d:store-init-%d:recover-%d"
-                      % (rec["recover"], rec["reinit"], code, code2))
+    code, so, se = native(image, "operator", cfg, "recover")
+    rec["recover_after_init"] = code
+    if code:
+        violations.append("init-unopenable:recover-%d" % code)
     return rec
 
 
+def check_import(ctx, violations):
+    """A cut during `store import` (fn-bs-imp-program) onto ROOT2: ROOT2 is
+    absent (at most one ROOT2.import-*, named by the next import, which
+    succeeds once it is removed) or the complete imported store: it opens,
+    `status` reports the source's transactions=N, and sampled Message-IDs'
+    `store inspect` answers equal the source's.  The source store is checked
+    by check_store as in the `end' phase."""
+    image, cfg, work = ctx["image"], ctx["cfg"], ctx["work"]
+    cfg2 = work / "fn2.toml"
+    root2 = ctx["store"].parent / "store2"
+    archive = ctx["store"].parent / "archive"
+    stages = stages_beside(root2, "import")
+    rec = {"store2": "present" if root2.exists() else "absent", "stages2": len(stages)}
+    if not root2.exists():
+        if len(stages) > 1:
+            violations.append("import-stages-%d" % len(stages))
+            return rec
+        code, so, se = native(image, "operator", cfg2, "store", "import", archive)
+        rec["reimport"], rec["reimport_out"] = code, (so + se).strip()[-300:]
+        if stages:
+            want = "reason=interrupted-import stage=%s" % stages[0]
+            if code != 1 or want not in so + se:
+                violations.append("import-leftover-not-named:import-%d" % code)
+                return rec
+            shutil.rmtree(stages[0])
+            code, so, se = native(image, "operator", cfg2, "store", "import", archive)
+            rec["import_after_removal"] = code
+        if code:
+            violations.append("import-stuck:import-%d" % code)
+            return rec
+    code, so, se = native(image, "operator", cfg, "status")
+    code2, so2, se2 = native(image, "operator", cfg2, "status")
+    rec["status2"] = code2
+    count = re.search(r"transactions=(\d+)", so)
+    count2 = re.search(r"transactions=(\d+)", so2)
+    if code2 or not count or not count2 or count.group(1) != count2.group(1):
+        violations.append("import-incomplete:status-%d" % code2)
+        return rec
+    rng = random.Random(len(so2))
+    for i in sorted(rng.sample(range(len(ctx["ref"])), min(8, len(ctx["ref"])))):
+        a = native(image, "operator", cfg, "store", "inspect", msgid(i))
+        b = native(image, "operator", cfg2, "store", "inspect", msgid(i))
+        if a[:2] != b[:2]:
+            violations.append("import-inspect-differs:%d" % i)
+            break
+    return rec
 
 
 def second_cut(ctx, img, rng, violations):
@@ -779,7 +900,7 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
         served = got[i].startswith(b"220")
         if not ((code == 0 and word == "accepted" and served) or
                 (code == 1 and word == "absent" and got[i].startswith(b"430"))):
-            if phase not in ("reclaim", "reference-reclaimed", "end"):
+            if phase not in ("reclaim", "reference-reclaimed", "end", "export", "import"):
                 violations.append("inflight-unclassified:%d:%s:%s:%r" % (i, code, word, got[i][:40]))
     code, so, se = native(image, "operator", cfg, "status")
     rec["status"] = code
@@ -989,7 +1110,7 @@ def main(argv=None):
     c = sub.add_parser("cuts")
     c.add_argument("work")
     c.add_argument("--image", required=True)
-    c.add_argument("--plan", default="post=150,compact=30,reclaim=30")
+    c.add_argument("--plan", default="post=150,compact=30,reclaim=30,init=20,import=20")
     c.add_argument("--seed", type=int, default=7)
     c.add_argument("--label", default="main")
     c.add_argument("--limit", type=int, default=0)

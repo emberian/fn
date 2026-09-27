@@ -57,7 +57,7 @@
          (fn-record-p record)
          (equal (fn-record-msgid record)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-stored-octets *osi-cfg* sub))
+         (equal (fn-record-payload record) (fn-own-sub-stored-octets *osi-cfg* sub (fn-own-node-secret o)))
          (fn-sf-record-has-pairp pair (fn-sf-records (fn-sn-files (fn-own-store o2))))
          t)))
 
@@ -165,7 +165,7 @@
                       "p" :ihave *own-transit-msgid*
                       (own-transit-octets "peer.example!x")))))
 (defconst *osi-transit-stored*
-  (fn-own-sub-stored-octets *osi-cfg* *osi-transit-sub*))
+  (fn-own-sub-stored-octets *osi-cfg* *osi-transit-sub* nil))
 (defconst *osi-transit-received* (fn-own-sub-octets *osi-transit-sub*))
 (assert-event (fn-own-transit-subp *osi-transit-sub*))
 ; Non-degenerate: the staged octets are not the received ones; they begin
@@ -388,7 +388,7 @@
                                0 (fn-own-max-conns o) (fn-own-pending o)
                                (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
                                (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                               (fn-own-feeds o))
+                               (fn-own-feeds o) (fn-own-node-secret o))
                   (fn-ocfg-config *osi-full*) nil nil)))
 (assert-event (not (fn-ocfg-statep *osi-wound*)))
 (assert-event (<= (fn-own-max-conns (fn-ocfg-owner *osi-wound*))

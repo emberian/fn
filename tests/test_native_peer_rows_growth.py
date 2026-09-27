@@ -61,7 +61,11 @@ class NativePeerRowsGrowthTests(verbs.NativeOperatorVerbFixture):
                 "1119", "fn.*", "-", "192.0.2.44", "true")
         started = time.monotonic()
         for k in range(REQUESTS):
-            self.ok("peer", "carries", "far", principal(k))
+            carried = self.ok("peer", "carries", "far", principal(k))
+            # PKT-601 (2): the published record read back under the lock
+            # (host/native/admin.lisp fnn-admin-verify-under-lock,
+            # fn-cfgc-readback-verdict) verified every request.
+            self.assertIn(b"verification=VERIFIED", carried.stdout)
         elapsed = time.monotonic() - started
         print("peer-rows-growth: {} requests in {:.1f} s".format(REQUESTS, elapsed))
 

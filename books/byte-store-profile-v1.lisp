@@ -56,6 +56,16 @@
                      (fn-bs-profile-countp (fn-bs-pf 13 values))))
            :namespace-count-outside-width)
           ((< 1 (fn-bs-pf 14 values)) :history-marker-not-a-word)
+          ; The header-limit arms (lane header-limits-profile): the layout
+          ; grew three fields under D34, so every relation over it reads them
+          ; as `fn-bs-profile-invalid-reason' does.
+          ((or (< (fn-bs-pf 15 values) 1)
+               (< (fn-bs-pf 16 values) (fn-bs-pf 15 values)))
+           :max-header-fields-outside-lines)
+          ((< (fn-bs-pf 17 values) (fn-bs-pf 16 values))
+           :max-header-lines-above-octets)
+          ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf 17 values))
+           :max-header-octets-above-codec)
           (t nil))))
 
 ;  The relation's half: the old relation's acceptance is the new one's, for
