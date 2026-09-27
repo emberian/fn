@@ -6,6 +6,26 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-core (name &rest args)
+  (declare (ignorable name args))
+  (harness-stub-reached 'fnn-core "host/native/io.lisp"))
+(defun fnn-owner-attempt-served (service msgid payload groups evidence)
+  (declare (ignorable service msgid payload groups evidence))
+  (harness-stub-reached 'fnn-owner-attempt-served "host/native/owner.lisp"))
+;;; ---- derived stubs: END ----
+
 ;; The deployed forms this boundary runs, loaded by name so a rename fails
 ;; here rather than leaving a stale stub in its place: the Store condition
 ;; hierarchy the commit word classifies by, and the stderr writer the
@@ -80,6 +100,15 @@
 ; Operator logging is a side effect after the ACL2 outcome. It does not make
 ; or persist the decision; count the deployed call without replacing either.
 (defun fnn-owner-log () (incf *bound-logs*))
+;; A bound submission commits what the owner has queued before its own
+;; record, in its own quantum (host/native/owner.lisp
+;; fnn-owner-commit-queued-locked).  Nothing is queued in this harness: the
+;; deployed answer for an empty queue is 0 members committed.
+(defparameter *bound-queued-commits* 0)
+(defun fnn-owner-commit-queued-locked (service)
+  (declare (ignore service))
+  (incf *bound-queued-commits*)
+  0)
 ;; operator-config (7c80e4f6) put ACL2's file-first gate in front of the
 ;; commit callback (PKT-069, fn-owner-bound-commit-gate, KEYSTONE
 ;; fn-obc-commit-only-after-filing).  The ACL2 side is a recording stub here

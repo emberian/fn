@@ -5,6 +5,28 @@
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-owner-key-statement (service event &optional at-open)
+  (declare (ignorable service event at-open))
+  (harness-stub-reached 'fnn-owner-key-statement "host/native/owner.lisp"))
+(defun fnn-owner-key-statement-cut ()
+  (harness-stub-reached 'fnn-owner-key-statement-cut "host/native/owner.lisp"))
+(defun fnn-owner-statement-barrier (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-statement-barrier "host/native/owner.lisp"))
+;;; ---- derived stubs: END ----
 (define-condition fnn-store-indeterminate (error) ())
 (define-condition fnn-store-fault (error) ())
 (define-condition fnn-store-error (error) ())
@@ -27,6 +49,11 @@
 (defun fnn-store-fenced (store) (sample-store-fenced store))
 (defun (setf fnn-store-fenced) (value store)
   (setf (sample-store-fenced store) value))
+;; The owner's service log (the login gate's verdict line): nothing to log.
+(defun fnn-owner-log (&optional global optional)
+  (declare (ignore global optional)) nil)
+;; ACL2's own primitive, which the image has and bare SBCL does not.
+(defun booleanp (x) (or (eq x t) (eq x nil)))
 (defun fnn-octet-list (x) (coerce x 'list))
 (defun fnn-charge (n) n)
 (defun fnn-owner-core (name &rest args)
@@ -41,18 +68,34 @@
     ;; A test sets *FILING* to answer for it.
     (fn-owner-control-filing (or *filing* (list :file (second args))))
     (fn-owner-next-store-coordinates '(3 3 3))
+    ;; A log field only (PKT-473, fnn-owner-note-transit-verdict).
+    (fn-owner-transit-verdict :stub-verdict)
+    ;; No event here is a key statement: no statement fence
+    ;; (fnn-owner-statement-committed).
+    (fn-owner-statement-fence nil)
+    ;; ACL2's boundary on the composite it built: within the profile.
+    (fn-owner-signed-event-boundary :ok)
     (fn-owner-peer-carried-event
      (push :event *calls*) :kind4)
-    ;; books/peer-authored-accept.lisp fn-pa-served-word, transcribed for
-    ;; the stub: the served arm must relay ACL2's answer, not compute one.
-    (fn-owner-served-carried-word
+    ;; books/peer-authored-accept.lisp fn-pa-served-post-word (over
+    ;; fn-pa-served-word), transcribed for the stub: the served arm must
+    ;; relay ACL2's answer, not compute one.
+    (fn-owner-served-post-word
      (push :served-word *calls*)
      (destructuring-bind (word detail) args
-       (if (and (eq word :refused)
-                (member detail '(:article :carrier :carrier-shape
-                                 :local-enrollment :signature :conflict
-                                 :control-not-filed :control-malformed)))
-           detail word)))
+       (cond ((and (eq word :durable) (eq detail :key-change-refused))
+              :durable-key-change-refused)
+             ((and (eq word :refused)
+                   (member detail '(:article :carrier :carrier-shape
+                                    :local-enrollment :signature :conflict
+                                    :control-not-filed :control-malformed
+                                    :event :signed-record
+                                    :login-not-bound :login-unsigned)))
+              detail)
+             (t word))))
+    ;; The posting policy's login gate (books/login-binding.lisp
+    ;; fn-lb-owner-gate): the default open policy passes every article.
+    (fn-owner-login-gate '(:pass))
     (otherwise (error "unexpected owner core ~s" name))))
 (defun fnn-core (name &rest args)
   (declare (ignore args))
@@ -75,6 +118,11 @@
   (list *signature* (list *signature* #(17 18))))
 (defun fnn-metadata (&rest args)
   (declare (ignore args)) (values #(49) #(50) nil))
+;; The duplicate test reads stored bytes by handle since the records flip
+;; (host/native/owner.lisp fnn-owner-arena-action); here it answers through
+;; the recording action stub above.
+(defun fnn-owner-arena-action (name &rest args)
+  (apply #'fnn-owner-action name args))
 (defun fnn-owner-identity-commit (service event)
   (declare (ignore service))
   (assert (eq event :kind4))
@@ -98,6 +146,24 @@
                              (eq (cadr form) 'fnn-owner-transit-refused))))
             do (eval form))
     (assert found)))
+
+;; The shipped helpers the attempt calls since they were split out of it (the
+;; payload's octet list converted once, the verdict log field, the transit
+;; refusal class, the committed statement's fence), with their globals.
+(with-open-file (stream "host/native/owner.lisp")
+  (let ((wanted '((defvar *fnn-owner-transit-verdict*)
+                  (defvar *fnn-owner-payload-list*)
+                  (defun fnn-owner-payload-octets)
+                  (defun fnn-owner-note-transit-verdict)
+                  (defun fnn-owner-transit-class)
+                  (defun fnn-owner-statement-committed))))
+    (loop for form = (read stream nil :eof) until (eq form :eof)
+          when (and (consp form)
+                    (member (list (car form) (cadr form)) wanted :test #'equal))
+            do (eval form)
+               (setq wanted (remove (list (car form) (cadr form)) wanted
+                                    :test #'equal)))
+    (assert (null wanted))))
 
 (defun attempt ()
   (fnn-owner-attempt-transit :service #(60 120 62) #(65 66)

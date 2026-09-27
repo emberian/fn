@@ -37,6 +37,47 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-mux-await (loop conn step redeem after)
+  (declare (ignorable loop conn step redeem after))
+  (harness-stub-reached 'fnn-mux-await "host/native/mux.lisp"))
+(defun fnn-mux-request-handshake (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-request-handshake "host/native/mux.lisp"))
+(defun fnn-mux-start-handshake (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-start-handshake "host/native/mux.lisp"))
+(defun fnn-owner-commit-queued-locked (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-commit-queued-locked "host/native/owner.lisp"))
+(defun fnn-owner-disk-admit (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-disk-admit "host/native/owner.lisp"))
+(defun fnn-owner-note-queued (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-note-queued "host/native/owner.lisp"))
+(defun fnn-owner-redeem-quantum (service cid)
+  (declare (ignorable service cid))
+  (harness-stub-reached 'fnn-owner-redeem-quantum "host/native/owner.lisp"))
+(defun fnn-owner-shed-queued-locked (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-shed-queued-locked "host/native/owner.lisp"))
+(defun fnn-owner-take-done (service cid)
+  (declare (ignorable service cid))
+  (harness-stub-reached 'fnn-owner-take-done "host/native/owner.lisp"))
+;;; ---- derived stubs: END ----
+
 ;;; ---------------------------------------------------------------------------
 ;;; The boundary host/native/io.lisp and host/native/tls.lisp define.
 
@@ -95,7 +136,7 @@
 (defconstant +fnn-shut-wr+ 1)
 ;; The graceful close's shutdown(2) of the output side.
 (defun fnn-%shutdown (fd how) (declare (ignore fd how)) (incf *graceful*) 0)
-(defstruct fnn-owner-service (lock (sb-thread:make-mutex)) clients)
+(defstruct fnn-owner-service (lock (sb-thread:make-mutex)) clients read-octets)
 ;; The roster mutex (host/native/owner.lisp fnn-with-roster): the host lists.
 (defmacro fnn-with-roster ((service) &body body)
   `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
@@ -144,6 +185,9 @@
     ;; step is charged against the address's budget first.
     (fn-owner-exposure-open (setq *output* (fnn-ascii "200 ready")) 1)
     (fn-owner-exposure-charge :proceed)
+    ;; ACL2's read size for the next served read
+    ;; (fnn-owner-refresh-read-octets, after every step).
+    (fn-owner-read-octets 65536)
     ;; PRF-164: no XREDEEM in these scenarios, so no connection waits.
     (fn-acct-host-owner-redeem-waitingp nil)))
 
@@ -161,7 +205,7 @@
   (setq *output* (fnn-ascii (fourth *step*)))
   :ok)
 
-(defun fnn-core-buffer-catalog-state (name &rest args)
+(defun fnn-core-buffer-state (name &rest args)
   (ecase name
     (fn-owner-chunk-span
      (destructuring-bind (cid start end) args
@@ -212,7 +256,9 @@
             +fnn-owner-wall-error-ms+ +fnn-owner-unix-dtn-offset-seconds+
             fnn-owner-wall-milliseconds)
            ("host/native/owner.lisp"
-            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-exposure-idle)
+            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-handle-chunk-read
+            fnn-owner-refresh-read-octets
+            fnn-owner-exposure-idle)
            ("host/native/mux.lisp"
             +fnn-mux-send-seconds+ +fnn-mux-idle-seconds+ +fnn-mux-drain-seconds+
             +fnn-mux-handshakes-per-loop+ +fnn-mux-handshake-seconds+ +fnn-mux-queued-per-loop+

@@ -65,16 +65,22 @@ dispatches names the KIND of each byte-carrying formal in its guard (the host
 entry guard, host/native/io.lisp fnn-entry-guard, refuses a handle there by
 name), and that the raw host reaches ACL2 only through a dispatcher.
 **test-stubs** asks that a raw test harness's stubs accept the arities the host
-functions it extracts call them with; **test-harness-reach** (report only)
-lists the calls an extracted function makes that the harness neither stubs
-nor extracts.
+functions it extracts call them with, and that its derived-stub block is what
+the host's definitions derive today; **test-harness-reach** (gating since
+entry-guards-2) asks that every call an extracted function makes reaches a
+hand stub, an extracted function or a derived stub (`--write-stubs` writes
+the blocks: the host's lambda list and a body that signals
+`harness-stub-reached', a serious-condition no `handler-case' on `error'
+swallows).
 
     python3 tools/harness_check.py            # every lint, human output
     python3 tools/harness_check.py --json build/harness.json
     python3 tools/harness_check.py --lint signatures
 
-Exit code 1 on any finding of a lint that gates (`signatures`, `acl2-arity`,
-`waivers`),
+    python3 tools/harness_check.py --write-stubs  # rewrite the derived-stub blocks
+
+Exit code 1 on any finding of a lint that gates (every lint but none now
+report-only),
 0 otherwise; `--report` never fails and only prints.
 """
 from __future__ import annotations
@@ -1578,75 +1584,250 @@ def entry_guard_findings(root: Path) -> tuple[list[dict], dict]:
     return findings, counts
 
 
+# Derived stubs (lane entry-guards-2, 2026-09-27).  A harness stubs by hand
+# only what its test drives; every OTHER raw host function an extracted
+# function calls gets a stub DERIVED from the host's own definition: the
+# host's lambda list (defaults dropped) and a body that signals
+# `harness-stub-reached', a SERIOUS-CONDITION that is not an ERROR, so a
+# `handler-case' on `error' in the extracted code cannot turn the reach into
+# a quiet fault path (the bp-sender finding: fnn-owner-commit-queued-locked
+# was simply undefined, and the extracted handler caught the
+# undefined-function).  The block lives in the harness between the two
+# markers below, is written by `--write-stubs', and is compared on every
+# run: a host lambda list that changes, a callee that appears or goes, or a
+# hand edit makes it stale, which gates.
+STUB_BEGIN = ";;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----"
+STUB_END = ";;; ---- derived stubs: END ----"
+STUB_PRELUDE = """(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))"""
+
+
+def _render(form) -> str:
+    if isinstance(form, list):
+        return "(" + " ".join(_render(item) for item in form) + ")"
+    return str(form).lower()
+
+
+def derived_lambda_list(formals) -> tuple[str, list[str]]:
+    """The host's lambda list with its default forms dropped, and its variables."""
+    out: list[str] = []
+    names: list[str] = []
+    mode = "required"
+    for item in formals if isinstance(formals, list) else []:
+        text = str(item).lower() if not isinstance(item, list) else None
+        if text in RAW_LAMBDA_KEYWORDS:
+            if text == "&aux":
+                break
+            mode = text
+            out.append(text)
+            continue
+        if isinstance(item, list) and item:
+            var = item[0]
+            if mode == "&key" and isinstance(var, list) and len(var) == 2:
+                out.append("(" + _render(var) + ")")
+                names.append(str(var[1]).lower())
+                continue
+            out.append(_render(var))
+            names.append(_render(var))
+            continue
+        out.append(text)
+        names.append(text)
+    return "(" + " ".join(out) + ")", names
+
+
+def derived_stub_block(unresolved: dict[str, tuple[object, str]]) -> str:
+    """The block for UNRESOLVED: name -> (host formals, host file)."""
+    lines = [STUB_BEGIN, STUB_PRELUDE]
+    for name in sorted(unresolved):
+        formals, source = unresolved[name]
+        lambda_list, names = derived_lambda_list(formals)
+        declare = ("\n  (declare (ignorable {}))".format(" ".join(names)) if names else "")
+        lines.append("(defun {} {}{}\n  (harness-stub-reached '{} \"{}\"))".format(
+            name, lambda_list, declare, name, source))
+    lines.append(STUB_END)
+    return "\n".join(lines) + "\n"
+
+
+def split_stub_block(text: str) -> tuple[str, str | None]:
+    """(TEXT without its derived block, the block or None)."""
+    begin = text.find(STUB_BEGIN)
+    if begin < 0:
+        return text, None
+    end = text.find(STUB_END, begin)
+    if end < 0:
+        return text, text[begin:]
+    end += len(STUB_END)
+    if text[end:end + 1] == "\n":
+        end += 1
+    return text[:begin] + text[end:], text[begin:end]
+
+
+def with_stub_block(text: str, block: str | None) -> str:
+    """TEXT with its derived block replaced by BLOCK (None removes it): in
+    place, else right after the harness's first `(in-package "ACL2")'."""
+    stripped, _old = split_stub_block(text)
+    begin = text.find(STUB_BEGIN)
+    if block is None:
+        return stripped
+    if begin >= 0:
+        return stripped[:begin] + block + stripped[begin:]
+    match = re.search(r'^\(in-package "ACL2"\)[^\n]*\n', stripped, re.M)
+    at = match.end() if match else 0
+    return stripped[:at] + "\n" + block + stripped[at:]
+
+
+def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
+                 origins: dict) -> dict | None:
+    """One harness: its stale hand stubs, the calls it leaves unresolved,
+    and its derived block (expected and current).  None when the harness
+    extracts nothing (or loads whole host files)."""
+    from tools import ledger
+    if re.search(r'\(load\s+"host/', text):
+        return None  # it loads whole host files: nothing is stubbed in their place
+    hand, current = split_stub_block(text)
+    forms = ledger.Reader(hand).top_level()
+    stubs, _ = raw_definitions({relative: forms})
+    mentioned = {m.lower() for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", hand)}
+    extracted = {name for name in mentioned if name in bodies and name not in stubs}
+    if not extracted:
+        return None
+    stale: list[dict] = []
+    unresolved: dict[str, tuple[object, str]] = {}
+    callers: dict[str, set[str]] = {}
+    checked = 0
+    for name in sorted(extracted):
+        applications: list = []
+        raw_applications(bodies[name], applications)
+        for callee, count in applications:
+            if not callee.startswith("fnn-") or callee not in rawdefs:
+                continue
+            checked += 1
+            if (relative, callee) in STUB_ARITY_DECLARED:
+                continue
+            if callee in stubs:
+                low, high, where = stubs[callee]
+                if count < low or (high is not None and count > high):
+                    stale.append({
+                        "lint": "test-stubs", "where": where, "callee": callee,
+                        "defined": rawdefs[callee][2],
+                        "problem": "stale stub: the extracted {} calls it with {} "
+                                   "argument(s); the stub takes {}".format(
+                                       name, count, low if high == low else
+                                       "{} to {}".format(low, "any" if high is None else high))})
+            elif callee not in extracted and callee in origins:
+                unresolved[callee] = origins[callee]
+                callers.setdefault(callee, set()).add(name)
+    expected = derived_stub_block(unresolved) if unresolved else None
+    return {"stale": stale, "unresolved": unresolved, "callers": callers,
+            "expected": expected, "current": current, "extracted": extracted,
+            "stubs": stubs, "checked": checked}
+
+
+def raw_host_sources(root: Path) -> dict[str, list]:
+    """The raw host files' forms, without analysing the whole tree (the
+    tree's analysis is ~90 s whenever a book changed; this is ~2 s)."""
+    from tools import ledger
+    from types import SimpleNamespace
+    hosts = {}
+    for path, relative in ledger.host_paths():
+        try:
+            forms = ledger.Reader(path.read_text(encoding="utf-8")).top_level()
+        except ledger.ReadError:
+            forms = []
+        hosts[relative] = SimpleNamespace(path=relative, forms=forms)
+    raw = ledger.raw_host_paths(SimpleNamespace(hosts=hosts))
+    return {r: hosts[r].forms for r in raw}
+
+
+def harness_scans(root: Path) -> list[tuple[Path, str, str, dict]]:
+    from tools import ledger
+    sources = raw_host_sources(root)
+    rawdefs, _ambiguous = raw_definitions(sources)
+    bodies: dict[str, object] = {}
+    origins: dict[str, tuple[object, str]] = {}
+    for relative, forms in sorted(sources.items()):
+        for form, _line in forms:
+            if (ledger.head(form) == "defun" and len(form) >= 3
+                    and isinstance(form[1], ledger.Sym)):
+                name = str(form[1]).lower()
+                bodies.setdefault(name, form)
+                origins.setdefault(name, (form[2], relative))
+    out = []
+    for path in sorted((root / "tests").glob("*.lisp")):
+        relative = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8")
+        scan = harness_scan(relative, text, rawdefs, bodies, origins)
+        if scan is not None:
+            out.append((path, relative, text, scan))
+    return out
+
+
 def test_stub_findings(root: Path) -> tuple[list[dict], dict]:
     """A raw test harness EXTRACTS named host functions (it reads the host
     file's forms and evaluates the defuns it names) and STUBS the rest.  Each
     call an extracted function makes to a raw host function must reach a
-    stub or another extracted function, with an arity the stub accepts."""
-    from tools import ledger
-    tree = ledger.load_tree()
-    raw = ledger.raw_host_paths(tree)
-    sources = {r: tree.hosts[r].forms for r in raw}
-    rawdefs, _ambiguous = raw_definitions(sources)
-    bodies: dict[str, object] = {}
-    for relative, forms in sources.items():
-        for form, _line in forms:
-            if (ledger.head(form) == "defun" and len(form) >= 3
-                    and isinstance(form[1], ledger.Sym)):
-                bodies.setdefault(str(form[1]).lower(), form)
+    hand stub with an arity it accepts, another extracted function, or a
+    DERIVED stub in the harness's generated block, which must be current."""
     findings: list[dict] = []
-    counts = {"stub_files": 0, "extracted": 0, "stubs": 0, "calls_checked": 0}
-    for path in sorted((root / "tests").glob("*.lisp")):
-        relative = path.relative_to(root).as_posix()
-        text = path.read_text(encoding="utf-8")
-        if re.search(r'\(load\s+"host/', text):
-            continue  # it loads whole host files: nothing is stubbed in their place
-        forms = ledger.Reader(text).top_level()
-        stubs, _ = raw_definitions({relative: forms})
-        mentioned = {m.lower() for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", text)}
-        extracted = {name for name in mentioned
-                     if name in bodies and name not in stubs}
-        if not extracted:
-            continue
+    reach: list[dict] = []
+    counts = {"stub_files": 0, "extracted": 0, "stubs": 0, "calls_checked": 0,
+              "derived_stubs": 0}
+    for _path, relative, _text, scan in harness_scans(root):
         counts["stub_files"] += 1
-        counts["extracted"] += len(extracted)
-        counts["stubs"] += len(stubs)
-        for name in sorted(extracted):
-            applications: list = []
-            raw_applications(bodies[name], applications)
-            for callee, count in applications:
-                if not callee.startswith("fnn-") or callee not in rawdefs:
-                    continue
-                counts["calls_checked"] += 1
-                if (relative, callee) in STUB_ARITY_DECLARED:
-                    continue
-                if callee in stubs:
-                    low, high, where = stubs[callee]
-                    if count < low or (high is not None and count > high):
-                        findings.append({
-                            "lint": "test-stubs", "where": where, "callee": callee,
-                            "defined": rawdefs[callee][2],
-                            "problem": "stale stub: the extracted {} calls it with {} "
-                                       "argument(s); the stub takes {}".format(
-                                           name, count, low if high == low else
-                                           "{} to {}".format(low, "any" if high is None else high))})
-                elif callee not in extracted:
-                    findings.append({
-                        "lint": "test-stubs", "where": relative, "callee": callee,
-                        "defined": rawdefs[callee][2],
-                        "problem": "stale harness: the extracted {} calls {}, which "
-                                   "the harness neither stubs nor extracts".format(name, callee)})
+        counts["extracted"] += len(scan["extracted"])
+        counts["stubs"] += len(scan["stubs"])
+        counts["calls_checked"] += scan["checked"]
+        counts["derived_stubs"] += len(scan["unresolved"])
+        findings.extend(scan["stale"])
+        current_names = set()
+        if scan["current"]:
+            current_names = {m.lower() for m in re.findall(
+                r"^\(defun (fnn-[A-Za-z0-9*+%-]+)", scan["current"], re.M)}
+        for callee in sorted(scan["unresolved"]):
+            if callee not in current_names:
+                reach.append({
+                    "lint": "test-harness-reach", "where": relative, "callee": callee,
+                    "defined": scan["unresolved"][callee][1],
+                    "problem": "unresolved: the extracted {} call{} {}, which the harness "
+                               "neither stubs nor extracts (python3 tools/harness_check.py "
+                               "--write-stubs derives its stub)".format(
+                                   ", ".join(sorted(scan["callers"][callee])),
+                                   "s" if len(scan["callers"][callee]) == 1 else "",
+                                   callee)})
+        if scan["current"] != scan["expected"]:
+            findings.append({
+                "lint": "test-stubs", "where": relative, "callee": "",
+                "problem": "stale derived-stub block: it is not what the host's "
+                           "definitions derive today; run python3 tools/harness_check.py "
+                           "--write-stubs"})
     unique = {(row["where"], row["callee"], row["problem"]): row for row in findings}
-    rows = sorted(unique.values(), key=lambda row: (row["where"], row["callee"]))
-    TEST_HARNESS_REACH[:] = [row for row in rows if "stale harness" in row["problem"]]
-    return [row for row in rows if "stale stub" in row["problem"]], counts
+    TEST_HARNESS_REACH[:] = reach
+    return sorted(unique.values(), key=lambda row: (row["where"], row["callee"])), counts
 
 
-# The calls an extracted host function makes that the harness neither stubs
-# nor extracts: an undefined function at run time IF that branch runs (a
-# stale harness, the bp-sender finding of 2026-09-27: fnn-owner-commit-
-# queued-locked), or a branch the test never takes.  A static reader cannot
-# tell which, so this lint reports and does not gate.
+def write_derived_stubs(root: Path) -> list[str]:
+    """Rewrite every harness's derived block; the harnesses changed."""
+    changed = []
+    for path, relative, text, scan in harness_scans(root):
+        updated = with_stub_block(text, scan["expected"])
+        if updated != text:
+            path.write_text(updated, encoding="utf-8")
+            changed.append(relative)
+    return changed
+
+
+# The calls an extracted host function makes that the harness neither stubs,
+# extracts nor covers with a current derived stub.  Gating since
+# entry-guards-2: every such call has a derived stub.
 TEST_HARNESS_REACH: list[dict] = []
 
 
@@ -1671,7 +1852,7 @@ LINTS = {
     "waivers": (waiver_findings, True),
     "entry-guards": (entry_guard_findings, True),
     "test-stubs": (test_stub_findings, True),
-    "test-harness-reach": (test_harness_reach_findings, False),
+    "test-harness-reach": (test_harness_reach_findings, True),
 }
 
 
@@ -1683,9 +1864,15 @@ def main(argv=None) -> int:
     parser.add_argument("--json", default=None)
     parser.add_argument("--report", action="store_true",
                         help="print and always exit 0")
+    parser.add_argument("--write-stubs", action="store_true",
+                        help="rewrite every raw harness's derived-stub block and exit")
     parser.add_argument("--quiet", action="store_true",
                         help="one summary line per lint, findings only")
     args = parser.parse_args(argv)
+    if args.write_stubs:
+        for relative in write_derived_stubs(ROOT):
+            print("harness_check: derived stubs written: {}".format(relative))
+        return 0
 
     chosen = args.lint or sorted(LINTS)
     report = {"schema": 1, "root": str(ROOT), "lints": {}}
