@@ -98,16 +98,20 @@
      (and (equal (fn-own-tls-result-effects tls-result)
                  (car full-result))
           (equal (fn-own-tls-result-owner tls-result)
-                 (cdr full-result)))))
+                 (cdr full-result))
+          ; NNT-042: and the same answer to "did the pin move"
+          (equal (fn-own-tls-result-repinned tls-result)
+                 (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))))
   :hints (("Goal"
-           :in-theory (enable fn-ocfg-read-tls-prefix
+           :in-theory (enable fn-ocfg-read-tls-prefix fn-own-read-repinned
                               fn-own-read-tls-prefix
                               fn-own-tls-make-result
                               fn-own-tls-result-consumed
                               fn-own-tls-result-effects
                               fn-own-tls-result-owner
+                              fn-own-tls-result-repinned
                               fn-ocfg-read
-                              fn-own-read
+                              fn-own-read fn-own-read-full
                               fn-own-tls-served-conn)
            :use ((:instance fn-served-step-counted-fast-is-reference
                             (conn
@@ -126,6 +130,7 @@
                     fn-own-tls-result-consumed
                     fn-own-tls-result-effects
                     fn-own-tls-result-owner
+                    fn-own-tls-result-repinned
                     fn-own-tls-served-conn
                     fn-own-read-tls-prefix
                     fn-ocfg-read-tls-prefix))

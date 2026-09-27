@@ -190,16 +190,53 @@
 ; Read can replace its selected connection or remove it after an invalid
 ; next session.  Both outcomes retain the historical pin invariant on every
 ; connection that remains; this theorem does not assume static Store groups.
+; NNT-042: the survivor's pin is its old one or the view's
+; (fn-own-read-survivor-keeps-historical-fields, books/owner-invariants);
+; either is a reader pin when the view's is (fn-ocri-viewp), and its wire is
+; the served step's, a wire state.
+(local
+ (defthm fn-ocri-read-survivor-is-a-reader-pin
+   (implies (and (fn-ocri-viewp (fn-own-view o))
+                 (fn-ocri-conns-p (fn-own-conns o))
+                 (fn-own-find-conn id (fn-own-conns o))
+                 (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets)))))
+            (fn-ocri-connp
+             (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets))))))
+   :hints (("Goal"
+            :use ((:instance fn-ocri-found-conn-is-carried (conns (fn-own-conns o)))
+                  (:instance fn-own-read-survivor-keeps-historical-fields)
+                  (:instance fn-own-read-survivor-wire-is-the-steps)
+                  (:instance fn-ocri-served-step-keeps-valid-wire
+                             (conn (fn-own-served-conn
+                                    o (fn-own-find-conn id (fn-own-conns o))
+                                    (fn-own-conn-live-session
+                                     o (fn-own-find-conn id (fn-own-conns o)))))))
+            :in-theory (e/d (fn-ocri-connp fn-ocri-viewp)
+                            (fn-own-read fn-own-read-full fn-own-finish-read
+                             fn-served-step fn-ocri-found-conn-is-carried
+                             fn-own-read-survivor-keeps-historical-fields
+                             fn-own-read-survivor-wire-is-the-steps
+                             fn-ocri-served-step-keeps-valid-wire
+                             fn-wire-statep fn-midx-correspondencep
+                             fn-sn-verdict-listp fn-own-served-conn
+                             fn-own-conn-live-session))))))
+
 (defthm fn-ocri-own-read-preserves-reader-pins
-  (implies (fn-ocri-conns-p (fn-own-conns o))
+  (implies (and (fn-ocri-viewp (fn-own-view o))
+                (fn-ocri-conns-p (fn-own-conns o)))
            (fn-ocri-conns-p (fn-own-conns (cdr (fn-own-read o id octets)))))
   :hints (("Goal"
-           :use ((:instance fn-ocri-found-conn-is-carried
-                            (conns (fn-own-conns o))))
-           :in-theory (e/d (fn-own-read fn-own-finish-read
-                            fn-own-set-conns fn-own-enqueue
-                            fn-ocri-connp)
-                           (fn-served-step fn-ocri-found-conn-is-carried
+           :cases ((fn-own-find-conn id (fn-own-conns o)))
+           :use ((:instance fn-ocri-read-survivor-is-a-reader-pin)
+                 (:instance fn-ocl-own-read-survivor-is-replacement)
+                 (:instance fn-ocl-own-read-nonsurvivor-is-removal)
+                 (:instance fn-ocl-missing-read-keeps-owner-conns))
+           :in-theory (e/d ()
+                           (fn-own-read fn-own-read-full fn-own-finish-read
+                            fn-served-step fn-ocri-connp fn-ocri-viewp
+                            fn-ocri-read-survivor-is-a-reader-pin
+                            fn-ocl-own-read-survivor-is-replacement
+                            fn-ocl-own-read-nonsurvivor-is-removal
                             fn-wire-statep fn-midx-correspondencep
                             fn-sn-verdict-listp)))))
 
