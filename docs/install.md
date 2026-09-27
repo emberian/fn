@@ -123,6 +123,16 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    and makes nothing; exit code 1. The node's name (`path-identity`) should
    be its public host name.
 
+   If the service runs under a memory limit (the unit's `MemoryMax`, a
+   container's `mem_limit`), the store must be sized for that limit, not
+   for the machine: run `init` under the same limit, or name the limit in
+   MiB with `FN_INIT_BUDGET_MB=1536` in `init`'s environment. With a named
+   budget below what this machine gives, `init` sizes the store for the
+   named budget and says so on stderr with both numbers:
+   `fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: ...`.
+   With neither, `init` sizes for the whole machine and the service then
+   refuses to start under its limit (`machine-cannot-hold-profile`).
+
 5. Leave the account's shell. As root, start the service:
 
    ```sh

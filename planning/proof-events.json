@@ -10967,6 +10967,19 @@
         {
           "kind": "theorem",
           "name": "fn-heap-init-decide-fits-the-budget-and-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-note-names-the-budget-init-sized-for",
+          "note": "KEYSTONE (batch AX fix init-budget, rehearsal finding R1). Host: host/native/operator.lisp init via host/native/heap.lisp fnn-heap-init-decision-noted."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-note-only-when-named-below-machine-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-is-the-named-below-the-machine"
         }
       ]
     },

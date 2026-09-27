@@ -32,7 +32,8 @@ name, outside a limit of at most 2 GiB.
   target (`within-budget=no target-budget=4096 MB'); the launcher refuses
   its `run' and `status' by name.
 * FreshInitTests (also without a small limit): conservative sizing,
-  FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB, and the default mission
+  FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB (below the machine: init
+  warns by name with both figures), and the default mission
   (inits and runs, under 2 GiB too; refused by name under a 500 MB budget).
 """
 import base64
@@ -64,6 +65,10 @@ REFUSED = re.compile(
 INIT_LINE = re.compile(r"^init: profile=([a-z]+) sizing=([a-z]+) "
                        r"reservation=(\d+) MB budget=(\d+) MB within-budget=(yes|no)$",
                        re.M)
+# A named budget below the machine init observes (finding R1 of the
+# public-node rehearsal: books/heap-reservation.lisp fn-heap-init-budget-note-line).
+INIT_NAMED_BELOW = re.compile(r"fn: warning init-budget-below-machine named-budget=(\d+) MB "
+                              r"machine-budget=(\d+) MB: ")
 INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-z]+) "
                           r"sizing=([a-z]+) reservation=(\d+) MB budget=(\d+) MB")
 
@@ -297,6 +302,7 @@ class FreshInitTests(Harness, unittest.TestCase):
         made = self.run_fn("operator", config, "init", "local.test",
                            env={"FN_INIT_SIZING": "largest"})
         self.assertEqual(made.returncode, EXIT_OK, text(made))
+        self.assertNotIn(b"init-budget-below-machine", made.stderr)
         word, sizing, _, budget = self.init_line(made)
         self.assertEqual(sizing, "largest")
         self.assertIn(word, ("small", "development", "scale"))
@@ -309,6 +315,14 @@ class FreshInitTests(Harness, unittest.TestCase):
         word, _, _, budget = self.init_line(made)
         self.assertIn(word, ("small", "custom"))
         self.assertEqual(budget, 1500)
+        # The machine gives more than the named 1,500 MB (under 2 GiB or not):
+        # init says so by name with both figures, on stderr, and still writes.
+        below = INIT_NAMED_BELOW.search(made.stderr.decode())
+        self.assertIsNotNone(below, text(made))
+        self.assertEqual(int(below.group(1)), 1500)
+        self.assertGreater(int(below.group(2)), 1500)
+        if LIMIT:
+            self.assertLessEqual(int(below.group(2)), LIMIT // (1024 * 1024))
         config, _ = self.config("badbudget")
         refused = self.run_fn("operator", config, "init", "local.test",
                               env={"FN_INIT_BUDGET_MB": "lots"})
