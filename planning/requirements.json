@@ -3957,6 +3957,42 @@
         "planning/evidence/group-access-2026-09-27.md"
       ],
       "implementation_note": "A statement of scope, so that 'private group' is not read as a confidentiality claim: fn-auth-access-text gives a peer connection no rule; the Store, store inspect and the consumer socket are the operator's; the Newsgroups header of a cross-posted article names every group; Message-IDs are unique node-wide (a duplicate POST is refused)."
+    },
+    {
+      "id": "CNS-006",
+      "title": "A local consumer bound to an account is served only while the account's read rule admits its group, only with the account's password, keeps its position when refused, and an unbound consumer is unchanged",
+      "specification": "specs/consumer-progress.md#bound-consumers",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-234"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/consumer-bound.lisp",
+        "books/consumer-local-control.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_consumer.py",
+        "tests/acl2/consumer-bound-tests.lisp",
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T021857Z-190087.json",
+        "planning/evidence/manifests/certify-20260927T022825Z-256887.json",
+        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement; the rule is NNT-046's (local policy after INN readers.conf). The binding is a durable configuration record (:consumer-bind, delta code 24), offline or live; no store record, no store format change. The credential is the account's own (AUTHINFO's verifier; no consumer-specific secret). Decided by ember 2026-09-27 (PKT-642).",
+      "note": "The local socket stays the owner's (0600): a process with the owner's uid can still use unbound consumers; carrying bound requests to a non-owner peer is PKT-673."
     }
   ]
 }

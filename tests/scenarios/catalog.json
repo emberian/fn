@@ -4393,6 +4393,43 @@
         "planning/evidence/group-access-2026-09-27.md",
         "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
       ]
+    },
+    {
+      "id": "SCN-160",
+      "title": "Two accounts with different access, four local consumers over a mixed stream: each bound consumer is served only its account's groups, with its account's password; the unbound one everything; cursors survive a restart; a widened rule resumes a refused consumer without a skip; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-006"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.public`, `group create fn.private.x`; start the owner (implicit TLS, protected_only); invite and redeem alice and bob; `account access bob --read 'fn.*,!fn.private.*' --post 'fn.*'`.",
+        "`fn consumer bootstrap`; register bob-pub (fn.public), bob-priv, alice-priv and operator (fn.private.x); `consumer bind bob-pub --account 'b b'` (refused); bind bob-pub and bob-priv to bob, alice-priv to alice; `consumer show`.",
+        "alice posts secret1 (fn.private.x), pub1 (fn.public), secret2, pub2, cross (both).",
+        "bound-poll bob-pub with a wrong password; plain poll of bob-pub; bound-poll of the unbound operator; bound-poll bob-priv; bound-poll alice-priv with bob's password.",
+        "bob-pub bound-poll (pub1), bound-ack with a wrong password, plain ack, bound-ack; alice-priv bound-poll (secret1, not acked); restart the owner.",
+        "Drain bob-pub, alice-priv (bound) and operator (plain); bound-poll bob-priv; `account access bob --read '*' --post '*'`; drain bob-priv; `consumer unbind bob-pub`; bound-poll and plain poll of bob-pub."
+      ],
+      "expected": [
+        "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`.",
+        "Every refusal in step 4 exits 1 and writes no cursor.",
+        "bob-pub is served pub1; the wrong-password and plain acks exit 1, the bound ack 0.",
+        "After the restart: bob-pub pub2, cross; alice-priv secret1 (re-served), secret2, cross; operator secret1, secret2, cross; bob-priv refused, then after the widened rule secret1, secret2, cross (nothing skipped); unbound bob-pub: bound-poll exits 1, plain poll an empty page."
+      ],
+      "implementation": {
+        "test": "tests.test_native_consumer_identity",
+        "cases": [
+          "NativeConsumerIdentityTests.test_two_accounts_two_bound_consumers"
+        ],
+        "native": true,
+        "record": "planning/evidence/consumer-identity-2026-09-27.md",
+        "log": "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      },
+      "evidence": [
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      ]
     }
   ]
 }
