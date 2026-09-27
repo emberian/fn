@@ -16,14 +16,16 @@
 
 ; The successful prefix of a replay, before its trailing restart: the flag,
 ; the BP image and the ION state.
-(defun fn-bpiw-durable-fold (bp ion records)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count records)))
+(defun fn-bpiw-durable-fold (bp ion records fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil
+                  :measure (acl2-count records)))
   (if (endp records)
       (list t bp ion)
     (let ((answer (fn-bpiw-apply (fn-bpiw-replay-fence bp (car records))
-                                 ion (car records))))
+                                 ion (car records) fn-arena)))
       (if (car answer)
-          (fn-bpiw-durable-fold (nth 1 answer) (nth 3 answer) (cdr records))
+          (fn-bpiw-durable-fold (nth 1 answer) (nth 3 answer) (cdr records)
+                                fn-arena)
         (list nil bp ion)))))
 
 ; Restart marks an in-flight attempt :restart-observed, which is retryable,
@@ -153,38 +155,38 @@
 
 ; A replay is its durable fold followed by exactly one restart.
 (defthm fn-bpiw-replay-records-is-restarted-fold
-  (and (equal (car (fn-bpiw-replay-records bp ion records effects))
-              (car (fn-bpiw-durable-fold bp ion records)))
-       (implies (car (fn-bpiw-durable-fold bp ion records))
-                (and (equal (nth 1 (fn-bpiw-replay-records bp ion records effects))
+  (and (equal (car (fn-bpiw-replay-records bp ion records effects fn-arena))
+              (car (fn-bpiw-durable-fold bp ion records fn-arena)))
+       (implies (car (fn-bpiw-durable-fold bp ion records fn-arena))
+                (and (equal (nth 1 (fn-bpiw-replay-records bp ion records effects fn-arena))
                             (fn-bp-restart
-                             (nth 1 (fn-bpiw-durable-fold bp ion records))))
-                     (equal (nth 3 (fn-bpiw-replay-records bp ion records effects))
-                            (nth 2 (fn-bpiw-durable-fold bp ion records))))))
-  :hints (("Goal" :induct (fn-bpiw-replay-records bp ion records effects)
+                             (nth 1 (fn-bpiw-durable-fold bp ion records fn-arena))))
+                     (equal (nth 3 (fn-bpiw-replay-records bp ion records effects fn-arena))
+                            (nth 2 (fn-bpiw-durable-fold bp ion records fn-arena))))))
+  :hints (("Goal" :induct (fn-bpiw-replay-records bp ion records effects fn-arena)
            :in-theory (e/d (fn-bpiw-replay-records fn-bpiw-durable-fold)
                            (fn-bpiw-apply fn-bpiw-replay-fence fn-bp-step
                             fn-bp-restart fn-bp-restart-event)))))
 
 (defthm fn-bpiw-durable-fold-of-append-one
-  (equal (fn-bpiw-durable-fold bp ion (append records (list r)))
-         (let ((prefix (fn-bpiw-durable-fold bp ion records)))
+  (equal (fn-bpiw-durable-fold bp ion (append records (list r)) fn-arena)
+         (let ((prefix (fn-bpiw-durable-fold bp ion records fn-arena)))
            (if (car prefix)
                (let ((answer (fn-bpiw-apply
                               (fn-bpiw-replay-fence (nth 1 prefix) r)
-                              (nth 2 prefix) r)))
+                              (nth 2 prefix) r fn-arena)))
                  (if (car answer)
                      (list t (nth 1 answer) (nth 3 answer))
                    (list nil (nth 1 prefix) (nth 2 prefix))))
              prefix)))
-  :hints (("Goal" :induct (fn-bpiw-durable-fold bp ion records)
+  :hints (("Goal" :induct (fn-bpiw-durable-fold bp ion records fn-arena)
            :in-theory (e/d (fn-bpiw-durable-fold)
                            (fn-bpiw-apply fn-bpiw-replay-fence)))))
 
 (local
  (defthm fn-bpiw-apply-of-recovery-outcome
    (implies (fn-bpiw-recovery-outcomep r)
-            (equal (fn-bpiw-apply bp ion r)
+            (equal (fn-bpiw-apply bp ion r fn-arena)
                    (let ((a (fn-bp-apply-journal-record bp r)))
                      (list (car a) (nth 1 a) (nth 2 a) ion))))
    :hints (("Goal" :in-theory (e/d (fn-bpiw-apply fn-bprl-apply-journal-record
@@ -202,9 +204,9 @@
 ; live gate admits -- and a later reopen installs the live image after one
 ; restart, with the ION route/observation state unchanged.
 (defthm fn-bpiw-reopen-after-live-recovery-is-the-live-image-restarted
-  (let* ((open (fn-bpiw-replay-journal node records))
-         (live (fn-bpiw-apply (nth 1 open) (nth 3 open) r))
-         (reopen (fn-bpiw-replay-journal node (append records (list r)))))
+  (let* ((open (fn-bpiw-replay-journal node records fn-arena))
+         (live (fn-bpiw-apply (nth 1 open) (nth 3 open) r fn-arena))
+         (reopen (fn-bpiw-replay-journal node (append records (list r)) fn-arena)))
     (implies (and (car open)
                   (fn-bpiw-recovery-outcomep r)
                   (car live))
@@ -217,7 +219,8 @@
                                        (fn-bp-initial-state
                                         node (fn-bp-config-from-record
                                               (car records)))
-                                       (fn-bpiw-initial) (cdr records))))))
+                                       (fn-bpiw-initial) (cdr records)
+                                       fn-arena)))))
            :in-theory (e/d (fn-bpiw-replay-journal)
                            (fn-bpiw-apply fn-bpiw-replay-records
                             fn-bpiw-durable-fold
