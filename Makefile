@@ -955,6 +955,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-prepare-served \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
+	tests/acl2/owner-prepare-served-events-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
