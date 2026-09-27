@@ -486,7 +486,7 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertIn(b"disk recovered after a stall: the barrier completed after ", log)
         # The decision journal: this run's segment, entries in sequence
         # (books/owner-time-journal.lisp: (SEQ OP READING A B C WORD)).
-        journal = (self.store / "journal" / "decisions.fnj").read_bytes()
+        journal = (self.store / "decisions" / "decisions.fnj").read_bytes()
         entries = [[int(x) for x in line.split(b" ")] for line in journal.split(b"\n") if line]
         start = max(i for i, entry in enumerate(entries) if entry[1] == 0)
         segment = entries[start + 1:]

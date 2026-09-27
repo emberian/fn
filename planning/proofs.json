@@ -3913,7 +3913,6 @@
         "fn-pbb-block-agent-is-pb-block-agent",
         "fn-pbb-path-agent-is-pb-path-agent",
         "fn-pbb-same-articlep-is-pb-same-articlep",
-        "fn-pbb-existing-action-is-pb-existing-action",
         "fn-octets-append-back{correspondence}",
         "fn-octets-get-word{correspondence}",
         "fn-octets-append-word{correspondence}",
@@ -4019,7 +4018,6 @@
         "fn-rcl-config-rule-after-retention-set",
         "fn-nntp-msgid-retrieval-answers-reclaimed",
         "fn-nntp-number-retrieval-answers-reclaimed",
-        "fn-rclb-existing-action-is-rcl-existing-action",
         "fn-nntp-over-by-msgid-answers-reclaimed",
         "fn-nntp-over-current-answers-reclaimed",
         "fn-nov-lines-indexed-skip-a-reclaimed-article",
@@ -4032,7 +4030,8 @@
         "fn-rcl-tombstone-contributes-nothing",
         "fn-rcl-store-counts-is-the-model-over-alpha",
         "fn-rcl-store-classes-partition-the-articles",
-        "fn-rcl-signed-article-is-never-reclaimable"
+        "fn-rcl-signed-article-is-never-reclaimable",
+        "fn-rclb-same-articlep-is-rcl-same-articlep"
       ]
     },
     {
@@ -11244,7 +11243,10 @@
         "fn-heap-init-decide-honors-the-operators-request",
         "fn-heap-init-accepted-store-always-reopens",
         "fn-heap-reserve-full-store-accepted-is-within-the-machine",
-        "fn-heap-init-decide-fits-the-budget-and-the-machine"
+        "fn-heap-init-decide-fits-the-budget-and-the-machine",
+        "fn-heap-init-budget-note-names-the-budget-init-sized-for",
+        "fn-heap-init-budget-note-only-when-named-below-machine-by-definition",
+        "fn-heap-init-budget-is-the-named-below-the-machine"
       ]
     },
     {
@@ -11419,7 +11421,7 @@
     {
       "id": "PRF-322",
       "title": "The decision journal: every event the scheduler's disk-and-clock value takes is one journal entry, the journal reads back whole and replays to agreement from the run's start, and every decision the host asks of the value reads only what the journal determines",
-      "statement": "Subjects: fn-otm-disk-step (host/native/owner.lisp fnn-owner-disk-event: every disk and clock event, the served read's :served reading included, fnn-owner-advance-clock), fn-otm-note-step (fnn-owner-journal-note: the stall's release, members told and queued POSTs shed), fn-otm-start-line (fnn-owner-journal-open), each rendering the entry (SEQ OP READING A B C WORD) with fn-otm-jline; the host offers it to the service-log writer thread (host/native/io.lisp fnn-journal-line), which appends it to STORE/journal/decisions.fnj, never on the owner and never waited on, bounded by ACL2's sink (books/log-sink.lisp). fn-otm-disk-step-unfolds: the step's word and value are fn-otm-disk-event's. fn-otm-journal-read-of-jlines: a list of entries (naturals) rendered and read back is itself, the reader's status :whole. KEYSTONE fn-otm-journal-determines-the-decisions: for every run STEPS of the host's calls (fn-otm-run: disk events of the four kinds, notes, and the gate's fn-otm-next, fn-otm-observe and fn-otm-commit-event interleaved in any order; hypothesis fn-otm-run-okp: the host appends only :clock, :served, :issue and :return events), the journal it writes reads back :whole and fn-otm-replay from the run's start answers :agrees (every recomputed word equals the journaled one, no gap) at the run's disk and clock. fn-otm-decisions-read-only-the-journal-state: admission, mode, wait, the 441 and 440 reply lines, health's disk lines and the log lines read only the disk and the clock. fn-otm-wall-reading-shape (books/clock-wall-reading.lisp, N3 of lane proto-determinism): the wall reading's validity is ACL2's (host/native/io.lisp fnn-owner-wall-milliseconds). fn-otm-journal-report-of-a-run: the operator's replay (host/native/io.lisp `store ROOT journal' calls fn-otm-journal-report and fn-otm-journal-exit) of the journal of any such run from fn-otm-init reports status=whole replay=agrees. Not claimed: that the file on disk holds every entry (the sink drops by name under its bound: a gap replay reports as (:gap SEQ)); anything about the record log's fold (lane proto-determinism: deterministic); the served machine's own replay from the :served readings (the readings are journaled; the served transcript replay is not built).",
+      "statement": "Subjects: fn-otm-disk-step (host/native/owner.lisp fnn-owner-disk-event: every disk and clock event, the served read's :served reading included, fnn-owner-advance-clock), fn-otm-note-step (fnn-owner-journal-note: the stall's release, members told and queued POSTs shed), fn-otm-start-line (fnn-owner-journal-open), each rendering the entry (SEQ OP READING A B C WORD) with fn-otm-jline; the host offers it to the service-log writer thread (host/native/io.lisp fnn-journal-line), which appends it to STORE/decisions/decisions.fnj, never on the owner and never waited on, bounded by ACL2's sink (books/log-sink.lisp). fn-otm-disk-step-unfolds: the step's word and value are fn-otm-disk-event's. fn-otm-journal-read-of-jlines: a list of entries (naturals) rendered and read back is itself, the reader's status :whole. KEYSTONE fn-otm-journal-determines-the-decisions: for every run STEPS of the host's calls (fn-otm-run: disk events of the four kinds, notes, and the gate's fn-otm-next, fn-otm-observe and fn-otm-commit-event interleaved in any order; hypothesis fn-otm-run-okp: the host appends only :clock, :served, :issue and :return events), the journal it writes reads back :whole and fn-otm-replay from the run's start answers :agrees (every recomputed word equals the journaled one, no gap) at the run's disk and clock. fn-otm-decisions-read-only-the-journal-state: admission, mode, wait, the 441 and 440 reply lines, health's disk lines and the log lines read only the disk and the clock. fn-otm-wall-reading-shape (books/clock-wall-reading.lisp, N3 of lane proto-determinism): the wall reading's validity is ACL2's (host/native/io.lisp fnn-owner-wall-milliseconds). fn-otm-journal-report-of-a-run: the operator's replay (host/native/io.lisp `store ROOT journal' calls fn-otm-journal-report and fn-otm-journal-exit) of the journal of any such run from fn-otm-init reports status=whole replay=agrees. Not claimed: that the file on disk holds every entry (the sink drops by name under its bound: a gap replay reports as (:gap SEQ)); anything about the record log's fold (lane proto-determinism: deterministic); the served machine's own replay from the :served readings (the readings are journaled; the served transcript replay is not built).",
       "milestone": "M5",
       "requirements": [
         "HST-028"
@@ -11474,7 +11476,10 @@
       "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs). Lane ax-fix/reply-text (2026-09-27): the 440 and the post-340 441 carry the disk's reason again (fn-otm-shed-replies through fn-otm-read-span); test-book witnesses run the host's call on live stobjs over owner-reader-read-tests' owner: a MUTATION witness (connection 0's posting bit on) answers 340 admitted and the stalled disk's 440 shedding, the bit restored; the REACHED owner (posting off) keeps the generic 440 shedding.",
       "events": [
         "fn-otm-read-span-while-shedding",
-        "fn-otm-closed-posting-never-awaits-an-article"
+        "fn-otm-closed-posting-never-awaits-an-article",
+        "fn-otm-closed-posting-answers-the-generic-440",
+        "fn-otm-posting-disallowed-refusal-is-the-generic-441",
+        "fn-otm-disk-reply-effects-is-a-map"
       ]
     },
     {
@@ -11625,6 +11630,46 @@
         "fn-cu-records-replay-is-the-last-cursor",
         "fn-cu-resume-asks-from-the-journaled-cursor",
         "fn-cu-decode-of-encode"
+      ]
+    },
+    {
+      "id": "PRF-326",
+      "title": "A compressed record in the log expands to exactly the record it was sealed from; a compressed extent reads back, through the proved LZ decoder, as the record's payload; the replay and the commit with compressed extents are the resident ones",
+      "statement": "books/payload-lz-record.lisp (brief C2 of planning/evidence/article-compression-2026-09-27.md section 6; lane compression-extents). The record FRAME sits between the record codec and the log: Z = 'fn-z' head ++ u32 DICT-ID, K, N, |STUB| ++ STUB ++ C, STUB the record R without its payload span [K, K+N), C an LZ4 block (books/payload-lz.lisp) decoding to that span against the dictionary DICT-ID; fn-lzr-expand gives R back or refuses by name (:lz-frame, :lz-dictionary, :lz-decode); a record that is not a frame passes unchanged. fn-lzr-seal (the one producer of a frame) runs the proved decoder over the host's untrusted candidate and frames R only when it decodes to the span, the span reaches the profile's threshold MIN (0 never) and the frame is shorter (fn-lzr-compress-p); a record that begins with the frame head is framed with an empty span. KEYSTONE fn-lzr-expand-of-seal: for a table binding DICT-ID to DICT, a u32 DICT-ID and an octet record of u32 length, (fn-lzr-expand dicts (fn-lzr-seal dict dict-id min r k n candidate)) = (:ok r), whatever the candidate, threshold or span. fn-lzr-replay-reads-the-sealed-record (the D25 decision): for (fn-record-p w) the expansion of the seal of (fn-record-encode w) decodes to (:ok w), so the content identity, Message-ID comparison, signatures and Cancel-Lock -- all over the authored octets, computed before the seal -- are unchanged; the log's frame trailer covers the durable Z. Dictionaries: fn-lzr-dictsp (u32 id, at most 65,536 octets, the LZ4 window), fn-lzr-dicts-add refuses a rebinding (fn-lzr-dicts-add-keeps-bindings). The compressed extent (FILE EOFF ELEN CPOFF CLEN TRAILER N DICT-ID) of a frame at its log place (fn-lzr-extent-of: C is Z's tail and decodes to the record's payload); KEYSTONE fn-lzr-extent-read-denotes: under the faithful read of Z at its place, fn-lzr-read of C's durable octets against the dictionary is (:ok payload). The arena (books/payload-arena.lisp, books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp): exports fn-arena-seal-lz-extent / fn-arena-reseat-lz-extent (logic: the handle is fn-lzr-lz-value DICT (durable C) N, books/payload-lz-value.lisp), every {correspondence}/{guard-thm}/{preserved} obligation proved over the reference and the extent attachment (EXT entry an 8-tuple carrying the dictionary's octets); KEYSTONE fn-arena-seal-lz-extent-payload, KEYSTONE fn-arena-reseat-lz-extent-keeps-a-faithful-arena. The replay (books/payload-lz-replay.lisp): fn-lzr-intern-step (a frame whose C decodes to the record's payload sealed as a compressed extent, anything else the plain extent intern); KEYSTONE fn-lzr-intern-step-refines: under fn-arx-faithful-p it is fn-srs-intern-step. The commit: fn-lzr-commit-reseats; KEYSTONE fn-lzr-commit-reseats-keep-the-arena under fn-arx-commit-faithful-p. The served read of a compressed handle is the host realizer fn-durable-realize-lz (A-DURABLE-LZ): the extent realizer's trailer-checked read of C, then ACL2's fn-lzr-lz-read (fn-lzr-lz-read-is-the-lz-value), a failed decode refused by name (arena-extent-lz-decode). Host subject: host/native/extent.lisp fn-durable-realize-lz calls fn-lzr-lz-read; the seal (POST), the replay step and the commit reseat have no host caller yet (the lane's continuation wires them: planning/evidence/compression-extents-2026-09-27.md).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-257",
+        "PRF-294",
+        "PRF-309"
+      ],
+      "assumptions": [
+        "A-DURABLE-EXTENT",
+        "A-DURABLE-LZ"
+      ],
+      "status": "certified",
+      "evidence": [
+        "books/payload-lz-record.lisp",
+        "books/payload-lz-replay.lisp",
+        "books/payload-lz-value.lisp",
+        "tests/acl2/payload-lz-record-tests.lisp",
+        "planning/evidence/compression-extents-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T213338Z-2661898.json",
+        "planning/evidence/manifests/certify-20260927T221728Z-2829003.json"
+      ],
+      "progress_note": "Lane compression-extents (Opus 5.5, 2026-09-27). Certified on hbox: the 656 affected roots (679 books, certify-20260927T213338Z-2661898, passed) and, after splitting the replay into books/payload-lz-replay.lisp, its 3 roots (certify-20260927T221728Z-2829003, passed, no book over 10 s). Teeth: tests/acl2/payload-lz-record-tests.lisp on codec-c1's real 1993 article and its liblz4-HC blocks (without and with a 2,749-octet dictionary): the seal frames the record (136 and 334 octets shorter), expands to it and replays to the record through the attached codec; per keystone a reachable witness, ground counterexamples (a missing or wrong dictionary, a non-u32 id, an improper record) and must-fails per hypothesis.",
+      "events": [
+        "fn-lzr-expand-of-seal",
+        "fn-lzr-replay-reads-the-sealed-record",
+        "fn-lzr-extent-read-denotes",
+        "fn-arena-seal-lz-extent-payload",
+        "fn-arena-reseat-lz-extent-keeps-a-faithful-arena",
+        "fn-lzr-intern-step-refines",
+        "fn-lzr-commit-reseats-keep-the-arena",
+        "fn-lzr-lz-read-is-the-lz-value",
+        "fn-lzr-dicts-add-keeps-bindings"
       ]
     }
   ]

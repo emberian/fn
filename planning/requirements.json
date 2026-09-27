@@ -2793,7 +2793,8 @@
         "PRF-309",
         "PRF-320",
         "PRF-321",
-        "PRF-330"
+        "PRF-330",
+        "PRF-326"
       ],
       "verification": [
         "proof",
@@ -4771,7 +4772,7 @@
         "tests/test_native_slow_disk.py",
         "planning/evidence/time-model-2-2026-09-27.md"
       ],
-      "implementation_note": "Lane time-model-2. The journal is STORE/journal/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
+      "implementation_note": "Lane time-model-2. The journal is STORE/decisions/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
     },
     {
       "id": "WEB-004",

@@ -633,7 +633,7 @@ N3 of lane proto-determinism; the wall reading's validity is ACL2's,
 `fn-otm-wall-reading`) -- and each note (the stall's release: members told,
 queued POSTs refused) is one entry `SEQ OP READING A B C WORD`, rendered by
 ACL2 and offered to the service-log writer thread, which appends it to
-`STORE/journal/decisions.fnj`: never written on the owner and never waited
+`STORE/decisions/decisions.fnj`: never written on the owner and never waited
 on, so a journal on the disk that is stalled costs nothing but queue space,
 bounded by ACL2's sink; an entry the sink drops is counted and is a gap in
 SEQ. Keystone `fn-otm-journal-determines-the-decisions`: the journal of

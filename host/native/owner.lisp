@@ -3634,13 +3634,16 @@ reads run as a :control quantum; the thread's registration is the roster's."
 ;;; descriptor is swapped under the log mutex, so every line lands whole in
 ;;; the renamed file or in the new one; the old descriptor is closed after.
 (defun fnn-owner-journal-open (service)
-  "Open STORE/journal/decisions.fnj for append and offer this run's start
+  "Open STORE/decisions/decisions.fnj for append and offer this run's start
 entry (fn-otm-start-line: the first monotonic and wall readings).  A journal
 that cannot be opened is reported and the run continues without it: the
 journal records decisions that stored nothing, so its absence costs replay
 of those decisions, never durable state."
   (let* ((root (fnn-store-root (fnn-owner-service-store service)))
-         (dir (fnn-join root "journal")))
+         ;; Its own directory, never the record log's journal/: that holds
+         ;; the log's segments and nothing else (batch AX: a file there broke
+         ;; the log's segment listing in test_native_log_compaction).
+         (dir (fnn-join root "decisions")))
     (handler-case
         (progn
           (handler-case (fnn-mkdir dir #o750)

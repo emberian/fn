@@ -3663,10 +3663,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rclb-existing-action-is-rcl-existing-action"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-nntp-over-by-msgid-answers-reclaimed"
         },
         {
@@ -11247,6 +11243,47 @@
         {
           "kind": "theorem",
           "name": "fn-cu-decode-of-encode"
+        }
+      ]
+    },
+    {
+      "id": "PRF-326",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-expand-of-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-replay-reads-the-sealed-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-extent-read-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-lz-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-lz-extent-keeps-a-faithful-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-intern-step-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-commit-reseats-keep-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-lz-read-is-the-lz-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lzr-dicts-add-keeps-bindings"
         }
       ]
     }
