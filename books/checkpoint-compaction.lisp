@@ -38,21 +38,90 @@
       (+ (len (car events)) 5 (fn-cc-event-octets-size (cdr events)))
     32))
 
+;; A checkpoint's event octets decode to WIRE events (the codec's domain,
+;; books/store-events.lisp fn-wire-event-p); after the records flip the
+;; retained vocabulary (fn-store-event-p) is the history's, never a decoded
+;; frame's.  The wire counters are naturals.
+(local
+ (defthm fn-cc-wire-article-counters
+   (implies (fn-record-p e)
+            (and (natp (fn-record-sequence e)) (natp (fn-record-txid e))
+                 (natp (fn-record-generation e))))
+   :hints (("Goal" :in-theory (enable fn-record-record-vocabulary
+                                      fn-record-shape-vocabulary)))))
+(local
+ (defthm fn-cc-wire-stxa-counters
+   (implies (fn-stxa-p e)
+            (and (natp (fn-stxa-sequence e)) (natp (fn-stxa-txid e))
+                 (natp (fn-stxa-generation e))))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+(local
+ (defthm fn-cc-wire-stxe-counters
+   (implies (fn-stxe-p e)
+            (and (natp (fn-stxe-sequence e)) (natp (fn-stxe-txid e))
+                 (natp (fn-stxe-generation e))))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+(local
+ (defthm fn-cc-wire-stxk-counters
+   (implies (fn-stxk-p e)
+            (and (natp (fn-stxk-sequence e)) (natp (fn-stxk-txid e))
+                 (natp (fn-stxk-generation e))))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+(local
+ (defthm fn-cc-wire-retention-counters
+   (implies (fn-store-retention-event-p e)
+            (and (natp (fn-store-event-nth 2 e)) (natp (fn-store-event-nth 3 e))
+                 (natp (fn-store-event-nth 4 e))))
+   :hints (("Goal" :in-theory (enable fn-store-retention-event-p fn-record-uint32p)))))
+(local
+ (defthm fn-cc-wire-cpe-counters
+   (implies (fn-cpe-eventp e)
+            (and (natp (fn-cpe-sequence e)) (natp (fn-cpe-txid e))
+                 (natp (fn-cpe-generation e))))
+   :hints (("Goal" :in-theory (enable fn-cpe-eventp fn-cp-uintp)))))
+
+(defthm fn-cc-wire-counters-are-natural
+  (implies (fn-wire-event-p e)
+           (and (natp (fn-wire-event-sequence e))
+                (natp (fn-wire-event-txid e))
+                (natp (fn-wire-event-generation e))))
+  :rule-classes ((:forward-chaining)
+                 (:type-prescription :corollary
+                  (implies (fn-wire-event-p e) (natp (fn-wire-event-sequence e))))
+                 (:type-prescription :corollary
+                  (implies (fn-wire-event-p e) (natp (fn-wire-event-txid e))))
+                 (:type-prescription :corollary
+                  (implies (fn-wire-event-p e) (natp (fn-wire-event-generation e)))))
+  :hints (("Goal"
+           :use (fn-cc-wire-article-counters fn-cc-wire-stxa-counters
+                 fn-cc-wire-stxe-counters fn-cc-wire-stxk-counters
+                 fn-cc-wire-retention-counters fn-cc-wire-cpe-counters)
+           :cases ((fn-record-p e) (fn-store-retention-event-p e) (fn-stxe-p e)
+                   (fn-stxk-p e) (fn-stxa-p e) (fn-cpe-eventp e))
+           :in-theory
+           (e/d (fn-wire-event-p fn-wire-event-sequence fn-wire-event-txid
+                                 fn-wire-event-generation)
+                (fn-record-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
+                             fn-stxa-p fn-cpe-eventp
+                             fn-cc-wire-article-counters fn-cc-wire-stxa-counters
+                             fn-cc-wire-stxe-counters fn-cc-wire-stxk-counters
+                             fn-cc-wire-retention-counters fn-cc-wire-cpe-counters)))))
+
 (defun fn-cc-octet-event-listp (octet-events sequence lower-frontier upper-frontier)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp octet-events)
       (let ((decoded (fn-store-event-decode-exact (car octet-events))))
         (and (fn-cbor-octet-listp (car octet-events))
              (equal (car decoded) :ok)
-             (fn-store-event-p (fn-cc-nth 1 decoded))
-             (equal (fn-store-event-sequence (fn-cc-nth 1 decoded)) sequence)
-             (equal (fn-store-event-txid (fn-cc-nth 1 decoded))
-                    (fn-store-event-generation (fn-cc-nth 1 decoded)))
-             (<= lower-frontier (fn-store-event-txid (fn-cc-nth 1 decoded)))
-             (< (fn-store-event-txid (fn-cc-nth 1 decoded)) upper-frontier)
+             (fn-wire-event-p (fn-cc-nth 1 decoded))
+             (equal (fn-wire-event-sequence (fn-cc-nth 1 decoded)) sequence)
+             (equal (fn-wire-event-txid (fn-cc-nth 1 decoded))
+                    (fn-wire-event-generation (fn-cc-nth 1 decoded)))
+             (<= lower-frontier (fn-wire-event-txid (fn-cc-nth 1 decoded)))
+             (< (fn-wire-event-txid (fn-cc-nth 1 decoded)) upper-frontier)
              (fn-cc-octet-event-listp
               (cdr octet-events) (+ 1 sequence)
-              (+ 1 (fn-store-event-txid (fn-cc-nth 1 decoded))) upper-frontier)))
+              (+ 1 (fn-wire-event-txid (fn-cc-nth 1 decoded))) upper-frontier)))
     (null octet-events)))
 
 (defun fn-cc-summaryp (summary)
