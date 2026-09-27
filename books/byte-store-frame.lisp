@@ -79,6 +79,20 @@
 ; the open by name, never translated.
 (defconst *fn-bs-meta-format-8*
   '(102 110 45 115 116 111 114 101 45 56)) ; fn-store-8
+; Format 9 (`fn-store-9', lane commit-onto-log, planning/design-2026-09-27-
+; storage-log.md section 5.3): the same profile fields; the store commits
+; through the record log (journal/000001.log, books/store-log*.lisp) and holds
+; no allocation frontier, transactions/ directory or committed-history
+; marker.  Format 9 is what `init' writes.  Format 8 stays readable while the
+; native modules that read the per-file layout are retired (PKT-COL-1, the coordinator numbers it); the
+; commit route of an opened store is `fn-bs-profile-logp' of its profile.
+(defconst *fn-bs-meta-format-9*
+  '(102 110 45 115 116 111 114 101 45 57)) ; fn-store-9
+
+(defun fn-bs-meta-formatp (word)
+  (declare (xargs :guard t))
+  (or (equal word *fn-bs-meta-format-8*)
+      (equal word *fn-bs-meta-format-9*)))
 (defconst *fn-bs-meta-frontier-format*
   '(102 110 45 115 116 111 114 101 45 97 108 108 111 99 97 116 105
     111 110 45 102 114 111 110 116 105 101 114 45 50))
@@ -180,7 +194,7 @@
         (k (fn-bs-pf 8 values)))
     (cond ((not (fn-frame-values-okp *fn-bs-meta-profile-spec* values))
            :layout)
-          ((not (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*))
+          ((not (fn-bs-meta-formatp (fn-bs-meta-nth 0 values)))
            :format)
           ((not (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*))
            :frontier-format)
@@ -252,7 +266,7 @@
 (defun fn-bs-profile-preset (tx h a)
   (declare (xargs :guard t))
   (let ((h (nfix h)) (tx (nfix tx)) (a (nfix a)))
-    (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
+    (list *fn-bs-meta-format-9* *fn-bs-meta-frontier-format*
           tx h
           (max (if (zp tx) 0 (floor h tx))
                (fn-record-encoded-octets-ceiling
@@ -287,6 +301,20 @@
   "VALUES is a profile a store may be opened and served under."
   (declare (xargs :guard t))
   (fn-bs-profile-validp (fn-bs-profile-of values)))
+
+; The commit route of the store a profile opens (lane commit-onto-log): the
+; record log for format 9, the per-file programs for format 8.  A value that
+; is not a profile names neither (the open refuses it before this is read).
+(defun fn-bs-profile-logp (values)
+  (declare (xargs :guard t))
+  (equal (fn-bs-meta-nth 0 (fn-bs-profile-of values)) *fn-bs-meta-format-9*))
+
+; The same profile in the per-file layout: what a developer image's `init'
+; writes under FN_NATIVE_STORE_FORMAT=8 for the modules that read that layout
+; (PKT-COL-1).  Validity does not read the word beyond its being a format.
+(defun fn-bs-profile-as-format-8 (values)
+  (declare (xargs :guard t))
+  (if (consp values) (cons *fn-bs-meta-format-8* (cdr values)) values))
 
 ; The named accessors every consumer reads.  Each reads the profile the
 ; store runs under, and a value that is not a valid profile gives 0.
@@ -361,7 +389,7 @@
 (defthm fn-bs-profile-validp-facts
   (implies (fn-bs-profile-validp values)
            (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
-                (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*)
+                (fn-bs-meta-formatp (fn-bs-meta-nth 0 values))
                 (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*)
                 (<= 1 (fn-bs-pf 2 values))
                 (<= (fn-bs-pf 2 values) *fn-bs-profile-transaction-ceiling*)
@@ -1025,7 +1053,7 @@
 (defconst *fn-bs-profile-scale*
   (fn-bs-profile-preset 4096 805306368 32768))
 (defconst *fn-bs-profile-defaults*
-  (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
+  (list *fn-bs-meta-format-9* *fn-bs-meta-frontier-format*
         *fn-bs-profile-transaction-ceiling*
         1099511627776
         (min 67108864 *fn-bs-profile-record-ceiling-codec*)
@@ -1135,7 +1163,7 @@
     (if (equal (car verdict) :init) (cadr verdict) nil)))
 
 ; The operator's view of the profile a store runs under: the format it is
-; persisted in (8, the one format) and every field by its
+; persisted in (9, or 8 while PKT-COL-1 stands) and every field by its
 ; operator name, read through `fn-bs-profile-of' (0 for a value that is not
 ; a profile).  `operator status' prints it; the host formats, never computes.
 (defun fn-bs-profile-report-value (i values)
@@ -1158,7 +1186,9 @@
 (defun fn-bs-profile-report (values)
   (declare (xargs :guard t))
   (cons (cons "format"
-              (if (fn-bs-profile-validp values) 8 0))
+              (if (fn-bs-profile-validp values)
+                  (if (fn-bs-profile-logp values) 9 8)
+                0))
         (fn-bs-profile-report-fields *fn-bs-profile-field-names* values)))
 
 ; These stay functions rather than defconsts: ACL2 deliberately ignores a

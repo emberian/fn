@@ -52,7 +52,7 @@
         (k (fn-bs-pf 8 values)))
     (cond ((not (fn-frame-values-okp *fn-bs-meta-profile-spec* values))
            :layout)
-          ((not (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*))
+          ((not (fn-bs-meta-formatp (fn-bs-meta-nth 0 values)))
            :format)
           ((not (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*))
            :frontier-format)
@@ -141,11 +141,12 @@
               (fn-frame-parse-value word)
             nil))))))
 
-; D34: a sealed profile frame whose format is not the one format.
+; D34: a sealed profile frame whose format is not a format this image opens
+; (9, and 8 while PKT-COL-1 stands).
 (defun fn-spo-foreign-formatp (octets)
   (declare (xargs :guard t))
   (let ((word (fn-spo-saved-format-word octets)))
-    (and word (not (equal word *fn-bs-meta-format-8*)) t)))
+    (and word (not (fn-bs-meta-formatp word)) t)))
 
 (defun fn-spo-in-the-windowp (saved)
   (declare (xargs :guard t))
@@ -181,8 +182,8 @@
                  *fn-bs-meta-config-kind*
                  (fn-frame-fields-octets (fn-spo-layout-spec (nfix n)) values)))
 
-; The layout of a config.json: the number of u64 fields after the format word
-; fn-store-8 and a second text field, when the sealed profile frame is exactly
+; The layout of a config.json: the number of u64 fields after a format word
+; (fn-store-8 or fn-store-9, lane commit-onto-log) and a second text field, when the sealed profile frame is exactly
 ; that; NIL for any other octets (no sealed profile frame, another format
 ; word, or a tail that is no run of u64 fields).
 (defun fn-spo-layout-fields (octets)
@@ -198,8 +199,7 @@
                      '(:text :text) (fn-frame-result-payload frame))))
           (if (not (and (fn-frame-parse-okp head)
                         (consp (fn-frame-parse-value head))
-                        (equal (car (fn-frame-parse-value head))
-                               *fn-bs-meta-format-8*)))
+                        (fn-bs-meta-formatp (car (fn-frame-parse-value head)))))
               nil
             (let ((width (len (fn-frame-parse-rest head))))
               (if (equal (mod width 8) 0)
@@ -302,7 +302,7 @@
  (defthm fn-bs-profile-v2-valid-shape
    (implies (fn-bs-profile-v2-validp values)
             (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
-                 (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*)
+                 (fn-bs-meta-formatp (fn-bs-meta-nth 0 values))
                  (equal (fn-bs-meta-nth 1 values)
                         *fn-bs-meta-frontier-format*)))
    :rule-classes :forward-chaining
@@ -333,7 +333,7 @@
 (local
  (defun fn-spo-shapep (values)
    (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
-        (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*)
+        (fn-bs-meta-formatp (fn-bs-meta-nth 0 values))
         (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*))))
 
 (local
@@ -559,8 +559,7 @@
 (local
  (defthm fn-spo-layout-fields-of-a-saved-format-8
    (implies (and (fn-spo-saved-format-8 octets)
-                 (equal (car (fn-spo-saved-format-8 octets))
-                        *fn-bs-meta-format-8*))
+                 (fn-bs-meta-formatp (car (fn-spo-saved-format-8 octets))))
             (equal (fn-spo-layout-fields octets)
                    *fn-spo-release-layout-fields*))
    :hints (("Goal"
@@ -585,7 +584,7 @@
 (local
  (defthm fn-spo-valid-names-format-8
    (implies (fn-bs-profile-validp values)
-            (equal (car values) *fn-bs-meta-format-8*))
+            (fn-bs-meta-formatp (car values)))
    :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp fn-bs-profile-invalid-reason
                                     fn-bs-meta-nth)
                                    (fn-bs-pf fn-frame-values-okp
@@ -773,7 +772,7 @@
 (defthm fn-spo-layout-fields-of-a-layout-frame
   (implies (and (natp n)
                 (fn-frame-values-okp (fn-spo-layout-spec n) values)
-                (equal (car values) *fn-bs-meta-format-8*)
+                (fn-bs-meta-formatp (car values))
                 (<= (len (fn-frame-fields-octets (fn-spo-layout-spec n) values))
                     *fn-bs-meta-max-config-payload*))
            (equal (fn-spo-layout-fields (fn-spo-layout-frame n values)) n))
@@ -801,7 +800,7 @@
 (local
  (defthm fn-spo-v2-valid-names-format-8
    (implies (fn-bs-profile-v2-validp values)
-            (equal (car values) *fn-bs-meta-format-8*))
+            (fn-bs-meta-formatp (car values)))
    :hints (("Goal" :use fn-bs-profile-v2-valid-shape
             :in-theory (e/d (fn-bs-meta-nth)
                             (fn-bs-profile-v2-valid-shape fn-bs-profile-v2-validp
@@ -869,7 +868,7 @@
 (local
  (defthm fn-spo-window-names-format-8
    (implies (fn-spo-in-the-windowp values)
-            (equal (car values) *fn-bs-meta-format-8*))
+            (fn-bs-meta-formatp (car values)))
    :hints (("Goal" :in-theory (e/d (fn-spo-in-the-windowp fn-bs-profile-invalid-reason
                                     fn-bs-meta-nth)
                                    (fn-bs-pf fn-frame-values-okp
@@ -944,7 +943,7 @@
   (implies (and (natp n)
                 (not (equal n *fn-spo-release-layout-fields*))
                 (fn-frame-values-okp (fn-spo-layout-spec n) values)
-                (equal (car values) *fn-bs-meta-format-8*)
+                (fn-bs-meta-formatp (car values))
                 (<= (len (fn-frame-fields-octets (fn-spo-layout-spec n) values))
                     *fn-bs-meta-max-config-payload*))
            (equal (fn-spo-config-open (fn-spo-layout-frame n values))

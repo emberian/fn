@@ -995,8 +995,14 @@ scope ends, however it ends."
 ;;; mirror tools/frame_bridge.py's wrappers: the raw host neither frames nor
 ;;; parses a field, and it does not restate the frontier domain or successor.
 
+(defun fnn-store-format-8-selected-p ()
+  "FN_NATIVE_STORE_FORMAT=8 on a developer image: init writes format 8."
+  (equal (fnn-developer-selector "FN_NATIVE_STORE_FORMAT") "8"))
+
 (defun fnn-metadata-config-frame (profile)
-  (let ((value (fnn-core 'fn-store-metadata-config-frame profile)))
+  (let ((value (if (fnn-store-format-8-selected-p)
+                   (fnn-core 'fn-store-metadata-config-frame-format-8 profile)
+                 (fnn-core 'fn-store-metadata-config-frame profile))))
     (when (or (null value) (not (fnn-octet-list-p value)))
       (fnn-fault "ACL2 returned malformed metadata profile frame"))
     (fnn-octets value)))
@@ -1453,6 +1459,13 @@ resolves the names against `domain' and the host carries that list verbatim."
 ;; group table: what a store serves is what the core admits and replays.
 (defparameter +fnn-default-groups+ (list "fn.letters" "fn.test"))
 
+;;; Lane commit-onto-log: bound to T while the owner runs one batch of
+;;; members in one quantum (host/native/owner.lisp fnn-owner-commit-batch):
+;;; fnn-publish then puts each member's record into the log's open batch and
+;;; leaves the append and the barrier to the batch's end.  NIL everywhere
+;;; else: a commit is a batch of one.
+(defvar *fnn-log-batch* nil)
+
 (defstruct (fnn-store (:constructor %make-fnn-store))
   root writable lock-fd config frontier fenced (orphans nil) (orphans-more nil)
   (completion-pending nil)
@@ -1470,7 +1483,11 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; fnn-recover after its barriers, only by a writable open.
   (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
-  (fault-point nil) (fault-class nil) (fault-message nil))
+  (fault-point nil) (fault-class nil) (fault-message nil)
+  ;; Lane commit-onto-log: the commit route ACL2 names from the profile
+  ;; (fn-store-profile-logp: format 9) and, on that route, the open record
+  ;; log (an fnn-log: the segment's descriptor and the log kernel).
+  (logp nil) (log nil))
 
 (defun fnn-profile-nat (name store)
   (let ((value (fnn-core name (fnn-store-config store))))
@@ -1494,8 +1511,11 @@ resolves the names against `domain' and the host carries that list verbatim."
     store))
 
 (defun fnn-at (store point)
-  "Production has no injection branch; a scripted point raises its outcome."
-  (when (eq point (fnn-store-fault-point store))
+  "Production has no injection branch; a scripted point raises its outcome.
+A named CLI fault may arm one point per commit route (a list: the per-file
+route's point and the record log's, lane commit-onto-log)."
+  (when (let ((armed (fnn-store-fault-point store)))
+          (if (consp armed) (member point armed) (eq point armed)))
     (cond ((eq (fnn-store-fault-class store) 'fnn-os-error)
            (fnn-os-fail sb-posix:eio))
           ;; Only a developer-image selector arms this class
@@ -1550,6 +1570,14 @@ resolves the names against `domain' and the host carries that list verbatim."
              (not *fnn-clone-activation*))
     (fnn-refuse "clone is fenced pending durable incarnation rollover")))
 (defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
+;; The record log's directory and its one segment (format 9).  The name is
+;; ACL2's (books/owner-log-route.lisp fn-olr-segment-name).
+(defun fnn-journal-dir (s) (fnn-join (fnn-store-root s) "journal"))
+(defun fnn-segment-path (s)
+  (let ((name (fnn-core 'fn-store-log-segment-name)))
+    (unless (and (stringp name) (> (length name) 0) (null (position #\/ name)))
+      (fnn-fault "ACL2 returned an invalid log segment name"))
+    (fnn-join (fnn-journal-dir s) name)))
 (defun fnn-history-marker-path (s) (fnn-join (fnn-store-root s) "committed-history.json"))
 (defun fnn-config-dir (s) (fnn-join (fnn-store-root s) "config"))
 (defun fnn-config-record-name (generation)
@@ -1885,6 +1913,10 @@ uses the `.stage-' prefix the recovery sweep collects.  Any OS error is
 uncertain: the record is durable and the marker may or may not be replaced,
 so the store stays fenced and recovery decides; the transaction is never
 acknowledged without its marker."
+  ;; A format-9 store has no marker object: M := D, the log's last complete
+  ;; entry is the committed history (design 2026-09-27 section 3.4).
+  (when (fnn-store-logp store)
+    (return-from fnn-mark-committed nil))
   (fnn-require-writer store)
   (let ((frame (or catch-up (fnn-core 'fn-hm-after-commit sequence)))
         (stage (fnn-join (fnn-staging store)
@@ -1960,7 +1992,13 @@ acknowledged without its marker."
            (fnn-fsync-dir (fnn-store-root store))
            (fnn-init-cut store "init-root-fenced")
            (fnn-fsync-dir (fnn-parent (fnn-store-root store)))
-           (fnn-init-cut store "init-parent-fenced"))
+           (fnn-init-cut store "init-parent-fenced")
+           ;; Format 9: the record log's segment, after the per-file init
+           ;; program (whose frontier file and transactions/ directory a
+           ;; format-9 store never reads: PKT-COL-2 gives format 9 its own
+           ;; init program).
+           (when (fnn-core 'fn-store-profile-logp (fnn-store-config store))
+             (fnn-log-init-segment store)))
       (ignore-errors (fnn-flock lock-fd +fnn-lock-un+))
       (fnn-close lock-fd))))
 
@@ -1970,18 +2008,31 @@ acknowledged without its marker."
   ;; PKT-579: the store root is on the filesystem its record names, or the
   ;; open is refused by name before anything else is read.
   (fnn-check-filesystem-identity store)
-  (fnn-safe-directory (fnn-transactions store))
   (fnn-safe-directory (fnn-staging store))
   (handler-case
       (progn
         (setf (fnn-store-lock-fd store)
               (fnn-open-lock store (fnn-store-writable store) (fnn-store-writable store)))
         (fnn-load-config store)
-        (fnn-load-frontier store))
+        ;; The commit route is ACL2's reading of the profile (format 9: the
+        ;; record log); the host keeps the answer and decides nothing.
+        (setf (fnn-store-logp store)
+              (and (fnn-core 'fn-store-profile-logp (fnn-store-config store)) t))
+        (cond ((fnn-store-logp store)
+               ;; The frontier is derived from the log at recovery
+               ;; (fnn-recover-log); there is no frontier file to read.
+               (fnn-safe-directory (fnn-journal-dir store)))
+              (t
+               (fnn-safe-directory (fnn-transactions store))
+               (fnn-load-frontier store))))
     (error (e) (fnn-store-close store) (error e))))
 
 (defun fnn-store-close (store)
   (setf (fnn-store-completion-pending store) nil)
+  (let ((log (fnn-store-log store)))
+    (when log
+      (setf (fnn-store-log store) nil)
+      (ignore-errors (fnn-close (fnn-log-fd log)))))
   (let ((fd (fnn-store-lock-fd store)))
     (when fd
       (setf (fnn-store-lock-fd store) nil)
@@ -2740,6 +2791,8 @@ buffer at once."
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
         (fnn-store-marker-catch-up store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
+  (when (fnn-store-logp store)
+    (return-from fnn-recover (fnn-recover-log store)))
   (let ((records nil))
     (handler-case
         (progn
@@ -2844,6 +2897,8 @@ recovery sweep owns."
 
 (defun fnn-advance-frontier (store current-txid)
   "Report each allocator observation to the file kernel in order."
+  (when (fnn-store-logp store)
+    (return-from fnn-advance-frontier (fnn-log-reserve store current-txid)))
   (fnn-require-writer store)
   (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
   (unless (eql current-txid (fnn-store-frontier store))
@@ -2913,6 +2968,8 @@ the record is durable either way and the caller's outcome does not change."
                 failure condition)))))
 
 (defun fnn-publish (store sequence record)
+  (when (fnn-store-logp store)
+    (return-from fnn-publish (fnn-log-publish store sequence record)))
   (fnn-require-writer store)
   (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
   ; This is a final assertion after preparation.  Normal resource refusal was
@@ -3000,6 +3057,12 @@ the record is durable either way and the caller's outcome does not change."
       (setf (fnn-store-fenced store) t)
       (fnn-indeterminate "ACL2 rejected durable completion after publication"))
     (setf (fnn-store-fenced store) nil)
+    ;; A batch of one (every commit outside the owner's batch quantum): the
+    ;; member's record is fenced already, so the log kernel acknowledges it
+    ;; now (fn-lgk-finish-one).  Inside a batch the committer acknowledges
+    ;; each member after the batch's barrier (fnn-log-batch-finish).
+    (when (and (fnn-store-logp store) (not *fnn-log-batch*))
+      (fnn-log-ack (fnn-store-log store) 1))
     (handler-case (fnn-at store :finish-durable)
       (fnn-os-error (e)
         (setf (fnn-store-fenced store) t)
@@ -3383,7 +3446,14 @@ or refuses by name, saying what to run."
              (cons (fnn-config-record-path stage 1)
                    (fnn-bridge-config-initial (or groups +fnn-default-groups+))))
        0
-       (lambda (stage) (fnn-record-filesystem-at-init stage profile policy)))
+       (lambda (stage)
+         (fnn-record-filesystem-at-init stage profile policy)
+         ;; Format 9: the record log's segment is part of the published
+         ;; stage (PKT-COL-2: fn-bs-init-pub-program does not name it yet).
+         (when (fnn-core 'fn-store-profile-logp
+                         (fnn-metadata-config-decode
+                          (fnn-metadata-config-frame profile)))
+           (fnn-log-init-segment stage))))
       ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
       ;; once the store is published (outside fn-bs-init-pub-program: a
       ;; death between the two leaves the complete store without
@@ -3450,6 +3520,11 @@ entries and MANIFEST are ACL2's (fn-sxp-entries, fn-sxp-manifest)."
     (fnn-refuse "export refused reason=archive-exists"))
   (let ((store (make-fnn-store root :writable nil)))
     (fnn-acquire store)
+    ;; A format-9 store's export reads the log (PKT-COL-3; w6-log-recovery's
+    ;; export/import over the log): refused by name until then.
+    (when (fnn-store-logp store)
+      (fnn-store-close store)
+      (fnn-refuse "export refused reason=record-log: exporting a format-9 store is w6-log-recovery's (PKT-750)"))
     (unwind-protect
          (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
                 (frontier (fnn-octet-list (fnn-read-regular-bounded (fnn-frontier-path store) 4096)))
@@ -3796,11 +3871,14 @@ by fn-bs-imp-classify."
 (defparameter +fnn-cli-faults+
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
                                  "injected known abort before publication"))
-        (cons "postpublish" (list :record-attempted 'fnn-store-indeterminate
+        ;; On the record log (format 9) the same outcomes arm the log's
+        ;; cuts: after the batch's barrier (the record durable) and at the
+        ;; batch's write before its barrier.
+        (cons "postpublish" (list '(:record-attempted :log-fenced) 'fnn-store-indeterminate
                                   "indeterminate injected failure after final publication"))
         (cons "frontierbarrier" (list :frontier-barrier 'fnn-os-error
                                       "injected allocator directory barrier failure"))
-        (cons "recordbarrier" (list :record-barrier 'fnn-os-error
+        (cons "recordbarrier" (list '(:record-barrier :log-written) 'fnn-os-error
                                     "injected transaction directory barrier failure"))))
 
 (defparameter +fnn-post-model-cuts+
@@ -3815,6 +3893,14 @@ by fn-bs-imp-classify."
     :marker-created :marker-written :marker-staged-durable
     :marker-replaced :marker-durable
     :finish-consumed :finish-durable))
+
+;; The log route's commit cuts (format 9; tests/campaign/native_cuts.py
+;; POST_LOG_CUTS), in a served batch's order: each member's finish (its
+;; in-memory completion, fnn-finish's two cuts), then P-BATCH's append and
+;; barrier (fnn-log-commit-open-batch).  A batch of one runs the append and
+;; the barrier before its finish.
+(defparameter +fnn-post-log-model-cuts+
+  '(:finish-consumed :finish-durable :log-written :log-fenced))
 
 (defun fnn-post-test-fault ()
   "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.
@@ -3835,6 +3921,7 @@ observes a genuine new-process image."
                (point (intern (string-upcase label) :keyword))
                (action (subseq raw (1+ colon))))
           (unless (or (member point +fnn-post-model-cuts+)
+                      (member point +fnn-post-log-model-cuts+)
                       ;; The committed-history marker's cuts are ACL2's
                       ;; table (books/store-history-marker).
                       (member (string-downcase label)
@@ -4827,7 +4914,10 @@ tree root), or stop the build."
     "FN_PULL_TEST_KILL"
     "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
-    "FN_NATIVE_LOG_FAULT"))
+    "FN_NATIVE_LOG_FAULT"
+    ;; commit-onto-log: `8' makes a developer image's init write the
+    ;; per-file layout (format 8) for the modules that read it (PKT-COL-1).
+    "FN_NATIVE_STORE_FORMAT"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -4890,7 +4980,15 @@ tree root), or stop the build."
   '("log-written" "log-fenced" "log-truncated" "log-recovered"))
 
 (defstruct (fnn-log (:constructor %make-fnn-log))
-  path fd kernel unit max extent)
+  path fd kernel unit max extent
+  ;; The open batch's members and entry octets (fn-olr-take's COUNT and
+  ;; OCTETS), the operator's bounds (fn-owb-bmax / fn-owb-omax of the live
+  ;; configuration; set by the owner), and the fenced members not yet
+  ;; acknowledged.
+  (count 0) (octets 0) (bmax 64) (omax 67108864) (pending 0)
+  ;; The txid the owner reserved for the record being published (ACL2's,
+  ;; handed to fnn-log-reserve), which fn-olr-take admits at the log's next.
+  (reserved nil))
 
 (defun fnn-log-at (point)
   "A developer-image cut: FN_NATIVE_LOG_FAULT=NAME (a +fnn-log-model-cuts+
@@ -5043,6 +5141,313 @@ acknowledges past the committed records)."
                 (<= (length text) 12) (parse-integer text))))
     (unless n (error 'fnn-usage-error :message (format nil "log: ~a is not a natural" what)))
     n))
+
+;;; ---------------------------------------------------------------------------
+;;; The store's commit through the record log (format 9; lane commit-onto-log,
+;;; planning/design-2026-09-27-storage-log.md sections 3.3 and 4).
+;;;
+;;; The member step keeps its calls (fnn-advance-frontier, the prepare,
+;;; fnn-publish, fnn-mark-committed, fnn-finish); on a format-9 store:
+;;;   fnn-log-reserve   the owner's :log-reserve (books/owner-log-route.lisp
+;;;                     fn-olr-ocfg-reserve): the allocation is derived, no
+;;;                     frontier file exists.  The log kernel first consumes the
+;;;                     txids the owner consumed by refusals (fn-olr-consume-to).
+;;;   fnn-log-publish   the record joins the log kernel's open batch
+;;;                     (fn-olr-take: T5's allocation rule), then -- in a batch of
+;;;                     one -- P-BATCH's append (cut log-written) and barrier
+;;;                     (cut log-fenced), and only then the owner's :log-order
+;;;                     (fn-olr-ocfg-order).  Inside the owner's batch quantum
+;;;                     (*fnn-log-batch*) the append and the barrier run once, at
+;;;                     the batch's end (fnn-log-commit-open-batch), before any
+;;;                     member's reply leaves the owner.
+;;;   fnn-mark-committed nothing: M := D.
+;;;   fnn-finish        the kernel acknowledges the member (fn-lgk-finish-one)
+;;;                     after its barrier.
+;;; ACL2 decides every value: the segment name, the unit, the extent and its
+;;; growth, the take and its bounds, the append's octets and offset.
+
+(defun fnn-store-log-unit () (fnn-nat (fnn-core 'fn-store-log-unit)))
+
+(defun fnn-store-log-max (store)
+  (fnn-nat (fnn-core 'fn-store-profile-max-record-octets (fnn-store-config store))))
+
+(defun fnn-log-observed-extent (path)
+  "The segment's size (the extent the recovery zeroes to).  Not a positive
+number of units is a fault: init and every extension leave whole units."
+  (let ((st (fnn-check-regular path)))
+    (unless st (fnn-refuse "no log segment at ~a" path))
+    (sb-posix:stat-size st)))
+
+(defun fnn-log-init-segment (store)
+  "Create the store's segment, preallocated to ACL2's initial extent and
+fenced with journal/ (fnn-log-open-segment).  An existing segment of any
+positive extent is kept: a re-run init completes, never truncates."
+  (let ((path (fnn-segment-path store)) (unit (fnn-store-log-unit)))
+    (fnn-safe-directory (fnn-journal-dir store) t store
+                        "init-journal-mkdir" "init-journal-parent-fenced")
+    (let ((fd (fnn-log-open-segment
+               path (if (fnn-check-regular path) (fnn-log-observed-extent path)
+                      (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
+               unit)))
+      (fnn-close fd))
+    (fnn-init-cut store "init-journal-segment-fenced")))
+
+(defun fnn-log-open-read-only (path unit max)
+  (let* ((extent (fnn-log-observed-extent path))
+         (fd (fnn-log-open-segment path extent unit t)))
+    (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
+                   :kernel (fnn-log-open-kernel fd extent unit max))))
+
+(defun fnn-log-batch-reset (log)
+  (setf (fnn-log-count log) 0 (fnn-log-octets log) 0))
+
+(defun fnn-recover-log-replay (store records config-records)
+  "The replay the per-file open runs (fnn-recover-full-replay), over the
+log's records."
+  (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records)))
+    (when (eq action :refused)
+      (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
+        (unless (stringp text)
+          (fnn-fault "ACL2 refused the open without naming a reason"))
+        (error 'fnn-store-open-refusal :message text)))
+    (unless (eq action :recovering)
+      (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
+  records)
+
+(defun fnn-recover-log-from-state-checkpoint (store config-records records)
+  "fnn-recover-from-state-checkpoint over the log's records: the suffix is
+the records at or after the checkpoint's S (the log holds every record)."
+  (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
+    (let* ((count (if (eq status :ok)
+                      (fnn-core 'fn-store-sco-observed-count
+                                (loop for i below (length records) collect i) 0)
+                    0))
+           (choice (fnn-core 'fn-store-sco-select status sequence count
+                             (fnn-store-config store))))
+      (unless (and (consp choice) (member (first choice) '(:checkpoint :full-replay)))
+        (fnn-fault "ACL2 returned a malformed checkpoint selection"))
+      (when (eq (first choice) :full-replay)
+        (setf (fnn-store-open-mode store) (list :full-replay (second choice)))
+        (return-from fnn-recover-log-from-state-checkpoint nil))
+      (let* ((s (second choice))
+             (suffix (nthcdr s records)))
+        (unless (eq (fnn-action
+                     (fnn-core-arena-state 'fn-store-sn-recover-from-checkpoint
+                                     (mapcar #'fnn-octet-list suffix)
+                                     (fnn-store-frontier store)
+                                     (mapcar #'fnn-octet-list config-records)))
+                    :recovering)
+          (fnn-core-state 'fn-store-sco-clear)
+          (fnn-bridge-reset)
+          (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
+          (return-from fnn-recover-log-from-state-checkpoint nil))
+        (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
+        (append (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets))
+                suffix)))))
+
+(defun fnn-store-recovery-barriers (store)
+  "The five recovery barriers' thunks, in the model's order: the config file,
+the history's authority (the segment on format 9, the frontier file on
+format 8), its directory (journal/ or transactions/), the root and the root's
+parent."
+  (list (lambda () (fnn-fsync-regular (fnn-config-path store)))
+        (if (fnn-store-logp store)
+            (lambda () (fnn-log-fdatasync (fnn-log-fd (fnn-store-log store))))
+          (lambda () (fnn-fsync-regular (fnn-frontier-path store))))
+        (if (fnn-store-logp store)
+            (lambda () (fnn-fsync-dir (fnn-journal-dir store)))
+          (lambda () (fnn-fsync-dir (fnn-transactions store))))
+        (lambda () (fnn-fsync-dir (fnn-store-root store)))
+        (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
+
+(defun fnn-recover-log (store)
+  "The open of a format-9 store: P-LOG-RECOVER (a writable open zeroes the
+segment past the last complete entry and fences it, cuts log-truncated and
+log-recovered; a shared-lock reader only scans), the frontier the log
+derives (fn-lgt-next-after), then the same replay and the same five
+recovery barriers the per-file open runs, over the config file, the segment,
+journal/, the root and its parent."
+  (let ((records nil)
+        (path (fnn-segment-path store))
+        (unit (fnn-store-log-unit))
+        (max (fnn-store-log-max store)))
+    (handler-case
+        (let ((log (if (fnn-store-writable store)
+                       (fnn-log-recover path (fnn-log-observed-extent path) unit max)
+                     (fnn-log-open-read-only path unit max))))
+          (fnn-log-batch-reset log)
+          (setq records (mapcar #'fnn-octets
+                                (fnn-core 'fn-lgk-committed (fnn-log-kernel log))))
+          ;; The frontier: one past the largest txid of every record the log
+          ;; holds, of every event kind (ACL2's fn-store-log-next-txid), and
+          ;; the log kernel caught up to it (fn-olr-consume-to).
+          (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
+                                         (fnn-core 'fn-lgk-committed (fnn-log-kernel log))
+                                         (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log))))))
+            (setf (fnn-log-kernel log) (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) next)
+                  (fnn-store-log store) log
+                  (fnn-store-frontier store) next))
+          (let ((config-records (fnn-config-records store)))
+            (setq records
+                  (or (fnn-recover-log-from-state-checkpoint store config-records records)
+                      (fnn-recover-log-replay store records config-records))))
+          (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
+                (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
+                (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
+      ((or fnn-store-fault fnn-store-indeterminate fnn-store-open-refusal) (e)
+        (setf (fnn-store-fenced store) t)
+        (error e))
+      (fnn-store-error (e)
+        (setf (fnn-store-fenced store) t)
+        (fnn-fault "cannot reconstruct committed history: ~a" e)))
+    (fnn-at store :recover-replayed)
+    (handler-case
+        (let ((phase nil))
+          (loop for barrier in (fnn-store-recovery-barriers store)
+                for ordinal from 1 do
+            (handler-case (funcall barrier)
+              (fnn-os-error (e)
+                (fnn-observe store :recovery-barrier :uncertain)
+                (error e)))
+            (setq phase (fnn-observe store :recovery-barrier :ok))
+            (unless (member phase '(:recovering :ready))
+              (fnn-fault "ACL2 rejected recovered barrier ordering"))
+            (fnn-at store (intern (format nil "RECOVER-BARRIER-~d" ordinal) :keyword)))
+          (unless (eq phase :ready)
+            (fnn-fault "ACL2 did not complete all recovery barriers")))
+      (fnn-os-error ()
+        (setf (fnn-store-fenced store) t)
+        (fnn-indeterminate "cannot establish recovered log frontier")))
+    (handler-case
+        (if (fnn-store-writable store)
+            (fnn-sweep-staging store)
+            (setf (fnn-store-orphans store) (fnn-staging-orphans store)))
+      ((or fnn-store-fault fnn-store-indeterminate) (e)
+        (setf (fnn-store-fenced store) t)
+        (error e)))
+    (setf (fnn-store-checkpoint-outcome store)
+          (funcall *fnn-checkpoint-recover-callback* store records))
+    (setf (fnn-store-fenced store) nil)
+    records))
+
+(defun fnn-log-reserve (store current-txid)
+  "The member's reservation on the log route (fn-olr-ocfg-reserve through
+the observe callback): the frontier is the log's derived one."
+  (fnn-require-writer store)
+  (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
+  (unless (eql current-txid (fnn-store-frontier store))
+    (setf (fnn-store-fenced store) t)
+    (fnn-fault "ACL2 allocator and the log's frontier disagree"))
+  (let ((next (fnn-metadata-frontier-next current-txid))
+        (log (fnn-store-log store)))
+    (when (null next)
+      (fnn-refuse "finite transaction-ID domain exhausted"))
+    (setf (fnn-log-kernel log)
+          (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) current-txid)
+          (fnn-log-reserved log) current-txid)
+    (unless (eq (fnn-observe store :log-reserve) :reserved)
+      (setf (fnn-store-fenced store) t)
+      (fnn-fault "ACL2 rejected the log route's reservation"))
+    (setf (fnn-store-frontier store) next)
+    (fnn-at store :frontier-reserved)
+    next))
+
+(defun fnn-log-take (store record)
+  "RECORD into the open batch (fn-olr-take).  :full commits the open batch
+first (inside a batch quantum the batch closes at the operator's bounds)."
+  (let* ((log (fnn-store-log store))
+         (octets (fnn-octet-list record)))
+    (loop repeat 2 do
+      (destructuring-bind (verdict ks entry)
+          (fnn-core 'fn-olr-take (fnn-log-kernel log) octets (fnn-log-reserved log)
+                    (fnn-log-count log) (fnn-log-octets log)
+                    (fnn-log-bmax log) (fnn-log-omax log) (fnn-log-unit log))
+        (case verdict
+          (:taken (setf (fnn-log-kernel log) ks)
+                  (incf (fnn-log-count log))
+                  (incf (fnn-log-octets log) entry)
+                  (return-from fnn-log-take :taken))
+          (:full (fnn-log-commit-open-batch store))
+          (t (fnn-fault "the log kernel refused the record (the owner's txid is not the log's next)")))))
+    (fnn-fault "the log kernel refused an empty batch's take")))
+
+(defun fnn-log-ensure-extent (log)
+  "Grow the segment when the open batch does not fit (fn-lgk-fitsp): ACL2's
+next extent (fn-olr-next-extent), posix_fallocate and one barrier.  The
+octets past the frontier stay zeros (the relation's tail).  The extension is
+not a P-BATCH step (PKT-COL-4: its program and cut): a death during it leaves
+the old extent or the new one, zeros past the frontier either way."
+  (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
+    (unless (fnn-core 'fn-lgk-fitsp ks unit extent)
+      (let ((next (fnn-nat (fnn-core 'fn-olr-next-extent extent
+                                     (+ (fnn-core 'fn-lgk-frontier ks) (fnn-log-octets log))
+                                     unit))))
+        (unless (fnn-core 'fn-lg-extent-okp next unit)
+          (fnn-fault "ACL2 returned an invalid log extent"))
+        (fnn-log-preallocate (fnn-log-fd log) next)
+        (fnn-log-fdatasync (fnn-log-fd log))
+        (setf (fnn-log-extent log) next)))))
+
+(defun fnn-log-commit-open-batch (store)
+  "P-BATCH's append and barrier for the open batch (its members' records
+are in the kernel's batch), cuts log-written and log-fenced.  Any OS error
+from the append to the barrier is uncertain for every member: the kernel is
+fenced (fn-lgk-fence-failed) and the store with it."
+  (let ((log (fnn-store-log store))
+        (fenced (fnn-store-fenced store)))
+    (when (plusp (fnn-log-count log))
+      (setf (fnn-store-fenced store) t)
+      (handler-case
+          (progn
+            (fnn-log-ensure-extent log)
+            (fnn-log-append log)
+            (fnn-at store :log-written)
+            (fnn-log-fence log)
+            (fnn-at store :log-fenced))
+        ((or fnn-store-indeterminate fnn-store-fault) (e) (error e))
+        (fnn-os-error (e)
+          (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log)))
+          (fnn-indeterminate "log batch outcome is indeterminate: ~a" e))
+        (fnn-store-error (e)
+          ;; fnn-log-append's refusal: the kernel does not admit the batch
+          ;; (in flight, fenced, or past the extent after the extension).
+          (fnn-fault "the log kernel refused the batch's append: ~a" e)))
+      (setf (fnn-log-pending log) (+ (fnn-log-pending log) (fnn-log-count log)))
+      (fnn-log-batch-reset log)
+      ;; The barrier returned: the writer is as it was before the batch (a
+      ;; commit quantum's members are finished; a batch of one's finish is
+      ;; still to come and finds the store fenced, as fnn-finish requires).
+      (setf (fnn-store-fenced store) fenced))
+    t))
+
+(defun fnn-log-publish (store sequence record)
+  "fnn-publish on the log route."
+  (fnn-require-writer store)
+  (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
+  (unless (eq (fnn-core 'fn-store-publication-admissibility
+                        (fnn-store-config store) sequence (length record))
+              :admissible)
+    (fnn-refuse "prepared Store transaction exceeds persisted profile"))
+  (setf (fnn-store-fenced store) t)
+  (fnn-log-take store record)
+  (unless *fnn-log-batch*
+    (fnn-log-commit-open-batch store))
+  (unless (eq (fnn-observe store :log-order) :completing)
+    (fnn-indeterminate "ACL2 rejected the record's place in the log"))
+  (setf (fnn-store-completion-pending store) t)
+  (fnn-at store :record-completing)
+  :durable)
+
+(defun fnn-log-ack (log count)
+  "The log kernel acknowledges COUNT fenced members in order
+(fn-lgk-finish-one)."
+  (fnn-log-finish log count)
+  (setf (fnn-log-pending log) (max 0 (- (fnn-log-pending log) count))))
+
+(defun fnn-log-batch-finish (store)
+  "After the batch's barrier: every fenced member of the batch acknowledged."
+  (let ((log (fnn-store-log store)))
+    (fnn-log-ack log (fnn-log-pending log))))
 
 ;; `fn log scan SEGMENT EXTENT UNIT MAX SIZE' (both images: reads only) and,
 ;; on a developer image, `fn log recover ...' and `fn log append SEGMENT

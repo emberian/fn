@@ -9,6 +9,7 @@ class NativeCutMapTests(unittest.TestCase):
 
     def test_log_cuts_match_the_log_programs(self):
         native_cuts.verify_log_cut_map()
+        native_cuts.verify_post_log_cut_map()
 
     def test_checkpoint_cuts_match_native_and_reclaim_program(self):
         native_cuts.verify_checkpoint_cut_map()
