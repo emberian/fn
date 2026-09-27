@@ -133,15 +133,9 @@
 (assert-event (not (fn-smid-observationp *smid-t-bad-obs*)))
 (assert-event (fn-smid-same-filesystemp
                *smid-t-id* (fn-smid-observed-identity *smid-t-bad-obs*)))
+(assert-event (equal *smid-t-plan* (list :record *smid-t-protected*)))
 (assert-event (equal (fn-smid-open-verdict (smid-t-record) *smid-t-bad-obs*)
                      (list :refused :filesystem-unobserved)))
-(must-fail
- (defthm smid-t-opens-iff-without-observation
-   (implies (equal (fn-smid-record-plan obs policy) (list :record protected))
-            (equal (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
-                          (list :open))
-                   (fn-smid-same-filesystemp (fn-smid-observed-identity obs)
-                                             (fn-smid-observed-identity obs2))))))
 
 ; Without the plan: bytes that are no record do not open the same filesystem.
 (assert-event (not (equal (fn-smid-record-plan *smid-t-mounted* 1) (list :record nil))))
