@@ -216,6 +216,13 @@ Answers :accepted once the record is durable and the owner installed it, or
                 (and (eq staged :refused)
                      (fnn-core 'fn-ores-config-reason result)))))
     (setq record (fnn-octets (fnn-core 'fn-ores-config-octets result))))
+  ;; PKT-827 (b), PRF-287: authorized from the owner's carried state before
+  ;; anything is published: ACL2 answers whether the staged record applies to
+  ;; the carried node and configuration (host/owner-host.lisp
+  ;; fn-owner-reconfigure-authorizedp).  A refusal here is a refusal before
+  ;; publication, as fnn-admin-authorize's below.
+  (unless (fnn-owner-core 'fn-owner-reconfigure-authorizedp)
+    (fnn-refuse "ACL2 refused administrative publication: the staged record does not apply to the carried configuration"))
   (let* ((store (fnn-owner-service-store service))
          (observation (fnn-config-record-observation store))
          (config-records (fnn-config-records-from-observation observation))

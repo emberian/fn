@@ -10168,6 +10168,99 @@
         "fn-rix-own-finish-is-ccar-own-finish",
         "fn-rix-ocfg-complete-is-ccar-ocfg-complete"
       ]
+    },
+    {
+      "id": "PRF-285",
+      "title": "The configured Store relation, with its carried companion, survives every Store step of the article commit: the reservation's file steps, the carried prepare of a served article, the record file steps, the publishing directory observation, the refused reservation and the recovery barriers",
+      "statement": "books/config-store-steps.lisp. The configured fold over a history extended by one Store event is one event step from the fold without it (fn-cstp-replay-append-event: hypotheses the history recoverable at the event's transaction id, the event's sequence and transaction id, and the event served by the fold's configuration). fn-cst-relation (books/config-store-traces.lisp) is preserved by fn-sn-io for the reservation's and recovery barrier's operations for every result (fn-cstp-reserve-io-preserves-relation), by the record file and link steps and a non-publishing directory observation (fn-cstp-record-io-preserves-relation), by the carried article prepare the host calls (books/store-prepare-correspondence.lisp fn-spc-prepare) when the article's groups are served by the replayed configuration (fn-cstp-spc-prepare-preserves-relation), by the directory observation that publishes an article candidate given the carried companion fn-cstp-carriedp (fn-cstp-held-record-dir-preserves-relation), and with fn-cstp-carriedp by the refused reservation (fn-cstp-refuse-reservation-preserves). fn-cstp-carriedp (the prepare gate's facts about the candidate from staging to the directory observation; at :completing the topic prefix one short of the history; elsewhere the topic prefix at the history's length with status :ok) is preserved by the same steps, by fn-sn-finish (fn-cstp-finish-preserves-carriedp) and by the configuration install (fn-cstp-configure-durable-preserves-carriedp), and established by the configured open (fn-cstp-open-establishes-carriedp). The companion is necessary: fn-cst-relation's :completing arm demands fn-sn-completion-enabledp, which no record-phase arm carries (corrupted-state witness in the teeth).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-001",
+        "PRF-004"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-store-steps.lisp",
+        "planning/evidence/control-quanta-2-2026-09-27.md",
+        "tests/acl2/owner-log-ocl-tests.lisp"
+      ],
+      "progress_note": "Lane control-quanta-2 (Opus 5.5, 2026-09-27; PKT-827 (c)). REPL-admitted on hbox against dev; teeth in tests/acl2/owner-log-ocl-tests.lisp (every keystone's reachable witness on the configured owner and its POST article; hypothesis witnesses: the served hypothesis by a retired group, the companion by a topic counter off the history, fn-cst-relation by a node advanced past the frontier).",
+      "events": [
+        "fn-cstp-replay-append-event",
+        "fn-cstp-reserve-io-preserves-relation",
+        "fn-cstp-record-io-preserves-relation",
+        "fn-cstp-spc-prepare-preserves-relation",
+        "fn-cstp-held-record-dir-preserves-relation",
+        "fn-cstp-refuse-reservation-preserves",
+        "fn-cstp-finish-preserves-carriedp",
+        "fn-cstp-open-establishes-carriedp"
+      ]
+    },
+    {
+      "id": "PRF-286",
+      "title": "The configured owner's invariant is carried across the format-9 commit, the live configuration completion and recovery, so the carried completion's hypothesis holds at every completion",
+      "statement": "books/owner-log-ocl.lisp. fn-lgoc-invariantp OC = (fn-ocl-relation OC) and fn-cstp-carriedp of its Store. It is established by the recovery the host calls on either path (fn-lgoc-recover-installs-invariant: fn-ock-recover-extended of a capture extended over the rest of the history, not :fault) and preserved by every host step of an article's life on the log route: fn-olr-ocfg-reserve (host/owner-host.lisp fn-owner-io :log-reserve; fn-lgoc-log-reserve-preserves-invariant), the prepare below the budget gate (fn-sbud-prepare; fn-lgoc-sbud-prepare-preserves-invariant) and the host's fn-pidx-sbud-prepare under its two carried index premises (fn-lgoc-pidx-sbud-prepare-preserves-invariant), both with the hypothesis that an article's groups are served by the live configuration (host/owner-host.lisp fn-owner-prepare-buffer tests it; the prepare does not), fn-olr-ocfg-order with an article staged (:log-order; fn-lgoc-log-order-preserves-invariant), the finish (fn-owner-finish-submission; fn-lgoc-finish-preserves-invariant), the refused reservation (fn-owner-refuse-reservation; fn-lgoc-refuse-reservation-preserves-invariant), every safe file observation incl. the recovery barriers (fn-lgoc-rcon-io-preserves-invariant), and the live configuration completion fn-oclc-publish (fn-lgoc-publish-preserves-invariant). The step lemma: an owner over a Store related to the same configuration history and a history extending its own satisfies fn-ocl-relation (fn-lgoc-ocl-relation-of-owner-with-store).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-285",
+        "PRF-274",
+        "PRF-001",
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-log-ocl.lisp",
+        "planning/evidence/control-quanta-2-2026-09-27.md",
+        "tests/acl2/owner-log-ocl-tests.lisp"
+      ],
+      "progress_note": "Lane control-quanta-2 (Opus 5.5, 2026-09-27; PKT-827 (c)). Proved against the owner-model steps the host calls on dev 92bb10df1 (it contains log-2 and scheduler-2-rebase: their START/BARRIER/COMPLETE and pipelined sync call the same fn-olr-ocfg-reserve/-order, prepare and finish per member). Not covered: the deferred publications (retention, identity, consumer, topic prepares and their order), fn-owner-known-abort, :begin/:take and the served reads (they leave the Store unchanged; their fn-ocl-relation theorems exist).",
+      "events": [
+        "fn-lgoc-ocl-relation-of-owner-with-store",
+        "fn-lgoc-log-reserve-preserves-invariant",
+        "fn-lgoc-sbud-prepare-preserves-invariant",
+        "fn-lgoc-pidx-sbud-prepare-preserves-invariant",
+        "fn-lgoc-log-order-preserves-invariant",
+        "fn-lgoc-finish-preserves-invariant",
+        "fn-lgoc-refuse-reservation-preserves-invariant",
+        "fn-lgoc-rcon-io-preserves-invariant",
+        "fn-lgoc-publish-preserves-invariant",
+        "fn-lgoc-recover-installs-invariant"
+      ]
+    },
+    {
+      "id": "PRF-287",
+      "title": "A live configuration request is authorized from the owner's carried state before publication: an authorized record's completion is durable, and the durable history reopens to the state it installs",
+      "statement": "books/config-owner-carried.lisp fn-oclc-live-authorizep (host/owner-host.lisp fn-owner-reconfigure-authorizedp, called by host/native/admin.lisp fnn-owner-live-reconfigure-locked after staging and before fnn-admin-publish): the staged record applies to the owner's carried node and configuration (fn-oclc-configure changes the configuration history). fn-oclc-live-authorizep-is-durable-completion: for a staged record at its generation, the completion fn-oclc-publish answers :durable iff the request was authorized (never :recovery-required for an authorized record). KEYSTONE fn-oclc-authorized-record-reopens (hypotheses fn-ocl-relation OC and the authorization): the Store the completion installs satisfies fn-cpo-history-relation -- the configured fold of the configuration history extended by the record over the Store's history (the log's records the owner carries) succeeds and its node at the frontier, domain and capacity are the installed ones -- with the history extended by exactly the record, the Store history and frontier unchanged, and the live configuration the reopened fold's (fn-ocl-store-config). It reads no record and replays nothing.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-274",
+        "PRF-209"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-owner-carried.lisp",
+        "host/owner-host.lisp",
+        "host/native/admin.lisp",
+        "planning/evidence/control-quanta-2-2026-09-27.md",
+        "tests/acl2/owner-log-ocl-tests.lisp"
+      ],
+      "progress_note": "Lane control-quanta-2 (Opus 5.5, 2026-09-27; PKT-827 (b)). The candidate open fnn-admin-authorize runs over transactions/ (empty on a format-9 store) is kept for the publication's lock, names and final name. The identity, consumer and topic replays of the reopen do not depend on the configuration history and are not restated here.",
+      "events": [
+        "fn-oclc-live-authorizep-is-durable-completion",
+        "fn-oclc-authorized-record-reopens"
+      ]
     }
   ]
 }
