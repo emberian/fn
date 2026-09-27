@@ -26,9 +26,12 @@
 (defconst *rp-groups* '("fn.letters" "fn.empty"))
 (defconst *rp-id* "<Case@Id.invalid>")
 (defconst *rp-payload* '(77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 13 10 72 101 108 108 111 13 10 46 100 111 116 13 10))
+; by specification: the flip -- the acceptance payload is a handle into the
+; arena (records-flip, books/held-record.lisp): *rp-payload* is interned at
+; handle 0 and the folded article's *rp-fold-payload* (below) at handle 1.
 (defconst *rp-archive*
   (fn-accept-complete
-   (fn-accept-prepare (fn-initial-state *rp-groups*) 1 *rp-id* *rp-payload*
+   (fn-accept-prepare (fn-initial-state *rp-groups*) 1 *rp-id* 0
                       '("fn.letters") 841000000)
    0 1 :durable))
 (defconst *rp-session0* (fn-nntp-open-session *rp-archive*))
@@ -304,7 +307,7 @@
 (defconst *rp-fold-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *rp-groups*) 1 "<Fold@Id.invalid>"
-                      *rp-fold-payload* '("fn.letters") 841000000)
+                      1 '("fn.letters") 841000000)
    0 1 :durable))
 (defconst *rp-fold-over* (fn-nov-overview (car (fn-state-articles *rp-fold-archive*))))
 (assert-event (fn-nov-okp *rp-fold-over*))
