@@ -286,10 +286,20 @@ class NativePeeringTests(unittest.TestCase):
             while True:
                 line = stream.readline()
                 if line == b".\r\n":
-                    return bytes(article)
+                    return self.stored_octets(bytes(article))
                 if not line:
                     return None
                 article.extend(line[1:] if line.startswith(b"..") else line)
+
+    def stored_octets(self, served):
+        # ARTICLE serves this node's Xref line first, then the stored octets
+        # (NNT-052, PKT-668; D01): the comparisons below are of the octets
+        # the nodes store and relay, so the one leading Xref line goes.
+        if served.startswith(b"Xref: "):
+            head, _, rest = served.partition(b"\r\n")
+            self.assertNotIn(b"\r\nXref: ", rest.split(b"\r\n\r\n", 1)[0])
+            return rest
+        return served
 
     def await_article(self, node, message_id, timeout=60):
         deadline = time.monotonic() + timeout
