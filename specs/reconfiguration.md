@@ -1384,6 +1384,27 @@ statement's owner conjunct does not transfer
 path with `(:complete)` only on pins, served tables, connection records and
 the stage).
 
+### P6 completion from the carried state (2026-09-27)
+
+`fn-owner-reconfigure-complete` now calls `fn-oclc-publish`
+(`books/config-owner-carried.lisp`, PRF-265), not `fn-ocl-publish`.
+`fn-ocl-complete` replayed the whole configuration and Store histories three
+times inside the owner's control quantum (`fn-cpo-history-relation`, the
+extended history in `fn-cpo-configure-durable`, `fn-ocl-store-config`), so a
+live group create or grant held the owner 2 s at 1,000 articles and 40-46 s
+at 10,000 (planning/evidence/control-quanta-2026-09-27.md). `fn-oclc-publish`
+applies the one record to what the owner carries: the store's node (the
+replayed node advanced to the frontier) and the owner's configuration (the
+replayed configuration). `fn-oclc-publish-is-publish` equates it with
+`fn-ocl-publish` under the owner invariant `fn-ocl-relation`, so the
+headline and the theorems above hold of the called path under that
+hypothesis (where before they held with none, because the replay tested the
+relation at run time and answered `:recovery-required` without it);
+`fn-oclc-publish-carries-ocl-relation` keeps the invariant for the next
+completion. What establishes the invariant: `fn-owner-recover`
+(`fn-orec-started-owner-ocl-relation`); what is not yet proved to preserve
+it: the format-9 log route's two owner steps (PKT-827 (c)).
+
 ### P6 recovery as the host calls it (2026-09-24)
 
 Headline 2 is restated over the replay recovery calls, in
