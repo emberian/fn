@@ -16,7 +16,7 @@
 (in-package "ACL2")
 (include-book "../../books/payload-arena-paged")
 (include-book "../../books/payload-arena")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-arena$p-payload-len (w state)) :common-lisp-compliant)
@@ -228,7 +228,7 @@
        (not (pap-add-page-concl *pap-bad-np* 0 0)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-add-page-step-no-okp
    (pap-add-page-concl *pap-bad-np* 0 0)
    :hints (("Goal" :use pap-w-add-page-step-no-okp :in-theory (theory 'minimal-theory)
@@ -270,7 +270,7 @@
        (not (pap-write-octet-concl *pap-x2-neg-count* 6)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-write-octet-step-no-okp
    (implies (and (<= (nth 4 *pap-x2-neg-count*) (fn-arp-cap *pap-x2-neg-count*))
                  (fn-cbor-octetp 6))
@@ -290,7 +290,7 @@
        (not (pap-write-octet-concl *pap-x2-far-fill* 6)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-write-octet-step-no-room
    (implies (and (fn-arp-okp *pap-x2-far-fill*) (fn-cbor-octetp 6))
             (pap-write-octet-concl *pap-x2-far-fill* 6))
@@ -306,7 +306,7 @@
        (not (pap-write-octet-concl *pap-x2* 256)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-write-octet-step-no-octet
    (implies (and (fn-arp-okp *pap-x2*) (<= (nth 4 *pap-x2*) (fn-arp-cap *pap-x2*)))
             (pap-write-octet-concl *pap-x2* 256))
@@ -368,7 +368,7 @@
        (not (pap-seal-list-concl *pap-x1-bad-byte* '(4 5))))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-list-step-no-okp
    (implies (and (<= (nth 4 *pap-x1-bad-byte*) (fn-arp-cap *pap-x1-bad-byte*))
                  (<= (nth 3 *pap-x1-bad-byte*) (len (nth 1 *pap-x1-bad-byte*)))
@@ -394,7 +394,7 @@
        (not (pap-seal-list-concl *pap-x1-far-fill* '(4))))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-list-step-no-room
    (implies (and (fn-arp-okp *pap-x1-far-fill*)
                  (<= (nth 3 *pap-x1-far-fill*) (len (nth 1 *pap-x1-far-fill*)))
@@ -437,7 +437,7 @@
        (not (pap-seal-list-concl *pap-x1-long-size* '(4 5))))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-list-step-no-ranges
    (implies (and (fn-arp-okp *pap-x1-long-size*)
                  (<= (nth 4 *pap-x1-long-size*) (fn-arp-cap *pap-x1-long-size*))
@@ -459,7 +459,7 @@
        (not (pap-seal-list-concl *pap-x1* '(4 300))))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-list-step-no-octets
    (implies (and (fn-arp-okp *pap-x1*) (<= (nth 4 *pap-x1*) (fn-arp-cap *pap-x1*)))
             (pap-seal-list-concl *pap-x1* '(4 300)))
@@ -513,7 +513,7 @@
        (not (pap-get-concl *pap-x2* *pap-a2-wrong* 1 1)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-get-no-corr
    (implies (and (natp 1) (< 1 (fn-arena$a-count *pap-a2-wrong*))
                  (natp 1) (< 1 (fn-arena$a-payload-len 1 *pap-a2-wrong*)))
@@ -532,7 +532,7 @@
        (not (pap-get-concl *pap-x2* *pap-a2* 1 -1)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-get-no-natp-i
    (implies (and (fn-arena$pcorr *pap-x2* *pap-a2*) (natp 1) (< 1 (fn-arena$a-count *pap-a2*))
                  (< -1 (fn-arena$a-payload-len 1 *pap-a2*)))
@@ -551,7 +551,7 @@
        (not (pap-get-concl *pap-x2* *pap-a2* 0 3)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-get-past-the-payload
    (implies (and (fn-arena$pcorr *pap-x2* *pap-a2*) (natp 0) (< 0 (fn-arena$a-count *pap-a2*))
                  (natp 3))
@@ -611,7 +611,7 @@
        (not (pap-payload-concl *pap-x2* *pap-a2-wrong* 1)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-payload-no-corr
    (implies (and (natp 1) (< 1 (fn-arena$a-count *pap-a2-wrong*)))
             (pap-payload-concl *pap-x2* *pap-a2-wrong* 1))
@@ -630,7 +630,7 @@
        (not (pap-payload-concl *pap-x3* *pap-a3* 1)))
   :hints (("Goal" :in-theory (pap-theory)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-payload-past-the-count
    (implies (and (fn-arena$pcorr *pap-x3* *pap-a3*) (natp 1))
             (pap-payload-concl *pap-x3* *pap-a3* 1))
@@ -653,7 +653,7 @@
                     (fn-arp-page-down 0 3 nil nil) (fn-arp-page-down 0 2 '(0) nil)
                     (fn-arp-page-down 0 1 '(0 0) nil) (fn-arp-page-down 0 0 '(0 0 0) nil))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-payload-no-natp-h
    (implies (and (fn-arena$pcorr *pap-x2-cleared* nil) (< -1 (fn-arena$a-count nil)))
             (pap-payload-concl *pap-x2-cleared* nil -1))
@@ -688,7 +688,7 @@
   :hints (("Goal" :use pap-seal-buffer-of-x1
            :in-theory (disable fn-arena$p-seal-buffer (:e fn-arena$p-seal-buffer))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-buffer-no-corr
    (implies (fn-octets-p '(4 5)) (pap-seal-buffer-concl *pap-x1* '((1 2 9)) '(4 5)))
    :hints (("Goal" :use pap-w-seal-buffer-no-corr :in-theory (theory 'minimal-theory)
@@ -700,7 +700,7 @@
        (not (pap-seal-buffer-concl *pap-x1* *pap-a1* '(4 300))))
   :hints (("Goal" :in-theory (pap-theory-octets)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-buffer-no-octets
    (implies (fn-arena$pcorr *pap-x1* *pap-a1*) (pap-seal-buffer-concl *pap-x1* *pap-a1* '(4 300)))
    :hints (("Goal" :use pap-w-seal-buffer-no-octets :in-theory (theory 'minimal-theory)
@@ -740,7 +740,7 @@
            :in-theory (disable fn-arena$p-seal-range (:e fn-arena$p-seal-range)
                                fn-arp-seal-range-is-seal-list)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-range-no-corr
    (implies (and (fn-octets-p '(9 4 5 9)) (<= 3 (fn-octets-len '(9 4 5 9))))
             (pap-seal-range-concl *pap-x1* '((1 2 9)) '(9 4 5 9) 1 3))
@@ -754,7 +754,7 @@
        (not (pap-seal-range-concl *pap-x1* *pap-a1* '(9 4 300 9) 1 3)))
   :hints (("Goal" :in-theory (pap-theory-octets)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-range-no-octets
    (implies (and (fn-arena$pcorr *pap-x1* *pap-a1*) (<= 3 (fn-octets-len '(9 4 300 9))))
             (pap-seal-range-concl *pap-x1* *pap-a1* '(9 4 300 9) 1 3))
@@ -801,7 +801,7 @@
   :hints (("Goal" :use pap-seal-range-past-the-buffer-writes-nil
            :in-theory (disable fn-arena$p-seal-range fn-arp-seal-range-is-seal-list)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-seal-range-past-the-buffer
    (implies (and (fn-arena$pcorr *pap-x1* *pap-a1*) (fn-octets-p '(9 4 5 9)))
             (pap-seal-range-concl *pap-x1* *pap-a1* '(9 4 5 9) 4 5))
@@ -827,7 +827,7 @@
   (and (not (fn-arena$pcorr *pap-x2-bad-off* *pap-a2*))
        (not (fn-arena$pcorr (fn-arena$p-clear *pap-x2-bad-off*) (fn-arena$a-clear *pap-a2*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pap-t-clear-no-corr
    (fn-arena$pcorr (fn-arena$p-clear *pap-x2-bad-off*) (fn-arena$a-clear *pap-a2*))
    :hints (("Goal" :use pap-w-clear-no-corr :in-theory (theory 'minimal-theory)

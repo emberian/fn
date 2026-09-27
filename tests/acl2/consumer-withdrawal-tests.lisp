@@ -17,7 +17,7 @@
 (include-book "../../books/consumer-withdrawal")
 (include-book "consumer-owner-local-tests")
 (include-book "owner-cancel-refresh-tests") ; the flipped owner's cancel through the POST path
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The owner O with its view's withdrawal records WS and withdrawn list N.
 (defun cwdt-with-withdrawals (o ws n)
@@ -355,7 +355,7 @@
       (equal *cwdr-page-t* *cwdr-answer-t*)
       (not (equal (car *cwdr-page-t*) :refused))
       (not (equal (car (fn-ncr-withdrawal-decode (caddr *cwdr-page-t*))) :withdrawn))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((r *cwdr-page-t*))
     (or (equal (car r) :refused)
@@ -483,8 +483,8 @@
         (not (cwdr-b2-concl args))
         (not (equal (car (cwdr-scan args)) :withdrawal))
         (not (cwdr-b1-concl args)))))
-(must-fail (assert-event (cwdr-b2-concl *cwdr-args-other*)))
-(must-fail (assert-event (cwdr-b1-concl *cwdr-args-other*)))
+(must-fail-checked (assert-event (cwdr-b2-concl *cwdr-args-other*)))
+(must-fail-checked (assert-event (cwdr-b1-concl *cwdr-args-other*)))
 
 ; Without (the event is no article of the group), REACHED: the same run with
 ; C posted to fn.letters.  C is then an article of the consumer's group and
@@ -508,7 +508,7 @@
         (fn-cwd-cause-target (fn-ctl-event-msgid event) (nth 5 args) (nth 6 args) g)
         (equal (cwdr-scan args) (list :scan 4 event))
         (not (cwdr-b2-concl args)))))
-(must-fail (assert-event (cwdr-b2-concl *cwdr-args-letters*)))
+(must-fail-checked (assert-event (cwdr-b2-concl *cwdr-args-letters*)))
 
 ; Without (a budget), (the position below the frontier) and (the event at
 ; the position): CONSTRUCTED arguments over the reached scan (the host
@@ -529,9 +529,9 @@
                   (nth 2 *cwdr-args-gap*)))
       (equal (cwdr-scan *cwdr-args-gap*) '(:refused :history))
       (not (cwdr-b2-concl *cwdr-args-gap*))))
-(must-fail (assert-event (cwdr-b2-concl *cwdr-args-no-budget*)))
-(must-fail (assert-event (cwdr-b2-concl *cwdr-args-at-frontier*)))
-(must-fail (assert-event (cwdr-b2-concl *cwdr-args-gap*)))
+(must-fail-checked (assert-event (cwdr-b2-concl *cwdr-args-no-budget*)))
+(must-fail-checked (assert-event (cwdr-b2-concl *cwdr-args-at-frontier*)))
+(must-fail-checked (assert-event (cwdr-b2-concl *cwdr-args-gap*)))
 
 ; The other hypotheses of b2 have no separate removal, and b1's (natp
 ; position) none either: a store event's sequence is a natural, so the
