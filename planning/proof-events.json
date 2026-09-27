@@ -8259,10 +8259,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-mvb-held-article-is-the-model-body"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-mvb-only-a-moderator-approves-or-rejects"
         },
         {
@@ -10917,6 +10913,14 @@
         {
           "kind": "theorem",
           "name": "fn-payload-octets-are-not-a-handle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-of-store-without-a-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-the-owner-step-article"
         }
       ]
     },
