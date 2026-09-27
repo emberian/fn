@@ -238,6 +238,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
+	tests/acl2/store-checkpoint-arena-tests \
 	books/heap-figure \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
@@ -844,6 +845,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-tables-reader \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
+	books/store-checkpoint-arena \
+	books/store-checkpoint-arena-load \
+	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \

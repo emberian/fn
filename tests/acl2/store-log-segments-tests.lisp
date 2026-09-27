@@ -105,50 +105,61 @@
 (assert-event (not (fn-lgs-rotate-admitsp (fn-lgk-prepare *slst-ks1* *slst-r3*))))
 
 ; -----------------------------------------------------------------------------
-;; T8, reachable: the checkpoint at the rotation captures segment 1's records,
+;; T8, reachable, over the host's fold (fn-lg-open-kernel per segment, read
+; as a string): the checkpoint at the rotation captures segment 1's records,
 ; its F row's genesis is segment 1's last trailer; the drop leaves segment 2
-; and the history the open replays is the full chain's.
+; and the history the open replays is the full fold's.
+(defun slst-chars (octets)
+  (if (consp octets) (cons (code-char (nfix (car octets))) (slst-chars (cdr octets))) nil))
+(defun slst-text (octets) (coerce (slst-chars octets) 'string))
+(make-event `(defconst *slst-t1* ',(slst-text *slst-seg1*)))
+(make-event `(defconst *slst-t2* ',(slst-text *slst-seg2*)))
 (defconst *slst-prefix* (list *slst-r1* *slst-r2*))
+(assert-event (equal (fn-lgs-octets-of (list *slst-t1* *slst-t2*)) (list *slst-seg1* *slst-seg2*)))
 (assert-event
- (and (equal *slst-prefix* (fn-lgs-chain-records (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))
-      (equal *slst-g1* (fn-lgs-chain-last (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))
+ (and (equal *slst-prefix* (fn-lgs-open-chain-records (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))
+      (equal *slst-g1* (fn-lgs-open-chain-last (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))
       (equal (append *slst-prefix*
-                     (fn-lgs-chain-records (list *slst-seg2*) *slst-g1* *slst-unit* *slst-max*))
-             (fn-lgs-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))
-      (equal (fn-lgs-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*)
+                     (fn-lgs-open-chain-records (list *slst-t2*) *slst-g1* *slst-unit* *slst-max*))
+             (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))
+      (equal (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*)
              (list *slst-r1* *slst-r2* *slst-r3*))))
 
 ; Without the genesis hypothesis: the F row names the zero genesis; the prefix
 ; hypothesis holds, the genesis one fails, the suffix scans to nothing and the
 ; conclusion fails.
-(assert-event (equal *slst-prefix* (fn-lgs-chain-records (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*)))
-(assert-event (not (equal *slst-g0* (fn-lgs-chain-last (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))))
+(assert-event (equal *slst-prefix* (fn-lgs-open-chain-records (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*)))
+(assert-event (not (equal *slst-g0* (fn-lgs-open-chain-last (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))))
 (assert-event
  (not (equal (append *slst-prefix*
-                     (fn-lgs-chain-records (list *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))
-             (fn-lgs-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))))
+                     (fn-lgs-open-chain-records (list *slst-t2*) *slst-g0* *slst-unit* *slst-max*))
+             (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))))
 (must-fail
- (defthm slst-t8-without-genesis
-   (implies (equal prefix (fn-lgs-chain-records covered genesis0 unit max))
-            (equal (append prefix (fn-lgs-chain-records remaining genesis unit max))
-                   (fn-lgs-chain-records (append covered remaining) genesis0 unit max)))
-   :hints (("Goal" :in-theory (disable fn-lgs-chain-records fn-lgs-chain-last)))))
+ (with-prover-step-limit
+  20000
+  (defthm slst-t8-without-genesis
+    (implies (equal prefix (fn-lgs-open-chain-records covered genesis0 unit max))
+             (equal (append prefix (fn-lgs-open-chain-records remaining genesis unit max))
+                    (fn-lgs-open-chain-records (append covered remaining) genesis0 unit max)))
+    :hints (("Goal" :in-theory (disable fn-lgs-open-chain-records fn-lgs-open-chain-last))))))
 
 ; Without the prefix hypothesis: the checkpoint captured record 1 only; the
 ; genesis hypothesis holds, the prefix one fails, the history misses record 2.
-(assert-event (equal *slst-g1* (fn-lgs-chain-last (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*)))
+(assert-event (equal *slst-g1* (fn-lgs-open-chain-last (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*)))
 (assert-event (not (equal (list *slst-r1*)
-                          (fn-lgs-chain-records (list *slst-seg1*) *slst-g0* *slst-unit* *slst-max*))))
+                          (fn-lgs-open-chain-records (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))))
 (assert-event
  (not (equal (append (list *slst-r1*)
-                     (fn-lgs-chain-records (list *slst-seg2*) *slst-g1* *slst-unit* *slst-max*))
-             (fn-lgs-chain-records (list *slst-seg1* *slst-seg2*) *slst-g0* *slst-unit* *slst-max*))))
+                     (fn-lgs-open-chain-records (list *slst-t2*) *slst-g1* *slst-unit* *slst-max*))
+             (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))))
 (must-fail
- (defthm slst-t8-without-prefix
-   (implies (equal genesis (fn-lgs-chain-last covered genesis0 unit max))
-            (equal (append prefix (fn-lgs-chain-records remaining genesis unit max))
-                   (fn-lgs-chain-records (append covered remaining) genesis0 unit max)))
-   :hints (("Goal" :in-theory (disable fn-lgs-chain-records fn-lgs-chain-last)))))
+ (with-prover-step-limit
+  20000
+  (defthm slst-t8-without-prefix
+    (implies (equal genesis (fn-lgs-open-chain-last covered genesis0 unit max))
+             (equal (append prefix (fn-lgs-open-chain-records remaining genesis unit max))
+                    (fn-lgs-open-chain-records (append covered remaining) genesis0 unit max)))
+    :hints (("Goal" :in-theory (disable fn-lgs-open-chain-records fn-lgs-open-chain-last))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-lgs-open-plan-scan-ignores-covered (the drop's crash points).

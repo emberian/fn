@@ -344,24 +344,73 @@
                   (fn-lgs-rotate ks)))
   :hints (("Goal" :in-theory (enable fn-lgk-recover))))
 
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 ; T8: the drop preserves the open.
 ;
-; COVERED are the segments below the F row's first suffix segment, REMAINING
-; that segment and the ones after it.  Hypotheses: the checkpoint's capture is
-; of the covered chain's records (the pipeline captures at the rotation, and
-; fn-sct-load-of-publish-is-the-capture gives back what it captured) and the F
-; row's genesis is the covered chain's last trailer (the rotation takes it
-; from the closed segment's kernel, fn-lgs-rotate).  Then the history the open
-; hands to the replay once the covered segments are unlinked -- the
-; checkpoint's records, then the scan of the remaining segments from the named
-; genesis (host/native/io.lisp fnn-recover-log) -- is the history of the full
-; chain over every segment.  The replay over that split is the full replay by
-; fn-sn-recover-from-checkpoint-equals-full-recover (the checkpoint's prefix
-; and the suffix decode record by record into the events that theorem splits).
+; The host's open (host/native/io.lisp fnn-log-scan-segments) reads each
+; segment as a string and calls fn-lg-open-kernel on it with the genesis the
+; previous segment's kernel ended at (fn-lgk-last); the records it hands on
+; are each kernel's fn-lgk-committed, in order.  That fold:
+(defun fn-lgs-open-chain-last (texts genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp texts)
+      (fn-lgs-open-chain-last (cdr texts)
+                              (fn-lgk-last (fn-lg-open-kernel (car texts) genesis unit max 1))
+                              unit max)
+    genesis))
+
+(defun fn-lgs-open-chain-records (texts genesis unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp texts)
+      (let ((ks (fn-lg-open-kernel (car texts) genesis unit max 1)))
+        (append (fn-lgk-committed ks)
+                (fn-lgs-open-chain-records (cdr texts) (fn-lgk-last ks) unit max)))
+    nil))
+
+(defthm fn-lgs-open-chain-records-of-append
+  (equal (fn-lgs-open-chain-records (append covered remaining) genesis unit max)
+         (append (fn-lgs-open-chain-records covered genesis unit max)
+                 (fn-lgs-open-chain-records remaining
+                                            (fn-lgs-open-chain-last covered genesis unit max)
+                                            unit max)))
+  :hints (("Goal" :induct (fn-lgs-open-chain-last covered genesis unit max)
+                  :in-theory (disable fn-lg-open-kernel fn-lgk-committed fn-lgk-last))))
+
+; KEYSTONE T8.  COVERED are the segments below the F row's first suffix
+; segment, REMAINING that segment and the ones after it (their durable
+; contents as the host reads them).  Hypotheses: the checkpoint's capture is
+; of the covered segments' records (the pipeline captures at the rotation;
+; fn-sct-load-of-publish-is-the-capture gives back what it captured) and the
+; F row's genesis is the covered chain's last trailer (the rotation takes it
+; from the closed segment's kernel, fn-lgs-rotate).  Then the history the
+; open hands to the replay once the covered segments are unlinked -- the
+; checkpoint's records, then the host's fold over the remaining segments from
+; the named genesis -- is the host's fold over every segment.  The replay of
+; that split is the full replay by fn-sn-recover-from-checkpoint-equals-full-
+; recover (the prefix and the suffix decode record by record into the events
+; that theorem splits).
 (defthm fn-lg-segment-drop-preserves-the-open
-  (implies (and (equal prefix (fn-lgs-chain-records covered genesis0 unit max))
-                (equal genesis (fn-lgs-chain-last covered genesis0 unit max)))
-           (equal (append prefix (fn-lgs-chain-records remaining genesis unit max))
-                  (fn-lgs-chain-records (append covered remaining) genesis0 unit max)))
-  :hints (("Goal" :in-theory (disable fn-lgs-chain-records fn-lgs-chain-last))))
+  (implies (and (equal prefix (fn-lgs-open-chain-records covered genesis0 unit max))
+                (equal genesis (fn-lgs-open-chain-last covered genesis0 unit max)))
+           (equal (append prefix (fn-lgs-open-chain-records remaining genesis unit max))
+                  (fn-lgs-open-chain-records (append covered remaining) genesis0 unit max)))
+  :hints (("Goal" :in-theory (disable fn-lgs-open-chain-records fn-lgs-open-chain-last))))
+
+; The fold is the model's chain over the segments' octets (the kernel is the
+; recovered kernel: fn-lg-open-kernel-is-the-recovered-kernel).
+(defun fn-lgs-octets-of (texts)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp texts)
+      (cons (fn-lgd-octets (car texts)) (fn-lgs-octets-of (cdr texts)))
+    nil))
+
+(defthm fn-lgs-open-chain-is-the-chain
+  (and (equal (fn-lgs-open-chain-records texts genesis unit max)
+              (fn-lgs-chain-records (fn-lgs-octets-of texts) genesis unit max))
+       (equal (fn-lgs-open-chain-last texts genesis unit max)
+              (fn-lgs-chain-last (fn-lgs-octets-of texts) genesis unit max)))
+  :hints (("Goal" :induct (fn-lgs-open-chain-last texts genesis unit max)
+                  :in-theory (e/d (fn-lgt-recover fn-lgk-recover fn-lgk-make
+                                   fn-lgk-committed fn-lgk-last)
+                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last
+                                   fn-lgd-octets)))))
