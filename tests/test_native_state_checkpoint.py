@@ -48,7 +48,11 @@ class StateCheckpointSourceTests(unittest.TestCase):
         recover = native_cuts.host_function(node_host, "fn-store-sn-recover-from-checkpoint")
         # fn-sco-open is fn-sco-finalize of this extension; the open is read
         # off it once (fn-store-sn-open-extended, fn-sco-store-open).
-        self.assertIn("(fn-sco-extend checkpoint config-records records)", recover)
+        # records-flip (checkpoint-arena-2): the entry opens over the ROWS the
+        # host interned on top of the loaded arena (fnn-recover-suffix-rows);
+        # fn-rii-sco-extend is fn-sco-extend (fn-rii-sco-extend-is-sco-extend).
+        self.assertIn("(fn-rii-sco-extend checkpoint config-records rows)", recover)
+        self.assertNotIn("fn-arena", recover)
         self.assertIn("(fn-store-sn-open-extended", recover)
         # The open the host takes is fn-sco-store-open over the same
         # arguments, called directly or through the one ACL2 function the
@@ -56,11 +60,27 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # books/store-open-pre-c1.lisp, which refuses a pre-C1 control
         # record first and otherwise answers fn-sco-store-open's open).
         extended = native_cuts.host_function(node_host, "fn-store-sn-open-extended")
-        self.assertTrue(native_cuts.calls_through_book(
-            extended, "fn-sco-store-open", "e config-records frontier"), extended[:400])
+        # Since flip-bridge the host calls the replay-identity twin
+        # fn-rii-classified-open (books/replay-identity-index.lisp), which
+        # calls fn-rii-sco-store-open; its keystone
+        # fn-rii-classified-open-is-classified-open equates it with
+        # fn-sopc-classified-open, which calls fn-sco-store-open.
+        self.assertTrue(
+            native_cuts.calls_through_book(
+                extended, "fn-sco-store-open", "e config-records frontier")
+            or native_cuts.calls_through_book(
+                extended, "fn-rii-sco-store-open", "e config-records frontier"),
+            extended[:400])
+        rii = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
+        self.assertIn("(defthm fn-rii-classified-open-is-classified-open", rii)
         opened = native_cuts.host_function(io, "fnn-recover-from-state-checkpoint")
         self.assertIn("'fn-store-sco-select", opened)
-        self.assertIn("'fn-store-sn-recover-from-checkpoint", opened)
+        self.assertIn("(fnn-recover-suffix-rows store suffix config-records)", opened)
+        suffix_rows = native_cuts.host_function(io, "fnn-recover-suffix-rows")
+        self.assertIn("'fn-store-sn-recover-records", suffix_rows)
+        self.assertIn("(fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena))", suffix_rows)
+        self.assertIn("'fn-store-sn-recover-from-checkpoint", suffix_rows)
+        self.assertNotIn("fn-arena-clear", suffix_rows)
         self.assertIn("'fn-store-sco-covered-count", opened)
         # rep-wave-d-3: the file is read into the octet buffer as the
         # writer's plan shape, each segment admitted by ACL2 against the
@@ -76,9 +96,21 @@ class StateCheckpointSourceTests(unittest.TestCase):
         load = native_cuts.host_function(io, "fnn-state-checkpoint-load")
         self.assertIn("(fnn-core-buffer-state 'fn-store-sco-decode value)", load)
         self.assertIn("(:schema :schema)", load)
+        # records-flip (checkpoint-arena-2): the arena run first
+        # (fn-scka-open-run), the payloads sealed by the host through the
+        # guard-verified fn-scka-seal-n a bounded number per call, then the
+        # tables (fn-scka-finish calls fn-sct-load): fn-scka-load's three
+        # calls, KEYSTONE fn-scka-load-of-written-file.
         node_decode = native_cuts.host_function(node_host, "fn-store-sco-decode")
-        self.assertIn("(fn-sct-load plan fn-octets)", node_decode)
-        self.assertIn("(fn-sct-capture-of-tables (cadr loaded))", node_decode)
+        self.assertIn("(fn-scka-open-run plan fn-octets)", node_decode)
+        self.assertIn("(list :arena (nth 1 o) (nth 2 o) (nth 3 o))", node_decode)
+        node_finish = native_cuts.host_function(node_host, "fn-store-sco-decode-finish")
+        self.assertIn("(fn-scka-finish (car load) (cadr load) i end fn-octets)", node_finish)
+        self.assertIn("(fn-sct-capture-of-tables (cadr loaded))", node_finish)
+        load_arena = native_cuts.host_function(io, "fnn-state-checkpoint-load-arena")
+        self.assertIn("(fnn-call 'fn-arena-clear arena)", load_arena)
+        self.assertIn("(fnn-call 'fn-scka-seal-n i end k octets arena)", load_arena)
+        self.assertIn("'fn-store-sco-decode-finish", load_arena)
         node_admit = native_cuts.host_function(node_host, "fn-store-sco-segment-admit")
         self.assertIn("(fn-sccr-admit-segment header total", node_admit)
         node_select = native_cuts.host_function(node_host, "fn-store-sco-select")
@@ -98,8 +130,14 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+", steps)
         self.assertIn("(fnn-plan-write-all fd frames st)", steps)
         self.assertIn("(fnn-core 'fn-ockp-donep state)", steps)
+        self.assertIn("(fnn-checkpoint-write-arena-steps fd arun sequence", steps)
+        arena_steps = native_cuts.host_function(io, "fnn-checkpoint-write-arena-steps")
+        self.assertIn("(fnn-call 'fn-scka-write-step state n count sequence", arena_steps)
+        self.assertIn("(fnn-plan-write-all fd frames st)", arena_steps)
         node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup")
-        self.assertIn("(fn-ockp-setup next (fn-sf-frontier (fn-sn-files st)) revision", node_setup)
+        self.assertIn("(fn-scka-canon-rows records fn-arena 0)", node_setup)
+        self.assertIn("(fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))", node_setup)
+        self.assertIn("(fn-scka-write-setup records segment-octets fn-arena)", node_setup)
         native_cuts.verify_state_checkpoint_cut_map()
 
 
@@ -245,6 +283,31 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
         self.assertEqual(self.observation(), expected)
 
+    def test_a_file_without_the_arena_run_is_refused_by_name(self):
+        """Records flip (checkpoint-arena-2): the file opens with the arena
+        run.  The same file with that run cut away is the tables-only file a
+        writer before the flip produced (the four runs chained from the
+        genesis, intact): the open refuses it BY NAME, reason=checkpoint-arena
+        (books/store-checkpoint-arena-load.lisp fn-scka-select-named), never
+        `corrupt', replays the journal, and reconstructs the same state."""
+        self.init_with_checkpoint_at_three()
+        expected = self.observation()
+        data = self.path().read_bytes()
+        # FNSC segment: magic(4) schema(1) index count length sequence (u64 LE
+        # each), the chunk, the 32-octet trailer; the first segment's count
+        # is the arena run's segment count.
+        count = int.from_bytes(data[13:21], "little")
+        at = 0
+        for _ in range(count):
+            length = int.from_bytes(data[21 + at:29 + at], "little")
+            at += 37 + length + FRAME_TRAILER_OCTETS
+        self.assertEqual(data[:4], b"FNSC")
+        self.assertEqual(data[37:41], b"fnA1")
+        self.assertEqual(data[at:at + 4], b"FNSC")
+        self.path().write_bytes(data[at:])
+        self.assertEqual(self.open_line(), "open=full-replay reason=checkpoint-arena")
+        self.assertEqual(self.observation(), expected)
+
     def test_a_checkpoint_past_the_profile_bound_is_refused_by_name(self):
         # rep-wave-d-3: the first segment's LENGTH field (u64 LE at octet 21)
         # claims a chunk past the profile's segment bound.  ACL2 refuses the
@@ -310,6 +373,43 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
         return line
+
+    def test_a_killed_owner_reopens_from_the_checkpoint_without_replay(self):
+        """Records flip (checkpoint-arena-2): the checkpoint carries the arena,
+        so after the serving owner dies (SIGKILL) the next open reads the
+        checkpoint (its arena run sealed from the file, the suffix interned on
+        top), replays only the suffix, and reconstructs what the full replay
+        does."""
+        self.init_with_checkpoint_at_three("store")
+        expected = self.observation()
+        owner = self.start_owner(self.image)
+        owner.kill()
+        owner.wait(timeout=60)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        self.assertEqual(self.observation(), expected)
+        aside = self.root / "aside.fnsc"
+        self.path().rename(aside)
+        self.assertEqual(self.open_line(), "open=full-replay reason=absent")
+        self.assertEqual(self.observation(), expected)
+
+    def test_a_kill_inside_the_arena_run_never_trusts_the_torn_file(self):
+        """The arena run is the file's first steps: a kill after the run's
+        head step (FN_NATIVE_CHECKPOINT_BATCH_FAULT=0:kill) leaves the staged
+        file unrenamed, and the next open reads the old checkpoint, byte for
+        byte, never the torn one."""
+        self.init_with_checkpoint_at_three("store")
+        old = self.digest()
+        expected = self.observation()
+        env = verbs.environment()
+        env["FN_NATIVE_CHECKPOINT_BATCH_FAULT"] = "0:kill"
+        died = self.checkpoint("store", env=env)
+        self.assertEqual(died.returncode, -signal.SIGKILL, died.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        self.assertEqual(self.digest(), old)
+        recovered = self.op("recover")
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
+        self.assertEqual(list((self.store / "staging").iterdir()), [])
+        self.assertEqual(self.observation(), expected)
 
     def test_every_cut_reopens_with_the_old_or_the_new_checkpoint(self):
         seen = {}

@@ -59,6 +59,7 @@
 ; Reachable positive witness of the keystone: the complete antecedent, then
 ; the conclusion, at this history.
 (assert-event (fn-bs-profile-validp *fn-bs-profile-development*))
+(assert-event (fn-bs-profile-logp *fn-bs-profile-development*))
 (assert-event (fn-sxp-increasingp *sxpt-records*))
 (assert-event (fn-sxp-config-names-increasingp *sxpt-configs* nil))
 (assert-event
@@ -83,11 +84,29 @@
                    (fn-sxp-config-names-increasingp *sxpt-configs* nil)))
 (assert-event (equal (sxpt-plan '(1 2 3) *sxpt-frontier* *sxpt-configs* *sxpt-records*)
                      '(:refused :profile :store-format)))
+;; validp is not a hypothesis: fn-bs-profile-logp reads the profile only
+;; when it is valid (fn-bs-profile-of), so the retained logp implies it; the
+;; weakened theorem was proved (the keystone as stated) before validp was
+;; removed.  '(1 2 3) is refused by name above.
+
+;; logp: the development preset in the per-file layout's word (format 8, what
+;; the previous release exported).  Valid, in order, not a log profile: the
+;; plan imports it under the fn-store-9 word, so not under VALUES.
+(defconst *sxpt-format-8* (cons *fn-bs-meta-format-8* (cdr *fn-bs-profile-development*)))
+(assert-event (fn-bs-profile-validp *sxpt-format-8*))
+(assert-event (and (fn-sxp-increasingp *sxpt-records*)
+                   (fn-sxp-config-names-increasingp *sxpt-configs* nil)))
+(assert-event (not (fn-bs-profile-logp *sxpt-format-8*)))
+(assert-event (not (equal (sxpt-plan *sxpt-format-8* *sxpt-frontier* *sxpt-configs*
+                                     *sxpt-records*)
+                          (list :import *sxpt-format-8* *sxpt-frontier*
+                                *sxpt-configs* *sxpt-records*))))
 (must-fail
  (with-prover-step-limit
   20000
-  (defthm sxpt-without-validp
-   (implies (and (fn-sxp-increasingp records)
+  (defthm sxpt-without-logp
+   (implies (and (fn-bs-profile-validp values)
+                 (fn-sxp-increasingp records)
                  (fn-sxp-config-names-increasingp configs nil))
             (equal (sxpt-plan values frontier configs records)
                    (list :import values frontier configs records)))
@@ -96,6 +115,24 @@
                                    (fn-sxp-manifest fn-sxp-entries
                                     fn-bs-config-encode fn-bs-config-decode
                                     fn-bs-profile-validp)))))))
+
+;; The migration (fn-sxp-log-profile-is-a-valid-log-profile): the format-8
+;; archive above imports under the development preset itself, format 9.
+(assert-event (equal (sxpt-plan *sxpt-format-8* *sxpt-frontier* *sxpt-configs*
+                                *sxpt-records*)
+                     (list :import *fn-bs-profile-development* *sxpt-frontier*
+                           *sxpt-configs* *sxpt-records*)))
+(assert-event (let ((v (fn-sxp-log-profile *sxpt-format-8*)))
+                (and (fn-bs-profile-validp v) (fn-bs-profile-logp v)
+                     (equal (cdr v) (cdr *sxpt-format-8*)))))
+;; Without validp: '(1 2 3) takes the word and stays invalid.
+(assert-event (not (fn-bs-profile-validp '(1 2 3))))
+(assert-event (not (fn-bs-profile-validp (fn-sxp-log-profile '(1 2 3)))))
+(must-fail
+ (with-prover-step-limit
+  20000
+  (defthm sxpt-log-profile-without-validp
+   (fn-bs-profile-validp (fn-sxp-log-profile values)))))
 
 ; increasing: records at sequences (3 2).
 (defconst *sxpt-backwards*
@@ -110,7 +147,7 @@
  (with-prover-step-limit
   20000
   (defthm sxpt-without-increasing
-   (implies (and (fn-bs-profile-validp values)
+   (implies (and (fn-bs-profile-logp values)
                  (fn-sxp-config-names-increasingp configs nil))
             (equal (sxpt-plan values frontier configs records)
                    (list :import values frontier configs records)))
@@ -131,7 +168,7 @@
  (with-prover-step-limit
   20000
   (defthm sxpt-without-config-order
-   (implies (and (fn-bs-profile-validp values)
+   (implies (and (fn-bs-profile-logp values)
                  (fn-sxp-increasingp records))
             (equal (sxpt-plan values frontier configs records)
                    (list :import values frontier configs records)))

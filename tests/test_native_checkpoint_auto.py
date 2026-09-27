@@ -64,8 +64,18 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # allocation), then the batch loop over the PUBLICATION buffer, never
         # the served one; each step's frames written through the unchanged
         # byte program; the list entry and the whole-file plan are gone.
-        self.assertIn("(fnn-core 'fn-ock-next-checkpoint base configs records)", publish)
-        self.assertIn("(fnn-core 'fn-ockp-setup next frontier revision segment budget free)", publish)
+        # records flip (checkpoint-arena-2): NEXT and the setup come from
+        # fn-owner-sco-prepare (host/owner-host.lisp), which READS the live
+        # arena: fn-scka-next-checkpoint (the base extended over the canonical
+        # suffix, KEYSTONE fn-scka-next-checkpoint-is-capture), the arena
+        # run's setup and fn-scka-publication-setup (fn-ockp-setup with the
+        # decision over the whole file); the arena run is written first.
+        self.assertIn("(fnn-core 'fn-owner-sco-prepare base base-payloads configs records", publish)
+        self.assertIn("(fnn-live-octets-pub) arun)", publish)
+        prepare = native_cuts.host_function(owner_host, "fn-owner-sco-prepare")
+        self.assertIn("(fn-scka-next-checkpoint base h0 configs records fn-arena)", prepare)
+        self.assertIn("(fn-scka-publication-setup next frontier revision seg budget free", prepare)
+        self.assertIn("(fn-scka-write-setup records seg fn-arena)", prepare)
         self.assertIn("(fnn-live-octets-pub)", publish)
         self.assertNotIn("(fnn-live-octets)", publish)
         self.assertNotIn("'fn-ock-publication ", publish)

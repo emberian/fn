@@ -13,6 +13,7 @@
 (include-book "../books/checkpoint-pack-chain-once")
 (include-book "../books/store-reclaim-pack")
 (include-book "../books/store-reclaim-stream")
+(include-book "../books/store-log-reclaim")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -234,6 +235,17 @@
 ;; books/store-reclaim-pack's keystones (`fn-rclp-decide').  The rule is the
 ;; configuration's; the instant is the clock observation's stamp, derived as
 ;; an article's stamp is (`fn-record-stamp-of-observation').
+;; Content reclamation over the record log (format 9; books/store-log-reclaim.lisp):
+;; the same per-article context as the pack's decision, the rewritten history
+;; for the checkpoint (host/native/checkpoint.lisp fnn-command-reclaim).
+(defun fn-store-log-reclaim-decide (profile clock octet-records dry state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (cfg (f-get-global 'fn-store-cfg state))
+         (rule (fn-rcl-config-rule (fn-cfg-value cfg)))
+         (stamp (fn-record-stamp-of-observation clock)))
+    (value (fn-lgr-decide profile rule (if (natp stamp) stamp nil) s octet-records dry))))
+
 (defun fn-store-reclaim-decide (profile clock octet-records frontier lower names
                                         generations selected disk-free dry state)
   (declare (xargs :stobjs state :mode :program))

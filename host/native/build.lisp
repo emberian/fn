@@ -52,6 +52,9 @@
 ;; The record log's kernel, decode and programs (lane w6-log-core): the host
 ;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).
 (include-book "books/store-log-programs")
+;; Its segments, rotation and drop (lane log-recovery): fnn-recover-log,
+;; fnn-log-rotate and fnn-log-drop call them.
+(include-book "books/store-log-segments")
 (include-book "books/store-observed")
 (include-book "books/store-node-resolution")
 (include-book "books/store-observed-traces")

@@ -106,6 +106,18 @@
                  (fn-sxp-record-entries records))))
 
 ; -----------------------------------------------------------------------------
+; The format the import writes (D34: one store format; design 2026-09-27
+; storage-log section 5.3).  The import writes the archive's profile fields
+; under the record log's format word, whatever word the archive's frame
+; carries: an archive the previous release exported from a format-8 store
+; imports as a format-9 store holding the same history, which is the
+; migration path across a reinstall.  The fields are unchanged, so every
+; relation the profile met it still meets.
+(defun fn-sxp-log-profile (values)
+  (declare (xargs :guard t))
+  (if (consp values) (cons *fn-bs-meta-format-9* (cdr values)) values))
+
+; -----------------------------------------------------------------------------
 ; The MANIFEST
 
 (defun fn-sxp-octets-or-nil (octets)
@@ -210,17 +222,20 @@
           ((null saved) (list :refused :profile :store-format))
           ((not (fn-bs-profile-requestp request))
            (list :refused :profile :request))
-          ((null (cadr request)) (list :import saved frontier configs records))
+          ((null (cadr request))
+           (list :import (fn-sxp-log-profile saved) frontier configs records))
           (t (let ((values (fn-bs-profile-resolve request saved)))
                (if (and (consp values) (equal (car values) :invalid))
                    (list :refused :profile
                          (if (consp (cdr values)) (cadr values) :request))
-                 (list :import values frontier configs records)))))))
+                 (list :import (fn-sxp-log-profile values)
+                       frontier configs records)))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (PRF-205): the import of an export replays the same history.
 ;
-; For a store whose profile is valid (every store the open admits) and whose
+; For a store whose profile is a valid format-9 profile (fn-bs-profile-logp
+; reads the profile only when it is valid: every store the open admits) and whose
 ; records are in strictly increasing sequence with configuration names in
 ; order (what the open's observation returns), the plan the import takes over
 ; the archive the export wrote -- the same entries, and the MANIFEST ACL2
@@ -246,7 +261,7 @@
    :hints (("Goal" :in-theory (disable fn-sxp-manifest-line)))))
 
 (defthm fn-sxp-import-of-export-replays-the-same-history
-  (implies (and (fn-bs-profile-validp values)
+  (implies (and (fn-bs-profile-logp values)
                 (fn-sxp-increasingp records)
                 (fn-sxp-config-names-increasingp configs nil))
            (equal (fn-sxp-import-plan
@@ -260,3 +275,52 @@
                                   (fn-sxp-manifest fn-sxp-entries
                                    fn-bs-config-encode fn-bs-config-decode
                                    fn-bs-profile-validp)))))
+
+; The migration (D34, design 2026-09-27 storage-log section 5.3): for every
+; valid archive profile -- a format-8 one the previous release exported
+; included -- the profile the import writes is a valid format-9 profile with
+; the archive's fields.  With the keystone above: an export of a format-9
+; store imports under the same profile, and an export of a format-8 store
+; imports under the same fields on the record log.
+(local
+ (defthm fn-sxp-values-okp-of-cons
+   (implies (and (consp specs) (fn-frame-field-okp (car specs) w))
+            (equal (fn-frame-values-okp specs (cons w rest))
+                   (fn-frame-values-okp (cdr specs) rest)))
+   :hints (("Goal" :do-not-induct t
+                   :expand ((fn-frame-values-okp specs (cons w rest)))))))
+
+(local
+ (defthm fn-sxp-pf-of-cons
+   (implies (posp i)
+            (equal (fn-bs-pf i (cons w rest)) (fn-bs-pf (1- i) rest)))
+   :hints (("Goal" :expand ((fn-bs-meta-nth i (cons w rest)))))))
+
+; Validity reads the format word only as "a format word".
+(local
+ (defthm fn-sxp-invalid-reason-of-another-word
+   (implies (and (fn-bs-meta-formatp w1) (fn-bs-meta-formatp w2))
+            (equal (fn-bs-profile-invalid-reason (cons w1 rest))
+                   (fn-bs-profile-invalid-reason (cons w2 rest))))
+   :hints (("Goal" :in-theory (disable fn-bs-pf fn-record-encoded-octets-ceiling
+                                       fn-bs-profile-countp fn-frame-values-okp)))))
+
+(local
+ (defthm fn-sxp-valid-profile-facts
+   (implies (fn-bs-profile-validp values)
+            (and (consp values) (fn-bs-meta-formatp (car values))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-bs-profile-validp fn-bs-profile-invalid-reason)
+                   :expand ((fn-bs-meta-nth 0 values)
+                            (fn-frame-values-okp *fn-bs-meta-profile-spec* values))))))
+
+(defthm fn-sxp-log-profile-is-a-valid-log-profile
+  (implies (fn-bs-profile-validp values)
+           (and (fn-bs-profile-validp (fn-sxp-log-profile values))
+                (fn-bs-profile-logp (fn-sxp-log-profile values))
+                (equal (cdr (fn-sxp-log-profile values)) (cdr values))))
+  :hints (("Goal" :use (fn-sxp-valid-profile-facts
+                        (:instance fn-sxp-invalid-reason-of-another-word
+                                   (w1 *fn-bs-meta-format-9*) (w2 (car values))
+                                   (rest (cdr values))))
+                  :in-theory (disable fn-bs-profile-invalid-reason))))
