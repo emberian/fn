@@ -17,6 +17,16 @@
 ; cache, ACL2 checks the entry's trailer, and a mismatch is refused by name
 ; (books/payload-extent.lisp; host/native/extent.lisp).
 ;
+; The STAGE (lane arena-offheap-3, PRF-296): an array of page stobjs, one
+; slot per handle, sized on demand.  A BUFFER seal (the owner's POST
+; prepare, before its log batch is durable) copies the payload into the
+; handle's own stage page and marks the handle :staged; once the batch is
+; durable the owner RESEATS the handle as the extent the log wrote
+; (`fn-arena$x-reseat-extent'), and later RELEASES its page
+; (`fn-arena$x-release', which frees a page only under an extent entry).  So a
+; committed payload leaves the heap after its barrier, and the staged octets
+; are bounded by the batches not yet durable (the log's operator bounds).
+;
 ; The abstraction.  The child's value, as a stobj field, is its LOGICAL
 ; value: the list of its payloads.  The relation `fn-arena$xcorr' says the
 ; generic's value is `fn-arx-view' of it: position h is the durable octets
@@ -33,7 +43,106 @@
 (defstobj fn-arena$x
   (fn-arena$x-inner :type fn-arena-paged)
   (fn-arena$x-ext :type (array t (0)) :initially 0 :resizable t)
+  (fn-arena$x-stage :type (array fn-arena-page (0)) :resizable t)
   :inline t)
+
+; -----------------------------------------------------------------------------
+; A stage page: the payload is the page's whole byte array.
+
+(defun fn-arx-stage-octets (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-oct-list-from 0 (len (nth 0 s)) (nth 0 s)))
+
+(defthm fn-arx-stage-octets-of-nil
+  (equal (fn-arx-stage-octets nil) nil))
+
+;; The copy of the buffer's cells [A+J, A+N) into the page's cells [J, N).
+(defun fn-arx-page-copy (j n a fn-octets fn-arena-page)
+  (declare (xargs :stobjs (fn-octets fn-arena-page)
+                  :guard (and (natp j) (natp n) (natp a)
+                              (<= n (fn-arena-page-bytes-length fn-arena-page))
+                              (<= (+ a n) (fn-octets-len fn-octets)))
+                  :measure (nfix (- (nfix n) (nfix j)))))
+  (if (or (not (natp j)) (not (natp n)) (<= n j))
+      fn-arena-page
+    (let ((fn-arena-page (update-fn-arena-page-bytesi j (fn-octets-get (+ (nfix a) j) fn-octets)
+                                                      fn-arena-page)))
+      (fn-arx-page-copy (1+ j) n a fn-octets fn-arena-page))))
+
+;; The page's cells [0, J) consed onto ACC, from the top down.
+(defun fn-arx-page-down (j acc fn-arena-page)
+  (declare (xargs :stobjs fn-arena-page
+                  :guard (and (natp j) (<= j (fn-arena-page-bytes-length fn-arena-page))
+                              (true-listp acc))))
+  (if (zp j)
+      acc
+    (fn-arx-page-down (1- j) (cons (fn-arena-page-bytesi (1- j) fn-arena-page) acc)
+                      fn-arena-page)))
+
+(local
+ (defthm fn-arx-list-from-snoc
+   (implies (and (natp i) (natp n) (<= i n))
+            (equal (fn-oct-list-from i (1+ n) buf)
+                   (append (fn-oct-list-from i n buf) (list (nth n buf)))))
+   :hints (("Goal" :use fn-oct-list-from-snoc))))
+
+(local
+ (defthm fn-arx-append-snoc
+   (equal (append (append a (list x)) acc)
+          (append a (cons x acc)))))
+
+(defthm fn-arx-page-down-is-list-from
+  (implies (natp j)
+           (equal (fn-arx-page-down j acc fn-arena-page)
+                  (append (fn-oct-list-from 0 j (nth 0 fn-arena-page)) acc)))
+  :hints (("Goal" :induct (fn-arx-page-down j acc fn-arena-page)
+           :in-theory (disable fn-arx-list-from-snoc fn-oct-list-from))
+          ("Subgoal *1/2" :use ((:instance fn-arx-list-from-snoc
+                                           (i 0) (n (1- j)) (buf (nth 0 fn-arena-page)))))))
+
+(defthm fn-arx-page-copy-len
+  (implies (<= (nfix n) (len (nth 0 fn-arena-page)))
+           (equal (len (nth 0 (fn-arx-page-copy j n a fn-octets fn-arena-page)))
+                  (len (nth 0 fn-arena-page))))
+  :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets fn-arena-page))))
+
+(defthm fn-arx-page-copy-below
+  (implies (and (natp k) (< k (nfix j)))
+           (equal (nth k (nth 0 (fn-arx-page-copy j n a fn-octets fn-arena-page)))
+                  (nth k (nth 0 fn-arena-page))))
+  :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets fn-arena-page))))
+
+(defthm fn-arx-page-copy-other-fields
+  (implies (not (equal (nfix k) 0))
+           (equal (nth k (fn-arx-page-copy j n a fn-octets fn-arena-page))
+                  (nth k fn-arena-page)))
+  :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets fn-arena-page))))
+
+(local
+ (defthm fn-arx-list-from-of-page-copy-below
+   (implies (and (natp j) (natp m) (<= m j))
+            (equal (fn-oct-list-from i m (nth 0 (fn-arx-page-copy j n a fn-octets fn-arena-page)))
+                   (fn-oct-list-from i m (nth 0 fn-arena-page))))
+   :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets fn-arena-page)))))
+
+(defthm fn-arx-page-copy-copies
+  (implies (and (natp j) (natp n) (natp a) (<= n (len (nth 0 fn-arena-page))))
+           (equal (fn-oct-list-from j n (nth 0 (fn-arx-page-copy j n a fn-octets fn-arena-page)))
+                  (fn-oct-list-from (+ a j) (+ a n) fn-octets)))
+  :hints (("Goal" :induct (fn-arx-page-copy j n a fn-octets fn-arena-page)
+           :in-theory (enable fn-oct-get-is-nth))))
+
+(local
+ (defthm fn-arx-list-from-to-end
+   (implies (and (natp i) (true-listp x) (<= i (len x)))
+            (equal (fn-oct-list-from i (len x) x) (nthcdr i x)))
+   :hints (("Goal" :induct (fn-oct-list-from i (len x) x)
+            :in-theory (enable nth nthcdr)))))
+
+(defthm fn-arx-list-from-whole
+  (implies (true-listp x)
+           (equal (fn-oct-list-from 0 (len x) x) x))
+  :hints (("Goal" :use ((:instance fn-arx-list-from-to-end (i 0))))))
 
 ; -----------------------------------------------------------------------------
 ; The view.
