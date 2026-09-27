@@ -62,6 +62,7 @@
 (in-package "ACL2")
 (include-book "owner-checkpoint-pipeline")
 (include-book "outcome-class")
+(include-book "heap-store-figure")
 
 (defconst *fn-heap-mib* 1048576)
 (defconst *fn-heap-octets-per-list-octet* 16)
@@ -136,11 +137,14 @@
   (declare (xargs :guard t))
   (* 2 (fn-ock-capture-budget profile)))
 
+;; The served figure since the records flip (lane reservation-after-flip):
+;; books/heap-store-figure.lisp's, from the arena's state, the open's
+;; transient, the request in flight, the buffers, the image's dynamic
+;; content and the collector's room at the trigger the host sets.  The list
+;; terms above remain the compaction verbs' (the operation figure below).
 (defun fn-heap-figure-octets (profile core nursery)
   (declare (xargs :guard t))
-  (+ (nfix core) (nfix nursery)
-     (* 2 (fn-heap-list-octets profile))
-     (fn-heap-buffer-octets profile)))
+  (fn-heap-store-figure-octets profile core nursery))
 
 ; Octets rounded up to SBCL's megabytes.
 (defun fn-heap-mb-of (octets)
@@ -208,32 +212,34 @@
       (nfix (cadr decision))
     0))
 
-; KEYSTONE (PRF-198).  An accepted figure holds every store the profile
-; admits: for any history of USED octets within H (the store budget's bound),
-; the image, the nursery, the lists at sixteen bytes per octet with the
-; collector's copy, and both checkpoint buffers fit in the megabytes the
-; launcher passes, and those fit the machine.
+; KEYSTONE (PRF-198, re-derived by reservation-after-flip).  An accepted
+; figure holds every store the profile admits: in the dynamic space the
+; launcher passes (the decision's megabytes), any store of USED payload
+; octets within H and N records within T fits with its open's transient, the
+; request in flight, both buffers, the image's dynamic content and the
+; collector's room at the trigger the host sets in that space
+; (books/heap-store-figure.lisp `fn-heap-store-need'); and that space fits
+; the machine.
 (defthm fn-heap-decide-admits-every-store-the-profile-admits
-  (let ((decision (fn-heap-decide profile core nursery observations)))
+  (let* ((decision (fn-heap-decide profile core nursery observations))
+         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
     (implies (and (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
-                  (<= used (fn-bs-profile-max-history-octets profile))
-                  (natp core) (natp nursery))
-             (and (<= (+ core nursery
-                         (* 2 *fn-heap-octets-per-list-octet*
-                            (+ used used (fn-bs-profile-max-record-octets profile)))
-                         (* 2 (fn-ock-capture-budget profile)))
-                      (* *fn-heap-mib* (fn-heap-decision-mb decision)))
-                  (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
-                      (fn-heap-machine-octets observations)))))
-  :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
-                                      fn-bs-profile-admittedp
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile))))
+             (and (<= (fn-heap-store-need profile core used n
+                                          (fn-heap-nursery-trigger d nursery))
+                      d)
+                  (<= d (fn-heap-machine-octets observations)))))
+  :hints (("Goal" :in-theory (e/d () (fn-heap-profile-word fn-bs-profile-admittedp
                                       fn-bs-profile-max-history-octets
-                                      fn-bs-profile-max-record-octets
-                                      fn-bs-profile-field
-                                      fn-heap-profile-word))
+                                      fn-bs-profile-max-transactions
+                                      fn-heap-machine-octets))
            :use ((:instance fn-heap-mb-of-covers
-                            (octets (fn-heap-figure-octets profile core nursery)))))))
+                            (octets (fn-heap-figure-octets profile core nursery)))
+                 (:instance fn-heap-store-figure-holds-every-store
+                            (d (* *fn-heap-mib*
+                                  (fn-heap-mb-of (fn-heap-figure-octets profile core nursery)))))))))
 
 ; The refusal is exact and names both numbers: an admitted profile is refused
 ; exactly when its figure exceeds the observed machine.
@@ -288,11 +294,22 @@
         (fn-bs-profile-max-record-octets profile)
         (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile)))))
 
-(defun fn-heap-operation-figure-octets (action profile core nursery)
+;; The compaction verbs' measured list copies over the image's dynamic
+;; content, and never less than the served figure (the verbs open the store
+;; first: books/heap-store-figure.lisp's open transient holds for them too);
+;; every other command, the served figure.
+(defun fn-heap-operation-list-figure-octets (action profile core nursery)
   (declare (xargs :guard t))
-  (+ (nfix core) (nfix nursery)
+  (+ (fn-heap-core-dynamic core) (nfix nursery)
      (* 2 (fn-heap-operation-list-octets action profile))
      (fn-heap-buffer-octets profile)))
+
+(defun fn-heap-operation-figure-octets (action profile core nursery)
+  (declare (xargs :guard t))
+  (if (member-equal action '(:compact :reclaim))
+      (max (fn-heap-operation-list-figure-octets action profile core nursery)
+           (fn-heap-figure-octets profile core nursery))
+    (fn-heap-figure-octets profile core nursery)))
 
 ; `fn-heap-decide' over the operation's figure.
 (defun fn-heap-operation-decide (action profile core nursery observations)
@@ -318,25 +335,26 @@
   (implies (not (member-equal action '(:compact :reclaim)))
            (equal (fn-heap-operation-decide action profile core nursery observations)
                   (fn-heap-decide profile core nursery observations)))
-  :hints (("Goal" :in-theory (e/d (fn-heap-figure-octets fn-heap-list-octets
-                                   fn-heap-operation-figure-octets
-                                   fn-heap-operation-list-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets)
                                   (fn-heap-profile-word fn-bs-profile-admittedp
-                                   fn-heap-buffer-octets)))))
+                                   fn-heap-figure-octets)))))
 
-; KEYSTONE (PKT-686).  An accepted operation figure holds the operation on
-; every store the profile admits: for any history of USED octets within H,
+; KEYSTONE (PKT-686).  An accepted operation figure of a compaction verb
+; holds the operation on every store the profile admits (every other command
+; is the served figure, `fn-heap-decide-admits-every-store-the-profile-
+; admits'): for any history of USED octets within H,
 ; the image, the nursery, the operation's measured list copies of the
 ; history with the record and the header in flight, at sixteen bytes per
 ; octet with the collector's copy, and both checkpoint buffers fit in the
 ; megabytes the launcher passes, and those fit the machine.
 (defthm fn-heap-operation-decide-holds-the-operation
   (let ((decision (fn-heap-operation-decide action profile core nursery observations)))
-    (implies (and (fn-bs-profile-admittedp profile)
+    (implies (and (member-equal action '(:compact :reclaim))
+                  (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
                   (<= used (fn-bs-profile-max-history-octets profile))
-                  (natp core) (natp nursery))
-             (and (<= (+ core nursery
+                  (natp nursery))
+             (and (<= (+ (fn-heap-core-dynamic core) nursery
                          (* 2 *fn-heap-octets-per-list-octet*
                             (+ (* (fn-heap-operation-history-copies action) used)
                                (fn-bs-profile-max-record-octets profile)
@@ -346,8 +364,10 @@
                   (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
                       (fn-heap-machine-octets observations)))))
   :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets
+                                   fn-heap-operation-list-figure-octets
                                    fn-heap-operation-list-octets fn-heap-buffer-octets)
-                                  (fn-ock-capture-budget
+                                  (fn-heap-figure-octets
+                                   fn-ock-capture-budget
                                    fn-bs-profile-admittedp
                                    fn-bs-profile-max-history-octets
                                    fn-bs-profile-max-record-octets
