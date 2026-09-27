@@ -8924,7 +8924,11 @@
         "planning/evidence/fixtures-refresh-2026-09-27.md"
       ],
       "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-705).",
-      "events": []
+      "events": [
+        "fn-spo-open-of-another-layout-refuses-by-name",
+        "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
+        "fn-spo-layout-fields-of-a-layout-frame"
+      ]
     }
   ]
 }
