@@ -52,6 +52,7 @@ import unittest
 
 from tests.native_process import stop_and_diagnostics
 from tests.test_native_peer_pull import RecordingProxy
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
@@ -175,7 +176,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
     # -- NNTP observation (the Store's own answers) ----------------------------
     def session(self, node, lines):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             greeting = stream.readline()
             self.assertTrue(greeting[:3] in (b"200", b"201"), greeting)
             replies = []

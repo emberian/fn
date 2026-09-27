@@ -60,6 +60,8 @@ import tempfile
 import threading
 import time
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 # The wall bound one served request may take.  The step budget is a wait, not
 # a cut, so a *clean* request is what this bounds: an oversized or hostile
@@ -320,7 +322,7 @@ class Oracle:
         worst = 0.0
         try:
             with self.node.connect() as sock:
-                stream = sock.makefile("rwb", buffering=0)
+                stream = whole_stream(sock)
                 replies["greeting"] = stream.readline()
                 for line, key in (
                         (b"AUTHINFO USER " + LOGIN.encode() + b"\r\n", "user"),
@@ -454,7 +456,7 @@ def family_header(node, evidence):
         reply = "<no-340>"
         try:
             with node.connect(source=source, timeout=30) as sock:
-                stream = sock.makefile("rwb", buffering=0)
+                stream = whole_stream(sock)
                 stream.readline()
                 for creds in (b"AUTHINFO USER " + LOGIN.encode() + b"\r\n",
                               b"AUTHINFO PASS " + PASSWORD.encode() + b"\r\n"):
@@ -516,7 +518,7 @@ def family_body(node, evidence):
         reply = "<no-340>"
         try:
             with node.connect(source=source, timeout=30) as sock:
-                stream = sock.makefile("rwb", buffering=0)
+                stream = whole_stream(sock)
                 stream.readline()
                 for creds in (b"AUTHINFO USER " + LOGIN.encode() + b"\r\n",
                               b"AUTHINFO PASS " + PASSWORD.encode() + b"\r\n"):
@@ -553,7 +555,7 @@ def family_body(node, evidence):
     t0 = time.monotonic()
     try:
         with node.connect(source="127.0.0.5", timeout=15) as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             stream.readline()
             for creds in (b"AUTHINFO USER " + LOGIN.encode() + b"\r\n",
                           b"AUTHINFO PASS " + PASSWORD.encode() + b"\r\n"):
@@ -572,7 +574,7 @@ def family_body(node, evidence):
     trickled = 0
     try:
         with node.connect(source="127.0.0.5", timeout=15) as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             stream.readline()
             for creds in (b"AUTHINFO USER " + LOGIN.encode() + b"\r\n",
                           b"AUTHINFO PASS " + PASSWORD.encode() + b"\r\n"):
@@ -793,7 +795,7 @@ def family_transit(node, evidence):
     reply = "<none>"
     try:
         with node.connect(source="127.0.8.2", timeout=30) as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             stream.readline()
             stream.write(b"IHAVE <ihave-2gb@x.invalid>\r\n")
             r335 = stream.readline()

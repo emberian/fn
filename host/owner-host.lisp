@@ -2616,6 +2616,15 @@
                  (fn-owner-exposure-publicp state)
                  (fn-auth-config-requiredp (fn-owner-auth state))))
 
+;; The octets one served step may read (books/connection-budget.lisp
+;; fn-cbud-step-read-octets): 512 under a step rate, 4 KiB without one.
+;; host/native/owner.lisp fnn-owner-refresh-read-octets reads it under the
+;; owner mutex after the exposure install and after every served step, so a
+;; live change of the rate reaches the next read.
+(defun fn-owner-read-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cbud-step-read-octets (fn-owner-exposure-limits state))))
+
 ;; Once per run, after recovery and before listen: the listener the owner is
 ;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the
 ;; defaults of every absent row.

@@ -7,6 +7,9 @@ but is never an NNTP peer implementation.
 """
 import argparse, hashlib, json, os, re, secrets, select, shlex, socket, ssl, subprocess, tempfile, time
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 
 MAX_LAUNCHER_BYTES = 16 * 1024
@@ -198,7 +201,7 @@ def nntp_article(port, ca, login, password, message_id):
             raise RuntimeError("protected observer STARTTLS: {!r}".format(response))
         context = ssl.create_default_context(cafile=ca)
         with context.wrap_socket(raw, server_hostname="localhost") as tls:
-            with tls.makefile("rwb", buffering=0) as stream:
+            with whole_stream(tls) as stream:
                 stream.write(b"AUTHINFO USER " + login.encode() + b"\r\n")
                 response=stream.readline()
                 if not response.startswith(b"381 "):

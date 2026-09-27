@@ -16,8 +16,9 @@
 ;             owner's connection record and session, measured
 ;             (*fn-cbud-record-octets*);
 ;     read    what the connection holds of its input: the retained suffix
-;             (at most one +fnn-max-read+ read less one octet) and the read
-;             in hand, 2 x 512;
+;             (at most one read less one octet) and the read in hand, two
+;             reads of the largest size a step may read
+;             (fn-cbud-step-read-octets: 4 KiB), 2 x 4,096;
 ;     reply   the one reply a connection holds while the socket drains it
 ;             (the loop never steps a connection with a reply queued): the
 ;             STATED WORKLOAD's largest, an article of the profile's A
@@ -62,6 +63,12 @@
 ; `fn-cbud-deltas-refusal-keeps-the-capacity-held': a live reconfiguration
 ; the owner stages leaves the capacity within the bound the run installed.
 ;
+; The read size of a served step: `fn-cbud-step-read-octets' (bounded by
+; *fn-cbud-read-quantum*, `fn-cbud-step-read-octets-is-bounded'; 512 under
+; a step rate, `fn-cbud-step-read-octets-under-a-rate-by-definition'; held by the figure,
+; `fn-cbud-read-covers-the-step'), called through host/owner-host.lisp
+; fn-owner-read-octets by host/native/owner.lisp fnn-owner-refresh-read-octets.
+;
 ; Host callers: host/owner-host.lisp fn-owner-connection-budget (called by
 ; host/native/owner.lisp fnn-owner-run after recovery, before listen) and
 ; fn-owner-reconfigure-deltas (every live reconfiguration: native-admin,
@@ -77,8 +84,54 @@
 ; witness (tests/test_native_mux.py) and recorded with their runs in
 ; planning/evidence/connection-multiplexing-2026-09-26.md.
 
+; -----------------------------------------------------------------------------
+; The host read: the work one served step may do (D27; lane input-loop-2).
+; A served step is one fn-owner-chunk over at most one host read, and the
+; read's size is decided here, from the exposure limits in force.  Under a
+; step rate (exposure-steps-per-second; the public default is 64), a step is
+; the rate's unit of work and reads at most *fn-cbud-step-octets* (512, RFC
+; 3977 section 3.1's command line), so the rate keeps its meaning in octets
+; per second.  Without one (a loopback listener, or a row set to 0), a step
+; reads at most *fn-cbud-read-quantum* (4 KiB): a 10 MiB POST is 2,560 owner
+; steps, not 20,480.  The quantum is the measured trade (planning/evidence/
+; input-loop-2-2026-09-27.md section 5): a step holds the owner mutex for
+; about 100 ns per octet it reads, so another connection's command waits
+; for up to one step -- during a 1 MiB upload a DATE client's median was
+; 0.44 ms at 512, 0.62 ms at 4 KiB, 1.10 ms at 16 KiB and 3.84 ms at 64 KiB
+; -- while the allocation per POSTed octet is 592.5, 571.1, 568.8 and 568.0
+; octets: 4 KiB takes 97% of the per-step saving for a fifth of a
+; millisecond.  Raise it when the per-octet cost of a step falls (the body
+; out of the parser's lists: item 2 of that record).  The host reads the answer under the owner mutex after every step
+; (host/owner-host.lisp fn-owner-read-octets; host/native/owner.lisp
+; fnn-owner-refresh-read-octets) and reads into one buffer per I/O loop, so
+; a read allocates only the octets it returns.
+(defconst *fn-cbud-step-octets* 512)
+(defconst *fn-cbud-read-quantum* 4096)
+
+(defun fn-cbud-step-read-octets (lim)
+  (declare (xargs :guard t))
+  (if (posp (fn-exp-lim-steps lim))
+      *fn-cbud-step-octets*
+    *fn-cbud-read-quantum*))
+
+(defthm fn-cbud-step-read-octets-is-bounded
+  (and (posp (fn-cbud-step-read-octets lim))
+       (<= (fn-cbud-step-read-octets lim) *fn-cbud-read-quantum*))
+  :rule-classes ((:type-prescription :corollary (posp (fn-cbud-step-read-octets lim)))
+                 (:linear :corollary (<= (fn-cbud-step-read-octets lim)
+                                         *fn-cbud-read-quantum*))))
+
+; Under a step rate the step is the rate's unit: 512 octets, as before.
+(defthm fn-cbud-step-read-octets-under-a-rate-by-definition
+  (implies (posp (fn-exp-lim-steps lim))
+           (equal (fn-cbud-step-read-octets lim) *fn-cbud-step-octets*)))
+
+(in-theory (disable fn-cbud-step-read-octets))
+
 (defconst *fn-cbud-record-octets* 16384)
-(defconst *fn-cbud-read-octets* 1024)
+; The retained suffix (less than one read) and the read in hand: two reads
+; of the largest size any limits give (fn-cbud-read-covers-the-step).
+(defconst *fn-cbud-read-octets* (* 2 *fn-cbud-read-quantum*))
 (defconst *fn-cbud-line-octets* 512)
 (defconst *fn-cbud-reply-status-octets* 1024)
 (defconst *fn-cbud-kernel-octets* 212992)
@@ -96,6 +149,12 @@
 (defun fn-cbud-conn-native-octets (tlsp)
   (declare (xargs :guard t))
   (+ *fn-cbud-kernel-octets* (if tlsp *fn-cbud-tls-octets* 0)))
+
+; The per-connection figure holds a step's read and its suffix under any
+; limits.
+(defthm fn-cbud-read-covers-the-step
+  (<= (* 2 (fn-cbud-step-read-octets lim)) *fn-cbud-read-octets*)
+  :rule-classes :linear)
 
 (defthm fn-cbud-conn-heap-octets-posp
   (posp (fn-cbud-conn-heap-octets article))
