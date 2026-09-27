@@ -2955,6 +2955,16 @@ def apply_events(regenerated: dict[str, list[str]],
     state: dict[str, tuple[str, list[str]]] = {}
     for entry in registry["proofs"]:
         names = regenerated.get(entry["id"], [])
+        # proofs.json's events are GENERATED from planning/proof-events.json:
+        # an event added to proofs.json by hand is dropped here.  Say so, so
+        # the edit is moved to proof-events.json instead of lost (lanes kept
+        # tripping on it, 2026-09-27).
+        dropped = [name for name in entry.get("events", []) if name not in names]
+        if dropped:
+            print(f"WARN: {entry['id']}: proofs.json events not in "
+                  f"planning/proof-events.json are dropped (edit proof-events.json; "
+                  f"proofs.json's events are generated): {', '.join(dropped)}",
+                  file=sys.stderr)
         if names:
             entry["events"] = names
         else:
