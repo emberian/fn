@@ -107,9 +107,8 @@
          (expected (fn-cst-replay-node (fn-sn-config-history st)
                                         (fn-sf-records files)
                                         (fn-sf-frontier files))))
-    ; The article arm names the HELD row: since the records flip (D33) the
-    ; history retains `fn-held-p' rows, never wire `fn-record-p' ones, and
-    ; fn-sn-finish completes the node on exactly that arm.
+    ; An article completion is a HELD row since the records flip
+    ; (books/held-record.lisp); the node completes it as fn-sn-finish does.
     (if (fn-held-p record)
         (equal (fn-node-complete node (fn-record-txid record)
                                  (fn-record-generation record) :durable)
@@ -121,7 +120,7 @@
                                   (fn-sf-statep fn-node-statep
                                    fn-cst-replay-node fn-node-complete
                                    fn-sn-completion-record
-                                   fn-replay-apply-record fn-record-p)))))
+                                   fn-replay-apply-record fn-held-p)))))
 
 (defun fn-cst-relation (st)
   (declare (xargs :guard t :verify-guards nil))

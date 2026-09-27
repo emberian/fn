@@ -26,18 +26,21 @@
 ; range answers, so an answer that ignored the group would be wrong too.
 
 (defconst *nix-groups* '("fn.letters" "fn.test"))
+;; by specification: the flip -- an article's payload is an arena handle
+;; (natp), not its octets.  The one-octet payloads (65), (66), (67) and (68)
+;; are carried as handles 0, 1, 2 and 3; equal payloads share a handle.
 (defconst *nix-article-a*
-  (fn-make-article "<a@example.invalid>" '(65)
+  (fn-make-article "<a@example.invalid>" 0
                    '("fn.letters" "fn.test")
                    (list (cons "fn.letters" 1) (cons "fn.test" 7))
                    t 841000000))
 (defconst *nix-article-b*
-  (fn-make-article "<b@example.invalid>" '(66)
+  (fn-make-article "<b@example.invalid>" 1
                    '("fn.letters")
                    (list (cons "fn.letters" 4))
                    t 841000000))
 (defconst *nix-article-c*
-  (fn-make-article "<c@example.invalid>" '(67)
+  (fn-make-article "<c@example.invalid>" 2
                    '("fn.test")
                    (list (cons "fn.test" 4))
                    t 841000000))
@@ -133,7 +136,7 @@
 ; wrong answer the reader would have served.
 
 (defconst *nix-article-d*
-  (fn-make-article "<d@example.invalid>" '(68)
+  (fn-make-article "<d@example.invalid>" 3
                    '("fn.letters")
                    (list (cons "fn.letters" 5))
                    t 841000000))
@@ -174,7 +177,7 @@
 ; only the first match, so the two answers separate.
 
 (defconst *nix-duplicate-article*
-  (fn-make-article "<dup@example.invalid>" '(68)
+  (fn-make-article "<dup@example.invalid>" 3
                    '("fn.letters" "fn.letters")
                    (list (cons "fn.letters" 1) (cons "fn.letters" 2))
                    t 841000000))

@@ -200,6 +200,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-existing-tests \
 	books/store-intern \
 	tests/acl2/store-intern-tests \
+	books/store-existing-alpha \
+	tests/acl2/store-existing-alpha-tests \
 	books/store-node-traces-prepare \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \
@@ -380,6 +382,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-decode-tests \
 	books/store-log-programs \
 	tests/acl2/store-log-programs-tests \
+	books/payload-lz \
+	tests/acl2/payload-lz-tests \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
@@ -679,6 +683,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-workflow-records-guards-tests \
 	books/bp-receipt \
 	tests/acl2/bp-receipt-tests \
+	books/bp-receipt-alpha \
+	tests/acl2/bp-receipt-alpha-tests \
 	books/bp-receipt-records \
 	tests/acl2/bp-receipt-records-tests \
 	books/bp-native-app \
@@ -884,6 +890,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
 	tests/acl2/owner-prepare-carried-tests \
+	books/store-budget-stored-post \
+	tests/acl2/store-budget-stored-post-tests \
 	tests/acl2/records-concrete-tests \
 	tests/acl2/msgid-index-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \

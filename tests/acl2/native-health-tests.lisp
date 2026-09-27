@@ -112,6 +112,36 @@
 (assert-event (equal (fn-nh-stranded-peers *nht-feeds*) '("gave-up")))
 (assert-event (equal (fn-nh-unavailable-peers *nht-feeds*) '("down")))
 (assert-event (null (fn-nh-unavailable-peers *nht-idle-feeds*)))
+;; PKT-711: fn-nh-deferring-peer-is-held.  Peer "full" has a connection
+;; open and one article it deferred (a full Store answered 436): held.
+(defconst *nht-full-feeds*
+  (list (fn-own-feed-entry "full" nil
+                           (fn-feed-make '(102) nil
+                                         (list (fn-feed-entry '(60 102 62) :queued 2 0))
+                                         nil 0 7 0))))
+(assert-event (fn-nh-feed-deferredp (fn-own-feed-entry-feed (car *nht-full-feeds*))))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
+                                                      *nht-full-feeds*)))
+                     :held))
+(assert-event (equal (fn-nh-unavailable-peers *nht-full-feeds*) '("full")))
+;; Without deferredp: the idle feed's entry is done, and it is clear.
+(assert-event (not (fn-nh-feed-deferredp (fn-own-feed-entry-feed (car *nht-idle-feeds*)))))
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
+                                                      *nht-idle-feeds*)))
+                     :clear))
+(must-fail
+ (defthm nht-deferring-without-deferred
+   (implies (member-equal e feeds)
+            (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-nh-verdict)))))
+;; Without the member: a deferring feed outside the table holds nothing.
+(assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0 nil)))
+                     :clear))
+(must-fail
+ (defthm nht-deferring-without-member
+   (implies (fn-nh-feed-deferredp (fn-own-feed-entry-feed e))
+            (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-nh-verdict)))))
 ; Forwarding obligations: two :forward pins are debt; with no BP route in the
 ; configuration (this one has none) that is also no route.
 (defconst *nht-pins*

@@ -167,6 +167,32 @@ class NativeOperatorVerbFixture(unittest.TestCase):
 
 @unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
 class NativeOperatorInitTests(NativeOperatorVerbFixture):
+    def test_reports_piped_to_a_reader_that_left_exit_quietly(self):
+        # PKT-712: `status | head` and `health | head` printed SBCL's
+        # BROKEN-PIPE backtrace.  The reader here leaves before the first
+        # line: the verb finishes, prints nothing on stderr about the pipe,
+        # and exits 141 (never 0: the report was not delivered).
+        created = self.operator("init", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        for verb, codes in (("status", (141,)), ("health", None)):
+            read, write = os.pipe()
+            os.close(read)
+            try:
+                result = subprocess.run(
+                    [str(IMAGE), "--fn", "operator", str(self.config), verb],
+                    cwd=ROOT, env=environment(), stdout=write,
+                    stderr=subprocess.PIPE, timeout=180, check=False)
+            finally:
+                os.close(write)
+            err = result.stderr.decode(errors="replace")
+            for word in ("Backtrace", "BROKEN-PIPE", "Couldn't write", "fault operator"):
+                self.assertNotIn(word, err, (verb, err))
+            if codes:
+                self.assertIn(result.returncode, codes, (verb, err))
+            else:
+                # health's own code (20..27, 19) is kept; its 0 becomes 141.
+                self.assertNotEqual(result.returncode, 0, (verb, err))
+
     def test_init_creates_the_configured_store_and_then_refuses_it(self):
         created = self.operator("init", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
@@ -590,7 +616,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         refused = self.post_many(ids[127:129] + ids[:1])
         self.assertEqual(
             refused[:2],
-            ["441 posting failed; the store has no capacity for this article"] * 2)
+            ["441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it"] * 2)
         self.assertEqual(
             refused[2],
             "441 posting failed; this article is already stored here")
@@ -647,10 +673,14 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         line = re.search(rb"init: profile=(\w+) sizing=conservative ", created.stdout)
         self.assertIsNotNone(line, created.stdout.decode())
         fields = self.profile_line()
-        expected = {b"development": 128, b"small": 16384}
-        self.assertIn(line.group(1), expected, created.stdout.decode())
-        self.assertEqual((fields["format"], fields["max-transactions"]),
-                         (8, expected[line.group(1)]))
+        # PKT-707: the largest friend rung the budget holds, never
+        # development's 128 transactions (books/heap-reservation.lisp
+        # fn-heap-init-decide-conservative-holds-the-floor).
+        self.assertIn(line.group(1), (b"custom", b"small"), created.stdout.decode())
+        self.assertEqual(fields["format"], 8)
+        self.assertIn(fields["max-transactions"], (131072, 65536, 32768, 16384))
+        status = self.operator("status")
+        self.assertIn(b"capacity articles-left=", status.stdout, status.stdout.decode())
 
     def test_init_refuses_a_profile_by_the_relation_it_breaks(self):
         refused = self.operator("init", "--max-record-octets", "100", "fn.test")

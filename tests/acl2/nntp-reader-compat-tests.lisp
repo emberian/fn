@@ -15,9 +15,18 @@
 
 (defconst *rct-groups* '("fn.one" "fn.two"))
 ; A: cross-posted to fn.one (2) and fn.two (7).
-(defconst *rct-a*
+; by specification: the flip -- the acceptance payload is a handle into the
+; arena (records-flip, books/held-record.lisp): A's bytes are interned first
+; (handle 0), the unnumbered U's second (handle 1).  *rct-a-wire* is A with
+; its bytes (alpha of *rct-a*): the stored octets the served ones extend.
+(defconst *rct-a-wire*
   (fn-make-article "<rct-a@example.invalid>"
                    (fn-rct-payload "<rct-a@example.invalid>" "A")
+                   '("fn.one" "fn.two")
+                   (list (cons "fn.one" 2) (cons "fn.two" 7))
+                   t 841000000))
+(defconst *rct-a*
+  (fn-make-article "<rct-a@example.invalid>" 0
                    '("fn.one" "fn.two")
                    (list (cons "fn.one" 2) (cons "fn.two" 7))
                    t 841000000))
@@ -170,9 +179,11 @@
           (fn-nntp-string-octets "Message-ID: <rct-a@example.invalid>")
           '(13 10) (fn-nntp-string-octets "Subject: A") '(13 10 13 10 88 13 10)))
 ; The stored octets are a suffix of the served ones (D01).
+; by specification: the flip -- the stored octets are the bytes under A's
+; handle, alpha's payload *rct-a-wire*, not the handle itself.
 (assert-event
  (equal (nthcdr (+ 2 (length *rct-xref*)) *rct-served-payload*)
-        (fn-article-payload *rct-a*)))
+        (fn-article-payload *rct-a-wire*)))
 (assert-event
  (equal (fn-rcompat-served-payload *rct-server* *rct-a*) *rct-served-payload*))
 ; HEAD 7 in fn.two: the Xref line, then the stored header lines.
@@ -229,8 +240,7 @@
                        (fn-nntp-split-body split))))))
 ; Its second branch: an article numbered nowhere is served as stored.
 (defconst *rct-unnumbered*
-  (fn-make-article "<rct-u@example.invalid>"
-                   (fn-rct-payload "<rct-u@example.invalid>" "U") nil nil t 0))
+  (fn-make-article "<rct-u@example.invalid>" 1 nil nil t 0))
 (assert-event
  (and (not (consp (fn-xref-pairs *rct-unnumbered*)))
       (equal (fn-rcompat-served-payload *rct-server* *rct-unnumbered*)

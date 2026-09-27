@@ -2155,6 +2155,10 @@
           "kind": "theorem",
           "name": "fn-own-live-session-boundedp",
           "note": "The re-pin cannot drop a connection: it leaves the reader session identical, so fn-own-conn-boundedp -- the test fn-own-read applies after the step, and the one that made ADVANCE a silent no-op for a wave when a rebuild lost a wrapper -- answers exactly as before."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-full-store-is-a-retry-code"
         }
       ]
     },
@@ -2978,6 +2982,10 @@
           "kind": "theorem",
           "name": "fn-ncl-status-nonaccepted-reply-roundtrip",
           "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncl-cli-after-retries-only-a-refused-register"
         }
       ]
     },
@@ -4993,6 +5001,10 @@
         {
           "kind": "theorem",
           "name": "fn-nh-fence-of-route"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-deferring-peer-is-held"
         }
       ]
     },
@@ -5509,6 +5521,16 @@
         {
           "kind": "theorem",
           "name": "fn-cvec-config-publication-keeps-the-release-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-wire-record-is-no-article-row",
+          "note": "Why the article arm was restated: a wire record is never a row of kind :article, so the old fn-record-p arm could not fire."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row",
+          "note": "The article verdict at a held row's facts octets keeps the vector at the octets the row stores."
         }
       ]
     },
@@ -6347,6 +6369,10 @@
         {
           "kind": "theorem",
           "name": "fn-nop-init-plain-groups-are-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nop-mission-init-serves-control-cancel"
         }
       ]
     },
@@ -6376,6 +6402,14 @@
         {
           "kind": "theorem",
           "name": "fn-nls-obligations-figures-are-the-retention-figures"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-articles-left-is-zero-when-full"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-articles-left-is-at-most-the-transactions-left"
         }
       ]
     },
@@ -6437,6 +6471,26 @@
         {
           "kind": "theorem",
           "name": "fn-intern-events-budget-octets-are-the-stored-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-io-keeps-the-stored-octets",
+          "note": "The publication words (the directory barrier appends the candidate to the history) keep the relation; the arena is untouched."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-keeps-the-stored-octets",
+          "note": "The finish keeps the history and drops the candidate; the arena is untouched."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-prepare-interned-keeps-the-stored-octets",
+          "note": "The standalone store's POST entry keeps the relation over the arena it leaves."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-keeps-the-stored-octets",
+          "note": "The served POST (host/owner-host.lisp fn-owner-prepare -> fn-pcar-sbud-prepare, which is fn-sbud-prepare by fn-pcar-sbud-prepare-is-sbud-prepare, over the row fn-intern-row-at makes at the arena's count, then the seal when the store changed) keeps fn-sbud-store-extents-okp: the budget's octets stay the stored octets."
         }
       ]
     },
@@ -7246,15 +7300,31 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-init-decide-conservative-is-development-or-small"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-init-decide-largest-takes-scale-when-it-fits"
         },
         {
           "kind": "theorem",
           "name": "fn-heap-figure-octets-grows-with-history-and-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-held-holds-the-article-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-held-meets-the-article-relations"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-is-a-friend-rung"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-holds-the-floor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits"
         }
       ]
     },
@@ -8040,6 +8110,10 @@
           "kind": "theorem",
           "name": "fn-peer-host-name-is-not-an-ipv4-literal",
           "note": "A name never parses as an IPv4 literal (RFC 1123 s2.1). Used by the dial keystone."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-redeem-done-only-on-281-after-the-password"
         }
       ]
     },
@@ -8061,10 +8135,6 @@
         {
           "kind": "theorem",
           "name": "fn-smid-recorded-store-opens-iff-same-filesystem"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-smid-moved-mount-point-is-refused-by-name"
         },
         {
           "kind": "theorem",
@@ -8105,6 +8175,26 @@
         {
           "kind": "theorem",
           "name": "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-same-fsid-view-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-other-filesystem-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-other-fsid-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-unreported-fsid-moved-mount-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-rebind-outside-opens-inside"
         }
       ]
     },
@@ -9418,6 +9508,79 @@
         {
           "kind": "theorem",
           "name": "fn-mvb-plan-unfolds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-260",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-store-existing-action-is-pb-over-alpha",
+          "pending_subject": "Subject fn-store-existing-action (books/store-intern.lisp); the host line (host/store-node-host.lisp fn-store-sn-existing-action, host/owner-host.lisp via fn-pidx-existing-action) lands with flip-L6. Teeth: tests/acl2/store-existing-alpha-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-existing-action-refines-byte-identity-over-alpha",
+          "pending_subject": "Subject fn-store-existing-action (books/store-intern.lisp); the host line (host/store-node-host.lisp fn-store-sn-existing-action, host/owner-host.lisp via fn-pidx-existing-action) lands with flip-L6. Teeth: tests/acl2/store-existing-alpha-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-257",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lz-seal-form-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-seal-form-of-literal-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-decode-of-literal-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-run-out-len-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-decode-buf-out-len-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-run-extends-out"
+        }
+      ]
+    },
+    {
+      "id": "PRF-259",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-store-record-acceptedp-is-acceptance-over-alpha",
+          "note": "Transferred to the host-called fast entries by PRF-220 (fn-bpaj-bpr-accept-request-fast, fn-bpaj-record-lookup-fast; host/bp-receipt-host.lisp fn-bpr-host-accept). Teeth: tests/acl2/bp-receipt-alpha-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-258",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-another-layout-refuses-by-name",
+          "note": "KEYSTONE (PKT-705). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real pre-AS config.json; one witness per hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
+          "note": "KEYSTONE (the refinement). Host: as above."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-layout-fields-of-a-layout-frame"
         }
       ]
     }

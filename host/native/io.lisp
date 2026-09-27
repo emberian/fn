@@ -621,9 +621,58 @@ label; it does not select a policy."
 (defvar *fnn-stdout* nil)
 (defvar *fnn-stderr* nil)
 
+;;; PKT-712: a report piped to `head' (or any reader that leaves early).
+;;; SIGPIPE is ignored (fnn-main), so a write to a closed stdout raises
+;;; EPIPE as a stream error inside whatever verb is printing, which printed
+;;; `fault operator health Couldn't write to ...' or, at the exit's final
+;;; flush outside every handler, SBCL's BROKEN-PIPE backtrace.  Standard
+;;; output is therefore one stream that cannot fail: the first error on it
+;;; marks it lost and every later write is dropped, so the verb finishes what
+;;; it was doing (a report's reader leaving changes nothing the node does)
+;;; and the process exits quietly: with the verb's own code when that is not
+;;; 0, else 141, the shell's code for a writer ended by SIGPIPE, so a lost
+;;; report is never reported as a success (fnn-exit).
+(defvar *fnn-stdout-lost* nil)
+
+(defclass fnn-stdout-stream (sb-gray:fundamental-binary-output-stream)
+  ((target :initarg :target :reader fnn-stdout-target)))
+
+(defmacro fnn-stdout-guard (stream &body body)
+  `(unless *fnn-stdout-lost*
+     (handler-case (progn ,@body)
+       (stream-error ()
+         (setq *fnn-stdout-lost* t)
+         ;; Drop what the fd-stream still buffers, so no later flush
+         ;; raises the same error again.
+         (ignore-errors (clear-output (fnn-stdout-target ,stream)))))))
+
+(defmethod stream-element-type ((stream fnn-stdout-stream))
+  '(unsigned-byte 8))
+
+(defmethod sb-gray:stream-write-byte ((stream fnn-stdout-stream) byte)
+  (fnn-stdout-guard stream (write-byte byte (fnn-stdout-target stream)))
+  byte)
+
+(defmethod sb-gray:stream-write-sequence ((stream fnn-stdout-stream) sequence
+                                          &optional (start 0) end)
+  (fnn-stdout-guard stream
+    (write-sequence sequence (fnn-stdout-target stream) :start start :end end))
+  sequence)
+
+(defmethod sb-gray:stream-finish-output ((stream fnn-stdout-stream))
+  (fnn-stdout-guard stream (finish-output (fnn-stdout-target stream)))
+  nil)
+
+(defmethod sb-gray:stream-force-output ((stream fnn-stdout-stream))
+  (fnn-stdout-guard stream (force-output (fnn-stdout-target stream)))
+  nil)
+
 (defun fnn-open-streams ()
-  (setq *fnn-stdout* (sb-sys:make-fd-stream 1 :output t :element-type '(unsigned-byte 8)
-                                              :buffering :full))
+  (setq *fnn-stdout*
+        (make-instance 'fnn-stdout-stream
+                       :target (sb-sys:make-fd-stream 1 :output t
+                                                        :element-type '(unsigned-byte 8)
+                                                        :buffering :full)))
   (setq *fnn-stderr* (sb-sys:make-fd-stream 2 :output t :element-type '(unsigned-byte 8)
                                               :buffering :full)))
 
@@ -835,9 +884,11 @@ offered to the writer while the owner runs (PKT-508), else written here."
 
 (defun fnn-exit (code)
   (when *fnn-stdout* (finish-output *fnn-stdout*))
-  (when *fnn-stderr* (finish-output *fnn-stderr*))
-  (finish-output *standard-output*)
-  (sb-ext:exit :code code :abort t))
+  (when *fnn-stderr* (ignore-errors (finish-output *fnn-stderr*)))
+  (ignore-errors (finish-output *standard-output*))
+  ;; PKT-712: a report whose reader left is never a success.
+  (sb-ext:exit :code (if (and *fnn-stdout-lost* (eql code 0)) 141 code)
+               :abort t))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Calls into the certified core: the executable counterpart of each host
@@ -935,9 +986,11 @@ scope ends, however it ends."
   "ACL2's decoded store profile: a format-8 profile (the one format, D34).  The host keeps the value opaque and
 reads every field through an ACL2 accessor.  The verdict is ACL2's open
 (books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
-record bound the poll reply cannot carry, or a profile frame of another
-format, is refused by name, exit 1, with ACL2's line (PKT-471, D34); a frame
-that is no saved profile stays a fault."
+record bound the poll reply cannot carry, a profile frame of another
+format, or a fn-store-8 profile frame of another release's layout (PKT-705:
+`reason=older-release' / `newer-release', naming both field counts) is
+refused by name, exit 1, with ACL2's line (PKT-471, D34); a frame that is no
+saved profile stays a fault."
   (let ((verdict (fnn-core 'fn-store-metadata-config-open
                            (fnn-octet-list octets))))
     (cond ((and (consp verdict) (eq (first verdict) :opened)
@@ -3873,7 +3926,10 @@ retention ledger's reserved charge of its capacity."
     (destructuring-bind (used budget bytes-used history reserved capacity) headroom
       (fnn-out-profile (fnn-store-config store))
       (fnn-out "headroom transactions-used=~d transactions-budget=~d bytes-used=~d history-bound=~d charge-reserved=~d charge-capacity=~d"
-               used budget bytes-used history reserved capacity))))
+               used budget bytes-used history reserved capacity)
+      ;; PKT-707: the capacity in plain words, rendered by ACL2.
+      (fnn-out "~a" (fnn-octets-string
+                     (fnn-octets (fnn-core 'fn-nls-capacity-line headroom)))))))
 
 (defun fnn-store-observation (store)
   "What this process observed at its own open, which the status report names:
@@ -5056,6 +5112,8 @@ acknowledges past the committed records)."
                   :message "guard-probe is available only in the developer image"))
          (fnn-core 'fn-sha256-of-string 42)
          +fnn-exit-ok+)
+        ((string= verb "redeem")
+         (fnn-command-redeem (cdr args)))
         ((string= verb "model")
          (need 3)
          (fnn-command-model (second args) (fnn-dash-nil (third args))))
@@ -5064,8 +5122,11 @@ acknowledges past the committed records)."
         ;; protocol, because its arguments are a peer and a session and not
         ;; a store, so a handler takes a command and the rest.
         ((fnn-verb-handler verb)
-         (need 2)
-         (funcall (fnn-verb-handler verb) (second args) (cddr args)))
+         ;; PKT-709: a registered verb with no command word is asked for
+         ;; `help' (its own usage), never `missing arguments'.
+         (if (null (cdr args))
+             (funcall (fnn-verb-handler verb) "help" nil)
+           (funcall (fnn-verb-handler verb) (second args) (cddr args))))
         ((string= verb "sha256")
          (need 2)
          ;; The file reaches ACL2 as a string, read in place by
@@ -5097,6 +5158,162 @@ acknowledges past the committed records)."
 (defun fnn-gc-nursery-octets ()
   (max +fnn-gc-nursery-least-octets+
        (min +fnn-gc-nursery-octets+ (floor (sb-ext:dynamic-space-size) 16))))
+
+;;; `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]': a friend
+;;; redeems an invitation code (the stranger rehearsal's stop 10).  The host
+;;; dials and runs TLS; ACL2 decides each next step from the reply code
+;;; (books/peer-host.lisp fn-redeem-step), which name and trust the TLS
+;;; check uses (fn-peer-tls-verification: the typed HOST, SNI for a DNS name
+;;; only, the PEM file given or the system roots), and every line printed
+;;; (fn-redeem-text).  The password is read from the terminal without echo,
+;;; else from standard input; it never enters argv.
+(defun fnn-redeem-read-line (read-chunk pending)
+  "One reply line (without CRLF) and the octets after it, reading chunks with
+READ-CHUNK until an LF; at most 4096 octets (RFC 3977 s3.1: 512 is the
+largest reply line)."
+  (let ((buffer pending))
+    (loop
+      (let ((lf (position 10 buffer)))
+        (when lf
+          (return (values (coerce (subseq buffer 0 (if (and (> lf 0) (= (aref buffer (1- lf)) 13))
+                                                       (1- lf) lf))
+                                  'list)
+                          (subseq buffer (1+ lf))))))
+      (when (> (length buffer) 4096)
+        (fnn-refuse "refused redeem reply: the server's line exceeds 4096 octets"))
+      (let ((chunk (funcall read-chunk)))
+        (when (or (eq chunk :timeout) (zerop (length chunk)))
+          (fnn-refuse "refused redeem connection: the server closed or did not answer"))
+        (setq buffer (concatenate 'fnn-octets buffer chunk))))))
+
+(defun fnn-redeem-read-password ()
+  "The new account's password: from the terminal without echo, else one line
+of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
+  (let* ((tty (handler-case
+                  (open "/dev/tty" :direction :io :element-type 'character
+                                   :external-format :latin-1)
+                (error () nil)))
+         (stream (or tty *standard-input*))
+         (attributes nil) (old-flags nil))
+    (unwind-protect
+         (progn
+           (format *error-output* "Password for the new account: ")
+           (finish-output *error-output*)
+           (when tty
+             (let ((fd (sb-sys:fd-stream-fd tty)))
+               (setq attributes (sb-posix:tcgetattr fd)
+                     old-flags (sb-posix:termios-lflag attributes))
+               (setf (sb-posix:termios-lflag attributes) (logandc2 old-flags sb-posix:echo))
+               (sb-posix:tcsetattr fd sb-posix:tcsanow attributes)))
+           (let ((line (read-line stream nil nil)))
+             (when (null line)
+               (fnn-refuse "refused redeem password: no password was given"))
+             (let ((text (string-right-trim '(#\Return) line)))
+               (when (or (zerop (length text)) (> (length text) 512))
+                 (fnn-refuse "refused redeem password: it must be 1 to 512 characters"))
+               (map 'list #'char-code text))))
+      (when tty
+        (when attributes
+          (setf (sb-posix:termios-lflag attributes) old-flags)
+          (sb-posix:tcsetattr (sb-sys:fd-stream-fd tty) sb-posix:tcsanow attributes)
+          (format *error-output* "~%")
+          (finish-output *error-output*))
+        (close tty)))))
+
+(defun fnn-command-redeem (args)
+  (let ((tls nil) (cafile nil) (words nil))
+    (loop while args
+          do (let ((word (pop args)))
+               (cond ((string= word "--tls") (setq tls t))
+                     ((string= word "--cafile")
+                      (unless args (error 'fnn-usage-error :message "--cafile takes a PEM file"))
+                      (setq cafile (pop args)))
+                     (t (push word words)))))
+    (setq words (nreverse words))
+    (unless (= (length words) 3)
+      (error 'fnn-usage-error
+             :message "usage: fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM] (the password is asked for, or read from standard input)"))
+    (destructuring-bind (target code login) words
+      (let* ((colon (position #\: target :from-end t))
+             (host (if colon (subseq target 0 colon) target))
+             (port (if colon
+                       (or (ignore-errors (parse-integer target :start (1+ colon)))
+                           (error 'fnn-usage-error :message "the port after HOST: is a number"))
+                     (if tls 563 119)))
+             (verification (fnn-core 'fn-peer-tls-verification host
+                                     (or cafile :system-roots)))
+             (password (fnn-redeem-read-password))
+             (socket nil) (context nil) (channel nil) (pending (fnn-make-octets 0))
+             (last nil))
+        (unless (eq (first verification) :verify)
+          (fnn-refuse "refused redeem ~a: ~a"
+                      (if (eq (second verification) :trust) "trust" "host")
+                      (if (eq (second verification) :trust)
+                          "the --cafile path is not usable"
+                        "HOST is not a host name or an IPv4 address")))
+        (flet ((send (text)
+                 (let ((octets (fnn-string-octets (fnn-concat text (coerce '(#\Return #\Newline) 'string)))))
+                   (if channel
+                       (fnn-tls-send-all channel octets 30)
+                     (fnn-send-all (fnn-socket-fd socket) octets 30))))
+               (reply ()
+                 (multiple-value-bind (line rest)
+                     (fnn-redeem-read-line
+                      (lambda () (if channel
+                                     (fnn-tls-read channel 30)
+                                   (fnn-recv (fnn-socket-fd socket) 30)))
+                      pending)
+                   (setq pending rest last line)
+                   line))
+               (finish (outcome)
+                 (let ((text (fnn-octets-string
+                              (fnn-octets (fnn-core 'fn-redeem-text outcome login last)))))
+                   (if (equal outcome '(:done))
+                       (progn (fnn-out "~a" text) +fnn-exit-ok+)
+                     (progn (fnn-err "~a" text) +fnn-exit-refused+)))))
+          (unwind-protect
+               (handler-case
+               (progn
+                 (setq socket (fnn-connect host port :timeout 30))
+                 (let ((stage (if tls :greeting-tls :greeting-starttls)))
+                   (when tls
+                     (setq context (fnn-tls-open-client-context (fourth verification))
+                           channel (fnn-tls-connect context (fnn-socket-fd socket)
+                                                    (second verification) 30
+                                                    :sni (third verification))))
+                   (loop
+                     (let ((step (fnn-core 'fn-redeem-step stage (reply))))
+                       (case (first step)
+                         (:starttls (send "STARTTLS") (setq stage :starttls))
+                         (:handshake
+                          (setq context (fnn-tls-open-client-context (fourth verification))
+                                channel (fnn-tls-connect context (fnn-socket-fd socket)
+                                                         (second verification) 30
+                                                         :sni (third verification))
+                                pending (fnn-make-octets 0))
+                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (setq stage :code))
+                         (:send-code
+                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (setq stage :code))
+                         (:send-password
+                          (send (format nil "XREDEEM PASS ~a"
+                                        (map 'string #'code-char password)))
+                          (setq stage :password))
+                         (t (ignore-errors (send "QUIT"))
+                            (return (finish step))))))))
+                 ;; A certificate the given trust does not verify, a name
+                 ;; that does not match, or a failed handshake: refused by
+                 ;; name, never an unchecked session.
+                 (fnn-tls-verify-error (e)
+                   (fnn-err "refused redeem tls: ~a; give the node's certificate file with --cafile" e)
+                   +fnn-exit-refused+)
+                 (fnn-tls-handshake-error (e)
+                   (fnn-err "refused redeem tls: ~a" e)
+                   +fnn-exit-refused+))
+            (when channel (ignore-errors (fnn-tls-close-channel channel)))
+            (when context (ignore-errors (fnn-tls-close-context context)))
+            (when socket (ignore-errors (sb-bsd-sockets:socket-close socket)))))))))
 
 (defun fnn-main ()
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))

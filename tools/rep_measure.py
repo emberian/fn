@@ -205,6 +205,9 @@ def main():
     p.add_argument("--samples", type=int, default=32, help="K: identifiers read, operations per alloc batch")
     p.add_argument("--readers", type=int, default=3, help="R: concurrent ARTICLE readers for the contention window")
     p.add_argument("--profile", default="default")
+    p.add_argument("--init-flag", action="append", default=[],
+                   help="one more `operator init` word after --profile (repeatable: "
+                        "--init-flag=--max-transactions --init-flag=1048576)")
     p.add_argument("--heap-dir", default=None, help="FN_HEAP_DIR of an image running the heap hook")
     p.add_argument("--json", required=True)
     p.add_argument("--skip-reopen", action="store_true")
@@ -224,7 +227,8 @@ def main():
     store, control, config = work / "store", work / "control.sock", work / "fn.toml"
     config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
                       '[control]\npath = "%s"\n' % (store, port, control), encoding="ascii")
-    init = [str(image), "--fn", "operator", str(config), "init", "--profile", a.profile, "fn.test"]
+    init = [str(image), "--fn", "operator", str(config), "init", "--profile", a.profile,
+            *a.init_flag, "fn.test"]
     r = subprocess.run(init, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (work / "init.out").write_bytes(r.stdout)
     if r.returncode != 0:

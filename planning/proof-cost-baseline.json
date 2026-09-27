@@ -116,13 +116,6 @@
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/heap-reservation": {
-      "seconds": 13.693,
-      "run": "certify-20260927T062853Z-481059",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
     "books/native-admin": {
       "seconds": 13.5,
       "run": "certify-20260927T060441Z-1102076",

@@ -58,10 +58,11 @@
 
 ; Articles: one committed article, cloned under twelve Message-IDs.
 (defconst *lrt-groups* '("fn.letters" "fn.test"))
+; by specification: the flip -- the payload is an arena handle (natp), 0.
 (defconst *lrt-committed*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *lrt-groups*) 7 "<a@example.invalid>"
-                      '(72 105 13 10) *lrt-groups* 841000000)
+                      0 *lrt-groups* 841000000)
    0 7 :durable))
 (defconst *lrt-article* (car (fn-state-articles *lrt-committed*)))
 (assert-event (fn-articlep *lrt-groups* *lrt-article*))

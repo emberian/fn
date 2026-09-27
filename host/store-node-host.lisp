@@ -1118,8 +1118,10 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; 'fn-store-sn global, and that function reads the carried index and nothing
 ; else: it does not walk the store, does not re-parse an article and does not
 ; verify a signature.  What licenses reading the index instead of the lace
-; projection is fn-sn-statement-lookup-is-the-lace-lookup
-; (books/store-node-invariants.lisp).  Its hypothesis, fn-sn-indexedp, holds
+; projection is fn-store-statement-lookup-is-the-lace-lookup
+; (books/store-intern.lisp; since the records flip, the lace of the indexed
+; rows' bytes read through the arena, under fn-rows-contexts-okp of those
+; rows).  Its hypothesis fn-sn-indexedp holds
 ; of this global because fn-sn-initial-is-indexed establishes it at
 ; fn-store-sn-reset and every transition this file applies to the global --
 ; fn-sn-io, fn-sn-prepare, fn-sn-finish, fn-sn-refuse-reservation,
@@ -1197,7 +1199,8 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 ; The equivocation question, answered from the index's third list.  It is a
 ; DISCOVERY AID with a proved agreement to the lace
-; (fn-sn-equivocatorp-is-the-lace-equivocator), never an independent
+; (fn-store-equivocatorp-is-the-lace-equivocator, books/store-intern.lisp),
+; never an independent
 ; authority.
 (defun fn-store-sn-equivocator (creator-octets incarnation state)
   (declare (xargs :stobjs state :mode :program))

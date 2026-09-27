@@ -228,10 +228,11 @@
 ; -----------------------------------------------------------------------------
 ; fn-ocl-relation across the commit (books/owner-commit-ocl.lisp).
 
-; The witness is an article completion: the record found is the held article
-; row, the store returns to :ready with the history kept, the node moves.
+; The witness is an article completion: the record found is the article
+; record, the store returns to :ready with the history kept, the node moves.
 (defconst *acar-t-st* (fn-own-store (fn-ocfg-owner *acar-t-completing*)))
 (assert-event (fn-sn-completion-enabledp *acar-t-st*))
+; by specification: the flip: the article completion is a held row.
 (assert-event (fn-held-p (fn-sn-completion-record *acar-t-st*)))
 (assert-event (fn-cst-relation *acar-t-st*))
 (assert-event (fn-cst-relation (fn-sn-finish *acar-t-st*)))
