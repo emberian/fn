@@ -52,7 +52,9 @@
   (and (true-listp security) (equal (len security) 4)
        (equal (car security) :tls)
        (member-equal (cadr security) '(:starttls :implicit))
-       (stringp (caddr security)) (stringp (cadddr security))
+       (stringp (caddr security))
+       ; PKT-613: a pinned anchor file or the system's public roots.
+       (or (stringp (cadddr security)) (equal (cadddr security) :system-roots))
        t))
 
 ; KEYSTONE SUBJECT.  host/native/pull-service.lisp `fnn-pull-round' calls it

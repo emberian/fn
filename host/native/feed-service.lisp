@@ -202,13 +202,24 @@ closed by this worker, preserving the one-closer rule."
 (defun fnn-feed-enable-tls (runtime link security)
   (unless (and (equal (car security) :tls) (= (length security) 4))
     (fnn-fault "TLS transition without a TLS peer policy"))
-  (let* ((server-name (third security)) (anchor (fourth security))
-         (context (fnn-tls-open-client-context anchor)))
+  ;; PKT-613 (PRF-231): which check the transport selects is ACL2's
+  ;; (`fn-peer-tls-verification'): the configured name, SNI for a DNS name
+  ;; only, and a pinned anchor file or the system's public roots.
+  (let* ((verification (fnn-core 'fn-peer-tls-verification (third security)
+                                 (fourth security)))
+         (server-name (and (eq (first verification) :verify) (second verification)))
+         (context (progn
+                    (unless server-name
+                      (error 'fnn-peer-dial-error
+                             :outcome (if (eq (second verification) :trust)
+                                          :trust :server-name)))
+                    (fnn-tls-open-client-context (fourth verification)))))
     ;; Publish ownership before SSL_connect: every failure path can now close
     ;; the context through the link, including a repeated certificate failure.
     (setf (fnn-feed-link-tls-context link) context)
     (handler-case
-        (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10)))
+        (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10
+                                        :sni (third verification))))
           (setf (fnn-feed-link-tls-channel link) channel)
           (multiple-value-bind (word command)
               (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
@@ -360,7 +371,7 @@ the shared link table."
         (let ((socket nil) (published nil))
           (handler-case
               (progn
-                (setq socket (fnn-connect host port :timeout timeout))
+                (setq socket (fnn-peer-connect host port :timeout timeout))
                 (let ((fd (fnn-socket-fd socket)))
                   (multiple-value-bind (user pass allow-clear)
                       (fnn-feed-auth-profile auth)
@@ -374,8 +385,9 @@ the shared link table."
                   (unless published
                     (fnn-socket-shut socket))))
             ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
-                 fnn-feed-auth-error) ()
+                 fnn-feed-auth-error fnn-peer-dial-error) (condition)
               (when (and socket (not published)) (fnn-socket-shut socket))
+              (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition)
               ;; A failed open has no outgoing bytes, but it is still the
               ;; named peer-loss observation that advances the ACL2 backoff.
               (unless (fnn-feed-stoppingp runtime)
@@ -450,13 +462,19 @@ ACL2 framer."
                     ((zerop (length incoming))
                      (fnn-feed-consume runtime link nil t now))
                     (t (fnn-feed-consume runtime link incoming nil now))))))
-      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) ()
+      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
+           fnn-peer-dial-error) (condition)
         (if (fnn-feed-stoppingp runtime)
             (fnn-feed-close-link runtime link)
           (multiple-value-bind (ignored host port backoff timeout security auth)
               (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                                   (fnn-feed-link-peer-octets link))
-            (declare (ignore ignored host port timeout security auth))
+            (declare (ignore ignored port timeout security auth))
+            ;; PKT-613: a refused STARTTLS handshake (the name, the chain, the
+            ;; configured check) is a dial outcome and is logged by name; a
+            ;; later I/O loss on an established link is not a dial.
+            (when (typep condition '(or fnn-tls-handshake-error fnn-peer-dial-error))
+              (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition))
             (fnn-feed-drop-link runtime link now backoff)))))))
 
 (defun fnn-feed-worker (runtime)

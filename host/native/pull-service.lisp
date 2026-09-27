@@ -234,13 +234,18 @@
                  (case (car effect)
                    (:journal (fnn-pull-journal-append journal (cdr effect)))
                    (:dial
+                    ;; PKT-613: the host as ACL2 decides to reach it
+                    ;; (`fn-peer-dial-target'); a failed resolution or connect
+                    ;; is logged by name and is this round's :lost.
                     (handler-case
-                        (setq socket (fnn-connect (fnn-pull-peer-string
-                                                   (fnn-core 'fn-pull-plan-host plan))
-                                                  (fnn-core 'fn-pull-plan-port plan)
-                                                  :timeout 10)
+                        (setq socket (fnn-peer-connect (fnn-core 'fn-pull-plan-host plan)
+                                                       (fnn-core 'fn-pull-plan-port plan)
+                                                       :timeout 10)
                               fd (fnn-socket-fd socket))
-                      (error () (enqueue (list :lost))))
+                      (error (condition)
+                        (fnn-peer-dial-report :pull peer (fnn-core 'fn-pull-plan-host plan)
+                                              condition)
+                        (enqueue (list :lost))))
                     (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
                       (setf (fnn-pull-runtime-socket runtime) socket)))
                    ;; (:tls SERVER-NAME TRUST-ANCHOR): the handshake ACL2 asked
@@ -250,13 +255,23 @@
                     (if (null fd)
                         (enqueue (list :lost))
                       (handler-case
-                          (progn
-                            (setq context (fnn-tls-open-client-context (third effect)))
-                            (setq channel (fnn-tls-connect context fd (second effect) 10))
+                          ;; PKT-613 (PRF-231): the check is ACL2's
+                          ;; `fn-peer-tls-verification' of the configured name
+                          ;; and trust.
+                          (let ((verification (fnn-core 'fn-peer-tls-verification
+                                                        (second effect) (third effect))))
+                            (unless (eq (first verification) :verify)
+                              (error 'fnn-peer-dial-error
+                                     :outcome (if (eq (second verification) :trust)
+                                                  :trust :server-name)))
+                            (setq context (fnn-tls-open-client-context (fourth verification)))
+                            (setq channel (fnn-tls-connect context fd (second verification) 10
+                                                           :sni (third verification)))
                             (enqueue (list :tls-up)))
                         (error (e)
                           (fnn-err "pull: TLS to peer ~a failed: ~a"
                                    (fnn-pull-peer-string peer) e)
+                          (fnn-peer-dial-report :pull peer (fnn-core 'fn-pull-plan-host plan) e)
                           (enqueue (list :lost))))))
                    (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
                               (error () (enqueue (list :lost)))))

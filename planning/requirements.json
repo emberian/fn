@@ -3947,6 +3947,28 @@
         "tools/run_owner.py"
       ],
       "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
+    },
+    {
+      "id": "NNT-048",
+      "title": "A peer's host may be an RFC 1123 host name as well as an IPv4 literal; the node resolves a name on every connection attempt and never hands a literal to the resolver; a TLS transport verifies the certificate against its configured name under either a pinned anchor file or the system's public roots, the default for a named peer; a name mismatch is refused by name and a resolution failure is a named, retried condition, never a fault",
+      "specification": "specs/peering.md#124-peer-hosts-by-name-and-the-tls-check-pkt-613",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-231"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-host.lisp",
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py",
+        "planning/evidence/peers-by-name-2026-09-27.md"
+      ],
+      "implementation_note": "PKT-613 (public-node gap d, fn half). RFC 1123 section 2.1 host syntax, RFC 6066 section 3 (no literal in SNI) are RFC requirements; resolving on every attempt, the system roots as the named default and the named dial outcomes are fn guarantees; refusing a trailing dot and IPv6 peer literals is local policy."
     }
   ]
 }

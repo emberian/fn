@@ -7834,6 +7834,41 @@
           "name": "fn-ores-take-idle-is-a-result"
         }
       ]
+    },
+    {
+      "id": "PRF-231",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-peer-dial-target-decides-the-path",
+          "note": "KEYSTONE. Subject fn-peer-dial-target; host host/native/io.lisp fnn-peer-connect (feed and pull dials). Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-verification-selects-one-check",
+          "note": "KEYSTONE. Subject fn-peer-tls-verification; host fnn-feed-enable-tls and fnn-pull-round's (:tls) effect. Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-verification-sni-is-never-a-literal",
+          "note": "RFC 6066 section 3 over the same subject. Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-select-named-default",
+          "note": "KEYSTONE. Subject fn-peer-tls-select, called by fn-native-admin-peer-plan-base (peer add). Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-tls-select-is-a-check",
+          "note": "Every selection is a check fn-peer-tls-verification accepts. Teeth: tests/acl2/peer-host-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-host-name-is-not-an-ipv4-literal",
+          "note": "A name never parses as an IPv4 literal (RFC 1123 s2.1). Used by the dial keystone."
+        }
+      ]
     }
   ]
 }

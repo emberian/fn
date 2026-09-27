@@ -337,6 +337,68 @@ like every delta, `fn-cfg-transport-only-deltasp` continues to hold of it
 reconfiguration should carry: *a peer delta changes future transit decisions
 and no committed state*. Theorem K7 in §4 states it.
 
+#### 1.2.4 Peer hosts by name and the TLS check (PKT-613)
+
+NNT-048: A peer's host may be an RFC 1123 host name as well as an IPv4 literal; the node resolves a name on every connection attempt and never hands a literal to the resolver; a TLS transport verifies the certificate against its configured name under either a pinned anchor file or the system's public roots, the default for a named peer; a name mismatch is refused by name and a resolution failure is a named, retried condition, never a fault
+
+A transport's host (`(:nntp 1 HOST PORT SECURITY)`) is text; which texts are
+hosts, and how one connection attempt reaches it, is
+`fn-peer-dial-target` (books/peer-host.lisp, PRF-231), called by the host's
+one peer dial `fnn-peer-connect` (host/native/io.lisp) for the push feed and
+the pull:
+
+- an IPv4 dotted quad (RFC 1123 section 2.1's "#.#.#.#") is dialled as the four
+  octets it spells, with no resolver;
+- an RFC 1123 section 2.1 host name (labels of letters, digits and hyphens, 1
+  to 63 octets, no leading or trailing hyphen, at most 253 octets in all, the
+  last label not all digits) is resolved by one `getaddrinfo` on that attempt
+  and the first IPv4 address it answers is dialled; nothing is cached by fn
+  (the OS's resolver may cache), so a renumbered peer is reached at its new
+  address on the next attempt;
+- anything else, an IPv6 literal included (the peer dial opens AF_INET
+  sockets only), is refused by name (`host-syntax`) before any socket.
+
+`peer add` and `peer invite` (its `Host` and `Inviter-Host` lines) admit only
+hosts of the first two kinds (local policy: a stronger check than a label).
+A durable record written before this rule keeps decoding; its dial is
+refused by name if its host is neither.
+
+A failed resolution (`EAI_NONAME`, `EAI_AGAIN`, ...: `unresolved`), a name
+with no IPv4 address (`no-ipv4-address`), a refused TLS check and a refused
+connect each write one ACL2-rendered service-log line
+`peer dial via=feed|pull peer=NAME host=HOST outcome=OUTCOME retry=yes`
+(`fn-peer-dial-log-line`) and are a peer-local loss: the feed requeues
+through `fn-feed-lost` and its backoff, the pull fails its round and tries
+again at its interval.  None is a fault.
+
+The TLS check a transport `(:tls MODE SERVER-NAME TRUST)` selects is
+`fn-peer-tls-verification`, asked by `fnn-feed-enable-tls` and the pull's
+`(:tls ...)` effect before any `SSL_CTX` exists: the chain must verify and
+match SERVER-NAME (`SSL_set1_host`); SERVER-NAME is sent as SNI only when it
+is a DNS name (RFC 6066 section 3 forbids an address literal there); TRUST is
+a pinned anchor file (`SSL_CTX_load_verify_locations`) or `:system-roots`, the
+library's default store (`SSL_CTX_set_default_verify_paths`, the system
+bundle on OpenSSL and LibreSSL).  A peer whose certificate is renewed by a
+public CA (Let's Encrypt changes the leaf every ~60 days) is anchored on the
+roots, not the leaf.  A certificate that does not match the name fails the
+handshake and is reported `name-mismatch` (`X509_V_ERR_HOSTNAME_MISMATCH`);
+any other verification failure `certificate`.
+
+In `peer add ... starttls|implicit SERVER-NAME ANCHOR`, `-` as SERVER-NAME is
+the host's own DNS name (refused for a numeric host, which has none), and `-`
+as ANCHOR is the system's public roots (`fn-peer-tls-select`).  The durable
+row is `(name "transport-trust-anchor" PATH 0)` for a pinned file, as every
+earlier record wrote it, and `(name "transport-trust-anchor" "" 1)` for the
+roots; no wire, delta or format code changes.
+
+What is not claimed: that DNS answers are authentic (the TLS check against
+the name is what authenticates the destination, and only under the chosen
+anchors), that the system bundle is trustworthy, or anything about inbound
+connections (a `(:source-address addr)` peer is still matched by its source
+address and needs re-adding after a renumbering; `(:principal id)` peers are
+not affected).  RFC 1123 section 2.1 allows a trailing root dot in some
+contexts; fn refuses it.
+
 ### 1.3 Limits and capacity
 
 Per-peer inbound limits are checked in this order, and the first failing
