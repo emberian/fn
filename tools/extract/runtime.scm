@@ -18,7 +18,7 @@
 
 (import scheme (chicken base) (chicken fixnum) (chicken bitwise)
         (chicken string) (chicken io) (chicken process-context)
-        (chicken time) (chicken gc) (chicken format) (chicken condition)
+        (chicken time) (chicken gc) (chicken format) (chicken condition) (chicken port)
         srfi-4 srfi-69)
 
 (define-constant acl2-t '|COMMON-LISP::T|)

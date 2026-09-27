@@ -54,7 +54,7 @@ def scm_string(s):
         elif 32 <= k <= 126:
             out.append(ch)
         else:
-            out.append("\\x%x;" % k)
+            out.append("\\x%02x" % k)
     out.append('"')
     return "".join(out)
 
@@ -70,7 +70,7 @@ def scm_datum(d):
         re, im = scm_datum(d[1]), scm_datum(d[2])
         return "%s%s%si" % (re, "" if im.startswith("-") else "+", im)
     if tag == "ch":
-        return "#\\x%x" % d[1]
+        return "#\\x%02x" % d[1]
     if tag == "s":
         return scm_string(d[1])
     if tag == "y":
@@ -809,12 +809,20 @@ def main():
     p.add_argument("--out", required=True)
     p.add_argument("--erased", required=True)
     p.add_argument("--inventory", required=True)
+    p.add_argument("--table", help="also write a name -> procedure table (fcheck-main.scm)")
     a = p.parse_args()
     ir = json.load(open(a.ir))
     b = Backend(ir)
     text_, inv = b.program()
     with open(a.out, "w") as h:
         h.write(text_)
+    if a.table:
+        with open(a.table, "w") as h:
+            h.write("(define extracted-functions (make-hash-table string=?))\n")
+            for f in ir["functions"]:
+                if f["kind"] == "defun" and f["name"] not in SHIMS:
+                    h.write("(hash-table-set! extracted-functions %s %s)\n"
+                            % (scm_string(f["name"]), fname(f["name"])))
     with open(a.erased, "w") as h:
         json.dump(b.erased, h, indent=1)
     with open(a.inventory, "w") as h:
