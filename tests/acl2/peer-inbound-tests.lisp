@@ -826,3 +826,52 @@
  (assert-event (equal (fn-pu-path-contents
                        (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
                       (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))
+
+; -----------------------------------------------------------------------------
+; P3 (PRF-228): the relay refusal and its keystone
+; (books/peer-inbound-invariants.lisp
+; `fn-peer-transfer-never-stages-an-unapproved-moderated-article').
+; fn.letters moderated (queue fn.test, moderator alice) at generation 2.
+(defconst *pt-mod-record*
+  (fn-cfg-record-make 1 1 2 (list (fn-cfg-set-group-moderation
+                                   "fn.letters" "fn.test" "" '("alice")))
+                      *fn-cfg-default-stamp*))
+(defconst *pt-cfg-mod* (fn-config-replay 0 510 (list *pt-record* *pt-mod-record*)))
+(assert-event (equal (fn-cfg-generation *pt-cfg-mod*) 2))
+(assert-event (fn-peer-moderated-namesp '("fn.letters")
+                                        (fn-cfg-value *pt-cfg-mod*) 2))
+(defconst *pt-ap-lines*
+  (pt-lines '("Path: inn.hbox.test!not-for-mail" "From: poster@example.invalid"
+              "Newsgroups: fn.letters,alt.test" "Subject: approved"
+              "Approved: alice@example.invalid"
+              "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+              "Message-ID: <ap1@example.invalid>" "" "Approved, news.")))
+(defconst *pt-ap* (fn-post-body-octets *pt-ap-lines*))
+(defconst *pt-idap* (pt-o "<ap1@example.invalid>"))
+; Refused by name: an unapproved article in the moderated group leaves the
+; node as it was (the keystone's hypothesis fails; nothing is staged).
+(defconst *pt-mt1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob" "s")))
+(assert-event (equal (nth 1 *pt-mt1*) (fn-peer-decision :refuse :unapproved-moderated)))
+(assert-event (equal (nth 0 *pt-mt1*) *pt-node0*))
+(assert-event (not (fn-peer-article-approvedp *pt-a1*)))
+; The same article is wanted where the group is not moderated.
+(assert-event (equal (nth 1 *pt-t1*) (fn-peer-decision :want nil)))
+; Reachable positive witness: the hypothesis holds (the node changed), the
+; staged groups name the moderated group, and the article carries Approved.
+(defconst *pt-mt2* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-idap* *pt-ap* *pt-obs* 2 "ob" "s")))
+(assert-event (equal (nth 1 *pt-mt2*) (fn-peer-decision :want nil)))
+(assert-event (not (equal (nth 0 *pt-mt2*) *pt-node0*)))
+(assert-event (fn-peer-article-approvedp *pt-ap*))
+(assert-event (fn-peer-moderated-namesp
+               (fn-pending-groups (fn-state-pending (fn-node-acceptance (nth 0 *pt-mt2*))))
+               (fn-cfg-value *pt-cfg-mod*) 2))
+; Hypothesis removal: on a node already staging fn.letters (the unmoderated
+; transfer *pt-t1*), an unapproved article leaves the node unchanged (the
+; hypothesis fails) and the conclusion fails: the pending groups name the
+; moderated group and the article carries no Approved.
+(defconst *pt-mt3* (mv-list 2 (fn-peer-transfer (nth 0 *pt-t1*) *pt-cfg-mod* "innA" *pt-idalt* *pt-alt* *pt-obs* 2 "ob" "s")))
+(assert-event (equal (nth 0 *pt-mt3*) (nth 0 *pt-t1*)))
+(assert-event (not (fn-peer-article-approvedp *pt-alt*)))
+(assert-event (fn-peer-moderated-namesp
+               (fn-pending-groups (fn-state-pending (fn-node-acceptance (nth 0 *pt-mt3*))))
+               (fn-cfg-value *pt-cfg-mod*) 2))
