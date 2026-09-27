@@ -2994,12 +2994,161 @@ in-process retry."
                       (t (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT action: ~a" action)))
                 "developer-only native recovery fault"))))))
 
+;;; SEC-006 (PRF-210): the node's key files (books/node-secret.lisp).  The
+;;; store directory is the node's persistent private state (D34); the key
+;;; files live in STORE/keys/ (mode 0700), each 0600:
+;;;
+;;;   node-secret.key     the CURRENT epoch's entry (fn-ns-file-render)
+;;;   node-secret-E.key   each retained older epoch E, kept by a rotation so
+;;;                       posts locked under it stay cancellable
+;;;
+;;; Every value in a file is ACL2's: the entry (fn-ns-create-entry,
+;;; fn-ns-rotate-entry), its octets (fn-ns-file-render) and its reading
+;;; (fn-ns-file-parse).  The host supplies 32 octets from the OS CSPRNG and
+;;; does the I/O.  The verbs are explicit and never replace a secret:
+;;; `store ROOT node-secret create [IDENTITY]' (and `init') publishes epoch
+;;; 1 once, refused by name when a secret exists; `store ROOT node-secret
+;;; rotate [IDENTITY]' keeps the current file as node-secret-E.key and
+;;; publishes epoch E+1.  A start never creates one
+;;; (host/native/owner.lisp fnn-owner-load-node-secret).  Never printed, never
+;;; exported (`store export' writes committed records only).
+(defun fnn-node-secret-directory (store)
+  (fnn-join (fnn-store-root store) "keys"))
+
+(defun fnn-node-secret-path (store)
+  (fnn-join (fnn-node-secret-directory store) "node-secret.key"))
+
+(defun fnn-node-secret-epoch-path (store epoch)
+  (fnn-join (fnn-node-secret-directory store) (format nil "node-secret-~d.key" epoch)))
+
+;; The largest file fn-ns-file-parse can accept: magic 18, epoch 4, length
+;; 2, identity below 2^16, root 32.
+(defconstant +fnn-node-secret-file-bound+ (+ 18 4 2 65535 32))
+
+(defun fnn-node-secret-ensure-directory (store)
+  (let* ((dir (fnn-node-secret-directory store))
+         (st (fnn-lstat dir)))
+    (cond ((null st)
+           (fnn-mkdir dir #o700)
+           (fnn-fsync-dir (fnn-store-root store)))
+          ((or (fnn-symlink-p st) (not (fnn-directory-p st)))
+           (fnn-fault "refusing non-directory key path: ~a" dir)))
+    dir))
+
+(defun fnn-node-secret-identity (identity)
+  "The octets of the operator's IDENTITY word, or NIL (ACL2 supplies the
+default)."
+  (if identity (fnn-octet-list (fnn-string-octets identity)) nil))
+
+(defun fnn-node-secret-fresh-root ()
+  (fnn-octet-list (fnn-csprng-octets (fnn-core 'fn-ns-secret-width) "node secret")))
+
+(defun fnn-node-secret-render (entry)
+  (unless (fnn-core 'fn-ns-entryp entry)
+    (fnn-fault "ACL2 built an invalid node-secret entry"))
+  (let ((octets (fnn-core 'fn-ns-file-render entry)))
+    (unless (fnn-octet-list-p octets)
+      (fnn-fault "ACL2 returned invalid node-secret file octets"))
+    (fnn-octets octets)))
+
+(defun fnn-node-secret-read-entry (path what)
+  "The entry of the key file PATH, read by ACL2 (fn-ns-file-parse), or NIL
+when PATH is absent.  Refused by name when it is not a regular file, is
+readable or writable by group or others, or does not parse."
+  (let ((st (fnn-lstat path)))
+    (when st
+      (unless (and (not (fnn-symlink-p st)) (fnn-regular-p st))
+        (fnn-refuse "~a ~a is not a regular file" what path))
+      (unless (zerop (logand (sb-posix:stat-mode st) #o077))
+        (fnn-refuse "~a ~a is readable or writable by group or others (mode ~o)"
+                    what path (logand (sb-posix:stat-mode st) #o777)))
+      (let ((entry (fnn-core 'fn-ns-file-parse
+                             (fnn-octet-list
+                              (fnn-read-regular-bounded
+                               path +fnn-node-secret-file-bound+)))))
+        (unless entry
+          (fnn-refuse "~a ~a is not a fn-node-secret v1 file" what path))
+        entry))))
+
+(defun fnn-node-secret-create (store &optional identity (existing :refuse))
+  "Publish STORE's first node secret (epoch 1).  An existing secret is never
+replaced: refused by name, or with EXISTING :keep (init's re-run) kept."
+  (let* ((dir (fnn-node-secret-ensure-directory store))
+         (path (fnn-node-secret-path store)))
+    (flet ((exists ()
+             (if (eq existing :keep)
+                 (return-from fnn-node-secret-create :existing)
+               (fnn-refuse "node secret ~a exists; refusing to replace it" path))))
+      (when (fnn-lstat path) (exists))
+      (let ((entry (fnn-core 'fn-ns-create-entry (fnn-node-secret-identity identity)
+                             (fnn-node-secret-fresh-root))))
+        (when (eq (fnn-publish-initial-file store path (fnn-node-secret-render entry))
+                  :existing)
+          (exists))
+        (fnn-fsync-dir dir)
+        :published))))
+
+(defun fnn-node-secret-same-file-p (a b)
+  (equalp (fnn-read-regular-bounded a +fnn-node-secret-file-bound+)
+          (fnn-read-regular-bounded b +fnn-node-secret-file-bound+)))
+
+(defun fnn-node-secret-rotate (store &optional identity)
+  "Keep the current epoch E as node-secret-E.key, then publish epoch E+1 as
+node-secret.key; the new epoch.  A rotation cut after the keep and before
+the replace is resumed by running the verb again (the kept file equals the
+current one)."
+  (let* ((dir (fnn-node-secret-ensure-directory store))
+         (path (fnn-node-secret-path store))
+         (current (or (fnn-node-secret-read-entry path "node secret")
+                      (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once"
+                                  path (fnn-store-root store))))
+         (epoch (fnn-core 'fn-ns-entry-epoch current))
+         (keep (fnn-node-secret-epoch-path store epoch)))
+    (if (fnn-lstat keep)
+        (unless (fnn-node-secret-same-file-p keep path)
+          (fnn-refuse "retained node secret ~a exists and differs; refusing to rotate" keep))
+      (progn (fnn-link path keep)
+             (fnn-fsync-dir dir)))
+    (let* ((next (fnn-core 'fn-ns-rotate-entry current (fnn-node-secret-identity identity)
+                           (fnn-node-secret-fresh-root)))
+           (octets (fnn-node-secret-render next))
+           (stage (fnn-join dir (format nil ".node-secret-~d-~a.stage"
+                                        (sb-posix:getpid) (fnn-random-hex 8))))
+           (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
+                         #o600)))
+      (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd))
+        (fnn-close fd))
+      (handler-case (fnn-replace stage path)
+        (fnn-os-error (e)
+          (ignore-errors (fnn-unlink stage))
+          (fnn-indeterminate "node secret rotation outcome is indeterminate: ~a" e)))
+      (fnn-fsync-dir dir)
+      (fnn-core 'fn-ns-entry-epoch next))))
+
+(defun fnn-command-node-secret (root words)
+  "`store ROOT node-secret create [IDENTITY]' or `... rotate [IDENTITY]'."
+  (let ((verb (first words)) (identity (second words)))
+    (unless (and (member verb '("create" "rotate") :test #'equal) (null (cddr words)))
+      (error 'fnn-usage-error
+             :message "usage: store ROOT node-secret create|rotate [IDENTITY]"))
+    (let ((store (make-fnn-store root :writable t)))
+      (unwind-protect
+           (progn (fnn-acquire store)
+                  (if (string= verb "create")
+                      (progn (fnn-node-secret-create store identity)
+                             (fnn-out "node-secret created epoch 1"))
+                    (fnn-out "node-secret rotated epoch ~d"
+                             (fnn-node-secret-rotate store identity))))
+        (fnn-store-close store))
+      +fnn-exit-ok+)))
+
 (defun fnn-command-init (root groups &optional (profile :development) policy)
   (let ((store (make-fnn-store root :writable t :fault (fnn-init-test-fault))))
     (unwind-protect
          (progn (fnn-initialize store (or groups +fnn-default-groups+) profile)
                 (fnn-record-filesystem-at-init store profile policy)
                 (fnn-acquire store)
+                (fnn-node-secret-create store nil :keep)
                 (fnn-out "initialized ~a" (fnn-store-root store)))
       (fnn-store-close store))
     +fnn-exit-ok+))
@@ -4250,6 +4399,7 @@ serialized profile when the saved image later starts."
          (let ((root (second args)) (command (third args)) (rest (cdddr args)))
            (cond ((string= command "init") (fnn-command-developer-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
+                 ((string= command "node-secret") (need 4) (fnn-command-node-secret root rest))
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))

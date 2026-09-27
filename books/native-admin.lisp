@@ -17,6 +17,8 @@
 (include-book "peer-config")
 ; PRF-161: the exposure slots and the anonymous words `policy set' admits.
 (include-book "public-exposure-rows")
+; PRF-235, PRF-236: the transit hygiene limit slots.
+(include-book "relay-checks")
 (include-book "identity")
 (include-book "bp-eid-shape")
 ; The argv, decimal, result and config-name vocabulary, and the peer and
@@ -522,6 +524,23 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; PRF-235 / PRF-236 (books/relay-checks.lisp): `policy set
+       ; relay-date-skew SECONDS' (RFC 5537 section 3.6 step 2's margin, at
+       ; most its 86400) and `policy set refused-offer-capacity N' (the
+       ; refused-offer memory's bound), each a `:set-limit' row keyed
+       ; (SLOT, ""), staged, published and replayed like the exposure limits.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (fn-rck-limit-slotp (caddr words))
+             (fn-native-admin-decimalp (cadddr words))
+             (fn-rck-limit-valuep (caddr words)
+                                  (fn-native-admin-decimal-value
+                                   (coerce (cadddr words) 'list))))
+        (fn-native-admin-result :accepted nil :set-transit-limit (caddr argv)
+                                (fn-native-admin-decimal-value
+                                 (coerce (cadddr words) 'list))
+                                nil nil))
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ; D13 (STO-014): the operator's content-retention rule.  Two
@@ -552,7 +571,7 @@
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
-               (member-equal (cadr words) '("budget" "carries" "pull")))
+               (member-equal (cadr words) '("budget" "carries" "pull" "distributions")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))
        ; PRF-164 (PKT-439): invitation-code accounts.  `account list' is a
@@ -658,7 +677,7 @@
                (if (equal name "release-after")
                    (fn-native-admin-result-capacity plan)
                  nil))))
-            ((equal kind :set-exposure)
+            ((member-equal kind '(:set-exposure :set-transit-limit))
              (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
             ((equal kind :consumer-bind)
              (list (fn-cfg-consumer-bind
@@ -1281,7 +1300,7 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-peer-extend-plan
                                    fn-native-admin-bp-boundary-plan
                                    fn-native-admin-control-plan
                                    fn-native-admin-moderate-plan
@@ -1314,7 +1333,7 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-peer-extend-plan
                                    fn-native-admin-bp-boundary-plan
                                    fn-native-admin-control-plan
                                    fn-native-admin-moderate-plan

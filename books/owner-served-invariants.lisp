@@ -25,6 +25,9 @@
 (in-package "ACL2")
 (include-book "owner-tls-prefix")
 (include-book "owner-prepare-correspondence")
+; SEC-006: the served arm of the stored octets carries the login's
+; RFC 8315 Cancel-Lock (books/cancel-lock.lisp fn-cl-served-payload).
+(include-book "cancel-lock")
 
 ; -----------------------------------------------------------------------------
 ; P2.  The 240 names this submission's record.
@@ -59,37 +62,117 @@
 ; octets (fn-own-sub-octets) whenever a Path identity is configured, so a
 ; completion compared with the received octets names a different article
 ; (transit-436, 2026-09-24).
-(defun fn-own-sub-stored-octets (cfg sub)
+; SEC-006 (PRF-210): a local submission's are its injected octets with the
+; RFC 8315 lines the node generates for the submission's account under the
+; key ring RING (the owner's fn-own-node-secret) IN FRONT: `Cancel-Lock:
+; sha256:lock(E, ACCOUNT, MSGID)' under the current epoch E and, on a
+; cancel or Supersedes, `Cancel-Key:' with one key per retained epoch
+; (books/cancel-lock.lisp fn-cl-served-payload).  Without an account
+; (control, BP, an unauthenticated POST) or a ring they are the injected
+; octets.  The lines are outside the D25 source (books/cancel-lock-lines.lisp
+; fn-cll-skip; fn-own-stored-octets-keep-the-injected-octets below).
+(defun fn-own-sub-stored-octets (cfg sub secret)
   (declare (xargs :guard t))
   (let ((d (fn-own-sub-decision sub)))
     (if (fn-peer-submissionp d)
         (fn-peer-relayed-octets cfg (fn-peer-submission-peer d)
                                 (fn-peer-submission-octets d))
-      (fn-inj-decision-octets d))))
+      (fn-cl-served-payload secret (fn-own-sub-account sub)
+                            (fn-inj-decision-msgid d)
+                            (fn-inj-decision-octets d)))))
 
 ;; The two arms, named by definition (they are not keystones).  A local or
-;; control submission's staged octets are its own: nothing is prepended, so
-;; for served POST the keystone below compares with the submission's octets
-;; exactly as before.  A transit submission's are fn-peer-relayed-octets of
+;; control submission's staged octets are the generated lines, if any, and
+;; its own injected octets.  A transit submission's are fn-peer-relayed-octets of
 ;; the received octets, whose Path is the received Path with this node's
 ;; identity and diagnostic prepended when a Path identity is set
 ;; (books/peer-inbound-invariants.lisp
 ;; fn-peer-relayed-octets-keep-the-received-path-tail).
 (defthm fn-own-sub-stored-octets-of-a-local-submission-by-definition
   (implies (not (fn-peer-submissionp (fn-own-sub-decision sub)))
-           (equal (fn-own-sub-stored-octets cfg sub)
+           (equal (fn-own-sub-stored-octets cfg sub secret)
+                  (fn-cl-served-payload secret (fn-own-sub-account sub)
+                                        (fn-own-sub-msgid sub)
+                                        (fn-own-sub-octets sub))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets
+                                     fn-own-sub-msgid))))
+
+(defthm fn-own-sub-stored-octets-without-an-account-by-definition
+  (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
+                (not (fn-cl-accountp (fn-own-sub-account sub))))
+           (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
 
 (defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
   (implies (fn-peer-submissionp (fn-own-sub-decision sub))
-           (equal (fn-own-sub-stored-octets cfg sub)
+           (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-peer-relayed-octets
                    cfg (fn-peer-submission-peer (fn-own-sub-decision sub))
                    (fn-own-sub-octets sub))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+
+; KEYSTONE (SEC-006, PRF-210; subject fn-own-sub-stored-octets, which
+; host/owner-host.lisp fn-owner-take stages for the Store and
+; fn-owner-finish-submission's gate compares with the durable record).  For
+; a served submission by account A, with a key ring installed, no
+; Cancel-Lock written by the poster and no signature carrier, the stored
+; octets are exactly one Cancel-Lock line, A's lock for the submission's
+; Message-ID under the current key epoch, then (for a cancel) the Cancel-Key
+; line, then the injected octets unchanged; by
+; fn-cl-account-key-opens-exactly-its-lock, A's key opens that lock and
+; another account's key opens it only through a collision.
+(defthm fn-own-stored-octets-carry-the-account-lock
+  (let* ((d (fn-own-sub-decision sub))
+         (account (fn-own-sub-account sub))
+         (x (fn-inj-decision-octets d))
+         (fields (fn-ctl-received-fields x)))
+    (implies (and (not (fn-peer-submissionp d))
+                  (fn-cl-lock-wanted-p secret account fields))
+             (equal (fn-own-sub-stored-octets cfg sub secret)
+                    (append (fn-cll-line *fn-cll-lock-head*
+                                         (fn-cl-lock (fn-ns-current secret) account
+                                                     (fn-inj-decision-msgid d)))
+                            (if (consp (fn-cl-key-values secret account fields))
+                                (fn-cll-key-line (fn-cl-key-values secret account fields))
+                              nil)
+                            x))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
+                                  (fn-cl-served-payload fn-cl-lock fn-cl-key-values
+                                   fn-ctl-received-fields fn-cll-line fn-cll-key-line
+                                   fn-cl-lock-wanted-p))
+           :use ((:instance fn-cl-served-payload-writes-one-account-lock
+                            (ring secret)
+                            (account (fn-own-sub-account sub))
+                            (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
+                            (payload (fn-inj-decision-octets
+                                      (fn-own-sub-decision sub))))))))
+
+; KEYSTONE (D25 restored, gpt-6's wave-5 review section 3; subject
+; fn-own-sub-stored-octets).  Whatever the key ring and the account, the
+; D25 projection (books/cancel-lock-lines.lisp fn-cll-skip, which
+; books/poster-bytes.lisp reads both compared payloads through) of the
+; octets a served submission stores is its injected octets: the generated
+; metadata never enters the source identity, so a same-source retry by
+; another account or after a key rotation compares exactly as the injected
+; articles do (books/cancel-lock-d25.lisp states the verdicts).
+(defthm fn-own-stored-octets-keep-the-injected-octets
+  (let* ((d (fn-own-sub-decision sub))
+         (x (fn-inj-decision-octets d)))
+    (implies (and (not (fn-peer-submissionp d))
+                  (not (equal (car x) 67)))
+             (equal (fn-cll-skip (fn-own-sub-stored-octets cfg sub secret)) x)))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
+                                  (fn-cl-served-payload))
+           :use ((:instance fn-cl-served-payload-projects-to-the-injected-octets
+                            (ring secret)
+                            (account (fn-own-sub-account sub))
+                            (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
+                            (payload (fn-inj-decision-octets
+                                      (fn-own-sub-decision sub))))))))
 
 (defun fn-own-completion-names-submission-p (o cfg)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
@@ -99,7 +182,8 @@
          (fn-record-p record)
          (equal (fn-record-msgid record)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-stored-octets cfg sub))
+         (equal (fn-record-payload record)
+                (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))
          t)))
 
 (defun fn-own-finish (o cfg)
@@ -164,7 +248,7 @@
                   (equal (fn-record-msgid record)
                          (fn-record-octets-string (fn-own-sub-msgid sub)))
                   (equal (fn-record-payload record)
-                         (fn-own-sub-stored-octets cfg sub))
+                         (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))
                   (fn-sf-record-has-pairp
                    pair (fn-sf-records (fn-sn-files (fn-own-store o2)))))))
   :rule-classes nil

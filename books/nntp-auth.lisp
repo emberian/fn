@@ -712,7 +712,8 @@
              (fn-node-statep (fn-peer-session-node ps)))
         (fn-auth-with-base
          as (fn-peer-make-session (fn-peer-session-base ps) peer nil 0
-                                  (fn-peer-session-node ps) cfg))
+                                  (fn-peer-session-node ps) cfg
+                                  (fn-peer-session-refused ps)))
       as)))
 
 (defun fn-auth-clear-principal-peer (as)
@@ -723,7 +724,8 @@
         (fn-auth-with-base
          as (fn-peer-make-session (fn-peer-session-base ps) nil nil 0
                                   (fn-peer-session-node ps)
-                                  (fn-peer-session-cfg ps)))
+                                  (fn-peer-session-cfg ps)
+                                  (fn-peer-session-refused ps)))
       as)))
 
 ; -----------------------------------------------------------------------------

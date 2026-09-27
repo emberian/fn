@@ -27,7 +27,7 @@
                 (fn-own-pending o) (fn-own-ledger o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (defun fn-ocl-store-config (st)
   (declare (xargs :guard t))
@@ -352,7 +352,7 @@
            (fn-ocl-view-historyp
             (fn-own-refresh
              (fn-own-make st view conns next-id max-conns pending ledger
-                          clock facts config queue inflight feeds))))
+                          clock facts config queue inflight feeds node-secret refused))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-own-take-of-len
@@ -474,7 +474,8 @@
                             (configs (fn-sn-config-history st))))
            :in-theory (e/d (fn-ocl-view-historyp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep fn-cst-relation)
-                           (fn-cst-replay-node fn-cpr-replay fn-own-take
+                           (fn-ctl-withdrawal-effect fn-ctl-visible-articles
+                            fn-cst-replay-node fn-cpr-replay fn-own-take
                             fn-own-view-make-group-indexed fn-ctl-refresh-state-is-visible
                             fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
                             fn-ctl-visible-state fn-ctl-visible-state-of
@@ -551,7 +552,7 @@
                                 (fn-own-pending o) (fn-own-ledger o)
                                 (fn-own-clock o) (fn-own-facts o)
                                 (fn-own-config o) (fn-own-queue o)
-                                (fn-own-inflight o) (fn-own-feeds o)))))
+                                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
            :in-theory (e/d (fn-ocl-config-historyp fn-ocl-owner-with-store
                             fn-ocl-store-config fn-cpo-history-relation)
                            (fn-own-refresh fn-cpr-replay)))))
@@ -570,7 +571,8 @@
            :in-theory (e/d (fn-ocl-view-configp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep
                             fn-ocl-store-config)
-                           (fn-cpr-replay fn-own-take
+                           (fn-ctl-withdrawal-effect fn-ctl-visible-articles
+                            fn-cpr-replay fn-own-take
                             fn-own-view-make-group-indexed)))))
 
 (defthm fn-ocl-complete-preserves-full-historical-relation
@@ -603,7 +605,7 @@
                                 (fn-own-config (fn-ocfg-owner oc))
                                 (fn-own-queue (fn-ocfg-owner oc))
                                 (fn-own-inflight (fn-ocfg-owner oc))
-                                (fn-own-feeds (fn-ocfg-owner oc)))))
+                                (fn-own-feeds (fn-ocfg-owner oc)) (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)))))
                  (:instance fn-ocl-durable-keeps-history-proper
                             (st (fn-own-store (fn-ocfg-owner oc)))
                             (record (fn-ocfg-staged oc)))
@@ -1613,7 +1615,8 @@
   :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-finish-read
                                     fn-own-set-conns fn-own-enqueue
                                     fn-own-shapep fn-own-make)
-                                   (fn-served-step fn-own-conn-boundedp)))))
+                                   (fn-ctl-withdrawal-effect fn-ctl-visible-articles
+                            fn-served-step fn-own-conn-boundedp)))))
 
 (defthm fn-ocl-own-read-keeps-owner-control
   (let ((next (cdr (fn-own-read o id octets))))

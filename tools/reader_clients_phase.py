@@ -359,6 +359,23 @@ def check(node, wire, login, password, mids):
         out[name] = {"status": status, "references": next(
             (h for h in head if h.lower().startswith("references:")), ""),
             "subject": next((h for h in head if h.lower().startswith("subject:")), "")}
+    # SEC-006: the cancelled article is gone from the reader's view: ARTICLE
+    # answers 430 and OVER over the group does not list it.
+    cancelled = out.get("cancelled")
+    if cancelled is not None:
+        mid = mids["cancelled"] if mids["cancelled"].startswith("<") else \
+            "<{}>".format(mids["cancelled"])
+        article = session.command("ARTICLE " + mid)
+        if article.startswith("220"):
+            session.block()
+        cancelled["article"] = article
+        group = session.command("GROUP " + node.args.group)
+        listed = None
+        if group.startswith("211"):
+            over = session.command("OVER 1-")
+            if over.startswith("224"):
+                listed = any(line.split("\t")[4:5] == [mid] for line in session.block())
+        cancelled["in_over"] = listed
     session.close()
     return out
 

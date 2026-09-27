@@ -579,19 +579,107 @@
 
 (in-theory (disable fn-pbb-unsplice-at))
 
+; -----------------------------------------------------------------------------
+; SEC-006 (D25): the node's generated Cancel-Lock and Cancel-Key lines in
+; front of its block (books/cancel-lock-lines.lisp `fn-cll-skip').  The
+; index past them: a line opening with the field is skipped through its LF
+; (`fn-oct-line-end'), the lock line first, then the key line.  An index
+; walk: nothing of the payload is consed.
+
+(defun fn-pbb-skip-one-at (field i fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (<= i (fn-octets-len fn-octets)))))
+  (if (equal (fn-pbb-strip-at field i fn-octets) :no)
+      i
+    (fn-oct-line-end i fn-octets)))
+
+(local
+ (defthm fn-pbb-line-end-bounds
+   (implies (and (natp i) (<= i (len fn-octets)))
+            (and (natp (fn-oct-line-end i fn-octets))
+                 (<= i (fn-oct-line-end i fn-octets))
+                 (<= (fn-oct-line-end i fn-octets) (len fn-octets))))
+   :hints (("Goal" :induct (fn-oct-line-end i fn-octets)
+            :in-theory (enable fn-oct-line-end)))))
+
+(defthm fn-pbb-skip-one-at-bounds
+  (implies (and (natp i) (<= i (len fn-octets)))
+           (and (natp (fn-pbb-skip-one-at field i fn-octets))
+                (<= i (fn-pbb-skip-one-at field i fn-octets))
+                (<= (fn-pbb-skip-one-at field i fn-octets) (len fn-octets))))
+  :rule-classes ((:rewrite :corollary
+                  (implies (and (natp i) (<= i (len fn-octets)))
+                           (natp (fn-pbb-skip-one-at field i fn-octets))))
+                 (:linear :corollary
+                  (implies (and (natp i) (<= i (len fn-octets)))
+                           (and (<= i (fn-pbb-skip-one-at field i fn-octets))
+                                (<= (fn-pbb-skip-one-at field i fn-octets)
+                                    (len fn-octets))))))
+  :hints (("Goal" :in-theory (disable fn-oct-line-end))))
+
+(local
+ (defthm fn-pbb-after-line-is-line-end
+   (implies (and (natp i) (<= i (len fn-octets)) (true-listp fn-octets))
+            (equal (fn-cll-after-line (nthcdr i fn-octets))
+                   (nthcdr (fn-oct-line-end i fn-octets) fn-octets)))
+   :hints (("Goal" :induct (fn-oct-line-end i fn-octets)
+            :in-theory (enable fn-oct-line-end fn-cll-after-line)))))
+
+(local
+ (defthm fn-pbb-cll-strip-is-inj-strip
+   (equal (fn-cll-strip p x) (fn-inj-strip p x))
+   :hints (("Goal" :in-theory (enable fn-cll-strip fn-inj-strip)))))
+
+(defthm fn-pbb-skip-one-at-is-cll-skip-one
+  (implies (and (natp i) (<= i (len fn-octets)) (true-listp fn-octets))
+           (equal (fn-cll-skip-one field (nthcdr i fn-octets))
+                  (nthcdr (fn-pbb-skip-one-at field i fn-octets) fn-octets)))
+  :hints (("Goal" :in-theory (e/d (fn-cll-skip-one) (fn-oct-line-end))
+           :use ((:instance fn-pbb-strip-at-is-inj-strip (prefix field))))))
+
+(in-theory (disable fn-pbb-skip-one-at))
+
+(defun fn-pbb-skip-at (fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t))
+  (fn-pbb-skip-one-at *fn-cll-key-field*
+                      (fn-pbb-skip-one-at *fn-cll-lock-field* 0 fn-octets)
+                      fn-octets))
+
+(defthm fn-pbb-skip-at-bounds
+  (and (natp (fn-pbb-skip-at fn-octets))
+       (<= (fn-pbb-skip-at fn-octets) (len fn-octets)))
+  :rule-classes ((:rewrite :corollary (natp (fn-pbb-skip-at fn-octets)))
+                 (:linear :corollary (<= (fn-pbb-skip-at fn-octets) (len fn-octets)))))
+
+(defthm fn-pbb-skip-at-is-cll-skip
+  (implies (true-listp fn-octets)
+           (equal (fn-cll-skip fn-octets)
+                  (nthcdr (fn-pbb-skip-at fn-octets) fn-octets)))
+  :hints (("Goal" :in-theory (enable fn-cll-skip)
+           :use ((:instance fn-pbb-skip-one-at-is-cll-skip-one
+                            (field *fn-cll-lock-field*) (i 0))
+                 (:instance fn-pbb-skip-one-at-is-cll-skip-one
+                            (field *fn-cll-key-field*)
+                            (i (fn-pbb-skip-one-at *fn-cll-lock-field* 0 fn-octets)))))))
+
+(in-theory (disable fn-pbb-skip-at fn-pbb-skip-at-is-cll-skip))
+
 (defun fn-pbb-source-index (agent msgid fn-octets)
-  ; The description (K A B) of the injection source in the buffer, or nil.
+  ; The description (K A B) of the injection source in the buffer past the
+  ; node's generated lines (SEC-006: from S = `fn-pbb-skip-at'), or nil.
   (declare (xargs :stobjs fn-octets :guard t
                   :guard-hints
                   (("Goal"
                     :in-theory (disable len)
                     :use ((:instance fn-pbb-strip-at-bounds
-                                     (prefix (fn-inj-path-line agent)) (i 0)))))))
-  (let ((r1 (fn-pbb-strip-at (fn-inj-path-line agent) 0 fn-octets)))
+                                     (prefix (fn-inj-path-line agent))
+                                     (i (fn-pbb-skip-at fn-octets))))))))
+  (let* ((s (fn-pbb-skip-at fn-octets))
+         (r1 (fn-pbb-strip-at (fn-inj-path-line agent) s fn-octets)))
     (if (not (equal r1 :no))
         (let ((k (fn-pbb-source-after-path r1 agent msgid fn-octets)))
           (if k (list k k k) nil))
-      (let ((k (fn-pbb-source-after-path 0 agent msgid fn-octets)))
+      (let ((k (fn-pbb-source-after-path s agent msgid fn-octets)))
         (if k (fn-pbb-unsplice-at k agent fn-octets) nil)))))
 
 (defthm fn-pbb-source-index-bounds
@@ -600,22 +688,28 @@
            (fn-pbb-descp (fn-pbb-source-index agent msgid fn-octets) (len fn-octets)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-pbb-source-index) (len))
-           :use ((:instance fn-pbb-strip-at-bounds (prefix (fn-inj-path-line agent)) (i 0))))))
+           :use ((:instance fn-pbb-strip-at-bounds (prefix (fn-inj-path-line agent))
+                            (i (fn-pbb-skip-at fn-octets)))))))
 
 (defthm fn-pbb-source-index-is-inj-source-of
   (implies (true-listp fn-octets)
-           (equal (fn-inj-source-of fn-octets agent msgid)
+           (equal (fn-inj-source-of (fn-cll-skip fn-octets) agent msgid)
                   (if (fn-pbb-source-index agent msgid fn-octets)
                       (cons t (fn-pbb-desc-list (fn-pbb-source-index agent msgid fn-octets)
                                                 fn-octets))
                     nil)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-inj-source-of fn-pbb-source-index) (len))
-           :use ((:instance fn-pbb-strip-at-is-inj-strip (prefix (fn-inj-path-line agent)) (i 0))
-                 (:instance fn-pbb-strip-at-bounds (prefix (fn-inj-path-line agent)) (i 0))
+           :in-theory (e/d (fn-inj-source-of fn-pbb-source-index
+                            fn-pbb-skip-at-is-cll-skip) (len))
+           :use ((:instance fn-pbb-strip-at-is-inj-strip (prefix (fn-inj-path-line agent))
+                            (i (fn-pbb-skip-at fn-octets)))
+                 (:instance fn-pbb-strip-at-bounds (prefix (fn-inj-path-line agent))
+                            (i (fn-pbb-skip-at fn-octets)))
                  (:instance fn-pbb-source-after-path-is-v2-tail
-                            (r1 (fn-pbb-strip-at (fn-inj-path-line agent) 0 fn-octets)))
-                 (:instance fn-pbb-source-after-path-is-v2-tail (r1 0))))))
+                            (r1 (fn-pbb-strip-at (fn-inj-path-line agent)
+                                                 (fn-pbb-skip-at fn-octets) fn-octets)))
+                 (:instance fn-pbb-source-after-path-is-v2-tail
+                            (r1 (fn-pbb-skip-at fn-octets)))))))
 
 (in-theory (disable fn-pbb-source-index))
 
@@ -703,10 +797,11 @@
 
 (in-theory (disable fn-pbb-line fn-pbb-line-at))
 
-(defun fn-pbb-path-line-agent (fn-octets)
-  ; `fn-pb-path-line-agent' with its line read from the buffer.
-  (declare (xargs :stobjs fn-octets :guard t))
-  (let* ((line (fn-pbb-line fn-octets))
+(defun fn-pbb-path-line-agent (s fn-octets)
+  ; `fn-pb-path-line-agent' of st[s..) with its line read from the buffer.
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp s) (<= s (fn-octets-len fn-octets)))))
+  (let* ((line (fn-pbb-line-at s fn-octets))
          (r (fn-inj-strip *fn-inj-path-field* line)))
     (if (and (true-listp r) (< *fn-pb-path-tail-length* (len r)))
         (let ((agent (fn-inj-take (- (len r) *fn-pb-path-tail-length*) r)))
@@ -714,8 +809,9 @@
       nil)))
 
 (defthm fn-pbb-path-line-agent-is-pb-path-line-agent
-  (implies (true-listp fn-octets)
-           (equal (fn-pbb-path-line-agent fn-octets) (fn-pb-path-line-agent fn-octets)))
+  (implies (and (natp s) (<= s (len fn-octets)) (true-listp fn-octets))
+           (equal (fn-pbb-path-line-agent s fn-octets)
+                  (fn-pb-path-line-agent (nthcdr s fn-octets))))
   :hints (("Goal" :in-theory (enable fn-pb-path-line-agent))))
 
 (in-theory (disable fn-pbb-path-line-agent))
@@ -740,16 +836,34 @@
 
 (in-theory (disable fn-pbb-info-line-agent))
 
-(defun fn-pbb-block-agent (msgid fn-octets)
+(local
+ (defthm fn-pbb-natp-plus-strip-optional
+   (implies (and (natp i) (<= i (len fn-octets)) (natp c))
+            (natp (+ c (fn-pbb-strip-optional-at line i fn-octets))))
+   :hints (("Goal" :use fn-pbb-strip-optional-at-bounds
+            :in-theory (disable fn-pbb-strip-optional-at-bounds)))))
+
+(defun fn-pbb-block-agent (s msgid fn-octets)
   ; `fn-pb-block-agent' over the buffer: past an Injection-Date line (49
   ; octets), a Message-ID line of MSGID and a Date line (39 octets), each
   ; when present, the agent the Injection-Info line names.
-  (declare (xargs :stobjs fn-octets :guard t
-                  :guard-hints (("Goal" :in-theory (disable len)))))
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp s) (<= s (fn-octets-len fn-octets)))
+                  :guard-hints
+                  (("Goal" :in-theory (disable len)
+                    :use ((:instance fn-pbb-strip-optional-at-bounds
+                                     (line (fn-inj-message-id-line msgid))
+                                     (i (if (equal (fn-pbb-strip-at
+                                                    *fn-inj-injection-date-field*
+                                                    s fn-octets)
+                                                   :no)
+                                            s
+                                          (min (+ s *fn-pb-stamp-line-length*)
+                                               (len fn-octets))))))))))
   (let* ((n (fn-octets-len fn-octets))
-         (i1 (if (equal (fn-pbb-strip-at *fn-inj-injection-date-field* 0 fn-octets) :no)
-                 0
-               (min *fn-pb-stamp-line-length* n)))
+         (i1 (if (equal (fn-pbb-strip-at *fn-inj-injection-date-field* s fn-octets) :no)
+                 s
+               (min (+ s *fn-pb-stamp-line-length*) n)))
          (i2 (fn-pbb-strip-optional-at (fn-inj-message-id-line msgid) i1 fn-octets))
          (i3 (if (equal (fn-pbb-strip-at *fn-inj-date-field* i2 fn-octets) :no)
                  i2
@@ -759,9 +873,9 @@
 ; The three indices of the block walk, named for the hint below.
 (local
  (defmacro fn-pbb-i1 ()
-   '(if (equal (fn-pbb-strip-at *fn-inj-injection-date-field* 0 fn-octets) :no)
-        0
-      (min *fn-pb-stamp-line-length* (len fn-octets)))))
+   '(if (equal (fn-pbb-strip-at *fn-inj-injection-date-field* s fn-octets) :no)
+        s
+      (min (+ s *fn-pb-stamp-line-length*) (len fn-octets)))))
 (local
  (defmacro fn-pbb-i2 ()
    '(fn-pbb-strip-optional-at (fn-inj-message-id-line msgid) (fn-pbb-i1) fn-octets)))
@@ -772,13 +886,13 @@
       (min (+ (fn-pbb-i2) *fn-pb-date-line-length*) (len fn-octets)))))
 
 (defthm fn-pbb-block-agent-is-pb-block-agent
-  (implies (true-listp fn-octets)
-           (equal (fn-pb-block-agent fn-octets msgid)
-                  (fn-pbb-block-agent msgid fn-octets)))
+  (implies (and (natp s) (<= s (len fn-octets)) (true-listp fn-octets))
+           (equal (fn-pb-block-agent (nthcdr s fn-octets) msgid)
+                  (fn-pbb-block-agent s msgid fn-octets)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-pb-block-agent fn-pb-opensp) (len))
            :use ((:instance fn-pbb-strip-at-is-inj-strip
-                            (prefix *fn-inj-injection-date-field*) (i 0))
+                            (prefix *fn-inj-injection-date-field*) (i s))
                  (:instance fn-pbb-strip-optional-at-is-inj-strip-optional
                             (line (fn-inj-message-id-line msgid)) (i (fn-pbb-i1)))
                  (:instance fn-pbb-strip-optional-at-bounds
@@ -795,13 +909,15 @@
   ; names (recipe v1 and v2), else the one the v3 block's Injection-Info
   ; line names.
   (declare (xargs :stobjs fn-octets :guard t))
-  (or (fn-pbb-path-line-agent fn-octets) (fn-pbb-block-agent msgid fn-octets)))
+  ; Past the node's generated lines (SEC-006), as `fn-pb-path-agent'.
+  (let ((s (fn-pbb-skip-at fn-octets)))
+    (or (fn-pbb-path-line-agent s fn-octets) (fn-pbb-block-agent s msgid fn-octets))))
 
 (defthm fn-pbb-path-agent-is-pb-path-agent
   (implies (true-listp fn-octets)
            (equal (fn-pbb-path-agent msgid fn-octets)
                   (fn-pb-path-agent fn-octets msgid)))
-  :hints (("Goal" :in-theory (enable fn-pb-path-agent))))
+  :hints (("Goal" :in-theory (enable fn-pb-path-agent fn-pbb-skip-at-is-cll-skip))))
 
 (in-theory (disable fn-pbb-path-agent))
 

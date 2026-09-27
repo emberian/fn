@@ -670,7 +670,8 @@
        (equal (fn-own-facts (fn-own-refresh o)) (fn-own-facts o))
        (equal (fn-own-config (fn-own-refresh o)) (fn-own-config o))
        (equal (fn-own-queue (fn-own-refresh o)) (fn-own-queue o))
-       (equal (fn-own-inflight (fn-own-refresh o)) (fn-own-inflight o)))
+       (equal (fn-own-inflight (fn-own-refresh o)) (fn-own-inflight o))
+       (equal (fn-own-refused (fn-own-refresh o)) (fn-own-refused o)))
   :hints (("Goal" :in-theory (disable fn-own-store-idlep))))
 
 ; The refresh keystone's one fact about the archive: distinct Message-IDs,
@@ -957,13 +958,15 @@
   :hints (("Goal" :in-theory (e/d ((:d fn-own-conn-live-session))
                                   (fn-auth-sessionp fn-peer-sessionp
                                    fn-auth-with-base fn-peer-with-node
+                                   fn-peer-with-refused
                                    fn-node-statep)))))
 
 (defthm fn-own-conn-live-session-keeps-the-reader-session
   (equal (fn-auth-reader-session (fn-own-conn-live-session o conn))
          (fn-auth-reader-session (fn-own-conn-session conn)))
   :hints (("Goal" :in-theory (e/d ((:d fn-own-conn-live-session))
-                                  (fn-auth-with-base fn-peer-with-node)))))
+                                  (fn-auth-with-base fn-peer-with-node
+                                   fn-peer-with-refused)))))
 
 (defthm fn-own-live-session-boundedp
   (implies (and (fn-own-conn-boundedp conn groups)
@@ -1169,7 +1172,7 @@
                                             ; the first, so only one was ever seen.
                                             (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o)
-                                            (fn-own-feeds o))))
+                                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-own-snrt-step-records-prefix (s (fn-own-store o))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp fn-own-refresh-preserves-relation fn-own-refresh
@@ -1190,7 +1193,7 @@
                                             (fn-own-clock o) (fn-own-facts o)
                                             (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o)
-                                            (fn-own-feeds o))))
+                                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-snt-finish-preserves-relation (s (fn-own-store o)))
                  (:instance fn-snt-finish-image (s (fn-own-store o)))
                  (:instance fn-snt-finish-keeps-records (s (fn-own-store o)))
@@ -1216,7 +1219,7 @@
                                 (fn-own-view o) nil (fn-own-next-id o)
                                 (fn-own-max-conns o) nil (fn-own-ledger o) nil
                                 (fn-own-facts o) (fn-own-config o) nil nil
-                                (fn-own-feed-restart-all (fn-own-feeds o)))))
+                                (fn-own-feed-restart-all (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-sn-open-observed-success-has-live-history-relation
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o))))
@@ -1442,7 +1445,8 @@
   :rule-classes nil)
 
 ; The outcome releases the transaction and empties `inflight'; neither is
-; read by the relation.  Both served and control outcomes use this body.
+; read by the relation, nor is the refused-offer memory (PRF-235), which a
+; transit outcome records into.  Both served and control outcomes use this body.
 (local
  (defthm fn-own-outcome-body-preserves-relation
    (implies (fn-own-relation o)
@@ -1450,7 +1454,7 @@
              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                           (fn-own-next-id o) (fn-own-max-conns o) p
                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                          (fn-own-config o) (fn-own-queue o) nil fds)))
+                          (fn-own-config o) (fn-own-queue o) nil fds (fn-own-node-secret o) rf)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))
 
 (defthm fn-own-control-outcome-preserves-relation
@@ -1458,6 +1462,7 @@
            (fn-own-relation (fn-own-control-outcome o word)))
   :hints (("Goal"
            :use ((:instance fn-own-outcome-body-preserves-relation
+                            (rf (fn-own-refused o))
                             (p (if (equal (fn-own-pending o)
                                           *fn-own-control-id*)
                                    nil (fn-own-pending o)))
@@ -1556,6 +1561,7 @@
            (fn-own-relation (cdr (fn-own-outcome o id word))))
   :hints (("Goal"
            :use ((:instance fn-own-outcome-body-preserves-relation
+                            (rf (fn-own-refused o))
                             (p (if (equal (fn-own-pending o) id)
                                    nil (fn-own-pending o)))
                             (fds (if (equal (fn-own-outcome-completion o word)
@@ -1585,7 +1591,7 @@
                           (fn-own-next-id o) (fn-own-max-conns o)
                           (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                           (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                          (fn-own-inflight o) fds)))
+                          (fn-own-inflight o) fds (fn-own-node-secret o) rf)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))
 
 (defthm fn-own-step-preserves-relation
@@ -1648,7 +1654,7 @@
                                                 (fn-state-articles archive))
                                                nil))
                                             nil 0 max-conns nil nil nil nil
-                                            nil nil nil nil))))
+                                            nil nil nil nil nil nil))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
                             fn-gidx-build)
                            (fn-own-view-make-group-indexed
@@ -2292,10 +2298,12 @@
                 (null (fn-own-pending o))
                 (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
            (and (equal (fn-own-inflight (fn-own-take-submission o))
-                       (fn-own-sub-make (fn-own-sub-id (car (fn-own-queue o)))
-                                        (fn-own-sub-version (car (fn-own-queue o)))
-                                        (len (fn-own-ledger o))
-                                        (fn-own-sub-decision (car (fn-own-queue o)))))
+                       (fn-own-sub-make-author (fn-own-sub-id (car (fn-own-queue o)))
+                                               (fn-own-sub-version (car (fn-own-queue o)))
+                                               (len (fn-own-ledger o))
+                                               (fn-own-sub-decision (car (fn-own-queue o)))
+                                               (fn-own-sub-login (car (fn-own-queue o)))
+                                               (fn-own-sub-account (car (fn-own-queue o)))))
                 (equal (fn-own-queue (fn-own-take-submission o))
                        (cdr (fn-own-queue o)))
                 (equal (fn-own-pending (fn-own-take-submission o))
@@ -2624,7 +2632,7 @@
                                                        :durable)
                                                 (fn-own-feed-durable
                                                  o (fn-own-inflight o))
-                                                (fn-own-feeds o))))))
+                                                (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o)))))
            :in-theory (e/d (fn-own-relation fn-own-outcome)
                            (fn-own-advance fn-own-conn-boundedp
                             fn-served-post-outcome fn-own-outcome-completion

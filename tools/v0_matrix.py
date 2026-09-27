@@ -730,11 +730,14 @@ PLAN = (
       ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
       "single"),
     S("V0-CLIENT-THUNDERBIRD-CANCEL", "F-CLIENT",
-      "the node files Thunderbird's cancel of its own article (control.cancel configured)",
-      ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
+      "Thunderbird cancels its own article and it is gone: the cancel's POST answers 240, "
+      "then ARTICLE of the target answers 430 and OVER no longer lists it",
+      ("NNT-002", "NNT-012", "NNT-034", "SEC-006"), ("SCN-014", "SCN-050", "SCN-094",
+                                                     "SCN-141"), ACCEPTED,
       "single",
-      "the 240 is the node filing the control article; an unsigned cancel carries "
-      "no authority (C2), so the target stays served"),
+      "SEC-006: the login is the principal of its unsigned post; the node's Cancel-Lock "
+      "and the matching Cancel-Key it writes into the login's cancel withdraw it "
+      "(PRF-210); a 240 with the target still served is refused, not accepted"),
     S("V0-CLIENT-PAN-READ", "F-CLIENT",
       "pan, logged in over TLS with a redeemed account, opens a group and reads an article",
       ("NNT-002", "NNT-003", "NNT-034"), ("SCN-014", "SCN-094"), ACCEPTED, "single"),
@@ -4137,11 +4140,22 @@ else echo NONE; fi
             "cancel": "; the cancelled article afterwards: HEAD -> {}".format(
                 (check.get("cancelled") or {}).get("status", "(not checked)")),
         }
+        cancelled = check.get("cancelled") or {}
+        extra["cancel"] += "; ARTICLE -> {}; in OVER: {}".format(
+            cancelled.get("article", "(not checked)"), cancelled.get("in_over"))
         for key, action in (("V0-CLIENT-THUNDERBIRD-REPLY", "reply"),
                             ("V0-CLIENT-THUNDERBIRD-POST", "post"),
                             ("V0-CLIENT-THUNDERBIRD-CANCEL", "cancel")):
             if seen[action]:
-                self.emit(key, reply_verdict(seen[action]), step.command,
+                verdict = reply_verdict(seen[action])
+                # SEC-006: the cancel is accepted only when the article is gone
+                # from the reader's view; a 240 that left it served is refused.
+                if action == "cancel" and verdict == ACCEPTED and not (
+                        cancelled.get("status", "").startswith("430")
+                        and cancelled.get("article", "").startswith("430")
+                        and cancelled.get("in_over") is False):
+                    verdict = REFUSED
+                self.emit(key, verdict, step.command,
                           "POST ({}) -> {}{}".format(action, seen[action], extra[action]),
                           client=client, limit=limit)
             else:

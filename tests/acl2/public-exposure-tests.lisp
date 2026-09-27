@@ -28,7 +28,7 @@
 ; An owner with no connection, room for eight, next id 5, and the empty
 ; configuration: fn-own-open runs over it.
 (defconst *pxt-owner*
-  (fn-own-make nil nil nil 5 8 nil nil nil nil nil nil nil nil))
+  (fn-own-make nil nil nil 5 8 nil nil nil nil nil nil nil nil nil nil))
 (defconst *pxt-oc* (fn-ocfg-make *pxt-owner* (fn-cfg-initial) nil nil))
 
 (defmacro pxt-open (oc xs lim address now)
@@ -356,7 +356,7 @@
   (fn-exp-limits *pxt-v-cap2* *fn-exp-owner-connection-bound* nil nil))
 (defconst *pxt-run-oc*
   (fn-ocfg-make (fn-own-make nil nil nil 5 *fn-exp-owner-connection-bound*
-                             nil nil nil nil nil nil nil nil)
+                             nil nil nil nil nil nil nil nil nil nil)
                 (fn-cfg-initial) nil nil))
 (defconst *pxt-k1* (pxt-open *pxt-run-oc* (fn-exp-initial) *pxt-lim-cap2* *pxt-a* 5000))
 (defconst *pxt-k2* (pxt-open (fn-exp-open-ocfg *pxt-k1*) (fn-exp-open-state *pxt-k1*)

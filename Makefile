@@ -729,6 +729,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-inbound-tests \
 	books/peer-transit-forms \
 	tests/acl2/peer-transit-forms-tests \
+	books/relay-checks \
+	books/refused-offers \
+	books/peer-refused-offers \
+	tests/acl2/transit-hygiene-tests \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
@@ -963,6 +967,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/node-secret \
+	tests/acl2/node-secret-tests \
+	books/cancel-lock-lines \
+	books/cancel-lock \
+	tests/acl2/cancel-lock-tests \
+	tests/acl2/owner-cancel-lock-tests \
+	books/cancel-lock-d25 \
+	tests/acl2/cancel-lock-d25-tests \
 	books/control-served \
 	tests/acl2/control-served-tests \
 	books/nntp-control \

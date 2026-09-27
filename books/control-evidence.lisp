@@ -85,7 +85,12 @@
   (declare (xargs :guard t))
   (append (fn-nls-text " target=") (fn-cev-string (fn-ctl-w-target w))
           (fn-nls-text " cause=") (fn-cev-string (fn-ctl-w-cause w))
-          (fn-nls-text " principal=") (fn-cev-string (fn-ctl-w-principal w))
+          (fn-nls-text " principal=")
+          ;; A key record (SEC-006) names no principal: its basis is the
+          ;; Cancel-Key its cause carries, which the cause's octets hold.
+          (if (fn-ctl-key-principalp (fn-ctl-w-principal w))
+              (fn-nls-text "cancel-key")
+            (fn-cev-string (fn-ctl-w-principal w)))
           (fn-nls-text " scope=") (fn-cev-scope (fn-ctl-w-scope w))
           (fn-nls-field "generation" (fn-ctl-w-generation w))))
 
@@ -135,6 +140,7 @@
              (fn-article-msgid a)
              (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
              target
+             (fn-ctl-keys-octets (fn-article-payload a))
              (fn-ctl-config-at (fn-ctl-record-txid (fn-article-msgid a) records)
                                configs))
           nil))
@@ -155,7 +161,8 @@
   (if (consp a)
       (let ((effect (fn-ctl-withdrawal-effect
                      w (fn-article-groups a)
-                     (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts))))
+                     (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
+                     (fn-article-payload a))))
         (if (fn-ctl-effect-withdrawsp effect)
             (append (fn-nls-text " effect=") (fn-cev-word effect))
           (append (fn-nls-text " effect=declined reason=")
@@ -418,7 +425,8 @@
            nil))
   :hints (("Goal" :in-theory (e/d (fn-ctl-article-withdrawals fn-cev-plan)
                                   (fn-ctl-withdrawal-plan fn-ctl-withdrawalp
-                                      fn-ctl-target-octets fn-ctl-config-at
+                                      fn-ctl-target-octets fn-ctl-keys-octets
+                                      fn-ctl-config-at
                                       fn-ctl-record-txid fn-ctl-lookup-verdict)))))
 
 (defthm fn-cev-journal-records-are-withdrawals

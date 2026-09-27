@@ -190,6 +190,25 @@
 ; built as a list here: `fn-owner-output' is NIL, and the host writes the
 ; reply from the octet buffer that `fn-owner-reply-buffer' fills from
 ; `fn-owner-effects' (PRF-192, books/served-reply-buffer.lisp).
+;; SEC-006 (PRF-210): the node's key ring the native host read from
+;; STORE/keys/ (host/native/owner.lisp fnn-owner-load-node-secret: the
+;; current entry, then each retained older epoch), installed into the
+;; configured owner after the open and after every recovery.  ACL2 decides
+;; whether the entries are a ring (fn-ns-ringp: every entry well formed,
+;; epochs strictly decreasing); the owner then carries it through every step.
+(defun fn-owner-install-node-secret (ring state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-ns-ringp ring)
+      (let ((state (fn-owner-replace-core
+                    (fn-own-with-node-secret (fn-owner-core state) ring)
+                    state)))
+        (value :installed))
+    (value :refused)))
+
+(defun fn-owner-node-secret-width (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value *fn-ns-secret-octets*))
+
 (defun fn-owner-install-served-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
@@ -1149,10 +1168,13 @@
              ; native drain compares with this before the store attempt.
              ; fn-own-sub-stored-octets is the one definition of these
              ; octets; fn-owner-finish-submission compares the completed
-             ; record with the same function of the same configuration.
+             ; record with the same function of the same configuration and
+             ; the same owner's node secret.  A served POST under a login
+             ; gets its RFC 8315 Cancel-Lock here (SEC-006, PRF-210).
              (state (f-put-global 'fn-owner-submit-octets
                                   (fn-own-sub-stored-octets
-                                   (fn-owner-config state) sub)
+                                   (fn-owner-config state) sub
+                                   (fn-own-node-secret after))
                                   state))
              ; A transit submission's memberships are not in the submission:
              ; they are fn-peer-scope-groups of the article's Newsgroups and

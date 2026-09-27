@@ -183,7 +183,7 @@
                 (fn-own-pending o) (fn-own-ledger o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (defthm fn-pcar-opc-owner-prepare-is-opc-owner-prepare
   (equal (fn-pcar-opc-owner-prepare o record)

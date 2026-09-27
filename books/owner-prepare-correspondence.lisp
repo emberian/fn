@@ -28,7 +28,7 @@
                 (fn-own-pending o) (fn-own-ledger o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (verify-guards fn-opc-owner-prepare)
 
@@ -336,7 +336,7 @@
           fn-own-read-step fn-own-close fn-own-open-preserves-relation
           fn-own-open-peer-preserves-relation fn-own-read-preserves-relation
           fn-own-read-step-preserves-relation
-          fn-own-close-preserves-relation)))))
+          fn-own-close-preserves-relation fn-own-reader-context)))))
 
 ; Exact non-store effects: the configuration generation, pin table, and
 ; staged configuration record are unchanged by prepare.

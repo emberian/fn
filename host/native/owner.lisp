@@ -514,6 +514,34 @@ checkpoint's S, or NIL."
       (fnn-fault "owner refused the durable checkpoint sequence"))
     s))
 
+;;; SEC-006 (PRF-210): read the node's key ring and hand it to the owner,
+;;; which carries it (books/owner.lisp fn-own-node-secret): the current
+;;; entry from STORE/keys/node-secret.key, then each retained older epoch
+;;; E-1 .. 1 from node-secret-E.key, each read by ACL2
+;;; (host/native/io.lisp fnn-node-secret-read-entry, fn-ns-file-parse).
+;;; Refused by name, and the node does not start, when the current file is
+;;; missing (it is NEVER regenerated here: `store ROOT node-secret create'
+;;; is the only verb that makes one), a retained epoch is missing, a file is
+;;; not regular, is readable or writable by group or others, or does not
+;;; parse, or ACL2 does not accept the ring (fn-owner-install-node-secret
+;;; answers :refused unless fn-ns-ringp).
+(defun fnn-owner-load-node-secret (store)
+  (let* ((path (fnn-node-secret-path store))
+         (current (or (fnn-node-secret-read-entry path "node secret")
+                      (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once (a start never creates one)"
+                                  path (fnn-store-root store))))
+         (epoch (fnn-core 'fn-ns-entry-epoch current))
+         (retained
+           (loop for e downfrom (1- epoch) to 1
+                 collect (let ((older (fnn-node-secret-epoch-path store e)))
+                           (or (fnn-node-secret-read-entry older "retained node secret")
+                               (fnn-refuse "node secret retained epoch ~d missing: ~a"
+                                           e older))))))
+    (unless (eq (fnn-owner-core 'fn-owner-install-node-secret (cons current retained))
+                :installed)
+      (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
+                  (fnn-node-secret-directory store)))))
+
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store records) (fnn-open-live-store root t fault)
     (let ((service nil))
@@ -531,6 +559,9 @@ checkpoint's S, or NIL."
                                         (fnn-store-config store))
                         :installed)
               (fnn-fault "owner refused the store profile"))
+            ;; SEC-006: the node secret, handed to the owner after the
+            ;; recovery that built it (fnn-owner-load-node-secret).
+            (fnn-owner-load-node-secret store)
             ;; Five fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier

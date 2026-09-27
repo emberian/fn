@@ -4446,7 +4446,7 @@
       "expected": "Opens on the filesystem it was made on; on another filesystem, on an empty directory, or with a missing or corrupted record every open exits 1 with ACL2's named line and writes nothing; rebind-filesystem records the move and the store opens; a policy-1 store on tmpfs or nobarrier is refused at start by name and a policy-0 one warns and starts."
     },
     {
-      "id": "SCN-161",
+      "id": "SCN-169",
       "title": "An image whose saved world is the execution world starts, serves and refuses exactly as before: a guard violation at the host boundary is the same fault line and exit code, the start with ACL2_SYSTEM_BOOKS set works, a fresh node serves from a 256 MB dynamic space, and the served transcript is byte-identical",
       "milestone": "M5",
       "status": "implemented",
@@ -4617,6 +4617,128 @@
         "tests/test_native_consumer_identity.py",
         "planning/evidence/consumer-identity-2026-09-27.md",
         "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      ]
+    },
+    {
+      "id": "SCN-161",
+      "title": "Refused-offer memory: one article with a malformed Path offered by three peers is transferred and parsed once",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_transit_hygiene_refused_offer_memory_and_relay_checks"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md",
+        "log": "planning/evidence/transit-hygiene-2026-09-27/native-peering.log"
+      },
+      "requirements": [
+        "NNT-049"
+      ],
+      "steps": [
+        "Node T with peers hyg1, hyg2, hyg3 (source addresses 127.0.0.1, .2, .3): hyg1 CHECK then TAKETHIS the article.",
+        "hyg2 and hyg3: CHECK and IHAVE the same Message-ID."
+      ],
+      "evidence": [
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "238 then 439 for hyg1.",
+        "438 and '435 not wanted; malformed Path' for hyg2 and hyg3; no transfer."
+      ]
+    },
+    {
+      "id": "SCN-162",
+      "title": "Relay date and Path checks: a future-dated article and a Path-less article are refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_transit_hygiene_refused_offer_memory_and_relay_checks"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md",
+        "log": "planning/evidence/transit-hygiene-2026-09-27/native-peering.log"
+      },
+      "requirements": [
+        "NNT-050"
+      ],
+      "steps": [
+        "Operator: policy set relay-date-skew 3600; policy set relay-require-path 1.",
+        "Peer hyg2 IHAVEs an article dated two hours ahead, one with no Path, and one dated 30 minutes ahead with a Path."
+      ],
+      "evidence": [
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "437 transfer rejected; dated in the future",
+        "437 transfer rejected; no Path",
+        "235"
+      ]
+    },
+    {
+      "id": "SCN-163",
+      "title": "Per-peer Distribution filtering: an article whose Distribution the peer's filter does not name is not fed to that peer",
+      "milestone": "M5",
+      "status": "specified",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_feed_distribution_filter"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md"
+      },
+      "requirements": [
+        "NNT-051"
+      ],
+      "steps": [
+        "Operator: peer distributions NAME fn on an outbound peer.",
+        "A local POST with Distribution: world, one with Distribution: fn, and one with none."
+      ],
+      "evidence": [
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "the peer receives the fn and the unmarked articles",
+        "the peer never receives the world article"
+      ]
+    },
+    {
+      "id": "SCN-141",
+      "title": "A friend cancels their own unsigned post with RFC 8315 Cancel-Lock/Cancel-Key (as tin writes them): gone from ARTICLE and OVER on their node and on two peers in either arrival order, kept gone after SIGKILL; another login's cancel with its own key is filed and withdraws nothing",
+      "milestone": "M4",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_own_cancel",
+        "cases": [
+          "test_a_login_cancels_its_own_post_here_and_on_peers"
+        ],
+        "native": true,
+        "log": "planning/evidence/newsreader-cancel-2026-09-26/native-own-cancel.log",
+        "record": "planning/evidence/newsreader-cancel-2026-09-26.md"
+      },
+      "requirements": [
+        "SEC-006"
+      ],
+      "steps": [
+        "Node H requires AUTHINFO with logins alice and bob; nodes A and B take IHAVE from a configured peer.",
+        "alice POSTs T with `Cancel-Lock: sha256:Base64(SHA-256(K))`; bob POSTs `Control: cancel T` with a Cancel-Key of his own; alice POSTs `Control: cancel T` with `Cancel-Key: sha256:K`; ARTICLE T and OVER after each; SIGKILL H and restart.",
+        "Relay T, bob's cancel and alice's cancel (as H stored them) to A (target first) and to B (cancels first)."
+      ],
+      "evidence": [
+        "tests/acl2/cancel-lock-tests.lisp",
+        "tests/test_native_own_cancel.py"
+      ],
+      "expected": [
+        "T as stored carries alice's Cancel-Lock unchanged; each cancel carries its Cancel-Key.",
+        "After bob's cancel (240) T answers 220; after alice's cancel (240) T answers 430 withdrawn and OVER no longer lists it; after the restart T still answers 430.",
+        "A serves T after T and bob's cancel, and answers 430 after alice's cancel; B answers 430 and its OVER omits T."
       ]
     }
   ]

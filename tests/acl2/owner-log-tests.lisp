@@ -39,7 +39,7 @@
   (fn-own-conn-make 0 0 0 nil nil nil *olt-config* *olt-observation*))
 (defun olt-owner (id ledger decision)
   (fn-own-make nil nil (list *olt-conn*) 1 4 nil ledger *olt-observation* nil
-               *olt-config* nil (fn-own-sub-make id 0 0 decision) nil))
+               *olt-config* nil (fn-own-sub-make id 0 0 decision) nil nil nil))
 (defconst *olt-served* (olt-owner 0 '(committed) *olt-decision*))
 (defconst *olt-served-unconsumed* (olt-owner 0 nil *olt-decision*))
 

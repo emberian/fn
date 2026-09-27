@@ -668,8 +668,12 @@
                   (equal (fn-rcl-tomb-source-digest tomb)
                          (fn-sha256 (cdr (fn-pb-subject payload agent msgid)))))
          (equal (fn-rcl-tomb-agent tomb) agent)))
+  ; SEC-006: the agent is now read through fn-cll-skip; the proof is the
+  ; same case split, without destructor elimination or induction.
   :hints (("Goal" :in-theory (e/d (fn-rcl-tombstone-of) (fn-sha256 fn-pb-subject
-                                                        fn-pb-path-agent)))))
+                                                        fn-pb-path-agent))
+           :do-not '(generalize eliminate-destructors fertilize)
+           :do-not-induct t)))
 
 ;  KEYSTONE (D25 after reclamation).  Reclaiming article M leaves the
 ; host's duplicate-versus-conflict verdict unchanged for every Message-ID X,

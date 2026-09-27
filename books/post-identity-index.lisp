@@ -398,7 +398,7 @@
                 (fn-own-pending o) (fn-own-ledger o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (defthm fn-pidx-opc-owner-prepare-is-pcar-opc-owner-prepare
   (implies (fn-pidx-view-okp (fn-own-view o))

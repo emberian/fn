@@ -3728,19 +3728,22 @@
     },
     {
       "id": "SEC-006",
-      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
+      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated account on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315)",
       "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
       "milestone": "M4",
-      "status": "specified",
-      "proof_targets": [],
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-210"
+      ],
       "verification": [
         "proof",
         "test"
       ],
       "evidence": [
-        "planning/evidence/group-policy-2026-09-26.md"
+        "planning/evidence/group-policy-2026-09-26.md",
+        "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
+      "implementation_note": "Built by lanes newsreader-cancel, -2 and -3 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster). The node writes the lock for the posting ACCOUNT (the authenticated principal id recorded on the submission, fn-own-sub-account; not the login spelling) as K = HMAC-SHA256(sec, uid+mid) (RFC 8315 section 4), sec an HKDF-SHA256 purpose key (info fn/cancel-lock/v1, salt the recorded node identity) of one protected root per key epoch; the lines stand in front of the injected block, outside the D25 source, so a same-source retry by any account or after a rotation is already stored (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored) and a changed source, a changed user Cancel-Lock included, is a conflict. A cancel carries one key per retained epoch (fn-cl-ring-keys-open-every-retained-lock). Signed articles get no lock. The root is STORE/keys/node-secret.key, created only by `node-secret create` (or init), never regenerated at start; `store export` excludes keys/."
     },
     {
       "id": "NNT-043",
@@ -4140,6 +4143,72 @@
       ],
       "implementation_note": "A client contract, not an RFC requirement; the rule is NNT-046's (local policy after INN readers.conf). The binding is a durable configuration record (:consumer-bind, delta code 24), offline or live; no store record, no store format change. The credential is the account's own (AUTHINFO's verifier; no consumer-specific secret). Decided by ember 2026-09-27 (PKT-642).",
       "note": "The local socket stays the owner's (0600): a process with the owner's uid can still use unbound consumers; carrying bound requests to a non-owner peer is PKT-673."
+    },
+    {
+      "id": "NNT-049",
+      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer",
+      "specification": "specs/peering.md#refused-offer-memory-nnt-049",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-235"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/refused-offers.lisp",
+        "books/peer-refused-offers.lisp",
+        "books/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.3 (the relaying agent's history) permits it; remembering rejects is INN's practice; that the memory's answer is the re-parse's, bounded by the operator's refused-offer-capacity with oldest-first eviction and kept in memory only, is the fn guarantee (D27)."
+    },
+    {
+      "id": "NNT-050",
+      "title": "A relayed article dated more than the operator's skew (at most 24 hours) into the future, with an unreadable date, with a malformed Path, or with no Path when the operator requires one, is refused by name",
+      "specification": "specs/peering.md#relay-date-and-path-checks-nnt-050",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-236"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/relay-checks.lisp",
+        "books/peer-inbound.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 step 2 (MUST reject beyond 24 hours; MAY use a smaller margin) is an RFC requirement; step 4 (SHOULD reject without the mandatory fields; MAY reject invalid contents) is RFC guidance fn follows for the date and a present Path; requiring Path is local policy, off by default (PKT-674)."
+    },
+    {
+      "id": "NNT-051",
+      "title": "An article whose Distribution names no distribution a peer's feed is configured for is not fed to that peer",
+      "specification": "specs/peering.md#per-peer-distribution-filtering-nnt-051",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-237"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner-feed.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/native-admin-peer.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 paragraph 2 is RFC guidance (SHOULD NOT relay) fn follows per peer; the three cases the RFC leaves open (no filter configured, no Distribution field, a malformed Distribution) are local policy, stated in the specification."
     }
   ]
 }

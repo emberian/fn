@@ -80,6 +80,7 @@
     ("docs/operator.md#settle-a-clients-lost-post-store-inspect" 1 "store" "inspect" "<fn-client.20260922T034404Z.3fd1ce9e@yue.invalid>")
     ("docs/operator.md#settle-a-clients-lost-post-store-inspect" 2 "store" "inspect" "<never-posted@fn.example.invalid>")
     ("docs/operator.md#settle-a-clients-lost-post-store-inspect" 3 "store" "compact")
+    ("docs/operator.md#settle-a-clients-lost-post-store-inspect" 4 "peer" "distributions" "far" "fn,local")
     ("docs/operator.md#status-while-the-owner-runs" 2 "obligations")
     ("docs/operator.md#status-while-the-owner-runs" 3 "pins")
     ("docs/operator.md#the-dtn-image-a-bp-node-without-the-nntp-service" 1 "bp-boundary" "add" "relay-r1" "r1.example" "dtn://neighbour/" "1119" "carries" "dtn://far-node/")
