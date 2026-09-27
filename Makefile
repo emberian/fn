@@ -385,6 +385,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-decode-tests \
 	books/store-log-programs \
 	tests/acl2/store-log-programs-tests \
+	books/store-log-route \
+	tests/acl2/store-log-route-tests \
+	books/store-log-route-phases \
+	books/owner-log-route \
+	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
 	tests/acl2/payload-lz-tests \
 	books/byte-store-k0-step-lemmas \
@@ -415,6 +420,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
+	books/bp-ingress-carried \
+	tests/acl2/bp-ingress-carried-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
 	tests/acl2/profile-monotonicity-tests \
@@ -1055,6 +1062,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cancel-lock \
 	tests/acl2/cancel-lock-tests \
 	tests/acl2/owner-cancel-lock-tests \
+	tests/acl2/owner-cancel-refresh-tests \
 	books/cancel-lock-d25 \
 	tests/acl2/cancel-lock-d25-tests \
 	books/control-served \
@@ -1081,6 +1089,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-plan-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
+	books/owner-commit-class \
+	tests/acl2/owner-commit-class-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
@@ -1214,10 +1224,11 @@ check:
 # archived manifests, the tested and deployed images' source digests); this
 # fails when it is stale or names something absent.
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
-# Newest measured attempts at each current book/include closure, grouped by
-# host and toolchain. The ten-second rule is a ratchet over
-# planning/proof-cost-baseline.json: a new slow book, or one 25% over its
-# baseline, fails. Installed pairs have no proof time.
+# The fastest passed attempt at each current book/include closure, grouped by
+# host and toolchain. The ten-second rule (D26) over
+# planning/proof-cost-baseline.json: a new book conclusively (quietly) over
+# 11 s, or a baseline book whose prover steps rose over 10%, fails; a loaded
+# figure is UNQUIET, a failed attempt FAILED. Installed pairs have no proof time.
 	@$(CHECK_STEP) $(PYTHON) tools/proof_cost.py
 # The throughput gate (PKT-407): the newest hbox run under
 # planning/evidence/throughput/ for HEAD or its nearest measured ancestor,
@@ -1306,6 +1317,7 @@ check:
 # at 32842f50 build-dtn.lisp lacked books/octets-stobj and the image failed.
 # Static, under a second, with its teeth test.
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

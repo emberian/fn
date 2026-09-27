@@ -43,11 +43,10 @@
 ;
 ; Cost (pessimistic, per request, under the owner mutex): `control log' is
 ; one pass over the records |WS|; `control evidence' one walk of the carried
-; archive N for the article, one article parse, one walk of the Store's
-; records R for its txid (`fn-ctl-record-txid', decoding signed composites
-; before the match) and of the configuration journal, and one pass over WS.
-; The offline command decides every record as recovery does: N article
-; parses.  Paging bounds each reply (`fn-nls-page'), not the render.
+; archive N for the article, two walks of the Store's records R for its
+; row and its target's row (`fn-ctl-row-event', one Message-ID compared per
+; row) and one of the configuration journal, and one pass over WS.  The
+; offline command decides every record as recovery does: N walks of R.  Paging bounds each reply (`fn-nls-page'), not the render.
 ;
 ; Prefix `fn-cev-' (docs/prefixes.md).
 (in-package "ACL2")
@@ -132,21 +131,12 @@
 
 ; The decision the refresh made for stored article A: the plan
 ; `fn-ctl-article-withdrawals' computes (a withdrawal record, or
-; (:decline REASON)), or nil when A names no target.
+; (:decline REASON)), or nil when A names no target.  After the records
+; flip the target and keys are the article's row's control fact, so this is
+; the refresh's own decision, `fn-ctl-article-plan' (books/control-visible).
 (defun fn-cev-plan (a verdicts records configs)
   (declare (xargs :guard t))
-  (if (consp a)
-      (let ((target (fn-ctl-target-octets (fn-article-payload a))))
-        (if target
-            (fn-ctl-withdrawal-plan
-             (fn-article-msgid a)
-             (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
-             target
-             (fn-ctl-keys-octets (fn-article-payload a))
-             (fn-ctl-config-at (fn-ctl-record-txid (fn-article-msgid a) records)
-                               configs))
-          nil))
-    nil))
+  (fn-ctl-article-plan a verdicts records configs))
 
 (defun fn-cev-decision-line (plan)
   (declare (xargs :guard t))
@@ -199,7 +189,8 @@
     (append (fn-nls-text "evidence message-id=") (fn-cev-string msgid)
             (if (consp a)
                 (append (fn-nls-text " stored=yes txid=")
-                        (fn-cev-txid-words (fn-ctl-record-txid msgid records))
+                        (fn-cev-txid-words
+                         (fn-store-event-txid (fn-ctl-row-event msgid records)))
                         (fn-nls-text " verdict=")
                         (fn-cev-verdict-word (fn-ctl-lookup-verdict msgid verdicts))
                         *fn-nls-lf*
@@ -430,9 +421,7 @@
            nil))
   :hints (("Goal" :in-theory (e/d (fn-ctl-article-withdrawals fn-cev-plan)
                                   (fn-ctl-withdrawal-plan fn-ctl-withdrawalp
-                                      fn-ctl-target-octets fn-ctl-keys-octets
-                                      fn-ctl-config-at
-                                      fn-ctl-record-txid fn-ctl-lookup-verdict)))))
+                                   fn-ctl-article-plan)))))
 
 (defthm fn-cev-journal-records-are-withdrawals
   (implies (member-equal w (fn-ctl-articles-withdrawals arts verdicts records configs))
@@ -454,7 +443,7 @@
 
 (defthm fn-cev-plan-of-no-article
   (equal (fn-cev-plan nil verdicts records configs) nil)
-  :hints (("Goal" :in-theory (enable fn-cev-plan))))
+  :hints (("Goal" :in-theory (enable fn-cev-plan fn-ctl-article-plan))))
 
 (defthm fn-cev-journal-holds-no-nil
   (not (member-equal nil (fn-ctl-articles-withdrawals arts verdicts records configs)))

@@ -645,7 +645,11 @@
   (implies (fn-record-p (fn-bpi-record-for store policy context msgid groups adu))
            (equal (fn-record-payload (fn-bpi-record-for store policy context msgid groups adu))
                   adu))
-  :hints (("Goal" :in-theory (enable fn-bpi-record-for fn-sn-article-record)))))
+  ; the record's shape, the group map and the identity/txid/stamp readers stay
+  ; closed: 23k prover steps against 786k with them open.
+  :hints (("Goal" :in-theory (e/d (fn-bpi-record-for fn-sn-article-record)
+                                  (fn-record-p fn-bpi-map-groups fn-sn-identity-next
+                                   fn-state-next-txid fn-record-stamp-of-observation))))))
 
 ; The record's builder, its payload, the article parse's octet facts and the
 ; policy's shape stay closed: the branch is found by the tests alone (0.4 s,
@@ -752,6 +756,21 @@
                                                                  (fn-arena-count fn-arena))))
                   (k (fn-sn-keyring store)) (g (fn-sn-keyring-generation store)))))
           ))
+
+; The entry is the prepare at the arena's count, then (only when prepared)
+; the seal of the ADU: the two calls the host makes
+; (host/bp-ingress-host.lisp fn-bpi-host-prepare, then fn-arena-seal-list).
+(defthm fn-bpi-ingress-prepare-interned-unfolds
+  (equal (fn-bpi-ingress-prepare-interned store policy context adu fn-arena)
+         (let ((result (fn-bpi-ingress-prepare store policy context adu
+                                               (fn-arena-count fn-arena))))
+           (mv result
+               (if (equal (fn-bpi-result-kind result) :prepared)
+                   (fn-arena-seal-list adu fn-arena)
+                 fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-bpi-ingress-prepare-interned)
+                                  (fn-bpi-ingress-prepare fn-bpi-result-kind
+                                   fn-arena-seal-list fn-arena-count)))))
 
 (defun fn-bpi-node-record-committedp (node record)
   (declare (xargs :guard t :verify-guards nil))

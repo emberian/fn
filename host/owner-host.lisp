@@ -50,6 +50,7 @@
 (include-book "../books/post-identity-index")
 ; PRF-180: the per-POST caches advanced through the derived event index.
 (include-book "../books/store-carried-folds")
+(include-book "../books/owner-log-route")
 (include-book "../books/owner-advance-carried")
 (include-book "../books/owner-intent-carried")
 (include-book "../books/owner-commit-ocl")
@@ -836,11 +837,45 @@
 ;; (fn-rcon-ocfg-io-is-ocfg-step, no hypothesis): its :record-directory arm
 ;; pairs the staged record's sequence and transaction id through the
 ;; concrete record dispatchers instead of fn-record-p's octet lists.
+;; On a format-9 store the member's reservation and its place in the log are
+;; the two composite steps of books/owner-log-route.lisp (fn-olr-ocfg-reserve,
+;; fn-olr-ocfg-order: the file route's success sequences, by definition).
 (defun fn-owner-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-install-ocfg
-                (fn-rcon-ocfg-io (fn-owner-ocfg state) operation result) state)))
+  (let* ((oc (fn-owner-ocfg state))
+         (state (fn-owner-install-ocfg
+                 (case operation
+                   (:log-reserve (fn-olr-ocfg-reserve oc))
+                   (:log-order (fn-olr-ocfg-order oc))
+                   (t (fn-rcon-ocfg-io oc operation result)))
+                 state)))
     (value (fn-sf-phase (fn-sn-files (fn-owner-store state))))))
+
+;; Lane commit-onto-log: the owner as it is now, a value (the commit quantum
+;; keeps it before each member's outcome, and renders from it only when the
+;; batch's barrier fails).
+(defun fn-owner-snapshot (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-owner-core state)))
+
+;; The reply a member's connection gets for the word :uncertain, rendered
+;; from OWNER, the owner before the member's outcome was fed: the effects of
+;; the served outcome (fn-acar-own-outcome, as fn-owner-outcome feeds it) or
+;; of the transit outcome (fn-own-transit-outcome, as fn-owner-transit-outcome
+;; feeds it) for that word, as fn-owner-install-effects renders them.  No
+;; state changes: the batch failed and the owner stops.
+(defun fn-owner-uncertain-reply-of (owner id transitp kind reason)
+  (declare (xargs :mode :program))
+  (fn-served-reply-octets
+   (car (if transitp
+            (fn-own-transit-outcome owner id kind reason :uncertain)
+          (fn-acar-own-outcome owner id :uncertain)))))
+
+;; The operator's bounds on one log batch, from the live configuration.
+(defun fn-owner-log-bounds (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-owner-config state)))
+    (value (list (fn-olr-bmax v) (fn-olr-omax v)))))
 
 ; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
 ; entry over the arena (fn-store-existing-action, KEYSTONE
@@ -1387,19 +1422,25 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-mvb-plan op login id reason (fn-owner-ocfg state))))
 
-(defun fn-owner-operator-submit (msgid-octets group-octets payload state)
-  (declare (xargs :stobjs state :mode :program))
+; After the records flip the node holds the stored article's HANDLE; the
+; retry arm reads the octets under it through the arena
+; (books/owner-served-invariants.lisp fn-own-operator-stored-octets,
+; keystone fn-own-operator-retry-at-the-entry-is-the-stored-injection), and
+; the submit, its refusal line and the event carry them (flip-L8-2).
+(defun fn-owner-operator-submit (msgid-octets group-octets payload fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((owner (fn-owner-core state))
+         (stored (fn-own-operator-stored-octets owner msgid-octets fn-arena))
          (result (fn-own-operator-submit-result owner msgid-octets
-                                                 group-octets payload))
+                                                 group-octets payload stored))
          ; The refusal's service-log line, NIL unless RESULT is :refused
          ; (fn-olog-control-refusal-line-says-refused-iff-submit-refused).
          (state (f-put-global 'fn-owner-log-line
                               (fn-olog-control-refusal-line
-                               owner msgid-octets group-octets payload)
+                               owner msgid-octets group-octets payload stored)
                               state))
          (state (fn-owner-step (list :operator-submit msgid-octets
-                                     group-octets payload)
+                                     group-octets payload stored)
                                state)))
     (value result)))
 
@@ -1409,11 +1450,12 @@
 ; The native control path maps it to the control word
 ; (`fn-native-control-refusal-status'), so an article past the profile's A
 ; reaches the operator as `article-exceeds-profile-bound', not a bare refusal.
-(defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((decision (fn-own-operator-decision-of (fn-owner-core state)
-                                               msgid-octets group-octets
-                                               payload)))
+(defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((decision (fn-own-operator-decision-of
+                   (fn-owner-core state) msgid-octets group-octets payload
+                   (fn-own-operator-stored-octets (fn-owner-core state) msgid-octets
+                                                  fn-arena))))
     (value (if (fn-inj-injectedp decision)
                nil
              (fn-inj-decision-reason decision)))))

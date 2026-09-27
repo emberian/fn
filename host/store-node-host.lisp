@@ -16,6 +16,7 @@
 (include-book "../books/store-budget-article")
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/store-capacity-vector")
+(include-book "../books/store-carried-folds")
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.
 (include-book "../books/retention-figures")
 (include-book "../books/store-capacity-config")
@@ -68,7 +69,9 @@
 ; store host. Python supplies only ordered filesystem observations.
 (defun fn-store-sn-reset (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-store-sn
+  (let* ((state (f-put-global 'fn-store-sn-record-octets nil state))
+         (state (f-put-global 'fn-store-sn-record-debt nil state))
+         (state (f-put-global 'fn-store-sn
                              ; No compiled group table and no compiled
                              ; capacity: the domain is empty and the capacity
                              ; is zero until the configuration history is
@@ -87,6 +90,42 @@
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-store-sn state)))
 
+; The committed record octets and the completion debt of the standalone
+; Store, carried as (K . VALUE) and advanced over the records committed since
+; through the Store's derived event index, as the owner carries them
+; (host/owner-host.lisp fn-owner-record-octets, fn-owner-record-debt): one
+; index lookup and one fold step per record committed since the last verdict,
+; never a walk of the history (lane post-alloc: the walk recognised every
+; retained row, 346 MB per standalone POST at N = 10,000).  Equal to the
+; history folds under fn-ceis-indexedp with a valid cache
+; (books/store-budget.lisp fn-sbud-bytes-carried-is-the-fold,
+; books/store-carried-folds.lisp fn-scf-debt-carried-is-the-record-debt).
+; The relation holds at every open (fn-sn-open-observed-is-indexed-by-
+; recomputation) and every Store transition keeps it
+; (books/consumer-event-index-store-invariants.lisp); a cache stays valid
+; while committed records only grow (fn-sbud-octets-cache-valid-after-commit)
+; and is dropped whenever a store is installed (fn-store-sn-reset,
+; fn-store-sn-open-extended), so the first verdict after an open folds once.
+(defun fn-store-sn-record-octets (s state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((cache (if (boundp-global 'fn-store-sn-record-octets state)
+                    (f-get-global 'fn-store-sn-record-octets state)
+                  nil))
+         (bytes (fn-sbud-bytes-carried cache s))
+         (state (f-put-global 'fn-store-sn-record-octets
+                              (cons (fn-sbud-count s) bytes) state)))
+    (mv bytes state)))
+
+(defun fn-store-sn-record-debt (s state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((cache (if (boundp-global 'fn-store-sn-record-debt state)
+                    (f-get-global 'fn-store-sn-record-debt state)
+                  nil))
+         (debt (fn-scf-debt-carried cache s))
+         (state (f-put-global 'fn-store-sn-record-debt
+                              (cons (fn-sbud-count s) debt) state)))
+    (mv debt state)))
+
 ; The operator's headroom for the replayed Store: (used budget
 ; reserved-charge charge-capacity), from PROFILE (the values ACL2 decoded
 ; from the store's metadata file at open) and the Store state this session
@@ -97,10 +136,10 @@
   ; PRF-138: the capacity vector (`fn-cvec-verdict-at'), at the replayed
   ; history's completion debt.
   (let ((s (f-get-global 'fn-store-sn state)))
-    (value (fn-cvec-verdict-at profile kind (fn-sbud-used s)
-                               (fn-sbud-bytes-used s)
-                               (fn-cvec-record-debt
-                                (fn-sf-records (fn-sn-files s)))))))
+    (mv-let (bytes state) (fn-store-sn-record-octets s state)
+      (mv-let (debt state) (fn-store-sn-record-debt s state)
+        ; PRF-180: the count read from the index (fn-sbud-count-is-used).
+        (value (fn-cvec-verdict-at profile kind (fn-sbud-count s) bytes debt))))))
 
 ; An article's verdict (packet 1): the count gate and the history gate at the
 ; article's own figure, `fn-sbud-article-verdict-at' of the committed count
@@ -109,13 +148,14 @@
 (defun fn-store-sn-article-verdict (profile payload-length group-count state)
   (declare (xargs :stobjs state :mode :program))
   (let ((s (f-get-global 'fn-store-sn state)))
-    ; PRF-138: and the capacity vector still holds after it
-    ; (`fn-cvec-article-verdict-keeps-the-vector').
-    (value (fn-cvec-article-verdict-at profile (fn-sbud-used s)
-                                       (fn-sbud-bytes-used s)
-                                       payload-length group-count
-                                       (fn-cvec-record-debt
-                                        (fn-sf-records (fn-sn-files s)))))))
+    (mv-let (bytes state) (fn-store-sn-record-octets s state)
+      (mv-let (debt state) (fn-store-sn-record-debt s state)
+        ; PRF-138: and the capacity vector still holds after it
+        ; (`fn-cvec-article-verdict-keeps-the-vector').  PRF-180: the count
+        ; read from the index (fn-sbud-count-is-used).
+        (value (fn-cvec-article-verdict-at profile (fn-sbud-count s) bytes
+                                           payload-length group-count
+                                           debt))))))
 
 (defun fn-store-sn-headroom (profile state)
   (declare (xargs :stobjs state :mode :program))
@@ -312,6 +352,8 @@ reopen predicate, writer-lock observation and observed final namespace."
              (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
                     :recovering))
         (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened) state))
+               (state (f-put-global 'fn-store-sn-record-octets nil state))
+               (state (f-put-global 'fn-store-sn-record-debt nil state))
                (state (f-put-global 'fn-store-cfg
                                     (fn-cnode-config (fn-replay-result-node replayed))
                                     state))
@@ -968,7 +1010,14 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   ; fn-rcon-sn-io-is-sn-io (books/records-concrete): fn-sn-io with the
   ; concrete record dispatchers.
-  (let ((next (fn-rcon-sn-io (f-get-global 'fn-store-sn state) operation result)))
+  ; :log-reserve and :log-order are the record log's two composite steps
+  ; (books/store-log-route.lisp fn-olr-sn-reserve / fn-olr-sn-order: the file
+  ; route's success sequences, by definition), called on a format-9 store.
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (next (case operation
+                 (:log-reserve (fn-olr-sn-reserve s))
+                 (:log-order (fn-olr-sn-order s))
+                 (t (fn-rcon-sn-io s operation result)))))
     (let ((state (f-put-global 'fn-store-sn next state)))
       (value (fn-sf-phase (fn-sn-files next))))))
 
