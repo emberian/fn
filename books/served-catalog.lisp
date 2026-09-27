@@ -1106,6 +1106,144 @@
 
 (in-theory (disable fn-scat-group-low-is-car fn-scat-group-high-is-last))
 
+;;; F2 (lane sca-join-5): the Xref arms read the catalog.  With an Xref
+;;; server configured (every node), fn-rcompat-reply answers ARTICLE and HEAD
+;;; before the -cat retrieval arms, and books/nntp-reader-compat.lisp
+;;; fn-rcompat-retrieval finds the article by number with
+;;; fn-nntp-find-group-number over the pinned archive (one walk of every
+;;; article per request) and the current article with
+;;; fn-nntp-available-article (another walk).  The twin below is that
+;;; retrieval with the two finders replaced by the catalog's
+;;; (fn-scat-number-article: one probe of the number table;
+;;; fn-scat-available-article: the same probe and the served-number tests);
+;;; the Xref rendering (fn-rcompat-article-reply) and the Message-ID arm (the
+;;; pinned trie) are the reference's, text for text.  The reply wrapper
+;;; delegates every other compatibility arm to fn-rcompat-reply unchanged.
+;;;
+;;; Why this side and not the Xref rendering in the -cat arms: the reference
+;;; the served chain is proved against (fn-nntp-archive-command-pinned) calls
+;;; fn-rcompat-reply, so a twin of it is one equation over the reply
+;;; (fn-rcompat-reply-cat-is-rcompat-reply) and the boundary theorem keeps its
+;;; statement; moving the rendering into fn-nntp-number-retrieval-cat would
+;;; change which arm answers and restate the dispatcher's case split.
+
+(defun fn-rcompat-retrieval-cat (session archive trie kind args server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil)
+           (ignorable archive))
+  (if (null args)
+      (let ((group (fn-nntp-session-group session))
+            (current (fn-nntp-session-current session)))
+        (if (null group)
+            (fn-nntp-single session "412 no newsgroup selected")
+          (if (null current)
+              (fn-nntp-single session "420 no current article")
+            (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+              (if (consp article)
+                  (fn-rcompat-article-reply session article current kind t
+                                            group server fn-arena)
+                (fn-nntp-single session "420 no current article"))))))
+    (let ((token (and (consp args) (car args))))
+      (if (fn-nntp-number-tokenp token)
+          (let ((group (fn-nntp-session-group session))
+                (number (fn-nntp-decimal-value token)))
+            (if (null group)
+                (fn-nntp-single session "412 no newsgroup selected")
+              (let ((article (fn-scat-number-article group number v fn-arena fn-cat)))
+                (if (consp article)
+                    (fn-rcompat-article-reply session article number kind t
+                                              group server fn-arena)
+                  (fn-nntp-single session "423 no article with that number")))))
+        (if (not (and (fn-nntp-message-id-tokenp token) (fn-octet-listp token)))
+            (fn-nntp-single session "501 syntax error")
+          (let ((article (fn-midx-lookup (fn-nntp-token-string token) trie)))
+            (if (consp article)
+                (fn-rcompat-article-reply
+                 session article (fn-nntp-msgid-local-number session article)
+                 kind nil nil server fn-arena)
+              (fn-nntp-single session
+                              "430 no article with that message-id"))))))))
+
+(defthm fn-rcompat-retrieval-cat-is-retrieval
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (equal (fn-rcompat-retrieval-cat session archive trie kind args server v
+                                            fn-arena fn-cat)
+                  (fn-rcompat-retrieval session archive trie kind args server fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-rcompat-retrieval-cat fn-rcompat-retrieval)
+                           (fn-scat-number-article fn-scat-available-article
+                            fn-nntp-find-group-number fn-nntp-available-article
+                            fn-rcompat-article-reply fn-nntp-single fn-midx-lookup
+                            fn-cat-view-articles fn-nntp-number-tokenp
+                            fn-nntp-decimal-value fn-nntp-session-group
+                            fn-nntp-session-current fn-nntp-message-id-tokenp
+                            fn-nntp-token-string fn-nntp-msgid-local-number
+                            fn-cnx-freshp)))))
+
+(defun fn-rcompat-reply-cat (session archive index env keyword args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((server (fn-nntp-xref-server env)))
+    (if (and server
+             (or (fn-nntp-keywordp keyword "ARTICLE")
+                 (fn-nntp-keywordp keyword "HEAD"))
+             (fn-gidx-pinp index)
+             (or (null args) (and (consp args) (null (cdr args)))))
+        (fn-rcompat-retrieval-cat session archive (fn-gidx-pin-trie index)
+                                  (fn-rcompat-retrieval-kind keyword) args server
+                                  v fn-arena fn-cat)
+      (fn-rcompat-reply session archive index env keyword args fn-arena))))
+
+(defthm fn-rcompat-reply-cat-is-rcompat-reply
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (equal (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+                  (fn-rcompat-reply session archive index env keyword args fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-rcompat-reply-cat fn-rcompat-reply)
+                           (fn-rcompat-retrieval-cat fn-rcompat-retrieval
+                            fn-rcompat-newgroups fn-rcompat-active-times
+                            fn-rcompat-subscriptions fn-rcompat-hdr
+                            fn-nntp-xref-server fn-gidx-pinp fn-gidx-pin-trie
+                            fn-rcompat-list-keywordp fn-cat-view-articles fn-cnx-freshp)))))
+
+;; The withdrawn test of a by-number line: the article's absence is read
+;; from the catalog's number table (one probe), not by a walk of the pinned
+;; archive; the pinned withdrawn list W is walked only when the number names
+;; no visible article (the reply is then 423 either way).
+(defun fn-nntp-number-withdrawn-p-cat (session index token v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((group (fn-nntp-session-group session)))
+    (and group
+         (fn-nntp-number-tokenp token)
+         (let ((number (fn-nntp-decimal-value token)))
+           (and (not (consp (fn-scat-number-article group number v fn-arena fn-cat)))
+                (consp (fn-nntp-find-group-number
+                        group number
+                        (fn-ctl-pin-withdrawn (fn-gidx-pin-control index)))))))))
+
+(defthm fn-nntp-number-withdrawn-p-cat-is-archive
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat))
+           (iff (fn-nntp-number-withdrawn-p-cat session index token v fn-arena fn-cat)
+                (fn-nntp-number-withdrawn-p session archive index token)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-number-withdrawn-p-cat fn-nntp-number-withdrawn-p)
+                           (fn-scat-number-article fn-nntp-find-group-number
+                            fn-cat-view-articles fn-nntp-number-tokenp
+                            fn-nntp-decimal-value fn-nntp-session-group fn-cnx-freshp)))))
+
 ;;; The dispatcher: fn-nntp-archive-command-pinned's case split with the two
 ;;; retrieval arms reading the catalog.  Every other arm is the pinned arm
 ;;; (it reads the archive and the pinned index until step 8).  Its guards are
@@ -1132,7 +1270,7 @@
                  (fn-nntp-keywordp keyword "BODY")
                  (fn-nntp-keywordp keyword "STAT"))
              (consp args) (null (cdr args))
-             (fn-nntp-number-withdrawn-p session archive index (car args)))
+             (fn-nntp-number-withdrawn-p-cat session index (car args) v fn-arena fn-cat))
         (fn-nntp-withdrawn-reply session nil))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
@@ -1143,9 +1281,11 @@
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
        ;; PRF-243: the served compatibility arms, where the pinned dispatcher
-       ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned).
-       ((fn-rcompat-reply session archive index env keyword args fn-arena)
-        (fn-rcompat-reply session archive index env keyword args fn-arena))
+       ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned); ARTICLE
+       ;; and HEAD find the article in the catalog (fn-rcompat-reply-cat).
+       ;; A one-element clause answers with its test's value: the reply is
+       ;; computed once.
+       ((fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")
@@ -1290,6 +1430,7 @@
                             fn-nntp-over-response fn-nntp-xover-response
                             fn-nntp-retrieval)
                            (fn-rcompat-reply fn-nntp-xref-reply fn-gidx-list-counts-command
+                            fn-rcompat-reply-cat fn-nntp-number-withdrawn-p-cat
                             fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
                             fn-nntp-withdrawn-reply fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
@@ -1322,4 +1463,7 @@
 ; fn-scr-command calls the dispatcher): the whole -cat path is guard-verified.
 (verify-guards fn-nntp-xpat-lines-for-numbers-cat)
 (verify-guards fn-nntp-xpat-response-cat)
+(verify-guards fn-rcompat-retrieval-cat)
+(verify-guards fn-rcompat-reply-cat)
+(verify-guards fn-nntp-number-withdrawn-p-cat)
 (verify-guards fn-nntp-archive-command-cat)
