@@ -10443,11 +10443,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgoc-ocl-relation-of-owner-with-store",
-          "note": "The step lemma: an owner over a related Store with the same configuration history and an extended Store history satisfies fn-ocl-relation. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgoc-log-reserve-preserves-invariant",
           "note": "host/owner-host.lisp fn-owner-io :log-reserve. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
         },

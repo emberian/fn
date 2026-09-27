@@ -10364,7 +10364,6 @@
       ],
       "progress_note": "Lane control-quanta-2 (Opus 5.5, 2026-09-27; PKT-827 (c)). Proved against the owner-model steps the host calls on dev 92bb10df1 (it contains log-2 and scheduler-2-rebase: their START/BARRIER/COMPLETE and pipelined sync call the same fn-olr-ocfg-reserve/-order, prepare and finish per member). Not covered: the deferred publications (retention, identity, consumer, topic prepares and their order), fn-owner-known-abort, :begin/:take and the served reads (they leave the Store unchanged; their fn-ocl-relation theorems exist).",
       "events": [
-        "fn-lgoc-ocl-relation-of-owner-with-store",
         "fn-lgoc-log-reserve-preserves-invariant",
         "fn-lgoc-sbud-prepare-preserves-invariant",
         "fn-lgoc-pidx-sbud-prepare-preserves-invariant",
