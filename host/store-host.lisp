@@ -442,6 +442,28 @@
          (let ((values (fn-bs-config-decode frame)))
            (and values (fn-bs-config-encode (fn-bs-profile-as-format-8 values)))))))
 
+;; The log's next txid at an open (lane commit-onto-log): one past the largest
+;; txid of every record the log holds, of every event kind (the codec's
+;; dispatch, as fn-store-decode-records decodes them), or FLOOR.  The core's
+;; own recovered next txid (books/store-log-txid.lisp fn-lgt-next-after)
+;; reads article records only (PKT-COL-9); the log holds retention, identity,
+;; consumer and topic events too, and a txid below one of them must never be
+;; handed out again.
+(defun fn-store-log-next-txid-loop (records acc)
+  (declare (xargs :mode :program))
+  (if (consp records)
+      (let* ((decoded (fn-store-event-decode-exact (car records)))
+             (txid (and (consp decoded) (equal (car decoded) :ok) (consp (cdr decoded))
+                        (fn-rcon-wire-event-p (car (cdr decoded)))
+                        (fn-rcon-wire-event-txid (car (cdr decoded))))))
+        (fn-store-log-next-txid-loop (cdr records)
+                                     (if (natp txid) (max acc (+ 1 txid)) acc)))
+    acc))
+
+(defun fn-store-log-next-txid (records floor)
+  (declare (xargs :mode :program))
+  (fn-store-log-next-txid-loop records (nfix floor)))
+
 ;; The record log's layout (books/store-log-route.lisp).
 (defun fn-store-log-segment-name () (fn-olr-segment-name))
 (defun fn-store-log-unit () (fn-olr-unit))

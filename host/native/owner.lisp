@@ -101,6 +101,9 @@
 ;;; held here and released after it, in order: the service log lines and the
 ;;; feed resolutions.  NIL outside a commit quantum.
 (defvar *fnn-owner-deferred* nil)
+;;; The last drained member's (OWNER ID TRANSITP KIND REASON): what renders
+;;; its uncertain reply if the batch's barrier fails (fn-owner-uncertain-reply-of).
+(defvar *fnn-owner-uncertain-render* nil)
 
 (defun fnn-owner-signal-commit (service)
   "Wake every consumer wait: a Store publication is durable, or the owner stops.
@@ -1930,6 +1933,14 @@ and whether the outcome was uncertain."
                      (fnn-owner-feed-step 'fn-owner-submission-resolution
                                           word (fnn-octet-list evidence)
                                           generation txid))
+                    ;; Inside a commit quantum: how this member's
+                    ;; connection is answered if the batch's barrier fails
+                    ;; (fnn-owner-commit-queued-locked), from the owner
+                    ;; before its outcome is fed.
+                    (when *fnn-owner-deferred*
+                      (setq *fnn-owner-uncertain-render*
+                            (list (fnn-owner-core 'fn-owner-snapshot)
+                                  cid transitp :want transit-reason)))
                     (if transitp
                         (fnn-owner-transit-complete
                          cid :want transit-reason word)
@@ -2037,11 +2048,12 @@ the number of members committed (0 when nothing was queued)."
               ;; members (a work bound per step, D27); the rest stay queued
               ;; for the next commit quantum.
               (loop repeat (fnn-log-bmax log) do
+                (setq *fnn-owner-uncertain-render* nil)
                 (multiple-value-bind (cid reply stop) (fnn-owner-drain-one service)
                   (unless cid (return))
                   ;; A member ACL2 answered uncertain keeps its own reply
                   ;; (the uncertain line); the batch stops there.
-                  (push (list cid reply stop) members)
+                  (push (list cid reply stop *fnn-owner-uncertain-render*) members)
                   (when stop (setq uncertain t) (return))))
               (unless uncertain
                 (fnn-log-commit-open-batch store)))
@@ -2056,16 +2068,23 @@ the number of members committed (0 when nothing was queued)."
          (setf (fnn-store-fenced store) t)
          (fnn-err "a log batch of ~d member~:p is uncertain; the store needs recovery"
                   (length members))
-         ;; Every member's connection closes with no reply (its rendered
-         ;; completion may claim an acceptance the log does not hold), but
-         ;; the one ACL2 itself answered uncertain, which gets that line.
+         ;; Every member is answered ACL2's uncertain reply (never the
+         ;; completion it rendered: the log may not hold its record), each
+         ;; from the owner before its own outcome (campaign W1: the poster is
+         ;; told before the connection closes); a member with nothing to
+         ;; render from closes with no reply.
          (setf (fnn-owner-service-sparing service)
                (loop for m in members
-                     when (third m)
-                       append (fnn-owner-awaiting-sockets service (first m))))
+                     append (fnn-owner-awaiting-sockets service (first m))))
          (dolist (m members)
-           (fnn-owner-deliver service (first m)
-                              (if (third m) (cons :close (second m)) :uncertain)))
+           (fnn-owner-deliver
+            service (first m)
+            (cond ((third m) (cons :close (second m)))
+                  ((fourth m)
+                   (let ((octets (ignore-errors
+                                  (apply #'fnn-core 'fn-owner-uncertain-reply-of (fourth m)))))
+                     (if (fnn-octet-list-p octets) (cons :close octets) :uncertain)))
+                  (t :uncertain))))
          (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
         (t
          (fnn-log-batch-finish store)
@@ -2539,10 +2558,10 @@ EPIPE and the client saw a bare close)."
            (when (and submitted (fnn-owner-service-batching service) (null socket))
              (fnn-owner-commit-queued-locked service)
              (let ((done (fnn-owner-take-done service cid)))
-               (cond ((typep done 'fnn-octets) (setq completion done))
+               (cond ((fnn-octet-list-p done) (setq completion done))
                      ((and (consp done) (eq (car done) :close))
                       (setq completion (cdr done) uncertain t))
-                     (t (setq completion (fnn-make-octets 0) uncertain t))))
+                     (t (setq completion nil uncertain t))))
              (setq submitted nil))
            (when (and submitted (fnn-owner-service-batching service))
              (fnn-owner-note-queued service)

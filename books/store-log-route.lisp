@@ -95,22 +95,28 @@
 
 ; The take of one prepared record into the open batch: :full when the batch
 ; already holds BMAX records or the entry would pass OMAX octets (the host
-; commits the open batch, then takes again); :taken when the log kernel
-; admits the record at its next txid (fn-lgt-prepare: T5's allocation rule);
-; :refused otherwise (a core fault: the owner stamped another txid).  COUNT
-; and OCTETS are the open batch's, which the host accumulates from the
-; answers of this function (the octets are fn-olr-entry-octets').
-(defun fn-olr-take (ks record count octets bmax omax unit)
+; commits the open batch, then takes again); :taken when TXID -- the txid the
+; owner reserved for this record (host/native/io.lisp fnn-log-reserve keeps
+; the one ACL2 handed it) -- is the log kernel's next txid; :refused otherwise
+; (a core fault: the owner and the log disagree on the allocation).  COUNT and
+; OCTETS are the open batch's, which the host accumulates from the answers of
+; this function (the octets are fn-olr-entry-octets').
+;
+; The txid is the owner's, not read back from the record: the log holds every
+; event kind (articles, retention, identity, consumer and topic events), and
+; the core's T5 reader (books/store-log-txid.lisp fn-lgt-txid) decodes only
+; the article codec (PKT-COL-9).
+(defun fn-olr-take (ks record txid count octets bmax omax unit)
   (declare (xargs :guard (true-listp ks)))
   (let ((entry (fn-olr-entry-octets (len record) unit)))
     (cond ((and (posp count)
                 (or (<= (nfix bmax) count)
                     (< (nfix omax) (+ (nfix octets) entry))))
            (list :full ks entry))
-          (t (let ((next (fn-lgt-prepare ks record)))
-               (if (equal next ks)
-                   (list :refused ks entry)
-                 (list :taken next entry)))))))
+          ((and (natp txid) (equal txid (fn-lgk-next-txid ks))
+                (not (equal (fn-lgk-phase ks) :fault)))
+           (list :taken (fn-lgk-prepare ks record) entry))
+          (t (list :refused ks entry)))))
 
 ; =============================================================================
 ; What the host's take, catch-up and extension keep.
@@ -123,37 +129,43 @@
                   (fn-olr-entry-octets (len record) unit)))
   :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-pad-len))))
 
-; The take: :taken is the log kernel's checked prepare (T5's allocation rule,
-; fn-lgt-prepare), and anything else leaves the kernel as it was.
-(defthm fn-olr-take-is-the-checked-prepare
-  (let ((answer (fn-olr-take ks record count octets bmax omax unit)))
+; The take: :taken is the log kernel's prepare at the owner's txid, and any
+; other verdict leaves the kernel unchanged (host: `fnn-log-take').
+(defthm fn-olr-take-is-the-prepare-at-the-owners-txid
+  (let ((answer (fn-olr-take ks record txid count octets bmax omax unit)))
     (and (equal (cadr answer)
-                (if (equal (car answer) :taken) (fn-lgt-prepare ks record) ks))
-         (equal (caddr answer) (fn-olr-entry-octets (len record) unit))))
-  :hints (("Goal" :in-theory (disable fn-lgt-prepare fn-olr-entry-octets))))
+                (if (equal (car answer) :taken) (fn-lgk-prepare ks record) ks))
+         (equal (caddr answer) (fn-olr-entry-octets (len record) unit))
+         (implies (equal (car answer) :taken)
+                  (equal (fn-lgk-next-txid ks) txid))))
+  :hints (("Goal" :in-theory (disable fn-lgk-prepare fn-olr-entry-octets))))
+
+; The allocation agrees: after a take the log's next txid is one past the
+; owner's reserved txid (the owner's file kernel frontier after RESERVE).
+(defthm fn-olr-take-agrees-with-the-owner
+  (implies (and (equal (car (fn-olr-take ks record txid count octets bmax omax unit)) :taken)
+                (true-listp ks))
+           (equal (fn-lgk-next-txid (cadr (fn-olr-take ks record txid count octets
+                                                         bmax omax unit)))
+                  (+ 1 txid)))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-prepare) (fn-olr-entry-octets)))))
 
 ; The close rule: a record joins a non-empty batch only below BMAX members
 ; and within OMAX octets of entries.
 (defthm fn-olr-take-keeps-the-bounds
-  (implies (and (equal (car (fn-olr-take ks record count octets bmax omax unit)) :taken)
+  (implies (and (equal (car (fn-olr-take ks record txid count octets bmax omax unit)) :taken)
                 (posp count))
            (and (< count (nfix bmax))
                 (<= (+ (nfix octets) (fn-olr-entry-octets (len record) unit))
                     (nfix omax))))
-  :hints (("Goal" :in-theory (disable fn-lgt-prepare fn-olr-entry-octets))))
+  :hints (("Goal" :in-theory (disable fn-lgk-prepare fn-olr-entry-octets))))
 
-; T5's invariant and the log's relation R are kept by the take and by the
-; catch-up to the owner's allocation.
-(defthm fn-olr-take-preserves-okp
-  (implies (fn-lgt-okp ks)
-           (fn-lgt-okp (cadr (fn-olr-take ks record count octets bmax omax unit))))
-  :hints (("Goal" :in-theory (disable fn-lgt-prepare fn-lgt-okp fn-olr-entry-octets))))
-
+; The log's relation R is kept by the take.
 (defthm fn-olr-take-preserves-relation
   (implies (and (fn-lgk-relp bs ks ino genesis max) (fn-lg-recordp record max))
-           (fn-lgk-relp bs (cadr (fn-olr-take ks record count octets bmax omax unit))
+           (fn-lgk-relp bs (cadr (fn-olr-take ks record txid count octets bmax omax unit))
                         ino genesis max))
-  :hints (("Goal" :in-theory (disable fn-lgt-prepare fn-lgk-relp fn-lg-recordp
+  :hints (("Goal" :in-theory (disable fn-lgk-prepare fn-lgk-relp fn-lg-recordp
                                       fn-olr-entry-octets))))
 
 (defthm fn-olr-consume-to-preserves-okp
@@ -220,18 +232,9 @@
                 (fn-lgk-recover c genesis unit max next-txid))
   :hints (("Goal" :in-theory (enable fn-lgk-recover))))
 
-; The checked prepare either leaves the kernel or is the kernel's prepare,
-; which appends to the open batch and touches nothing else the link reads.
-(local
- (defthm fn-olr-lgt-prepare-cases
-   (or (equal (fn-lgt-prepare ks r) ks)
-       (equal (fn-lgt-prepare ks r) (fn-lgk-prepare ks r)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-lgt-prepare)))))
-
 (local
  (defthm fn-olr-lgk-prepare-link-fields
-   (implies (not (equal (fn-lgk-prepare ks r) ks))
+   (implies (not (equal (fn-lgk-phase ks) :fault))
             (and (equal (fn-lgk-committed (fn-lgk-prepare ks r)) (fn-lgk-committed ks))
                  (equal (fn-lgk-inflight (fn-lgk-prepare ks r)) (fn-lgk-inflight ks))
                  (equal (fn-lgk-batch (fn-lgk-prepare ks r))
@@ -242,28 +245,15 @@
  (defthm fn-olr-append-true-list-fix-left
    (equal (append (true-list-fix a) b) (append a b))))
 
-(local
- (defthm fn-olr-taken-changes-the-kernel
-   (implies (equal (car (fn-olr-take ks record count octets bmax omax unit)) :taken)
-            (not (equal (cadr (fn-olr-take ks record count octets bmax omax unit)) ks)))
-   :hints (("Goal" :in-theory (e/d (fn-olr-take) (fn-lgt-prepare fn-olr-entry-octets))))))
-
 (defthm fn-olr-linkp-of-take
   (implies (and (fn-olr-linkp history ks)
-                (equal (car (fn-olr-take ks record count octets bmax omax unit)) :taken))
+                (equal (car (fn-olr-take ks record txid count octets bmax omax unit)) :taken))
            (fn-olr-linkp (append history (list record))
-                         (cadr (fn-olr-take ks record count octets bmax omax unit))))
+                         (cadr (fn-olr-take ks record txid count octets bmax omax unit))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-olr-take-is-the-checked-prepare)
-                 (:instance fn-olr-lgt-prepare-cases (r record))
-                 (:instance fn-olr-taken-changes-the-kernel)
-                 (:instance fn-olr-lgk-prepare-link-fields (r record)))
-           :in-theory (e/d (fn-olr-linkp)
-                           (fn-olr-take fn-lgt-prepare fn-lgk-prepare
-                            fn-lgk-committed fn-lgk-inflight fn-lgk-batch
-                            fn-olr-take-is-the-checked-prepare fn-olr-entry-octets
-                            fn-olr-taken-changes-the-kernel
-                            fn-olr-lgk-prepare-link-fields)))))
+           :in-theory (e/d (fn-olr-linkp fn-olr-take)
+                           (fn-lgk-prepare fn-lgk-committed fn-lgk-inflight fn-lgk-batch
+                            fn-olr-entry-octets)))))
 
 (defthm fn-olr-linkp-of-append
   (implies (and (fn-olr-linkp history ks) (not (consp (fn-lgk-inflight ks))))

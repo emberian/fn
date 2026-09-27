@@ -1439,8 +1439,11 @@ resolves the names against `domain' and the host carries that list verbatim."
     store))
 
 (defun fnn-at (store point)
-  "Production has no injection branch; a scripted point raises its outcome."
-  (when (eq point (fnn-store-fault-point store))
+  "Production has no injection branch; a scripted point raises its outcome.
+A named CLI fault may arm one point per commit route (a list: the per-file
+route's point and the record log's, lane commit-onto-log)."
+  (when (let ((armed (fnn-store-fault-point store)))
+          (if (consp armed) (member point armed) (eq point armed)))
     (cond ((eq (fnn-store-fault-class store) 'fnn-os-error)
            (fnn-os-fail sb-posix:eio))
           ;; Only a developer-image selector arms this class
@@ -3796,11 +3799,14 @@ by fn-bs-imp-classify."
 (defparameter +fnn-cli-faults+
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
                                  "injected known abort before publication"))
-        (cons "postpublish" (list :record-attempted 'fnn-store-indeterminate
+        ;; On the record log (format 9) the same outcomes arm the log's
+        ;; cuts: after the batch's barrier (the record durable) and at the
+        ;; batch's write before its barrier.
+        (cons "postpublish" (list '(:record-attempted :log-fenced) 'fnn-store-indeterminate
                                   "indeterminate injected failure after final publication"))
         (cons "frontierbarrier" (list :frontier-barrier 'fnn-os-error
                                       "injected allocator directory barrier failure"))
-        (cons "recordbarrier" (list :record-barrier 'fnn-os-error
+        (cons "recordbarrier" (list '(:record-barrier :log-written) 'fnn-os-error
                                     "injected transaction directory barrier failure"))))
 
 (defparameter +fnn-post-model-cuts+
@@ -4907,7 +4913,10 @@ tree root), or stop the build."
   ;; OCTETS), the operator's bounds (fn-owb-bmax / fn-owb-omax of the live
   ;; configuration; set by the owner), and the fenced members not yet
   ;; acknowledged.
-  (count 0) (octets 0) (bmax 64) (omax 67108864) (pending 0))
+  (count 0) (octets 0) (bmax 64) (omax 67108864) (pending 0)
+  ;; The txid the owner reserved for the record being published (ACL2's,
+  ;; handed to fnn-log-reserve), which fn-olr-take admits at the log's next.
+  (reserved nil))
 
 (defun fnn-log-at (point)
   "A developer-image cut: FN_NATIVE_LOG_FAULT=NAME (a +fnn-log-model-cuts+
@@ -5192,11 +5201,17 @@ journal/, the root and its parent."
                        (fnn-log-recover path (fnn-log-observed-extent path) unit max)
                      (fnn-log-open-read-only path unit max))))
           (fnn-log-batch-reset log)
-          (setf (fnn-store-log store) log
-                (fnn-store-frontier store)
-                (fnn-nat (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log))))
           (setq records (mapcar #'fnn-octets
                                 (fnn-core 'fn-lgk-committed (fnn-log-kernel log))))
+          ;; The frontier: one past the largest txid of every record the log
+          ;; holds, of every event kind (ACL2's fn-store-log-next-txid), and
+          ;; the log kernel caught up to it (fn-olr-consume-to).
+          (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
+                                         (fnn-core 'fn-lgk-committed (fnn-log-kernel log))
+                                         (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log))))))
+            (setf (fnn-log-kernel log) (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) next)
+                  (fnn-store-log store) log
+                  (fnn-store-frontier store) next))
           (let ((config-records (fnn-config-records store)))
             (setq records
                   (or (fnn-recover-log-from-state-checkpoint store config-records records)
@@ -5253,7 +5268,8 @@ the observe callback): the frontier is the log's derived one."
     (when (null next)
       (fnn-refuse "finite transaction-ID domain exhausted"))
     (setf (fnn-log-kernel log)
-          (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) current-txid))
+          (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) current-txid)
+          (fnn-log-reserved log) current-txid)
     (unless (eq (fnn-observe store :log-reserve) :reserved)
       (setf (fnn-store-fenced store) t)
       (fnn-fault "ACL2 rejected the log route's reservation"))
@@ -5268,7 +5284,7 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
          (octets (fnn-octet-list record)))
     (loop repeat 2 do
       (destructuring-bind (verdict ks entry)
-          (fnn-core 'fn-olr-take (fnn-log-kernel log) octets
+          (fnn-core 'fn-olr-take (fnn-log-kernel log) octets (fnn-log-reserved log)
                     (fnn-log-count log) (fnn-log-octets log)
                     (fnn-log-bmax log) (fnn-log-omax log) (fnn-log-unit log))
         (case verdict
@@ -5277,7 +5293,7 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
                   (incf (fnn-log-octets log) entry)
                   (return-from fnn-log-take :taken))
           (:full (fnn-log-commit-open-batch store))
-          (t (fnn-fault "the log kernel refused the record (its txid is not the next)")))))
+          (t (fnn-fault "the log kernel refused the record (the owner's txid is not the log's next)")))))
     (fnn-fault "the log kernel refused an empty batch's take")))
 
 (defun fnn-log-ensure-extent (log)

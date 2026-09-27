@@ -812,6 +812,26 @@
                  state)))
     (value (fn-sf-phase (fn-sn-files (fn-owner-store state))))))
 
+;; Lane commit-onto-log: the owner as it is now, a value (the commit quantum
+;; keeps it before each member's outcome, and renders from it only when the
+;; batch's barrier fails).
+(defun fn-owner-snapshot (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-owner-core state)))
+
+;; The reply a member's connection gets for the word :uncertain, rendered
+;; from OWNER, the owner before the member's outcome was fed: the effects of
+;; the served outcome (fn-acar-own-outcome, as fn-owner-outcome feeds it) or
+;; of the transit outcome (fn-own-transit-outcome, as fn-owner-transit-outcome
+;; feeds it) for that word, as fn-owner-install-effects renders them.  No
+;; state changes: the batch failed and the owner stops.
+(defun fn-owner-uncertain-reply-of (owner id transitp kind reason)
+  (declare (xargs :mode :program))
+  (fn-served-reply-octets
+   (car (if transitp
+            (fn-own-transit-outcome owner id kind reason :uncertain)
+          (fn-acar-own-outcome owner id :uncertain)))))
+
 ;; The operator's bounds on one log batch, from the live configuration.
 (defun fn-owner-log-bounds (state)
   (declare (xargs :stobjs state :mode :program))
