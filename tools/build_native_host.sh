@@ -113,4 +113,20 @@ if [ ! -x "$IMAGE" ] || [ ! -s "$IMAGE.core" ]; then
     echo "build_native_host: save-exec produced no image; see $LOG" >&2
     exit 1
 fi
+# The launcher ACL2's save-exec writes execs SBCL with --tls-limit 16384
+# (acl2-init.lisp hard-codes it).  The served world passed that limit at
+# load (batch AV, "Thread local storage exhausted"), so images build under
+# the 65536 wrapper (tools/hbox_native.sh); the saved launcher runs at the
+# same limit, or run time could exhaust what build time did not.  The
+# frozen launchers (packaging/freeze-native-image.sh) copy this exec line.
+FN_TLS_LIMIT=${FN_TLS_LIMIT:-65536}
+if ! grep -q -- '--tls-limit 16384 ' "$IMAGE" && ! grep -q -- "--tls-limit $FN_TLS_LIMIT " "$IMAGE"; then
+    echo "build_native_host: the launcher $IMAGE names no known --tls-limit; see $LOG" >&2
+    exit 1
+fi
+sed "s/--tls-limit 16384 /--tls-limit $FN_TLS_LIMIT /" "$IMAGE" > "$IMAGE.tls" && \
+    chmod 755 "$IMAGE.tls" && mv "$IMAGE.tls" "$IMAGE" || {
+    echo "build_native_host: could not set the launcher's --tls-limit" >&2; exit 1; }
+grep -q -- "--tls-limit $FN_TLS_LIMIT " "$IMAGE" || {
+    echo "build_native_host: the launcher does not run at --tls-limit $FN_TLS_LIMIT" >&2; exit 1; }
 echo "built $IMAGE profile=$PROFILE world=$WORLD ($(du -h "$IMAGE.core" | cut -f1) core)"
