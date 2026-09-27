@@ -2549,7 +2549,8 @@
         "fn-own-operator-decision-is-an-injection-of-the-payload",
         "fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing",
         "fn-own-operator-retry-resubmits-the-stored-injection",
-        "fn-inj-injected-article-is-a-reinjection-of-its-source"
+        "fn-inj-injected-article-is-a-reinjection-of-its-source",
+        "fn-own-operator-retry-at-the-entry-is-the-stored-injection"
       ]
     },
     {
@@ -8747,7 +8748,6 @@
       "events": [
         "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
         "fn-ctl-verified-cause-ignores-its-keys",
-        "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
         "fn-ctl-withdrawal-plan-record-is-bound",
         "fn-ctl-cancel-executes-only-for-author-or-authority",
         "fn-own-stored-octets-carry-the-account-lock",
@@ -8761,7 +8761,8 @@
         "fn-ns-cancel-lock-and-posting-account-inputs-differ",
         "fn-ns-file-parse-of-render",
         "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
-        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account",
+        "fn-ctl-control-of-fields"
       ]
     },
     {
@@ -9652,14 +9653,10 @@
         "planning/evidence/manifests/certify-20260927T091028Z-2009960.json"
       ],
       "events": [
-        "fn-ncr-printed-reason-is-the-decisions",
-        "fn-ncr-request-decode-is-the-plain-decode",
-        "fn-ncr-framep-of-seal",
-        "fn-ncr-cli-after-retries-only-an-unbootstrapped-register",
-        "fn-col-bind-refusal-refuses-exactly-an-unregistered-bind",
-        "fn-ncr-json-object-is-ascii",
-        "fn-ncr-withdrawal-roundtrip",
-        "fn-ncr-withdrawal-report-fits-the-poll-reply"
+        "fn-srs-steps-are-one-step-of-the-concatenation",
+        "fn-srs-one-step-is-the-intern-of-the-decode",
+        "fn-srs-decode-of-append",
+        "fn-srs-intern-events-of-append"
       ],
       "progress_note": "Lane recover-memory (2026-09-27, PKT-823): every form REPL-admitted on hbox; certified on hbox at the lane's final bytes (run-20260927T093905Z-d480, certify-20260927T094014Z-2171763; both books in run-20260927T090826Z-d6d2, certify-20260927T091028Z-2009960). Measured on the 32 KiB fixture (10,064 records) post-flip: peak dynamic 11,437 -> 1,817 MB, RSS 17.0 -> 2.13 GB; native SCN-077 10 MiB OK on the post-flip image."
     },
