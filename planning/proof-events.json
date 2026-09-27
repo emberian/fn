@@ -9500,6 +9500,16 @@
           "name": "fn-lz-run-extends-out"
         }
       ]
+    },
+    {
+      "id": "PRF-259",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-store-record-acceptedp-is-acceptance-over-alpha",
+          "note": "Transferred to the host-called fast entries by PRF-220 (fn-bpaj-bpr-accept-request-fast, fn-bpaj-record-lookup-fast; host/bp-receipt-host.lisp fn-bpr-host-accept). Teeth: tests/acl2/bp-receipt-alpha-tests.lisp."
+        }
+      ]
     }
   ]
 }

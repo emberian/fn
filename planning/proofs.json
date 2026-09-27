@@ -9514,6 +9514,28 @@
         "fn-lz-decode-buf-out-len-bound",
         "fn-lz-run-extends-out"
       ]
+    },
+    {
+      "id": "PRF-259",
+      "title": "After the records flip, the BP receiver's Store gate is the pre-flip acceptance over alpha of the retained rows",
+      "statement": "Subject fn-bpr-store-record-acceptedp (books/bp-receipt.lisp), which the receiver asks before binding a request context (fn-bpr-accept-request through fn-bpr-request-acceptablep; the host calls fn-bpaj-bpr-accept-request-fast from host/bp-receipt-host.lisp fn-bpr-host-accept and fn-bpaj-record-lookup-fast from host/bp-receive-host.lisp fn-bpreq-existing-record, each with the live arena since batch AV; PRF-220 equates the fast forms with it). fn-bpr-store-record-acceptedp-is-acceptance-over-alpha (books/bp-receipt-alpha.lisp, KEYSTONE): under fn-rows-composites-okp of the history's rows (established at every intern by fn-intern-event-composite-okp), the predicate holds of the wire RECORD exactly when the Store is fn-sn-statep and :ready, RECORD is a record among the article records of alpha of the history (fn-rows-wire-of), and the node's article under its Message-ID in alpha of the acceptance articles (fn-articles-wire-of) carries its payload and groups and the node binding carries its content subject and obligation id. Teeth: tests/acl2/bp-receipt-alpha-tests.lisp (a reachable witness over the signed Store; the hypothesis removed on a corrupted-state Store). Id assigned by batch AV (flip-L4 took none).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-220"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-receipt-alpha.lisp",
+        "tests/acl2/bp-receipt-alpha-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T075335Z-1924969.json"
+      ],
+      "events": [
+        "fn-bpr-store-record-acceptedp-is-acceptance-over-alpha"
+      ]
     }
   ]
 }
