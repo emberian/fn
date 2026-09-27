@@ -1272,7 +1272,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-index-tests \
 	tests/acl2/store-node-composite-index-tests \
 	books/scheduler-peers \
-	tests/acl2/scheduler-peers-tests
+	tests/acl2/scheduler-peers-tests \
+	books/proto/adt-lib \
+	books/proto/adt \
+	books/proto/adt-consumer-position \
+	tests/acl2/proto-adt-tests
 
 .PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
