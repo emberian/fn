@@ -3704,7 +3704,16 @@
         "fn-ock-one-publication-in-flight",
         "fn-ock-publication-next-decides-by-the-rule",
         "fn-ock-finish-binds-the-captured-prefix",
-        "fn-ock-fast-path-within-k-by-definition"
+        "fn-ock-fast-path-within-k-by-definition",
+        "fn-intern-events-is-intern-at",
+        "fn-intern-events-arena-is-payloads",
+        "fn-scka-load-of-written-file",
+        "fn-scka-seal-n-compose",
+        "fn-scka-recover-from-checkpoint-is-full-recover",
+        "fn-scka-recover-rows-rii-is-recover-rows",
+        "fn-scka-write-run-is-run-segments",
+        "fn-scka-next-checkpoint-is-capture",
+        "fn-scka-select-named-refuses-the-arena-by-name"
       ]
     },
     {
@@ -7596,6 +7605,7 @@
       "progress_note": "Lane log-recovery 2026-09-27: restated over the record log (the import writes format 9; fn-bs-profile-logp replaces fn-bs-profile-validp after the weakened theorem was proved); admitted in the persvati REPL; certification is the batch's.",
       "events": [
         "fn-sxp-import-of-export-replays-the-same-history",
+        "fn-sxp-log-profile-is-a-valid-log-profile",
         "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
@@ -10005,9 +10015,6 @@
       "progress_note": "post-alloc-3 2026-09-27.",
       "events": [
         "fn-own-ledger-of-fn-own-make",
-        "fn-sl-list-of-fn-own-ledger-field",
-        "fn-own-ledger-count-is-len",
-        "fn-sl-list-when-plain",
         "fn-own-refresh-ix-keeps-ledger-field",
         "fn-rix-own-complete-enabled-ledger-field",
         "fn-rix-own-complete-enabled-ledger"
