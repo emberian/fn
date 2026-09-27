@@ -5,7 +5,7 @@
 ; ONE resizable byte array and doubles it when full: on the 10k x 32 KiB
 ; fixture the open's 333.6 MB of payloads sat in a 512 MiB array, and at the
 ; last doubling the old 256 MiB array and the new 512 MiB one were live
-; together (planning/evidence/recover-memory-2-2026-09-27.md section 3).
+; together (recover-memory-2's record, lane/recover-memory-2 655867c9b, section 3).
 ; This implementation keeps the payloads in fixed pages of *fn-arp-page*
 ; octets, an array of page stobjs that grows by one page: a sealed octet
 ; never moves, a seal never copies an older payload, growth allocates one
