@@ -32,6 +32,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tests.campaign import native_cuts  # noqa: E402
 from tests.native_process import wait_for_announcement  # noqa: E402
+from tools.wire_stream import whole_stream
 
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST", "")
 PRODUCTION = os.environ.get("FN_NATIVE_HOST", "")
@@ -56,7 +57,7 @@ def article(i: int) -> bytes:
 class Conn:
     def __init__(self, port: int):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=300)
-        self.stream = self.sock.makefile("rwb", buffering=0)
+        self.stream = whole_stream(self.sock)
         self.greeting = self.stream.readline()
 
     def line(self, text: str) -> bytes:

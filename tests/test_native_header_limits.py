@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from tools.wire_stream import whole_stream
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -206,7 +207,7 @@ class NativeHeaderLimitsTests(unittest.TestCase):
         self.start()
         replies = {}
         with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
-            stream = conn.makefile("rwb", buffering=0)
+            stream = whole_stream(conn)
             self.assertTrue(stream.readline().startswith(b"200"))
             for total, verb in ((64, "IHAVE"), (65, "IHAVE"), (65, "TAKETHIS")):
                 message_id = "<t%d-%s@example.invalid>" % (total, verb.lower())

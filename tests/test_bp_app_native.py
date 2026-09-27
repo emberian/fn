@@ -14,6 +14,7 @@ from tools import run_bp_ingress, run_store
 
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tools.wire_stream import whole_stream
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is exit 6 (connection-local: the job stays
@@ -370,7 +371,7 @@ class NativeBpApplicationTests(unittest.TestCase):
         try:
             wait_for_announcement(reader, b"LISTENING ")
             with socket.create_connection(("127.0.0.1", reader_port), timeout=30) as c:
-                stream = c.makefile("rwb", buffering=0)
+                stream = whole_stream(c)
                 stream.readline()
                 answers = {}
                 for group in (b"control.cancel", b"fn.test"):

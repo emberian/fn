@@ -18,6 +18,7 @@ import time
 import unittest
 
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -103,7 +104,7 @@ class ScriptedTransitPeer:
 
     def session(self, client, number):
         with client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             stream.write(b"200 scripted transit peer\r\n")
             while True:
                 line = stream.readline()
@@ -276,7 +277,7 @@ class NativePeeringTests(unittest.TestCase):
                     node["name"], process.stderr.read().decode("utf-8", "replace")))
             return None
         with client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             if not stream.readline().startswith(b"200 "):
                 return None
             stream.write(b"ARTICLE " + message_id.encode("ascii") + b"\r\n")
@@ -312,7 +313,7 @@ class NativePeeringTests(unittest.TestCase):
 
     def duplicate_offer(self, node, message_id):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
             return stream.readline()
@@ -338,7 +339,7 @@ class NativePeeringTests(unittest.TestCase):
     def transit(self, node, message_id, source):
         """Drive the public peer port through IHAVE and compare served octets."""
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
             self.assertTrue(stream.readline().startswith(b"335 "))
@@ -350,7 +351,7 @@ class NativePeeringTests(unittest.TestCase):
 
     def capabilities(self, node):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"CAPABILITIES\r\n")
             self.assertTrue(stream.readline().startswith(b"101 "))
@@ -504,7 +505,7 @@ class NativePeeringTests(unittest.TestCase):
         offered = (b"Path: path-source.example.invalid!not-for-mail\r\n"
                    + self.article(message_id, "path-identity-ihave"))
         with socket.create_connection(("127.0.0.1", target["port"]), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
             self.assertTrue(stream.readline().startswith(b"335 "))
@@ -559,7 +560,7 @@ class NativePeeringTests(unittest.TestCase):
         refused_takethis = "<stream-refused-takethis@example.invalid>"
         replies = {}
         with socket.create_connection(("127.0.0.1", target["port"]), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"MODE STREAM\r\n")
             replies["mode"] = stream.readline()
@@ -688,7 +689,7 @@ class NativePeeringTests(unittest.TestCase):
         def session(address):
             client = socket.create_connection(("127.0.0.1", target["port"]), timeout=15,
                                               source_address=(address, 0))
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             return client, stream
 
@@ -761,7 +762,7 @@ class NativePeeringTests(unittest.TestCase):
         self.start(target)
         ids = ["<pipe-{}@example.invalid>".format(n) for n in range(8)]
         with socket.create_connection(("127.0.0.1", target["port"]), timeout=15) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(b"".join(b"TAKETHIS " + m.encode() + b"\r\n"
                                   + self.article(m, m[1:-1]) + b".\r\n"
@@ -815,7 +816,7 @@ class NativePeeringTests(unittest.TestCase):
         ids = ["<full-{}@example.invalid>".format(n) for n in range(16)]
         replies = []
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             for message_id in ids:
                 stream.write(b"TAKETHIS " + message_id.encode() + b"\r\n"
@@ -881,7 +882,7 @@ class NativePeeringTests(unittest.TestCase):
         pieces.append(data[start:])
         with socket.create_connection(("127.0.0.1", target["port"]), timeout=15) as client:
             client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             for piece in pieces:
                 client.sendall(piece)
@@ -911,7 +912,7 @@ class NativePeeringTests(unittest.TestCase):
         self.start(node)
         ids = ["<pipe-post-{}@example.invalid>".format(n) for n in range(4)]
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             # Two whole POST blocks in one write.
             stream.write(b"".join(b"POST\r\n" + self.article(m, m[1:-1]) + b".\r\n"

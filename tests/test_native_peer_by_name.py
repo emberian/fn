@@ -36,6 +36,7 @@ import unittest
 
 from tests import test_native_peering as peer
 from tests import test_native_protected_peering as protected
+from tools.wire_stream import whole_stream
 
 IMAGE = peer.IMAGE
 # The image the batch built (tools/native_env.py sets FN_NATIVE_HOST); its
@@ -119,7 +120,7 @@ class NativePeerByNameTests(unittest.TestCase):
             context = ssl.create_default_context(cafile=str(self.ca))
             hostname = getattr(self, "certificate_names", {}).get(node["name"], "localhost")
             with context.wrap_socket(raw, server_hostname=hostname) as tls:
-                with tls.makefile("rwb", buffering=0) as stream:
+                with whole_stream(tls) as stream:
                     stream.write(b"AUTHINFO USER " + node["login"].encode() + b"\r\n")
                     self.assertTrue(stream.readline().startswith(b"381 "))
                     stream.write(b"AUTHINFO PASS " + node["password"].encode() + b"\r\n")

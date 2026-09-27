@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from tools.wire_stream import whole_stream
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -439,7 +440,7 @@ class NativeControlTests(unittest.TestCase):
             self.assertEqual(duplicate.returncode, 0, duplicate.stderr.decode())
             self.assertIn(b"DUPLICATE", duplicate.stderr)
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"QUIT\r\n")
                 self.assertTrue(stream.readline().startswith(b"205 "))
@@ -477,7 +478,7 @@ class NativeControlTests(unittest.TestCase):
         restarted = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"QUIT\r\n")
                 self.assertTrue(stream.readline().startswith(b"205 "))
@@ -537,7 +538,7 @@ class NativeControlTests(unittest.TestCase):
         restarted = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client_socket:
-                stream = client_socket.makefile("rwb", buffering=0)
+                stream = whole_stream(client_socket)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"QUIT\r\n")
                 self.assertTrue(stream.readline().startswith(b"205 "))
@@ -747,7 +748,7 @@ class NativeControlTests(unittest.TestCase):
             self.assertEqual(refused.returncode, 1, refused.stderr.decode())
             self.assertIn(b"posting-disabled", refused.stderr.lower())
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"201 "))
                 stream.write(b"POST\r\n")
                 self.assertTrue(stream.readline().startswith(b"440 "))

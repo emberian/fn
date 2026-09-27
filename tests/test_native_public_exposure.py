@@ -32,6 +32,7 @@ import time
 import unittest
 
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST") or os.environ.get(
@@ -88,7 +89,7 @@ class Legit(threading.Thread):
         self.failures = []
         self.stop = threading.Event()
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=30)
-        self.stream = self.sock.makefile("rwb", buffering=0)
+        self.stream = whole_stream(self.sock)
         greeting = self.stream.readline()
         assert greeting[:3] in (b"200", b"201"), greeting
         for line, code in ((b"AUTHINFO USER " + LOGIN.encode() + b"\r\n", b"381"),
@@ -360,7 +361,7 @@ class NativePublicExposureTests(unittest.TestCase):
         # --- the anonymous policy: none, then open (live)
         legit.phase = "anonymous"
         with self.connect("127.0.0.6") as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             greeting = stream.readline()
             anonymous = {"greeting_none": greeting.decode().strip()}
             for command in (b"GROUP fn.test", b"ARTICLE 1", b"POST", b"LIST",
@@ -376,7 +377,7 @@ class NativePublicExposureTests(unittest.TestCase):
         self.assertTrue(anonymous["ARTICLE 1"].startswith("480"), anonymous)
         self.policy("anonymous", "open")
         with self.connect("127.0.0.6") as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             stream.readline()
             stream.write(b"GROUP fn.test\r\n")
             anonymous["GROUP fn.test (open)"] = stream.readline().decode().strip()
@@ -402,7 +403,7 @@ class NativePublicExposureTests(unittest.TestCase):
         legit.phase = "credential-guessing"
         guessing = {"481": 0, "attempts": 0}
         with self.connect("127.0.0.7") as sock:
-            stream = sock.makefile("rwb", buffering=0)
+            stream = whole_stream(sock)
             stream.readline()
             last = b""
             for n in range(200):
