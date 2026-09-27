@@ -4713,7 +4713,7 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-312"
+        "PRF-319"
       ],
       "verification": [
         "proof",

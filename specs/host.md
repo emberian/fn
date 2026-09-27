@@ -798,7 +798,7 @@ checks what goes in. The image runs with `guard-checking-on` = `t`, but a
 any value: a natural is a good argument to `consp` and `len`. Since the
 records flip the retained article's payload is an arena HANDLE
 (books/payload-kinds.lisp `fn-payload-handle-p`, disjoint from
-`fn-cbor-octet-listp` octets by PRF-312's keystones), and on 2026-09-27 six
+`fn-cbor-octet-listp` octets by PRF-319's keystones), and on 2026-09-27 six
 defects handed a handle, or the wrong argument count, to code that meant
 octets; each surfaced as a silent refusal downstream (441 on signed POSTs,
 ARTICLE 503, BP sends refused, a feed's empty command, moderation's

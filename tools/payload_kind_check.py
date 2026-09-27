@@ -58,26 +58,26 @@ WAIVERS: dict[tuple[str, str], str] = {
     # Live defects this lane found and did not fix (each a packet in
     # planning/backlog-2026-09-25.md; the owner fixes, then drops the row).
     ("books/control-served.lisp", "fn-ctl-control-status"):
-        "PKT-EG-1: the control status reads the target and keys of a handle",
+        "PKT-857: the control status reads the target and keys of a handle",
     ("books/control-served.lisp", "fn-ctl-served-status"):
-        "PKT-EG-1: the served control status reads the target and keys of a handle",
+        "PKT-857: the served control status reads the target and keys of a handle",
     ("books/nntp.lisp", "fn-nntp-control-hdr-response"):
-        "PKT-EG-1: HDR :fn-control reads the target of a handle",
+        "PKT-857: HDR :fn-control reads the target of a handle",
     ("books/store-reclaim.lisp", "fn-rcl-verdict"):
-        "PKT-EG-2: never :already-reclaimed over a handle",
+        "PKT-858: never :already-reclaimed over a handle",
     ("books/store-reclaim.lisp", "fn-rcl-summary"):
-        "PKT-EG-2: reclaimable and freed octets count a handle's len (0)",
+        "PKT-858: reclaimable and freed octets count a handle's len (0)",
     ("books/owner.lisp", "fn-own-feed-reply"):
         "PKT-EG-2b: the book owner's feed reply sends fn-own-feed-article's handle "
         "(the host reads fn-ofa-feed-article)",
     ("books/stx-index.lisp", "fn-stx-index-of-store"):
-        "PKT-EG-3: parses a handle; benign only because live callers pass a NIL keyring",
+        "PKT-859: parses a handle; benign only because live callers pass a NIL keyring",
     # Pre-flip twins with no live caller: they compare a handle with octets.
-    ("books/store-node.lisp", "fn-sn-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/poster-bytes.lisp", "fn-pb-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/poster-bytes-buffer.lisp", "fn-pbb-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/store-reclaim.lisp", "fn-rcl-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
-    ("books/store-reclaim-buffer.lisp", "fn-rclb-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
+    ("books/store-node.lisp", "fn-sn-existing-action"): "PKT-860: retire (pre-flip twin)",
+    ("books/poster-bytes.lisp", "fn-pb-existing-action"): "PKT-860: retire (pre-flip twin)",
+    ("books/poster-bytes-buffer.lisp", "fn-pbb-existing-action"): "PKT-860: retire (pre-flip twin)",
+    ("books/store-reclaim.lisp", "fn-rcl-existing-action"): "PKT-860: retire (pre-flip twin)",
+    ("books/store-reclaim-buffer.lisp", "fn-rclb-existing-action"): "PKT-860: retire (pre-flip twin)",
     ("books/moderation-verbs.lisp", "fn-mvb-held-article"):
         "matrix-reds (the sixth instance, 2026-09-27)",
 }
