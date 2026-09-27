@@ -4307,7 +4307,8 @@
           "test_peer_add_refuses_a_host_that_is_not_a_host"
         ],
         "native": true,
-        "record": "planning/evidence/peers-by-name-2026-09-27.md"
+        "record": "planning/evidence/peers-by-name-2026-09-27.md",
+        "log": "planning/evidence/peers-by-name-2026-09-27/native-peer-by-name-production.log"
       },
       "requirements": [
         "NNT-048"

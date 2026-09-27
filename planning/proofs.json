@@ -7893,7 +7893,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-host.lisp",
         "tests/acl2/peer-host-tests.lisp",
@@ -7907,9 +7907,11 @@
         "host/native/feed-service.lisp",
         "host/native/pull-service.lisp",
         "tests/test_native_peer_by_name.py",
-        "planning/evidence/peers-by-name-2026-09-27.md"
+        "planning/evidence/peers-by-name-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T013235Z-1440473.json",
+        "planning/evidence/manifests/certify-20260927T012133Z-4014708.json"
       ],
-      "progress_note": "Lane peers-by-name 2026-09-27 (PKT-613): books/peer-host REPL-admitted on persvati; see the record for the certification and native runs.",
+      "progress_note": "Lane peers-by-name 2026-09-27 (PKT-613): books/peer-host REPL-admitted on persvati (session pbn); the changed chain (16 books: peer-config, peer-host, peer-pull, peer-pull-session, native-admin-peer, peer-invite, owner-feed, feed-connection(-invariants), native-admin(-peer-budget) and the test books) certified on persvati at 2 jobs, max 8.2 s (manifest certify-20260927T013235Z-1440473); hbox certified the image's 116 affected books at 8 jobs (certify-20260927T012133Z-4014708). Native: tests.test_native_peer_by_name 4 of 4 OK on the production and the developer image (native-pbn2).",
       "events": [
         "fn-peer-dial-target-decides-the-path",
         "fn-peer-tls-verification-selects-one-check",
