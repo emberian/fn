@@ -203,15 +203,15 @@
 ; as the host's fill leaves them), that digest is leaf K of the image's
 ; `adt-page-digests', as the big-endian natural of its 32 octets.  So the
 ; image's per-page digest table IS the page store's table: nothing else is
-; stored or checked.  Stated for every schema and value; fn-hist's image is
-; the instance S = *fn-hp-schema*, A = (fn-hp-rows H SALT).
+; stored or checked.
 
 (defun fn-hp-page (b k)
   ; page K of the octets B
   (declare (xargs :guard (and (true-listp b) (natp k))))
   (take *adt-page* (nthcdr (* *adt-page* k) b)))
 
-(defthm fn-hp-page-digest-is-leaf
+(local
+ (defthm fn-hp-page-digest-is-leaf-any
   (implies (and (fn-shs-p fn-shs) (natp k)
                 (< k (len (adt-page-digests s a)))
                 (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 k) (pgs-x-arr 0 pgs-mem))))
@@ -223,7 +223,52 @@
                  (:instance adt-page-digest-nth))
            :in-theory (e/d (pgs-x-page-digest fn-hp-page)
                            (adt-ser pgs-x-words-digest pgs-x-words-digest-is-sha256 adt-page-digest-nth
-                            adt-page-digests fn-sha256 pgs-words-le-octets pgs-octets-be-nat)))))
+                            adt-page-digests fn-sha256 pgs-words-le-octets pgs-octets-be-nat))))))
+
+(local
+ (defthm fn-hp-car-le-octets-natp
+   (implies (consp ws) (natp (car (pgs-words-le-octets ws))))
+   :hints (("Goal" :in-theory (enable pgs-words-le-octets pgs-word-le-octets)))))
+
+(local
+ (defthm fn-hp-nthcdr-beyond
+   (implies (and (true-listp b) (natp m) (<= (len b) m))
+            (equal (nthcdr m b) nil))
+   :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-hp-page-past-digests
+   (implies (and (adt-bschemap s) (natp k) (<= (len (adt-page-digests s a)) k))
+            (equal (fn-hp-page (adt-ser s a) k) (take *adt-page* nil)))
+   :hints (("Goal" :in-theory (e/d (fn-hp-page) (adt-ser take))
+            :use ((:instance adt-len-page-digests) (:instance adt-len-ser))))))
+
+(local
+ (defthm fn-hp-take-nil-not-octets
+   (implies (and (consp ws) (posp n))
+            (not (equal (pgs-words-le-octets ws) (take n nil))))
+   :hints (("Goal" :use ((:instance fn-hp-car-le-octets-natp)) :in-theory (disable fn-hp-car-le-octets-natp)
+            :expand ((take n nil))))))
+
+; THE digest theorem.  (A page past the image's end cannot satisfy the
+; hypothesis: its octets would be NILs, the words' are naturals.)
+(defthm fn-hp-page-digest-is-leaf
+  (implies (and (fn-shs-p fn-shs) (natp k)
+                (equal (pgs-words-le-octets (take 2048 (nthcdr (* 2048 k) (pgs-x-arr 0 pgs-mem))))
+                       (fn-hp-page (fn-hp-image h salt) k)))
+           (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-shs))
+                  (pgs-octets-be-nat (nth k (adt-page-digests *fn-hp-schema* (fn-hp-rows h salt))))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((< k (len (adt-page-digests *fn-hp-schema* (fn-hp-rows h salt)))))
+           :use ((:instance fn-hp-page-digest-is-leaf-any (s *fn-hp-schema*) (a (fn-hp-rows h salt)))
+                 (:instance fn-hp-page-past-digests (s *fn-hp-schema*) (a (fn-hp-rows h salt)))
+                 (:instance fn-hp-take-nil-not-octets (n *adt-page*)
+                  (ws (take 2048 (nthcdr (* 2048 k) (pgs-x-arr 0 pgs-mem))))))
+           :in-theory (disable fn-hp-page-digest-is-leaf-any fn-hp-page-past-digests fn-hp-take-nil-not-octets
+                               adt-ser fn-hp-page pgs-x-page-digest adt-page-digests pgs-words-le-octets take
+                               fn-hp-rows))))
+
+(local (in-theory (disable fn-hp-nthcdr-beyond)))
 
 ; -----------------------------------------------------------------------------
 ; D. The region plan: what an append changes.
@@ -559,10 +604,8 @@
   (declare (xargs :verify-guards nil))
   (cons 0 (fn-hp-body-dirty-pages (fn-hp-regs h salt) (fn-hp-regs (append h new) salt) 1)))
 
-; KEYSTONE (the region plan, 1): every page of the new image outside the
-; dirty list is the old image's page, so a snapshot writes only the dirty
-; list (the store is region-agnostic: it writes the pages marked dirty).
-(defthm fn-hp-append-changes-only-dirty
+(local
+ (defthm fn-hp-append-changes-only-dirty-in-range
   (implies (and (natp k) (< k (fn-hp-npages (append h new) salt))
                 (not (member-equal k (fn-hp-append-dirty h new salt))))
            (equal (fn-hp-page (fn-hp-image (append h new) salt) k)
@@ -578,7 +621,76 @@
            :in-theory (e/d (fn-hp-image-dirty)
                            (fn-hp-ser-page-same fn-hp-body-dirty-in-pages adt-ser fn-hp-page fn-hp-regs-of-append
                             fn-hp-body-dirty fn-hp-body-dirty-pages fn-hp-prefixes adt-regs fn-hp-rows
-                            adt-end adt-end-is-end-l)))))
+                            adt-end adt-end-is-end-l))))))
+
+; Pages past the new image's end are past the old one's too (caps only grow).
+(local
+ (defthm fn-hp-pow2-monotone
+   (implies (and (natp k1) (natp k2) (<= k1 k2) (posp acc))
+            (<= (adt-pow2-at-least k1 acc) (adt-pow2-at-least k2 acc)))
+   :hints (("Goal" :induct (adt-pow2-at-least k2 acc)))
+   :rule-classes :linear))
+
+(local
+ (encapsulate ()
+   (local (include-book "arithmetic-5/top" :dir :system))
+   (defthm fn-hp-ceiling-lower-2
+     (implies (natp l) (<= l (* 16384 (ceiling l 16384))))
+     :rule-classes :linear)
+   (defthm fn-hp-ceiling-upper-2
+     (implies (natp l) (< (* 16384 (ceiling l 16384)) (+ l 16384)))
+     :rule-classes :linear)))
+
+(local
+ (defthm fn-hp-ceiling-monotone
+   (implies (and (natp l1) (natp l2) (<= l1 l2))
+            (<= (ceiling l1 16384) (ceiling l2 16384)))
+   :hints (("Goal" :in-theory (disable ceiling)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-hp-cap-monotone
+   (implies (and (natp l1) (natp l2) (<= l1 l2))
+            (<= (adt-cap l1) (adt-cap l2)))
+   :hints (("Goal" :in-theory (disable adt-pow2-at-least ceiling fn-hp-pow2-monotone)
+            :use ((:instance fn-hp-pow2-monotone (k1 (ceiling l1 16384)) (k2 (ceiling l2 16384)) (acc 1)))))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-hp-end-monotone
+   (implies (and (fn-hp-prefixes regs regs2) (natp b1) (natp b2) (<= b1 b2))
+            (<= (adt-end regs b1) (adt-end regs2 b2)))
+   :hints (("Goal" :in-theory (disable adt-cap adt-end-is-end-l)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-hp-page-beyond
+   (implies (and (natp k) (true-listp b1) (true-listp b2)
+                 (<= (len b1) (* *adt-page* k)) (<= (len b2) (* *adt-page* k)))
+            (equal (fn-hp-page b1 k) (fn-hp-page b2 k)))
+   :hints (("Goal" :in-theory (e/d (fn-hp-nthcdr-beyond) (take))))
+   :rule-classes nil))
+
+; KEYSTONE (the region plan, 1): every page outside the dirty list is the
+; old image's page, so a snapshot writes only the dirty list (the store is
+; region-agnostic: it writes the pages marked dirty).
+(defthm fn-hp-append-changes-only-dirty
+  (implies (and (natp k)
+                (not (member-equal k (fn-hp-append-dirty h new salt))))
+           (equal (fn-hp-page (fn-hp-image (append h new) salt) k)
+                  (fn-hp-page (fn-hp-image h salt) k)))
+  :hints (("Goal" :do-not-induct t :cases ((< k (fn-hp-npages (append h new) salt)))
+           :use ((:instance fn-hp-append-changes-only-dirty-in-range)
+                 (:instance fn-hp-regs-of-append (s *fn-hp-schema*) (a (fn-hp-rows h salt))
+                  (b (fn-hp-rows new salt)))
+                 (:instance fn-hp-end-monotone (regs (fn-hp-regs h salt)) (regs2 (fn-hp-regs (append h new) salt))
+                  (b1 1) (b2 1))
+                 (:instance adt-len-ser (s *fn-hp-schema*) (a (fn-hp-rows h salt)))
+                 (:instance adt-len-ser (s *fn-hp-schema*) (a (fn-hp-rows (append h new) salt)))
+                 (:instance fn-hp-page-beyond (b1 (fn-hp-image (append h new) salt)) (b2 (fn-hp-image h salt))))
+           :in-theory (disable fn-hp-append-changes-only-dirty-in-range fn-hp-regs-of-append fn-hp-end-monotone
+                               adt-len-ser adt-ser fn-hp-page fn-hp-rows fn-hp-append-dirty adt-end-is-end-l
+                               adt-end adt-regs))))
 
 (defthm fn-hp-regs-octets-of-regs
   (equal (fn-hp-regs-octets (adt-regs *fn-hp-schema* rows))
