@@ -1192,7 +1192,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reader-view-tests \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
+	books/clock-wall-reading \
 	books/owner-time-model \
+	books/owner-time-journal \
+	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	books/state-digest \
 	tests/acl2/state-digest-tests \

@@ -10932,6 +10932,26 @@
         {
           "kind": "theorem",
           "name": "fn-otm-issue-is-pending-and-admits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-admit-is-the-mode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-return-after-a-stall-is-named"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-stall-tells-no-member-its-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-wait-stays-within-the-stall"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-f4w-stall-within-h"
         }
       ]
     },
@@ -11146,6 +11166,48 @@
         {
           "kind": "theorem",
           "name": "fn-payload-octets-are-not-a-handle"
+        }
+      ]
+    },
+    {
+      "id": "PRF-322",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-journal-determines-the-decisions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-decisions-read-only-the-journal-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-journal-read-of-jlines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-disk-step-unfolds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-wall-reading-shape"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-journal-report-of-a-run"
+        }
+      ]
+    },
+    {
+      "id": "PRF-323",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-read-span-while-shedding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-closed-posting-never-awaits-an-article"
         }
       ]
     }

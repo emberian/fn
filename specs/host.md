@@ -576,10 +576,66 @@ names the episode entered and left. The completion is the recovery
 barrier is pending and a reader waits, only `:inspect` and `:commit` quanta
 run before it, at most one START-NEXT that took members, and at most one
 more `:inspect` than `:commit`; the device's latency is not a quantity of
-the bound. Not yet: the stall deadline and the in-flight members' uncertain
-answer, 440 at the POST command, IHAVE's 436 and mutating control's
-try-later during `slow`, the inline barrier and configuration publication
-as requests (the design's slices 2 and 3).
+the bound.
+
+Slice 2 (lane time-model-2; PRF-311, PRF-323). The limits are three
+profile fields, the live configuration's `barrier-deadline-ms` (D),
+`barrier-stall-ms` (H, read as at least D) and `clock-event-ms` (the
+committer's cadence) rows, each set by `policy set SLOT N` (ACL2's
+books/native-admin.lisp: positive milliseconds; defaults 5,000, 30,000 and
+1,000) and carried by the barrier's issue; a batch in flight keeps the
+limits it was issued with. While the disk sheds (`slow` or `stalled`): a
+served read runs with posting not permitted, so a POST command is answered
+RFC 3977 section 6.3.1's 440 with the reason before any article is sent
+(`fn-otm-read-span-while-shedding`); an article whose POST was answered 340
+before is answered 441 as in slice 1; an operator post, a live
+configuration change or a moderation request on the control socket is
+answered BUSY at once, before it waits for the gate. Past H the disk is
+`stalled`: once per barrier every poster of the batch in flight and of the
+batch prepared behind it is told ACL2's uncertain reply and closed -- never
+accepted, never refused (`fn-otm-stall-tells-no-member-its-outcome`): the
+barrier is pending, not failed, and its bytes may still become durable --
+and the POSTs queued behind them are refused try-later, nothing stored.
+When the device returns the batches complete: an article whose poster was
+told uncertain IS stored. That is the documented ambiguity, and it is RFC
+3977's: section 6.3.1 has the client that did not get a clear answer check
+(STAT) before it reposts, which is what the uncertain reply tells it; a
+member told uncertain is never answered again. F4-W
+(`fn-otm-f4w-stall-within-h`): the committer's clock events, each within
+its wait plus the timer's lateness L, enter `stalled` at most H + L after
+the barrier's issue (its wait never reaches past H), so every POST is
+answered accepted, refused, uncertain or try-later within H + L + one
+quantum of its article's arrival. `health` and `status` print `disk
+stalled: barrier N ms pending ... members=uncertain`; the service log names
+the stall and the recovery after it. Not yet: IHAVE's 436 and CHECK's 431
+during `slow` (PKT-862: a transit read is not admitted while a barrier is
+pending, so a peer waits, as in slice 1), the inline barrier and
+configuration publication as requests (slice 3), `health`'s exit in
+`stalled` (PKT-853 (b)).
+
+HST-028: Every decision that stores nothing is reproducible from the
+decision journal (PRF-322, books/owner-time-journal.lisp). Each event the
+scheduler's disk-and-clock value takes -- a barrier's issue and completion,
+a clock event of the committer, of a status render or of a served read
+(whose monotonic and wall readings are the owner's clock for that read:
+N3 of lane proto-determinism; the wall reading's validity is ACL2's,
+`fn-otm-wall-reading`) -- and each note (the stall's release: members told,
+queued POSTs refused) is one entry `SEQ OP READING A B C WORD`, rendered by
+ACL2 and offered to the service-log writer thread, which appends it to
+`STORE/journal/decisions.fnj`: never written on the owner and never waited
+on, so a journal on the disk that is stalled costs nothing but queue space,
+bounded by ACL2's sink; an entry the sink drops is counted and is a gap in
+SEQ. Keystone `fn-otm-journal-determines-the-decisions`: the journal of
+any run of the host's calls reads back whole and replays from the run's
+start (a start entry, SEQ 0, per run) to agreement at the run's disk and
+clock, and every decision the host asks of the value reads only those.
+The operator's replay is `fn store ROOT journal`: ACL2 reads the file back
+and replays it (`fn-otm-journal-report`, `fn-otm-journal-exit`: exit 0 when
+it agrees, 1 at a gap, divergence or malformed entry).
+What a process death with entries unflushed loses is exactly those entries:
+the replay of decisions that stored nothing. No durable state depends on an
+entry (a disk event keeps the pipeline; a refusal stores nothing), and the
+record log alone determines the durable state.
 
 ### The owner submission path
 

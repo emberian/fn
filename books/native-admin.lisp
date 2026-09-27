@@ -582,11 +582,19 @@
        ; (books/owner-log-route.lisp fn-olr-bmax / fn-olr-omax read these
        ; `:set-limit' rows), each keyed (SLOT, ""), staged, published and
        ; replayed like the transit limits.  A bound is positive and under the
-       ; row's ceiling.
+       ; row's ceiling.  Lane time-model-2 (PRF-311): the disk's profile
+       ; fields ride the same rows, `policy set barrier-deadline-ms N' (D),
+       ; `barrier-stall-ms N' (H; read as at least D,
+       ; books/owner-time-model.lisp fn-otm-limits) and `clock-event-ms N'
+       ; (the committer's cadence), each positive milliseconds; a batch in
+       ; flight keeps the limits it was issued with, the next one reads the
+       ; new row.
        ((and (equal (len words) 4)
              (equal (car words) "policy")
              (equal (cadr words) "set")
-             (member-equal (caddr words) '("log-batch-records" "log-batch-octets"))
+             (member-equal (caddr words) '("log-batch-records" "log-batch-octets"
+                                           "barrier-deadline-ms" "barrier-stall-ms"
+                                           "clock-event-ms"))
              (fn-native-admin-decimalp (cadddr words))
              (posp (fn-native-admin-decimal-value (coerce (cadddr words) 'list)))
              (<= (fn-native-admin-decimal-value (coerce (cadddr words) 'list))

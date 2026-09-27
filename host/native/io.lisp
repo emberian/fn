@@ -909,10 +909,18 @@ no writer runs."
   (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
     *fnn-log-sink*))
 
+(defvar *fnn-journal-fd* nil
+  "The decision journal's descriptor (STORE/journal/decisions.fnj, lane
+time-model-2), written only by the log writer thread while it runs.")
+
 (defun fnn-log-write-item (destination octets)
   "Write one whole line: :written, or :failed (ACL2 counts it dropped)."
   (handler-case
-      (cond ((and (eq destination :log) *fnn-owner-log-fd*)
+      (cond ((eq destination :journal)
+             (if *fnn-journal-fd*
+                 (progn (fnn-write-all *fnn-journal-fd* octets) :written)
+               :failed))
+            ((and (eq destination :log) *fnn-owner-log-fd*)
              (fnn-write-all *fnn-owner-log-fd* octets)
              :written)
             (*fnn-stderr*
@@ -989,6 +997,19 @@ anyway."
       (let ((old *fnn-owner-log-fd*))
         (setq *fnn-owner-log-fd* fd)
         (when old (ignore-errors (fnn-close old)))))))
+
+(defun fnn-journal-line (line)
+  "Offer one ACL2-rendered decision-journal entry LINE (its LF included,
+books/owner-time-journal.lisp fn-otm-jline) to the writer thread: never
+written on the caller's thread, never waited on.  ACL2's sink bounds the
+queue (books/log-sink.lisp); an entry it drops is counted there and shows
+in the journal as a gap in the sequence numbers, which replay names
+(fn-otm-replay's (:gap SEQ)).  With no writer running (no owner run) there
+is no journal and the entry is dropped."
+  (unless (fnn-octet-list-p line)
+    (fnn-fault "ACL2 returned a malformed journal entry"))
+  (when *fnn-journal-fd*
+    (fnn-log-offer :journal (fnn-octets line))))
 
 (defun fnn-log-line (line)
   "Write the ACL2-rendered octet list LINE and one LF to the service log:
@@ -1380,12 +1401,19 @@ round policy."
      (encode-universal-time 0 0 0 1 1 1970 0)))
 
 (defun fnn-owner-wall-milliseconds ()
-  "One gettimeofday reading since 2000-01-01; the second value says if usable."
+  "One gettimeofday reading since 2000-01-01; the second value says if usable.
+Lane time-model-2 (N3 of lane proto-determinism): ACL2 decides both from the
+raw reading (books/owner-time-model.lisp fn-otm-wall-reading); the host
+compares nothing."
   (handler-case
       (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
-        (let ((wall (+ (* 1000 (- seconds +fnn-owner-unix-dtn-offset-seconds+))
-                       (floor microseconds 1000))))
-          (if (minusp wall) (values 0 nil) (values wall t))))
+        (destructuring-bind (wall has-wall)
+            (fnn-core 'fn-otm-wall-reading seconds microseconds
+                      +fnn-owner-unix-dtn-offset-seconds+)
+          (unless (and (integerp wall) (<= 0 wall) (member has-wall '(t nil)))
+            (fnn-fault "ACL2 returned a malformed wall reading"))
+          (values wall has-wall)))
+    (fnn-store-fault (condition) (error condition))
     (error () (values 0 nil))))
 
 (defun fnn-store-prepare-observation ()
@@ -2839,6 +2867,28 @@ them across processes, copies, checkpoint and full replay, and boxes."
                 (fnn-out "~a" (fnn-open-report store))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
+
+(defun fnn-command-store-journal (root)
+  "`store ROOT journal' (lane time-model-2, HST-028): read the decision
+journal STORE/journal/decisions.fnj back and print ACL2's one-line replay
+(books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
+whole/torn/malformed, and agrees or the first gap, divergence or malformed
+entry).  It opens no store (a running owner keeps its journal open for
+append; a torn last line is one the writer had not finished).  Exit 0 when
+the replay agrees, 1 otherwise."
+  (let ((path (fnn-join (fnn-join root "journal") "decisions.fnj")))
+    (unless (probe-file path)
+      (fnn-refuse "no decision journal at ~a" path))
+    (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))
+                     (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
+                       (read-sequence v in)
+                       (coerce v 'list))))
+           (report (fnn-core 'fn-otm-journal-report octets)))
+      (fnn-write-report report)
+      (let ((exit (fnn-core 'fn-otm-journal-exit octets)))
+        (unless (member exit '(0 1))
+          (fnn-fault "ACL2 returned a malformed journal verdict"))
+        exit))))
 
 (defun fnn-command-state-checkpoint (root)
   "`store checkpoint': open the store as `recover' does (the exclusive writer
@@ -6380,6 +6430,7 @@ observation (the COMPLETE re-signals it under the owner)."
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "digest") (fnn-command-store-digest root))
+                 ((string= command "journal") (fnn-command-store-journal root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
