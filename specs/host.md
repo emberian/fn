@@ -1030,7 +1030,14 @@ changed is who waits. host/native/mux.lisp runs `+fnn-mux-loops+` (2)
 threads, each polling (poll(2), Linux and OpenBSD alike) the connections it
 owns and a wake pipe; the accept threads hand each accepted socket to a loop
 instead of starting a thread for it. A connection is a record: the input the
-next step is handed (one `+fnn-max-read+` read, or the suffix a step left),
+next step is handed (one read, or the suffix a step left; the read size is
+ACL2's per step since lane input-loop-2, 2026-09-27: `fn-cbud-step-read-octets`,
+books/connection-budget.lisp, installed by `fnn-owner-refresh-read-octets`
+after every served step, reads 512 octets under a step rate such as the
+public listener's default `exposure-steps-per-second` of 64, so the rate
+keeps its meaning in octets per second, and 4 KiB without one (loopback, or
+the rate row set to 0); each loop reads into one buffer of that size,
+`fnn-mux-read-buffer`),
 the one reply being written (the connection is neither read nor stepped
 while it is queued, so a client that does not read meets TCP backpressure
 and holds one reply), and its timers: the exposure wait (`fn-exp-charge`'s
@@ -1059,7 +1066,11 @@ after recovery and before listen, ACL2 decides the live capacity against it
 (`fn-cbud-run-decide`, host `fn-owner-connection-budget`): `connections
 holds=B per-connection=K KiB` to the service log, or `refused
 connections-exceed-memory capacity=C holds=B per-connection=K KiB machine=M
-MB` and exit 1. A live reconfiguration whose capacity passes the bound the
+MB` and exit 1; when the base itself does not fit (neither the store's heap
+figure nor the process's dynamic space, each with the fixed threads and the
+core, is within the machine: holds=0 whatever the capacity), the line goes
+on ` base-exceeds-machine heap-figure=F MB dynamic=D MB fixed=R MB`
+(`fn-cbud-run-refusal-line`). A live reconfiguration whose capacity passes the bound the
 run held is refused `:connections-exceed-memory` before anything is staged
 (`fn-owner-reconfigure-deltas`). Trusted sources count in the capacity like
 every other (the trusted range exempts a source from the per-address rule

@@ -57,8 +57,7 @@ store filesystem changed: expected ext4 at /srv/fn-public from /dev/nvme1n1p1 (f
    ```
 
 An empty folder where the volume should be is refused as
-`store filesystem unrecorded`. A store made before 2026-09-27 must be
-rebound once, as in step 2, before the node will start.
+`store filesystem unrecorded`.
 
 ### On OpenBSD
 
@@ -84,9 +83,11 @@ Also on OpenBSD:
 
 - fn must be installed on a file system mounted `wxallowed` (`/usr/local`
   is, by default).
-- fn uses 1,024 MB of memory by default. OpenBSD limits this by login class
-  (1,536 MB for `default`, 4,096 MB for `daemon`, which the service uses).
-  `SBCL_USER_ARGS="--dynamic-space-size N"` changes it for one command.
+- fn works out its memory from the store's size limits, and `init` prints
+  the figure (`reservation=... MB`). OpenBSD caps each program's memory by
+  login class (1,536 MB for `default`, 4,096 MB for `daemon`, which the
+  service uses). `init` counts that cap: on a small machine it picks a
+  smaller store.
 - Start fn by hand only from a folder its user can read (`cd /var/fn`),
   or it stops with `getcwd: Permission denied`. The service does this for you.
 
@@ -142,7 +143,7 @@ You will see one line for each possible problem, then `accepted operator health`
 health exit=22 state=unqualified-profile
 fenced clear
 exhausted clear
-unqualified-profile held format=8 development
+unqualified-profile held format=9 development
 space-pressure clear
 no-route clear
 stranded-transfer clear
@@ -408,7 +409,9 @@ In order, these set:
 
 - how many connections at once (31 if unset; each costs memory);
 - how many from one address;
-- how fast one address may work (over it, fn slows it down; nothing is lost);
+- how fast one address may work (over it, fn slows it down; nothing is
+  lost). At the default, 64, one address can send about 32 KB a second, so
+  a 1 MB post takes about half a minute. `0` turns the limit off;
 - how long a new connection may stay silent, then how long an idle one may;
 - how many failed logins per address per minute;
 - how many posts per minute;
@@ -469,8 +472,11 @@ back to an older release over a newer store.
 2. Install the new release. The program folder is replaced whole.
 3. Start the node. The store folder stays as it is.
 
-Only if the new release refuses the old store (`reason=store-format`) do you
-move the data through an export:
+Only if the new release refuses the old store do you move the data
+through an export. The refusal names why: `reason=store-format` (the
+store is in an older format; every store made before 27 September 2026
+is) or `reason=older-release`. Run the export with the **old** release,
+before you install the new one:
 
 ```text
 fn operator NODE/fn.toml store export ARCHIVE
@@ -530,6 +536,36 @@ after a crash. It is fine.
 If `recover` refuses with `pre-C1 control record ... run store repair-control`,
 the store was made by a release before 2026-09-25 and holds a cancel filed
 in an old way. Keep the store as it is and ask the developers.
+
+### The node does not start
+
+fn never stops without saying why. The reason is one line starting
+`refused`, `fault` or `uncertain`, and the exit code matches it (see
+[exit codes](#exit-codes)). Under systemd it is in the journal:
+
+```sh
+journalctl -u fn -n 20
+```
+
+Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
+names a `[log] path`. A program that starts fn and keeps its error output
+in a file must show that file: the reason is there.
+
+The memory refusals, and what to do:
+
+- `fn: refused machine-cannot-hold-profile heap=H MB machine=M MB`: the
+  store's limits need more memory than this machine (or the service's
+  `MemoryMax`) gives. Raise the limit, or move the store to settings that
+  fit (`store export`, then `store import` with smaller `--max-...`).
+- `fn: refused machine-cannot-hold-threads reservation=R MB machine=M MB`:
+  the same, for the whole node with its threads. Raise the limit.
+- `refused connections-exceed-memory capacity=C holds=B ...`: the node
+  can hold only B of its C connections. Lower the count
+  (`fn operator CONFIG policy set exposure-connections N`), or give it
+  more memory. When the line goes on `base-exceeds-machine`, not even the
+  store fits: this happens when fn is started without `bin/fn` (which
+  sizes the memory from the store) under a limit smaller than the image's
+  own size. Start it through `bin/fn`, or raise the limit.
 
 ### "no store"
 
@@ -602,12 +638,17 @@ new store with bigger limits: `store export`, a fresh install, then
 [reinstalling](install.md#4-reinstalling) and
 [store settings](#store-settings)).
 
-With the node stopped, `store compact` packs the store's many small files
-into a few big ones. It changes no article. It needs about 4 MiB free.
+The store is a log that grows with each post. Now and then the running
+node saves a summary (a checkpoint) and deletes the parts of the log it
+covers, so a restart reads less. You can do the same by hand, with the node
+stopped. It changes no article:
 
 ```text
 fn operator /path/to/fn.toml store compact
 ```
+
+It answers `compacted steps=checkpoint,drop records=N`. On a store of
+40,000 short articles it took under three minutes.
 
 ## 11. How much one node can handle
 
@@ -616,10 +657,11 @@ pool:
 
 - A post is confirmed in about half a second (0.6 s; 0.8 s if signed).
 - About two posts a second, sustained.
-- A new connection's greeting takes over a second on a store of 10,000
-  articles.
-- Keep a node that takes posts **well under 30,000 articles**. Past about
-  32,000, the node ran out of memory.
+- Reading one article takes about half a millisecond (measured 27
+  September).
+- A store of 40,000 short articles (2 KiB each) opens in about 14 seconds and then uses
+  about 1.3 GB of memory. The old advice to stay under 30,000 articles is
+  gone: that limit was the old store format's.
 
 Most of the post time is the disk saving the article. fn never says yes
 before the article is saved. The full figures are in
@@ -668,16 +710,17 @@ Limits: `--max-transactions`, `--max-history-octets`,
 `--max-record-octets`, `--max-article-octets`, `--max-groups-per-article`,
 `--max-open-suffix`, `--max-consumers`, `--max-config-generations`,
 `--max-credentials`. `--profile scale|development|default` names a starting
-set. fn refuses limits the machine's memory cannot hold, with
-`fn: refused machine-cannot-hold-profile`.
+set. `init` writes limits you name even when this machine's memory cannot
+hold them, and says so (`within-budget=no`); fn then refuses to run that
+store here, with `fn: refused machine-cannot-hold-profile`.
 
 `init` with no `--profile` and no limit (and every `init` under a
-`mission`) sizes small: the **development** set when the machine holds it,
-else **small**. Development holds 128 transactions: after about 125
-articles every post is refused with `441 posting failed; the store has no
-capacity for this article`. A node for people needs its limits named:
-remove the `mission` line from `fn.toml` and `init` with the limits above,
-or raise them later with `store export` and `store import --max-... N`.
+`mission`) picks the largest of four sizes this machine's memory holds:
+64, 32 or 16 MiB of articles, else 8 MiB. A short post takes about 860
+bytes, so that is about 78,000 posts at the top and about 9,700 at the
+bottom. A friend's feed uses the same room. For more, remove the `mission`
+line from `fn.toml` and `init` with the limits above, or raise them later
+with `store export` and `store import --max-... N`.
 
 ### Other commands
 

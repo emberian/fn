@@ -287,8 +287,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-record-provenance-tests \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
-	books/byte-store-k0-staging-error \
-	books/byte-store-k0-authority-error \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \
@@ -354,7 +352,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-compact-verb-tests \
 	books/store-compact-window \
 	tests/acl2/store-compact-window-tests \
-	books/store-history-marker \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
 	books/store-reclaim \
@@ -372,14 +369,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
-	tests/acl2/store-history-marker-tests \
-	books/store-history-required \
-	tests/acl2/store-history-required-tests \
-	books/byte-store-marker-program \
-	books/byte-store-k0-marker \
-	tests/acl2/byte-store-k0-marker-tests \
-	books/byte-store-marker-candidates \
-	tests/acl2/byte-store-marker-candidates-tests \
 	books/store-log \
 	tests/acl2/store-log-tests \
 	books/store-log-crash \
@@ -417,23 +406,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
 	tests/acl2/payload-lz-tests \
-	books/byte-store-k0-step-lemmas \
-	books/byte-store-k0-step-root-fence \
-	books/byte-store-k0-step \
-	tests/acl2/byte-store-k0-step-tests \
-	books/byte-store-k0-step-bridge-marker \
-	books/byte-store-k0-step-bridge-prefix \
-	books/byte-store-k0-step-bridge \
-	tests/acl2/byte-store-k0-step-bridge-tests \
-	books/byte-store-k0-step-bridge-frontier \
-	tests/acl2/byte-store-k0-cuts-tests \
-	books/byte-store-k0-step-bridge-root \
-	tests/acl2/byte-store-k0-step-bridge-root-tests \
-	books/byte-store-k0-window \
-	books/byte-store-k0-recover-program \
-	tests/acl2/byte-store-k0-recover-program-tests \
-	books/byte-store-k0-pre-init \
-	tests/acl2/byte-store-k0-pre-init-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -876,6 +848,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog \
 	books/served-catalog-chain \
 	books/served-catalog-owner \
+	books/served-catalog-join-refresh \
+	books/served-catalog-join-step \
+	books/served-catalog-join \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -904,6 +879,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
+	tests/acl2/served-catalog-join-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	tests/acl2/catalog-number-index-tests \
@@ -963,6 +939,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/config-owner-live-authorize \
+	tests/acl2/config-owner-live-authorize-tests \
 	books/owner-prepare-served \
 	books/store-prepare-served \
 	books/owner-prepare-served-ocl \
@@ -1251,7 +1229,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1265,6 +1243,12 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
+
+# fn's static website, rendered from README.md, docs/, CONTRIBUTING.md and
+# swarmguide/ into build/site/ (open build/site/index.html); GitHub Pages
+# builds the same thing (.github/workflows/pages.yml).
+site:
+	$(PYTHON) site/build_site.py --out build/site
 
 # `make check` for a lane worktree: planning/ledger.json, ledger.md and
 # current.md are regenerated into one temporary directory and compared there
@@ -1290,6 +1274,10 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+# The website renders from the docs (site/build_site.py, stdlib only) and every
+# internal link on every page resolves, anchors included; a doc link to a
+# repository file that does not exist fails by name.
+	@$(CHECK_STEP) $(PYTHON) site/build_site.py --check --out build/site
 # Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
 # SBCL's compile-file and the Python tests read them with different default
 # encodings; the files that still carry a section sign are listed debt
@@ -1399,6 +1387,10 @@ check:
 # Static, under a second, with its teeth test.
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
+# A host macro used before its definition in load order compiles as a
+# function call (batch AW: every format-9 restart faulted; lane ops-fixes).
+	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

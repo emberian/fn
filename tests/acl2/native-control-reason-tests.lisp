@@ -120,3 +120,16 @@
 ; An old client never sends kind 13 or 17, so it never reads kind 18; were it
 ; handed one, its decoder answers :bad (no status), never a false acceptance.
 (assert-event (equal (fn-native-control-reply-decode (ncrt-refused)) :bad))
+
+; fn-native-control-transport-word-names-the-refusal: a connect that failed
+; (no owner at the control path) is refused and names no-owner; an exchange
+; lost after submission is uncertain and names nothing (lane ops-fixes).
+(assert-event (equal (fn-native-control-transport-outcome :before-submission) :refused))
+(assert-event (equal (fn-native-control-reply-detail
+                      (fn-native-control-transport-outcome :before-submission)
+                      (fn-native-control-transport-word :before-submission))
+                     '(110 111 45 111 119 110 101 114)))  ; no-owner
+(assert-event (equal (fn-native-control-transport-outcome :after-submission) :uncertain))
+(assert-event (null (fn-native-control-reply-detail
+                     (fn-native-control-transport-outcome :after-submission)
+                     (fn-native-control-transport-word :after-submission))))

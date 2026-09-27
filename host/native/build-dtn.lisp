@@ -128,13 +128,6 @@
 (include-book "books/bp-handoff-status")
 (include-book "books/bp-native-app-fast")
 
-;; The committed-history boundary: io.lisp fnn-mark-committed and
-;; fnn-check-history-marker call fn-hm-after-commit and fn-hm-open-verdict.
-(include-book "books/store-history-marker")
-;; D31: the history requirement and the recovery catch-up: io.lisp
-;; fnn-check-history-marker and fnn-recover call
-;; fn-hmr-open-verdict and fn-hmr-catch-up.
-(include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
 ;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's

@@ -249,6 +249,27 @@
       word
     nil))
 
+; The reason word of an exchange no reply ended (host/native/control.lisp
+; fnn-control-reasoned-exchange): before submission the connect itself
+; failed, so no owner answers at the configured control path, and the
+; refusal (fn-native-control-transport-outcome) says so: `no-owner'.  After
+; submission the outcome is uncertain and names nothing.  Before this an
+; operator verb against a stopped node printed `refused ... REFUSED' with no
+; reason (lane ops-fixes).
+(defun fn-native-control-transport-word (stage)
+  (declare (xargs :guard t))
+  (if (equal stage :before-submission)
+      (fn-nctrl-reason-word :no-owner)
+    nil))
+
+(defthm fn-native-control-transport-word-names-the-refusal
+  (equal (fn-native-control-reply-detail
+          (fn-native-control-transport-outcome stage)
+          (fn-native-control-transport-word stage))
+         (if (equal stage :before-submission)
+             (fn-nctrl-reason-word :no-owner)
+           nil)))
+
 ; -----------------------------------------------------------------------------
 ; The exchange, proved
 

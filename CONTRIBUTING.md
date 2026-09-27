@@ -35,7 +35,7 @@ says which part of the tree an issue touches.
 
 ## Getting set up
 
-For documentation, clients and packaging you need only Python 3.10 or newer:
+For documentation, clients and packaging you need only Python 3.11 or newer:
 
 ```sh
 git clone https://github.com/emberian/fn
@@ -51,8 +51,8 @@ For work in `books/` or `host/` you also need:
 - **SBCL**, a Common Lisp compiler.
 - **ACL2 8.7**, built on that SBCL. Set `FN_ACL2` to its `saved_acl2`
   launcher.
-- For the server image: libsodium, OpenSSL 3, and the ML-DSA code in
-  `third_party/`.
+- For the server image: libsodium, the system's TLS library (OpenSSL 3.0
+  or newer, or LibreSSL 3 or newer), and the ML-DSA code in `third_party/`.
 
 Then:
 
@@ -105,8 +105,13 @@ explains why.
   or changed decision in `books/` brings a theorem about it, with an example
   that shows the theorem is not empty (we call these "teeth": a case where
   the conclusion holds, and one where it fails without its hypothesis).
-- **The proofs must certify.** Say in the PR which books you certified and
-  paste the summary line. We re-run it before merging.
+- **The proofs must certify, quickly.** Say in the PR which books you
+  certified and paste the summary line. We re-run it before merging. A book
+  should certify in about ten seconds; `make check` holds that line
+  ([how it is measured](docs/proofs.md)).
+- **Try proofs in the REPL first.** `tools/proof_repl.py` keeps one ACL2
+  session open over your book, with its certified dependencies loaded, so
+  each attempt costs only the proof itself. Its header lists the commands.
 - **Docs change with behaviour**, in the same PR. `make check` catches many
   misses.
 - **Plain words.** Say what you changed, why, and what you left undone.

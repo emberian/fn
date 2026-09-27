@@ -458,9 +458,11 @@ Message-ID twice (at the article's position and at the cancel's), as
 at-least-once delivery allows; key your effects by Message-ID. The scan
 still stops at 16 events per poll and walks the view's withdrawal records R
 and withdrawn list N for each event not of the group: 16 x (R + N)
-comparisons per poll in the worst case. On dev at 2026-09-27 the view's
-withdrawn list is empty until lane flip-L8-2's live refresh lands, so the
-page is the answer until then.
+comparisons per poll in the worst case. Lane flip-L8-2's live refresh of
+the view's withdrawals landed in batch AV (35c406204, 2026-09-27), so the
+withdrawal arms read a populated view; no native case yet observes a
+withdrawal event at a consumer (tests/test_native_consumer_*.py have none):
+that observation is open.
 
 ## Executable seam and obligations
 

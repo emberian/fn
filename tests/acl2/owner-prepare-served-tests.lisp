@@ -144,3 +144,82 @@
                 (fn-ocfg-pins *lgt-bad-oc0*) *lgt-retire*))
 (assert-event (not (fn-lgoc-invariantp *pst-bad-stale*)))
 (assert-event (not (fn-lgoc-invariantp (fn-psrv-unstage *pst-bad-stale*))))
+
+; -----------------------------------------------------------------------------
+; keystone-audit 2026-09-27: witnesses three PRF-290/299 events lacked.
+
+; fn-psrv-rcon-io-preserves-invariant: reachable positive, the staged
+; article's publication through the host's io entry (each operation
+; fn-psrv-io-safep), carrying the invariant to :completing.
+(defconst *pst-io-a* (fn-rcon-ocfg-io *pst-prepared* :record-file :ok))
+(defconst *pst-io-b* (fn-rcon-ocfg-io *pst-io-a* :record-link :ok))
+(defconst *pst-io-c* (fn-rcon-ocfg-io *pst-io-b* :record-directory :ok))
+(assert-event
+ (and (fn-lgoc-invariantp *pst-prepared*)
+      (fn-psrv-io-safep :record-file) (fn-psrv-io-safep :record-link)
+      (fn-psrv-io-safep :record-directory)
+      (equal (lgt-phase *pst-io-a*) :record-data-durable)
+      (fn-lgoc-invariantp *pst-io-a*)
+      (equal (lgt-phase *pst-io-b*) :record-attempted)
+      (fn-lgoc-invariantp *pst-io-b*)
+      (equal (lgt-phase *pst-io-c*) :completing)
+      (fn-lgoc-invariantp *pst-io-c*)))
+
+; fn-psrv-deferred-record-dir-preserves-relation: reachable positive, the
+; staged RETENTION event (not a held row) at :record-attempted, whose
+; directory step keeps the Store relation.  Teeth for fn-cstp-carriedp
+; (CORRUPTED, labelled): the topic-counter-corrupted owner's Store at the
+; same point is fn-cst-relation but not carried, and the directory step
+; breaks the relation.
+(defconst *pst-ret-att*
+  (lgt-store (fn-rcon-ocfg-io (fn-rcon-ocfg-io *pst-ret-staged* :record-file :ok)
+                              :record-link :ok)))
+(defconst *pst-bad-ret-att*
+  (lgt-store (fn-rcon-ocfg-io (fn-rcon-ocfg-io *pst-bad-ret-staged* :record-file :ok)
+                              :record-link :ok)))
+(assert-event
+ (and (fn-cst-relation *pst-ret-att*)
+      (fn-cstp-carriedp *pst-ret-att*)
+      (equal (fn-sf-phase (fn-sn-files *pst-ret-att*)) :record-attempted)
+      (not (fn-held-p (fn-sf-record-candidate (fn-sn-files *pst-ret-att*))))
+      (fn-cst-relation (fn-sn-io *pst-ret-att* :record-directory :ok))
+      (equal (fn-sf-phase (fn-sn-files (fn-sn-io *pst-ret-att* :record-directory :ok)))
+             :completing)))
+(assert-event
+ (and (fn-cst-relation *pst-bad-ret-att*)
+      (not (fn-cstp-carriedp *pst-bad-ret-att*))
+      (equal (fn-sf-phase (fn-sn-files *pst-bad-ret-att*)) :record-attempted)
+      (not (fn-held-p (fn-sf-record-candidate (fn-sn-files *pst-bad-ret-att*))))
+      (not (fn-cst-relation (fn-sn-io *pst-bad-ret-att* :record-directory :ok)))))
+
+; fn-psrv-known-abort-preserves (the Store level): reachable positive, the
+; staged retention event aborted to :ready keeping both relations; teeth
+; for fn-cstp-carriedp (CORRUPTED, as above): carried fails after.
+(assert-event
+ (let ((s (lgt-store *pst-ret-staged*)))
+   (and (fn-cst-relation s) (fn-cstp-carriedp s)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-known-abort s))) :ready)
+        (fn-cst-relation (fn-sn-known-abort s))
+        (fn-cstp-carriedp (fn-sn-known-abort s)))))
+(assert-event
+ (let ((s (lgt-store *pst-bad-ret-staged*)))
+   (and (fn-cst-relation s) (not (fn-cstp-carriedp s))
+        (not (fn-cstp-carriedp (fn-sn-known-abort s))))))
+
+; fn-psrv-prepare-is-sbud-prepare-when-served (books/owner-prepare-served):
+; reachable positive at :reserved (every hypothesis asserted above for
+; *lgt-reserved*, and the view visible); teeth for fn-psrv-event-servedp:
+; at the retired group (every other hypothesis holding, asserted above for
+; *lgt-r-reserved*) the host's prepare leaves the owner and fn-sbud-prepare
+; stages the article.
+(assert-event
+ (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *lgt-reserved*)))
+      (equal (fn-psrv-prepare *lgt-reserved* *acar-t-record* 1000000
+                              (pst-carry *lgt-reserved*))
+             (fn-sbud-prepare *lgt-reserved* *acar-t-record* 1000000))))
+(assert-event
+ (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *lgt-r-reserved*)))
+      (not (fn-psrv-event-servedp (fn-ocfg-config *lgt-r-reserved*) *acar-t-record*))
+      (not (equal (fn-psrv-prepare *lgt-r-reserved* *acar-t-record* 1000000
+                                   (pst-carry *lgt-r-reserved*))
+                  (fn-sbud-prepare *lgt-r-reserved* *acar-t-record* 1000000)))))

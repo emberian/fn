@@ -104,7 +104,8 @@
 
 ; Format 8: two texts, then sixteen eight-octet frame naturals, in this
 ; order.  Field 14 is the committed-history requirement (D31): 0 `unmarked',
-; 1 `required' (books/store-history-required.lisp); fields 15 to 17 are the
+; 1 `required' (the per-file marker's; books/store-history-required.lisp was
+; deleted 2026-09-27 with the per-file layout, PKT-838); fields 15 to 17 are the
 ; header limits (D27, lane header-limits-profile: one format, D34, so the
 ; layout grows and fresh installs write it).
 (defconst *fn-bs-meta-profile-spec*

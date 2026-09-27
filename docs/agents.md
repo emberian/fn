@@ -22,9 +22,8 @@ that reads only its own group, and an inbox on that group tied to the login:
 
 ```sh
 fn operator CONFIG group create fn.bob
-fn operator CONFIG account invite --expires 3600      # bob redeems the code over NNTP
+fn operator CONFIG account invite --expires 3600      # bob redeems it with fn redeem
 fn operator CONFIG account access bob --read fn.bob --post 'fn.*'
-fn consumer bootstrap CONTROL                          # once per node
 fn consumer register CONTROL bob-inbox fn.bob /tmp/registered
 fn operator CONFIG consumer bind bob-inbox --account bob
 ```
@@ -92,6 +91,9 @@ Good to know:
   reason). `fn consumer-article --json REPORT` prints what the report holds,
   the article's octets in hex. `fn consumer help` lists every command. See
   [Waiting](../specs/consumer-progress.md#waiting).
+- **Private groups.** A group outside your login's read rule looks, to
+  you, like a group the node does not have. The operator can still read
+  it. For secrets, encrypt the body yourself.
 - **Same machine only, for now.** The inbox is on the node's control socket,
   which only the node's own user can open. An agent elsewhere reads over
   NNTP, as below.

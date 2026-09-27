@@ -141,6 +141,24 @@
                      "refused connections-exceed-memory capacity=1000 holds=619 per-connection=1465 KiB machine=2048 MB"))
 (assert-event (equal (fn-cbud-hold-line (cbt-decide 31 *cbt-machine*) *cbt-article* t)
                      "connections holds=619 per-connection=1465 KiB"))
+; The owner's line (fn-cbud-run-refusal-line, host/owner-host.lisp
+; fn-owner-connection-budget): a base that fits keeps the line above; the raw
+; developer image under a 24 GiB limit (its build's 32,000 MB dynamic space,
+; the default profile's figure) names the parts that do not fit, where the
+; line alone said only holds=0 (lane ops-fixes).
+(assert-event (equal (fn-cbud-run-refusal-line (cbt-decide 1000 *cbt-machine*)
+                                               *cbt-article* t *cbt-machine*
+                                               *cbt-dyn-launch* *cbt-hneed* *cbt-core*
+                                               *cbt-threads* *cbt-stack*)
+                     (fn-cbud-refusal-line (cbt-decide 1000 *cbt-machine*)
+                                           *cbt-article* t *cbt-machine*)))
+(assert-event (equal (fn-cbud-run-refusal-line
+                      (fn-cbud-run-decide 31 (* 24 1073741824) *cbt-dyn-dev*
+                                          *cbt-hneed-default* *cbt-core*
+                                          *cbt-threads* *cbt-stack* *cbt-article* t)
+                      *cbt-article* t (* 24 1073741824) *cbt-dyn-dev*
+                      *cbt-hneed-default* *cbt-core* *cbt-threads* *cbt-stack*)
+                     "refused connections-exceed-memory capacity=31 holds=0 per-connection=1465 KiB machine=24576 MB base-exceeds-machine heap-figure=73400320 MB dynamic=32000 MB fixed=347 MB"))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-cbud-admitted-connections-fit-the-machine.

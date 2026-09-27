@@ -11,8 +11,18 @@
 ; *osi-completing* is completing (reached by fn-own-run from owner-tests).
 ; Its Message-ID is 65 ASCII characters, its payload 328 octets, its three
 ; metadata strings 73, 77 and 77 characters.
-(defconst *rcon-t-r*
+; by specification: the flip -- the Store retains the article as a held row
+; (books/held-record.lisp, its payload a handle); the wire RECORD this book's
+; twins read is the one the row stands for over the arena that interned the
+; completing journal (owner-served-invariants-tests *osi-completing-prior*;
+; held-rows-tests fn-hrt-wire-of), the record the host encodes
+; (host/store-node-host.lisp: fn-rcon-store-event-encode of fn-row-wire-of).
+(defconst *rcon-t-row*
   (car (last (fn-sf-records (fn-sn-files (fn-own-store *osi-completing*))))))
+(defconst *rcon-t-r*
+  (car (fn-hrt-wire-of *osi-completing-prior* (list *rcon-t-row*))))
+(assert-event (fn-held-p *rcon-t-row*))
+(assert-event (equal *rcon-t-r* (car (last *osi-completing-prior*))))
 (assert-event (fn-record-p *rcon-t-r*))
 (assert-event (fn-rcon-record-p *rcon-t-r*))
 (assert-event (equal (length (fn-record-msgid *rcon-t-r*)) 65))
@@ -30,33 +40,33 @@
                                  (fn-record-release-evidence *rcon-t-r*) 1))
 (assert-event (fn-store-retention-event-p *rcon-t-retention*))
 (assert-event
- (let ((xs (list *rcon-t-r* *rcon-t-retention* nil 5 "x" (list 1 2))))
-   (and (equal (fn-rcon-store-event-p *rcon-t-r*) t)
+ (let ((xs (list *rcon-t-r* *rcon-t-row* *rcon-t-retention* nil 5 "x" (list 1 2))))
+   (and (equal (fn-rcon-store-event-p *rcon-t-row*) t)
         (equal (fn-rcon-store-event-p *rcon-t-retention*) t)
         (equal (fn-rcon-store-event-sequence *rcon-t-retention*) 7)
         (equal (fn-rcon-store-event-txid *rcon-t-retention*) 9)
-        (equal (fn-rcon-sf-record-pair *rcon-t-r*)
-               (cons (fn-record-sequence *rcon-t-r*) (fn-record-txid *rcon-t-r*)))
+        (equal (fn-rcon-sf-record-pair *rcon-t-row*)
+               (cons (fn-record-sequence *rcon-t-row*) (fn-record-txid *rcon-t-row*)))
         (fn-rcon-sn-record-bindsp (fn-sn-node (fn-own-store *osi-completing*))
-                                  *rcon-t-r*)
+                                  *rcon-t-row*)
         (fn-sn-record-bindsp (fn-sn-node (fn-own-store *osi-completing*))
-                             *rcon-t-r*)
+                             *rcon-t-row*)
         (equal (fn-rcon-th-prefix-step (fn-sn-topic (fn-own-store *osi-completing*))
-                                       *rcon-t-r*)
+                                       *rcon-t-row*)
                (fn-th-prefix-step (fn-sn-topic (fn-own-store *osi-completing*))
-                                  *rcon-t-r*))
+                                  *rcon-t-row*))
         (equal (fn-rcon-cpe-projection-step
-                (fn-sn-consumer (fn-own-store *osi-completing*)) *rcon-t-r*
+                (fn-sn-consumer (fn-own-store *osi-completing*)) *rcon-t-row*
                 (fn-sn-identity-next (fn-own-store *osi-completing*)))
                (fn-cpe-projection-step
-                (fn-sn-consumer (fn-own-store *osi-completing*)) *rcon-t-r*
+                (fn-sn-consumer (fn-own-store *osi-completing*)) *rcon-t-row*
                 (fn-sn-identity-next (fn-own-store *osi-completing*))))
         (let ((p (fn-rcon-cpe-projection-step
-                  (fn-sn-consumer (fn-own-store *osi-completing*)) *rcon-t-r*
+                  (fn-sn-consumer (fn-own-store *osi-completing*)) *rcon-t-row*
                   (fn-sn-identity-next (fn-own-store *osi-completing*)))))
           (eq (car p) :ok))
-        (equal (fn-record-msgid *rcon-t-r*)
-               (fn-record-msgid *rcon-t-r*))
+        (equal (fn-record-msgid *rcon-t-row*)
+               (fn-record-msgid *rcon-t-row*))
         ;; every element: the twins agree with their references
         (equal (list (fn-rcon-record-p xs)
                      (fn-rcon-store-event-p xs)
@@ -201,8 +211,13 @@
 (defconst *rcon-t-attempted*
   (in-arena-fn-own-run *sr-arena* *own-taken* (osi-drop-last
                (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*))))))
-(defconst *rcon-t-staged*
+; by specification: the flip -- the staged candidate is the held row; the
+; record the encoder takes is the wire record it stands for (as above).
+(defconst *rcon-t-staged-row*
   (fn-sf-record-candidate (fn-sn-files (fn-own-store *rcon-t-attempted*))))
+(assert-event (equal *rcon-t-staged-row* *rcon-t-row*))
+(defconst *rcon-t-staged*
+  (car (fn-hrt-wire-of *osi-completing-prior* (list *rcon-t-staged-row*))))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *rcon-t-attempted*)))
                      :record-attempted))
 (assert-event (fn-rcon-record-p *rcon-t-staged*))
