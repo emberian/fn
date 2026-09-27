@@ -777,6 +777,7 @@
     "books/nntp-session",
     "books/nntp-projection",
     "books/nntp-responses",
+    "books/nntp-article-block",
     "books/nntp-reader-compat",
     "books/nntp",
     "books/nntp-overview",
@@ -804,6 +805,7 @@
     "tests/acl2/group-descriptions-tests",
     "tests/acl2/nntp-xref-tests",
     "tests/acl2/nntp-reader-compat-tests",
+    "tests/acl2/nntp-article-block-tests",
     "tests/acl2/posting-account-tests",
     "tests/acl2/injection-info-params-tests",
     "tests/acl2/owner-injection-info-tests",
@@ -1226,26 +1228,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1269,
-    "books_in_root_closure": 1258,
-    "roots": 1222,
-    "theorems": 18867,
-    "functions": 12890,
-    "assert_events": 18452,
+    "books": 1271,
+    "books_in_root_closure": 1260,
+    "roots": 1224,
+    "theorems": 18887,
+    "functions": 12902,
+    "assert_events": 18461,
     "must_fails": 2182,
     "prover_refusals": 0,
     "encapsulates": 99,
     "guards": {
-      "verified": 2474,
+      "verified": 2476,
       "declared-off": 1523,
-      "default-guarded": 7106,
-      "default-unguarded": 1787
+      "default-guarded": 7113,
+      "default-unguarded": 1790
     },
     "suspect_theorems": 214,
     "export_hygiene_warnings": 216,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 221,
-    "include_hygiene_warnings": 1353,
+    "include_hygiene_warnings": 1354,
     "host_names_warnings": 1395,
     "hand_written_record_warnings": 18
   },
@@ -12159,6 +12161,32 @@
       "read_error": null
     },
     {
+      "book": "books/nntp-article-block.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-responses"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/nntp-auth-fold.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12720,15 +12748,15 @@
       "book": "books/nntp-reader-compat.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
-      "functions": 22,
+      "theorems": 29,
+      "functions": 24,
       "guards": {
-        "verified": 12,
+        "verified": 14,
         "declared-off": 2,
         "default-guarded": 8,
         "default-unguarded": 0
       },
-      "verify_guards_events": 12,
+      "verify_guards_events": 14,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -12736,6 +12764,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "nntp-article-block",
         "nntp-xref"
       ],
       "system_includes": [],
@@ -30060,6 +30089,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-article-block-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-reader-compat",
+        "arena-lift"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-auth-fold-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -38321,7 +38379,7 @@
     {
       "theorem": "fn-rcompat-newgroups-unfolds",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 140,
+      "line": 141,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-rcompat-newgroups"
       ]
@@ -38329,7 +38387,7 @@
     {
       "theorem": "fn-rcompat-subscription-names-keep-the-configured-order",
       "book": "books/nntp-reader-compat.lisp",
-      "line": 192,
+      "line": 193,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-rcompat-subscription-names and the conclusion is that branch's value"
       ]
@@ -49051,6 +49109,13 @@
         "line": 4,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-article-block-tests.lisp",
+        "line": 7,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
