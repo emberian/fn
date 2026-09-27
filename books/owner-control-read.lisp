@@ -537,9 +537,6 @@
 (defthm fn-octl-dispatch-archive-command
   (let ((tokens (fn-nntp-tokenize line)))
     (implies (and (fn-octl-reader-hyps (fn-served-conn-session conn) tokens line)
-                  ;; PRF-222: a session without a group-access rule.
-                  (not (fn-auth-access-restrictedp (fn-served-conn-session conn)
-                                                   (fn-served-conn-config conn)))
                   (not (fn-post-offeredp
                         (fn-nntp-result-effects (fn-octl-reply conn line)))))
              (and (equal (fn-served-result-effects

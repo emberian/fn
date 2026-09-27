@@ -8010,45 +8010,6 @@
         "fn-osi-ocl-store-record-accepted-fast-is-checked",
         "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
       ]
-    },
-    {
-      "id": "PRF-222",
-      "title": "A restricted reader session is served the store with its excluded groups absent, and no reply can depend on what an excluded group holds",
-      "statement": "books/nntp-auth.lisp fn-auth-delegate-pinned (called by fn-auth-step-pinned, which books/served.lisp fn-served-dispatch calls per framed line; the carried twin books/served-carried.lisp fn-scar-auth-delegate-pinned, which host/owner-host.lisp reaches through fn-scar-ocfg-read-tls-prefix, calls the same view functions) delegates over (fn-auth-view-session, -archive, -index, -config): for a reader session whose login's rule (fn-auth-access-text over the pinned listing's fourth element) has READ text R and a projected session, the archive is fn-gac-restrict-state R (books/group-access.lisp), the index fn-gac-restrict-index R built from its articles, the session fn-gac-deselect R; otherwise each is its argument (fn-auth-view-when-unrestricted). KEYSTONES (books/group-access.lisp): fn-gac-restrict-state-is-a-projection (fn-nntp-projectionp preserved); fn-gac-restrict-index-corresponds (fn-gidx-pin-correspondencep of the rebuilt index); fn-gac-restrict-state-groups-are-readable (every group of the view is readable under R and a group of the store); fn-gac-restrict-articles-memberships-readable and fn-gac-restrict-index-withdrawn-are-readable (every article of the view and of its withdrawn list names only readable groups and memberships); fn-gac-restricted-article-is-held (the view holds Message-ID M exactly when the store holds an article M with a readable group); fn-gac-restrict-absent-groups (NO ORACLE: for a store fn-statep and any R2 admitting every group R admits, restricting to R2 then R is restricting to R). The served relation: fn-gac-deselected-consistent / fn-gac-consistent-back and fn-auth-view-consistent / -back carry fn-auth-session-consistentp and fn-gidx-pin-correspondencep into and out of the view, so fn-auth-delegate-pinned-preserves-consistentp and fn-auth-step-pinned-preserves-consistent-session hold for restricted sessions. Local policy (INN readers.conf); RFC 3977 section 4.2 wildmats.",
-      "milestone": "M4",
-      "requirements": [
-        "NNT-046",
-        "SEC-007"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/group-access.lisp",
-        "books/nntp-auth.lisp",
-        "books/served-carried.lisp",
-        "books/config.lisp",
-        "books/owner-agent.lisp",
-        "tests/acl2/group-access-tests.lisp",
-        "tests/test_native_group_access.py",
-        "planning/evidence/group-access-2026-09-27.md"
-      ],
-      "events": [
-        "fn-gac-restrict-state-is-a-projection",
-        "fn-gac-restrict-index-corresponds",
-        "fn-gac-restrict-state-groups-are-readable",
-        "fn-gac-restrict-articles-memberships-readable",
-        "fn-gac-restrict-index-withdrawn-are-readable",
-        "fn-gac-restricted-article-is-held",
-        "fn-gac-restrict-absent-groups",
-        "fn-gac-deselected-consistent",
-        "fn-gac-consistent-back",
-        "fn-auth-view-when-unrestricted",
-        "fn-auth-view-consistent",
-        "fn-auth-view-consistent-back",
-        "fn-auth-view-trie-corresponds",
-        "fn-auth-delegate-pinned-preserves-consistentp"
-      ]
     }
   ]
 }

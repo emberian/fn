@@ -3905,58 +3905,6 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
-    },
-    {
-      "id": "NNT-046",
-      "title": "A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits",
-      "specification": "specs/nntp.md#group-access-nnt-046",
-      "milestone": "M4",
-      "status": "implemented",
-      "proof_targets": [
-        "PRF-222"
-      ],
-      "verification": [
-        "proof",
-        "test",
-        "scenario"
-      ],
-      "evidence": [
-        "books/config.lisp",
-        "books/accounts.lisp",
-        "books/account-list.lisp",
-        "books/group-access.lisp",
-        "books/nntp-auth.lisp",
-        "books/served-carried.lisp",
-        "books/owner-agent.lisp",
-        "books/native-admin.lisp",
-        "books/native-operator.lisp",
-        "host/native-admin-host.lisp",
-        "tests/acl2/group-access-tests.lisp",
-        "tests/test_native_group_access.py",
-        "planning/evidence/group-access-2026-09-27.md"
-      ],
-      "implementation_note": "Local policy after INN readers.conf (read and post wildmats per identity; RFC 3977 section 4.2 wildmats; RFC 4643 leaves authorization to local policy). Stronger fn guarantee: no existence oracle (an excluded group answers exactly as an absent one: 411, 430, the unknown-group 441). The verb `account access LOGIN|--anonymous --read R --post P` is a durable configuration record (:account-access, delta code 22), offline or live; no store record, no format change. Peering unchanged; the consumer poll is the owner's and reads everything."
-    },
-    {
-      "id": "SEC-007",
-      "title": "Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption",
-      "specification": "specs/nntp.md#group-access-nnt-046",
-      "milestone": "M4",
-      "status": "implemented",
-      "proof_targets": [
-        "PRF-222"
-      ],
-      "verification": [
-        "proof",
-        "test"
-      ],
-      "evidence": [
-        "specs/nntp.md",
-        "docs/operator.md",
-        "books/nntp-auth.lisp",
-        "planning/evidence/group-access-2026-09-27.md"
-      ],
-      "implementation_note": "A statement of scope, so that 'private group' is not read as a confidentiality claim: fn-auth-access-text gives a peer connection no rule; the Store, store inspect and the consumer socket are the operator's; the Newsgroups header of a cross-posted article names every group; Message-IDs are unique node-wide (a duplicate POST is refused)."
     }
   ]
 }

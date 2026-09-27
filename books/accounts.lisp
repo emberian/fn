@@ -243,10 +243,6 @@
                 (append (fn-cfg-rows-without-binding (fn-cfg-accounts v)
                                                      (fn-cfg-delta-a d))
                         (fn-cfg-delta-rows d)))
-               ((equal (fn-cfg-delta-kind d) :account-access)
-                (append (fn-cfg-rows-without-access (fn-cfg-accounts v)
-                                                    (fn-cfg-delta-a d))
-                        (fn-cfg-delta-rows d)))
                (t (fn-cfg-accounts v))))
   :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-groups))))
 
@@ -262,19 +258,6 @@
                        (car (fn-cfg-rows-with-key rows k)))))
   :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
                                      fn-cfg-rows-without-binding)))))
-
-; The slot's fourth writer is the access rule (PRF-222,
-; books/group-access.lisp): it removes only access rows (mark 3).
-(local (defthm fn-acct-rows-with-key-of-rows-without-access
-  (implies (and (consp (fn-cfg-rows-with-key rows k))
-                (not (fn-cfg-access-rowp (car (fn-cfg-rows-with-key rows k)))))
-           (and (consp (fn-cfg-rows-with-key
-                        (fn-cfg-rows-without-access rows l) k))
-                (equal (car (fn-cfg-rows-with-key
-                             (fn-cfg-rows-without-access rows l) k))
-                       (car (fn-cfg-rows-with-key rows k)))))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-rows-without-access)))))
 
 ; -----------------------------------------------------------------------------
 ; Once only
@@ -293,7 +276,6 @@
                                      fn-cfg-account-redeemedp
                                      fn-cfg-account-row
                                      fn-cfg-binding-rowp
-                                     fn-cfg-access-rowp
                                      fn-cfg-ag-car)
            :cases ((equal (fn-cfg-delta-a d) digest)))))
 

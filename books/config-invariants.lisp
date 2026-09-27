@@ -254,10 +254,6 @@
 (local (defthm fn-cfg-rows-without-binding-is-row-listp
   (implies (fn-cfg-row-listp rows)
            (fn-cfg-row-listp (fn-cfg-rows-without-binding rows a)))))
-; PRF-222: the access rule likewise.
-(local (defthm fn-cfg-rows-without-access-is-row-listp
-  (implies (fn-cfg-row-listp rows)
-           (fn-cfg-row-listp (fn-cfg-rows-without-access rows a)))))
 (local (defthm fn-cfg-row-listp-of-append
   (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
            (fn-cfg-row-listp (append a b)))))

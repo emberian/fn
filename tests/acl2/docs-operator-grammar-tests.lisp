@@ -104,11 +104,7 @@
     ("docs/operator.md#expose-a-node-to-strangers" 8 "policy" "set" "anonymous" "none")
     ("docs/operator.md#expose-a-node-to-strangers" 9 "policy" "set" "exposure-trusted" "192.168.1.0/24")
     ("docs/operator.md#add-a-group" 2 "group" "retire" "peer1")
-    ("docs/operator.md#accounts-for-friends-invitation-codes" 2 "account" "list")
-    ("docs/operator.md#private-groups-which-login-sees-which-group" 1 "account" "access" "bob" "--read" "fn.*,!fn.private.*" "--post" "fn.*,!fn.private.*")
-    ("docs/operator.md#private-groups-which-login-sees-which-group" 2 "account" "access" "alice" "--read" "*" "--post" "*")
-    ("docs/operator.md#private-groups-which-login-sees-which-group" 3 "account" "access" "--anonymous" "--read" "fn.public.*" "--post" "*,!*")
-    ("docs/operator.md#private-groups-which-login-sees-which-group" 4 "account" "access" "show")))
+    ("docs/operator.md#accounts-for-friends-invitation-codes" 2 "account" "list")))
 
 (assert-event (null (fn-docs-operator-rejected *fn-docs-operator-argv*))
               :msg (msg "The grammar refuses these documented invocations: ~x0"

@@ -57,8 +57,6 @@
 
 (in-package "ACL2")
 (include-book "peer-inbound")
-; PRF-222: the restricted view a login's access rule serves.
-(include-book "group-access")
 (include-book "principal")
 (include-book "accounts")
 (include-book "auth-secret")
@@ -3074,108 +3072,11 @@
 
 (in-theory (disable fn-auth-vocabulary))
 
-;; -----------------------------------------------------------------------------
-;; Group access (PRF-222, NNT-046; books/group-access.lisp).
-;;
-;; A reader connection's rule is its login's access row in the listing the
-;; connection pinned (books/owner-agent.lisp `fn-oag-listing'): the login is
-;; the AUTHINFO USER name once the connection authenticated (the pending
-;; slot keeps it, as books/login-binding.lisp reads it), and the rule of a
-;; connection that has not authenticated is the row keyed on "".  A peer
-;; connection has no rule: what a peer is fed is its feed patterns', not
-;; this node's reader view.  The READ text restricts only a projected
-;; session (an unprojected one answers 503 to every archive command).
-
-(defun fn-auth-access-login (as)
-  (declare (xargs :guard t))
-  (and (fn-auth-session-subject as) (fn-auth-session-pending as)))
-
-(defun fn-auth-access-text (as config field)
-  (declare (xargs :guard t))
-  (and (null (fn-auth-session-peer as))
-       (fn-gac-pattern (fn-gac-listing-table (fn-inj-config-listing config))
-                       (fn-auth-access-login as) field)))
-
-(defun fn-auth-access-read (as config)
-  (declare (xargs :guard t))
-  (and (fn-nntp-session-projected (fn-auth-reader-session as))
-       (fn-auth-access-text as config 1)))
-
-(defun fn-auth-access-post (as config)
-  (declare (xargs :guard t))
-  (fn-auth-access-text as config 2))
-
-(defun fn-auth-access-restrictedp (as config)
-  (declare (xargs :guard t))
-  (if (or (fn-auth-access-read as config) (fn-auth-access-post as config))
-      t
-    nil))
-
-; The four inputs the delegated step is served: the view's session, store,
-; index and posting configuration.  Each is its argument when the session
-; is not restricted.
-(defun fn-auth-view-session (as config)
-  (declare (xargs :guard t))
-  (let ((read (fn-auth-access-read as config)))
-    (if read
-        (fn-gac-deselect read (fn-auth-session-base as))
-      (fn-auth-session-base as))))
-
-(defun fn-auth-view-archive (as config archive)
-  (declare (xargs :guard t))
-  (let ((read (fn-auth-access-read as config)))
-    (if read (fn-gac-restrict-state read archive) archive)))
-
-(defun fn-auth-view-index (as config archive index)
-  (declare (xargs :guard t))
-  (let ((read (fn-auth-access-read as config)))
-    (if read
-        (fn-gac-restrict-index
-         read index (fn-state-articles (fn-gac-restrict-state read archive)))
-      index)))
-
-(defun fn-auth-view-config (as config archive)
-  (declare (xargs :guard t))
-  (let ((read (fn-auth-access-read as config))
-        (post (fn-auth-access-post as config)))
-    (if (or read post)
-        (fn-gac-post-config read post (fn-state-groups archive) config)
-      config)))
-
-(defthm fn-auth-view-when-unrestricted
-  (implies (not (fn-auth-access-restrictedp as config))
-           (and (equal (fn-auth-view-session as config) (fn-auth-session-base as))
-                (equal (fn-auth-view-archive as config archive) archive)
-                (equal (fn-auth-view-index as config archive index) index)
-                (equal (fn-auth-view-config as config archive) config))))
-
-; The view's posting configuration differs from the connection's only in its
-; served and closed groups.
-(defthm fn-auth-view-config-keeps
-  (and (equal (fn-inj-config-allow (fn-auth-view-config as config archive))
-              (fn-inj-config-allow config))
-       (equal (fn-inj-config-agent (fn-auth-view-config as config archive))
-              (fn-inj-config-agent config))
-       (equal (fn-inj-config-max-octets (fn-auth-view-config as config archive))
-              (fn-inj-config-max-octets config))
-       (equal (fn-inj-config-listing (fn-auth-view-config as config archive))
-              (fn-inj-config-listing config)))
-  :hints (("Goal" :in-theory (enable fn-auth-view-config fn-gac-post-config))))
-
-(in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
-                    fn-auth-access-post fn-auth-access-restrictedp
-                    fn-auth-view-session fn-auth-view-archive fn-auth-view-index
-                    fn-auth-view-config))
-
 (defun fn-auth-delegate-pinned
     (as archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
   (let ((r (fn-peer-step-pinned
-            (fn-auth-view-session as config)
-            (fn-auth-view-archive as config archive)
-            (fn-auth-view-index as config archive index)
-            verdicts
-            (fn-auth-view-config as config archive)
+            (fn-auth-session-base as) archive index verdicts config
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -3214,46 +3115,6 @@
 (verify-guards fn-auth-delegate-pinned)
 (verify-guards fn-auth-step-pinned)
 
-;; The view keeps the served relation: the session the view serves is
-;; consistent with the view's store and the view's index is the one built
-;; from it (books/group-access.lisp fn-gac-deselected-consistent,
-;; fn-gac-restrict-index-corresponds), and a session consistent with the
-;; view's store is consistent with the store (fn-gac-consistent-back).
-(defthm fn-auth-view-consistent
-  (implies (and (fn-auth-session-consistentp as archive)
-                (fn-gidx-pin-correspondencep index archive))
-           (and (fn-peer-session-consistentp
-                 (fn-auth-view-session as config)
-                 (fn-auth-view-archive as config archive))
-                (fn-gidx-pin-correspondencep
-                 (fn-auth-view-index as config archive index)
-                 (fn-auth-view-archive as config archive))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-view-session fn-auth-view-archive
-                                   fn-auth-view-index fn-auth-access-read
-                                   fn-auth-session-consistentp)
-                                  (fn-peer-session-consistentp fn-auth-sessionp
-                                   fn-gac-deselect fn-gac-restrict-state
-                                   fn-gac-restrict-index fn-auth-access-text
-                                   fn-gidx-pin-correspondencep)))))
-
-(defthm fn-auth-view-consistent-back
-  (implies (and (fn-auth-session-consistentp as archive)
-                (fn-peer-session-consistentp
-                 ps (fn-auth-view-archive as config archive)))
-           (fn-peer-session-consistentp ps archive))
-  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read
-                                   fn-auth-session-consistentp
-                                   fn-peer-session-consistentp
-                                   fn-post-session-consistentp
-                                   fn-nntp-session-consistentp)
-                                  (fn-auth-sessionp fn-gac-restrict-state
-                                   fn-auth-access-text fn-peer-sessionp
-                                   fn-post-sessionp fn-nntp-projectionp
-                                   fn-gac-consistent-back))
-           :use ((:instance fn-gac-consistent-back
-                            (text (fn-auth-access-text as config 1))
-                            (s archive))))))
-
 (defthm fn-auth-delegate-pinned-preserves-consistentp
   (implies (and (fn-auth-session-consistentp as archive)
                 (fn-gidx-pin-correspondencep index archive))
@@ -3268,23 +3129,9 @@
                            (fn-peer-step-pinned fn-peer-sessionp
                             fn-peer-session-consistentp fn-auth-configp
                             fn-peer-step-pinned-preserves-consistent-session
-                            fn-auth-view-consistent fn-auth-view-consistent-back
                             fn-nntp-printable-tokenp fn-prin-idp))
-           :use ((:instance fn-auth-view-consistent)
-                 (:instance fn-peer-step-pinned-preserves-consistent-session
-                            (ps (fn-auth-view-session as config))
-                            (archive (fn-auth-view-archive as config archive))
-                            (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))
-                 (:instance fn-auth-view-consistent-back
-                            (ps (fn-post-result-session
-                                 (fn-peer-step-pinned
-                                  (fn-auth-view-session as config)
-                                  (fn-auth-view-archive as config archive)
-                                  (fn-auth-view-index as config archive index)
-                                  verdicts
-                                  (fn-auth-view-config as config archive)
-                                  observation injection wire-event))))))))
+           :use ((:instance fn-peer-step-pinned-preserves-consistent-session
+                            (ps (fn-auth-session-base as)))))))
 
 (defthm fn-auth-step-pinned-preserves-consistent-session
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3305,18 +3152,6 @@
                             fn-nntp-tokenize
                             fn-nntp-command-arguments-at-mostp)))))
 
-; The view's trie is the one built from the view's articles.
-(defthm fn-auth-view-trie-corresponds
-  (implies (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                    (fn-state-articles archive))
-           (fn-midx-correspondencep
-            (fn-gidx-pin-trie (fn-auth-view-index as config archive index))
-            (fn-state-articles (fn-auth-view-archive as config archive))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-view-index fn-auth-view-archive
-                                   fn-gac-restrict-index fn-midx-correspondencep)
-                                  (fn-gidx-pinp fn-midx-build fn-gidx-build
-                                   fn-gac-restrict-articles fn-auth-access-read)))))
-
 (defthm fn-auth-delegate-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
@@ -3330,15 +3165,7 @@
            (e/d (fn-auth-delegate-pinned fn-auth-session-consistentp)
                 (fn-peer-step-pinned fn-peer-session-consistentp
                  fn-nntp-effectsp fn-auth-effectsp fn-post-result-effects
-                 fn-midx-correspondencep fn-peer-step-pinned-effects-well-formed
-                 fn-auth-view-consistent fn-auth-view-trie-corresponds))
-           :use ((:instance fn-auth-view-consistent)
-                 (:instance fn-auth-view-trie-corresponds)
-                 (:instance fn-peer-step-pinned-effects-well-formed
-                            (ps (fn-auth-view-session as config))
-                            (archive (fn-auth-view-archive as config archive))
-                            (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))))))
+                 fn-midx-correspondencep)))))
 
 (defthm fn-auth-step-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3368,11 +3195,7 @@
                                         observation injection wire-event))
                   (fn-post-result-submission
                    (fn-peer-step-pinned
-                    (fn-auth-view-session as config)
-                    (fn-auth-view-archive as config archive)
-                    (fn-auth-view-index as config archive index)
-                    verdicts
-                    (fn-auth-view-config as config archive)
+                    (fn-auth-session-base as) archive index verdicts config
                     observation injection wire-event))))
   :rule-classes nil
   :hints (("Goal" :in-theory
@@ -3382,12 +3205,6 @@
                  fn-nntp-tokenize fn-nntp-command-inputp
                  fn-auth-tls-eventp fn-nntp-keyword-tokenp
                  fn-nntp-command-arguments-at-mostp)))))
-
-(defthm fn-auth-view-session-is-a-session
-  (implies (fn-auth-sessionp as)
-           (fn-peer-sessionp (fn-auth-view-session as config)))
-  :hints (("Goal" :in-theory (e/d (fn-auth-view-session fn-auth-sessionp)
-                                  (fn-peer-sessionp fn-gac-deselect)))))
 
 (defthm fn-auth-step-pinned-submission-is-typed
   (implies (and (fn-auth-sessionp as)
@@ -3411,11 +3228,7 @@
            :use ((:instance
                   fn-auth-pinned-submission-is-the-delegated-submission)
                  (:instance fn-peer-step-pinned-submission-is-typed
-                            (ps (fn-auth-view-session as config))
-                            (archive (fn-auth-view-archive as config archive))
-                            (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))
-                 (:instance fn-auth-view-session-is-a-session))))
+                            (ps (fn-auth-session-base as))))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------

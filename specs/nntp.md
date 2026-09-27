@@ -1125,67 +1125,6 @@ gives them.
   image refuses delta kinds 15 and 16 at decode); roll back only from the
   pre-upgrade snapshot. The upgrade rehearsal checks that sentence.
 
-### Group access (NNT-046)
-
-NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
-
-SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
-
-fn's reference is INN's readers.conf access groups (a `read` and a `post`
-wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
-RFC 4643 leaves what an authenticated identity may see to local policy, so
-this is a local policy with one stronger fn guarantee: no existence oracle.
-
-- **Configuration.** `operator CONFIG account access LOGIN|--anonymous --read
-  R --post P` stages `(:account-access LOGIN R 0 ((LOGIN R P 3)))`,
-  configuration delta code 22 (`books/config.lisp` `fn-cfg-account-access`):
-  one row per login in the accounts slot, mark 3 beside the account rows'
-  0 and 1 and the binding rows' 2; LOGIN "" is the rule of a connection
-  that has not authenticated. The verb admits only patterns that parse as
-  wildmats (`fn-wildmat-parse`); a stored pattern that does not parse admits
-  nothing (fail closed). No rule, or `*`, restricts nothing: existing
-  accounts keep their view. `account access show` is the `account list`
-  report with `access LOGIN read R post P` lines. No store record, no format
-  change.
-- **The view.** The owner projects the rows into the reader listing each
-  connection pins (`fn-oag-listing`, fourth element). A reader session
-  whose login has a read rule is served, by `fn-auth-delegate-pinned`
-  (`books/nntp-auth.lisp`, and its carried twin `fn-scar-auth-delegate-pinned`),
-  the RESTRICTED VIEW of the view it pinned (`books/group-access.lisp`): the
-  groups R admits and their watermarks; the articles with at least one such
-  group, each cut to those groups and memberships; the Message-ID trie and
-  group buckets built from those articles; the withdrawn list cut the same
-  way. The reader machine is unchanged, so GROUP and LISTGROUP of an excluded
-  group answer 411, an article with no readable group answers 430 by
-  Message-ID (and `430` rather than `430 withdrawn` when withdrawn), LIST
-  ACTIVE, NEWSGROUPS and COUNTS omit excluded groups, NEWNEWS omits their
-  articles, and Xref names readable groups only. LIST ACTIVE.TIMES and
-  NEWGROUPS read the environment's creation facts, which the served step
-  does not supply today (`fn-post-reader-env`: none); a change that supplies
-  them must cut them to the view (PKT-643). A selection the
-  view lacks is dropped before the command. PRF-222 keystones: the view is a
-  projection (`fn-gac-restrict-state-is-a-projection`) with a corresponding
-  index, no excluded group or membership is in it, an article is held
-  exactly when it has a readable group, and the view of a store with any
-  excluded groups removed is the same view (`fn-gac-restrict-absent-groups`):
-  no reply can depend on what an excluded group holds.
-- **Posting.** Groups the session may read but not post to join its closed
-  list (the read-only 441; LIST ACTIVE shows `n` to that session); groups it
-  may neither read nor post to leave its served list, so a POST naming one
-  answers the unknown-group 441 of a group the node does not carry. A group
-  it may post to but not read is a drop box.
-- **Scope.** A peer connection has no rule: peering is unchanged, and what a
-  peer is fed is its feed patterns' decision. The consumer poll is the
-  owner's local socket (one owner principal, mode 0600) and reads
-  everything, as the operator does. Not guarantees: the Newsgroups header
-  of a cross-posted article names every group it was posted to (its own
-  octets); a Message-ID is unique node-wide, so a POST of a hidden article's
-  Message-ID is refused as a duplicate; the operator reads everything, and
-  confidentiality from the operator or from a peer is the agents' own
-  encryption. Cost: a restricted session's command is served over a view
-  rebuilt per command (O(A) in the view's articles; an unrestricted session
-  pays nothing); pinning the view per connection is PKT-643.
-
 ### The posting allowance
 
 Posting is the AUTHENTICATED PRINCIPAL's, not the connection's.
