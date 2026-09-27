@@ -1089,7 +1089,8 @@
        (equal (fn-pull-r-pending (car (fn-pull-step r event))) (fn-pull-r-pending r))
        (equal (fn-pull-r-bound (car (fn-pull-step r event))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-step r event))) (fn-pull-r-wildmat r)))
-  :hints (("Goal" :in-theory (enable fn-pull-step))))
+  ;; completep/terminal-codep closed: 730k prover steps to 550k.
+  :hints (("Goal" :in-theory (e/d (fn-pull-step) (fn-pull-completep fn-pull-terminal-codep)))))
 
 ; KEYSTONE.  No step changes the cursor a round asks with or journals
 ; anything: the round's durable state is fixed from `fn-pull-begin' to
@@ -1163,7 +1164,9 @@
                 (equal (fn-pull-r-unavailable (car (fn-pull-drain r fuel)))
                        (cons (fn-pull-r-current r)
                              (fn-pull-list (fn-pull-r-unavailable r))))))
-  :hints (("Goal" :in-theory (enable fn-pull-drain fn-pull-fail))))
+  ;; completep/terminal-codep closed: 969k prover steps to 203k.
+  :hints (("Goal" :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                                  (fn-pull-completep fn-pull-terminal-codep)))))
 
 (defthm fn-pull-next-and-record-keep-unavailable
   (and (equal (fn-pull-r-unavailable (car (fn-pull-next r))) (fn-pull-r-unavailable r))
@@ -1409,8 +1412,10 @@
                                 (mv-nth 1 (fn-pull-run r0 events)))))))
              (equal (fn-pull-r-since (fn-pull-begin recovered wildmat later bound))
                     (fn-pull-r-since dead))))
+  ;; completep/terminal-codep closed: 1.01M prover steps to 152k.
   :hints (("Goal" :in-theory (disable fn-pull-run fn-pull-close
-                                      fn-pull-advancesp)
+                                      fn-pull-advancesp fn-pull-completep
+                                      fn-pull-terminal-codep)
            :use ((:instance fn-pull-journal-is-the-cursor-at-every-cut)))))
 
 ; -----------------------------------------------------------------------------
