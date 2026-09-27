@@ -378,6 +378,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-decode-tests \
 	books/store-log-programs \
 	tests/acl2/store-log-programs-tests \
+	books/store-log-route \
+	tests/acl2/store-log-route-tests \
+	books/store-log-route-phases \
+	books/owner-log-route \
+	tests/acl2/owner-log-route-tests \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
@@ -1059,6 +1064,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-plan-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
+	books/owner-commit-class \
+	tests/acl2/owner-commit-class-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
@@ -1276,6 +1283,7 @@ check:
 # at 32842f50 build-dtn.lisp lacked books/octets-stobj and the image failed.
 # Static, under a second, with its teeth test.
 	$(PYTHON) tools/build_lists_check.py
+	$(PYTHON) tools/host_defun_check.py
 	$(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

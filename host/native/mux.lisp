@@ -72,8 +72,11 @@
   ;; Implicit-TLS sockets not yet admitted, waiting for a handshake slot.
   (queued nil)
   ;; Lane commit-onto-log: (CONN . COMPLETION) pairs the committer thread
-  ;; handed over for connections waiting on their batch (under LOCK).
-  (arrived nil))
+  ;; handed over for connections waiting on their batch (under LOCK); the
+  ;; loop's completed passes and whether it sleeps in poll(2) now, which the
+  ;; committer reads to know every ready connection was stepped
+  ;; (host/native/owner.lisp fnn-owner-loops-passed-p).
+  (arrived nil) (passes 0) (polling nil))
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
@@ -820,12 +823,22 @@ whatever the descriptor says."
       (loop for conn in polled for i from 1
             do (setf (aref fds i) (fnn-mux-conn-fd conn)
                      (aref events i) (fnn-mux-interest conn)))
-      (let ((revents (fnn-mux-poll fds events timeout)))
+      (let ((revents (progn (setf (fnn-mux-loop-polling loop) t)
+                            (unwind-protect (fnn-mux-poll fds events timeout)
+                              (setf (fnn-mux-loop-polling loop) nil)))))
         (unless (zerop (aref revents 0)) (fnn-mux-drain-wake loop))
         (loop for conn in polled for i from 1
               unless (or (zerop (aref revents i))
                          (eq (fnn-mux-conn-phase conn) :done))
-                do (fnn-mux-dispatch loop conn))))))
+                do (fnn-mux-dispatch loop conn)))))
+  ;; A pass is complete: every connection ready in it was stepped.  A
+  ;; committer waiting for the passes (format 9) looks again.
+  (incf (fnn-mux-loop-passes loop))
+  (let ((service (fnn-mux-service loop)))
+    (when (and (fnn-owner-service-batching service)
+               (plusp (fnn-owner-service-queued service)))
+      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+        (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))))
 
 (defun fnn-mux-stop-loop (loop)
   "The service is stopping: deliver what a connection still has queued (the

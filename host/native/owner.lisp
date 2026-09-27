@@ -2060,15 +2060,31 @@ the number of members committed (0 when nothing was queued)."
          (dolist (m members) (fnn-owner-deliver service (first m) (second m)))))
       (length members))))
 
+(defun fnn-owner-loops-passed-p (service snapshot)
+  "Every I/O loop completed the pass it was in at SNAPSHOT, or sleeps in
+poll(2): every connection that was ready then has been stepped, and its
+submission, if it had one, is queued."
+  (loop for loop in (fnn-owner-service-mux service)
+        for n in snapshot
+        always (or (fnn-mux-loop-polling loop) (> (fnn-mux-loop-passes loop) n))))
+
 (defun fnn-owner-committer-loop (service)
-  "The committer thread: one commit quantum whenever a submission is queued."
+  "The committer thread: one commit quantum whenever a submission is queued,
+requested once every I/O loop has finished the pass it was in (the batch is
+every submission ready by then: the design's barrier-paced close, without a
+timer)."
   (handler-case
       (loop
         (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
           (loop until (or (plusp (fnn-owner-service-queued service))
                           (fnn-owner-service-stopping service))
                 do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
-                                             (fnn-owner-service-commit-lock service))))
+                                             (fnn-owner-service-commit-lock service)))
+          (let ((snapshot (mapcar #'fnn-mux-loop-passes (fnn-owner-service-mux service))))
+            (loop until (or (fnn-owner-service-stopping service)
+                            (fnn-owner-loops-passed-p service snapshot))
+                  do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                               (fnn-owner-service-commit-lock service)))))
         (when (fnn-owner-service-stopping service) (return))
         (fnn-owner-serialized service nil
                               (lambda () (fnn-owner-commit-queued-locked service))

@@ -153,3 +153,21 @@
          (let ((f (spot-format-7-frame)))
            (update-nth 20 (logxor 1 (nth 20 f)) f)))
         '(:rejected)))
+
+; -----------------------------------------------------------------------------
+; Format 9 (lane commit-onto-log): the preset profiles are format 9 and name
+; the record log as their commit route; the same values in the per-file
+; layout (format 8, the developer selector's) are valid too and name the
+; files; a format-9 frame decodes, opens and is not foreign.
+(assert-event (equal (car *fn-bs-profile-scale*) *fn-bs-meta-format-9*))
+(assert-event (fn-bs-profile-validp *fn-bs-profile-scale*))
+(assert-event (fn-bs-profile-logp *fn-bs-profile-scale*))
+(assert-event (fn-bs-profile-validp (fn-bs-profile-as-format-8 *fn-bs-profile-scale*)))
+(assert-event (not (fn-bs-profile-logp (fn-bs-profile-as-format-8 *fn-bs-profile-scale*))))
+(assert-event (equal (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-scale*))
+                     (list :opened *fn-bs-profile-scale*)))
+(assert-event (not (fn-spo-foreign-formatp
+                    (fn-bs-config-encode (fn-bs-profile-as-format-8 *fn-bs-profile-scale*)))))
+; A value that is not a profile names no route.
+(assert-event (not (fn-bs-profile-logp '(1 2 3))))
+(assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*))) 9))

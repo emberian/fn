@@ -62,12 +62,10 @@
     0))
 (assert-event (equal (ocmt-plain-delay (fn-ocm-init) *ocm-storm*) 6))
 (must-fail
- (defthm ocmt-plain-delay-at-most-the-bound
-   (<= (ocmt-plain-delay s ws) *fn-ocm-bound*)))
+ (assert-event (<= (ocmt-plain-delay (fn-ocm-init) *ocm-storm*) *fn-ocm-bound*)))
 
 ; Tooth: the admission rule's hypothesis.  Not idle and not due, a waiting
 ; commit is NOT picked.
 (assert-event (not (equal (ocmt-class (list (fn-osch-init) 3) '(0 3 0 0) t) :commit)))
 (must-fail
- (defthm ocmt-commit-picked-whenever-it-waits
-   (implies commit (equal (ocmt-class s w commit) :commit))))
+ (assert-event (equal (ocmt-class (list (fn-osch-init) 3) '(0 3 0 0) t) :commit)))
