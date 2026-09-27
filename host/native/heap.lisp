@@ -97,6 +97,15 @@
                     (error () nil)))
         0)))
 
+;; The image observation books/heap-store-figure.lisp reads: (FILE . DYNAMIC),
+;; the core file's length and the dynamic space in use now, at the probe's
+;; start -- at least the core's dynamic content (the probe's own garbage
+;; only adds), at most the file (ACL2 takes the least of the two).  Before
+;; the records flip the whole file was counted as heap (a 200 MB production
+;; core holds 109 MiB of dynamic content).
+(defun fnn-heap-image-observation ()
+  (cons (fnn-heap-core-octets) (sb-kernel:dynamic-usage)))
+
 (defun fnn-heap-store-profile (root)
   "The profile ROOT's store was saved with, or NIL when there is no store
 there or its config.json does not decode (the command itself then reports
@@ -115,8 +124,8 @@ that)."
   (let ((observations (fnn-heap-observations))
         (core (fnn-heap-core-octets)))
     (fnn-core 'fn-cbud-launch-decide
-              (fnn-core 'fn-heap-decide profile core +fnn-gc-nursery-octets+
-                        observations)
+              (fnn-core 'fn-heap-decide profile (fnn-heap-image-observation)
+                        +fnn-gc-nursery-octets+ observations)
               profile core
               (fnn-mux-thread-count nil) (fnn-mux-thread-stack-octets)
               observations)))
@@ -144,7 +153,7 @@ a capacity-free one the preset the budget holds (conservative unless
 FN_INIT_SIZING=largest), within the budget of the physical memory less the
 OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
   (let ((observations (fnn-heap-observations)))
-    (fnn-core 'fn-heap-init-decide request (fnn-heap-core-octets)
+    (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
               +fnn-gc-nursery-octets+ (first observations) (rest observations)
               (fnn-heap-env-octets "FN_INIT_BUDGET_MB")
               (fnn-heap-env-octets "FN_INIT_SIZING"))))
@@ -173,7 +182,35 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                      (return nil))
                    (incf sum (sb-posix:stat-size entry)))))))))
 
+(defun fnn-heap-directory-count (path limit)
+  "The regular files in PATH (0 when it does not exist), or NIL."
+  (let ((st (fnn-lstat path)))
+    (cond ((null st) 0)
+          ((not (fnn-directory-p st)) nil)
+          (t (let ((count 0))
+               (dolist (name (fnn-list-directory-bounded path limit "history observation")
+                             count)
+                 (let ((entry (fnn-lstat (fnn-join path name))))
+                   (unless (and entry (fnn-regular-p entry))
+                     (return nil))
+                   (incf count))))))))
+
+;; (OCTETS . RECORDS): the history files' octets (below) and the transaction
+;; files' count, one record a file, which is what a full replay reads
+;; (books/heap-figure.lisp: the open's per-record term, lane
+;; reservation-after-flip); OCTETS alone when the count is not observed.
 (defun fnn-heap-history-observation (root profile)
+  (let ((octets (fnn-heap-history-octets root profile))
+        (records (handler-case
+                     (fnn-heap-directory-count
+                      (fnn-transactions (make-fnn-store root))
+                      (fnn-core 'fn-heap-history-listing-bound profile))
+                   (error () nil))))
+    (if (and (integerp octets) (integerp records))
+        (cons octets records)
+      octets)))
+
+(defun fnn-heap-history-octets (root profile)
   (handler-case
       (let* ((store (make-fnn-store root))
              (limit (fnn-core 'fn-heap-history-listing-bound profile))
@@ -266,7 +303,7 @@ sizes by them (NIL otherwise)."
 ;; threads reserve beside it; the launcher passes `--control-stack-size KB'
 ;; too.
 (defun fnn-heap-reservation (profile connections &optional action observed)
-  (fnn-core 'fn-heap-reserve-operation-decide action profile (fnn-heap-core-octets)
+  (fnn-core 'fn-heap-reserve-operation-decide action profile (fnn-heap-image-observation)
             +fnn-gc-nursery-octets+ (fnn-heap-observations) connections observed))
 
 (defun fnn-command-heap (marker argv)

@@ -155,9 +155,10 @@
   (<= (nfix base) (fn-heap-with-nursery base nursery))
   :rule-classes :linear)
 
-(defthm fn-heap-with-nursery-is-at-most-the-cap
+(defthm fn-heap-with-nursery-is-at-most-an-eighth-more
   (<= (fn-heap-with-nursery base nursery)
-      (+ (nfix base) (* 2 (max *fn-heap-nursery-least-octets* (nfix nursery)))))
+      (max (+ (nfix base) (* 2 *fn-heap-nursery-least-octets*))
+           (ceiling (* 8 (nfix base)) 7)))
   :rule-classes :linear)
 
 (in-theory (disable fn-heap-with-nursery fn-heap-nursery-trigger))

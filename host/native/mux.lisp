@@ -862,8 +862,18 @@ stop shuts it down whichever thread holds it."
 (defvar *fnn-mux-control-clients* 64)
 
 (defun fnn-mux-thread-count (service)
+  "ACL2's count of the node's threads (books/heap-reservation.lisp
+fn-heap-thread-count: the fixed threads, the I/O loops and the control
+clients' ceiling), the one the launcher's reservation holds; the host's own
+constants must agree with it or the budget is refused as a fault."
   (declare (ignore service))
-  (+ +fnn-mux-fixed-threads+ +fnn-mux-loops+ *fnn-mux-control-clients*))
+  (let ((threads (fnn-core 'fn-heap-thread-count 0)))
+    (unless (and (= +fnn-mux-loops+ (fnn-core 'fn-heap-mux-loops))
+                 (>= threads (+ +fnn-mux-fixed-threads+ +fnn-mux-loops+
+                                (min *fnn-mux-control-clients*
+                                     (fnn-core 'fn-native-control-max-active-clients)))))
+      (fnn-fault "the host's thread constants disagree with ACL2's thread count"))
+    threads))
 
 (defun fnn-mux-budget-install (service tls-context)
   "ACL2 decides whether this machine holds the live capacity; a refusal is

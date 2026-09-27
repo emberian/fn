@@ -86,6 +86,10 @@
 ;; connection budget is this one (fnn-mux-thread-count).
 (defconst *fn-heap-mux-loops* 2)
 
+(defun fn-heap-mux-loops ()
+  (declare (xargs :guard t))
+  *fn-heap-mux-loops*)
+
 (defun fn-heap-thread-count (connections)
   (declare (xargs :guard t) (ignore connections))
   (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
@@ -542,13 +546,26 @@
       *fn-ncfg-default-max-connections*)
   :rule-classes nil)
 
+;; The store init makes, as its first run starts (lane reservation-after-
+;; flip): no history on disk, so the launcher's probe observes (0 . 0) and the
+;; run's figure is the profile's state and request in flight with an empty
+;; open (books/heap-figure.lisp fn-heap-operation-decide, :run).  A later run
+;; is judged by the store it then has; one whose replay the machine cannot
+;; hold is refused by name then, not at init.
+(defconst *fn-heap-empty-store-observation* '(0 . 0))
+
+(defun fn-heap-reserve-first-run-decide (profile core nursery observations connections)
+  (declare (xargs :guard t))
+  (fn-heap-reserve-operation-decide :run profile core nursery observations connections
+                                    *fn-heap-empty-store-observation*))
+
 (defun fn-heap-reserve-acceptsp (request core nursery observations)
   (declare (xargs :guard t))
   (let ((p (fn-bs-profile-resolve request nil)))
     (and (not (equal (car p) :invalid))
          (fn-bs-profile-admittedp p)
-         (equal (car (fn-heap-reserve-decide p core nursery observations
-                                             *fn-ncfg-default-max-connections*))
+         (equal (car (fn-heap-reserve-first-run-decide p core nursery observations
+                                                       *fn-ncfg-default-max-connections*))
                 :heap))))
 
 (defun fn-heap-reserve-init-choose (candidates last core nursery observations)
@@ -887,11 +904,12 @@
     request))
 
 ; The whole reservation a resolved profile makes at init's connections (the
-; figure fn-heap-reserve-decide compares), in octets.
+; figure fn-heap-reserve-first-run-decide compares), in octets.
 (defun fn-heap-init-reservation-octets (profile core nursery)
   (declare (xargs :guard t))
   (fn-heap-reservation-octets
-   (fn-heap-mb-of (fn-heap-figure-octets profile core nursery))
+   (fn-heap-mb-of (fn-heap-operation-figure-octets :run profile core nursery
+                                                   *fn-heap-empty-store-observation*))
    core (fn-heap-stack-kib profile)
    (fn-heap-thread-count (fn-heap-reserve-init-connections))))
 
@@ -1040,38 +1058,39 @@
                            (fn-heap-storeless-decide-is-small-and-fits
                             fn-heap-storeless-decide fn-heap-machine-octets)))))
 
-(defthm fn-heap-reserve-decide-accepts-on-a-larger-machine
-  (implies (and (equal (car (fn-heap-reserve-decide p core nursery obs1 k)) :heap)
+(defthm fn-heap-reserve-first-run-accepts-on-a-larger-machine
+  (implies (and (equal (car (fn-heap-reserve-first-run-decide p core nursery obs1 k)) :heap)
                 (<= (fn-heap-machine-octets obs1) (fn-heap-machine-octets obs2)))
-           (equal (car (fn-heap-reserve-decide p core nursery obs2 k)) :heap))
+           (equal (car (fn-heap-reserve-first-run-decide p core nursery obs2 k)) :heap))
   :hints (("Goal" :cases ((fn-bs-profile-admittedp p))
-           :in-theory (e/d (fn-heap-reserve-decide fn-heap-decide)
-                                  (fn-heap-decide-refuses-exactly-past-the-machine
-                                   fn-heap-figure-octets fn-heap-profile-word
-                                   fn-bs-profile-admittedp fn-heap-storeless-decide
-                                   fn-heap-reserve-storeless
-                                   fn-heap-reservation-octets fn-heap-stack-kib
-                                   fn-heap-thread-count)))
+           :in-theory (e/d (fn-heap-reserve-first-run-decide fn-heap-reserve-operation-decide
+                            fn-heap-reserve-of fn-heap-operation-decide)
+                           (fn-heap-operation-figure-octets fn-heap-profile-word
+                            fn-bs-profile-admittedp fn-heap-storeless-decide
+                            fn-heap-reserve-storeless
+                            fn-heap-reservation-octets fn-heap-stack-kib
+                            fn-heap-thread-count)))
           ("Subgoal 1" :use ((:instance fn-heap-storeless-decide-accepts-on-a-larger-machine
                                         (m1 (fn-heap-machine-octets obs1))
                                         (m2 (fn-heap-machine-octets obs2)))
                              (:instance fn-heap-reserve-storeless-of-storeless-decide
                                         (obs obs2))))))
 
-; An accepted reservation of an admitted profile is the one
+; An accepted first-run reservation of an admitted profile is the one
 ; fn-heap-init-reservation-octets names, within the machine.
-(defthm fn-heap-reserve-decide-accepted-is-within-the-machine
+(defthm fn-heap-reserve-first-run-accepted-is-within-the-machine
   (implies (and (fn-bs-profile-admittedp p)
-                (equal (car (fn-heap-reserve-decide p core nursery obs
-                                                    (fn-heap-reserve-init-connections)))
+                (equal (car (fn-heap-reserve-first-run-decide
+                             p core nursery obs (fn-heap-reserve-init-connections)))
                        :heap))
            (<= (fn-heap-init-reservation-octets p core nursery)
                (fn-heap-machine-octets obs)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-reserve-decide fn-heap-decide
+  :hints (("Goal" :in-theory (e/d (fn-heap-reserve-first-run-decide
+                                   fn-heap-reserve-operation-decide fn-heap-reserve-of
+                                   fn-heap-operation-decide
                                    fn-heap-init-reservation-octets)
-                                  (fn-heap-decide-refuses-exactly-past-the-machine
-                                   fn-heap-figure-octets fn-heap-profile-word
+                                  (fn-heap-operation-figure-octets fn-heap-profile-word
                                    fn-bs-profile-admittedp
                                    fn-heap-reservation-octets fn-heap-stack-kib
                                    fn-heap-thread-count)))))
@@ -1117,7 +1136,7 @@
              (and (fn-bs-profile-admittedp p)
                   (<= (fn-heap-init-reservation-octets p core nursery) budget)
                   (implies (posp (fn-heap-machine-octets (cons physical limits)))
-                           (equal (car (fn-heap-reserve-decide
+                           (equal (car (fn-heap-reserve-first-run-decide
                                         p core nursery (cons physical limits)
                                         (fn-heap-reserve-init-connections)))
                                   :heap)))))
@@ -1132,7 +1151,8 @@
                                    fn-heap-reserve-decide-refuses-exactly-past-the-machine
                                    fn-ock-capture-budget fn-bs-profile-max-history-octets
                                    fn-bs-profile-max-record-octets
-                                   fn-heap-reserve-decide fn-bs-profile-resolve
+                                   fn-heap-reserve-decide fn-heap-reserve-first-run-decide
+                                   fn-bs-profile-resolve
                                    fn-bs-profile-admittedp fn-heap-init-chosen
                                    fn-heap-init-reservation-octets
                                    fn-heap-machine-octets fn-heap-init-observations
@@ -1141,7 +1161,7 @@
                                    fn-heap-reserve-init-connections
                                    fn-heap-machine-sized-requestp))
            :use ((:instance fn-heap-init-decide-accepted-is-the-chosen-request-by-definition)
-                 (:instance fn-heap-reserve-decide-accepted-is-within-the-machine
+                 (:instance fn-heap-reserve-first-run-accepted-is-within-the-machine
                             (p (fn-bs-profile-resolve
                                 (fn-heap-init-chosen request core nursery (fn-heap-init-observations physical limits (fn-heap-init-explicit-budget budget-octets))
                                                      (fn-heap-init-sizing sizing-octets))
@@ -1149,7 +1169,7 @@
                             (obs (fn-heap-init-observations physical limits (fn-heap-init-explicit-budget budget-octets))))
                  (:instance fn-heap-init-budget-is-under-the-machine
                             (explicit (fn-heap-init-explicit-budget budget-octets)))
-                 (:instance fn-heap-reserve-decide-accepts-on-a-larger-machine
+                 (:instance fn-heap-reserve-first-run-accepts-on-a-larger-machine
                             (p (fn-bs-profile-resolve
                                 (fn-heap-init-chosen request core nursery (fn-heap-init-observations physical limits (fn-heap-init-explicit-budget budget-octets))
                                                      (fn-heap-init-sizing sizing-octets))

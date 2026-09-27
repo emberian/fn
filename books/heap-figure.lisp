@@ -496,17 +496,15 @@
                                    fn-heap-machine-octets)))))
 
 (defthm fn-heap-operation-figure-holds-the-parts
-  (and (implies (member-equal action *fn-heap-observed-actions*)
-                (<= (fn-heap-store-figure-octets profile core nursery observed)
-                    (fn-heap-operation-figure-octets action profile core nursery observed)))
+  (and (<= (fn-heap-store-figure-octets profile core nursery observed)
+           (fn-heap-operation-figure-octets action profile core nursery observed))
        (implies (member-equal action *fn-heap-list-actions*)
                 (<= (fn-heap-operation-list-figure-octets action profile core nursery observed)
                     (fn-heap-operation-figure-octets action profile core nursery observed))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-figure-octets)
                                   (fn-heap-store-figure-octets
-                                   fn-heap-operation-list-figure-octets
-                                   fn-heap-figure-octets)))))
+                                   fn-heap-operation-list-figure-octets)))))
 
 (defthm fn-heap-operation-used-within-the-history-octets
   (implies (and (<= used (fn-bs-profile-max-history-octets profile))
@@ -557,18 +555,19 @@
                             (octets (fn-heap-operation-figure-octets
                                      action profile core nursery observed)))))))
 
-; KEYSTONE (reservation-after-flip).  An accepted operation figure of an
-; observed verb (`run' and the offline verbs) holds every store the profile
-; admits -- USED within H, N within T, the collector's room at the trigger
+; KEYSTONE (reservation-after-flip).  An accepted operation figure holds
+; every store the profile admits -- USED within H, N within T, the collector's room at the trigger
 ; the host sets in the launcher's space -- with the open's transient over any
 ; input within the observation (OU octets, ON records: what is on disk when
-; the probe ran); and it fits the machine.
+; the probe ran; for a command that observes nothing its figure is the
+; unobserved one, which holds every observation's); and it fits the machine.
+; (A hypothesis (member action *fn-heap-observed-actions*) was removed after
+; proving the weakened theorem.)
 (defthm fn-heap-operation-decide-holds-the-store
   (let* ((decision (fn-heap-operation-decide action profile core nursery observations
                                              observed))
          (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
-    (implies (and (member-equal action *fn-heap-observed-actions*)
-                  (fn-bs-profile-admittedp profile)
+    (implies (and (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
                   (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
@@ -632,7 +631,7 @@
 ;; state alone is 345 MB and a full replay of such a store 1,280 MB, so its
 ;; unobserved figure is 1,662 MB on the production image; a `run' sizes the
 ;; open by the store on disk (`fn-heap-operation-decide', :run).  With any
-;; image up to 512 MiB of dynamic content and the 64 MiB nursery cap, the run
+;; image up to 512 MiB of dynamic content and any nursery cap, the run
 ;; of an empty small store is accepted on every machine of at least 1,536 MiB
 ;; (OpenBSD's default login class; the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
@@ -641,16 +640,17 @@
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 
+; (A hypothesis bounding the nursery cap was removed after proving the
+; weakened theorem: the trigger is at most a sixteenth of the space.)
 (defthm fn-heap-small-profile-run-fits-a-small-machine
   (implies (and (<= (fn-heap-core-dynamic core) (* 512 *fn-heap-mib*))
-                (<= nursery (* 64 *fn-heap-mib*))
                 (posp machine) (<= (* 1536 *fn-heap-mib*) machine))
            (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* core nursery
                                                  (list machine) '(0 . 0)))
                   :heap))
   :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets)
                                   (fn-heap-profile-word))
-           :use ((:instance fn-heap-with-nursery-is-at-most-the-cap
+           :use ((:instance fn-heap-with-nursery-is-at-most-an-eighth-more
                             (base (fn-heap-store-base-octets *fn-heap-small-profile* core
                                                              '(0 . 0))))))))
 
