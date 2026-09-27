@@ -358,19 +358,27 @@
 (in-theory (disable fn-rcon-store-event-encode fn-rcon-sbud-pending-sequence))
 
 (defun fn-rcon-sf-record-dir-result (s result)
-  (declare (xargs :guard (fn-sf-statep s)))
+  (declare (xargs :guard (fn-sf-statep s)
+                  :guard-hints (("Goal" :use fn-sf-statep-implies-shapep
+                                 :in-theory (disable fn-sf-statep)))))
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-attempted))
       (cond
        ((equal result :ok)
+        ; The commit appends the record in O(1): the history is a snoc-list
+        ; (books/snoc-list.lisp; fn-sf-make-fields-snoc-records-is-make).
         (let ((record (fn-sf-record-candidate s)))
-          (fn-sf-make :completing (fn-sf-frontier s) nil
-                      (append (fn-sf-records s) (list record)) nil
-                      (fn-rcon-sf-record-pair record) (fn-sf-successes s)
-                      (fn-sf-barriers s))))
+          (mbe :logic (fn-sf-make :completing (fn-sf-frontier s) nil
+                                  (append (fn-sf-records s) (list record)) nil
+                                  (fn-rcon-sf-record-pair record) (fn-sf-successes s)
+                                  (fn-sf-barriers s))
+               :exec (fn-sf-make-fields :completing (fn-sf-frontier s) nil
+                                        (fn-sl-snoc (fn-sf-records-field s) record)
+                                        nil (fn-rcon-sf-record-pair record)
+                                        (fn-sf-successes-field s)
+                                        (fn-sf-barriers s)))))
        ((equal result :error)
-        (fn-sf-make :fenced-record (fn-sf-frontier s) nil
-                    (fn-sf-records s) (fn-sf-record-candidate s) nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :fenced-record (fn-sf-frontier s) nil
+                      (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
        (t s))
     s))
 (defthm fn-rcon-sf-record-dir-result-is-sf-record-dir-result

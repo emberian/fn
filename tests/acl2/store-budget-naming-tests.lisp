@@ -127,7 +127,7 @@
 ; accept after zero committed names.
 (defconst *sbnt-misnumbered*
   (list nil nil
-        (list :store-files :record-staged 6 nil nil
+        (fn-sf-make :record-staged 6 nil nil
               (fn-hrt-row-at
                (fn-record-make 5 5 5 "<sbnt-five@example.invalid>" '(69)
                                '("fn.test") "p" "s" "r" 1 841000000)

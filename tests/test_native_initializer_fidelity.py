@@ -43,6 +43,10 @@ MODEL_CUTS = {
     "init-final-config-file-fenced", "init-final-config-record-file-fenced",
     "init-final-frontier-file-fenced", "init-transactions-fenced",
     "init-root-fenced", "init-parent-fenced",
+    # books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 9).
+    "init-journal-mkdir", "init-journal-parent-fenced",
+    "init-segment-created", "init-segment-written", "init-segment-file-fenced",
+    "init-journal-segment-fenced",
 }
 
 
@@ -105,7 +109,13 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(initialized.returncode, run_store.EXIT_OK, initialized.stderr)
         self.assertTrue((store / "config.json").is_file())
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
-        self.assertTrue((store / "journal" / "000001.log").is_file())
+        # Format 9 (books/byte-store-log-initializer.lisp): the segment, no
+        # allocator file, no transactions/.
+        segment = store / "journal" / "000001.log"
+        self.assertTrue(segment.is_file())
+        self.assertEqual(segment.read_bytes().count(0), segment.stat().st_size)
+        self.assertFalse((store / "allocation-frontier.json").exists())
+        self.assertFalse((store / "transactions").exists())
         recovered = self.invoke(store, "recover")
         self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
@@ -127,7 +137,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(killed.returncode, -9, killed.stderr)
         self.assertTrue((store / "config.json").is_file())
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
-        self.assertFalse((store / "allocation-frontier.json").exists())
+        self.assertFalse((store / "journal" / "000001.log").exists())
         retried = self.invoke(store, "init")
         self.assertEqual(retried.returncode, run_store.EXIT_OK, retried.stderr)
         self.assertEqual(self.invoke(store, "recover").returncode, run_store.EXIT_OK)
@@ -213,6 +223,16 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         killed = self.invoke(store, "init", "init-final-frontier-file-fenced:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
         self.assert_incomplete_then_completed_by_init(store)
+
+    def test_sigkill_after_the_segment_recovers_in_a_new_process(self):
+        # Lane log-2: init's last cut is the fenced segment; the store is
+        # complete and a new process recovers it empty.
+        store = self.base / "killed-segment"
+        killed = self.invoke(store, "init", "init-journal-segment-fenced:kill")
+        self.assertEqual(killed.returncode, -9, killed.stderr)
+        reopened = self.invoke(store, "recover")
+        self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
+        self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
 
     def test_sigkill_before_metadata_makes_restart_refuse_by_name(self):
         store = self.base / "killed-lock"

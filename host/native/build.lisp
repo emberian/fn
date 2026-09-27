@@ -43,6 +43,11 @@
 (include-book "books/served-plan")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
+;; PKT-688 (4) slice 2 (PRF-267): the gate calls fn-ocs-next and the committer
+;; fn-ocs-commit-event (host/native/owner.lisp fnn-owner-commit-batch).
+(include-book "books/owner-commit-steps")
+;; Lane log-2: the pipelined commit (fn-ocp-*), over fn-ocs-*.
+(include-book "books/owner-commit-pipeline")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
@@ -81,6 +86,7 @@
 (include-book "books/owner-served-carried")
 (include-book "books/served-span")
 (include-book "books/owner-commit-carried")
+(include-book "books/owner-refresh-indexed")
 (include-book "books/owner-prepare-carried")
 ;; fn-owner-io (host/owner-host.lisp) calls fn-rcon-ocfg-io.
 (include-book "books/records-concrete-owner")
@@ -102,6 +108,8 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
+(include-book "books/post-retain-carried")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).

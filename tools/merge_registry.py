@@ -17,7 +17,8 @@ scripts' rule, once, for all four files:
 * rows are matched by `id`; ours keep their order and theirs' new ids are
   appended in theirs' order; a row one side deleted and the other left
   unchanged stays deleted; an id both sides added with different rows is an
-  id collision and a conflict;
+  id collision and a conflict, and BOTH rows stay (ours first) so resolving
+  it by `git add` cannot lose either side's row;
 * within a row, each field merges three-way against the base: the side that
   changed it wins; when both changed a list, the result is ours plus the
   elements theirs added (an element ours removed stays removed); when both
@@ -104,6 +105,7 @@ def merge_rows(base: list, ours: list, theirs: list, skip: set[str],
     ours_by = {row["id"]: row for row in ours}
     theirs_by = {row["id"]: row for row in theirs}
     out = []
+    collided: set = set()
     for row in ours:
         ident = row["id"]
         if ident not in theirs_by:
@@ -114,10 +116,15 @@ def merge_rows(base: list, ours: list, theirs: list, skip: set[str],
         if ident not in base_by and row != theirs_by[ident]:
             # Both sides took this id for different rows: an id collision,
             # not an edit.  One of them must be renumbered.
+            # Both rows stay, ours first: keeping only ours lost the other
+            # side's row whenever the conflict was resolved by `git add`
+            # (compact-arena and log-2 lost dev's rows that way, 2026-09-27).
             conflicts.append(f"CONFLICT {ident}: both sides added this id with "
                              "different rows (an id collision: renumber one; "
-                             "ours kept)")
+                             "both rows kept, ours first)")
             out.append(row)
+            out.append(theirs_by[ident])
+            collided.add(ident)
             continue
         out.append(merge_mapping(base_by.get(ident, {}), row, theirs_by[ident],
                                  ident, conflicts, skip))
@@ -133,7 +140,7 @@ def merge_rows(base: list, ours: list, theirs: list, skip: set[str],
         out.append(row)
     seen: set = set()
     for row in out:
-        if row["id"] in seen:
+        if row["id"] in seen and row["id"] not in collided:
             conflicts.append(f"CONFLICT {row['id']}: duplicate id after merge")
         seen.add(row["id"])
     return out

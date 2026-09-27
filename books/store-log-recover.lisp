@@ -79,7 +79,7 @@
                    (equal (mod a unit) 0) (equal (mod b unit) 0))
               (equal (mod (- a b) unit) 0)))))
 
-(local (in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-record
+(local (in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-records
                            fn-lg-trailer fn-lg-pad-len)))
 
 (defthm fn-lg-scan-consumed-aligned
@@ -256,9 +256,11 @@
    (implies (fn-lg-entry-okp (fn-lg-slice x) prev max)
             (fn-frame-digestp (fn-lg-trailer (fn-lg-slice x))))
    :hints (("Goal" :in-theory (e/d (fn-lg-trailer fn-lg-entry-okp fn-frame-open fn-frame-digestp)
-                                   (fn-frame-decode fn-lg-slice fn-lg-declared-len))
+                                   (fn-frame-decode fn-lg-slice fn-lg-declared-len
+                                    fn-lg-open-bound fn-lg-unpack-okp))
             :use ((:instance fn-lg-slice-len (octets x))
                   (:instance fn-lgkc-decode-ok-octets (octets (fn-lg-slice x))
+                             (max (fn-lg-open-bound (fn-lg-slice x) max))
                              (digest (fn-frame-digest (fn-frame-protected-prefix (fn-lg-slice x))))))))))
 
 (defthm fn-lg-scan-last-digestp
