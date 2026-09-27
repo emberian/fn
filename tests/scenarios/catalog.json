@@ -4981,6 +4981,48 @@
         "tools/power_loss_openbsd.py",
         "planning/evidence/power-loss-openbsd-2026-09-26.md"
       ]
+    },
+    {
+      "id": "SCN-173",
+      "title": "Friends sign in on the web, read, reply, post, remove their own post, approve a held post, and do not see a private group",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-003",
+        "NNT-046",
+        "NNT-047"
+      ],
+      "steps": [
+        "On a scratch production-image node with STARTTLS and protected_only, three invitation accounts redeemed over TLS: alice moderates fn.mod, bob has the access rule read and post fn.*,!fn.private.*, carol has none; tools/fn_reader.py serves HTTPS in front of it.",
+        "In a headless browser: a wrong password, then alice signs in, reads fn.friends, replies, posts and removes her own post, approves carol's held post from the queue, switches to the dark theme and signs out; bob signs in and opens fn.private.club by address; carol posts to the moderated group from a 390-pixel phone viewport."
+      ],
+      "expected": [
+        "The wrong password is refused as not matching and no session is made; alice's groups carry the node's descriptions and unread counts; the reply is threaded under its parent; the removal leaves the target answered 430; the approved post appears in fn.mod; carol is told a moderator will look.",
+        "bob's group list omits fn.private.club and the queue, and its address answers not found; no page carries a password or a script, every page sends default-src 'none', and no page scrolls sideways at 390 pixels."
+      ],
+      "evidence": [
+        "tests/test_fn_reader.py",
+        "tests/fn_reader_scratch.py",
+        "tests/fn_reader_drive.mjs",
+        "planning/evidence/web-reader-2-2026-09-27/drive.json"
+      ],
+      "execution_scope": "One scratch node on hbox (production image of batch AS, 4c5cc6213) and Chromium 1.62.1 on the laptop over an ssh tunnel. Not a public deployment, not a load test, not an external security audit.",
+      "implementation": {
+        "test": "tests.test_fn_reader",
+        "cases": [
+          "test_sign_in_is_the_nodes_answer_and_the_password_stays_out",
+          "test_unreachable_node_is_not_a_wrong_password",
+          "test_a_post_from_another_site_or_without_the_token_does_nothing",
+          "test_post_once_read_unread_and_remove_own",
+          "test_refused_shows_the_nodes_reason_and_offers_an_edit",
+          "test_not_sure_is_settled_by_the_same_article_never_a_new_one",
+          "test_state_is_per_login",
+          "test_plain_http_off_loopback_is_refused"
+        ],
+        "native": false,
+        "log": "planning/evidence/web-reader-2-2026-09-27/drive.log",
+        "record": "planning/evidence/web-reader-2-2026-09-27.md"
+      }
     }
   ]
 }

@@ -4385,6 +4385,27 @@
       ],
       "implementation_note": "RFC 9171 section 5.7 (local bundle delivery) leaves the application's disposition to the node; a durable kind 7 completes delivery at the BP layer whatever the application decided (spec bp-node-machine 3.1). fn's stronger guarantee: the host reports the disposition ACL2 names (fn-bpah-handoff-report), so 'handoff durable' means the application committed. PKT-630 (7).",
       "note": "SCN-158; SCN-077's 10 MiB case is the positive witness once its Store admits the article."
+    },
+    {
+      "id": "WEB-003",
+      "title": "The friends' web reader signs in only by the node's AUTHINFO answer over verified TLS and decides nothing",
+      "specification": "specs/human-client.md#the-friends-reader",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test"
+      ],
+      "evidence": [
+        "tools/fn_reader.py",
+        "tests/test_fn_reader.py",
+        "tests/fn_reader_scratch.py",
+        "tests/fn_reader_drive.mjs",
+        "docs/reader.md",
+        "planning/evidence/web-reader-2-2026-09-27.md"
+      ],
+      "implementation_note": "A permitted external client (AGENTS.md: Python is a client and test tool, never a second decision engine). Every accept, refuse, hold, approval, withdrawal and group visibility shown is the node's NNTP answer; the reader's own state is read marks, a display name and submission records (exact lines before the POST).",
+      "note": "Client behaviour over a scratch production-image node (SCN-173); it proves nothing about the node beyond the answers recorded. Rejecting a held post waits on PKT-657 (PKT-704)."
     }
   ]
 }
