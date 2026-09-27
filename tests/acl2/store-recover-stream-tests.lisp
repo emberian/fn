@@ -3,10 +3,13 @@
 ; (host/native/io.lisp fnn-bridge-recover -> host/store-node-host.lisp
 ; fn-store-sn-recover-step -> fn-srs-step).
 ;
-; The history is three real journal records (fn-store-event-encode of
+; The history is three real journal records (fn-rcon-record-encode-impl of
 ; records the codec decodes back exactly); the arena is a local one.
 (in-package "ACL2")
 (include-book "../../books/store-recover-stream")
+; The codecs' attachments, as the host image evaluates them.
+(include-book "../../books/records-attach-concrete")
+(include-book "../../books/statement-attach")
 
 (defconst *srst-groups* '("fn.test"))
 (defconst *srst-records*
@@ -19,9 +22,9 @@
 (assert-event (and (fn-record-p (nth 0 *srst-records*))
                    (fn-record-p (nth 1 *srst-records*))
                    (fn-record-p (nth 2 *srst-records*))))
-(defconst *srst-r0* (fn-store-event-encode (nth 0 *srst-records*)))
-(defconst *srst-r1* (fn-store-event-encode (nth 1 *srst-records*)))
-(defconst *srst-r2* (fn-store-event-encode (nth 2 *srst-records*)))
+(defconst *srst-r0* (fn-rcon-record-encode-impl (nth 0 *srst-records*)))
+(defconst *srst-r1* (fn-rcon-record-encode-impl (nth 1 *srst-records*)))
+(defconst *srst-r2* (fn-rcon-record-encode-impl (nth 2 *srst-records*)))
 (defconst *srst-history* (list *srst-r0* *srst-r1* *srst-r2*))
 ; The records decode back exactly (what the journal replay reads).
 (assert-event (equal (fn-srs-decode *srst-history*) *srst-records*))
@@ -34,24 +37,33 @@
   (if (and (natp i) (< i (fn-arena-count fn-arena)))
       (cons (fn-arena-payload i fn-arena) (srst-arena-list (1+ i) fn-arena))
     nil))
+(defun srst-steps-in (chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (acc fn-arena)
+    (fn-srs-steps chunks nil fn-arena)
+    (mv (list acc (srst-arena-list 0 fn-arena)) fn-arena)))
+(defun srst-one-in (chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (acc fn-arena)
+    (fn-srs-step nil (fn-srs-concat chunks) fn-arena)
+    (mv (list acc (srst-arena-list 0 fn-arena)) fn-arena)))
+(defun srst-intern-of-decode-in (octet-records fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events (fn-srs-decode octet-records) nil 0 fn-arena)
+    (mv (list rows (srst-arena-list 0 fn-arena)) fn-arena)))
 (defun srst-steps (chunks)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
-    (mv-let (acc fn-arena)
-      (fn-srs-steps chunks nil fn-arena)
-      (list acc (srst-arena-list 0 fn-arena)))))
+    (mv-let (out fn-arena) (srst-steps-in chunks fn-arena) out)))
 (defun srst-one (chunks)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
-    (mv-let (acc fn-arena)
-      (fn-srs-step nil (fn-srs-concat chunks) fn-arena)
-      (list acc (srst-arena-list 0 fn-arena)))))
+    (mv-let (out fn-arena) (srst-one-in chunks fn-arena) out)))
 (defun srst-intern-of-decode (octet-records)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
-    (mv-let (rows fn-arena)
-      (fn-intern-events (fn-srs-decode octet-records) nil 0 fn-arena)
-      (list rows (srst-arena-list 0 fn-arena)))))
+    (mv-let (out fn-arena) (srst-intern-of-decode-in octet-records fn-arena) out)))
 
 ; The keystone's conclusion over its answers (fn-srs-same's reading).
 (defun srst-conclusion (steps one)
