@@ -2556,7 +2556,7 @@
       "proof_targets": [
         "PRF-117",
         "PRF-127",
-        "PRF-257"
+        "PRF-258"
       ],
       "verification": [
         "proof",
