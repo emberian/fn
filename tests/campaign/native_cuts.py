@@ -195,16 +195,26 @@ LOG_PROGRAM_HOSTS = {
     "fn-lg-append-program": "fnn-log-append",
     "fn-lg-fence-program": "fnn-log-fence",
     "fn-lg-recover-program": "fnn-log-recover",
+    # The segment's extension (lane log-2, PKT-COL-4).
+    "fn-lg-extend-program": "fnn-log-ensure-extent",
 }
+LOG_EXTEND_BOOK = "store-log-extend.lisp"
+LOG_PROGRAM_BOOKS = {"fn-lg-extend-program": LOG_EXTEND_BOOK}
 LOG_CUTS = (
     NativeCut("log-written", "fn-lg-append-program", "either", book=LOG_BOOK),
     NativeCut("log-fenced", "fn-lg-fence-program", "present",
               follows="fn-lg-append-program", book=LOG_BOOK),
     NativeCut("log-truncated", "fn-lg-recover-program", "present", book=LOG_BOOK),
     NativeCut("log-recovered", "fn-lg-recover-program", "present", book=LOG_BOOK),
+    # A death during the extension (at rest: no batch in flight) leaves the
+    # committed records exactly (fn-lg-extension-written-crash-reads-the-
+    # committed-records); no member is in the log's batch yet.
+    NativeCut("log-extended", "fn-lg-extend-program", "present", book=LOG_EXTEND_BOOK),
+    NativeCut("log-extent-fenced", "fn-lg-extend-program", "present", book=LOG_EXTEND_BOOK),
 )
 # The host primitive that performs each log step kind, and its cut call.
-LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync "}
+LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync ",
+                 "extend-to": "(fnn-log-preallocate "}
 
 # The served commit on a format-9 store (lane commit-onto-log): P-BATCH as the
 # owner's commit quantum runs it (host/native/owner.lisp
@@ -268,7 +278,9 @@ STEP_KINDS = ("observe", "cut", "create", "write-all", "fsync-file", "fsync-dir"
               # books/store-import-publication.lisp's two directory steps.
               "mkdir", "rename-dir-noreplace",
               # books/store-log-programs.lisp's positioned write and barrier.
-              "write-at", "fence")
+              "write-at", "fence",
+              # books/store-log-extend.lisp's zero extension.
+              "extend-to")
 SYSCALL_KINDS = frozenset(STEP_KINDS[2:])
 
 
@@ -861,14 +873,16 @@ def verify_log_cut_map() -> None:
     if declared != native_declared_cut_names("fnn-log-model-cuts"):
         raise AssertionError("native/model log cuts differ")
     program_cuts = tuple(name for program in LOG_PROGRAM_HOSTS
-                         for name in model_cut_names(program, LOG_BOOK))
+                         for name in model_cut_names(
+                             program, LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)))
     if declared != program_cuts:
         raise AssertionError("log cuts are not the log programs': {!r}".format(program_cuts))
     source = (ROOT / "host/native/io.lisp").read_text()
     for program, host in LOG_PROGRAM_HOSTS.items():
+        book = LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)
         body = host_function(source, host)
         at, order = 0, []
-        for step in model_steps(program, LOG_BOOK):
+        for step in model_steps(program, book):
             needle = ("(fnn-log-at :{})".format(step.args[0]) if step.kind == "cut"
                       else LOG_STEP_HOST[step.kind])
             found = body.find(needle, at)
@@ -878,10 +892,10 @@ def verify_log_cut_map() -> None:
             order.append(found)
             at = found + len(needle)
         cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
-        if cuts != set(model_cut_names(program, LOG_BOOK)):
+        if cuts != set(model_cut_names(program, book)):
             raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
         for kind, needle in LOG_STEP_HOST.items():
-            if body.count(needle) != sum(1 for s in model_steps(program, LOG_BOOK)
+            if body.count(needle) != sum(1 for s in model_steps(program, book)
                                          if s.kind == kind):
                 raise AssertionError("{}: {} count differs from {}".format(host, kind, program))
     for cut in LOG_CUTS:

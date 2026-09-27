@@ -29,6 +29,8 @@
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
 (include-book "../books/store-log-route")
+(include-book "../books/store-log-extend")
+(include-book "../books/store-init-log-publication")
 
 (defconst *fn-store-max-text* 512)
 

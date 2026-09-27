@@ -387,6 +387,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-route \
 	tests/acl2/store-log-route-tests \
 	books/store-log-route-phases \
+	books/store-log-extend \
+	tests/acl2/store-log-extend-tests \
+	books/store-init-log-publication \
+	tests/acl2/store-init-log-publication-tests \
+	books/owner-feed-txid-reuse \
+	tests/acl2/owner-feed-txid-reuse-tests \
+	books/byte-store-log-initializer \
+	tests/acl2/byte-store-log-initializer-tests \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \

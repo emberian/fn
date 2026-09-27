@@ -290,6 +290,44 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                 finally:
                     node.stop()
 
+    def test_the_segment_grows_and_a_death_while_it_grows_keeps_every_acknowledged_post(self):
+        # books/store-log-extend.lisp: when the open batch and a spare unit
+        # do not fit, the segment grows to ACL2's target (twice the extent)
+        # and is fenced, at rest, before the append.  A death at each of the
+        # extension's cuts (FN_NATIVE_LOG_FAULT) keeps every POST answered
+        # 240; the next owner serves them, grows the segment and goes on.
+        initial = 1048576
+        for cut in ("log-extended", "log-extent-fenced"):
+            with self.subTest(cut=cut):
+                root = self.root / cut
+                root.mkdir()
+                node = Node(self.image, root)
+                node.init()
+                segment = node.store / "journal" / "000001.log"
+                self.assertEqual(segment.stat().st_size, initial)
+                node.start({"FN_NATIVE_LOG_FAULT": cut})
+                replies, _errors = post_concurrently(node.port, range(400), 4)
+                node.proc.wait(timeout=300)
+                node.stderr.close()
+                self.assertEqual(node.proc.returncode, -9, cut)
+                acked = sorted(i for i, r in replies.items() if r.startswith(b"240"))
+                self.assertGreater(len(acked), 200, cut)
+                node.start()
+                try:
+                    c = Conn(node.port)
+                    for i in acked:
+                        head, body = c.article(i)
+                        self.assertTrue(head.startswith(b"220"), (cut, i, head))
+                        self.assertIn(b"body of %d" % i, body)
+                    c.close()
+                    more, errors = post_concurrently(node.port, range(1000, 1300), 4)
+                    self.assertEqual(errors, [])
+                    self.assertTrue(all(r.startswith(b"240") for r in more.values()), cut)
+                finally:
+                    node.stop()
+                self.assertGreater(segment.stat().st_size, initial, cut)
+                self.assertEqual(segment.stat().st_size % 4096, 0, cut)
+
     def test_store_post_and_probe_commit_through_the_log(self):
         # The developer entries that commit without an owner (fnn-command-post,
         # fnn-command-probe) take the same route: a batch of one each.
