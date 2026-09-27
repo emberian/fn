@@ -2977,7 +2977,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ncl-cli-steps-end-with-the-operation"
+          "name": "fn-ncl-cli-after-retries-only-a-refused-register"
         }
       ]
     },

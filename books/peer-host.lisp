@@ -347,8 +347,12 @@ Answers (:starttls), (:handshake), (:send-code), (:send-password),
            (if (equal code 382) (list :handshake) (list :refused :starttls)))
           ((equal stage :code)
            (if (equal code 381) (list :send-password) (list :refused :code)))
+          ; The server keeps the code and the login until the password
+          ; (fn-auth-xredeem): a used or expired code is its 482 here.
           ((equal stage :password)
-           (if (equal code 281) (list :done) (list :refused :password)))
+           (cond ((equal code 281) (list :done))
+                 ((equal code 482) (list :refused :code))
+                 (t (list :refused :password))))
           (t (list :refused :stage)))))
 
 ; KEYSTONE.  `fn redeem' reports an account ready only on the server's 281

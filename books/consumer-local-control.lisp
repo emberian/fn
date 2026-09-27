@@ -528,19 +528,24 @@
   bootstrap CONTROL                        make the node's consumer history (register does this itself)
 docs/agents.md, Local consumers")
 
-;; The steps the host runs for OPERATION, in order; the last one's outcome
-;; is the command's.  `register' first bootstraps: on a node already
-;; bootstrapped that step is refused (a duplicate bootstrap, books/consumer-
-;; owner-local.lisp fn-col-bootstrap) and changes nothing, so its outcome is
-;; not the command's.
-(defun fn-ncl-cli-steps (operation)
+;; PKT-709: `register' on a node whose consumer history was never made.
+;; The host sends the command once; when OPERATION is :register and its
+;; STATUS is :refused (the owner's refusal of an unbootstrapped register,
+;; books/consumer-owner-local.lisp fn-col-register, and every other register
+;; refusal alike), it then sends these steps, bootstrap and the register
+;; again, and the last one's outcome is the command's.  A bootstrap on a node
+;; already bootstrapped is the refused duplicate and changes nothing; a
+;; register refused for another reason is refused again.  Any other outcome,
+;; an uncertain one above all, sends nothing more.
+(defun fn-ncl-cli-after (operation status)
   (declare (xargs :guard t))
-  (if (equal operation :register)
+  (if (and (equal operation :register) (equal status :refused))
       (list :bootstrap :register)
-    (list operation)))
+    nil))
 
-(defthm fn-ncl-cli-steps-end-with-the-operation
-  (equal (car (last (fn-ncl-cli-steps operation))) operation))
+(defthm fn-ncl-cli-after-retries-only-a-refused-register
+  (iff (fn-ncl-cli-after operation status)
+       (and (equal operation :register) (equal status :refused))))
 
 ; PRF-234: the password a secret file holds: its octets less one final
 ; line end (LF or CRLF), so `echo PASSWORD > FILE' holds PASSWORD.

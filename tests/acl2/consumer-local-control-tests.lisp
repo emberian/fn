@@ -269,5 +269,7 @@
 ; PKT-709: help and the register steps.
 (assert-event (equal (fn-ncl-cli-plan '(104 101 108 112) nil) (list :help)))
 (assert-event (stringp (fn-ncl-usage-text)))
-(assert-event (equal (fn-ncl-cli-steps :register) (list :bootstrap :register)))
-(assert-event (equal (fn-ncl-cli-steps :poll) (list :poll)))
+(assert-event (equal (fn-ncl-cli-after :register :refused) (list :bootstrap :register)))
+(assert-event (null (fn-ncl-cli-after :register :uncertain)))
+(assert-event (null (fn-ncl-cli-after :register :accepted)))
+(assert-event (null (fn-ncl-cli-after :poll :refused)))

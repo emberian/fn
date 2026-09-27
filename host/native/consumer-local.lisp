@@ -22,11 +22,6 @@
                (and (consp plan) (second plan)))
       (fnn-err "~a" (fnn-core 'fn-ncl-usage-text))
       (return-from fnn-command-consumer-local +fnn-exit-usage+))
-    ;; PKT-709: the steps before the command (register bootstraps first);
-    ;; an earlier step's outcome is not the command's.
-    (dolist (step (butlast (fnn-core 'fn-ncl-cli-steps (second plan))))
-      (ignore-errors
-       (fnn-control-consumer-local (fnn-octets (third plan)) step nil nil)))
     (destructuring-bind (ignored operation control first second output
                          &optional secret-file) plan
       (declare (ignore ignored))
@@ -51,6 +46,19 @@
                 (cond ((member operation '(:bound-poll :bound-ack)) secret)
                       ((eq operation :poll) nil)
                       (t second))))
+             ;; PKT-709: a refused register bootstraps the node's consumer
+             ;; history and registers once more (fn-ncl-cli-after); the
+             ;; last reply is the command's.
+             (reply
+               (let ((steps (fnn-core 'fn-ncl-cli-after operation
+                                      (and (consp reply) (second reply)))))
+                 (if (null steps)
+                     reply
+                   (progn
+                     (ignore-errors
+                      (fnn-control-consumer-local (fnn-octets control) :bootstrap nil nil))
+                     (fnn-control-consumer-local
+                      (fnn-octets control) operation input second)))))
              (status (and (consp reply) (second reply)))
              (cursor (and (consp reply) (third reply))))
         (unless (and (eq (first reply)

@@ -158,6 +158,8 @@
 (assert-event (equal (fn-redeem-step :password *rd-281*) (list :done)))
 (assert-event (equal (fn-redeem-step :code *rd-281*) (list :refused :code)))
 (assert-event (equal (fn-redeem-step :password *rd-481*) (list :refused :password)))
+(assert-event (equal (fn-redeem-step :password (fn-record-string-octets "482 invitation code refused"))
+                     (list :refused :code)))
 (assert-event (equal (fn-redeem-step :code *rd-381*) (list :send-password)))
 (assert-event (equal (fn-redeem-step :password *rd-381*) (list :refused :password)))
 (assert-event (equal (fn-redeem-step :greeting-starttls
