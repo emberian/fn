@@ -578,6 +578,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-retire \
 	tests/acl2/bp-node-retire-tests \
 	tests/acl2/bp-node-counterexamples-tests \
+	books/bp-node-rotation-due \
+	tests/acl2/bp-node-rotation-due-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \

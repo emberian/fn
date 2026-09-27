@@ -160,8 +160,15 @@ relation admits (`fn-bpnpf-read-of-octets`: a saved profile opens), and
 every valid profile opens a machine with exactly those limits
 (`fn-bpnpf-valid-profile-opens`; profile 2:
 `fn-bpnpf-profile-read-of-octets`). `bp-node profile JOURNAL NODE ROWS
-OCTETS [ADU BUNDLE]` only raises it (`fn-bpnpf-write-never-lowers`,
-`fn-bpnpf-profile-write-never-lowers`). A journal whose rows or held octets
+OCTETS [ADU BUNDLE [ROTATE]]` only raises it (`fn-bpnpf-write-never-lowers`,
+`fn-bpnpf-profile-write-never-lowers`). Profile 3 (lane bp-rotation) is one
+frame of `fn-bp-profile-3`, which adds `rotate-records`, the rotation
+threshold a node verb's open consults (specs/bp-node-machine.md 3.6,
+"Natural rotation"); formats 1 and 2, or no file, read with 4,096
+(`fn-bpnpf-node-profile-read-of-older`), a saved profile 3 opens
+(`fn-bpnpf-node-profile-read-of-octets`), and a write never lowers a held or
+codec field while the threshold may move either way
+(`fn-bpnpf-node-profile-write-never-lowers`). A journal whose rows or held octets
 exceed the profile it opens under is refused at replay with the named
 verdict `:held-beyond-profile`, never truncated
 (`fn-bpnpf-replay-past-the-profile-is-refused`,

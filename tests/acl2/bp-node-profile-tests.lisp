@@ -250,3 +250,104 @@
  (equal (fn-bpnf-recover-fnbs-step *bpnff-state* 9 nil :ready
                                    '(:fault :kind-five-row))
         (fn-bpnf-answer *bpnff-state* '((:restart-fault :fnbs-or-base)))))
+
+;; ===========================================================================
+;; Profile 3 (lane bp-rotation): (ROWS OCTETS ADU BUNDLE ROTATE), ROTATE the
+;; rotation threshold a node verb's open consults (books/bp-node-rotation-due).
+
+;; fn-bpnpf-node-profile-read-of-octets.  Witness: the profile the native
+;; rotation test runs under (the defaults with a threshold of one record),
+;; and SCN-077's with a threshold of 1,000.
+(assert-event
+ (and (fn-bpnpf-node-profile-validp 64 16777216 65538 1048576 1)
+      (equal (fn-bpnpf-node-profile-read
+              t (fn-bpnpf-node-profile-octets 64 16777216 65538 1048576 1))
+             '(64 16777216 65538 1048576 1))
+      (equal (fn-bpnpf-node-profile-read
+              t (fn-bpnpf-node-profile-octets 4096 16777216 11534336 1048576
+                                              1000))
+             '(4096 16777216 11534336 1048576 1000))
+      (< (len (fn-bpnpf-node-profile-octets 16777216 16777216 16777216
+                                            16777216 16777216))
+         (fn-bpnpf-read-bound))))
+;; Without validity: a threshold of zero is no profile, and its frame is none.
+(assert-event
+ (and (not (fn-bpnpf-node-profile-validp 64 16777216 65538 1048576 0))
+      (not (equal (fn-bpnpf-node-profile-read
+                   t (fn-bpnpf-node-profile-octets 64 16777216 65538 1048576 0))
+                  '(64 16777216 65538 1048576 0)))))
+(must-fail
+ (defthm bpnpft-node-profile-read-without-validity
+   (equal (fn-bpnpf-node-profile-read
+           t (fn-bpnpf-node-profile-octets rows octets adu bundle rotate))
+          (list rows octets adu bundle rotate))
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+;; A trailing octet, or the format-2 text in a six-field frame, is refused.
+(assert-event
+ (and (null (fn-bpnpf-node-profile-read
+             t (append (fn-bpnpf-node-profile-octets 64 16777216 65538 1048576 1)
+                       '(0))))
+      (null (fn-bpnpf-node-profile-read
+             t (fn-frame-fields-octets *fn-bpnpf-spec-3*
+                                       (list *fn-bpnpf-format-2* 64 16777216
+                                             65538 1048576 1))))))
+
+;; fn-bpnpf-node-profile-read-of-older: the files formats 1 and 2 wrote, and
+;; no file, open with their fields and the default threshold (4,096).
+(assert-event
+ (and (equal (fn-bpnpf-node-profile-read t (fn-bpnpf-octets 128 16777216))
+             '(128 16777216 65538 1048576 4096))
+      (equal (fn-bpnpf-node-profile-read
+              t (fn-bpnpf-profile-octets 2600 16777216 10551296 1048576))
+             '(2600 16777216 10551296 1048576 4096))
+      (equal (fn-bpnpf-node-profile-read nil nil)
+             '(64 16777216 65538 1048576 4096))))
+;; Without validity (zero rows): neither older frame reads as that profile
+;; with the default threshold.
+(assert-event
+ (and (not (fn-bpnpf-profile-validp 0 16777216 65538 1048576))
+      (not (equal (fn-bpnpf-node-profile-read
+                   t (fn-bpnpf-profile-octets 0 16777216 65538 1048576))
+                  '(0 16777216 65538 1048576 4096)))
+      (not (fn-bpnpf-validp 0 16777216))
+      (not (equal (fn-bpnpf-node-profile-read t (fn-bpnpf-octets 0 16777216))
+                  '(0 16777216 65538 1048576 4096)))))
+
+;; fn-bpnpf-node-profile-read-is-valid and -base-is-a-profile: what is read
+;; is a profile 3 whose base is the profile 2 the admission reads.
+(assert-event
+ (let ((p (fn-bpnpf-node-profile-read
+           t (fn-bpnpf-node-profile-octets 64 16777216 65538 1048576 1))))
+   (and (fn-bpnpf-node-profilep p)
+        (equal (fn-bpnpf-node-profile-base p) '(64 16777216 65538 1048576))
+        (fn-bpnpf-profilep (fn-bpnpf-node-profile-base p))
+        (equal (fn-bpnpf-rotate-records p) 1))))
+;; Without "a profile 3": a four-field list's base is no profile 2 when a
+;; field is out of range.
+(assert-event
+ (and (not (fn-bpnpf-node-profilep '(0 16777216 65538 1048576 1)))
+      (not (fn-bpnpf-profilep (fn-bpnpf-node-profile-base
+                               '(0 16777216 65538 1048576 1))))))
+
+;; fn-bpnpf-node-profile-write-never-lowers.  Witness: the default raised to
+;; SCN-077's with a threshold of 1,000, and a threshold lowered (it may be);
+;; each held or codec field lowered is refused, as is a zero threshold.
+(assert-event
+ (let ((w (fn-bpnpf-node-profile-write-octets
+           '(64 16777216 65538 1048576 4096) 4096 16777216 11534336 1048576
+           1000))
+       (l (fn-bpnpf-node-profile-write-octets
+           '(64 16777216 65538 1048576 4096) 64 16777216 65538 1048576 1)))
+   (and w (equal (fn-bpnpf-node-profile-read t w)
+                 '(4096 16777216 11534336 1048576 1000))
+        l (equal (fn-bpnpf-node-profile-read t l)
+                 '(64 16777216 65538 1048576 1)))))
+(assert-event
+ (and (null (fn-bpnpf-node-profile-write-octets
+             '(128 16777216 65538 1048576 4096) 64 16777216 65538 1048576 1))
+      (null (fn-bpnpf-node-profile-write-octets
+             '(64 16777216 65538 1048576 4096) 64 16777216 65538 1024 1))
+      (null (fn-bpnpf-node-profile-write-octets
+             '(64 16777216 65538 1048576 4096) 64 16777216 65538 1048576 0))
+      (null (fn-bpnpf-node-profile-write-octets
+             '(64 16777216 65538 1048576) 64 16777216 65538 1048576 1))))
