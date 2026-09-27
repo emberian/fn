@@ -912,7 +912,7 @@ no writer runs."
     *fnn-log-sink*))
 
 (defvar *fnn-journal-fd* nil
-  "The decision journal's descriptor (STORE/journal/decisions.fnj, lane
+  "The decision journal's descriptor (STORE/decisions/decisions.fnj, lane
 time-model-2), written only by the log writer thread while it runs.")
 
 (defun fnn-log-write-item (destination octets)
@@ -2878,13 +2878,13 @@ them across processes, copies, checkpoint and full replay, and boxes."
 
 (defun fnn-command-store-journal (root)
   "`store ROOT journal' (lane time-model-2, HST-028): read the decision
-journal STORE/journal/decisions.fnj back and print ACL2's one-line replay
+journal STORE/decisions/decisions.fnj back and print ACL2's one-line replay
 (books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
 whole/torn/malformed, and agrees or the first gap, divergence or malformed
 entry).  It opens no store (a running owner keeps its journal open for
 append; a torn last line is one the writer had not finished).  Exit 0 when
 the replay agrees, 1 otherwise."
-  (let ((path (fnn-join (fnn-join root "journal") "decisions.fnj")))
+  (let ((path (fnn-join (fnn-join root "decisions") "decisions.fnj")))
     (unless (probe-file path)
       (fnn-refuse "no decision journal at ~a" path))
     (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))

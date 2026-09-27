@@ -700,10 +700,14 @@ def verify_post_log_cut_map() -> None:
     if not (0 <= order[0] < order[1] < order[2]):
         raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
     pipeline = host_function(owner, "fnn-owner-commit-pipeline")
-    order = [pipeline.find(x) for x in ("(fnn-owner-start-syncer ",
-                                        "(sb-thread:join-thread syncer",
-                                        "(fnn-owner-commit-complete-locked service :complete members deferred)",
-                                        "(fnn-log-seal-open-batch store)")]
+    # The :complete call's member list is the batch's members less those a
+    # stall already released (lane time-model-2: fnn-owner-unreleased), so
+    # it is found by its phase word, not its argument text.
+    complete_at = re.search(r"\(fnn-owner-commit-complete-locked\s+service\s+:complete\s", pipeline)
+    order = [pipeline.find("(fnn-owner-start-syncer "),
+             pipeline.find("(sb-thread:join-thread syncer"),
+             complete_at.start() if complete_at else -1,
+             pipeline.find("(fnn-log-seal-open-batch store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):
         raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
     for cut in POST_LOG_CUTS[3:]:
