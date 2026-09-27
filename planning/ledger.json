@@ -884,6 +884,8 @@
     "tests/acl2/peer-guard-carried-tests",
     "tests/acl2/owner-commit-carried-tests",
     "tests/acl2/owner-prepare-carried-tests",
+    "books/store-budget-stored-post",
+    "tests/acl2/store-budget-stored-post-tests",
     "tests/acl2/records-concrete-tests",
     "tests/acl2/msgid-index-concrete-tests",
     "tests/acl2/owner-advance-carried-tests",
@@ -1142,26 +1144,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1178,
-    "books_in_root_closure": 1167,
-    "roots": 1138,
-    "theorems": 17379,
-    "functions": 12040,
-    "assert_events": 17334,
-    "must_fails": 2108,
+    "books": 1180,
+    "books_in_root_closure": 1169,
+    "roots": 1140,
+    "theorems": 17403,
+    "functions": 12059,
+    "assert_events": 17438,
+    "must_fails": 2116,
     "prover_refusals": 0,
     "encapsulates": 89,
     "guards": {
       "verified": 2415,
-      "declared-off": 1214,
-      "default-guarded": 6656,
-      "default-unguarded": 1755
+      "declared-off": 1228,
+      "default-guarded": 6658,
+      "default-unguarded": 1758
     },
     "suspect_theorems": 186,
     "export_hygiene_warnings": 201,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 205,
-    "include_hygiene_warnings": 1189,
+    "include_hygiene_warnings": 1204,
     "host_names_warnings": 1341,
     "hand_written_record_warnings": 18
   },
@@ -16708,6 +16710,34 @@
       "read_error": null
     },
     {
+      "book": "books/store-budget-stored-post.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-store-budget",
+        "store-budget-stored",
+        "store-node-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-budget-stored.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -16794,11 +16824,11 @@
       "book": "books/store-capacity-vector.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
-      "functions": 16,
+      "theorems": 40,
+      "functions": 17,
       "guards": {
         "verified": 0,
-        "declared-off": 3,
+        "declared-off": 4,
         "default-guarded": 12,
         "default-unguarded": 1
       },
@@ -19978,7 +20008,7 @@
       "assert_events": 246,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 36,
+      "defconsts": 37,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -24453,16 +24483,17 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 65,
+      "assert_events": 68,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 34,
+      "defconsts": 35,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-invariants",
         "../../books/byte-store-programs",
-        "../../books/codec-attach"
+        "../../books/codec-attach",
+        "held-rows-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -24502,15 +24533,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 8,
+      "functions": 11,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 4,
         "default-guarded": 0,
-        "default-unguarded": 8
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 17,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 23,
@@ -24518,7 +24549,8 @@
       "encapsulates": 0,
       "includes": [
         "../../books/cancel-lock-d25",
-        "../../books/codec-attach"
+        "../../books/codec-attach",
+        "held-rows-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -25511,14 +25543,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 39,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/config-physical-replay"
+        "../../books/config-physical-replay",
+        "held-rows-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -25594,16 +25627,17 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 41,
+      "assert_events": 42,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 20,
+      "defconsts": 23,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/config-stream",
-        "../../books/store-config"
+        "../../books/store-config",
+        "held-rows-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -25614,18 +25648,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 102,
+      "assert_events": 104,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 34,
+      "defconsts": 36,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -25633,7 +25667,8 @@
         "../../books/config-invariants",
         "../../books/config-records",
         "../../books/node-config",
-        "../../books/store-config"
+        "../../books/store-config",
+        "held-rows-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -25672,15 +25707,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 8,
       "must_fails": 2,
       "prover_refusals": 0,
       "defconsts": 17,
@@ -25688,7 +25723,8 @@
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/consumer-artifact-retry"
+        "../../books/consumer-artifact-retry",
+        "held-rows-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -26077,14 +26113,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
+      "assert_events": 12,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 8,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/consumer-store-projection"
+        "../../books/consumer-store-projection",
+        "held-rows-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -28436,10 +28473,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 92,
+      "assert_events": 93,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 19,
+      "defconsts": 21,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
@@ -28492,10 +28529,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 71,
+      "assert_events": 72,
       "must_fails": 9,
       "prover_refusals": 0,
-      "defconsts": 58,
+      "defconsts": 65,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
@@ -28635,7 +28672,7 @@
       "assert_events": 26,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -28721,7 +28758,7 @@
       "assert_events": 17,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -28749,7 +28786,7 @@
       "assert_events": 167,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 65,
+      "defconsts": 67,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -28777,7 +28814,7 @@
       "assert_events": 3,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -28803,7 +28840,7 @@
       "assert_events": 30,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 10,
+      "defconsts": 11,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -31378,7 +31415,7 @@
       "assert_events": 116,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 53,
+      "defconsts": 54,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -31675,6 +31712,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-budget-stored-post-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 6,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 34,
+      "must_fails": 4,
+      "prover_refusals": 0,
+      "defconsts": 17,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/store-budget-stored-post"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-budget-stored-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31775,14 +31841,15 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 36,
+      "assert_events": 41,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 16,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/store-capacity-vector"
+        "../../books/store-capacity-vector",
+        "../../books/store-intern"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -32064,15 +32131,16 @@
         "default-unguarded": 29
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 61,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 15,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/store-files"
+        "../../books/store-files",
+        "held-rows-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -32091,15 +32159,16 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 72,
+      "assert_events": 75,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 16,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/store-files-invariants"
+        "../../books/store-files-invariants",
+        "held-rows-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -32120,15 +32189,16 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 88,
+      "assert_events": 94,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 42,
+      "defconsts": 44,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/store-files-invariants"
+        "../../books/store-files-invariants",
+        "held-rows-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -32147,15 +32217,16 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 14,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/store-files-traces"
+        "../../books/store-files-traces",
+        "held-rows-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -32583,18 +32654,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
-      "must_fails": 1,
+      "assert_events": 41,
+      "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -32755,23 +32826,24 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 7,
+      "functions": 8,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 41,
+      "assert_events": 43,
       "must_fails": 8,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 22,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/store-node-retention"
+        "../../books/store-node-retention",
+        "held-rows-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -34163,16 +34235,17 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 20,
+      "assert_events": 23,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 26,
+      "defconsts": 31,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/control-visible",
         "../../books/visibility-join",
+        "held-rows-tests",
         "poster-bytes-tests"
       ],
       "system_includes": [
@@ -34803,7 +34876,7 @@
     {
       "theorem": "fn-cvec-debt-from-of-atom",
       "book": "books/store-capacity-vector.lisp",
-      "line": 617,
+      "line": 666,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value"
       ]
@@ -34811,7 +34884,7 @@
     {
       "theorem": "fn-cvec-debt-from-of-cons",
       "book": "books/store-capacity-vector.lisp",
-      "line": 609,
+      "line": 658,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-cvec-debt-from and the conclusion is that branch's value"
       ]
@@ -34819,7 +34892,7 @@
     {
       "theorem": "fn-cvec-history-admittedp-of-cons",
       "book": "books/store-capacity-vector.lisp",
-      "line": 574,
+      "line": 623,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-cvec-history-admittedp and the conclusion is that branch's value"
       ]
@@ -34827,7 +34900,7 @@
     {
       "theorem": "fn-cvec-record-octets-of-atom",
       "book": "books/store-capacity-vector.lisp",
-      "line": 602,
+      "line": 651,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sbud-record-octets and the conclusion is that branch's value"
       ]
@@ -34835,7 +34908,7 @@
     {
       "theorem": "fn-cvec-record-octets-of-cons",
       "book": "books/store-capacity-vector.lisp",
-      "line": 593,
+      "line": 642,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sbud-record-octets and the conclusion is that branch's value"
       ]
@@ -37930,31 +38003,31 @@
       {
         "check": "gix-range-without-article-listp",
         "book": "tests/acl2/group-bucket-index-tests.lisp",
-        "line": 83,
+        "line": 87,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gix-range-without-group-type",
         "book": "tests/acl2/group-bucket-index-tests.lisp",
-        "line": 88,
+        "line": 92,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gix-range-without-low-type",
         "book": "tests/acl2/group-bucket-index-tests.lisp",
-        "line": 96,
+        "line": 100,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gix-range-without-high-type",
         "book": "tests/acl2/group-bucket-index-tests.lisp",
-        "line": 104,
+        "line": 108,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gix-listgroup-without-projection",
         "book": "tests/acl2/group-bucket-index-tests.lisp",
-        "line": 116,
+        "line": 120,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -38344,37 +38417,37 @@
       {
         "check": "npm-t-false-without-keyword",
         "book": "tests/acl2/nntp-pinned-msgid-tests.lisp",
-        "line": 62,
+        "line": 65,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-xri-without-valid-archive",
         "book": "tests/acl2/nntp-range-indexed-tests.lisp",
-        "line": 191,
+        "line": 195,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-xri-carried-without-over-keyword-scope",
         "book": "tests/acl2/nntp-range-indexed-tests.lisp",
-        "line": 221,
+        "line": 225,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/nntp-reader-compat-tests.lisp",
-        "line": 149,
+        "line": 158,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/nntp-reader-compat-tests.lisp",
-        "line": 262,
+        "line": 272,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "xp-alternation-without-positive-alternatives",
         "book": "tests/acl2/nntp-xpat-tests.lisp",
-        "line": 143,
+        "line": 146,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -44420,6 +44493,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-tests.lisp",
+        "line": 15,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
         "line": 3,
         "include": "../../books/byte-store-txn-name",
@@ -44436,13 +44516,20 @@
       {
         "book": "tests/acl2/cancel-lock-d25-tests.lisp",
         "line": 12,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/cancel-lock-d25-tests.lisp",
+        "line": 13,
         "include": "../../books/cancel-lock-d25",
         "included": "books/cancel-lock-d25.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/cancel-lock-d25-tests.lisp",
-        "line": 13,
+        "line": 14,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -44735,6 +44822,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/config-physical-replay-tests.lisp",
+        "line": 8,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/config-policy-delta-tests.lisp",
         "line": 11,
         "include": "../../books/config-policy-delta",
@@ -44756,10 +44850,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/config-stream-tests.lisp",
+        "line": 14,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/config-tests.lisp",
         "line": 20,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-tests.lisp",
+        "line": 21,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -44774,6 +44882,13 @@
         "line": 14,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-artifact-retry-tests.lisp",
+        "line": 15,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -44858,6 +44973,13 @@
         "line": 5,
         "include": "consumer-store-node-tests",
         "included": "tests/acl2/consumer-store-node-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-store-projection-tests.lisp",
+        "line": 5,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46240,6 +46362,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-budget-stored-post-tests.lisp",
+        "line": 13,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-budget-stored-tests.lisp",
         "line": 10,
         "include": "../../books/codec-attach",
@@ -46265,6 +46394,13 @@
         "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-capacity-vector-tests.lisp",
+        "line": 6,
+        "include": "../../books/store-intern",
+        "included": "books/store-intern.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46373,10 +46509,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-files-exploration-tests.lisp",
+        "line": 19,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-files-teeth-tests.lisp",
         "line": 23,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-files-teeth-tests.lisp",
+        "line": 24,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46387,10 +46537,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-files-tests.lisp",
+        "line": 11,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-files-traces-tests.lisp",
         "line": 4,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-files-traces-tests.lisp",
+        "line": 5,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46573,6 +46737,13 @@
         "line": 9,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-retention-tests.lisp",
+        "line": 10,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47140,6 +47311,13 @@
         "line": 22,
         "include": "poster-bytes-tests",
         "included": "tests/acl2/poster-bytes-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/visibility-join-tests.lisp",
+        "line": 23,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

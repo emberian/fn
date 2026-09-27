@@ -5839,7 +5839,9 @@
         "fn-cvec-admit-forward-adds-one-debt",
         "fn-cvec-release-forward-removes-one-debt",
         "fn-cvec-release-never-raises-the-charge",
-        "fn-cvec-config-publication-keeps-the-release-generation"
+        "fn-cvec-config-publication-keeps-the-release-generation",
+        "fn-cvec-wire-record-is-no-article-row",
+        "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row"
       ]
     },
     {
@@ -6837,7 +6839,11 @@
         "fn-scf-usage-carried-is-the-projection",
         "fn-sbud-record-octets-is-the-stored-octets",
         "fn-intern-events-extents-okp",
-        "fn-intern-events-budget-octets-are-the-stored-octets"
+        "fn-intern-events-budget-octets-are-the-stored-octets",
+        "fn-sn-io-keeps-the-stored-octets",
+        "fn-sn-finish-keeps-the-stored-octets",
+        "fn-store-prepare-interned-keeps-the-stored-octets",
+        "fn-sbud-prepare-keeps-the-stored-octets"
       ],
       "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the record octets count a retained row by what it STORES (fn-sbud-row-octets, books/store-budget.lisp): a held article row its facts' octets, a composite row its wire composite's encoding, any other row its encoding (fn-sbud-row-octets-of-wire-row). Before this the wire encoder alone counted every held row as 0 octets against the history bound. books/store-budget-stored.lisp: under fn-sbud-rows-extents-okp (each held row's facts octets are its handle's extent in the arena) fn-sbud-record-octets is fn-sbud-stored-octets, the sum of the stored payloads' lengths (fn-sbud-record-octets-is-the-stored-octets); the open's intern establishes the relation (fn-intern-events-extents-okp) and the composed statement is fn-intern-events-budget-octets-are-the-stored-octets. Teeth: tests/acl2/store-budget-stored-tests.lisp (reachable open of two records: 8 octets where the pre-flip count was 0; a corrupted held row whose facts claim 7 for an extent of 3). PRESERVATION (flip-L1-3): books/store-budget-stored-post.lisp carries the relation IN the store, over the retained rows and the staged candidate (fn-sbud-store-extents-okp), and every transition of the served POST keeps it: the owner's stage (host/owner-host.lisp fn-owner-prepare calls fn-pcar-sbud-prepare, current view P9, over the row fn-intern-row-at makes at the arena's count, sealing the payload when the store changed; the call is fn-sbud-prepare by fn-pcar-sbud-prepare-is-sbud-prepare, no hypothesis, so the keystone is fn-sbud-prepare-keeps-the-stored-octets, hypotheses fn-arena-p and the relation; no wire-record hypothesis, proved redundant), the standalone entry (fn-store-prepare-interned-keeps-the-stored-octets), the publication words (fn-sn-io-keeps-the-stored-octets: the directory barrier appends the candidate) and the finish (fn-sn-finish-keeps-the-stored-octets). No transition re-reads the arena; a reopen re-establishes the relation by the intern (fn-intern-events-extents-okp). Teeth: tests/acl2/store-budget-stored-post-tests.lisp (two POSTs from fn-sn-initial over a local arena, the relation at every step, the budget counting 2 then 7 stored octets; removals over a mis-paired arena). The owner witness stages the row (handle 1) through fn-sbud-prepare. The bridge fn-pcar-sbud-prepare-is-sbud-prepare lives in books/owner-prepare-carried.lisp, red on dev until flip-L6's carried prepare over held rows lands (fn-pcar-spc-prepare-is-spc-prepare, hbox certify-20260927T081243Z-1711233). The history bound H now bounds stored payload octets for held rows, not their wire record length (the record's metadata is not counted)."
     },
