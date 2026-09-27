@@ -1166,8 +1166,8 @@
         "fn-stx-index-invariant-preserved-by-accept",
         "fn-stx-durable-completion-is-an-acceptance",
         "fn-sn-finish-preserves-indexedp",
-        "fn-sn-statement-lookup-is-the-lace-lookup",
-        "fn-sn-equivocatorp-is-the-lace-equivocator"
+        "fn-store-statement-lookup-is-the-lace-lookup",
+        "fn-store-equivocatorp-is-the-lace-equivocator"
       ],
       "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the two served-query keystones are RESTATED over alpha in books/store-intern.lisp: fn-store-statement-lookup-is-the-lace-lookup and fn-store-equivocatorp-is-the-lace-equivocator (hypotheses: fn-sn-indexedp s and fn-rows-contexts-okp of fn-sn-indexed-rows s under the store's keyring): fn-sn-statement-lookup / fn-sn-equivocatorp (the functions host/store-node-host.lisp fn-store-sn-statement / fn-store-sn-equivocator call) answer as the lace of fn-rows-articles-newest-first of the indexed rows, their bytes read through the arena. They replace fn-sn-statement-lookup-is-the-lace-lookup and fn-sn-equivocatorp-is-the-lace-equivocator, stated over the node's article bytes, which carry handles after the flip. The index is the fold of the retained rows' contexts (fn-sn-indexedp over fn-sn-index-of-rows, preserved by every transition in books/store-node-invariants.lisp) and that fold is the wire index of the rows' bytes (fn-rows-index-is-the-wire-index, under fn-rows-contexts-okp, which fn-intern-events-contexts-okp establishes at the intern). OPEN: teeth for the two restated keystones need a reachable composite store over an arena (the fixture of tests/acl2/store-node-composite-index-tests.lisp rebuilt through fn-store-prepare-interned); that the keyring installation keeps fn-rows-contexts-okp (fn-store-set-keyring recontexts through fn-contexts-of-rows) is stated there, not yet as a theorem over fn-sn-indexed-rows."
     },
@@ -3893,11 +3893,11 @@
         "fn-evc-field-by-shape-is-store-event-sequence",
         "fn-evc-field-by-shape-is-store-event-txid",
         "fn-evc-field-by-shape-is-store-event-generation",
-        "fn-evc-class-by-shape-is-fn-record-p",
+        "fn-evc-class-by-shape-is-fn-held-p",
         "fn-evc-class-by-shape-is-fn-store-retention-event-p",
         "fn-evc-class-by-shape-is-fn-stxe-p",
         "fn-evc-class-by-shape-is-fn-stxk-p",
-        "fn-evc-class-by-shape-is-fn-stxa-p",
+        "fn-evc-class-by-shape-is-fn-hstxa-p",
         "fn-evc-class-by-shape-is-fn-cpe-eventp",
         "fn-evc-class-by-shape-is-fn-th-topic-eventp",
         "fn-ccar-ocfg-complete-is-ocfg-step-complete",
@@ -6825,7 +6825,10 @@
         "fn-scf-debt-advance-is-the-suffix-fold",
         "fn-scf-debt-carried-is-the-record-debt",
         "fn-scf-tally-advance-is-the-suffix-fold",
-        "fn-scf-usage-carried-is-the-projection"
+        "fn-scf-usage-carried-is-the-projection",
+        "fn-sbud-record-octets-is-the-stored-octets",
+        "fn-intern-events-extents-okp",
+        "fn-intern-events-budget-octets-are-the-stored-octets"
       ],
       "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the record octets count a retained row by what it STORES (fn-sbud-row-octets, books/store-budget.lisp): a held article row its facts' octets, a composite row its wire composite's encoding, any other row its encoding (fn-sbud-row-octets-of-wire-row). Before this the wire encoder alone counted every held row as 0 octets against the history bound. books/store-budget-stored.lisp: under fn-sbud-rows-extents-okp (each held row's facts octets are its handle's extent in the arena) fn-sbud-record-octets is fn-sbud-stored-octets, the sum of the stored payloads' lengths (fn-sbud-record-octets-is-the-stored-octets); the open's intern establishes the relation (fn-intern-events-extents-okp) and the composed statement is fn-intern-events-budget-octets-are-the-stored-octets. Teeth: tests/acl2/store-budget-stored-tests.lisp (reachable open of two records: 8 octets where the pre-flip count was 0; a corrupted held row whose facts claim 7 for an extent of 3). OPEN: that the POST's prepare (fn-store-prepare-interned) keeps fn-sbud-rows-extents-okp over the growing history is not yet a theorem. The history bound H now bounds stored payload octets for held rows, not their wire record length (the record's metadata is not counted)."
     },

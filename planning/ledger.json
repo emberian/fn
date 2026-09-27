@@ -184,12 +184,15 @@
     "books/store-node",
     "books/store-node-existing-invariants",
     "books/poster-bytes",
+    "books/store-node-invariants-base",
     "books/store-node-invariants",
     "books/acceptance-stamp-invariants",
     "tests/acl2/acceptance-stamp-tests",
     "tests/acl2/store-node-tests",
     "tests/acl2/consumer-store-node-tests",
     "tests/acl2/store-node-existing-tests",
+    "books/store-intern",
+    "tests/acl2/store-intern-tests",
     "books/store-node-traces-prepare",
     "books/store-node-traces",
     "tests/acl2/store-node-traces-tests",
@@ -199,6 +202,8 @@
     "tests/acl2/store-node-retention-tests",
     "books/store-budget",
     "tests/acl2/store-budget-tests",
+    "books/store-budget-stored",
+    "tests/acl2/store-budget-stored-tests",
     "books/store-carried-folds",
     "tests/acl2/store-carried-folds-tests",
     "books/store-profile-facts",
@@ -256,6 +261,7 @@
     "books/byte-store-record-fence",
     "tests/acl2/byte-store-record-fence-tests",
     "books/byte-store-record-provenance-bytes",
+    "books/byte-store-arena",
     "books/byte-store-record-provenance-node",
     "books/byte-store-record-provenance-owner",
     "books/byte-store-record-provenance",
@@ -1125,26 +1131,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1158,
-    "books_in_root_closure": 1147,
-    "roots": 1121,
-    "theorems": 17051,
-    "functions": 11820,
-    "assert_events": 16930,
-    "must_fails": 2054,
+    "books": 1163,
+    "books_in_root_closure": 1152,
+    "roots": 1127,
+    "theorems": 17142,
+    "functions": 11854,
+    "assert_events": 16979,
+    "must_fails": 2057,
     "prover_refusals": 0,
     "encapsulates": 87,
     "guards": {
-      "verified": 2405,
-      "declared-off": 1115,
-      "default-guarded": 6563,
-      "default-unguarded": 1737
+      "verified": 2409,
+      "declared-off": 1132,
+      "default-guarded": 6567,
+      "default-unguarded": 1746
     },
-    "suspect_theorems": 180,
-    "export_hygiene_warnings": 196,
+    "suspect_theorems": 181,
+    "export_hygiene_warnings": 198,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 206,
-    "include_hygiene_warnings": 1127,
+    "include_hygiene_warnings": 1130,
     "host_names_warnings": 1308,
     "hand_written_record_warnings": 18
   },
@@ -3402,7 +3408,7 @@
       "book": "books/bp-native-app-fast.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
+      "theorems": 41,
       "functions": 21,
       "guards": {
         "verified": 1,
@@ -5007,7 +5013,7 @@
       "book": "books/bp-receiver-evolving-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 41,
+      "theorems": 43,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -6143,6 +6149,33 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-arena.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-record-provenance-bytes",
+        "store-intern"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-compaction-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6368,7 +6401,7 @@
       "book": "books/byte-store-k0-recover-program.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 22,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -6396,10 +6429,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 51,
-      "functions": 4,
+      "functions": 5,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 3,
         "default-guarded": 0,
         "default-unguarded": 2
       },
@@ -6747,10 +6780,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 35,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 3,
+        "declared-off": 4,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -7045,7 +7078,7 @@
       "book": "books/byte-store-record-provenance-bytes.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 132,
+      "theorems": 133,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -7074,7 +7107,7 @@
       "book": "books/byte-store-record-provenance-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 93,
+      "theorems": 92,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -7186,7 +7219,7 @@
       "book": "books/byte-store-retention-publication.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
+      "theorems": 16,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -7214,11 +7247,11 @@
       "book": "books/byte-store-scan.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 134,
-      "functions": 35,
+      "theorems": 165,
+      "functions": 41,
       "guards": {
         "verified": 1,
-        "declared-off": 29,
+        "declared-off": 35,
         "default-guarded": 0,
         "default-unguarded": 5
       },
@@ -7237,7 +7270,8 @@
         "arithmetic/top"
       ],
       "suspects": [
-        "fn-bs-names-outcomes-of-no-ops"
+        "fn-bs-names-outcomes-of-no-ops",
+        "fn-bs-rows-wire-of-atom"
       ],
       "read_error": null
     },
@@ -7436,7 +7470,7 @@
       "book": "books/catalog-commit.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 60,
+      "theorems": 58,
       "functions": 32,
       "guards": {
         "verified": 15,
@@ -7857,7 +7891,7 @@
       "book": "books/checkpoint-compaction.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
+      "theorems": 12,
       "functions": 19,
       "guards": {
         "verified": 0,
@@ -10198,7 +10232,7 @@
       "book": "books/hybrid-lifecycle-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 23,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -15093,7 +15127,7 @@
       "book": "books/record-width-producers.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
+      "theorems": 17,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -15112,6 +15146,7 @@
         "bp-ingress",
         "store-budget-article",
         "store-budget-naming",
+        "store-intern",
         "store-node"
       ],
       "system_includes": [],
@@ -16510,18 +16545,45 @@
       "read_error": null
     },
     {
+      "book": "books/store-budget-stored.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-budget",
+        "store-intern"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-budget.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 18,
+      "theorems": 23,
+      "functions": 19,
       "guards": {
-        "verified": 6,
+        "verified": 7,
         "declared-off": 4,
         "default-guarded": 8,
         "default-unguarded": 0
       },
-      "verify_guards_events": 9,
+      "verify_guards_events": 10,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -17167,16 +17229,16 @@
     {
       "book": "books/store-intern.lisp",
       "in_root_closure": true,
-      "is_root": false,
-      "theorems": 58,
-      "functions": 21,
+      "is_root": true,
+      "theorems": 75,
+      "functions": 22,
       "guards": {
-        "verified": 0,
-        "declared-off": 3,
+        "verified": 3,
+        "declared-off": 0,
         "default-guarded": 18,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 3,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -17481,16 +17543,16 @@
       "read_error": null
     },
     {
-      "book": "books/store-node-invariants.lisp",
+      "book": "books/store-node-invariants-base.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 187,
-      "functions": 3,
+      "theorems": 113,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -17508,8 +17570,37 @@
         "arithmetic/top"
       ],
       "suspects": [
-        "fn-sn-composite-delta-of-typed-article",
         "fn-sn-finish-disabled-is-no-op"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-node-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 80,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-node-invariants-base"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-sn-composite-delta-of-typed-article"
       ],
       "read_error": null
     },
@@ -17817,13 +17908,13 @@
       "book": "books/store-prepare-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
-      "functions": 4,
+      "theorems": 19,
+      "functions": 5,
       "guards": {
         "verified": 2,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 2,
       "assert_events": 0,
@@ -18918,7 +19009,7 @@
       "book": "books/topic-history-prefix.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 3,
+      "theorems": 4,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -23485,16 +23576,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 15,
+      "functions": 16,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 15
+        "default-unguarded": 16
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
-      "must_fails": 5,
+      "assert_events": 35,
+      "must_fails": 6,
       "prover_refusals": 0,
       "defconsts": 1,
       "defmacros": 0,
@@ -23514,12 +23605,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 20,
+      "functions": 23,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 20
+        "default-unguarded": 23
       },
       "verify_guards_events": 0,
       "assert_events": 15,
@@ -23868,8 +23959,8 @@
         "default-unguarded": 38
       },
       "verify_guards_events": 0,
-      "assert_events": 47,
-      "must_fails": 62,
+      "assert_events": 48,
+      "must_fails": 63,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
@@ -23956,7 +24047,7 @@
         "default-unguarded": 24
       },
       "verify_guards_events": 0,
-      "assert_events": 36,
+      "assert_events": 38,
       "must_fails": 5,
       "prover_refusals": 0,
       "defconsts": 9,
@@ -23990,10 +24081,10 @@
         "default-unguarded": 11
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 5,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -31136,6 +31227,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-budget-stored-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/store-budget-stored"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-budget-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31756,6 +31876,32 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-intern-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 7,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 28,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 14,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-intern"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -34051,6 +34197,14 @@
       ]
     },
     {
+      "theorem": "fn-bs-rows-wire-of-atom",
+      "book": "books/byte-store-scan.lisp",
+      "line": 481,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-bs-rows-wire and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-cat-abandon-stale-refused",
       "book": "books/catalog-commit.lisp",
       "line": 273,
@@ -35003,15 +35157,15 @@
     {
       "theorem": "fn-sn-composite-delta-of-typed-article",
       "book": "books/store-node-invariants.lisp",
-      "line": 1690,
+      "line": 542,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value"
       ]
     },
     {
       "theorem": "fn-sn-finish-disabled-is-no-op",
-      "book": "books/store-node-invariants.lisp",
-      "line": 593,
+      "book": "books/store-node-invariants-base.lisp",
+      "line": 597,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value"
       ]
@@ -35415,6 +35569,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-bs-row-wire-keeps-the-sequence",
+        "book": "books/byte-store-scan.lisp",
+        "line": 591,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-bs-txn-undigits-rev-inverts-natural-digits-rev",
         "book": "books/byte-store-txn-name.lisp",
         "line": 124,
@@ -35435,7 +35595,7 @@
       {
         "theorem": "fn-sn-set-keyring-advances-the-generation",
         "book": "books/catalog-commit.lisp",
-        "line": 699,
+        "line": 680,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -35567,13 +35727,13 @@
       {
         "theorem": "fn-hls-successful-recover-historical-verdicts",
         "book": "books/hybrid-lifecycle-store-invariants.lisp",
-        "line": 184,
+        "line": 191,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-hls-kind4-identity-step-emits-its-verdict-event",
         "book": "books/hybrid-lifecycle-store-invariants.lisp",
-        "line": 231,
+        "line": 253,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -36065,7 +36225,7 @@
       {
         "theorem": "fn-sbud-count-is-used",
         "book": "books/store-budget.lisp",
-        "line": 310,
+        "line": 334,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -36095,13 +36255,13 @@
       {
         "theorem": "fn-sn-finish-enabled-advances-identity-next",
         "book": "books/store-identity-sequence-invariants.lisp",
-        "line": 380,
+        "line": 381,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-intern-events-keep-coordinates",
         "book": "books/store-intern.lisp",
-        "line": 599,
+        "line": 715,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -36109,6 +36269,12 @@
         "book": "books/store-log-crash.lisp",
         "line": 311,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-snt-apply-event-from-idle-is-at-the-successor",
+        "book": "books/store-node-invariants-base.lisp",
+        "line": 1715,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-snt-typed-frontier-phase",
@@ -39537,6 +39703,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/byte-store-arena.lisp",
+        "line": 16,
+        "include": "store-intern",
+        "included": "books/store-intern.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/byte-store-compaction-correspondence.lisp",
         "line": 4,
         "include": "byte-store-txn-name",
@@ -39576,13 +39749,6 @@
         "line": 29,
         "include": "byte-store-initializer",
         "included": "books/byte-store-initializer.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/byte-store-k0-recovery.lisp",
-        "line": 55,
-        "include": "byte-store-keystones",
-        "included": "books/byte-store-keystones.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -39762,7 +39928,7 @@
       },
       {
         "book": "books/byte-store-record-provenance-node.lisp",
-        "line": 2115,
+        "line": 2107,
         "include": "byte-store-native-correspondence",
         "included": "books/byte-store-native-correspondence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -40882,7 +41048,14 @@
       },
       {
         "book": "books/record-width-producers.lisp",
-        "line": 33,
+        "line": 31,
+        "include": "store-intern",
+        "included": "books/store-intern.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/record-width-producers.lisp",
+        "line": 34,
         "include": "store-budget-article",
         "included": "books/store-budget-article.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -41049,6 +41222,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-budget-stored.lisp",
+        "line": 21,
+        "include": "store-intern",
+        "included": "books/store-intern.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-budget.lisp",
         "line": 31,
         "include": "byte-store-frame",
@@ -41189,17 +41369,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/store-node-invariants.lisp",
-        "line": 4,
+        "book": "books/store-node-invariants-base.lisp",
+        "line": 8,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/store-node-invariants.lisp",
-        "line": 5,
+        "book": "books/store-node-invariants-base.lisp",
+        "line": 9,
         "include": "topic-history-identity-disjoint",
         "included": "books/topic-history-identity-disjoint.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node-invariants.lisp",
+        "line": 3,
+        "include": "store-node-invariants-base",
+        "included": "books/store-node-invariants-base.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -43465,13 +43652,6 @@
       },
       {
         "book": "tests/acl2/byte-store-scan-tests.lisp",
-        "line": 17,
-        "include": "../../books/byte-store-keystones",
-        "included": "books/byte-store-keystones.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/byte-store-scan-tests.lisp",
         "line": 19,
         "include": "../../books/byte-store-relation",
         "included": "books/byte-store-relation.lisp",
@@ -43545,13 +43725,6 @@
         "line": 6,
         "include": "../../books/byte-store-range-read",
         "included": "books/byte-store-range-read.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/byte-store-sweep-tests.lisp",
-        "line": 12,
-        "include": "../../books/byte-store-keystones",
-        "included": "books/byte-store-keystones.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -45207,6 +45380,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-budget-stored-tests.lisp",
+        "line": 10,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-budget-tests.lisp",
         "line": 5,
         "include": "../../books/codec-attach",
@@ -45344,6 +45524,13 @@
         "line": 8,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-intern-tests.lisp",
+        "line": 11,
+        "include": "../../books/store-intern",
+        "included": "books/store-intern.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
