@@ -206,7 +206,8 @@
 ; (books/store-files-invariants.lisp:21-24).  A forged state whose record list
 ; has an improper tail is not a prefix of itself.
 (defconst *sft-forged*
-  (fn-sf-make :ready 1 nil (cons *sft-record* :improper-tail) nil nil nil 5))
+  (fn-sf-make :ready 1 nil (cons *sft-record* :improper-tail) nil nil nil
+              *fn-sf-recovery-barrier-count*))
 (assert-event (not (fn-sf-statep *sft-forged*)))
 (assert-event (fn-sf-crash-choicep :old :absent))
 (assert-event (equal (fn-sf-crash *sft-forged* :old :absent) *sft-forged*))

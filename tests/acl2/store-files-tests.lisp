@@ -57,7 +57,8 @@
                        (fn-sf-frontier-candidate *sf-fa1*)))))
 ; State hypothesis dropped: a malformed tuple in the phase is a no-op crash.
 (defconst *sf-bogus-data-durable*
-  (fn-sf-make :frontier-data-durable 0 1 '(not-a-record) nil nil nil 5))
+  (fn-sf-make :frontier-data-durable 0 1 '(not-a-record) nil nil nil
+              *fn-sf-recovery-barrier-count*))
 (assert-event (not (fn-sf-statep *sf-bogus-data-durable*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-frontier (fn-sf-crash *sf-bogus-data-durable* :new :absent))
                        (fn-sf-frontier-candidate *sf-bogus-data-durable*)))))
@@ -81,12 +82,8 @@
   (fn-sf-recovery-barrier *sf-unused-recovery-0* :ok))
 (defconst *sf-unused-recovery-2*
   (fn-sf-recovery-barrier *sf-unused-recovery-1* :ok))
-(defconst *sf-unused-recovery-3*
-  (fn-sf-recovery-barrier *sf-unused-recovery-2* :ok))
-(defconst *sf-unused-recovery-4*
-  (fn-sf-recovery-barrier *sf-unused-recovery-3* :ok))
 (defconst *sf-unused-recovered*
-  (fn-sf-recovery-barrier *sf-unused-recovery-4* :ok))
+  (fn-sf-recovery-barrier *sf-unused-recovery-2* :ok))
 (assert-event (equal (fn-sf-phase *sf-unused-recovered*) :ready))
 (assert-event (equal (fn-sf-prepare-record *sf-unused-recovered* *sf-record-0*
                                            *sf-groups* 10)
@@ -108,7 +105,8 @@
                        (fn-sf-frontier-candidate *sf-fa1*)))))
 ; State hypothesis dropped.
 (defconst *sf-bogus-attempted*
-  (fn-sf-make :frontier-attempted 0 1 '(not-a-record) nil nil nil 5))
+  (fn-sf-make :frontier-attempted 0 1 '(not-a-record) nil nil nil
+              *fn-sf-recovery-barrier-count*))
 (assert-event (not (fn-sf-statep *sf-bogus-attempted*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-frontier
                         (fn-sf-crash (fn-sf-frontier-dir-result *sf-bogus-attempted* :ok)
@@ -171,9 +169,10 @@
 (assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sf-rdata* :bogus :present))
                        (append (fn-sf-records *sf-rdata*)
                                (list (fn-sf-record-candidate *sf-rdata*)))))))
-; State hypothesis dropped.
+; State hypothesis dropped (a barrier count past *fn-sf-recovery-barrier-count*).
 (defconst *sf-bogus-record-durable*
-  (fn-sf-make :record-data-durable 1 nil nil *sf-record-0* nil nil 3))
+  (fn-sf-make :record-data-durable 1 nil nil *sf-record-0* nil nil
+              (1+ *fn-sf-recovery-barrier-count*)))
 (assert-event (not (fn-sf-statep *sf-bogus-record-durable*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sf-bogus-record-durable* :old :present))
                        (append (fn-sf-records *sf-bogus-record-durable*)
@@ -248,9 +247,10 @@
                         (fn-sf-crash (fn-sf-record-dir-result *sf-rdata* :ok) :old :absent))
                        (append (fn-sf-records *sf-rdata*)
                                (list (fn-sf-record-candidate *sf-rdata*)))))))
-; State hypothesis dropped.
+; State hypothesis dropped (a barrier count past *fn-sf-recovery-barrier-count*).
 (defconst *sf-bogus-record-attempted*
-  (fn-sf-make :record-attempted 1 nil nil *sf-record-0* nil nil 3))
+  (fn-sf-make :record-attempted 1 nil nil *sf-record-0* nil nil
+              (1+ *fn-sf-recovery-barrier-count*)))
 (assert-event (not (fn-sf-statep *sf-bogus-record-attempted*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-records
                         (fn-sf-crash (fn-sf-record-dir-result *sf-bogus-record-attempted* :ok)
@@ -284,16 +284,15 @@
 (assert-event (fn-sf-crash-imagep *sf-acked* 1 (list *sf-record-0*)))
 (assert-event (not (fn-sf-crash-imagep *sf-acked* 1 nil)))
 
-; Recovery performs actual fn-replay and remains unavailable until all five
+; Recovery performs actual fn-replay and remains unavailable until all three
 ; prerequisite barriers succeed.
 (defconst *sf-recovered-1* (fn-sf-recovery-barrier *sf-recovered-0* :ok))
 (defconst *sf-recovered-2* (fn-sf-recovery-barrier *sf-recovered-1* :ok))
+(assert-event (not (equal (fn-sf-phase *sf-recovered-1*) :ready)))
+(assert-event (not (equal (fn-sf-phase *sf-recovered-2*) :ready)))
 (defconst *sf-recovered-3* (fn-sf-recovery-barrier *sf-recovered-2* :ok))
-(defconst *sf-recovered-4* (fn-sf-recovery-barrier *sf-recovered-3* :ok))
-(assert-event (not (equal (fn-sf-phase *sf-recovered-4*) :ready)))
-(defconst *sf-recovered-5* (fn-sf-recovery-barrier *sf-recovered-4* :ok))
-(assert-event (equal (fn-sf-phase *sf-recovered-5*) :ready))
-(assert-event (equal (fn-sf-records *sf-recovered-5*)
+(assert-event (equal (fn-sf-phase *sf-recovered-3*) :ready))
+(assert-event (equal (fn-sf-records *sf-recovered-3*)
                      (list *sf-record-0*)))
 
 ; A failed recovery barrier fences and cannot be bypassed by another barrier.

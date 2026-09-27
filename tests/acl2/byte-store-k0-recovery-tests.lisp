@@ -30,10 +30,10 @@
   (fn-bs-run image k (fn-bs-recover-program) nil groups capacity))
 (defun bsk0r-related-at (run k)
   (fn-bs-store-relation (car (nth k run)) (cdr (nth k run)) *bsk5-arena*))
-; The six recovery-program cuts: recover-replayed, recover-barrier 1..5.
+; The four recovery-program cuts: recover-replayed, recover-barrier 1..3.
 (defun bsk0r-cuts-related (run)
   (and (bsk0r-related-at run 1) (bsk0r-related-at run 4) (bsk0r-related-at run 7)
-       (bsk0r-related-at run 10) (bsk0r-related-at run 13) (bsk0r-related-at run 16)))
+       (bsk0r-related-at run 10)))
 (defun bsk0r-sweep (pair names)
   (fn-bs-run (car pair) (cdr pair) (fn-bs-recover-sweep-program names) nil
              *bsk5-groups* *bsk5-capacity*))
@@ -60,15 +60,15 @@
          (fn-bs-store-relation image entry *bsk5-arena*)
          (fn-sf-history-recoverablep *bsk5-groups* *bsk5-capacity*
                                      (bsk0r-scan-r image) (bsk0r-scan-f image))
-         (equal (len seed-run) 17) (bsk0r-cuts-related seed-run)
+         (equal (len seed-run) 11) (bsk0r-cuts-related seed-run)
          (fn-bs-run-relatedp seed-run *bsk5-arena*)
-         (equal (fn-sf-phase (cdr (nth 16 seed-run))) :ready)
+         (equal (fn-sf-phase (cdr (nth 10 seed-run))) :ready)
          (fn-sn-open-okp (bsk0r-open *bsk0r-configs* image))
          (equal host (fn-bs-recovered-kernel (bsk0r-scan-f image) (bsk0r-scan-r image) 0))
          (fn-bs-store-relation image host *bsk5-arena*)
-         (equal (len host-run) 17) (bsk0r-cuts-related host-run)
-         (equal (car (nth 16 host-run)) image)
-         (equal (fn-sf-phase (cdr (nth 16 host-run))) :ready))))
+         (equal (len host-run) 11) (bsk0r-cuts-related host-run)
+         (equal (car (nth 10 host-run)) image)
+         (equal (fn-sf-phase (cdr (nth 10 host-run))) :ready))))
 
 ; Reachable witnesses: every hypothesis holds, the images are crash images
 ; (legal choices), and every recovery cut is related, from the model's
@@ -97,7 +97,7 @@
 ; left, from the last pair of the host's run; its cut pair is related.
 (defun bsk0r-sweep-run ()
   (let ((image (bsk0r-keep (bsk0r-linked))))
-    (bsk0r-sweep (nth 16 (bsk0r-run image (bsk0r-host *bsk0r-configs* image)
+    (bsk0r-sweep (nth 10 (bsk0r-run image (bsk0r-host *bsk0r-configs* image)
                                     *bsk5-groups* *bsk5-capacity*))
                  (list ".stage-k5-2"))))
 (assert-event
@@ -156,13 +156,13 @@
  (let* ((image (bsk0r-keep (bsk0r-linked)))
         (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
    (and (fn-bs-run-relatedp run *bsk5-arena*)
-        (equal (fn-sf-phase (cdr (nth 16 run))) :fault))))
+        (equal (fn-sf-phase (cdr (nth 10 run))) :fault))))
 (must-fail-checked
  (assert-event
   (let* ((image (bsk0r-keep (bsk0r-linked)))
          (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
     (and (fn-bs-run-relatedp run *bsk5-arena*)
-         (equal (fn-sf-phase (cdr (nth 16 run))) :ready)))))
+         (equal (fn-sf-phase (cdr (nth 10 run))) :ready)))))
 
 ; Drop the host's open success.  With no configuration history the open
 ; refuses, and its "kernel" is not related to the image.

@@ -55,9 +55,10 @@ crash edge changes the frontier from `:frontier-staged` or `:reserved` and no
 crash edge changes the records from `:record-staged`, `:aborting`, `:completing`
 or `:ready`. It asserts that both frontier choices and both record choices are
 exercised from `:frontier-attempted` and `:record-attempted`, that repeated
-recovery is in the event domain, and that recovery barrier counts 0 through 4
-are reached; readiness is supplied by the kernel recognizer, which requires all
-five barriers.
+recovery is in the event domain, and that recovery barrier counts 0 through 2
+are reached (and none at 3, which is :ready); readiness is supplied by the
+kernel recognizer, which requires all three barriers
+(*fn-sf-recovery-barrier-count*, five until lane open-barriers).
 
 ## Recorded run
 

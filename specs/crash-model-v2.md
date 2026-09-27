@@ -894,8 +894,12 @@ followed by `(:emit-success seq txid)` inside `fn-sn-finish`. Its byte state
 is unchanged; its crash images are those of the `:ready` kernel state with the
 pair in the ghost history (the `core-durable` cut).
 
-**P-RECOVER** (`Store.recover`, run_store.py:786-838). Reads first, then five
-fences on already-durable objects.
+**P-RECOVER** (`Store.recover`, run_store.py:786-838). Reads first, then three
+fences on the authority namespace (five until lane open-barriers,
+2026-09-27: the config and frontier files are fenced before their names are
+published, so their recovery fences drained nothing).  The format-9 open's
+program is `fn-lg-open-program` (books/store-log-route-programs.lisp), with
+the same three barriers over journal/, the root and its parent.
 
 ```lisp
 (defun fn-bs-recover-program ()
@@ -903,12 +907,6 @@ fences on already-durable objects.
         ; transactions/ name), staging_orphans 797: reads of the view; no step
         (list :observe '(:recover))                        ; 798 acl2.recover
         (list :cut "recover-replayed")                     ; 809
-        (list :fsync-file :root *fn-bs-config-name*)       ; 815 fsync_regular
-        (list :observe '(:recovery-barrier :ok))
-        (list :cut "recover-barrier")
-        (list :fsync-file :root *fn-bs-frontier-name*)     ; 816
-        (list :observe '(:recovery-barrier :ok))
-        (list :cut "recover-barrier")
         (list :fsync-dir :transactions)                    ; 817
         (list :observe '(:recovery-barrier :ok))
         (list :cut "recover-barrier")

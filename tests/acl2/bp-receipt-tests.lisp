@@ -107,7 +107,7 @@
 (assert-event (equal (fn-sf-phase (fn-sn-files *bpr-recovering-store*))
                      :recovering))
 (assert-event (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpr-recovering-store* *bpr-record*)))
-(make-event `(defconst *bpr-recovered-ready-store* ',(bpr-ready-after-barriers *bpr-recovering-store* 5)))
+(make-event `(defconst *bpr-recovered-ready-store* ',(bpr-ready-after-barriers *bpr-recovering-store* *fn-sf-recovery-barrier-count*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *bpr-recovered-ready-store*))
                      :ready))
 (assert-event (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpr-recovered-ready-store* *bpr-record*))

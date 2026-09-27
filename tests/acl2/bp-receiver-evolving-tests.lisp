@@ -174,8 +174,7 @@
 (assert-event (fn-sn-open-okp *bpre-opened*))
 (assert-event (equal (fn-bprv-phase (fn-sn-open-state *bpre-opened*)) :recovering))
 (defconst *bpre-barriers*
-  '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-    (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)))
+  '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)))
 (make-event `(defconst *bpre-probe* ',(fn-snrt-run (fn-sn-open-state *bpre-opened*) *bpre-barriers*)))
 (assert-event (equal (fn-bprv-phase *bpre-probe*) :ready))
 (assert-event (fn-snt-relation *bpre-probe*))
@@ -190,7 +189,6 @@
 (defconst *bpre-crash-events*
   (append *bpre-events*
           (list '(:store (:crash :old :present)) '(:store (:recover))
-                '(:store (:io :recovery-barrier :ok)) '(:store (:io :recovery-barrier :ok))
                 '(:store (:io :recovery-barrier :ok)) '(:store (:io :recovery-barrier :ok))
                 '(:store (:io :recovery-barrier :ok)))))
 (make-event `(defconst *bpre-crash-lives* ',(in-arena-bpre-run-prefixes *bpre-payloads* *bpre-live0* *bpre-crash-events*)))
@@ -479,7 +477,8 @@
 ; fn-bpr-live-step-extends-history: an untyped Store with an improper record
 ; list is a no-op for every transition and is not its own prefix.
 (defconst *bpre-untyped-store*
-  (fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-row* 7) nil nil nil 5)
+  (fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-row* 7) nil nil nil
+                                          *fn-sf-recovery-barrier-count*)
               (fn-sn-node *bpr-store*) nil (fn-stx-index-empty)))
 (assert-event (not (fn-sn-statep *bpre-untyped-store*)))
 ; fn-snrt-step carries (fn-sn-statep s) now (store, 2026-09-19); this witness is a

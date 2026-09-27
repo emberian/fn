@@ -71,11 +71,13 @@
 ; every store transition, so they are evaluated with guard checking off.
 (defconst *ss-staged*
   (fn-sn-make nil 0
-              (fn-sf-make :ready 0 nil nil '(:a-staged-record) nil nil 5)
+              (fn-sf-make :ready 0 nil nil '(:a-staged-record) nil nil
+                          *fn-sf-recovery-barrier-count*)
               nil nil (fn-stx-index-empty)))
 (defconst *ss-recording*
   (fn-sn-make nil 0
-              (fn-sf-make :recording 0 nil nil nil nil nil 5)
+              (fn-sf-make :recording 0 nil nil nil nil nil
+                          *fn-sf-recovery-barrier-count*)
               nil nil (fn-stx-index-empty)))
 (assert-event
  (with-guard-checking :none

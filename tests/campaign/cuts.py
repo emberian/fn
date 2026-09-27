@@ -199,7 +199,7 @@ CUTS: tuple[Cut, ...] = (
         "file, frontier file, :transactions, :root, :parent). Before the "
         "last of them the store's own directory entry may still be pending "
         "in :parent, so a crash can leave no store at all; after it the "
-        "store is openable and recover's own five barriers re-establish it",
+        "store is openable and recover's own barriers re-establish it",
         uncovered="as init-root-created; the five sites share one cut name, "
                   "as recover-barrier does."),
     # -- workflow journal, publish -------------------------------------------
