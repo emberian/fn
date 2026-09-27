@@ -11171,6 +11171,27 @@
           "name": "fn-lgb-decode-next-exec-fold"
         }
       ]
+    },
+    {
+      "id": "PRF-334",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-section-rev-is-the-section"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-validp-is-framed-section"
+        }
+      ]
     }
   ]
 }

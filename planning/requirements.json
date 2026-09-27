@@ -4332,7 +4332,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-243",
-        "PRF-292"
+        "PRF-292",
+        "PRF-334"
       ],
       "verification": [
         "proof",

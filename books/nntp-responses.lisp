@@ -8,6 +8,8 @@
 (include-book "clock")
 ; D13: a reclaimed article's payload is a tombstone (STO-014).
 (include-book "reclaim-tombstone")
+; The served retrieval's one pass (PRF-334): fn-nntp-article-response runs it.
+(include-book "nntp-article-pass")
 ; Closed here and for every book above: its recognizer walks 89 conses,
 ; and opened inside every proof about a retrieval it multiplied
 ; nntp-responses' own proof time thirty-fold (1.7 s to 56.6 s at 2 jobs,
@@ -133,8 +135,56 @@
 ; article that fails fn-nntp-article-idp, and a Message-ID retrieval matched the
 ; stored identifier against a token that is itself at most 250 printable
 ; octets, so no composed path reaches it; it is not the subject of any theorem.
+; The reply over octets the caller holds (lane gate-regress; moved here from
+; books/nntp-article-block.lisp by lane served-columns-body, PRF-334, so that
+; fn-nntp-article-response below runs it).  Its logic is the response's own
+; over the octets; its exec answers ARTICLE with one pass
+; (fn-nntp-block-rev) and HEAD/BODY with one split and one pass over the
+; section (fn-nntp-section-rev), after framing checks that allocate nothing.
+(defun fn-nntp-article-response-of-bytes (session article bytes number kind updatep group)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (fn-nntp-article-idp article))
+      (fn-nntp-single session "503 stored article identifier unavailable")
+    (if (fn-rcl-tombstonep bytes)
+        (fn-nntp-single session (if updatep
+                                    "423 article reclaimed"
+                                  "430 article reclaimed"))
+      (let ((next-session (if updatep
+                              (fn-nntp-set-cursor session group number)
+                            session)))
+        (if (equal kind :stat)
+            (fn-nntp-make-result
+             next-session
+             (list (fn-nntp-reply-effect
+                    (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article)))))
+          (mbe :logic
+               (let ((section (fn-nntp-section-of-bytes bytes kind)))
+                 (if (and (fn-nntp-framed-of-bytes bytes)
+                          (equal (car section) :ok))
+                     (fn-nntp-make-result
+                      next-session
+                      (list (fn-nntp-reply-effect
+                             (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
+                                     (fn-nntp-stuff-lines (car (cdr section)))
+                                     '(46 13 10)))))
+                   (fn-nntp-single session "503 stored article framing unavailable")))
+               :exec
+               (let ((acc (fn-nntp-response-block-rev bytes kind)))
+                 (if (equal acc :error)
+                     (fn-nntp-single session "503 stored article framing unavailable")
+                   (fn-nntp-make-result
+                    next-session
+                    (list (fn-nntp-reply-effect
+                           (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
+                                   (revappend acc '(46 13 10))))))))))))))
+
+; The executable reads the article's octets ONCE (PRF-334): the section and
+; the framing check each read them through the arena before (two preads and
+; two trailer checks on an extent), and split them twice.
+; fn-nntp-article-response-is-of-bytes is the equation.
 (defun fn-nntp-article-response (session article number kind updatep group fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mbe :logic
   (if (not (fn-nntp-article-idp article))
       (fn-nntp-single session "503 stored article identifier unavailable")
     ; D13 (STO-014): a reclaimed article's history stays -- its Message-ID
@@ -162,7 +212,26 @@
                       (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
                               (fn-nntp-stuff-lines (car (cdr section)))
                               '(46 13 10)))))
-            (fn-nntp-single session "503 stored article framing unavailable"))))))))
+            (fn-nntp-single session "503 stored article framing unavailable")))))))
+       :exec (fn-nntp-article-response-of-bytes session article
+                                                (fn-nntp-article-bytes article fn-arena)
+                                                number kind updatep group)))
+
+; KEYSTONE (the host-reached response, PRF-334).  fn-nntp-article-response,
+; which the served ARTICLE/HEAD/BODY/STAT arms call with the arena, is the
+; of-bytes response over the article's bytes (one read).
+(defthm fn-nntp-article-response-is-of-bytes
+  (equal (fn-nntp-article-response session article number kind updatep group fn-arena)
+         (fn-nntp-article-response-of-bytes session article
+                                            (fn-nntp-article-bytes article fn-arena)
+                                            number kind updatep group))
+  :hints (("Goal" :in-theory '(fn-nntp-article-response
+                               fn-nntp-article-response-of-bytes
+                               fn-nntp-article-section-unfolds
+                               fn-nntp-article-framedp-unfolds
+                               fn-nntp-article-tombstonep))))
+
+(in-theory (disable fn-nntp-article-response-is-of-bytes))
 
 ;  KEYSTONE (D13 served projection).  A stored article whose payload is a
 ; tombstone is answered 423 (by number or as the current article) or 430
@@ -1421,7 +1490,26 @@
 
 (verify-guards fn-nntp-retrieval-initial)
 
-(verify-guards fn-nntp-article-response)
+(verify-guards fn-nntp-article-response-of-bytes
+  :hints (("Goal" :in-theory (e/d (fn-nntp-make-result fn-nntp-single fn-nntp-reply-effect
+                                   fn-nntp-crlf)
+                                  (fn-nntp-response-block-rev fn-nntp-section-of-bytes
+                                   fn-nntp-framed-of-bytes fn-nntp-stuff-lines
+                                   fn-nntp-retrieval-initial fn-rcl-tombstonep
+                                   fn-nntp-tombstonep-unfolds revappend-removal
+                                   fn-nntp-response-block-rev-is-the-block
+                                   fn-nntp-article-idp fn-nntp-set-cursor))
+           :cases ((equal (fn-nntp-response-block-rev bytes kind) :error))
+           :use ((:instance fn-nntp-response-block-rev-is-the-block)))))
+
+; The executable is the of-bytes reply over one read of the octets: the
+; obligation is fn-nntp-article-response-is-of-bytes's own unfolding.
+(verify-guards fn-nntp-article-response
+  :hints (("Goal" :in-theory (union-theories '(fn-nntp-article-response-of-bytes
+                                               fn-nntp-article-section-unfolds
+                                               fn-nntp-article-framedp-unfolds
+                                               fn-nntp-article-tombstonep)
+                                             (theory 'minimal-theory)))))
 
 (verify-guards fn-nntp-current-retrieval)
 

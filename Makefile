@@ -751,6 +751,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-syntax \
 	books/nntp-session \
 	books/nntp-projection \
+	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
 	books/nntp-reader-compat \
