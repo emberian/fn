@@ -49,9 +49,14 @@ def msgid(i: int) -> str:
     return "<col-%06d@example.invalid>" % i
 
 
-def article(i: int) -> bytes:
+def article(i: int, pad: int = 0) -> bytes:
+    # PAD octets of filler lines after the body line: a case that must fill
+    # the log segment sizes its articles, not its POST count, so the fill
+    # does not depend on the record layout (log-2-pad packs a batch's records
+    # into one padded entry; 400 small POSTs no longer outgrow 1 MiB).
+    filler = "".join("%s\r\n" % ("x" * 76) for _ in range(pad // 78))
     return ("From: col@example.invalid\r\nNewsgroups: %s\r\nSubject: col %d\r\n"
-            "Message-ID: %s\r\n\r\nbody of %d\r\n" % (GROUP, i, msgid(i), i)).encode("ascii")
+            "Message-ID: %s\r\n\r\nbody of %d\r\n%s" % (GROUP, i, msgid(i), i, filler)).encode("ascii")
 
 
 class Conn:
@@ -64,11 +69,11 @@ class Conn:
         self.stream.write(text.encode("ascii") + b"\r\n")
         return self.stream.readline()
 
-    def post(self, i: int) -> bytes:
+    def post(self, i: int, pad: int = 0) -> bytes:
         reply = self.line("POST")
         if not reply.startswith(b"340"):
             return reply
-        self.stream.write(article(i) + b".\r\n")
+        self.stream.write(article(i, pad) + b".\r\n")
         return self.stream.readline()
 
     def article(self, i: int):
@@ -138,7 +143,7 @@ class Node:
         return sorted(p.name for p in d.iterdir()) if d.exists() else []
 
 
-def post_concurrently(port: int, ids, connections: int):
+def post_concurrently(port: int, ids, connections: int, pad: int = 0):
     replies, errors = {}, []
     lock = threading.Lock()
     todo = list(ids)
@@ -151,7 +156,7 @@ def post_concurrently(port: int, ids, connections: int):
                     if not todo:
                         break
                     i = todo.pop(0)
-                reply = c.post(i)
+                reply = c.post(i, pad)
                 with lock:
                     replies[i] = reply
             c.close()
@@ -298,6 +303,10 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         # extension's cuts (FN_NATIVE_LOG_FAULT) keeps every POST answered
         # 240; the next owner serves them, grows the segment and goes on.
         initial = 1048576
+        # Articles of initial/300 octets: the segment fills near the 300th of
+        # 400 POSTs (after more than 200 are answered 240) whatever the
+        # per-record overhead, and 400 of them always outgrow it.
+        pad = initial // 300
         for cut in ("log-extended", "log-extent-fenced"):
             with self.subTest(cut=cut):
                 root = self.root / cut
@@ -307,7 +316,7 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                 segment = node.store / "journal" / "000001.log"
                 self.assertEqual(segment.stat().st_size, initial)
                 node.start({"FN_NATIVE_LOG_FAULT": cut})
-                replies, _errors = post_concurrently(node.port, range(400), 4)
+                replies, _errors = post_concurrently(node.port, range(400), 4, pad)
                 node.proc.wait(timeout=300)
                 node.stderr.close()
                 self.assertEqual(node.proc.returncode, -9, cut)
@@ -321,7 +330,7 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                         self.assertTrue(head.startswith(b"220"), (cut, i, head))
                         self.assertIn(b"body of %d" % i, body)
                     c.close()
-                    more, errors = post_concurrently(node.port, range(1000, 1300), 4)
+                    more, errors = post_concurrently(node.port, range(1000, 1300), 4, pad)
                     self.assertEqual(errors, [])
                     self.assertTrue(all(r.startswith(b"240") for r in more.values()), cut)
                 finally:
