@@ -242,7 +242,13 @@
   (declare (xargs :guard (true-listp ks)))
   (and (atom (fn-lgk-batch ks))
        (atom (fn-lgk-inflight ks))
+       (equal (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
        (not (equal (fn-lgk-phase ks) :fault))))
+
+; The most entries the open lists in journal/ (the index's six digits).
+(defun fn-lgs-listing-bound ()
+  (declare (xargs :guard t))
+  *fn-lgs-max-segment*)
 
 (defun fn-lgs-rotate (ks)
   (declare (xargs :guard (true-listp ks)))

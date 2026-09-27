@@ -436,14 +436,29 @@ reopen predicate, writer-lock observation and observed final namespace."
         ; The tables mean the capture (fn-sct-capture-of-tables-of-capture):
         ; the 7-tuple the open extends, its event index rebuilt from E.
         (let* ((checkpoint (fn-sct-capture-of-tables (cadr loaded)))
-               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state)))
+               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state))
+               ; The F row's log position and frontier (a format-9 store's
+               ; open starts its scan there: books/store-log-segments.lisp).
+               (state (f-put-global 'fn-store-sco-log-position
+                                    (list (fn-sct-tables-log (cadr loaded))
+                                          (fn-sco-at 2 (fn-sct-tables-f (cadr loaded))))
+                                    state)))
           (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
-      (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
+      (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
+             (state (f-put-global 'fn-store-sco-log-position nil state)))
         (mv nil
             (list :refused (if (and (consp loaded) (consp (cdr loaded)))
                                (cadr loaded)
                              :malformed))
             state fn-octets)))))
+
+; The loaded checkpoint's F row: (LOG FRONTIER), LOG its log position
+; (fn-sct-log-positionp: NIL or (K GENESIS)) and FRONTIER the txid frontier at
+; its S; NIL when no checkpoint is loaded.
+(defun fn-store-sco-log-position (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (and (boundp-global 'fn-store-sco-log-position state)
+              (f-get-global 'fn-store-sco-log-position state))))
 
 ; The checkpoint's file name: the rename target of the byte program
 ; fn-bs-scp-program (step 6, (:rename :staging STAGE :root NAME)).
@@ -565,7 +580,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; element is :unencodable, (:deferred REASON ESTIMATE BOUND) or
 ; (:plan ESTIMATE); host/native/io.lisp fnn-command-state-checkpoint then
 ; loops on fn-ockp-step (the same steps the owner's thread runs).
-(defun fn-store-sco-publish-setup (segment-octets budget free revision state)
+(defun fn-store-sco-publish-setup (segment-octets budget free revision log state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (f-get-global 'fn-store-sn state))
          (records (fn-sf-records (fn-sn-files st)))
@@ -580,7 +595,7 @@ reopen predicate, writer-lock observation and observed final namespace."
                     ; Deferred by name until the tables carry the arena's
                     ; bytes (fn-store-sco-decode's note).
                     (list (list :deferred :arena 0 0))
-                  (fn-ockp-setup next (fn-sf-frontier (fn-sn-files st)) revision
+                  (fn-ockp-setup next (fn-sf-frontier (fn-sn-files st)) revision log
                                  segment-octets budget free))))
     (value (list setup (fn-sco-sequence next)))))
 

@@ -2707,7 +2707,7 @@ resident set the owner serves from is its live heap, not the recovery's
 high-water mark.  Work proportional to the live heap, once per start."
   (sb-ext:gc :full t))
 
-(defun fnn-owner-publish-captured (service captured)
+(defun fnn-owner-publish-captured (service captured &optional position)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
 capture point: fn-ock-next-checkpoint-is-the-capture), then fn-ockp-setup
@@ -2740,7 +2740,8 @@ the crash keystone) and serving continues."
         (handler-case
             (let ((sequence (length records)))
               (setq next (fnn-core 'fn-ock-next-checkpoint base configs records))
-              (let ((setup (fnn-core 'fn-ockp-setup next frontier revision segment budget free)))
+              (let ((setup (fnn-core 'fn-ockp-setup next frontier revision position
+                                     segment budget free)))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq verdict (first setup))
@@ -2766,8 +2767,16 @@ the crash keystone) and serving continues."
                                            fd setup segment sequence (fnn-store-config store)
                                            (fnn-live-octets-pub)))))
                            (setq durablep t)
-                           (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d steps=~d ms=~d"
-                                    sequence suffix octets steps (elapsed)))
+                           ;; T8: the installed checkpoint covers the segments
+                           ;; below its first suffix segment; they go now,
+                           ;; off the mutex (none is the active one).
+                           (let ((dropped (if position
+                                              (fnn-log-drop store (fnn-log-covered-indices
+                                                                   store (first position)))
+                                            0)))
+                             (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d steps=~d ms=~d~@[ segment=~d~]~:[~; dropped=~d~]"
+                                      sequence suffix octets steps (elapsed)
+                                      (first position) position dropped)))
                        ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
                          (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
                   (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
@@ -2827,15 +2836,30 @@ reads run as a :control quantum; the thread's registration is the roster's."
         (when (eq (fnn-owner-core 'fn-owner-sco-due
                                   (fnn-checkpoint-budget-test-override nil) free)
                   :due)
-          (let ((captured (fnn-owner-core 'fn-owner-sco-capture
-                                          (fnn-checkpoint-budget-test-override nil)
-                                          free (fnn-checkpoint-revision))))
-            (unless (and (true-listp captured) (= (length captured) 10))
+          ;; Format 9: the capture rotates the log (fnn-log-rotate, under
+          ;; the owner mutex: no batch is open in a :control quantum), so
+          ;; the captured history is exactly the closed segments' records
+          ;; and the checkpoint's F row names the new segment.  A failed
+          ;; rotation is a failed publication: logged, serving continues.
+          (let* ((store (fnn-owner-service-store service))
+                 (position (and (fnn-store-logp store)
+                                (handler-case (fnn-log-rotate store)
+                                  ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+                                  (fnn-store-error (e)
+                                    (fnn-err "CHECKPOINT auto failed: ~a" e)
+                                    :failed))))
+                 (captured (and (not (eq position :failed))
+                                (fnn-owner-core 'fn-owner-sco-capture
+                                                (fnn-checkpoint-budget-test-override nil)
+                                                free (fnn-checkpoint-revision)))))
+            (unless (or (eq position :failed)
+                        (and (true-listp captured) (= (length captured) 10)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             (fnn-with-roster (service)
-              (let ((thread (sb-thread:make-thread
-                             (lambda () (fnn-owner-publish-captured service captured))
-                             :name "fn owner checkpoint")))
+              (let ((thread (and (not (eq position :failed))
+                                 (sb-thread:make-thread
+                                  (lambda () (fnn-owner-publish-captured service captured position))
+                                  :name "fn owner checkpoint"))))
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service))))))))))
 

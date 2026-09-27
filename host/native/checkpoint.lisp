@@ -665,7 +665,7 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-refuse-on-log-route (store verb)
   (when (fnn-store-logp store)
     (fnn-store-close store)
-    (fnn-refuse "~a refused reason=record-log: a format-9 store's ~a is segment rotation (w6-log-recovery, PKT-750)"
+    (fnn-refuse "~a refused reason=record-log: a format-9 store has no packs (~a over the log is the checkpoint's rotation and drop: `store compact'; content reclamation over the log is PKT-750's remainder)"
                 verb verb)))
 
 (defun fnn-checkpoint-command-publish (root selectp)
@@ -822,10 +822,18 @@ kept, and a rerun continues from them."
               links (length reclaimed) (length retired)))))
 
 (defun fnn-command-compact (root)
+  "`store compact'.  Format 9 (the record log): compaction is the
+checkpoint's rotation and the drop of the segments it covers (design
+2026-09-27 storage-log section 6; T8 fn-lg-segment-drop-preserves-the-open):
+a state checkpoint is published at the history's end with the log rotated,
+then the covered segments are unlinked.  Format 8: the pack chain."
   (multiple-value-bind (store records) (fnn-open-live-store root t)
-    (fnn-refuse-on-log-route store "compact")
     (unwind-protect
-         (progn (fnn-out "~a" (fnn-compact-steps store records))
+         (progn (fnn-out "~a" (if (fnn-store-logp store)
+                                  (format nil "compacted steps=checkpoint,drop records=~d ~a"
+                                          (length records)
+                                          (fnn-state-checkpoint-publish-steps store records))
+                                (fnn-compact-steps store records)))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 

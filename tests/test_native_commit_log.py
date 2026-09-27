@@ -298,11 +298,12 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         self.assertEqual(len(node.transaction_files()), 4)
 
     def test_format_9_refuses_what_the_log_does_not_do_yet_by_name(self):
+        # `store compact' (rotation and drop) and `store export' run over the
+        # log (lane log-recovery: tests.test_native_log_compaction,
+        # tests.test_native_store_export); content reclamation does not yet.
         node = Node(self.image, self.root)
         node.init()
-        for argv in (("operator", str(node.config), "store", "compact"),
-                     ("operator", str(node.config), "store", "reclaim"),
-                     ("store", str(node.store), "export", str(self.root / "archive"))):
+        for argv in (("operator", str(node.config), "store", "reclaim"),):
             with self.subTest(argv=argv[-2:]):
                 result = node.fn(*argv)
                 self.assertEqual(result.returncode, 1, (argv, result.stdout, result.stderr))
