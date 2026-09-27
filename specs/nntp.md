@@ -342,7 +342,10 @@ distinction:
   renderer's (`fn-nov-served-lines-numbered-extend-the-eight-fields`). Local
   numbers are never merged across nodes: a peer's Xref is not read.
 - Local policy: since PRF-243 (2026-09-27, below) ARTICLE and HEAD of an
-  article this node numbers carry the same field as the last header line,
+  article this node numbers carry the same field as the first header line
+  (it leads the header block, as the injected Path does, so the stored
+  octets stay a suffix of what ARTICLE serves; batch AR moved it there from
+  the last line, books/nntp-reader-compat.lisp `fn-rcompat-served-payload`),
   generated at serve time; the stored octets are unchanged. A
   proto-article carrying Xref is refused at injection (RFC 5537 §3.5 item
   2) and a relayed article's Xref is deleted on receipt
@@ -394,8 +397,8 @@ environment always carries; a blind environment answers as before.
   are unchanged. slrn 1.0.3 disables XOVER on `:bytes`/`:lines`.
 - **Xref on ARTICLE, HEAD, HDR and XHDR** (RFC 5536 §3.2.14; RFC 3977
   §8.5). fn guarantee: ARTICLE and HEAD of an article this node numbers
-  serve the stored octets with the Xref field OVER carries inserted as the
-  last header line, nothing else changed
+  serve the stored octets with the Xref field OVER carries prepended as the
+  first header line, nothing else changed
   (`fn-rcompat-served-payload-inserts-one-line`); the session is the
   generic retrieval's (`fn-rcompat-retrieval-session-is-the-generic-session`);
   HDR and XHDR Xref answer that field's value
@@ -812,7 +815,7 @@ identity table. What each identity is, and which equality holds:
 | Message-ID | RFC 5536 s3.1.3 | transit (IHAVE, CHECK, TAKETHIS) and BP admission decide duplicates by it alone (RFC 3977 s6.3.2, RFC 4644); `fn-peer-decide-offer`, `fn-peer-decide-transfer` |
 | Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-rcl-existing-action`: same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
 | Stored representation | the record payload (`store inspect`), its SHA-256 | the injected octets on the injecting node; on a receiving node the same octets with that node's path identity spliced into Path and any Xref dropped (`fn-peer-relayed-octets`); an injection is never a tombstone (`fn-sr-an-injection-is-not-a-tombstone`) |
-| Tombstone | SHA-256 of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a SHA-256 collision on the two sources (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); unreachable-in-composition until a program writes tombstones (`store reclaim` is not implemented) |
+| Tombstone | SHA-256 of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a SHA-256 collision on the two sources (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); marked unreachable-in-composition when no program wrote tombstones; `store reclaim` over the record log now rewrites a reclaimed article's record to its tombstone (`fn-lgr-decide`, books/store-log-reclaim.lisp, PRF-271, lane log-recovery 2026-09-27), and the mark has not been re-examined against it |
 | Bundle identity | RFC 9171 (source EID, creation time, sequence) | one per carried request; a re-offer of an uncertain forwarding attempt keeps it (specs/bp-node-machine.md s4.3.1) |
 | Forwarding attempt | one durable kind-8 FNBS row | settled by kind 9; never an article identity |
 | Local sequence and number | per node, per group | never compared across nodes; kept across reopen |

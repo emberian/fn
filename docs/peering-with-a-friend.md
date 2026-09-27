@@ -140,7 +140,9 @@ pull peer=friend round=done cursor=advanced transport=tls
 ```
 
 After a restart, or with a clock that is wrong by minutes, both feeds carry
-on where they were. Nothing is skipped or repeated.
+on where they were. Nothing is skipped or repeated. An article dated more
+than a day ahead of your node's clock is refused as "dated in the future".
+If you see that, check both clocks.
 
 ## Accounts, cancels and keys
 

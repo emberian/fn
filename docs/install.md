@@ -175,7 +175,9 @@ service. See [newsreaders](human-web-client.md).
 fn is never upgraded in place. A new release is a fresh install, and the
 store folder stays where it is. See
 [new releases](operator.md#new-releases). Only when a release cannot open
-the old store do you move the data through an export:
+the old store do you move the data through an export. That is the case for
+every store made before 27 September 2026: the store format changed then.
+Export with the **old** release, before you remove it:
 
 1. Stop the service and export the store, with the old release still
    installed. The export runs as root, because the service account cannot
@@ -221,7 +223,9 @@ If an import was interrupted, the next one refuses and names the folder it
 left: `reason=interrupted-import` (nothing was set up: remove that folder
 and import again) or `reason=publication-uncertain` (a store is there: run
 `recover`, then remove that folder). A release refuses a store of another
-format (`reason=store-format`). `install.sh` asks the new release about the
+format (`reason=store-format`) or one made by an older release
+(`reason=older-release`): export it with the release that made it, then
+import it here. `install.sh` asks the new release about the
 existing node folder before copying anything.
 
 To remove fn: stop and disable the service. Then remove `/opt/fn`, the

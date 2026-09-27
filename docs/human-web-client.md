@@ -19,8 +19,8 @@ The node refuses a login before the connection is encrypted.
 
 tin 2.6 needs TLS from the very first byte. The node must have a TLS port.
 The operator adds `tls_port` under `[listener]` in `fn.toml` and restarts.
-For example (`control.cancel` among the node's groups if tin's cancels
-should be kept):
+For example (the node needs the group `control.cancel` for cancels to
+work):
 
 ```toml
 [listener]
@@ -65,7 +65,21 @@ If it goes wrong:
 - tin refuses to post from a machine without a domain name
   (`Bad address in From: header`). Give it one: the build's `DOMAIN_NAME`,
   or `disable_sender=ON` in the site's `tin.defaults`.
-- A cancel from tin is not signed, so it does not remove the article.
+
+## Cancelling your own post
+
+Use your reader's cancel command, logged in as yourself. The post
+disappears on this node, and on peers that get the cancel. Another
+login's cancel of your post is kept but does nothing. This was tested with tin and Thunderbird.
+pan cancels only a post whose Sender line matches your pan profile.
+
+## slrn and pan
+
+- slrn 1.0.3 does not check the node's certificate at all. Use it only on
+  a network you trust.
+- pan 0.162 reads trusted certificates from `SSL_CERT_DIR`. Add the node's
+  certificate to your system's store, or start pan with
+  `SSL_CERT_DIR=/etc/ssl/certs`.
 
 The engineers' notes on the web reader's saved posts are in
 [the engineers' reference](client-internals.md#local-human-reader).

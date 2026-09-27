@@ -37,8 +37,11 @@ bounds the work of opening a store before any configuration record is replayed:
 the transaction-namespace observation (`fn-profile-txn-observation`), the
 aggregate replay input (`fn-profile-replay-within-boundp`) and the per-record
 publication ceiling. Since D27 its values are the operator's (format
-`fn-store-9`, or `fn-store-8` while STO-028's transition stands: transactions, history octets, record octets, article octets,
-groups per article, group-name octets, open suffix and five namespace counts,
+`fn-store-9`, the one format; a `fn-store-8` profile is refused at the open
+by name, STO-028: transactions, history octets, record octets, article octets,
+groups per article, group-name octets, open suffix, five namespace counts,
+the committed-history marker and the three header limits of
+header-limits-profile, sixteen fields in all, `*fn-bs-profile-field-names*`;
 docs/operator.md), set at `init` by flags and validated by the relations of
 `fn-bs-profile-validp`; ACL2 fixes no value except the codec ceilings above
 them. It is written once, by `init` (or `store import`, STO-028), and never
@@ -49,7 +52,7 @@ open by name. This is a local-policy choice of fn; no RFC governs it.
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
 credentials are bounded by the profile's `max-config-generations` and
-`max-credentials` (format 8 fields 11 and 12, read through
+`max-credentials` (profile fields 11 and 12, read through
 books/store-profile-namespace.lisp). The writer refuses exactly past the
 bound, by name (`:max-config-generations`, `:too-many-credentials`), and
 the reader admits every namespace within it: the configuration listing
@@ -379,7 +382,21 @@ objects under the stated crash assumptions.
 
 ## Checkpointing and compaction
 
-The current compaction tranche publishes an immutable selected transaction
+**Scope, 2026-09-27.** The pack tranche below (and PRF-073) describes the
+per-file layout `fn-store-8`, which no image opens any more (STO-028). On
+the one format, `fn-store-9`, compaction is a state checkpoint that rotates
+the record log and drops the segments it covers (STO-034), and content
+reclamation is `store reclaim` over the log (STO-028); the pack verbs
+refuse there by name (`reason=record-log`). Measured on hbox at 40,000
+articles of 2 KiB (planning/evidence/log-recovery-2026-09-27.md section 4,
+a loaded box): `store compact` 98 to 139 s at 4.7 to 7.5 GB peak RSS, the
+open from the checkpoint afterwards 14 to 19 s, against 2,963 s at 16.4 GB
+for the format-8 compaction it replaced; the log's 268 MB became a 129 MB
+checkpoint and a 1 MiB segment. The memory of a compaction is not yet
+bounded by the step (PKT-842). The text below stays as the record of the
+per-file route until its code and rows are retired (PKT-838).
+
+The per-file compaction tranche published an immutable selected transaction
 prefix pack containing the exact canonical bytes of every covered Store event.
 Recovery validates each surviving covered transaction byte-for-byte against
 that pack, permits covered files to be absent after an interrupted reclaim,
@@ -435,6 +452,14 @@ completes, and a covered segment left by a drop is dropped again
 the drop is the full chain's (T8, `fn-lg-segment-drop-preserves-the-open`).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation
 followed by the drop; the owner's automatic checkpoint does the same.
+The open reads each segment one entry at a time (books/store-log-stream.lisp,
+`fn-lgw-step`, called by `fnn-log-stream-segment`; PRF-297, lane
+log-open-stream 2026-09-27): the header, the entry's length, that entry's
+octets, the step's decision; no string of the segment exists and the walk
+keeps no record. Measured on the 10,000 x 32 KiB fixture (full replay,
+hbox): live heap at the replay 6,217.8 to 640.3 MB, peak RSS 14.1 to
+1.25 GB, wall 4:38.5 to 0:55.2 (planning/evidence/log-open-stream-2026-09-27.md
+section 3); of the 640 MB, about 310 MB is the image's own world.
 
 STO-006: replacing history with a checkpoint preserves the full logical state
 needed for future behavior, including allocation watermarks, duplicate history,
@@ -498,8 +523,11 @@ stays authoritative, and the file may be deleted at any time.
 - **Open.** The host reads the file segment by segment (range reads, under
   A-HOST-EXCLUSIVE-READ), decodes it, and `fn-sco-select` serves it only
   when the chain verified, S is at most the committed count, and the suffix
-  is at most K (max-open-suffix). It then reads only the transaction files
-  with sequence at least S and calls `fn-sco-open`, which equals the full
+  is at most K (max-open-suffix). It then reads only the suffix (on
+  `fn-store-9`, the record-log segments from the one the checkpoint's F row
+  names, STO-034, streamed one entry at a time since lane log-open-stream,
+  2026-09-27; on the retired per-file layout, the transaction files with
+  sequence at least S) and calls `fn-sco-open`, which equals the full
   open of the whole history (`fn-sn-recover-from-checkpoint-equals-full-recover`).
   Otherwise it replays in full. Status prints `open=checkpoint:S suffix=k`
   or `open=full-replay reason=R` (absent, corrupt, ahead-of-history,
@@ -649,9 +677,10 @@ each under a named proof obligation; no other operation removes it.
 
 Status: contract for M5 (review of 2026-09-24,
 [direction review](../planning/review-2026-09-24-gpt6-direction.md) §M5). The
-committed-history marker (STO-009) is implemented. History compaction and
-content reclamation are not; their rows below are the obligations an
-implementation must discharge. Where a lifetime depends on policy that is
+committed-history marker (STO-009) was implemented on the per-file layout.
+Content reclamation over the record log is `store reclaim` (STO-028, lane
+log-recovery 2026-09-27, PRF-271); history compaction is not implemented;
+the rows below are the obligations an implementation must discharge. Where a lifetime depends on policy that is
 not decided, the row says **open**.
 
 Three capabilities may ever remove durable state. They are different
@@ -659,9 +688,12 @@ promises and each has its own proof obligation:
 
 - **Packing** (P) moves bytes into fewer filesystem objects. It keeps the
   history and its semantic contents. Obligation: the open after the removal,
-  at every cut, hands replay the identical record list (PRF-073). Today's
-  `pack`, `pack-reclaim`, `pack-retire` and `operator CONFIG store compact`
-  are this capability and nothing else.
+  at every cut, hands replay the identical record list (PRF-073). On
+  format 9, `operator CONFIG store compact` (the checkpoint's rotation and
+  the drop of the covered segments, STO-034: the checkpoint keeps every
+  record, which export writes) is this capability and nothing else; the
+  per-file `pack`, `pack-reclaim` and `pack-retire` were, and refuse on
+  format 9.
 - **History compaction** (H) replaces a prefix of records by a versioned
   summary. Obligation: for every future permitted input, every decision
   computed from summary plus suffix equals the one computed from the full
@@ -704,7 +736,8 @@ policy that this contract does not yet have says otherwise.
 | Whole-state checkpoints and auxiliary images | A differential comparison at open. Derived, never authoritative | While selected | May be discarded; replay remains authoritative |
 | Staging names (`staging/`) | None: never authority (`books/store-sweep`) | Until the recovery sweep | The sweep |
 
-**What today's compaction relieves.** It relieves the transaction-file count
+**What per-file compaction relieved** (format 8; on format 9 the rotation
+and drop remove whole segments, STO-034). It relieves the transaction-file count
 and per-file overhead: inodes, directory entries and the open's one read per
 file. It relieves no other limit. The transaction budget counts committed
 records, and packing leaves them unchanged. The replay input is the same
@@ -723,6 +756,10 @@ every class above grows monotonically until admission refuses by name
 (`fn-sbud-prepare`, `:unaffordable`).
 
 ### The committed-history boundary
+
+(The marker below is a file of the per-file layout `fn-store-8`; on
+`fn-store-9` the record log's chain and its named open refusals, STO-034,
+detect a lost or spliced suffix.)
 
 STO-009: a committed-history boundary is written after each commit and before
 its acknowledgement, and every open refuses, by name, a record history
@@ -1177,21 +1214,31 @@ writes it, and its committed history is the record log (`journal/000001.log`,
 one self-checking chained entry per record, one barrier per batch of commits;
 planning/design-2026-09-27-storage-log.md, lane commit-onto-log). The
 per-file layout `fn-store-8` (the allocation frontier, `transactions/`, the
-committed-history marker) is still opened and committed through its own
-programs while the native modules that read that layout are retired
-(PKT-830, the coordinator numbers it); a developer image writes it under
-`FN_NATIVE_STORE_FORMAT=8`. The open refuses a profile frame of any other
-format by name (`open refused reason=store-format: reinstall from the release
-and import`, exit 1) and translates nothing. A profile frame of another
+committed-history marker) is no longer opened or written by any image (lane
+log-recovery, 2026-09-27, planning/evidence/log-recovery-2026-09-27.md; no
+image writes it, `FN_NATIVE_STORE_FORMAT` is gone): a valid format-8 profile
+is refused at the open the host calls by name
+(`fn-spo-open-of-a-format-8-profile-refuses-by-name`,
+books/store-profile-open.lisp), as is a profile frame of any other format
+(`open refused reason=store-format: reinstall from the release and import`,
+exit 1), and nothing is translated. The per-file code that remains in the
+host is unreachable on every store an image opens; its deletion is open
+(PKT-838). A profile frame of another
 release's layout (the run of u64 fields after the two texts: thirteen in every
 store made before batch AS, sixteen now) is refused by name with both counts:
 `open refused reason=older-release: store made by an older release (profile
 layout 13 fields, this release expects 16): export it with the release that
 made it, then import it here` (`newer-release` for a wider layout), exit 1,
 never the generic fault (PRF-258, PKT-705); `install.sh` refuses such a node
-before copying anything. On a `fn-store-9` store `store reclaim` refuses by
-name (`reason=record-log`) until content reclamation over the log lands
-(PKT-750); `store compact` is the log's rotation and drop (STO-034). `store
+before copying anything. On a `fn-store-9` store `store compact` is the
+log's rotation and drop (STO-034), and `store reclaim` is the log's content
+reclamation: ACL2's decision over the history (`fn-lgr-decide`,
+books/store-log-reclaim.lisp, keystone
+`fn-lgr-decide-checkpoints-the-rewrite`, PRF-271), the rewritten history
+replayed, its checkpoint with rotation, then the drop
+(`fnn-log-reclaim-steps`). The pack verbs (`pack`, `pack-reclaim`,
+`pack-retire`) refuse by name on a `fn-store-9` store (`reason=record-log`:
+it has no packs). `store
 export DIR` writes the committed history the open reads (the profile frame,
 the allocation frontier -- on `fn-store-9` the one the log derives -- each
 configuration record and each committed record in sequence order: on
