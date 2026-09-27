@@ -11159,7 +11159,7 @@
         "tests/fixtures/fuzz-nntp/node-quit-then-starttls-plaintext.json",
         "planning/evidence/wire-bounds-2026-09-27.md"
       ],
-      "progress_note": "Covered scope: the host's stop after the read carrying the close (host/native/mux.lisp) is measured by the fuzz reproducers and the differential harness, not proved. host/native/mux.lisp's close-after-handshake case (STARTTLS and a close in one read) is now unreachable: after QUIT no 382 is emitted.",
+      "progress_note": "Covered scope: the host's stop after the read carrying the close (host/native/mux.lisp) is measured by the fuzz reproducers and the differential harness, not proved. host/native/mux.lisp's close-after-handshake case (STARTTLS and a close in one read) is deleted (lane served-leftovers): the host reads books/served-plan.lisp fn-splan-step-handshake-owed, the 382's handshake only when the step neither closes (after QUIT no 382 is emitted) nor meets the exposure's failed-login close, so the loop never holds both.",
       "events": [
         "fn-served-step-stops-at-quit",
         "fn-served-step-of-quit-connection-is-a-no-op",
