@@ -413,7 +413,7 @@
 (defthm fn-rcl-signed-article-is-never-reclaimable
   (implies (fn-rcl-verdict-heldp (fn-article-msgid article) verdicts)
            (not (fn-rcl-reclaimable rule now h verdicts article)))
-  :hints (("Goal" :in-theory '(fn-rcl-reclaimable fn-rcl-verdict))))
+  :hints (("Goal" :in-theory '(fn-rcl-reclaimable fn-rcl-standing-verdict))))
 
 (local
  (defthm fn-rcl-class-count-in-of-cons
@@ -446,7 +446,8 @@
                              :reclaimable))
                  (not (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts a
                                                        fn-arena)))))
-   :hints (("Goal" :in-theory '(fn-rcl-verdict-in fn-rcl-verdict fn-rcl-heldp
+   :hints (("Goal" :in-theory '(fn-rcl-verdict-in fn-rcl-standing-verdict
+                                fn-rcl-heldp
                                 (:e member-equal) member-equal
                                 (:e fn-rcl-heldp))))))
 

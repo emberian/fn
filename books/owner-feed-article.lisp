@@ -101,8 +101,9 @@
 ; bytes the host entry sends (fn-ofa-feed-article, host/owner-host.lisp
 ; fn-owner-feed-octets).  Before the fix the model handed the handle itself.
 (defthm fn-ofa-feed-article-is-the-owner-step-article
-  (implies (fn-apr-store-at-restp (fn-own-store o))
-           (equal (fn-ofa-feed-article o msgid fn-arena)
+  (implies (and (fn-apr-store-at-restp (fn-own-store o))
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-ofa-feed-article o msgid fn-arena fn-hist)
                   (fn-handle-bytes (fn-own-feed-article o msgid) fn-arena)))
   :hints (("Goal" :use ((:instance fn-apr-feed-article-is-own-feed-article))
            :in-theory '(fn-ofa-feed-article))))
