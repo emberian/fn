@@ -337,7 +337,7 @@ The DTN-only build writes `build/fn-host-dtn` by default and
 Changing that environment variable when a saved image restarts does not change
 its serialized profile. The developer image also honours the developer
 selectors (the environment variables of `+fnn-developer-selectors+` and the
-`store ROOT post` entry and its FAULT argument; [the operator guide](../docs/operator.md#developer-selectors)
+`store ROOT post` entry and its FAULT argument; [the operator guide](../docs/operator-internals.md#developer-selectors)
 lists them). A production image refuses to start with any of them: `fnn-main`
 runs `fnn-developer-selector-gate` before dispatch and exits 5 naming the
 selector, before any store or socket is opened. Store diagnostics and the existing BP/TCPCL/application
@@ -751,7 +751,7 @@ owner runs, in the offline words: the running owner renders the same ACL2
 report (`fn-nls-report`, books/native-live-status.lisp) of the state it
 carries that the offline command renders from the Store, and answering changes
 no state. The operator guide's
-[status section](../docs/operator.md#status-while-the-owner-runs) describes the
+[status section](../docs/operator-internals.md#status-while-the-owner-runs) describes the
 verbs.
 
 ## Operator health
@@ -777,7 +777,7 @@ configured socket, or one the probe could not read, is `store-held`
 (`fn-nh-fence-of-starting-iff`). `starting` is a reason of the fenced state, exit 20, never a ninth code (PKT-454), and it clears on the one observation listening changes: the host takes every observation of one invocation before ACL2 decides (`fn-nh-health-step`), which reports `starting` exactly while no clone fence is present, the lock is held, an owner would listen and nothing answered, and gives the owner's own report, with no fence, for the same lock and fence once the owner answers on its socket (`fn-nh-starting-clears-on-listening`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
-[health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
+[health section](../docs/operator-internals.md#health-which-of-eight-things-is-wrong)
 describes the verb.
 
 HST-010: The operator's daily verbs distinguish an owner starting, a fenced
@@ -876,8 +876,8 @@ form before the tagged result line. An outbound peer that refuses `MODE
 STREAM` (RFC 4644 section 2.3) is stopped by name for the owner's run, never
 re-dialled with it. There is no store rollback (D34): a deploy is a reinstall with `store export`
 and `store import` (HST-014). The operator guide's
-[native component entry](../docs/operator.md#native-component-entry) and
-[deploy section](../docs/operator.md#deploy-a-new-release-d34-fresh-deploys-no-migrations)
+[native component entry](../docs/operator-internals.md#native-component-entry) and
+[deploy section](../docs/operator-internals.md#deploy-a-new-release-d34-fresh-deploys-no-migrations)
 describe the verbs.
 
 ## HST-014: the deploy is a reinstall

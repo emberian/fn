@@ -1,85 +1,59 @@
-# Project guide
+# The fn guides
 
-fn now has executable ACL2 components and a native node exercised by agents.
-The [node record](../planning/evidence/node-hbox-da5fd8cb-2026-09-23.md) gives
-the tested image and its limits; [now](../planning/now.md) is the single
-current page for development beyond that image. The older [implementation inventory](implementation.md)
-is historical, not the current service status.
+Start here. Pick the page for what you want to do.
 
-## Reading order
-
-1. [Architecture](architecture.md): purpose, boundaries, and system composition.
-2. [Terminology](glossary.md): distinctions shared by every subsystem.
-3. [Letter lifecycle](../specs/lifecycle.md): the end-to-end design example.
-4. [Objects and identities](../specs/objects.md): what the system represents.
-5. [Storage](../specs/storage.md) and [failure model](../specs/failures.md): what
-   local acceptance means and what its durability argument assumes.
-6. [Retention](../specs/retention.md) and [replication](../specs/replication.md):
-   what survives disconnection and how information moves.
-7. [Privacy and encryption](../specs/privacy.md): threat boundaries, protocol
-   candidates, archives, and the open private-group decision.
-8. [NNTP](../specs/nntp.md), [encoding](../specs/encoding.md), and
-   [host boundary](../specs/host.md): external interfaces and representation.
-9. [Proof strategy](proofs.md), [validation](../tests/README.md), and
-   [milestones](../planning/milestones.md): how to establish the claims.
-
-To install a node from a release tarball, start at
-[Installing fn](install.md). For the operator's verbs in depth -- one
-command, one configuration file and a service unit -- see the
-[operator guide](operator.md); its packaging templates are in
-[`packaging/`](../packaging/fn.toml.example). To read and post on a node that is
-already running, from a laptop or from an agent, see
-[agents on an fn node](agents.md).
-The experimental [local human reader](human-web-client.md) uses the same NNTP
-client path in a separate loopback web process.
-
-For concrete representation discussions, see the proposed
-[article-byte examples](article-byte-examples.md). For the current local adapter,
-see the [persistence experiment](../specs/store-experiment.md).
-Its [refinement contract](../specs/store-refinement.md) separates the executable
-storage model and its current proofs from the remaining physical correspondence.
-The [article-field contract](../specs/article-fields.md) describes semantic
-identity/routing checks over the preserved source views.
-The [resumable-object experiment](../specs/transfer-experiment.md) stages bounded
-fragments without treating assembled bytes as accepted messages.
-The [BP path](../specs/bp-path.md) is current disconnected-exchange work; its
-[transport experiment](../tests/evidence/2026-09-18-bpv7-transport.md) has actual
-BPA interoperability evidence. The [checkpoint](../specs/checkpoint.md) and
-[index](../specs/index.md) contracts describe the current logical artifacts.
-The [local walkthrough](local-experiment.md) exercises CLI posting, reopen, and
-reading stored articles over loopback NNTP.
-
-## Sources of truth
-
-| Question | Authoritative location |
+| I want to... | Read |
 | --- | --- |
-| What has been decided? | [Decision register](../planning/decisions.md) |
-| What behavior is required? | [Requirement registry](../planning/requirements.json), with links to the detailed specs |
-| What is to be proved? | [Proof registry](../planning/proofs.json), interpreted by the proof strategy |
-| What is happening now, and what should happen next? | [Now](../planning/now.md) (dev, images, goal, active lanes); release scope in [the trajectory plan](../planning/plan-2026-09-22-trajectory.md) §0 to §2; [how we work](../planning/how-we-work.md) |
-| Which examples must be exercised? | [Scenario catalog](../tests/scenarios/catalog.json) |
-| Which standards support the design? | [References](references.md) |
-| What evidence exists, and what does it not show? | Dated records in [`planning/evidence/`](../planning/evidence/), certify manifests in [`planning/evidence/manifests/`](../planning/evidence/manifests/), and [`tests/evidence/`](../tests/evidence/); each record states its scope. The hand-kept evidence index is [archived](../planning/archive/evidence-index.md). |
+| set up my own node | [Installing fn](install.md) |
+| look after a node that is running | [Running your node](operator.md) |
+| connect my node to a friend's | [Peering with a friend](peering-with-a-friend.md) |
+| read and post in a web browser | [The web reader](web.md) |
+| use a newsreader such as tin | [Newsreaders](human-web-client.md) |
+| let a program (an agent) read and post | [Agents on an fn node](agents.md) |
 
-The registries track requirement and proof status. Narrative documents explain
-contracts rather than maintain competing completion counts. Scenario entries are
-test specifications, not a test runner. A scenario may span several milestones;
-its milestone is when its full executable form is expected.
+## Words you will meet
 
-For lessons from the development process, see the
-[swarmguide](../swarmguide/README.md). It explains the proof and coordination
-failures behind the current workflow, with links to the evidence and local
-transcript references.
+fn speaks the language of Usenet, the old news system. A few of its words:
 
-## Design language
+- **Node**: one running fn server, with its own store.
+- **Store**: the folder where a node keeps everything it has accepted.
+- **Article**: one message. It has a header (From, Subject and so on) and a body.
+- **Group** (newsgroup): a named place for articles, such as `local.general`.
+  Names are words joined by dots.
+- **Post**: send a new article to a group.
+- **Message-ID**: an article's unique name, written in angle brackets, like
+  `<abc@example.org>`. It is the same on every node.
+- **Article number**: an article's place in a group on one node. Another node
+  numbers the same article differently.
+- **Newsreader**: a program for reading and posting, like tin, slrn or
+  Thunderbird.
+- **NNTP**: the protocol newsreaders and nodes use to talk.
+- **TLS** and **STARTTLS**: encryption for the connection. With STARTTLS the
+  connection starts plain and switches to encrypted before anything private
+  is sent.
+- **Login** (account): a name and password for one person or program.
+- **Peer**: another node that yours swaps articles with.
+- **Feed**: the flow of articles between peers.
+- **Moderated group**: a group where posts wait until a moderator approves them.
+- **Cancel**: a request to withdraw an article.
+- **Principal**: a key-based identity. A signed article names the principal
+  that signed it.
 
-An **agreed direction** is a project choice established in the conversation.
-A **proposal** is a concrete recommendation still subject to design work.
-An **open decision** names a question and the milestone it blocks.
-A **requirement** is intended fn behavior, even when its implementation is pending.
-An **assumption** identifies an external condition needed by a particular claim.
+## Three answers
 
-Reserve RFC normative meanings for statements attributed to an RFC. fn's stronger
-acceptance and retention contracts are project requirements, not assertions that
-NNTP or BP already provides them. Dependencies on cryptography, disk semantics,
-and cooperative peers belong in theorem hypotheses and evidence descriptions.
+fn always tells you one of three things, and keeps them apart:
+
+- **accepted**: it is done and saved.
+- **refused**: it was not done, and the reason is named. Nothing changed.
+- **uncertain**: fn could not tell whether it was saved. Do not repeat it
+  blindly; the pages say what to do.
+
+## For engineers
+
+The design, the proofs and the detailed references are separate:
+[architecture](architecture.md), [terminology](glossary.md),
+[proof strategy](proofs.md), the engineers' references for
+[the operator](operator-internals.md) and [the clients](client-internals.md),
+the [project guide for engineers](engineering.md),
+[the specifications](../specs/lifecycle.md), the
+[decision register](../planning/decisions.md) and [now](../planning/now.md).
