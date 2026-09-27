@@ -38,7 +38,11 @@ Hello, news.
 (defconst *ipt-d* (fn-inj-decide *ipt-source* *ipt-inj-cfg* *ipt-obs*))
 (defconst *ipt-refused* (fn-inj-decide *ipt-source* *ipt-closed* *ipt-obs*))
 
-(defconst *ipt-secret* (make-list 32 :initial-element 7))
+; A one-epoch key ring (books/node-secret.lisp): epoch 1, identity
+; "local", a 32-octet root.
+(defconst *ipt-secret* (list (fn-ns-make-entry 1 (ipt-o "local")
+                                               (make-list 32 :initial-element 7))))
+(assert-event (fn-ns-ringp *ipt-secret*))
 (defconst *ipt-login* (ipt-o "alice"))
 (defconst *ipt-stamp* (fn-clock-observation 5 1700000000 2 t))
 (defconst *ipt-cfg0* (fn-cfg-initial))
@@ -344,6 +348,36 @@ Hello, news.
              (fn-inj-decision-msgid (fn-inj-decide source config obs1))
              (fn-ipp-injected-octets (fn-inj-decide source config obs2) s2 l2 c2)
              (fn-ipp-injected-octets (fn-inj-decide source config obs1) s1 l1 c1)))))
-; The supplied-Path hypothesis is a scope limit, not shown necessary: a v3
-; retry is believed to be the same article too (the block agent is read
-; through fn-pb-params-line-agent), but that walk is not proved here.
+; The supplied-Path hypothesis is a scope limit, not shown necessary: the
+; v3 retry is checked concretely at the end of this book.
+
+; fn-ipp-an-injection-does-not-open-with-c: the alice post opens with "P";
+; the omitted injection: a refused decision's octets are nil.
+(assert-event (and (fn-inj-injectedp *ipt-d*) (equal (car *ipt-stored*) 80)))
+(must-fail
+ (defthm ipt-never-opens-with-c
+   (not (equal (car (fn-ipp-injected-octets d secret login cfg)) 67))))
+
+; The supplied-Path (recipe v3) retry, concretely (the general theorem is
+; open, PKT-597-v3): one source with a Path and a Message-ID, injected at two
+; clocks under alice's and bob's parameters, is one article for D25; the
+; plain-line reading would have named "AGENT; posting-account=..." as the
+; agent (fn-pb-info-line-agent refuses an agent holding ";").
+(defconst *ipt-v3* (ipt-crlf (ipt-o "Path: poster.example!not-for-mail
+From: poster@example.invalid
+Subject: hello
+Newsgroups: fn.letters
+Message-ID: <v3.retry@example.invalid>
+
+Hello, news.
+")))
+(defconst *ipt-v3-1* (fn-inj-decide *ipt-v3* *ipt-inj-cfg* *ipt-obs*))
+(defconst *ipt-v3-2* (fn-inj-decide *ipt-v3* *ipt-inj-cfg* *ipt-obs-next*))
+(assert-event
+ (let ((s1 (fn-ipp-injected-octets *ipt-v3-1* *ipt-secret* *ipt-login* *ipt-cfg1*))
+       (s2 (fn-ipp-injected-octets *ipt-v3-2* *ipt-secret* (ipt-o "bob") *ipt-cfg1*)))
+   (and (fn-inj-injectedp *ipt-v3-1*) (fn-inj-injectedp *ipt-v3-2*)
+        (fn-inj-supplies-pathp *ipt-v3*)
+        (not (equal s1 s2))
+        (equal (fn-pb-path-agent s2 (fn-inj-decision-msgid *ipt-v3-2*)) *ipt-agent*)
+        (fn-pb-same-articlep (fn-inj-decision-msgid *ipt-v3-1*) s2 s1))))

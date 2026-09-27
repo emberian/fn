@@ -60,7 +60,7 @@
 
 (defun fn-ipp-accountp (secret login)
   (declare (xargs :guard t))
-  (and (fn-ns-secretp secret) (consp login)))
+  (and (fn-ns-ringp secret) (consp login)))
 
 (defun fn-ipp-params (secret login addr)
   (declare (xargs :guard t))

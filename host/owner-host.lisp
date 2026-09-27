@@ -185,16 +185,17 @@
 ; built as a list here: `fn-owner-output' is NIL, and the host writes the
 ; reply from the octet buffer that `fn-owner-reply-buffer' fills from
 ; `fn-owner-effects' (PRF-192, books/served-reply-buffer.lisp).
-;; SEC-006 (PRF-210): the node secret the native host read from
-;; STORE/keys/node-secret.key (host/native/owner.lisp
-;; fnn-owner-load-node-secret), installed into the configured owner after
-;; the open and after every recovery.  ACL2 decides whether the octets are
-;; a secret (fn-ns-secretp); the owner then carries it through every step.
-(defun fn-owner-install-node-secret (secret state)
+;; SEC-006 (PRF-210): the node's key ring the native host read from
+;; STORE/keys/ (host/native/owner.lisp fnn-owner-load-node-secret: the
+;; current entry, then each retained older epoch), installed into the
+;; configured owner after the open and after every recovery.  ACL2 decides
+;; whether the entries are a ring (fn-ns-ringp: every entry well formed,
+;; epochs strictly decreasing); the owner then carries it through every step.
+(defun fn-owner-install-node-secret (ring state)
   (declare (xargs :stobjs state :mode :program))
-  (if (fn-ns-secretp secret)
+  (if (fn-ns-ringp ring)
       (let ((state (fn-owner-replace-core
-                    (fn-own-with-node-secret (fn-owner-core state) secret)
+                    (fn-own-with-node-secret (fn-owner-core state) ring)
                     state)))
         (value :installed))
     (value :refused)))

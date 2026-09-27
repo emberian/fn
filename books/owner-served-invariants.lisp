@@ -64,27 +64,28 @@
 ; completion compared with the received octets names a different article
 ; (transit-436, 2026-09-24).
 ; SEC-006 (PRF-210): a local submission's are its injected octets with the
-; RFC 8315 lines the node writes for the submission's login under the node
-; secret SECRET (the owner's fn-own-node-secret): `Cancel-Lock:
-; sha256:lock(S, MSGID, LOGIN)' after the node's Injection-Info line and, on
-; a cancel or Supersedes, `Cancel-Key: sha256:K(S, TARGET, LOGIN)'
-; (books/cancel-lock.lisp fn-cl-served-payload).  Without a login (control,
-; BP, an unauthenticated POST) or a secret they are the injected octets.
+; RFC 8315 lines the node generates for the submission's account under the
+; key ring RING (the owner's fn-own-node-secret) IN FRONT: `Cancel-Lock:
+; sha256:lock(E, ACCOUNT, MSGID)' under the current epoch E and, on a
+; cancel or Supersedes, `Cancel-Key:' with one key per retained epoch
+; (books/cancel-lock.lisp fn-cl-served-payload).  Without an account
+; (control, BP, an unauthenticated POST) or a ring they are the injected
+; octets.  The lines are outside the D25 source (books/cancel-lock-lines.lisp
+; fn-cll-skip; fn-own-stored-octets-keep-the-injected-octets below).
 (defun fn-own-sub-stored-octets (cfg sub secret)
   (declare (xargs :guard t))
   (let ((d (fn-own-sub-decision sub)))
     (if (fn-peer-submissionp d)
         (fn-peer-relayed-octets cfg (fn-peer-submission-peer d)
                                 (fn-peer-submission-octets d))
-      (fn-cl-served-payload secret (fn-own-sub-login sub)
+      (fn-cl-served-payload secret (fn-own-sub-account sub)
                             (fn-inj-decision-msgid d)
                             (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
                                                     cfg)))))
 
 ;; The two arms, named by definition (they are not keystones).  A local or
-;; control submission's staged octets are its own: nothing is prepended, so
-;; for served POST the keystone below compares with the submission's octets
-;; exactly as before.  A transit submission's are fn-peer-relayed-octets of
+;; control submission's staged octets are the generated lines, if any, and
+;; its own injected octets.  A transit submission's are fn-peer-relayed-octets of
 ;; the received octets, whose Path is the received Path with this node's
 ;; identity and diagnostic prepended when a Path identity is set
 ;; (books/peer-inbound-invariants.lisp
@@ -92,7 +93,7 @@
 (defthm fn-own-sub-stored-octets-of-a-local-submission-by-definition
   (implies (not (fn-peer-submissionp (fn-own-sub-decision sub)))
            (equal (fn-own-sub-stored-octets cfg sub secret)
-                  (fn-cl-served-payload secret (fn-own-sub-login sub)
+                  (fn-cl-served-payload secret (fn-own-sub-account sub)
                                         (fn-own-sub-msgid sub)
                                         (fn-ipp-injected-octets
                                          (fn-own-sub-decision sub) secret
@@ -101,11 +102,10 @@
   :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets
                                      fn-own-sub-msgid))))
 
-;; Without a login and without a complaints address, the injected octets
-;; are stored as they are (no Injection-Info parameter, no Cancel-Lock).
-(defthm fn-own-sub-stored-octets-without-a-login-by-definition
+(defthm fn-own-sub-stored-octets-without-an-account-by-definition
   (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
-                (not (consp (fn-own-sub-login sub)))
+                (not (fn-cl-accountp (fn-own-sub-account sub)))
+                (not (fn-ipp-accountp secret (fn-own-sub-login sub)))
                 (not (fn-ipp-complaints cfg)))
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
@@ -129,38 +129,60 @@
 ; KEYSTONE (SEC-006, PRF-210; subject fn-own-sub-stored-octets, which
 ; host/owner-host.lisp fn-owner-take stages for the Store and
 ; fn-owner-finish-submission's gate compares with the durable record).  For
-; a served submission under login L, with the node secret installed and no
-; Cancel-Lock written by the poster, the stored octets are the injected
-; octets with exactly one Cancel-Lock line added, L's lock for the
-; submission's Message-ID, after the node's Injection-Info line (and, for a
-; cancel, the Cancel-Key line); by fn-cl-login-key-opens-exactly-its-lock,
-; L's key opens that lock and another login's key opens it only through a
-; collision.
-(defthm fn-own-stored-octets-carry-the-login-lock
+; a served submission by account A, with a key ring installed, no
+; Cancel-Lock written by the poster and no signature carrier, the stored
+; octets are exactly one Cancel-Lock line, A's lock for the submission's
+; Message-ID under the current key epoch, then (for a cancel) the Cancel-Key
+; line, then the injected octets unchanged; by
+; fn-cl-account-key-opens-exactly-its-lock, A's key opens that lock and
+; another account's key opens it only through a collision.
+(defthm fn-own-stored-octets-carry-the-account-lock
   (let* ((d (fn-own-sub-decision sub))
-         (login (fn-own-sub-login sub))
-         (x (fn-ipp-injected-octets d secret login cfg))
-         (fields (fn-ctl-received-fields x))
-         (k (fn-cll-info-end x 0 :start)))
+         (account (fn-own-sub-account sub))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg))
+         (fields (fn-ctl-received-fields x)))
     (implies (and (not (fn-peer-submissionp d))
-                  (fn-ns-secretp secret)
-                  (fn-cbor-octet-listp login) (consp login)
-                  (not (consp (fn-ctl-fields-named *fn-ctl-cancel-lock-name* fields)))
-                  k)
+                  (fn-cl-lock-wanted-p secret account fields))
              (equal (fn-own-sub-stored-octets cfg sub secret)
-                    (append (fn-cll-take k x)
-                            (fn-cll-line *fn-cll-lock-head*
-                                         (fn-cl-lock secret (fn-inj-decision-msgid d)
-                                                     login))
-                            (fn-cl-key-lines secret login fields)
-                            (fn-cll-drop k x)))))
+                    (append (fn-cll-line *fn-cll-lock-head*
+                                         (fn-cl-lock (fn-ns-current secret) account
+                                                     (fn-inj-decision-msgid d)))
+                            (if (consp (fn-cl-key-values secret account fields))
+                                (fn-cll-key-line (fn-cl-key-values secret account fields))
+                              nil)
+                            x))))
   :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
-                                  (fn-cl-served-payload fn-cl-lock fn-cl-key-lines
+                                  (fn-cl-served-payload fn-cl-lock fn-cl-key-values
                                    fn-ipp-injected-octets
-                                   fn-ctl-received-fields fn-cll-line
-                                   fn-cll-info-end fn-cll-take fn-cll-drop))
-           :use ((:instance fn-cl-served-payload-writes-one-login-lock
-                            (login (fn-own-sub-login sub))
+                                   fn-ctl-received-fields fn-cll-line fn-cll-key-line
+                                   fn-cl-lock-wanted-p))
+           :use ((:instance fn-cl-served-payload-writes-one-account-lock
+                            (ring secret)
+                            (account (fn-own-sub-account sub))
+                            (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
+                            (payload (fn-ipp-injected-octets
+                                      (fn-own-sub-decision sub) secret
+                                      (fn-own-sub-login sub) cfg)))))))
+
+; KEYSTONE (D25 restored, gpt-6's wave-5 review section 3; subject
+; fn-own-sub-stored-octets).  Whatever the key ring and the account, the
+; D25 projection (books/cancel-lock-lines.lisp fn-cll-skip, which
+; books/poster-bytes.lisp reads both compared payloads through) of the
+; octets a served submission stores is its injected octets: the generated
+; metadata never enters the source identity, so a same-source retry by
+; another account or after a key rotation compares exactly as the injected
+; articles do (books/cancel-lock-d25.lisp states the verdicts).
+(defthm fn-own-stored-octets-keep-the-injected-octets
+  (let* ((d (fn-own-sub-decision sub))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg)))
+    (implies (and (not (fn-peer-submissionp d))
+                  (not (equal (car x) 67)))
+             (equal (fn-cll-skip (fn-own-sub-stored-octets cfg sub secret)) x)))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
+                                  (fn-cl-served-payload fn-ipp-injected-octets))
+           :use ((:instance fn-cl-served-payload-projects-to-the-injected-octets
+                            (ring secret)
+                            (account (fn-own-sub-account sub))
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
                             (payload (fn-ipp-injected-octets
                                       (fn-own-sub-decision sub) secret

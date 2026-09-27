@@ -11,7 +11,9 @@
   (declare (xargs :guard (character-listp cs)))
   (if (consp cs) (cons (char-code (car cs)) (fn-pat-codes (cdr cs))) nil))
 
-(defconst *pat-secret* (make-list 32 :initial-element 7))
+(defconst *pat-secret*
+  (list (fn-ns-make-entry 1 (fn-pat-codes (coerce "local" 'list))
+                          (make-list 32 :initial-element 7))))
 (defconst *pat-alice* (fn-pat-codes (coerce "alice" 'list)))
 (defconst *pat-bob* (fn-pat-codes (coerce "bob" 'list)))
 
@@ -26,12 +28,22 @@
              (fn-pa-account-value *pat-secret* *pat-bob*))))
 (assert-event
  (not (equal (fn-pa-account-value *pat-secret* *pat-alice*)
-             (fn-pa-account-value (make-list 32 :initial-element 8) *pat-alice*))))
-; Domain separation: the value is not the hex of the Cancel-Lock MAC of the
-; same octets under the same secret.
+             (fn-pa-account-value
+              (list (fn-ns-make-entry 1 (fn-pat-codes (coerce "local" 'list))
+                                      (make-list 32 :initial-element 8)))
+              *pat-alice*))))
+; The node identity is in the key (HKDF salt): another identity, another value.
 (assert-event
  (not (equal (fn-pa-account-value *pat-secret* *pat-alice*)
-             (fn-pa-hex (fn-ns-cancel-lock-mac *pat-secret* *pat-alice*)))))
+             (fn-pa-account-value
+              (list (fn-ns-make-entry 1 (fn-pat-codes (coerce "other" 'list))
+                                      (make-list 32 :initial-element 7)))
+              *pat-alice*))))
+; Domain separation: the posting-account key is not the cancel-lock key of
+; the same epoch (HKDF info fn/posting-account/v1 against fn/cancel-lock/v1).
+(assert-event
+ (not (equal (fn-ns-posting-account-key *pat-secret*)
+             (fn-ns-cancel-lock-key (fn-ns-current *pat-secret*)))))
 
 ; fn-pa-account-value-depends-only-on-the-mac: its hypothesis is needed
 ; (two logins, one secret, two values: the witness above).

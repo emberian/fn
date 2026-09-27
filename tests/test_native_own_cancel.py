@@ -17,17 +17,26 @@ fn-ctl-withdrawal-authority-is-exactly-signer-or-poster).
   cancel alone.
 
 The node-written lines (Thunderbird's case: a client that writes no
-Cancel-Lock): alice posts T2 with none; the stored T2 carries exactly one
-`Cancel-Lock: sha256:...' the node wrote for her login under the node secret
-(books/owner-served-invariants.lisp fn-own-sub-stored-octets, keystone
-fn-own-stored-octets-carry-the-login-lock); bob's key-less cancel is filed
-and T2 stays; alice's key-less cancel gets the node's `Cancel-Key' for her
-login and T2 answers 430, is gone from OVER, stays gone after a restart, and
-a peer receiving T2 and her cancel decides the same.
+Cancel-Lock): alice posts T2 with none; the stored T2 opens with exactly one
+`Cancel-Lock: sha256:...' the node wrote for her account, IN FRONT of the
+injected block (books/cancel-lock.lisp fn-cl-served-payload, outside the D25
+source); bob's key-less cancel is filed and T2 stays; alice's key-less
+cancel gets the node's `Cancel-Key' for her account and T2 answers 430, is
+gone from OVER, stays gone after a restart, and a peer receiving T2 and her
+cancel decides the same.
 
-The node secret: init writes STORE/keys/node-secret.key (32 octets, 0600);
-start refuses by name when it is readable by others or missing, and
-`store ROOT node-secret' writes it once into a store without one.
+D25 across accounts and key epochs (gpt-6's wave-5 review section 3): bob
+POSTs alice's source again under its Message-ID and is told it is already
+stored, the held lock unchanged; bob's cancel withdraws nothing; the source
+with a changed user-supplied Cancel-Lock is a conflict; after `store ROOT
+node-secret rotate' alice's retry is still already stored, and her cancel
+after the rotation and a restart withdraws her pre-rotation post (the
+cancel carries one key per kept epoch).
+
+The key files: init writes STORE/keys/node-secret.key (a `fn-node-secret v1'
+file, 0600, directory 0700); `node-secret create' refuses by name while one
+exists; a start refuses by name when the file is readable by others or
+missing (and does not recreate it) or a kept epoch is missing.
 
 Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_own_cancel
 """
@@ -248,36 +257,129 @@ class NativeOwnCancelTests(unittest.TestCase):
             timeout=300, check=False)
         return result.returncode, (result.stdout + result.stderr).decode("utf-8", "replace")
 
+    def node_secret(self, node, *words, expected=0):
+        result = self.command([IMAGE, "--fn", "store", node["store"], "node-secret", *words],
+                              expected=expected)
+        return (result.stdout + result.stderr).decode("utf-8", "replace").strip()
+
     def test_node_secret_is_written_at_init_and_refused_by_name(self):
         node = self.initialize("s", False)
         key = node["store"] / "keys" / "node-secret.key"
-        seen = {"size": key.stat().st_size, "mode": oct(key.stat().st_mode & 0o777),
-                "dir mode": oct(key.parent.stat().st_mode & 0o777)}
         original = key.read_bytes()
+        seen = {"size": len(original), "magic": original[:18].decode("ascii", "replace"),
+                "mode": oct(key.stat().st_mode & 0o777),
+                "dir mode": oct(key.parent.stat().st_mode & 0o777)}
+        seen["create over existing"] = self.run_create_refused(node)
+        seen["unchanged"] = key.read_bytes() == original
         key.chmod(0o644)
         seen["world-readable"] = self.run_refused(node)
         key.chmod(0o600)
-        key.unlink()
+        key.rename(node["root"] / "node-secret.aside")
         seen["missing"] = self.run_refused(node)
-        seen["create"] = self.command([IMAGE, "--fn", "store", node["store"],
-                                       "node-secret"]).stdout.decode().strip()
-        seen["again"] = self.command([IMAGE, "--fn", "store", node["store"],
-                                      "node-secret"]).stdout.decode().strip()
-        seen["new size"] = key.stat().st_size
+        seen["not recreated"] = not key.exists()
+        seen["create"] = self.node_secret(node, "create")
         seen["new differs"] = key.read_bytes() != original
         self.start(node)
         print("NATIVE-NODE-SECRET-WITNESS " + json.dumps(seen, sort_keys=True))
-        self.assertEqual(seen["size"], 32, seen)
+        # magic 18, epoch 4, identity length 2, "local" 5, root 32
+        self.assertEqual(seen["size"], 61, seen)
+        self.assertEqual(seen["magic"], "fn-node-secret v1\n", seen)
         self.assertEqual(seen["mode"], "0o600", seen)
         self.assertEqual(seen["dir mode"], "0o700", seen)
+        self.assertNotEqual(seen["create over existing"][0], 0, seen)
+        self.assertIn("exists; refusing to replace it", seen["create over existing"][1], seen)
+        self.assertTrue(seen["unchanged"], seen)
         self.assertNotEqual(seen["world-readable"][0], 0, seen)
         self.assertIn("readable or writable by group or others", seen["world-readable"][1], seen)
         self.assertNotEqual(seen["missing"][0], 0, seen)
         self.assertIn("node-secret.key is missing", seen["missing"][1], seen)
-        self.assertEqual(seen["create"], "node-secret created", seen)
-        self.assertEqual(seen["again"], "node-secret present", seen)
-        self.assertEqual(seen["new size"], 32, seen)
+        self.assertTrue(seen["not recreated"], seen)
+        self.assertEqual(seen["create"], "node-secret created epoch 1", seen)
         self.assertTrue(seen["new differs"], seen)
+
+    def run_create_refused(self, node):
+        result = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(node["store"]), "node-secret", "create"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=300, check=False)
+        return result.returncode, (result.stdout + result.stderr).decode("utf-8", "replace")
+
+    def test_a_same_source_retry_is_already_stored_across_accounts_and_epochs(self):
+        try:
+            self.retry_scenario()
+        except BaseException:
+            for log in sorted(self.base.glob("*/node-*.log")):
+                print("== {}\n{}".format(log, log.read_bytes()[-3000:].decode(
+                    "utf-8", "replace")))
+            raise
+
+    def retry_scenario(self):
+        h = self.initialize("h", True)
+        self.start(h)
+        target = "<own-target-3@example.invalid>"
+        source = article(target)
+        seen = {}
+        lock_lines = lambda octets: [f.decode() for f in
+                                     octets.partition(b"\r\n\r\n")[0].split(b"\r\n")
+                                     if f.lower().startswith(b"cancel-lock:")]
+        seen["alice post"] = self.post(h, "alice", source)
+        held = self.fetch(h, target)
+        seen["held locks"] = lock_lines(held)
+        seen["bob retry"] = self.post(h, "bob", source)
+        seen["held unchanged after bob"] = self.fetch(h, target) == held
+        seen["changed user lock"] = self.post(h, "bob", article(
+            target, "Cancel-Lock: sha256:" + lock_of(key_of(b"bob client secret"))))
+        bob_id = "<own-cancel-bob-3@example.invalid>"
+        plain = lambda mid: (("\r\n".join([
+            "From: friend <friend@example.invalid>", "Newsgroups: fn.own.t",
+            "Subject: cmsg cancel " + target, "Message-ID: " + mid,
+            "Control: cancel " + target]) + "\r\n\r\ncancel\r\n").encode("ascii"))
+        seen["bob cancel"] = self.post(h, "bob", plain(bob_id))
+        seen["T3 after bob cancel"] = self.answer(h, target)
+        self.kill(h)
+        seen["rotate"] = self.node_secret(h, "rotate")
+        seen["kept epoch 1"] = (h["store"] / "keys" / "node-secret-1.key").is_file()
+        self.start(h)
+        seen["alice retry after rotation"] = self.post(h, "alice", source)
+        seen["held unchanged after rotation"] = self.fetch(h, target) == held
+        self.kill(h)
+        self.start(h)
+        alice_id = "<own-cancel-alice-3@example.invalid>"
+        seen["alice cancel"] = self.post(h, "alice", plain(alice_id))
+        seen["T3 after alice cancel"] = self.answer(h, target)
+        alice_cancel = self.fetch(h, alice_id)
+        seen["alice cancel keys"] = [f.decode() for f in
+                                     alice_cancel.partition(b"\r\n\r\n")[0].split(b"\r\n")
+                                     if f.lower().startswith(b"cancel-key:")]
+        self.kill(h)
+        kept = h["store"] / "keys" / "node-secret-1.key"
+        kept.rename(h["root"] / "kept.aside")
+        seen["kept epoch missing"] = self.run_refused(h)
+        (h["root"] / "kept.aside").rename(kept)
+        print("NATIVE-OWN-CANCEL-RETRY-WITNESS " + json.dumps(seen, sort_keys=True))
+
+        self.assertTrue(seen["alice post"].startswith("240"), seen)
+        self.assertEqual(len(seen["held locks"]), 1, seen)
+        self.assertIn("already stored here", seen["bob retry"], seen)
+        self.assertTrue(seen["held unchanged after bob"], seen)
+        self.assertIn("a different article with this Message-ID", seen["changed user lock"], seen)
+        self.assertTrue(seen["bob cancel"].startswith("240"), seen)
+        self.assertTrue(seen["T3 after bob cancel"].startswith("220"), seen)
+        self.assertEqual(seen["rotate"], "node-secret rotated epoch 2", seen)
+        self.assertTrue(seen["kept epoch 1"], seen)
+        self.assertIn("already stored here", seen["alice retry after rotation"], seen)
+        self.assertTrue(seen["held unchanged after rotation"], seen)
+        self.assertTrue(seen["alice cancel"].startswith("240"), seen)
+        self.assertTrue(seen["T3 after alice cancel"].startswith("430"), seen)
+        # One key per kept epoch, current first; the epoch-1 key opens T3's lock.
+        self.assertEqual(len(seen["alice cancel keys"]), 1, seen)
+        entries = [w.split("sha256:", 1)[1] for w in seen["alice cancel keys"][0].split()
+                   if w.startswith("sha256:")]
+        self.assertEqual(len(entries), 2, seen)
+        self.assertIn(seen["held locks"][0], ["Cancel-Lock: sha256:" + lock_of(k) for k in entries],
+                      seen)
+        self.assertNotEqual(seen["kept epoch missing"][0], 0, seen)
+        self.assertIn("retained epoch 1 missing", seen["kept epoch missing"][1], seen)
 
     def test_the_node_writes_the_lock_and_key_for_a_login(self):
         try:
@@ -299,10 +401,10 @@ class NativeOwnCancelTests(unittest.TestCase):
         seen["post T2"] = self.post(h, "alice", article(target))
         stored = self.fetch(h, target)
         header = stored.partition(b"\r\n\r\n")[0].split(b"\r\n")
-        info = [i for i, f in enumerate(header) if f.startswith(b"Injection-Info: ")]
         locks = [i for i, f in enumerate(header) if f.lower().startswith(b"cancel-lock:")]
         seen["T2 locks"] = [header[i].decode() for i in locks]
-        seen["lock follows Injection-Info"] = bool(info and locks and locks[0] == info[0] + 1)
+        # In front of the injected block: the first header line.
+        seen["lock is the first line"] = locks == [0]
         bob_id = "<own-cancel-bob-2@example.invalid>"
         alice_id = "<own-cancel-alice-2@example.invalid>"
         plain = lambda mid: (("\r\n".join([
@@ -334,7 +436,7 @@ class NativeOwnCancelTests(unittest.TestCase):
         self.assertTrue(seen["post T2"].startswith("240"), seen)
         self.assertEqual(len(seen["T2 locks"]), 1, seen)
         self.assertRegex(seen["T2 locks"][0], r"^Cancel-Lock: sha256:[A-Za-z0-9+/]{43}=$")
-        self.assertTrue(seen["lock follows Injection-Info"], seen)
+        self.assertTrue(seen["lock is the first line"], seen)
         self.assertTrue(seen["post bob cancel"].startswith("240"), seen)
         self.assertTrue(seen["T2 after bob"].startswith("220"), seen)
         self.assertEqual(len(seen["bob cancel keys"]), 1, seen)

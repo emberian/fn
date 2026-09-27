@@ -254,7 +254,7 @@
   (fn-native-operator-result-account-hash-login result))
 (defun fn-native-operator-host-account-hash-text (secret login)
   (declare (xargs :mode :program))
-  (if (and (fn-ns-secretp secret) (fn-ipp-login-wordp login))
+  (if (and (fn-ns-ringp secret) (fn-ipp-login-wordp login))
       (fn-record-octets-string (fn-ipp-account-hash secret login))
     nil))
 

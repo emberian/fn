@@ -715,6 +715,40 @@
 ; -----------------------------------------------------------------------------
 ; D25: the Injection-Info parameters are outside the authored-source identity.
 
+; Neither an injection nor its stored form with parameters opens with "C":
+; they open with this agent's Path line or with "Injection-" (so
+; books/cancel-lock-lines.lisp fn-cll-skip leaves them as they are).
+(local
+ (defthm fn-ipp-lines-open-with
+   (and (equal (car (append (fn-inj-path-line agent) x)) 80)
+        (equal (car (append (fn-ipp-block-with date msgid agent gid gdate params) x)) 73)
+        (equal (car (append (fn-inj-block date msgid agent gid gdate) x)) 73))
+   :hints (("Goal" :in-theory (enable fn-inj-path-line fn-ipp-block-with fn-inj-block
+                                      fn-inj-injection-date-line fn-inj-message-id-line
+                                      fn-inj-date-line fn-inj-injection-info-line
+                                      fn-inj-injection-info-line-with)
+            :cases ((or gid gdate))))))
+
+(defthm fn-ipp-an-injection-does-not-open-with-c
+  (let ((d (fn-inj-decide source config obs)))
+    (implies (fn-inj-injectedp d)
+             (and (not (equal (car (fn-ipp-injected-octets d secret login cfg)) 67))
+                  (not (equal (car (fn-inj-decision-octets d)) 67)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-ipp-lines-open-with fn-ipp-prefix-with
+                                               fn-ipp-inj-append-is-append
+                                               fn-ipp-append-assoc))
+           :cases ((fn-inj-supplies-pathp source))
+           :use ((:instance fn-ipp-injected-octets-carry-the-parameters)
+                 (:instance fn-inj-injected-octets-are-the-block-and-the-source)
+                 (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source)
+                 (:instance fn-ipp-prefix-is-the-path-line-and-the-block
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source))
+                            (x source))))))
+
 ; KEYSTONE (D25 with parameters; subject books/poster-bytes.lisp
 ; fn-pb-subject, the comparison subject fn-pb-same-articlep reads for the
 ; Store's duplicate test, which host/owner-host.lisp fn-owner-existing-action-
@@ -738,7 +772,14 @@
                                              '(fn-pb-subject car-cons cdr-cons))
            :use ((:instance fn-ipp-injected-octets-carry-the-parameters)
                  (:instance fn-inj-source-of-inverts-the-injection
-                            (observation obs))))))
+                            (observation obs))
+                 (:instance fn-ipp-an-injection-does-not-open-with-c)
+                 (:instance fn-cll-skip-of-an-article-not-opening-with-c
+                            (x (fn-ipp-injected-octets (fn-inj-decide source config obs)
+                                                       secret login cfg)))
+                 (:instance fn-cll-skip-of-an-article-not-opening-with-c
+                            (x (fn-inj-decision-octets
+                                (fn-inj-decide source config obs))))))))
 
 (local
  (defthm fn-ipp-a-configured-agent-has-no-lf
@@ -784,3 +825,10 @@
                                            (fn-ipp-params secret2 login2
                                                           (fn-ipp-complaints cfg2)))
                                           source)))))))
+
+; NOT PROVED (packet PKT-597-v3, named in the record): the same-article
+; theorem for a supplied Path (recipe v3).  The executed comparison reads
+; the block's agent through books/poster-bytes.lisp fn-pb-params-line-agent
+; (the plain branch refuses an "agent" holding ";", which a dot-atom never
+; does), and tests/acl2/injection-info-params-tests.lisp checks a v3 retry
+; under two logins concretely; the general walk is the open proof.

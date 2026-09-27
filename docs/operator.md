@@ -1560,28 +1560,59 @@ bounded by the profile's `max-credentials`.
 
 ## Deploy a new release (D34: fresh deploys, no migrations)
 
-A deploy is a reinstall. There is no in-place upgrade, no versioned release
-directory and no rollback of a store:
+A deploy is a reinstall of the release. There is no in-place upgrade, no
+versioned release directory and no rollback of a store. The release directory
+(one `libexec/fn/`) is replaced whole; the store directory is the node's
+persistent private state and stays (PKT-618, the coordinator's decision under
+D34). A fresh node is `init`ed instead; `init` also creates the node's key
+file.
 
 ```text
-fn operator NODE/fn.toml store export ARCHIVE     # only if the data must survive
-cp -p NODE/store/keys/node-secret.key NODE/node-secret.keep   # SEC-006, see below
-# stop the unit; remove NODE/store; install the release (one libexec/fn/, replaced whole)
-fn operator NODE/fn.toml store import ARCHIVE     # or: init
-mkdir -m 700 NODE/store/keys && cp -p NODE/node-secret.keep NODE/store/keys/node-secret.key
+# stop the unit; install the release (one libexec/fn/, replaced whole)
+# start the unit                                   # the store directory stays
+```
+
+Only when the store itself must be rebuilt (a store of another format is
+refused at open, below) does its history go through an archive. The archive is
+Store history, not a node backup: it never carries `STORE/keys/`, so the key
+files are moved into the new store directory before its first start:
+
+```text
+fn operator NODE/fn.toml store export ARCHIVE
+# stop the unit; install the release
+mv NODE/store/keys NODE/keys.keep && rm -r NODE/store
+fn operator NODE/fn.toml store import ARCHIVE
+mv NODE/keys.keep NODE/store/keys
 # start the unit
 ```
 
-The node secret (`STORE/keys/node-secret.key`, 32 octets, mode 0600; SEC-006)
-keys the Cancel-Lock the node writes for each login's posts. It is not in
-the archive (an archive is a backup, and backups do not carry secrets), so
-a reinstall that should keep logins able to cancel their earlier posts puts
-the old file back as above. `init` writes a new one; after an `import`
-without the old file, `fn --fn store NODE/store node-secret` writes a new one
-(posts locked under the old secret then cancel only by a signed canceller or
-the poster's own RFC 8315 key). The node refuses to start, by name, while
-the file is missing, is not 32 octets, or is readable or writable by group
-or others.
+### The node's key files (SEC-006)
+
+`STORE/keys/` (mode 0700) holds the node's protected root, one file per key
+epoch, each mode 0600: `node-secret.key` is the current epoch and
+`node-secret-E.key` each older epoch a rotation kept. The root keys the
+Cancel-Lock the node writes into each account's posts (and the
+posting-account value of Injection-Info); it is never printed, served,
+written into a configuration record or exported. Back up `STORE/keys/`
+separately from any archive, as private node state.
+
+```text
+fn --fn store STORE node-secret create [IDENTITY]   # once; init does it
+fn --fn store STORE node-secret rotate [IDENTITY]   # a new epoch; the old one is kept
+```
+
+`create` answers `node-secret created epoch 1` and refuses, exit 1, with
+`node secret STORE/keys/node-secret.key exists; refusing to replace it` when
+a secret exists: no verb replaces a secret. IDENTITY is the node identity the
+keys are bound to (`local` when omitted; a rotation keeps the current one
+unless another is given). `rotate` keeps the current file as
+`node-secret-E.key` and answers `node-secret rotated epoch E+1`; posts locked
+under any kept epoch stay cancellable by their poster. The node refuses to
+start, by name, while `node-secret.key` or a kept older epoch is missing, a
+file is readable or writable by group or others, or a file does not parse;
+a start never creates a secret. A store imported without its key files needs
+`node-secret create`, and the posts its accounts made before then cancel only
+by a signed canceller or the poster's own RFC 8315 key.
 
 The store has one format (`fn-store-8`). A store of any other format is
 refused at open by name (`open refused reason=store-format: reinstall from

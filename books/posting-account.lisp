@@ -2,16 +2,17 @@
 ;
 ; RFC 5536 section 3.2.8 lets an injecting agent name the account an
 ; article was posted from, "posting-account", and says it may be obscured.
-; fn obscures it with a key only the node holds (PKT-574, decided by the
-; coordinator 2026-09-26): the value is the lowercase hexadecimal
-; HMAC-SHA256 of the login under the node secret with the posting-account
-; domain label (books/node-secret.lisp fn-ns-posting-account-mac, the one
-; HMAC of the tree; the secret is the 32 octets `fn init' writes to
-; STORE/keys/node-secret.key, mode 0600, never in fn.toml and never
-; printed, and the owner carries them as fn-own-node-secret).  Cancel-Lock
-; MACs under the same secret with another label, and the two inputs never
-; coincide (fn-ns-cancel-lock-and-posting-account-inputs-differ).
-;
+; fn obscures it with a key only the node holds (PKT-574; gpt-6 wave-5
+; review section 3): the value is the lowercase hexadecimal HMAC-SHA256 of
+; the login under the posting-account purpose key of the owner's key ring,
+; HKDF-SHA256 of the current epoch's root with the node identity as salt
+; and the info label `fn/posting-account/v1' (books/node-secret.lisp
+; fn-ns-posting-account-key, fn-ns-posting-account-mac; the root is
+; STORE/keys/node-secret.key, mode 0600, never in fn.toml, never printed,
+; carried by the owner as fn-own-node-secret).  The Cancel-Lock key is the
+; same root under `fn/cancel-lock/v1'; the two HKDF inputs never coincide
+; (fn-ns-cancel-lock-and-posting-account-inputs-differ).  A key rotation
+; changes every login's value.
 ; What this book proves (PRF-206 (c)), over the functions the injecting
 ; agent calls:
 ;   * `fn-pa-account-value-is-hex': the value is exactly 64 octets, each a
@@ -89,13 +90,13 @@
 
 (defthm fn-pa-len-of-mac
   (equal (len (fn-pa-mac secret login)) 32)
-  :hints (("Goal" :in-theory (enable fn-ns-posting-account-mac fn-ns-mac
-                                     fn-ns-hmac-sha256))))
+  :hints (("Goal" :in-theory (disable fn-ns-posting-account-mac)
+           :use ((:instance fn-ns-posting-account-mac-shape (ring secret))))))
 
 (defthm fn-pa-mac-is-octets
   (fn-sha256-octet-listp (fn-pa-mac secret login))
-  :hints (("Goal" :in-theory (enable fn-ns-posting-account-mac fn-ns-mac
-                                     fn-ns-hmac-sha256))))
+  :hints (("Goal" :in-theory (disable fn-ns-posting-account-mac)
+           :use ((:instance fn-ns-posting-account-mac-shape (ring secret))))))
 
 (in-theory (disable fn-pa-mac))
 

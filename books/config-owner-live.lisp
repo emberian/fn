@@ -474,7 +474,8 @@
                             (configs (fn-sn-config-history st))))
            :in-theory (e/d (fn-ocl-view-historyp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep fn-cst-relation)
-                           (fn-cst-replay-node fn-cpr-replay fn-own-take
+                           (fn-ctl-withdrawal-effect fn-ctl-visible-articles
+                            fn-cst-replay-node fn-cpr-replay fn-own-take
                             fn-own-view-make-group-indexed fn-ctl-refresh-state-is-visible
                             fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
                             fn-ctl-visible-state fn-ctl-visible-state-of
@@ -570,7 +571,8 @@
            :in-theory (e/d (fn-ocl-view-configp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep
                             fn-ocl-store-config)
-                           (fn-cpr-replay fn-own-take
+                           (fn-ctl-withdrawal-effect fn-ctl-visible-articles
+                            fn-cpr-replay fn-own-take
                             fn-own-view-make-group-indexed)))))
 
 (defthm fn-ocl-complete-preserves-full-historical-relation
@@ -1613,7 +1615,8 @@
   :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-finish-read
                                     fn-own-set-conns fn-own-enqueue
                                     fn-own-shapep fn-own-make)
-                                   (fn-served-step fn-own-conn-boundedp)))))
+                                   (fn-ctl-withdrawal-effect fn-ctl-visible-articles
+                            fn-served-step fn-own-conn-boundedp)))))
 
 (defthm fn-ocl-own-read-keeps-owner-control
   (let ((next (cdr (fn-own-read o id octets))))

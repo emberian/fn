@@ -336,7 +336,7 @@
           fn-own-read-step fn-own-close fn-own-open-preserves-relation
           fn-own-open-peer-preserves-relation fn-own-read-preserves-relation
           fn-own-read-step-preserves-relation
-          fn-own-close-preserves-relation)))))
+          fn-own-close-preserves-relation fn-own-reader-context)))))
 
 ; Exact non-store effects: the configuration generation, pin table, and
 ; staged configuration record are unchanged by prepare.

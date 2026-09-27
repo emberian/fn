@@ -580,14 +580,21 @@
   (declare (xargs :guard t))
   (if (fn-auth-session-subject as) (fn-auth-session-pending as) nil))
 
-(defun fn-served-submit-effect (decision login)
+; The account (PKT-597 with SEC-006): the session's subject, the principal
+; id the credential that authenticated names (books/owner.lisp
+; fn-own-sub-account; the Cancel-Lock owner), read at the same event.
+(defun fn-served-account (as)
   (declare (xargs :guard t))
-  (list :submit decision login))
+  (fn-auth-session-subject as))
+
+(defun fn-served-submit-effect (decision login account)
+  (declare (xargs :guard t))
+  (list :submit decision login account))
 
 (defun fn-served-submit-effectp (effect)
   (declare (xargs :guard t :verify-guards nil))
   (and (true-listp effect)
-       (equal (len effect) 3)
+       (equal (len effect) 4)
        (equal (car effect) :submit)
        (or (fn-inj-injectedp (car (cdr effect)))
            (fn-peer-submissionp (car (cdr effect))))))
@@ -679,11 +686,13 @@
                           (fn-served-conn-group-index conn) (fn-served-conn-control conn))
      (mbe :logic (append effects
                          (if submission
-                             (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))))
+                             (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))
+                                (fn-served-account (fn-served-conn-session conn))))
                            nil))
           :exec (fn-ag-append effects
                               (if submission
-                                  (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))))
+                                  (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))
+                                (fn-served-account (fn-served-conn-session conn))))
                                 nil))))))
 
 ; Local projections of one dispatch, in accessor vocabulary, so that nothing
@@ -744,7 +753,8 @@
                     (if (fn-post-result-submission r)
                         (list (fn-served-submit-effect
                                (fn-post-result-submission r)
-                               (fn-served-login (fn-served-conn-session conn))))
+                               (fn-served-login (fn-served-conn-session conn))
+                                (fn-served-account (fn-served-conn-session conn))))
                       nil))))
    :hints (("Goal" :in-theory (disable fn-auth-step-pinned fn-post-offeredp
                                        fn-wire-begin-article-with-line-limit
@@ -1207,6 +1217,20 @@
         (fn-served-submission-login (cdr effects)))
     nil))
 
+(defun fn-served-submission-account (effects)
+  (declare (xargs :guard t))
+  (if (consp effects)
+      (if (and (consp (car effects))
+               (equal (car (car effects)) :submit)
+               (consp (cdr (car effects)))
+               (car (cdr (car effects))))
+          (if (and (consp (cdr (cdr (car effects))))
+                   (consp (cdr (cdr (cdr (car effects))))))
+              (car (cdr (cdr (cdr (car effects)))))
+            nil)
+        (fn-served-submission-account (cdr effects)))
+    nil))
+
 ; DEFECT REPAIRED 2026-09-20 (w6/peering-inbound-2): without the
 ; fn-served-effectsp hypothesis this is FALSE.  Counterexample:
 ; left = ((:submit nil)), right = ((:submit 5)).  fn-served-submission
@@ -1235,6 +1259,17 @@
                   (if (fn-served-submission left)
                       (fn-served-submission-login left)
                     (fn-served-submission-login right))))
+  :hints (("Goal" :in-theory (e/d (fn-served-effectsp fn-served-effectp
+                                   fn-served-submit-effectp)
+                                  ((:d fn-inj-injectedp)
+                                   (:d fn-peer-submissionp))))))
+
+(defthm fn-served-submission-account-of-append
+  (implies (fn-served-effectsp left)
+           (equal (fn-served-submission-account (append left right))
+                  (if (fn-served-submission left)
+                      (fn-served-submission-account left)
+                    (fn-served-submission-account right))))
   :hints (("Goal" :in-theory (e/d (fn-served-effectsp fn-served-effectp
                                    fn-served-submit-effectp)
                                   ((:d fn-inj-injectedp)
