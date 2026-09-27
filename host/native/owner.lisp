@@ -2205,6 +2205,42 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
       (when (null workers) (return))
       (dolist (worker workers) (sb-thread:join-thread worker)))))
 
+;;; Garbage between collections in the owner process.  SBCL's default
+;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
+;;; so 1,600 MiB): the heap census of 2026-09-25
+;;; (planning/evidence/rep-heap-2026-09-25.md) found that headroom to be the
+;;; largest term of the owner's resident set at every size measured, 1.4 to
+;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  During
+;;; recovery and a checkpoint publication the owner uses io.lisp's
+;;; fnn-gc-nursery-octets (64 MiB, less at a reservation under 1 GiB).  This
+;;; bounds collection work and dead memory, not data: the live heap is the
+;;; store's and grows with it; only the garbage allowed to pile up between
+;;; two collections is capped.  It decides nothing ACL2 decides.
+
+;;; The trigger while the owner serves (HST-025, lane image-floor).  The open
+;;; (recovery: the checkpoint decode and the suffix replay) and a checkpoint
+;;; publication allocate in proportion to the retained history and keep
+;;; fnn-gc-nursery-octets (PKT-316: a smaller trigger there slows the
+;;; reopen).  A served command allocates in proportion to one request, so
+;;; between accepts the garbage allowed to pile up is this much, and the
+;;; owner's resident set is the live heap plus this, not plus 64 MiB.  It
+;;; bounds dead memory and collection spacing, never data; it decides nothing
+;;; ACL2 decides.
+(defparameter +fnn-owner-service-nursery-octets+ (* 8 1024 1024))
+
+(defun fnn-owner-service-nursery ()
+  "Serving: the small trigger, unless a publication (which set the large one)
+is running; the publication restores this one when it ends."
+  (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-service-nursery-octets+))
+
+(defun fnn-owner-release-recovery-garbage ()
+  "Recovery is done and nothing is served yet: one full collection, after
+which SBCL returns the pages the recovery's garbage occupied to the system
+(a collection of the oldest generation remaps the free pages), so the
+resident set the owner serves from is its live heap, not the recovery's
+high-water mark.  Work proportional to the live heap, once per start."
+  (sb-ext:gc :full t))
+
 (defun fnn-owner-publish-captured (service captured)
   "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
 captured under the owner mutex (NEXT, the capture of the history at the
@@ -2220,6 +2256,10 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
+  ;; The publication allocates in proportion to the history: the open's
+  ;; trigger while it runs, the service trigger again when it ends.
+  (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
+  (unwind-protect
   (destructuring-bind (base configs records segment count suffix budget frontier free revision)
       captured
     (declare (ignore count))
@@ -2277,7 +2317,8 @@ the crash keystone) and serving continues."
           (setf (fnn-owner-service-publisher service) nil
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq)))))))
+                        (fnn-owner-service-workers service) :test #'eq))))))
+    (fnn-owner-service-nursery)))
 
 (defun fnn-owner-maybe-publish (service)
   "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
@@ -2409,24 +2450,13 @@ thread is a worker, so the stop joins it with the clients."
                     (fnn-owner-service-stopping service))
           (error condition))))))
 
-;;; Garbage between collections in the owner process.  SBCL's default
-;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
-;;; so 1,600 MiB): the heap census of 2026-09-25
-;;; (planning/evidence/rep-heap-2026-09-25.md) found that headroom to be the
-;;; largest term of the owner's resident set at every size measured, 1.4 to
-;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  This
-;;; bounds collection work and dead memory, not data: the live heap is the
-;;; store's and grows with it; only the garbage allowed to pile up between
-;;; two collections is capped.  It decides nothing ACL2 decides.
-(defparameter +fnn-owner-gc-nursery-octets+ (* 64 1024 1024))
-
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port more-addresses)
   "Run one service from already-normalized boundary values.
 MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 `[listener] host' list (NNT-041); each gets the same port and TLS port."
-  (setf (sb-ext:bytes-consed-between-gcs) +fnn-owner-gc-nursery-octets+)
+  (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
@@ -2508,6 +2538,9 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                                                 :backlog +fnn-owner-listen-backlog+)))
                               (push extra more-listeners)
                               (fnn-owner-start-tls-accept service extra nil))))
+                        ;; Recovery is done: from here the owner serves.
+                        (fnn-owner-release-recovery-garbage)
+                        (fnn-owner-service-nursery)
                         (fnn-out "LISTENING ~d" bound-port)
                         ;; PRF-162: the implicit-TLS listener ACL2 offered
                         ;; (fn-native-operator-result-run-implicit-tls-port),

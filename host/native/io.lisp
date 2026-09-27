@@ -4290,6 +4290,17 @@ serialized profile when the saved image later starts."
          (need 4)
          (fnn-command-reader (parse-integer (second args)) (string= (third args) "1")
                              (fnn-dash-nil (fourth args))))
+        ;; HST-025: a guard violation at the host boundary, on purpose.  The
+        ;; saved world is the execution world (host/native/strip-world.lisp);
+        ;; this is the native witness that a guard failure inside fnn-call is
+        ;; still the same fault line and exit code
+        ;; (tests/test_native_image_floor.py).  Developer image only.
+        ((string= verb "guard-probe")
+         (unless (fnn-developer-image-p)
+           (error 'fnn-usage-error
+                  :message "guard-probe is available only in the developer image"))
+         (fnn-core 'fn-sha256-of-string 42)
+         +fnn-exit-ok+)
         ((string= verb "model")
          (need 3)
          (fnn-command-model (second args) (fnn-dash-nil (third args))))
@@ -4312,16 +4323,28 @@ serialized profile when the saved image later starts."
         (t (error 'fnn-usage-error :message (format nil "unknown verb ~a" verb)))))))
 
 ;;; The collection trigger for every entry of the image, the operator verbs
-;;; included: the owner set it in fnn-owner-run alone (host/native/owner.lisp
-;;; +fnn-owner-gc-nursery-octets+), so `store checkpoint', `recover' and the
+;;; included: the owner once set it in fnn-owner-run alone, so `store checkpoint', `recover' and the
 ;;; other offline verbs replayed a history under SBCL's default of 5% of the
 ;;; dynamic space (1.6 GB at the launcher's 32 GB) and let that much garbage
 ;;; pile up between collections (rep-wave-d baseline, section 1.2).  It bounds
 ;;; dead memory, never data, and decides nothing ACL2 decides.
 (defparameter +fnn-gc-nursery-octets+ (* 64 1024 1024))
 
+;;; HST-025: the trigger is also bounded by the dynamic space this process
+;;; reserved.  SBCL's own default is a fixed fraction of it (5%); a copying
+;;; collection of the nursery needs up to the nursery again in free space, so
+;;; at a small reservation a 64 MiB trigger is 128 MiB of headroom the live
+;;; heap cannot use.  A sixteenth of the reservation, at most
+;;; +fnn-gc-nursery-octets+ (every reservation of 1 GiB or more, and the
+;;; figure heap-from-profile's derivation assumes) and at least 8 MiB.
+(defparameter +fnn-gc-nursery-least-octets+ (* 8 1024 1024))
+
+(defun fnn-gc-nursery-octets ()
+  (max +fnn-gc-nursery-least-octets+
+       (min +fnn-gc-nursery-octets+ (floor (sb-ext:dynamic-space-size) 16))))
+
 (defun fnn-main ()
-  (setf (sb-ext:bytes-consed-between-gcs) +fnn-gc-nursery-octets+)
+  (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (fnn-open-streams)
   ;; A peer that closed first must surface as EPIPE, never as a signal that
   ;; ends the listener; Python ignores SIGPIPE at interpreter start.

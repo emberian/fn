@@ -3960,6 +3960,37 @@
         "planning/evidence/store-mount-identity-2026-09-27.md"
       ],
       "implementation_note": "Lane store-mount-identity (2026-09-27; PKT-579, PKT-648). The record filesystem-identity.fnmi (FNMI frame: fsid, type, mount point, source, policy) is written by init, store import and the developer probe; fnn-acquire asks fn-smid-open-verdict before any other read; fnn-owner-install asks fn-smid-start-verdict; `store rebind-filesystem [--storage-require-durable on|off]` (operator) and `store ROOT rebind-filesystem [on|off]` (developer). Policy 1 under a mission's configuration, 0 otherwise; every open warns on nobarrier/barrier=0/tmpfs/ramfs."
+    },
+    {
+      "id": "HST-025",
+      "title": "The saved image carries the execution world only, the owner serves on a small collection trigger, and the node's thread stacks are the profile's measured need: a fresh node starts in, serves from and refuses a guard violation within a 256 MB dynamic space, and a reservation the machine cannot hold is refused by name",
+      "specification": "specs/host.md#the-saved-images-memory",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-198"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "measurement"
+      ],
+      "evidence": [
+        "host/native/strip-world.lisp",
+        "host/native/build.lisp",
+        "host/native/build-dtn.lisp",
+        "host/native/owner.lisp",
+        "tools/build_native_host.sh",
+        "tests/test_native_image_floor.py",
+        "tools/runtime_image/node_measure.py",
+        "planning/evidence/image-floor-2026-09-26.md",
+        "host/native/io.lisp",
+        "books/heap-reservation.lisp",
+        "host/native/heap.lisp",
+        "packaging/fn",
+        "tests/acl2/heap-reservation-tests.lisp"
+      ],
+      "implementation_note": "Before save-exec the build keeps, at their current value, the twelve execution properties on every symbol and the other world pairs a node was recorded reading (lane image-anatomy), over a bottom of command 0, event 0 and project-dir-alist; it drops the build residue (channel symbols, documentation, defconst discriminators, the build-sized hons space and memoize array). A re-save of the stripped core was measured worse and is not taken. Core dynamic content 271.4 -> 105.6 MiB (hbox), 265.9 -> 106.2 (OpenBSD). The owner collects every 64 MiB during recovery and a publication (a sixteenth of a reservation under 1 GiB), once fully after recovery, and every 8 MiB while serving. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packets. The thread stacks: books/heap-reservation.lisp fn-heap-reserve-decide (PRF-198's extension) adds the core once more and THREADS x (STACK + 4 MiB) to heap-figure's heap, STACK a constant 1,024 KiB (seven times the 142 KiB the node needs whatever the article since lane served-line-iterative made the served path's per-line recursions loops; before, a per-line term, 1,192 KiB for the 32 KiB-article presets; the image's launcher passed 64 MiB), and refuses a total past the machine by name; the installed launcher passes --control-stack-size."
     }
   ]
 }

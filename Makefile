@@ -214,6 +214,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
 	books/heap-figure \
+	books/heap-reservation \
+	tests/acl2/heap-reservation-tests \
 	tests/acl2/heap-figure-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \

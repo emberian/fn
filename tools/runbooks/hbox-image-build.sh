@@ -33,6 +33,10 @@ echo "== validate dtn"
 FN_ACL2=$ACL2 run_logged build/freeze/validate-dtn.txt python3 tools/proof_artifacts.py validate --profile dtn --acl2 "$ACL2"
 echo "== build production"
 FN_ACL2=$ACL2 FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host FN_NATIVE_LOG=build/freeze/native-build-production.log swarm-build sh tools/build_native_host.sh
+echo "== build reference"
+# The production image with its full world: the developer/reference twin the
+# release (stripped, above) is qualified against (gpt-6's wave-5 review s.4).
+FN_ACL2=$ACL2 FN_NATIVE_PROFILE=production FN_NATIVE_WORLD=full FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host-reference FN_NATIVE_LOG=build/freeze/native-build-reference.log swarm-build sh tools/build_native_host.sh
 echo "== build developer"
 FN_ACL2=$ACL2 FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host-developer FN_NATIVE_LOG=build/freeze/native-build-developer.log swarm-build sh tools/build_native_host.sh
 echo "== build dtn"

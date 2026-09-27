@@ -14,6 +14,16 @@ tools/msgid_measure.py.  A measurement only: it decides nothing a node does.
         takes one POST (240) and serves it back (220); bisection to 8 MB.
     node_measure.py core IMAGE
         the runtime's own figure: "dynamic space too small for core: N KiB".
+    node_measure.py checkpoint IMAGE WORK [--heap MB]
+        (lane image-floor) a fresh development-profile store: POSTs of 2,048
+        octets until the owner logs `CHECKPOINT auto'; VmRSS/VmHWM after the
+        publication; then stop, start again on that store (the reopen):
+        seconds to LISTENING and VmRSS after it.
+    node_measure.py reopen-floor IMAGE WORK [--lo MB --hi MB]
+        (lane image-floor) the smallest heap at which the owner reopens the
+        store a `run' left in WORK and serves its first article.
+`run' also stops the owner after the POSTs and starts it again on the same
+store: reopen seconds and VmRSS after the reopen, and per-POST median/p95 ms.
 Output: one JSON line on stdout.
 """
 from __future__ import annotations
@@ -38,6 +48,10 @@ def env_for(heap):
     env = dict(os.environ)
     if heap:
         env["SBCL_USER_ARGS"] = "--dynamic-space-size %dMB" % heap
+    # NM_STACK_MB: the control stack of every thread (the launcher's is 64).
+    if os.environ.get("NM_STACK_MB"):
+        env["SBCL_USER_ARGS"] = (env.get("SBCL_USER_ARGS", "") +
+                                 " --control-stack-size %sMB" % os.environ["NM_STACK_MB"])
     return env
 
 
@@ -63,7 +77,24 @@ def fresh(image, work, env, profile=DEVELOPMENT):
 
 
 def rss(pid):
-    return {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM")}
+    if os.path.exists("/proc/%d/status" % pid):
+        doc = {"rss_kib": r.status_kib(pid, "VmRSS"), "hwm_kib": r.status_kib(pid, "VmHWM")}
+        # The resident set counts the core file's clean pages, and how many of
+        # those a first touch maps depends on the page cache (fault-around);
+        # the anonymous figure is the process's own memory, the same whatever
+        # the cache holds.
+        try:
+            for row in Path("/proc/%d/smaps_rollup" % pid).read_text().splitlines():
+                key = row.split(":")[0]
+                if key in ("Anonymous", "Private_Dirty", "Pss"):
+                    doc[key.lower() + "_kib"] = int(row.split()[1])
+        except OSError:
+            pass
+        return doc
+    # OpenBSD (no /proc): ps(1)'s resident set in KiB; no high-water mark.
+    out = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], stdout=subprocess.PIPE,
+                         check=True).stdout
+    return {"rss_kib": int(out.split()[0]), "hwm_kib": None}
 
 
 def multiline(c, out):
@@ -113,11 +144,15 @@ def run(a):
         r.post(c, 0, OCTETS)
         doc["after_1"] = rss(proc.pid)
         t0 = time.perf_counter()
+        times = []
         for i in range(1, a.posts):
+            t1 = time.perf_counter()
             r.post(c, i, OCTETS)
+            times.append(time.perf_counter() - t1)
             if i + 1 in (100, 1000, 10000):
                 doc["after_%d" % (i + 1)] = rss(proc.pid)
         doc["post_s"] = round(time.perf_counter() - t0, 3)
+        doc["post_ms"] = latency(times)
         c.close()
         if a.transcript:
             data = transcript(port, min(a.posts, 20))
@@ -127,6 +162,66 @@ def run(a):
     finally:
         r.stop_owner(proc, err)
     doc["owner_rc"] = proc.returncode
+    try:
+        proc, reopen_s, err = r.start_owner(image, config, env, work / "owner.stderr",
+                                            timeout=600)
+    except BaseException as e:  # the reopen died before LISTENING (a heap too small)
+        doc["reopen"] = "failed: %s" % str(e)[:160]
+        return doc
+    try:
+        doc["reopen_s"] = round(reopen_s, 3)
+        time.sleep(1.0)
+        doc["after_reopen"] = rss(proc.pid)
+    finally:
+        r.stop_owner(proc, err)
+    return doc
+
+
+def latency(times):
+    if not times:
+        return None
+    t = sorted(times)
+    return {"median": round(1000 * t[len(t) // 2], 3),
+            "p95": round(1000 * t[min(len(t) - 1, int(len(t) * 0.95))], 3)}
+
+
+def checkpoint(a):
+    """POST until the owner publishes a checkpoint; then the reopen."""
+    image, work = Path(a.image), Path(a.work)
+    env = env_for(a.heap)
+    config, port = fresh(image, work, env)
+    log = work / "owner.stderr"
+    if log.exists():
+        log.unlink()
+    doc = {"image": str(image), "heap_mb": a.heap, "profile": "development"}
+    proc, start_s, err = r.start_owner(image, config, env, log, timeout=600)
+    try:
+        doc["start_s"] = round(start_s, 3)
+        c = m.Conn(port)
+        line = None
+        for i in range(a.max_posts):
+            r.post(c, i, OCTETS)
+            err.flush()
+            line = next((l for l in log.read_text(errors="replace").splitlines()
+                         if "CHECKPOINT auto " in l), None)
+            if line:
+                doc["posts"] = i + 1
+                break
+        c.close()
+        if not line:
+            raise RuntimeError("no CHECKPOINT auto after %d posts" % a.max_posts)
+        doc["checkpoint_line"] = line.strip()
+        time.sleep(1.0)
+        doc["after_publication"] = rss(proc.pid)
+    finally:
+        r.stop_owner(proc, err)
+    proc, reopen_s, err = r.start_owner(image, config, env, log, timeout=600)
+    try:
+        doc["reopen_s"] = round(reopen_s, 3)
+        time.sleep(1.0)
+        doc["after_reopen"] = rss(proc.pid)
+    finally:
+        r.stop_owner(proc, err)
     return doc
 
 
@@ -175,6 +270,111 @@ def floor(a):
         else:
             lo = mid
     return {"image": str(image), "floor_mb": hi, "failed_at_mb": lo, "trials": rows}
+
+
+def reopen_floor(a):
+    """The smallest heap at which the owner reopens the store `run' left in
+    WORK (its fn.toml) and serves its first article back; bisection to 8 MB."""
+    image, work = Path(a.image), Path(a.work)
+    config = work / "fn.toml"
+    port = int(re.search(r"port = (\d+)", config.read_text()).group(1))
+
+    def attempt(heap):
+        env = env_for(heap)
+        try:
+            proc, secs, err = r.start_owner(image, config, env, work / "reopen.stderr",
+                                            timeout=600)
+        except BaseException as e:
+            return False, "start: %s" % str(e)[:120]
+        try:
+            c = m.Conn(port)
+            _, reply, _ = r.timed_multiline(c, "ARTICLE %s" % m.msgid(0))
+            c.close()
+            return reply.startswith(b"220"), "%.3f s %s" % (secs, reply[:12])
+        except BaseException as e:
+            return False, "session: %s" % str(e)[:120]
+        finally:
+            try:
+                r.stop_owner(proc, err)
+            except BaseException:
+                pass
+
+    lo, hi = a.lo, a.hi
+    rows = []
+    ok, why = attempt(hi)
+    rows.append([hi, ok, why])
+    if not ok:
+        return {"image": str(image), "reopen_floor_mb": None, "trials": rows}
+    while hi - lo > 8:
+        mid = (lo + hi) // 2
+        ok, why = attempt(mid)
+        rows.append([mid, ok, why])
+        if ok:
+            hi = mid
+        else:
+            lo = mid
+    return {"image": str(image), "reopen_floor_mb": hi, "failed_at_mb": lo, "trials": rows}
+
+
+def stack_trial(image, work, heap, stack_kib, octets):
+    """One article of OCTETS under a control stack of STACK_KIB per thread:
+    POST, ARTICLE back, stop, reopen, ARTICLE back again."""
+    env = env_for(heap)
+    env["SBCL_USER_ARGS"] = env.get("SBCL_USER_ARGS", "") + " --control-stack-size %dKB" % stack_kib
+    try:
+        config, port = fresh(image, work, env, ["--profile", "default"])
+    except RuntimeError as e:
+        return False, "init: %s" % str(e)[:200]
+    for phase in ("post", "reopen"):
+        try:
+            proc, _, err = r.start_owner(image, config, env, work / "owner.stderr", timeout=300)
+        except BaseException as e:
+            return False, "%s start: %s" % (phase, str(e)[:160])
+        try:
+            if phase == "post":
+                c = m.Conn(port)
+                r.post(c, 0, octets)
+                c.close()
+            c = m.Conn(port)
+            _, reply, _ = r.timed_multiline(c, "ARTICLE %s" % m.msgid(0))
+            c.close()
+            if not reply.startswith(b"220"):
+                return False, "%s ARTICLE: %r" % (phase, reply[:60])
+        except BaseException as e:
+            return False, "%s session: %s" % (phase, str(e)[:160])
+        finally:
+            try:
+                r.stop_owner(proc, err)
+            except BaseException:
+                pass
+    return True, "posted, served, reopened, served"
+
+
+def stack_floor(a):
+    """(lane image-floor) the smallest control stack (KiB, per thread) at which
+    one article of --octets is posted, served, reopened and served again;
+    bisection to 64 KiB."""
+    image, work = Path(a.image), Path(a.work)
+    if a.line_octets:
+        # Body lines of LINE_OCTETS octets (CRLF included), none starting with
+        # a dot: the stack a request needs grows with its line count.
+        r.LINE = b"x" * (a.line_octets - 2) + b"\r\n"
+    lo, hi = a.lo, a.hi
+    rows = []
+    ok, why = stack_trial(image, work, a.heap, hi, a.octets)
+    rows.append([hi, ok, why])
+    if not ok:
+        return {"image": str(image), "octets": a.octets, "stack_floor_kib": None, "trials": rows}
+    while hi - lo > 64:
+        mid = (lo + hi) // 2
+        ok, why = stack_trial(image, work, a.heap, mid, a.octets)
+        rows.append([mid, ok, why])
+        if ok:
+            hi = mid
+        else:
+            lo = mid
+    return {"image": str(image), "octets": a.octets, "heap_mb": a.heap,
+            "line_octets": a.line_octets or 80, "stack_floor_kib": hi, "failed_at_kib": lo, "trials": rows}
 
 
 def core(a):
@@ -271,8 +471,25 @@ def main():
     q.add_argument("--posts", type=int, default=100)
     q = s.add_parser("core")
     q.add_argument("image")
+    q = s.add_parser("reopen-floor")
+    q.add_argument("image"); q.add_argument("work")
+    q.add_argument("--lo", type=int, default=128)
+    q.add_argument("--hi", type=int, default=1024)
+    q = s.add_parser("stack-floor")
+    q.add_argument("image"); q.add_argument("work")
+    q.add_argument("--octets", type=int, default=32768)
+    q.add_argument("--heap", type=int, default=4096)
+    q.add_argument("--lo", type=int, default=64)
+    q.add_argument("--hi", type=int, default=65536)
+    q.add_argument("--line-octets", type=int, default=0)
+    q = s.add_parser("checkpoint")
+    q.add_argument("image"); q.add_argument("work")
+    q.add_argument("--heap", type=int, default=1024)
+    q.add_argument("--max-posts", type=int, default=200)
     a = p.parse_args()
-    doc = {"run": run, "floor": floor, "core": core, "probe": probe}[a.cmd](a)
+    doc = {"run": run, "floor": floor, "core": core, "probe": probe,
+           "checkpoint": checkpoint, "reopen-floor": reopen_floor,
+           "stack-floor": stack_floor}[a.cmd](a)
     print(json.dumps(doc, sort_keys=True))
 
 
