@@ -137,14 +137,13 @@
 
 ; A journal record's sequence, read off the WIRE event its octets decode to
 ; (fn-rcon-wire-event-sequence-is-wire-event-sequence, books/records-concrete):
-; the host names and orders transaction files by it before any intern.
+; the host names and orders transaction files by it before any intern.  It is
+; books/store-recover-stream.lisp fn-srs-record-sequence, whose check the
+; streaming open makes inside its one decode (fn-srs-checked-decode,
+; KEYSTONE fn-srs-checked-decode-is-the-per-file-check).
 (defun fn-store-record-sequence (octets)
   (declare (xargs :mode :program))
-  (let ((decoded (fn-store-event-decode-exact octets)))
-    (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
-        (fn-rcon-wire-event-sequence (car (cdr decoded)))
-      -1)))
+  (fn-srs-record-sequence octets))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program))

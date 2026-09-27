@@ -132,3 +132,75 @@
                    (not (fn-srs-chunk-fullp 1048575))
                    (fn-srs-chunk-fullp 1048576)
                    (fn-srs-chunk-fullp 10485760)))
+
+; -----------------------------------------------------------------------------
+; The numbered chunk (section 5; host/native/io.lisp fnn-recover-file-chunks
+; answers fn-srs-checked-decode of ((FILE-NUMBER . RECORD) ...)).
+
+(defconst *srst-numbered* (list (cons 0 *srst-r0*) (cons 1 *srst-r1*) (cons 2 *srst-r2*)))
+
+; The per-file check's function reads each record's sequence.
+(assert-event (and (equal (fn-srs-record-sequence *srst-r0*) 0)
+                   (equal (fn-srs-record-sequence *srst-r1*) 1)
+                   (equal (fn-srs-record-sequence *srst-r2*) 2)
+                   (equal (fn-srs-record-sequence *srst-corrupt*) -1)))
+
+; Reachable positive witness of fn-srs-checked-decode-is-the-per-file-check:
+; a numbered chunk whose records decode and whose numbers are their
+; sequences.  Antecedent (no hypothesis) and conclusion: the checked decode
+; is the right-hand side's decode arm, and it is the unchecked decode.
+(assert-event
+ (let ((ws (fn-srs-decode (fn-srs-pair-octets *srst-numbered*))))
+   (and (equal (fn-srs-pair-octets *srst-numbered*) *srst-history*)
+        (not (equal ws :bad))
+        (fn-srs-numberedp *srst-numbered*)
+        (equal (fn-srs-checked-decode *srst-numbered*) ws)
+        (equal (fn-srs-checked-decode *srst-numbered*) *srst-records*))))
+
+; A file whose number is not its record's sequence (records 1 and 2 swapped
+; between files 1 and 2): the records decode, the per-file check fails, and
+; the checked decode answers :sequence -- the arm the host faults on
+; ("record sequence does not match immutable filename").
+(defconst *srst-misnumbered* (list (cons 0 *srst-r0*) (cons 1 *srst-r2*) (cons 2 *srst-r1*)))
+(assert-event
+ (and (not (equal (fn-srs-decode (fn-srs-pair-octets *srst-misnumbered*)) :bad))
+      (not (fn-srs-numberedp *srst-misnumbered*))
+      (equal (fn-srs-checked-decode *srst-misnumbered*) :sequence)))
+
+; A record that does not decode: :bad, whatever the numbers (the decode arm
+; comes first, as the open's refusal of the history).
+(assert-event
+ (and (equal (fn-srs-checked-decode (list (cons 0 *srst-r0*) (cons 1 *srst-corrupt*))) :bad)
+      (equal (fn-srs-checked-decode (list (cons 7 *srst-corrupt*))) :bad)))
+
+; fn-srs-checked-step-is-the-step, reachable: the host's two calls over each
+; numbered chunk fold to the unchecked fold over the chunks' records, which
+; the fold keystone equates with one step over the history.
+(defun srst-checked-steps-in (numbered-chunks acc fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (atom numbered-chunks)
+      (mv (list acc (srst-arena-list 0 fn-arena)) fn-arena)
+    (mv-let (acc fn-arena)
+      (fn-srs-intern-step acc (fn-srs-checked-decode (car numbered-chunks)) fn-arena)
+      (srst-checked-steps-in (cdr numbered-chunks) acc fn-arena))))
+(defun srst-checked-steps (numbered-chunks)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena) (srst-checked-steps-in numbered-chunks nil fn-arena) out)))
+(assert-event
+ (let ((numbered (list (list (cons 0 *srst-r0*) (cons 1 *srst-r1*)) (list (cons 2 *srst-r2*)))))
+   (and (not (equal (fn-srs-checked-decode (car numbered)) :sequence))
+        (not (equal (fn-srs-checked-decode (cadr numbered)) :sequence))
+        (equal (srst-checked-steps numbered)
+               (srst-steps (list (list *srst-r0* *srst-r1*) (list *srst-r2*))))
+        (equal (srst-checked-steps numbered) (srst-one (list *srst-history*))))))
+
+; Hypothesis removal (fn-srs-checked-step-is-the-step's "not :sequence"): a
+; misnumbered chunk.  The hypothesis fails; the intern step of :sequence is
+; not the step over the chunk's records (which opens them): the conclusion
+; fails, which is why the host faults on :sequence before any intern.
+(assert-event
+ (and (equal (fn-srs-checked-decode *srst-misnumbered*) :sequence)
+      (not (eq (car (srst-one (list (fn-srs-pair-octets *srst-misnumbered*)))) :bad))
+      (not (equal (car (srst-checked-steps (list *srst-misnumbered*)))
+                  (car (srst-one (list (fn-srs-pair-octets *srst-misnumbered*))))))))

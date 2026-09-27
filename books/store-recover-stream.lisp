@@ -245,3 +245,87 @@
                                    (keyring nil) (generation 0)))
            :in-theory (disable fn-intern-events fn-srs-decode
                                fn-srs-intern-events-true-listp))))
+
+; -----------------------------------------------------------------------------
+; 5. The numbered chunk (lane recover-memory-2, PKT-823 item 1): the open
+; reads a transaction file and hands its record to the step with the file's
+; number; the step's one decode also checks that number.  Before, the host
+; decoded every record a second time only to read its sequence
+; (fn-store-record-sequence; 5.4 GB consed and 8 s on the 32 KiB fixture,
+; planning/evidence/recover-memory-2026-09-27.md section 1).
+;
+; `fn-srs-record-sequence' is that per-file check's function (host/store-host.lisp
+; fn-store-record-sequence calls it); `fn-srs-checked-decode' is the step's
+; decode of a numbered chunk, a list of (NUMBER . OCTETS): :bad when a record
+; does not decode, :sequence when a decoded record's sequence is not its
+; file's number, and otherwise the decode of the chunk's records.  KEYSTONE
+; `fn-srs-checked-decode-is-the-per-file-check': the chunk check is exactly
+; the old per-file check of every record, and the decoded chunk is the
+; unchecked decode, so the fold's keystone above carries over unchanged
+; (`fn-srs-checked-step-is-the-step').
+
+(defun fn-srs-record-sequence (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((decoded (fn-store-event-decode-exact octets)))
+    (if (and (consp decoded) (equal (car decoded) :ok)
+             (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
+        (fn-rcon-wire-event-sequence (car (cdr decoded)))
+      -1)))
+
+(defun fn-srs-pair-octets (pairs)
+  (declare (xargs :guard t))
+  (if (atom pairs)
+      nil
+    (cons (if (consp (car pairs)) (cdr (car pairs)) nil)
+          (fn-srs-pair-octets (cdr pairs)))))
+
+(defun fn-srs-numbers-agreep (pairs ws)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom pairs)
+      t
+    (and (consp ws) (consp (car pairs))
+         (equal (fn-rcon-wire-event-sequence (car ws)) (car (car pairs)))
+         (fn-srs-numbers-agreep (cdr pairs) (cdr ws)))))
+
+(defun fn-srs-checked-decode (pairs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((ws (fn-srs-decode (fn-srs-pair-octets pairs))))
+    (cond ((equal ws :bad) :bad)
+          ((fn-srs-numbers-agreep pairs ws) ws)
+          (t :sequence))))
+
+; The old per-file check, every file: each record's sequence is its number.
+(defun fn-srs-numberedp (pairs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom pairs)
+      t
+    (and (consp (car pairs))
+         (equal (fn-srs-record-sequence (cdr (car pairs))) (car (car pairs)))
+         (fn-srs-numberedp (cdr pairs)))))
+
+(local
+ (defthm fn-srs-numbers-agree-iff-numbered
+   (implies (not (equal (fn-srs-decode (fn-srs-pair-octets pairs)) :bad))
+            (equal (fn-srs-numbers-agreep pairs (fn-srs-decode (fn-srs-pair-octets pairs)))
+                   (fn-srs-numberedp pairs)))
+   :hints (("Goal" :induct (fn-srs-numberedp pairs)
+            :expand ((fn-srs-decode (fn-srs-pair-octets pairs))
+                     (fn-srs-pair-octets pairs))))))
+
+; KEYSTONE.
+(defthm fn-srs-checked-decode-is-the-per-file-check
+  (let ((ws (fn-srs-decode (fn-srs-pair-octets pairs))))
+    (equal (fn-srs-checked-decode pairs)
+           (cond ((equal ws :bad) :bad)
+                 ((fn-srs-numberedp pairs) ws)
+                 (t :sequence))))
+  :hints (("Goal" :in-theory (disable fn-srs-decode fn-srs-numbers-agreep fn-srs-numberedp))))
+
+; The host's two calls per numbered chunk (fn-srs-checked-decode, then
+; fn-srs-intern-step unless it answered :sequence) are the step over the
+; chunk's records, so the fold keystone applies to the records of the chunks.
+(defthm fn-srs-checked-step-is-the-step
+  (implies (not (equal (fn-srs-checked-decode pairs) :sequence))
+           (equal (fn-srs-intern-step acc (fn-srs-checked-decode pairs) fn-arena)
+                  (fn-srs-step acc (fn-srs-pair-octets pairs) fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-srs-decode fn-srs-numbers-agreep fn-srs-intern-step))))
