@@ -389,14 +389,108 @@
   (declare (xargs :guard t))
   (let ((plan (fn-ctl-article-plan a verdicts records configs)))
     (if (fn-ctl-withdrawalp plan) (list plan) nil)))
-(defun fn-ctl-articles-withdrawals (arts verdicts records configs)
+; -----------------------------------------------------------------------------
+; Recovery's decision of every record, executed through one table.  The
+; discontinuity arm (start, reopen) decides every article of the archive;
+; one `fn-ctl-row-event' walk per article is N x R.  The executable path
+; builds a fast alist from Message-ID to the first event carrying its row in
+; one pass over R and looks each article (and its target) up in it:
+; O(R + N) hash operations.  The logical definition is unchanged
+; (`fn-ctl-articles-withdrawals-tbl-is-articles-withdrawals').
+
+(defun fn-ctl-row-table (records tbl)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (let* ((row (fn-ctl-event-row (car records)))
+             (m (and row (fn-record-msgid row))))
+        (fn-ctl-row-table (cdr records)
+                          (if (and m (not (hons-get m tbl)))
+                              (hons-acons m (car records) tbl)
+                            tbl)))
+    tbl))
+
+(defun fn-ctl-row-event-in (m tbl)
+  (declare (xargs :guard t))
+  (and m (cdr (hons-get m tbl))))
+
+(defthm fn-ctl-row-table-lookup
+  (implies m
+           (equal (hons-assoc-equal m (fn-ctl-row-table records tbl))
+                  (or (hons-assoc-equal m tbl)
+                      (let ((e (fn-ctl-row-event m records)))
+                        (and e (cons m e))))))
+  :hints (("Goal" :induct (fn-ctl-row-table records tbl)
+           :in-theory (e/d (fn-ctl-row-event fn-ctl-row-table) (fn-ctl-event-row)))))
+
+(defthm fn-ctl-row-event-in-row-table
+  (equal (fn-ctl-row-event-in m (fn-ctl-row-table records nil))
+         (fn-ctl-row-event m records))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-row-event-in fn-ctl-row-event)
+                                  (fn-ctl-row-table fn-ctl-event-row))
+           :cases (m))))
+
+(defun fn-ctl-article-plan-in (a verdicts tbl configs)
+  (declare (xargs :guard t))
+  (if (consp a)
+      (let* ((m (fn-article-msgid a))
+             (e (fn-ctl-row-event-in m tbl))
+             (control (if e (fn-hf-control (fn-held-facts (fn-ctl-event-row e))) nil))
+             (target (fn-ctl-control-target control)))
+        (if target
+            (fn-ctl-w-with-tlocks
+             (fn-ctl-withdrawal-plan
+              m (fn-ctl-lookup-verdict m verdicts) target
+              (fn-ctl-control-keys control)
+              (fn-ctl-config-at (fn-store-event-txid e) configs))
+             (fn-ctl-control-locks
+              (let ((te (fn-ctl-row-event-in target tbl)))
+                (if te (fn-hf-control (fn-held-facts (fn-ctl-event-row te))) nil))))
+          nil))
+    nil))
+
+(defun fn-ctl-articles-withdrawals-in (arts verdicts tbl configs)
   (declare (xargs :guard t))
   (if (consp arts)
-      (fn-ctl-prepend (fn-ctl-article-withdrawals (car arts) verdicts records
-                                                  configs)
-                      (fn-ctl-articles-withdrawals (cdr arts) verdicts records
-                                                   configs))
+      (fn-ctl-prepend (let ((plan (fn-ctl-article-plan-in (car arts) verdicts tbl configs)))
+                        (if (fn-ctl-withdrawalp plan) (list plan) nil))
+                      (fn-ctl-articles-withdrawals-in (cdr arts) verdicts tbl configs))
     nil))
+
+(defthm fn-ctl-article-plan-in-row-table
+  (equal (fn-ctl-article-plan-in a verdicts (fn-ctl-row-table records nil) configs)
+         (fn-ctl-article-plan a verdicts records configs))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-article-plan fn-ctl-row-control fn-ctl-article-plan-in)
+                                  (fn-ctl-row-table fn-ctl-row-event-in fn-ctl-row-event
+                                   fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks
+                                   fn-ctl-lookup-verdict fn-ctl-config-at)))))
+
+(defun fn-ctl-articles-withdrawals (arts verdicts records configs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp arts)
+           (fn-ctl-prepend (fn-ctl-article-withdrawals (car arts) verdicts records
+                                                       configs)
+                           (fn-ctl-articles-withdrawals (cdr arts) verdicts records
+                                                        configs))
+         nil)
+       :exec
+       (let ((tbl (fn-ctl-row-table records nil)))
+         (fast-alist-free-on-exit
+          tbl (fn-ctl-articles-withdrawals-in arts verdicts tbl configs)))))
+
+(defthm fn-ctl-articles-withdrawals-in-row-table
+  (equal (fn-ctl-articles-withdrawals-in arts verdicts (fn-ctl-row-table records nil) configs)
+         (fn-ctl-articles-withdrawals arts verdicts records configs))
+  :hints (("Goal" :induct (fn-ctl-articles-withdrawals arts verdicts records configs)
+           :in-theory (e/d (fn-ctl-articles-withdrawals fn-ctl-articles-withdrawals-in
+                            fn-ctl-article-withdrawals)
+                           (fn-ctl-row-table fn-ctl-article-plan-in fn-ctl-article-plan)))))
+
+(verify-guards fn-ctl-articles-withdrawals
+  :hints (("Goal" :in-theory (disable fn-ctl-article-withdrawals fn-ctl-articles-withdrawals-in
+                                      fn-ctl-row-table fn-ctl-prepend-is-append)
+           :expand ((fn-ctl-articles-withdrawals arts verdicts records configs)))))
+
 (defun fn-ctl-verdicts-grow-by-p (new old a)
   (declare (xargs :guard t))
   (or (equal new old)
@@ -795,6 +889,21 @@
            (fn-ctl-rows-only-p more-r nil)))
         (t t)))
 
+; No configuration record appended: nothing to decide again (the refresh at
+; which no configuration changed, the common case).
+(defthm fn-ctl-configs-through-of-append-atom
+  (implies (atom more)
+           (equal (fn-ctl-configs-through txid (append configs more))
+                  (fn-ctl-configs-through txid configs))))
+
+(defthm fn-ctl-journal-of-append-atom
+  (implies (atom more)
+           (equal (fn-ctl-journal-withdrawals entries (append configs more))
+                  (fn-ctl-journal-withdrawals entries configs)))
+  :hints (("Goal" :induct (fn-ctl-journal-withdrawals entries configs)
+           :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
+                               fn-cfg-apply-record fn-ctl-w-with-tlocks))))
+
 ; The old records over the grown history: unchanged, or resolved for the one
 ; new Message-ID M.
 (defthm fn-ctl-journal-of-old-entries-grown-by-nothing
@@ -803,8 +912,9 @@
                          (equal (cdr verdicts) v0)
                          (not (member-equal (car (car verdicts))
                                             (fn-article-msgids old)))))
-                (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
-                                        (fn-cfg-record-txid (car more-c)))
+                (or (atom more-c)
+                    (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
+                                            (fn-cfg-record-txid (car more-c))))
                 (fn-ctl-rows-only-p more-r nil))
            (equal (fn-ctl-journal-withdrawals
                    (fn-ctl-archive-entries old verdicts (append r0 more-r))
@@ -827,8 +937,9 @@
                          (equal (cdr verdicts) v0)
                          (not (member-equal (car (car verdicts))
                                             (fn-article-msgids old)))))
-                (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
-                                        (fn-cfg-record-txid (car more-c)))
+                (or (atom more-c)
+                    (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
+                                            (fn-cfg-record-txid (car more-c))))
                 (fn-ctl-rows-only-p more-r (list m))
                 (not (member-equal m (fn-article-msgids old))))
            (equal (fn-ctl-journal-withdrawals
@@ -873,8 +984,9 @@
                          (equal (cdr verdicts) v0)
                          (not (member-equal (car (car verdicts))
                                             (fn-article-msgids old)))))
-                (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
-                                        (fn-cfg-record-txid (car more-c)))
+                (or (atom more-c)
+                    (fn-ctl-entries-below-p (fn-ctl-archive-entries old v0 r0)
+                                            (fn-cfg-record-txid (car more-c))))
                 (fn-ctl-history-grows-by-p more-r new old))
            (equal (fn-ctl-refresh-withdrawals new old ws verdicts
                                               (append r0 more-r)
