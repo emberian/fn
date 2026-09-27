@@ -42,11 +42,17 @@ def missing_enrollment_fixture():
         " (event (fn-stxa-make 0 0 0 7 profile"
         "                       (fn-record-string-octets subject)"
         "                       (fn-record-encode record)"
-        "                       (fn-stxe-encode verdict))))"
+        "                       (fn-stxe-encode verdict)))"
+        # The store's predicates read the HELD history the open interns
+        # (records flip: host/store-host.lisp fn-store-intern-records-local,
+        # the open's intern into a local arena); the journal stores the
+        # wire event.
+        " (rows (fn-store-intern-records-local (list event))))"
         " (if (and (fn-stxa-bindsp event)"
-        "          (fn-sn-observed-historyp 1 (list event))"
-        "          (fn-sf-history-recoverablep '(\"fn.test\") 32 (list event) 1)"
-        "          (equal (fn-stxk-context-kind (fn-replay-identity (list event)))"
+        "          (consp rows)"
+        "          (fn-sn-observed-historyp 1 rows)"
+        "          (fn-sf-history-recoverablep '(\"fn.test\") 32 rows 1)"
+        "          (equal (fn-stxk-context-kind (fn-replay-identity rows))"
         "                 :fault))"
         "     (fn-store-event-encode event) nil))"))
     if not transaction:
