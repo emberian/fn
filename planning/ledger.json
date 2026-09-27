@@ -507,6 +507,8 @@
     "tests/acl2/post-identity-index-tests",
     "books/post-retain-carried",
     "tests/acl2/post-retain-carried-tests",
+    "books/store-profile-carried",
+    "tests/acl2/store-profile-carried-tests",
     "books/replay-identity-index",
     "tests/acl2/replay-identity-index-tests",
     "books/owner-store-indexed",
@@ -1219,26 +1221,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1262,
-    "books_in_root_closure": 1251,
-    "roots": 1215,
-    "theorems": 18699,
-    "functions": 12812,
-    "assert_events": 18366,
-    "must_fails": 2181,
+    "books": 1264,
+    "books_in_root_closure": 1253,
+    "roots": 1217,
+    "theorems": 18771,
+    "functions": 12852,
+    "assert_events": 18384,
+    "must_fails": 2182,
     "prover_refusals": 0,
     "encapsulates": 99,
     "guards": {
       "verified": 2469,
-      "declared-off": 1511,
-      "default-guarded": 7048,
-      "default-unguarded": 1784
+      "declared-off": 1512,
+      "default-guarded": 7086,
+      "default-unguarded": 1785
     },
-    "suspect_theorems": 208,
-    "export_hygiene_warnings": 214,
+    "suspect_theorems": 211,
+    "export_hygiene_warnings": 216,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 221,
-    "include_hygiene_warnings": 1353,
+    "include_hygiene_warnings": 1352,
     "host_names_warnings": 1380,
     "hand_written_record_warnings": 18
   },
@@ -14468,7 +14470,7 @@
       "book": "books/owner-refresh-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
+      "theorems": 10,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -14842,12 +14844,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 106,
-      "functions": 180,
+      "theorems": 109,
+      "functions": 182,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 175,
+        "default-guarded": 177,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -14863,10 +14865,14 @@
         "msgid-index",
         "owner-feed",
         "served",
+        "snoc-list",
         "store-observed"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-own-ledger-count-is-len",
+        "fn-sl-list-of-fn-own-ledger-field"
+      ],
       "read_error": null
     },
     {
@@ -15658,12 +15664,12 @@
       "book": "books/post-retain-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 9,
+      "theorems": 63,
+      "functions": 29,
       "guards": {
         "verified": 3,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 26,
         "default-unguarded": 0
       },
       "verify_guards_events": 3,
@@ -15671,7 +15677,7 @@
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
-      "defmacros": 0,
+      "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "post-identity-index",
@@ -17354,7 +17360,7 @@
       "book": "books/snoc-list.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
+      "theorems": 29,
       "functions": 13,
       "guards": {
         "verified": 0,
@@ -17372,6 +17378,7 @@
       "includes": [],
       "system_includes": [],
       "suspects": [
+        "fn-sl-list-when-plain",
         "fn-sl-of-list-when-canonp"
       ],
       "read_error": null
@@ -19461,6 +19468,33 @@
         "records-seam",
         "store-observed",
         "store-sweep"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-profile-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-budget-naming",
+        "store-capacity-vector"
       ],
       "system_includes": [],
       "suspects": [],
@@ -31647,23 +31681,22 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 3,
+      "assert_events": 6,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 8,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-refresh-indexed",
-        "arena-lift",
         "owner-cancel-refresh-tests"
       ],
       "system_includes": [],
@@ -32524,18 +32557,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 2
+        "default-guarded": 1,
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
-      "must_fails": 1,
+      "assert_events": 15,
+      "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 27,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -35514,6 +35547,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-profile-carried-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-profile-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-profile-facts-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -37923,6 +37982,14 @@
       ]
     },
     {
+      "theorem": "fn-own-ledger-count-is-len",
+      "book": "books/owner.lisp",
+      "line": 888,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-own-ledger-count"
+      ]
+    },
+    {
       "theorem": "fn-own-submission-targets-of-a-queue-by-definition",
       "book": "books/owner-feed-subject.lisp",
       "line": 165,
@@ -38376,9 +38443,25 @@
       ]
     },
     {
+      "theorem": "fn-sl-list-of-fn-own-ledger-field",
+      "book": "books/owner.lisp",
+      "line": 886,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-own-ledger"
+      ]
+    },
+    {
+      "theorem": "fn-sl-list-when-plain",
+      "book": "books/snoc-list.lisp",
+      "line": 221,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-sl-list and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-sl-of-list-when-canonp",
       "book": "books/snoc-list.lisp",
-      "line": 219,
+      "line": 229,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sl-canonp"
       ]
@@ -39290,13 +39373,13 @@
       {
         "theorem": "fn-ccar-own-complete-is-own-complete",
         "book": "books/owner-commit-carried.lisp",
-        "line": 614,
+        "line": 613,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccar-own-finish-installs-ccar-own-complete-by-definition",
         "book": "books/owner-commit-carried.lisp",
-        "line": 706,
+        "line": 705,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -39350,13 +39433,13 @@
       {
         "theorem": "fn-rix-own-complete-enabled-is-ccar",
         "book": "books/owner-refresh-indexed.lisp",
-        "line": 238,
+        "line": 237,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rix-ocfg-complete-is-ccar-ocfg-complete",
         "book": "books/owner-refresh-indexed.lisp",
-        "line": 307,
+        "line": 330,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -39369,6 +39452,18 @@
         "theorem": "fn-oag-listing-server-is-the-path-identity",
         "book": "books/owner-xref-read.lisp",
         "line": 63,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-own-ledger-of-fn-own-make",
+        "book": "books/owner.lisp",
+        "line": 882,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-sl-list-of-fn-own-ledger-field",
+        "book": "books/owner.lisp",
+        "line": 886,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -39542,7 +39637,7 @@
       {
         "theorem": "fn-sl-last-is-last",
         "book": "books/snoc-list.lisp",
-        "line": 246,
+        "line": 256,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -44569,7 +44664,7 @@
       },
       {
         "book": "books/owner.lisp",
-        "line": 100,
+        "line": 101,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -49377,13 +49472,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/owner-refresh-indexed-tests.lisp",
-        "line": 28,
-        "include": "arena-lift",
-        "included": "tests/acl2/arena-lift.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/owner-results-tests.lisp",
         "line": 8,
         "include": "../../books/owner-results",
@@ -49707,7 +49795,7 @@
       },
       {
         "book": "tests/acl2/post-retain-carried-tests.lisp",
-        "line": 13,
+        "line": 15,
         "include": "owner-prepare-carried-tests",
         "included": "tests/acl2/owner-prepare-carried-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -60734,63 +60822,63 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 271,
+        "line": 275,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 333,
+        "line": 349,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 333,
+        "line": 349,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 349,
+        "line": 365,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 955,
+        "line": 990,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1093,
+        "line": 1132,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1093,
+        "line": 1132,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1930,
+        "line": 1975,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 3091,
+        "line": 3136,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -60992,7 +61080,7 @@
       },
       {
         "book": "books/owner.lisp",
-        "line": 116,
+        "line": 117,
         "shape": "fn-own-conn-shapep",
         "shapes": 5,
         "accessors": 8,
