@@ -958,7 +958,7 @@
         "fn-wm-match-codepoints-work-value",
         "fn-wm-match-codepoints-work-cost-bound",
         "fn-article-parse-work-value",
-        "fn-article-parse-work-input-bound",
+        "fn-article-parse-under-work-input-bound",
         "fn-article-parse-work-profile-bound",
         "fn-served-feed-steps-bounded-by-chunk-length",
         "fn-served-step-nntp-steps-is-bounded"
