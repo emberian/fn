@@ -10406,7 +10406,7 @@
     {
       "id": "PRF-288",
       "title": "While a batch's barrier is in flight readers are served at the durable view and new POSTs are prepared into the next batch: no read reveals a record of the batch in flight or of the next one before its COMPLETE, and no new POST joins the batch in flight",
-      "statement": "Subjects: fn-ocv-capture (host/owner-host.lisp fn-owner-reader-views-capture, called by host/native/owner.lisp fnn-owner-reader-capture at the committer's START, START-NEXT, COMPLETE and drop), fn-ocfg-with-view / fn-ocfg-at-reader-view (host/owner-host.lisp fn-owner-at-reader-view, around fn-owner-chunk-span and fn-owner-open), fn-olr-take (host/native/io.lisp fnn-log-take). KEYSTONE fn-ocvm-reader-view-is-the-completed-prefix (books/owner-reader-view.lisp): in the capture discipline's count model (a view as the record count it is the view of), along every legal run of START (at an idle owner), START-NEXT (behind a batch in flight, no next open), :unnext, COMPLETE and drop events from the idle owner, the reader view fn-ocv-reader-view is C, the count of records whose batch COMPLETED (whose barrier returned fenced: fn-ocp-complete-only-after-the-barrier), while the working view is C + A + B (A the batch in flight, B the next batch): no read counts a record of either batch before its COMPLETE. Hypothesis: the run is legal (fn-ocvm-legal-run-p), which fn-ocp-start-next-only-behind-a-sync and fn-ocp-sync-only-when-none-in-flight give the host's event order; the model counts views, the host captures the view objects at the same points. KEYSTONE fn-ocl-relation-of-a-view-captured-before-appends: the view of a related owner OC0 (fn-ocl-relation), put into a related owner OC whose Store has only appended records since OC0 (the same configuration history and configuration), gives a related owner, and the view's version is at most OC0's record count: every served-read theorem stated under fn-ocl-relation (fn-scar-ocfg-read-span-is-reference-under-ocl-relation among them) holds of the read a reader quantum runs during a barrier, over the replay of at most the records the Store held at the capture. Hypotheses: the append-only Store and the unchanged configuration between capture and read (in flight no control quantum runs: fn-ocs-in-flight-admits-only-inspect-commit-and-reader). Scope: the relation of the owner AFTER the reader's entry, with the working view put back, is not restated here (no read-preservation theorem exists for the served path today). KEYSTONE fn-olr-take-never-joins-the-batch-in-flight: the log's take never changes the kernel's INFLIGHT, and a taken record is appended to the open BATCH; with fn-ocp-sync-only-when-none-in-flight (the open batch is sealed only after the batch in flight is fenced) a POST a reader queued during a barrier never joins the batch in flight.",
+      "statement": "Subjects: fn-ocv-capture (host/owner-host.lisp fn-owner-reader-views-capture, called by host/native/owner.lisp fnn-owner-reader-capture at the committer's START, START-NEXT, COMPLETE and drop), fn-ocfg-with-view / fn-ocfg-at-reader-view (host/owner-host.lisp fn-owner-at-reader-view, around fn-owner-chunk-span and fn-owner-open), fn-olr-take (host/native/io.lisp fnn-log-take). KEYSTONE fn-ocvm-reader-view-is-the-completed-prefix (books/owner-reader-view.lisp): in the capture discipline's count model (a view as the record count it is the view of), along every legal run of START (at an idle owner), START-NEXT (behind a batch in flight, no next open), :unnext, COMPLETE and drop events from the idle owner, the reader view fn-ocv-reader-view is C, the count of records whose batch COMPLETED (whose barrier returned fenced: fn-ocp-complete-only-after-the-barrier), while the working view is C + A + B (A the batch in flight, B the next batch): no read counts a record of either batch before its COMPLETE. Hypothesis: the run is legal (fn-ocvm-legal-run-p), which fn-ocp-start-next-only-behind-a-sync and fn-ocp-sync-only-when-none-in-flight give the host's event order; the model counts views, the host captures the view objects at the same points. KEYSTONE fn-ocl-relation-of-a-view-captured-before-appends: the view of a related owner OC0 (fn-ocl-relation), put into a related owner OC whose Store has only appended records since OC0 (the same configuration history and configuration), gives a related owner, and the view's version is at most OC0's record count: every served-read theorem stated under fn-ocl-relation (fn-scar-ocfg-read-span-is-reference-under-ocl-relation among them) holds of the read a reader quantum runs during a barrier, over the replay of at most the records the Store held at the capture. Hypotheses: the append-only Store and the unchanged configuration between capture and read (in flight no control quantum runs: fn-ocs-in-flight-admits-only-inspect-commit-and-reader). Scope: the relation of the owner AFTER the reader's entry, with the working view put back, is PRF-296's (fn-orr-read-span-at-a-captured-view-restores-the-owner). KEYSTONE fn-olr-take-never-joins-the-batch-in-flight: the log's take never changes the kernel's INFLIGHT, and a taken record is appended to the open BATCH; with fn-ocp-sync-only-when-none-in-flight (the open batch is sealed only after the batch in flight is fenced) a POST a reader queued during a barrier never joins the batch in flight.",
       "milestone": "M5",
       "requirements": [
         "HST-023"
@@ -10873,6 +10873,64 @@
       "events": [
         "fn-provi-of-msgid-unfolds",
         "fn-provi-bad-msgid-has-no-provenance"
+      ]
+    },
+    {
+      "id": "PRF-296",
+      "title": "A reader entry during a batch's barrier leaves the owner related, with its working view, Store and configuration back, and answers the reference read at the captured view; no configuration publication (an XREDEEM's among them) runs under a capture",
+      "statement": "Subjects: fn-orr-read-span (host/owner-host.lisp fn-owner-chunk-span-at, called for every served socket region by host/native/owner.lisp fnn-owner-handle-chunk-read through fnn-core-buffer-state) and fn-ocs-publication-class with fn-ocs-next (host/native/owner.lisp fnn-owner-redeem-quantum: an XREDEEM PASS's publication, in a quantum of that class after the reader quantum; fnn-owner-gate-pick calls fn-ocs-next). KEYSTONE fn-orr-read-span-at-a-captured-view-restores-the-owner (books/owner-reader-read.lisp): with a capture held (VIEWS a cons whose first is the view of the owner OC0 at the capture), under fn-ocri-relation of OC0 and of the working owner OC, OC's Store records OC0's with EXTRA appended, the same configuration history and configuration, the span read's catalog premise fn-scr-owner-catalogp at the captured view, and natp i, end: the owner after the entry satisfies fn-ocri-relation (hence fn-ocl-relation), has OC's view, Store, next id, connection bound, pending, ledger, clock, facts, configuration and staged record (the entry changes its connections only), and the reply is the effects of fn-ocfg-read of OC at the captured view over the consumed octets. With no capture it is fn-scr-ocfg-read-span (fn-orr-read-span-without-a-capture-is-the-span-read-by-definition). KEYSTONE fn-ocvp-reader-view-is-at-the-current-generation: in the capture discipline with configuration generations (fn-ocv-capture of the working count tagged with the generation; START, START-NEXT, :unnext, COMPLETE, drop, and :publish legal only with no capture held), along every legal run from the idle owner the reader view carries the current generation: the configuration hypothesis above holds at every read. :publish is legal only with no capture because a publication runs as fn-ocs-publication-class (:control), which fn-ocs-next never picks in flight (fn-ocs-a-publication-waits-for-the-complete, from fn-ocs-in-flight-admits-only-inspect-commit-and-reader), and the committer holds a capture only while a batch is in flight. Scope: the Store-append and the capture-only-in-flight premises are the host discipline (the commit steps append; START captures, COMPLETE releases), not restated from the host code; a redeem waiting in the gate stalls its own I/O loop for up to the barrier, as a transit connection's wait does.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-288",
+        "PRF-267",
+        "PRF-164"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reader-read.lisp",
+        "tests/acl2/owner-reader-read-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_owner_scheduler.py",
+        "planning/evidence/owner-scheduler-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane scheduler-3 (Opus 5.5, 2026-09-27; PKT-828 open items 1 and 2, continuing scheduler-2-rebase). Teeth: tests/acl2/owner-reader-read-tests.lisp: a reached capture (owner-log-ocl-tests' *lgt-oc0*, 2 records) and working owner (*lgt-finished*, the POST committed, 3 records), GROUP fn.letters on connection 0 answers 211 0 1 0 at the reader view and 211 1 1 1 at the working one; one hypothesis-removal witness per hypothesis (a relabelled view; the capture's owner or the working owner carrying it; the roles swapped so the Store is not an append; a publication between capture and read, config-owner-publish-tests' *ocp-closed* / *ocp-new*, where a GROUP repins connection 2 to the new configuration with the old view's archive and the owner leaves the relation), must-fail with the keystone's own hints for the configuration alone and the catalog premise; the generation model's reached run and its illegal publication in flight; the scheduler picks nobody for a waiting control class in flight and picks it outside. Native: tests.test_native_owner_scheduler test_a_redeem_during_a_barrier_waits_for_the_complete_without_holding_the_owner.",
+      "events": [
+        "fn-orr-read-span-at-a-captured-view-restores-the-owner",
+        "fn-ocvp-reader-view-is-at-the-current-generation",
+        "fn-ocs-a-publication-waits-for-the-complete",
+        "fn-orr-span-read-is-historical-read",
+        "fn-orr-span-read-keeps-the-reader-relation-and-the-rest",
+        "fn-orr-restoring-the-working-view-keeps-the-reader-relation",
+        "fn-orr-reader-relation-at-a-captured-view",
+        "fn-orr-relation-of-with-view",
+        "fn-ocvp-step-preserves-inv"
+      ]
+    },
+    {
+      "id": "PRF-297",
+      "title": "The format-9 open reads a segment one entry at a time, and the stream it runs is the recovered kernel's scan",
+      "statement": "Subjects: the calls host/native/io.lisp fnn-log-stream-segment makes per entry (fn-lgw-start, fn-lgw-header-len, fn-lgw-entry-len, fn-lgw-step, fn-lgw-stop, fn-lgw-pos, fn-lgw-broken, fn-lgw-kernel), reached from fnn-log-recover, fnn-log-open-read-only and fnn-log-scan-segments (fnn-recover-log, whose full replay takes each record straight into the replay's chunk), and from the history reads fnn-log-read-closed-segment and fnn-log-read-active-segment (the active segment to the concrete kernel's frontier). The host reads the header octets fn-lgw-header-len names at the state's offset, then the entry fn-lgw-entry-len names (or none), and fn-lgw-step decides it from one frame open (fn-lgw-decide-is-okp-and-records): the record (handed to the replay, not kept), the next offset past the padding, the chain's trailer, the count, the next txid, the stop and the splice verdict. KEYSTONE fn-lgw-run-is-the-open (books/store-log-stream.lisp): over the segment's octets C, with no hypothesis, the run from (fn-lgw-start GENESIS FLOOR) emits exactly the committed records (a batch entry's several in order, PKT-749) of (fn-lgt-recover C GENESIS UNIT MAX FLOOR) in order, ends in a state whose kernel is fn-lgc-of that recovered kernel (the kernel fn-lg-recover-program-establishes-the-relation names; PRF-276's refinement starts from it), and whose splice verdict is fn-lgs-chain-broken-p of C. Composed from one window = the scan's slice (fn-lgw-window-is-the-slice), one step = one scan step (fn-lgw-step-when-entry, -when-no-entry), and fn-lgw-run-is-the-scan (the run over the steps with the step closed); fn-lgw-run-is-fn-lgc-open equates it with the whole-segment open. The host's reads are windows of C (A-HOST's read of a regular file, the assumption the whole-segment read made). Measured in planning/evidence/log-open-stream-2026-09-27.md.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-276"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/store-log-stream.lisp",
+        "tests/acl2/store-log-stream-tests.lisp",
+        "tests/test_native_log.py",
+        "tests/test_native_commit_log.py",
+        "planning/evidence/log-open-stream-2026-09-27.md"
       ]
     }
   ]

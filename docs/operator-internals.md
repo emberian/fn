@@ -852,7 +852,19 @@ which answers nothing on a production image.
 | `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
 | `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
 | `FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN` | any value | the owner holds the recovered Store and waits for SIGTERM before its control socket and listener start (`health` reads `starting`) |
+| `FN_NATIVE_OWNER_TEST_BARRIER_MS` | decimal milliseconds | a sleep before each batch's barrier (`fnn-owner-commit-sync`), holding a batch in flight for the scheduler's native cases |
+| `FN_NATIVE_OWNER_TEST_PIPELINE_TRACE` | any value | one stderr line per START (`start: seal=S bmax=N members=K`) and per batch prepared behind a barrier (`pipeline: K members prepared behind the barrier`) |
+| `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4 |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
+
+`FN_NATIVE_FAULT_BACKTRACE` changes no outcome: the fence, the exit code and
+the reply are the ones the image gives without it. It exists because the
+handler that turns a memory fault into exit 4 has already unwound the stack
+when it runs, so the log names only the condition (`Unhandled memory fault at
+#x0`). With the selector the first frames name the function that faulted
+(2026-09-27: frame 0 `FNN-OWNER-COMMIT-STEP-ACTION`, a stale `(first ...)` of a
+keyword, found in one run). Reproduce a production fault on the developer
+image of the same source revision with it set.
 
 The served owner and `store ROOT post` read the post and recovery selectors
 through one function, `fnn-post-entry-fault`, into the one store fault slot

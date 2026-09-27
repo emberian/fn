@@ -382,6 +382,7 @@
         "PRF-254",
         "PRF-255",
         "PRF-264",
+        "PRF-297",
         "PRF-272",
         "PRF-269",
         "PRF-282"
@@ -3759,6 +3760,7 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-198",
+        "PRF-297",
         "PRF-282"
       ],
       "verification": [
@@ -4554,7 +4556,8 @@
         "PRF-290",
         "PRF-291",
         "PRF-299",
-        "PRF-301"
+        "PRF-301",
+        "PRF-296"
       ],
       "verification": [
         "proof",
@@ -4578,6 +4581,7 @@
         "books/config-store-steps.lisp",
         "books/owner-log-ocl.lisp",
         "planning/evidence/control-quanta-2-2026-09-27.md",
+        "books/owner-reader-read.lisp",
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
         "planning/evidence/prepare-served-2026-09-27.md"

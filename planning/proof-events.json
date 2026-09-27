@@ -10951,6 +10951,47 @@
           "name": "fn-provi-bad-msgid-has-no-provenance"
         }
       ]
+    },
+    {
+      "id": "PRF-296",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orr-read-span-at-a-captured-view-restores-the-owner"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocvp-reader-view-is-at-the-current-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-a-publication-waits-for-the-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-span-read-is-historical-read"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-span-read-keeps-the-reader-relation-and-the-rest"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-restoring-the-working-view-keeps-the-reader-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-reader-relation-at-a-captured-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-relation-of-with-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocvp-step-preserves-inv"
+        }
+      ]
     }
   ]
 }
