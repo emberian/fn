@@ -8052,7 +8052,8 @@
         "fn-osch-row-observe-keeps-okp",
         "fn-splan-window-is-a-prefix-of-the-reply",
         "fn-splan-windows-are-the-reply",
-        "fn-splan-step-plan-remaining"
+        "fn-splan-step-plan-remaining",
+        "fn-splan-window-size-is-positive-until-done"
       ]
     },
     {
