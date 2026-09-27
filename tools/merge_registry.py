@@ -26,6 +26,11 @@ scripts' rule, once, for all four files:
 * proofs.json `events` arrays are generated (tools/ledger.py --write from
   proof-events.json), so ours is kept and the caller regenerates.
 
+The claims ledger (tools/next_id.py, build/coordinator/id-claims.jsonl) is
+read after the merge: a row the merge adds whose id nobody claimed is named
+UNCLAIMED, and an id collision names the lane that claimed the number.
+Neither changes the merge or its exit code.
+
 A real conflict leaves ours for that field, names every one on stderr
 (`CONFLICT PRF-212 status: ours 'proved' theirs 'open'`), and exits 1, so git
 marks the file conflicted.  The file stays valid JSON either way.
@@ -35,6 +40,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 GENERATED_FIELDS = {"planning/proofs.json": {"events"}}
 MISSING = object()
@@ -160,6 +167,46 @@ def merge_documents(base, ours, theirs, path: str) -> tuple[object, list[str]]:
     return merged, conflicts
 
 
+def claim_notes(base, merged, ours, theirs, conflicts: list[str]) -> list[str]:
+    """What the id-claims ledger says of the rows this merge adds.
+
+    tools/next_id.py hands out ids from build/coordinator/id-claims.jsonl.
+    A row the merge adds whose id nobody claimed is named (UNCLAIMED: the
+    lane took a number by hand); a collision names who claimed the number,
+    which is the side that keeps it.  Neither changes the merge: the ledger
+    is evidence for the person resolving it, and a merge on a box with no
+    ledger says so once.
+    """
+    try:
+        import next_id  # noqa: PLC0415 (a sibling tool; the driver runs from tools/)
+    except ImportError:
+        return []
+    path = next_id.ledger_path(Path.cwd())
+    if path is None or not path.is_file():
+        return ["NOTE no id-claims ledger here; claims not checked"]
+    claims = next_id.claims_by_id(next_id.read_ledger(path))
+    key = rows_key(merged)
+    before = {row["id"] for row in (base.get(key, []) if isinstance(base, dict) else [])}
+    notes: list[str] = []
+    for row in merged.get(key, []):
+        ident = row["id"]
+        if ident in before or not next_id.parse_id(ident):
+            continue
+        claim = claims.get(ident)
+        if claim is None:
+            side = ("theirs" if ident not in {r["id"] for r in ours.get(key, [])}
+                    else "ours")
+            notes.append(f"UNCLAIMED {ident} ({side}): no row in {path.name}; "
+                         "`next_id.py claim` takes a free id to renumber to")
+    for line in conflicts:
+        match = next_id.re.match(r"CONFLICT (\S+): both sides added", line)
+        if match and match.group(1) in claims:
+            claim = claims[match.group(1)]
+            notes.append(f"CLAIMED {match.group(1)} by {claim.get('lane')} "
+                         f"({claim.get('note')}): the other side renumbers")
+    return notes
+
+
 def read(path: str):
     text = Path(path).read_text(encoding="utf-8")
     return json.loads(text) if text.strip() else {}
@@ -181,6 +228,8 @@ def main(argv: list[str]) -> int:
     Path(ours_file).write_text(json.dumps(merged, indent=2, ensure_ascii=False) + "\n",
                                encoding="utf-8")
     for line in conflicts:
+        print(f"merge_registry: {path}: {line}", file=sys.stderr)
+    for line in claim_notes(base, merged, ours, theirs, conflicts):
         print(f"merge_registry: {path}: {line}", file=sys.stderr)
     rows = merged[rows_key(merged)] if rows_key(merged) else []
     print(f"merge_registry: {path}: {len(rows)} rows, "
