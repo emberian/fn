@@ -236,13 +236,27 @@
         (fn-gac-servable-octets read post (cdr names)))
     nil))
 
+; A derived posting configuration carries its source's article bound and
+; header limits as one post bound (books/injection.lisp `fn-inj-post-bound'):
+; its octets and its limits read back unchanged.
+(defthm fn-gac-bound-octets-of-post-bound
+  (equal (fn-inj-bound-octets (cons octets limits)) octets)
+  :hints (("Goal" :in-theory (enable fn-inj-bound-octets))))
+
+(defthm fn-gac-bound-header-limits-of-post-bound
+  (equal (fn-inj-bound-header-limits (cons octets limits)) limits)
+  :hints (("Goal" :in-theory (enable fn-inj-bound-header-limits))))
+
 (defun fn-gac-post-config (read post groups config)
   (declare (xargs :guard t))
   (fn-inj-make-config-full (fn-inj-config-allow config)
                            (fn-inj-config-agent config)
                            (fn-gac-servable-octets read post
                                                    (fn-inj-config-groups config))
-                           (fn-inj-config-max-octets config)
+                           ;; The article bound and the header limits
+                           ;; (PRF-230) as the configuration carries them.
+                           (fn-inj-post-bound (fn-inj-config-max-octets config)
+                                              (fn-inj-config-header-limits config))
                            (fn-inj-config-listing config)
                            (append (true-list-fix (fn-inj-config-closed config))
                                    (and post (fn-gac-unpostable-octets post groups)))))

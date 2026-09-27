@@ -1245,7 +1245,11 @@
     (if (and login (fn-inj-config-shapep config))
         (fn-inj-make-config-full
          (fn-inj-config-allow config) (fn-inj-config-agent config)
-         (fn-inj-config-groups config) (fn-inj-config-max-octets config)
+         (fn-inj-config-groups config)
+         ;; The article bound and the header limits (PRF-230) as the
+         ;; configuration carries them.
+         (fn-inj-post-bound (fn-inj-config-max-octets config)
+                            (fn-inj-config-header-limits config))
          (fn-inj-config-listing config)
          (fn-mod-session-entries (fn-inj-config-closed config) login))
       config)))
@@ -3238,7 +3242,8 @@
                                 fn-inj-config-allow-of-fn-inj-make-config-full
                                 fn-inj-config-agent-of-fn-inj-make-config-full
                                 fn-inj-config-max-octets-of-fn-inj-make-config-full
-                                fn-inj-config-listing-of-fn-inj-make-config-full))))
+                                fn-inj-config-listing-of-fn-inj-make-config-full
+                                fn-inj-post-bound fn-gac-bound-octets-of-post-bound))))
 
 ;; PKT-658 (PRF-228).  The connection's moderation view
 ;; (`fn-auth-moderation-config', the posting configuration the delegate
