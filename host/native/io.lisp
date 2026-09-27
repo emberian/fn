@@ -4966,12 +4966,17 @@ tree root), or stop the build."
 ;;; storage-log.md; lane w6-log-core).  One preallocated segment file.  ACL2
 ;;; decides every value the host writes or tests: the extent
 ;;; (fn-lg-extent-okp), the kernel at open from the segment's bytes
-;;; (fn-lg-open-kernel over fn-lg-decode), recovery's zeroing range
-;;; (fn-lg-recover-tail), each record's admission (fn-lgt-prepare: only at
+;;; (fn-lgc-open over fn-lg-decode), recovery's zeroing range
+;;; (fn-lg-recover-tail), each record's admission (fn-lgc-t-prepare: only at
 ;;; the kernel's next txid), the append's admission and octets
-;;; (fn-lg-append-admitsp, fn-lgk-frontier, fn-lgk-append-octets) and the
-;;; kernel after each step (fn-lgk-append, fn-lgk-fence, fn-lgk-fence-failed,
-;;; fn-lgk-finish-one).  The host reads, writes and fences, in the order of
+;;; (fn-lgc-append-admitsp, fn-lgc-frontier, fn-lgc-append-octets) and the
+;;; kernel after each step (fn-lgc-append, fn-lgc-fence, fn-lgc-fence-failed,
+;;; fn-lgc-finish-one).  The kernel the host holds is the CONCRETE one
+;;; (books/store-log-kernel-concrete.lisp, lane per-record-state): the
+;;; committed records' COUNT in place of their list, each transition proved
+;;; to commute with the abstraction fn-lgc-of (KEYSTONE fn-lgc-run-refines-
+;;; the-kernel); the open's records go to the replay once (fnn-log-opened)
+;;; and are dropped.  The host reads, writes and fences, in the order of
 ;;; fn-lg-recover-program, fn-lg-append-program and fn-lg-fence-program
 ;;; (tests/campaign/native_cuts.py LOG_CUTS, verify_log_cut_map).  No owner
 ;;; path calls these yet: lane w6-log-owner moves the commit onto them.
@@ -4981,6 +4986,9 @@ tree root), or stop the build."
 
 (defstruct (fnn-log (:constructor %make-fnn-log))
   path fd kernel unit max extent
+  ;; The records the open's decode found (fn-lgc-open's first value), held
+  ;; only until the open's replay takes them (fnn-log-take-opened).
+  (opened nil)
   ;; The open batch's members and entry octets (fn-olr-take's COUNT and
   ;; OCTETS), the operator's bounds (fn-owb-bmax / fn-owb-omax of the live
   ;; configuration; set by the owner), and the fenced members not yet
@@ -5075,65 +5083,80 @@ concrete input of fn-lg-decode (its model is fn-lgd-octets)."
     (map 'string #'code-char data)))
 
 (defun fnn-log-open-kernel (fd extent unit max)
-  (fnn-core 'fn-lg-open-kernel (fnn-log-read-string fd extent) *fn-lg-genesis* unit max 1))
+  "The segment's decode: (values RECORDS KERNEL), the concrete kernel
+(fn-lgc-open; fn-lgc-open-refines: fn-lg-open-kernel's committed records and
+its abstraction)."
+  (destructuring-bind (records kernel)
+      (fnn-call 'fn-lgc-open (fnn-log-read-string fd extent) *fn-lg-genesis* unit max 1)
+    (values records kernel)))
+
+(defun fnn-log-take-opened (log)
+  "The open's records, once: the slot is cleared so that the kernel's life
+does not hold them."
+  (prog1 (fnn-log-opened log) (setf (fnn-log-opened log) nil)))
 
 (defun fnn-log-recover (path extent unit max)
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode,
 then the tail [F, EXTENT) zeroed by one write and fenced.  The kernel is
 R-related to the segment at log-recovered
 (fn-lg-recover-program-establishes-the-relation)."
-  (let* ((fd (fnn-log-open-segment path extent unit))
-         (ks (fnn-log-open-kernel fd extent unit max)))
-    (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
-      (fnn-log-pwrite fd offset (fnn-make-octets count))
-      (fnn-log-at :log-truncated)
-      (fnn-log-fdatasync fd)
-      (fnn-log-at :log-recovered))
-    (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
+  (let ((fd (fnn-log-open-segment path extent unit)))
+    (multiple-value-bind (records ks) (fnn-log-open-kernel fd extent unit max)
+      (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
+        (fnn-log-pwrite fd offset (fnn-make-octets count))
+        (fnn-log-at :log-truncated)
+        (fnn-log-fdatasync fd)
+        (fnn-log-at :log-recovered))
+      (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent
+                     :opened records))))
 
 (defun fnn-log-prepare (log record)
   "The checked prepare: RECORD joins the open batch only at the kernel's
-next txid (fn-lgt-prepare)."
-  (setf (fnn-log-kernel log) (fnn-core 'fn-lgt-prepare (fnn-log-kernel log) record)))
+next txid (fn-lgc-t-prepare)."
+  (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-t-prepare (fnn-log-kernel log) record)))
 
 (defun fnn-log-append (log)
   "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
 and its chained entries are written at the frontier in one positioned write."
   (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
-    (unless (fnn-core 'fn-lg-append-admitsp ks unit extent)
+    (unless (fnn-core 'fn-lgc-append-admitsp ks unit extent)
       (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
-    (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgk-frontier ks)
-                    (fnn-core 'fn-lgk-append-octets ks unit))
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-append ks unit extent))
+    (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgc-frontier ks)
+                    (fnn-core 'fn-lgc-append-octets ks unit))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-append ks unit extent))
     (fnn-log-at :log-written)))
 
 (defun fnn-log-fence (log)
   "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's
-fence.  A failed barrier fences the kernel (fn-lgk-fence-failed): every
+fence.  A failed barrier fences the kernel (fn-lgc-fence-failed): every
 member of the batch is uncertain until recovery decides."
   (let ((ks (fnn-log-kernel log)))
     (handler-case (fnn-log-fdatasync (fnn-log-fd log))
       (fnn-os-error (e)
-        (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed ks))
+        (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed ks))
         (fnn-indeterminate "log barrier failed: ~a" e)))
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence ks (fnn-log-unit log)))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence ks (fnn-log-unit log)))
     (fnn-log-at :log-fenced)))
 
 (defun fnn-log-finish (log count)
-  "Acknowledge COUNT members in order (fn-lgk-finish-one; the kernel never
-acknowledges past the committed records)."
+  "Acknowledge COUNT members in order (fn-lgc-finish-one; the kernel never
+acknowledges past the committed records' count)."
   (dotimes (i count)
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log)))))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-finish-one (fnn-log-kernel log)))))
 
 (defun fnn-log-rig-line (what log size)
   ;; Not `fnn-log-line': that is the service log's one-argument writer
   ;; (above), which this rig's definition used to replace in the image, so
   ;; every owner start faulted in fn-lgk-acked (friend-blockers-2, 09:10Z).
-  (let ((ks (fnn-log-kernel log)))
+  ;; The oracle's records are the segment's own, decoded again from its
+  ;; bytes (the concrete kernel keeps only their count).
+  (let ((ks (fnn-log-kernel log))
+        (records (fnn-log-open-kernel (fnn-log-fd log) (fnn-log-extent log)
+                                      (fnn-log-unit log) (fnn-log-max log))))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
-             what (fnn-core 'fn-lgk-acked ks) (fnn-core 'fn-lgk-frontier ks)
-             (fnn-core 'fn-lgk-next-txid ks) (fnn-hex (fnn-core 'fn-lgk-last ks))
-             (if (fnn-core 'fn-lg-workload-prefixp (fnn-core 'fn-lgk-committed ks) 1 size)
+             what (fnn-core 'fn-lgc-acked ks) (fnn-core 'fn-lgc-frontier ks)
+             (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
+             (if (fnn-core 'fn-lg-workload-prefixp records 1 size)
                  "t" "nil"))))
 
 (defun fnn-log-nat-arg (text what)
@@ -5195,8 +5218,9 @@ positive extent is kept: a re-run init completes, never truncates."
 (defun fnn-log-open-read-only (path unit max)
   (let* ((extent (fnn-log-observed-extent path))
          (fd (fnn-log-open-segment path extent unit t)))
-    (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
-                   :kernel (fnn-log-open-kernel fd extent unit max))))
+    (multiple-value-bind (records ks) (fnn-log-open-kernel fd extent unit max)
+      (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
+                     :kernel ks :opened records))))
 
 (defun fnn-log-batch-reset (log)
   (setf (fnn-log-count log) 0 (fnn-log-octets log) 0))
@@ -5276,17 +5300,17 @@ journal/, the root and its parent."
                        (fnn-log-recover path (fnn-log-observed-extent path) unit max)
                      (fnn-log-open-read-only path unit max))))
           (fnn-log-batch-reset log)
-          (setq records (mapcar #'fnn-octets
-                                (fnn-core 'fn-lgk-committed (fnn-log-kernel log))))
-          ;; The frontier: one past the largest txid of every record the log
-          ;; holds, of every event kind (ACL2's fn-store-log-next-txid), and
-          ;; the log kernel caught up to it (fn-olr-consume-to).
-          (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
-                                         (fnn-core 'fn-lgk-committed (fnn-log-kernel log))
-                                         (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log))))))
-            (setf (fnn-log-kernel log) (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) next)
+          (let ((opened (fnn-log-take-opened log)))
+            (setq records (mapcar #'fnn-octets opened))
+            ;; The frontier: one past the largest txid of every record the log
+            ;; holds, of every event kind (ACL2's fn-store-log-next-txid), and
+            ;; the log kernel caught up to it (fn-lgc-consume-to).
+            (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
+                                           opened
+                                           (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log))))))
+              (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) next)
                   (fnn-store-log store) log
-                  (fnn-store-frontier store) next))
+                  (fnn-store-frontier store) next)))
           (let ((config-records (fnn-config-records store)))
             (setq records
                   (or (fnn-recover-log-from-state-checkpoint store config-records records)
@@ -5343,7 +5367,7 @@ the observe callback): the frontier is the log's derived one."
     (when (null next)
       (fnn-refuse "finite transaction-ID domain exhausted"))
     (setf (fnn-log-kernel log)
-          (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) current-txid)
+          (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid)
           (fnn-log-reserved log) current-txid)
     (unless (eq (fnn-observe store :log-reserve) :reserved)
       (setf (fnn-store-fenced store) t)
@@ -5359,7 +5383,7 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
          (octets (fnn-octet-list record)))
     (loop repeat 2 do
       (destructuring-bind (verdict ks entry)
-          (fnn-core 'fn-olr-take (fnn-log-kernel log) octets (fnn-log-reserved log)
+          (fnn-core 'fn-lgc-take (fnn-log-kernel log) octets (fnn-log-reserved log)
                     (fnn-log-count log) (fnn-log-octets log)
                     (fnn-log-bmax log) (fnn-log-omax log) (fnn-log-unit log))
         (case verdict
@@ -5378,9 +5402,9 @@ octets past the frontier stay zeros (the relation's tail).  The extension is
 not a P-BATCH step (PKT-832: its program and cut): a death during it leaves
 the old extent or the new one, zeros past the frontier either way."
   (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
-    (unless (fnn-core 'fn-lgk-fitsp ks unit extent)
+    (unless (fnn-core 'fn-lgc-fitsp ks unit extent)
       (let ((next (fnn-nat (fnn-core 'fn-olr-next-extent extent
-                                     (+ (fnn-core 'fn-lgk-frontier ks) (fnn-log-octets log))
+                                     (+ (fnn-core 'fn-lgc-frontier ks) (fnn-log-octets log))
                                      unit))))
         (unless (fnn-core 'fn-lg-extent-okp next unit)
           (fnn-fault "ACL2 returned an invalid log extent"))
@@ -5406,7 +5430,7 @@ fenced (fn-lgk-fence-failed) and the store with it."
             (fnn-at store :log-fenced))
         ((or fnn-store-indeterminate fnn-store-fault) (e) (error e))
         (fnn-os-error (e)
-          (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log)))
+          (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log)))
           (fnn-indeterminate "log batch outcome is indeterminate: ~a" e))
         (fnn-store-error (e)
           ;; fnn-log-append's refusal: the kernel does not admit the batch
@@ -5472,7 +5496,8 @@ fenced (fn-lgk-fence-failed) and the store with it."
          (unwind-protect
               (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
                                                   :extent extent
-                                                  :kernel (fnn-log-open-kernel fd extent unit max))
+                                                  :kernel (nth-value 1 (fnn-log-open-kernel
+                                                                        fd extent unit max)))
                             size)
            (fnn-close fd))))
       (t
@@ -5487,7 +5512,7 @@ fenced (fn-lgk-fence-failed) and the store with it."
                       (dotimes (i per)
                         (fnn-log-prepare
                          log (fnn-core 'fn-lg-workload-record
-                                       (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log)) size)))
+                                       (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log)) size)))
                       (fnn-log-append log)
                       (fnn-log-fence log)
                       (fnn-log-finish log per)

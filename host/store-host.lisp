@@ -29,6 +29,9 @@
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
 (include-book "../books/store-log-route")
+;; The log kernel the host holds (lane per-record-state; host/native/io.lisp
+;; fnn-log-*): the committed records' count in place of their list.
+(include-book "../books/store-log-kernel-concrete")
 
 (defconst *fn-store-max-text* 512)
 
