@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/control-evidence")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defun cet-string (octets) (fn-record-octets-string octets))
 (defconst *cet-lf* (coerce (list (code-char 10)) 'string))
@@ -30,8 +31,10 @@
 (defconst *cet-t* (fn-make-article "<t@example.invalid>" nil (list "fn.mod.a") nil t nil))
 (defconst *cet-raw* (list *cet-c2* *cet-t*))
 (defconst *cet-v* (list (cons "<c2@example.invalid>" *cet-p-verified*)))
+; The store's history holds held rows (records-flip): each record is the row
+; the entry interns (store-intern fn-intern-row-at), handle = its sequence.
 (defun cet-rec (seq txid msgid groups)
-  (fn-record-make seq txid 1 msgid '(65) groups "a" "s" "e" 2 :legacy))
+  (fn-hrt-row-at (fn-record-make seq txid 1 msgid '(65) groups "a" "s" "e" 2 :legacy) seq))
 (defconst *cet-records* (list (cet-rec 0 4 "<t@example.invalid>" '("fn.mod.a"))
                               (cet-rec 1 5 "<c2@example.invalid>" '("control.cancel"))))
 (defconst *cet-configs*

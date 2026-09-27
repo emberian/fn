@@ -24,6 +24,7 @@
 (in-package "ACL2")
 (include-book "../../books/catalog-commit")
 (include-book "store-node-tests")
+(include-book "held-rows-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
@@ -192,7 +193,10 @@
 
 (defun cct-held (seq txid msgid)
   (fn-held-make seq txid 0 msgid seq '("fn.test") "o" "s" "e" 1 5
-                (fn-hf-make 100 14 2) (fn-hc-make :unverified nil 0) nil nil))
+                (fn-hf-make 100 14 2)
+                ; by specification: the flip types the held context's verdict
+                ; (fn-hc-verdictp): the verdict value, token :unverified.
+                (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0) nil nil))
 
 (defconst *cct-c*
   (list (fn-cat-assign (cct-held 0 1 "<a@x>") nil)
@@ -247,30 +251,39 @@
    :rule-classes nil))
 
 ; -----------------------------------------------------------------------------
-; The shared transition on store-node-tests' store at :completing: the
-; completing record is *sn-record* (bytes (65 66)); its held view H carries
-; handle 0, the facts and the context of those bytes under the store's
-; keyring (none) and generation (0).
+; The shared transition on store-node-tests' store at :completing.
+;
+; by specification: the flip.  The store retains held rows, so the completing
+; record IS the held row (store-node-tests' *sn-row*: *sn-record*'s positions
+; at handle 0), the pending payload is that handle, and the keystone
+; fn-sn-finish-held-is-finish (books/catalog-commit.lisp, restated by the
+; flip) takes H = the completion row and CTX = its own context.  The witness
+; asserts that statement's complete antecedent and conclusion; each tooth
+; drops one hypothesis.  The row's context is the context of its bytes under
+; the store's keyring and generation, as the entry decides it
+; (fn-held-context-of, store-intern fn-intern-row-at).
 
-(defconst *cct-s* *sn-completing*)
 (defconst *cct-bytes* (fn-record-payload *sn-record*))
-(defconst *cct-ctx* (fn-held-context-of *cct-bytes* (fn-sn-keyring *cct-s*)
-                                        (fn-sn-keyring-generation *cct-s*)))
-(defconst *cct-h*
-  (fn-held-make 0 0 0 "<sn@example>" 0 *sn-groups* "sn-pin" "sn-content" "sn-release"
-                2 841000000 (fn-held-facts-of *cct-bytes*) *cct-ctx* nil nil))
+; The row the entry interns from *sn-record* (handle 0, the bytes' facts and
+; context under the store's keyring nil at generation 0), prepared and
+; published on store-node-tests' reserved store.
+(defconst *cct-row* (fn-hrt-row-at *sn-record* 0))
+(defconst *cct-s* (fn-sn-test-publish (fn-sn-prepare *sn-reserved* *cct-row*)))
+(assert-event (equal (fn-sf-phase (fn-sn-files *cct-s*)) :completing))
+(defconst *cct-h* (fn-sn-completion-record *cct-s*))
+(defconst *cct-ctx* (fn-held-context *cct-h*))
+(assert-event (equal *cct-ctx* (fn-held-context-of *cct-bytes* (fn-sn-keyring *cct-s*)
+                                                   (fn-sn-keyring-generation *cct-s*))))
 
 (defthm cct-w-finish-held-is-finish
   (and (fn-sn-statep *cct-s*)
-       (equal (fn-sn-completion-record *cct-s*) *sn-record*)
-       (fn-record-p *sn-record*)
+       (equal (fn-sn-completion-record *cct-s*) *cct-h*)
+       (equal *cct-h* *cct-row*)
        (fn-held-p *cct-h*)
-       (equal (fn-held-wire *cct-h* (fn-record-payload *sn-record*)) *sn-record*)
-       (equal (fn-record-payload *sn-record*)
+       (equal (fn-held-wire *cct-h* *cct-bytes*) *sn-record*)
+       (equal (fn-record-payload *cct-h*)
               (fn-pending-payload (fn-state-pending (fn-node-acceptance (fn-sn-node *cct-s*)))))
-       (equal *cct-ctx* (fn-held-context-of (fn-record-payload *sn-record*)
-                                            (fn-sn-keyring *cct-s*)
-                                            (fn-sn-keyring-generation *cct-s*)))
+       (equal *cct-ctx* (fn-held-context *cct-h*))
        (equal (fn-sn-finish-held *cct-s* *cct-h* *cct-ctx*) (fn-sn-finish *cct-s*))
        ; not vacuous: the finish commits
        (not (equal (fn-sn-finish *cct-s*) *cct-s*))
@@ -288,16 +301,20 @@
          (not (fn-snh-enabledp *cct-s* *cct-h* stale))))
   :rule-classes nil)
 
-; Without alpha (a held record that is not the completing record's view):
-; the held finish refuses, the finish commits.
+; Without the completion-record hypothesis (a held row that is not the
+; completing row, same handle and context): the held finish refuses, the
+; finish commits.
+(defconst *cct-other*
+  (fn-held-make 0 0 0 "<other@example>" 0 *sn-groups* "sn-pin" "sn-content"
+                "sn-release" 2 841000000 (fn-held-facts *cct-h*) *cct-ctx* nil nil))
 (defthm cct-w-no-alpha
-  (let ((h (fn-held-make 0 0 0 "<other@example>" 0 *sn-groups* "sn-pin" "sn-content"
-                         "sn-release" 2 841000000 (fn-held-facts-of *cct-bytes*)
-                         *cct-ctx* nil nil)))
-    (and (fn-held-p h)
-         (not (equal (fn-held-wire h (fn-record-payload *sn-record*)) *sn-record*))
-         (equal (fn-sn-finish-held *cct-s* h *cct-ctx*) *cct-s*)
-         (not (equal (fn-sn-finish-held *cct-s* h *cct-ctx*) (fn-sn-finish *cct-s*)))))
+  (and (fn-held-p *cct-other*)
+       (not (equal (fn-sn-completion-record *cct-s*) *cct-other*))
+       (equal (fn-record-payload *cct-other*)
+              (fn-pending-payload (fn-state-pending (fn-node-acceptance (fn-sn-node *cct-s*)))))
+       (equal *cct-ctx* (fn-held-context *cct-other*))
+       (equal (fn-sn-finish-held *cct-s* *cct-other* *cct-ctx*) *cct-s*)
+       (not (equal (fn-sn-finish-held *cct-s* *cct-other* *cct-ctx*) (fn-sn-finish *cct-s*))))
   :rule-classes nil)
 
 ; Without the held record at all: refused.
@@ -307,32 +324,34 @@
        (not (equal (fn-sn-finish-held *cct-s* nil *cct-ctx*) (fn-sn-finish *cct-s*))))
   :rule-classes nil)
 
-; Without the context hypothesis (a verdict decided by no one, under the
-; store's generation): the held finish commits THAT verdict; the finish
-; commits the bytes'.  The two differ in the recorded verdict.
+; Without the context hypothesis (a well-formed verdict the bytes do not
+; carry, :absent where they decide :unverified, under the store's generation): the held finish commits THAT verdict; the finish
+; commits the row's.  The two differ in the recorded verdict.
 (defthm cct-w-no-context
-  (let ((bogus (fn-hc-make :bogus (fn-hc-delta *cct-ctx*) (fn-sn-keyring-generation *cct-s*))))
-    (and (not (equal bogus (fn-held-context-of (fn-record-payload *sn-record*)
-                                               (fn-sn-keyring *cct-s*)
-                                               (fn-sn-keyring-generation *cct-s*))))
+  (let ((bogus (fn-hc-make (fn-stx-make-verdict :absent nil (fn-sn-keyring-generation *cct-s*))
+                           (fn-hc-delta *cct-ctx*) (fn-sn-keyring-generation *cct-s*))))
+    (and (not (equal bogus (fn-held-context *cct-h*)))
          (not (equal (fn-sn-finish-held *cct-s* *cct-h* bogus) *cct-s*))
          (not (equal (fn-sn-finish-held *cct-s* *cct-h* bogus) (fn-sn-finish *cct-s*)))
          (equal (fn-sn-verdict-lookup (fn-sn-finish-held *cct-s* *cct-h* bogus) "<sn@example>")
-                :bogus)))
+                (fn-hc-verdict bogus))))
   :rule-classes nil)
 
-; CORRUPTED STATE (the payload hypothesis): a store whose pending bytes are
-; not the completing record's.  The reference finish refuses (its binding
-; reads the bytes); the held finish, which reads metadata, commits.  The
-; maintained relation of step 6 excludes this state; the theorem's payload
-; hypothesis names it.
+; CORRUPTED STATE (the payload hypothesis): a store whose pending payload is
+; another handle (1) than the completing row's (0).  The reference finish
+; refuses (its binding reads the handle); the held finish, which reads
+; metadata, commits.  The maintained relation excludes this state; the
+; theorem's payload hypothesis names it.
 (defthm cct-w-no-payload-corrupted
-  (let ((s (fn-sn-test-mismatched-pending '(99) *sn-groups* "sn-pin" "sn-content"
-                                          "sn-release" 2)))
+  (let ((s (fn-sn-update *cct-s* (fn-sn-files *cct-s*)
+                        (fn-node-prepare (fn-sn-node *sn-initial*) 0 "<sn@example>" 1
+                                         *sn-groups* "sn-pin" "sn-content" "sn-release"
+                                         2 841000000))))
     (and (fn-sn-statep s)
-         (equal (fn-sn-completion-record s) *sn-record*)
-         (equal (fn-held-wire *cct-h* (fn-record-payload *sn-record*)) *sn-record*)
-         (not (equal (fn-record-payload *sn-record*)
+         (equal (fn-sn-completion-record s) *cct-h*)
+         (fn-held-p *cct-h*)
+         (equal *cct-ctx* (fn-held-context *cct-h*))
+         (not (equal (fn-record-payload *cct-h*)
                      (fn-pending-payload (fn-state-pending (fn-node-acceptance (fn-sn-node s))))))
          (equal (fn-sn-finish s) s)
          (not (equal (fn-sn-finish-held s *cct-h* *cct-ctx*) s))
@@ -341,10 +360,7 @@
 
 (must-fail
  (defthm cct-w-no-alpha-conclusion
-   (let ((h (fn-held-make 0 0 0 "<other@example>" 0 *sn-groups* "sn-pin" "sn-content"
-                          "sn-release" 2 841000000 (fn-held-facts-of *cct-bytes*)
-                          *cct-ctx* nil nil)))
-     (equal (fn-sn-finish-held *cct-s* h *cct-ctx*) (fn-sn-finish *cct-s*)))
+   (equal (fn-sn-finish-held *cct-s* *cct-other* *cct-ctx*) (fn-sn-finish *cct-s*))
    :rule-classes nil))
 
 ; -----------------------------------------------------------------------------
@@ -360,8 +376,14 @@
        (equal (fn-sn-keyring-generation (fn-snrt-step *sn-prepared* '(:known-abort))) 0)
        (not (equal (fn-snrt-step *sn-prepared* '(:known-abort)) *sn-prepared*))
        (equal (fn-sn-keyring-generation (fn-sn-io *sn-prepared* :record-file :ok)) 0)
-       (equal (fn-sn-keyring-generation (fn-snrt-step *sn-reserved* (list :prepare *sn-record*))) 0)
-       ; the writer, on a store with a pending prepare: the generation moves
+       (equal (fn-sn-keyring-generation (fn-snrt-step *sn-reserved* (list :prepare *sn-row*))) 0)
+       ; the writer: the generation moves.  by specification: the flip: the
+       ; writer recontexts the retained rows, so it acts at :ready only (the
+       ; store after the finish), and takes the rows' contexts
+       ; (store-intern's entry fn-store-set-keyring computes them).
        (fn-prin-keyringp nil)
-       (equal (fn-sn-keyring-generation (fn-sn-set-keyring *cct-s* nil)) 1))
+       (equal (fn-sn-keyring-generation
+               (fn-sn-set-keyring (fn-sn-finish *cct-s*) nil
+                                  (list (fn-held-context-of *cct-bytes* nil 1))))
+              1))
   :rule-classes nil)
