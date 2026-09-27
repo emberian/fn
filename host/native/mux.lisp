@@ -771,14 +771,15 @@ stop shuts it down whichever thread holds it."
 (defun fnn-mux-thread-stack-octets ()
   (sb-alien:extern-alien "thread_control_stack_size" sb-alien:unsigned-long))
 
+;;; The control socket's client threads.  host/native/control.lisp binds this
+;;; to ACL2's ceiling (fn-native-control-host-max-active-clients) around the
+;;; run it starts; an image without the control module (the DTN build), and
+;;; the launcher's probe, count the most that ceiling allows.
+(defvar *fnn-mux-control-clients* 64)
+
 (defun fnn-mux-thread-count (service)
   (declare (ignore service))
-  ;; The control socket's client ceiling is ACL2's (fn-native-control-host-
-  ;; max-active-clients, at most 64); an image without the control module
-  ;; counts that most.
-  (+ +fnn-mux-fixed-threads+ +fnn-mux-loops+
-     (or (ignore-errors (fnn-core 'fn-native-control-host-max-active-clients))
-         64)))
+  (+ +fnn-mux-fixed-threads+ +fnn-mux-loops+ *fnn-mux-control-clients*))
 
 (defun fnn-mux-budget-install (service tls-context)
   "ACL2 decides whether this machine holds the live capacity; a refusal is
