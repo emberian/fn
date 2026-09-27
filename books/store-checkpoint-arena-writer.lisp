@@ -411,7 +411,7 @@
 
 (local
  (defthm fn-scka-sum-bounds-car
-   (implies (nat-listp ks)
+   (implies (natp (car ks))
             (<= (car ks) (fn-scka-sum ks)))
    :rule-classes :linear))
 
@@ -440,7 +440,6 @@
   (let ((r (fn-scka-write-run pst n count s segment-bound file-bound fuel fn-arena fn-octets)))
     (implies (and (posp (nth 0 pst))
                   (equal count (+ (nth 0 pst) (len (nth 2 pst))))
-                  (nat-listp (nth 2 pst))
                   (equal (fn-scka-sum (nth 2 pst))
                          (len (fn-scka-canon-payloads (nth 1 pst) fn-arena)))
                   (equal (mv-nth 0 r) :ok))
@@ -469,7 +468,7 @@
   (let* ((ps (fn-scka-canon-payloads rows fn-arena))
          (r (fn-scka-write-run (fn-scka-initial-state rows ks total) (len ps) (+ 1 (len ks))
                                s segment-bound file-bound fuel fn-arena fn-octets)))
-    (implies (and (nat-listp ks) (equal (fn-scka-sum ks) (len ps))
+    (implies (and (equal (fn-scka-sum ks) (len ps))
                   (equal (mv-nth 0 r) :ok))
              (equal (mv-nth 1 r) (fn-scc-concat (fn-scka-run-segments ps ks s)))))
   :hints (("Goal" :do-not-induct t
