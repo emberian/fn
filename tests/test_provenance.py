@@ -54,8 +54,9 @@ class ProvenanceTests(unittest.TestCase):
         with self.live() as (unused_store, bridge, unused_records):
             evidence = bridge.prov_post()
             # Not the old constant, and not a rendering: the canonical wire
-            # form, which is prefixed and printable so that the host boundary
-            # guard `fn-store-text-octetsp' (octets 33 to 126) admits it.
+            # form, which is prefixed and printable so that the Store prepare's field
+            # check `fn-pfld-textp' (books/post-fields.lisp, octets 33 to 126)
+            # admits it.
             self.assertNotEqual(evidence, b"unsigned-legacy-v0")
             self.assertTrue(evidence.startswith(b"fnprov1:"), evidence)
             self.assertTrue(all(33 <= byte <= 126 for byte in evidence), evidence)

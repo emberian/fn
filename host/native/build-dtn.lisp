@@ -45,6 +45,9 @@
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
+;; Lane host-decisions: the Store prepares' field checks (fn-pfld-), called by
+;; host/owner-host.lisp, host/store-node-host.lisp and host/bp-ingress-host.lisp.
+(include-book "books/post-fields")
 (include-book "books/frame")
 (include-book "books/store-observed")
 (include-book "books/store-node-resolution")

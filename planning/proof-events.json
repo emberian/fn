@@ -10647,7 +10647,17 @@
         {
           "kind": "theorem",
           "name": "fn-psrv-prepare-identity-preserves-invariant",
-          "note": "host/owner-host.lisp fn-owner-prepare-identity: fn-psrv-prepare-identity (the signed composite's article groups are tested)."
+          "note": "host/owner-host.lisp fn-owner-prepare-identity now calls fn-oiis-prepare-identity (books/owner-identity-served.lisp), this theorem at the row signed-post interns. Teeth: tests/acl2/owner-prepare-served-events-tests.lisp (reachable keyring and composite-row witnesses, the unserved composite refused)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oiis-prepare-identity-preserves-invariant",
+          "note": "KEYSTONE for the host line: host/owner-host.lisp fn-owner-prepare-identity calls fn-oiis-prepare-identity over the wire value and the arena's count. Teeth: tests/acl2/owner-identity-served-tests.lisp (*ois-staged* reachable positive, *pse-t2-reserved* refused by name, the wire value where the row is expected, *ois-bad* corrupted-state)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oiis-prepare-identity-unfolds",
+          "note": "-unfolds: the entry is fn-oii-ocfg-prepare-identity when the interned row is served, the owner unchanged otherwise; both branches witnessed in tests/acl2/owner-identity-served-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -10792,6 +10802,60 @@
           "kind": "theorem",
           "name": "fn-lgc-sealed-extent-fits-the-batch",
           "note": "Host: fnn-log-ensure-extent then fnn-log-append (the seal)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-300",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-textp-is-a-record-metadata-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-textp-is-exactly-the-record-metadata-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-identity-text-is-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-post-evidence-is-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-group-name-requestp-is-bounded-by-the-codec"
+        }
+      ]
+    },
+    {
+      "id": "PRF-299",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-is-exact-node-abort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-cannot-acknowledge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves-invariant"
         }
       ]
     }

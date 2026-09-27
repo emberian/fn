@@ -56,6 +56,9 @@
 (include-book "books/reader-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
+;; Lane host-decisions: the Store prepares' field checks (fn-pfld-), called by
+;; host/owner-host.lisp, host/store-node-host.lisp and host/bp-ingress-host.lisp.
+(include-book "books/post-fields")
 (include-book "books/frame")
 ;; The record log's kernel, decode and programs (lane w6-log-core): the host
 ;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).

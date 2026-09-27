@@ -46,6 +46,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/article-work-tests \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
+	books/post-fields \
+	tests/acl2/post-fields-tests \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
@@ -963,6 +965,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-prepare-served \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
+	tests/acl2/owner-prepare-served-events-tests \
+	tests/acl2/owner-identity-served-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \

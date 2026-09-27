@@ -3382,7 +3382,7 @@ the record is durable either way and the caller's outcome does not change."
   "The one rendering of a canonical identity where a string is forced: a
 store record metadata field, a journal record and an NNTP header all carry
 text, and ACL2 decides what that text is.  A record field holds this, never
-the canonical octets, which are not `fn-store-text-octetsp'."
+the canonical octets, which are not `fn-pfld-textp' (books/post-fields.lisp)."
   (fnn-as-octets (fnn-core 'fn-store-identity-text (fnn-octet-list identity))))
 
 (defun fnn-provenance-post ()

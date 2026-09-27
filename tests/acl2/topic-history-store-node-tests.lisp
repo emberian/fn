@@ -2,6 +2,8 @@
 ; reserve/publish/finish path and exact T10 accepted-source events.
 (in-package "ACL2")
 (include-book "../../books/store-node")
+; The deferred known abort witness at the end of this book.
+(include-book "../../books/store-node-resolution")
 (include-book "topic-history-local-admin-tests")
 (include-book "topic-history-admission-tests")
 (include-book "std/testing/must-fail" :dir :system)
@@ -135,3 +137,27 @@
                     (thsn-topic-commit *thsn-admitted*
                      (list :topic-admit 6 6 6 *thad-topic*))))
          7)))
+
+; The deferred known abort of a staged topic event (lane host-decisions,
+; 2026-09-27; books/store-node-resolution `fn-sn-known-abort', included above
+; for it).  Before it the abort of this state was the identity.  Reachable
+; positive witness: the real reserve and `fn-sn-prepare-topic' of the admin
+; install; the antecedent (relation, record phase, a topic candidate, the
+; gate) and the conclusion (`:ready', the node at the frontier, the history
+; and the topic projection those of the accepted root, the relation).
+(make-event `(defconst *thsn-staged-install*
+               ',(fn-sn-prepare-topic (thsn-reserve *thsn-root-accepted*) *thsn-install*)))
+(make-event `(defconst *thsn-install-aborted* ',(fn-sn-known-abort *thsn-staged-install*)))
+(assert-event (fn-snt-relation *thsn-staged-install*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *thsn-staged-install*)) :record-staged))
+(assert-event (fn-th-topic-eventp (fn-sf-record-candidate (fn-sn-files *thsn-staged-install*))))
+(assert-event (fn-sn-known-abort-enabledp *thsn-staged-install*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *thsn-install-aborted*)) :ready))
+(assert-event
+ (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *thsn-install-aborted*)))
+        (fn-sf-frontier (fn-sn-files *thsn-install-aborted*))))
+(assert-event (equal (fn-sf-records (fn-sn-files *thsn-install-aborted*))
+                     (fn-sf-records (fn-sn-files *thsn-root-accepted*))))
+(assert-event (equal (fn-sn-topic *thsn-install-aborted*)
+                     (fn-sn-topic *thsn-root-accepted*)))
+(assert-event (fn-snt-relation *thsn-install-aborted*))
