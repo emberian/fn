@@ -1037,26 +1037,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1064,
-    "books_in_root_closure": 1055,
+    "books": 1062,
+    "books_in_root_closure": 1054,
     "roots": 1033,
-    "theorems": 15193,
-    "functions": 10482,
-    "assert_events": 15651,
-    "must_fails": 1852,
+    "theorems": 15124,
+    "functions": 10429,
+    "assert_events": 15590,
+    "must_fails": 1848,
     "prover_refusals": 0,
     "encapsulates": 77,
     "guards": {
       "verified": 2338,
       "declared-off": 823,
-      "default-guarded": 5738,
-      "default-unguarded": 1583
+      "default-guarded": 5698,
+      "default-unguarded": 1570
     },
     "suspect_theorems": 145,
     "export_hygiene_warnings": 168,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 170,
-    "include_hygiene_warnings": 1057,
+    "teeth_form_warnings": 166,
+    "include_hygiene_warnings": 1056,
     "host_names_warnings": 1193,
     "hand_written_record_warnings": 18
   },
@@ -1227,7 +1227,7 @@
       "book": "books/accounts.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 38,
+      "theorems": 37,
       "functions": 16,
       "guards": {
         "verified": 0,
@@ -7742,7 +7742,7 @@
       "book": "books/config-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 52,
+      "theorems": 51,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -8037,11 +8037,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 59,
-      "functions": 208,
+      "functions": 201,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 207,
+        "default-guarded": 200,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -9249,35 +9249,6 @@
       "read_error": null
     },
     {
-      "book": "books/group-access.lisp",
-      "in_root_closure": true,
-      "is_root": false,
-      "theorems": 61,
-      "functions": 22,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 22,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "control-served",
-        "group-bucket-index",
-        "nntp-invariants",
-        "peer-inbound"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "books/group-bucket-article-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10417,11 +10388,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 28,
-      "functions": 40,
+      "functions": 38,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 40,
+        "default-guarded": 38,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -10864,12 +10835,12 @@
       "book": "books/nntp-auth.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 153,
-      "functions": 80,
+      "theorems": 147,
+      "functions": 71,
       "guards": {
         "verified": 46,
         "declared-off": 3,
-        "default-guarded": 30,
+        "default-guarded": 21,
         "default-unguarded": 1
       },
       "verify_guards_events": 46,
@@ -10882,7 +10853,6 @@
       "includes": [
         "accounts",
         "auth-secret",
-        "group-access",
         "peer-inbound",
         "principal"
       ],
@@ -24331,35 +24301,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/group-access-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 0,
-      "functions": 13,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 13
-      },
-      "verify_guards_events": 0,
-      "assert_events": 61,
-      "must_fails": 4,
-      "prover_refusals": 0,
-      "defconsts": 33,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/native-admin",
-        "../../books/nntp-auth"
-      ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/group-bucket-index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -30951,7 +30892,7 @@
     {
       "theorem": "fn-auth-consistent-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 564,
+      "line": 562,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
       ]
@@ -30959,7 +30900,7 @@
     {
       "theorem": "fn-auth-redeem-outcome-is-inert-unless-it-answers",
       "book": "books/nntp-auth.lisp",
-      "line": 1492,
+      "line": 1490,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-auth-redeem-outcome and the conclusion is that branch's value"
       ]
@@ -30967,7 +30908,7 @@
     {
       "theorem": "fn-auth-session-peer-folds",
       "book": "books/nntp-auth.lisp",
-      "line": 2692,
+      "line": 2690,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-auth-session-peer"
       ]
@@ -30975,7 +30916,7 @@
     {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 951,
+      "line": 949,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -31298,7 +31239,7 @@
     {
       "theorem": "fn-cfg-set-group-description-refuses-an-unknown-group-by-definition",
       "book": "books/config-descriptions.lisp",
-      "line": 131,
+      "line": 130,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-cfg-delta-reason and the conclusion is that branch's value"
       ]
@@ -31566,7 +31507,7 @@
     {
       "theorem": "fn-nop-native-action-of-unaccepted",
       "book": "books/native-operator.lisp",
-      "line": 1522,
+      "line": 1518,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-native-operator-result-native-action and the conclusion is that branch's value"
       ]
@@ -32530,7 +32471,7 @@
       {
         "theorem": "fn-native-admin-name-components-first-is-the-first-component",
         "book": "books/native-admin.lisp",
-        "line": 1027,
+        "line": 976,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32548,19 +32489,19 @@
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-make-session",
         "book": "books/nntp-auth.lisp",
-        "line": 646,
+        "line": 644,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-with-base",
         "book": "books/nntp-auth.lisp",
-        "line": 651,
+        "line": 649,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 2175,
+        "line": 2173,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32620,13 +32561,13 @@
       {
         "theorem": "fn-oag-post-config-agent-is-the-path-identity",
         "book": "books/owner-agent.lisp",
-        "line": 120,
+        "line": 117,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-oag-tls-served-conn-config",
         "book": "books/owner-agent.lisp",
-        "line": 442,
+        "line": 434,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32662,7 +32603,7 @@
       {
         "theorem": "fn-oag-motd-of-the-listing",
         "book": "books/owner-descriptions-read.lisp",
-        "line": 441,
+        "line": 435,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -33801,30 +33742,6 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
-        "check": "gat-projection-without-projection",
-        "book": "tests/acl2/group-access-tests.lisp",
-        "line": 216,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "gat-into-view-without-readable",
-        "book": "tests/acl2/group-access-tests.lisp",
-        "line": 226,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "gat-into-view-without-projected",
-        "book": "tests/acl2/group-access-tests.lisp",
-        "line": 237,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "gat-absent-without-covers",
-        "book": "tests/acl2/group-access-tests.lisp",
-        "line": 257,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
         "check": "gix-range-without-article-listp",
         "book": "tests/acl2/group-bucket-index-tests.lisp",
         "line": 83,
@@ -34628,7 +34545,7 @@
       },
       {
         "book": "books/account-list.lisp",
-        "line": 22,
+        "line": 20,
         "include": "accounts",
         "included": "books/accounts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -36749,7 +36666,7 @@
       },
       {
         "book": "books/nntp-auth.lisp",
-        "line": 63,
+        "line": 61,
         "include": "accounts",
         "included": "books/accounts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -40206,13 +40123,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/group-access-tests.lisp",
-        "line": 10,
-        "include": "../../books/native-admin",
-        "included": "books/native-admin.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/group-bucket-index-tests.lisp",
         "line": 3,
         "include": "../../books/group-bucket-invariants",
@@ -42414,21 +42324,21 @@
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 185,
+        "line": 183,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 185,
+        "line": 183,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/native-admin-host.lisp",
-        "line": 185,
+        "line": 183,
         "name": "string-downcase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -50422,7 +50332,7 @@
       },
       {
         "book": "books/nntp-auth.lisp",
-        "line": 110,
+        "line": 108,
         "shape": "fn-auth-config-shapep",
         "shapes": 3,
         "accessors": 14,
