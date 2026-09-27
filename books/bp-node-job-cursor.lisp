@@ -500,7 +500,9 @@
 (defthm fn-bpnjc-scan-position-is-the-segment
   (implies (natp n)
            (equal (mv-nth 2 (fn-bpnjc-scan rest peer routing held n))
-                  (+ n (len (fn-bpnjc-scan-seg rest peer routing))))))
+                  (+ n (len (fn-bpnjc-scan-seg rest peer routing)))))
+  :hints (("Goal" :induct (fn-bpnjc-scan rest peer routing held n)
+           :in-theory (union-theories '(fn-bpnjc-scan fn-bpnjc-scan-seg) (theory 'ground-zero)))))
 
 (defthm fn-bpnjc-segment-is-a-prefix
   (equal (fn-bpnjc-prefix (len (fn-bpnjc-scan-seg rest peer routing)) rest)
@@ -514,7 +516,8 @@
 
 (defthm fn-bpnjc-len-of-drop
   (implies (and (natp n) (<= n (len l)))
-           (equal (len (fn-bpnjc-drop n l)) (- (len l) n))))
+           (equal (len (fn-bpnjc-drop n l)) (- (len l) n)))
+  :hints (("Goal" :induct (fn-bpnjc-drop n l) :in-theory (union-theories '(fn-bpnjc-prefix fn-bpnjc-drop) (theory 'ground-zero)))))
 
 (defthm fn-bpnjc-ready-with-more-offered
   (implies (fn-bpnj-readyp job peer routing (cons k offered))
@@ -537,7 +540,10 @@
   (implies (not (member-equal k (fn-bpnjc-keys l)))
            (equal (fn-bpnjc-first-held l peer routing (cons k offered))
                   (fn-bpnjc-first-held l peer routing offered)))
-  :hints (("Goal" :in-theory (disable fn-bpn-job-key))))
+  :hints (("Goal" :induct (fn-bpnjc-keys l)
+           :in-theory (union-theories '(fn-bpnjc-keys fn-bpnjc-first-held member-equal
+                                        fn-bpnjc-candidate-with-another-key car-cons cdr-cons)
+                                      (theory 'minimal-theory)))))
 
 (defthm fn-bpnjc-offered-key-is-not-a-candidate
   (and (not (fn-bpnj-candidatep job peer (cons (fn-bpn-job-key job) offered)))
@@ -839,7 +845,10 @@
        (equal (fn-bpn-nth 2 (list f c h)) h)
        (equal (fn-bpn-nth 0 (list* :offer ev rest)) :offer)
        (equal (fn-bpn-nth 2 (list :offer ev o eid)) o))
-  :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car))))
+  :hints (("Goal" :expand ((:free (n x) (fn-bpn-nth n x)))
+           :in-theory (union-theories '(fn-cbor-ag-car natp zp car-cons cdr-cons (:e natp) (:e zp)
+                                        (:e binary-+) (:e not))
+                                      (theory 'minimal-theory)))))
 
 ;; The ask's answer re-establishes the relation for the next ask at the same
 ;; state: an offer's cursor and OFFERED satisfy it.
@@ -964,7 +973,7 @@
            (equal (fn-bpnjc-prefix c (fn-bpn-append jobs more))
                   (fn-bpnjc-prefix c jobs)))
   :hints (("Goal" :induct (fn-bpnjc-prefix c jobs)
-           :in-theory (enable fn-bpn-append))))
+           :in-theory (union-theories '(fn-bpnjc-prefix fn-bpn-append) (theory 'ground-zero)))))
 
 ;; ---------------------------------------------------------------------
 ;; The peer's frontier, carried between contacts.
@@ -1016,7 +1025,12 @@
   (implies (and (fn-bpnjc-frontierp jobs peer f)
                 (fn-bpn-job-listp jobs))
            (fn-bpnjc-cursor-relp jobs peer routing nil f nil))
-  :hints (("Goal" :in-theory (disable fn-bpnjc-all-settled-p fn-bpnjc-prefix))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnjc-settled-prefix-answers-nothing
+                  (l (fn-bpnjc-prefix f jobs)) (offered nil)))
+           :in-theory (union-theories '(fn-bpnjc-cursor-relp fn-bpnjc-frontierp nfix natp
+                                        subsetp-equal (:e subsetp-equal))
+                                      (theory 'minimal-theory)))))
 
 ;; The contact's opening establishes the relation: the host passes the
 ;; cursor fn-bpnjc-contact-cursor names for the peer, and OFFERED empty.
@@ -1065,7 +1079,8 @@
 (defthm fn-bpnjc-prefix-one-more
   (implies (and (natp f) (< f (len l)))
            (equal (fn-bpnjc-prefix (+ 1 f) l)
-                  (append (fn-bpnjc-prefix f l) (list (car (fn-bpnjc-drop f l)))))))
+                  (append (fn-bpnjc-prefix f l) (list (car (fn-bpnjc-drop f l))))))
+  :hints (("Goal" :induct (fn-bpnjc-drop f l) :in-theory (union-theories '(fn-bpnjc-prefix fn-bpnjc-drop) (theory 'ground-zero)))))
 
 (defthm fn-bpnjc-all-settled-of-append
   (equal (fn-bpnjc-all-settled-p (append a b) peer)
@@ -1073,11 +1088,13 @@
 
 (defthm fn-bpnjc-drop-one-more
   (implies (and (natp f) (< f (len l)))
-           (equal (fn-bpnjc-drop (+ 1 f) l) (cdr (fn-bpnjc-drop f l)))))
+           (equal (fn-bpnjc-drop (+ 1 f) l) (cdr (fn-bpnjc-drop f l))))
+  :hints (("Goal" :induct (fn-bpnjc-drop f l) :in-theory (union-theories '(fn-bpnjc-prefix fn-bpnjc-drop) (theory 'ground-zero)))))
 
 (defthm fn-bpnjc-consp-drop
   (implies (natp f)
-           (iff (consp (fn-bpnjc-drop f l)) (< f (len l)))))
+           (iff (consp (fn-bpnjc-drop f l)) (< f (len l))))
+  :hints (("Goal" :induct (fn-bpnjc-drop f l) :in-theory (union-theories '(fn-bpnjc-prefix fn-bpnjc-drop) (theory 'ground-zero)))))
 
 (defthm fn-bpnjc-advance-keeps-the-frontier
   (implies (and (fn-bpnjc-frontierp jobs peer f)
@@ -1107,9 +1124,9 @@
                   (rest (fn-bpnjc-drop (fn-bpnjc-frontier-of table peer)
                                        (fn-bpn-machine-state-jobs (fn-bpnf-base st))))
                   (c (nfix (fn-bpn-nth 1 cursor)))))
-           :in-theory (e/d (fn-bpnjc-contact-close)
-                           (fn-bpnjc-advance-keeps-the-frontier fn-bpnjc-advance fn-bpnjc-frontierp
-                            fn-bpnjc-drop fn-bpnjc-frontier-of)))))
+           :in-theory (union-theories '(fn-bpnjc-contact-close fn-bpnjc-frontier-of-table-with
+                                        fn-bpnjc-frontierp-is-natp fn-bpnjc-frontier-zero nfix natp)
+                                      (theory 'minimal-theory)))))
 
 ;; The lower machine keeps every frontier: a lifecycle record never touches
 ;; a :forwarded or :expired job and never changes a job's peer.
@@ -1124,7 +1141,9 @@
 
 (defthm fn-bpnjc-len-of-append
   (equal (len (fn-bpn-append a b)) (+ (len a) (len b)))
-  :hints (("Goal" :in-theory (enable fn-bpn-append))))
+  :hints (("Goal" :induct (fn-bpn-append a b)
+           :in-theory (union-theories '(fn-bpn-append len car-cons cdr-cons fix)
+                                      (theory 'minimal-theory)))))
 
 (defthm fn-bpnjc-replacing-an-unsettled-job-keeps-the-settled-prefix
   (implies (and (fn-bpnjc-all-settled-p (fn-bpnjc-prefix f jobs) peer)
@@ -1135,16 +1154,52 @@
   :hints (("Goal" :induct (fn-bpnjc-prefix f jobs)
            :in-theory (e/d (fn-bpn-replace-job fn-bpn-find-job) (fn-bpn-job-key)))))
 
+; The job list a lifecycle record leaves (fn-bpn-apply-record), by kind.
+(defthm fn-bpnjc-apply-record-jobs
+  (let* ((jobs (fn-bpn-machine-state-jobs st))
+         (key (fn-bpn-record-key record))
+         (job (fn-bpn-find-job key jobs))
+         (token (fn-bpn-record-token record))
+         (kind (fn-cbor-ag-car record)))
+    (equal (fn-bpn-machine-state-jobs (fn-bpn-apply-record st record))
+           (cond ((not (fn-bpn-record-applicablep st record)) jobs)
+                 ((equal kind :queued) (fn-bpn-append jobs (list (nth 2 record))))
+                 ((equal kind :attempting)
+                  (fn-bpn-replace-job key (fn-bpn-job-with-status job :attempting token) jobs))
+                 ((equal kind :requeued)
+                  (fn-bpn-replace-job key (fn-bpn-job-with-status job :queued token) jobs))
+                 ((equal kind :finished)
+                  (fn-bpn-replace-job key (fn-bpn-job-with-status job :forwarded token) jobs))
+                 (t (fn-bpn-replace-job key (fn-bpn-job-with-status job :expired token) jobs)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpn-apply-record fn-bpn-state-with-accessors)
+                                             (theory 'minimal-theory)))))
+
+; An applicable record other than :queued names a job that is :queued or
+; :attempting: never a settled one.
+(defthm fn-bpnjc-applicable-record-names-a-live-job
+  (let ((job (fn-bpn-find-job (fn-bpn-record-key record) (fn-bpn-machine-state-jobs st))))
+    (implies (and (fn-bpn-record-applicablep st record)
+                  (not (equal (fn-cbor-ag-car record) :queued)))
+             (and job
+                  (not (equal (fn-bpn-job-status job) :forwarded))
+                  (not (equal (fn-bpn-job-status job) :expired)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpn-record-applicablep fn-bpn-member
+                                               car-cons cdr-cons (:e equal) (:e fn-bpn-member))
+                                             (theory 'minimal-theory))))
+  :rule-classes nil)
+
 (defthm fn-bpnjc-lifecycle-record-keeps-the-frontier
   (implies (fn-bpnjc-frontierp (fn-bpn-machine-state-jobs st) peer f)
            (fn-bpnjc-frontierp (fn-bpn-machine-state-jobs (fn-bpn-apply-record st record))
                                peer f))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bpn-apply-record fn-bpn-record-applicablep fn-bpnjc-frontierp
-                            fn-bpn-state-with-accessors fn-bpn-member)
-                           (fn-bpnjc-all-settled-p fn-bpnjc-prefix fn-bpn-find-job
-                            fn-bpn-replace-job fn-bpn-append fn-bpn-job-with-status
-                            fn-bpn-lifecycle-recordp fn-bpn-jobs-octets)))))
+           :use ((:instance fn-bpnjc-applicable-record-names-a-live-job))
+           :in-theory (union-theories '(fn-bpnjc-apply-record-jobs fn-bpnjc-frontierp
+                                        fn-bpnjc-replacing-an-unsettled-job-keeps-the-settled-prefix
+                                        fn-bpnjc-with-status-keeps-the-peer fn-bpnjc-len-of-replace-job
+                                        fn-bpnjc-len-of-append fn-bpnjc-appending-keeps-the-prefix
+                                        nfix natp len (:t len) (:e len) (:e binary-+) fix)
+                                      (theory 'minimal-theory)))))
 
 (defthm fn-bpnjc-with-status-keeps-the-key
   (equal (fn-bpn-job-key (fn-bpn-job-with-status job status token))
@@ -1163,12 +1218,12 @@
             (fn-bpnjc-prefix c (fn-bpn-machine-state-jobs (fn-bpn-apply-record st record)))
             peer offered))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bpn-apply-record fn-bpn-record-applicablep
-                            fn-bpn-state-with-accessors fn-bpnj-found-job-has-its-key)
-                           (fn-bpnjc-prefix fn-bpn-find-job fn-bpnjc-evolves-p
-                            fn-bpn-replace-job fn-bpn-append fn-bpn-job-with-status
-                            fn-bpn-lifecycle-recordp fn-bpn-jobs-octets fn-bpn-record-key
-                            fn-bpn-job-key)))))
+           :use ((:instance fn-bpnjc-applicable-record-names-a-live-job))
+           :in-theory (union-theories '(fn-bpnjc-apply-record-jobs fn-bpnj-found-job-has-its-key
+                                        fn-bpnjc-with-status-keeps-the-key
+                                        fn-bpnjc-replacing-an-offered-job-evolves
+                                        fn-bpnjc-appending-keeps-the-prefix fn-bpnjc-evolves-reflexive)
+                                      (theory 'minimal-theory)))))
 
 ;; ---------------------------------------------------------------------
 ;; The drain.
