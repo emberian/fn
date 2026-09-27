@@ -49,6 +49,9 @@
 (include-book "books/checkpoint-compaction-preservation")
 ; The pack chain the open walks and compaction extends (P5).
 (include-book "books/checkpoint-pack-chain")
+; Each link decoded once per open (PRF-219): host/checkpoint-host.lisp's
+; chain step, coverage and observation call fn-ccco-*.
+(include-book "books/checkpoint-pack-chain-once")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")

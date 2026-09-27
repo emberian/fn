@@ -9,7 +9,7 @@
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/checkpoint-compaction-preservation")
 (include-book "../books/store-compact-verb")
-(include-book "../books/checkpoint-pack-chain")
+(include-book "../books/checkpoint-pack-chain-once")
 (include-book "../books/store-reclaim-pack")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
@@ -320,17 +320,51 @@
   (declare (xargs :mode :program))
   (fn-ccc-walk-bound profile))
 
-(defun fn-store-checkpoint-chain-step (framed digest bound)
-  (declare (xargs :mode :program))
-  (fn-ccc-entry-step framed digest bound))
+;; Each link is decoded once per open (books/checkpoint-pack-chain-once.lisp,
+;; PRF-219): inside the host's `fnn-with-pack-memo' scope (an open, a
+;; compaction, a status) the decodes are remembered by content in the global
+;; `fn-store-pack-memo', and every answer is the reference's
+;; (`fn-ccco-entry-step-is-entry-step', `-coverage-chain-is-coverage-chain',
+;; `-observe-chain-is-observe-chain' under `fn-ccco-memo-soundp', which the
+;; empty memo, `fn-ccco-remember' and `fn-ccco-remember-all' keep).  Outside
+;; a scope the memo is empty and nothing is remembered.
+(defun fn-store-pack-memo-activep (state)
+  (declare (xargs :stobjs state :mode :program))
+  (and (boundp-global 'fn-store-pack-memo-active state)
+       (f-get-global 'fn-store-pack-memo-active state)
+       (boundp-global 'fn-store-pack-memo state)))
 
-(defun fn-store-checkpoint-chain-observe (chain observed frontier bound)
-  (declare (xargs :mode :program))
-  (fn-ccc-observe-chain chain observed frontier bound))
+(defun fn-store-pack-memo (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-store-pack-memo-activep state) (f-get-global 'fn-store-pack-memo state) nil))
 
-(defun fn-store-checkpoint-chain-coverage (chain observed-count frontier bound)
-  (declare (xargs :mode :program))
-  (fn-ccc-coverage-chain chain observed-count frontier bound))
+; The scope's two ends: ACTIVEP t opens it with the empty memo, nil closes
+; it and drops what it remembered.
+(defun fn-store-pack-memo-scope (activep state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-store-pack-memo nil state))
+         (state (f-put-global 'fn-store-pack-memo-active (if activep t nil) state)))
+    (value (if activep :open :closed))))
+
+(defun fn-store-checkpoint-chain-step (framed digest bound state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-store-pack-memo-activep state)
+      (let* ((memo (fn-ccco-remember framed digest bound (fn-store-pack-memo state)))
+             (state (f-put-global 'fn-store-pack-memo memo state)))
+        (value (fn-ccco-entry-step framed digest bound memo)))
+    (value (fn-ccco-entry-step framed digest bound nil))))
+
+(defun fn-store-checkpoint-chain-observe (chain observed frontier bound state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-ccco-observe-chain chain observed frontier bound (fn-store-pack-memo state))))
+
+(defun fn-store-checkpoint-chain-coverage (chain observed-count frontier bound state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-store-pack-memo-activep state)
+      (let* ((memo (fn-ccco-remember-all chain bound (fn-store-pack-memo state)))
+             (state (f-put-global 'fn-store-pack-memo memo state)))
+        (value (fn-ccco-coverage-chain chain observed-count frontier bound memo)))
+    (value (fn-ccco-coverage-chain chain observed-count frontier bound nil))))
 
 ; The line `checkpoint pack' prints for the no-op (exit 0, nothing written).
 (defun fn-store-checkpoint-pack-nothing-line (boundary count)

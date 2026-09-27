@@ -846,6 +846,19 @@ execution-boundary fault, never a claim that the core refused an input."
 (defun fnn-global (name)
   (f-get-global name *the-live-state*))
 
+(defvar *fnn-pack-memo-depth* 0)
+(defmacro fnn-with-pack-memo (&body body)
+  "Run BODY with ACL2's pack-link memo scope open (host/checkpoint-host.lisp
+`fn-store-pack-memo-scope', books/checkpoint-pack-chain-once.lisp): each
+chain link BODY walks is decoded once; the memo is dropped when the outermost
+scope ends, however it ends."
+  `(progn
+     (when (= *fnn-pack-memo-depth* 0) (fnn-core-state 'fn-store-pack-memo-scope t))
+     (let ((*fnn-pack-memo-depth* (1+ *fnn-pack-memo-depth*)))
+       (unwind-protect (progn ,@body)
+         (when (= *fnn-pack-memo-depth* 1)
+           (fnn-core-state 'fn-store-pack-memo-scope nil))))))
+
 ;;; Result whitelists, as tools/run_store.py accepts them.
 
 (defparameter +fnn-actions+
@@ -2300,8 +2313,9 @@ buffer at once."
         (progn
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
-            (setq records (or (fnn-recover-from-state-checkpoint store config-records)
-                              (fnn-recover-full-replay store config-records))))
+            (setq records (fnn-with-pack-memo
+                            (or (fnn-recover-from-state-checkpoint store config-records)
+                                (fnn-recover-full-replay store config-records)))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))

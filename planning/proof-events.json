@@ -7292,6 +7292,55 @@
           "name": "fn-bphh-octets-at-p-is-equal-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-219",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-entry-step-is-entry-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-coverage-chain-is-coverage-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-observe-chain-is-observe-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-links-okp-of-decoded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-remember-keeps-sound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-remember-all-keeps-sound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-framed-link-fast-is-framed-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-octet-event-listp-is-octet-event-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-event-fields-are-the-dispatchers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-linkp-is-linkp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-decode-link-is-decode-link"
+        }
+      ]
     }
   ]
 }
