@@ -754,11 +754,18 @@
 (defthm pgs-slots-keeps-of-nil
   (equal (pgs-slots-keeps nil pages) nil))
 
-(defthm pgs-roots-keeps-cover
-  (implies (pgs-avoids (pgs-roots-keeps roots pages) w)
+(defthm pgs-roots-keeps-cover-gen
+  (implies (and (pgs-avoids (pgs-roots-keeps roots pages seen) w)
+                (not (member-equal r seen)))
            (pgs-avoids (pgs-slots-keeps (cdr (hons-assoc-equal r roots)) pages) w))
-  :hints (("Goal" :induct (pgs-roots-keeps roots pages)
+  :hints (("Goal" :induct (pgs-roots-keeps roots pages seen)
                   :in-theory (disable pgs-slots-keeps))))
+
+(defthm pgs-roots-keeps-cover
+  (implies (pgs-avoids (pgs-roots-keeps roots pages nil) w)
+           (pgs-avoids (pgs-slots-keeps (cdr (hons-assoc-equal r roots)) pages) w))
+  :hints (("Goal" :in-theory (union-theories '(member-equal) (theory 'minimal-theory))
+                  :use ((:instance pgs-roots-keeps-cover-gen (seen nil))))))
 
 ; -----------------------------------------------------------------------------
 ; Set facts for the commit's addresses.
@@ -2258,6 +2265,7 @@
                                       pgs-roots-keeps-cover pgs-slot-keeps-avoid pgs-c-open-facts)
                   :use ((:instance pgs-c-open-facts)
                         (:instance pgs-roots-keeps-cover (roots (pgs-roots disk)) (pages (pgs-pages disk)))
+                        (:instance pgs-disk-keeps)
                         (:instance pgs-slot-keeps-avoid (k (pgs-c-k0 disk r mode))
                                    (slots (pgs-root-slots r disk)) (pages (pgs-pages disk)))))))
 
@@ -2390,6 +2398,7 @@
   :hints (("Goal" :in-theory (disable pgs-roots-keeps-cover pgs-c-writes-avoid-keeps pgs-c-writes
                                       pgs-slots-keeps pgs-roots-keeps pgs-open)
                   :use ((:instance pgs-c-writes-avoid-keeps)
+                        (:instance pgs-disk-keeps)
                         (:instance pgs-roots-keeps-cover (r r2) (roots (pgs-roots disk))
                                    (pages (pgs-pages disk))
                                    (w (pgs-write-addrs (pgs-c-writes disk r mode dirty alloc))))))))

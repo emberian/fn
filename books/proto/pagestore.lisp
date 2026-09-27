@@ -370,16 +370,21 @@
     (append (if (pgs-rec-valid s0) (pgs-rec-keeps-in s0 pages) nil)
             (if (pgs-rec-valid s1) (pgs-rec-keeps-in s1 pages) nil))))
 
-(defun pgs-roots-keeps (roots pages)
-  (declare (xargs :guard t))
+(defun pgs-roots-keeps (roots pages seen)
+  ; The live bindings only: a root's first binding in ROOTS is the one
+  ; `pgs-root-slots' reads; SEEN holds the names already visited.
+  (declare (xargs :guard (true-listp seen)))
   (if (atom roots)
       nil
-    (append (and (consp (car roots)) (pgs-slots-keeps (cdar roots) pages))
-            (pgs-roots-keeps (cdr roots) pages))))
+    (append (and (consp (car roots)) (not (member-equal (caar roots) seen))
+                 (pgs-slots-keeps (cdar roots) pages))
+            (pgs-roots-keeps (cdr roots) pages
+                             (if (consp (car roots)) (cons (caar roots) seen) seen)))))
 
 (defun pgs-disk-keeps (disk)
+  ; Every address a valid record of any root keeps.
   (declare (xargs :guard t))
-  (pgs-roots-keeps (pgs-roots disk) (pgs-pages disk)))
+  (pgs-roots-keeps (pgs-roots disk) (pgs-pages disk) nil))
 
 ; -----------------------------------------------------------------------------
 ; Allocation (shared).

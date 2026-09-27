@@ -1041,6 +1041,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/proto/pagestore-words-sha \
 	books/proto/pagestore \
 	books/proto/pagestore-keystones \
+	books/proto/pagestore-reclaim \
+	books/proto/pagestore-exec \
 	tests/acl2/proto-pagestore-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
