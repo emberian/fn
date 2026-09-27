@@ -57,7 +57,7 @@ Invite each friend as usual (`account invite`). They redeem the code once,
 on the reader's **Make your account** page (the reader runs the node's own
 `fn redeem`, so start it with `--fn /opt/fn/bin/fn` when it is not the
 release's `clients/bin/fn-reader`), or with `fn redeem`
-([how](operator.md#accounts-and-invitation-codes)), and then sign in here. The reader adds no accounts and no
+([how](articles/fn-faq-4.txt); the full reference: [operator.md](operator.md#accounts-and-invitation-codes)), and then sign in here. The reader adds no accounts and no
 permissions of its own: the node checks every password and decides every
 group, post, approval and removal. The reader keeps, per login, only what
 the friend has read, their display name and a record of what they sent, in

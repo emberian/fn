@@ -1,5 +1,9 @@
 # Peering with a friend
 
+The short version is a Usenet article: [fn FAQ, part 7: peering with a friend](articles/fn-faq-7.txt).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 This page connects your node with a friend's node. Afterwards, articles
 posted on either node appear on both. The link is encrypted, and each node
 logs in to the other. The steps were tested between two real machines in

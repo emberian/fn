@@ -1,5 +1,15 @@
 # Running your node
 
+The short version is in Usenet articles: [part 4, running a node](articles/fn-faq-4.txt)
+(the disk, groups, logins, certificates, exposure) and
+[part 5, when things go wrong](articles/fn-faq-5.txt) (uncertain answers,
+when the store is full, backups, new releases). Storage requirements are
+part 4's "The disk". Every health code and refusal:
+[part 6](articles/fn-faq-6.txt). The engineers' reference:
+[operator-internals.md](operator-internals.md).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 This page is for the person who looks after an fn node. It assumes you set
 the node up with [Installing fn](install.md). Words you may not know are in
 [the short glossary](README.md#words-you-will-meet). The exact details, and

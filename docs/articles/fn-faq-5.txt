@@ -1,0 +1,50 @@
+From: fn <docs@fn.fg-goose.online>
+Newsgroups: fn.docs
+Subject: fn FAQ, part 5: when things go wrong
+Date: Sun, 27 Sep 2026 12:02:00 +0000
+Message-ID: <fn-faq-5-20260927@fn.fg-goose.online>
+Archive-name: fn-faq/part5
+Posting-Frequency: when fn changes
+Last-modified: 2026-09-27
+Summary: Uncertain answers, crashes, a full store, backups, releases.
+
+fn never stops without one line saying why.
+
+*Exit codes:* 0 accepted, 1 refused, 3 uncertain, 4 fault, 5 usage.
+health adds 19 to 27 (part 6).
+
+*Uncertain:* The disk gave no clear answer. Retrying under the same
+Message-ID is safe; a new one may copy. Stop the node; recover shows
+what the store holds. Repeats mean a failing disk.
+
+    fn operator CONFIG recover
+
+*It will not start:*
+
+    journalctl -u fn -n 20
+
+*A lost answer:* With the node stopped, look the post up:
+
+    fn operator CONFIG store inspect '<a1@example.invalid>'
+
+*Withdrawals:* control log lists them. To take one down:
+
+    fn operator CONFIG article withdraw '<spam@example.net>' \
+        --reason takedown
+
+*When the store is full:* Posts are refused with 441; peers are told
+to try later. Limits are fixed at init. Raise them
+with an export, then an import with --max-transactions.
+
+*Backups:* Stop, copy the node folder, start. Exports omit keys.
+
+*New releases:* A fresh install; the node folder stays. If the new
+release refuses the store (store-format or older-release), export
+with the old release first, then import with the new:
+
+    fn operator CONFIG store export /var/lib/fn-export
+    fn operator CONFIG store import /var/lib/fn-export
+
+Copy back store/keys and store/auth.toml too.
+
+*Go deeper:* part 6, every health code and refusal.

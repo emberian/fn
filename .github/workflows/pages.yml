@@ -1,5 +1,5 @@
-# fn's website: site/build_site.py renders the plain docs (README.md, docs/,
-# CONTRIBUTING.md, swarmguide/) into static pages and GitHub Pages serves them.
+# fn's website: site/build_site.py renders the guides, which are Usenet
+# articles (docs/articles/*.txt), as a static newsreader; GitHub Pages serves it.
 # Needs Settings -> Pages -> Source: "GitHub Actions" (a one-time switch).
 # Actions are pinned by commit SHA; the tag each SHA was is in its comment.
 name: pages
@@ -8,13 +8,9 @@ on:
   push:
     branches: [dev]
     paths:
-      - README.md
-      - CONTRIBUTING.md
-      - AGENTS.md
-      - VERSION
-      - docs/**
-      - swarmguide/**
+      - docs/articles/**
       - site/**
+      - tools/docs_articles.py
       - .github/workflows/pages.yml
   workflow_dispatch:
 

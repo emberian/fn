@@ -1,5 +1,9 @@
 # Read it in your browser
 
+The short version is part of a Usenet article: [fn FAQ, part 2: reading and posting](articles/fn-faq-2.txt).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 Your node comes with a web page where you and your friends read and write
 in its groups, from any browser, phone included. We call it the web reader.
 It runs on the same machine as your node, beside it. Your friends need only

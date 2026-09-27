@@ -1,0 +1,32 @@
+From: fn <docs@fn.fg-goose.online>
+Newsgroups: fn.docs
+Subject: fn FAQ, part 1: words and answers
+Date: Sun, 27 Sep 2026 12:02:00 +0000
+Message-ID: <fn-faq-1-20260927@fn.fg-goose.online>
+Archive-name: fn-faq/part1
+Posting-Frequency: when fn changes
+Last-modified: 2026-09-27
+Summary: The words fn uses, and its three answers.
+
+fn uses Usenet's words, plus a few of its own.
+
+*The words:*
+- Node: one fn server. Store: the folder holding what it accepted.
+- Article: header lines, a blank line, a body.
+- Group: a named place for articles, like local.general.
+- Message-ID: an article's name, like <abc@example.org>. The same
+  on every node. Article numbers are each node's own.
+- Peer: a node yours swaps articles with. Feed: that flow.
+- Cancel: a request to withdraw an article.
+- Principal: a key-based identity. A signed article names one.
+
+*The three answers:*
+- accepted: done and saved.
+- refused: not done, nothing changed, the reason named.
+- uncertain: fn cannot tell whether it was saved. Never repeat it
+  blindly (part 5).
+
+*Why it matters:* Received, accepted, forwarded, delivered and read
+are different events. fn never reports one as another.
+
+*Go deeper:* part 9, the proofs.

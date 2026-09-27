@@ -84,7 +84,7 @@ class ReleaseTarballTests(unittest.TestCase):
         for rel in ("SHA256SUMS", "install.sh", "bin/fn", "libexec/fn/fn-host",
                     "libexec/fn/fn-host.core", "libexec/fn/source-revision",
                     "libexec/fn/runtime/sbcl", "libexec/fn/lib/libfn-mldsa65.so",
-                    "share/fn/fn.toml.example", "share/fn/docs/install.md",
+                    "share/fn/fn.toml.example", "share/fn/docs/fn-faq-3.txt",
                     "share/fn/release-gate.txt", "share/fn/runpath-check.txt"):
             self.assertTrue((self.top / rel).exists(), rel)
         self.assertTrue(list((self.top / "libexec/fn/lib").glob("libsodium.so.*")))

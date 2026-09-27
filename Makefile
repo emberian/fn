@@ -1308,9 +1308,9 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
 
-# fn's static website, rendered from README.md, docs/, CONTRIBUTING.md and
-# swarmguide/ into build/site/ (open build/site/index.html); GitHub Pages
-# builds the same thing (.github/workflows/pages.yml).
+# fn's static website: a newsreader over the guides' Usenet articles
+# (docs/articles/*.txt) in build/site/ (open build/site/index.html); GitHub
+# Pages builds the same thing (.github/workflows/pages.yml).
 site:
 	$(PYTHON) site/build_site.py --out build/site
 
@@ -1338,9 +1338,10 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
-# The website renders from the docs (site/build_site.py, stdlib only) and every
-# internal link on every page resolves, anchors included; a doc link to a
-# repository file that does not exist fails by name.
+# The website renders the guides' articles (site/build_site.py, stdlib only):
+# every article is well-formed (tools/docs_articles.py: its headers, its
+# Message-ID, 72 columns), every repository path it names exists, and every
+# internal link on every page resolves.
 	@$(CHECK_STEP) $(PYTHON) site/build_site.py --check --out build/site
 # Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
 # SBCL's compile-file and the Python tests read them with different default
@@ -1603,7 +1604,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
+	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_check_steps tests.test_cert_cache_sync
 tooling-test:
