@@ -587,7 +587,7 @@ file goes to `fn-store-unframe-split` as its protected prefix and trailer
 `fn-srs-unframe-is-the-frame-decode`), and the chunk to
 `fn-srs-checked-decode` with each file's number, which checks every record's
 sequence in the one decode (`fn-srs-checked-decode-is-the-per-file-check`,
-PRF-264). The open answers the history's record count and keeps no records;
+PRF-266). The open answers the history's record count and keeps no records;
 a verb that needs their octets reads them after the open under its lock
 (`fnn-history-records`). A store with no configuration record is refused, and the served
 group names, their codes and the generation come back from the core
