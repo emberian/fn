@@ -57,6 +57,26 @@ clean, 1 with each finding named, 2 NOT RUN (no ACL2).
     python3 tools/host_check.py --load [--build host/native/build-dtn.lisp] [FILE ...]
 
 with FILEs, the order is loaded through the last of them.
+
+`--tables` (lane host-lints, 2026-09-27) is a static rule, no ACL2: every
+`make-hash-table` in host/ whose table can outlive one call -- at top level,
+in a defvar/defparameter/defglobal initializer, a defstruct slot's initform,
+or a `setq`/`setf` of an earmuffed global inside a function -- is
+`:synchronized t`, or its line or the line before declares one of
+
+  ;; thread-confined: <which thread, and why no other reaches it>
+  ;; guarded-by: <lock>   (the lock a `with-mutex`/`with-recursive-lock` in
+                           the same file takes)
+
+Anything else is refused by file:line and name.  entry-guards-2 found the
+reason by luck: two lazily filled tables in host/native/io.lisp were shared
+by served threads, the owner and control workers without synchronization,
+and two first calls at once stopped the owner (fixed by 6137e36c3).  A
+table local to one call (a `let` in a defun) is not a global and is not
+checked.  What it cannot see: whether every access really holds the named
+lock -- the declaration names the lock; the review reads the accesses.
+
+    python3 tools/host_check.py --tables [FILE ...]
 """
 
 from __future__ import annotations
@@ -444,6 +464,138 @@ def load_check(acl2: Path, files: list[str], timeout: int,
     return 1 if findings or not completed else 0
 
 
+# --- --tables: unsynchronised global mutable tables ----------------------
+
+TABLE_HEAD = "make-hash-table"
+# Forms whose body runs per call: a table made inside one is local to that
+# call unless it is assigned to an earmuffed global (checked separately).
+LOCAL_HEADS = frozenset({"defun", "defmacro", "defmethod", "lambda", "flet", "labels",
+                         "macrolet", "defun-inline", "define-compiler-macro"})
+GLOBAL_DEFINERS = frozenset({"defvar", "defparameter", "defglobal",
+                             "define-load-time-global"})
+ASSIGNERS = frozenset({"setq", "setf", "psetq", "psetf"})
+SYNCHRONIZED = re.compile(r":synchronized\s+t(?![\w*+-])", re.IGNORECASE)
+CONFINED = re.compile(r";+\s*thread-confined:\s*\S", re.IGNORECASE)
+GUARDED = re.compile(r";+\s*guarded-by:\s*([^\s()]+)", re.IGNORECASE)
+TOKEN = re.compile(r"[^\s()'`\",;]+")
+
+
+def _bare(token: str) -> str:
+    """TOKEN lower-cased without its package prefix."""
+    return token.lower().rsplit(":", 1)[-1]
+
+
+def table_sites(text: str) -> list[tuple[int, str, bool, str]]:
+    """(line, name, synchronized, form text) for each make-hash-table in code
+    whose table can outlive one call."""
+    import must_fail_check  # the one Lisp comment/string mask in tools/
+    mask = must_fail_check.code_mask(text)
+    stack: list[tuple[int, str, str]] = []  # (open position, head, second token)
+    sites = []
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if not mask[i]:
+            i += 1
+            continue
+        if c == "(":
+            head = TOKEN.match(text, i + 1)
+            head_s = head.group(0) if head else ""
+            second = ""
+            if head:
+                m = re.compile(r"\s*\(?\s*([^\s()'`\",;]+)").match(text, head.end())
+                second = m.group(1) if m else ""
+            if _bare(head_s) == TABLE_HEAD:
+                depth, j = 0, i
+                while j < n:
+                    if mask[j] and text[j] == "(":
+                        depth += 1
+                    elif mask[j] and text[j] == ")":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    j += 1
+                form = text[i:j + 1]
+                heads = [_bare(h) for _, h, _ in stack]
+                parent = stack[-1] if stack else None
+                name = None
+                if not stack:
+                    name = "<top level>"
+                elif heads[0] in GLOBAL_DEFINERS:
+                    name = stack[0][2]
+                elif heads[0] == "defstruct":
+                    slot = stack[1][1] if len(stack) > 1 else "?"
+                    name = f"{stack[0][2]} slot {slot}"
+                elif (parent and _bare(parent[1]) in ASSIGNERS
+                      and parent[2].startswith("*") and parent[2].endswith("*")):
+                    name = parent[2]
+                elif not any(h in LOCAL_HEADS for h in heads):
+                    name = f"<top-level {heads[0]}>"
+                if name is not None:
+                    line = text.count("\n", 0, i) + 1
+                    sites.append((line, name, bool(SYNCHRONIZED.search(form)), form))
+            stack.append((i, head_s, second))
+        elif c == ")" and stack:
+            stack.pop()
+        i += 1
+    return sites
+
+
+def lock_taken(text: str, lock: str) -> bool:
+    """Does a with-mutex / with-recursive-lock in TEXT take LOCK (a variable,
+    or an accessor applied to an object)?"""
+    return re.search(r"with-(?:mutex|recursive-lock)\s*\(\s*\(?\s*" + re.escape(lock)
+                     + r"(?=[\s)])", text, re.IGNORECASE) is not None
+
+
+def tables_check(files: list[Path], root: Path = ROOT) -> tuple[list[str], list[str]]:
+    """(refusals, accepted) over FILES: one line each, file:line name why."""
+    refused, accepted = [], []
+    for path in files:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        lines = text.split("\n")
+        try:
+            rel = path.resolve().relative_to(root).as_posix()
+        except ValueError:
+            rel = path.as_posix()
+        for line, name, synchronized, _ in table_sites(text):
+            where = f"{rel}:{line} {name}"
+            if synchronized:
+                accepted.append(f"{where}: :synchronized t")
+                continue
+            near = lines[line - 1] + "\n" + (lines[line - 2] if line >= 2 else "")
+            guarded = GUARDED.search(near)
+            if CONFINED.search(near):
+                accepted.append(f"{where}: thread-confined")
+            elif guarded and lock_taken(text, guarded.group(1)):
+                accepted.append(f"{where}: guarded-by {guarded.group(1)}")
+            elif guarded:
+                refused.append(f"{where}: guarded-by {guarded.group(1)}, but no "
+                               "with-mutex/with-recursive-lock in this file takes it")
+            else:
+                refused.append(f"{where}: a global hash table that is neither "
+                               ":synchronized t nor declared `;; thread-confined: "
+                               "<reason>` or `;; guarded-by: <lock>`")
+    return refused, accepted
+
+
+def table_files() -> list[Path]:
+    return sorted((ROOT / "host").rglob("*.lisp"))
+
+
+def tables_main(names: list[str]) -> int:
+    files = [Path(name) if Path(name).is_absolute() else ROOT / name for name in names] \
+        or table_files()
+    refused, accepted = tables_check(files)
+    for site in accepted:
+        print(f"ok   {site}")
+    for site in refused:
+        print(f"FAIL {site}")
+    print(f"host_check --tables: {len(files)} file(s), {len(accepted) + len(refused)} "
+          f"global table(s), {len(refused)} refused")
+    return 1 if refused else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -456,10 +608,16 @@ def main(argv: list[str] | None = None) -> int:
                         help="load the raw host/native files in the build's order into one "
                              "bare ACL2 and report errors, arity, macro order and names "
                              "nothing defines (seconds; no image build)")
+    parser.add_argument("--tables", action="store_true",
+                        help="static: refuse a global make-hash-table in host/ that is "
+                             "neither :synchronized t nor declared thread-confined or "
+                             "guarded-by a lock (no ACL2)")
     parser.add_argument("--build", default=BUILD_SCRIPT,
                         help="with --load: the build script whose raw load order to use")
     args = parser.parse_args(argv)
 
+    if args.tables:
+        return tables_main(args.files)
     acl2 = executable()
     if args.load:
         if acl2 is None:

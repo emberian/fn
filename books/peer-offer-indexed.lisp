@@ -354,73 +354,7 @@
 (defun fn-pix-archive-command-pinned
     (session archive index verdicts env keyword args fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  ;; R3 (PRF-206): the Xref arms first (books/nntp-xref.lisp).
-  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
-    (if xref xref
-      (cond
-       ((and (fn-nntp-keywordp keyword "LIST")
-             (fn-gidx-pinp index)
-             (consp args)
-             (fn-nntp-keyword-tokenp (car args))
-             (fn-nntp-keywordp (car args) "COUNTS"))
-        (fn-gidx-list-counts-command
-         session archive (fn-gidx-pin-buckets index) (cdr args)))
-       ((and (or (fn-nntp-keywordp keyword "ARTICLE")
-                 (fn-nntp-keywordp keyword "HEAD")
-                 (fn-nntp-keywordp keyword "BODY")
-                 (fn-nntp-keywordp keyword "STAT"))
-             (consp args) (null (cdr args))
-             (fn-nntp-number-withdrawn-p session archive index (car args)))
-        (fn-nntp-withdrawn-reply session nil))
-       ((and (or (fn-nntp-keywordp keyword "ARTICLE")
-                 (fn-nntp-keywordp keyword "HEAD")
-                 (fn-nntp-keywordp keyword "BODY")
-                 (fn-nntp-keywordp keyword "STAT"))
-             (consp args) (null (cdr args))
-             (fn-nntp-message-id-tokenp (car args))
-             (fn-nntp-msgid-withdrawn-p index (car args)))
-        (fn-nntp-withdrawn-reply session t))
-       ;; PRF-243: the served compatibility arms, as in the dispatcher.
-       ((fn-rcompat-reply session archive index env keyword args fn-arena)
-        (fn-rcompat-reply session archive index env keyword args fn-arena))
-       ((and (or (fn-nntp-keywordp keyword "ARTICLE")
-                 (fn-nntp-keywordp keyword "HEAD")
-                 (fn-nntp-keywordp keyword "BODY")
-                 (fn-nntp-keywordp keyword "STAT"))
-             (consp args) (null (cdr args))
-             (fn-nntp-message-id-tokenp (car args)))
-        (fn-pix-msgid-retrieval-indexed
-         session archive (fn-gidx-pin-trie index)
-         (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
-               ((fn-nntp-keywordp keyword "HEAD") :head)
-               ((fn-nntp-keywordp keyword "BODY") :body)
-               (t :stat))
-         (car args) fn-arena))
-       ((and (fn-nntp-keywordp keyword "LISTGROUP")
-             (fn-gidx-pinp index))
-        (fn-gidx-listgroup-command
-         session archive (fn-gidx-pin-buckets index) args))
-       ((and (or (fn-nntp-keywordp keyword "OVER")
-                 (fn-nntp-keywordp keyword "XOVER"))
-             (fn-gidx-pinp index)
-             (consp args) (null (cdr args))
-             (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
-        (fn-nntp-over-range-indexed
-         session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
-         (car args) (fn-nntp-keywordp keyword "XOVER") fn-arena))
-       ((and (fn-nntp-keywordp keyword "HDR")
-             (consp args)
-             (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
-        (fn-nntp-verdict-hdr-response session archive verdicts args))
-       ((and (fn-nntp-keywordp keyword "HDR")
-             (consp args)
-             (fn-nntp-keywordp (car args) ":FN-CONTROL"))
-        (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
-       ((and (fn-nntp-keywordp keyword "HDR")
-             (consp args)
-             (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
-        (fn-nntp-enrollment-hdr-response session archive index verdicts args))
-       (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
+  (fn-nntp-archive-pinned-arms fn-pix-msgid-retrieval-indexed))
 
 (defthm fn-pix-archive-command-pinned-is-archive-command-pinned
   (equal (fn-pix-archive-command-pinned session archive index verdicts env keyword args fn-arena)
@@ -434,21 +368,10 @@
 
 (defun fn-pix-command-pinned (session archive index verdicts env tokens fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
-        (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
-    (if (not (fn-nntp-keyword-tokenp keyword))
-        (fn-nntp-single session "501 syntax error")
-      ;; PRF-325: the reference's XFNCATCHUP arm, text for text.
-      (if (fn-nntp-keywordp keyword "XFNCATCHUP")
-          (if (fn-nntp-session-projected session)
-              (fn-cu-serve-reply session archive index args fn-arena)
-            (fn-nntp-single session "503 archive projection unavailable"))
-        (if (not (fn-nntp-archive-keywordp keyword))
-            (fn-nntp-session-command session env keyword args)
-          (if (fn-nntp-session-projected session)
-              (fn-pix-archive-command-pinned
-               session archive index verdicts env keyword args fn-arena)
-            (fn-nntp-single session "503 archive projection unavailable")))))))
+  (fn-nntp-command-dispatch
+   (fn-pix-archive-command-pinned
+    session archive index verdicts env keyword args fn-arena)
+   :pinned t))
 
 (defthm fn-pix-command-pinned-is-command-pinned
   (equal (fn-pix-command-pinned session archive index verdicts env tokens fn-arena)

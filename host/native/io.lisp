@@ -5463,8 +5463,9 @@ entries).  Nothing is placed when ACL2 answers none."
 
 (defvar *fnn-arena-off-mutex-readers* (list 0)
   "The count of threads reading the live arena outside the owner's mutex (a
-checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured);
-a staged page is released only while it is 0.")
+checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured,
+counted under the mutex before its thread starts by fnn-owner-maybe-publish
+and uncounted when it ends); a staged page is released only while it is 0.")
 
 (defun fnn-log-reseat-fenced (log)
   "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
