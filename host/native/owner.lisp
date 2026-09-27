@@ -1000,6 +1000,23 @@ decision that changed nothing in the value, with its two counts."
       (fnn-fault "owner returned a malformed admission ~a" word))
     word))
 
+;; Lane ax-fix/reply-text: a served read takes the admission and ACL2's two
+;; replies naming the disk's reason (fn-otm-shed-replies: nil when the disk
+;; admits) from ONE value of the gate, so the lines are of the same reading
+;; as the word.  The replies go back to ACL2 unread.
+(defun fnn-owner-read-admission (service)
+  "The write admission at the gate's recorded time (fn-otm-admit-post) and
+the reply lines naming the disk's reason (fn-otm-shed-replies), both of one
+scheduler value: (values WORD REPLIES).  Appends nothing."
+  (let* ((gate (fnn-owner-service-gate service))
+         (sched (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                  (fnn-owner-gate-sched gate)))
+         (word (fnn-core 'fn-otm-admit-post sched))
+         (replies (fnn-core 'fn-otm-shed-replies sched)))
+    (unless (member word '(:admit :shed))
+      (fnn-fault "owner returned a malformed admission ~a" word))
+    (values word replies)))
+
 (defun fnn-owner-disk-stalled-p (service)
   "Whether the pending barrier's :stalled mode was entered (a clock event
 past H): the committer then tells the batch's posters uncertain."
@@ -3227,7 +3244,7 @@ EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
-     (let ((admit :admit))
+     (let ((admit :admit) (replies nil))
      (block step
        ;; One reading per read, before the transition that decides under it.
        ;; books/owner.lisp fn-own-open: "The injection clock is not pinned:
@@ -3240,8 +3257,10 @@ EPIPE and the client saw a bare close)."
        ;; time (the :served clock event above): while the disk sheds, the
        ;; read runs with posting not permitted (a POST command is answered
        ;; 440 before its article: host/owner-host.lisp fn-owner-chunk-span)
-       ;; and a submitted POST is shed below (441).
-       (setq admit (fnn-owner-disk-admission service))
+       ;; and a submitted POST is shed below (441).  REPLIES: ACL2's 440 and
+       ;; 441 naming the disk's reason, of the same value (lane
+       ;; ax-fix/reply-text; books/owner-time-admission.lisp).
+       (multiple-value-setq (admit replies) (fnn-owner-read-admission service))
        ;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge):
        ;; :proceed, or the milliseconds to wait.  Waiting reads nothing more
        ;; from this socket, so the client meets TCP backpressure and nothing
@@ -3261,7 +3280,7 @@ EPIPE and the client saw a bare close)."
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
        (fnn-octets-fill incoming)
-       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) admit)))
+       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) admit replies)))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)
