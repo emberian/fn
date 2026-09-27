@@ -21,6 +21,15 @@
 ;;;
 ;;; Order: every (:journal . cursor) effect is appended and fsynced before the
 ;;; effects after it run; the begin's record precedes the dial.
+;;;
+;;; Catch-up (PRF-325, books/peer-catchup.lisp) runs on the same worker and
+;;; the same round driver: ACL2 owns which peers catch up (fn-owner-catchup-
+;;; plans, `peer catch-up NAME SECONDS'), the session (fn-cu-session-*: the
+;;; pull's preamble, then XFNCATCHUP batches verified against the peer's
+;;; digest chain and offered by IHAVE on the local transit connection), the
+;;; FNCU record and envelope (fn-cu-cursor-envelope) and the open's reading
+;;; (fn-cu-journal-scan, fn-cu-records-replay).  Its journals live in
+;;; <store>/catch-up/; FN_CATCHUP_TEST_KILL is its developer cut.
 
 (in-package "ACL2")
 
@@ -32,7 +41,9 @@
 
 (defstruct (fnn-pull-runtime (:constructor %make-fnn-pull-runtime))
   service worker (stopping nil) lock (schedule nil) (cursors nil)
-  (journals nil) (socket nil))
+  (journals nil) (socket nil)
+  ;; PRF-325: the catch-up rounds' own schedule, cursors and FNCU journals.
+  (cu-schedule nil) (cu-cursors nil) (cu-journals nil))
 
 (defparameter *fnn-pull-runtime-lock* (sb-thread:make-mutex :name "fn pull runtimes"))
 (defparameter *fnn-pull-runtimes* (make-hash-table :test #'eq))
@@ -53,21 +64,22 @@
 ;;; ---------------------------------------------------------------------------
 ;;; FNPL files: <store>/pull/ plus the FNFD filename codec's components.
 
-(defun fnn-pull-directory (store) (fnn-join (fnn-store-root store) "pull"))
+(defun fnn-pull-directory (store &optional (top "pull"))
+  (fnn-join (fnn-store-root store) top))
 
-(defun fnn-pull-path (store peer)
+(defun fnn-pull-path (store peer &optional (top "pull"))
   (let* ((components (fnn-feed-filename-components peer))
-         (directory (fnn-pull-directory store)))
+         (directory (fnn-pull-directory store top)))
     (fnn-safe-directory directory t)
     (dolist (component (butlast components))
       (setq directory (fnn-join directory component))
       (fnn-safe-directory directory t))
     (values directory (fnn-join directory (car (last components))))))
 
-(defun fnn-pull-sync-namespace (store directory journal)
+(defun fnn-pull-sync-namespace (store directory journal &optional (top-name "pull"))
   (fnn-fsync-dir directory)
   (fnn-owner-feed-phase journal :directory-durable)
-  (let ((top (fnn-pull-directory store)))
+  (let ((top (fnn-pull-directory store top-name)))
     (unless (string= directory top)
       (let ((parent (fnn-parent directory)))
         (loop while (not (string= parent top)) do
@@ -128,47 +140,114 @@
         (when fd (ignore-errors (fnn-close fd)))
         (error e)))))
 
+;;; PRF-325: one FNCU file, <store>/catch-up/ plus the FNFD filename codec's
+;;; components.  ACL2 reads each frame (fn-cu-journal-scan: the safe offset
+;;; advances only over a complete verified cursor frame of this peer) and
+;;; recovers the last cursor (fn-cu-records-replay); a torn tail is
+;;; truncated to the safe offset before anything is appended.
+(defun fnn-catchup-journal-open (store peer-octets)
+  "Open, scan and repair one FNCU file; return (values journal cursor)."
+  (let ((peer (fnn-pull-peer-string peer-octets)) (fd nil) (journal nil)
+        (records nil) (offset 0))
+    (handler-case
+        (multiple-value-bind (directory path) (fnn-pull-path store peer "catch-up")
+          (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
+                                          +fnn-o-nofollow+) #o600))
+          (unless (fnn-regular-p (fnn-fstat fd))
+            (fnn-fault "refusing non-regular FNCU journal: ~a" path))
+          (setq journal (%make-fnn-owner-feed-journal
+                         :peer peer :path path :fd fd :phase :closed))
+          (fnn-owner-feed-phase journal :opened)
+          (let ((prefix-size (fnn-nat (fnn-core 'fn-cu-journal-prefix-size))))
+            (loop
+              (let* ((prefix (fnn-owner-feed-read journal prefix-size))
+                     (plan (fnn-core 'fn-feed-journal-prefix (fnn-octet-list prefix)))
+                     (frame (if (and (integerp plan) (>= plan 0))
+                                (fnn-owner-feed-read journal plan)
+                              (fnn-make-octets 0)))
+                     (result (fnn-core 'fn-cu-journal-scan peer-octets
+                                       (fnn-octet-list prefix)
+                                       (fnn-octet-list frame) offset))
+                     (status (first result)))
+                (case status
+                  (:next (setq offset (fnn-nat (second result)))
+                         (push (third result) records))
+                  (:invalid (fnn-fault "invalid complete FNCU evidence: ~a" path))
+                  ((:end :repair)
+                   (fnn-owner-feed-phase journal status)
+                   (when (eq status :repair)
+                     (fnn-posix (path)
+                       (sb-posix:ftruncate fd (fnn-nat (second result))))
+                     (fnn-owner-feed-phase journal :truncated))
+                   (return))
+                  (t (fnn-fault "unexpected FNCU scan result: ~a" status))))))
+          (fnn-fsync-file fd)
+          (fnn-owner-feed-phase journal :content-durable)
+          (fnn-pull-sync-namespace store directory journal "catch-up")
+          (fnn-posix (path) (sb-posix:lseek fd 0 sb-posix:seek-end))
+          (values journal
+                  (fnn-core 'fn-cu-records-replay
+                            (fnn-core 'fn-cu-fresh-cursor peer-octets)
+                            (nreverse records))))
+      (error (e)
+        (when fd (ignore-errors (fnn-close fd)))
+        (error e)))))
+
 ;;; Packet 5 (PRF-124): the cursor publication's crash cuts.  A developer
 ;;; image started with FN_PULL_TEST_KILL=CUT:N dies by SIGKILL at CUT of this
 ;;; process's Nth FNPL append: before-write (nothing of it on disk),
 ;;; after-write (written, not fenced) or after-fsync (durable, before the
 ;;; round goes on).  Production has no injection branch.
 (defvar *fnn-pull-append-count* 0)
+;;; PRF-325: the catch-up journal's appends are counted apart and cut by
+;;; FN_CATCHUP_TEST_KILL (the same CUT:N grammar), so one selector never
+;;; reaches the other's appends.
+(defvar *fnn-catchup-append-count* 0)
 
-(defun fnn-pull-test-cut (cut)
-  (let ((raw (fnn-developer-selector "FN_PULL_TEST_KILL")))
+(defun fnn-pull-test-cut (cut &optional (kind :pull))
+  (let* ((variable (if (eq kind :catch-up) "FN_CATCHUP_TEST_KILL" "FN_PULL_TEST_KILL"))
+         (count (if (eq kind :catch-up) *fnn-catchup-append-count* *fnn-pull-append-count*))
+         (raw (fnn-developer-selector variable)))
     (when raw
       (let* ((colon (position #\: raw))
              (name (and colon (subseq raw 0 colon)))
              (n (and colon (parse-integer raw :start (1+ colon) :junk-allowed t))))
         (unless (and n (member name '("before-write" "after-write" "after-fsync")
                                :test #'string=))
-          (fnn-fault "invalid FN_PULL_TEST_KILL (expected CUT:N)"))
-        (when (and (string= name cut) (= n *fnn-pull-append-count*))
-          (fnn-err "pull: developer kill at ~a of append ~d" cut n)
+          (fnn-fault "invalid ~a (expected CUT:N)" variable))
+        (when (and (string= name cut) (= n count))
+          (fnn-err "~a: developer kill at ~a of append ~d"
+                   (if (eq kind :catch-up) "catch-up" "pull") cut n)
           (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
           (fnn-fault "test SIGKILL did not terminate the process"))))))
 
-(defun fnn-pull-journal-append (journal cursor)
-  (incf *fnn-pull-append-count*)
+(defun fnn-pull-journal-append (journal cursor &optional (kind :pull))
+  (if (eq kind :catch-up)
+      (incf *fnn-catchup-append-count*)
+    (incf *fnn-pull-append-count*))
   (handler-case
       ;; PRF-165: one :pull-unavailable frame per pending id, then the
       ;; :pull-cursor frame that commits them, in one write and one fsync.
-      (let* ((envelope (fnn-core 'fn-pull-cursor-envelope cursor)))
+      ;; PRF-325: a catch-up cursor is one FNCU frame.
+      (let* ((envelope (fnn-core (if (eq kind :catch-up)
+                                     'fn-cu-cursor-envelope
+                                   'fn-pull-cursor-envelope)
+                                 cursor)))
         (unless (fnn-octet-list-p envelope)
-          (fnn-fault "owner refused FNPL envelope"))
-        (fnn-pull-test-cut "before-write")
+          (fnn-fault "owner refused ~a envelope" (if (eq kind :catch-up) "FNCU" "FNPL")))
+        (fnn-pull-test-cut "before-write" kind)
         (fnn-owner-feed-phase journal :append)
         (fnn-write-all (fnn-owner-feed-journal-fd journal) (fnn-octets envelope))
         (fnn-owner-feed-phase journal :written)
-        (fnn-pull-test-cut "after-write")
+        (fnn-pull-test-cut "after-write" kind)
         (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
         (fnn-owner-feed-phase journal :append-durable)
-        (fnn-pull-test-cut "after-fsync"))
+        (fnn-pull-test-cut "after-fsync" kind))
     (error (e)
       (ignore-errors (fnn-owner-feed-phase journal :failed))
       (fnn-owner-feed-close journal)
-      (fnn-indeterminate "FNPL append uncertain: ~a (~a)"
+      (fnn-indeterminate "~a append uncertain: ~a (~a)"
+                         (if (eq kind :catch-up) "FNCU" "FNPL")
                          (fnn-owner-feed-journal-path journal) e))))
 
 ;;; ---------------------------------------------------------------------------
@@ -228,13 +307,20 @@ waits its milliseconds and is fed the same octets."
                    (fnn-pull-peer-string (fnn-core 'fn-pull-plan-peer plan)))
           nil)))))
 
-(defun fnn-pull-round (runtime plan journal cursor)
-  "Drive one ACL2 pull session; return the cursor after its close."
+(defun fnn-pull-round (runtime plan journal cursor &optional (kind :pull))
+  "Drive one ACL2 pull session (KIND :pull) or catch-up session (KIND
+:catch-up, PRF-325); return the cursor after its close."
   (let* ((service (fnn-pull-runtime-service runtime))
          (peer (fnn-core 'fn-pull-plan-peer plan))
-         (wall (fnn-owner-wall-milliseconds))
-         (begun (fnn-core 'fn-pull-session-begin-pair plan cursor wall
-                          (fnn-pull-profile plan)))
+         (catch-up (eq kind :catch-up))
+         (begun (if catch-up
+                    ;; The catch-up round reads no clock: its cursor is a log
+                    ;; position and a digest chain.
+                    (fnn-core 'fn-cu-session-begin-pair plan cursor
+                              (fnn-pull-profile plan))
+                  (fnn-core 'fn-pull-session-begin-pair plan cursor
+                            (fnn-owner-wall-milliseconds)
+                            (fnn-pull-profile plan))))
          (session (first begun))
          (socket nil) (fd nil) (context nil) (channel nil) (cid nil) (events nil)
          ;; friend-path-2: ACL2's name for why the round failed (the first
@@ -248,7 +334,7 @@ waits its milliseconds and is fed the same octets."
              (perform (effects)
                (dolist (effect effects)
                  (case (car effect)
-                   (:journal (fnn-pull-journal-append journal (cdr effect)))
+                   (:journal (fnn-pull-journal-append journal (cdr effect) kind))
                    (:dial
                     ;; PKT-613: the host as ACL2 decides to reach it
                     ;; (`fn-peer-dial-target'); a failed resolution or connect
@@ -321,12 +407,18 @@ waits its milliseconds and is fed the same octets."
                    (:close nil)
                    (t (fnn-fault "unknown pull effect ~s" (car effect))))))
              (advance (event)
-               (let ((triple (fnn-core 'fn-pull-session-step-triple session event)))
+               (let ((triple (if catch-up
+                                 ;; the catch-up session names no failure reason
+                                 (let ((pair (fnn-core 'fn-cu-session-step-pair session event)))
+                                   (list (first pair) (second pair) nil))
+                               (fnn-core 'fn-pull-session-step-triple session event))))
                  (setq session (first triple))
                  (unless why (setq why (third triple)))
                  (perform (second triple))))
              (receive ()
-               (let ((limit (or (fnn-core 'fn-pull-session-read-limit session)
+               (let ((limit (or (fnn-core (if catch-up 'fn-cu-session-read-limit
+                                            'fn-pull-session-read-limit)
+                                          session)
                                 +fnn-max-read+)))
                  (handler-case
                      (if channel
@@ -336,7 +428,9 @@ waits its milliseconds and is fed the same octets."
       (unwind-protect
            (progn
              (perform (second begun))
-             (loop until (or (fnn-core 'fn-pull-session-done-p session)
+             (loop until (or (fnn-core (if catch-up 'fn-cu-session-done-p
+                                         'fn-pull-session-done-p)
+                                       session)
                              (fnn-pull-stoppingp runtime)) do
                (if (or events (null fd))
                    (advance (if events (pop events) (list :lost :dial)))
@@ -354,9 +448,13 @@ waits its milliseconds and is fed the same octets."
         (when channel (ignore-errors (fnn-tls-close-channel channel)))
         (when context (ignore-errors (fnn-tls-close-context context)))
         (when socket (ignore-errors (fnn-socket-shut socket))))
-      (perform (fnn-core 'fn-pull-session-close-effects session))
-      (fnn-log-line (fnn-core 'fn-pull-session-log-line-why session why))
-      (fnn-core 'fn-pull-session-close session))))
+      (perform (fnn-core (if catch-up 'fn-cu-session-close-effects
+                           'fn-pull-session-close-effects)
+                         session))
+      (fnn-log-line (if catch-up
+                        (fnn-core 'fn-cu-session-log-line session)
+                      (fnn-core 'fn-pull-session-log-line-why session why)))
+      (fnn-core (if catch-up 'fn-cu-session-close 'fn-pull-session-close) session))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The worker
@@ -372,6 +470,45 @@ waits its milliseconds and is fed the same octets."
         (push (cons key journal) (fnn-pull-runtime-journals runtime))
         (push (cons key cursor) (fnn-pull-runtime-cursors runtime))
         (values journal cursor)))))
+
+(defun fnn-catchup-cursor-for (runtime plan)
+  (let* ((peer (fnn-core 'fn-pull-plan-peer plan))
+         (key (fnn-pull-peer-string peer))
+         (entry (assoc key (fnn-pull-runtime-cu-journals runtime) :test #'string=)))
+    (if entry
+        (values (cdr entry) (cdr (assoc key (fnn-pull-runtime-cu-cursors runtime)
+                                        :test #'string=)))
+      (multiple-value-bind (journal cursor)
+          (fnn-catchup-journal-open (fnn-owner-service-store
+                                     (fnn-pull-runtime-service runtime))
+                                    peer)
+        (push (cons key journal) (fnn-pull-runtime-cu-journals runtime))
+        (push (cons key cursor) (fnn-pull-runtime-cu-cursors runtime))
+        (values journal cursor)))))
+
+;;; PRF-325: one due catch-up round, scheduled exactly as a pull
+;;; (fn-pull-schedule and fn-sched-pull-* over the catch-up plans, which are
+;;; pull plans with the catch-up interval) but on its own table.
+(defun fnn-catchup-tick (runtime)
+  (let* ((service (fnn-pull-runtime-service runtime))
+         (plans (fnn-owner-transit-serialized
+                 service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans))))
+         (now (fnn-pull-monotonic)))
+    (setf (fnn-pull-runtime-cu-schedule runtime)
+          (fnn-core 'fn-pull-schedule plans now (fnn-pull-runtime-cu-schedule runtime)))
+    (let ((peer (fnn-core 'fn-sched-pull-due (fnn-pull-runtime-cu-schedule runtime) now)))
+      (when peer
+        (let ((plan (fnn-core 'fn-pull-plan-for peer plans)))
+          (setf (fnn-pull-runtime-cu-schedule runtime)
+                (fnn-core 'fn-sched-pull-start peer (fnn-pull-runtime-cu-schedule runtime)))
+          (multiple-value-bind (journal cursor) (fnn-catchup-cursor-for runtime plan)
+            (let ((closed (fnn-pull-round runtime plan journal cursor :catch-up))
+                  (key (fnn-pull-peer-string peer)))
+              (setf (cdr (assoc key (fnn-pull-runtime-cu-cursors runtime) :test #'string=))
+                    closed)))
+          (setf (fnn-pull-runtime-cu-schedule runtime)
+                (fnn-core 'fn-sched-pull-finish peer (fnn-pull-monotonic)
+                          (fnn-pull-runtime-cu-schedule runtime))))))))
 
 (defun fnn-pull-worker (runtime)
   (let ((service (fnn-pull-runtime-service runtime)))
@@ -395,8 +532,12 @@ waits its milliseconds and is fed the same octets."
                    (setf (fnn-pull-runtime-schedule runtime)
                          (fnn-core 'fn-sched-pull-finish peer (fnn-pull-monotonic)
                                    (fnn-pull-runtime-schedule runtime)))))))
+           (unless (fnn-pull-stoppingp runtime)
+             (fnn-catchup-tick runtime))
            (sleep +fnn-pull-poll-seconds+))
       (dolist (entry (fnn-pull-runtime-journals runtime))
+        (fnn-owner-feed-close (cdr entry)))
+      (dolist (entry (fnn-pull-runtime-cu-journals runtime))
         (fnn-owner-feed-close (cdr entry))))))
 
 (defun fnn-pull-worker-guarded (runtime)

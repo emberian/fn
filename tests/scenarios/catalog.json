@@ -5425,6 +5425,38 @@
         "log": "planning/evidence/release-web-reader-2026-09-27/drive.json",
         "record": "planning/evidence/release-web-reader-2026-09-27.md"
       }
+    },
+    {
+      "id": "SCN-184",
+      "title": "a new node catches up 1,000 articles from a peer in verified batches, and a kill mid catch-up resumes at the last journaled batch",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "NNT-053"
+      ],
+      "steps": [
+        "A holds 1,000 articles in fn.test (about 2 KiB each, several 256 KiB batches). B, new, adds peer A (inbound fn.*, outbound none) and `peer catch-up A 2`.",
+        "A second B is started on the developer image with FN_CATCHUP_TEST_KILL=before-write:3 and dies by SIGKILL after committing the third batch's records and before journaling its cursor; it is restarted."
+      ],
+      "expected": [
+        "B logs a done round at position 1000 whose digest is the chain over A's stored articles; B holds exactly A's Message-IDs in A's order, each article's octets A's apart from Path and Xref.",
+        "The restarted B resumes from the second batch's cursor: the third batch is offered again and drawn 435 (duplicate > 0), and B ends with exactly A's articles, none twice, and the same digest."
+      ],
+      "evidence": [
+        "tests/test_native_peer_catchup.py",
+        "planning/evidence/peer-catchup-2026-09-27.md",
+        "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_catchup",
+        "cases": [
+          "test_catch_up_imports_every_article",
+          "test_kill_mid_catch_up_resumes"
+        ],
+        "native": true,
+        "record": "planning/evidence/peer-catchup-2026-09-27.md",
+        "log": "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
+      }
     }
   ]
 }

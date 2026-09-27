@@ -438,12 +438,17 @@
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
         (fn-nntp-single session "501 syntax error")
-      (if (not (fn-nntp-archive-keywordp keyword))
-          (fn-nntp-session-command session env keyword args)
-        (if (fn-nntp-session-projected session)
-            (fn-pix-archive-command-pinned
-             session archive index verdicts env keyword args fn-arena)
-          (fn-nntp-single session "503 archive projection unavailable"))))))
+      ;; PRF-325: the reference's XFNCATCHUP arm, text for text.
+      (if (fn-nntp-keywordp keyword "XFNCATCHUP")
+          (if (fn-nntp-session-projected session)
+              (fn-cu-serve-reply session archive index args fn-arena)
+            (fn-nntp-single session "503 archive projection unavailable"))
+        (if (not (fn-nntp-archive-keywordp keyword))
+            (fn-nntp-session-command session env keyword args)
+          (if (fn-nntp-session-projected session)
+              (fn-pix-archive-command-pinned
+               session archive index verdicts env keyword args fn-arena)
+            (fn-nntp-single session "503 archive projection unavailable")))))))
 
 (defthm fn-pix-command-pinned-is-command-pinned
   (equal (fn-pix-command-pinned session archive index verdicts env tokens fn-arena)

@@ -798,6 +798,31 @@
       "class": "unexpected",
       "packet": "PKT-324 (8)",
       "note": "bp-retention-leftovers (PKT-844, 2026-09-27): the signed and kept classes status prints beside the reclaim counts (fn-rcl-store-classes); the same per-article walk as fn-rcl-summary-in, on the offline/operator status report only, never per request."
+    },
+    "fn-cei-build-aux recursion N": {
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
+    },
+    "fn-stx-index-of-store recursion N": {
+      "class": "unexpected",
+      "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
+      "packet": "PKT-448 (d)"
+    },
+    "fn-cu-list true-listp N": {
+      "class": "unexpected",
+      "packet": "PKT-863",
+      "note": "PRF-325 slice 1: XFNCATCHUP finds FROM by walking the pinned view (newest first) once per batch, O(END) per batch; a catch-up of N articles in B batches costs O(N*B). Bounded per command by the view, not by the request. The fix serves from the catalog's rows by sequence (the -cat twin, books/served-catalog-chain.lisp)."
+    },
+    "fn-cu-rev recursion N": {
+      "class": "unexpected",
+      "packet": "PKT-863",
+      "note": "PRF-325 slice 1: XFNCATCHUP finds FROM by walking the pinned view (newest first) once per batch, O(END) per batch; a catch-up of N articles in B batches costs O(N*B). Bounded per command by the view, not by the request. The fix serves from the catalog's rows by sequence (the -cat twin, books/served-catalog-chain.lisp)."
+    },
+    "fn-cu-serve-reply len N": {
+      "class": "unexpected",
+      "packet": "PKT-863",
+      "note": "PRF-325 slice 1: XFNCATCHUP finds FROM by walking the pinned view (newest first) once per batch, O(END) per batch; a catch-up of N articles in B batches costs O(N*B). Bounded per command by the view, not by the request. The fix serves from the catalog's rows by sequence (the -cat twin, books/served-catalog-chain.lisp)."
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."

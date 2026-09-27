@@ -11587,6 +11587,45 @@
         "fn-lgb-decode-next-exec-decode",
         "fn-lgb-decode-next-exec-fold"
       ]
+    },
+    {
+      "id": "PRF-325",
+      "title": "Catching up from a peer: the XFNCATCHUP batch serves only what ARTICLE would, always progresses within its quantum, and the requester offers only verified batches, only through its own IHAVE verdict, and resumes at the last journaled batch",
+      "statement": "Serve (books/peer-catchup-serve.lisp fn-cu-serve-reply, which books/nntp.lisp fn-nntp-command-pinned calls for XFNCATCHUP on the pinned, READ-restricted view; books/nntp-auth.lisp gates it with the archive readers): fn-cu-select-serves-only-retrievable: every article a batch serves is an entry of the view and fn-cu-servedp (a valid Message-ID in the view's trie, not reclaimed, CRLF-framed, held at a number in a group the wildmat admits: what ARTICLE <msgid> on the same view returns); fn-cu-select-makes-progress: a batch from FROM below the view's end answers NEXT > FROM; fn-cu-select-stays-within-the-quantum: for a natural quantum, the batch's article octets are at most the quantum or the batch is exactly one article (served whole, never cut); fn-cu-serve-reply-effects-well-formed (books/peer-catchup-effects.lisp, cited by books/nntp-pinned-effects.lisp): the reply is one well-formed response. Requester (books/peer-catchup.lisp; host/native/pull-service.lisp fnn-pull-round calls fn-cu-session-begin-pair, fn-cu-session-step-pair, fn-cu-session-close; fnn-pull-journal-append calls fn-cu-cursor-envelope; fnn-catchup-journal-open calls fn-cu-journal-scan and fn-cu-records-replay): fn-cu-step-keeps-offers-verified: fn-cu-step preserves fn-cu-verifiedp (while offering, the held batch chains from the committed chain to the peer's claim and what remains is a suffix of it; while waiting, nothing remains), and fn-cu-begin establishes it; fn-cu-on-end-refuses-a-digest-mismatch: a batch whose records do not chain to the claim ends the round :failed with (:close) only and the cursor unmoved; fn-cu-step-installs-only-through-the-verdict: every effect of a step that reaches the local node is the IHAVE of the record the round then waits on, or, only on the local node's 335 in phase :offer, that record's body; every journal record is the round's committed cursor with nothing of its batch left; fn-cu-records-replay-is-the-last-cursor and fn-cu-resume-asks-from-the-journaled-cursor: the open recovers the last journaled cursor of the peer and a round begun from it asks from exactly that position and chain; fn-cu-decode-of-encode: the FNCU record round-trips. The digest chain c' = SHA-256(c || SHA-256(article) || msgid) is a transport and completeness check, not an authentication of the peer. Not proved: positions are stable only while the view grows (a READ-rule change can skip entries on resume); the peer's claim is relative to the chain the requester presents.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-053"
+      ],
+      "depends_on": [
+        "PRF-100",
+        "PRF-125"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/peer-catchup-serve.lisp",
+        "books/peer-catchup-effects.lisp",
+        "books/peer-catchup.lisp",
+        "tests/acl2/peer-catchup-tests.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_catchup.py",
+        "planning/evidence/peer-catchup-2026-09-27.md"
+      ],
+      "progress_note": "Slice 1. Open: an absolute peer digest at a position (needs an ordinal index), position stability across a view reshape, the concrete representation of the batch buffer (D27, as the pull's ARTICLE), the snapshot hook (design only, waits for arena-store).",
+      "events": [
+        "fn-cu-select-serves-only-retrievable",
+        "fn-cu-select-makes-progress",
+        "fn-cu-select-stays-within-the-quantum",
+        "fn-cu-serve-reply-effects-well-formed",
+        "fn-cu-step-keeps-offers-verified",
+        "fn-cu-on-end-refuses-a-digest-mismatch",
+        "fn-cu-step-installs-only-through-the-verdict",
+        "fn-cu-records-replay-is-the-last-cursor",
+        "fn-cu-resume-asks-from-the-journaled-cursor",
+        "fn-cu-decode-of-encode"
+      ]
     }
   ]
 }

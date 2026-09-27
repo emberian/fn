@@ -1122,6 +1122,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-pull-tests \
 	books/peer-pull-session \
 	tests/acl2/peer-pull-session-tests \
+	books/peer-catchup-serve \
+	books/peer-catchup-effects \
+	books/peer-catchup \
+	tests/acl2/peer-catchup-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \

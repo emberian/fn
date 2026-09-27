@@ -135,6 +135,8 @@
     ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 3 "peer" "pull" "friend" "20")
     ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 4 "help" "peer")
     ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 5 "peer" "add" "friend" "friend.example.net" "news.friend.example" "563" "local.*" "local.*" "principal" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a" "/var/lib/fn/friend.fnauth" "false" "true" "implicit" "-" "-")
+    ("docs/peering-with-a-friend.md#catching-up" 1 "peer" "catch-up" "friend" "3600")
+    ("docs/peering-with-a-friend.md#catching-up" 2 "peer" "catch-up" "friend" "0")
     ("docs/web.md#2-tell-it-where-your-node-is" 1 "policy" "set" "exposure-trusted" "203.0.113.7/32")
     ("docs/web.md#5-invite-your-friends" 1 "account" "invite")))
 
