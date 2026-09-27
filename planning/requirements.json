@@ -2362,7 +2362,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-098"
+        "PRF-098",
+        "PRF-303"
       ],
       "verification": [
         "proof",
@@ -4549,7 +4550,8 @@
         "PRF-290",
         "PRF-291",
         "PRF-299",
-        "PRF-296"
+        "PRF-296",
+        "PRF-303"
       ],
       "verification": [
         "proof",
