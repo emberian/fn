@@ -171,10 +171,11 @@
   :hints (("Goal" :in-theory (enable fn-peer-session-shapep fn-peer-session-base
                                      fn-peer-session-peer fn-peer-session-transfer
                                      fn-peer-session-inflight fn-peer-session-node
-                                     fn-peer-session-cfg fn-peer-with-base
-                                     fn-peer-make-session
+                                     fn-peer-session-cfg fn-peer-session-refused
+                                     fn-peer-with-base fn-peer-make-session
                                      fn-inj-nth fn-inj-car fn-inj-cdr)
-           :expand ((len (cdr (cddddr ps))) (len (cddr (cddddr ps)))))))
+           :expand ((len (cdr (cddddr ps))) (len (cddr (cddddr ps)))
+                    (len (cdddr (cddddr ps)))))))
 
 (defthm fn-help-rebuild-auth
   (implies (fn-auth-session-shapep as)

@@ -55,8 +55,13 @@
            (not (equal (fn-peer-decision-kind
                         (fn-peer-decide-transfer node cfg peer msgid octets clock id subject))
                        :want)))
-  :hints (("Goal" :in-theory (e/d (fn-peer-decide-transfer fn-peer-decision fn-peer-decision-kind)
-                                  (fn-article-parse fn-peer-relayed-octets fn-article-syntax-p
+  ; PRF-235 moved the parse refusal into fn-peer-intrinsic-refusal-of (its
+  ; first arm); the date and Path arms after it stay closed.
+  :hints (("Goal" :in-theory (e/d (fn-peer-decide-transfer fn-peer-decision fn-peer-decision-kind
+                                   fn-peer-intrinsic-refusal-of)
+                                  (fn-rck-path-wellformedp fn-rck-article-instant
+                                   fn-peer-date-futurep fn-peer-path-missingp
+                                   fn-article-parse fn-peer-relayed-octets fn-article-syntax-p
                                    fn-af-relayed-article-check fn-peer-history-hasp fn-path-names-p
                                    fn-peer-scope-groups fn-peer-stagedp fn-retain-admissiblep
                                    fn-af-message-idp fn-af-message-id-equalp fn-path-date-presentp

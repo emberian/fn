@@ -316,7 +316,13 @@
                                    fn-own-store-idlep fn-state-articles fn-node-acceptance
                                    fn-sn-node fn-sn-verdicts fn-sf-records fn-sn-files
                                    fn-sf-frontier fn-sn-config-history fn-sn-keyring-snapshots
-                                   fn-article-msgid)))))
+                                   fn-article-msgid
+                                   ; The withdrawal walk is equal on both
+                                   ; sides; opened it cost 29 s (8 million
+                                   ; steps) once the cancel-lock merge grew
+                                   ; fn-ctl-withdrawal-effect.
+                                   fn-ctl-visible-filter-nil-means-all-withdrawn
+                                   fn-ctl-visible-filter fn-ctl-withdrawn-by-p)))))
 
 ; The plain case: A is a visible article that withdraws nothing.  The apply
 ; is the cons, the extend and the put; nothing is rebuilt and nothing
