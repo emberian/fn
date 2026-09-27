@@ -840,15 +840,21 @@ kept, and a rerun continues from them."
 checkpoint's rotation and the drop of the segments it covers (design
 2026-09-27 storage-log section 6; T8 fn-lg-segment-drop-preserves-the-open):
 a state checkpoint is published at the history's end with the log rotated,
-then the covered segments are unlinked.  Format 8: the pack chain."
-  (multiple-value-bind (store records) (fnn-open-live-store root t)
+then the covered segments are unlinked.  The open keeps the covered prefix in
+the arena (no octet list of the history: D27; the checkpoint is written from
+the state).  Format 8: the pack chain."
+  (multiple-value-bind (store records) (fnn-open-live-store root t nil nil)
     (unwind-protect
-         (progn (fnn-out "~a" (if (fnn-store-logp store)
-                                  (format nil "compacted steps=checkpoint,drop records=~d ~a"
-                                          (length records)
-                                          (fnn-state-checkpoint-publish-steps store records))
-                                (fnn-compact-steps store records)))
-                +fnn-exit-ok+)
+         (progn
+           ;; Every store an image opens is format 9 (batch AW: a format-8
+           ;; profile is refused at the open); the pack chain's verb is the
+           ;; per-file layout's, deleted with it (design section 9 row 5).
+           (unless (fnn-store-logp store)
+             (fnn-fault "a store that is not on the record log opened"))
+           (let ((count (fnn-open-history-count store records)))
+             (fnn-out "compacted steps=checkpoint,drop records=~d ~a"
+                      count (fnn-state-checkpoint-publish-steps store count)))
+           +fnn-exit-ok+)
       (fnn-store-close store))))
 
 (setq *fnn-compact-callback* #'fnn-command-compact)
@@ -1034,7 +1040,7 @@ octets leave the disk with them.  Returns the report line."
            (fnn-recover-log-replay store history (fnn-config-records store))
            (format nil "reclaimed=~d freed-octets=~d ~a~{~%reclaimed ~a~}"
                    (length msgids) freed
-                   (fnn-state-checkpoint-publish-steps store history)
+                   (fnn-state-checkpoint-publish-steps store (length history))
                    msgids))))
       (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
 
