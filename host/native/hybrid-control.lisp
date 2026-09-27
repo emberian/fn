@@ -179,7 +179,7 @@
                       (when (or (keywordp codes) (not (listp codes))
                                 (/= (length codes) (length groups)))
                         (fnn-fault "owner returned malformed group codes ~a" codes))
-                      (case (fnn-owner-action 'fn-owner-existing-action
+                      (case (fnn-owner-arena-action 'fn-owner-existing-action
                                               (fnn-octet-list msgid)
                                               (fnn-octet-list received) codes)
                         (:duplicate :duplicate)

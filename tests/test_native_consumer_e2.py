@@ -146,13 +146,18 @@ class NativeConsumerE2Tests(unittest.TestCase):
     def test_durable_scope_ack_and_unrelated_article(self):
         first = self.node("first")
         owner = self.start_owner(first)
-        unbootstrapped = first["base"] / "unbootstrapped.fncu"
-        self.consumer("register", first, "worker", "fn.test",
-                      unbootstrapped, expected=1)
-        self.assertFalse(unbootstrapped.exists())
-        self.bootstrap(first)
+        # PKT-709: `fn consumer' prints the grammar (exit 0), and `register'
+        # bootstraps the node's consumer history itself; an explicit
+        # bootstrap afterwards is the refused duplicate.
+        usage = self.native("consumer")
+        self.assertEqual(usage.returncode, 0, usage.stderr)
+        self.assertIn(b"register CONTROL NAME GROUP CURSOR-OUT", usage.stdout)
+        refused = self.native("consumer", "register", first["control"], "worker")
+        self.assertEqual(refused.returncode, 5, refused.stderr)
+        self.assertIn(b"usage: fn consumer COMMAND CONTROL", refused.stderr)
         token_path = first["base"] / "initial.fncu"
         initial = self.register(first, "worker", token_path)
+        self.consumer("bootstrap", first, expected=1)
         self.assertEqual(self.position(first, "worker",
                                        first["base"] / "before.fncu"), initial)
         before_status = self.status(first, "worker")

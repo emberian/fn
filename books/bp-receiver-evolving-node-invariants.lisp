@@ -852,30 +852,58 @@
                          fn-bprv-replay-node-commits-history-record)
                        (theory 'minimal-theory)))))
 
+; A WIRE record standing for a row of an idle related Store's article records
+; is committed in its node, its bytes read through the arena.
+(defthm fn-bprv-standing-record-is-node-wire-committed-when-idle
+  (implies (and (fn-snt-relation store)
+                (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
+                (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-bprv-history store))
+                                       fn-arena))
+           (fn-bpi-node-wire-committedp (fn-sn-node store) record fn-arena))
+  :hints (("Goal"
+           :use ((:instance fn-bpr-row-standing-for-witnesses
+                  (rows (fn-bpr-article-records (fn-bprv-history store))))
+                 (:instance fn-bprv-history-record-is-node-committed-when-idle
+                  (record (fn-bpr-row-standing-for
+                           record (fn-bpr-article-records (fn-bprv-history store)) fn-arena)))
+                 (:instance fn-bpr-node-committed-row-is-wire-committed
+                  (node (fn-sn-node store))
+                  (row (fn-bpr-row-standing-for
+                        record (fn-bpr-article-records (fn-bprv-history store)) fn-arena))))
+           :in-theory (e/d (fn-bpr-row-stands-for)
+                           (fn-bpr-row-standing-for-witnesses
+                            fn-bprv-history-record-is-node-committed-when-idle
+                            fn-bpr-node-committed-row-is-wire-committed
+                            fn-bpr-row-standing-for fn-bpr-rows-stand-for fn-row-wire-of
+                            fn-bpi-node-wire-committedp fn-bpi-node-record-committedp
+                            fn-held-p fn-record-p fn-sn-statep fn-snt-relation
+                            fn-bpr-article-records fn-bprv-history fn-bprv-phase)))))
+
 ; -----------------------------------------------------------------------------
 ; The original node conclusion, under the relation the Store maintains instead
 ; of a :ready hypothesis on a positional argument (L20).
 
 (defthm fn-bprv-evolving-output-is-node-grounded-when-idle
-  (implies (and (fn-bprv-evolving-invariantp store st journal)
+  (implies (and (fn-bprv-evolving-invariantp store st journal fn-arena)
                 (fn-snt-relation store)
                 (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
                 (fn-bpr-receipt-adu st request))
-           (fn-bpi-node-record-committedp
+           (fn-bpi-node-wire-committedp
             (fn-sn-node store)
             (fn-bprv-find-grounding-record
              (fn-bpr-state-config st)
              (fn-bpr-find-context (fn-bpa-request-work-id request)
                                   (fn-bpr-state-contexts st))
-             (fn-bpr-article-records (fn-bprv-history store)))))
+             (fn-bpr-article-records (fn-bprv-history store)) fn-arena)
+            fn-arena))
   :hints (("Goal"
            :use (fn-bprv-evolving-output-is-history-grounded
-                 (:instance fn-bprv-history-record-is-node-committed-when-idle
+                 (:instance fn-bprv-standing-record-is-node-wire-committed-when-idle
                             (record (fn-bprv-find-grounding-record
                                      (fn-bpr-state-config st)
                                      (fn-bpr-find-context (fn-bpa-request-work-id request)
                                                           (fn-bpr-state-contexts st))
-                                     (fn-bpr-article-records (fn-bprv-history store))))))
+                                     (fn-bpr-article-records (fn-bprv-history store)) fn-arena))))
            :in-theory (theory 'minimal-theory))))
 
 ; -----------------------------------------------------------------------------
@@ -884,19 +912,27 @@
 ; a decision taken against an earlier Store.
 
 (defthm fn-bprv-acceptable-at-ready-extension
-  (implies (and (fn-bpr-request-acceptablep s1 config record request authorized)
+  (implies (and (fn-bpr-request-acceptablep s1 config record request authorized fn-arena)
                 (fn-sf-prefixp (fn-bprv-history s1) (fn-bprv-history s2))
                 (fn-snt-relation s2)
                 (equal (fn-bprv-phase s2) :ready))
-           (fn-bpr-request-acceptablep s2 config record request authorized))
+           (fn-bpr-request-acceptablep s2 config record request authorized fn-arena))
   :hints (("Goal"
-           :use ((:instance fn-bprv-history-record-is-node-committed-when-idle (store s2))
+           :use ((:instance fn-bprv-standing-record-is-node-wire-committed-when-idle (store s2))
                  (:instance fn-snt-relation-implies-structural-state (s s2))
+                 (:instance fn-bpr-row-standing-for-witnesses
+                            (rows (fn-bpr-article-records (fn-bprv-history s1))))
+                 (:instance fn-bpr-rows-stand-for-of-member
+                            (row (fn-bpr-row-standing-for
+                                  record (fn-bpr-article-records (fn-bprv-history s1)) fn-arena))
+                            (rows (fn-bpr-article-records (fn-bprv-history s2))))
                  (:instance fn-bprv-article-records-prefix
                             (h1 (fn-bprv-history s1)) (h2 (fn-bprv-history s2)))
                  (:instance fn-bprv-prefix-preserves-member
                             (h1 (fn-bpr-article-records (fn-bprv-history s1)))
-                            (h2 (fn-bpr-article-records (fn-bprv-history s2))) (x record)))
+                            (h2 (fn-bpr-article-records (fn-bprv-history s2)))
+                            (x (fn-bpr-row-standing-for
+                                record (fn-bpr-article-records (fn-bprv-history s1)) fn-arena))))
            :in-theory (union-theories '(car-cons cdr-cons fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp
                          fn-bprv-history fn-bprv-phase member-equal)
                        (theory 'minimal-theory)))))

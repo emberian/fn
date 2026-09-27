@@ -34,9 +34,14 @@
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10
     83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 13 10
     72 101 108 108 111 13 10 46 100 111 116 13 10))
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets.  *fn-nntp-payload* stays the bytes that handle
+;; stands for; each distinct payload of this book has its own handle (0 here;
+;; 1 the unframed payload, 2 the unsafe payload, 3 the NUL payload).
+(defconst *fn-nntp-payload-handle* 0)
 (defconst *fn-nntp-empty-archive* (fn-initial-state *fn-nntp-groups*))
 (defconst *fn-nntp-prepared*
-  (fn-accept-prepare *fn-nntp-empty-archive* 1 *fn-nntp-id* *fn-nntp-payload* '("fn.letters") 841000000))
+  (fn-accept-prepare *fn-nntp-empty-archive* 1 *fn-nntp-id* *fn-nntp-payload-handle* '("fn.letters") 841000000))
 (defconst *fn-nntp-archive* (fn-accept-complete *fn-nntp-prepared* 0 1 :durable))
 (defconst *fn-nntp-session0* (fn-nntp-open-session *fn-nntp-archive*))
 (assert-event (fn-statep *fn-nntp-archive*))
@@ -225,11 +230,13 @@
 ; are not CRLF-framed.  acceptance.lisp admits it; the reader used to answer
 ; 503 to every command in its presence, including CAPABILITIES and QUIT.
 (defconst *fn-nntp-broken-payload* '(111 112 97 113 117 101 32 98 121 116 101 115))
+; by specification: the flip -- the unframed payload's handle.
+(defconst *fn-nntp-broken-payload-handle* 1)
 (defconst *fn-nntp-mixed-good*
-  (fn-make-article "<good@mixed.invalid>" *fn-nntp-payload* '("fn.letters")
+  (fn-make-article "<good@mixed.invalid>" *fn-nntp-payload-handle* '("fn.letters")
                    '(("fn.letters" . 1)) t 841000000))
 (defconst *fn-nntp-mixed-broken*
-  (fn-make-article "<broken@mixed.invalid>" *fn-nntp-broken-payload* '("fn.letters")
+  (fn-make-article "<broken@mixed.invalid>" *fn-nntp-broken-payload-handle* '("fn.letters")
                    '(("fn.letters" . 2)) t 841000000))
 (defconst *fn-nntp-mixed-archive*
   (fn-make-state '("fn.letters") '(("fn.letters" . 3))
@@ -298,7 +305,7 @@
   (coerce (list (code-char 60) (code-char 120) (code-char 62)
                 (code-char 13) (code-char 10)) 'string))
 (defconst *fn-nntp-bad-id-article*
-  (fn-make-article *fn-nntp-bad-id* *fn-nntp-payload* '("fn.letters")
+  (fn-make-article *fn-nntp-bad-id* *fn-nntp-payload-handle* '("fn.letters")
                    '(("fn.letters" . 2)) t 841000000))
 (defconst *fn-nntp-bad-id-archive*
   (fn-make-state '("fn.letters") '(("fn.letters" . 3))
@@ -510,12 +517,14 @@
           'string))
 (defconst *fn-nntp-unsafe-id-prepared*
   (fn-accept-prepare *fn-nntp-empty-archive* 2 *fn-nntp-unsafe-id*
-                     *fn-nntp-payload* '("fn.letters") 841000000))
+                     *fn-nntp-payload-handle* '("fn.letters") 841000000))
 (defconst *fn-nntp-unsafe-id-archive*
   (fn-accept-complete *fn-nntp-unsafe-id-prepared* 0 2 :durable))
+; by specification: the flip -- the unsafe payload
+; '(72 101 97 100 58 32 120 13 10 13 10 66) is accepted as its handle, 2.
 (defconst *fn-nntp-unsafe-payload-prepared*
   (fn-accept-prepare *fn-nntp-empty-archive* 3 "<payload@invalid>"
-                     '(72 101 97 100 58 32 120 13 10 13 10 66) '("fn.letters") 841000000))
+                     2 '("fn.letters") 841000000))
 (defconst *fn-nntp-unsafe-payload-archive*
   (fn-accept-complete *fn-nntp-unsafe-payload-prepared* 0 3 :durable))
 (assert-event (fn-statep *fn-nntp-unsafe-id-archive*))
@@ -546,7 +555,9 @@
 ; A payload carrying NUL cannot be sent in a multi-line block (RFC 3977 3.1.1).
 (assert-event
  (not (fn-nntp-article-framedp
-       (fn-make-article "<nul@invalid>" '(72 58 32 120 13 10 13 10 0 13 10)
+       ; by specification: the flip -- the NUL payload
+       ; '(72 58 32 120 13 10 13 10 0 13 10) is carried as its handle, 3.
+       (fn-make-article "<nul@invalid>" 3
                         '("fn.letters") '(("fn.letters" . 1)) t 841000000))))
 
 ; -----------------------------------------------------------------------------
@@ -731,10 +742,10 @@
 ; inclusively by the requested range.  NEXT and LAST cross the gap.
 (defconst *fn-nntp-sparse-groups* '("fn.sparse"))
 (defconst *fn-nntp-sparse-a1*
-  (fn-make-article "<one@sparse.invalid>" *fn-nntp-payload* '("fn.sparse")
+  (fn-make-article "<one@sparse.invalid>" *fn-nntp-payload-handle* '("fn.sparse")
                    '(("fn.sparse" . 1)) t 841000000))
 (defconst *fn-nntp-sparse-a3*
-  (fn-make-article "<three@sparse.invalid>" *fn-nntp-payload* '("fn.sparse")
+  (fn-make-article "<three@sparse.invalid>" *fn-nntp-payload-handle* '("fn.sparse")
                    '(("fn.sparse" . 3)) t 841000000))
 (defconst *fn-nntp-sparse-archive*
   (fn-make-state *fn-nntp-sparse-groups* '(("fn.sparse" . 4))

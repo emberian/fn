@@ -11,6 +11,7 @@
 (include-book "../../books/config-stream")
 (include-book "../../books/store-config")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary
                           fn-cnode-vocabulary fn-cstr-vocabulary)))
@@ -32,9 +33,23 @@
   (fn-record-make seq txid 1 msgid *cstr-t-payload* '("fn.test")
                   (concatenate 'string "ob-" msgid) "subject" "ev" 1 841000000))
 
-(defconst *cstr-t-a1* (cstr-t-article 1 0 "<a@t>"))
-(defconst *cstr-t-a2* (cstr-t-article 2 1 "<b@t>"))
-(defconst *cstr-t-articles* (list *cstr-t-a1* *cstr-t-a2*))
+(defconst *cstr-t-a1-wire* (cstr-t-article 1 0 "<a@t>"))
+(defconst *cstr-t-a2-wire* (cstr-t-article 2 1 "<b@t>"))
+(defconst *cstr-t-articles-wire* (list *cstr-t-a1-wire* *cstr-t-a2-wire*))
+; by specification: the flip -- the journal's article bodies are retained
+; rows (books/config-records.lisp fn-jrec-p requires fn-held-p): the open
+; interns the decoded articles in order on a fresh arena (store-intern
+; fn-intern-events, keyring nil at generation 0), so the two articles are the
+; rows at handles 0 and 1, and the bytes under each are the octets.
+(defconst *cstr-t-articles* (fn-hrt-rows *cstr-t-articles-wire* nil 0))
+(defconst *cstr-t-a1* (car *cstr-t-articles*))
+(defconst *cstr-t-a2* (cadr *cstr-t-articles*))
+(assert-event (and (fn-held-p *cstr-t-a1*) (fn-held-p *cstr-t-a2*)
+                   (equal (fn-record-payload *cstr-t-a1*) 0)
+                   (equal (fn-record-payload *cstr-t-a2*) 1)
+                   (equal (fn-hrt-bytes *cstr-t-articles-wire* 1) *cstr-t-payload*)
+                   (equal (fn-hrt-wire-of *cstr-t-articles-wire* *cstr-t-articles*)
+                          *cstr-t-articles-wire*)))
 
 ; The capacity decrease, written twice: once as the host numbers it TODAY
 ; (sequence = the previous generation, 1, because the configuration file is

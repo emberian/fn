@@ -163,6 +163,11 @@
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
 (include-book "books/replay-identity-index")
+;; The records flip: host/store-host.lisp includes books/store-intern (the
+;; intern at the entries), which names the payload arena `fn-arena'; the
+;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
+;; first include that introduces the generic, so it comes here.
+(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.

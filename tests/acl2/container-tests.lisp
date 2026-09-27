@@ -170,9 +170,13 @@
 ; Teeth for fn-ct-accepted-is-complete-of-prepare: the node would have
 ; accepted the tampered article; validation, not the node, stopped it.  The
 ; composition applied to it is not the result state.
+; by specification: the flip -- the node's acceptance state takes a payload
+; HANDLE (books/acceptance.lisp fn-article-payload natp): the tampered
+; article's octets '(72 105 33) sealed as the first extent of the node's
+; empty arena are handle 0.
 (assert-event
  (not (equal (fn-node-complete
-              (fn-node-prepare *ct-node* 1 "<t@example.invalid>" '(72 105 33)
+              (fn-node-prepare *ct-node* 1 "<t@example.invalid>" 0
                                *ct-groups* (fn-ct-obligation-string *ct-obligation-1*)
                                (fn-ct-subject-string *ct-t*) "release"
                                (fn-ct-charge *ct-t*) 841000000)

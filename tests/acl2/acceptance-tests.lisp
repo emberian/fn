@@ -162,8 +162,10 @@
                      '(7 ("x" . #c(3 3)) . tail)))
 (assert-event (fn-memberships-below-nextsp '(("x" . #c(0 -1))) nil))
 (assert-event (not (fn-memberships-below-nextsp '(("x" . #c(0 1))) nil)))
+; by specification: the flip -- the pending payload is a handle (natp), so
+; the dotted-list witness carries handle 0 where it carried the empty octet list.
 (assert-event (fn-pendingp '("fn.test") '(("fn.test" . 1)) #c(0 1)
-                           '(0 0 "m" nil ("fn.test") (("fn.test" . 1)) t
+                           '(0 0 "m" 0 ("fn.test") (("fn.test" . 1)) t
                              :legacy)))
 
 ; The :logic bodies of the transitions are total: a non-state is returned
@@ -202,7 +204,11 @@
 (defconst *test-groups* '("fn.letters" "fn.test"))
 (defconst *test-id-a* "<a@example.invalid>")
 (defconst *test-id-b* "<b@example.invalid>")
-(defconst *test-payload* '(72 105 13 10))
+; by specification: the flip -- the acceptance machine carries the payload
+; as an arena handle (natp), never octets; this trace's article is handle 0,
+; the conflicting payload below is handle 1 (distinct payloads stay distinct).
+(defconst *test-payload* 0)
+(defconst *test-other-payload* 1)
 (defconst *test-empty* (fn-initial-state *test-groups*))
 
 (assert-event (fn-statep *test-empty*))
@@ -273,7 +279,7 @@
  (equal (fn-accept-prepare *test-committed* 7 *test-id-a* *test-payload* *test-groups* 841000000)
         *test-committed*))
 (assert-event
- (equal (fn-accept-prepare *test-committed* 7 *test-id-a* '(69 118 105 108) *test-groups* 841000000)
+ (equal (fn-accept-prepare *test-committed* 7 *test-id-a* *test-other-payload* *test-groups* 841000000)
         *test-committed*))
 (assert-event
  (equal (fn-accept-prepare *test-committed* 7 *test-id-a* *test-payload* '("fn.test") 841000000)
@@ -297,6 +303,8 @@
         '(("fn.letters" . 2))))
 
 ; Indeterminate result preserves the proposal and fences all ordinary completion.
+; by specification: the flip -- the fenced submission below carries handle 2
+; (it carried the octets (1)), so its refusal is the fence's, not the payload's.
 (defconst *test-fenced*
   (fn-accept-complete *test-second-prepared* 1 7 :indeterminate))
 (assert-event (fn-statep *test-fenced*))
@@ -304,7 +312,7 @@
 (assert-event
  (equal (fn-state-pending *test-fenced*) (fn-state-pending *test-second-prepared*)))
 (assert-event
- (equal (fn-accept-prepare *test-fenced* 7 "<c@example.invalid>" '(1) '("fn.test") 841000000)
+ (equal (fn-accept-prepare *test-fenced* 7 "<c@example.invalid>" 2 '("fn.test") 841000000)
         *test-fenced*))
 (assert-event (equal (fn-accept-complete *test-fenced* 1 7 :durable) *test-fenced*))
 (assert-event (equal (fn-accept-complete *test-fenced* 1 7 :aborted) *test-fenced*))
@@ -372,8 +380,9 @@
 ; every field the invariant constrains, so a predicate that separated them
 ; only by its weakest clause would not do.
 (defconst *acc-teeth-groups* '("fn.letters" "fn.test"))
-(defconst *acc-teeth-payload-a* '(72 105 13 10))
-(defconst *acc-teeth-payload-b* '(66 121 101 13 10))
+; by specification: the flip -- the two payloads are distinct arena handles.
+(defconst *acc-teeth-payload-a* 0)
+(defconst *acc-teeth-payload-b* 1)
 (defconst *acc-teeth-id-a* "<a@example.invalid>")
 (defconst *acc-teeth-id-b* "<b@example.invalid>")
 

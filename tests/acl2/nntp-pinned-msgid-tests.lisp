@@ -8,10 +8,13 @@
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10
     83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 13 10
     72 101 108 108 111 13 10 46 100 111 116 13 10))
+; by specification: the flip -- the acceptance payload is a handle into the
+; arena (records-flip, books/held-record.lisp); *npm-t-payload* is interned
+; first, so the article holds handle 0.
 (defconst *npm-t-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state '("fn.letters" "fn.empty")) 1
-                      *npm-t-id* *npm-t-payload* '("fn.letters") 841000000)
+                      *npm-t-id* 0 '("fn.letters") 841000000)
    0 1 :durable))
 (defconst *npm-t-session* (fn-nntp-open-session *npm-t-archive*))
 (defconst *npm-t-trie* (fn-midx-build (fn-state-articles *npm-t-archive*)))

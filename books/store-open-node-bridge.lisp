@@ -389,11 +389,11 @@
 ; the relation, the receiver journal replays to the live state against the
 ; ready probe, and the ADU is a query of that state.
 (defthm fn-sonb-live-receipt-regenerated-from-related-open
-  (let* ((final (fn-bpr-live-run live events))
+  (let* ((final (fn-bpr-live-run live events fn-arena))
          (probe (fn-snrt-run o recovery-events))
-         (installed (fn-bpr-live-install probe (caddr final))))
+         (installed (fn-bpr-live-install probe (caddr final) fn-arena)))
     (implies (and (fn-csi-full-relationp (car live))
-                  (equal (fn-bprr-replay (car live) (caddr live)) (list t (cadr live)))
+                  (equal (fn-bprr-replay (car live) (caddr live) fn-arena) (list t (cadr live)))
                   (fn-snt-relation o)
                   (fn-bprv-extendsp (car final) o)
                   (equal (fn-bprv-phase probe) :ready))
@@ -413,22 +413,22 @@
                  (:instance fn-snrt-mixed-trace-preserves-live-history-relation
                             (s o) (events recovery-events))
                  (:instance fn-bprv-extendsp-transitive
-                            (a (car (fn-bpr-live-run live events))) (b o)
+                            (a (car (fn-bpr-live-run live events fn-arena))) (b o)
                             (c (fn-snrt-run o recovery-events)))
                  (:instance fn-bprv-extendsp-transitive
-                            (a (car live)) (b (car (fn-bpr-live-run live events)))
+                            (a (car live)) (b (car (fn-bpr-live-run live events fn-arena)))
                             (c (fn-snrt-run o recovery-events))))
            :in-theory (union-theories '(fn-bpr-live-install fn-sonb-full-relation-has-store-relation fn-bprv-extendsp
                                         car-cons cdr-cons)
                                       (theory 'minimal-theory)))))
 
 (defthm fn-bpr-live-receipt-regenerated-after-restart-of-host-open
-  (let* ((final (fn-bpr-live-run live events))
+  (let* ((final (fn-bpr-live-run live events fn-arena))
          (opened (fn-cpo-open-observed configs frontier records))
          (probe (fn-snrt-run (fn-sn-open-state opened) recovery-events))
-         (installed (fn-bpr-live-install probe (caddr final))))
+         (installed (fn-bpr-live-install probe (caddr final) fn-arena)))
     (implies (and (fn-csi-full-relationp (car live))
-                  (equal (fn-bprr-replay (car live) (caddr live)) (list t (cadr live)))
+                  (equal (fn-bprr-replay (car live) (caddr live) fn-arena) (list t (cadr live)))
                   (fn-sf-crash-imagep (fn-sn-files (car final)) frontier records)
                   (fn-sn-observed-identity-okp records)
                   (fn-sn-observed-topic-okp records)
@@ -442,7 +442,7 @@
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-bprv-observed-reopen-facts-of-host-open
-                            (s (car (fn-bpr-live-run live events))))
+                            (s (car (fn-bpr-live-run live events fn-arena))))
                  (:instance fn-bpr-live-run-preserves-consumer-full-relation)
                  (:instance fn-sonb-live-receipt-regenerated-from-related-open
                             (o (fn-sn-open-state (fn-cpo-open-observed configs frontier records)))))

@@ -227,17 +227,26 @@
    (fn-accept-prepare st 1 msgid payload groups stamp)
    (fn-state-next-txid st) 1 :durable))
 
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets.  *nn-aK-payload* stays the bytes that handle
+;; stands for; each distinct payload has its own handle (a1..a5 are 0..4, the
+;; 32 KiB payload below is 5).
+(defconst *nn-a1-handle* 0)
+(defconst *nn-a2-handle* 1)
+(defconst *nn-a3-handle* 2)
+(defconst *nn-a4-handle* 3)
+(defconst *nn-a5-handle* 4)
 (defconst *nn-archive*
   (nn-accept
    (nn-accept
     (nn-accept
      (nn-accept
       (nn-accept (fn-initial-state *nn-groups*)
-                 "<a1@fn.invalid>" *nn-a1-payload* '("fn.letters") 843134400)
-      "<a2@fn.invalid>" *nn-a2-payload* '("fn.letters") 820540800)
-     "<a3@fn.invalid>" *nn-a3-payload* '("fn.notes") 843134400)
-    "<a4@fn.invalid>" *nn-a4-payload* '("fn.letters") 843141600)
-   "<a5@fn.invalid>" *nn-a5-payload* '("fn.letters") 820540800))
+                 "<a1@fn.invalid>" *nn-a1-handle* '("fn.letters") 843134400)
+      "<a2@fn.invalid>" *nn-a2-handle* '("fn.letters") 820540800)
+     "<a3@fn.invalid>" *nn-a3-handle* '("fn.notes") 843134400)
+    "<a4@fn.invalid>" *nn-a4-handle* '("fn.letters") 843141600)
+   "<a5@fn.invalid>" *nn-a5-handle* '("fn.letters") 820540800))
 
 (assert-event (equal (len (fn-state-articles *nn-archive*)) 5))
 (assert-event (fn-nntp-projectionp *nn-archive*))
@@ -517,14 +526,21 @@
 (defun nn-zero-octets (n)
   (declare (xargs :measure (nfix n)))
   (if (posp n) (cons 0 (nn-zero-octets (- n 1))) nil))
+;; by specification: the flip -- the 32 KiB payload is carried as its handle,
+;; 5; the bytes it stands for are *nn-large-payload*.
+(defconst *nn-large-payload* (nn-zero-octets 32768))
+(defconst *nn-large-handle* 5)
 (defconst *nn-large-article*
   (fn-make-article (fn-article-msgid *nn-a1-article*)
-                   (nn-zero-octets 32768)
+                   *nn-large-handle*
                    (fn-article-groups *nn-a1-article*)
                    (fn-article-memberships *nn-a1-article*)
                    (fn-article-pin *nn-a1-article*)
                    (fn-article-stamp *nn-a1-article*)))
-(assert-event (equal (len (fn-article-payload *nn-large-article*)) 32768))
+; by specification: the flip -- the article carries the handle, and the bytes
+; under it are the 32 KiB payload.
+(assert-event (equal (fn-article-payload *nn-large-article*) *nn-large-handle*))
+(assert-event (equal (len *nn-large-payload*) 32768))
 (assert-event (equal (fn-nntp-newnews-scan
                       '("fn.letters") *nn-noon*
                       (list *nn-large-article*) :none)
@@ -546,7 +562,7 @@
   (declare (xargs :measure (nfix n)))
   (if (posp n)
       (nn-bulk-other
-       (nn-accept st (nn-bulk-id n) *nn-a3-payload* '("fn.notes")
+       (nn-accept st (nn-bulk-id n) *nn-a3-handle* '("fn.notes")
                   843134400)
        (- n 1))
     st))

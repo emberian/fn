@@ -128,6 +128,28 @@
   (declare (xargs :mode :program :stobjs fn-arena))
   (fn-intern-events records nil 0 fn-arena))
 
+; The same intern into a LOCAL arena, for a decision over a history that is
+; not the live Store's (the administrative candidate reopen, the checkpoint
+; generation capture): the rows are the replay's domain; the arena is dropped
+; with the answer, so nothing is retained.
+(defun fn-store-intern-records-local (records)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (rows fn-arena)
+      (fn-intern-events records nil 0 fn-arena)
+      rows)))
+
+; A journal record's sequence, read off the WIRE event its octets decode to
+; (fn-rcon-wire-event-sequence-is-wire-event-sequence, books/records-concrete):
+; the host names and orders transaction files by it before any intern.
+(defun fn-store-record-sequence (octets)
+  (declare (xargs :mode :program))
+  (let ((decoded (fn-store-event-decode-exact octets)))
+    (if (and (consp decoded) (equal (car decoded) :ok)
+             (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
+        (fn-rcon-wire-event-sequence (car (cdr decoded)))
+      -1)))
+
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program))
   (let ((decoded (fn-store-event-decode-exact octets)))

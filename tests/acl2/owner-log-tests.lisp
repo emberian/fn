@@ -198,6 +198,11 @@
 (assert-event
  (equal *olt-refused-transit-line*
         (olt-text "refused transit connection=7 message-id=<relay@example.invalid> code=439 decision=want reason=none detail=local-enrollment time=2026-09-18T00:00:00Z")))
+;; PKT-711: a full Store (the unconsumed :unaffordable) is a deferral, 436,
+;; and the line names the Store's word as its reason.
+(assert-event
+ (equal (fn-olog-transit-line *olt-transit-unconsumed* 7 :want nil :unaffordable nil nil)
+        (olt-text "deferred transit connection=7 message-id=<relay@example.invalid> code=436 decision=want reason=unaffordable detail=none time=2026-09-18T00:00:00Z")))
 ; The same refusal word after a completion was consumed is not a refusal:
 ; the record is durable, so fn-own-outcome-completion calls it uncertain
 ; (campaign W2) and the peer is sent 436, not 439.

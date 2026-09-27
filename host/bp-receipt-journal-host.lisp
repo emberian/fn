@@ -37,9 +37,11 @@
         (state (f-put-global 'fn-bpaj-state nil state)))
   (value :ready)))
 
-(defun fn-bprj-install (records state)
- (declare (xargs :stobjs state :mode :program))
- (let ((answer (fn-bpaj-replay (fn-bprj-store state) records)))
+;; The records flip (flip-L4): replay, preflight, apply and dispatch read the
+;; bound Store's rows through the live arena (read-only).
+(defun fn-bprj-install (records fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (let ((answer (fn-bpaj-replay (fn-bprj-store state) records fn-arena)))
   (if (not (car answer)) (value :fault)
    (let* ((joined (fn-bprr-nth 1 answer))
           (state (f-put-global 'fn-bpaj-state joined state))
@@ -47,17 +49,17 @@
                                (fn-bpaj-receiver joined) state)))
     (value :ready)))))
 
-(defun fn-bprj-preflight (record state)
- (declare (xargs :stobjs state :mode :program))
+(defun fn-bprj-preflight (record fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (value (if (car (fn-bpaj-apply-record-fast
                   (f-get-global 'fn-bpaj-state state)
-                  (fn-bprj-store state) record)) :ready :fault)))
+                  (fn-bprj-store state) record fn-arena)) :ready :fault)))
 
-(defun fn-bprj-apply (record state)
- (declare (xargs :stobjs state :mode :program))
+(defun fn-bprj-apply (record fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (let ((answer (fn-bpaj-apply-record-fast
                 (f-get-global 'fn-bpaj-state state)
-                (fn-bprj-store state) record)))
+                (fn-bprj-store state) record fn-arena)))
   (if (not (car answer)) (value :fault)
    (let* ((joined (fn-bprr-nth 1 answer))
           (state (f-put-global 'fn-bpaj-state joined state))
@@ -89,11 +91,11 @@
  (value (fn-bpaj-request-status-fast
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
-(defun fn-bprj-request-action (request-octets generation state)
- (declare (xargs :stobjs state :mode :program))
+(defun fn-bprj-request-action (request-octets generation fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (value (fn-bpaj-dispatch-fast
          (f-get-global 'fn-bpaj-state state)
-         (fn-bprj-store state) request-octets generation)))
+         (fn-bprj-store state) request-octets generation fn-arena)))
 
 (defun fn-bprj-config-status (destination policy issuer state)
  (declare (xargs :stobjs state :mode :program))

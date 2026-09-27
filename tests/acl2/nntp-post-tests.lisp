@@ -193,7 +193,7 @@
 (assert-event (equal (fn-tp-outcome-line :malformed)
                      (fn-tp-line "441 posting failed; the store refused the article as malformed")))
 (assert-event (equal (fn-tp-outcome-line :unaffordable)
-                     (fn-tp-line "441 posting failed; the store has no capacity for this article")))
+                     (fn-tp-line "441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it")))
 (assert-event (equal (fn-tp-outcome-line :storage-failed)
                      (fn-tp-line "441 posting failed; the store could not write the article, nothing was stored")))
 ; A word that is no refusal kind is uncertain, never a refusal.

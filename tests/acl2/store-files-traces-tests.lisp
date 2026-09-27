@@ -2,26 +2,49 @@
 (in-package "ACL2")
 (include-book "../../books/store-files-traces")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *sf-trace-groups* '("fn.letters" "fn.test"))
 
-(defconst *sf-trace-record-0*
+(defconst *sf-trace-record-0-wire*
   (fn-record-make 0 0 0 "<trace-zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
                   "trace-archive-zero" "trace-content-zero"
                   "trace-release-zero" 2 841000000))
 
-(defconst *sf-trace-record-1*
+(defconst *sf-trace-record-1-wire*
   (fn-record-make 1 1 1 "<trace-one@example.invalid>" '(79)
                   '("fn.letters")
                   "trace-archive-one" "trace-content-one"
                   "trace-release-one" 1 841000000))
 
-(defconst *sf-trace-record-2*
+(defconst *sf-trace-record-2-wire*
   (fn-record-make 2 2 2 "<trace-two@example.invalid>" '(84)
                   '("fn.test")
                   "trace-archive-two" "trace-content-two"
                   "trace-release-two" 1 841000000))
+
+; The history retains HELD ROWS (records-flip): the three wire records
+; interned in order on one arena, so their payloads are the handles 0, 1, 2.
+(defconst *sf-trace-wire*
+  (list *sf-trace-record-0-wire* *sf-trace-record-1-wire* *sf-trace-record-2-wire*))
+(defconst *sf-trace-rows* (fn-hrt-rows *sf-trace-wire* nil 0))
+(defconst *sf-trace-record-0* (nth 0 *sf-trace-rows*))
+(defconst *sf-trace-record-1* (nth 1 *sf-trace-rows*))
+(defconst *sf-trace-record-2* (nth 2 *sf-trace-rows*))
+(assert-event (and (fn-held-p *sf-trace-record-0*) (fn-held-p *sf-trace-record-1*)
+                   (fn-held-p *sf-trace-record-2*)))
+; by specification: the flip -- the rows' payloads are handles; the bytes
+; under them are the wire records' payloads, and alpha is the wire history.
+(assert-event (equal (list (fn-record-payload *sf-trace-record-0*)
+                           (fn-record-payload *sf-trace-record-1*)
+                           (fn-record-payload *sf-trace-record-2*))
+                     '(0 1 2)))
+(assert-event (equal (list (fn-hrt-bytes *sf-trace-wire* 0)
+                           (fn-hrt-bytes *sf-trace-wire* 1)
+                           (fn-hrt-bytes *sf-trace-wire* 2))
+                     '((90) (79) (84))))
+(assert-event (equal (fn-hrt-wire-of *sf-trace-wire* *sf-trace-rows*) *sf-trace-wire*))
 
 ; Establish one emitted success.  Configuration is stored once in the trace;
 ; prepare and recovery events carry no alternate groups or capacity.

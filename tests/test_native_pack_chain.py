@@ -156,6 +156,10 @@ class NativePackChainTests(unittest.TestCase):
         recorded = json.loads((fixture / "before-view.json").read_text(encoding="ascii"))
         store = self.base / name
         shutil.copytree(fixture / "store", store, symlinks=True)
+        # The copy is a store placed here deliberately, on another filesystem
+        # than the one tools/fixtures.py built it on: it is rebound before
+        # use (PKT-579).
+        self.native("store", store, "rebind-filesystem")
         # SEC-006: a fixture built before the key files gets its secret once
         # (a start never creates one).
         if not (store / "keys" / "node-secret.key").exists():

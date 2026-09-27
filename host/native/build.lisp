@@ -217,6 +217,11 @@
 ;; `operator init` publishes the empty store by the same program (PKT-647):
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.
 (include-book "books/store-init-publication")
+;; The records flip: host/store-host.lisp includes books/store-intern (the
+;; intern at the entries), which names the payload arena `fn-arena'; the
+;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
+;; first include that introduces the generic, so it comes here.
+(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
@@ -239,7 +244,7 @@
 ;; arena (the held record, the catalog) runs over one byte per payload octet
 ;; from the certificates it was certified with.  It must precede every
 ;; include that names fn-arena.
-(include-book "books/payload-arena-attach")
+;; (included above, before host/store-host.lisp: see the note there)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the

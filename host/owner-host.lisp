@@ -310,32 +310,49 @@
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
          (car opened) state)))))
 
-(defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
-  (declare (xargs :stobjs state :mode :program))
+; The records flip: both opens intern the decoded journal into the arena
+; first (host/store-node-host.lisp fn-store-sn-recover's note), so the
+; extended capture is over ROWS; (mv nil KEYWORD fn-arena state).
+(defun fn-owner-recover (octet-records frontier config-octet-records max-conns
+                                       fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad))
-        (value :fault)
-      (fn-owner-recover-extended
-       ; fn-rii-sco-extend-is-sco-extend (PRF-242): the replay's identity tries.
-       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records records)
-       config-records frontier max-conns state))))
+        (mv nil :fault fn-arena state)
+      (let ((fn-arena (fn-arena-clear fn-arena)))
+        (mv-let (rows fn-arena)
+        (fn-store-intern-records records fn-arena)
+        (if (equal rows :bad)
+            (mv nil :fault fn-arena state)
+          (mv-let (erp val state)
+            (fn-owner-recover-extended
+             (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+             config-records frontier max-conns state)
+            (mv erp val fn-arena state))))))))
 
 ; The open from the checkpoint the Store open decoded and verified
 ; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
 ; the records after it.
 (defun fn-owner-recover-from-checkpoint (suffix-octet-records frontier config-octet-records
-                                                              max-conns state)
-  (declare (xargs :stobjs state :mode :program))
+                                                              max-conns fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
         (records (fn-store-decode-records suffix-octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
-        (value :fault)
-      (fn-owner-recover-extended
-       ; fn-rii-sco-extend-is-sco-extend (PRF-242).
-       (fn-rii-sco-extend checkpoint config-records records)
-       config-records frontier max-conns state))))
+        (mv nil :fault fn-arena state)
+      ; The checkpoint's rows reference no handle (fn-store-sco-decode).
+      (let ((fn-arena (fn-arena-clear fn-arena)))
+        (mv-let (rows fn-arena)
+        (fn-store-intern-records records fn-arena)
+        (if (equal rows :bad)
+            (mv nil :fault fn-arena state)
+          (mv-let (erp val state)
+            (fn-owner-recover-extended
+             (fn-rii-sco-extend checkpoint config-records rows)
+             config-records frontier max-conns state)
+            (mv erp val fn-arena state))))))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -786,9 +803,20 @@
                 (fn-rcon-ocfg-io (fn-owner-ocfg state) operation result) state)))
     (value (fn-sf-phase (fn-sn-files (fn-owner-store state))))))
 
+; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
+; entry over the arena (fn-store-existing-action, KEYSTONE
+; fn-store-existing-action-is-the-verdict-over-alpha); the budget is sized on
+; the WIRE record the POST builds (its journal frame); the record staged is
+; the ROW fn-intern-row-at interns at the arena's count under the Store's
+; keyring and generation (books/store-intern.lisp; fn-cat-intern-list-is-row-
+; at-count), and the payload is sealed into the arena exactly when the Store
+; changed, as fn-store-prepare-interned does (its KEYSTONES
+; -refusal-keeps-the-arena and -acceptance-seals-one-payload are about that
+; shape; the owner's prepare is fn-pcar-sbud-prepare over the row in place of
+; fn-sn-prepare).  (mv nil KEYWORD fn-arena state).
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
-                          subject-octets evidence-octets charge state)
-  (declare (xargs :stobjs state :mode :program))
+                          subject-octets evidence-octets charge fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -798,15 +826,15 @@
             (not (fn-store-text-octetsp id-octets))
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
-        (value :invalid)
+        (mv nil :invalid fn-arena state)
       ; A name in the domain but not served at the live generation (a retired
       ; group) is refused by the predicate fn-cnode-prepare applies.
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
-          (value :refused)
+          (mv nil :refused fn-arena state)
       (let* ((msgid (fn-store-octets->string msgid-octets))
-             (existing (fn-rcl-existing-action msgid payload groups s)))
+             (existing (fn-store-existing-action msgid payload groups s fn-arena)))
         (if existing
-            (value existing)
+            (mv nil existing fn-arena state)
           (mv-let (bytes state) (fn-owner-record-octets state)
           (mv-let (debt state) (fn-owner-record-debt state)
           (let* ((record (fn-sn-article-record
@@ -839,16 +867,22 @@
                           (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
+                 (row (if (equal record :clock-unusable)
+                          nil
+                        (fn-intern-row-at record (fn-sn-keyring s)
+                                          (fn-sn-keyring-generation s)
+                                          (fn-arena-count fn-arena))))
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
-                           (fn-pcar-sbud-prepare before record budget)
+                           (fn-pcar-sbud-prepare before row budget)
                            state))))
             (if (equal record :clock-unusable)
-                (value :clock-unusable)
+                (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
-                (value (fn-sbud-refusal-kind before budget))
-              (value :prepared))))))))))))
+                (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
+              (let ((fn-arena (fn-arena-seal-list payload fn-arena)))
+                (mv nil :prepared fn-arena state)))))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -875,10 +909,15 @@
 ; record's own field, held for the record's life, until wave C gives the
 ; owner state a concrete representation.  Everything after the record is
 ; the same prepare (fn-pcar-sbud-prepare) on the same record.
+; The records flip: as fn-owner-prepare above, with the duplicate test
+; fn-pidx-existing-action over the arena (KEYSTONE
+; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
+; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
+; record's list payload lives only for the facts, the context and the budget).
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
-                                 fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+                                 fn-octets fn-arena state)
+  (declare (xargs :stobjs (fn-octets fn-arena state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -888,17 +927,17 @@
             (not (fn-store-text-octetsp id-octets))
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
-        (value :invalid)
+        (mv nil :invalid fn-arena state)
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
-          (value :refused)
+          (mv nil :refused fn-arena state)
       (let* ((msgid (fn-store-octets->string msgid-octets))
              ; PRF-191: the held article through the view trie
              ; (books/post-identity-index.lisp
-             ; fn-pidx-existing-action-is-rclb-existing-action).
+             ; fn-pidx-existing-action-is-store-existing-action).
              (existing (fn-pidx-existing-action msgid fn-octets groups
-                                                (fn-owner-core state))))
+                                                (fn-owner-core state) fn-arena)))
         (if existing
-            (value existing)
+            (mv nil existing fn-arena state)
           (mv-let (bytes state) (fn-owner-record-octets state)
           (mv-let (debt state) (fn-owner-record-debt state)
           (let* ((record (fn-sn-article-record
@@ -918,6 +957,11 @@
                           (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
+                 (row (if (equal record :clock-unusable)
+                          nil
+                        (fn-intern-row-at record (fn-sn-keyring s)
+                                          (fn-sn-keyring-generation s)
+                                          (fn-arena-count fn-arena))))
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
@@ -925,17 +969,15 @@
                            ; fn-pcar-sbud-prepare over the owner's carried
                            ; view (fn-pidx-sbud-prepare-is-pcar-sbud-prepare):
                            ; the duplicate test reads the view trie and the
-                           ; retention admission is decided once; the budget
-                           ; test reads the event index's count (PRF-242,
-                           ; under fn-ceis-indexedp, which the live owner
-                           ; carries: fn-osi-live-owner-store-is-indexed).
-                           (fn-pidx-sbud-prepare before record budget)
+                           ; retention admission is decided once.
+                           (fn-pidx-sbud-prepare before row budget)
                            state))))
             (if (equal record :clock-unusable)
-                (value :clock-unusable)
+                (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
-                (value (fn-sbud-refusal-kind before budget))
-              (value :prepared))))))))))))
+                (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
+              (let ((fn-arena (fn-arena-seal-buffer fn-octets fn-arena)))
+                (mv nil :prepared fn-arena state)))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
@@ -1082,13 +1124,14 @@
         (value :aborted)
       (value :fault))))
 
-(defun fn-owner-pending-octets (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-pending-octets (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (fn-owner-store state)))))
     ; fn-rcon-store-event-encode-is-store-event-encode: the encoder's
-    ; dispatch, with the concrete record recognizer (books/records-concrete).
-    (value (if record (fn-rcon-store-event-encode record) nil))))
+    ; dispatch, with the concrete record recognizer (books/records-concrete),
+    ; over ALPHA of the staged row (books/store-intern.lisp fn-row-wire-of).
+    (value (if record (fn-rcon-store-event-encode (fn-row-wire-of record fn-arena)) nil))))
 
 ; The staged record's sequence, the one the host names its transaction file
 ; from (host/native/owner.lisp fnn-owner-publish-prepared); the host holds no
@@ -1157,12 +1200,16 @@
 ;; fn-rcon-record-p (fn-rcon-record-p-is-record-p: equal to fn-record-p on
 ;; every input), which reads the record's strings in place instead of
 ;; building their octet lists.
-(defun fn-owner-finish-submission (state)
-  (declare (xargs :stobjs state :mode :program))
+;; The records flip (flip-L8): the submission is named through ALPHA of the
+;; completing row, read through the arena (fn-ccar-own-finish takes it; the
+;; owner installed is independent of the arena,
+;; fn-ccar-own-finish-installs-ccar-own-complete-by-definition).
+(defun fn-owner-finish-submission (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (value :fault)
-      (let* ((result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
+      (let* ((result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc) fn-arena))
              (state (fn-owner-replace-core (cdr result) state)))
         (value (car result))))))
 
@@ -2211,17 +2258,18 @@
     (value (fn-record-string-octets
             (if (fn-prov-durablep p) (fn-prov-wire p) (fn-prov-render p))))))
 
-(defun fn-owner-existing-action (msgid-octets payload group-codes state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-existing-action (msgid-octets payload group-codes fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
-      (let ((action (fn-rcl-existing-action
+      ; fn-store-existing-action-is-the-verdict-over-alpha.
+      (let ((action (fn-store-existing-action
                      (fn-store-octets->string msgid-octets) payload groups
-                     (fn-owner-store state))))
+                     (fn-owner-store state) fn-arena)))
         (value (if action action :absent))))))
 
 ; The same question with the submitted payload in the octet buffer
@@ -2236,8 +2284,8 @@
 ; (fn-rcl-existing-action-is-pb-without-a-tombstone);
 ; the list entry's fn-octet-listp test is the buffer's recognizer
 ; (fn-pbb-buffer-is-octet-listp).
-(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+(defun fn-owner-existing-action-buffer (msgid-octets group-codes fn-octets fn-arena state)
+  (declare (xargs :stobjs (fn-octets fn-arena state) :mode :program))
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
@@ -2245,10 +2293,10 @@
             (equal groups :bad) (null groups))
         (value :absent)
       ; PRF-191: fn-rclb-existing-action through the view trie
-      ; (fn-pidx-existing-action-is-rclb-existing-action).
+      ; (fn-pidx-existing-action-is-store-existing-action).
       (let ((action (fn-pidx-existing-action
                      (fn-store-octets->string msgid-octets) fn-octets groups
-                     (fn-owner-core state))))
+                     (fn-owner-core state) fn-arena)))
         (value (if action action :absent))))))
 
 ; The subject identity of the payload in the octet buffer is

@@ -213,7 +213,7 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
             _delete_after_decision(delete, bid, "duplicate", receipt, staged, faults)
             return ReceiveResult("duplicate", receipt, staged)
         existing_record = _acl2_octets(
-            bridge, "(fn-bpreq-existing-record '" + bridge.literal(request_adu) + " state)")
+            bridge, "(fn-bpreq-existing-record '" + bridge.literal(request_adu) + " fn-arena state)")
         if existing_record:
             # Store publication may have completed before FNRJ context
             # publication.  Bind only ACL2's recovered exact record; do not

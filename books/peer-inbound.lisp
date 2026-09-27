@@ -929,12 +929,21 @@
 ; in the retry class of every sender that follows RFC 3977 section 6.3.2.2
 ; ("a lack of response ... treated the same as 436").  An uncertain outcome
 ; also closes: the node is fenced and serves nothing until recovery.
+;
+; PKT-711 (the stranger rehearsal, 2026-09-27): a full Store (the owner's
+; :unaffordable, books/owner-store-budget.lisp) is "not now", not "never":
+; its operator can raise the capacity.  So it is 436 for IHAVE and TAKETHIS,
+; in the retry class, and the sender backs off, keeps the article, and its
+; health names the peer (books/native-health.lisp `fn-nh-feed-deferredp').
+; Before, it was the drop code 439: the sender forgot the article for that
+; peer and stayed `healthy'.
 (defun fn-peer-transit-code (kind d completion)
   (declare (xargs :guard t))
   (let ((dk (fn-peer-decision-kind d)))
     (cond ((equal completion :durable) (if (equal kind :ihave) 235 239))
           ((equal completion :uncertain) 436)
           ((equal completion :clock-unusable) 436)
+          ((equal completion :unaffordable) 436)
           ((fn-post-store-refusalp completion) (if (equal kind :ihave) 437 439))
           ((equal dk :defer) 436)
           (t (if (equal kind :ihave) 437 439)))))
@@ -965,6 +974,9 @@
                        (list (fn-nntp-close-effect))))
               ((equal completion :clock-unusable)
                (fn-peer-single ps "436 retry later; no usable clock reading"))
+              ((equal completion :unaffordable)
+               (fn-peer-single ps (string-append "436 retry later; "
+                                                 (fn-post-store-refusal-text completion))))
               ((fn-post-store-refusalp completion)
                (fn-peer-single ps (fn-peer-transit-refusal-line completion)))
               ((equal code 436)
@@ -1003,6 +1015,14 @@
        (implies (equal completion :durable)
                 (member-equal (fn-peer-transit-code kind d completion)
                               '(235 239)))))
+
+;; KEYSTONE (PKT-711).  A full Store answers a transfer, IHAVE or TAKETHIS,
+;; with 436: the retry class, never a drop code; and IHAVE's line names the
+;; reason.
+(defthm fn-peer-full-store-is-a-retry-code
+  (and (equal (fn-peer-transit-code kind d :unaffordable) 436)
+       (not (member-equal (fn-peer-transit-code kind d :unaffordable)
+                          '(437 439)))))
 
 ; The host entry after the durable attempt: the connection is unchanged.
 (defun fn-peer-transit-outcome (ps submission d completion)
