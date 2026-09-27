@@ -775,7 +775,15 @@
 ; The first event the machine refuses, walking it from ST over EVS: (WORD
 ; CODE PHASE), or nil when none is refused.
 (defun fn-pull-preamble-why (st evs)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (len evs)
+                  :hints (("Goal" :in-theory (disable fn-fc-event-result
+                                                      fn-fc-line-code
+                                                      fn-fc-next-state fn-fc-kind
+                                                      fn-fc-phase)))
+                  :guard-hints (("Goal" :in-theory (disable fn-fc-event-result
+                                                            fn-fc-line-code
+                                                            fn-fc-next-state fn-fc-kind
+                                                            fn-fc-phase)))))
   (if (consp evs)
       (let ((r (fn-fc-event-result st (car evs))))
         (if (member-equal (fn-fc-kind r)
@@ -786,6 +794,12 @@
                   code
                   (fn-peer-phase-word (fn-fc-phase st))))))
     nil))
+
+(defthm fn-pull-preamble-why-names-a-word
+  (implies (fn-pull-preamble-why st evs)
+           (stringp (car (fn-pull-preamble-why st evs))))
+  :hints (("Goal" :in-theory (disable fn-fc-event-result fn-fc-line-code
+                                      fn-fc-next-state fn-fc-kind fn-fc-phase))))
 
 (defun fn-pull-lost-cause (event)
   (declare (xargs :guard t))
@@ -864,6 +878,29 @@
                    code
                    (fn-peer-phase-word (fn-fc-phase input)))))))
 
+(defthm fn-peer-failure-words-begin-with-reason
+  (implies (and (consp why) (stringp (car why)))
+           (equal (take 8 (fn-peer-failure-words why))
+                  (fn-record-string-octets " reason=")))
+  :hints (("Goal" :in-theory (e/d (fn-peer-failure-words) (fn-nntp-decimal-field)))))
+
+(defthm fn-pull-session-failure-shape
+  (let ((why (fn-pull-session-failure s event s2)))
+    (implies why (and (consp why) (stringp (car why)))))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-failure)
+                                  (fn-pull-done-p fn-pull-session-readyp
+                                   fn-pull-preamble-why fn-pull-session-fc-events
+                                   fn-peer-lost-word fn-peer-phase-word)))))
+
+(defthm fn-pull-session-failure-iff
+  (iff (fn-pull-session-failure s event s2)
+       (and (not (fn-pull-done-p (fn-pull-s-round s)))
+            (equal (fn-pull-r-phase (fn-pull-s-round s2)) :failed)))
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-failure)
+                                  (fn-pull-done-p fn-pull-session-readyp
+                                   fn-pull-preamble-why fn-pull-session-fc-events
+                                   fn-peer-lost-word fn-peer-phase-word)))))
+
 ; KEYSTONE (friend-path-2).  Every step that fails a round names why: the
 ; failure the host carries is non-nil exactly when the step moved a round
 ; that had not ended to :failed, and its words then say ` reason=' and a
@@ -877,10 +914,9 @@
          (implies why
                   (equal (take 8 (fn-peer-failure-words why))
                          (fn-record-string-octets " reason=")))))
-  :hints (("Goal" :in-theory (e/d (fn-pull-session-failure)
-                                  (fn-pull-session-step fn-pull-done-p
-                                   fn-pull-session-readyp fn-pull-preamble-why
-                                   fn-pull-session-fc-events)))))
+  :hints (("Goal" :in-theory '(fn-pull-session-failure-iff
+                               fn-pull-session-failure-shape
+                               fn-peer-failure-words-begin-with-reason))))
 
 ; The feed's line for a connection lost before its reply (host/native/feed-service.lisp
 ; the :need-input arm at end of file): the same words.
