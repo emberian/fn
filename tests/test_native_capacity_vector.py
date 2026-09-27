@@ -282,6 +282,19 @@ class NativeCapacityVectorTests(_Bp):
         self.out(tag="compact", exit=code, stdout=so[:200], stderr=se,
                  before=before_compact, after=footprint(sender))
         self.assertEqual(code, 0, se)
+        # The compaction left an empty active segment, which a checkpoint does
+        # not rotate again (native m6: every reclaim cut unreached).  One
+        # commit after it gives the reclaim a segment to rotate and one to
+        # drop, so its rotation and drop cuts are reached.
+        owner = self.owner(cfg)
+        try:
+            c = m.Conn(port)
+            between = self.post(c, 800000)
+            c.close()
+        finally:
+            self.stop_owner(owner)
+        self.out(tag="post-after-compact", answer=between)
+        self.assertTrue(between.startswith("240"), between)
         bad += self.cuts(sender, "reclaim")
         before = footprint(sender)
         pre = self.status(cfg)
