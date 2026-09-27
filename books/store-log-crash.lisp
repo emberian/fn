@@ -412,12 +412,33 @@
                                (1+ (floor n unit))))))
      :hints (("Goal" :in-theory (enable fn-lg-pad-len))))))
 
+(local
+ (defthm fn-lgc-len-of-entry
+   (equal (len (fn-lg-entry prev record unit))
+          (+ (len (fn-lg-frame prev record))
+             (fn-lg-pad-len (len (fn-lg-frame prev record)) unit)))
+   :hints (("Goal" :in-theory (disable fn-lg-frame fn-lg-pad-len)))))
+
+(local
+ (defthm fn-lgc-pad-aligned-commuted
+   (implies (and (natp n) (posp unit))
+            (equal (+ n (fn-lg-pad-len n unit))
+                   (* (if (equal (mod n unit) 0) (floor n unit) (1+ (floor n unit))) unit)))
+   :hints (("Goal" :in-theory (disable fn-lg-pad-len) :use fn-lgc-pad-aligned))))
+
+; A closed theory: the arithmetic library is not needed once the length is
+; the frame and its padding.
 (defthm fn-lg-entry-len-is-units
   (implies (and (fn-frame-digestp prev) (fn-cbor-octet-listp record) (posp unit))
            (equal (len (fn-lg-entry prev record unit))
                   (* (fn-lg-entry-units prev record unit) unit)))
-  :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-pad-len)
-           :use ((:instance fn-lgc-pad-aligned (n (len (fn-lg-frame prev record))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgc-len-of-entry fn-lg-entry-units
+                                        (:type-prescription len) natp posp nfix zp)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgc-pad-aligned-commuted (n (len (fn-lg-frame prev record))))))))
+
+(local (in-theory (disable fn-lgc-len-of-entry fn-lgc-pad-aligned-commuted)))
 
 (defthm fn-lg-entry-units-natp
   (natp (fn-lg-entry-units prev record unit))

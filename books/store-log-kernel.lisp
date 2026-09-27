@@ -490,30 +490,113 @@
   (implies (and (fn-lg-recordsp a max) (fn-lg-recordsp b max))
            (fn-lg-recordsp (append a b) max)))
 
+; R reads COMMITTED, LAST, FRONTIER, INFLIGHT, the batch's shape and ACKED's
+; bound, and nothing else of the kernel: the transitions that change only
+; the batch, the counter, ACKED or the phase keep it.
+(defthm fn-lgk-fields-of-make
+  (let ((ks (fn-lgk-make committed last frontier next-txid batch inflight acked phase)))
+    (and (equal (fn-lgk-committed ks) committed)
+         (equal (fn-lgk-last ks) last)
+         (equal (fn-lgk-frontier ks) (nfix frontier))
+         (equal (fn-lgk-next-txid ks) (nfix next-txid))
+         (equal (fn-lgk-batch ks) batch)
+         (equal (fn-lgk-inflight ks) inflight)
+         (equal (fn-lgk-acked ks) (nfix acked))
+         (equal (fn-lgk-phase ks) phase))))
+
+(defthm fn-lgk-relp-when-fields-agree
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+                (equal (fn-lgk-last k2) (fn-lgk-last ks))
+                (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+                (equal (fn-lgk-inflight k2) (fn-lgk-inflight ks))
+                (fn-lg-recordsp (fn-lgk-batch k2) max)
+                (<= (fn-lgk-acked k2) (len (fn-lgk-committed ks))))
+           (fn-lgk-relp bs k2 ino genesis max))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
+                           (fn-lg-scan fn-lg-scan-last fn-lg-log mod fn-lg-recordsp fn-bs-take
+                            fn-lg-zerosp fn-frame-digestp nthcdr fn-bs-durable-content
+                            fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight
+                            fn-lgk-batch fn-lgk-acked)))))
+
+(defthm fn-lgk-relp-forward
+  (implies (fn-lgk-relp bs ks ino genesis max)
+           (and (fn-lg-recordsp (fn-lgk-batch ks) max)
+                (<= (fn-lgk-acked ks) (len (fn-lgk-committed ks)))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
+                           (fn-lg-scan fn-lg-scan-last fn-lg-log mod fn-lg-recordsp fn-bs-take
+                            fn-lg-zerosp fn-frame-digestp nthcdr fn-bs-durable-content
+                            fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight
+                            fn-lgk-batch fn-lgk-acked)))))
+
 (defthm fn-lgk-prepare-preserves-relation
   (implies (and (fn-lgk-relp bs ks ino genesis max) (fn-lg-recordp record max))
            (fn-lgk-relp bs (fn-lgk-prepare ks record) ino genesis max))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-lg-scan fn-lg-scan-last fn-lg-log mod fn-lg-recordp)
-           :use ((:instance fn-lg-recordsp-of-append (a (fn-lgk-batch ks)) (b (list record)))))))
+           :in-theory (e/d (fn-lgk-fields-of-make)
+                           (fn-lgk-make fn-lgk-relp fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                            fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-acked fn-lgk-phase
+                            fn-lg-recordp))
+           :use ((:instance fn-lgk-relp-when-fields-agree (k2 (fn-lgk-prepare ks record)))))))
 
 (defthm fn-lgk-finish-one-preserves-relation
   (implies (fn-lgk-relp bs ks ino genesis max)
            (fn-lgk-relp bs (fn-lgk-finish-one ks) ino genesis max))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-lg-scan fn-lg-scan-last fn-lg-log mod fn-lg-recordsp))))
+           :in-theory (e/d (fn-lgk-fields-of-make)
+                           (fn-lgk-make fn-lgk-relp fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                            fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-acked fn-lgk-phase))
+           :use ((:instance fn-lgk-relp-when-fields-agree (k2 (fn-lgk-finish-one ks)))))))
 
 (defthm fn-lgk-known-abort-preserves-relation
   (implies (fn-lgk-relp bs ks ino genesis max)
            (fn-lgk-relp bs (fn-lgk-known-abort ks) ino genesis max))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-lg-scan fn-lg-scan-last fn-lg-log mod fn-lg-recordsp))))
+           :in-theory (e/d (fn-lgk-fields-of-make)
+                           (fn-lgk-make fn-lgk-relp fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                            fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-acked fn-lgk-phase))
+           :use ((:instance fn-lgk-relp-when-fields-agree (k2 (fn-lgk-known-abort ks)))))))
 
 ; -----------------------------------------------------------------------------
 ; T2 lifted: every crash image of a related state scans to COMMITTED
 ; followed by a prefix of the batch in flight, or the first damaged entry
 ; forges.  At the cuts with nothing in flight (ready, fenced, finish-k) the
 ; image scans to exactly COMMITTED.
+
+; R, unfolded to T2's hypotheses over the durable content's two halves.
+(defthm fn-lgk-relp-gives-the-tear-hypotheses
+  (implies (and (fn-lgk-relp bs ks ino genesis max) (consp (fn-lgk-inflight ks)))
+           (let* ((c (fn-bs-durable-content bs ino)) (f (fn-lgk-frontier ks))
+                  (unit (fn-bs-unit bs)) (d (fn-bs-take f c)) (z (nthcdr f c)))
+             (and (posp unit) ino (natp (floor f unit)) (true-listp d)
+                  (equal (len d) f)
+                  (equal (len d) (* (floor f unit) unit))
+                  (equal (fn-lg-scan d genesis unit max) (cons (fn-lgk-committed ks) f))
+                  (equal (fn-lg-scan-last d genesis unit max) (fn-lgk-last ks))
+                  (fn-frame-digestp (fn-lgk-last ks))
+                  (fn-lg-recordsp (fn-lgk-inflight ks) max)
+                  (fn-lg-zerosp z)
+                  (<= (len (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) unit)) (len z))
+                  (equal c (append d z))
+                  (equal (fn-bs-pending bs)
+                         (list (list :write ino f
+                                     (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) unit)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
+                           (fn-lg-scan fn-lg-scan-last fn-lg-log fn-lg-recordsp fn-bs-take
+                            fn-lg-zerosp fn-frame-digestp fn-bs-durable-content
+                            fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight
+                            fn-lgk-batch fn-lgk-acked fn-lgkc-take-then-nthcdr
+                            fn-lgkc-mod-zero-is-times))
+           :use ((:instance fn-lgkc-take-then-nthcdr
+                            (n (fn-lgk-frontier ks)) (x (fn-bs-durable-content bs ino)))
+                 (:instance fn-lgkc-mod-zero-is-times
+                            (f (fn-lgk-frontier ks)) (unit (fn-bs-unit bs)))))))
 
 (defthm fn-lgk-crash-of-related-state-is-a-prefix
   (implies (and (fn-lgk-relp bs ks ino genesis max)
@@ -528,23 +611,11 @@
                                    (fn-lgk-last ks) unit max))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bs-durable-content)
-                           (fn-lg-log fn-lgk-content-okp fn-lgk-frontier fn-lg-crash-verdictp
-                            fn-lg-forgery-in fn-lg-scan fn-lgkc-take-then-nthcdr
-                            fn-lgkc-mod-zero-is-times))
-           :use ((:instance fn-lgk-content-okp-forward
-                            (c (cdr (assoc-equal ino (fn-bs-inodes bs)))) (unit (fn-bs-unit bs)))
-                 (:instance fn-lgkc-take-then-nthcdr
-                            (n (fn-lgk-frontier ks)) (x (cdr (assoc-equal ino (fn-bs-inodes bs)))))
-                 (:instance fn-lgkc-mod-zero-is-times
-                            (f (fn-lgk-frontier ks)) (unit (fn-bs-unit bs)))
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-lgk-relp-gives-the-tear-hypotheses)
                  (:instance fn-lg-batch-crash-is-a-prefix
                             (s bs) (k (floor (fn-lgk-frontier ks) (fn-bs-unit bs)))
-                            (d (fn-bs-take (fn-lgk-frontier ks) (cdr (assoc-equal ino (fn-bs-inodes bs)))))
-                            (z (nthcdr (fn-lgk-frontier ks) (cdr (assoc-equal ino (fn-bs-inodes bs)))))
+                            (d (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (z (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
                             (committed (fn-lgk-committed ks)) (last (fn-lgk-last ks))
-                            (batch (fn-lgk-inflight ks)))))
-          ("Goal'" :in-theory (e/d (fn-bs-durable-content fn-lgk-content-okp)
-                                   (fn-lg-log fn-lgk-frontier fn-lg-crash-verdictp
-                                    fn-lg-forgery-in fn-lg-scan fn-lgkc-take-then-nthcdr
-                                    fn-lgkc-mod-zero-is-times)))))
+                            (batch (fn-lgk-inflight ks)))))))
