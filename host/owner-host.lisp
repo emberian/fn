@@ -283,11 +283,11 @@
              (state (f-put-global 'fn-owner-cat-pending nil state))
              ; E (step 8): the catalog of the installed store's history, from
              ; empty, under the store's keyring (books/served-catalog-owner.lisp
-             ; fn-sco-load-history; books/catalog-entries.lisp
+             ; fn-sca-load-history; books/catalog-entries.lisp
              ; fn-cat-ocl-relation-at-recover).
              (store (fn-own-store (fn-ocfg-owner oc))))
         (mv-let (fn-arena fn-cat)
-          (fn-sco-load-history (fn-sf-records (fn-sn-files store))
+          (fn-sca-load-history (fn-sf-records (fn-sn-files store))
                                (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
                                (fn-sn-keyring store) (fn-sn-keyring-generation store)
                                fn-arena fn-cat)
@@ -1182,26 +1182,27 @@
              (pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal (car result) :durable) pending (fn-record-p candidate)))
             (mv nil (car result) fn-cat state)
-          ; T2 / R1 / T4 (books/served-catalog-owner.lisp): the row completed by
-          ; the completing record's token, hidden when the refreshed view no
-          ; longer shows its Message-ID; the article's withdrawal targets the
-          ; view no longer shows, withdrawn with this row as the cause.
+          ; T4 then T2 (books/served-catalog-owner.lisp fn-sca-finish): the
+          ; article's withdrawal targets the refreshed view no longer shows,
+          ; withdrawn at the count with this row as the cause, THEN the row
+          ; completed by the completing record's token -- hidden when the
+          ; view no longer shows its Message-ID (R1).  The first version that
+          ; shows the row is the first that hides the targets
+          ; (fn-sca-finish-hides-the-targets-from-fresh-views).
           (let ((view (fn-own-view (cdr result))))
             (mv-let (word pending2 fn-cat)
-              (fn-sco-complete (cons (nfix (fn-record-txid candidate)) (fn-pc-expected pending))
-                               pending (fn-own-view-index view) fn-cat)
+              (fn-sca-finish (cons (nfix (fn-record-txid candidate)) (fn-pc-expected pending))
+                             pending (fn-own-view-index view)
+                             (fn-sca-targets-of (fn-record-msgid candidate)
+                                                (fn-own-view-withdrawals view))
+                             fn-cat)
               (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
                 (if (or (equal (car word) :stale-token) (equal (car word) :expected-mismatch))
                     ; the catalog refused the completion the store made durable:
                     ; a recovery event, never a silent divergence (the catalog
                     ; is rebuilt from the records at the next open).
                     (mv nil :fault fn-cat state)
-                  (let ((fn-cat (fn-sco-withdraw-targets
-                                 (fn-sco-targets-of (fn-record-msgid candidate)
-                                                    (fn-own-view-withdrawals view))
-                                 (fn-own-view-index view)
-                                 (fn-pc-expected pending) fn-cat)))
-                    (mv nil (car result) fn-cat state)))))))))))
+                  (mv nil (car result) fn-cat state))))))))))
 
 (defun fn-owner-begin (id state)
   (declare (xargs :stobjs state :mode :program))
