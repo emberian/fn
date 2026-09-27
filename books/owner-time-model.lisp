@@ -39,6 +39,8 @@
 ; scheduler books holds of the host's calls as it did.
 (in-package "ACL2")
 (include-book "owner-commit-pipeline")
+; N3 of lane proto-determinism: the wall reading's validity (fn-otm-wall-reading).
+(include-book "clock-wall-reading")
 
 
 ; -----------------------------------------------------------------------------
@@ -1308,26 +1310,6 @@
   :hints (("Goal" :induct (fn-otm-clock-run-okp s rs late)
            :in-theory (enable fn-otm-stall-reading fn-otm-clock-run fn-otm-clock-run-okp))
           ("Subgoal *1/1" :use ((:instance fn-otm-wait-stays-within-the-stall)))))
-
-;; -----------------------------------------------------------------------------
-;; N3 (lane proto-determinism): the wall clock's validity is ACL2's.  The
-;; host hands gettimeofday's SECONDS and MICROSECONDS since the Unix epoch
-;; (and the epoch OFFSET of the node's 2000-01-01 base, a protocol constant)
-;; and ACL2 answers (WALL-MS HAS-WALL): the milliseconds since the base,
-;; usable when not before it; the host compares nothing.
-(defun fn-otm-wall-reading (seconds microseconds offset)
-  (declare (xargs :guard t))
-  (let ((wall (+ (* 1000 (- (ifix seconds) (ifix offset)))
-                 (floor (nfix microseconds) 1000))))
-    (if (and (integerp seconds) (natp microseconds) (<= 0 wall))
-        (list wall t)
-      (list 0 nil))))
-
-(defthm fn-otm-wall-reading-shape
-  (let ((w (fn-otm-wall-reading seconds microseconds offset)))
-    (and (natp (car w))
-         (booleanp (cadr w))
-         (implies (not (cadr w)) (equal (car w) 0)))))
 
 (in-theory (disable fn-otm-next fn-otm-observe fn-otm-commit-event fn-otm-committer-wake
                     fn-otm-disk-event fn-otm-admit-post fn-otm-mode fn-otm-wait-ms fn-otm-log-line

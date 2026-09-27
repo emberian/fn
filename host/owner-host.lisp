@@ -149,8 +149,11 @@
 ; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
 ; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
-; Lane time-model (PRF-308): the barrier's deadline and the shed POST.
-(include-book "../books/owner-time-model")
+; Lane time-model (PRF-308): the barrier's deadline and the shed POST;
+; lane time-model-2: the decision journal (books/owner-time-journal.lisp) and
+; the 440 at the POST command (books/owner-time-admission.lisp).
+(include-book "../books/owner-time-journal")
+(include-book "../books/owner-time-admission")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -1047,6 +1050,17 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-otm-deadline-of-limit
           (fn-cfg-limit (fn-cfg-value (fn-owner-config state)) "barrier-deadline-ms"))))
+
+;; Lane time-model-2: the three disk rows, (D H C) as the operator set them
+;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
+;; barrier's :issue event normalizes them (fn-otm-limits: defaults for
+;; absent rows, H at least D).
+(defun fn-owner-barrier-limits (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-cfg-value (fn-owner-config state))))
+    (value (fn-otm-limits (list (fn-cfg-limit v "barrier-deadline-ms")
+                                (fn-cfg-limit v "barrier-stall-ms")
+                                (fn-cfg-limit v "clock-event-ms"))))))
 
 ;; Whether the oldest queued submission is a served POST's (not a control
 ;; submission, not a peer transit): the only kind a slow disk sheds.
@@ -3178,7 +3192,7 @@
 ; are the render plan (books/served-plan.lisp), which the host renders into
 ; the connection's own buffer after the mutex is released.  The owner and
 ; exposure states are installed exactly as fn-owner-chunk installs them.
-(defun fn-owner-chunk-span-at (id start end fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span-at (id start end admit fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
@@ -3189,9 +3203,14 @@
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
-        (let* ((result (fn-orr-read-span
+        ;; Lane time-model-2: ADMIT is the disk's admission at this read's
+        ;; recorded time; while it sheds, the read runs with posting not
+        ;; permitted, so a POST command is answered 440 before its article
+        ;; (books/owner-time-admission.lisp fn-otm-read-span; admitted, it
+        ;; is fn-orr-read-span, fn-otm-read-span-when-admitted-unfolds).
+        (let* ((result (fn-otm-read-span
                         (fn-owner-ocfg state) (fn-owner-reader-views state)
-                        id start end fn-octets fn-arena fn-cat))
+                        id start end admit fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3209,9 +3228,9 @@
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
 
-(defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span (id start end admit fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state))
+  (fn-owner-chunk-span-at id start end admit fn-octets fn-arena fn-cat state))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))

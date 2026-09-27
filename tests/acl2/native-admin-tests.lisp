@@ -1400,3 +1400,28 @@
 (assert-event (equal (fn-native-admin-result-status
                       (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-records" "x"))))
                      :refused))
+
+; Lane time-model-2 (PRF-308): the disk's profile fields, each one
+; `:set-limit' row read by host/owner-host.lisp fn-owner-barrier-limits
+; (books/owner-time-model.lisp fn-otm-limits): D, H and the cadence.
+(defconst *fn-na-disk-deadline*
+  (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-deadline-ms" "8000"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-disk-deadline*) :accepted))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-disk-deadline*)
+                     (list (fn-cfg-set-limit "barrier-deadline-ms" 8000))))
+(assert-event (equal (fn-native-admin-plan-deltas
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-stall-ms" "12000"))))
+                     (list (fn-cfg-set-limit "barrier-stall-ms" 12000))))
+(assert-event (equal (fn-native-admin-plan-deltas
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "clock-event-ms" "250"))))
+                     (list (fn-cfg-set-limit "clock-event-ms" 250))))
+; Teeth: zero, a non-decimal and a misspelt slot are refused.
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-stall-ms" "0"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "clock-event-ms" "1s"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "barrier-deadline" "5000"))))
+                     :refused))

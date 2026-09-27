@@ -54,6 +54,10 @@
 ;; Lane time-model (PRF-308): the gate's value with the disk's deadline
 ;; (fn-otm-*), over fn-ocp-*.
 (include-book "books/owner-time-model")
+;; Lane time-model-2: the decision journal (fn-otm-disk-step, fn-otm-note-step,
+;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
+(include-book "books/owner-time-journal")
+(include-book "books/owner-time-admission")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
