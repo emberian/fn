@@ -5384,7 +5384,7 @@
       "id": "SCN-184",
       "title": "a new node catches up 1,000 articles from a peer in verified batches, and a kill mid catch-up resumes at the last journaled batch",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-053"
       ],
@@ -5398,7 +5398,8 @@
       ],
       "evidence": [
         "tests/test_native_peer_catchup.py",
-        "planning/evidence/peer-catchup-2026-09-27.md"
+        "planning/evidence/peer-catchup-2026-09-27.md",
+        "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
       ],
       "implementation": {
         "test": "tests.test_native_peer_catchup",
@@ -5407,7 +5408,8 @@
           "test_kill_mid_catch_up_resumes"
         ],
         "native": true,
-        "record": "planning/evidence/peer-catchup-2026-09-27.md"
+        "record": "planning/evidence/peer-catchup-2026-09-27.md",
+        "log": "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
       }
     }
   ]

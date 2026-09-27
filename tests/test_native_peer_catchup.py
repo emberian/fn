@@ -315,6 +315,16 @@ class NativePeerCatchupTests(unittest.TestCase):
                              without_path_and_xref(octets), msgid)
         return a_articles, a_order
 
+    def fncu_frames(self, node):
+        data = (node["store"] / "catch-up" / "A.fnfd").read_bytes()
+        frames, at = [], 0
+        while at + 4 <= len(data):
+            size = int.from_bytes(data[at:at + 4], "big")
+            frames.append(size)
+            at += 4 + size
+        self.assertEqual(at, len(data), "a torn FNCU tail")
+        return frames
+
     def witness(self, kind, data, nodes):
         data = dict(data, kind=kind)
         for node in nodes:
@@ -365,8 +375,11 @@ class NativePeerCatchupTests(unittest.TestCase):
         self.assertEqual(code, -signal.SIGKILL,
                          "B was to die at the third FNCU append; log: {}".format(
                              b["log"].read_text(errors="replace")[-2000:]))
-        self.assertIn("catch-up: developer kill at before-write of append 3",
-                      (b["root"] / "stderr.log").read_text(errors="replace"))
+        # The cut's own line goes to the owner's log queue, which a SIGKILL
+        # may not let drain; the journal is the evidence: two FNCU cursor
+        # frames (four-octet length, then the frame), the third never written.
+        frames = self.fncu_frames(b)
+        self.assertEqual(len(frames), 2, frames)
         killed_lines = self.log_lines(b)
         self.start(b)
         done = self.await_log(b, r"catch-up peer=A round=done position={} ".format(COUNT))
@@ -382,6 +395,7 @@ class NativePeerCatchupTests(unittest.TestCase):
         self.stop(a)
         self.witness("catch-up-kill", {"articles": COUNT, "done_line": done,
                                        "before_kill": killed_lines,
+                                       "frames_at_the_cut": frames,
                                        "lines": self.log_lines(b)}, [a, b])
 
 
