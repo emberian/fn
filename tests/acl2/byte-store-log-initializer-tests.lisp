@@ -1,10 +1,13 @@
 ; Witnesses for books/byte-store-log-initializer.lisp (lane log-2): the
 ; format-9 developer initializer's program, run on the empty byte store.
-; Its hypotheses are fn-bsi-current-init-program's input contract (octet
-; frames, staging names) and a positive extent; no hypothesis-removal
-; counterexample was found (extent 0 and non-octet frames still satisfy
-; the conclusion concretely) and the weakened theorem was not proved, so
-; they stay (AGENTS.md: failed proof search is not a counterexample).
+; Its hypotheses (audit packet G4-5, lane audit-fixes): the two staging
+; names were dropped from the keystone after proving the weakened theorem;
+; the octet frames each have a counterexample (a dotted frame, below); the
+; consp conjuncts are redundant (the weakened theorem proved in a REPL probe
+; in 90 s, too slow for the book under D26, so they stay in the library
+; statement); (posp extent) has no counterexample (extent 0, -3 and 5/2
+; each satisfy the conclusion, evaluated below) and its weakened theorem was
+; not found (a 105 s search stopped), so it stays, untoothed.
 (in-package "ACL2")
 (include-book "../../books/byte-store-log-initializer")
 
@@ -39,3 +42,35 @@
         (s (fn-bs-crash (car (car (last run))) nil)))
    (and (equal (nth (1- k) prog) '(:cut "init-config-history-fenced"))
         (null (fn-bs-durable-entry s :journal "000001.log")))))
+
+; -----------------------------------------------------------------------------
+; Audit packet G4-5 (lane audit-fixes).
+(defun bsli-concl (config config-record config-stage record-stage extent)
+  (declare (xargs :verify-guards nil))
+  (let* ((s (fn-bsi-log-final config config-record config-stage record-stage extent))
+         (seg (fn-bs-durable-entry s :journal "000001.log")))
+    (and (equal (fn-bs-durable-entry s :root "journal") :journal)
+         seg
+         (equal (fn-bs-durable-content s seg) (fn-bs-zeros extent))
+         (equal (fn-bs-durable-content s (fn-bs-durable-entry s :root *fn-bs-config-name*)) config)
+         (equal (fn-bs-durable-content s (fn-bs-durable-entry s :config *fn-bsi-config-record-name*))
+                config-record)
+         (null (fn-bs-durable-entry s :root *fn-bs-frontier-name*))
+         (null (fn-bs-durable-entry s :root "transactions")))))
+(assert-event (bsli-concl '(1 2 3) '(4 5) ".init-1" ".init-2" 16))
+; Removal of (fn-cbor-octet-listp config): a dotted configuration (a cons,
+; every other hypothesis holds) is not what the store reads back.
+(assert-event (and (not (fn-cbor-octet-listp '(1 2 . 3))) (consp '(1 2 . 3))
+                   (not (bsli-concl '(1 2 . 3) '(4 5) ".init-1" ".init-2" 16))))
+; Removal of (fn-cbor-octet-listp config-record): the same for the record.
+(assert-event (and (not (fn-cbor-octet-listp '(4 . 5))) (consp '(4 . 5))
+                   (not (bsli-concl '(1 2 3) '(4 . 5) ".init-1" ".init-2" 16))))
+; The staging names are free: non-string names still establish the log.
+(assert-event (bsli-concl '(1 2 3) '(4 5) 7 'x 16))
+; (posp extent) and the consp conjuncts: no counterexample among these.
+(assert-event (and (bsli-concl '(1 2 3) '(4 5) ".init-1" ".init-2" 0)
+                   (bsli-concl nil '(4 5) ".init-1" ".init-2" 16)))
+(defthm bsli-extent-candidates-hold ; ground, by evaluation (guards differ)
+  (and (bsli-concl '(1 2 3) '(4 5) ".init-1" ".init-2" -3)
+       (bsli-concl '(1 2 3) '(4 5) ".init-1" ".init-2" 5/2))
+  :rule-classes nil)

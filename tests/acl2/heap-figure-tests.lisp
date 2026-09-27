@@ -789,12 +789,10 @@
                :use ((:instance fn-heap-with-nursery-holds-the-trigger
                                 (base (fn-heap-store-base-octets profile core observed)))))))))
 
-(hft-sf-must-fail hft-sf-without-natp-d
-                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
-                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
-                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+; (natp d) is redundant here (audit packet G3-6, lane audit-fixes): the
+; weakened theorem is proved at the end of this book, so the former
+; must-fail for it (a search failure under a minimal theory, not a
+; counterexample) is withdrawn.
 (hft-sf-must-fail hft-sf-without-the-figure
                   (natp d)
                   (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
@@ -839,3 +837,87 @@
                                          '(0 . 0))
             (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
                                          '(7271160 . 3000))))
+
+; -----------------------------------------------------------------------------
+; Audit packet G3-6 (lane audit-fixes): the natp hypotheses of
+; fn-heap-with-nursery-holds-the-trigger and fn-heap-store-figure-holds-
+; every-store.
+;
+; (natp d) is redundant in both: a D at least the (natural) figure that is
+; not an integer has trigger 8 MiB (nfix of a non-integer is 0), the least
+; the figure's own trigger can be, and the figure holds the store at its own
+; trigger.  The weakened theorems are proved here (the library statements
+; are left as they are).
+(local (defthm hft-trigger-of-a-non-integer
+         (implies (not (integerp d))
+                  (equal (fn-heap-nursery-trigger d nursery) 8388608))
+         :hints (("Goal" :in-theory (enable fn-heap-nursery-trigger)))))
+(local (defthm hft-trigger-at-least-the-least
+         (<= 8388608 (fn-heap-nursery-trigger d nursery))
+         :rule-classes nil
+         :hints (("Goal" :in-theory (enable fn-heap-nursery-trigger)))))
+(local (defthm hft-store-need-grows-with-the-trigger
+         (implies (and (natp t1) (natp t2) (<= t1 t2))
+                  (<= (fn-heap-store-need profile core used n ou on t1)
+                      (fn-heap-store-need profile core used n ou on t2)))
+         :rule-classes nil
+         :hints (("Goal" :in-theory (union-theories '(fn-heap-store-need nfix natp)
+                                                    (theory 'minimal-theory))))))
+(defthm hft-with-nursery-holds-the-trigger-without-natp-d
+  (implies (and (natp base) (<= (fn-heap-with-nursery base nursery) d))
+           (<= (+ base (* 2 (fn-heap-nursery-trigger d nursery))) d))
+  :rule-classes nil
+  :hints (("Goal" :cases ((natp d)))
+          ("Subgoal 1" :use ((:instance fn-heap-with-nursery-holds-the-trigger)))
+          ("Subgoal 2" :in-theory (enable fn-heap-with-nursery fn-heap-nursery-trigger))))
+(local (defthm hft-store-figure-holds-at-a-non-integer
+  (implies (and (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                (not (integerp d))
+                (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+           (<= (fn-heap-store-need profile core used n ou on (fn-heap-nursery-trigger d nursery)) d))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(natp (:executable-counterpart natp)
+                                               hft-trigger-of-a-non-integer
+                                               (:type-prescription fn-heap-store-figure-octets)
+                                               (:type-prescription fn-heap-nursery-trigger))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-heap-store-figure-holds-every-store
+                            (d (fn-heap-store-figure-octets profile core nursery observed)))
+                 (:instance hft-trigger-at-least-the-least
+                            (d (fn-heap-store-figure-octets profile core nursery observed)))
+                 (:instance hft-store-need-grows-with-the-trigger
+                            (t1 8388608)
+                            (t2 (fn-heap-nursery-trigger
+                                 (fn-heap-store-figure-octets profile core nursery observed)
+                                 nursery))))))))
+(defthm hft-store-figure-holds-every-store-without-natp-d
+  (implies (and (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+           (<= (fn-heap-store-need profile core used n ou on (fn-heap-nursery-trigger d nursery)) d))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(natp (:type-prescription fn-heap-store-figure-octets))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-heap-store-figure-holds-every-store)
+                 (:instance hft-store-figure-holds-at-a-non-integer)))))
+; The fractional D of the store-figure witnesses above, now with its
+; conclusion evaluated: it holds.
+(assert! (hft-sf-conclusion (+ *hft-fig* 1/2) nil 0 0 0 0))
+(assert! (hft-sf-conclusion (+ *hft-fig* 1/2) nil *hft-h* *hft-t* *hft-h* *hft-t*))
+
+; (natp base) is needed in fn-heap-with-nursery-holds-the-trigger: the figure
+; fixes BASE (nfix of a fraction is 0) and the conclusion does not.  A
+; fractional base of about 1 MB, D its figure (a natural), the conclusion
+; fails.
+(defconst *hft-frac-base* 2000001/2)
+(defconst *hft-frac-d* (fn-heap-with-nursery *hft-frac-base* *hft-nursery*))
+(assert! (and (natp *hft-frac-d*)
+              (not (natp *hft-frac-base*))
+              (<= (fn-heap-with-nursery *hft-frac-base* *hft-nursery*) *hft-frac-d*)
+              (not (<= (+ *hft-frac-base* (* 2 (fn-heap-nursery-trigger *hft-frac-d* *hft-nursery*)))
+                       *hft-frac-d*))))

@@ -1470,7 +1470,8 @@
                                                fn-heap-open-bounds-of-nil)
                                              (theory 'minimal-theory)))))
 
-(defthm fn-heap-figure-octets-grows-with-history-and-record
+(local
+ (defthm fn-heap-figure-octets-grows-given-the-capture-budget
   (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
                     (nfix (fn-bs-profile-max-history-octets p2)))
                 (<= (nfix (fn-bs-profile-max-transactions p1))
@@ -1490,4 +1491,35 @@
            :use ((:instance fn-heap-store-base-octets-grows-with-the-profile)
                  (:instance fn-heap-with-nursery-monotone
                             (b1 (fn-heap-store-base-octets p1 core nil))
-                            (b2 (fn-heap-store-base-octets p2 core nil)))))))
+                            (b2 (fn-heap-store-base-octets p2 core nil))))))))
+
+; The capture budget is fn-sccr-file-read-bound of H and R, monotone in
+; each: the budget hypothesis the keystone once carried follows from H and
+; R (audit packet G3-3, lane audit-fixes).
+(defthm fn-heap-capture-budget-grows-with-history-and-record
+  (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
+                    (nfix (fn-bs-profile-max-history-octets p2)))
+                (<= (nfix (fn-bs-profile-max-record-octets p1))
+                    (nfix (fn-bs-profile-max-record-octets p2))))
+           (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-ock-capture-budget fn-sccr-file-read-bound
+                                               fn-scc-segment-max-octets)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-heap-figure-octets-grows-with-history-and-record
+  (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
+                    (nfix (fn-bs-profile-max-history-octets p2)))
+                (<= (nfix (fn-bs-profile-max-transactions p1))
+                    (nfix (fn-bs-profile-max-transactions p2)))
+                (<= (nfix (fn-bs-profile-max-groups-per-article p1))
+                    (nfix (fn-bs-profile-max-groups-per-article p2)))
+                (<= (nfix (fn-bs-profile-max-record-octets p1))
+                    (nfix (fn-bs-profile-max-record-octets p2)))
+                (<= (nfix (fn-bs-profile-field 17 p1)) (nfix (fn-bs-profile-field 17 p2))))
+           (<= (fn-heap-figure-octets p1 core nursery)
+               (fn-heap-figure-octets p2 core nursery)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-heap-capture-budget-grows-with-history-and-record)
+                 (:instance fn-heap-figure-octets-grows-given-the-capture-budget)))))

@@ -542,6 +542,25 @@
 ; fields are :bad, or that is not a request, resolves to (:invalid
 ; :request)); a proof of the unconditional statement was not found, and a
 ; failed search is not a counterexample, so they are kept (PKT in the record).
+; Audit packet G3-5 (lane audit-fixes): every non-request candidate tried
+; still satisfies both conclusions -- a third element, an unknown preset, a
+; dotted request, a dotted field list, the :current preset -- so no removal
+; witness exists among them.  The unconditional :831 with a case split on the
+; three hypotheses ran 100 s (17M steps) without a proof and was stopped;
+; the hypotheses stay, recorded as untoothed (no counterexample known).
+(assert! (and (hrt-held-conclusion '(:development ((5 . 8388608)) extra))
+              (hrt-held-conclusion '(:foo ((5 . 8388608))))
+              (hrt-held-conclusion '(:development ((5 . 8388608)) . x))
+              (hrt-held-conclusion '(:development ((5 . 8388608) . x)))
+              (hrt-held-conclusion '(:current ((5 . 8388608))))))
+(assert! (and (not (fn-bs-profile-requestp '(:development ((5 . 8388608)) extra)))
+              (not (fn-bs-profile-requestp '(:foo ((5 . 8388608)))))))
+(assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:current ((5 . 8388608)))) nil)
+                '(:invalid :request)))
+(assert! (equal (fn-bs-profile-resolve (fn-heap-article-held '(:development ((1 . 5)))) nil)
+                '(:invalid :request)))
+(assert! (fn-bs-profile-admittedp
+          (fn-bs-profile-resolve (fn-heap-article-held '(:development ((5 . 8388608)) extra)) nil)))
 
 ; A run's connections: the structural owner bound (PRF-211) is held at the
 ; default 32; a smaller bound is kept.
@@ -706,7 +725,7 @@
     (and (equal (car d) :heap)
          (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
          (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
-                (nfix core)
+                (fn-heap-core-file core)
                 (* (fn-heap-reserve-threads r)
                    (+ (* 1024 (fn-heap-reserve-stack-kib r))
                       *fn-heap-thread-runtime-octets*)))
@@ -824,6 +843,30 @@
                  (hrt-init *hrt-bare* *hrt-512g* nil nil *hrt-largest*))
                 (fn-heap-preset-candidate :scale *hrt-bare*)))
 (assert! (equal (fn-heap-preset-candidate :scale *hrt-bare*) '(:scale nil)))
+; Teeth (audit packet G3-4, lane audit-fixes), on the same 512 GiB machine.
+; Without (fn-heap-machine-sized-requestp request): a development request
+; is written as named, not as scale, though the scale candidate fits and the
+; budget is not :bad.
+(assert! (not (fn-heap-machine-sized-requestp '(:development nil))))
+(assert! (fn-heap-reserve-acceptsp (fn-heap-preset-candidate :scale '(:development nil))
+                                   *hrt-core* *hrt-nursery*
+                                   (fn-heap-init-observations *hrt-512g* nil
+                                                              (fn-heap-init-explicit-budget nil))))
+(assert! (not (equal (fn-heap-init-decision-request
+                      (hrt-init '(:development nil) *hrt-512g* nil nil *hrt-largest*))
+                     (fn-heap-preset-candidate :scale '(:development nil)))))
+; Without the budget hypothesis: FN_INIT_BUDGET_MB=x is :bad; the request is
+; machine-sized and the candidate still fits the observations, but init
+; refuses the budget by name and writes no scale request.
+(assert! (equal (fn-heap-init-explicit-budget '(120)) :bad))
+(assert! (fn-heap-reserve-acceptsp (fn-heap-preset-candidate :scale *hrt-bare*)
+                                   *hrt-core* *hrt-nursery*
+                                   (fn-heap-init-observations *hrt-512g* nil
+                                                              (fn-heap-init-explicit-budget '(120)))))
+(assert! (equal (car (hrt-init *hrt-bare* *hrt-512g* nil '(120) *hrt-largest*)) :refused))
+(assert! (not (equal (fn-heap-init-decision-request
+                      (hrt-init *hrt-bare* *hrt-512g* nil '(120) *hrt-largest*))
+                     (fn-heap-preset-candidate :scale *hrt-bare*))))
 
 ; fn-heap-reserve-first-run-accepted-is-within-the-machine.  Reachable: the
 ; small preset's first run on OpenBSD's 1,536 MiB datasize (both hypotheses,
@@ -915,7 +958,7 @@
                 *hrt-of-r2*))
 
 ; fn-heap-figure-octets-grows-with-history-and-record.  Reachable: the small
-; preset below the defaults (all six hypotheses, and the figure grows).
+; preset below the defaults (all five hypotheses, and the figure grows).
 (defun hrt-grow-hyps (p1 p2)
   (declare (xargs :mode :program))
   (list (<= (nfix (fn-bs-profile-max-history-octets p1))
@@ -926,8 +969,7 @@
             (nfix (fn-bs-profile-max-groups-per-article p2)))
         (<= (nfix (fn-bs-profile-max-record-octets p1))
             (nfix (fn-bs-profile-max-record-octets p2)))
-        (<= (nfix (fn-bs-profile-field 17 p1)) (nfix (fn-bs-profile-field 17 p2)))
-        (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2))))
+        (<= (nfix (fn-bs-profile-field 17 p1)) (nfix (fn-bs-profile-field 17 p2)))))
 (defun hrt-grow-conclusion (p1 p2)
   (declare (xargs :mode :program))
   (<= (fn-heap-figure-octets p1 *hrt-core* *hrt-nursery*)
@@ -938,24 +980,35 @@
                          nil))
 (assert! (equal (hrt-small-with nil) *fn-heap-small-profile*))
 (assert! (equal (hrt-grow-hyps *fn-heap-small-profile* *fn-bs-profile-defaults*)
-                '(t t t t t t)))
+                '(t t t t t)))
 (assert! (hrt-grow-conclusion *fn-heap-small-profile* *fn-bs-profile-defaults*))
 ; Per hypothesis, the small preset with that one field raised against the
 ; small preset: the other five hold, it fails, and the figure shrinks.
 (assert! (equal (hrt-grow-hyps (hrt-small-with '((2 . 32768))) *fn-heap-small-profile*)
-                '(t nil t t t t)))
+                '(t nil t t t)))
 (assert! (not (hrt-grow-conclusion (hrt-small-with '((2 . 32768))) *fn-heap-small-profile*)))
 (assert! (equal (hrt-grow-hyps (hrt-small-with '((6 . 32))) *fn-heap-small-profile*)
-                '(t t nil t t t)))
+                '(t t nil t t)))
 (assert! (not (hrt-grow-conclusion (hrt-small-with '((6 . 32))) *fn-heap-small-profile*)))
 (assert! (equal (hrt-grow-hyps (hrt-small-with '((17 . 32768))) *fn-heap-small-profile*)
-                '(t t t t nil t)))
+                '(t t t t nil)))
 (assert! (not (hrt-grow-conclusion (hrt-small-with '((17 . 32768))) *fn-heap-small-profile*)))
-; H and R: the capture budget is fn-sccr-file-read-bound of H and R, so
-; raising either raises it too (two hypotheses fail at once); no single-
-; hypothesis counterexample is claimed for H, R or the capture budget
-; (keystone-audit packet: prove the statement without the capture-budget
-; hypothesis, then give H and R their teeth).
+; H and R (audit packet G3-3, lane audit-fixes): the capture-budget
+; hypothesis is gone -- the book proves it from H and R
+; (fn-heap-capture-budget-grows-with-history-and-record) -- so each now has
+; its own single-hypothesis counterexample: H raised to 16 MiB, R to 2 MiB.
 (assert! (equal (hrt-grow-hyps (hrt-small-with '((3 . 16777216))) *fn-heap-small-profile*)
-                '(nil t t t t nil)))
+                '(nil t t t t)))
 (assert! (not (hrt-grow-conclusion (hrt-small-with '((3 . 16777216))) *fn-heap-small-profile*)))
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((4 . 2097152))) *fn-heap-small-profile*)
+                '(t t t nil t)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((4 . 2097152))) *fn-heap-small-profile*)))
+; The budget lemma itself: positive at the small preset against the
+; defaults; removal of R (H equal, R raised) makes the budget grow the
+; other way.
+(assert! (<= (fn-ock-capture-budget *fn-heap-small-profile*)
+             (fn-ock-capture-budget *fn-bs-profile-defaults*)))
+(assert! (and (equal (fn-bs-profile-max-history-octets (hrt-small-with '((4 . 2097152))))
+                     (fn-bs-profile-max-history-octets *fn-heap-small-profile*))
+              (not (<= (fn-ock-capture-budget (hrt-small-with '((4 . 2097152))))
+                       (fn-ock-capture-budget *fn-heap-small-profile*)))))
