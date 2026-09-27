@@ -876,6 +876,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
+	books/store-checkpoint-share \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \

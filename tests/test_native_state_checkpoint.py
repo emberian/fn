@@ -26,6 +26,8 @@ The witnesses:
   as the cut's candidate column says, and opens to the same state.
 """
 import hashlib
+import os
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -124,6 +126,10 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # (fnn-checkpoint-write-steps: fn-ockp-step per step, the step's
         # frames written straight from the publication buffer) inside the
         # same byte program's staged writer.
+        # (the verb's body is fnn-state-checkpoint-publish-steps since
+        # checkpoint-arena-2; the owner-free publication lives there)
+        self.assertIn("(fnn-state-checkpoint-publish-steps store records)", command)
+        command = native_cuts.host_function(io, "fnn-state-checkpoint-publish-steps")
         self.assertIn("'fn-store-sco-publish-setup", command)
         self.assertIn("(fnn-checkpoint-write-steps fd setup segment sequence", command)
         self.assertIn("(fnn-state-checkpoint-write", command)
@@ -137,9 +143,18 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-call 'fn-scka-write-step state n count sequence", arena_steps)
         self.assertIn("(fnn-plan-write-all fd frames st)", arena_steps)
         node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup")
-        self.assertIn("(fn-scka-canon-rows records fn-arena 0)", node_setup)
+        # checkpoint-arena-3: NEXT is the open's E extended over the rows
+        # after it (fn-scka-next-checkpoint, no second canonicalization);
+        # the arena run's setup and sources come from the bounded walk.
+        self.assertIn("(fn-scka-next-checkpoint e (len lens) configs records fn-arena)", node_setup)
         self.assertIn("(fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))", node_setup)
-        self.assertIn("(fn-scka-write-setup records segment-octets fn-arena)", node_setup)
+        self.assertIn("(fn-scka-lens-setup lens segment-octets)", node_setup)
+        self.assertIn("(fn-scka-initial-state srcs (nth 1 ws) 0)", node_setup)
+        publish_steps = native_cuts.host_function(io, "fnn-state-checkpoint-publish-steps")
+        self.assertIn("(fnn-core-state 'fn-store-sco-pass-begin)", publish_steps)
+        self.assertIn("(fnn-core-arena-state 'fn-store-sco-pass-step", publish_steps)
+        pass_step = native_cuts.host_function(node_host, "fn-store-sco-pass-step")
+        self.assertIn("(fn-scka-srcs-n (nth 0 pass) n (nth 1 pass) (nth 2 pass) fn-arena)", pass_step)
         native_cuts.verify_state_checkpoint_cut_map()
 
 
@@ -224,6 +239,37 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
             words.append((out.returncode, hashlib.sha256(out.stdout).hexdigest()))
         return words
 
+    # Format 9 (T8): a checkpoint's publication drops the log segments it
+    # covers, so with the checkpoint gone or refused no full replay is left
+    # and the open refuses by name.  A test that compares an open from the
+    # checkpoint with the full replay keeps the covered segments through a
+    # second hard link made before the publication (the writer only
+    # appends to a segment, and the drop unlinks journal/'s name), shows
+    # the refusal, then links them back.
+    def keep_log(self):
+        kept = self.root / "kept-log"
+        kept.mkdir(exist_ok=True)
+        for segment in (self.store / "journal").iterdir():
+            if segment.is_file() and not (kept / segment.name).exists():
+                os.link(segment, kept / segment.name)
+
+    def dropped_segments(self):
+        kept = self.root / "kept-log"
+        return sorted(p.name for p in kept.iterdir()
+                      if not (self.store / "journal" / p.name).exists())
+
+    def refused_then_restore_log(self):
+        """The open without a usable checkpoint over the dropped log refuses
+        by name; the kept segments are linked back.  The reason."""
+        self.assertTrue(self.dropped_segments())
+        status = self.op("status")
+        self.assertNotEqual(status.returncode, EXIT_OK, status.stdout.decode())
+        match = re.search(rb"open refused reason=([a-z-]+)", status.stderr)
+        self.assertIsNotNone(match, status.stderr.decode())
+        for name in self.dropped_segments():
+            os.link(self.root / "kept-log" / name, self.store / "journal" / name)
+        return match.group(1).decode("ascii")
+
     def init_with_checkpoint_at_three(self, entry="operator"):
         created = self.op("init", "--profile", "development", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
@@ -231,9 +277,12 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
         self.post(self.ids[:3])
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
         self.assertEqual(self.checkpoint_file_line(), "checkpoint-file=absent")
+        self.keep_log()
         made = self.checkpoint(entry)
         self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         self.assertIn(b"checkpoint sequence=3", made.stdout)
+        # T8: the segments the checkpoint covers are gone.
+        self.assertTrue(self.dropped_segments())
         self.assertRegex(self.checkpoint_file_line(),
                          r"^checkpoint-file octets=[1-9][0-9]* modified=[1-9][0-9]*$")
         self.assertEqual(int(self.checkpoint_file_line().split()[1].split("=")[1]),
@@ -249,6 +298,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         from_checkpoint = self.observation()
         aside = self.root / "aside.fnsc"
         self.path().rename(aside)
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
         self.assertEqual(self.observation(), from_checkpoint)
         self.assertEqual(self.headroom()["transactions-used"], 5)
@@ -276,6 +326,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         # refusal, the same fallback.
         data[-(FRAME_TRAILER_OCTETS + 1)] ^= 0x01
         self.path().write_bytes(bytes(data))
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
         self.assertEqual(self.observation(), expected)
         truncated = bytes(data[: len(data) - 7])
@@ -307,6 +358,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(data[37:41], b"fnA1")
         self.assertEqual(data[at:at + 4], b"FNSC")
         self.path().write_bytes(data[at:])
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=checkpoint-arena")
         self.assertEqual(self.observation(), expected)
 
@@ -321,6 +373,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         data = bytearray(good)
         data[21:29] = b"\xff" * 8
         self.path().write_bytes(bytes(data))
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(),
                          "open=full-replay reason=checkpoint-exceeds-bound")
         self.assertEqual(self.observation(), expected)
@@ -391,6 +444,7 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.assertEqual(self.observation(), expected)
         aside = self.root / "aside.fnsc"
         self.path().rename(aside)
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
         self.assertEqual(self.observation(), expected)
 

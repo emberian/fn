@@ -3091,7 +3091,8 @@ the crash keystone) and serving continues."
               ;; READS the live arena below the captured count).
               (destructuring-bind (setup prepared-next n arun)
                   (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
-                            frontier revision position segment budget free (fnn-live-arena))
+                            frontier revision position segment budget free
+                            (fnn-checkpoint-walk records) (fnn-live-arena))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -3111,12 +3112,15 @@ the crash keystone) and serving continues."
                          (store (fnn-owner-service-store service)))
                      (handler-case
                          (progn
-                           (fnn-state-checkpoint-write
-                            store
-                            (lambda (fd)
-                              (setq steps (fnn-checkpoint-write-steps
-                                           fd setup segment sequence (fnn-store-config store)
-                                           (fnn-live-octets-pub) arun))))
+                           (unwind-protect
+                                (fnn-state-checkpoint-write
+                                 store
+                                 (lambda (fd)
+                                   (setq steps (fnn-checkpoint-write-steps
+                                                fd setup segment sequence (fnn-store-config store)
+                                                (fnn-live-octets-pub) arun))))
+                             ;; the buffer's array back (PKT-PRS-2)
+                             (fnn-octets-pub-release))
                            (setq durablep t)
                            ;; T8: the installed checkpoint covers the segments
                            ;; below its first suffix segment; they go now,

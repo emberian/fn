@@ -239,6 +239,18 @@ array's size); it decides nothing ACL2 decides."
     (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
     st))
 
+(defun fnn-octets-pub-release ()
+  "Empty the publication buffer and give its array back after a checkpoint's
+publication (the verb's or the owner's thread): the array grew to the
+largest step the publication wrote and nothing needs it until the next
+publication, which regrows it (per-record-state PKT-PRS-2: 8.4 MB kept at
+10,000 records).  A bound on retained memory only; the logical value, the
+empty list, is unchanged, and it decides nothing ACL2 decides."
+  (let ((st (fnn-live-octets-pub)))
+    (setf (svref st 1) 0)
+    (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
+    st))
+
 (defun fnn-octets-reserve (n)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
   (fn-octets$c-reserve n (fnn-live-octets)))
@@ -2920,6 +2932,20 @@ which the process is killed, or NIL."
             (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
           k)))))
 
+(defun fnn-checkpoint-walk (records)
+  "The walk of the owner's captured RECORDS: each canonical payload's length
+and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
+bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
+one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
+(ROWS' LACC SACC), ROWS' empty."
+  (let ((walk (list records nil nil)) (arena (fnn-live-arena)))
+    (loop
+      (when (atom (first walk)) (return walk))
+      (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
+                           (second walk) (third walk) arena))
+      (unless (and (consp walk) (= (length walk) 3))
+        (fnn-fault "ACL2 returned a malformed checkpoint walk")))))
+
 (defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
   "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
 the head, each later step one batch of whole canonical payloads read through
@@ -3004,9 +3030,17 @@ it covers are dropped (fnn-log-drop; T8)."
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
          (position (and (fnn-store-logp store) (fnn-log-rotate store)))
+         ;; one walk of the live rows, a bounded number per call: each
+         ;; canonical payload's length and source (fn-store-sco-pass-step)
+         (walked (progn
+                   (fnn-core-state 'fn-store-sco-pass-begin)
+                   (loop until (fnn-core-arena-state 'fn-store-sco-pass-step
+                                                     +fnn-checkpoint-batch-rows+))
+                   t))
          (answer (fnn-core-arena-state 'fn-store-sco-publish-setup segment budget
                                        (fnn-disk-free-octets store)
                                        (fnn-checkpoint-revision) position)))
+    (declare (ignore walked))
     (unless (and (consp answer) (= (length answer) 3)
                  (consp (first answer)) (integerp (second answer))
                  (= (second answer) count))
@@ -3022,11 +3056,13 @@ it covers are dropped (fnn-log-drop; T8)."
                      (second verdict) (third verdict) (fourth verdict)))
         ((and (consp verdict) (eq (first verdict) :plan) (integerp (second verdict)))
          (let ((st (fnn-live-octets-pub)) (steps 0) (dropped 0))
-           (fnn-state-checkpoint-write
-            store
-            (lambda (fd)
-              (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                      profile st arun))))
+           (unwind-protect
+                (fnn-state-checkpoint-write
+                 store
+                 (lambda (fd)
+                   (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
+                                                           profile st arun))))
+             (fnn-octets-pub-release))
            (when position
              (handler-case
                  (setq dropped (fnn-log-drop store (fnn-log-covered-indices store (first position))))

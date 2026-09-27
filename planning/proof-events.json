@@ -3471,6 +3471,26 @@
         {
           "kind": "theorem",
           "name": "fn-scka-select-named-refuses-the-arena-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sshr-share-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-src-payloads-of-canon-srcs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-srcs-n-compose"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-srcs-n-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-restore-base-of-strip-of-capture"
         }
       ]
     },
