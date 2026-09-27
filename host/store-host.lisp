@@ -457,6 +457,16 @@
                                      (if (natp txid) (max acc (+ 1 txid)) acc)))
     acc))
 
+;; The txid of one record the log holds (every event kind), or NIL: what
+;; `store import' reserves for it at the log's kernel (fnn-log-write-history).
+(defun fn-store-log-record-txid (record)
+  (declare (xargs :mode :program))
+  (let ((decoded (fn-store-event-decode-exact record)))
+    (and (consp decoded) (equal (car decoded) :ok) (consp (cdr decoded))
+         (fn-rcon-wire-event-p (car (cdr decoded)))
+         (let ((txid (fn-rcon-wire-event-txid (car (cdr decoded)))))
+           (and (natp txid) txid)))))
+
 (defun fn-store-log-next-txid (records floor)
   (declare (xargs :mode :program))
   (fn-store-log-next-txid-loop records (nfix floor)))
