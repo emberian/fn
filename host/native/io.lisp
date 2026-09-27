@@ -2891,7 +2891,16 @@ number of steps."
           (when (and fault (= steps (1+ fault)))
             (sb-posix:kill (sb-posix:getpid) sb-posix:sigkill)))))))
 
-(defun fnn-state-checkpoint-publish-steps (store records)
+(defun fnn-open-history-count (store records)
+  "The length of the history the open recovered: S plus the suffix after a
+checkpoint open (whether or not RECORDS carries the prefix: an open without
+the history keeps it in the arena), else RECORDS' length."
+  (let ((mode (fnn-store-open-mode store)))
+    (if (eq (first mode) :checkpoint)
+        (+ (second mode) (third mode))
+      (length records))))
+
+(defun fnn-state-checkpoint-publish-steps (store count)
   "Publish the exact-state checkpoint of the recovered STORE (P3) and return
 the report line.  ACL2 extends the checkpoint the open used over the
 records after it, or captures the whole history after a full replay,
@@ -2917,7 +2926,7 @@ it covers are dropped (fnn-log-drop; T8)."
                                        (fnn-checkpoint-revision) position)))
     (unless (and (consp answer) (= (length answer) 3)
                  (consp (first answer)) (integerp (second answer))
-                 (= (second answer) (length records)))
+                 (= (second answer) count))
       (fnn-fault "ACL2 returned a malformed state checkpoint setup"))
     (let* ((setup (first answer)) (sequence (second answer))
            (arun (third answer))
@@ -2949,10 +2958,13 @@ it covers are dropped (fnn-log-drop; T8)."
   "`store checkpoint': open the store as `recover' does (the exclusive writer
 lock, so a running owner refuses this) and publish its exact-state checkpoint
 (fnn-state-checkpoint-publish-steps)."
+  ;; The open keeps the covered prefix in the arena (no history octet lists:
+  ;; the checkpoint is written from the state, D27).
   (multiple-value-bind (store records)
-      (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
+      (fnn-open-live-store root t (fnn-state-checkpoint-test-fault) nil)
     (unwind-protect
-         (progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps store records))
+         (progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps
+                               store (fnn-open-history-count store records)))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -5657,15 +5669,15 @@ record in order, and the active segment's log."
                 (values (apply #'append (nreverse records)) log)))))))
     (fnn-fault "the log's open plan named no segment")))
 
-(defun fnn-recover-log-from-log-checkpoint (store config-records suffix)
+(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s)
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
 is the whole history), replayed over the checkpoint
 (fn-store-sn-recover-from-checkpoint).  The covered segments may be gone, so
 there is no full replay to fall back to: a checkpoint the open cannot use is
 refused by name."
-  (multiple-value-bind (status s) (fnn-state-checkpoint-load store)
-    (declare (ignore status))
+  (progn
+    ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
     (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
       (fnn-core-state 'fn-store-sco-clear)
       (fnn-bridge-reset)
@@ -5695,7 +5707,6 @@ an interrupted drop."
   (let ((records nil) (drop nil))
     (handler-case
         (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
-          (declare (ignore sequence))
           (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
                  (log-position (first position))
                  (floor (if log-position (fnn-nat (second position)) 0))
@@ -5726,7 +5737,8 @@ an interrupted drop."
               (let ((config-records (fnn-config-records store)))
                 (setq records
                       (if log-position
-                          (fnn-recover-log-from-log-checkpoint store config-records scanned)
+                          (fnn-recover-log-from-log-checkpoint store config-records scanned
+                                                               sequence)
                         (or (fnn-recover-log-from-state-checkpoint store config-records scanned)
                             (fnn-recover-log-replay store scanned config-records)))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)

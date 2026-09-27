@@ -5232,7 +5232,7 @@
       "id": "SCN-179",
       "title": "Compaction over the record log: a checkpoint rotates the log and the covered segments are dropped; every article is served as before, and a process death at each rotation and drop cut reopens to the same history; a missing, spliced or uncovered segment is refused by name",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "STO-034",
         "STO-007"
@@ -5255,14 +5255,20 @@
           "test_refusals_by_name"
         ],
         "native": true,
-        "record": "planning/evidence/log-recovery-2026-09-27.md"
-      }
+        "record": "planning/evidence/log-recovery-2026-09-27.md",
+        "log": "planning/evidence/log-recovery-2026-09-27/s2c-test_native_log_compaction.log"
+      },
+      "evidence": [
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27/s2c-test_native_log_compaction.log",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ]
     },
     {
       "id": "SCN-180",
       "title": "Export and import over the record log: a compacted format-9 store exports the checkpoint's records then the log's; the import writes a format-9 store whose export is the same archive; a death at the import's log cuts publishes no store",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "STO-028",
         "STO-034"
@@ -5285,8 +5291,15 @@
           "tests.test_native_log_compaction test_compaction_rotates_drops_and_serves_the_same_history"
         ],
         "native": true,
-        "record": "planning/evidence/log-recovery-2026-09-27.md"
-      }
+        "record": "planning/evidence/log-recovery-2026-09-27.md",
+        "log": "planning/evidence/log-recovery-2026-09-27/s2c-test_native_store_export.log"
+      },
+      "evidence": [
+        "tests/test_native_store_export.py",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27/s2c-test_native_store_export.log",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ]
     },
     {
       "id": "SCN-178",

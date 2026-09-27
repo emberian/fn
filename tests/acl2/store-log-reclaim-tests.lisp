@@ -39,3 +39,25 @@
 ; A profile the store cannot run under is refused by name.
 (assert-event (equal (fn-lgr-decide '(1 2 3) *rpt-rule* 0 *rpt-s* (rpt-events) nil)
                      '(:refused :profile)))
+
+; fn-lgr-decide-stream-is-lgr-decide, reachable: over the fold of the fixture's
+; history under its context, the streamed decision is the whole-history one
+; without the records, and the per-record rewrites are the rewritten history.
+(defmacro lgrt-acc (records) `(fn-rcls-fold ,records *rpt-ctx* (fn-rcls-init)))
+(assert-event (true-listp (rpt-events)))
+(assert-event (equal (fn-lgr-decide-stream *rpt-profile* *rpt-rule* 0 *rpt-s* (lgrt-acc (rpt-events)) nil)
+                     (list :reclaim (rpt-msgids) (rpt-freed)
+                           (fn-rcl-store-counts *rpt-rule* 0 *rpt-s*))))
+(assert-event (equal (fn-lgr-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events) nil)
+                     (list :reclaim (rpt-msgids) (rpt-freed) (rpt-new)
+                           (fn-rcl-store-counts *rpt-rule* 0 *rpt-s*))))
+(assert-event (equal (fn-lgr-decide-stream *rpt-profile* *rpt-rule* 0 *rpt-s* (lgrt-acc (rpt-events)) t)
+                     (lgrt-d t)))
+; Without the fold hypothesis: the fold of the rewritten history (not of the
+; history) answers :none, not the history's :reclaim.
+(assert-event (equal (car (fn-lgr-decide-stream *rpt-profile* *rpt-rule* 0 *rpt-s*
+                                                (lgrt-acc (rpt-new)) nil))
+                     :none))
+(must-fail (assert-event (equal (car (fn-lgr-decide-stream *rpt-profile* *rpt-rule* 0 *rpt-s*
+                                                           (lgrt-acc (rpt-new)) nil))
+                                (car (lgrt-d nil)))))

@@ -235,17 +235,6 @@
 ;; books/store-reclaim-pack's keystones (`fn-rclp-decide').  The rule is the
 ;; configuration's; the instant is the clock observation's stamp, derived as
 ;; an article's stamp is (`fn-record-stamp-of-observation').
-;; Content reclamation over the record log (format 9; books/store-log-reclaim.lisp):
-;; the same per-article context as the pack's decision, the rewritten history
-;; for the checkpoint (host/native/checkpoint.lisp fnn-command-reclaim).
-(defun fn-store-log-reclaim-decide (profile clock octet-records dry state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((s (f-get-global 'fn-store-sn state))
-         (cfg (f-get-global 'fn-store-cfg state))
-         (rule (fn-rcl-config-rule (fn-cfg-value cfg)))
-         (stamp (fn-record-stamp-of-observation clock)))
-    (value (fn-lgr-decide profile rule (if (natp stamp) stamp nil) s octet-records dry))))
-
 (defun fn-store-reclaim-decide (profile clock octet-records frontier lower names
                                         generations selected disk-free dry state)
   (declare (xargs :stobjs state :mode :program))
@@ -290,6 +279,18 @@
     (value (fn-rcls-decide profile rule now (f-get-global 'fn-store-sn state)
                            acc frontier lower names generations selected
                            disk-free dry))))
+
+;; The streamed reclaim over the record log (books/store-log-reclaim.lisp
+;; fn-lgr-decide-stream, over compact-arena's fold fn-rcls-*): one record's
+;; rewrite, and the decision over the fold.
+(defun fn-store-log-reclaim-event (octets ctx)
+  (declare (xargs :mode :program))
+  (fn-rclp-event octets ctx))
+
+(defun fn-store-log-reclaim-decide-stream (profile clock acc dry state)
+  (declare (xargs :stobjs state :mode :program))
+  (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
+    (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state) acc dry))))
 
 ;; The subjects of books/checkpoint-compaction-preservation: the reclaim
 ;; preservation theorems are stated over these two functions.
