@@ -756,6 +756,11 @@ checkpoint's S, or NIL."
                     (fnn-owner-feed-flush service restart))))
               (fnn-owner-key-statement-recover
                service (let ((last (fnn-open-last-record store records))) (and last (list last))))
+              ;; The Store open's loaded checkpoint is consumed (the owner's
+              ;; base is the open's extension, fn-owner-sco-base): release it,
+              ;; so the reopened owner does not hold the checkpoint's capture
+              ;; beside the extension (checkpoint-arena-2's reopen heap).
+              (fnn-core-state 'fn-store-sco-clear)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))
