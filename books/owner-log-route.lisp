@@ -93,3 +93,14 @@
   (let ((n (fn-cfg-limit v "log-batch-octets")))
     (if (and (posp n) (< n *fn-olr-batch-octets-default*)) n
       *fn-olr-batch-octets-default*)))
+
+; The host's call (host/owner-host.lisp fn-owner-log-bounds): the bounds of
+; the live configuration RECORD (fn-owner-config: a generation and its
+; value, books/config.lisp fn-cfg-make), read at its VALUE.  Lane
+; scheduler-2-rebase (PKT-828 trace, 2026-09-27): the host called fn-olr-bmax
+; on the record itself, whose limits are not at fn-cfg-limit's place, so
+; `policy set log-batch-records 2' was read as the default 64 (a START of 7
+; members at bound 2; tests/acl2/owner-log-route-tests.lisp has the witness).
+(defun fn-olr-bounds (cfg)
+  (declare (xargs :guard t))
+  (list (fn-olr-bmax (fn-cfg-value cfg)) (fn-olr-omax (fn-cfg-value cfg))))

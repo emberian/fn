@@ -840,8 +840,7 @@
 ;; The operator's bounds on one log batch, from the live configuration.
 (defun fn-owner-log-bounds (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((v (fn-owner-config state)))
-    (value (list (fn-olr-bmax v) (fn-olr-omax v)))))
+  (value (fn-olr-bounds (fn-owner-config state))))
 
 ; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
 ; entry over the arena (fn-store-existing-action, KEYSTONE
