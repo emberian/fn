@@ -45,6 +45,9 @@
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
+;; Lane host-decisions: the Store prepares' field checks (fn-pfld-), called by
+;; host/owner-host.lisp, host/store-node-host.lisp and host/bp-ingress-host.lisp.
+(include-book "books/post-fields")
 (include-book "books/frame")
 (include-book "books/store-observed")
 (include-book "books/store-node-resolution")
@@ -167,6 +170,9 @@
 (include-book "books/post-identity-index")
 ;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
 (include-book "books/post-retain-carried")
+;; PRF-284: host/owner-host.lisp calls fn-pvc-make and the carried budget,
+;; verdict and POST boundary (fn-pvc-*-carried).
+(include-book "books/store-profile-carried")
 ;; lane prepare-served: fn-owner-prepare-buffer, fn-owner-prepare,
 ;; fn-owner-prepare-identity, fn-owner-prepare-topic, fn-owner-reconfigure-unstage
 ;; call books/owner-prepare-served (fn-psrv-).

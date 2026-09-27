@@ -366,7 +366,7 @@
                             (o (fn-own-make (fn-snrt-step (fn-own-store o) event)
                                             (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o)
-                                            (fn-own-pending o) (fn-own-ledger o)
+                                            (fn-own-pending o) (fn-own-ledger-field o)
                                             (fn-own-clock o) (fn-own-facts o)
                                             ; `feeds' is `fn-own-make's THIRTEENTH
                                             ; field (w10/owner-feed).  Six `:use'
@@ -390,9 +390,8 @@
                                             (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o)
                                             nil
-                                            (append (fn-own-ledger o)
-                                                    (list (fn-sf-completion
-                                                           (fn-sn-files (fn-own-store o)))))
+                                            (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion
+                                                           (fn-sn-files (fn-own-store o))))
                                             (fn-own-clock o) (fn-own-facts o)
                                             (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o)
@@ -420,7 +419,7 @@
                                                       (fn-sn-capacity (fn-own-store o))
                                                       frontier records))
                                 (fn-own-view o) nil (fn-own-next-id o)
-                                (fn-own-max-conns o) nil (fn-own-ledger o) nil
+                                (fn-own-max-conns o) nil (fn-own-ledger-field o) nil
                                 (fn-own-facts o) (fn-own-config o) nil nil
                                 (fn-own-feed-restart-all (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-sn-open-observed-success-has-live-history-relation
@@ -655,7 +654,7 @@
             (fn-own-relation
              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                           (fn-own-next-id o) (fn-own-max-conns o) p
-                          (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                          (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                           (fn-own-config o) (fn-own-queue o) nil fds (fn-own-node-secret o) rf)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))
 
@@ -791,7 +790,7 @@
             (fn-own-relation
              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                           (fn-own-next-id o) (fn-own-max-conns o)
-                          (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
+                          (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                           (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                           (fn-own-inflight o) fds (fn-own-node-secret o) rf)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))

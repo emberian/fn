@@ -180,7 +180,7 @@
                             (next-id (fn-own-next-id (fn-ocfg-owner oc)))
                             (max-conns (fn-own-max-conns (fn-ocfg-owner oc)))
                             (pending (fn-own-pending (fn-ocfg-owner oc)))
-                            (ledger (fn-own-ledger (fn-ocfg-owner oc)))
+                            (ledger (fn-own-ledger-field (fn-ocfg-owner oc)))
                             (clock (fn-own-clock (fn-ocfg-owner oc)))
                             (facts (fn-own-facts (fn-ocfg-owner oc)))
                             (config (fn-own-config (fn-ocfg-owner oc)))
@@ -195,7 +195,7 @@
                             (next-id (fn-own-next-id (fn-ocfg-owner oc)))
                             (max-conns (fn-own-max-conns (fn-ocfg-owner oc)))
                             (pending (fn-own-pending (fn-ocfg-owner oc)))
-                            (ledger (fn-own-ledger (fn-ocfg-owner oc)))
+                            (ledger (fn-own-ledger-field (fn-ocfg-owner oc)))
                             (clock (fn-own-clock (fn-ocfg-owner oc)))
                             (facts (fn-own-facts (fn-ocfg-owner oc)))
                             (config (fn-own-config (fn-ocfg-owner oc)))
@@ -420,8 +420,12 @@
 ; fn-pidx-sbud-prepare-is-pcar-sbud-prepare and
 ; fn-pcar-sbud-prepare-is-sbud-prepare equate with the host's
 ; fn-pidx-sbud-prepare) keeps the carried invariant when an article's groups
-; are served by the live configuration, the test host/owner-host.lisp
-; fn-owner-prepare-buffer makes before it calls the prepare.
+; are served by the live configuration.  The served test is ACL2's, not the
+; host's: the prepare the host calls is books/owner-prepare-served.lisp
+; fn-psrv-prepare, which tests it (fn-psrv-event-servedp) and calls this
+; prepare only when it holds; its KEYSTONE
+; fn-psrv-prepare-preserves-invariant discharges the served hypothesis below
+; for every record.
 (defthm fn-lgoc-sbud-prepare-preserves-invariant
   (implies (and (fn-lgoc-invariantp oc)
                 (implies (fn-held-p record)
@@ -437,9 +441,11 @@
            :in-theory '(fn-lgoc-invariantp fn-sbud-prepare fn-lgoc-opc-prepare-is-owner-with-store
                         fn-lgoc-store-of-owner-with-store fn-lgoc-ocl-relation-cst
                         fn-lgoc-ocl-relation-config-fold))))
-; The host's prepare (host/owner-host.lisp fn-owner-prepare-buffer installs
-; fn-pidx-sbud-prepare) under the two carried index premises its bridge to
-; fn-sbud-prepare takes.
+; fn-pidx-sbud-prepare under the two carried index premises its bridge to
+; fn-sbud-prepare takes.  The host does not call it directly: host/owner-host.lisp
+; fn-owner-prepare-buffer installs fn-psrv-prepare (books/owner-prepare-served.lisp),
+; which reaches this prepare through fn-prc-sbud-prepare only when ACL2's own
+; served test holds.
 (defthm fn-lgoc-pidx-sbud-prepare-preserves-invariant
   (implies (and (fn-lgoc-invariantp oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))

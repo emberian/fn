@@ -139,7 +139,7 @@
                       withdrawals raw withdrawn
                       (fn-sn-keyring-snapshots s))
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
-                     (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
+                     (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                      (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                      (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
       o)))
@@ -229,8 +229,7 @@
     (fn-own-refresh-ix
      (fn-own-make (fn-ccar-sn-finish-enabled s) (fn-own-view o) (fn-own-conns o)
                   (fn-own-next-id o) (fn-own-max-conns o) nil
-                  (fn-ag-append (fn-own-ledger o)
-                                (list (fn-sf-completion (fn-sn-files s))))
+                  (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files s)))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
                   (fn-own-node-secret o) (fn-own-refused o)))))
@@ -246,9 +245,8 @@
                                    (view (fn-own-view o)) (conns (fn-own-conns o))
                                    (next-id (fn-own-next-id o))
                                    (max-conns (fn-own-max-conns o)) (pending nil)
-                                   (ledger (fn-ag-append (fn-own-ledger o)
-                                                         (list (fn-sf-completion
-                                                                (fn-sn-files (fn-own-store o))))))
+                                   (ledger (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion
+                                                                (fn-sn-files (fn-own-store o)))))
                                    (clock (fn-own-clock o)) (facts (fn-own-facts o))
                                    (config (fn-own-config o)) (queue (fn-own-queue o))
                                    (inflight (fn-own-inflight o)) (feeds (fn-own-feeds o))
@@ -261,6 +259,31 @@
                             fn-own-refresh fn-own-refresh-ix fn-sn-finish fn-sn-statep
                             fn-ceis-indexedp fn-own-make fn-ccar-sn-finish-enabled
                             fn-sn-completion-enabledp)))))
+
+;; PRF-283: the commit appends the ledger in O(1).  The ledger is held as a
+;; snoc-list (books/owner.lisp fn-own-ledger-field); the completion the host
+;; calls (fn-rix-own-finish, fn-rix-ocfg-complete) puts one pair on the field
+;; with fn-sl-snoc -- one cons on a snoc form -- and the ledger it represents
+;; is the old one with the pair appended, for every owner.
+(defthm fn-own-refresh-ix-keeps-ledger-field
+  (equal (fn-own-ledger-field (fn-own-refresh-ix o)) (fn-own-ledger-field o))
+  :hints (("Goal" :in-theory (enable fn-own-refresh-ix))))
+
+; KEYSTONE (representation): the executed field is the snoc of the old one.
+(defthm fn-rix-own-complete-enabled-ledger-field
+  (equal (fn-own-ledger-field (fn-rix-own-complete-enabled o))
+         (fn-sl-snoc (fn-own-ledger-field o)
+                     (fn-sf-completion (fn-sn-files (fn-own-store o)))))
+  :hints (("Goal" :in-theory (e/d (fn-rix-own-complete-enabled)
+                                  (fn-own-refresh-ix)))))
+
+; KEYSTONE (model): the ledger it represents is the append.
+(defthm fn-rix-own-complete-enabled-ledger
+  (equal (fn-own-ledger (fn-rix-own-complete-enabled o))
+         (append (fn-own-ledger o)
+                 (list (fn-sf-completion (fn-sn-files (fn-own-store o))))))
+  :hints (("Goal" :expand ((fn-own-ledger (fn-rix-own-complete-enabled o)))
+           :in-theory (disable fn-rix-own-complete-enabled))))
 
 (in-theory (disable fn-rix-own-complete-enabled))
 

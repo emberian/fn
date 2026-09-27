@@ -14,7 +14,8 @@
 ;                     TAKE pads), so its length is N for EVERY value;
 ;   (:raw . X)        X itself, for a value that is not a true list (the
 ;                     kernel's accessors are total, so a non-list must round-
-;                     trip too).
+;                     trip too);
+;   anything else     itself (fn-sl-list-when-plain).
 ;
 ; fn-sl-of builds the representation of a list, fn-sl-list reads it back
 ; (fn-sl-list-of-fn-sl-of: every value round-trips), and fn-sl-snoc appends
@@ -55,11 +56,14 @@
   (declare (xargs :guard t))
   (and (consp h) (eq (car h) :snoc) (consp (cdr h))))
 
+; A value that is neither a snoc form nor (:raw . X) represents itself, so a
+; plain list (nil, or a literal a test or an older state holds) is its own
+; representation; the owner's ledger (books/owner.lisp) relies on it.
 (defun fn-sl-list (h)
   (declare (xargs :guard t))
   (if (fn-sl-snoc-formp h)
       (fn-sl-rev-take (nfix (cadr h)) (cddr h) nil)
-    (if (consp h) (cdr h) nil)))
+    (if (and (consp h) (eq (car h) :raw)) (cdr h) h)))
 
 ; append with (list r), total.
 (defun fn-sl-append1 (x r)
@@ -212,6 +216,12 @@
 (defthm fn-sl-snoc-of-fn-sl-of
   (equal (fn-sl-snoc (fn-sl-of x) r)
          (fn-sl-of (append x (list r)))))
+
+; A plain value represents itself.
+(defthm fn-sl-list-when-plain
+  (implies (and (not (fn-sl-snoc-formp h))
+                (not (and (consp h) (eq (car h) :raw))))
+           (equal (fn-sl-list h) h)))
 
 (defthm fn-sl-canonp-of-fn-sl-of
   (fn-sl-canonp (fn-sl-of x)))
