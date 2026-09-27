@@ -308,6 +308,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-pack-chain-tests \
 	books/checkpoint-pack-chain-once \
 	tests/acl2/checkpoint-pack-chain-once-tests \
+	books/catalog-load-index \
+	tests/acl2/catalog-load-index-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \

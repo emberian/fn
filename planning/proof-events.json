@@ -7663,6 +7663,22 @@
         {
           "kind": "theorem",
           "name": "fn-ccco-decode-link-is-decode-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obi-load-is-cat-load"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obi-intern-range-is-intern-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obi-seal-range-is-seal-of-slice"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-obi-load-from-empty-establishes-relation"
         }
       ]
     }

@@ -8052,14 +8052,15 @@
     },
     {
       "id": "PRF-240",
-      "title": "The open decodes each pack-chain link once: the walk's step, the coverage and the observation read a content-keyed memo of link decodes and answer exactly what the reference answers, on every chain",
-      "statement": "books/checkpoint-pack-chain-once.lisp. Over MEMO, a list of (FRAMED DIGEST MAX RESULT), with the invariant fn-ccco-memo-soundp (every RESULT is (fn-ccc-framed-link FRAMED DIGEST MAX)): fn-ccco-entry-step-is-entry-step (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-entry-step framed digest max memo) (fn-ccc-entry-step framed digest max))); fn-ccco-coverage-chain-is-coverage-chain (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-coverage-chain framed count frontier max memo) (fn-ccc-coverage-chain framed count frontier max))); fn-ccco-observe-chain-is-observe-chain (the same for fn-ccc-observe-chain). The memo starts empty (fn-ccco-memo-soundp-of-nil) and the host's two writers keep it sound (fn-ccco-remember-keeps-sound, fn-ccco-remember-all-keeps-sound). The chain check re-decodes no event: fn-ccco-links-okp-of-decoded (implies (not (equal (fn-ccc-decode-entries framed max) :bad)) (equal (fn-ccc-links-okp (fn-ccc-decode-entries framed max)) (fn-ccco-links-chainedp (fn-ccc-decode-entries framed max)))). A link missed by the memo is decoded by fn-ccco-framed-link-fast, which reads each packed event's kind, sequence, txid and generation in one dispatch (fn-ccco-event-fields-are-the-dispatchers) instead of six recognitions: fn-ccco-framed-link-fast-is-framed-link (equal (fn-ccco-framed-link-fast framed digest max) (fn-ccc-framed-link framed digest max)), with no hypothesis, through fn-ccco-octet-event-listp-is-octet-event-listp, fn-ccco-linkp-is-linkp and fn-ccco-decode-link-is-decode-link. Host: host/checkpoint-host.lisp fn-store-checkpoint-chain-step, -coverage, -observe call fn-ccco-entry-step, fn-ccco-coverage-chain, fn-ccco-observe-chain with the global fn-store-pack-memo, written only by fn-ccco-remember and fn-ccco-remember-all inside the host scope fnn-with-pack-memo (host/native/io.lisp: fnn-recover's open, fnn-pack-publish, fnn-pack-chain-report); so PRF-085's walk, coverage and reconstruction (fn-ccc-chain-reconstructs-the-history) and the publication crash theorem over fn-ccc-walk transfer unchanged. Scope: a link is still decoded as an octet list (the by-index decode is PKT-680).",
+      "title": "The open decodes each pack-chain link once: the walk's step, the coverage and the observation read a content-keyed memo of link decodes and answer exactly what the reference answers, on every chain; and the catalog loaded from the checkpoint by P extents is the load fold over the rows",
+      "statement": "books/checkpoint-pack-chain-once.lisp. Over MEMO, a list of (FRAMED DIGEST MAX RESULT), with the invariant fn-ccco-memo-soundp (every RESULT is (fn-ccc-framed-link FRAMED DIGEST MAX)): fn-ccco-entry-step-is-entry-step (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-entry-step framed digest max memo) (fn-ccc-entry-step framed digest max))); fn-ccco-coverage-chain-is-coverage-chain (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-coverage-chain framed count frontier max memo) (fn-ccc-coverage-chain framed count frontier max))); fn-ccco-observe-chain-is-observe-chain (the same for fn-ccc-observe-chain). The memo starts empty (fn-ccco-memo-soundp-of-nil) and the host's two writers keep it sound (fn-ccco-remember-keeps-sound, fn-ccco-remember-all-keeps-sound). The chain check re-decodes no event: fn-ccco-links-okp-of-decoded (implies (not (equal (fn-ccc-decode-entries framed max) :bad)) (equal (fn-ccc-links-okp (fn-ccc-decode-entries framed max)) (fn-ccco-links-chainedp (fn-ccc-decode-entries framed max)))). A link missed by the memo is decoded by fn-ccco-framed-link-fast, which reads each packed event's kind, sequence, txid and generation in one dispatch (fn-ccco-event-fields-are-the-dispatchers) instead of six recognitions: fn-ccco-framed-link-fast-is-framed-link (equal (fn-ccco-framed-link-fast framed digest max) (fn-ccc-framed-link framed digest max)), with no hypothesis, through fn-ccco-octet-event-listp-is-octet-event-listp, fn-ccco-linkp-is-linkp and fn-ccco-decode-link-is-decode-link. Host: host/checkpoint-host.lisp fn-store-checkpoint-chain-step, -coverage, -observe call fn-ccco-entry-step, fn-ccco-coverage-chain, fn-ccco-observe-chain with the global fn-store-pack-memo, written only by fn-ccco-remember and fn-ccco-remember-all inside the host scope fnn-with-pack-memo (host/native/io.lisp: fnn-recover's open, fnn-pack-publish, fnn-pack-chain-report); so PRF-085's walk, coverage and reconstruction (fn-ccc-chain-reconstructs-the-history) and the publication crash theorem over fn-ccc-walk transfer unchanged. Scope: a link is still decoded as an octet list (the by-index decode is PKT-680). SECOND PART, books/catalog-load-index.lisp: fn-obi-load-is-cat-load (implies (fn-obi-extents-agreep rows extents fn-octets) (equal (fn-obi-load rows extents fn-octets keyring generation fn-arena fn-cat) (fn-cat-load rows keyring generation fn-arena fn-cat))): each article row interned with its payload sealed from its P extent in the octet buffer through the interface fn-obi-seal-range (fn-obi-seal-range-is-seal-of-slice: today the arena list seal of the slice; records-freeze attaches a copy without a list behind the same signature), fn-obi-intern-range-is-intern-list; with fn-cat-load-from-empty, fn-obi-load-from-empty-establishes-relation (R over the rows), so with books/catalog-entries.lisp fn-cat-ocl-relation-at-recover (entry E3) the catalog installed by extents is in R. Not yet host-called and the agreement is not yet discharged from the reader (PKT-680).",
       "milestone": "M5",
       "requirements": [
         "STO-012"
       ],
       "depends_on": [
-        "PRF-085"
+        "PRF-085",
+        "PRF-199"
       ],
       "assumptions": [
         "A-HOST"
@@ -8071,7 +8072,10 @@
         "host/checkpoint-host.lisp",
         "host/native/checkpoint.lisp",
         "tests/test_native_pack_chain.py",
-        "planning/evidence/open-by-index-2026-09-26.md"
+        "planning/evidence/open-by-index-2026-09-26.md",
+        "books/catalog-load-index.lisp",
+        "tests/acl2/catalog-load-index-tests.lisp",
+        "books/catalog-entries.lisp"
       ],
       "progress_note": "Lane open-by-index (2026-09-26): admitted in the persvati REPL; certification and the native module in the record.",
       "events": [
@@ -8085,7 +8089,11 @@
         "fn-ccco-octet-event-listp-is-octet-event-listp",
         "fn-ccco-event-fields-are-the-dispatchers",
         "fn-ccco-linkp-is-linkp",
-        "fn-ccco-decode-link-is-decode-link"
+        "fn-ccco-decode-link-is-decode-link",
+        "fn-obi-load-is-cat-load",
+        "fn-obi-intern-range-is-intern-list",
+        "fn-obi-seal-range-is-seal-of-slice",
+        "fn-obi-load-from-empty-establishes-relation"
       ]
     }
   ]
