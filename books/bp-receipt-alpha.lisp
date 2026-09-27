@@ -15,6 +15,10 @@
 (include-book "bp-receipt")
 (include-book "history-fold-refinement")
 
+(local (defthm fn-bpra-record-msgid-is-a-string
+  (implies (fn-record-p r) (stringp (fn-record-msgid r)))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-msgidp fn-record-shapep)))))
+
 ; KEYSTONE (the receipt's Store gate over the arena).
 (defthm fn-bpr-store-record-acceptedp-is-acceptance-over-alpha
   (implies (fn-rows-composites-okp (fn-sf-records (fn-sn-files store)) fn-arena)
@@ -43,8 +47,10 @@
   :hints (("Goal" :in-theory (e/d (fn-bpr-store-record-acceptedp)
                                   (fn-bpi-node-wire-committedp fn-bpr-rows-stand-for
                                    fn-rows-wire-of fn-bpr-article-records
-                                   fn-articles-wire-of fn-find-article))
-           :use ((:instance fn-bpr-rows-stand-for-is-member-of-alpha
+                                   fn-articles-wire-of fn-find-article fn-record-p
+                                   fn-bpi-node-wire-committedp-is-committed-over-alpha))
+           :use ((:instance fn-bpra-record-msgid-is-a-string (r record))
+                 (:instance fn-bpr-rows-stand-for-is-member-of-alpha
                   (rows (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))))
                  (:instance fn-bpr-article-records-over-alpha
                   (rows (fn-sf-records (fn-sn-files store))))
