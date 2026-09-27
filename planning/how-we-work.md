@@ -23,19 +23,35 @@ and [the current view](current.md). Release scope is
    farm or native wait), and `reap --idle MIN` clears idle sessions box-wide.
    A dependency uncertified at your bytes refuses `start` by name:
    `--certify-missing` certifies it, `--source-deps` loads it from source
-   (`--ld-local` keeps its local events local). `--host hbox|persvati`
-   runs any command in your tree on that box. `forms BOOK` numbers a book's
-   forms for `#N`. An admitted form is not a certificate.
+   (`--ld-local` keeps its local events local; its non-local includes are
+   sent before the encapsulate). `start` runs each of the book's events
+   under the per-form prover limit (`--load-limit S`, default `--limit`),
+   so a runaway lemma stops the load with its checkpoints in `status`.
+   `--host hbox|persvati` runs any command in your tree on that box.
+   `forms BOOK` numbers a book's forms for `#N`. An admitted form is not a
+   certificate. A raw host file (`host/native/*.lisp`) loads in seconds with
+   `tools/host_check.py --load` (errors, arity, macro order, undefined
+   names), before any image build.
 3. **Certify incrementally.** `farm.py submit <box> --affected-by <book>` (or
    the changed books and tests as plain roots): cached books install, the
    rest certify. Never `--closure` for lane work. Wait with one background
-   command and do other work.
+   command and do other work. A run that says ALL FROM THE CACHE certified
+   nothing of yours; a KILLED run (exit 143, earlyoom) has no verdict, it
+   did not fail.
+   **Claim an id before you write it**: `python3 tools/next_id.py claim
+   PRF --lane NAME --note '...'` (any kind: D, PRF, SCN, PKT, a
+   requirement prefix) takes the next number no branch, worktree, LANEDUMP
+   or earlier claim holds, in the shared ledger
+   (`build/coordinator/id-claims.jsonl`); `next_id.py check` lists your new
+   ids against it before you report.
 4. **Report what the tools say**: theorem statements, host function, teeth
    book, the `green_check` line, run id and committed manifest, evidence
    file, and what you did not do.
 5. **The coordinator merges as lanes land**, regenerates the ledger and
    `current.md` in the merge (never hand-resolving a generated file),
-   assigns new registry IDs, runs `make check` and
+   checks new registry IDs against the claims ledger (`next_id.py check`;
+   the registry merge driver names an unclaimed row and a collision's
+   claimant), runs `make check` and
    `teeth_check --strict --changed-since`, removes the lane's worktree, and
    coalesces the certification of merged bytes against the current frontier
    (one run per batch of merges, reusing matching results; never one run

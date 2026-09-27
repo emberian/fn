@@ -400,6 +400,31 @@
        (equal (fn-splan-step-refusal-lines (fn-splan-step-make e c s u n r x)) r)
        (equal (fn-splan-step-exposure-close (fn-splan-step-make e c s u n r x)) x)))
 
+;; The handshake the step owes (lane served-leftovers, 2026-09-27).  A step
+;; owes the RFC 4642 section 2.2.2 handshake when its effects emitted the 382
+;; (fn-served-starttlsp) and the step does NOT close: neither its own effects
+;; (fn-served-closingp; after QUIT the fold emits no 382, PRF-312) nor the
+;; exposure's failed-login close (a 481 before the STARTTLS in one read,
+;; books/public-exposure.lisp fn-exp-observe-facts).  A closing connection is
+;; not upgraded: the host closes after the plan.  host/native/owner.lisp
+;; fnn-owner-handle-chunk-read reads this, not fn-splan-step-starttlsp, so the
+;; I/O loop (host/native/mux.lisp fnn-mux-step) never holds a step that both
+;; hands the transport over and closes; its close-after-handshake case is
+;; gone.  The one host-side overlap left is a service stop (an uncertain
+;; drain), where the loop closes.
+(defun fn-splan-step-handshake-owed (x)
+  (declare (xargs :guard (fn-splan-step-p x)))
+  (and (fn-splan-step-starttlsp x)
+       (not (fn-splan-step-closep x))
+       (not (fn-splan-step-exposure-close x))))
+
+(defthm fn-splan-step-handshake-owed-excludes-close-by-definition
+  (implies (fn-splan-step-handshake-owed x)
+           (and (fn-splan-step-starttlsp x)
+                (not (fn-splan-step-closep x))
+                (not (fn-splan-step-exposure-close x))))
+  :rule-classes nil)
+
 ; The reply plan of a step: its effects, then the drain's completion reply,
 ; the redeem reply and the exposure close, each as a reply effect when
 ; present.  The order is the one the host wrote before this book

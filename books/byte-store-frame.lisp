@@ -2,15 +2,19 @@
 ;
 ; This is the P4 realization of the three constrained scan seams in
 ; `byte-store-scan'.  A frontier is a deterministic CBOR uint inside an FNSM
-; frame.  The store profile is a bounded frame-field record of operator fields
-; (format 8, below).  Both use
-; the existing frame grammar and its ACL2-owned trailer; the host only moves
-; the resulting octets to and from regular files.
+; frame (a format-9 store keeps no frontier file: the frame is the one a
+; `store export' archive carries).  The store profile is a bounded
+; frame-field record of operator fields (below).  Both use the existing frame
+; grammar and its ACL2-owned trailer; the host only moves the resulting
+; octets to and from regular files.
 ;
-; A store has one format (D34, fresh deploys): older metadata (JSON, or a
-; profile frame of any format but fn-store-8) is refused at open by name
-; (books/store-profile-open.lisp, :store-format); an operator reinstalls from
-; the release and imports.  This book never interprets or rewrites it.
+; A store has one format (D34, fresh deploys): format 9, the record log.
+; Older metadata (JSON, or a profile frame of any other format word) is
+; refused at open by name (books/store-profile-open.lisp, :store-format); an
+; operator reinstalls from the release and imports.  A format-8 profile
+; still DECODES, for `store import' of an archive the previous release
+; exported (books/store-export.lisp), and no image opens a store under it.
+; This book never interprets or rewrites older metadata.
 
 (in-package "ACL2")
 (include-book "byte-store-scan")
@@ -74,18 +78,20 @@
 ; (`fn-bs-profile-validp') and the codec ceilings no field may pass, so that a
 ; profile the operator can write is one every codec can carry.
 ;
-; Format 8 (`fn-store-8') is the one layout (D34): it is the only one written
-; and the only one decoded.  A frame of any other format word is refused at
-; the open by name, never translated.
+; Format 8 (`fn-store-8') was the per-file layout (transactions/, the
+; allocation frontier file, packs, the committed-history marker), deleted on
+; 2026-09-27.  Its word stays a valid profile word for one reason: `store
+; import' reads the profile of an archive the previous release exported from
+; a format-8 store.  The open refuses it by name (books/store-profile-open
+; .lisp, :store-format); nothing writes it.
 (defconst *fn-bs-meta-format-8*
   '(102 110 45 115 116 111 114 101 45 56)) ; fn-store-8
 ; Format 9 (`fn-store-9', lane commit-onto-log, planning/design-2026-09-27-
 ; storage-log.md section 5.3): the same profile fields; the store commits
 ; through the record log (journal/000001.log, books/store-log*.lisp) and holds
 ; no allocation frontier, transactions/ directory or committed-history
-; marker.  Format 9 is what `init' writes.  Format 8 stays readable while the
-; native modules that read the per-file layout are retired (PKT-830, the coordinator numbers it); the
-; commit route of an opened store is `fn-bs-profile-logp' of its profile.
+; marker.  Format 9 is what `init' writes and the one format an image opens;
+; the commit route of an opened store is `fn-bs-profile-logp' of its profile.
 (defconst *fn-bs-meta-format-9*
   '(102 110 45 115 116 111 114 101 45 57)) ; fn-store-9
 
@@ -102,12 +108,15 @@
   (if (zp n) (if (consp values) (car values) nil)
     (fn-bs-meta-nth (1- n) (if (consp values) (cdr values) nil))))
 
-; Format 8: two texts, then sixteen eight-octet frame naturals, in this
-; order.  Field 14 is the committed-history requirement (D31): 0 `unmarked',
-; 1 `required' (the per-file marker's; books/store-history-required.lisp was
-; deleted 2026-09-27 with the per-file layout, PKT-838); fields 15 to 17 are the
-; header limits (D27, lane header-limits-profile: one format, D34, so the
-; layout grows and fresh installs write it).
+; The profile's fields (formats 8 and 9 share them): two texts, then sixteen
+; eight-octet frame naturals, in this order.  Field 14 is the per-file
+; layout's committed-history requirement (D31): 0 `unmarked', 1 `required'.
+; A format-9 store has no marker (the log's last complete entry is the
+; committed history, M := D), `init' refuses `required', and
+; books/store-history-required.lisp was deleted 2026-09-27 with the per-file
+; layout (PKT-838): the field is carried, never read for a decision.  Fields
+; 15 to 17 are the header limits (D27, lane header-limits-profile: one
+; format, D34, so the layout grows and fresh installs write it).
 (defconst *fn-bs-meta-profile-spec*
   '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat
     :nat :nat :nat))
@@ -177,7 +186,7 @@
   :hints (("Goal" :in-theory (enable fn-store-publication-ceiling))))
 
 (defun fn-bs-pf (i values)
-  "Field I of a format-8 VALUES list as a natural (raw: no validation)."
+  "Field I of a profile VALUES list as a natural (raw: no validation)."
   (declare (xargs :guard (natp i)))
   (nfix (fn-bs-meta-nth i values)))
 
@@ -186,7 +195,7 @@
   (and (natp n) (<= 1 n) (<= n *fn-bs-profile-count-ceiling*)))
 
 ; The first relation VALUES fails, by name, or NIL when it is a valid
-; format-8 profile.  Each is one comparison; the operator verb prints the name.
+; profile (of either format word).  Each is one comparison; the operator verb prints the name.
 (defun fn-bs-profile-invalid-reason (values)
   (declare (xargs :guard t))
   (let ((tx (fn-bs-pf 2 values)) (h (fn-bs-pf 3 values))
@@ -286,8 +295,8 @@
           *fn-bs-profile-default-header-lines*
           *fn-bs-profile-default-header-octets*)))
 
-; The profile a store is run under: a valid format-8 profile as it is,
-; anything else NIL (one format, D34: nothing is translated).
+; The profile a store is run under: a valid profile as it is, anything else
+; NIL (one format, D34: nothing is translated).
 (defun fn-bs-profile-of (values)
   (declare (xargs :guard t))
   (if (fn-bs-profile-validp values) values nil))
@@ -351,9 +360,6 @@
   (list (fn-bs-profile-field 15 values)
         (fn-bs-profile-field 16 values)
         (fn-bs-profile-field 17 values)))
-(defun fn-bs-profile-marker-requiredp (values)
-  (declare (xargs :guard t))
-  (equal (fn-bs-profile-field 14 values) 1))
 
 ; Kept under its old name: the record ceiling is now field R itself.
 (defun fn-bs-profile-record-ceiling (values)
@@ -1001,8 +1007,8 @@
                             fn-bs-profile-validp-facts
                             fn-bs-profile-validp)))))
 
-; The decoder at every open.  A format-8 frame decodes to its values when
-; they are a valid profile.  Anything else is NIL, and the open refuses the
+; The decoder at every open (and at `store import').  A profile frame decodes
+; to its values when they are a valid profile.  Anything else is NIL, and the open refuses the
 ; store (by name for another format: books/store-profile-open.lisp).
 (defun fn-bs-config-decode (octets)
   (declare (xargs :guard t))
@@ -1160,7 +1166,7 @@
     (if (equal (car verdict) :init) (cadr verdict) nil)))
 
 ; The operator's view of the profile a store runs under: the format it is
-; persisted in (9, or 8 while PKT-830 stands) and every field by its
+; persisted in (9: the open refuses any other) and every field by its
 ; operator name, read through `fn-bs-profile-of' (0 for a value that is not
 ; a profile).  `operator status' prints it; the host formats, never computes.
 (defun fn-bs-profile-report-value (i values)

@@ -3269,7 +3269,7 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned malformed refusal log lines"))
            (dolist (line lines) (fnn-log-line line)))
          (let ((closing (fnn-core 'fn-splan-step-closep step))
-               (starttls (fnn-core 'fn-splan-step-starttlsp step))
+               (starttls (fnn-core 'fn-splan-step-handshake-owed step))
                (submitted (fnn-core 'fn-splan-step-submittedp step))
                (consumed (fnn-core 'fn-splan-step-consumed step))
                (completion nil)

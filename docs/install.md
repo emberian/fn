@@ -153,6 +153,15 @@ Some readers (tin, for one) want TLS from the very start, on port 563. For
 them, add `tls_port = 563` under `[listener]` in `fn.toml`, then restart the
 service. See [newsreaders](human-web-client.md).
 
+### Read it in your browser
+
+The release has a web page for your node too: you and your friends read
+and write in a browser, phone included, and a friend makes their own
+account there from an invitation code. It runs beside the node, as its own
+service, and needs Python 3 and a web name. Install it with
+`sh /opt/fn/install.sh --reader`, then follow
+[Read it in your browser](web.md).
+
 ## 3. Friends and accounts
 
 - To connect your node with a friend's node, follow
@@ -166,8 +175,9 @@ service. See [newsreaders](human-web-client.md).
   fn operator /var/lib/fn/fn.toml account invite --expires 86400
   ```
 
-  The person uses it once to choose a login and password, with fn's own
-  command on their machine (it asks for the password):
+  The person uses it once to choose a login and password: on your
+  [web reader](web.md#5-invite-your-friends)'s **Make your account** page,
+  or with fn's own command on their machine (it asks for the password):
 
   ```sh
   fn redeem news.example.org CODE carol --cafile cert.pem

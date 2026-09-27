@@ -898,14 +898,24 @@ class Run:
 
     # -- Mini deployments --------------------------------------------------
 
+    def mini_input(self, side, field):
+        """Side A's or B's own Mini input (--mini-a-FIELD, --mini-b-FIELD),
+        else the common one (PKT-codex-001: independent A/B Mini identities,
+        each with its own genesis, custody key and policy)."""
+        own = getattr(self.args, "mini_{}_{}".format(side, field))
+        if own:
+            return own
+        return self.args.policy if field == "policy" else getattr(self.args, "mini_" + field)
+
     def mini_deployment(self, side):
         root = self.out / ("mini-" + side)
         root.mkdir()
-        config = json.loads(Path(self.args.mini_pinned_config).read_text())
+        side_input = lambda field: self.mini_input(side, field)
+        config = json.loads(Path(side_input("pinned_config")).read_text())
         config["storageRoot"] = str(root / "store")
         (root / "config.json").write_text(json.dumps(config, sort_keys=True, indent=2) + "\n")
         self.mini("mini-{}-bootstrap".format(side),
-                  [self.mini_bin, root / "config.json", "bootstrap", self.args.mini_genesis])
+                  [self.mini_bin, root / "config.json", "bootstrap", side_input("genesis")])
         birth = root / "birth"
 
         def confirmed():
@@ -913,8 +923,8 @@ class Run:
             return outcome.get("type") == "confirmed" and str(outcome.get("acceptedCount")) == "1"
         self.mini("mini-{}-birth".format(side),
                   [self.mini_client, "submit", "--host", self.mini_bin, "--config",
-                   root / "config.json", "--intent", self.args.mini_birth_intent,
-                   "--intent-kind", "birth-intent", "--key", self.args.mini_custody_key,
+                   root / "config.json", "--intent", side_input("birth_intent"),
+                   "--intent-kind", "birth-intent", "--key", side_input("custody_key"),
                    "--dir", birth], check=confirmed)
         return root / "config.json"
 
@@ -1055,7 +1065,7 @@ class Run:
                     and (L / "b-live.fn-e").read_bytes() == (L / "b-preview.fn-e").read_bytes())
         self.mini("mini-b-poll-decide", [self.mini_bin, mini_b, "consumer-poll-decide",
                   a.origin_pin, L / "r-fn-pin.json", L / "b-scope-pin.json", a.r_claim,
-                  a.policy, ready["b_control"], L / "b-live.fncu", L / "b-live.fn-e",
+                  self.mini_input("b", "policy"), ready["b_control"], L / "b-live.fncu", L / "b-live.fn-e",
                   L / "b-live.eml", L / "intent.bin", L / "decision.json"], check=fresh_decision)
 
         def installed():
@@ -1063,7 +1073,7 @@ class Run:
             return o.get("type") == "confirmed" and o.get("confirmation") == "installed"
         self.mini("mini-b-submit", [self.mini_client, "submit", "--host", self.mini_bin,
                   "--config", mini_b, "--intent", L / "intent.bin", "--intent-kind", "binary",
-                  "--key", a.mini_custody_key, "--dir", L / "mini-b-attempt"], check=installed)
+                  "--key", self.mini_input("b", "custody_key"), "--dir", L / "mini-b-attempt"], check=installed)
         tx = self.json("mini-b-attempt/outcome.json")["transactionId"]
         self.mini("mini-b-export-poll", [self.mini_bin, mini_b, "consumer-export-poll", tx,
                   L / "export.fncu", L / "export.fn-e", L / "export.json"],
@@ -1176,7 +1186,7 @@ class Run:
                     and (L / "a-live.fncu").read_bytes() == (L / "a-preview.fncu").read_bytes())
         self.mini("mini-a-reply-decide", [self.mini_bin, mini_a, "reply-consumer-poll-decide",
                   a.origin_pin, L / "r-fn-pin.json", a.r_claim, L / "r-at-a.eml",
-                  L / "q-fn-pin.json", L / "a-scope-pin.json", L / "q-claim.json", a.policy,
+                  L / "q-fn-pin.json", L / "a-scope-pin.json", L / "q-claim.json", self.mini_input("a", "policy"),
                   ready["a_control"], L / "a-live.fncu", L / "a-live.fn-e", L / "a-live.eml",
                   L / "a-intent.bin", L / "a-decision.json"], check=a_fresh)
 
@@ -1185,7 +1195,7 @@ class Run:
             return o.get("type") == "confirmed"
         self.mini("mini-a-submit", [self.mini_client, "submit", "--host", self.mini_bin,
                   "--config", mini_a, "--intent", L / "a-intent.bin", "--intent-kind", "binary",
-                  "--key", a.mini_custody_key, "--dir", L / "mini-a-attempt"], check=a_installed)
+                  "--key", self.mini_input("a", "custody_key"), "--dir", L / "mini-a-attempt"], check=a_installed)
         a_tx = self.json("mini-a-attempt/outcome.json")["transactionId"]
         self.mini("mini-a-export-result", [self.mini_bin, mini_a, "reply-consumer-export-result",
                   a_tx, L / "a-result.bin", L / "a-inbox.bin", L / "a-export.fncu",
@@ -1245,6 +1255,14 @@ def run_main(argv):
     parser.add_argument("--mini-custody-key", default="/tmp/mini-fn-portable-inbox-native-20260923/consumer.key")
     parser.add_argument("--origin-pin", default=e2 + "/fn/origin-pin.json")
     parser.add_argument("--policy", default=e2 + "/policy.json")
+    # PKT-codex-001: each side's own Mini deployment inputs; an absent one
+    # is the common input above, so earlier invocations run unchanged.
+    for side in ("a", "b"):
+        for field in ("pinned-config", "genesis", "birth-intent", "custody-key", "policy"):
+            parser.add_argument("--mini-{}-{}".format(side, field), default=None,
+                                help="side {}'s own --mini-{} (default: the common one)".format(
+                                    side.upper(), field) if field != "policy"
+                                else "side {}'s own --policy (default: --policy)".format(side.upper()))
     here = Path(__file__).resolve().parent.parent.parent
     parser.add_argument("--r-claim", default=str(here / "tests/fixtures/dregg-e1/portable-p2/source-claim.json"))
     parser.add_argument("--r-source", default=str(here / "tests/fixtures/dregg-e1/source.eml"))

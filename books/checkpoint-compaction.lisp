@@ -8,11 +8,13 @@
 
 (defconst *fn-cc-magic* '(102 110 45 120)) ; "fn-x"
 (defconst *fn-cc-version* 0)
-; One pack file (one chain link, books/checkpoint-pack-chain) is one
-; scheduling quantum of compaction and the open's largest single pack read:
-; work bounds, not a bound on the history.  A summary (a whole chain's
-; records, `fn-ccc-chain-summary') carries no event limit; the capture and
-; the codec of one link do.
+; One summary is one scheduling quantum (a unit of work, never a bound on
+; the history): the capture and the codec of one summary are bounded by
+; these; the reclaim's fold (books/store-reclaim-stream.lisp) keeps its
+; rewritten history only while it fits one.  (Before the record log a
+; summary was one pack file, one link of the pack chain; the pack layer
+; went with the per-file layout, design 2026-09-27 storage-log section 9
+; row 5.)
 (defconst *fn-cc-max-events* 4096)
 (defconst *fn-cc-max-octets* 4194304)
 

@@ -17,6 +17,40 @@
 ; The record and statement decoders execute through their attachments.
 (include-book "../../books/codec-attach")
 
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-col-poll-h (o consumer)
+  ; fn-col-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-col-poll o consumer fn-hist) fn-hist))
+      ans)))
+(defun fn-cwait-poll-h (oc acfg consumer secret)
+  ; fn-cwait-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-cwait-poll oc acfg consumer secret fn-hist) fn-hist))
+      ans)))
+(defun fn-cwait-poll-over-h (oc acfg consumer secret fn-arena)
+  ; fn-cwait-poll-over over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-cwait-poll-over oc acfg consumer secret fn-arena fn-hist) fn-hist))
+      ans)))
+(defun fn-cwait-step-over-h (oc acfg consumer secret elapsed seconds fn-arena)
+  ; fn-cwait-step-over over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-cwait-step-over oc acfg consumer secret elapsed seconds fn-arena fn-hist) fn-hist))
+      ans)))
+
 ; --- the Store ---------------------------------------------------------------
 (defun cwt-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -114,7 +148,7 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
       (let ((fn-arena (cwt-arena fn-arena)))
-        (mv (fn-cwait-step-over oc *cwt-acfg* id secret elapsed seconds fn-arena)
+        (mv (fn-cwait-step-over-h oc *cwt-acfg* id secret elapsed seconds fn-arena)
             fn-arena))
       r)))
 (defun cwt-poll (oc id secret)
@@ -122,10 +156,10 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
       (let ((fn-arena (cwt-arena fn-arena)))
-        (mv (fn-cwait-poll-over oc *cwt-acfg* id secret fn-arena) fn-arena))
+        (mv (fn-cwait-poll-over-h oc *cwt-acfg* id secret fn-arena) fn-arena))
       r)))
 ;; The arena-free poll, which KEYSTONE 2's run model reads.
-(defun cwt-poll0 (oc id secret) (fn-cwait-poll oc *cwt-acfg* id secret))
+(defun cwt-poll0 (oc id secret) (fn-cwait-poll-h oc *cwt-acfg* id secret))
 
 ; The polls themselves: where no held row is selected the poll over the arena
 ; is the arena-free poll (fn-cwait-step-over-is-step-unless-a-held-row); the
@@ -134,7 +168,7 @@
                      (cwt-poll0 *cwt-oc-empty* *cwt-c1* nil)))
 (assert-event (equal (cwt-poll0 *cwt-oc-full* *cwt-c2* *cwt-secret*)
                      '(:refused :report)))
-(assert-event (fn-held-p (caddr (fn-col-poll (fn-own-start *cwt-full* 2) *cwt-c2*))))
+(assert-event (fn-held-p (caddr (fn-col-poll-h (fn-own-start *cwt-full* 2) *cwt-c2*))))
 (assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-empty* *cwt-c1* nil)))
 (assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-empty* *cwt-c2* *cwt-secret*)))
 (assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-full* *cwt-c1* nil)))
@@ -149,7 +183,7 @@
 (assert-event (equal (fn-cwait-report-article '(1 2 3)) '(:refused :codec)))
 (assert-event (equal (fn-record-msgid
                       (fn-col-poll-article
-                       (caddr (fn-col-poll (fn-own-start *cwt-full* 2) *cwt-c2*))))
+                       (caddr (fn-col-poll-h (fn-own-start *cwt-full* 2) *cwt-c2*))))
                      "<news@fn.test>"))
 
 ; --- KEYSTONE 1: fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page ---
@@ -199,8 +233,23 @@
 ; The wait of "2": admitted on the empty Store, woken 1 200 ms later by the
 ; commit of the news: it answers the news, the poll of the state it
 ; returned in.
+;; The run model takes one history stobj (the host refreshes it before every
+;; step; lane history-columns-3).  These witnesses load the history of the
+;; run's last observation (the Store only grows between observations); an
+;; earlier observation's window ends at its own frontier.
+(defun cwt-run-over-hist (observations acfg consumer secret seconds)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load
+                      (true-list-fix
+                       (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner
+                                                                  (car (car (last observations))))))))
+                      0 fn-hist)))
+        (mv (fn-cwait-run observations acfg consumer secret seconds fn-hist) fn-hist))
+      ans)))
 (defun cwt-run ()
-  (fn-cwait-run (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200))
+  (cwt-run-over-hist (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200))
                 *cwt-acfg* *cwt-c2* *cwt-secret* 30))
 ; (The run model's poll is the arena-free one: over the held news it answers
 ; the refusal :report at its return point; the model's arena restatement is
@@ -213,7 +262,7 @@
 ; The wait of "1" over the same commits: no news for it; it times out on the
 ; empty page at 30 000 ms.
 (defun cwt-timeout ()
-  (fn-cwait-run (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200)
+  (cwt-run-over-hist (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200)
                       (cons *cwt-oc-full* 30000))
                 *cwt-acfg* *cwt-c1* nil 30))
 (assert-event (equal (car (cwt-timeout)) :answer))
@@ -222,23 +271,23 @@
 ; Without its hypothesis (the run answered): no observation answers.
 (must-fail-checked
  (assert-event
-  (equal (car (fn-cwait-run (list (cons *cwt-oc-empty* 0)) *cwt-acfg* *cwt-c1* nil 30))
+  (equal (car (cwt-run-over-hist (list (cons *cwt-oc-empty* 0)) *cwt-acfg* *cwt-c1* nil 30))
          :answer)))
 ; The inner implication without each hypothesis: the answer not empty (the
 ; news at 1 200 ms is before the deadline); elapsed not natural.
 (must-fail-checked
  (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (cwt-run)))))
 (defun cwt-bad-run ()
-  (fn-cwait-run (list (cons *cwt-oc-empty* 'x)) *cwt-acfg* *cwt-c1* nil 30))
+  (cwt-run-over-hist (list (cons *cwt-oc-empty* 'x)) *cwt-acfg* *cwt-c1* nil 30))
 (assert-event (fn-cwait-empty-pagep (cadr (cwt-bad-run))))
 (must-fail-checked
  (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (cwt-bad-run)))))
 
 ; --- fn-cwait-run-sleeps-only-over-empty-pages ------------------------------
 (assert-event
- (equal (fn-cwait-run (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200))
+ (equal (cwt-run-over-hist (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200))
                       *cwt-acfg* *cwt-c2* *cwt-secret* 30)
-        (fn-cwait-run (list (cons *cwt-oc-full* 1200))
+        (cwt-run-over-hist (list (cons *cwt-oc-full* 1200))
                       *cwt-acfg* *cwt-c2* *cwt-secret* 30)))
 ; Without its hypothesis (the first step answered): the page is not empty.
 (must-fail-checked
@@ -260,9 +309,19 @@
 (defun cwt-run-over-in (observations id secret fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (mv-let (r fn-arena)
-    (fn-cwait-run-over observations *cwt-acfg* id secret 30 fn-arena)
+    (with-local-stobj fn-hist
+      (mv-let (rr fn-arena fn-hist)
+        (let ((fn-hist (fn-hist-load
+                        (true-list-fix
+                         (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner
+                                                                    (car (car (last observations))))))))
+                        0 fn-hist)))
+          (mv-let (rr fn-arena)
+            (fn-cwait-run-over observations *cwt-acfg* id secret 30 fn-arena fn-hist)
+            (mv rr fn-arena fn-hist)))
+        (mv rr fn-arena)))
     (mv (list r
-              (and r (fn-cwait-poll-over (caddr r) *cwt-acfg* id secret fn-arena))
+              (and r (fn-cwait-poll-over-h (caddr r) *cwt-acfg* id secret fn-arena))
               (cwt-payloads 0 (fn-arena-count fn-arena) fn-arena))
         fn-arena)))
 (defun cwt-run-over (observations id secret)

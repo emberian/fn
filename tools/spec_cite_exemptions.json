@@ -734,18 +734,6 @@
    ],
    "fnn-transaction-name": [
     "specs/host.md"
-   ],
-   "fnn-pack-extend-chain": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-recover-records": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-walk": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-prefix-reclaim": [
-    "specs/checkpoint.md"
    ]
   }
  }

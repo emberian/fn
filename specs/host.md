@@ -72,6 +72,17 @@ library's loader, no RPATH outside, every DT_NEEDED carried or the C
 library; every shared-object name in the saved core carried, the C library,
 or the system TLS library HST-016 names).
 
+HST-029: A release's `clients/` (packaging/install-clients.sh: the friends'
+web reader and the other client programs, Python 3.9+) is held apart from the
+node's path. `tools/runpath_check.py --tree` walks the node without
+`clients/`, holds `clients/` to its own rule (Python source in `clients/lib/`
+only, no object code or bytecode, launchers in `clients/bin/` that run only
+`python3` and file-name tools, service templates that start
+`PREFIX/clients/bin/fn-reader`), and fails when any script, launcher or
+service of the node's names `clients/`: nothing the node runs can start a
+client. HST-018's claim is the node's; the clients' requirement (Python) is
+stated in `clients/README.txt`.
+
 HST-021: The Linux release runs on glibc 2.36 (Debian 12) and later. No
 ELF object it bundles (the SBCL runtime, libsodium, libfn-mldsa65) needs a
 `GLIBC_x.y` symbol version above `GLIBC_FLOOR` in `tools/runpath_check.py`,
@@ -299,13 +310,13 @@ identifier, which made the logical peer lookup report an absent endpoint. It
 checks representation transport only; configured lookup, reconnection and
 two-node exchange still require the saved-image gate.
 
-The native transaction namespace observer bounds physical enumeration before
-allocation, then passes names to `fn-store-txn-observation`, which uses
-`fn-bs-txn-observation-pairs` and the byte-store filename codec. The returned
-sequence is compared to the decoded durable record before replay. Raw Lisp
-does not parse decimal transaction filenames or independently decide gaps.
-Configuration-history namespace recovery still has an assigned consolidation
-task; the transaction result does not cover that neighboring namespace.
+The per-file layout's transaction namespace observer: a format-9 store has
+no transactions/ directory, and the native open reads none; the record
+log's segments are named and ordered by ACL2 (`fn-lgs-open-plan`,
+books/store-log-segments.lisp). The one caller of the namespace decision
+left is the Python store (tools/run_store.py through tools/frame_bridge.py,
+`fn-store-txn-observation-octets` over `fn-store-txn-observation-selected`),
+which still reads the per-file layout.
 
 `build/fn-host` is one saved SBCL image: ACL2 8.7, the certified books the
 hosts drive, the `:program` wrappers in `host/*-host.lisp`, and the raw-Lisp

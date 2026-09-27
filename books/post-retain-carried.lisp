@@ -987,8 +987,7 @@
 (defthm fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare
   (implies (and (fn-prc-carryp carry)
                 (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (fn-ceis-indexedp (fn-sbud-oc-store oc)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
            (equal (fn-prc-sbud-prepare oc record budget
                                        (fn-prc-refresh carry ledger))
                   (fn-pcar-sbud-prepare oc record budget)))

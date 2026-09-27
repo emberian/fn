@@ -599,7 +599,8 @@
       "proof_targets": [
         "PRF-009",
         "PRF-073",
-        "PRF-085"
+        "PRF-085",
+        "PRF-270"
       ],
       "verification": [
         "proof",
@@ -607,21 +608,17 @@
       ],
       "evidence": [
         "books/checkpoint-compaction.lisp",
-        "books/checkpoint-pack-retire.lisp",
         "books/byte-store-txn-name.lisp",
         "host/native/checkpoint.lisp",
         "host/native/io.lisp",
         "tests/acl2/checkpoint-compaction-tests.lisp",
-        "tests/acl2/checkpoint-pack-retire-tests.lisp",
         "tests/test_native_checkpoint.py",
-        "books/checkpoint-compaction-preservation.lisp",
-        "tests/acl2/checkpoint-compaction-preservation-tests.lisp",
         "planning/evidence/m5-compaction-2026-09-24.md",
-        "books/store-compact-verb.lisp",
-        "tests/acl2/store-compact-verb-tests.lisp",
-        "planning/evidence/m5-compact-verb-2026-09-24.md"
+        "planning/evidence/m5-compact-verb-2026-09-24.md",
+        "books/store-log-segments.lisp",
+        "tests/test_native_log_compaction.py"
       ],
-      "note": "A lossless selected prefix pack permits exact prefix-file reclamation and crash resumption while preserving every canonical Store event byte. Surviving covered files must match the pack and the uncovered suffix must be contiguous. Native pack-reclaim and pack-retire require an exclusive Store lock, excluding a live owner or read-only opener before any unlink; the new retire process-death fixture awaits a source-matched image run. A b074f94e developer-image fixture confirms that a live read-only opener refuses pack-reclaim before unlink and exact source/retention aggregates survive release, reclamation and reopen (planning/evidence/checkpoint-active-reader-b074-2026-09-24.md). The certified pack-retire model deletes only generations older than validated selected authority, permits partial deletion at each cut, and advances the pack allocator beyond the selected generation after gaps. It recovers superseded pack space, not retained source-event or article-object space. General concurrent physical reclamation, all physical crash cuts, filesystem qualification, and protected-closure reclamation of article objects remain open. Lane m5-compaction (2026-09-24): PRF-073 proves over the called functions (fn-bs-pack-reclaim-plan, fn-profile-txn-observation, fn-ccp-observe-framed) that the open after a reclaim, at any cut, hands replay the identical record list the open before it did; natively the served view (GROUP, ARTICLE by number and Message-ID, HDR, retention) and the next number are unchanged across the reclaim and each of its cuts. Lane m5-compact-verb (2026-09-24): a production node compacts with `operator CONFIG store compact` (refused while an owner runs; 0 done, 1 refused with its reason, 3 uncertain, 4 fault); the decision, its temporary-space budget (profile field 3) and the 4 MiB compaction unit are ACL2's (fn-cverb-decide); every checkpoint cut passes through both entries on a developer image of 5181e0ea. A lost newest transaction file stays undetectable at open (the frontier is reserved before the record); detection needs a post-commit witness, pending ember."
+      "note": "Lane flip-cleanup (2026-09-27): the transaction-prefix pack and its reclaim (PRF-073, PRF-085) were deleted with the pack layer; on the record log compaction is the checkpoint with the log rotated and the drop of the covered segments, which preserves the history the open replays (PRF-270). Before: A lossless selected prefix pack permits exact prefix-file reclamation and crash resumption while preserving every canonical Store event byte. Surviving covered files must match the pack and the uncovered suffix must be contiguous. Native pack-reclaim and pack-retire require an exclusive Store lock, excluding a live owner or read-only opener before any unlink; the new retire process-death fixture awaits a source-matched image run. A b074f94e developer-image fixture confirms that a live read-only opener refuses pack-reclaim before unlink and exact source/retention aggregates survive release, reclamation and reopen (planning/evidence/checkpoint-active-reader-b074-2026-09-24.md). The certified pack-retire model deletes only generations older than validated selected authority, permits partial deletion at each cut, and advances the pack allocator beyond the selected generation after gaps. It recovers superseded pack space, not retained source-event or article-object space. General concurrent physical reclamation, all physical crash cuts, filesystem qualification, and protected-closure reclamation of article objects remain open. Lane m5-compaction (2026-09-24): PRF-073 proves over the called functions (fn-bs-pack-reclaim-plan, fn-profile-txn-observation, fn-ccp-observe-framed) that the open after a reclaim, at any cut, hands replay the identical record list the open before it did; natively the served view (GROUP, ARTICLE by number and Message-ID, HDR, retention) and the next number are unchanged across the reclaim and each of its cuts. Lane m5-compact-verb (2026-09-24): a production node compacts with `operator CONFIG store compact` (refused while an owner runs; 0 done, 1 refused with its reason, 3 uncertain, 4 fault); the decision, its temporary-space budget (profile field 3) and the 4 MiB compaction unit are ACL2's (fn-cverb-decide); every checkpoint cut passes through both entries on a developer image of 5181e0ea. A lost newest transaction file stays undetectable at open (the frontier is reserved before the record); detection needs a post-commit witness, pending ember."
     },
     {
       "id": "STO-008",
@@ -941,10 +938,9 @@
         "scenario"
       ],
       "evidence": [
-        "books/store-compact-verb.lisp",
         "planning/evidence/m5-compact-verb-2026-09-24.md"
       ],
-      "note": "PRF-009 is planned with no events. No reclamation exists. Lane m5-compaction (2026-09-24): the transaction-prefix reclaim keeps every replayed obligation (retention pins and undertakings are Store events and the reconstructed event list is identical, PRF-073); protected article-object closure is still open. Lane m5-compact-verb (2026-09-24): the operator verb reaches the same reclaim (PRF-073) and adds temporary-space accounting from the persisted profile; compaction removes transaction files, not transactions, so it is not an admission-headroom tool. Protected article-object closure is still open."
+      "note": "Lane flip-cleanup (2026-09-27): PRF-073's transaction-prefix reclaim was deleted with the pack layer; protected article-object closure is still open. Before: PRF-009 is planned with no events. No reclamation exists. Lane m5-compaction (2026-09-24): the transaction-prefix reclaim keeps every replayed obligation (retention pins and undertakings are Store events and the reconstructed event list is identical, PRF-073); protected article-object closure is still open. Lane m5-compact-verb (2026-09-24): the operator verb reaches the same reclaim (PRF-073) and adds temporary-space accounting from the persisted profile; compaction removes transaction files, not transactions, so it is not an admission-headroom tool. Protected article-object closure is still open."
     },
     {
       "id": "RET-006",
@@ -2678,7 +2674,7 @@
     },
     {
       "id": "STO-017",
-      "title": "Packing, history compaction and content reclamation are distinct; `store reclaim` removes released payload octets through a reclaiming pack and returns them to the file system",
+      "title": "History compaction and content reclamation are distinct; `store reclaim` removes released payload octets by checkpointing the rewritten history on the record log and dropping the covered segments, returning them to the file system",
       "specification": "specs/storage.md#content-reclamations-durable-step-store-reclaim-sto-017",
       "milestone": "M5",
       "status": "specified",
@@ -2701,7 +2697,7 @@
         "books/store-log-reclaim.lisp",
         "tests/test_native_log_compaction.py"
       ],
-      "implementation_note": "`operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs."
+      "implementation_note": "Lane flip-cleanup (2026-09-27): the reclaiming pack's decision (fn-rclp-decide, PRF-119's pack keystones, PRF-279's streamed decision) was deleted with the pack layer. `store reclaim` is fn-lgr-decide-stream over the fold of fn-rclp-event per record (host/native/checkpoint.lisp fnn-log-reclaim-steps): the rewritten history's state checkpoint with the log rotated, then the drop (PRF-271); the rewrite's theorems are PRF-119's. Before: `operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs."
     },
     {
       "id": "STO-018",
@@ -2771,14 +2767,13 @@
       ],
       "evidence": [
         "books/store-maintenance-reserve.lisp",
-        "books/store-compact-verb.lisp",
         "books/store-reclaim-pack.lisp",
         "host/owner-host.lisp",
         "host/native/checkpoint.lisp",
         "tests/reclaim_lifecycle_native.py",
         "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
       ],
-      "implementation_note": "PKT-169 as decided. The served gates (fn-smr-verdict-at, fn-smr-article-budget-for, fn-smr-article-verdict-at) keep one release record admissible after every other admission; compact and reclaim refuse temporary-space against the host-observed free octets (statvfs), not the history bound. `status` prints `maintenance-reserve octets=4096 transactions=1 held|short`. FN_NATIVE_DISK_FREE (developer image) caps the observation for the native small-disk case."
+      "implementation_note": "Lane flip-cleanup (2026-09-27): the pack's disk check (fn-cverb-pack-fits-the-disk, fn-rclp-pack-fits-the-disk) was deleted with the pack layer; the state checkpoint that compact and reclaim publish is checked against the host-observed free octets by books/owner-checkpoint-writer.lisp fn-ockp-decide (no keystone in PRF-129 yet). Before: PKT-169 as decided. The served gates (fn-smr-verdict-at, fn-smr-article-budget-for, fn-smr-article-verdict-at) keep one release record admissible after every other admission; compact and reclaim refuse temporary-space against the host-observed free octets (statvfs), not the history bound. `status` prints `maintenance-reserve octets=4096 transactions=1 held|short`. FN_NATIVE_DISK_FREE (developer image) caps the observation for the native small-disk case."
     },
     {
       "id": "REP-010",
@@ -2999,31 +2994,31 @@
     },
     {
       "id": "STO-012",
-      "title": "Compaction chains packs: each compaction packs only the uncovered suffix into a link naming its predecessor by digest, the open walks the chain, retire keeps it",
-      "specification": "specs/storage.md#chained-packs-p5-2026-09-25-sto-012",
+      "title": "Compaction covers a history of any length: `store compact` checkpoints the whole history with the log rotated and drops the covered segments; no unit of work bounds the history",
+      "specification": "specs/storage.md#compaction-of-any-length-p5-sto-012",
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
         "PRF-085",
         "PRF-240",
-        "PRF-279"
+        "PRF-279",
+        "PRF-270"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
       "evidence": [
-        "books/checkpoint-pack-chain.lisp",
-        "tests/acl2/checkpoint-pack-chain-tests.lisp",
-        "books/store-compact-verb.lisp",
         "host/checkpoint-host.lisp",
         "host/native/checkpoint.lisp",
         "tests/test_native_pack_chain.py",
         "planning/evidence/manifests/certify-20260925T091457Z-3109471.json",
         "planning/evidence/manifests/certify-20260925T094221Z-3382380.json",
-        "planning/evidence/bounds-p5-2026-09-25.md"
+        "planning/evidence/bounds-p5-2026-09-25.md",
+        "books/store-log-segments.lisp",
+        "tests/test_native_log_compaction.py"
       ],
-      "implementation_note": "A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
+      "implementation_note": "Lane flip-cleanup (2026-09-27): restated for format 9. The pack chain (books/checkpoint-pack-chain.lisp, PRF-085; its decode-once memo, PRF-240's first part; the compaction window, PRF-279) was deleted with the pack layer: no native line had called it since PKT-838. What the requirement asked of the chain, that compaction is not bounded by one unit of work, holds on the record log: the checkpoint covers the whole history and the drop preserves the open (PRF-270); tests/test_native_pack_chain.py's multi-unit and scale compactions run over the log. Before: A link holds one scheduling quantum (4096 events, 4 MiB) and at least one record; the chain is bounded by the committed count, which the profile's max-transactions bounds. store compact no longer refuses above 4096 transactions."
     },
     {
       "id": "NNT-033",
@@ -3359,7 +3354,6 @@
         "books/config.lisp",
         "books/peer-carriage-rows.lisp",
         "books/checkpoint-publish.lisp",
-        "books/checkpoint-pack-retire.lisp",
         "planning/evidence/caps-to-profile-2026-09-26.md",
         "books/store-capacity-config.lisp",
         "books/native-operator.lisp"
@@ -4772,6 +4766,56 @@
         "planning/evidence/time-model-2-2026-09-27.md"
       ],
       "implementation_note": "Lane time-model-2. The journal is STORE/journal/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
+    },
+    {
+      "id": "WEB-004",
+      "title": "The release carries the friends' web reader as its own service beside the node, reaching the node only as an NNTP client on its TLS port or with STARTTLS, redeeming invitations through fn redeem, its account shut out of the node folder",
+      "specification": "specs/human-client.md#the-reader-in-the-release",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "packaging/install-clients.sh",
+        "packaging/install.sh",
+        "packaging/fn-reader.service.in",
+        "packaging/fn_reader.rc.in",
+        "packaging/fn-reader.caddy",
+        "tools/fn_reader.py",
+        "tools/fn_client.py",
+        "tools/nntp_session.py",
+        "tests/test_fn_reader.py",
+        "tests/test_fn_web_native.py",
+        "tests/friends_tarball.sh",
+        "docs/web.md",
+        "docs/operator-internals.md"
+      ],
+      "implementation_note": "A permitted external client (AGENTS.md): the node decides every login, account, group, post and withdrawal. The reader's own policy is local and stated as such: the pacing of refused logins below the node's exposure-auth-failures, the per-browser pause, the session and form tokens.",
+      "note": "The OpenBSD rc.d script is rendered and checked by runpath_check but was not run on an OpenBSD machine by this lane."
+    },
+    {
+      "id": "HST-029",
+      "title": "A release's clients/ (Python) is held apart from the node's path: runpath_check's clients rule and the separation",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/install-clients.sh",
+        "packaging/fn-client-launcher",
+        "packaging/release-tarball.sh",
+        "tests/test_release_tarball.py"
+      ],
+      "implementation_note": "--tree skips clients/ in the node walk, checks it under clients_check, and fails any node script, launcher or service that names clients/; witnesses in tests/test_runpath_check.py (a node service starting a client, bin/fn naming clients/, object code or a foreign command in clients/, a reader service starting bin/fn)."
     }
   ]
 }

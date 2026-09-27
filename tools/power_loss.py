@@ -77,6 +77,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT))
+import native_env  # noqa: E402
 
 MAGIC = 0x6A736677736872
 FLUSH, FUA, DISCARD, MARK, METADATA = 1, 2, 4, 8, 16
@@ -194,9 +195,9 @@ def config2_for(work, store, port):
 
 def native(image, *argv, timeout=1800):
     # Lane membership-budget: the scale stores here are made for hbox; name
-    # that target budget, or `init' refuses a profile its unit cannot hold.
-    env = dict(os.environ)
-    env.setdefault("FN_INIT_BUDGET_MB", "98304")
+    # that target budget (tools/native_env.py, once), or `init' refuses a
+    # profile its unit cannot hold.
+    env = native_env.harness_store_env()
     r = subprocess.run([str(image), "--fn"] + [str(a) for a in argv], stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE, timeout=timeout, env=env)
     return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")

@@ -302,11 +302,79 @@ class EncapsulateTests(unittest.TestCase):
         text = ('(in-package "ACL2")\n(include-book "dep")\n(local (defthm l t))\n'
                 '(defun f (x) x)\n')
         books = proof_repl.ROOT / "books"
+        # ACL2 refuses a non-local include-book inside an encapsulate: it is
+        # sent first, and the rest goes in the encapsulate (seven lanes hit
+        # the refusal on 2026-09-27).
         self.assertEqual(proof_repl.encapsulated(text, books, set()),
-                         '(encapsulate ()\n(include-book "dep")\n(local (defthm l t))\n'
-                         '(defun f (x) x)\n)')
+                         (['(include-book "dep")'],
+                          "(encapsulate ()\n(local (defthm l t))\n(defun f (x) x)\n)"))
         self.assertEqual(proof_repl.encapsulated(text, books, {"books/dep"}),
-                         "(encapsulate ()\n(local (defthm l t))\n(defun f (x) x)\n)")
+                         ([], "(encapsulate ()\n(local (defthm l t))\n(defun f (x) x)\n)"))
+
+    def test_local_includes_stay_inside_and_defpkg_is_hoisted(self):
+        text = ('(defpkg "FOO" nil)\n(local (include-book "std/lists/take" :dir :system))\n'
+                '(include-book "std/lists/rev" :dir :system)\n(defthm g t)\n')
+        hoisted, body = proof_repl.encapsulated(text, proof_repl.ROOT / "books", set())
+        self.assertEqual(hoisted, ['(defpkg "FOO" nil)',
+                                   '(include-book "std/lists/rev" :dir :system)'])
+        self.assertEqual(body, '(encapsulate ()\n(local (include-book "std/lists/take" '
+                               ':dir :system))\n(defthm g t)\n)')
+
+    def test_with_a_limit_each_event_inside_is_limited_and_includes_are_not(self):
+        text = ('(local (include-book "a"))\n(local (defthm l t))\n(defun f (x) x)\n'
+                '(defttag :x)\n')
+        _, body = proof_repl.encapsulated(text, proof_repl.ROOT / "books", set(), 30)
+        self.assertIn('\n(local (include-book "a"))\n', body)
+        self.assertIn("(with-prover-time-limit 30 (local (defthm l t)))", body)
+        self.assertIn("(with-prover-time-limit 30 (defun f (x) x))", body)
+        self.assertIn("\n(defttag :x)\n", body)
+
+
+class LoadLimitTests(unittest.TestCase):
+    """start's forms run under the per-form prover limit, as send's do."""
+
+    class Recorder:
+        def __init__(self, answers):
+            self.sent, self.answers = [], list(answers)
+
+        def send(self, form, timeout):
+            self.sent.append((form, timeout))
+            return (self.answers.pop(0) if self.answers else "ok"), False
+
+    def test_each_event_of_the_book_is_limited_and_a_time_limit_is_named(self):
+        scratch = proof_repl.ROOT / "build" / "proof-repl-limit-test"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        (scratch / "b.lisp").write_text('(in-package "ACL2")\n(defun f (x) x)\n'
+                                        "(defthm slow (equal (f x) x))\n(defthm after t)\n")
+        timeout_answer = ("*** Key checkpoint at the top level: ***\n(EQUAL (F X) X)\n"
+                          "ACL2 Error [Time-limit] in ( DEFTHM SLOW ...):  Out of time in "
+                          "the rewriter.\nSummary\nForm:  ( DEFTHM SLOW ...)\n")
+        acl2 = self.Recorder(["", "", "", timeout_answer])
+        state = {"name": None, "loaded": [], "ld_loaded": {}}
+        ok = proof_repl.load_book(acl2, "build/proof-repl-limit-test/b", state, 600.0,
+                                  set(), limit=20)
+        self.assertFalse(ok)
+        forms = [form for form, _ in acl2.sent]
+        self.assertEqual(forms[1], '(in-package "ACL2")')
+        self.assertEqual(forms[2], "(with-prover-time-limit 20 (defun f (x) x))")
+        self.assertEqual(forms[3], "(with-prover-time-limit 20 (defthm slow (equal (f x) x)))")
+        self.assertEqual(len(forms), 4)  # stopped at the refusal
+        self.assertEqual(state["stopped_at"], "slow")
+        self.assertTrue(state["load_time_limited"])
+        self.assertTrue(state["error"].startswith("over the per-form prover limit (20 s"))
+        self.assertIn("(EQUAL (F X) X)", state["error"])
+
+    def test_no_limit_sends_the_forms_as_written(self):
+        scratch = proof_repl.ROOT / "build" / "proof-repl-limit-test-0"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        (scratch / "b.lisp").write_text("(defun f (x) x)\n")
+        acl2 = self.Recorder([])
+        state = {"name": None, "loaded": [], "ld_loaded": {}}
+        self.assertTrue(proof_repl.load_book(acl2, "build/proof-repl-limit-test-0/b", state,
+                                             600.0, set(), limit=None))
+        self.assertEqual(acl2.sent[1][0], "(defun f (x) x)")
 
 
 class RemoteTests(unittest.TestCase):
@@ -804,6 +872,41 @@ class RealAcl2Tests(unittest.TestCase):
             bad = cli("send", name, "(defthm f-wrong (equal (f x) 1))")
             self.assertEqual(bad.returncode, 1)
             self.assertIn("ACL2 Error", bad.stdout)
+        finally:
+            cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+
+    def test_ld_local_takes_a_book_with_a_non_local_include_and_start_is_limited(self):
+        scratch = ROOT / "build" / "proof-repl-real-ld"
+        scratch.mkdir(parents=True, exist_ok=True)
+        (scratch / "dep.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "std/lists/rev" :dir :system)\n'
+            "(local (defthm dep-local (equal (car (cons x y)) x)))\n"
+            "(defun dep-f (x) (rev x))\n")
+        (scratch / "top.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "dep")\n(defun top-f (x) (dep-f x))\n'
+            "(defthm slow (equal (len (append x y y x)) (+ (len x) (len x) (len y) "
+            "(len y))))\n(defthm after (equal (car (cons a b)) a))\n")
+        name = "real-ld-%d" % os.getpid()
+        cli = lambda *w: subprocess.run(  # noqa: E731
+            [sys.executable, str(ROOT / "tools" / "proof_repl.py"), *w],
+            capture_output=True, text=True, cwd=ROOT, timeout=300)
+        try:
+            started = cli("start", name, "build/proof-repl-real-ld/top",
+                          "--ld", "build/proof-repl-real-ld/dep", "--ld-local",
+                          "--load-limit", "0.001")
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            self.assertIn("in one encapsulate", started.stdout)
+            self.assertIn("stopped at slow", started.stdout)
+            self.assertIn("over the per-form prover limit (0.001 s", started.stdout)
+            state = json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+            self.assertEqual(state["loaded"], ["in-package", "top-f"])
+            self.assertTrue(state["ready"])
+            # The include came along, the local lemma did not.
+            self.assertEqual(cli("send", name, "(defthm uses-rev (true-listp (rev x)))")
+                             .returncode, 0)
+            self.assertEqual(cli("send", name, ":pe dep-local").returncode, 1)
         finally:
             cli("stop", name)
             shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)

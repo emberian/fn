@@ -424,6 +424,20 @@ class CacheTests(unittest.TestCase):
                             "/home/ember/fn-gates/tool-cache": 38}})
             self.assertEqual(farm.cache_summary(record), "330+8/2")
 
+    def test_a_submit_with_nothing_to_certify_says_so_loudly(self):
+        everything = ("install-partial: 12 books, cache /home/ember/fn-certcache\n"
+                      "  toolchain tool-p; installed 10, kept 2, missing 0, removed 0; "
+                      "roots installed 3 of 3; origins /home/ember/fn-gates/dev-head=12\n")
+        fake = Fake([], certs=everything)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            err = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stderr(err):
+                farm.submit("persvati", root, ["books/alpha"], jobs=8, timeout_seconds=60,
+                            affected_by=[], remote=Path("/home/ember/fn-gates/dev-head"))
+        self.assertIn("ALL 12 BOOKS CAME FROM THE CACHE -- this run certified NOTHING",
+                      err.getvalue())
+
     def test_recertify_reaches_the_cache_preflight_and_the_runner(self):
         fake = Fake([], certs=PARTIAL)
         with tempfile.TemporaryDirectory() as directory:
@@ -1000,6 +1014,41 @@ class FrictionTests(unittest.TestCase):
         self.assertIn("FAILED tests/acl2/beta-tests: timed out after 300 s", text)
         self.assertIn("12.5 s  books/alpha  (at 2 jobs)", text)
         self.assertNotIn("books/beta  (at", text)
+
+    def test_a_signal_exit_is_killed_not_failed(self):
+        manifest = {
+            "status": "failed", "jobs_effective": 8,
+            "book_results": {"books/alpha": "passed", "books/beta": "failed",
+                             "books/gamma": "failed"},
+            "book_failures": {"books/beta": ["ACL2 exited -9"],
+                              "books/gamma": ["ACL2 exited 1"]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.write_run(root, manifest, {})
+            lines = farm.verdict_lines(root, "run-v", 143)
+        text = "\n".join(lines)
+        self.assertTrue(lines[0].startswith("== verdict run-v: exit 143 -- KILLED by "
+                                            "SIGTERM (earlyoom"), lines[0])
+        self.assertIn("not failed", lines[0])
+        self.assertIn("KILLED books/beta: ACL2 ended by SIGKILL (no verdict)", text)
+        self.assertNotIn("FAILED books/beta", text)
+        self.assertIn("FAILED books/gamma", text)
+        self.assertIn("passed 1, failed 1, killed 1;", text)
+        self.assertEqual(farm.killed_signal(137), 9)
+        self.assertEqual(farm.killed_signal(-15), 15)
+        self.assertIsNone(farm.killed_signal(1))
+        self.assertIsNone(farm.killed_signal("running"))
+
+    def test_a_run_that_certified_nothing_says_so_loudly(self):
+        manifest = {"status": "passed", "book_results": {},
+                    "book_provenance": {"books/alpha": "installed",
+                                        "books/beta": "installed"}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.write_run(root, manifest, {})
+            text = "\n".join(farm.verdict_lines(root, "run-v", 0))
+        self.assertIn("ALL 2 BOOKS CAME FROM THE CACHE -- this run certified NOTHING", text)
 
     def test_verdict_without_a_manifest_is_unknown_not_green(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -13,7 +13,7 @@
 ; lookup) and take the count from it (`fn-sbud-count'), so a query costs one
 ; lookup and one fold step per record committed since the last one.
 ;
-; The maintained relation is `fn-ceis-indexedp' (the index is the index of
+; The maintained relation is R, `fn-hist-of-storep' (the history stobj is the index of
 ; the committed history), established at every host-called open and
 ; preserved by every owner transition the host installs, with no hypothesis
 ; (books/owner-store-indexed.lisp `fn-osi-live-owner-store-is-indexed');
@@ -55,24 +55,23 @@
 ; -----------------------------------------------------------------------------
 ; The completion debt
 
-(defun fn-scf-debt-advance (k count debt index)
+(defun fn-scf-debt-advance (k count debt files)
   (declare (xargs :guard (and (natp k) (natp count))
                   :measure (nfix (- (nfix count) (nfix k)))))
   (if (and (natp k) (natp count) (< k count))
       (fn-scf-debt-advance
        (1+ k) count
-       (fn-cvec-debt-step (fn-store-event-kind (fn-cei-get k index)) debt)
-       index)
+       (fn-cvec-debt-step (fn-store-event-kind (fn-sf-records-nth k files)) debt)
+       files)
     (nfix debt)))
 
 (defthm fn-scf-debt-advance-is-the-suffix-fold
-  (implies (and (fn-cei-correspondencep index events)
-                (<= (len events) (1+ *fn-cbor-max-uint*))
+  (implies (and (equal events (fn-sf-records files))
                 (natp k) (<= k (len events)))
-           (equal (fn-scf-debt-advance k (len events) debt index)
+           (equal (fn-scf-debt-advance k (len events) debt files)
                   (fn-cvec-debt-from debt (nthcdr k events))))
-  :hints (("Goal" :induct (fn-scf-debt-advance k (len events) debt index)
-           :in-theory (e/d (fn-scf-debt-advance)
+  :hints (("Goal" :induct (fn-scf-debt-advance k (len events) debt files)
+           :in-theory (e/d (fn-sf-records-nth fn-scf-debt-advance)
                            (fn-cvec-debt-step fn-store-event-kind)))))
 
 ; The completion debt of S from the carried CACHE = (K . DEBT).
@@ -80,30 +79,28 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((count (fn-sbud-count s)))
     (if (and (consp cache) (natp (car cache)) (natp (cdr cache))
-             (<= (car cache) count)
-             (<= count (1+ *fn-cbor-max-uint*)))
+             (<= (car cache) count))
         (fn-scf-debt-advance (car cache) count (cdr cache)
-                             (fn-sn-event-index s))
+                             (fn-sn-files s))
       (fn-cvec-record-debt (fn-sf-records (fn-sn-files s))))))
 
 ; KEYSTONE (the carried debt).  Under the maintained relation, from a cache that is the debt of a prefix of the
 ; committed records, the carried debt is the history's completion debt.
 (defthm fn-scf-debt-carried-is-the-record-debt
-  (implies (and (fn-ceis-indexedp s)
-                (fn-cvec-debt-cache-validp cache (fn-sf-records (fn-sn-files s))))
+  (implies (and (fn-cvec-debt-cache-validp cache (fn-sf-records (fn-sn-files s))))
            (equal (fn-scf-debt-carried cache s)
                   (fn-cvec-record-debt (fn-sf-records (fn-sn-files s)))))
-  :hints (("Goal" :use (fn-sbud-count-is-used
+  :hints (("Goal" :use (fn-sbud-count-is-used-by-definition
                         (:instance fn-scf-debt-advance-is-the-suffix-fold
-                                   (index (fn-sn-event-index s))
+                                   (files (fn-sn-files s))
                                    (events (fn-sf-records (fn-sn-files s)))
                                    (k (car cache)) (debt (cdr cache)))
                         (:instance fn-cvec-debt-extend-is-the-record-debt
                                    (records (fn-sf-records (fn-sn-files s)))))
            :in-theory (e/d (fn-scf-debt-carried fn-cvec-debt-cache-validp
-                            fn-cvec-debt-extend fn-ceis-indexedp fn-sbud-used)
+                            fn-cvec-debt-extend fn-sbud-used)
                            (fn-scf-debt-advance fn-cvec-debt-from
-                            fn-cvec-record-debt fn-sbud-count fn-sbud-count-is-used
+                            fn-cvec-record-debt fn-sbud-count fn-sbud-count-is-used-by-definition
                             fn-scf-debt-advance-is-the-suffix-fold
                             fn-cvec-debt-extend-is-the-record-debt
                             take nthcdr)))))
@@ -127,23 +124,22 @@
           (fn-pcb-tally-records rest (fn-scf-tally-step record tally)))
    :hints (("Goal" :in-theory (enable fn-pcb-tally-records)))))
 
-(defun fn-scf-tally-advance (k count tally index)
+(defun fn-scf-tally-advance (k count tally files)
   (declare (xargs :guard (and (natp k) (natp count))
                   :measure (nfix (- (nfix count) (nfix k)))))
   (if (and (natp k) (natp count) (< k count))
       (fn-scf-tally-advance (1+ k) count
-                            (fn-scf-tally-step (fn-cei-get k index) tally)
-                            index)
+                            (fn-scf-tally-step (fn-sf-records-nth k files) tally)
+                            files)
     tally))
 
 (defthm fn-scf-tally-advance-is-the-suffix-fold
-  (implies (and (fn-cei-correspondencep index events)
-                (<= (len events) (1+ *fn-cbor-max-uint*))
+  (implies (and (equal events (fn-sf-records files))
                 (natp k) (<= k (len events)))
-           (equal (fn-scf-tally-advance k (len events) tally index)
+           (equal (fn-scf-tally-advance k (len events) tally files)
                   (fn-pcb-tally-records (nthcdr k events) tally)))
-  :hints (("Goal" :induct (fn-scf-tally-advance k (len events) tally index)
-           :in-theory (e/d (fn-scf-tally-advance)
+  :hints (("Goal" :induct (fn-scf-tally-advance k (len events) tally files)
+           :in-theory (e/d (fn-sf-records-nth fn-scf-tally-advance)
                            (fn-scf-tally-step fn-pcb-tally-records)))))
 
 (local
@@ -155,29 +151,26 @@
 (defun fn-scf-usage-carried (cache s)
   (declare (xargs :guard t :verify-guards nil))
   (let ((count (fn-sbud-count s)))
-    (if (and (consp cache) (natp (car cache)) (<= (car cache) count)
-             (<= count (1+ *fn-cbor-max-uint*)))
+    (if (and (consp cache) (natp (car cache)) (<= (car cache) count))
         (fn-scf-tally-advance (car cache) count (cdr cache)
-                              (fn-sn-event-index s))
+                              (fn-sn-files s))
       (fn-pcb-tally-records (fn-sf-records (fn-sn-files s)) nil))))
 
 ; Within the index's sequence space the carried tally is the reference
 ; extension itself.
 (defthm fn-scf-usage-carried-is-usage-extend
-  (implies (and (fn-ceis-indexedp s)
-                (<= (len (fn-sf-records (fn-sn-files s))) (1+ *fn-cbor-max-uint*))
-                (fn-pcb-cache-validp cache (fn-sf-records (fn-sn-files s))))
+  (implies (fn-pcb-cache-validp cache (fn-sf-records (fn-sn-files s)))
            (equal (fn-scf-usage-carried cache s)
                   (fn-pcb-usage-extend cache (fn-sf-records (fn-sn-files s)))))
-  :hints (("Goal" :use (fn-sbud-count-is-used
+  :hints (("Goal" :use (fn-sbud-count-is-used-by-definition
                         (:instance fn-scf-tally-advance-is-the-suffix-fold
-                                   (index (fn-sn-event-index s))
+                                   (files (fn-sn-files s))
                                    (events (fn-sf-records (fn-sn-files s)))
                                    (k (car cache)) (tally (cdr cache))))
            :in-theory (e/d (fn-scf-usage-carried fn-pcb-cache-validp
-                            fn-pcb-usage-extend fn-ceis-indexedp fn-sbud-used)
+                            fn-pcb-usage-extend fn-sbud-used)
                            (fn-scf-tally-advance fn-pcb-tally-records
-                            fn-sbud-count fn-sbud-count-is-used
+                            fn-sbud-count fn-sbud-count-is-used-by-definition
                             fn-scf-tally-advance-is-the-suffix-fold
                             take nthcdr)))))
 
@@ -191,27 +184,15 @@
 ; that is the tally of a prefix of the committed records, the carried usage
 ; read at EVIDENCE is the replay projection `fn-pcb-usage' of the history.
 (defthm fn-scf-usage-carried-is-the-projection
-  (implies (and (fn-ceis-indexedp s)
-                (fn-pcb-cache-validp cache (fn-sf-records (fn-sn-files s))))
+  (implies (fn-pcb-cache-validp cache (fn-sf-records (fn-sn-files s)))
            (equal (fn-pcb-tally-get evidence (fn-scf-usage-carried cache s))
                   (fn-pcb-usage (fn-sf-records (fn-sn-files s)) evidence)))
-  :hints (("Goal" :cases ((<= (len (fn-sf-records (fn-sn-files s)))
-                              (1+ *fn-cbor-max-uint*))))
-          ("Subgoal 2"
-           :use (fn-sbud-count-is-used
-                 (:instance fn-pcb-tally-records-get
-                            (records (fn-sf-records (fn-sn-files s)))
-                            (tally nil)))
-           :in-theory (e/d (fn-scf-usage-carried fn-sbud-used)
-                           (fn-pcb-tally-records fn-pcb-usage fn-sbud-count
-                            fn-sbud-count-is-used fn-pcb-tally-records-get
-                            fn-pcb-cache-validp fn-ceis-indexedp)))
-          ("Subgoal 1"
+  :hints (("Goal"
            :use (fn-scf-usage-carried-is-usage-extend
                  (:instance fn-pcb-carried-usage-is-the-projection
                             (records (fn-sf-records (fn-sn-files s)))))
            :in-theory (disable fn-scf-usage-carried fn-pcb-usage-extend
-                               fn-pcb-cache-validp fn-ceis-indexedp
+                               fn-pcb-cache-validp
                                fn-pcb-tally-get fn-pcb-usage
                                fn-scf-usage-carried-is-usage-extend
                                fn-pcb-carried-usage-is-the-projection))))

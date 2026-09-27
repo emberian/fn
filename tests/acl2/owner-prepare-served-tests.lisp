@@ -24,7 +24,7 @@
 (assert-event (fn-lgoc-invariantp *lgt-reserved*))
 (assert-event (fn-prc-carryp (pst-carry *lgt-reserved*)))
 (assert-event (fn-scar-view-indexedp (fn-ocfg-owner *lgt-reserved*)))
-(assert-event (fn-ceis-indexedp (fn-sbud-oc-store *lgt-reserved*)))
+
 (assert-event (fn-psrv-event-servedp (fn-ocfg-config *lgt-reserved*) *acar-t-record*))
 (assert-event (equal *pst-prepared* *lgt-prepared*))
 (assert-event (equal (lgt-phase *pst-prepared*) :record-staged))
@@ -41,7 +41,7 @@
 (assert-event (fn-lgoc-invariantp *lgt-r-reserved*))
 (assert-event (fn-prc-carryp (pst-carry *lgt-r-reserved*)))
 (assert-event (fn-scar-view-indexedp (fn-ocfg-owner *lgt-r-reserved*)))
-(assert-event (fn-ceis-indexedp (fn-sbud-oc-store *lgt-r-reserved*)))
+
 (assert-event (not (fn-psrv-event-servedp (fn-ocfg-config *lgt-r-reserved*) *acar-t-record*)))
 (assert-event (equal *pst-r-prepared* *lgt-r-reserved*))
 (assert-event (fn-lgoc-invariantp *pst-r-prepared*))
@@ -55,7 +55,7 @@
 ; step faults and the conclusion fails.
 (assert-event (fn-prc-carryp (pst-carry *lgt-bad-reserved*)))
 (assert-event (fn-scar-view-indexedp (fn-ocfg-owner *lgt-bad-reserved*)))
-(assert-event (fn-ceis-indexedp (fn-sbud-oc-store *lgt-bad-reserved*)))
+
 (assert-event (not (fn-lgoc-invariantp *lgt-bad-reserved*)))
 (assert-event (not (fn-lgoc-invariantp
                     (fn-psrv-prepare *lgt-bad-reserved* *acar-t-record* 1000000

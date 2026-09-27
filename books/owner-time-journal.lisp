@@ -40,6 +40,7 @@
 ; entry, sequence 0) from fn-otm-init.
 (in-package "ACL2")
 (include-book "owner-time-model")
+(include-book "cbor") ; fn-cbor-octet-listp, the entry guard's octets kind
 (local (include-book "arithmetic-5/top" :dir :system))
 ; The replay's reasoning is over whole events: never unfold one here.
 (local (in-theory (disable fn-otm-disk-event-unfolds fn-otm-now fn-otm-regressions fn-otm-jseq)))
@@ -751,7 +752,9 @@
             (fn-osch-decimal (if (and (consp verdict) (consp (cdr verdict))) (cadr verdict) 0)))))
 
 (defun fn-otm-journal-report (octets)
-  (declare (xargs :guard t))
+  ;; The journal file's octets: the host's entry guard refuses anything else
+  ;; by name (lane entry-guards, books/payload-kinds.lisp).
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (let ((entries (fn-otm-journal-read octets)))
     (mv-let (status ignore) (fn-otm-jparse octets nil nil nil)
       (declare (ignore ignore))
@@ -769,7 +772,9 @@
 
 ;; The verb's exit: 0 when the replay agrees, 1 otherwise.
 (defun fn-otm-journal-exit (octets)
-  (declare (xargs :guard t))
+  ;; The journal file's octets: the host's entry guard refuses anything else
+  ;; by name (lane entry-guards, books/payload-kinds.lisp).
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (mv-let (verdict s) (fn-otm-replay (fn-otm-init) (fn-otm-journal-read octets))
     (declare (ignore s))
     (if (eq verdict :agrees) 0 1)))

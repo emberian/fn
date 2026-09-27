@@ -10,9 +10,9 @@
 (include-book "../../books/crypto-attach")
 (include-book "peer-inbound-tests")
 (include-book "must-fail-checked")
-(include-book "arena-lift")
+(include-book "arena-hist-lift")
 (bpr-lift fn-bpaj-transit-record-lookup 3)
-(bpr-lift fn-bpaj-transit-record-lookup-fast 3)
+(bpr-lift-hist fn-bpaj-transit-record-lookup-fast 3 (fn-sf-records (fn-sn-files x1)))
 
 
 (defconst *btj-peer*

@@ -296,10 +296,10 @@
 ; IS the article finish's, so T2's keystone applies there unchanged.
 
 (defthm fn-scj-identity-finish-owner-is-article-finish-owner
-  (implies (and (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
+  (implies (and (fn-hist-of-storep fn-hist (fn-own-store (fn-ocfg-owner oc)))
                 (not (fn-ocfg-staged oc))
                 (fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc))))
-           (equal (fn-rix-ocfg-complete oc)
+           (equal (fn-rix-ocfg-complete oc fn-hist)
                   (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
   :hints (("Goal" :in-theory '(fn-rix-ocfg-complete-is-ccar-ocfg-complete fn-ccar-ocfg-complete
                                fn-ccar-own-finish fn-ccar-own-complete fn-ocfg-with-owner
@@ -312,7 +312,7 @@
          (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
          (w (fn-held-wire-of (fn-pc-held pending) fn-arena)))
     (implies (and (fn-ocl-relation oc)
-                  (fn-ceis-indexedp s)
+                  (fn-hist-of-storep fn-hist s)
                   (not (fn-ocfg-staged oc))
                   (fn-cat-history-relation records0 fn-arena fn-cat)
                   (fn-sn-completion-enabledp s)
@@ -325,7 +325,7 @@
                   (< (fn-record-payload (fn-pc-held pending)) (fn-arena-count fn-arena))
                   (fn-record-p w))
              (fn-cat-ocl-relation
-              (fn-rix-ocfg-complete oc)
+              (fn-rix-ocfg-complete oc fn-hist)
               fn-arena
               (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat)))))
   :hints (("Goal" :in-theory (theory 'minimal-theory)
