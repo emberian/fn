@@ -3,7 +3,7 @@
 (include-book "must-fail-checked")
 (defconst *bpr-groups* '("fn.test"))
 (defconst *bpr-prepared* (fn-node-prepare (fn-node-initial-state *bpr-groups* 8)
-  9 "<a@example.invalid>" '(65 13 10) *bpr-groups*
+  9 "<a@example.invalid>" 0 *bpr-groups* ; payload handle 0 (octets are refused since the flip)
   "archive:a" "subject:a" "release:a" 1 841000000))
 (defconst *bpr-node* (fn-node-complete *bpr-prepared* 0 9 :durable))
 (defconst *bpr-config* '(:config "dtn://local/" "dtn://peer/" "policy:1"

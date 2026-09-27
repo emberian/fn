@@ -17,7 +17,16 @@
 (defconst *evct-history* (fn-sf-records (fn-sn-files *evct-s*)))
 (assert-event (fn-sn-statep *evct-s*))
 (assert-event (fn-stxa-p *ospt-event*))
-(assert-event (equal (fn-ccar-completion-record *evct-s*) *ospt-event*))
+; Since the records flip the Store holds the composite as a HELD stxa row
+; (fn-hstxa-p) whose wire event is the composite.
+(assert-event (fn-hstxa-p (fn-ccar-completion-record *evct-s*)))
+(assert-event (equal (fn-hstxa-stxa (fn-ccar-completion-record *evct-s*)) *ospt-event*))
+; The Store's events are rows: the prepare-identity event the owner's run
+; hands the Store (ospt-store-events' fifth) is this held composite, and the
+; readings below are of it.
+(defconst *evct-event* (fn-ccar-completion-record *evct-s*))
+(assert-event (equal (cadr (cadr (nth 4 (ospt-store-events *ospt-event*))))
+                     *evct-event*))
 
 ; Each reading by shape equals its reference on every record of the
 ; reachable history and on the composite, and the readings are not trivial:
@@ -29,20 +38,20 @@
              (equal (fn-evc-field-by-shape 0 x) (fn-store-event-sequence x))
              (equal (fn-evc-field-by-shape 1 x) (fn-store-event-txid x))
              (equal (fn-evc-field-by-shape 2 x) (fn-store-event-generation x))
-             (iff (fn-record-p x) (eq (fn-evc-class-by-shape x) :record))
+             (iff (fn-held-p x) (eq (fn-evc-class-by-shape x) :record))
              (iff (fn-store-retention-event-p x) (eq (fn-evc-class-by-shape x) :retention))
              (iff (fn-stxe-p x) (eq (fn-evc-class-by-shape x) :stxe))
              (iff (fn-stxk-p x) (eq (fn-evc-class-by-shape x) :stxk))
-             (iff (fn-stxa-p x) (eq (fn-evc-class-by-shape x) :stxa))
+             (iff (fn-hstxa-p x) (eq (fn-evc-class-by-shape x) :hstxa))
              (iff (fn-cpe-eventp x) (eq (fn-evc-class-by-shape x) :consumer))
              (iff (fn-th-topic-eventp x) (eq (fn-evc-class-by-shape x) :topic))
              (evct-agree-p (cdr records))))
     t))
 (assert-event (< 1 (len *evct-history*)))
 (assert-event (evct-agree-p *evct-history*))
-(assert-event (eq (fn-evc-class-by-shape *ospt-event*) :stxa))
-(assert-event (natp (fn-evc-field-by-shape 0 *ospt-event*)))
-(assert-event (equal (cons (fn-evc-sequence *ospt-event*) (fn-evc-txid *ospt-event*))
+(assert-event (eq (fn-evc-class-by-shape *evct-event*) :hstxa))
+(assert-event (natp (fn-evc-field-by-shape 0 *evct-event*)))
+(assert-event (equal (cons (fn-evc-sequence *evct-event*) (fn-evc-txid *evct-event*))
                      (fn-sf-completion (fn-sn-files *evct-s*))))
 
 ; -----------------------------------------------------------------------------
@@ -50,22 +59,24 @@
 ; Store events: the shape reads a class and a field, the references do not.
 
 (defconst *evct-junk-stxa* (make-list 10 :initial-element 0))
+(defconst *evct-junk-hstxa* '(:hstxa 0))
 (defconst *evct-junk-record* (make-list 11 :initial-element 0))
 (defconst *evct-junk-stxe* (make-list 8 :initial-element 0))
 (defconst *evct-junk-stxk* (make-list 6 :initial-element 0))
 (defconst *evct-junk-retention* '(:retention :undertake))
 (defconst *evct-junk-consumer* '(:consumer 0))
 (defconst *evct-junk-topic* '(:topic-anchor 0))
-; The composite itself with its article record replaced by a non-octet: one
+; The held composite with its article row replaced by a non-octet: one
 ; field fails, the shape is untouched.
-(defconst *evct-bad-composite* (update-nth 6 '(256) *ospt-event*))
+(defconst *evct-bad-composite* (update-nth 6 '(256) *evct-event*))
 (assert-event (not (fn-store-event-p *evct-bad-composite*)))
-(assert-event (eq (fn-evc-class-by-shape *evct-bad-composite*) :stxa))
+(assert-event (eq (fn-evc-class-by-shape *evct-bad-composite*) :hstxa))
 (assert-event (null (fn-store-event-sequence *evct-bad-composite*)))
 (assert-event (equal (fn-evc-field-by-shape 0 *evct-bad-composite*)
-                     (fn-store-event-sequence *ospt-event*)))
+                     (fn-store-event-sequence *evct-event*)))
 (assert-event
  (and (not (fn-store-event-p *evct-junk-stxa*))
+      (not (fn-store-event-p *evct-junk-hstxa*))
       (not (fn-store-event-p *evct-junk-record*))
       (not (fn-store-event-p *evct-junk-stxe*))
       (not (fn-store-event-p *evct-junk-stxk*))
@@ -87,11 +98,11 @@
 (must-fail-checked
  (defthm evct-field-by-shape-is-store-event-generation-without-hypothesis
    (equal (fn-evc-field-by-shape 2 *evct-junk-stxa*) (fn-store-event-generation *evct-junk-stxa*))))
-; fn-evc-class-by-shape-is-fn-record-p without fn-store-event-p.
-(assert-event (not (let ((x *evct-junk-record*)) (iff (fn-record-p x) (equal (fn-evc-class-by-shape x) :record)))))
+; fn-evc-class-by-shape-is-fn-held-p without fn-store-event-p.
+(assert-event (not (let ((x *evct-junk-record*)) (iff (fn-held-p x) (equal (fn-evc-class-by-shape x) :record)))))
 (must-fail-checked
- (defthm evct-class-by-shape-is-fn-record-p-without-hypothesis
-   (iff (fn-record-p *evct-junk-record*) (equal (fn-evc-class-by-shape *evct-junk-record*) :record))))
+ (defthm evct-class-by-shape-is-fn-held-p-without-hypothesis
+   (iff (fn-held-p *evct-junk-record*) (equal (fn-evc-class-by-shape *evct-junk-record*) :record))))
 ; fn-evc-class-by-shape-is-fn-store-retention-event-p without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-retention*)) (iff (fn-store-retention-event-p x) (equal (fn-evc-class-by-shape x) :retention)))))
 (must-fail-checked
@@ -107,11 +118,11 @@
 (must-fail-checked
  (defthm evct-class-by-shape-is-fn-stxk-p-without-hypothesis
    (iff (fn-stxk-p *evct-junk-stxk*) (equal (fn-evc-class-by-shape *evct-junk-stxk*) :stxk))))
-; fn-evc-class-by-shape-is-fn-stxa-p without fn-store-event-p.
-(assert-event (not (let ((x *evct-junk-stxa*)) (iff (fn-stxa-p x) (equal (fn-evc-class-by-shape x) :stxa)))))
+; fn-evc-class-by-shape-is-fn-hstxa-p without fn-store-event-p.
+(assert-event (not (let ((x *evct-junk-hstxa*)) (iff (fn-hstxa-p x) (equal (fn-evc-class-by-shape x) :hstxa)))))
 (must-fail-checked
- (defthm evct-class-by-shape-is-fn-stxa-p-without-hypothesis
-   (iff (fn-stxa-p *evct-junk-stxa*) (equal (fn-evc-class-by-shape *evct-junk-stxa*) :stxa))))
+ (defthm evct-class-by-shape-is-fn-hstxa-p-without-hypothesis
+   (iff (fn-hstxa-p *evct-junk-hstxa*) (equal (fn-evc-class-by-shape *evct-junk-hstxa*) :hstxa))))
 ; fn-evc-class-by-shape-is-fn-cpe-eventp without fn-store-event-p.
 (assert-event (not (let ((x *evct-junk-consumer*)) (iff (fn-cpe-eventp x) (equal (fn-evc-class-by-shape x) :consumer)))))
 (must-fail-checked
@@ -157,18 +168,18 @@
 ; and it stages the composite (the store moves to :record-staged).
 (make-event
  `(defconst *evct-reserved*
-    ',(in-arena-fn-own-run *sr-arena* *ospt-taken* (take 4 (ospt-store-events *ospt-event*)))))
+    ',(in-arena-fn-own-run *sr-arena* *ospt-taken* (take 4 (ospt-store-events *evct-event*)))))
 (defconst *evct-reserved-oc* (fn-ocfg-make *evct-reserved* nil nil nil))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *evct-reserved*)))
                      :reserved))
-(assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *ospt-event*)
-                     (in-arena-fn-ocfg-step *sr-arena* *evct-reserved-oc* (list :store (list :prepare-identity *ospt-event*)))))
+(assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *evct-event*)
+                     (in-arena-fn-ocfg-step *sr-arena* *evct-reserved-oc* (list :store (list :prepare-identity *evct-event*)))))
 (assert-event (equal (fn-sf-phase
                       (fn-sn-files
                        (fn-own-store
                         (fn-ocfg-owner
                          (fn-ccar-ocfg-prepare-identity *evct-reserved-oc*
-                                                        *ospt-event*)))))
+                                                        *evct-event*)))))
                      :record-staged))
 (assert-event (eq (symbol-class 'fn-ccar-ocfg-prepare-identity (w state))
                   :common-lisp-compliant))
@@ -187,15 +198,15 @@
 ; both, and a non-degenerate answer (the composite is staged).
 (assert-event (fn-snt-relation *evct-reserved-s*))
 (assert-event (fn-own-relation *evct-reserved*))
-(assert-event (equal (fn-ccar-sn-prepare-identity *evct-reserved-s* *ospt-event*)
-                     (fn-sn-prepare-identity *evct-reserved-s* *ospt-event*)))
+(assert-event (equal (fn-ccar-sn-prepare-identity *evct-reserved-s* *evct-event*)
+                     (fn-sn-prepare-identity *evct-reserved-s* *evct-event*)))
 (assert-event (equal (fn-sf-record-candidate
                       (fn-sn-files
                        (fn-ccar-sn-prepare-identity *evct-reserved-s*
-                                                    *ospt-event*)))
-                     *ospt-event*))
-(assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *ospt-event*)
-                     (in-arena-fn-ocfg-step *sr-arena* *evct-reserved-oc* (list :store (list :prepare-identity *ospt-event*)))))
+                                                    *evct-event*)))
+                     *evct-event*))
+(assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *evct-event*)
+                     (in-arena-fn-ocfg-step *sr-arena* *evct-reserved-oc* (list :store (list :prepare-identity *evct-event*)))))
 
 ; Hypothesis removal, a CORRUPTED state (unreachable while fn-snt-relation
 ; holds): the same reserved store with its configured groups emptied and its
@@ -211,12 +222,12 @@
                             (fn-sn-config-history *evct-reserved-s*)))
 (assert-event (fn-sn-statep *evct-regrouped-s*))
 (assert-event (not (fn-snt-relation *evct-regrouped-s*)))
-(assert-event (equal (fn-sn-prepare-identity *evct-regrouped-s* *ospt-event*)
+(assert-event (equal (fn-sn-prepare-identity *evct-regrouped-s* *evct-event*)
                      *evct-regrouped-s*))
 (assert-event (not (equal (fn-ccar-sn-prepare-identity *evct-regrouped-s*
-                                                       *ospt-event*)
+                                                       *evct-event*)
                           (fn-sn-prepare-identity *evct-regrouped-s*
-                                                  *ospt-event*))))
+                                                  *evct-event*))))
 
 ; -----------------------------------------------------------------------------
 ; PRF-193 (lane signed-post-linear, 2026-09-26): the identity prepare's
@@ -225,7 +236,7 @@
 (defconst *evct-records* (fn-sf-records (fn-sn-files *evct-reserved-s*)))
 (make-event
  `(defconst *evct-staged-s*
-    ',(fn-ccar-sn-prepare-identity *evct-reserved-s* *ospt-event*)))
+    ',(fn-ccar-sn-prepare-identity *evct-reserved-s* *evct-event*)))
 
 ; Reachable positive witness (the reserved store reached by fn-own-run, a
 ; non-empty history): the antecedent (the prepare moved the store) and every
@@ -235,13 +246,13 @@
 (assert-event (equal (fn-sf-phase (fn-sn-files *evct-staged-s*)) :record-staged))
 (assert-event (equal (fn-sf-records (fn-sn-files *evct-staged-s*)) *evct-records*))
 (assert-event (equal (fn-sf-record-candidate (fn-sn-files *evct-staged-s*))
-                     *ospt-event*))
+                     *evct-event*))
 (assert-event (equal (fn-sn-node *evct-staged-s*) (fn-sn-node *evct-reserved-s*)))
-(assert-event (equal (fn-store-event-sequence *ospt-event*) (len *evct-records*)))
-(assert-event (equal (+ 1 (fn-store-event-txid *ospt-event*))
+(assert-event (equal (fn-store-event-sequence *evct-event*) (len *evct-records*)))
+(assert-event (equal (+ 1 (fn-store-event-txid *evct-event*))
                      (fn-sf-frontier (fn-sn-files *evct-reserved-s*))))
 (assert-event (< (fn-store-event-txid (car (last *evct-records*)))
-                 (fn-store-event-txid *ospt-event*)))
+                 (fn-store-event-txid *evct-event*)))
 
 ; Hypothesis removal (reachable): the owner before its four frontier
 ; observations, whose store is not reserved.  The prepare leaves it as it
@@ -249,12 +260,12 @@
 ; staged.
 (defconst *evct-unreserved-s* (fn-own-store *ospt-taken*))
 (assert-event (not (equal (fn-sf-phase (fn-sn-files *evct-unreserved-s*)) :reserved)))
-(assert-event (equal (fn-ccar-sn-prepare-identity *evct-unreserved-s* *ospt-event*)
+(assert-event (equal (fn-ccar-sn-prepare-identity *evct-unreserved-s* *evct-event*)
                      *evct-unreserved-s*))
 (assert-event (not (equal (fn-sf-phase
                            (fn-sn-files
                             (fn-ccar-sn-prepare-identity *evct-unreserved-s*
-                                                         *ospt-event*)))
+                                                         *evct-event*)))
                           :record-staged)))
 (must-fail-checked
  (defthm evct-prepare-identity-stages-without-the-hypothesis

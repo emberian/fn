@@ -16,7 +16,9 @@
 ; a durable attempt, run as an actual finite trace rather than a single step.
 
 (defconst *bpw-teeth-groups* '("fn.letters"))
-(defconst *bpw-teeth-payload* '(72 105 13 10))
+; Since the acceptance flip the node holds a payload HANDLE (a natp into the
+; arena), never octets: fn-accept-prepare refuses an octet-list payload.
+(defconst *bpw-teeth-payload* 0)
 (defconst *bpw-teeth-node*
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *bpw-teeth-groups* 16)

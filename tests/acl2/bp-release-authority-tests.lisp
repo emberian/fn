@@ -13,7 +13,7 @@
 (defconst *bra-node*
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *bra-groups* 16) 9
-                    "<bra@example.invalid>" '(72 105 13 10) *bra-groups*
+                    "<bra@example.invalid>" 0 *bra-groups* ; payload handle 0 (octets are refused since the flip)
                     "archive-bra" "subject-bra" "operator-release" 4 841000000)
    0 9 :durable))
 (defconst *bra-config*

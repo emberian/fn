@@ -4,7 +4,9 @@
 (include-book "must-fail-checked")
 
 (defconst *bp-groups* '("fn.letters"))
-(defconst *bp-payload* '(72 105 13 10))
+; Since the acceptance flip the node holds a payload HANDLE (a natp into the
+; arena), never octets: fn-accept-prepare refuses an octet-list payload.
+(defconst *bp-payload* 0)
 (defconst *bp-node-empty* (fn-node-initial-state *bp-groups* 16))
 (defconst *bp-node-prepared*
   (fn-node-prepare *bp-node-empty* 9 "<bp@example.invalid>" *bp-payload*

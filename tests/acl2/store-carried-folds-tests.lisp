@@ -23,8 +23,9 @@
 (defconst *scft-after-records* (fn-sf-records (fn-sn-files *osi-after*)))
 (assert-event (equal (len *scft-before-records*) 1))
 (assert-event (equal (len *scft-after-records*) 2))
+; The Store retains the composite as a composite ROW (records flip).
 (assert-event (equal *scft-after-records*
-                     (append *scft-before-records* (list *bsb-composite*))))
+                     (append *scft-before-records* (list *bsb-row-composite*))))
 
 ; -----------------------------------------------------------------------------
 ; fn-sbud-count-is-used: antecedent and conclusion, before and after.
