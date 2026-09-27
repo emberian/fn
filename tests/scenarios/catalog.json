@@ -4297,7 +4297,7 @@
       "id": "SCN-155",
       "title": "A moderated group: an unapproved post is queued and not visible, a moderator's approval makes it visible, a forged Approved is refused, status m across a restart, and --off live",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-047"
       ],
@@ -4323,8 +4323,14 @@
           "NativeModerationTests.test_moderated_group_holds_approves_and_refuses"
         ],
         "native": true,
-        "record": "planning/evidence/moderated-groups-2026-09-27.md"
-      }
+        "record": "planning/evidence/moderated-groups-2026-09-27.md",
+        "log": "planning/evidence/moderated-groups-2026-09-27/native-m3-test_native_moderation.log"
+      },
+      "evidence": [
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderated-groups-2026-09-27/native-m3-test_native_moderation.log",
+        "planning/evidence/moderated-groups-2026-09-27.md"
+      ]
     }
   ]
 }
