@@ -3802,7 +3802,9 @@ existing port only after fn-fc has made this connection ready."
 ; first (host/store-node-host.lisp fn-host-hist-sync; R by
 ; fn-hist-refresh-is-the-history), then the reply read through it.
 (defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena fn-hist state)
-  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program))
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
+                  :guard (and (fn-cbor-octet-listp octets)
+                              (fn-cbor-octet-listp peer-octets))))
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv-let (erp val state)
       (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic fn-arena fn-hist state)
