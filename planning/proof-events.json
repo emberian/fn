@@ -9709,6 +9709,27 @@
           "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
         }
       ]
+    },
+    {
+      "id": "PRF-264",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-the-feed-article-over-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-publication-command-words-have-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-an-octet-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-publication-is-well-formed"
+        }
+      ]
     }
   ]
 }
