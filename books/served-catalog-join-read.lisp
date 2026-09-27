@@ -50,14 +50,14 @@
 ; -----------------------------------------------------------------------------
 ; The owner after the read.
 
-(defthm fn-scj-conns-pinp-of-replace
+(defthm fn-scjr-conns-pinp-of-replace
   (implies (and (fn-scj-conns-pinp conns fn-arena fn-cat)
                 (fn-scj-conn-pinp next fn-arena fn-cat))
            (fn-scj-conns-pinp (fn-own-replace-conn next conns) fn-arena fn-cat))
   :hints (("Goal" :induct (fn-own-replace-conn next conns)
            :in-theory (enable fn-scj-conns-pinp))))
 
-(defthm fn-scj-conns-pinp-of-remove
+(defthm fn-scjr-conns-pinp-of-remove
   (implies (fn-scj-conns-pinp conns fn-arena fn-cat)
            (fn-scj-conns-pinp (fn-own-remove-conn id conns) fn-arena fn-cat))
   :hints (("Goal" :induct (fn-own-remove-conn id conns)

@@ -13,6 +13,7 @@
 
 (include-book "served-catalog-join-read")
 (include-book "served-catalog-join-frame")
+(include-book "served-catalog-join-pinned")
 
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
@@ -267,3 +268,287 @@
                                       '(binary-append fn-scj-arena-p-of-clear-inv
                                         (:executable-counterpart natp)
                                         (:executable-counterpart consp))))))
+
+; -----------------------------------------------------------------------------
+; The host's article finish (step 2 with steps 3 and VV).
+
+(defthm fn-scj-vvp-of-host-finish
+  (implies (and (fn-ccar-completion-enabledp (fn-own-store o))
+                (fn-own-store-idlep (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+           (fn-scj-vvp (cdr (fn-ccar-own-finish o cfg fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-scj-vvp) (fn-own-refresh fn-ccar-own-finish fn-own-store-idlep
+                                               fn-scj-vvp-of-idle-refresh))
+           :use ((:instance fn-scj-host-finish-view-and-store)
+                 (:instance fn-scj-vvp-of-idle-refresh
+                            (o (fn-crf-with-store o (fn-ccar-sn-finish-enabled (fn-own-store o)))))
+                 (:instance fn-scj-own-refresh-store
+                            (x (fn-crf-with-store o (fn-ccar-sn-finish-enabled (fn-own-store o)))))))))
+
+(defthm fn-scj-version-of-host-finish
+  (implies (and (fn-ccar-completion-enabledp (fn-own-store o))
+                (fn-own-store-idlep (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+           (equal (fn-own-view-version (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))
+                  (len (fn-sf-records (fn-sn-files (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena))))))))
+  :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-crf-with-store)
+                                  (fn-ccar-own-finish fn-own-store-idlep fn-ctl-refresh-visible
+                                   fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawn fn-midx-refresh
+                                   fn-gidx-refresh fn-ctl-visible-state-of))
+           :use ((:instance fn-scj-host-finish-view-and-store)))))
+
+; KEYSTONE (the invariant across the host's article finish).  The owner
+; host/owner-host.lisp fn-owner-finish-submission installs
+; (fn-ccar-own-finish; fn-apc-own-finish-is-ccar-own-finish) with the
+; catalog after fn-sca-finish satisfies fn-scj-invp, and keeps the
+; catalog's sorted sequences and fresh numbers: step 2
+; (fn-scj-joinp-at-host-finish), step 3 (fn-scj-owner-catalogp-at-host-
+; finish) and VV of the idle refresh.  The hypotheses are step 2's and step
+; 3's; the ones the invariant carries (join, pins, live view, VV) enter
+; through fn-scj-invp.
+(defthm fn-scj-invp-at-host-finish
+  (let* ((view (fn-own-view o))
+         (o2 (cdr (fn-ccar-own-finish o cfg fn-arena)))
+         (s2 (fn-own-store o2))
+         (view2 (fn-own-view o2))
+         (acc2 (fn-node-acceptance (fn-sn-node s2)))
+         (a (car (fn-state-articles acc2)))
+         (events2 (append events0 (list event)))
+         (held (fn-pc-held pending))
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+                                      (fn-sca-targets-of (fn-record-msgid held)
+                                                         (fn-own-view-withdrawals view2))
+                                      fn-cat))))
+    (implies (and (fn-ccar-completion-enabledp (fn-own-store o))
+                  (fn-scj-invp o fn-arena fn-cat)
+                  (fn-scar-view-indexedp o)
+                  (fn-scj-rows-invp fn-cat events0)
+                  (true-listp events0)
+                  (fn-cst-relation s2)
+                  (fn-own-store-idlep s2)
+                  (equal (fn-sf-records (fn-sn-files s2)) events2)
+                  (fn-rows-composites-okp events2 fn-arena)
+                  (fn-scj-rows-clearp events2)
+                  (equal (fn-scj-load-h event) held)
+                  (fn-pc-p pending)
+                  (equal token (fn-pc-token pending))
+                  (equal (fn-pc-expected pending) (len fn-cat))
+                  (equal (fn-state-articles acc2) (cons a (fn-own-view-raw view)))
+                  (equal (fn-sn-verdicts s2)
+                         (cons (cons (fn-article-msgid a) verdict) (fn-own-view-verdicts view)))
+                  (equal (fn-state-articles (fn-own-view-archive view))
+                         (fn-ctl-visible-articles (fn-own-view-raw view)
+                                                  (fn-own-view-withdrawals view)
+                                                  (fn-own-view-verdicts view)))
+                  (equal (fn-state-articles (fn-own-view-archive view2))
+                         (fn-ctl-visible-articles (fn-state-articles acc2)
+                                                  (fn-own-view-withdrawals view2)
+                                                  (fn-own-view-verdicts view2)))
+                  (<= (nfix (fn-own-view-version view)) (len events0))
+                  (fn-scj-seqs-sortedp fn-cat)
+                  (fn-cnx-freshp fn-cat)
+                  (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version view))
+                  (fn-own-view-okp view2 (fn-sn-groups s2) (fn-sn-capacity s2)
+                                   (fn-sf-records (fn-sn-files s2)))
+                  (fn-nntp-projectionp (fn-own-view-archive view2)))
+             (and (fn-scj-invp o2 fn-arena c2)
+                  (fn-scj-seqs-sortedp c2)
+                  (fn-cnx-freshp c2))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-scj-invp fn-scj-take-of-len true-listp-append
+                                        (:executable-counterpart true-listp) true-listp)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-scj-joinp-at-host-finish)
+                 (:instance fn-scj-owner-catalogp-at-host-finish)
+                 (:instance fn-scj-vvp-of-host-finish)
+                 (:instance fn-scj-version-of-host-finish)))))
+
+; PRF-202's verdict equation at the host's article finish: the store's
+; verdicts grow by exactly the completed row's pair.
+(defthm fn-scj-verdicts-of-article-finish
+  (let ((r (fn-ccar-completion-record s)))
+    (implies (and (not (fn-evc-retentionp r)) (not (fn-evc-consumerp r)) (not (fn-evc-topicp r))
+                  (not (fn-evc-stxep r)) (not (fn-evc-stxkp r)) (not (fn-evc-stxap r)))
+             (equal (fn-sn-verdicts (fn-ccar-sn-finish-enabled s))
+                    (cons (cons (fn-record-msgid r) (fn-hc-verdict (fn-held-context r)))
+                          (fn-sn-verdicts s)))))
+  :hints (("Goal" :in-theory (e/d (fn-ccar-sn-finish-enabled fn-sn-update-accepted
+                                   fn-sn-advance-identity-next fn-sn-with-topic fn-sn-with-consumer)
+                                  (fn-sn-make-v6 fn-node-complete fn-replay-apply-record
+                                   fn-replay-apply-retention-event fn-sf-core-completion
+                                   fn-sf-emit-success fn-stx-index-add fn-ccar-accepted-delta
+                                   fn-ccar-cpe-projection-step fn-ccar-th-prefix-step
+                                   fn-evc-retentionp fn-evc-consumerp fn-evc-topicp
+                                   fn-evc-stxep fn-evc-stxkp fn-evc-stxap)))))
+
+; The article the finish installs names the completed row's Message-ID.
+(defthm fn-scj-msgid-of-held-wire
+  (equal (fn-record-msgid (fn-held-wire r p)) (fn-record-msgid r))
+  :hints (("Goal" :in-theory (enable fn-held-wire))))
+
+(defthm fn-scj-msgid-of-pending-record
+  (equal (fn-record-msgid (fn-sn-pending-record node seq))
+         (fn-pending-msgid (fn-state-pending (fn-node-acceptance node))))
+  :hints (("Goal" :in-theory (enable fn-sn-pending-record))))
+
+(defthm fn-scj-msgid-of-bound-row
+  (implies (equal (fn-held-wire r p) (fn-sn-pending-record node seq))
+           (equal (fn-record-msgid r)
+                  (fn-pending-msgid (fn-state-pending (fn-node-acceptance node)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-held-wire fn-sn-pending-record fn-scj-msgid-of-held-wire
+                                      fn-scj-msgid-of-pending-record)
+           :use (fn-scj-msgid-of-held-wire fn-scj-msgid-of-pending-record))))
+
+(defthm fn-scj-node-complete-articles
+  (implies (and (fn-node-pending-matchesp node txid generation)
+                (fn-statep (fn-node-acceptance node)))
+           (equal (fn-state-articles (fn-node-acceptance (fn-node-complete node txid generation :durable)))
+                  (cons (fn-article-from-pending (fn-state-pending (fn-node-acceptance node)))
+                        (fn-state-articles (fn-node-acceptance node)))))
+  :hints (("Goal" :in-theory (e/d (fn-node-complete fn-accept-complete fn-install-pending
+                                   fn-node-pending-matchesp)
+                                  (fn-article-from-pending fn-statep fn-pending-matchesp)))))
+
+(defthm fn-scj-node-of-article-finish
+  (let ((r (fn-ccar-completion-record s)))
+    (implies (and (not (fn-evc-retentionp r)) (not (fn-evc-consumerp r)) (not (fn-evc-topicp r))
+                  (not (fn-evc-stxep r)) (not (fn-evc-stxkp r)) (not (fn-evc-stxap r)))
+             (equal (fn-sn-node (fn-ccar-sn-finish-enabled s))
+                    (fn-node-complete (fn-sn-node s) (fn-record-txid r) (fn-record-generation r) :durable))))
+  :hints (("Goal" :in-theory (e/d (fn-ccar-sn-finish-enabled fn-sn-update-accepted
+                                   fn-sn-advance-identity-next fn-sn-with-topic fn-sn-with-consumer)
+                                  (fn-sn-make-v6 fn-node-complete fn-replay-apply-record
+                                   fn-replay-apply-retention-event fn-sf-core-completion
+                                   fn-sf-emit-success fn-stx-index-add fn-ccar-accepted-delta
+                                   fn-ccar-cpe-projection-step fn-ccar-th-prefix-step
+                                   fn-evc-retentionp fn-evc-consumerp fn-evc-topicp
+                                   fn-evc-stxep fn-evc-stxkp fn-evc-stxap fn-ccar-completion-record)))))
+
+(defthm fn-scj-bindsp-of-article-core
+  (let ((r (fn-ccar-completion-record s)))
+    (implies (and (fn-ccar-completion-core-enabledp s)
+                  (not (fn-evc-retentionp r)) (not (fn-evc-consumerp r)) (not (fn-evc-topicp r))
+                  (not (fn-evc-stxep r)) (not (fn-evc-stxkp r)) (not (fn-evc-stxap r)))
+             (fn-ccar-sn-record-bindsp (fn-sn-node s) r)))
+  :hints (("Goal" :in-theory (union-theories '(fn-ccar-completion-core-enabledp) (theory 'minimal-theory)))))
+
+; PRF-202's acceptance equation at the host's article finish: the store's
+; acceptance grows by exactly one article, the completed row's Message-ID.
+(defthm fn-scj-acceptance-of-article-finish
+  (let* ((r (fn-ccar-completion-record s))
+         (a (fn-article-from-pending (fn-state-pending (fn-node-acceptance (fn-sn-node s))))))
+    (implies (and (fn-ccar-completion-core-enabledp s)
+                  (fn-statep (fn-node-acceptance (fn-sn-node s)))
+                  (not (fn-evc-retentionp r)) (not (fn-evc-consumerp r)) (not (fn-evc-topicp r))
+                  (not (fn-evc-stxep r)) (not (fn-evc-stxkp r)) (not (fn-evc-stxap r)))
+             (equal (fn-state-articles (fn-node-acceptance (fn-sn-node (fn-ccar-sn-finish-enabled s))))
+                    (cons a (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ccar-sn-record-bindsp) (theory 'minimal-theory))
+           :use ((:instance fn-scj-node-of-article-finish)
+                 (:instance fn-scj-bindsp-of-article-core)
+                 (:instance fn-scj-node-complete-articles
+                            (node (fn-sn-node s))
+                            (txid (fn-record-txid (fn-ccar-completion-record s)))
+                            (generation (fn-record-generation (fn-ccar-completion-record s))))))))
+
+(defthm fn-scj-installed-article-msgid
+  (let* ((r (fn-ccar-completion-record s))
+         (a (fn-article-from-pending (fn-state-pending (fn-node-acceptance (fn-sn-node s))))))
+    (implies (and (fn-ccar-completion-core-enabledp s)
+                  (not (fn-evc-retentionp r)) (not (fn-evc-consumerp r)) (not (fn-evc-topicp r))
+                  (not (fn-evc-stxep r)) (not (fn-evc-stxkp r)) (not (fn-evc-stxap r)))
+             (equal (fn-article-msgid a) (fn-record-msgid r))))
+  :hints (("Goal" :in-theory (union-theories '(fn-ccar-sn-record-bindsp fn-article-from-pending
+                                               fn-make-article fn-article-msgid car-cons fn-ag-car)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-scj-bindsp-of-article-core)
+                 (:instance fn-scj-msgid-of-bound-row
+                            (r (fn-ccar-completion-record s))
+                            (p (fn-record-payload (fn-ccar-completion-record s)))
+                            (node (fn-sn-node s))
+                            (seq (fn-record-sequence (fn-ccar-completion-record s))))))))
+
+(defthm fn-scj-vvp-parts
+  (implies (fn-scj-vvp o)
+           (and (equal (fn-own-view-raw (fn-own-view o))
+                       (fn-state-articles (fn-node-acceptance (fn-sn-node (fn-own-store o)))))
+                (equal (fn-own-view-verdicts (fn-own-view o)) (fn-sn-verdicts (fn-own-store o)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scj-vvp))))
+
+(defthm fn-scj-invp-gives-vvp
+  (implies (fn-scj-invp o fn-arena fn-cat) (fn-scj-vvp o))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scj-invp))))
+
+(defthm fn-scj-enabled-gives-core
+  (implies (fn-ccar-completion-enabledp s) (fn-ccar-completion-core-enabledp s))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-ccar-completion-enabledp))))
+
+; KEYSTONE (the invariant across the host's article finish, PRF-202's two
+; equations discharged).  fn-scj-invp-at-host-finish with the acceptance and
+; verdict equations derived: under VV the view's raw list and verdicts are
+; the store's, and an article completion conses the installed article
+; (Message-ID the completed row's) and its verdict pair
+; (fn-scj-acceptance-of-article-finish, fn-scj-installed-article-msgid,
+; fn-scj-verdicts-of-article-finish).
+(defthm fn-scj-invp-at-host-article-finish
+  (let* ((s (fn-own-store o))
+         (r (fn-ccar-completion-record s))
+         (view (fn-own-view o))
+         (o2 (cdr (fn-ccar-own-finish o cfg fn-arena)))
+         (s2 (fn-own-store o2))
+         (view2 (fn-own-view o2))
+         (acc2 (fn-node-acceptance (fn-sn-node s2)))
+         (events2 (append events0 (list event)))
+         (held (fn-pc-held pending))
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+                                      (fn-sca-targets-of (fn-record-msgid held)
+                                                         (fn-own-view-withdrawals view2))
+                                      fn-cat))))
+    (implies (and (fn-ccar-completion-enabledp s)
+                  (fn-statep (fn-node-acceptance (fn-sn-node s)))
+                  (not (fn-evc-retentionp r)) (not (fn-evc-consumerp r)) (not (fn-evc-topicp r))
+                  (not (fn-evc-stxep r)) (not (fn-evc-stxkp r)) (not (fn-evc-stxap r))
+                  (fn-scj-invp o fn-arena fn-cat)
+                  (fn-scar-view-indexedp o)
+                  (fn-scj-rows-invp fn-cat events0)
+                  (true-listp events0)
+                  (fn-cst-relation s2)
+                  (fn-own-store-idlep s2)
+                  (equal (fn-sf-records (fn-sn-files s2)) events2)
+                  (fn-rows-composites-okp events2 fn-arena)
+                  (fn-scj-rows-clearp events2)
+                  (equal (fn-scj-load-h event) held)
+                  (fn-pc-p pending)
+                  (equal token (fn-pc-token pending))
+                  (equal (fn-pc-expected pending) (len fn-cat))
+                  (equal (fn-state-articles (fn-own-view-archive view))
+                         (fn-ctl-visible-articles (fn-own-view-raw view)
+                                                  (fn-own-view-withdrawals view)
+                                                  (fn-own-view-verdicts view)))
+                  (equal (fn-state-articles (fn-own-view-archive view2))
+                         (fn-ctl-visible-articles (fn-state-articles acc2)
+                                                  (fn-own-view-withdrawals view2)
+                                                  (fn-own-view-verdicts view2)))
+                  (<= (nfix (fn-own-view-version view)) (len events0))
+                  (fn-scj-seqs-sortedp fn-cat)
+                  (fn-cnx-freshp fn-cat)
+                  (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version view))
+                  (fn-own-view-okp view2 (fn-sn-groups s2) (fn-sn-capacity s2)
+                                   (fn-sf-records (fn-sn-files s2)))
+                  (fn-nntp-projectionp (fn-own-view-archive view2)))
+             (and (fn-scj-invp o2 fn-arena c2)
+                  (fn-scj-seqs-sortedp c2)
+                  (fn-cnx-freshp c2))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(car-cons) (theory 'minimal-theory))
+           :use ((:instance fn-scj-enabled-gives-core (s (fn-own-store o)))
+                 (:instance fn-scj-invp-at-host-finish
+                            (verdict (fn-hc-verdict (fn-held-context (fn-ccar-completion-record (fn-own-store o))))))
+                 (:instance fn-scj-invp-gives-vvp)
+                 (:instance fn-scj-vvp-parts)
+                 (:instance fn-scj-host-finish-view-and-store)
+                 (:instance fn-scj-acceptance-of-article-finish (s (fn-own-store o)))
+                 (:instance fn-scj-installed-article-msgid (s (fn-own-store o)))
+                 (:instance fn-scj-verdicts-of-article-finish (s (fn-own-store o)))))))
