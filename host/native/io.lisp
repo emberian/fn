@@ -1368,11 +1368,6 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ; NIL in normal operation.  The cut runs after the final link and before its
 ; directory barrier, so an injected EIO is an uncertain publication.
 (defvar *fnn-record-barrier-fault-observer* nil)
-; host/native/checkpoint.lisp installs this callback after it loads.  A build
-; without that optional layer retains authoritative full replay and reports
-; no selected checkpoint.
-(defvar *fnn-checkpoint-recover-callback*
-  (lambda (store count) (declare (ignore store count)) '(:none)))
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
 (defun fnn-bridge-group-next (code) (fnn-nat (fnn-core-state 'fn-store-sn-group-next code)))
@@ -1538,9 +1533,6 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defstruct (fnn-store (:constructor %make-fnn-store))
   root writable lock-fd config frontier fenced (orphans nil) (orphans-more nil)
   (completion-pending nil)
-  ;; The checkpoint layer runs only after authoritative full replay.  It keeps
-  ;; its diagnostic outcome here and never replaces the live store-node state.
-  (checkpoint-outcome '(:none))
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
   (open-mode '(:full-replay :absent))
@@ -2953,20 +2945,6 @@ the records are read after the open by the verbs that need them
       (format nil "staging-orphans=~d~:[~;+~] [~{~a~^ ~}]" (length (fnn-store-orphans store))
               (fnn-store-orphans-more store) (fnn-store-orphans store))))
 
-(defun fnn-checkpoint-report (store)
-  (let ((outcome (fnn-store-checkpoint-outcome store)))
-    (case (first outcome)
-      (:none "checkpoint=none")
-      (:ok (format nil "checkpoint=ok generation=~d suffix-from=~d differential=~a auxiliary=~a"
-                   (second outcome) (third outcome)
-                   (if (fourth outcome) "equal" "DIFFERENT")
-                   (case (fifth outcome)
-                     (:equal-v2 "equal-v2")
-                     (:equal-v1 "equal-v1")
-                     (otherwise "unknown"))))
-      (:corrupt (format nil "checkpoint=corrupt reason=~a" (second outcome)))
-      (otherwise (fnn-fault "invalid checkpoint recovery outcome")))))
-
 ;;; Commands.
 
 (defparameter +fnn-init-model-cuts+
@@ -4008,16 +3986,12 @@ the operator's confirmation of the one repair a log-damaged refusal names
         (fnn-open-live-store root t (fnn-recovery-test-fault)))
     (unwind-protect
          (multiple-value-bind (report code) (fnn-anchor-report store)
-           (fnn-out "recovered transactions=~d articles=~d ~a ~a ~a"
+           (fnn-out "recovered transactions=~d articles=~d ~a ~a"
                     count (fnn-bridge-article-count)
-                    (fnn-orphan-report store) report
-                    (fnn-checkpoint-report store))
+                    (fnn-orphan-report store) report)
            (fnn-out "~a" (fnn-open-report store))
            (dolist (line (reverse *fnn-log-open-reports*)) (fnn-out "~a" line))
-           (if (and (= code +fnn-exit-ok+)
-                    (eq (first (fnn-store-checkpoint-outcome store)) :corrupt))
-               +fnn-exit-fault+
-             code))
+           code)
       (fnn-store-close store))))
 
 (defun fnn-out-profile (values)
@@ -5920,8 +5894,6 @@ does, and records how the log holds the history (fnn-store-log-history) for
         (fnn-os-error (e)
           (setf (fnn-store-fenced store) t)
           (fnn-indeterminate "the drop of covered log segments is uncertain: ~a" e))))
-    (setf (fnn-store-checkpoint-outcome store)
-          (funcall *fnn-checkpoint-recover-callback* store count))
     (setf (fnn-store-fenced store) nil)
     count))
 

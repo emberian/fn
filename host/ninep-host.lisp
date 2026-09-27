@@ -110,7 +110,9 @@
                  state)))
     (value t)))
 
-; The article file's bytes are the stored payload, served only when
+; The article file's bytes are the stored payload, read through the arena
+; (books/nntp-session.lisp fn-nntp-article-bytes: the payload position holds
+; a handle since the records flip; lane matrix-reds), served only when
 ; fn-nntp-article-framedp holds.  That is the same guard fn-nntp-article-response
 ; requires before ARTICLE emits its block, and the block's dot-unstuffed content
 ; is exactly this payload.
@@ -124,7 +126,7 @@
     (if (and (consp article)
              (fn-nntp-article-idp article)
              (fn-nntp-article-framedp article fn-arena))
-        (let ((state (fn9p-emit (fn-article-payload article) state)))
+        (let ((state (fn9p-emit (fn-nntp-article-bytes article fn-arena) state)))
           (value t))
       (let ((state (fn9p-emit nil state)))
         (value nil)))))
@@ -144,7 +146,7 @@
          (article (fn9p-nth index (fn9p-servable-articles
                                    (fn-state-articles archive) fn-arena))))
     (if (consp article)
-        (let ((state (fn9p-emit (fn-article-payload article) state)))
+        (let ((state (fn9p-emit (fn-nntp-article-bytes article fn-arena) state)))
           (value t))
       (let ((state (fn9p-emit nil state)))
         (value nil)))))

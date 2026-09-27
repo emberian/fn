@@ -184,7 +184,7 @@
 (defthm fn-nntp-control-hdr-response-effects
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-control-hdr-response session archive index verdicts args)))
+    (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
                                   (fn-nntp-single fn-nntp-hdr-line
                                    fn-ctl-control-item fn-ctl-served-status

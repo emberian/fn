@@ -625,7 +625,8 @@ for a profile whose record bound R lies in the 355 octets above it (PKT-467).
 Its cursor and report lengths are checked independently. Poll leaves the
 durable consumer position unchanged; only a subsequent `ack` writes progress.
 The `consumer-project` exact-file reader uses the ACL2 cursor and event
-ceilings (346 octets and `*fn-stxa-max-octets*`). A file beyond either ceiling is a bounded
+ceilings (346 octets and `*fn-stxa-max-octets*`; `consumer-project --bounds` prints the
+two as ACL2 computes them). A file beyond either ceiling is a bounded
 `:limit` refusal of that CLI request; malformed files within the ceilings
 reach the ACL2 projector's codec refusal. Neither result advances an ack.
 The called `fn-col-poll` reads at most 16 consecutive events by sequence from

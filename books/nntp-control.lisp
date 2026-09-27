@@ -206,10 +206,12 @@
                     (if (consp c)
                         (let ((item (fn-nntp-string-octets
                                      (fn-ctl-control-item
-                                      (fn-ctl-control-status c visible withdrawn
+                                      (fn-ctl-control-status c (fn-nntp-article-bytes c fn-arena)
+                                                             visible withdrawn
                                                              (fn-ctl-pin-ws control)
                                                              verdicts)
-                                      (fn-ctl-target-octets (fn-article-payload c))))))
+                                      (fn-ctl-target-octets
+                                       (fn-nntp-article-bytes c fn-arena))))))
                           (if (fn-nntp-control-cleanp item)
                               (fn-nntp-multi
                                session (fn-nntp-hdr-initial nil)
@@ -236,8 +238,9 @@
   (let* ((visible (fn-ctl-visible-articles raw ws verdicts))
          (withdrawn (fn-ctl-withdrawn-articles raw ws verdicts))
          (c (fn-ctl-find-held m visible withdrawn))
-         (st (fn-ctl-control-status c visible withdrawn ws verdicts))
-         (target (fn-ctl-target-octets (fn-article-payload c)))
+         (cbytes (fn-nntp-article-bytes c fn-arena))
+         (st (fn-ctl-control-status c cbytes visible withdrawn ws verdicts))
+         (target (fn-ctl-target-octets cbytes))
          (held (fn-ctl-find-held target visible withdrawn))
          (rec (fn-ctl-cause-record ws (fn-article-msgid c) target)))
     (implies (and (consp c) (equal (car st) :executed))
@@ -256,5 +259,40 @@
                                       fn-ctl-executed-status-means-withdrawn)
            :use ((:instance fn-ctl-find-held-is-in-raw)
                  (:instance fn-ctl-executed-status-means-withdrawn
+                            (cbytes (fn-nntp-article-bytes
+                                     (fn-ctl-find-held m (fn-ctl-visible-articles raw ws verdicts)
+                                                       (fn-ctl-withdrawn-articles raw ws verdicts))
+                                     fn-arena))
                             (c (fn-ctl-find-held m (fn-ctl-visible-articles raw ws verdicts)
                                                  (fn-ctl-withdrawn-articles raw ws verdicts))))))))
+
+(local
+ (defthm fn-nntp-control-payload-of-atom
+   (implies (not (consp c)) (equal (fn-article-payload c) nil))
+   :hints (("Goal" :in-theory (enable fn-article-payload)))))
+
+; KEYSTONE (HDR :fn-control over the flipped archive; lane matrix-reds).
+; The status the served reply computes for an archive article C, whose
+; payload position is an arena handle, from the octets it reads through the
+; arena, is the pre-flip kernel's status of C's octet-list model
+; (books/nntp-session.lisp fn-nntp-article-alpha: C with its handle replaced
+; by the bytes it names), which parsed the article's own payload.  The item's
+; target text is the model's too.  Subject: fn-nntp-control-hdr-response
+; (books/nntp.lisp), reached from fn-nntp-archive-command-pinned, which the
+; served reader step calls (fn-nntp-hdr-fn-control-is-the-status).
+(defthm fn-nntp-hdr-fn-control-status-is-the-model-status
+  (let ((model (fn-nntp-article-alpha c fn-arena)))
+    (and (equal (fn-ctl-control-status c (fn-nntp-article-bytes c fn-arena)
+                                       visible withdrawn ws verdicts)
+                (fn-ctl-control-status model (fn-article-payload model)
+                                       visible withdrawn ws verdicts))
+         (equal (fn-ctl-target-octets (fn-nntp-article-bytes c fn-arena))
+                (fn-ctl-target-octets (fn-article-payload model)))))
+  :hints (("Goal" :cases ((consp c))
+           :in-theory (e/d (fn-ctl-control-status fn-nntp-article-alpha
+                            (:e fn-ctl-target-octets))
+                           (fn-ctl-target-octets fn-ctl-withdrawal-plan
+                            fn-ctl-withdrawalp fn-ctl-withdrawal-effect
+                            fn-ctl-effect-withdrawsp fn-ctl-cause-record
+                            fn-ctl-find-held fn-ctl-keys-octets
+                            fn-ctl-lookup-verdict)))))

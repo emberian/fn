@@ -441,7 +441,7 @@ class Acl2Store:
             self.call("(set-check-invariant-risk t)")
             if not self.preloaded:
                 for form in forms:
-                    self.call(form)
+                    self.boot_call(form)
             if _reset:
                 self.reset()
         except BaseException:
@@ -452,6 +452,17 @@ class Acl2Store:
         if getattr(self, "_slot_held", False):
             self._slot_held = False
             _release_slot()
+
+    def boot_call(self, form):
+        """One boot form: a load (`ld', `include-book') under its measured
+        budget (tools/bridge_image.py load_budget), recording the time it
+        took; any other form under the per-call budget."""
+        if not bridge_image.is_load_form(form):
+            return self.call(form)
+        started = time.monotonic()
+        output = self.call(form, timeout=bridge_image.load_budget(form))
+        bridge_image.record_load(form, time.monotonic() - started)
+        return output
 
     @staticmethod
     def form_timeout(form):
