@@ -1140,6 +1140,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-pipeline-tests \
 	books/owner-reader-view \
 	tests/acl2/owner-reader-view-tests \
+	books/owner-reader-read \
+	tests/acl2/owner-reader-read-tests \
 	books/store-log-route-programs \
 	tests/acl2/store-log-route-programs-tests \
 	books/owner-open-carried \
