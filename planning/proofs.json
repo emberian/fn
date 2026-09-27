@@ -11258,6 +11258,36 @@
         "fn-heap-reserve-full-store-accepted-is-within-the-machine",
         "fn-heap-init-decide-fits-the-budget-and-the-machine"
       ]
+    },
+    {
+      "id": "PRF-316",
+      "title": "The record log's open refuses damage by name and recovers only the torn tail of the one pending write",
+      "statement": "Subjects: the calls host/native/io.lisp fnn-log-stream-segment makes after the stream's stop (fnn-log-probe-tail: fn-lgdm-start, fn-lgdm-done-p, fn-lgdm-q, fn-lgdm-header-len, fn-lgdm-entry-len, fn-lgdm-step; then fn-lgdm-verdict, fn-lgdm-effective, fn-lgdm-refused-p, fn-lgdm-refusal-text, fn-lgdm-report-text, fn-lgdm-repair-text), reached from fnn-log-recover (the writable open of the active segment; fn-lgdm-quarantine-name before a confirmed repair's truncation), fnn-log-open-read-only (status), fnn-log-scan-segments and fnn-log-read-closed-segment (closed segments), and fnn-command-recover's --repair truncate SEGMENT:OFFSET; and fnn-log-check-history-chain (fn-lgdm-chain-continues-p) in the history reads fnn-log-history-each and fnn-log-closed-records. KEYSTONE fn-lgdm-open-verdict-is-the-classification (books/store-log-damage.lisp): over the segment's octets C with no hypothesis, the verdict of the probe run from the stream's stopped state (the state fn-lgw-run-is-the-open names) is fn-lgdm-classify: the stop is the scan's frontier, the splice verdict is fn-lgs-chain-broken-p's, and the damage point is the least unit-aligned offset at or past the stop where an entry validates under the predecessor it claims (fn-lgdm-least-valid). KEYSTONE fn-lgdm-no-silent-prefix: the open's stop is the scan's frontier; when a valid entry starts at any offset P + k*UNIT below the extent the verdict is refused (:broken or :damaged), never a recovered prefix; and a :damaged verdict names a valid entry at or past the stop. KEYSTONE fn-lgdm-damage-lies-in-the-last-write: for C = a well-formed log of admitted records from a digest genesis, then octets Y, then zeros (a crash image of the one pending write at L's end has this shape with Y inside the write's range: fn-bs-crash-of-aligned-append), the stop is at or past L's end, a :damaged or :broken verdict points into Y, and with Y empty the verdict is not refused. fn-lgdm-repair-is-only-the-confirmed-damage: the operator's repair changes nothing but the :damaged verdict of the active segment of a writable open at exactly the confirmed SEGMENT:OFFSET, and keeps the stop. Scope: the torn-tail case is exactly the last incomplete write; damage confined to the LAST entry is indistinguishable from a torn tail and is recovered with a `log torn-tail' line (reported, exit 0); a frame embedded at a unit-aligned offset inside the torn write's own octets is refused (fail-closed). Record: planning/evidence/log-corruption-2026-09-27.md.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-297"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-damage.lisp",
+        "tests/acl2/store-log-damage-tests.lisp",
+        "tests/test_native_log_damage.py",
+        "tests/test_native_fuzz_nntp.py",
+        "planning/evidence/log-corruption-2026-09-27.md"
+      ],
+      "events": [
+        "fn-lgdm-open-verdict-is-the-classification",
+        "fn-lgdm-no-silent-prefix",
+        "fn-lgdm-damage-lies-in-the-last-write",
+        "fn-lgdm-repair-is-only-the-confirmed-damage",
+        "fn-lgdm-run-first-is-the-least-valid",
+        "fn-lgdm-least-valid-finds-any-witness",
+        "fn-lgdm-least-valid-is-valid"
+      ]
     }
   ]
 }

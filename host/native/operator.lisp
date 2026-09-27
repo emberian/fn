@@ -542,7 +542,12 @@ observation into the outcome and this function only carries it out."
     (handler-case
         (let ((code (case action
                       (:status (fnn-command-status root))
-                      (:recover (fnn-command-recover root))
+                      (:recover
+                       ;; ACL2's parse: (:recover) or (:recover AT), the
+                       ;; operator's confirmed repair (books/native-operator.lisp).
+                       (let ((at (second (fnn-core 'fn-native-operator-result-arguments result))))
+                         (fnn-command-recover root (and (stringp at)
+                                                        (list "--repair" "truncate" at)))))
                       (:compact (funcall *fnn-compact-callback* root))
                       (:reclaim (funcall *fnn-reclaim-callback* root nil))
                       (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))

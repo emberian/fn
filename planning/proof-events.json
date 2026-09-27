@@ -11028,6 +11028,39 @@
           "name": "fn-heap-init-decide-fits-the-budget-and-the-machine"
         }
       ]
+    },
+    {
+      "id": "PRF-316",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-open-verdict-is-the-classification"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-no-silent-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-damage-lies-in-the-last-write"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-repair-is-only-the-confirmed-damage"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-run-first-is-the-least-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-least-valid-finds-any-witness"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-least-valid-is-valid"
+        }
+      ]
     }
   ]
 }

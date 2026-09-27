@@ -639,7 +639,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG pins (retention pins and each open connection's configuration pin)")
         ((equal subject "obligations")
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
-        ((equal subject "recover") "usage: fn operator CONFIG recover")
+        ((equal subject "recover") "usage: fn operator CONFIG recover [--repair truncate SEGMENT:OFFSET] (the repair only as a log-damaged refusal names it: the damaged segment is kept under quarantine/, then the log is truncated before the damage)")
         ((equal subject "store")
          "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
@@ -857,9 +857,19 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                 (list (if (equal command "pins") :pins :obligations)))
                (fn-nop-usage :unexpected-arguments command config rest)))
             ((equal command "recover")
-             (if (null rest)
-                 (fn-nop-result :accepted :plan "recover" config (list :recover))
-               (fn-nop-usage :unexpected-arguments "recover" config rest)))
+             ; Lane log-corruption: `recover --repair truncate SEGMENT:OFFSET',
+             ; the operator's confirmation of the one repair a log-damaged
+             ; refusal names (books/store-log-damage.lisp admits it only for
+             ; exactly that damage).
+             (cond ((null rest)
+                    (fn-nop-result :accepted :plan "recover" config (list :recover)))
+                   ((and (equal (fn-ncfg-first rest) "--repair")
+                         (equal (fn-ncfg-second rest) "truncate")
+                         (stringp (fn-ncfg-nth 2 rest))
+                         (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest rest)))))
+                    (fn-nop-result :accepted :plan "recover" config
+                                   (list :recover (fn-ncfg-nth 2 rest))))
+                   (t (fn-nop-usage :unexpected-arguments "recover" config rest))))
             ((equal command "store") (fn-nop-parse-store rest config))
             ; PKT-096: the normalized configuration, rendered by ACL2
             ; (books/native-config-show.lisp fn-native-config-show).

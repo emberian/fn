@@ -2,6 +2,7 @@
  "articles": 12,
  "campaign": "store",
  "class": "served-missing",
+ "fixed_by": "lane log-corruption (books/store-log-damage.lisp): the open refuses reason=log-damaged by name, exit 1, nothing written",
  "mutation": {
   "at": 0,
   "bit": 1,
@@ -11,5 +12,5 @@
  },
  "note": "One bit flipped at offset 0 of the record log of a 12-article store: status, recover and status all exit 0 with nothing on stderr, recover reports transactions=0 articles=0, and every committed article answers 430. Eleven valid frames follow the damaged one, so this is not a torn tail.",
  "packet": "F3 (silent loss)",
- "status": "open"
+ "status": "fixed"
 }

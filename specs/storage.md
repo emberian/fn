@@ -367,6 +367,28 @@ detected corruption; do not silently reinterpret it as successful rollback.
 Detecting rollback of an entire otherwise valid store requires an independent
 trusted anchor and is outside the crash-only claim until D14 supplies one.
 
+The record log's open applies that distinction (lane log-corruption,
+2026-09-27, PRF-316, `books/store-log-damage.lisp`). A crash leaves at most
+the ONE pending write torn at the frontier over the segment's preallocated
+zeros, so after the scan stops ACL2 probes every write unit of the rest of
+the segment. An entry there that validates under the predecessor it claims
+is damage to committed data followed by valid history: the open refuses
+`reason=log-damaged at=SEGMENT:OFFSET first-valid=Q valid-after=N records=M`,
+exit 1, writes nothing, and the owner does not start (`status` and `recover`
+alike; `log-chain-broken` keeps its meaning). No valid entry after the stop
+is the torn tail: recovered to the last complete entry with a
+`log torn-tail at=SEGMENT:OFFSET debris-units=D` line. Damage confined to
+the LAST entry cannot be told from a torn tail and is recovered with that
+line. The operator's choice is explicit: `store ROOT recover --repair
+truncate SEGMENT:OFFSET` names exactly the refused damage of the active
+segment; the segment's octets are kept as `quarantine/SEGMENT.damaged-at-OFFSET`
+first, then the log recovers to the stop and replays the prefix (`log
+repaired ... dropped-valid-entries=N dropped-records=M`). A repair naming
+anything else is the same refusal. Restoring the damaged entry from a
+snapshot or a peer is not offered yet (open). The history read again for a
+checkpoint or an export refuses by name when the closed segments no longer
+chain to the active segment's genesis.
+
 The current journal experiment distinguishes contiguous journal sequence from
 acceptance transaction IDs, which are consumed even on a known abort. Its
 durable acknowledgement anchor is an explicit assumed input, not a mechanism
