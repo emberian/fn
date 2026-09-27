@@ -643,6 +643,8 @@
   :hints (("Goal" :in-theory (disable fn-own-feed-dists-of-rows
                                       fn-own-feed-install fn-own-feed-retire))))
 
+(in-theory (disable fn-own-feed-scope-all fn-own-feed-dists-of-rows))
+
 ; KEYSTONE.  A reconfiguration never loses queued or in-flight work: only an
 ; idle feed is retired, and only when the configuration stopped feeding it.
 (local (defthm fn-own-feed-retire-one-keeps-a-busy-feed
@@ -1562,7 +1564,12 @@
                      (fn-own-feed-any-dist-matchp pattern dists))))
   :rule-classes nil)
 
-(in-theory (disable fn-own-feed-distribution-admitsp))
+; Closed for every book above: opened, the Distribution read runs the
+; article parser inside every owner outcome proof (owner-invariants'
+; fn-own-durable-outcome-repins-the-poster: 0.6 s closed, 2.9 s open).
+(in-theory (disable fn-own-feed-distribution-admitsp
+                    fn-own-feed-distributions-of
+                    fn-own-feed-distribution-targets))
 
 (defun fn-own-feed-new-targets (names tbl msgid)
   (declare (xargs :guard t))
