@@ -908,6 +908,11 @@
           "kind": "theorem",
           "name": "fn-rcon-ocfg-io-is-ocfg-step",
           "note": "The owner's transaction observation: host/owner-host.lisp:349 fn-owner-io calls fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io operation result)) for every configured owner, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (:record-directory :ok reaches the completing owner, :error fences, other operations)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-ingress-prepare-carried-is-prepare",
+          "note": "The BP ingress prepare: host/bp-ingress-host.lisp fn-bpi-host-prepare calls fn-bpi-ingress-prepare-carried (books/bp-ingress-carried.lisp) over the arena's count; under fn-snt-relation it equals fn-bpi-ingress-prepare, every argument (the policy test without fn-sn-statep, the prepare fn-pcar-spc-prepare without the replay). With the host's seal it is the entry fn-bpi-ingress-prepare-interned (fn-bpi-ingress-prepare-interned-unfolds). Teeth: tests/acl2/bp-ingress-carried-tests.lisp (related reserved store prepares alike; related duplicate refused alike; CORRUPTED store with a refused-reservation node over the durable history: the carried prepare stages the duplicate, the specification refuses it)."
         }
       ]
     },

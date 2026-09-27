@@ -412,6 +412,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
+	books/bp-ingress-carried \
+	tests/acl2/bp-ingress-carried-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
 	tests/acl2/profile-monotonicity-tests \
