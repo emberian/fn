@@ -575,12 +575,13 @@ class NativeKeyStatementTests(unittest.TestCase):
         # which init refuses by name (membership-budget, PRF-315), and a
         # bound large enough for the default record ceiling does not fit the
         # test's 24 GB unit at run; name both, as test_native_capacity_vector
-        # does: R 256 KiB (above the composite's 196,608-octet ceiling) and H
-        # 4 MiB, which hold these few records.
+        # does: R 256 KiB (above the composite's 196,608-octet ceiling), A 128
+        # KiB and 16 groups (an article record within R) and H 4 MiB.
         flags = [] if max_transactions is None else [
             "--max-transactions", str(max_transactions),
             "--max-history-octets", str(4 << 20),
-            "--max-record-octets", "262144"]
+            "--max-record-octets", "262144",
+            "--max-article-octets", "131072", "--max-groups-per-article", "16"]
         self.fn("operator", node["config"], "init", *flags, *groups)
         return node
 
