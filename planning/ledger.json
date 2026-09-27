@@ -817,6 +817,8 @@
     "books/served-carried",
     "books/owner-served-carried",
     "books/wire-span",
+    "books/wire-scan",
+    "books/served-scan",
     "books/served-span",
     "books/owner-offer-indexed",
     "books/store-events-carried",
@@ -904,6 +906,7 @@
     "tests/acl2/owner-served-carried-tests",
     "tests/acl2/wire-span-tests",
     "tests/acl2/served-span-tests",
+    "tests/acl2/served-scan-tests",
     "tests/acl2/peer-offer-indexed-tests",
     "tests/acl2/peer-guard-carried-tests",
     "tests/acl2/owner-commit-carried-tests",
@@ -1175,26 +1178,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1218,
-    "books_in_root_closure": 1207,
-    "roots": 1171,
-    "theorems": 17923,
-    "functions": 12400,
-    "assert_events": 17838,
-    "must_fails": 2152,
+    "books": 1221,
+    "books_in_root_closure": 1210,
+    "roots": 1174,
+    "theorems": 17954,
+    "functions": 12425,
+    "assert_events": 17857,
+    "must_fails": 2149,
     "prover_refusals": 0,
     "encapsulates": 92,
     "guards": {
-      "verified": 2439,
-      "declared-off": 1419,
-      "default-guarded": 6837,
-      "default-unguarded": 1705
+      "verified": 2441,
+      "declared-off": 1434,
+      "default-guarded": 6842,
+      "default-unguarded": 1708
     },
-    "suspect_theorems": 191,
+    "suspect_theorems": 193,
     "export_hygiene_warnings": 205,
     "enabled_projection_warnings": 49,
-    "teeth_form_warnings": 210,
-    "include_hygiene_warnings": 1314,
+    "teeth_form_warnings": 207,
+    "include_hygiene_warnings": 1316,
     "host_names_warnings": 1371,
     "hand_written_record_warnings": 18
   },
@@ -16668,6 +16671,35 @@
       "read_error": null
     },
     {
+      "book": "books/served-scan.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 2,
+      "guards": {
+        "verified": 1,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-carried",
+        "wire-scan"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-sscan-dispatch-no-events"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/served-span.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -16688,6 +16720,7 @@
       "encapsulates": 0,
       "includes": [
         "owner-served-carried",
+        "served-scan",
         "wire-span"
       ],
       "system_includes": [],
@@ -20589,6 +20622,36 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/wire-scan.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 7,
+      "guards": {
+        "verified": 1,
+        "declared-off": 1,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "wire-span"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-wscan-feed-byte-ordinary"
+      ],
       "read_error": null
     },
     {
@@ -32353,6 +32416,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-scan-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 16,
+      "guards": {
+        "verified": 0,
+        "declared-off": 13,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 19,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 14,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/served-span",
+        "arena-lift"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-span-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -35565,7 +35656,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 6,
-      "must_fails": 3,
+      "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 7,
       "defmacros": 0,
@@ -35573,9 +35664,7 @@
       "includes": [
         "../../books/wire-span"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -37035,6 +37124,14 @@
       ]
     },
     {
+      "theorem": "fn-sscan-dispatch-no-events",
+      "book": "books/served-scan.lisp",
+      "line": 132,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-scar-dispatch-events and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-stmt-impl-encode-items-of-atom",
       "book": "books/statement-codec.lisp",
       "line": 394,
@@ -37131,6 +37228,14 @@
       "reasons": [
         "definition-restated: the conclusion is the body of fn-wire-feed-span",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-wscan-feed-byte-ordinary",
+      "book": "books/wire-scan.lisp",
+      "line": 273,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-wire-feed-byte and the conclusion is that branch's value"
       ]
     },
     {
@@ -40187,24 +40292,6 @@
         "check": "thlt-ctl-refuse-without-past-the-limits",
         "book": "tests/acl2/transit-header-limits-tests.lisp",
         "line": 209,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wst-keystone-needs-octets-p",
-        "book": "tests/acl2/wire-span-tests.lisp",
-        "line": 132,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wst-keystone-needs-range-within-buffer",
-        "book": "tests/acl2/wire-span-tests.lisp",
-        "line": 142,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wst-keystone-needs-fast-statep",
-        "book": "tests/acl2/wire-span-tests.lisp",
-        "line": 152,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],
@@ -48199,6 +48286,20 @@
       {
         "book": "tests/acl2/served-pipelining-tests.lisp",
         "line": 62,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-scan-tests.lisp",
+        "line": 20,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-scan-tests.lisp",
+        "line": 230,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
