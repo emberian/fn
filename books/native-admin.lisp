@@ -263,6 +263,7 @@
   (declare (xargs :guard t
                   :guard-hints
                   (("Goal" :in-theory (disable fn-native-admin-decimalp
+                                               fn-ipp-addr-specp fn-ipp-octets
                                                fn-native-admin-decimal-value
                                                (tau-system))))))
   (if (or (not (fn-native-admin-argvp argv))

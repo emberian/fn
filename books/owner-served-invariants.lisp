@@ -99,8 +99,9 @@
                                          (fn-own-sub-decision sub) secret
                                          (fn-own-sub-login sub) cfg))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets
-                                     fn-own-sub-msgid))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
+                                   fn-own-sub-msgid)
+                                  (fn-ipp-injected-octets fn-cl-served-payload)))))
 
 (defthm fn-own-sub-stored-octets-without-an-account-by-definition
   (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
