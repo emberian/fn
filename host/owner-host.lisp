@@ -90,6 +90,7 @@
 (include-book "../books/peer-pull")
 (include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
+(include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
@@ -2704,7 +2705,11 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
             (value (fn-ores-feed-port-publication :quiet nil nil nil nil))
           (let ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
-                         (fn-own-feed-article owner msgid) obs)))
+                         ; The record's payload by Message-ID through the
+                         ; Store's event index, not the acceptance state's
+                         ; article: fn-apr-feed-article-is-own-feed-article
+                         ; (books/acceptance-payload-ref.lisp).
+                         (fn-apr-feed-article owner msgid) obs)))
             ; The sender's one line for this reply (nil for a 335/238),
             ; books/owner-log.lisp fn-olog-feed-reply-line, is the
             ; publication's log line.

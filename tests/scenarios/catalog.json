@@ -4322,6 +4322,34 @@
         "native": true,
         "record": "planning/evidence/adapter-retirement-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-147",
+      "title": "Power is cut to the block device under a committing node (dm-log-writes, ext4) at 1,281 write boundaries across POST commits, checkpoint capture, compaction, reclaim, a near-full store and a recovery cut again; every acknowledged POST is served byte-identical afterwards, no refusal becomes acceptance, no binding or number moves",
+      "milestone": "M2",
+      "status": "implemented",
+      "implementation": {
+        "test": "tools/power_loss.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/power-loss-2026-09-26/main2.log",
+        "record": "planning/evidence/power-loss-2026-09-26.md"
+      },
+      "requirements": [
+        "STO-003",
+        "STO-005"
+      ],
+      "steps": [
+        "On hbox (Linux 6.11): a data and a log loop device under dm-log-writes, ext4 on the mapped device; the developer image's node on it (scale profile, small open suffix): init, POSTs with a mark in the log after every 240 and every known 441 refusal, two store compactions, retention set released-by-all-holders, store reclaim; references read from the uncut store to /dev/shm.",
+        "For each cut (an entry of the log and a mode: flush, prefix, subset of unflushed writes, or 4096-octet tears), rebuild the device, mount, e2fsck, recover, store inspect the lost-reply POSTs, start the owner, ARTICLE and OVER everything, re-POST the newest acknowledged Message-ID and a fresh one, status; rerun compact or reclaim for their cuts; for a fifth of the cuts, cut the recovery again under a second log.",
+        "Control cuts judge a POST whose writes all follow the cut as acknowledged; each must be caught. A barrier=0 run shows the fsync assumption is load-bearing."
+      ],
+      "evidence": [
+        "planning/evidence/power-loss-2026-09-26.md",
+        "planning/evidence/power-loss-2026-09-26/summary.md",
+        "tools/power_loss.py"
+      ],
+      "expected": "No acknowledged POST missing or changed, no refused POST served, lost-reply POSTs whole or absent, recover/owner/status without fault, bindings and numbers stable, reclaim accounting whole, every control caught; on barrier=0 acknowledged POSTs are lost (the assumption broken, not fn)."
     }
   ]
 }

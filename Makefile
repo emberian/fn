@@ -741,6 +741,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-delta \
 	books/catalog-relation \
 	books/catalog-view \
+	books/catalog-entries \
+	books/catalog-refresh \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -759,6 +761,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-delta-tests \
 	tests/acl2/catalog-relation-tests \
 	tests/acl2/catalog-view-tests \
+	tests/acl2/catalog-entries-tests \
+	tests/acl2/catalog-refresh-tests \
+	books/acceptance-payload-ref \
+	tests/acl2/acceptance-payload-ref-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
