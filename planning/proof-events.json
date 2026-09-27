@@ -2155,6 +2155,10 @@
           "kind": "theorem",
           "name": "fn-own-live-session-boundedp",
           "note": "The re-pin cannot drop a connection: it leaves the reader session identical, so fn-own-conn-boundedp -- the test fn-own-read applies after the step, and the one that made ADVANCE a silent no-op for a wave when a rebuild lost a wrapper -- answers exactly as before."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-full-store-is-a-retry-code"
         }
       ]
     },
@@ -2978,6 +2982,10 @@
           "kind": "theorem",
           "name": "fn-ncl-status-nonaccepted-reply-roundtrip",
           "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncl-cli-after-retries-only-a-refused-register"
         }
       ]
     },
@@ -4993,6 +5001,10 @@
         {
           "kind": "theorem",
           "name": "fn-nh-fence-of-route"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-deferring-peer-is-held"
         }
       ]
     },
@@ -6347,6 +6359,10 @@
         {
           "kind": "theorem",
           "name": "fn-nop-init-plain-groups-are-within-the-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nop-mission-init-serves-control-cancel"
         }
       ]
     },
@@ -6376,6 +6392,14 @@
         {
           "kind": "theorem",
           "name": "fn-nls-obligations-figures-are-the-retention-figures"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-articles-left-is-zero-when-full"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nls-articles-left-is-at-most-the-transactions-left"
         }
       ]
     },
@@ -7246,15 +7270,23 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-init-decide-conservative-is-development-or-small"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-init-decide-largest-takes-scale-when-it-fits"
         },
         {
           "kind": "theorem",
           "name": "fn-heap-figure-octets-grows-with-history-and-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-is-a-friend-rung"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-holds-the-floor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits"
         }
       ]
     },
@@ -8040,6 +8072,10 @@
           "kind": "theorem",
           "name": "fn-peer-host-name-is-not-an-ipv4-literal",
           "note": "A name never parses as an IPv4 literal (RFC 1123 s2.1). Used by the dial keystone."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-redeem-done-only-on-281-after-the-password"
         }
       ]
     },
@@ -8061,10 +8097,6 @@
         {
           "kind": "theorem",
           "name": "fn-smid-recorded-store-opens-iff-same-filesystem"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-smid-moved-mount-point-is-refused-by-name"
         },
         {
           "kind": "theorem",
@@ -8105,6 +8137,26 @@
         {
           "kind": "theorem",
           "name": "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-same-fsid-view-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-other-filesystem-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-other-fsid-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-unreported-fsid-moved-mount-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-rebind-outside-opens-inside"
         }
       ]
     },

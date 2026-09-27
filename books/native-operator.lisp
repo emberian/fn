@@ -398,15 +398,30 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                    fn-nop-some-flag-wordp
                                    fn-native-admin-some-group-name-reservedp)))))
 
+;; PKT-708 (decided by the coordinator 2026-09-27): a mission's node files its
+;; readers' own cancels, so its `init' also serves control.cancel, the group
+;; a cancel is filed in (books/control-classify.lisp; RFC 5537 s5.3).  It is
+;; added after the groups named, once (a mission with no groups named and
+;; none by default, relay or archive, is still the usage error it was).  A plain `init' serves exactly the
+;; groups its operator names (fn-nop-parse-init-groups: no second owner of
+;; that choice).
+(defun fn-nop-with-cancel-group (words)
+  (declare (xargs :guard t))
+  (if (or (atom words) (member-equal "control.cancel" (true-list-fix words)))
+      (true-list-fix words)
+    (append (true-list-fix words) (list "control.cancel"))))
+
 ;  `init' under a configuration that names a mission (`[ops] mission'): the
 ; mission fixes the profile, so a profile word is a usage error, and with no
-; group named a small community serves its default pair.
+; group named a small community serves its default pair; either way it
+; serves control.cancel too (PKT-708).
 (defun fn-nop-parse-init (words config)
   (declare (xargs :guard t))
   (let ((mission (fn-native-config-ops-mission config)))
     (if (and mission (fn-native-mission-request mission))
         (let ((groups (fn-nop-parse-init-groups
-                       (if (consp words) words (fn-native-mission-default-groups mission))
+                       (fn-nop-with-cancel-group
+                        (if (consp words) words (fn-native-mission-default-groups mission)))
                        nil)))
           (cond ((fn-nop-some-flag-wordp words)
                  (fn-nop-usage :mission-fixes-profile "init" config words))
@@ -418,6 +433,69 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                   (list :init groups
                                         (fn-native-mission-request mission))))))
       (fn-nop-parse-init-plain words config))))
+
+;; The groups the parse answers are the words, in order.
+(local
+ (defthm fn-nop-member-of-ncfg-reverse-aux-acc
+   (implies (member-equal x acc)
+            (member-equal x (fn-ncfg-reverse-aux xs acc)))
+   :hints (("Goal" :induct (fn-ncfg-reverse-aux xs acc)))))
+
+(local
+ (defthm fn-nop-member-of-ncfg-reverse-aux-xs
+   (implies (member-equal x xs)
+            (member-equal x (fn-ncfg-reverse-aux xs acc)))
+   :hints (("Goal" :induct (fn-ncfg-reverse-aux xs acc)))))
+
+(local
+ (defthm fn-nop-parse-init-groups-keeps-its-words
+   (implies (and (or (member-equal x words) (member-equal x acc))
+                 (not (equal (fn-nop-parse-init-groups words acc) :bad)))
+            (member-equal x (fn-nop-parse-init-groups words acc)))))
+
+(local
+ (defthm fn-nop-with-cancel-group-has-it
+   (implies (consp words)
+            (member-equal "control.cancel" (fn-nop-with-cancel-group words)))))
+
+(local
+ (defthm fn-nop-with-cancel-group-of-an-atom
+   (implies (atom words)
+            (equal (fn-nop-with-cancel-group words) nil))))
+
+(local (in-theory (disable fn-nop-with-cancel-group)))
+
+(local
+ (defthm fn-nop-parse-with-cancel-keeps-it
+   (implies (not (equal (fn-nop-parse-init-groups (fn-nop-with-cancel-group w) nil)
+                        :bad))
+            (member-equal "control.cancel"
+                          (fn-nop-parse-init-groups (fn-nop-with-cancel-group w) nil)))
+   :hints (("Goal" :cases ((consp w))
+            :in-theory (disable fn-nop-parse-init-groups-keeps-its-words
+                                fn-nop-with-cancel-group-has-it)
+            :use ((:instance fn-nop-parse-init-groups-keeps-its-words
+                             (x "control.cancel")
+                             (words (fn-nop-with-cancel-group w)) (acc nil))
+                  (:instance fn-nop-with-cancel-group-has-it (words w)))))))
+
+;; KEYSTONE (PKT-708).  An accepted `init' under a mission serves
+;; control.cancel, so a reader's own cancel is filed there
+;; (fn-pa-filing-plan) with no `group create' first.  Host: host/native/
+;; operator.lisp's init arm runs this plan (`fn-native-operator-plan').
+(defthm fn-nop-mission-init-serves-control-cancel
+  (let ((result (fn-nop-parse-init words config)))
+    (implies (and (fn-native-config-ops-mission config)
+                  (fn-native-mission-request (fn-native-config-ops-mission config))
+                  (equal (fn-native-operator-result-status result) :accepted))
+             (member-equal "control.cancel" (cadr (nth 4 result)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nop-result fn-nop-refused fn-nop-usage
+                                   fn-native-operator-result-status)
+                                  (fn-native-mission-request
+                                   fn-native-mission-default-groups
+                                   fn-nop-some-flag-wordp
+                                   fn-native-admin-some-group-name-reservedp)))))
 
 ;  The developer image's `store ROOT init [PROFILE-FLAGS] [GROUP ...]'
 ; (host/native/io.lisp fnn-command-developer-init): the operator's profile

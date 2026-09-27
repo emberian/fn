@@ -27,11 +27,19 @@
 ;           f_mntfromname).
 ;
 ; Two identities name the same filesystem (`fn-smid-same-filesystemp') when
-; type and mount point agree and, where both fsids are known (nonzero), the
-; fsids agree; where either is unknown the source stands in for it.  The
-; source is not compared when both fsids are known because a loop device
-; number, or a /dev/sdX name, can change across a remount while the volume
-; is the same.
+; the types agree and, where both fsids are known (nonzero), the fsids agree;
+; where either is unknown the mount point and the source stand in for it.
+; Where both fsids are known neither the source nor the mount point is
+; compared: a loop device number, or a /dev/sdX name, can change across a
+; remount while the volume is the same, and the mount point is a property of
+; the viewer's mount namespace, not of the filesystem (PKT-706, the stranger
+; rehearsal of 2026-09-27).  The shipped systemd unit's ProtectSystem=strict
+; with ReadWritePaths=/var/lib/fn bind-mounts /var/lib/fn onto itself in the
+; service's namespace, so the service sees the store at a mount point
+; /var/lib/fn that `init', run outside the unit, recorded as `/'.  The
+; missing volume the record guards against still changes the fsid: the
+; directory underneath lives on the filesystem that holds the mount point,
+; whose fsid is another (`fn-smid-other-filesystem-is-refused-by-name').
 ;
 ; The host entries (host/store-host.lisp marshals nothing; host/native/io.lisp
 ; calls each directly through fnn-core):
@@ -138,10 +146,10 @@
 (defun fn-smid-same-filesystemp (recorded observed)
   (declare (xargs :guard t))
   (and (equal (fn-smid-fstype recorded) (fn-smid-fstype observed))
-       (equal (fn-smid-mount recorded) (fn-smid-mount observed))
        (if (or (fn-smid-zero-octetsp (fn-smid-fsid recorded))
                (fn-smid-zero-octetsp (fn-smid-fsid observed)))
-           (equal (fn-smid-source recorded) (fn-smid-source observed))
+           (and (equal (fn-smid-mount recorded) (fn-smid-mount observed))
+                (equal (fn-smid-source recorded) (fn-smid-source observed)))
          (equal (fn-smid-fsid recorded) (fn-smid-fsid observed)))))
 
 ; -----------------------------------------------------------------------------
@@ -812,18 +820,96 @@
                                       fn-smid-observed-identity
                                       fn-smid-observationp)))))
 
-; KEYSTONE (the missing mount).  When the store root now resolves under a
-; different mount point (its volume unmounted, the directory underneath
-; visible), the open is refused by name with both identities.
-(defthm fn-smid-moved-mount-point-is-refused-by-name
+;; The recorded identity's fields are the observation's.
+(local
+ (defthm fn-smid-fields-of-observed-record
+   (implies (fn-smid-observationp obs)
+            (and (equal (fn-smid-fsid (fn-smid-observed-record obs policy))
+                        (fn-smid-fsid (fn-smid-observed-identity obs)))
+                 (equal (fn-smid-fstype (fn-smid-observed-record obs policy))
+                        (fn-smid-fstype (fn-smid-observed-identity obs)))
+                 (equal (fn-smid-mount (fn-smid-observed-record obs policy))
+                        (fn-smid-mount (fn-smid-observed-identity obs)))
+                 (equal (fn-smid-source (fn-smid-observed-record obs policy))
+                        (fn-smid-source (fn-smid-observed-identity obs)))))
+   :hints (("Goal" :in-theory (enable fn-smid-observed-record
+                                      fn-smid-observed-identity
+                                      fn-smid-observationp)))))
+
+; KEYSTONE (PKT-706, the sandboxed view).  A store recorded from observation
+; OBS opens under OBS2 whenever both report the same nonzero fsid and the
+; same type, whatever mount point and source OBS2 shows: the shipped unit's
+; ReadWritePaths bind view of /var/lib/fn, recorded as `/' by an `init' or a
+; `store rebind-filesystem' run outside the unit, opens inside it.
+(defthm fn-smid-same-fsid-view-opens
   (implies (and (fn-smid-observationp obs2)
                 (equal (fn-smid-record-plan obs policy) (list :record protected))
-                (not (equal (nth 3 obs) (nth 3 obs2))))
+                (equal (fn-smid-fstype (fn-smid-observed-identity obs))
+                       (fn-smid-fstype (fn-smid-observed-identity obs2)))
+                (equal (fn-smid-fsid (fn-smid-observed-identity obs))
+                       (fn-smid-fsid (fn-smid-observed-identity obs2)))
+                (not (fn-smid-zero-octetsp
+                      (fn-smid-fsid (fn-smid-observed-identity obs2)))))
+           (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
+                  (list :open)))
+  :hints (("Goal" :in-theory (e/d (fn-smid-same-filesystemp)
+                                  (fn-smid-fsid fn-smid-fstype
+                                   fn-smid-mount fn-smid-source))
+           :use ((:instance fn-smid-recorded-store-opens-iff-same-filesystem)))))
+
+; KEYSTONE (the missing mount, another filesystem).  When the store root now
+; resolves onto another filesystem (its volume unmounted and the directory
+; underneath visible: another fsid, or, where an fsid is not reported,
+; another mount point or source), the open is refused by name with both
+; identities.
+(defthm fn-smid-other-filesystem-is-refused-by-name
+  (implies (and (fn-smid-observationp obs2)
+                (equal (fn-smid-record-plan obs policy) (list :record protected))
+                (not (fn-smid-same-filesystemp (fn-smid-observed-identity obs)
+                                               (fn-smid-observed-identity obs2))))
+           (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
+                  (list :refused :filesystem-changed
+                        (fn-smid-observed-record obs policy)
+                        (fn-smid-observed-identity obs2)))))
+
+; KEYSTONE (the missing mount where the fsid is known).  Known fsids that
+; differ are refused by name, whatever the mount point shows.
+(defthm fn-smid-other-fsid-is-refused-by-name
+  (implies (and (fn-smid-observationp obs2)
+                (equal (fn-smid-record-plan obs policy) (list :record protected))
+                (not (fn-smid-zero-octetsp
+                      (fn-smid-fsid (fn-smid-observed-identity obs))))
+                (not (fn-smid-zero-octetsp
+                      (fn-smid-fsid (fn-smid-observed-identity obs2))))
+                (not (equal (fn-smid-fsid (fn-smid-observed-identity obs))
+                            (fn-smid-fsid (fn-smid-observed-identity obs2)))))
            (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
                   (list :refused :filesystem-changed
                         (fn-smid-observed-record obs policy)
                         (fn-smid-observed-identity obs2))))
-  :hints (("Goal" :in-theory (enable fn-smid-same-filesystemp))))
+  :hints (("Goal" :in-theory (e/d (fn-smid-same-filesystemp)
+                                  (fn-smid-fsid fn-smid-fstype
+                                   fn-smid-mount fn-smid-source))
+           :use ((:instance fn-smid-other-filesystem-is-refused-by-name)))))
+
+; KEYSTONE (where no fsid is reported, the mount point still decides).  An
+; unreported fsid (OpenBSD's unprivileged zeros, Linux tmpfs before 6.7)
+; falls back to mount point and source: another mount point is refused.
+(defthm fn-smid-unreported-fsid-moved-mount-is-refused-by-name
+  (implies (and (fn-smid-observationp obs2)
+                (equal (fn-smid-record-plan obs policy) (list :record protected))
+                (fn-smid-zero-octetsp
+                 (fn-smid-fsid (fn-smid-observed-identity obs2)))
+                (not (equal (fn-smid-mount (fn-smid-observed-identity obs))
+                            (fn-smid-mount (fn-smid-observed-identity obs2)))))
+           (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
+                  (list :refused :filesystem-changed
+                        (fn-smid-observed-record obs policy)
+                        (fn-smid-observed-identity obs2))))
+  :hints (("Goal" :in-theory (e/d (fn-smid-same-filesystemp)
+                                  (fn-smid-fsid fn-smid-fstype
+                                   fn-smid-mount fn-smid-source))
+           :use ((:instance fn-smid-other-filesystem-is-refused-by-name)))))
 
 ; KEYSTONE (no record, no open).  A store root with no record is never
 ; opened: not by a first sight of its filesystem, not by any observation.
@@ -881,6 +967,29 @@
                                       fn-smid-recorded-store-opens-iff-same-filesystem)
            :use ((:instance fn-smid-recorded-store-opens-iff-same-filesystem
                             (obs2 obs)
+                            (policy (fn-smid-rebind-policy record requested)))))))
+
+;; KEYSTONE (PKT-706, the cure).  `store rebind-filesystem' run where the
+;; operator is (outside the unit, observation OBS) cures the open the unit's
+;; namespace makes (OBS2) whenever the two see one filesystem by its fsid:
+;; the remedy the refusal names is one that works.
+(defthm fn-smid-rebind-outside-opens-inside
+  (implies (and (equal (fn-smid-rebind-plan record obs requested)
+                       (list :record protected))
+                (fn-smid-observationp obs2)
+                (equal (fn-smid-fstype (fn-smid-observed-identity obs))
+                       (fn-smid-fstype (fn-smid-observed-identity obs2)))
+                (equal (fn-smid-fsid (fn-smid-observed-identity obs))
+                       (fn-smid-fsid (fn-smid-observed-identity obs2)))
+                (not (fn-smid-zero-octetsp
+                      (fn-smid-fsid (fn-smid-observed-identity obs2)))))
+           (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
+                  (list :open)))
+  :hints (("Goal" :in-theory (disable fn-smid-rebind-policy fn-smid-record-plan
+                                      fn-smid-open-verdict fn-smid-sealed
+                                      fn-smid-fsid fn-smid-fstype
+                                      fn-smid-same-fsid-view-opens)
+           :use ((:instance fn-smid-same-fsid-view-opens
                             (policy (fn-smid-rebind-policy record requested)))))))
 
 ; -----------------------------------------------------------------------------

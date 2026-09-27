@@ -8,7 +8,9 @@ reach safely. Words you may not know are in
 
 - A Linux machine (x86-64, with systemd) or an OpenBSD 7.9 machine (amd64).
 - On Linux: glibc 2.36 or later (Debian 12, Ubuntu 24.04 or newer) and
-  OpenSSL 3.0 or later. On OpenBSD, nothing extra.
+  OpenSSL 3.0 or later. A minimal Debian 12 lacks three packages the steps
+  below use: `apt install libssl3 openssl sudo`. On OpenBSD, nothing
+  extra.
 - Root access, for the install and the service.
 - A disk that really saves data when asked. Read
   [storage](operator.md#1-choose-the-disk-for-the-store) before you begin.
@@ -29,15 +31,16 @@ tar -xzf fn-6.7.N-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
-As root, on OpenBSD, unpack under `/usr/local` (not `/tmp` or `/root`:
-the installer runs the unpacked copy, and there it halts with
-`RWX mmap not supported`):
+As root, on OpenBSD:
 
 ```sh
 sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
 mkdir -p /usr/local/src && tar -xzf fn-6.7.N-openbsd-amd64.tar.gz -C /usr/local/src
 sh /usr/local/src/fn/install.sh
 ```
+
+Unpack under `/usr/local`: the installer runs fn once, and OpenBSD lets it
+run only from a file system mounted `wxallowed`.
 
 You will see the version, like `fn 6.7.N (REV)`. The installer:
 
@@ -70,8 +73,11 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
 1. Open a shell as the service account, in the node folder:
 
    ```sh
-   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'   # OpenBSD: su -s /bin/sh _fn (doas is off by default)
+   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'
    ```
+
+   On OpenBSD (no `doas` is set up on a fresh system):
+   `su -s /bin/sh _fn -c 'cd /var/fn && PATH=/usr/local/fn/bin:$PATH exec sh'`.
 
 2. Write the settings file. Put your server's own address after `--host`
    (`0.0.0.0` is refused: name the address you mean) and the port after
@@ -82,7 +88,11 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    ```
 
    `small-community` means: logins are required, only over an encrypted
-   connection, and the groups `local.general` and `local.test` are served.
+   connection, and the groups `local.general` and `local.test` are served,
+   with `control.cancel`, where readers' own cancels go.
+
+   On OpenBSD the service runs as `_fn`, which cannot use a port below
+   1024. Use a port like `11563` there.
 
 3. Give the node a TLS certificate. Copy one you have (for example from
    Let's Encrypt) to `tls/cert.pem` and `tls/key.pem`, with the key at mode
@@ -102,7 +112,8 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    fn operator /var/lib/fn/fn.toml principal set-password alice --posting
    ```
 
-   `init` also makes the node's secret key file. The node's name
+   `init` also makes the node's secret key file, and sizes the store for
+   this machine. It prints how much memory it will use. The node's name
    (`path-identity`) should be its public host name.
 
 5. Leave the account's shell. As root, start the service:
@@ -118,7 +129,8 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    fn operator /var/lib/fn/fn.toml health
    ```
 
-   `status` shows the store's figures and whether the node is serving.
+   `status` shows the store's figures. Its line `capacity articles-left=N`
+   says about how many more posts fit.
    `health` prints one line per possible problem. Every line should say
    `clear`. If not, see [the table below](#when-the-node-refuses-something).
 
@@ -137,15 +149,24 @@ service. See [newsreaders](human-web-client.md).
 ## 3. Friends and accounts
 
 - To connect your node with a friend's node, follow
-  [Peering with a friend](peering-with-a-friend.md).
+  [Peering with a friend](peering-with-a-friend.md). Do all of it: after
+  its step 2 the link is set up but carries nothing. Its step 3
+  ([the feed, both ways](peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways))
+  starts the articles flowing.
 - To give a person an account, make an invitation code. It is shown once:
 
   ```sh
   fn operator /var/lib/fn/fn.toml account invite --expires 86400
   ```
 
-  The person uses it once, over TLS, to choose a login and password. See
-  [accounts](operator.md#accounts-and-invitation-codes).
+  The person uses it once to choose a login and password, with fn's own
+  command on their machine (it asks for the password):
+
+  ```sh
+  fn redeem news.example.org CODE carol --cafile cert.pem
+  ```
+
+  See [accounts](operator.md#accounts-and-invitation-codes).
 
 ## 4. Reinstalling
 
@@ -186,7 +207,8 @@ the old store do you move the data through an export:
    ```
 
    The export does not carry them (see
-   [the node's secret](operator.md#the-nodes-secret-key)).
+   [the node's secret](operator.md#the-nodes-secret-key)). Do not make a
+   new secret instead: it breaks cancels of earlier posts.
 
 An export is **not a backup**. It holds the store's history only. It leaves
 out the TLS keys, passwords, the node's secret keys, peer queues and program
@@ -222,7 +244,7 @@ tables are made from fn's own code, so they list every word it can print.
 | 23 | `space-pressure` | the store is nearly full. `capacity` says which part; release what is held, or move to larger settings |
 | 24 | `no-route` | articles wait to be forwarded and no BP route is set |
 | 25 | `stranded-transfer` | a peer kept refusing an article and fn stopped offering it. Fix the peer |
-| 26 | `unavailable-peer` | a peer has articles waiting and is not connected. Check its address and port (`peer list`) and that it is running |
+| 26 | `unavailable-peer` | a peer has articles waiting and is not connected, or keeps saying "try later" (its store may be full: `deferred=N`). Check its address and port (`peer list`), that it is running, and ask its operator |
 | 27 | `receipt-debt` | articles were forwarded and wait for the receipts that confirm them |
 
 When fn refuses a post, the reply starts `441` and the log line starts `refused` and names the reason:

@@ -2217,7 +2217,7 @@
         "The same on the image before the article gate (bbf52159)."
       ],
       "expected": [
-        "The first POST answers 240; the second 441 posting failed; the store has no capacity for this article (the owner's :unaffordable from fn-sbud-article-budget-for), with one transaction file of 148 613 octets.",
+        "The first POST answers 240; the second 441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it (the owner's :unaffordable from fn-sbud-article-budget-for), with one transaction file of 148 613 octets.",
         "The reopen succeeds (recovered transactions=1, exit 0).",
         "Before the gate both POSTs answer 240, 297 226 record octets are committed past H, and every reopen refuses: transaction recovery input exceeds configured bound (exit 4)."
       ],

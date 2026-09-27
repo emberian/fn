@@ -182,8 +182,8 @@
 ;; -----------------------------------------------------------------------------
 ; `init' (PKT-582 in gpt-6's wave-5 shape): the budget is the least of the
 ; physical memory less the OS's reserve (a quarter, at least 512 MiB), each
-; limit and FN_INIT_BUDGET_MB; a capacity-free request takes development when
-; the budget holds it, else small (conservative), or scale, development,
+; limit and FN_INIT_BUDGET_MB; a capacity-free request takes the largest
+; friend rung the budget holds, else small (conservative, PKT-707), or scale, development,
 ; small under FN_INIT_SIZING=largest; any other request is written as named,
 ; the line saying whether the budget holds it.  hbox (123 GiB): development,
 ; budget 94,464 MB; largest: scale.  Under MemoryMax=2G: small.  A 2 GiB
@@ -204,13 +204,16 @@
 (assert! (equal (fn-heap-small-candidate *hrt-bare*) *fn-heap-small-request*))
 (assert! (equal (fn-heap-os-reserve-octets (* 2 *hrt-gib*)) (* 512 *fn-heap-mib*)))
 (assert! (equal (fn-heap-os-reserve-octets *hrt-hbox*) (floor *hrt-hbox* 4)))
+(defconst *hrt-top* '(:development ((2 . 131072) (3 . 67108864) (4 . 196608)
+                                      (6 . 16) (8 . 128))))
+(assert! (equal (fn-heap-friend-candidate *hrt-bare* 67108864) *hrt-top*))
 (assert! (equal (hrt-init *hrt-bare* *hrt-hbox* nil)
-                '(:init (:development nil) "development" 2969 94464 :conservative t)))
+                (list :init *hrt-top* "custom" 5220 94464 :conservative t)))
 (assert! (equal (hrt-init *hrt-bare* *hrt-hbox* nil nil *hrt-largest*)
                 '(:init (:scale nil) "scale" 55049 94464 :largest t)))
 (assert! (equal (car (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*)) :init))
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*))
-                *fn-heap-small-request*))
+                (fn-heap-friend-candidate *hrt-bare* 16777216)))
 (assert! (equal (hrt-init *hrt-bare* (* 2 *hrt-gib*) nil)
                 (list :init *fn-heap-small-request* "small" 1300 1536 :conservative t)))
 ; FN_INIT_BUDGET_MB=4096 on hbox: development, within 4,096 MB.
@@ -221,13 +224,13 @@
 ; capacity with them under 2 GiB, refused under 1 GiB, never a lower article
 ; bound.
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-mission* *hrt-hbox* nil))
-                '(:development ((5 . 1048576) (6 . 8)))))
+                (fn-heap-friend-candidate *hrt-mission* 67108864)))
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-mission* *hrt-hbox* *hrt-2g*))
-                (fn-heap-small-candidate *hrt-mission*)))
+                (fn-heap-friend-candidate *hrt-mission* 16777216)))
 (assert! (equal (fn-bs-profile-max-article-octets
                  (fn-bs-profile-resolve (fn-heap-small-candidate *hrt-mission*) nil))
                 1048576))
-(assert! (equal (nth 3 (hrt-init *hrt-mission* *hrt-hbox* *hrt-2g*)) 1327))
+(assert! (equal (nth 3 (hrt-init *hrt-mission* *hrt-hbox* *hrt-2g*)) 1887))
 (assert! (equal (hrt-init *hrt-mission* *hrt-hbox* *hrt-1g*)
                 '(:refused :init-budget-cannot-hold-profile 1327 1024 "custom"
                            :conservative)))
@@ -382,13 +385,12 @@
                          :init))
 (hrt-held-without (fn-heap-machine-sized-requestp request))
 
-; conservative-is-development-or-small: reachable on hbox (development) and
-; under 2 GiB (small); with FN_INIT_SIZING=largest on hbox the request is
-; scale, which is neither: the sizing hypothesis (NIL) is what excludes it.
+; conservative-is-a-friend-rung: with FN_INIT_SIZING=largest on hbox the
+; request is scale, which is no rung: the sizing hypothesis (NIL) is what
+; excludes it.
 (assert! (not (member-equal (fn-heap-init-decision-request
                              (hrt-init *hrt-bare* *hrt-hbox* nil nil *hrt-largest*))
-                            (list '(:development nil)
-                                  (fn-heap-small-candidate *hrt-bare*)))))
+                            (fn-heap-friend-ladder *hrt-bare* *fn-heap-friend-rungs*))))
 (must-fail
  (defthm hrt-conservative-without-the-sizing
    (let ((d (fn-heap-init-decide request core nursery physical limits
@@ -396,11 +398,11 @@
      (implies (and (fn-heap-machine-sized-requestp request)
                    (equal (car d) :init))
               (member-equal (fn-heap-init-decision-request d)
-                            (list (list :development (cadr (true-list-fix request)))
-                                  (fn-heap-small-candidate request)))))
+                            (fn-heap-friend-ladder request *fn-heap-friend-rungs*))))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
                                 fn-heap-small-candidate fn-heap-reserve-init-choose
+                                fn-heap-friend-candidate
                                 fn-heap-init-reservation-octets fn-heap-machine-octets
                                 fn-heap-init-observations fn-heap-init-explicit-budget
                                 fn-heap-profile-word fn-heap-mb-of
@@ -434,3 +436,145 @@
 (assert! (equal (fn-heap-reserve-run-connections (+ 1 *fn-cbor-max-uint*)) 32))
 (assert! (equal (fn-heap-reserve-run-connections 5) 5))
 (assert! (equal (fn-heap-reserve-run-connections nil) 0))
+
+;; -----------------------------------------------------------------------------
+;; PKT-707 keystones' teeth.
+;; fn-heap-init-decide-conservative-is-a-friend-rung: the witness (hbox, the
+;; top rung) and the hypothesis: an operator's request is written as named,
+;; which is no rung.
+(assert! (member-equal (fn-heap-init-decision-request (hrt-init *hrt-mission* *hrt-hbox* nil))
+                       (fn-heap-friend-ladder *hrt-mission* *fn-heap-friend-rungs*)))
+(assert! (equal (car (hrt-init '(:development nil) *hrt-hbox* nil)) :init))
+(assert! (not (member-equal (fn-heap-init-decision-request
+                             (hrt-init '(:development nil) *hrt-hbox* nil))
+                            (fn-heap-friend-ladder '(:development nil)
+                                                   *fn-heap-friend-rungs*))))
+(must-fail
+ (defthm hrt-rung-without-machine-sized
+   (let ((d (fn-heap-init-decide request core nursery physical limits
+                                 budget-octets nil)))
+     (implies (equal (car d) :init)
+              (member-equal (fn-heap-init-decision-request d)
+                            (fn-heap-friend-ladder request *fn-heap-friend-rungs*))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
+                                fn-heap-small-candidate fn-heap-reserve-init-choose
+                                fn-heap-friend-candidate
+                                fn-heap-init-reservation-octets fn-heap-machine-octets
+                                fn-heap-init-observations fn-heap-init-explicit-budget
+                                fn-heap-profile-word fn-heap-mb-of
+                                fn-heap-machine-sized-requestp)))))
+;; fn-heap-init-decide-conservative-holds-the-floor: the witnesses (the top
+;; rung on hbox, the floor on 2 GiB), and each hypothesis.
+(assert! (equal (fn-heap-request-transactions (fn-heap-init-decision-request
+                                               (hrt-init *hrt-mission* *hrt-hbox* nil)))
+                131072))
+(assert! (equal (fn-heap-request-history (fn-heap-init-decision-request
+                                          (hrt-init *hrt-mission* *hrt-hbox* nil)))
+                67108864))
+(assert! (equal (fn-heap-request-transactions (fn-heap-init-decision-request
+                                               (hrt-init *hrt-bare* (* 2 *hrt-gib*) nil)))
+                16384))
+(assert! (equal (fn-bs-profile-max-transactions
+                 (fn-bs-profile-resolve (fn-heap-init-decision-request
+                                         (hrt-init *hrt-mission* *hrt-hbox* nil)) nil))
+                131072))
+;; Without the machine-sized request: development as named, 128 transactions.
+(assert! (< (fn-heap-request-transactions (fn-heap-init-decision-request
+                                           (hrt-init '(:development nil) *hrt-hbox* nil)))
+            16384))
+(must-fail
+ (defthm hrt-floor-without-machine-sized
+   (let ((d (fn-heap-init-decide request core nursery physical limits
+                                 budget-octets nil)))
+     (implies (equal (car d) :init)
+              (<= 16384 (fn-heap-request-transactions
+                         (fn-heap-init-decision-request d)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
+                                fn-heap-small-candidate fn-heap-reserve-init-choose
+                                fn-heap-friend-candidate
+                                fn-heap-init-reservation-octets fn-heap-machine-octets
+                                fn-heap-init-observations fn-heap-init-explicit-budget
+                                fn-heap-profile-word fn-heap-mb-of
+                                fn-heap-machine-sized-requestp)))))
+;; Without acceptance: a refused init writes no request.
+(assert! (equal (fn-heap-request-transactions (fn-heap-init-decision-request
+                                               (hrt-init *hrt-mission* *hrt-hbox* *hrt-1g*)))
+                0))
+(must-fail
+ (defthm hrt-floor-without-init
+   (let ((d (fn-heap-init-decide request core nursery physical limits
+                                 budget-octets nil)))
+     (implies (fn-heap-machine-sized-requestp request)
+              (<= 16384 (fn-heap-request-transactions
+                         (fn-heap-init-decision-request d)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
+                                fn-heap-small-candidate fn-heap-reserve-init-choose
+                                fn-heap-friend-candidate
+                                fn-heap-init-reservation-octets fn-heap-machine-octets
+                                fn-heap-init-observations fn-heap-init-explicit-budget
+                                fn-heap-profile-word fn-heap-mb-of
+                                fn-heap-machine-sized-requestp)))))
+;; fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits: the
+;; witness is hbox's; without the fit (2 GiB) another rung is written.
+(assert! (not (equal (fn-heap-init-decision-request (hrt-init *hrt-mission* *hrt-hbox* *hrt-2g*))
+                     (fn-heap-friend-candidate *hrt-mission* 67108864))))
+(must-fail
+ (defthm hrt-top-without-fit
+   (implies (and (fn-heap-machine-sized-requestp request)
+                 (not (equal (fn-heap-init-explicit-budget budget-octets) :bad)))
+            (equal (fn-heap-init-decision-request
+                    (fn-heap-init-decide request core nursery physical limits
+                                         budget-octets nil))
+                   (fn-heap-friend-candidate request 67108864)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
+                                fn-heap-small-candidate fn-heap-reserve-init-choose
+                                fn-heap-friend-candidate
+                                fn-heap-init-reservation-octets fn-heap-machine-octets
+                                fn-heap-init-observations fn-heap-init-explicit-budget
+                                fn-heap-profile-word fn-heap-mb-of
+                                fn-heap-machine-sized-requestp)))))
+;; Without a usable budget word: refused.
+(assert! (equal (car (hrt-init *hrt-mission* *hrt-hbox* nil '(120))) :refused))
+(must-fail
+ (defthm hrt-top-without-budget
+   (implies (and (fn-heap-machine-sized-requestp request)
+                 (fn-heap-reserve-acceptsp
+                  (fn-heap-friend-candidate request 67108864) core nursery
+                  (fn-heap-init-observations physical limits
+                                             (fn-heap-init-explicit-budget budget-octets))))
+            (equal (fn-heap-init-decision-request
+                    (fn-heap-init-decide request core nursery physical limits
+                                         budget-octets nil))
+                   (fn-heap-friend-candidate request 67108864)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
+                                fn-heap-small-candidate fn-heap-reserve-init-choose
+                                fn-heap-friend-candidate
+                                fn-heap-init-reservation-octets fn-heap-machine-octets
+                                fn-heap-init-observations fn-heap-init-explicit-budget
+                                fn-heap-profile-word fn-heap-mb-of
+                                fn-heap-machine-sized-requestp)))))
+;; Without the machine-sized request: the operator's own is written.
+(must-fail
+ (defthm hrt-top-without-machine-sized
+   (implies (and (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
+                 (fn-heap-reserve-acceptsp
+                  (fn-heap-friend-candidate request 67108864) core nursery
+                  (fn-heap-init-observations physical limits
+                                             (fn-heap-init-explicit-budget budget-octets))))
+            (equal (fn-heap-init-decision-request
+                    (fn-heap-init-decide request core nursery physical limits
+                                         budget-octets nil))
+                   (fn-heap-friend-candidate request 67108864)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
+                                fn-heap-small-candidate fn-heap-reserve-init-choose
+                                fn-heap-friend-candidate
+                                fn-heap-init-reservation-octets fn-heap-machine-octets
+                                fn-heap-init-observations fn-heap-init-explicit-budget
+                                fn-heap-profile-word fn-heap-mb-of
+                                fn-heap-machine-sized-requestp)))))

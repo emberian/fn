@@ -271,8 +271,10 @@
 ; reservation judged against it (fn-heap-reserve-decide), not beside it.
 ;
 ; THE CHOICE.  A capacity-free request (conservative sizing, the default)
-; takes the development preset when the budget holds its whole reservation,
-; else the small candidate; never scale.  FN_INIT_SIZING=largest takes the
+; takes the largest friend rung the budget holds (64, 32 or 16 MiB of
+; history, transactions one per 512 octets of it), else the small floor (8
+; MiB, 16,384 transactions), refused by name when the budget holds not even
+; that; never development's 128 transactions (PKT-707), never scale.  FN_INIT_SIZING=largest takes the
 ; first of scale, development and small the budget holds.  Either way the
 ; request's own fields (a mission's article bound and groups per article)
 ; are laid over the preset and never lowered: when no candidate holds them
@@ -310,21 +312,49 @@
                           default))
     default))
 
-; The small preset under the request's fields, R raised to the article
-; record the candidate's A (the request's, else the development base's
-; 32,768) and G (the request's, else 16) need (fn-bs-profile-invalid-reason's
-; :max-record-octets-below-the-article-record).  The request's fields come
-; last, so they are the ones set.
-(defun fn-heap-small-candidate (request)
+;; A friend-sized rung (PKT-707, decided by the coordinator 2026-09-27): the
+;; development base with history bound H, transaction slots H / 512 (a slot
+;; for every 512 octets of history, so for articles of the sizes people post
+;; the history binds first), and R raised to the article record the
+;; candidate's A (the request's, else the development base's 32,768) and G
+;; (the request's, else 16) need (fn-bs-profile-invalid-reason's
+;; :max-record-octets-below-the-article-record).  The request's fields come
+;; last, so they are the ones set.
+(defun fn-heap-friend-candidate (request h)
   (declare (xargs :guard t))
   (let* ((fields (cadr (true-list-fix request)))
          (a (fn-heap-field-or 5 fields 32768))
          (g (fn-heap-field-or 6 fields 16))
          (r (max 196608 (nfix (fn-record-encoded-octets-ceiling a g)))))
     (list :development
-          (append (list (cons 2 16384) (cons 3 8388608) (cons 4 r)
+          (append (list (cons 2 (floor (nfix h) 512)) (cons 3 (nfix h)) (cons 4 r)
                         (cons 6 16) (cons 8 128))
                   (true-list-fix fields)))))
+
+;; The floor: 8 MiB of history and 16,384 transactions, the `small' profile.
+(defconst *fn-heap-friend-floor-history* 8388608)
+(defconst *fn-heap-friend-floor-transactions* 16384)
+
+(defun fn-heap-small-candidate (request)
+  (declare (xargs :guard t))
+  (fn-heap-friend-candidate request *fn-heap-friend-floor-history*))
+
+;; The rungs a capacity-free `init' (every mission, and a bare init) tries,
+;; largest first: 64, 32 and 16 MiB of history, then the floor.  Measured by
+;; the stranger rehearsal (2026-09-27): a short post with its headers is a
+;; record of about 860 octets, so the floor holds about 9,700 such posts and
+;; the top rung about 78,000, and a feed from a friend spends the same
+;; history.  Reservations (hbox's core, the default mission): about 1.3 GB at
+;; the floor and 104 MB for each further MiB of history (the list model's 32
+;; octets per octet of history, and the capture buffer).
+(defconst *fn-heap-friend-rungs* '(67108864 33554432 16777216))
+
+(defun fn-heap-friend-ladder (request rungs)
+  (declare (xargs :guard t))
+  (if (consp rungs)
+      (cons (fn-heap-friend-candidate request (car rungs))
+            (fn-heap-friend-ladder request (cdr rungs)))
+    (list (fn-heap-small-candidate request))))
 
 ; The connections `init' judges a store by: the configuration's default
 ; max-connections, which the heap probe also passes for `init' so that the
@@ -448,7 +478,7 @@
     (if (equal sizing :largest)
         (list (list :scale fields) (list :development fields)
               (fn-heap-small-candidate request))
-      (list (list :development fields) (fn-heap-small-candidate request)))))
+      (fn-heap-friend-ladder request *fn-heap-friend-rungs*))))
 
 ; The request init writes, before the budget is checked: the operator's, or
 ; for a capacity-free request the first candidate the budget holds (else the
@@ -747,22 +777,21 @@
                                       fn-heap-mb-of
                                       fn-heap-machine-sized-requestp))))
 
-; Conservative sizing (FN_INIT_SIZING unset) writes development or the small
-; candidate, each with the request's own fields laid last, never scale; and
-; development whenever the budget holds it.
-(defthm fn-heap-init-decide-conservative-is-development-or-small
+;; Conservative sizing (FN_INIT_SIZING unset: every mission's init and a bare
+;; init) writes one of the friend rungs, each with the request's own fields
+;; laid last: never development's 128 transactions (PKT-707), never scale.
+(defthm fn-heap-init-decide-conservative-is-a-friend-rung
   (let ((d (fn-heap-init-decide request core nursery physical limits
-                                budget-octets nil))
-        (fields (cadr (true-list-fix request))))
+                                budget-octets nil)))
     (implies (and (fn-heap-machine-sized-requestp request)
                   (equal (car d) :init))
              (and (member-equal (fn-heap-init-decision-request d)
-                                (list (list :development fields)
-                                      (fn-heap-small-candidate request)))
+                                (fn-heap-friend-ladder request *fn-heap-friend-rungs*))
                   (equal (nth 5 d) :conservative))))
   :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
                                       fn-bs-profile-resolve
                                       fn-heap-small-candidate
+                                      fn-heap-friend-candidate
                                       fn-heap-reserve-init-choose
                                       fn-heap-init-reservation-octets
                                       fn-heap-machine-octets
@@ -779,30 +808,98 @@
                                            (fn-heap-init-explicit-budget
                                             budget-octets))))))))
 
-(defthm fn-heap-init-decide-conservative-takes-development-when-it-fits
+(local
+ (defthm fn-heap-field-or-of-append
+   (equal (fn-heap-field-or key (append f1 f2) d)
+          (fn-heap-field-or key f2 (fn-heap-field-or key f1 d)))))
+
+(local
+ (defthm fn-heap-field-or-of-capacity-free
+   (implies (and (fn-heap-capacity-free-fieldsp f)
+                 (member-equal key '(2 3 4)))
+            (equal (fn-heap-field-or key f d) d))))
+
+(local
+ (defthm fn-heap-field-or-of-true-list-fix
+   (equal (fn-heap-field-or key (true-list-fix f) d)
+          (fn-heap-field-or key f d))))
+
+(local
+ (defthm fn-heap-capacity-free-of-true-list-fix
+   (equal (fn-heap-capacity-free-fieldsp (true-list-fix f))
+          (fn-heap-capacity-free-fieldsp f))))
+
+;; The transaction slots and the history bound a request's field list sets.
+(defun fn-heap-request-transactions (request)
+  (declare (xargs :guard t))
+  (fn-heap-field-or 2 (cadr (true-list-fix request)) 0))
+
+(defun fn-heap-request-history (request)
+  (declare (xargs :guard t))
+  (fn-heap-field-or 3 (cadr (true-list-fix request)) 0))
+
+(local
+ (defthm fn-heap-friend-candidate-sets
+   (implies (fn-heap-capacity-free-fieldsp (cadr (true-list-fix request)))
+            (and (equal (fn-heap-request-transactions
+                         (fn-heap-friend-candidate request h))
+                        (floor (nfix h) 512))
+                 (equal (fn-heap-request-history
+                         (fn-heap-friend-candidate request h))
+                        (nfix h))))))
+
+(local (in-theory (disable fn-heap-request-transactions fn-heap-request-history
+                           fn-heap-friend-candidate)))
+
+(local
+ (defthm fn-heap-friend-ladder-holds-the-floor
+   (implies (and (fn-heap-capacity-free-fieldsp (cadr (true-list-fix request)))
+                 (member-equal c (fn-heap-friend-ladder request
+                                                        *fn-heap-friend-rungs*)))
+            (and (<= *fn-heap-friend-floor-transactions*
+                     (fn-heap-request-transactions c))
+                 (<= *fn-heap-friend-floor-history*
+                     (fn-heap-request-history c))))))
+
+;; KEYSTONE (PKT-707, the floor).  Whenever `init' accepts a capacity-free
+;; request under conservative sizing (every mission), the request it writes
+;; sets at least 16,384 transaction slots and 8 MiB of history: never the
+;; 128 transactions a friend's node filled after about 125 posts.  With
+;; fn-heap-init-decide-fits-the-budget-and-the-machine, that capacity is
+;; within the budget; when the budget cannot hold the floor, `init' is
+;; refused by name (fn-heap-init-decide-sized-init-is-held and the
+;; :init-budget-cannot-hold-profile arm).
+(defthm fn-heap-init-decide-conservative-holds-the-floor
+  (let ((d (fn-heap-init-decide request core nursery physical limits
+                                budget-octets nil)))
+    (implies (and (fn-heap-machine-sized-requestp request)
+                  (equal (car d) :init))
+             (and (<= *fn-heap-friend-floor-transactions*
+                      (fn-heap-request-transactions
+                       (fn-heap-init-decision-request d)))
+                  (<= *fn-heap-friend-floor-history*
+                      (fn-heap-request-history
+                       (fn-heap-init-decision-request d))))))
+  :hints (("Goal" :in-theory (e/d (fn-heap-machine-sized-requestp)
+                                  (fn-heap-init-decide
+                                   fn-heap-init-decision-request
+                                   fn-heap-init-decide-conservative-is-a-friend-rung))
+           :use ((:instance fn-heap-init-decide-conservative-is-a-friend-rung)))))
+
+;; KEYSTONE (the largest rung the budget holds).  Under conservative sizing
+;; the top rung is written whenever the budget holds it.
+(defthm fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits
   (implies (and (fn-heap-machine-sized-requestp request)
                 (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
                 (fn-heap-reserve-acceptsp
-                 (list :development (cadr (true-list-fix request))) core nursery
+                 (fn-heap-friend-candidate request (car *fn-heap-friend-rungs*))
+                 core nursery
                  (fn-heap-init-observations physical limits
                                             (fn-heap-init-explicit-budget budget-octets))))
-           (equal (fn-heap-init-decide request core nursery physical limits
-                                       budget-octets nil)
-                  (list :init (list :development (cadr (true-list-fix request)))
-                        (fn-heap-profile-word
-                         (fn-bs-profile-resolve
-                          (list :development (cadr (true-list-fix request))) nil))
-                        (fn-heap-mb-of
-                         (fn-heap-init-reservation-octets
-                          (fn-bs-profile-resolve
-                           (list :development (cadr (true-list-fix request))) nil)
-                          core nursery))
-                        (floor (fn-heap-machine-octets
-                                (fn-heap-init-observations
-                                 physical limits
-                                 (fn-heap-init-explicit-budget budget-octets)))
-                               *fn-heap-mib*)
-                        :conservative t)))
+           (equal (fn-heap-init-decision-request
+                   (fn-heap-init-decide request core nursery physical limits
+                                        budget-octets nil))
+                  (fn-heap-friend-candidate request (car *fn-heap-friend-rungs*))))
   :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
                                       fn-bs-profile-resolve
                                       fn-heap-init-reservation-octets
