@@ -7967,7 +7967,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ccco-event-fields-are-the-dispatchers"
+          "name": "fn-event-fields-of-wire-is-the-dispatchers"
         },
         {
           "kind": "theorem",
@@ -8320,6 +8320,22 @@
         {
           "kind": "theorem",
           "name": "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-poll-over-delivers-only-readable-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-poll-over-is-poll-unless-a-held-row"
         }
       ]
     },
@@ -8966,6 +8982,14 @@
         {
           "kind": "theorem",
           "name": "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-step-over-is-step-unless-a-held-row"
         }
       ]
     },
@@ -9022,7 +9046,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rii-event-fields-are-the-dispatchers"
+          "name": "fn-event-fields-of-rows-is-the-dispatchers"
         },
         {
           "kind": "theorem",
