@@ -115,6 +115,13 @@
 (make-event `(defconst *slst-t1* ',(slst-text *slst-seg1*)))
 (make-event `(defconst *slst-t2* ',(slst-text *slst-seg2*)))
 (defconst *slst-prefix* (list *slst-r1* *slst-r2*))
+; The host's string classifier is the model's (fn-lgs-chain-broken-string-p-
+; is-the-model), at the honest and the stale segment.
+(make-event `(defconst *slst-t-stale2* ',(slst-text *slst-stale2*)))
+(assert-event (not (fn-lgs-chain-broken-string-p *slst-t1* *slst-g0* *slst-unit* *slst-max*)))
+(assert-event (not (fn-lgs-chain-broken-string-p *slst-t2* *slst-g1* *slst-unit* *slst-max*)))
+(assert-event (fn-lgs-chain-broken-string-p *slst-t-stale2* *slst-g1* *slst-unit* *slst-max*))
+(assert-event (fn-lgs-octets-of (list *slst-t1* *slst-t2*)))
 (assert-event (equal (fn-lgs-octets-of (list *slst-t1* *slst-t2*)) (list *slst-seg1* *slst-seg2*)))
 (assert-event
  (and (equal *slst-prefix* (fn-lgs-open-chain-records (list *slst-t1*) *slst-g0* *slst-unit* *slst-max*))

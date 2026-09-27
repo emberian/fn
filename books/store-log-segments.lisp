@@ -177,10 +177,52 @@
     (and (fn-lg-entry-okp slice (fn-lgs-claimed-prev slice max) max)
          (not (equal (fn-lgs-claimed-prev slice max) last)))))
 
-; The host's string form (the segment as fn-lg-decode reads it).
+; The host's string form (the segment as fn-lg-decode reads it; host/native/
+; io.lisp fnn-log-open-kernel and fnn-log-scan-segments).  D27: no octet list
+; of the segment is built unless the octet at the scan's stop is not zero --
+; a zero there starts no frame, so the model's answer is NIL
+; (fn-lgs-chain-broken-string-p-is-the-model) -- which on a segment the
+; rotation and the recovery left is never the case but for a splice or a torn
+; tail's first damaged unit.
+(local (defthm fn-lgs-len-codes (equal (len (fn-lgd-codes x)) (len x))))
+(local (defthm fn-lgs-nth-codes
+  (implies (< (nfix i) (len x))
+           (equal (nth i (fn-lgd-codes x)) (char-code (nth i x))))))
+(local (defthm fn-lgs-car-nthcdr (equal (car (nthcdr n x)) (nth n x))))
+(local (defthm fn-lgs-slice-of-zero
+  (implies (equal (car x) 0) (not (fn-lg-slice x)))
+  :hints (("Goal" :in-theory (enable fn-lg-slice fn-lg-declared-len fn-bs-take)))))
+(local (defthm fn-lgs-nthcdr-past-end
+  (implies (and (natp n) (<= (len x) n)) (not (consp (nthcdr n x))))))
+(local (defthm fn-lgs-slice-of-atom
+  (implies (not (consp x)) (not (fn-lg-slice x)))
+  :hints (("Goal" :in-theory (enable fn-lg-slice fn-lg-declared-len)))))
+(local (defthm fn-lgs-open-kernel-frontier
+  (equal (fn-lgk-frontier (fn-lg-open-kernel s prev unit max floor))
+         (nfix (cdr (fn-lg-scan (fn-lgd-octets s) prev unit max))))
+  :hints (("Goal" :in-theory (e/d (fn-lgt-recover fn-lgk-recover fn-lgk-make fn-lgk-frontier)
+                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last fn-lgd-octets))))))
+
+(local
+ (defthm fn-lgs-car-nthcdr-codes-of-null
+   (implies (equal (nth n x) (code-char 0))
+            (equal (car (nthcdr n (fn-lgd-codes x))) 0))
+   :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nth nthcdr)))))
+
 (defun fn-lgs-chain-broken-string-p (s prev unit max)
   (declare (xargs :guard (stringp s) :verify-guards nil))
-  (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max))
+  (let ((stop (fn-lgk-frontier (fn-lg-open-kernel s prev unit max 1))))
+    (and (< stop (length s))
+         (not (equal (char s stop) (code-char 0)))
+         (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max))))
+
+(defthm fn-lgs-chain-broken-string-p-is-the-model
+  (implies (stringp s)
+           (equal (fn-lgs-chain-broken-string-p s prev unit max)
+                  (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max)))
+  :hints (("Goal" :in-theory (e/d (fn-lgd-octets)
+                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last fn-lg-entry-okp
+                                   fn-lgs-claimed-prev fn-lg-slice nth nthcdr)))))
 
 ; -----------------------------------------------------------------------------
 ; The chain over several segments.
@@ -374,7 +416,10 @@
                                             (fn-lgs-open-chain-last covered genesis unit max)
                                             unit max)))
   :hints (("Goal" :induct (fn-lgs-open-chain-last covered genesis unit max)
-                  :in-theory (disable fn-lg-open-kernel fn-lgk-committed fn-lgk-last))))
+                  :in-theory (union-theories '(fn-lgs-open-chain-records fn-lgs-open-chain-last
+                                               fn-lgs-append-assoc car-cons cdr-cons
+                                               binary-append)
+                                             (theory 'minimal-theory)))))
 
 ; KEYSTONE T8.  COVERED are the segments below the F row's first suffix
 ; segment, REMAINING that segment and the ones after it (their durable
