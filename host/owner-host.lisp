@@ -167,6 +167,32 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-ocfg-owner (f-get-global 'fn-owner state)))
 
+;; A live owner's administrative publication on a format-9 store (lane
+;; log-recovery; AW's live-site fix): the authorization over the history the
+;; owner carries -- its store's rows and frontier (fn-own-store) -- in place
+;; of a re-read of the durable history from disk (the per-file layout's
+;; fnn-durable-records; a format-9 store's history is the checkpoint and the
+;; log, and a live owner never reloads a checkpoint into its arena).  The
+;; decision is the one fn-store-cfg-native-admin-authorize makes over the
+;; interned history (fn-cvec-native-admin-authorize over rows); under
+;; control-quanta-2's fn-lgoc-invariantp the carried rows are the durable
+;; history's (PRF-285, PRF-286), and fn-owner-reconfigure-authorizedp
+;; (PRF-287) has already answered for the staged record.
+(defun fn-owner-cfg-native-admin-authorize
+    (config-octet-records record-octets lock-owned observed-name-octets profile state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (fn-own-store (fn-owner-core state)))
+         (config-records (fn-store-cfg-decode-records config-octet-records))
+         (parsed (fn-cfg-decode-exact record-octets))
+         (names (fn-store-octet-lists->strings observed-name-octets)))
+    (value
+     (if (or (equal config-records :bad) (null config-records)
+             (equal names :bad) (not (fn-record-parse-okp parsed)))
+         (fn-native-admin-publication-result :refused :decode nil nil nil)
+       (fn-cvec-native-admin-authorize
+        (fn-sf-records (fn-sn-files st)) (fn-sf-frontier (fn-sn-files st))
+        config-records (fn-record-parse-value parsed) lock-owned names profile)))))
+
 (defun fn-owner-clock-observation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-own-clock (fn-owner-core state))))

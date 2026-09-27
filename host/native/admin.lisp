@@ -76,6 +76,22 @@ set, exact record, candidate replay/open result and generated final name."
       (fnn-refuse "ACL2 refused administrative publication: ~a"
                   (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
+(defun fnn-admin-authorize-owner (store config-records record observed-names)
+  "A live owner's authorization on a format-9 store: ACL2's
+fn-owner-cfg-native-admin-authorize over the owner's carried history (its
+rows), the same decision fnn-admin-authorize asks over a history it reads."
+  (let ((result (fnn-owner-core
+                 'fn-owner-cfg-native-admin-authorize
+                 (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
+                 (fnn-admin-lock-observation store)
+                 (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
+                         observed-names)
+                 (fnn-store-config store))))
+    (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
+        result
+      (fnn-refuse "ACL2 refused administrative publication: ~a"
+                  (fnn-core 'fn-native-admin-host-publication-reason result)))))
+
 (defun fnn-admin-authorize-carried (store config-records record observed-names)
   "The offline request's authorization from the open's carried fold
 (PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
@@ -227,9 +243,15 @@ Answers :accepted once the record is durable and the owner installed it, or
          (observation (fnn-config-record-observation store))
          (config-records (fnn-config-records-from-observation observation))
          (authorization
-           (fnn-admin-authorize store (fnn-durable-records store)
-                                config-records record
-                                (mapcar #'car observation))))
+           (if (fnn-store-logp store)
+               ;; Format 9: over the history the owner carries (its rows),
+               ;; not a re-read of the per-file layout (which a format-9
+               ;; store does not have).
+               (fnn-admin-authorize-owner store config-records record
+                                          (mapcar #'car observation))
+             (fnn-admin-authorize store (fnn-durable-records store)
+                                  config-records record
+                                  (mapcar #'car observation)))))
     (multiple-value-bind (published ignored-name)
         (fnn-admin-publish store record authorization)
       (declare (ignore ignored-name))
