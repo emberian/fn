@@ -1870,12 +1870,38 @@
                             (fn-ocl-conn-historyp fn-ocfg-pin-set fn-ocfg-pin-find
                              fn-ocl-conn-historyp-under-same-store-and-pin))))))
 
-; The replacement of the connection whose pin moved keeps every history: the
-; replaced connection has one in the new owner by hypothesis, every other
-; connection by the lemma above.
+; A connection with a history is a connection (a twelve-list), hence a cons.
+(local
+ (defthm fn-ocl-conn-historyp-is-a-cons
+   (implies (fn-ocl-conn-historyp oc conn)
+            (consp conn))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (e/d (fn-ocl-conn-historyp fn-own-conn-shapep)
+                                   (fn-cpr-replay fn-cst-replay-node fn-own-take
+                                    fn-ctl-projectionp fn-own-conn-boundedp))))))
+
+; A list with no connection of the moved pin's identifier keeps every history.
+(local
+ (defthm fn-ocl-conns-historyp-under-same-store-and-other-pin-set
+   (implies (and (fn-ocl-conns-historyp oc conns)
+                 (equal (fn-own-store (fn-ocfg-owner next))
+                        (fn-own-store (fn-ocfg-owner oc)))
+                 (equal (fn-ocfg-pins next)
+                        (fn-ocfg-pin-set id cfg (fn-ocfg-pins oc)))
+                 (not (fn-own-find-conn id conns)))
+            (fn-ocl-conns-historyp next conns))
+   :hints (("Goal" :induct (fn-ocl-conns-historyp oc conns)
+            :in-theory (e/d (fn-ocl-conns-historyp fn-own-find-conn)
+                            (fn-ocl-conn-historyp fn-ocfg-pin-set fn-ocfg-pin-find))))))
+
+; The replacement of the connection whose pin moved keeps every history when
+; the identifiers are unique (fn-ocl-relation carries fn-ocl-unique-conn-idsp):
+; the replaced connection has one in the new owner by hypothesis, the rest by
+; the lemmas above.
 (local
  (defthm fn-ocl-replace-connection-preserves-histories-under-pin-set
    (implies (and (fn-ocl-conns-historyp oc conns)
+                 (fn-ocl-unique-conn-idsp conns)
                  (equal (fn-own-store (fn-ocfg-owner next-oc))
                         (fn-own-store (fn-ocfg-owner oc)))
                  (equal (fn-ocfg-pins next-oc)
@@ -1883,11 +1909,10 @@
                  (fn-ocl-conn-historyp next-oc next))
             (fn-ocl-conns-historyp next-oc (fn-own-replace-conn next conns)))
    :hints (("Goal" :induct (fn-own-replace-conn next conns)
-            :in-theory (e/d (fn-own-replace-conn fn-ocl-conns-historyp)
-                            (fn-ocl-conn-historyp fn-ocfg-pin-set fn-ocfg-pin-find)))
-           ("Subgoal *1/2" :use ((:instance fn-ocl-conn-historyp-under-same-store-and-other-pin-set
-                                            (conn (car conns)) (next next-oc)
-                                            (id (fn-own-conn-id next))))))))
+            :in-theory (e/d (fn-own-replace-conn fn-ocl-conns-historyp
+                             fn-ocl-unique-conn-idsp)
+                            (fn-ocl-conn-historyp fn-ocfg-pin-set fn-ocfg-pin-find
+                             fn-own-find-conn))))))
 
 ; NNT-042: the surviving connection has a history in the configured owner
 ; AFTER the read: with its old pin and fields when the read moved nothing
@@ -2208,7 +2233,7 @@
     fn-ocl-config-shape-reconstructs
     fn-ocl-related-config-shaped
     fn-ocl-missing-read-keeps-configured-owner
-    fn-ocl-own-read-survivor-has-old-history
+    fn-ocl-own-read-survivor-has-history
     fn-ocl-relation-under-same-control-and-valid-connections
     fn-ocl-relation-read-input-facts
     fn-ocl-read-preserves-capacity-bound))
