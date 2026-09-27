@@ -263,7 +263,12 @@ class NativeReaderIndexTest(unittest.TestCase):
             command += " " + number_range
         return self.command(reader, command, True)
 
-    def test_listgroup_historical_pin_live_group_and_restart(self):
+    def test_listgroup_refreshes_the_view_live_group_and_restart(self):
+        # NNT-042: a GROUP or LISTGROUP line refreshes the connection's view
+        # to the owner's committed view (RFC 3977 section 6.1.1: the reply
+        # reports the group as it is at the selection), so a connection opened
+        # before a group was created or an article posted sees both at its
+        # next selection, exactly as a connection opened after them does.
         owner = self.start_owner()
         old = self.reader()
         status, rows = self.listgroup(old, "fn.test")
@@ -272,41 +277,31 @@ class NativeReaderIndexTest(unittest.TestCase):
         self.assertEqual(self.command(old, "GROUP fn.live")[0],
                          b"411 no such newsgroup\r\n")
 
-        # Config publication updates the served owner without repinning old.
         self.run_native("operator", self.config, "group", "create", "fn.live")
         configured = self.reader()
-        self.assertEqual(self.command(old, "GROUP fn.live")[0],
-                         b"411 no such newsgroup\r\n")
-        self.assertTrue(self.command(configured, "GROUP fn.live")[0]
-                        .startswith(b"211 "))
-        status, rows = self.listgroup(configured, "fn.live")
-        self.assertTrue(status.startswith(b"211 0 "), status)
-        self.assertEqual(rows, [])
+        for reader in (old, configured):
+            self.assertTrue(self.command(reader, "GROUP fn.live")[0]
+                            .startswith(b"211 "))
+            status, rows = self.listgroup(reader, "fn.live")
+            self.assertTrue(status.startswith(b"211 0 "), status)
+            self.assertEqual(rows, [])
 
         self.post("<reader-group-one@example.invalid>", 101)
         middle = self.reader()
-        self.assertEqual(self.listgroup(old, "fn.test")[1], [])
-        self.assertEqual(self.listgroup(configured, "fn.test")[1], [])
-        self.assertEqual(self.listgroup(middle, "fn.test")[1], [b"1\r\n"])
+        for reader in (old, configured, middle):
+            self.assertEqual(self.listgroup(reader, "fn.test")[1], [b"1\r\n"])
 
         self.post("<reader-group-two@example.invalid>", 102)
         self.post("<reader-live-one@example.invalid>", 103, "fn.live")
         fresh = self.reader()
-        self.assertEqual(self.listgroup(old, "fn.test")[1], [])
-        self.assertEqual(self.listgroup(middle, "fn.test")[1], [b"1\r\n"])
-        self.assertEqual(self.listgroup(fresh, "fn.test")[1],
-                         [b"1\r\n", b"2\r\n"])
-        self.assertEqual(self.listgroup(middle, "fn.test", "2-2")[1], [])
-        self.assertEqual(self.listgroup(fresh, "fn.test", "2-2")[1],
-                         [b"2\r\n"])
-        # An empty range above the high watermark remains empty.  The public
-        # operator API does not yet make an internal allocation hole.
-        self.assertEqual(self.listgroup(fresh, "fn.test", "3-5")[1], [])
-        self.assertEqual(self.listgroup(old, "fn.live"),
-                         (b"411 no such newsgroup\r\n", []))
-        self.assertEqual(self.listgroup(configured, "fn.live")[1], [])
-        self.assertEqual(self.listgroup(middle, "fn.live")[1], [])
-        self.assertEqual(self.listgroup(fresh, "fn.live")[1], [b"1\r\n"])
+        for reader in (old, configured, middle, fresh):
+            self.assertEqual(self.listgroup(reader, "fn.test")[1],
+                             [b"1\r\n", b"2\r\n"])
+            self.assertEqual(self.listgroup(reader, "fn.test", "2-2")[1],
+                             [b"2\r\n"])
+            # An empty range above the high watermark remains empty.
+            self.assertEqual(self.listgroup(reader, "fn.test", "3-5")[1], [])
+            self.assertEqual(self.listgroup(reader, "fn.live")[1], [b"1\r\n"])
 
         for reader in (old, configured, middle, fresh):
             reader[1].close()
