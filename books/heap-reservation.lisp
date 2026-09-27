@@ -1,5 +1,5 @@
 ; fn: the whole reservation a node makes, heap and thread stacks, decided
-; before the image starts (lane image-floor, 2026-09-26; HST-017; an extension
+; before the image starts (lane image-floor, 2026-09-26; HST-025; an extension
 ; of PRF-198, books/heap-figure.lisp, which it calls and does not restate).
 ;
 ; SBCL reserves, besides the dynamic space, one region per thread: the control

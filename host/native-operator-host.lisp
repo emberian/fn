@@ -255,3 +255,8 @@
       (fn-record-string-octets
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
+
+; `tls reload' (PRF-212): the control socket host/native/tls-reload.lisp asks.
+(defun fn-native-operator-host-result-tls-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-tls-control-path-octets result))

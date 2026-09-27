@@ -523,7 +523,11 @@ observation into the outcome and this function only carries it out."
       ;; u32 total cannot carry): a refusal, exit 1, with the word.
       (fnn-refuse "live status refused: ~(~a~)" (second answer)))
     (if (and (consp answer) (eq (first answer) :done))
-        (progn (fnn-write-report (second answer)) +fnn-exit-ok+)
+        (progn (fnn-write-report (second answer))
+               ;; PRF-212: the certificate the running owner serves, its
+               ;; names and notAfter, in ACL2's words.
+               (when (eq kind :status) (fnn-tls-status-line control-path))
+               +fnn-exit-ok+)
       (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
         (:offline (fnn-command-live-report root kind))
         (:refused +fnn-exit-refused+)
@@ -725,7 +729,10 @@ one `init' makes; nothing is opened or locked."
                          (:peering :control)
                          ;; keys redecide reaches the owner as control
                          ;; request 12 (host/native/keys.lisp).
-                         (:keys :control))))
+                         (:keys :control)
+                         ;; tls reload reaches the owner as control
+                         ;; request 19 (host/native/tls-reload.lisp).
+                         (:tls :control))))
           (when (and (member action '(:reclaim :reclaim-dry-run))
                      (null *fnn-reclaim-callback*))
             (fnn-operator-emit-status
@@ -757,6 +764,7 @@ one `init' makes; nothing is opened or locked."
           (:peering (fnn-pinv-execute result))
           (:principal (fnn-operator-execute-principal result))
           (:keys (fnn-keys-execute result))
+          (:tls (fnn-tls-execute result))
           (:account-invite (fnn-operator-execute-account-invite result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")

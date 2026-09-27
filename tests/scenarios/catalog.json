@@ -2429,7 +2429,7 @@
         "REP-011's rows are not run in this lane (the freeze did not start: planning/evidence/rep-wave-d-2-2026-09-26.md section 1 and PKT-293); the target stays the brief's: ten thousand 32 KiB articles in well under a gigabyte of live heap."
       ],
       "evidence": [
-        "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp",
         "planning/evidence/rep-wave-d-2-2026-09-26.md"
       ]
     },
@@ -2452,7 +2452,7 @@
         "The native module passes on both images; `status' names checkpoint-exceeds-bound."
       ],
       "evidence": [
-        "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp",
         "tests/test_native_state_checkpoint.py",
         "planning/evidence/rep-wave-d-3-2026-09-26.md"
       ]
@@ -2569,7 +2569,7 @@
         "NNT-031"
       ],
       "steps": [
-        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 32, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
+        "One owner on 127.0.0.1 with exposure rows set by `policy set` (connections 31, per-address 8, steps 20/s, first 5 s, idle 8 s, auth-failures 10, anonymous none); an authenticated reader on 127.0.0.1 sends DATE every 100 ms throughout.",
         "500 concurrent connections from 127.0.0.2; then, per-address lowered live to 1, 10 each from 127.0.1.1-50; then 4 silent and 4 one-octet-a-second connections from 127.0.0.4; lines of 600, 4096 and 65536 octets; an anonymous session under none, then under open (live) a 120-command STAT loop; AUTHINFO guessing at about 100 a second from 127.0.0.7; `operator CONFIG health`."
       ],
       "expected": [
@@ -3421,33 +3421,34 @@
       }
     },
     {
-      "id": "SCN-137",
-      "title": "An image whose saved world is the execution world starts, serves and refuses exactly as before: a guard violation at the host boundary is the same fault line and exit code, the start with ACL2_SYSTEM_BOOKS set works, a fresh node serves from a 256 MB dynamic space, and the served transcript is byte-identical",
-      "milestone": "M5",
+      "id": "SCN-134",
+      "title": "A stranger installs the release tarball, starts a node under the service manager, posts and reads over TLS from another machine, and reinstalls it",
+      "milestone": "M4",
       "status": "implemented",
       "requirements": [
-        "HST-017"
+        "HST-017",
+        "HST-018"
       ],
       "steps": [
-        "Build the developer and production images of the lane (tools/hbox_native.sh --images developer,production) and, in scratch, the same source without the strip (the comparison image).",
-        "Run `--fn guard-probe` on both developer images, and on the stripped one with ACL2_SYSTEM_BOOKS set; run it on the production image.",
-        "Read each production core's dynamic requirement (node_measure.py core) and start a fresh development store's owner with --dynamic-space-size 256MB: one POST, then ARTICLE.",
-        "On today's image and the new one: 1,000 POSTs of 2,048 octets on a fresh scale store, the fixed served transcript (node_measure.py run --transcript), stop and reopen; a development store until the owner publishes a checkpoint, then the reopen."
+        "Build fn-REV12-linux-x86_64.tar.gz on hbox with packaging/release-tarball.sh from a git archive of REV (FN_CERT_CACHE, FN_ACL2 set).",
+        "tools/runpath_check.py --tarball over it; plant a python3 symlink in a scratch copy and run it again.",
+        "On hbox under /tank/fn/scratch/release-product: verify SHA256SUMS, unpack, sh fn/install.sh --prefix P --node N --no-service; mission small-community, a self-signed pair, init, policy set path-identity, principal set-password; run under systemd-run --user.",
+        "From persvati: STARTTLS, AUTHINFO, POST an article, read it back on a fresh connection.",
+        "Stop; remove P; install again from the tarball; start; read the same article from persvati."
       ],
       "expected": [
-        "guard-probe exits 4 with the one stderr line `store: ACL2 error in fn-sha256-of-string: (EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
-        "The stripped core needs under 192 MiB of dynamic space (today's 271 MiB); the 256 MB node answers 240 and 220.",
-        "The transcripts of today's image and the new one are byte-identical; the qualifying native modules pass on the new images."
+        "The build prints the green-check line, the acquire/validate lines, `version fn REV`, and the runpath check's pass line; the planted copy fails naming bin/python3.",
+        "install.sh refuses an existing prefix; the reinstalled node serves the article posted before the reinstall."
       ],
       "evidence": [
-        "planning/evidence/image-floor-2026-09-26.md",
-        "tests/test_native_image_floor.py"
+        "planning/evidence/release-product-2026-09-26.md",
+        "planning/evidence/release-product-2026-09-26/build-c755569badf5.log"
       ],
       "implementation": {
-        "test": "tests/test_native_image_floor.py",
+        "test": "tests/test_release_tarball.py",
         "native": true,
-        "record": "planning/evidence/image-floor-2026-09-26.md",
-        "log": "planning/evidence/image-floor-2026-09-26/native/test-tests.test_native_image_floor.log"
+        "record": "planning/evidence/release-product-2026-09-26.md",
+        "log": "planning/evidence/release-product-2026-09-26/test_release_tarball.log"
       }
     },
     {
@@ -3697,14 +3698,23 @@
       "status": "specified",
       "requirements": [
         "REP-013",
-        "STO-027"
+        "STO-027",
+        "NNT-042"
       ],
       "steps": [
-        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn)."
+        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn).",
+        "ACL2 half (catalog-slice-2): tests/acl2/catalog-delta-tests.lisp cdt-exec: on the live catalog over the live arena, connection A advances to version 2 before the cancel; the cancel's :withdraw delta and its own row commit; connection B advances to version 3; fn-view-sees at A's and B's versions of row 0 and of the cancel's row.",
+        "ACL2 half over the view (catalog-slice-4): tests/acl2/catalog-view-tests.lisp cvt-run: the view at version 2 over the mixed history (two articles, a retention event skipped) built on live stobjs; the machine's own lookups (fn-midx-lookup of fn-midx-build, fn-gidx-number-article of fn-gidx-build) equal the walks fn-cat-view-find / fn-cat-view-bound-find; a cancel of row 0 committed at count 2 leaves row 0 in the view at version 2 (2 articles) and out of the view at version 3 (1 article)."
       ],
-      "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423.",
-      "evidence": [],
-      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585)."
+      "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423. ACL2 half: A (version 2) sees row 0 and not the cancel's row; B (version 3) does not see row 0 and sees the cancel's row; a delta does not move A's version.",
+      "evidence": [
+        "tests/acl2/catalog-delta-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T212645Z-2809134.json",
+        "tests/acl2/catalog-view-tests.lisp",
+        "planning/evidence/manifests/certify-20260926T222802Z-3457759.json",
+        "planning/evidence/manifests/certify-20260926T224259Z-3607880.json"
+      ],
+      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585); the ACL2 half runs in catalog-delta-tests (catalog-slice-2)."
     },
     {
       "id": "SCN-123",
@@ -3889,6 +3899,529 @@
         "native": true,
         "log": "planning/evidence/heap-from-profile-2026-09-26/native-heap.log",
         "record": "planning/evidence/heap-from-profile-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-125",
+      "title": "A read-only group, set offline and live: POST refused by name, LIST ACTIVE status n, a pinned connection unchanged, a restart replays it; and (SEC-006, specified) an unsigned post cancelled by its own login only",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-040",
+        "SEC-006"
+      ],
+      "steps": [
+        "`init fn.test`; `group create fn.ro`; offline `group policy fn.absent n` (refused), `group policy fn.ro m` (not accepted), `group policy fn.ro n`.",
+        "Start the owner; a reader lists LIST ACTIVE, POSTs to fn.ro, to fn.test,fn.ro and to fn.test, and STATs the refused Message-ID.",
+        "Live `group policy fn.ro y`: a new connection lists and POSTs to fn.ro; live `group policy fn.ro n`: another new connection POSTs to fn.ro.",
+        "Stop, restart; a reader lists LIST ACTIVE and POSTs to fn.ro.",
+        "(SEC-006, specified, not implemented: PKT-575) Logins ember and guest; ember POSTs an unsigned article to fn.test; guest, then ember, POST a cancel of it; a second node relays ember's article and ember's cancel."
+      ],
+      "expected": [
+        "The two offline refusals exit non-zero; `group policy fn.ro n` exits 0.",
+        "LIST ACTIVE shows fn.ro n and fn.test y; both POSTs naming fn.ro answer `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)`; fn.test answers 240; STAT of the refused article answers 430.",
+        "After `y` a new connection lists fn.ro y and its POST answers 240; after `n` a new connection's POST to fn.ro answers the read-only 441.",
+        "After the restart LIST ACTIVE shows fn.ro n and a POST to fn.ro answers the read-only 441.",
+        "(SEC-006, specified) guest's cancel is refused by name and the article stays 220; ember's cancel is accepted and the article answers 430 withdrawn on both nodes, in either arrival order."
+      ],
+      "implementation": {
+        "test": "tests.test_native_group_policy",
+        "cases": [
+          "GroupPolicyImageTests.test_read_only_group_offline_live_and_after_restart"
+        ],
+        "native": true,
+        "record": "planning/evidence/group-policy-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-142",
+      "title": "A reader port admits exactly its connection capacity (raised above the old 31, then raised live), refuses the next by name, and exempts the trusted range from the per-address limit, on the developer and production images",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-043"
+      ],
+      "steps": [
+        "Per image: `init fn.test`; `policy set exposure-connections 40`; start the owner on 127.0.0.1; `status`; 40 connections from 127.0.0.1, then a 41st; `health`.",
+        "Live `policy set exposure-connections 45`; 5 more connections, then one more; `status`.",
+        "Close every connection; live `policy set exposure-per-address 2` and `policy set exposure-trusted 127.0.2.0/24`; 6 connections from 127.0.2.9; 3 from 127.0.3.9; `health`; `policy set exposure-trusted 127.0.2.0/33`; `status`."
+      ],
+      "expected": [
+        "status shows capacity=40; the 40 read a 200/201 greeting; the 41st reads `400 too many connections; try again later` and is closed; health prints `exposure capacity connections=40 capacity=40 per-address=40 trusted=none`.",
+        "The 5 are admitted and the next reads the same 400; status shows connections=45 capacity=45.",
+        "All 6 from 127.0.2.9 are admitted; 2 from 127.0.3.9 are admitted and the third reads `400 too many connections from this address; try again later`; health prints `connections=8 capacity=45 per-address=2 trusted=127.0.2.0/24`; the malformed range is refused (non-zero exit) and status still shows trusted=127.0.2.0/24; the owner stays up."
+      ],
+      "implementation": {
+        "test": "tests.test_native_public_limits",
+        "cases": [
+          "DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+          "ProductionImagePublicLimits.test_capacity_and_trusted_range"
+        ],
+        "native": true,
+        "record": "planning/evidence/public-limits-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-138",
+      "title": "An INN-shaped peer streams into fn (MODE STREAM, pipelined CHECKs, then TAKETHISes) and gets the IHAVE verdicts in streaming form; fn feeds a 203 peer with CHECK and TAKETHIS and a 501 peer with IHAVE on the same connection",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_inn_shaped_streaming_driver_gets_the_ihave_verdicts",
+          "test_feed_to_a_peer_without_streaming_falls_back_to_ihave",
+          "test_feed_to_a_streaming_peer_uses_check_and_takethis"
+        ],
+        "native": true,
+        "log": "planning/evidence/transit-streaming-2026-09-26/native-peering.log",
+        "record": "planning/evidence/transit-streaming-2026-09-26.md"
+      },
+      "requirements": [
+        "NNT-045"
+      ],
+      "steps": [
+        "Node T with peer S (inbound fn.*, max-inflight 16). On one connection: MODE STREAM; IHAVE an article (335, 235), IHAVE it again (435), IHAVE an out-of-scope article (335, 437).",
+        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238 in one write (PKT-600 repaired, SCN-144); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them in one write; TAKETHIS a held article; CHECK it.",
+        "Node A with a streaming peer record to a scripted peer answering MODE STREAM 501: post an article; then to one answering 203."
+      ],
+      "evidence": [
+        "tests/acl2/peer-transit-forms-tests.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/acl2/owner-feed-form-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "203; sixteen 238 then four 431 and 438 for the held one, each echoing its Message-ID; sixteen 239; 439 for the out-of-scope TAKETHIS where IHAVE gave 437; the four deferred now 238 and 239; 439 and 438 for the held article where IHAVE gave 435; every stored article served byte-identical.",
+        "The 501 peer receives MODE STREAM then IHAVE on the same connection and never CHECK or TAKETHIS, and a second article reaches it (no stop); the 203 peer receives CHECK then TAKETHIS and never IHAVE."
+      ]
+    },
+    {
+      "id": "SCN-145",
+      "title": "The Linux release runs on Debian 12 (glibc 2.36) with only libc and the system libssl: install, init, run, POST and ARTICLE over STARTTLS, stop, SIGKILL, recover",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-021"
+      ],
+      "steps": [
+        "Measure every bundled ELF object's GLIBC version needs (objdump -T, readelf -V, tools/runpath_check.py --tarball).",
+        "Rebuild the SBCL runtime with packaging/floor-runtime.sh in debian:12; freeze with FN_FREEZE_RUNTIME; package (release-tarball.sh --runtime-from, or --frozen for a rehearsal).",
+        "In a debian:12 container with libssl3 added and nothing else: verify SHA256SUMS, unpack, install.sh --no-service, init, run; from the host, tools/fn_client.py POST and show over STARTTLS; SIGTERM; start; POST; SIGKILL; recover; start; show both.",
+        "The same on hbox's own Ubuntu; the unrebuilt tarball's packaging is refused by the runpath check."
+      ],
+      "expected": [
+        "No bundled object needs more than GLIBC_2.36; the old runtime is refused naming __isoc23_strtol@GLIBC_2.38 and does not load in debian:12.",
+        "Both posts answered 240, both articles served after the SIGKILL and recover, on Debian 12 and on Ubuntu."
+      ],
+      "evidence": [
+        "planning/evidence/release-glibc-floor-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests/test_release_tarball.py",
+        "native": true,
+        "record": "planning/evidence/release-glibc-floor-2026-09-26.md",
+        "log": "planning/evidence/release-glibc-floor-2026-09-26/hbox/test_release_tarball.log"
+      }
+    },
+    {
+      "id": "SCN-128",
+      "title": "The one resumable checkpoint pipeline: the automatic publication and the verb write the schema-3 tables in batches through the publication buffer, decided by name before any allocation; the file reopens as the full replay and the verb republishes it byte for byte",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-026",
+        "STO-024",
+        "STO-016"
+      ],
+      "steps": [
+        "A development-profile store (K = 128); an owner; 64 POSTs; connections until the owner logs `CHECKPOINT auto sequence=64 suffix=64 octets=N steps=T ms=M' with T >= 4 (one step per table at least); stop.",
+        "`status': open=checkpoint:64 suffix=0 and checkpoint-file octets=N; the observation through four reopening verbs equals the one with the file moved aside (full replay); `store checkpoint' republishes the same bytes (`checkpoint sequence=64 octets=N steps=...').",
+        "The source assertions: the thread calls fn-ock-next-checkpoint, fn-ockp-setup and the batch loop over the publication buffer; the verb calls fn-store-sco-publish-setup and the same loop; the open loads through fn-sct-load; the cut map is fn-bs-scp-program's, unchanged.",
+        "A fresh store under FN_NATIVE_CHECKPOINT_BUDGET_TEST=1024: the deferral line `CHECKPOINT deferred reason=exceeds-budget estimate=E budget=1024', nothing written, serving continues, no retry, `status' carries the deferral; a fresh owner under the profile's budget publishes at 66."
+      ],
+      "evidence": [
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests/test_native_checkpoint_auto.py",
+        "cases": [
+          "AutoCheckpointTests.test_the_owner_publishes_after_half_k_and_the_file_reopens_as_the_full_replay",
+          "AutoCheckpointTests.test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues",
+          "AutoCheckpointSourceTests.test_the_publication_thread_calls_the_stream_entry_over_its_own_buffer",
+          "StateCheckpointSourceTests.test_the_host_calls_the_keystone_subject_and_writes_the_program"
+        ],
+        "native": true,
+        "log": "planning/evidence/checkpoint-pipeline-2026-09-26/test-tests.test_native_checkpoint_auto.log",
+        "record": "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      },
+      "expected": [
+        "`CHECKPOINT auto sequence=64 suffix=64 octets=N steps=T ms=M' with T >= 4; the file has N octets; the checkpoint open serves what the full replay serves; the verb's file is byte-identical and its line names its steps; the deferral by name with E > 1024, nothing written, serving continues, no retry, `status' carries it, the restarted owner publishes at 66."
+      ]
+    },
+    {
+      "id": "SCN-129",
+      "title": "A kill between two pipeline steps reopens with the old checkpoint (the `created' cut's verdict) and the staged file is swept by the writer's recover",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-026",
+        "STO-011"
+      ],
+      "steps": [
+        "A development-profile store; an owner; 64 POSTs; the automatic publication at 64 (the old checkpoint, its digest kept); stop.",
+        "An owner under FN_NATIVE_CHECKPOINT_BATCH_FAULT=0:kill; 64 more POSTs; the owner is killed by its publication thread after the first step's frames were written.",
+        "The old checkpoint's bytes are unchanged; `status' reads open=checkpoint:64 suffix=64; `recover' sweeps the staging orphan; a fresh owner publishes at 128 and the next open reads open=checkpoint:128 suffix=0."
+      ],
+      "evidence": [
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests/test_native_checkpoint_auto.py",
+        "cases": [
+          "AutoCheckpointTests.test_a_kill_between_two_batches_reopens_with_the_old_checkpoint_and_sweeps_the_stage"
+        ],
+        "native": true,
+        "log": "planning/evidence/checkpoint-pipeline-2026-09-26/test-tests.test_native_checkpoint_auto.log",
+        "record": "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      },
+      "expected": [
+        "The owner under FN_NATIVE_CHECKPOINT_BATCH_FAULT=0:kill dies after its first step; the old checkpoint's digest is unchanged; `status' reads open=checkpoint:64 suffix=64; `recover' leaves staging empty; the restarted owner publishes at 128 and the next open reads checkpoint:128."
+      ]
+    },
+    {
+      "id": "SCN-137",
+      "title": "A reader reads a cross-posted article's overview: the Xref field names the node's path-identity and the article's local number in every group that holds it, and LIST OVERVIEW.FMT names Xref:full",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-006"
+      ],
+      "steps": [
+        "Init a store with fn.test, create fn.alt, set policy path-identity news.example.org, start the owner.",
+        "Post one article to fn.alt, then one cross-posted to fn.test and fn.alt.",
+        "A reader: LIST OVERVIEW.FMT; GROUP fn.test; OVER 1-100; XOVER 1-100; OVER; OVER <msgid>; GROUP fn.alt; OVER 1-2; ARTICLE <msgid>."
+      ],
+      "expected": [
+        "LIST OVERVIEW.FMT lists the seven fields then Xref:full.",
+        "Each OVER line has nine fields; the ninth is 'Xref: news.example.org' then fn.test:1 and fn.alt:2 for the cross-post, fn.alt:1 for the other; the message-id form numbers the line 0.",
+        "ARTICLE shows no Xref header (the stored octets)."
+      ],
+      "evidence": [
+        "tests/test_native_reader_index.py",
+        "tests/acl2/nntp-xref-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_reader_index",
+        "cases": [
+          "test_over_carries_xref_of_local_numbers"
+        ],
+        "native": true,
+        "log": "planning/evidence/usenet-headers-2-2026-09-26-native.log",
+        "record": "planning/evidence/usenet-headers-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-143",
+      "title": "A certificate renewal reaches a running node by `tls reload`: new connections get the new certificate, an open session keeps working, and a mismatched key or a dropped name is refused by name with the old certificate still served",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-020"
+      ],
+      "steps": [
+        "`store init fn.test`; certificate A (SAN localhost) at tls/cert.pem and tls/key.pem; `run` with protected_only and a control socket; a reader completes STARTTLS and stays open; `status`.",
+        "Replace both files with pair B (SAN localhost, reload.localhost) by rename; a new reader handshakes; `tls reload`; a new reader handshakes; the open reader sends DATE; `status`.",
+        "Replace the key with one from another pair; `tls reload`; a new reader handshakes.",
+        "Install pair D (SAN localhost only); `tls reload`; a new reader handshakes; the open reader sends QUIT.",
+        "With no owner running, `tls reload`."
+      ],
+      "expected": [
+        "The first reader is served A; `status` prints `tls names=localhost not-after=YYYY-MM-DDTHH:MM:SSZ`.",
+        "Before the reload the new reader is still served A; `tls reload` exits 0 and prints `tls names=localhost,reload.localhost not-after=...`; the next reader is served B; the open reader's DATE answers 111; `status` prints B's names.",
+        "`tls reload` exits 1 with `refused operator tls key-mismatch`; the new reader is served B.",
+        "`tls reload` exits 1 with `refused operator tls names-dropped`; the new reader is served B; QUIT answers 205 and the owner is still running.",
+        "The command exits non-zero and is not accepted."
+      ],
+      "implementation": {
+        "test": "tests.test_native_tls_reload",
+        "cases": [
+          "ProductionTlsReloadTests.test_reload_serves_new_connections_and_keeps_open_sessions",
+          "ProductionTlsReloadTests.test_reload_without_an_owner_is_not_accepted",
+          "DeveloperTlsReloadTests.test_reload_serves_new_connections_and_keeps_open_sessions",
+          "DeveloperTlsReloadTests.test_reload_without_an_owner_is_not_accepted"
+        ],
+        "native": true,
+        "record": "planning/evidence/tls-reload-2026-09-26.md",
+        "log": "planning/evidence/tls-reload-2026-09-26/test-tests.test_native_tls_reload.log"
+      },
+      "evidence": [
+        "tests/test_native_tls_reload.py",
+        "planning/evidence/tls-reload-2026-09-26.md",
+        "planning/evidence/tls-reload-2026-09-26/test-tests.test_native_tls_reload.log"
+      ]
+    },
+    {
+      "id": "SCN-146",
+      "title": "A hostile network is thrown at a running node: malformed command lines, header and body abuse, connection floods and slowloris, pipelining and transit storms, and raw TCPCL/BP abuse; the node stays up, answers a clean session throughout, holds memory bounded, and refuses every ill-formed input by name",
+      "milestone": "M5",
+      "status": "validated",
+      "requirements": [
+        "NNT-031",
+        "NNT-043",
+        "NNT-045",
+        "NNT-012",
+        "REP-012",
+        "REP-008",
+        "HST-013"
+      ],
+      "steps": [
+        "Start a scratch loopback owner under systemd-run (MemoryMax=8G) on the developer image; never the live node.",
+        "Per family (malformed, header, body, connection, pipelining, transit, bp) send bounded adversarial traffic and log the first line the node returned.",
+        "After each family run the oracle: a clean authenticated GROUP/DATE/LIST session answers, the owner is alive with RSS under the profile's heap figure, no served request exceeded the wall bound, and the service log holds no fault.",
+        "For BP, drive a bp-node serve listener with wrong TCPCL magic, a never-completing contact, and an XFER_SEGMENT declaring a 4 GiB payload with tiny data."
+      ],
+      "expected": [
+        "Every malformed command line is refused 501; header/body abuse is refused 441 by a distinct named reason or accepted only when valid (a supplied Path is injected per NNT-012); a connection flood is refused 400 past the capacity and slowloris is closed silently at the timer; 1000 pipelined DATEs all answer and non-peer TAKETHIS/CHECK/IHAVE are refused 502; the bp-node answers an oversized XFER_SEGMENT with MSG_REJECT and does not preallocate the declared length.",
+        "The node never crashes, never hangs past its bounds, never grows memory without bound, and answers a clean session correctly after every family."
+      ],
+      "evidence": [
+        "planning/evidence/hostile-input-2026-09-26.md",
+        "planning/evidence/hostile-input-2026-09-26/campaign-report.json",
+        "planning/evidence/hostile-input-2026-09-26/bp-report.json"
+      ],
+      "execution_scope": "Executed on hbox (developer image, code-identical to dev b4b343d51) against a scratch loopback owner and bp-node under systemd-run MemoryMax=8G. All seven families green, no defects. Not exercised: transit interior abuse (announced sizes, million-id promises, pipelined TAKETHIS/PKT-600) from an authenticated peer session (a non-peer connection is uniformly refused 502; the peer path is covered by SCN-138); a real 100 MiB body under a peer feed; TLS-port handshake garbage on 563 (no TLS listener configured in this run).",
+      "implementation": {
+        "test": "tools/hostile_campaign.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/hostile-input-2026-09-26/campaign-report.json",
+        "record": "planning/evidence/hostile-input-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-151",
+      "title": "The TLS surface of a running node is thrown hostile traffic on 563 (implicit TLS) and 119 (STARTTLS): garbage before and mid handshake, a hello with no cipher, TLS 1.0/1.1 only, an oversized record, plain NNTP on the TLS port, STARTTLS-then-plain-then-STARTTLS, an unsolicited client cert, an unserved SNI, alert and close_notify floods, a TLS-layer slowloris, and a full-handshake burst; the node refuses each by a named TLS alert or 502, serves a clean session throughout, and holds memory bounded",
+      "milestone": "M5",
+      "status": "validated",
+      "requirements": [
+        "NNT-031",
+        "NNT-032",
+        "HST-013"
+      ],
+      "steps": [
+        "Start a scratch loopback owner under systemd-run (MemoryMax=8G) on the dev-HEAD developer image, configured with a self-signed [listener] tls_cert/tls_key pair and a tls_port; never the live node.",
+        "Against the implicit-TLS port and the STARTTLS path, send the tls family: garbage before/mid handshake, a ClientHello with no cipher and a NULL cipher, TLS 1.0 and 1.1 only offers, a 16 KiB+1 record, plain NNTP on the TLS port, STARTTLS then plain then STARTTLS again, STARTTLS then garbage, an unsolicited client certificate, SNI for an unserved name, an alert flood, a close_notify storm, and a 200-way TLS slowloris.",
+        "Measure the handshake CPU cost: 300 sequential handshakes and a 30 s 48-way full-handshake burst, reading the owner's /proc CPU and thread count.",
+        "Run the oracle: a clean plaintext session answers, the owner is alive with RSS under the heap figure, no served request exceeded the wall bound, the service log holds no fault, the second STARTTLS is 502, a reader is served during the flood, and the implicit-TLS listener still answers afterward."
+      ],
+      "expected": [
+        "Every hostile handshake is refused by a named TLS alert (record_overflow, illegal_parameter, handshake_failure, protocol_version, unexpected_message) or held to the 10 s deadline and closed; plain NNTP on the TLS port leaks no reply; the second STARTTLS is 502; unsolicited client certs and unserved SNI complete and are ignored (single cert served).",
+        "The node never crashes, hangs, or grows memory without bound; RSS stayed 585 MB under a 2,819 MB heap figure; steady-state node CPU 2.467 ms per handshake. Two host-level gaps are filed as packets: TLS handshakes are not metered by the exposure kernel (PKT-639) and TLS refusals are logged only to stderr, not the service log (PKT-640)."
+      ],
+      "evidence": [
+        "planning/evidence/hostile-input-2-2026-09-26.md",
+        "planning/evidence/hostile-input-2-2026-09-26/tls-report.json",
+        "planning/evidence/hostile-input-2-2026-09-26/openbsd-libressl-note.md"
+      ],
+      "execution_scope": "Executed on hbox against the dev-HEAD developer image 6701d5753 (system libssl OpenSSL 3.3.1) and probed against a LibreSSL node on the OpenBSD VM, both loopback under systemd-run MemoryMax=8G; never the live node. TLS family green, no crash/hang/leak/fault; two host-level packets filed (PKT-639 unmetered handshakes, PKT-640 refusals not in service log). Not exercised: a real TLS 1.3 KeyUpdate flood (an encrypted post-handshake record, not forgeable with the standard library); the OpenBSD implicit-TLS (563) port (the VM node ran STARTTLS only).",
+      "implementation": {
+        "test": "tools/hostile_campaign.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/hostile-input-2-2026-09-26/tls-report.json",
+        "record": "planning/evidence/hostile-input-2-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-140",
+      "title": "An offline configuration request authorizes from the fold its open computed: 300 separate `peer carries` requests timed against the image before PRF-209",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-025"
+      ],
+      "steps": [
+        "`operator CONFIG init`; `peer add far ...`; FN_PEER_ROWS_REQUESTS=300 separate `peer carries far HEX`, timed, on the image before and after PRF-209 on the same box; `operator CONFIG group create` answers `verification=VERIFIED` (tests.test_native_admin)."
+      ],
+      "expected": [
+        "Every request exits 0 and the listing names the principals in request order; the total time is recorded before and after (planning/evidence/config-consumer-catalog-2026-09-26.md)."
+      ],
+      "evidence": [
+        "planning/evidence/config-consumer-catalog-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_rows_growth",
+        "cases": [
+          "test_a_peer_carries_more_than_the_old_row_cap"
+        ],
+        "native": true,
+        "record": "planning/evidence/config-consumer-catalog-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-144",
+      "title": "Pipelined articles: eight TAKETHIS in one write from a streaming peer, and two POST blocks in one write from a reader, are each committed and answered in order",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_pipelined_takethis_in_one_read_answers_every_article",
+          "test_fragmented_takethis_without_check_answers_every_article",
+          "test_pipelined_post_in_one_read_answers_every_article"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-pipelining-2026-09-27.md",
+        "log": "planning/evidence/transit-pipelining-2026-09-27/native-peering.log"
+      },
+      "requirements": [
+        "NNT-044"
+      ],
+      "steps": [
+        "Node T with peer S: eight TAKETHIS commands with their articles in one write; QUIT.",
+        "Node T with peer S: four TAKETHIS with no CHECK, sent as small TCP_NODELAY segments cut every 7 octets and inside every .CRLF terminator.",
+        "Node P, no peer: two POST blocks in one write; POST, then the article and the next POST in one write, then the last article and QUIT in one write."
+      ],
+      "evidence": [
+        "tests/acl2/served-pipelining-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "Eight 239s in order, each echoing its Message-ID, then 205; all eight stored byte-identical.",
+        "Four 239s in order, each echoing its Message-ID, then 205; all four stored byte-identical.",
+        "340 240 340 240 340 240 340 240 205 in that order (no 340 before the 240 of the article preceding it); all four stored."
+      ]
+    },
+    {
+      "id": "SCN-147",
+      "title": "Power is cut to the block device under a committing node (dm-log-writes, ext4) at 1,281 write boundaries across POST commits, checkpoint capture, compaction, reclaim, a near-full store and a recovery cut again; every acknowledged POST is served byte-identical afterwards, no refusal becomes acceptance, no binding or number moves",
+      "milestone": "M2",
+      "status": "implemented",
+      "implementation": {
+        "test": "tools/power_loss.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/power-loss-2026-09-26/main2.log",
+        "record": "planning/evidence/power-loss-2026-09-26.md"
+      },
+      "requirements": [
+        "STO-003",
+        "STO-005"
+      ],
+      "steps": [
+        "On hbox (Linux 6.11): a data and a log loop device under dm-log-writes, ext4 on the mapped device; the developer image's node on it (scale profile, small open suffix): init, POSTs with a mark in the log after every 240 and every known 441 refusal, two store compactions, retention set released-by-all-holders, store reclaim; references read from the uncut store to /dev/shm.",
+        "For each cut (an entry of the log and a mode: flush, prefix, subset of unflushed writes, or 4096-octet tears), rebuild the device, mount, e2fsck, recover, store inspect the lost-reply POSTs, start the owner, ARTICLE and OVER everything, re-POST the newest acknowledged Message-ID and a fresh one, status; rerun compact or reclaim for their cuts; for a fifth of the cuts, cut the recovery again under a second log.",
+        "Control cuts judge a POST whose writes all follow the cut as acknowledged; each must be caught. A barrier=0 run shows the fsync assumption is load-bearing."
+      ],
+      "evidence": [
+        "planning/evidence/power-loss-2026-09-26.md",
+        "planning/evidence/power-loss-2026-09-26/summary.md",
+        "tools/power_loss.py"
+      ],
+      "expected": "No acknowledged POST missing or changed, no refused POST served, lost-reply POSTs whole or absent, recover/owner/status without fault, bindings and numbers stable, reclaim accounting whole, every control caught; on barrier=0 acknowledged POSTs are lost (the assumption broken, not fn)."
+    },
+    {
+      "id": "SCN-149",
+      "title": "Articles of 2,000,000 lines and of one 4 MiB line are posted, served (ARTICLE, BODY), reopened and served again byte-identical at 1 MiB of control stack per thread and at the image's own 64 MiB, on the production and developer images",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 8388608; start the owner with SBCL_USER_ARGS=--control-stack-size 1MB; POST an article of 2,000,000 body lines (every sixteenth a lone dot), ARTICLE and BODY it; POST an article whose body is one line of 4,194,304 octets and ARTICLE it; SIGTERM.",
+        "start the owner at the image's own stack on the same store (the reopen); ARTICLE both again; POST a second 2,000,000-line article and ARTICLE it; SIGTERM.",
+        "start the owner at 1 MiB again (a second reopen); ARTICLE the second article; SIGTERM."
+      ],
+      "expected": [
+        "Every POST is 240; every reply is the status line, the stored article exactly dot-stuffed (RFC 3977 section 3.1.1) and the terminator, ending with the posted body; BODY has 2,000,002 CRLFs; the owner exits 0 each time. Before this lane the 2,000,000-line POST exhausted the stack in fn-post-body-octets and the 4 MiB line in fn-wire-list-length (Control stack exhausted in fn-owner-chunk-span).",
+        "The replies at 64 MiB are byte-identical to those at 1 MiB; the second article is served.",
+        "The reply at 1 MiB after the reopen is byte-identical to the one at 64 MiB."
+      ],
+      "evidence": [
+        "tests/test_native_served_line_stack.py",
+        "tests/acl2/served-line-iterative-tests.lisp",
+        "planning/evidence/served-line-iterative-2026-09-26.md",
+        "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_served_line_stack",
+        "cases": [
+          "test_production_serves_two_million_lines_at_one_mib_of_stack",
+          "test_developer_serves_two_million_lines_at_one_mib_of_stack"
+        ],
+        "native": true,
+        "record": "planning/evidence/served-line-iterative-2026-09-26.md",
+        "log": "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      }
+    },
+    {
+      "id": "SCN-152",
+      "title": "Two accounts, one private group: the restricted login cannot list, select, read by number or Message-ID, or post to it; the other can; after a restart too; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.public`, `group create fn.private.x`; start the owner (implicit TLS, protected_only).",
+        "Invite and redeem alice and bob (XREDEEM); alice posts <secret> to fn.private.x, <pub> to fn.public, <cross> to both.",
+        "Live `account access bob --read 'fn.[' --post '*'` (refused), then `account access bob --read 'fn.*,!fn.private.*' --post fn.public`; `account access show`.",
+        "bob on a new connection: LIST ACTIVE, LIST NEWSGROUPS, LIST COUNTS; GROUP fn.absent, GROUP fn.private.x, LISTGROUP fn.private.x; STAT <nothere>, STAT <secret>, ARTICLE <secret>, STAT <cross>; GROUP fn.public; OVER <cross>; POST to fn.private.x and to fn.absent; POST to fn.public.",
+        "alice on a new connection: LIST ACTIVE, GROUP fn.private.x, ARTICLE <secret>, POST to fn.private.x.",
+        "Restart the owner and repeat the two connections."
+      ],
+      "expected": [
+        "The refused pattern exits non-zero; the rule exits 0; `show` prints `access bob read fn.*,!fn.private.* post fn.public`.",
+        "bob's LIST variants omit fn.private.x and list fn.public; GROUP fn.private.x answers the same line as GROUP fn.absent (411); LISTGROUP 411; STAT <secret> answers the same line as STAT <nothere> (430); ARTICLE <secret> 430; STAT <cross> 223; GROUP fn.public 211; OVER <cross> 224 without fn.private.x; the POST to fn.private.x answers the 441 a POST to fn.absent answers; the POST to fn.public 240.",
+        "alice lists fn.private.x, GROUP 211, ARTICLE 220, POST 240.",
+        "After the restart, the same."
+      ],
+      "implementation": {
+        "test": "tests.test_native_group_access",
+        "cases": [
+          "NativeGroupAccessTests.test_two_accounts_one_private_group"
+        ],
+        "native": true,
+        "record": "planning/evidence/group-access-2026-09-27.md",
+        "log": "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      },
+      "evidence": [
+        "tests/test_native_group_access.py",
+        "planning/evidence/group-access-2026-09-27.md",
+        "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      ]
+    },
+    {
+      "id": "SCN-161",
+      "title": "An image whose saved world is the execution world starts, serves and refuses exactly as before: a guard violation at the host boundary is the same fault line and exit code, the start with ACL2_SYSTEM_BOOKS set works, a fresh node serves from a 256 MB dynamic space, and the served transcript is byte-identical",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-025"
+      ],
+      "steps": [
+        "Build the developer and production images of the lane (tools/hbox_native.sh --images developer,production) and, in scratch, the same source without the strip (the comparison image).",
+        "Run `--fn guard-probe` on both developer images, and on the stripped one with ACL2_SYSTEM_BOOKS set; run it on the production image.",
+        "Read each production core's dynamic requirement (node_measure.py core) and start a fresh development store's owner with --dynamic-space-size 256MB: one POST, then ARTICLE.",
+        "On today's image and the new one: 1,000 POSTs of 2,048 octets on a fresh scale store, the fixed served transcript (node_measure.py run --transcript), stop and reopen; a development store until the owner publishes a checkpoint, then the reopen."
+      ],
+      "expected": [
+        "guard-probe exits 4 with the one stderr line `store: ACL2 error in fn-sha256-of-string: (EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
+        "The stripped core needs under 192 MiB of dynamic space (today's 271 MiB); the 256 MB node answers 240 and 220.",
+        "The transcripts of today's image and the new one are byte-identical; the qualifying native modules pass on the new images."
+      ],
+      "evidence": [
+        "planning/evidence/image-floor-2026-09-26.md",
+        "tests/test_native_image_floor.py"
+      ],
+      "implementation": {
+        "test": "tests/test_native_image_floor.py",
+        "native": true,
+        "record": "planning/evidence/image-floor-2026-09-26.md",
+        "log": "planning/evidence/image-floor-2026-09-26/native/test-tests.test_native_image_floor.log"
       }
     }
   ]

@@ -198,7 +198,7 @@ admits (0 when it is not a run)."
         (t (values nil 0))))
 
 ;; The whole reservation (books/heap-reservation.lisp fn-heap-reserve-decide,
-;; HST-017): heap-figure's heap, then the thread stacks the node's threads
+;; HST-025): heap-figure's heap, then the thread stacks the node's threads
 ;; reserve beside it; the launcher passes `--control-stack-size KB' too.
 (defun fnn-heap-reservation (profile connections)
   (fnn-core 'fn-heap-reserve-decide profile (fnn-heap-core-octets)

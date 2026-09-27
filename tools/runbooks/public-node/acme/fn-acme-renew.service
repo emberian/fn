@@ -1,0 +1,12 @@
+# hbox's user unit (~/.config/systemd/user/): renew fn.fg-goose.online's
+# certificate when it has under 30 days left; the hook installs it and
+# asks the running node to `tls reload` it (no restart).
+[Unit]
+Description=Renew the public fn node's Let's Encrypt certificate
+After=network-online.target
+ConditionPathIsDirectory=/home/hbox/fn-public/acme
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/fn-acme/dns.env
+ExecStart=/usr/bin/lego --accept-tos --email ${FN_ACME_EMAIL} --dns cloudflare --dns.resolvers 1.1.1.1:53 --key-type ec256 --domains fn.fg-goose.online --path /home/hbox/fn-public/acme renew --days 30 --renew-hook %h/.config/fn-acme/fn-cert-install.sh

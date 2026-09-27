@@ -43,6 +43,48 @@ Raw Lisp I/O, FFI, TLS/crypto libraries, runtime/compiler and filesystem/hardwar
 assumptions remain explicit trust boundaries. A Python-free process is a
 deployment property, not a theorem of functional correctness or durability.
 
+### The release
+
+HST-017: The release is one tarball per platform (`fn-REV12-linux-x86_64.tar.gz`,
+`fn-REV12-openbsd-amd64.tar.gz`) built by `packaging/release-tarball.sh` on
+that platform from a `git archive` of REV, never a worktree. It is built only
+when every book of the default image profile's include closure is green at
+its digest (`tools/green_check.py --profile default --strict`, its line in
+`share/fn/release-gate.txt`), from certificates acquired and load-checked
+from the cache, and it carries the production image only. It holds one
+directory `fn/`: `install.sh`, `bin/fn`, `libexec/fn/` (the frozen launcher,
+the core, `source-revision`, the SBCL runtime and the libraries the image
+loads that the platform lacks), `share/fn/` (the service template, the
+example configuration, `docs/install.md`) and `SHA256SUMS`. `bin/fn
+--version` prints REV. An installation is one directory: `install-native.sh`
+and `install.sh` refuse a prefix that exists, and a reinstall is stop,
+export, remove, install, import, start (D34); `install.sh` asks the new
+release's own `status` about an existing node and stops at a store-format
+refusal.
+
+HST-018: No Python is on the path a deployed node or its operator verbs
+execute. `tools/runpath_check.py` checks the tree (`make check`: every
+process site in `host/`, the dlopen candidates, the shipped scripts and
+service files) and every release before it is packed (`--tree`: no Python
+file, interpreter or link; every executable a `/bin/sh` script or ELF; no
+link or command outside the release; each ELF object's interpreter the C
+library's loader, no RPATH outside, every DT_NEEDED carried or the C
+library; every shared-object name in the saved core carried, the C library,
+or the system TLS library HST-016 names).
+
+HST-021: The Linux release runs on glibc 2.36 (Debian 12) and later. No
+ELF object it bundles (the SBCL runtime, libsodium, libfn-mldsa65) needs a
+`GLIBC_x.y` symbol version above `GLIBC_FLOOR` in `tools/runpath_check.py`,
+the one place the floor is set; the release build's `--tree` check refuses
+one that does, naming the symbol. Because a saved core starts only on the
+runtime with its build-id, the floor runtime is the same SBCL version rebuilt
+from its signed source with that build-id in a Debian 12 container
+(`packaging/floor-runtime.sh`, `release-tarball.sh --runtime-from`), and the
+freeze refuses it unless it prints the same version and starts the image's
+core. The floor is a property of the bundled objects' version needs; it says
+nothing of a glibc below it, and a symbol a core resolves by name at start
+(the linkage table) is checked only by running there.
+
 ## Core interface
 
 Conceptual events include connection-opened, input-octets, connection-closed,
@@ -349,7 +391,7 @@ requirement of packet C3-05 is unchanged by the packaging.
 
 ### The saved image's memory
 
-HST-017: The saved image carries the execution world only, and the owner
+HST-025: The saved image carries the execution world only, and the owner
 serves on a small collection trigger. `host/native/build.lisp` (and
 `build-dtn.lisp`) loads `host/native/strip-world.lisp` after the last event and
 immediately before `save-exec`. Every symbol keeps, at its current value, only
@@ -522,9 +564,27 @@ at every start (a missing library or function refuses the start by name):
 
 | Seam | Library | Functions | Found |
 | --- | --- | --- | --- |
-| TLS (STARTTLS, the TLS-only listener, the peer feed's client) | the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
+| TLS (STARTTLS, the TLS-only listener, the peer feed's client) | the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, and for `tls reload` and the served line (HST-020) `SSL_CTX_get0_certificate`, `X509_get0_notBefore/notAfter`, `X509_get_ext_by_NID/get_ext`, `X509_EXTENSION_get_data`, `ASN1_STRING_get0_data/length`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
 | Ed25519, SHA-512 | libsodium | `crypto_sign_verify_detached`, `crypto_sign_detached`, `crypto_sign_keypair`, `crypto_hash_sha512`, width and init checks, in `host/native/crypto.lisp`, `signatures.lisp`, `peer-invite.lisp` | the system's (Linux, OpenBSD package, Homebrew) or the release's `lib/libsodium.so.23` |
 | ML-DSA-65 | `lib/libfn-mldsa65`: vendored PQClean ml-dsa-65 clean (`third_party/pqclean-ml-dsa-65`, upstream commit in `UPSTREAM.txt`) behind `host/native/fn-mldsa65.c`, built by `tools/build_mldsa65.sh` | `fn_mldsa65_public_from_pem_file`, `fn_mldsa65_sign_pem_file`, `fn_mldsa65_verify`, `fn_mldsa65_generate_pem`, `fn_mldsa65_widths`, in `host/native/signatures.lisp` and `peer-invite.lisp` | `lib/` beside the image's core (`FN_MLDSA_LIBRARY` overrides) |
+
+HST-020: A running owner takes a renewed certificate and key without a
+restart. `operator CONFIG tls reload` (FNCT request kind 19, reply kind 20,
+`books/tls-reload.lisp`) makes the owner build a candidate context from the
+paths `run` loaded and report what the library observed: whether the chain
+loaded, the key loaded, the key matches the leaf (booleans), the leaf's
+notBefore and notAfter contents octets, its subjectAltName extension value,
+and the host clock. ACL2 parses the times (RFC 5280 section 4.1.2.5) and
+the dNSNames (section 4.2.1.6) and decides (`fn-tlsr-decide`, PRF-212): the
+new pair is served exactly when both loaded, they match, the clock lies in
+the validity window, the names are readable and every name the served
+certificate names is still named; otherwise the refusal names the first
+failing fact and the served context is untouched. An accepted pair is
+swapped in under the context's lock that `SSL_new` also takes, so every
+handshake after the swap uses it and a session already open keeps the
+context it was created from (SSL_new holds its own reference). `status`
+against a running owner prints the served names and notAfter
+(`tls names=... not-after=...`, rendered by ACL2).
 
 HST-015: No Python on the path a deployed node executes. A release runs
 `bin/fn` (`/bin/sh`), which execs the frozen launcher `libexec/fn/fn-host`

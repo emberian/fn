@@ -131,8 +131,15 @@
 (defun fn-scar-auth-delegate-pinned
     (as live trie arts archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t))
+  ;; PRF-222: the session's group-access view, as fn-auth-delegate-pinned
+  ;; (books/nntp-auth.lisp); every view input is its argument for an
+  ;; unrestricted session.
   (let ((r (fn-scar-peer-step-pinned
-            (fn-auth-session-base as) live trie arts archive index verdicts config
+            (fn-auth-view-session as config) live trie arts
+            (fn-auth-view-archive as config archive)
+            (fn-auth-view-index as config archive index)
+            verdicts
+            (fn-auth-view-config as config archive)
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -333,23 +340,31 @@
 (defun fn-scar-feed-counted (conn octets live trie arts)
   (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))
                   :verify-guards nil
-                  :measure (len octets)))
+                  :measure (len octets)
+                  :hints (("Goal" :in-theory (disable fn-scar-feed-byte
+                                                      fn-served-submission)))))
   (if (or (not (consp octets))
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-tls-handshakingp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (let* ((here (fn-scar-feed-byte conn (car octets) live trie arts))
-           (tail (fn-scar-feed-counted
-                  (fn-served-result-conn here) (cdr octets) live trie arts))
-           (tail-result (fn-served-counted-result tail)))
-      (fn-served-counted-make
-       (+ 1 (fn-served-counted-consumed tail))
-      (fn-served-make-result
-        (fn-served-result-conn tail-result)
-        (mbe :logic (append (fn-served-result-effects here)
-                            (fn-served-result-effects tail-result))
-             :exec (fn-ag-append (fn-served-result-effects here)
-                                 (fn-served-result-effects tail-result))))))))
+    (let ((here (fn-scar-feed-byte conn (car octets) live trie arts)))
+      ;; PKT-600: yield after the octet that completed a submission, as
+      ;; fn-served-feed-counted does (books/served-tls-prefix.lisp).
+      (if (fn-served-submission (fn-served-result-effects here))
+          (fn-served-counted-make
+           1 (fn-served-make-result (fn-served-result-conn here)
+                                    (fn-served-result-effects here)))
+        (let* ((tail (fn-scar-feed-counted
+                      (fn-served-result-conn here) (cdr octets) live trie arts))
+               (tail-result (fn-served-counted-result tail)))
+          (fn-served-counted-make
+           (+ 1 (fn-served-counted-consumed tail))
+           (fn-served-make-result
+            (fn-served-result-conn tail-result)
+            (mbe :logic (append (fn-served-result-effects here)
+                                (fn-served-result-effects tail-result))
+                 :exec (fn-ag-append (fn-served-result-effects here)
+                                     (fn-served-result-effects tail-result))))))))))
 
 (defthm fn-scar-feed-counted-consumed-is-natural
   (natp (fn-served-counted-consumed

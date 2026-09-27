@@ -257,6 +257,38 @@
             (fn-native-admin-line-pieces (cdr lines)))
     nil))
 
+;; PRF-222: `account access LOGIN|--anonymous --read R --post P'.  A
+;; pattern is admitted only when it is an RFC 3977 section 4.2 wildmat over
+;; newsgroup names (`fn-wildmat-parse', the grammar LIST ACTIVE's argument
+;; is read with) and a configuration label; the login is the account
+;; grammar of books/config.lisp.
+(defun fn-native-admin-access-patternp (word)
+  (declare (xargs :guard t))
+  (and (fn-cfg-access-patternp word)
+       (fn-wildmat-result-okp
+        (fn-wildmat-parse (fn-record-string-octets word)))
+       t))
+
+(defun fn-native-admin-access-plan (words argv)
+  (declare (xargs :guard t))
+  (if (and (equal (len words) 5)
+           (equal (fn-native-admin-arg 1 words) "--read")
+           (equal (fn-native-admin-arg 3 words) "--post"))
+      (let ((login (fn-native-admin-arg 0 words))
+            (read (fn-native-admin-arg 2 words))
+            (post (fn-native-admin-arg 4 words)))
+        (cond ((not (or (equal login "--anonymous")
+                        (fn-cfg-account-loginp login)))
+               (fn-native-admin-result :refused :access-login nil nil 0 nil nil))
+              ((not (and (fn-native-admin-access-patternp read)
+                         (fn-native-admin-access-patternp post)))
+               (fn-native-admin-result :refused :access-pattern nil nil 0 nil nil))
+              (t (fn-native-admin-result
+                  :accepted nil :account-access
+                  (if (equal login "--anonymous") nil (fn-native-admin-arg 0 argv))
+                  0 (fn-native-admin-arg 2 argv) (fn-native-admin-arg 4 argv)))))
+    (fn-native-admin-result :refused :syntax nil nil nil nil nil)))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -279,6 +311,17 @@
              (equal (cadr words) "create")
              (fn-record-group-namep (caddr words)))
         (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil nil))
+       ; O2 (books/group-status.lisp): `group policy NAME n|y' sets the
+       ; group's LIST ACTIVE status (RFC 3977 section 7.6.3): "n" closes it
+       ; to local posting, "y" opens it.  A durable :set-group-status
+       ; configuration record (code 21), offline or live.
+       ((and (equal (len words) 4)
+             (equal (car words) "group")
+             (equal (cadr words) "policy")
+             (fn-record-group-namep (caddr words))
+             (member-equal (cadddr words) '("y" "n")))
+        (fn-native-admin-result :accepted nil :set-group-status (caddr argv) 0
+                                nil (cadddr argv)))
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "retire")
@@ -324,6 +367,17 @@
              (equal (cadr words) "set")
              (equal (caddr words) *fn-exp-policy-slot*)
              (fn-exp-anonymous-wordp (cadddr words)))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
+       ; PRF-211: the trusted range exempt from exposure-per-address, a
+       ; durable `:set-policy' row applied live; the word is admitted only
+       ; when every range in it parses (fn-exp-trusted-wordp), and `none'
+       ; clears it.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-exp-trusted-slot*)
+             (fn-exp-trusted-wordp (cadddr words)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
        ; PRF-161: a limit of the public reader port, a `:set-limit' row
@@ -392,6 +446,20 @@
                                 (fn-native-admin-decimal-value
                                  (coerce (cadddr words) 'list))
                                 nil nil))
+       ; PRF-222 (NNT-046): group access.  `account access show' is the
+       ; `account list' report, whose access lines are the rules
+       ; (books/account-list.lisp).  `account access LOGIN --read R --post P'
+       ; and `account access --anonymous --read R --post P' stage one
+       ; :account-access record (code 22), offline or live.
+       ((and (equal (len words) 3)
+             (equal (car words) "account")
+             (equal (cadr words) "access")
+             (equal (caddr words) "show"))
+        (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+       ((and (<= 3 (len words))
+             (equal (car words) "account")
+             (equal (cadr words) "access"))
+        (fn-native-admin-access-plan (cddr words) (cddr argv)))
        ((and (consp words) (equal (car words) "account"))
         (fn-native-admin-result :refused :account nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "control"))
@@ -452,6 +520,15 @@
                  nil))))
             ((equal kind :set-exposure)
              (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
+            ((equal kind :account-access)
+             (list (fn-cfg-account-access
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan))
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            ((equal kind :set-group-status)
+             (list (fn-cfg-set-group-status
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :set-policy)
              (list (fn-cfg-set-policy
                     name

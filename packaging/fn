@@ -98,7 +98,7 @@ if [ -n "$installed" ]; then
         ''|*[!0-9]*) echo "fn: the heap probe printed no figure: $figure" >&2; exit 4 ;;
     esac
     # The control stack every thread reserves (books/heap-reservation.lisp,
-    # HST-017): the measured need of the profile's largest article.
+    # HST-025): the measured need of the profile's largest article.
     stack=
     case $figure in
         *" stack="*) stack=${figure##* stack=}; stack=${stack%% *} ;;

@@ -780,7 +780,8 @@
     :set-listeners :set-peers :set-limit :set-peer :remove-peer
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
-    :add-peer-rows :remove-peer-rows :set-group-description))
+    :add-peer-rows :remove-peer-rows :set-group-description
+    :set-group-status :account-access))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -804,6 +805,8 @@
         ((equal kind :add-peer-rows) 18)
         ((equal kind :remove-peer-rows) 19)
         ((equal kind :set-group-description) 20)
+        ((equal kind :set-group-status) 21)
+        ((equal kind :account-access) 22)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -828,6 +831,8 @@
         ((equal code 18) :add-peer-rows)
         ((equal code 19) :remove-peer-rows)
         ((equal code 20) :set-group-description)
+        ((equal code 21) :set-group-status)
+        ((equal code 22) :account-access)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -893,6 +898,54 @@
 (defun fn-cfg-remove-peer-rows (name rows)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :remove-peer-rows name "" 0 rows))
+
+;; A group's posting status (O2; RFC 3977 section 7.6.3, RFC 6048 section
+;; 2.1: the LIST ACTIVE status field).  The group entry's policy identifier
+;; is the group's posting policy: `*fn-cfg-default-policy-id*' is status "y"
+;; (posting permitted) and `*fn-cfg-read-only-policy-id*' is status "n"
+;; (local posting not permitted; articles still arrive from peers, RFC 6048
+;; section 2.1.1).  The delta is
+;;   (:set-group-status NAME STATUS 0 nil)                          code 21
+;; with STATUS "y" or "n"; it rewrites the live entry's policy identifier and
+;; nothing else (`fn-cfg-groups-set-policy').  Code 20 is
+;; :set-group-description (lane usenet-headers).  "m" (moderated, P3) and
+;; "x" are deferred; "j" and "=" are never (no junk group, no aliases).
+(defconst *fn-cfg-default-policy-id* "fn-policy-default-1")
+(defconst *fn-cfg-read-only-policy-id* "fn-policy-read-only-1")
+
+(defun fn-cfg-status-policy-id (status)
+  (declare (xargs :guard t))
+  (if (equal status "n") *fn-cfg-read-only-policy-id* *fn-cfg-default-policy-id*))
+
+(defun fn-cfg-set-group-status (name status)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :set-group-status name status 0 nil))
+
+; The status field of group NAME at generation GEN: "n" when the group is
+; live and its policy identifier is the read-only one, else "y".  The one
+; reader: LIST ACTIVE's field and the POST gate both come from here
+; (`fn-cfg-closed-names').
+(defun fn-cfg-group-status (v gen name)
+  (declare (xargs :guard t))
+  (let ((e (fn-cfg-group-find (fn-cfg-groups v) name)))
+    (if (and (fn-cfg-entry-livep e gen)
+             (equal (fn-cfg-group-policy-id e) *fn-cfg-read-only-policy-id*))
+        "n"
+      "y")))
+
+; The names among NAMES whose status in V at GEN is "n".
+(defun fn-cfg-closed-filter (names v gen)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (if (equal (fn-cfg-group-status v gen (car names)) "n")
+          (cons (car names) (fn-cfg-closed-filter (cdr names) v gen))
+        (fn-cfg-closed-filter (cdr names) v gen))
+    nil))
+
+; The live groups whose status is "n", in served-table order.
+(defun fn-cfg-closed-names (v gen)
+  (declare (xargs :guard t))
+  (fn-cfg-closed-filter (fn-cfg-group-names v gen) v gen))
 
 ;; Control authority (D29, packet C2; specs/peering.md section 8).  A grant
 ;; is one authorities row (NAMESPACE PRINCIPAL-HEX VERB 0), keyed on the pair
@@ -1161,6 +1214,78 @@
            :binding-row)
           (t nil))))
 
+;; Group access (PRF-222, NNT-046; specs/nntp.md "Group access").  The same
+;; slot holds one access rule per login: a row (LOGIN READ POST 3), mark 3
+;; beside the account rows' 0 and 1 and the binding rows' 2, written only by
+;;
+;;   (:account-access LOGIN READ 0 ((LOGIN READ POST 3)))           code 22
+;;
+;; which replaces every mark-3 row whose login spells the same octets and
+;; leaves every other row where it was.  READ and POST are RFC 3977 section
+;; 4.2 wildmats over newsgroup names: the groups the login's connections
+;; see, and the groups they may post to.  LOGIN "" is the rule of a
+;; connection that has not authenticated.  A login with no row, and a row of
+;; "*", restricts nothing (the default, so every account keeps its view).
+;; The delta is admitted on the representation (a label, graphic ASCII);
+;; the wildmat grammar is the verb's to check (books/native-admin.lisp), and
+;; a pattern that does not parse admits nothing when it is applied
+;; (books/group-access.lisp `fn-gac-readablep': fail closed).
+(defun fn-cfg-access-patternp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (fn-cfg-graphic-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-access-rows (login read post)
+  (declare (xargs :guard t))
+  (list (fn-cfg-row-make login read post 3)))
+
+(defun fn-cfg-account-access (login read post)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :account-access login read 0
+                     (fn-cfg-access-rows login read post)))
+
+(defun fn-cfg-access-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 3))
+
+(defun fn-cfg-rows-without-access (rows login)
+  ; ROWS less every access row whose login spells LOGIN's octets.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-access-rowp (car rows))
+               (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                      (fn-record-string-octets login)))
+          (fn-cfg-rows-without-access (cdr rows) login)
+        (cons (car rows) (fn-cfg-rows-without-access (cdr rows) login)))
+    nil))
+
+(defun fn-cfg-account-access-reason (d)
+  (declare (xargs :guard t))
+  (let ((login (fn-cfg-delta-a d)) (read (fn-cfg-delta-b d))
+        (rows (fn-cfg-delta-rows d)))
+    (cond ((not (or (equal login "") (fn-cfg-account-loginp login)))
+           :access-login)
+          ((not (fn-cfg-access-patternp read)) :access-pattern)
+          ((not (and (consp rows) (null (fn-cfg-ag-cdr rows))))
+           :access-row)
+          ((not (fn-cfg-access-patternp (fn-cfg-row-c (fn-cfg-ag-car rows))))
+           :access-pattern)
+          ((not (equal rows (fn-cfg-access-rows
+                             login read (fn-cfg-row-c (fn-cfg-ag-car rows)))))
+           :access-row)
+          (t nil))))
+
+; The access rows of the slot, in slot order.
+(defun fn-cfg-access-table (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (fn-cfg-access-rowp (car rows))
+          (cons (car rows) (fn-cfg-access-table (cdr rows)))
+        (fn-cfg-access-table (cdr rows)))
+    nil))
+
 ; The row a code's digest keys, or nil.
 (defun fn-cfg-account-row (rows digest)
   (declare (xargs :guard t))
@@ -1356,6 +1481,21 @@
         (cons (car es) (fn-cfg-groups-retire (cdr es) gen name)))
     nil))
 
+(defun fn-cfg-groups-set-policy (es name policy)
+  ; Rewrite the first entry named NAME's policy identifier.  Creation,
+  ; retirement and the watermark stay.
+  (declare (xargs :guard t))
+  (if (consp es)
+      (if (equal (fn-cfg-group-name (car es)) name)
+          (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
+                                   (fn-cfg-group-created-stamp (car es))
+                                   (fn-cfg-group-retired-gen (car es))
+                                   policy
+                                   (fn-cfg-group-next (car es)))
+                (cdr es))
+        (cons (car es) (fn-cfg-groups-set-policy (cdr es) name policy)))
+    nil))
+
 (defun fn-cfg-set-groups (v es)
   (declare (xargs :guard t))
   (fn-cfg-value-make-full es (fn-cfg-capacity v) (fn-cfg-quotas v)
@@ -1378,6 +1518,9 @@
                                                  a b)))
      ((equal kind :remove-group)
       (fn-cfg-set-groups v (fn-cfg-groups-retire (fn-cfg-groups v) gen a)))
+     ((equal kind :set-group-status)
+      (fn-cfg-set-groups v (fn-cfg-groups-set-policy
+                            (fn-cfg-groups v) a (fn-cfg-status-policy-id b))))
      ((equal kind :set-capacity)
       (fn-cfg-value-make-full (fn-cfg-groups v) n (fn-cfg-quotas v)
                          (fn-cfg-policies v) (fn-cfg-listeners v)
@@ -1520,6 +1663,17 @@
                                   (fn-cfg-accounts v) a)
                                  rows)
                          (fn-cfg-descriptions v)))
+     ; An access rule replaces that login's access row (PRF-222).
+     ((equal kind :account-access)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-access
+                                  (fn-cfg-accounts v) a)
+                                 rows)
+                         (fn-cfg-descriptions v)))
      ; A description replaces every row keyed on its name (PRF-195).
      ((equal kind :set-group-description)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
@@ -1573,6 +1727,11 @@
             (t nil)))
      ((equal kind :remove-group)
       (if (fn-cfg-group-livep v gen a) nil :no-such-group))
+     ((equal kind :set-group-status)
+      (cond ((not (fn-cfg-group-livep v gen a)) :no-such-group)
+            ((not (member-equal (fn-cfg-delta-b d) '("y" "n"))) :group-status)
+            ((not (equal (fn-cfg-delta-rows d) nil)) :group-status)
+            (t nil)))
      ((equal kind :set-capacity)
       (if (< n (nfix reserved)) :capacity-below-reserved nil))
      ((equal kind :set-limit)
@@ -1680,6 +1839,7 @@
                :account-login-taken)
               (t nil))))
      ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
+     ((equal kind :account-access) (fn-cfg-account-access-reason d))
      ((equal kind :set-group-description)
       (fn-cfg-set-group-description-reason v gen d))
      (t nil))))
@@ -2138,7 +2298,6 @@
 ; reading it is willing to certify, and the design's clock discipline says so
 ; explicitly rather than inventing a time.
 
-(defconst *fn-cfg-default-policy-id* "fn-policy-default-1")
 
 (defconst *fn-cfg-default-stamp* (fn-clock-observation 0 0 0 nil))
 
@@ -2248,7 +2407,10 @@
     (:d fn-cfg-source-id-hexp) (:d fn-cfg-issue-invitation)
     (:d fn-cfg-consume-invitation) (:d fn-cfg-invitation-row)
     (:d fn-cfg-invitation-pendingp) (:d fn-cfg-invitation-delta-rowp)
-    (:d fn-cfg-groups-retire) (:d fn-cfg-set-groups) (:d fn-cfg-apply-delta)
+    (:d fn-cfg-groups-retire) (:d fn-cfg-groups-set-policy)
+    (:d fn-cfg-status-policy-id) (:d fn-cfg-set-group-status)
+    (:d fn-cfg-group-status) (:d fn-cfg-closed-filter) (:d fn-cfg-closed-names)
+    (:d fn-cfg-set-groups) (:d fn-cfg-apply-delta)
     (:d fn-cfg-apply) (:d fn-cfg-name-line-octets) (:d fn-cfg-delta-reason)
     (:d fn-cfg-admissible-reason) (:d fn-cfg-admissiblep)
     (:d fn-cfg-recordp) (:d fn-cfg-apply-record)

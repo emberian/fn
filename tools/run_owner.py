@@ -222,15 +222,18 @@ class Acl2Owner(Acl2Store):
         return cid, bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
 
     def chunk(self, cid, octets):
-        """One socket read, consumed whole by one certified call.
+        """One certified read of a socket region; returns what it consumed.
 
-        `fn-own-read' (books/owner.lisp) is one fn-served-step over the
-        connection's wire, session and pinned archive
-        (fn-own-read-is-served-step-on-pinned-prefix).  The whole chunk is
-        consumed, so there is no unconsumed suffix and no re-feeding loop
-        here.  The third value says whether the read injected an article:
-        the book queued the submission inside the owner, and `take' is how
-        the writer moves it into the durable path.
+        `fn-owner-chunk' runs fn-scar-ocfg-read-tls-prefix, which is
+        fn-ocfg-read over the prefix it consumed
+        (fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix,
+        books/owner-tls-prefix.lisp).  The prefix ends early after an octet
+        that completed a submission (PKT-600, PRF-213), after a STARTTLS
+        382, or where the wire closed; the caller feeds the rest back after
+        the writer has taken the submission.  The third value says whether
+        the read injected an article: the book queued the submission inside
+        the owner, and `take' is how the writer moves it into the durable
+        path.  The fourth is the consumed count.
         """
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
         outcome = self._symbol("(fn-owner-chunk {} '{} state)".format(cid, literal))
@@ -242,7 +245,8 @@ class Acl2Owner(Acl2Store):
         reply = bytes(acl2_octet_list(self.call("(fn-served-reply-octets (@ fn-owner-effects))")))
         closing = acl2_boolean(self.call("(@ fn-owner-closep)"))
         submitted = acl2_boolean(self.call("(@ fn-owner-submittedp)"))
-        return reply, closing, submitted
+        consumed = self._nat("(@ fn-owner-consumed)")
+        return reply, closing, submitted, consumed
 
     def starttlsp(self):
         """Whether the last read asked the host for a TLS handshake.
@@ -452,10 +456,13 @@ class Acl2Owner(Acl2Store):
             "(fn-owner-feed-lost '" + self.literal(peer.encode("utf-8")) +
             " {} state)".format(int(monotonic)))
 
-    def feed_connect(self, peer, conn):
-        return self._symbol_any("(fn-owner-feed-connect '{} {} state)".format(
+    def feed_connect(self, peer, conn, form=None):
+        """FORM is ACL2's connection form word (:ihave after a 500/501 to
+        MODE STREAM, else nil); this harness path never runs MODE STREAM."""
+        return self._symbol_any("(fn-owner-feed-connect '{} {} {} state)".format(
             self.literal(peer.encode("utf-8")),
-            "nil" if conn is None else str(conn)))
+            "nil" if conn is None else str(conn),
+            ":ihave" if form == "ihave" else "nil"))
 
     def feed_tick(self, peer, monotonic):
         return self._symbol_any("(fn-owner-feed-tick '{} {} state)".format(
@@ -919,31 +926,40 @@ class Owner:
                 # here at all; tests/test_owner.py uses it to show that a
                 # fault on one connection costs only that connection.
                 self.faults.at("owner:served-read")
-                # One read, one certified step: fn-own-read consumes the
-                # whole chunk (books/served.lisp owns the framing loop and
-                # fn-served-run-is-the-concatenated-step says the cut points
-                # the network chose are invisible).
-                reply, closing, submitted = self.bridge.chunk(conn.cid, list(incoming))
-                conn.outbuf += reply
-                if closing:
-                    conn.closing = True
-                # RFC 4642 section 2.2.2.  The book stopped framing at the
-                # 382 (fn-served-tls-handshakingp, books/served.lisp), so
-                # whatever else arrived in this read is handshake and the
-                # host does not have to discard anything by itself.
-                if self.bridge.starttlsp():
-                    conn.handshaking = True
-                    conn.reading = False
-                if submitted:
-                    self.drain()
-                    if self.feed_uncertain:
-                        return
-                    # `drain' may have faulted THIS connection (the
-                    # submission it carried was this connection's), in which
-                    # case the socket is closed and the owner has forgotten
-                    # it; there is nothing left of it to write to or rearm.
-                    if conn.sock not in self.connections:
-                        return
+                # One certified step per yield: the read consumes the region
+                # up to and including an article that became a submission
+                # (PKT-600, PRF-213), and the rest is fed back once the writer
+                # has taken it, so two pipelined articles are two steps and
+                # neither is dropped (fn-served-drain-takes-every-submission,
+                # books/served-tls-prefix.lisp; the cut points are invisible
+                # by fn-served-drain-run-is-boundary-independent).
+                pending = list(incoming)
+                while pending:
+                    reply, closing, submitted, consumed = self.bridge.chunk(conn.cid, pending)
+                    conn.outbuf += reply
+                    if closing:
+                        conn.closing = True
+                    # RFC 4642 section 2.2.2.  The book stopped framing at the
+                    # 382 (fn-served-tls-handshakingp, books/served.lisp), so
+                    # whatever else arrived in this read is handshake and the
+                    # host does not have to discard anything by itself.
+                    starttls = self.bridge.starttlsp()
+                    if starttls:
+                        conn.handshaking = True
+                        conn.reading = False
+                    if submitted:
+                        self.drain()
+                        if self.feed_uncertain:
+                            return
+                        # `drain' may have faulted THIS connection (the
+                        # submission it carried was this connection's), in which
+                        # case the socket is closed and the owner has forgotten
+                        # it; there is nothing left of it to write to or rearm.
+                        if conn.sock not in self.connections:
+                            return
+                    if closing or starttls or not submitted or consumed == 0:
+                        break
+                    pending = pending[consumed:]
         if mask & selectors.EVENT_WRITE and conn.outbuf:
             try:
                 sent = conn.sock.send(conn.outbuf)

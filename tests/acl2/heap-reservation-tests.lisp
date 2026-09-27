@@ -1,4 +1,4 @@
-; Teeth for books/heap-reservation (lane image-floor, HST-017, extending
+; Teeth for books/heap-reservation (lane image-floor, HST-025, extending
 ; PRF-198): the decisions on the lane's core and the OpenBSD VM's datasize,
 ; the keystone's reachable witness and, per hypothesis, a counterexample where
 ; the others hold and the conclusion fails, with the must-fail of the theorem

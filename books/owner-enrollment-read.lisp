@@ -4,8 +4,9 @@
 ;; Host path (reader), as for HDR :fn-verified (books/owner-verdict-read) and
 ;; HDR :fn-control (books/owner-control-read): host/native/owner.lisp
 ;; (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp
-;; fn-owner-chunk, that is fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by
-;; fn-ocfg-read-tls-prefix-is-full-read (books/owner-tls-prefix), whose reply
+;; fn-owner-chunk, that is fn-ocfg-read-tls-prefix, equal to fn-ocfg-read over
+;; the octets it consumed (all of them unless a submission made it yield) by
+;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix), whose reply
 ;; is (car (fn-own-read ...)).  fn-own-read builds the served connection from
 ;; the owner connection -- its pinned archive, verdicts, Message-ID trie,
 ;; buckets and control pin -- and runs the byte fold fn-served-step down to
@@ -112,20 +113,11 @@
                   (verdicts (fn-served-conn-verdicts
                              (fn-octl-served-conn
                               o (fn-own-find-conn id (fn-own-conns o)))))
-                  (env (fn-nntp-env-listed
-                        (fn-served-conn-observation
-                         (fn-octl-served-conn
-                          o (fn-own-find-conn id (fn-own-conns o))))
-                        nil
-                        (and (fn-inj-config-allow
-                              (fn-served-conn-config
+                  (env (fn-post-reader-env (fn-served-conn-config
                                (fn-octl-served-conn
-                                o (fn-own-find-conn id (fn-own-conns o)))))
-                             t)
-                        (fn-inj-config-listing
-                         (fn-served-conn-config
-                          (fn-octl-served-conn
-                           o (fn-own-find-conn id (fn-own-conns o)))))))
+                                o (fn-own-find-conn id (fn-own-conns o)))) (fn-served-conn-observation
+                         (fn-octl-served-conn
+                          o (fn-own-find-conn id (fn-own-conns o))))))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))
                  (:instance fn-auth-fold-enrollment-hdr-response-has-no-offer

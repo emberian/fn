@@ -22,9 +22,72 @@
 ; carries it across every owner transition the host installs
 ; (fn-osi-live-owner-store-is-indexed).  Never evaluated on a served path.
 
+; The node's committed-record check with the node recognizer carried, not
+; evaluated (PKT-448 (a), PRF-220).  fn-bpi-node-record-committedp
+; (books/bp-ingress.lisp) conjoins fn-node-statep of the node it is handed,
+; which walks and conses the whole article list, the bindings and the
+; retention ledger on every call.  The Store the host dispatches over already
+; carries that invariant: fn-sn-statep conjoins fn-node-statep of its node,
+; and the configured owner's relation carries fn-sn-statep from open across
+; every transition (fn-bpaj-ocl-relation-carries-sn-statep,
+; books/owner-store-indexed.lisp).  This is
+; the same check without that conjunct; it is fn-bpi-node-record-committedp
+; on every node satisfying fn-node-statep
+; (fn-bpaj-node-record-committed-carriedp-is-committedp).  The two lookups
+; that remain are pointer walks that allocate nothing (PKT-638).
+(defun fn-bpaj-node-record-committed-carriedp (node record)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (let ((article (fn-find-article
+                       (fn-record-msgid record)
+                       (fn-state-articles (fn-node-acceptance node))))
+             (binding (fn-node-find-binding
+                       (fn-record-msgid record) (fn-node-bindings node))))
+         (and (consp article) (consp binding)
+              (equal (fn-article-payload article) (fn-record-payload record))
+              (equal (fn-article-groups article) (fn-record-groups record))
+              (equal (fn-node-binding-subject binding)
+                     (fn-record-content-subject record))
+              (equal (fn-node-binding-id binding)
+                     (fn-record-obligation-id record))))
+       :exec
+       (let ((article (fn-find-article
+                       (fn-bpi-ag-record-msgid record)
+                       (fn-state-articles (fn-node-acceptance node))))
+             (binding (fn-node-find-binding
+                       (fn-bpi-ag-record-msgid record) (fn-node-bindings node))))
+         (and (consp article) (consp binding)
+              (equal (fn-article-payload article)
+                     (fn-bpi-ag-record-payload record))
+              (equal (fn-article-groups article)
+                     (fn-bpi-ag-record-groups record))
+              (equal (fn-node-binding-subject binding)
+                     (fn-bpi-ag-record-content-subject record))
+              (equal (fn-node-binding-id binding)
+                     (fn-bpi-ag-record-obligation-id record))))))
+(verify-guards fn-bpaj-node-record-committed-carriedp)
+
+; KEYSTONE (PRF-220): on a node satisfying the recognizer, the carried check
+; is the checked one.  No other hypothesis.
+(defthm fn-bpaj-node-record-committed-carriedp-is-committedp
+  (implies (fn-node-statep node)
+           (equal (fn-bpaj-node-record-committed-carriedp node record)
+                  (fn-bpi-node-record-committedp node record)))
+  :hints (("Goal" :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-node-record-committed-carriedp
+              fn-bpi-node-record-committedp)))))
+
+(defthm fn-bpaj-sn-statep-carries-node-statep
+  (implies (fn-sn-statep store)
+           (fn-node-statep (fn-sn-node store)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-node-statep)))))
+
 ; Store membership through the Message-ID index: the record's own
 ; Message-ID selects its candidates, so no walk of the history and no decode
-; of a composite happens here (PKT-291).
+; of a composite happens here (PKT-291).  The node check is the carried one:
+; no whole-node recognizer runs per request (PRF-220).
 (defun fn-bpaj-store-record-accepted-fast (store record)
   (declare (xargs :guard t))
   (and (fn-record-p record)
@@ -32,7 +95,7 @@
        (member-equal record
                      (fn-cei-msgid-records (fn-record-msgid record)
                                            (fn-sn-event-index store)))
-       (fn-bpi-node-record-committedp (fn-sn-node store) record)))
+       (fn-bpaj-node-record-committed-carriedp (fn-sn-node store) record)))
 
 (defun fn-bpaj-request-acceptable-fast
     (store config record request policy-authorizedp)
@@ -616,7 +679,9 @@
             (theory 'minimal-theory)
             '(fn-bpaj-store-record-accepted-fast
               fn-bpr-store-record-acceptedp
-              fn-bpaj-indexed-membership-is-history-membership)))))
+              fn-bpaj-indexed-membership-is-history-membership
+              fn-bpaj-sn-statep-carries-node-statep
+              fn-bpaj-node-record-committed-carriedp-is-committedp)))))
 
 (defthm fn-bpaj-request-acceptable-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
@@ -944,3 +1009,34 @@
                     fn-bpaj-record-matches-request-fast-is-checked
                     fn-bpaj-record-lookup-fast-is-checked
                     fn-bpaj-dispatch-fast-is-checked))
+
+; KEYSTONE (PRF-220) for host/bp-receive-host.lisp fn-bpreq-existing-record
+; and host/bp-receipt-host.lisp fn-bpr-host-accept, which retired their own
+; walks of the history for this lookup: a record the indexed lookup finds is
+; one the retired walk's predicate selects (the request's article and
+; subject) and the receiver's checked Store predicate accepts.  The lookup
+; is stricter than the walk in two cases only, both refusals: two records
+; under the article's Message-ID (the host never picks a first), and a
+; record whose Message-ID is not the article's own.
+(defthm fn-bpaj-record-lookup-fast-found-is-an-accepted-match
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store)
+                (equal (car (fn-bpaj-record-lookup-fast store request)) :found))
+           (let ((record (cadr (fn-bpaj-record-lookup-fast store request))))
+             (and (fn-record-p record)
+                  (equal (fn-record-payload record)
+                         (fn-bpa-request-article request))
+                  (equal (fn-record-content-subject record)
+                         (fn-bpa-request-subject request))
+                  (fn-bpr-store-record-acceptedp store record))))
+  :hints (("Goal"
+           :use ((:instance fn-bpaj-store-record-accepted-fast-is-checked
+                            (record (car (fn-cei-msgid-records
+                                          (fn-record-octets-string
+                                           (cadr (fn-bpaj-article-fields request)))
+                                          (fn-sn-event-index store))))))
+           :in-theory (e/d (fn-bpaj-record-lookup-fast
+                            fn-bpaj-record-matches-request-fast)
+                           (fn-bpaj-store-record-accepted-fast
+                            fn-bpr-store-record-acceptedp fn-record-p
+                            fn-cei-msgid-records fn-bpaj-article-fields
+                            fn-sn-statep fn-ceis-indexedp)))))

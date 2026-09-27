@@ -81,6 +81,22 @@
   "RFC 4644 section 2.3: MODE STREAM succeeds only with 203."
   (equal (fn-own-feed-response-code line) 203))
 
+(defun fn-fc-mode-unsupportedp (line)
+  "RFC 3977 section 3.2.1: 500 (the command is not recognized or not
+implemented) or 501 (MODE's argument is not one the server knows).  A server
+that answers MODE STREAM so does not stream; RFC 4644 gives MODE STREAM no
+refusal code of its own, and IHAVE (RFC 3977 section 6.3.2) is the transfer
+every transit server has."
+  (member-equal (fn-own-feed-response-code line) '(500 501)))
+
+; The same connection, ready, with streaming off: IHAVE from here on.
+(defun fn-fc-with-input-ihave (st input)
+  (if (equal (len st) 8)
+      (list input nil :ready (fn-fc-conn st)
+            (fn-fc-security st) (fn-fc-user st) (fn-fc-pass st)
+            (fn-fc-allow-clear st))
+    (fn-fc-make-state input nil :ready (fn-fc-conn st) (fn-fc-security st))))
+
 (defun fn-fc-mode-command ()
   "The ACL2-rendered bounded MODE STREAM line, or NIL on an internal defect."
   (let ((rendered (fn-wire-outbound-command-line
@@ -157,9 +173,11 @@
          (fn-fc-after-auth st input)
        (fn-fc-result :refused (fn-fc-with-input-phase st input :closed) nil)))
     (:mode
-     (if (fn-fc-mode-okp line)
-         (fn-fc-result :ready (fn-fc-with-input-phase st input :ready) nil)
-       (fn-fc-result :refused (fn-fc-with-input-phase st input :closed) nil)))
+     (cond ((fn-fc-mode-okp line)
+            (fn-fc-result :ready (fn-fc-with-input-phase st input :ready) nil))
+           ((fn-fc-mode-unsupportedp line)
+            (fn-fc-result :ready (fn-fc-with-input-ihave st input) nil))
+           (t (fn-fc-result :refused (fn-fc-with-input-phase st input :closed) nil))))
     (:ready (fn-fc-result :reply (fn-fc-with-input-phase st input :ready) line))
     (otherwise (fn-fc-result :closed (fn-fc-with-input-phase st input :closed) nil))))
 
@@ -263,6 +281,15 @@
 ;; flag false, which feeds the peer with IHAVE (RFC 3977 section 6.3.2).
 ;; The stop table is per owner process, like the reply framers above; a
 ;; restart spends one MODE STREAM exchange again.
+;;
+;; PRF-207 (2026-09-26, lane transit-streaming) narrows the stop: a peer that
+;; answers MODE STREAM with 500 or 501 (RFC 3977 section 3.2.1: it does not
+;; know the command or its argument) does not stream, and the connection
+;; goes on in IHAVE (`fn-fc-mode-unsupportedp', :ready with streaming off;
+;; the owner's `fn-own-feed-connect' takes the form).  No stop is recorded
+;; and the next dial asks again (RFC 4644 section 2.3's MODE STREAM is per
+;; connection).  Every other non-203 answer (400, 502, ...) is still the
+;; refusal PRF-130 stops on.
 
 (defconst *fn-fc-stop-mode-stream-refused* :mode-stream-refused)
 
@@ -293,6 +320,28 @@ configuration label)."
           (fn-record-string-octets
            " stopped reason=mode-stream-refused (RFC 4644 2.3: the peer does not stream; this owner does not dial it again; re-add the peer with streaming false to feed it with IHAVE)")))
 
+; The host's classification of the fallback (PRF-207): ST was waiting for
+; the MODE STREAM answer and STEP made the connection ready with streaming
+; off.  `fn-owner-feed-reply-chunk' installs the connection with the :ihave
+; form on it and logs `fn-fc-fallback-log-line'.
+(defun fn-fc-ihave-fallback-p (st step)
+  (and (equal (fn-fc-phase st) :mode)
+       (fn-fc-streamingp st)
+       (equal (fn-fc-kind step) :ready)
+       (not (fn-fc-streamingp (fn-fc-next-state step)))))
+
+(defun fn-fc-connection-form (st)
+  "The owner's form word for a ready connection state: :ihave when it does
+not stream, nil when it does."
+  (if (fn-fc-streamingp st) nil :ihave))
+
+(defun fn-fc-fallback-log-line (peer)
+  "The owner's one log line when a peer's MODE STREAM draws 500 or 501."
+  (append (fn-record-string-octets "feed peer=")
+          (if (stringp peer) (fn-record-string-octets peer) nil)
+          (fn-record-string-octets
+           " mode-stream-unsupported (RFC 4644 2.3: the peer answered 500 or 501); feeding with IHAVE on this connection (RFC 3977 6.3.2)")))
+
 ; KEYSTONE (PRF-130, the walk's finding c).  Subjects: `fn-fc-step' and
 ; `fn-fc-streaming-refusal-p', which `fn-owner-feed-reply-chunk'
 ; (host/owner-host.lisp) calls on every peer line, and
@@ -304,7 +353,8 @@ configuration label)."
 (local
  (defthm fn-fc-from-line-mode-refusal
    (implies (and (equal (fn-fc-phase st) :mode)
-                 (not (equal (fn-own-feed-response-code line) 203)))
+                 (not (equal (fn-own-feed-response-code line) 203))
+                 (not (fn-fc-mode-unsupportedp line)))
             (let ((r (fn-fc-from-line st input line)))
               (and (equal (fn-fc-kind r) :refused)
                    (equal (fn-fc-phase (fn-fc-next-state r)) :closed))))
@@ -313,6 +363,7 @@ configuration label)."
                                     fn-fc-with-input-phase fn-fc-phase
                                     fn-fc-make-state)
                                    (fn-own-feed-response-code fn-fc-input
+                                    fn-fc-mode-unsupportedp
                                     fn-fc-streamingp fn-fc-conn fn-fc-security
                                     fn-fc-user fn-fc-pass fn-fc-allow-clear))))))
 
@@ -323,7 +374,9 @@ configuration label)."
                 (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line)
                 (not (equal (fn-own-feed-response-code
                              (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
-                            203)))
+                            203))
+                (not (fn-fc-mode-unsupportedp
+                      (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))))
            (let ((step (fn-fc-step st octets)))
              (and (equal (fn-fc-kind step) :refused)
                   (equal (fn-fc-phase (fn-fc-next-state step)) :closed)
@@ -340,7 +393,73 @@ configuration label)."
                                    fn-fwi-kind fn-fwi-line fn-fwi-next-state
                                    fn-fc-statep fn-fwi-chunkp
                                    fn-own-feed-response-code fn-fc-phase
-                                   fn-fc-kind fn-fc-next-state fn-fc-input)))))
+                                   fn-fc-kind fn-fc-next-state fn-fc-input
+                                   fn-fc-mode-unsupportedp)))))
+
+; KEYSTONE (PRF-207).  Subject: `fn-fc-step', which
+; `fn-owner-feed-reply-chunk' (host/owner-host.lisp) calls on every peer
+; line.  A complete 500 or 501 line in the :mode phase makes the SAME
+; connection ready with streaming off: the kind the host acts on is :ready
+; (it installs the connection with the :ihave form), the next state is a
+; well-formed ready state on the same connection with the same security and
+; credential, and the step is not a streaming refusal, so nothing is added
+; to the stop table and the peer is dialled again as before.
+(local
+ (defthm fn-fc-from-line-mode-unsupported
+   (implies (and (equal (fn-fc-phase st) :mode)
+                 (fn-fc-mode-unsupportedp line))
+            (let ((r (fn-fc-from-line st input line)))
+              (and (equal (fn-fc-kind r) :ready)
+                   (equal (fn-fc-next-state r) (fn-fc-with-input-ihave st input)))))
+   :hints (("Goal" :in-theory (e/d (fn-fc-from-line fn-fc-mode-okp fn-fc-result
+                                    fn-fc-kind fn-fc-next-state)
+                                   (fn-own-feed-response-code fn-fc-input
+                                    fn-fc-with-input-ihave fn-fc-phase
+                                    fn-fc-streamingp fn-fc-conn fn-fc-security
+                                    fn-fc-user fn-fc-pass fn-fc-allow-clear))))))
+
+(local
+ (defthm fn-fc-with-input-ihave-fields
+   (implies (fn-fc-statep st)
+            (let ((n (fn-fc-with-input-ihave st input)))
+              (and (equal (fn-fc-phase n) :ready)
+                   (not (fn-fc-streamingp n))
+                   (equal (fn-fc-conn n) (fn-fc-conn st))
+                   (equal (fn-fc-security n) (fn-fc-security st))
+                   (equal (fn-fc-user n) (fn-fc-user st))
+                   (equal (fn-fc-pass n) (fn-fc-pass st))
+                   (equal (fn-fc-input n) input)
+                   (implies (fn-fwi-statep input) (fn-fc-statep n)))))
+   :hints (("Goal" :in-theory (enable fn-fc-with-input-ihave fn-fc-statep
+                                      fn-fc-make-state fn-fc-phasep)))))
+
+(defthm fn-fc-mode-stream-unsupported-falls-back-to-ihave
+  (implies (and (fn-fc-statep st)
+                (equal (fn-fc-phase st) :mode)
+                (fn-fwi-chunkp octets)
+                (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line)
+                (fn-fc-mode-unsupportedp
+                 (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))))
+           (let* ((step (fn-fc-step st octets))
+                  (n (fn-fc-next-state step)))
+             (and (equal (fn-fc-kind step) :ready)
+                  (equal (fn-fc-phase n) :ready)
+                  (not (fn-fc-streamingp n))
+                  (equal (fn-fc-conn n) (fn-fc-conn st))
+                  (equal (fn-fc-security n) (fn-fc-security st))
+                  (equal (fn-fc-user n) (fn-fc-user st))
+                  (equal (fn-fc-pass n) (fn-fc-pass st))
+                  (not (fn-fc-streaming-refusal-p st step)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-fc-streaming-refusal-p)
+                                  (fn-fc-step fn-fc-from-line fn-fwi-step
+                                   fn-fwi-kind fn-fwi-line fn-fwi-next-state
+                                   fn-fc-statep fn-fwi-chunkp
+                                   fn-own-feed-response-code fn-fc-phase
+                                   fn-fc-kind fn-fc-next-state fn-fc-input
+                                   fn-fc-mode-unsupportedp fn-fc-with-input-ihave
+                                   fn-fc-streamingp fn-fc-conn fn-fc-security
+                                   fn-fc-user fn-fc-pass)))))
 
 ; A peer with no recorded stop keeps its dial exactly as before.
 (defthm fn-fc-dial-allowedp-of-put-other
@@ -369,6 +488,8 @@ configuration label)."
 (verify-guards fn-fc-with-input-phase)
 (verify-guards fn-fc-greetingp)
 (verify-guards fn-fc-mode-okp)
+(verify-guards fn-fc-mode-unsupportedp)
+(verify-guards fn-fc-with-input-ihave)
 (verify-guards fn-fc-mode-command)
 (verify-guards fn-fc-starttls-command)
 (verify-guards fn-fc-auth-command)
@@ -393,3 +514,6 @@ configuration label)."
 (verify-guards fn-fc-stopped-put)
 (verify-guards fn-fc-dial-allowedp)
 (verify-guards fn-fc-stop-log-line)
+(verify-guards fn-fc-ihave-fallback-p)
+(verify-guards fn-fc-connection-form)
+(verify-guards fn-fc-fallback-log-line)

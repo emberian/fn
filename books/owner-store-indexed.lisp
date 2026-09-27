@@ -741,6 +741,37 @@
                                                       frontier max-conns evs))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
+;; PRF-220: the premise of the Store check is carried, never evaluated on
+;; a request.  host/owner-host.lisp fn-owner-store is
+;; (fn-own-store (fn-ocfg-owner (f-get-global 'fn-owner state))), the configured
+;; owner the host installs; fn-ocl-relation holds of it from open and every
+;; transition keeps it (books/config-owner-live.lisp,
+;; fn-ocl-open-, -close-, -observe-, -read-preserves-historical-relation and
+;; the advance/complete twins), and its Store conjunct fn-cst-relation
+;; conjoins fn-sn-statep.
+(defthm fn-bpaj-ocl-relation-carries-sn-statep
+  (implies (fn-ocl-relation oc)
+           (fn-sn-statep (fn-own-store (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory (e/d (fn-ocl-relation fn-cst-relation)
+                                  (fn-sn-statep)))))
+
+;; KEYSTONE (PRF-220) for host/bp-native-app-host.lisp fn-owner-app-submit,
+;; fn-owner-app-record and host/bp-receipt-journal-host.lisp fn-bprj-apply,
+;; fn-bprj-preflight, fn-bprj-request-action: over the configured owner's
+;; Store, under its carried relation and index, the Store check the host runs
+;; (no whole-node or whole-store recognizer, no history walk) is the
+;; receiver's checked Store predicate.
+(defthm fn-osi-ocl-store-record-accepted-fast-is-checked
+  (let ((store (fn-own-store (fn-ocfg-owner oc))))
+    (implies (and (fn-ocl-relation oc) (fn-ceis-indexedp store))
+             (equal (fn-bpaj-store-record-accepted-fast store record)
+                    (fn-bpr-store-record-acceptedp store record))))
+  :hints (("Goal"
+           :use (fn-bpaj-ocl-relation-carries-sn-statep
+                 (:instance fn-bpaj-store-record-accepted-fast-is-checked
+                            (store (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory (union-theories '() (theory 'minimal-theory)))))
+
 (defthm fn-osi-live-record-lookup-fast-is-checked
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
     (implies (fn-sn-statep store)

@@ -40,6 +40,7 @@
 (in-package "ACL2")
 (include-book "nntp-effects")
 (include-book "injection")
+(include-book "group-status")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
@@ -156,6 +157,8 @@
   (declare (xargs :guard t))
   (cond
    ((equal reason :unparsable) "441 posting failed; the article is not valid syntax")
+   ;; O2 (books/group-status.lisp): RFC 3977 section 7.6.3 status "n".
+   ((equal reason :group-read-only) "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
    ((equal reason :injection-info) "441 posting failed; Injection-Info must not be supplied")
    ((equal reason :xref) "441 posting failed; Xref must not be supplied")
    ((equal reason :injection-date-present) "441 posting failed; Injection-Date must not be supplied")
@@ -186,12 +189,58 @@
 ; octets without CRLF and dot-stuffing has already been undone.  Reassembling
 ; the exact source the posting agent sent is a decision about octets, so it is
 ; made here and not in the host.
-(defun fn-post-body-octets (lines)
+;
+; The executable is a loop (D27; the class of PKT-481): each line is laid
+; onto an accumulator in reverse, CRLF after it, and the whole is turned
+; round once.  The recursion it replaced took one control-stack frame per
+; line, and a frame per octet of one line inside fn-inj-append; the profile
+; admits an article of one line as long as the article, so both were a
+; remote stop (planning/evidence/served-line-iterative-2026-09-26.md).
+(defun fn-post-body-onto (lines acc)
   (declare (xargs :guard t))
   (if (consp lines)
-      (fn-inj-append (car lines)
-                     (fn-inj-append '(13 10) (fn-post-body-octets (cdr lines))))
-    nil))
+      (fn-post-body-onto (cdr lines)
+                         (cons 10 (cons 13 (fn-ag-rev-onto (car lines) acc))))
+    acc))
+
+(defun fn-post-body-octets-iter (lines)
+  (declare (xargs :guard t))
+  (fn-ag-rev-onto (fn-post-body-onto lines nil) nil))
+
+(defun fn-post-body-octets (lines)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp lines)
+           (fn-inj-append (car lines)
+                          (fn-inj-append '(13 10) (fn-post-body-octets (cdr lines))))
+         nil)
+       :exec (fn-post-body-octets-iter lines)))
+
+(local (defthm fn-post-rev-onto-is-revappend
+         (equal (fn-ag-rev-onto x acc) (revappend x acc))))
+
+(local (defthm fn-post-inj-append-is-append
+         (equal (fn-inj-append a b) (append a b))
+         :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local (defthm fn-post-body-octets-true-listp
+         (true-listp (fn-post-body-octets lines))))
+
+(local (defthm fn-post-body-onto-is-revappend
+         (equal (fn-post-body-onto lines acc)
+                (revappend (fn-post-body-octets lines) acc))))
+
+;  KEYSTONE (D27, constant stack on the served POST).  The loop the host
+; runs is the reassembly the specification defines, on every argument; with
+; it the guard proof of fn-post-body-octets makes the loop the executable.
+(defthm fn-post-body-octets-iter-is-body-octets
+  (equal (fn-post-body-octets-iter lines)
+         (fn-post-body-octets lines)))
+
+(verify-guards fn-post-body-octets)
+
+(local (in-theory (disable fn-post-rev-onto-is-revappend fn-post-inj-append-is-append
+                           fn-post-body-octets-true-listp fn-post-body-onto-is-revappend)))
 
 (defun fn-post-single (ps text)
   (declare (xargs :guard t))
@@ -203,6 +252,72 @@
 ; This is the function the serving host calls, once per wire event, at
 ; host/reader-host.lisp `fn-reader-chunk`.
 
+(defun fn-post-gated-decision (source config injection)
+  (declare (xargs :guard t))
+  (let ((decision (fn-inj-decide source config injection)))
+    (if (and (fn-inj-injectedp decision)
+             (fn-gst-post-gate source config))
+        (fn-inj-refuse :group-read-only)
+      decision)))
+
+; A refusal of the decision is unchanged; an accepted article is refused
+; :group-read-only exactly when the gate names a closed group.
+(defthm fn-post-gated-decision-unfolds
+  (equal (fn-post-gated-decision source config injection)
+         (if (and (fn-inj-injectedp (fn-inj-decide source config injection))
+                  (fn-gst-post-gate source config))
+             (fn-inj-refuse :group-read-only)
+           (fn-inj-decide source config injection))))
+
+; The reader environment of the served step: the connection's pinned clock
+; observation, no creation facts, the posting bit, the reader listing
+; (PRF-195) and the closed groups (O2, PRF-196), all from the connection's
+; pinned configuration.
+(defun fn-post-reader-env (config observation)
+  (declare (xargs :guard t))
+  (fn-nntp-env-full observation nil (and (fn-inj-config-allow config) t)
+                    (fn-inj-config-listing config)
+                    (fn-inj-config-closed config)))
+
+; The step's lemmas treat the environment as one term; the facts about it
+; (fn-post-reader-env-is-an-env below, and its closed list) are stated once.
+(in-theory (disable fn-post-reader-env))
+
+(defthm fn-post-reader-env-posting
+  (equal (fn-nntp-env-posting (fn-post-reader-env config observation))
+         (and (fn-inj-config-allow config) t))
+  :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
+                                     fn-nntp-env-full
+                                     fn-nntp-env-posting))))
+
+(defthm fn-post-reader-env-observation
+  (equal (fn-nntp-env-observation (fn-post-reader-env config observation))
+         observation)
+  :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
+                                     fn-nntp-env-full
+                                     fn-nntp-env-observation))))
+
+(defthm fn-post-reader-env-facts
+  (equal (fn-nntp-env-facts (fn-post-reader-env config observation)) nil)
+  :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
+                                     fn-nntp-env-full
+                                     fn-nntp-env-facts))))
+
+; The listing LIST NEWSGROUPS and LIST MOTD read is the configuration's.
+(defthm fn-post-reader-env-listing
+  (equal (fn-nntp-env-listing (fn-post-reader-env config observation))
+         (fn-inj-config-listing config))
+  :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env-full
+                                     fn-nntp-env-listing))))
+
+; The closed list LIST ACTIVE reads is the configuration's.
+(defthm fn-post-reader-env-closed
+  (equal (fn-nntp-env-closed (fn-post-reader-env config observation))
+         (fn-inj-config-closed config))
+  :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
+                                     fn-nntp-env-full
+                                     fn-nntp-env-closed))))
+
 (defun fn-nntp-post-step (ps archive config observation injection wire-event)
   (declare (xargs :guard t))
   (if (not (fn-post-sessionp ps))
@@ -212,9 +327,14 @@
                  (equal (car wire-event) :article)
                  (consp (cdr wire-event))
                  (null (cdr (cdr wire-event))))
-            (let ((decision (fn-inj-decide
-                             (fn-post-body-octets (car (cdr wire-event)))
-                             config injection)))
+            (let ((decision
+                   ;; O2: the read-only gate (books/group-status.lisp) turns
+                   ;; an article the injection would accept into a refusal
+                   ;; by name; every refusal the decision makes keeps its
+                   ;; own reason.
+                   (fn-post-gated-decision
+                    (fn-post-body-octets (car (cdr wire-event)))
+                    config injection)))
               (if (fn-inj-injectedp decision)
                   ; No reply yet.  The host owes a durable acceptance attempt
                   ; and then fn-nntp-post-outcome.
@@ -243,8 +363,12 @@
       ; (planning/lanes/HANDOFF-w3-reader-profile.md, proposal 3), so the fact
       ; list is empty and NEWGROUPS reports no group rather than an invented
       ; creation date.
+      ; O2: the environment carries the configuration's closed groups
+      ; (books/group-status.lisp), so LIST ACTIVE's status field is the
+      ; POST gate's list, and the reader listing (PRF-195) with it.
       (let ((r (fn-nntp-step (fn-post-session-base ps) archive
-                             (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config)) wire-event)))
+                             (fn-post-reader-env config observation)
+                             wire-event)))
         (if (fn-post-offeredp (fn-nntp-result-effects r))
             (if (fn-inj-config-allow config)
                 (fn-post-make-result
@@ -423,12 +547,12 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-preserves-consistent-session
                             (session (fn-post-session-base ps))
-                            (env (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config))))
+                            (env (fn-post-reader-env config observation)))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-nntp-result-session
                                       (fn-nntp-step (fn-post-session-base ps)
                                                     archive
-                                                    (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config))
+                                                    (fn-post-reader-env config observation)
                                                     wire-event))))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-post-session-base ps))))
@@ -448,7 +572,7 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-step-effects-well-formed
                             (session (fn-post-session-base ps))
-                            (env (fn-nntp-env-listed observation nil (and (fn-inj-config-allow config) t) (fn-inj-config-listing config)))))
+                            (env (fn-post-reader-env config observation))))
            :in-theory (e/d (fn-post-single fn-nntp-effectsp
                             fn-post-refusal-line)
                            (fn-nntp-step-effects-well-formed
@@ -738,7 +862,7 @@
   (quote (fn-post-sessionp fn-post-open-session fn-post-session-consistentp
           fn-post-offeredp fn-post-refusal-line fn-post-single
           fn-post-store-refusalp fn-post-store-refusal-text fn-post-store-refusal-line
-          fn-post-body-octets
+          fn-post-body-onto fn-post-body-octets-iter fn-post-body-octets
           fn-nntp-post-step fn-nntp-post-outcome)))
 
 (in-theory (disable fn-nntp-post-vocabulary))
@@ -753,9 +877,7 @@
       (fn-nntp-post-step ps archive config observation injection wire-event)
     (let ((r (fn-nntp-step-pinned
               (fn-post-session-base ps) archive index verdicts
-              (fn-nntp-env-listed observation nil
-                           (and (fn-inj-config-allow config) t)
-                           (fn-inj-config-listing config))
+              (fn-post-reader-env config observation)
               wire-event)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)
@@ -791,7 +913,5 @@
                              (fn-nntp-result-session
                               (fn-nntp-step-pinned
                                (fn-post-session-base ps) archive index verdicts
-                               (fn-nntp-env-listed observation nil
-                                            (and (fn-inj-config-allow config) t)
-                                            (fn-inj-config-listing config))
+                               (fn-post-reader-env config observation)
                                wire-event))))))))

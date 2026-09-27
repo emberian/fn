@@ -1838,7 +1838,13 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned a malformed exposure close"))
            (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
                  closing t)))
-       (values reply (or closing uncertain) starttls consumed redeemed)))))
+       ;; PKT-600 (PRF-213): a read that emitted a submission yielded after
+       ;; its article (books/served-tls-prefix.lisp fn-served-feed-counted,
+       ;; the span fold books/served-span.lisp fn-scar-feed-span), so the
+       ;; caller feeds the rest of INCOMING as the next read, after this
+       ;; read's reply and the article's outcome are sent.
+       (values reply (or closing uncertain) starttls consumed redeemed
+               (fnn-owner-bool-global 'fn-owner-submittedp))))))
 
 ;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
 ;;; Before every served step ACL2 answers :proceed or the milliseconds to
@@ -2003,7 +2009,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                          ((zerop (length incoming)) (return))
                          (t (fnn-owner-exposure-wait service cid)
                             (multiple-value-bind (reply closing starttls consumed
-                                                  redeemed)
+                                                  redeemed submitted)
                                 (fnn-owner-handle-chunk service cid incoming socket)
                               (cond
                                 (channel
@@ -2022,8 +2028,11 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                  ;; PRF-164: an XREDEEM PASS stops the fold at
                                  ;; its line; what the client sent after it is
                                  ;; the next step's input, already decrypted.
+                                 ;; PKT-600 (PRF-213): so does an article's
+                                 ;; submission: the next article or command
+                                 ;; in this record is the next step's input.
                                  (cond ((or closing (= consumed (length incoming))))
-                                       (redeemed
+                                       ((or redeemed submitted)
                                         (setq retained (subseq incoming consumed)))
                                        (t (fnn-fault "protected owner read left a TLS suffix"))))
                                 ((fnn-owner-service-tls-context service)
@@ -2035,7 +2044,12 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 ((/= consumed (length incoming))
                                  ;; The suffix is the next step's input, and
                                  ;; it is already in hand.  The served machine
-                                 ;; stops at the octet that closed the wire:
+                                 ;; stops after the octet that completed a
+                                 ;; submission (PKT-600, PRF-213: two
+                                 ;; pipelined TAKETHIS or POST articles in one
+                                 ;; read are two steps, each committed and
+                                 ;; answered before the next is framed), and
+                                 ;; at the octet that closed the wire:
                                  ;; an article over fn-own-body-limit
                                  ;; (books/owner.lisp, the record codec's
                                  ;; *fn-record-max-payload* = 32768) makes fn-wire-after-line answer
@@ -2199,7 +2213,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
 ;;; store's and grows with it; only the garbage allowed to pile up between
 ;;; two collections is capped.  It decides nothing ACL2 decides.
 
-;;; The trigger while the owner serves (HST-017, lane image-floor).  The open
+;;; The trigger while the owner serves (HST-025, lane image-floor).  The open
 ;;; (recovery: the checkpoint decode and the suffix replay) and a checkpoint
 ;;; publication allocate in proportion to the retained history and keep
 ;;; fnn-gc-nursery-octets (PKT-316: a smaller trigger there slows the
@@ -2224,37 +2238,38 @@ high-water mark.  Work proportional to the live heap, once per start."
   (sb-ext:gc :full t))
 
 (defun fnn-owner-publish-captured (service captured)
-  "The publication's thread: ACL2's fn-ock-publication-stream over the values
-captured under the owner mutex and the PUBLICATION buffer (fnn-live-octets-pub,
-its own stobj: the served attempt's buffer is never touched off the mutex),
-the write through fn-bs-scp-program (fnn-state-checkpoint-write, the plan's
-octets straight from that buffer), both outside the mutex, then
-fn-owner-sco-publication-done under it.  Served commands run meanwhile; the
-file is the capture of the history at the capture point
-(fn-ock-publication-stream-next-is-the-capture) and its bytes are the list
-codec's (fn-ock-publication-stream-writes-the-file).  Before any encode ACL2
-decides by name whether the file fits the profile's checkpoint budget
-(PKT-492): a deferral is logged with the file's length and the budget,
-nothing is written, and serving continues.  A failed write leaves the old
-checkpoint (or, at and after the rename, the old or the new one: the crash
-keystone) and serving continues."
+  "The publication's thread: ACL2's fn-ock-next-checkpoint over the values
+captured under the owner mutex (NEXT, the capture of the history at the
+capture point: fn-ock-next-checkpoint-is-the-capture), then fn-ockp-setup
+(books/owner-checkpoint-pipeline.lisp: the schema-3 tables of NEXT, the
+file's length estimated from the metadata without encoding, and the
+decision BY NAME before anything is allocated: past the profile's
+checkpoint budget or the free space less the maintenance reserve the
+publication is deferred, nothing is written, serving continues), then the
+batch loop (fnn-checkpoint-write-steps: fn-ockp-step over the PUBLICATION
+buffer fnn-live-octets-pub, its own stobj, each step's frames written
+through fn-bs-scp-program's staged file before the next), all outside the
+mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
+the old checkpoint (or, at and after the rename, the old or the new one:
+the crash keystone) and serving continues."
   ;; The publication allocates in proportion to the history: the open's
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (unwind-protect
-  (destructuring-bind (base configs records segment count suffix budget) captured
+  (destructuring-bind (base configs records segment count suffix budget frontier free revision)
+      captured
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
       (flet ((elapsed ()
                (round (* 1000 (- (get-internal-real-time) started))
                       internal-time-units-per-second)))
         (handler-case
-            (let ((answer (fnn-call 'fn-ock-publication-stream base configs records
-                                    segment budget (fnn-live-octets-pub))))
-              (unless (and (consp answer) (consp (cdr answer)))
-                (fnn-fault "owner returned a malformed checkpoint publication"))
-              (setq next (first answer) verdict (second answer))
-              (let ((sequence (length records)))
+            (let ((sequence (length records)))
+              (setq next (fnn-core 'fn-ock-next-checkpoint base configs records))
+              (let ((setup (fnn-core 'fn-ockp-setup next frontier revision segment budget free)))
+                (unless (and (consp setup) (= (length setup) 7))
+                  (fnn-fault "owner returned a malformed checkpoint setup"))
+                (setq verdict (first setup))
                 (cond
                   ((eq verdict :unencodable)
                    (fnn-err "CHECKPOINT auto refused=unencodable sequence=~d" sequence))
@@ -2264,18 +2279,21 @@ keystone) and serving continues."
                    (fnn-err "CHECKPOINT deferred reason=~(~a~) estimate=~d budget=~d sequence=~d ms=~d"
                             (second verdict) (third verdict) (fourth verdict) sequence
                             (elapsed)))
-                  ((and (consp verdict) (eq (first verdict) :plan) (= (length verdict) 3)
-                        (fnn-plan-p (second verdict) (fnn-live-octets-pub))
-                        (integerp (third verdict)))
-                   (let ((plan (second verdict)) (octets (third verdict)))
+                  ((and (consp verdict) (eq (first verdict) :plan) (= (length verdict) 2)
+                        (integerp (second verdict)))
+                   (let ((octets (second verdict)) (steps 0)
+                         (store (fnn-owner-service-store service)))
                      (handler-case
                          (progn
                            (fnn-state-checkpoint-write
-                            (fnn-owner-service-store service)
-                            (lambda (fd) (fnn-plan-write-all fd plan (fnn-live-octets-pub))))
+                            store
+                            (lambda (fd)
+                              (setq steps (fnn-checkpoint-write-steps
+                                           fd setup segment sequence (fnn-store-config store)
+                                           (fnn-live-octets-pub)))))
                            (setq durablep t)
-                           (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d ms=~d"
-                                    sequence suffix octets (elapsed)))
+                           (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d steps=~d ms=~d"
+                                    sequence suffix octets steps (elapsed)))
                        ((or fnn-store-io-refusal fnn-store-indeterminate) (e)
                          (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
                   (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
@@ -2302,9 +2320,11 @@ keystone) and serving continues."
   "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
 never inside a command: when fn-ock-publication-duep says the suffix since
 the newest durable checkpoint reached half the profile's K (and no deferred
-publication is blocked on the profile's budget, PKT-492), ACL2 records the
-attempt and hands back the values the publication reads (fn-owner-sco-capture)
-under the owner mutex.  The extension, the encoding and the write run on
+publication is blocked on the profile's budget or the space, PKT-492), ACL2
+records the attempt and hands back the values the publication reads
+(fn-owner-sco-capture) under the owner mutex, O(1): the record list by
+pointer, the frontier, the free space the host observed by statvfs and the
+source revision.  The tables, the decision and the batched write run on
 their own thread, outside the mutex (fnn-owner-publish-captured), so served
 commands and accepts continue; at most one publication runs at a time, and
 the stop joins it with the client workers.  The owner state is only read
@@ -2315,19 +2335,22 @@ here, and written only through fn-owner-sco-publication-done."
       ;; The budget override is nil but on a developer image with
       ;; FN_NATIVE_CHECKPOINT_BUDGET_TEST set; ACL2 chooses between it and
       ;; the profile's (fn-owner-sco-budget) on the due path and at the
-      ;; capture, so both see one budget.
-      (when (eq (fnn-owner-core 'fn-owner-sco-due
-                                (fnn-checkpoint-budget-test-override nil))
-                :due)
-        (let ((captured (fnn-owner-core 'fn-owner-sco-capture
-                                        (fnn-checkpoint-budget-test-override nil))))
-          (unless (and (true-listp captured) (= (length captured) 7))
-            (fnn-fault "owner returned a malformed checkpoint capture"))
-          (let ((thread (sb-thread:make-thread
-                         (lambda () (fnn-owner-publish-captured service captured))
-                         :name "fn owner checkpoint")))
-            (setf (fnn-owner-service-publisher service) thread)
-            (push thread (fnn-owner-service-workers service))))))))
+      ;; capture, so both see one budget.  The free space is observed once
+      ;; and handed to both.
+      (let ((free (fnn-disk-free-octets (fnn-owner-service-store service))))
+        (when (eq (fnn-owner-core 'fn-owner-sco-due
+                                  (fnn-checkpoint-budget-test-override nil) free)
+                  :due)
+          (let ((captured (fnn-owner-core 'fn-owner-sco-capture
+                                          (fnn-checkpoint-budget-test-override nil)
+                                          free (fnn-checkpoint-revision))))
+            (unless (and (true-listp captured) (= (length captured) 10))
+              (fnn-fault "owner returned a malformed checkpoint capture"))
+            (let ((thread (sb-thread:make-thread
+                           (lambda () (fnn-owner-publish-captured service captured))
+                           :name "fn owner checkpoint")))
+              (setf (fnn-owner-service-publisher service) thread)
+              (push thread (fnn-owner-service-workers service)))))))))
 
 ;;; PKT-101: reopen `[log] path' when ACL2 says a SIGHUP is due
 ;;; (books/owner-log-reopen.lisp fn-olr-decide, through fn-owner-log-reopen).

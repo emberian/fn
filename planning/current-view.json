@@ -367,7 +367,7 @@
         "function": "fn-scar-ocfg-read-tls-prefix",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-ocfg-read-tls-prefix-is-full-read",
+      "bridge": "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
       "keystone": "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
       "tested": {
         "image": "69046a76",

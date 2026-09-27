@@ -140,6 +140,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-list-counts-read \
 	books/config-descriptions \
 	books/owner-descriptions-read \
+	books/owner-xref-read \
+	books/posting-account \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -206,12 +208,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
-	books/store-checkpoint-shape \
-	tests/acl2/store-checkpoint-shape-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
-	books/owner-checkpoint-stream \
-	tests/acl2/owner-checkpoint-stream-tests \
+	tests/acl2/store-checkpoint-tables-tests \
 	books/heap-figure \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
@@ -374,6 +373,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-capacity-vector-tests \
 	books/store-capacity-config \
 	tests/acl2/store-capacity-config-tests \
+	books/config-carried-candidate \
+	tests/acl2/config-carried-candidate-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -489,6 +490,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
+	books/bp-node-rotation-slice \
+	books/bp-node-rotation-buffer \
+	tests/acl2/bp-node-rotation-buffer-tests \
+	books/bp-held-projection \
+	tests/acl2/bp-held-projection-tests \
+	books/bp-held-payload \
+	tests/acl2/bp-held-payload-tests \
 	books/bp-node-rotation-step \
 	books/bp-node-retire \
 	tests/acl2/bp-node-retire-tests \
@@ -693,7 +701,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-list-counts \
 	tests/acl2/nntp-list-counts-tests \
 	tests/acl2/group-descriptions-tests \
+	tests/acl2/nntp-xref-tests \
+	tests/acl2/posting-account-tests \
 	tests/acl2/nntp-post-tests \
+	tests/acl2/served-line-iterative-tests \
 	books/path \
 	books/path-update \
 	books/path-update-tail \
@@ -701,6 +712,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
 	tests/acl2/peer-inbound-tests \
+	books/peer-transit-forms \
+	tests/acl2/peer-transit-forms-tests \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
@@ -727,9 +740,18 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-arena \
 	books/catalog-record \
 	books/catalog \
+	books/catalog-commit \
+	books/catalog-delta \
+	books/catalog-relation \
+	books/catalog-view \
+	books/catalog-entries \
+	books/catalog-refresh \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
+	books/store-checkpoint-tables \
+	books/store-checkpoint-tables-reader \
+	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
 	books/proto-catalog \
@@ -738,8 +760,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/proto-catalog-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
-	tests/acl2/store-checkpoint-buffer-tests \
-	tests/acl2/store-checkpoint-reader-tests \
+	tests/acl2/catalog-commit-tests \
+	tests/acl2/catalog-delta-tests \
+	tests/acl2/catalog-relation-tests \
+	tests/acl2/catalog-view-tests \
+	tests/acl2/catalog-entries-tests \
+	tests/acl2/catalog-refresh-tests \
+	books/acceptance-payload-ref \
+	tests/acl2/acceptance-payload-ref-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -748,6 +776,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-recover-ocl \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
+	tests/acl2/served-pipelining-tests \
 	books/nntp-auth-invariants \
 	books/nntp-help \
 	tests/acl2/nntp-help-tests \
@@ -831,6 +860,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \
+	tests/acl2/owner-feed-form-tests \
 	books/owner-invariants \
 	books/owner-fault \
 	books/owner-feed-subject \
@@ -910,6 +940,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/key-statements-tests \
 	books/peer-invite \
 	tests/acl2/peer-invite-tests \
+	books/tls-reload \
+	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-served \

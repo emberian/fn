@@ -1,5 +1,5 @@
 ; host/native/strip-world.lisp -- the saved image's logical world, reduced
-; to what execution reads (lane image-floor, HST-017).
+; to what execution reads (lane image-floor, HST-025).
 ;
 ; Loaded by host/native/build.lisp in raw Lisp after `:q', after the last
 ; event and immediately before save-exec.  The session has certified-book

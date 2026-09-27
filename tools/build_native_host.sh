@@ -27,7 +27,7 @@ if [ "$BUILD" = host/native/build-dtn.lisp ]; then
       developer) DEFAULT_IMAGE=build/fn-host-dtn-developer ;;
     esac
 fi
-# The saved world (HST-017; gpt-6's wave-5 review s.4): the production
+# The saved world (HST-025; gpt-6's wave-5 review s.4): the production
 # release is stripped (host/native/strip-world.lisp, with IMAGE.world-deps
 # beside it); the developer image is full.  FN_NATIVE_WORLD=full with the
 # production profile is the reference image (build/fn-host-reference), the

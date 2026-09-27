@@ -1,6 +1,6 @@
 ; tools/runtime_image/world-deps-check.lisp -- the qualification-time check of
 ; a stripped image's world reads against its build-derived dependency set
-; (gpt-6's wave-5 review s.4; HST-017).  Loaded into a STRIPPED image's core
+; (gpt-6's wave-5 review s.4; HST-025).  Loaded into a STRIPPED image's core
 ; before (acl2::sbcl-restart), never part of a release:
 ;
 ;   IMAGE's runtime ... --no-userinit --load world-deps-check.lisp

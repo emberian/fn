@@ -70,7 +70,7 @@
 ;; fnn-owner-publish-captured calls fn-ock-publication-stream; host/owner-host.lisp
 ;; fn-owner-sco-due and fn-owner-sco-capture call fn-ock-publication-blockedp
 ;; and fn-ock-capture-budget (PKT-492, PKT-315).
-(include-book "books/owner-checkpoint-stream")
+(include-book "books/owner-checkpoint-pipeline")
 (include-book "books/poster-bytes-buffer")
 ;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
@@ -169,6 +169,11 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+;; fnn-bps-selection-plan reads the selected checkpoint from fn-octets-bp by
+;; index (fn-bpnrb-selection-plan).
+(include-book "books/bp-node-rotation-buffer")
+;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
+(include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
@@ -189,13 +194,19 @@
 ;; fn-sxp-import-plan.
 (include-book "books/store-export")
 (ld "host/store-host.lisp" :ld-error-action :error)
-;; The state checkpoint's file octets over the octet buffer (rep-wave-d-2):
-;; host/store-node-host.lisp fn-store-sco-publish-plan calls fn-sccb-plan.
+;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
+;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
-;; The state checkpoint read from the octet buffer (rep-wave-d-3):
-;; host/store-node-host.lisp fn-store-sco-decode calls fn-sccr-decode-plan and
-;; fn-store-sco-segment-admit calls fn-sccr-admit-segment.
+;; The FNSC segments read from the octet buffer (rep-wave-d-3):
+;; host/store-node-host.lisp fn-store-sco-segment-admit calls fn-sccr-admit-segment.
 (include-book "books/store-checkpoint-reader")
+;; The schema-3 tables and the pipeline (lane checkpoint-pipeline, D33/D34):
+;; host/store-node-host.lisp fn-store-sco-decode calls fn-sct-load,
+;; fn-store-sco-select calls fn-sco-select-named and
+;; fn-store-sco-publish-setup calls fn-ockp-setup (owner-host.lisp includes
+;; books/owner-checkpoint-pipeline itself).
+(include-book "books/store-checkpoint-tables")
+(include-book "books/store-checkpoint-tables-reader")
 ;; Wave 5's attach-stobj prototype (planning/design-2026-09-26-consolidation.md
 ;; section 3): the attachable generic fn-pcat (books/proto-catalog.lisp) with
 ;; the arena attached before it is introduced; host/native/proto-catalog.lisp
@@ -226,6 +237,8 @@
 (ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
 (ld "host/peer-invite-host.lisp" :ld-error-action :error)
+; `tls reload' and the served certificate line (PRF-212).
+(ld "host/tls-reload-host.lisp" :ld-error-action :error)
 (ld "host/topic-history-metadata-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
@@ -325,6 +338,8 @@
         (load "host/native/keys.lisp")
         ; `principal bind|unbind' live (PKT-221): request 14, wrapping keys.
         (load "host/native/login-bindings.lisp")
+        ; `tls reload' (PRF-212): request 19, wrapping login-bindings.
+        (load "host/native/tls-reload.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).
         (load "host/native/proto-catalog.lisp")
@@ -353,7 +368,7 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
-; The saved world (HST-017, host/native/strip-world.lisp).  FN_NATIVE_WORLD
+; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD
 ; (tools/build_native_host.sh sets it: `stripped' for the production release,
 ; `full' for the developer image and the production reference image, gpt-6's
 ; wave-5 review s.4) selects it.  Stripped: what execution reads, at its

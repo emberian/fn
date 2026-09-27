@@ -480,7 +480,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "retention" "account" "motd")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -524,11 +524,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
         ((equal subject "account")
-         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers; spec nntp Invitation-code accounts)")
+         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
+        ((equal subject "tls")
+         "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|account|motd} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -603,6 +605,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                      (list :keys "redecide" (fn-ncfg-second words)))
     (fn-nop-usage :invalid-keys-command "keys" config words)))
 
+; PRF-212: `tls reload'.  Whether the owner takes the new files is the
+; owner's (books/tls-reload.lisp fn-tlsr-decide, asked by
+; host/native/tls-reload.lisp over the control socket).
+(defun fn-nop-parse-tls (words config)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-ncfg-first words) "reload")
+           (null (fn-ncfg-rest words)))
+      (fn-nop-result :accepted :plan "tls" config (list :tls "reload"))
+    (fn-nop-usage :invalid-tls-command "tls" config words)))
+
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
   (declare (xargs :guard t))
@@ -642,6 +654,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                               (fn-nop-profile-decimal
                                (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest words)))))))
         ((equal words '("list")) (fn-nop-parse-administration "account" argv config))
+        ;; PRF-222: `account access show' and `account access LOGIN|--anonymous
+        ;; --read WILDMAT --post WILDMAT' (books/native-admin.lisp).
+        ((equal (fn-ncfg-first words) "access")
+         (fn-nop-parse-administration "account" argv config))
         (t (fn-nop-usage :invalid-account-command "account" config words))))
 
 (defun fn-nop-parse-command (words config argv)
@@ -729,6 +745,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
             ((equal command "keys") (fn-nop-parse-keys rest config))
+            ((equal command "tls") (fn-nop-parse-tls rest config))
             ((equal command "account") (fn-nop-parse-account rest argv config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 
@@ -945,11 +962,15 @@ is installed into the owner for both served and control submission."
                                    fn-native-operator-result-run-planp))))
   :rule-classes nil)
 
+; PRF-211 (NNT-043): the owner a run installs is bounded one past the width
+; of a limit row, so the connection capacity is the `exposure-connections'
+; row the operator sets (books/public-exposure.lisp
+; fn-exp-open-refuses-exactly-at-the-capacity), not fn.toml's fixed 32
+; (fn-native-config-owner-max-connections, which no run reads now).
 (defun fn-native-operator-result-run-max-connections (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-run-planp result)
-      (fn-native-config-owner-max-connections
-       (fn-native-operator-result-config result))
+      *fn-exp-owner-connection-bound*
     0))
 
 (defun fn-native-operator-result-run-auth-path-octets (result)
@@ -1258,6 +1279,17 @@ formed and the operator asked for something the node declined to do."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+(defun fn-native-operator-result-tls-control-path-octets (result)
+  "The control socket an accepted `tls reload' asks, as octets."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "tls")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :tls))
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
@@ -1325,6 +1357,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "account") :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "keys") :keys)
+          ((equal (fn-native-operator-result-command result) "tls") :tls)
           ((equal (fn-native-operator-result-command result) "show") :show)
           ((equal (fn-native-operator-result-command result) "mission") :mission)
           (t :owner-required))))
@@ -1991,7 +2024,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (defconst *fn-nop-store-actions*
   '(:run :post :status :health :recover :compact :checkpoint :reclaim
     :reclaim-dry-run :export :admin :inspect
-    :peering :principal :keys))
+    :peering :principal :keys :tls))
 
 (defun fn-native-operator-result-needs-storep (result)
   "An accepted plan whose native action opens the configured store."

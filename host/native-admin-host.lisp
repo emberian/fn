@@ -57,8 +57,12 @@
                                 :grant-control :revoke-control :set-retention
                                 ;; PRF-161: an exposure limit row.
                                 :set-exposure
+                                ;; O2: a group's LIST ACTIVE status.
+                                :set-group-status
                                 ;; PRF-195: a description or the message.
-                                :set-group-description :set-motd))
+                                :set-group-description :set-motd
+                                ;; PRF-222: a login's group access.
+                                :account-access))
            (fn-store-cfg-peer-delta-record
             (fn-native-admin-plan-deltas plan) monotonic wall state))
           ; PRF-099: `peer carries' / `peer budget' over the replayed table.

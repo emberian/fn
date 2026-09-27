@@ -86,6 +86,22 @@
   (case name
     (fn-hm-marker-cut-names *marker-cut-names*)
     (t (error "unexpected core call ~a" name))))
+;; host/native/io.lisp's exit-code constants call ACL2's fn-outcome-code
+;; (books/outcome-class.lisp, PRF-143) at load, so it must exist before io.lisp
+;; is read (PKT-561, PKT-614).  The table is the book's own quoted constant,
+;; read from the book; the function is the book's body without its xargs.
+(defun book-defconst-value (path name)
+  (with-open-file (stream path)
+    (loop for form = (read stream nil :eof)
+          until (eq form :eof)
+          when (and (consp form) (eq (car form) 'defconst) (eq (cadr form) name))
+            do (return (eval (caddr form)))
+          finally (error "~a: ~a not found" path name))))
+(defparameter *fn-outcome-codes*
+  (book-defconst-value "books/outcome-class.lisp" '*fn-outcome-codes*))
+(defun fn-outcome-code (class)
+  (let ((pair (assoc class *fn-outcome-codes* :test #'equal)))
+    (if (consp pair) (cdr pair) 3)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The deployed definitions.

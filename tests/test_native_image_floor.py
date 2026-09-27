@@ -1,4 +1,4 @@
-"""HST-017: the saved image's logical world is the execution world.
+"""HST-025: the saved image's logical world is the execution world.
 
 host/native/build.lisp strips the world before save-exec
 (host/native/strip-world.lisp): every property the prover, the undo stack and

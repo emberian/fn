@@ -4,23 +4,37 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
+    "books/bp-node-forward-plan": {
+      "seconds": 11.335,
+      "run": "certify-20260926T231416Z-3967178",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/config-owner-live": {
+      "seconds": 12.44,
+      "run": "certify-20260926T231416Z-3967178",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/owner-checkpoint-pipeline": {
+      "seconds": 46.296,
+      "run": "certify-20260926T231416Z-3967178",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/owner-invariants": {
-      "seconds": 10.881,
-      "run": "certify-20260926T204406Z-2347753",
+      "seconds": 11.735,
+      "run": "certify-20260926T231416Z-3967178",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
-    "tests/acl2/heap-figure-tests": {
-      "seconds": 37.428,
-      "run": "certify-20260926T210216Z-2591667",
-      "host": "persvati",
-      "jobs": 2,
-      "verdict": "passed"
-    },
-    "tests/acl2/nntp-help-tests": {
-      "seconds": 10.38,
-      "run": "certify-20260926T204406Z-2347753",
+    "tests/acl2/bp-node-rotation-buffer-tests": {
+      "seconds": 24.749,
+      "run": "certify-20260927T001141Z-384911",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"

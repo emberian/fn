@@ -118,7 +118,17 @@ it, each record re-ran the whole-configuration recognizer two or three
 times, so a replay's cost grew with the configuration's size per record
 (PKT-501; planning/evidence/caps-to-profile-2026-09-26.md, Continuation).
 The replay still reads every configuration record at open; a configuration
-checkpoint the open resumes from is PKT-510.
+checkpoint the open resumes from is PKT-510. An offline request authorizes
+its one record from the fold its open computed (PRF-209): the
+configuration-only and physical folds over the history ending in that record
+are one step from the folds without it (`fn-cfgc-config-replay-of-one-more`,
+`fn-cfgc-cpr-replay-of-one-more`, the record filed after every event because
+its txid is at or past the frontier), and the host-called authorization
+`fn-cfgc-cvec-native-admin-authorize` equals the replaying one whenever the
+carried fold is the open's replay of the same histories
+(`fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization`). The
+candidate open over the whole history, and the open itself, remain one pass
+each per request (PKT-601).
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store
@@ -397,12 +407,12 @@ stays authoritative, and the file may be deleted at any time.
 STO-016: The checkpoint open costs less than the full replay it replaces,
 and a publication does not hold served commands.
 
-- **The file carries the count.** The event index maps every sequence below
-  S to its record, so the file writes S in the record slot when the index
-  yields exactly the record list (`fn-sco-freeze`), and the decoder reads
-  the list back out of the index (`fn-sco-thaw`; `fn-sco-thaw-of-freeze`,
-  every checkpoint value). Past the index's u32 keys the list stays in the
-  file: nothing is capped. The header's sequence field is S either way. The
+- **The file carries the count.** The F row carries S and the frontier
+  (`fn-sct-tables-of-capture`, STO-026); every committed event below S is
+  one E row and one P row (its payload, once), and the load rebuilds the
+  event index from E (`fn-sct-capture-of-tables-of-capture`): the record
+  list is stored once, never twice. Nothing is capped: one row per event,
+  whatever S. Every run's header carries S in its sequence field. The
   Store state itself still holds the record list (`fn-sf-records`).
 - **One open.** Both host opens extend a checkpoint once (the decoded file
   over the suffix, or the empty capture over the whole history) and read the
@@ -415,40 +425,101 @@ and a publication does not hold served commands.
   obligation-identity lists (a hash set in a local stobj, `fn-ks-distinctp`,
   `fn-ks-subsetp`), each equal to its quadratic `:logic` definition.
 - **Publication off the mutex.** The owner captures the base, the
-  configuration history and the record list under its mutex, then extends,
-  encodes and writes on its own thread, and installs the result under the
-  mutex again. What it writes is the capture of the history at the capture
-  point (`fn-ock-publication-is-the-capture-at-the-capture-point`).
+  configuration history and the record list (by pointer) under its mutex,
+  then builds the tables, decides, and encodes and writes them step by step
+  on its own thread (`fnn-checkpoint-write-steps`, STO-026), and installs
+  the result under the mutex again. What it writes is the file of the
+  tables of the capture at the capture point (`fn-ockp-run-writes-the-file`
+  over `fn-sct-tables-of-capture`, PRF-199).
 
 STO-024: The owner's automatic publication is decided by name before it is
 encoded and encodes through the octet buffer, never as octet lists.
 
 - **The estimate and the budget.** Before any encode ACL2 computes the
-  encoded file's length by a walk that allocates nothing
-  (`fn-ockb-file-len`, books/owner-checkpoint-stream.lisp; equal to the
-  list codec's file length, `fn-ockb-file-len-is-len-file-octets`) and
-  compares it with the profile's checkpoint budget, the file bound an open
-  refuses a checkpoint past (`fn-ock-capture-budget` =
-  `fn-sccr-file-read-bound`: three times `max-history-octets` plus one
-  segment's framing). Past the budget the publication is deferred by name
-  (`CHECKPOINT deferred reason=exceeds-budget estimate=E budget=B`, and
-  `status` carries ` deferred=... estimate=E budget=B` on its
-  `checkpoint-file` line), nothing is written, serving continues, and the
-  attempt is not repeated until the budget covers E
-  (`fn-ock-publication-stream-defers-by-the-estimate`,
-  `fn-ock-publication-blockedp-by-definition`). The budget bounds one
-  publication's work by the operator's declared history (D27), not the
-  data a store holds.
-- **The stream.** The publication thread encodes the frozen checkpoint once
+  file's length from the tables' metadata, allocating nothing and touching
+  no payload octet (`fn-ockp-estimate`, books/owner-checkpoint-pipeline.lisp;
+  equal to the table codec's file length,
+  `fn-ockp-estimate-is-len-file-octets`), and compares it with the
+  profile's checkpoint budget, the file bound an open refuses a checkpoint
+  past (`fn-ock-capture-budget` = `fn-sccr-file-read-bound`: three times
+  `max-history-octets` plus one segment's framing), and with the free
+  space the host observed less the maintenance reserve (STO-026). Past
+  either bound the publication is deferred by name (`CHECKPOINT deferred
+  reason=exceeds-budget|exceeds-space estimate=E budget=B`, and `status`
+  carries ` deferred=... estimate=E budget=B` on its `checkpoint-file`
+  line), nothing is written, serving continues, and the attempt is not
+  repeated while the bound it named is below E
+  (`fn-ockp-decide-defers-by-the-estimate`, PRF-200, over
+  `fn-ock-publication-blockedp`). The budget bounds one publication's work
+  by the operator's declared history (D27), not the data a store holds.
+- **The stream.** The publication thread encodes the tables step by step
   into its own octet buffer (the abstract stobj fn-octets-pub of
-  books/owner-checkpoint-stream.lisp, a second stobj congruent to the served
-  attempt's `fn-octets`, so nothing is shared off the mutex) and
-  writes the plan's octets straight from that buffer through the unchanged
-  byte program (`fn-bs-scp-program`, the same five cuts). What it writes is
-  byte for byte the list codec's file of the same frozen checkpoint
-  (`fn-ock-publication-stream-writes-the-file`, PRF-183, by
-  `fn-sccb-plan-is-file-octets`), and it refuses exactly where the codec
-  refuses (`fn-ock-publication-stream-refuses-what-the-codec-refuses`).
+  books/owner-checkpoint-pipeline.lisp, a second stobj congruent to the
+  served attempt's `fn-octets`, so nothing is shared off the mutex), the
+  buffer holding one step's rows and one segment's residue, never the file,
+  and writes each step's frames straight from that buffer through the
+  unchanged byte program (`fn-bs-scp-program`, the same five cuts). What it
+  writes is byte for byte the table codec's file of the tables of the
+  capture (`fn-ockp-run-writes-the-file`, PRF-199), and every frame is
+  admitted by the reader's rule before the host writes it
+  (`fn-ockp-admit-frames` over `fn-sccr-admit-segment`): a file the open
+  would refuse is never completed.
+
+STO-026: The state checkpoint is four tables (schema 3), each a run of
+FNSC segments, holding every payload once, written by one resumable
+pipeline in bounded batches through the publication buffer and read back
+as the capture; a file of another schema is refused by name and the
+journal replays.
+
+- **The tables** (lane checkpoint-pipeline, 2026-09-26; D33, D34;
+  books/store-checkpoint-tables.lisp). F: one row `(3 S FRONTIER
+  REVISION)`. P: one row per committed event, its payload bytes (an
+  article's payload, a composite's article-record bytes) or NIL. E: one row
+  per committed event, the event with every octets leaf equal to its P row
+  written as a reference `ref s` (one op added to the tree codec); the
+  record's other fields are its own until the catalog slice. R: the four
+  fold roots (the configuration fold paused at S, the identity context, the
+  consumer cursor, the topic prefix state) with each stored article's
+  payload written as a reference to its P row, found through the event
+  index's Message-ID trie. No event index is stored: the load rebuilds it
+  from E as `fn-sco-capture` does. The dedupe is by equality with P[s]
+  (`fn-sct-refp`); a signed composite's carried record is a distinct
+  object with distinct bytes, so its payload in R stays literal (PKT-583).
+- **The frame.** Each run is `fn-scc-chunks` of its rows' programs in
+  segments of at most the profile's record bound, framed and chained from
+  the genesis by the unchanged FNSC frame (schema byte 3, sequence S);
+  `fn-scc-decode-segments`'s refusals and the per-segment admission
+  (`fn-sccr-admit-segment`) are reused, and the admission refuses another
+  schema by name: `open=full-replay reason=checkpoint-schema`
+  (`fn-sco-select-named`). One store format (D34): no schema-2 reader.
+- **The pipeline** (books/owner-checkpoint-pipeline.lisp). Capture (O(1)
+  under the mutex: the base, the configuration history, the record list by
+  pointer, the frontier, the free space, the source revision); the estimate
+  from the tables' metadata without encoding or touching a payload octet,
+  equal to the file's length (`fn-ockp-estimate-is-len-file-octets`); the
+  decision by name before any allocation (`fn-ockp-decide`, PRF-200:
+  `exceeds-budget` against `fn-ock-capture-budget`, `exceeds-space` against
+  the free octets the host observed by statvfs less `fn-smr-reserve-octets`;
+  the retry blocked while the bound it named is below the estimate); then
+  `fn-ockp-step` per batch of 1,024 rows (a work bound per step, D27),
+  the full segments framed and admitted by the reader's rule before they
+  are handed to the host, the residue under one segment kept for the next
+  step. The owner's thread and the verb run the same steps
+  (host/native/io.lisp `fnn-checkpoint-write-steps`), each step's frames
+  written through `fn-bs-scp-program`'s staged file between its `created`
+  and `written` cuts: no new program, no new cut (SCN-129: a kill between
+  two steps reopens with the old checkpoint and the stage is swept).
+- **What is proved.** `fn-sct-decode-file-of-file-is-the-capture` (PRF-199):
+  the reader's decode of the file written for the tables of a capture is
+  those tables, and their value is the capture, for any segment size;
+  `fn-sct-load-is-decode-file` (PRF-135): the host's buffer load is that
+  reader on the frames' octets; so `fn-sn-recover-from-checkpoint-equals-
+  full-recover` transfers unchanged. `fn-ockp-run-writes-the-file` (PRF-199,
+  the loop): the octets of the host's steps, at any batch size and any
+  segment size and from any initial buffer contents, are that file
+  whenever the loop completes; its step facts are PRF-133's and the
+  witness at batch sizes 1, 3 and 1000 is in
+  tests/acl2/store-checkpoint-tables-tests.lisp.
 
 ## History classes and lifetimes
 

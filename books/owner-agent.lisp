@@ -86,10 +86,17 @@
           (fn-oag-descs (cdr names) v)))
     nil))
 
+; The third element is the node's <path-identity>, the posting agent below:
+; the server name of the served Xref overview field (R3, PRF-206,
+; books/nntp-xref.lisp `fn-nntp-listing-server').
 (defun fn-oag-listing (cfg)
   (declare (xargs :guard t))
   (list (fn-oag-descs (fn-cnode-served-of cfg) (fn-cfg-value cfg))
-        (fn-cfg-motd-lines (fn-cfg-value cfg))))
+        (fn-cfg-motd-lines (fn-cfg-value cfg))
+        (fn-oag-agent cfg)
+        ;; PRF-222: the access rules (books/group-access.lisp
+        ;; `fn-gac-listing-table'), the accounts slot's mark-3 rows.
+        (fn-cfg-access-table (fn-cfg-accounts (fn-cfg-value cfg)))))
 
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.
@@ -99,9 +106,16 @@ The host calls this at host/owner-host.lisp `fn-owner-post-config', which
 fn-own-configure.  MAX-OCTETS is the store's payload bound, which the host
 supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (declare (xargs :guard t))
-  (fn-inj-make-config-listed t (fn-oag-agent cfg)
-                             (fn-oag-group-octets (fn-cnode-served-of cfg))
-                             max-octets (fn-oag-listing cfg)))
+  (fn-inj-make-config-full
+   t (fn-oag-agent cfg)
+   (fn-oag-group-octets (fn-cnode-served-of cfg))
+   max-octets
+   (fn-oag-listing cfg)
+   ;; O2: the served groups whose configured status is "n"
+   ;; (books/config.lisp `fn-cfg-closed-names'), read by the served POST
+   ;; gate and LIST ACTIVE's status field (books/group-status.lisp).
+   (fn-oag-group-octets (fn-cfg-closed-names (fn-cfg-value cfg)
+                                             (fn-cfg-generation cfg)))))
 
 (defthm fn-oag-post-config-agent-is-the-path-identity
   (implies (fn-oag-identity-setp cfg)
@@ -270,8 +284,13 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                     (fn-auth-step-pinned as archive index verdicts config
                                          observation injection wire-event)))
            :use ((:instance fn-auth-pinned-submission-is-the-delegated-submission)
+                 ;; PRF-222: the delegate serves the session's view, whose
+                 ;; posting configuration keeps the agent (fn-auth-view-config-keeps).
                  (:instance fn-oag-peer-step-pinned-submission-names-the-configured-agent
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as config archive)))))))
 
 (local
  (defthm fn-oag-auth-effects-carry-no-submission
@@ -444,12 +463,18 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
            :use ((:instance fn-served-step-counted-fast-is-reference
                             (conn (fn-own-tls-served-conn
                                    o (fn-own-find-conn id (fn-own-conns o)))))
-                 (:instance fn-served-step-counted-result-is-step
+                 (:instance fn-served-step-counted-result-is-step-of-consumed-prefix
                             (conn (fn-own-tls-served-conn
                                    o (fn-own-find-conn id (fn-own-conns o)))))
                  (:instance fn-oag-served-step-submission-names-the-pinned-agent
                             (conn (fn-own-tls-served-conn
                                    o (fn-own-find-conn id (fn-own-conns o))))
+                            (octets (take (fn-served-counted-consumed
+                                           (fn-served-step-counted
+                                            (fn-own-tls-served-conn
+                                             o (fn-own-find-conn id (fn-own-conns o)))
+                                            octets))
+                                          octets))
                             (agent (fn-inj-config-agent
                                     (fn-own-conn-config
                                      (fn-own-find-conn id (fn-own-conns o))))))))))
@@ -460,7 +485,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 ; of) is, when it is an injected article, one whose Injection-Info names the
 ; agent the connection pinned.  The hypothesis is the served invariant of
 ; the connection the read runs on; the owner does not carry it
-; (books/owner-tls-prefix.lisp, fn-ocfg-read-tls-prefix-is-full-read, and
+; (books/owner-tls-prefix.lisp, fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix, and
 ; PRF-006 record that premise), so this is stated under it rather than
 ; claimed without it.
 (defthm fn-oag-served-post-names-the-pinned-agent

@@ -15,7 +15,11 @@
 # sha256(1)'s BSD format there.  FN_FREEZE_DYNAMIC_SPACE_MB replaces the heap
 # the build inherited (--dynamic-space-size, 32000 MB from ACL2's save) in the
 # frozen launchers; SBCL_USER_ARGS at run time still overrides it (SBCL takes
-# the last such option).
+# the last such option).  FN_FREEZE_RUNTIME names the SBCL runtime to bundle
+# in place of the one the build ran (packaging/floor-runtime.sh: the same
+# version and build-id, built against the Linux release's glibc floor); it
+# must print the same --version and start the fn-host core, or nothing is
+# frozen.
 set -eu
 [ "$#" -eq 2 ] || { echo 'usage: freeze-native-image.sh BUILD_DIR OUTPUT_DIR' >&2; exit 2; }
 build=$1 out=$2
@@ -49,6 +53,17 @@ else
   case $sodium_name in libsodium.so.[0-9]*.[0-9]*) ;; *)
     echo "freeze-native-image: OpenBSD libsodium must be libsodium.so.MAJOR.MINOR: $sodium" >&2; exit 4;; esac
   hash_tool=sha256   # BSD-format lines; checked with sha256 -c
+fi
+if [ -n "${FN_FREEZE_RUNTIME:-}" ]; then
+  [ -x "$FN_FREEZE_RUNTIME" ] || { echo "freeze-native-image: FN_FREEZE_RUNTIME is not executable: $FN_FREEZE_RUNTIME" >&2; exit 4; }
+  [ "$("$FN_FREEZE_RUNTIME" --version)" = "$("$runtime" --version)" ] || {
+    echo 'freeze-native-image: FN_FREEZE_RUNTIME is not the build'"'"'s SBCL version' >&2; exit 4; }
+  # The runtime refuses a core saved under another build-id; this starts
+  # the core and exits, with no ACL2 or fn code run.
+  SBCL_HOME=$sbcl_home "$FN_FREEZE_RUNTIME" --core "$first.core" --noinform --disable-ldb \
+    --end-runtime-options --no-userinit --non-interactive --eval '(sb-ext:exit :code 0)' || {
+      echo 'freeze-native-image: FN_FREEZE_RUNTIME does not start the fn-host core' >&2; exit 4; }
+  runtime=$FN_FREEZE_RUNTIME
 fi
 mkdir -p "$out/runtime/sbcl-home" "$out/lib"
 cp -p "$runtime" "$out/runtime/sbcl"

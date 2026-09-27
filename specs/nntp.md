@@ -317,9 +317,36 @@ a line is projected on demand from the exact retained octets. RFC 3977 §8.3.2's
 transformation - remove CRLF pairs, then replace each remaining TAB, NUL, LF and
 CR with one space - is applied once, and `books/nntp-overview.lisp` proves the
 result clean for any input whatsoever. `:bytes` is the retained octet count and
-`:lines` the retained body line count; Xref is omitted rather than approximated,
-so exactly eight fields are emitted and LIST OVERVIEW.FMT lists exactly the
-seven fixed lines of §8.4.2.
+`:lines` the retained body line count.
+
+### The Xref overview field (PRF-206, 2026-09-26)
+
+On the served path (the pinned dispatcher, `fn-nntp-archive-command-pinned`)
+every OVER/XOVER line carries a ninth field in RFC 3977 §8.3.2's full form,
+`Xref: SERVER group:number ...` (RFC 5536 §3.2.14 syntax), and LIST
+OVERVIEW.FMT lists `Xref:full` after the seven fixed lines (§8.4). The
+distinction:
+
+- RFC requirement (§8.3.2, §8.4): a field past the eighth is named in LIST
+  OVERVIEW.FMT, and a full-form field carries its header name. Both are
+  decided on the same value, the environment's server name
+  (`fn-nntp-xref-server`), so the format list and the lines never disagree.
+- fn guarantee (PRF-206): the locations are exactly the (group, number)
+  pairs at which this node serves the article, the local numbers GROUP,
+  LISTGROUP and ARTICLE n use (`fn-xref-pairs-exact`), each an entry the
+  group index builds for it (`fn-xref-pair-is-an-index-entry`); SERVER is
+  the node's `path-identity` (`fn-oag-listing-server-is-the-path-identity`;
+  unset, the `.invalid` agent); the eight fields are the eight-field
+  renderer's (`fn-nov-served-lines-numbered-extend-the-eight-fields`). Local
+  numbers are never merged across nodes: a peer's Xref is not read.
+- Local policy: Xref is overview metadata only. ARTICLE and HEAD serve the
+  stored octets as held (no Xref header is spliced in); a proto-article
+  carrying Xref is refused at injection (RFC 5537 §3.5 item 2), but an
+  article a peer relayed is stored as offered, so its HEAD may carry the
+  peer's Xref with the peer's numbers (PKT-597 (c)); the overview field is
+  the one naming this node's. A group whose name carries a colon is not listed (none is
+  admitted). Without a server name (a blind environment, not the served
+  path) the eight fields and seven format lines of before are answered.
 
 ## Sessions and framing
 
@@ -329,6 +356,30 @@ article or an invalid cursor for an empty group. Retrieval by Message-ID does
 not move either; successful numeric retrieval updates the current article number.
 Use the specified 412/420/423/430 cases and error precedence. Later expiry can
 invalidate a once-valid cursor; do not bake eternal existence into the invariant.
+
+Local article numbers follow the committed history. RFC 3977 §6 requires one
+article per number within a group, one number per article within a group, and
+numbers issued in arrival order; it constrains the numbers a server issues to
+clients. A local article number held by a submission that was never
+acknowledged and never became durable may be assigned to the next committed
+article after recovery; numbers are assigned by the committed history, and a
+client observes a number only after a 240 or a served view, both after
+durability. This is the reading the power-loss campaign measured
+(`planning/evidence/power-loss-2026-09-26.md`, "a lost POST's number is used
+again": at 258 cuts the fresh POST after recovery took the lost in-flight
+POST's number, and no acknowledged or served number moved or was issued twice).
+
+NNT-042: a reader connection's view of the store is a VERSION, the committed
+count when the view was taken: the connection sees the articles committed below
+it, and a cancel committed after one of them leaves that article visible to the
+connection until it advances past the cancel. GROUP and LISTGROUP advance the
+connection's version to the current count between commands; within a command
+the version is fixed (C3), so a multi-line response is consistent. A long-lived
+reader therefore sees a peer's new article after its next GROUP, never only on
+reconnection. A stronger fn guarantee than RFC 3977 section 6.1.1, which fixes
+no view semantics; `fn-view-advance`, `fn-view-sees` and
+`fn-view-cancel-after-target` (books/catalog-delta.lisp) are the ACL2 half; the
+served path does not read them yet (PKT-585).
 
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
@@ -692,6 +743,100 @@ recomputes for unsigned articles: its duplicate key is the Message-ID. For a
 signed carrier the receiver verifies the author's signature over
 `fn-hc-authored-source`, which drops exactly the node-added fields.
 
+### Read-only groups (NNT-040)
+
+NNT-040: a group the operator sets read-only (`group policy NAME n`) refuses a local POST that names it with a 441 naming the reason, and LIST ACTIVE lists it with status `n`, from the same configured list on the same connection
+
+RFC 3977 section 7.6.3 gives LIST ACTIVE a status field: `y` (posting
+permitted) or `n` (posting not permitted). RFC 6048 section 2.1 names the
+other values; fn serves `y` and `n` only (`m` is moderation, deferred with
+P3; `x`, `j` and `=` are not served). `n` means *local* postings are not
+permitted: articles relayed by peers (IHAVE, TAKETHIS, BP) still arrive,
+which is the RFC's meaning of the flag and not a stronger fn guarantee.
+
+- **Configuration.** `operator CONFIG group policy NAME n|y` (offline, or
+  live through the control socket) stages `(:set-group-status NAME STATUS 0
+  nil)`, configuration delta code 21 (`books/config.lisp`), admitted only for
+  a live group and `y` or `n` (`:no-such-group`, `:group-status`). The fold
+  rewrites the group entry's policy identifier (`*fn-cfg-read-only-policy-id*` is
+  `n`, the default `*fn-cfg-default-policy-id*` is `y`); nothing else about the
+  group changes. Keystone `fn-cfg-set-group-status-sets-the-status`
+  (`books/config-invariants.lisp`) over `fn-cfg-apply-delta`: the status set
+  is the status read, and no other group's changes. No store record and no
+  format changes: the value is replayed, and the delta kind is a code of the
+  existing record codec.
+- **One list.** The owner's posting configuration
+  (`books/owner-agent.lisp` `fn-oag-post-config`, installed at recovery and
+  at every live reconfiguration) carries `fn-cfg-closed-names`, the live
+  groups whose status is `n` (`fn-cfg-closed-names-are-the-n-groups`). A
+  connection answers from the configuration it pinned, like every other
+  served answer: a connection opened before the change keeps its answer
+  until it re-pins.
+- **POST.** `fn-nntp-post-step` runs the gate `fn-gst-post-gate`
+  (`books/group-status.lisp`) on an article the injection decision accepts
+  (`fn-post-gated-decision`); every refusal the decision makes keeps its own
+  line, so a clockless server still answers the clock line. An ordinary
+  article (no Control field) that names a closed group, alone or in a
+  cross-post, is answered
+  `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)`
+  and nothing is submitted. A control message (a cancel) is not a posting to
+  the group and is not gated; a Supersedes article is a posting and is.
+- **LIST ACTIVE.** LIST and LIST ACTIVE [wildmat] render each group's status
+  with `fn-nntp-closed-status` of the same list
+  (`fn-nntp-list-status-response`, through the environment
+  `fn-post-reader-env` builds from the connection's configuration); with no
+  group closed the answer is byte-for-byte the earlier one.
+- **The claim.** Keystone `fn-gst-post-gate-refuses-exactly-a-listed-n-group`:
+  the gate refuses exactly when the article names a group whose listed
+  status is `n`. LIST COUNTS still reports `y` for every group (PKT-575).
+
+### Own-post cancel and Cancel-Lock (SEC-006)
+
+SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
+
+Status: **specified, not implemented** (PKT-575; the decision is PKT-576,
+planning/evidence/group-policy-2026-09-26.md).
+
+Today a cancel or Supersedes from an ordinary newsreader is filed and
+withdraws nothing: only a verified signed canceller acts
+(`fn-ctl-withdrawal-plan` declines `:unsigned`). RFC 5537 section 5.3
+leaves cancel authentication to local policy; the same-login basis is a
+local policy (the coordinator's decision P1), Cancel-Lock is RFC 8315.
+
+The obstruction, measured in the tree: nothing durable names an unsigned
+article's posting login. The Store's kind-4 record does not
+(planning/evidence/path-and-login-2026-09-25.md, "The Store's kind-4 record
+does not; that remains open"), and the injected octets carry only the
+agent (`fn-inj-injection-info-line`). A withdrawal is decided at
+`fn-own-refresh` from durable state (`fn-ctl-journal-withdrawals` over the
+articles and their stored verdicts), so a basis that compares logins has
+nothing to compare against after a restart. D34 excludes adding the login
+to the Store record (a format change).
+
+The proposed design (the default of PKT-576): the node puts the login's
+material in the article's own octets, as RFC 8315 does:
+
+- at injection, the node adds `Cancel-Lock: sha256:BASE64(SHA256(K))` with
+  `K = BASE64(HMAC-SHA256(S, MSGID || LOGIN))` (RFC 8315 section 4's
+  recommended construction), S a 32-octet node secret created at `init`
+  beside the store's configuration and never served;
+- a cancel (Control: cancel, or Supersedes) POSTed by an authenticated
+  login gets `Cancel-Key: sha256:K'` for its target, computed from that
+  login; the withdrawal plan accepts an unsigned cause whose Cancel-Key
+  hashes to a Cancel-Lock of the target (RFC 8315 section 3), with the hash
+  in ACL2 (`books/sha256.lisp`, executable) and HMAC over it;
+- a friend's cancel from another node travels with its Cancel-Key, so every
+  node that holds the target decides the same way (visible(T,C) =
+  visible(C,T) keeps holding: the decision reads the two articles only);
+- the D25 inverse (`fn-inj-source-of`) must strip the injected Cancel-Lock.
+
+What it proves and what it cannot: acceptance is exact (the cancel's key
+hashes to the lock), and the same login is always accepted. "A different
+login is refused" holds only up to a SHA-256 second preimage of the lock
+(2^256 generic work; the collision figure, 2^128, does not apply because
+the lock is fixed before the forger chooses), an assumption to be named in
+`books/assumptions.lisp`, never a theorem about the real hash.
+
 ### Not yet true of POST
 
 There is no
@@ -860,9 +1005,11 @@ ClientHello behind the STARTTLS line in one kernel observation. This is a
 robustness property and does not relax RFC 4642's client prohibition. The
 sole connection worker observes with `MSG_PEEK`; `fn-ocfg-read-tls-prefix`
 returns the one ACL2 transition, its effects and the exact consumed count.
-`fn-ocfg-read-tls-prefix-is-full-read`, under the configured-owner state
-invariant, proves that the actual host-call result equals the checked full
-observation. The host-called path uses `fn-served-step-counted-fast`: its entry
+`fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix`, under the
+configured-owner state invariant, proves that the actual host-call result
+equals the checked read of the prefix it consumed (the whole observation's,
+since a handshaking connection frames nothing more; a read also yields after
+a submission, NNT-044). The host-called path uses `fn-served-step-counted-fast`: its entry
 predicate examines the fixed eight-cell wire record and scalar counters, never
 the retained current line or article body. `fn-served-step-counted-fast-is-reference`
 equates it to the total checked transition under the full wire invariant, and
@@ -978,6 +1125,67 @@ gives them.
   image refuses delta kinds 15 and 16 at decode); roll back only from the
   pre-upgrade snapshot. The upgrade rehearsal checks that sentence.
 
+### Group access (NNT-046)
+
+NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
+
+SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
+
+fn's reference is INN's readers.conf access groups (a `read` and a `post`
+wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
+RFC 4643 leaves what an authenticated identity may see to local policy, so
+this is a local policy with one stronger fn guarantee: no existence oracle.
+
+- **Configuration.** `operator CONFIG account access LOGIN|--anonymous --read
+  R --post P` stages `(:account-access LOGIN R 0 ((LOGIN R P 3)))`,
+  configuration delta code 22 (`books/config.lisp` `fn-cfg-account-access`):
+  one row per login in the accounts slot, mark 3 beside the account rows'
+  0 and 1 and the binding rows' 2; LOGIN "" is the rule of a connection
+  that has not authenticated. The verb admits only patterns that parse as
+  wildmats (`fn-wildmat-parse`); a stored pattern that does not parse admits
+  nothing (fail closed). No rule, or `*`, restricts nothing: existing
+  accounts keep their view. `account access show` is the `account list`
+  report with `access LOGIN read R post P` lines. No store record, no format
+  change.
+- **The view.** The owner projects the rows into the reader listing each
+  connection pins (`fn-oag-listing`, fourth element). A reader session
+  whose login has a read rule is served, by `fn-auth-delegate-pinned`
+  (`books/nntp-auth.lisp`, and its carried twin `fn-scar-auth-delegate-pinned`),
+  the RESTRICTED VIEW of the view it pinned (`books/group-access.lisp`): the
+  groups R admits and their watermarks; the articles with at least one such
+  group, each cut to those groups and memberships; the Message-ID trie and
+  group buckets built from those articles; the withdrawn list cut the same
+  way. The reader machine is unchanged, so GROUP and LISTGROUP of an excluded
+  group answer 411, an article with no readable group answers 430 by
+  Message-ID (and `430` rather than `430 withdrawn` when withdrawn), LIST
+  ACTIVE, NEWSGROUPS and COUNTS omit excluded groups, NEWNEWS omits their
+  articles, and Xref names readable groups only. LIST ACTIVE.TIMES and
+  NEWGROUPS read the environment's creation facts, which the served step
+  does not supply today (`fn-post-reader-env`: none); a change that supplies
+  them must cut them to the view (PKT-643). A selection the
+  view lacks is dropped before the command. PRF-222 keystones: the view is a
+  projection (`fn-gac-restrict-state-is-a-projection`) with a corresponding
+  index, no excluded group or membership is in it, an article is held
+  exactly when it has a readable group, and the view of a store with any
+  excluded groups removed is the same view (`fn-gac-restrict-absent-groups`):
+  no reply can depend on what an excluded group holds.
+- **Posting.** Groups the session may read but not post to join its closed
+  list (the read-only 441; LIST ACTIVE shows `n` to that session); groups it
+  may neither read nor post to leave its served list, so a POST naming one
+  answers the unknown-group 441 of a group the node does not carry. A group
+  it may post to but not read is a drop box.
+- **Scope.** A peer connection has no rule: peering is unchanged, and what a
+  peer is fed is its feed patterns' decision. The consumer poll is the
+  owner's local socket (one owner principal, mode 0600) and reads
+  everything, as the operator does. Not guarantees: the Newsgroups header
+  of a cross-posted article names every group it was posted to (its own
+  octets); a Message-ID is unique node-wide, so a POST of a hidden article's
+  Message-ID is refused as a duplicate; the operator reads everything, and
+  confidentiality from the operator or from a peer is the agents' own
+  encryption. Cost: a restricted session's command is served over a view
+  rebuilt per command (O(A) in the view's articles; an unrestricted session
+  pays nothing); pinning the view per connection is PKT-643.
+
 ### The posting allowance
 
 Posting is the AUTHENTICATED PRINCIPAL's, not the connection's.
@@ -1059,8 +1267,8 @@ and sends, waits or closes as the answer says.
 
 | Slot | Decides | The client sees | Loopback default | Public default |
 | --- | --- | --- | --- | --- |
-| `exposure-connections` | connections held (never above the run's max) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | the run's max | the run's max |
-| `exposure-per-address` | connections held from one source address | `400 too many connections from this address; try again later` | the total | 8 |
+| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | 31 | 31 |
+| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | 8 |
 | `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | 64 |
 | `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | 60 |
 | `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | 600 |
@@ -1092,6 +1300,44 @@ unauthenticated command, are RFC 3977 §5.1 and RFC 4643 §2.2; the silent
 close on the timer is RFC 3977 §3.1's SHOULD; every number, the per-address
 accounting and waiting instead of refusing are local policy.
 
+## Connection capacity and the trusted range (NNT-043)
+
+NNT-043: The reader port holds exactly the operator's connection capacity and refuses the next connection with RFC 3977's 400 by name, and an address in the operator's trusted range is never refused on the per-address rule
+
+The capacity is the `exposure-connections` row, a natural up to the limit
+rows' width (the CBOR uint32 maximum); with no row it is 31, the figure a
+run held before. No fixed ceiling sits under it: the owner a run installs is
+bounded one past that width (`*fn-exp-owner-connection-bound*`,
+books/public-exposure-rows.lisp), so the owner's own bound never refuses what
+the row admits, and the private connection a live `policy set` stages
+through always finds room. Below the capacity a connection is refused only
+by the per-address or failed-login rule; at it, every connection reads `400
+too many connections; try again later` and is closed
+(`fn-exp-open-refuses-exactly-at-the-capacity`, PRF-211). A raised row takes
+effect at the next accept.
+
+`exposure-trusted` (a policy row: `none`, or one or more comma-separated
+ranges `ADDRESS/BITS`, each address in `[listener] host`'s grammar, BITS at
+most 32 or 128, a bare address meaning the whole address) names the sources
+exempt from `exposure-per-address`. A node behind a home router whose NAT
+loopback presents every LAN reader as the router's address is the case: its
+readers would otherwise share one address's allowance. The exemption is from
+that rule alone: the capacity, the step budget and the failed-login limit
+apply to a trusted source as to any other
+(`fn-exp-trusted-address-is-never-refused-by-address`,
+`fn-exp-untrusted-address-is-refused-exactly-at-its-limit`). A range is
+matched by the kernel's family and the first BITS bits of the source
+address; an IPv4 range does not match an IPv4-mapped IPv6 source, which no
+admitted listener receives (NNT-041 refuses `::` and the mapped range).
+
+`operator CONFIG health` and `operator CONFIG status` print `exposure
+capacity connections=N capacity=C per-address=P trusted=RANGES`: the
+connections the owner holds, the capacity in force, the per-address limit
+and the trusted word (`none` when there is none).
+
+That the port refuses with 400 past a limit is RFC 3977 §5.1.1; the capacity,
+its default and the trusted range are local policy.
+
 ## Listener addresses (NNT-041)
 
 NNT-041: The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why
@@ -1117,6 +1363,74 @@ the portable form). The node is public when any listener is
 (`fn-exp-address-publicp` per address). A live reconfiguration does not
 rebind listeners (PKT-464 (a)); a changed `host` takes effect at restart.
 What remains: PKT-577.
+
+## Transit streaming (NNT-045)
+
+NNT-045: A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not
+
+A peer connection (a configured peer with an inbound half) accepts MODE
+STREAM with 203 (RFC 4644 §2.3; stateless: IHAVE stays available), CHECK
+(§2.4) and TAKETHIS (§2.5). The three forms are answered from two ACL2
+decisions of books/peer-inbound.lisp: `fn-peer-decide-offer` before the
+article (IHAVE's first reply, CHECK's only reply) and
+`fn-peer-decide-transfer` after it (IHAVE's second reply, TAKETHIS's only
+reply; it has no command formal). PRF-207 states the correspondence on the
+codes a peer reads off the socket:
+
+| decision | IHAVE (RFC 3977 §6.3.2) | streaming (RFC 4644) |
+| --- | --- | --- |
+| offer wanted / held / deferred or refused | 335 / 435 / 436, 435 | CHECK 238 / 438 / 431, 438 |
+| transfer durable / refused or held / deferred or uncertain | 235 / 437 / 436 | TAKETHIS 239 / 439 / 436 |
+
+RFC requirements: the codes and the Message-ID echoed by every CHECK and
+TAKETHIS reply. fn guarantee: one admission decision for all three forms,
+so no article is admitted under one form that another would refuse, and a
+duplicate is refused under every form. Local policy: 436 after TAKETHIS
+(RFC 4644 §2.5 names 400; innfeed retries 436 and a 400 closes the
+connection with every pipelined article behind it), and the pipeline
+bound: each 238 is a promise counted on the connection, a TAKETHIS retires
+one, and a CHECK with the peer record's inbound max-inflight outstanding
+(16 from `peer add`) answers 431, so a peer may pipeline without limit and
+fn's work per connection stays bounded (D27; the unbounded part is the
+peer's queue, not fn's).
+
+Outbound, fn sends MODE STREAM after the greeting when the peer record
+says streaming. 203: the feed offers with CHECK and transfers with
+TAKETHIS. 500 or 501 (RFC 3977 §3.2.1: the command or its argument is
+unknown, which is what a server without RFC 4644 answers): the same
+connection goes on with IHAVE, the owner logs one line
+(`fn-fc-fallback-log-line`) and records no stop; the next connection asks
+again. Any other answer is a refusal and stops the dial for the owner
+process (PRF-130). The form is per connection: `fn-own-feed-connect` sets
+it at every connect. RFC 4644 §2.3 prefers CAPABILITIES for discovery; fn
+asks MODE STREAM, which every legacy server answers (PKT-599).
+
+## Pipelined articles (NNT-044)
+
+NNT-044: Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut
+
+A client may send a command before the previous reply arrives and the
+server must neither discard data nor lose synchronisation (RFC 3977 §3.5);
+a streaming peer pipelines TAKETHIS with its article (RFC 4644 §2.5), and
+innfeed does. One socket read can therefore carry several complete
+articles. The served read yields after the octet that completed an
+article's submission (books/served-tls-prefix.lisp `fn-served-feed-counted`,
+the span fold books/served-span.lisp `fn-scar-feed-span`): the host commits
+the article and sends the replies of the read and the article's outcome,
+then feeds the unconsumed rest of the read as the next read
+(host/native/owner.lisp, the serve loop's retained suffix). Every step's
+work is bounded by the read (D27); no octet is dropped or read twice.
+
+RFC requirement: pipelined data is neither lost nor reordered. fn guarantee
+(PRF-213): the loop driven to exhaustion is one read of the whole input
+(`fn-served-drain-is-step`), so the commands and articles consumed and their
+answers are the same wherever the network or a yield cut the stream
+(`fn-served-drain-run-is-boundary-independent`); a yield carries at most one
+submission and the ones taken are all of them
+(`fn-served-drain-takes-every-submission`); the outcome of an article is on
+the wire before the reply to any command after it. Before PKT-600 was
+repaired the second article of a read was never admitted and never
+answered.
 
 ## Scope
 

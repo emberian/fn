@@ -33,7 +33,7 @@
 ; The publication through the octet buffer, decided before it is encoded
 ; (fn-ock-publication-stream, fn-ock-capture-budget, fn-ock-publication-blockedp;
 ; PKT-492, PKT-315).
-(include-book "../books/owner-checkpoint-stream")
+(include-book "../books/owner-checkpoint-pipeline")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/config-owner-live")
@@ -89,6 +89,7 @@
 (include-book "../books/peer-pull")
 (include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
+(include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
@@ -393,7 +394,7 @@
   (fn-owner-sco-global 'fn-owner-sco-deferred state))
 
 ; The checkpoint budget the publication is decided against: the profile's
-; (fn-ock-capture-budget, books/owner-checkpoint-stream.lisp), or, on a
+; (fn-ock-capture-budget, books/owner-checkpoint-pipeline.lisp), or, on a
 ; developer image only, the natural the host read from
 ; FN_NATIVE_CHECKPOINT_BUDGET_TEST (host/native/io.lisp
 ; fnn-checkpoint-budget-test-override; nil otherwise), so the due path and
@@ -404,9 +405,12 @@
 
 ; :due or :idle, by fn-ock-publication-duep under the profile's K, and never
 ; while a deferred publication is blocked (fn-ock-publication-blockedp,
-; books/owner-checkpoint-stream.lisp: the checkpoint budget is still below
+; books/owner-checkpoint-pipeline.lisp: the checkpoint budget is still below
 ; the estimate the deferral named; PKT-492).
-(defun fn-owner-sco-due (override state)
+; FREE: the free octets of the store's filesystem the host observed by
+; statvfs (or nil); a space deferral stays blocked while the space is still
+; below the estimate it named (fn-ock-publication-blockedp, both reasons).
+(defun fn-owner-sco-due (override free state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
     (value (if (and profile
@@ -417,7 +421,8 @@
                      (fn-owner-sco-global 'fn-owner-sco-attempted state))
                     (not (fn-ock-publication-blockedp
                           (fn-owner-sco-deferred state)
-                          (fn-owner-sco-budget override profile))))
+                          (fn-owner-sco-budget override profile)
+                          (fn-ockp-space free))))
                :due :idle))))
 
 ; The publication in three steps (checkpoint-cost): the capture under the
@@ -428,7 +433,12 @@
 ; recorded at COUNT.  They are ACL2 values; a later commit makes new ones and
 ; changes none of these.  BUDGET is the checkpoint budget (fn-owner-sco-budget:
 ; the profile's, the file bound the open refuses a checkpoint past).
-(defun fn-owner-sco-capture (override state)
+; The capture is O(1) under the mutex: the base, the configuration
+; history and the record list are handed by pointer (a later commit makes
+; new ones); FRONTIER is the store's frontier txid at the capture (the F
+; row), FREE the free octets the host observed, REVISION the writer's
+; source revision (a string the host read; the F row carries it).
+(defun fn-owner-sco-capture (override free revision state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
          (records (fn-sf-records (fn-sn-files st)))
@@ -442,17 +452,17 @@
                  (fn-bs-profile-max-record-octets profile)
                  count
                  (- count (if (natp durable) durable 0))
-                 (fn-owner-sco-budget override profile)))))
+                 (fn-owner-sco-budget override profile)
+                 (fn-sf-frontier (fn-sn-files st))
+                 free
+                 revision))))
 
-; Outside the mutex, the host calls `fn-ock-publication-stream' (a
-; state-free ACL2 function over the publication buffer,
-; books/owner-checkpoint-stream.lisp) on the captured values: (NEXT VERDICT),
-; NEXT the capture of the captured history
-; (fn-ock-publication-stream-next-is-the-capture) and VERDICT :unencodable,
-; the deferral (:deferred REASON ESTIMATE BUDGET), or (:plan PLAN ESTIMATE)
-; with the frozen file's program in that buffer
-; (fn-ock-publication-stream-writes-the-file).  It reads no global and
-; writes none.
+; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
+; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),
+; then `fn-ockp-setup' (books/owner-checkpoint-pipeline.lisp: the tables of
+; NEXT, the estimate, the decision by name before any allocation) and loops
+; on `fn-ockp-step' over the publication buffer, writing each step's
+; frames.  None of them reads or writes a global.
 
 ; fn-owner-sco-publication-done (under the mutex): NEXT becomes the base,
 ; whether or not the write succeeded (it is the capture of a prefix of the
@@ -481,18 +491,21 @@
 ; it is the codec ceiling `*fn-record-max-payload*'.
 ;
 ; Native operator startup supplies the one posting-policy bit after recovery
-; and after `fn-owner-install-profile'.  Preserve the agent, served groups
-; and reader listing (PRF-195) ACL2 already installed and set the served bound from the profile; this
+; and after `fn-owner-install-profile'.  Preserve the agent, served groups,
+; reader listing (PRF-195) and closed groups (PRF-196) ACL2 already installed
+; and set the served bound from the profile; this
 ; changes the same fn-own-config value read by served POST and control.
 (defun fn-owner-posting-configure (allow state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (cfg (fn-own-config owner))
-         (next (fn-inj-make-config-listed (and allow t)
-                                          (fn-inj-config-agent cfg)
-                                          (fn-inj-config-groups cfg)
-                                          (fn-owner-served-post-bound state)
-                                          (fn-inj-config-listing cfg))))
+         (next (fn-inj-make-config-full (and allow t)
+                                        (fn-inj-config-agent cfg)
+                                        (fn-inj-config-groups cfg)
+                                        (fn-owner-served-post-bound state)
+                                        (fn-inj-config-listing cfg)
+                                        ;; O2: keep the closed groups.
+                                        (fn-inj-config-closed cfg))))
     (if (not (fn-inj-configp next))
         (value :refused)
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
@@ -2167,9 +2180,11 @@
       (value nil))))
 
 ; One observed socket region is one ACL2 prefix transition.  Its effects and
-; configured-owner state equal fn-ocfg-read over the complete observation
-; (fn-ocfg-read-tls-prefix-is-full-read); fn-owner-consumed names the exact
-; physical prefix.  The native adapter leaves any suffix for the TLS record
+; configured-owner state equal fn-ocfg-read over the prefix it consumed
+; (fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix); fn-owner-consumed names the exact
+; physical prefix.  The prefix ends early after a STARTTLS 382, a closed wire,
+; or (PKT-600, PRF-213) the octet that completed a submission: the host then
+; commits and answers it and feeds the rest of the region as the next read.  The native adapter leaves any suffix for the TLS record
 ; layer instead of parsing STARTTLS in raw Lisp.
 ; The call is fn-scar-ocfg-read-tls-prefix (books/owner-served-carried.lisp),
 ; which equals fn-ocfg-read-tls-prefix under the configured owner's relation
@@ -2328,6 +2343,12 @@
     (value :released)))
 
 ;; The lines `health' appends (host/native-live-status-host.lisp).
+;; PRF-211: the capacity and the count, the last line of `status'.
+(defun fn-owner-exposure-capacity (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-exp-capacity-line (fn-owner-exposure-limits state)
+                        (len (fn-own-conns (fn-owner-core state)))))
+
 (defun fn-owner-exposure-health (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-exp-health-lines (fn-owner-exposure-state state)
@@ -2625,13 +2646,15 @@
 
 ; A raw TCP descriptor starts in the ACL2 connection phase below.  Only a
 ; successful greeting (and configured MODE STREAM exchange) makes this feed
-; live for selection.
-(defun fn-owner-feed-connect (peer-octets conn state)
+; live for selection.  FORM is ACL2's (`fn-fc-connection-form' of the ready
+; connection state): :ihave after a 500/501 to MODE STREAM (PRF-207), so the
+; feed offers this connection IHAVE; nil otherwise.
+(defun fn-owner-feed-connect (peer-octets conn form state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (natp conn)))
         (value nil)
-      (let ((state (fn-owner-step (list :feed-conn peer conn) state)))
+      (let ((state (fn-owner-step (list :feed-conn peer conn form) state)))
         (value :ok)))))
 
 (defun fn-owner-feed-dial-open (peer-octets conn user pass allow-clear state)
@@ -2737,7 +2760,11 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
               (value :quiet))
           (let* ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
-                         (fn-own-feed-article owner msgid) obs))
+                         ; The record's payload by Message-ID through the
+                         ; Store's event index, not the acceptance state's
+                         ; article: fn-apr-feed-article-is-own-feed-article
+                         ; (books/acceptance-payload-ref.lisp).
+                         (fn-apr-feed-article owner msgid) obs))
                 ; The sender's one line for this reply (nil for a 335/238),
                 ; books/owner-log.lisp fn-olog-feed-reply-line.
                 (state (f-put-global 'fn-owner-feed-log-line
@@ -2787,6 +2814,12 @@ existing port only after fn-fc has made this connection ready."
                             (f-put-global 'fn-owner-feed-log-line
                                           (fn-fc-stop-log-line peer) state)
                           state))
+                 ;; PRF-207: a 500/501 to MODE STREAM goes on in IHAVE; the
+                 ;; one line says so (no stop is recorded).
+                 (state (if (fn-fc-ihave-fallback-p input step)
+                            (f-put-global 'fn-owner-feed-log-line
+                                          (fn-fc-fallback-log-line peer) state)
+                          state))
                  (state (f-put-global
                          'fn-owner-feed-inputs
                          (fn-fc-table-put peer (fn-fc-next-state step) inputs)
@@ -2817,7 +2850,10 @@ existing port only after fn-fc has made this connection ready."
                   (:ready
                    (mv-let (erp word state)
                      (fn-owner-feed-connect peer-octets
-                                            (fn-fc-conn (fn-fc-next-state step)) state)
+                                            (fn-fc-conn (fn-fc-next-state step))
+                                            (fn-fc-connection-form
+                                             (fn-fc-next-state step))
+                                            state)
                      (if erp (mv erp word state)
                        (if (equal word :ok) (value :ready) (value :fault)))))
                   (:reply

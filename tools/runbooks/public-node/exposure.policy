@@ -1,0 +1,30 @@
+# The public node's live policy rows (lane public-node, 2026-09-26): one
+# `fn operator CONFIG policy set SLOT VALUE` per non-comment line, applied
+# by deploy-fresh after `init` and before the first `run` (each row is a
+# durable configuration record; a later `policy set` replaces it live).
+# PRF-161's limits by name (books/public-exposure.lisp); specs/nntp.md
+# "Public exposure" is the table. Absent rows take the public defaults on a
+# listener off loopback; every row is written anyway, so `health` and the
+# node record name the limits in force rather than a default.
+#
+# exposure-connections: the total a run admits is never above the run's
+# max_connections, which is the constant 32 (books/native-config.lisp
+# *fn-ncfg-default-max-connections*), one socket held back for the
+# operator: 31 is the real ceiling, whatever docs/operator.md's example of
+# 200 says (gap packet a).
+exposure-connections 31
+# 4, not the default 8: with 31 sockets, 8 per address lets four hosts fill
+# the node; 4 lets a reader run a few connections and needs eight hosts.
+exposure-per-address 4
+exposure-steps-per-second 64
+exposure-first-seconds 60
+exposure-idle-seconds 600
+exposure-auth-failures 10
+exposure-posts-per-minute 60
+# PKT-405: no read-only anonymous level exists; `open` would let an
+# anonymous client POST. Every reader logs in.
+anonymous none
+# NNT-013: a login bound to a signing principal posts only as it; unbound
+# logins (a newsreader) post as before.
+posting-policy bound-logins
+path-identity fn.fg-goose.online

@@ -318,54 +318,7 @@
                                              '(fn-sco-store-open fn-ock-recover-extended
                                                car-cons cdr-cons)))))
 
-; -----------------------------------------------------------------------------
-; The publication off the owner mutex (checkpoint-cost, PKT-141 finding 2)
-;
-; Under the owner mutex the host captures the base, the configuration
-; history and the record list (host/owner-host.lisp fn-owner-sco-capture);
-; these are values, and a later commit makes new ones.  Outside the mutex it
-; calls `fn-ock-publication' on the captured values and writes the octets;
-; back under the mutex it installs the new base and the durable sequence
-; (fn-owner-sco-publication-done).  The file is `fn-sco-freeze' of the next
-; checkpoint: its count, not its record list.
-(defun fn-ock-publication (base configs records segment-octets)
-  ; (NEXT OCTETS); OCTETS is :unencodable when the codec refuses.
-  (declare (xargs :guard (natp segment-octets) :verify-guards nil))
-  (let ((next (fn-ock-next-checkpoint base configs records)))
-    (list next (fn-scc-file-octets (fn-sco-freeze next) segment-octets))))
-
-; KEYSTONE of the publication.  What the owner publishes from a capture it
-; took is the capture of the history at the capture point, whatever was
-; committed while it encoded.
-(defthm fn-ock-publication-is-the-capture-at-the-capture-point
-  (implies (fn-sn-observed-historyp frontier records)
-           (equal (car (fn-ock-publication (fn-sco-capture configs prefix)
-                                           configs records segment-octets))
-                  (fn-sco-capture configs records)))
-  :hints (("Goal" :use fn-ock-next-checkpoint-is-the-capture
-           :in-theory (union-theories (theory 'minimal-theory)
-                                      '(fn-ock-publication car-cons)))))
-
-; The segments written for a checkpoint value decode, and thaw, to it: the
-; codec round trip (fn-scc-decode-segments-of-segments, under its two width
-; hypotheses) composed with fn-sco-thaw-of-freeze.
-(defthm fn-ock-published-segments-decode-to-the-checkpoint
-  (implies (and (fn-sco-shapep c)
-                (fn-scc-treep (fn-sco-freeze c))
-                (< (+ 1 (len (fn-scc-encode (fn-sco-freeze c)))) *fn-scc-u64-bound*)
-                (< (fn-scc-value-sequence (fn-sco-freeze c)) *fn-scc-u64-bound*))
-           (equal (fn-sco-thaw (cadr (fn-scc-decode-segments
-                                      (fn-scc-segments (fn-sco-freeze c)
-                                                       segment-octets))))
-                  c))
-  :hints (("Goal" :use ((:instance fn-scc-decode-segments-of-segments
-                                   (c (fn-sco-freeze c)))
-                        fn-sco-thaw-of-freeze)
-           :in-theory (union-theories (theory 'minimal-theory)
-                                      '(car-cons cdr-cons)))))
-
 (verify-guards fn-ock-install)
 (verify-guards fn-ock-recover-full)
 (verify-guards fn-ock-recover-extended)
 (verify-guards fn-ock-next-checkpoint)
-(verify-guards fn-ock-publication)

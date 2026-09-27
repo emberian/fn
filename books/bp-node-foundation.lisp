@@ -500,16 +500,40 @@
 ; Recovery is cold-path validation of the ACL2 byte replay result.  The host
 ; obtains that result from fn-bpnf-replay-rows on observed FNBS name/bytes;
 ; the composition book binds the event argument to that exact call.
-(defun fn-bpnf-recovery-heldp (held max-held max-octets)
+;
+; The executable is one pass (lane bp-catalog): the row count and the octet
+; total are read once, not once per suffix.  The logical definition re-sums
+; the suffix's wire lengths at every level, which the recovery step executed
+; as written: quadratic in the held octets (5 s of SCN-077's 51.9 s open at
+; 1,311 rows of 4 KiB, bp-lifecycle-5).  The equality is the guard obligation
+; (fn-bpnf-recovery-heldp-fast-is-logic, books/bp-node-machine-guards.lisp).
+(defun fn-bpnf-all-heldp (held)
+  (declare (xargs :guard t))
+  (if (atom held) t
+    (and (fn-bpnf-heldp (car held))
+         (fn-bpnf-all-heldp (cdr held)))))
+
+(defun fn-bpnf-recovery-heldp-fast (held max-held max-octets)
   (declare (xargs :guard t))
   (and (natp max-held)
        (natp max-octets)
        (true-listp held)
        (<= (len held) max-held)
        (<= (fn-bpnf-held-octets held) max-octets)
-       (if (atom held) t
-         (and (fn-bpnf-heldp (car held))
-              (fn-bpnf-recovery-heldp (cdr held) max-held max-octets)))))
+       (fn-bpnf-all-heldp held)))
+
+(defun fn-bpnf-recovery-heldp (held max-held max-octets)
+  (declare (xargs :guard t))
+  (mbe :logic
+       (and (natp max-held)
+            (natp max-octets)
+            (true-listp held)
+            (<= (len held) max-held)
+            (<= (fn-bpnf-held-octets held) max-octets)
+            (if (atom held) t
+              (and (fn-bpnf-heldp (car held))
+                   (fn-bpnf-recovery-heldp (cdr held) max-held max-octets))))
+       :exec (fn-bpnf-recovery-heldp-fast held max-held max-octets)))
 
 (defun fn-bpnf-recover-fnbs-step (st new-epoch base-records sequence-ready replay-result)
   (declare (xargs :guard

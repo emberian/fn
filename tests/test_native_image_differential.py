@@ -1,5 +1,5 @@
 """The stripped release image against its full reference twin (gpt-6's wave-5
-review s.4; HST-017; lane image-floor-3).
+review s.4; HST-025; lane image-floor-3).
 
 host/native/build.lisp saves the production image twice from one certified
 session: stripped (the release, build/fn-host, with the build-derived
