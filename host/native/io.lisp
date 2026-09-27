@@ -1326,11 +1326,19 @@ body, checking every callee's guard (the whole history, per POST)."
   (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
   t)
 
+(defvar *fnn-staged-handle* nil
+  "The handle the owner's last buffer prepare sealed (staged: books/payload-
+arena-extent.lisp), for the next record the log takes (fnn-log-take); ACL2
+checks the pairing before any reseat (fn-arx-commit-extent).")
+
 (defun fnn-seal-live-buffer ()
   "The arena update the owner's buffer prepare names (:seal-buffer): seal the
 octet buffer's payload through the guard-verified `fn-arena-seal-buffer'
-(books/payload-arena.lisp); see FNN-SEAL-OCTETS."
-  (fnn-call 'fn-arena-seal-buffer (fnn-live-octets) (fnn-live-arena))
+(books/payload-arena.lisp); see FNN-SEAL-OCTETS.  The node's arena stages
+the copy (a page of its own) until the commit reseats it as its log extent."
+  (let ((arena (fnn-live-arena)))
+    (setq *fnn-staged-handle* (first (fnn-call 'fn-arena-count arena)))
+    (fnn-call 'fn-arena-seal-buffer (fnn-live-octets) arena))
   t)
 
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
@@ -5489,7 +5497,15 @@ tree root), or stop the build."
   ;; SYNC-CV signalled when the syncer returns.
   (lock (sb-thread:make-mutex :name "fn log kernel"))
   (sealed 0) (sync-state :idle)
-  (sync-cv (sb-thread:make-waitqueue :name "fn log sync")))
+  (sync-cv (sb-thread:make-waitqueue :name "fn log sync"))
+  ;; The commit's extent reseat (lane arena-offheap-3, PRF-296): per record
+  ;; of the open batch, newest first, (HANDLE . OCTETS), HANDLE the arena
+  ;; handle the owner's buffer prepare staged for it or NIL; at the append,
+  ;; the staged ones with their entry places move to INFLIGHT, (H FILE
+  ;; POSITION OCTETS); the fence moves them to FENCED (under LOCK: the
+  ;; syncer's fence); the COMPLETE reseats FENCED (fnn-log-reseat-fenced).
+  ;; EXTENT-FILE the realizer's id of the active segment (EXTENT-PATH).
+  (members nil) (inflight nil) (fenced nil) (extent-file nil) (extent-path nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -5620,15 +5636,65 @@ next txid (fn-lgt-prepare)."
 
 (defun fnn-log-append (log)
   "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
-and its chained entries are written at the frontier in one positioned write."
+and its chained entries are written at the frontier in one positioned write.
+The batch's staged members go in flight with their entries' places (ACL2's
+fn-arx-positions from the frontier over the batch's record lengths, the
+layout the open's scan answers)."
   (fnn-log-with-kernel (log)
-    (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
+    (let* ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log))
+           (frontier (fnn-core 'fn-lgk-frontier ks)))
       (unless (fnn-core 'fn-lg-append-admitsp ks unit extent)
         (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
-      (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgk-frontier ks)
+      (fnn-log-pwrite (fnn-log-fd log) frontier
                       (fnn-core 'fn-lgk-append-octets ks unit))
-      (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-append ks unit extent))))
+      (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-append ks unit extent))
+      (fnn-log-members-in-flight log frontier unit)))
   (fnn-log-at :log-written))
+
+(defun fnn-log-members-in-flight (log frontier unit)
+  "The open batch's staged members, with their places, go in flight (under
+the kernel lock).  Nothing is placed when ACL2 answers no positions."
+  (let ((members (reverse (fnn-log-members log))))
+    (setf (fnn-log-members log) nil)
+    (when (some #'car members)
+      (let ((places (fnn-core 'fn-arx-positions frontier unit (mapcar (lambda (m) (length (cdr m)))
+                                                                     members)
+                              nil)))
+        (when (and (consp places) (= (length places) (length members)))
+          (unless (equal (fnn-log-extent-path log) (fnn-log-path log))
+            (setf (fnn-log-extent-file log) (fnn-extent-register (fnn-log-path log))
+                  (fnn-log-extent-path log) (fnn-log-path log)))
+          (loop for m in members for place in places
+                when (car m)
+                  do (push (list (car m) (fnn-log-extent-file log) place (cdr m))
+                           (fnn-log-inflight log))))))))
+
+(defvar *fnn-release-pending* nil
+  "Reseated handles whose staged pages wait for their release.")
+
+(defvar *fnn-arena-off-mutex-readers* (list 0)
+  "The count of threads reading the live arena outside the owner's mutex (a
+checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured);
+a staged page is released only while it is 0.")
+
+(defun fnn-log-reseat-fenced (log)
+  "The COMPLETE's reseat (PRF-296): each fenced staged member's handle is
+re-pointed at the log extent that now durably holds its payload, as ACL2
+decides it (fn-arx-commit-reseats: KEYSTONE fn-arx-commit-reseats-keep-the-
+arena); the staged pages are then released (fn-arena-release) unless a
+reader outside the owner's mutex (a checkpoint publication) is running, in
+which case they wait for the next COMPLETE."
+  (let ((fenced (fnn-log-with-kernel (log)
+                  (prog1 (reverse (fnn-log-fenced log)) (setf (fnn-log-fenced log) nil)))))
+    (when fenced
+      (let ((arena (fnn-live-arena)))
+        (fnn-call 'fn-arx-commit-reseats fenced arena)
+        (setq *fnn-release-pending* (nconc (mapcar #'first fenced) *fnn-release-pending*))))
+    (when (and *fnn-release-pending* (zerop (car *fnn-arena-off-mutex-readers*)))
+      (let ((arena (fnn-live-arena)))
+        (dolist (h *fnn-release-pending*) (fnn-call 'fn-arena-release h arena))
+        (setq *fnn-release-pending* nil)))))
+
 
 (defun fnn-log-fence (log)
   "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's
@@ -5642,10 +5708,13 @@ returned."
   (handler-case (fnn-log-fdatasync (fnn-log-fd log))
     (fnn-os-error (e)
       (fnn-log-with-kernel (log)
-        (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log))))
+        (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log))
+              (fnn-log-inflight log) nil))
       (fnn-indeterminate "log barrier failed: ~a" e)))
   (fnn-log-with-kernel (log)
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence (fnn-log-kernel log) (fnn-log-unit log))))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence (fnn-log-kernel log) (fnn-log-unit log))
+          (fnn-log-fenced log) (append (fnn-log-inflight log) (fnn-log-fenced log))
+          (fnn-log-inflight log) nil))
   (fnn-log-at :log-fenced))
 
 (defun fnn-log-finish (log count)
@@ -6145,6 +6214,8 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
         (case verdict
           (:taken (incf (fnn-log-count log))
                   (incf (fnn-log-octets log) entry)
+                  (push (cons *fnn-staged-handle* octets) (fnn-log-members log))
+                  (setq *fnn-staged-handle* nil)
                   (return-from fnn-log-take :taken))
           (:full
            ;; The open batch is at the operator's bound.  Behind a batch in
@@ -6282,10 +6353,12 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
     (setf (fnn-log-pending log) (max 0 (- (fnn-log-pending log) count)))))
 
 (defun fnn-log-batch-finish (store)
-  "After the batch's barrier: every fenced member of the batch acknowledged."
+  "After the batch's barrier: every fenced member of the batch acknowledged,
+and the fenced staged payloads reseated as their log extents."
   (let ((log (fnn-store-log store)))
     (fnn-log-with-kernel (log)
-      (fnn-log-ack log (fnn-log-pending log)))))
+      (fnn-log-ack log (fnn-log-pending log)))
+    (fnn-log-reseat-fenced log)))
 
 ;;; The pipelined commit (lane log-2; books/owner-commit-pipeline.lisp).
 ;;; SEAL under the owner (the START's end, or the COMPLETE's for the next

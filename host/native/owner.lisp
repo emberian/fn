@@ -3069,6 +3069,9 @@ the crash keystone) and serving continues."
   ;; The publication allocates in proportion to the history: the open's
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
+  ;; It reads the live arena outside the owner's mutex: no staged page is
+  ;; released while it runs (host/native/io.lisp fnn-log-reseat-fenced).
+  (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
                         base-payloads)
@@ -3152,6 +3155,7 @@ the crash keystone) and serving continues."
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
                         (fnn-owner-service-workers service) :test #'eq))))))
+    (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))
     (fnn-owner-service-nursery))
   ;; PKT-583 (b): the publication finished; decide again from the newest
   ;; committed frontier now, not at the next accept (a load's tail has

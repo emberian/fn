@@ -15,8 +15,9 @@
 (include-book "../books/replay")
 (include-book "../books/store-intern")
 (include-book "../books/store-recover-stream")
-; The open's extent seals and the served read's trailer check (PRF-281).
-(include-book "../books/payload-extent")
+; The open's extent seals and the served read's trailer check (PRF-294);
+; the commit's extent reseat (PRF-296; it includes payload-extent).
+(include-book "../books/payload-commit-extent")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
