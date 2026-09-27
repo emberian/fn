@@ -31,7 +31,7 @@
 ; `no store was created'.
 (in-package "ACL2")
 (include-book "byte-store-programs")
-(local (include-book "byte-store-invariants"))
+(include-book "byte-store-invariants")
 
 ; -----------------------------------------------------------------------------
 ; The directory rename.  byte-store's fn-bs-rename moves a file entry; a
