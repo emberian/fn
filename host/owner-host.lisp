@@ -68,6 +68,10 @@
 (include-book "../books/owner-parse-carried")
 (include-book "../books/owner-identity-intern")
 (include-book "../books/owner-identity-served")
+;; host-decisions-2 (packet A): every owner prepare, the reservation refusal,
+;; the known abort, :begin and :declare-group answer their own word
+;; (fn-pout-); the host relays it.
+(include-book "../books/owner-prepare-outcome")
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
@@ -1122,23 +1126,30 @@
                                               (fn-owner-parse-carry state))))
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                         (fn-node-retention (fn-sn-node s))))
+                 ; fn-pout-prepare-article (books/owner-prepare-outcome.lisp):
+                 ; fn-psrv-prepare (the served test, then fn-prc-sbud-prepare,
+                 ; as the buffer entry below) and its word, :prepared when it
+                 ; staged the row, else fn-psrv-refusal-kind (KEYSTONE
+                 ; fn-pout-prepare-article-answers-the-store-change).
+                 (outcome (if (equal record :clock-unusable)
+                              nil
+                            (mv-let (word next)
+                              (fn-pout-prepare-article before row budget carry)
+                              (cons word next))))
                  (state (if (equal record :clock-unusable)
                             state
                           (let ((state (f-put-global 'fn-owner-retain-carry
                                                      carry state)))
-                            ; fn-psrv-prepare: the served test, then
-                            ; fn-prc-sbud-prepare, as the buffer entry below.
-                            (fn-owner-install-ocfg
-                             (fn-psrv-prepare before row budget carry)
-                             state)))))
+                            (fn-owner-install-ocfg (cdr outcome) state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
-              (if (equal (fn-owner-store state) s)
-                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
+              (if (not (equal (car outcome) :prepared))
+                (mv nil (car outcome) fn-arena state)
               ; The entry reads the arena only (no invariant-risk: it runs
               ; compiled, no callee re-checks its guard); it names the payload
               ; and the host seals it with one fn-arena-seal-list call
-              ; (tools/run_owner.py prepare), exactly when the Store changed.
+              ; (tools/run_owner.py prepare), exactly when ACL2 answered
+              ; :prepared.
               (mv nil (list :seal payload) fn-arena state)))))))))))
 
 ; Step 8 (catalog slice) after the records flip: the host sealed the POST's
@@ -1161,19 +1172,16 @@
               (value :prepared))
           (value (if (consp pending) (car pending) :fault)))))))
 
+; fn-pout-refuse-reservation (books/owner-prepare-outcome.lisp): :refused
+; exactly when the Store's gate fn-sn-refuse-reservation-enabledp holds, else
+; :fault (KEYSTONE fn-pout-refuse-reservation-answers-the-host-test: the word
+; the before/after comparison this entry used to make).
 (defun fn-owner-refuse-reservation (fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let* ((before (fn-owner-store state))
-         (files (fn-sn-files before))
-         (state (fn-owner-step
-                 (list :store (list :refuse-reservation (1- (fn-sf-frontier files))))
-                 fn-arena state))
-         (next (fn-owner-store state)))
-    (if (and (equal (fn-sf-phase files) :reserved)
-             (not (equal next before))
-             (equal (fn-sf-phase (fn-sn-files next)) :ready))
-        (value :refused)
-      (value :fault))))
+  (mv-let (word next)
+    (fn-pout-refuse-reservation (fn-owner-ocfg state) fn-arena)
+    (let ((state (fn-owner-install-ocfg next state)))
+      (value word))))
 
 ; fn-owner-prepare with the payload in the octet buffer (books/octets-stobj.lisp;
 ; host/native/owner.lisp fnn-owner-attempt).  Three things differ from the
@@ -1249,34 +1257,39 @@
                  ; node's ledger (a commit puts one id, a release none).
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                         (fn-node-retention (fn-sn-node s))))
+                 ; fn-pout-prepare-article (books/owner-prepare-outcome.lisp)
+                 ; runs fn-psrv-prepare (lane prepare-served): the served test
+                 ; is the prepare's own, then fn-prc-sbud-prepare (KEYSTONE
+                 ; fn-psrv-prepare-preserves-invariant), equal to PRF-191's
+                 ; fn-pidx-sbud-prepare under fn-prc-carryp
+                 ; (fn-prc-sbud-prepare-is-pidx-sbud-prepare), so to
+                 ; fn-pcar-sbud-prepare over the owner's carried view
+                 ; (fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare): the
+                 ; duplicate test reads the view trie and the retention
+                 ; admission the carried id trie, decided once.  Its word is
+                 ; :prepared when the row was staged, else
+                 ; fn-psrv-refusal-kind (KEYSTONE
+                 ; fn-pout-prepare-article-answers-the-store-change); the host
+                 ; relays it.
+                 (outcome (if (equal record :clock-unusable)
+                              nil
+                            (mv-let (word next)
+                              (fn-pout-prepare-article before row budget carry)
+                              (cons word next))))
                  (state (if (equal record :clock-unusable)
                             state
                           (let ((state (f-put-global 'fn-owner-retain-carry
                                                      carry state)))
-                          (fn-owner-install-ocfg
-                           ; fn-prc-sbud-prepare, equal to PRF-191's
-                           ; fn-pidx-sbud-prepare under fn-prc-carryp
-                           ; (fn-prc-sbud-prepare-is-pidx-sbud-prepare), so
-                           ; to fn-pcar-sbud-prepare over the owner's carried
-                           ; view (fn-prc-sbud-prepare-of-refresh-is-pcar-
-                           ; sbud-prepare): the duplicate test reads the view
-                           ; trie and the retention admission the carried id
-                           ; trie, decided once.
-                           ; fn-psrv-prepare (lane prepare-served): the
-                           ; served test is the prepare's own, then
-                           ; fn-prc-sbud-prepare (KEYSTONE
-                           ; fn-psrv-prepare-preserves-invariant).
-                           (fn-psrv-prepare before row budget carry)
-                           state)))))
+                            (fn-owner-install-ocfg (cdr outcome) state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
-              (if (equal (fn-owner-store state) s)
-                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
+              (if (not (equal (car outcome) :prepared))
+                (mv nil (car outcome) fn-arena state)
               ; Reads the arena and the buffer only (no invariant-risk; see
               ; fn-owner-prepare): :seal-buffer tells the host to seal the
               ; buffer's payload with one fn-arena-seal-buffer call
-              ; (host/native/owner.lisp fnn-owner-attempt), exactly when the
-              ; Store changed.
+              ; (host/native/owner.lisp fnn-owner-attempt), exactly when ACL2
+              ; answered :prepared.
               ; Step 8 (catalog slice, one seal per POST): the store's row, which
               ; names the handle the host's seal creates, is kept for the
               ; catalog's prepare after that seal (fn-owner-cat-prepare-sealed;
@@ -1298,9 +1311,13 @@
                      kind (fn-sn-identity-next s) txid txid
                      (fn-store-octets->string id-octets)
                      (fn-store-octets->string subject-octets)
-                     (fn-store-octets->string evidence-octets) charge))
-             (state (fn-owner-step (list :store (list :prepare-retention event)) fn-arena state)))
-        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+                     (fn-store-octets->string evidence-octets) charge)))
+        ; fn-pout-prepare-retention: (:store (:prepare-retention E)) and its
+        ; word (KEYSTONE fn-pout-prepare-retention-answers-the-store-change).
+        (mv-let (word next)
+          (fn-pout-prepare-retention (fn-owner-ocfg state) event fn-arena)
+          (let ((state (fn-owner-install-ocfg next state)))
+            (value word)))))))
 
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict
@@ -1337,13 +1354,14 @@
       ;; over the wire event it answered t for every composite; KEYSTONE
       ;; fn-oiis-prepare-identity-preserves-invariant), and the owner
       ;; unchanged otherwise.
+      ;; fn-pout-prepare-identity (books/owner-prepare-outcome.lisp) answers
+      ;; its word (KEYSTONE fn-pout-prepare-identity-answers-the-store-change).
+      (mv-let (word next)
+        (fn-pout-prepare-identity (fn-owner-ocfg state) event (fn-arena-count fn-arena))
       (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
                                        (fn-arena-count fn-arena)))
-             (state (fn-owner-install-ocfg
-                     (fn-oiis-prepare-identity (fn-owner-ocfg state) event
-                                                  (fn-arena-count fn-arena))
-                     state)))
-        (cond ((equal (fn-owner-store state) s) (value :refused))
+             (state (fn-owner-install-ocfg next state)))
+        (cond ((not (equal word :prepared)) (value word))
               ((fn-oii-identity-sealsp event)
                ; The catalog (signed-post's red, catalog-columns): the article
                ; this event serves and its held row -- the row itself for a
@@ -1358,35 +1376,38 @@
                                (cons event row))
                              state)))
                  (value (list :seal (fn-oii-identity-payload event)))))
-              (t (value :prepared)))))))
+              (t (value :prepared))))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
 (defun fn-owner-prepare-consumer (event fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let ((s (fn-owner-store state)))
-    (if (not (fn-cpe-eventp event))
-        (value :invalid)
-      (let ((state (fn-owner-step
-                    (list :store (list :prepare-consumer event)) fn-arena state)))
-        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+  (if (not (fn-cpe-eventp event))
+      (value :invalid)
+    ; fn-pout-prepare-consumer: (:store (:prepare-consumer E)) and its word
+    ; (KEYSTONE fn-pout-prepare-consumer-answers-the-store-change).
+    (mv-let (word next)
+      (fn-pout-prepare-consumer (fn-owner-ocfg state) event fn-arena)
+      (let ((state (fn-owner-install-ocfg next state)))
+        (value word)))))
 
 ; ACL2 constructs the exact topic event before this host boundary. Store's
 ; carried historical projection decides whether it may be staged.
 (defun fn-owner-prepare-topic (event fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program)
            (ignorable fn-arena))
-  (let ((s (fn-owner-store state)))
-    (if (not (fn-th-topic-eventp event))
-        (value :invalid)
-      ; fn-psrv-prepare-topic (lane prepare-served): (:store (:prepare-topic
-      ; E)) when the consumer projection accepts E, which its completion
-      ; needs (fn-psrv-prepare-topic-is-ocfg-step-when-admitted,
-      ; fn-psrv-prepare-topic-preserves-invariant).
-      (let ((state (fn-owner-install-ocfg
-                    (fn-psrv-prepare-topic (fn-owner-ocfg state) event)
-                    state)))
-        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+  (if (not (fn-th-topic-eventp event))
+      (value :invalid)
+    ; fn-psrv-prepare-topic (lane prepare-served): (:store (:prepare-topic
+    ; E)) when the consumer projection accepts E, which its completion
+    ; needs (fn-psrv-prepare-topic-is-ocfg-step-when-admitted,
+    ; fn-psrv-prepare-topic-preserves-invariant); fn-pout-prepare-topic
+    ; answers its word (KEYSTONE
+    ; fn-pout-prepare-topic-answers-the-store-change).
+    (mv-let (word next)
+      (fn-pout-prepare-topic (fn-owner-ocfg state) event)
+      (let ((state (fn-owner-install-ocfg next state)))
+        (value word)))))
 
 ; This is the one owner-side proposal read. ACL2 selects an exact earlier T10
 ; event and snapshot from the carried topic projection; neither the control
@@ -1464,18 +1485,15 @@
   (value (fn-cpa-clone-phase-of-octets
           (fn-owner-store state) marker-octets)))
 
+; fn-pout-known-abort (books/owner-prepare-outcome.lisp): :aborted exactly
+; when the Store's gate fn-sn-known-abort-enabledp holds, else :fault
+; (KEYSTONE fn-pout-known-abort-answers-the-host-test).
 (defun fn-owner-known-abort (fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let* ((before (fn-owner-store state))
-         (files (fn-sn-files before))
-         (state (fn-owner-step (list :store (list :known-abort)) fn-arena state))
-         (next (fn-owner-store state)))
-    (if (and (member-equal (fn-sf-phase files)
-                           '(:record-staged :record-data-durable))
-             (not (equal next before))
-             (equal (fn-sf-phase (fn-sn-files next)) :ready))
-        (value :aborted)
-      (value :fault))))
+  (mv-let (word next)
+    (fn-pout-known-abort (fn-owner-ocfg state) fn-arena)
+    (let ((state (fn-owner-install-ocfg next state)))
+      (value word))))
 
 (defun fn-owner-pending-octets (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -1638,11 +1656,16 @@
                     (mv nil :fault fn-cat state)
                   (mv nil word fn-cat state))))))))))
 
+; fn-pout-begin (books/owner-prepare-outcome.lisp): :begun exactly when the
+; begin's gate fn-pout-begin-admitsp holds (KEYSTONE
+; fn-pout-begin-answers-the-host-test, for the natural connection
+; identifiers the host passes).
 (defun fn-owner-begin (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let* ((before (fn-owner-core state))
-         (state (fn-owner-step (list :begin id) fn-arena state)))
-    (value (if (equal (fn-owner-core state) before) :refused :begun))))
+  (mv-let (word next)
+    (fn-pout-begin (fn-owner-ocfg state) id fn-arena)
+    (let ((state (fn-owner-install-ocfg next state)))
+      (value word))))
 
 ; The writer step: fn-own-take-submission moves the oldest queued submission
 ; into the durable path when nothing is in flight, no transaction is pending
@@ -3210,11 +3233,14 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (if (not (fn-pfld-group-name-requestp name-octets))
       (value :invalid)
-    (let* ((before (fn-owner-core state))
-           (state (fn-owner-step
-                   (list :declare-group (fn-store-octets->string name-octets))
-                   fn-arena state)))
-      (value (if (equal (fn-owner-core state) before) :refused :declared)))))
+    ; fn-pout-declare-group (books/owner-prepare-outcome.lisp): :declared
+    ; exactly when its gate holds (KEYSTONE
+    ; fn-pout-declare-group-answers-the-host-test).
+    (mv-let (word next)
+      (fn-pout-declare-group (fn-owner-ocfg state)
+                             (fn-store-octets->string name-octets) fn-arena)
+      (let ((state (fn-owner-install-ocfg next state)))
+        (value word)))))
 
 (defun fn-owner-group-facts (state)
   (declare (xargs :stobjs state :mode :program))

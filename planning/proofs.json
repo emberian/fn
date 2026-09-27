@@ -10847,6 +10847,114 @@
         "fn-scj-ocl-relation-of-identity-finish",
         "fn-scj-identity-finish-owner-is-article-finish-owner"
       ]
+    },
+    {
+      "id": "PRF-303",
+      "title": "The owner transitions the host calls answer their own word: every prepare, the reservation refusal, the known abort, :begin and :declare-group return (mv WORD NEXT), and each word is the before/after comparison the host used to make",
+      "statement": "books/owner-prepare-outcome.lisp (prefix fn-pout-). Subjects, each the function the host line calls (host/owner-host.lisp): fn-pout-prepare-article (fn-owner-prepare, fn-owner-prepare-buffer), fn-pout-prepare-identity (fn-owner-prepare-identity), fn-pout-prepare-topic (fn-owner-prepare-topic), fn-pout-prepare-retention (fn-owner-prepare-retention), fn-pout-prepare-consumer (fn-owner-prepare-consumer), fn-pout-refuse-reservation (fn-owner-refuse-reservation), fn-pout-known-abort (fn-owner-known-abort), fn-pout-begin (fn-owner-begin), fn-pout-declare-group (fn-owner-declare-group). Each returns NEXT, the configured owner the host installed before (the same term), and WORD: a prepare is :prepared exactly when it staged a record (fn-pout-stagedp: the Store went :reserved -> :record-staged), else :refused (the article: fn-psrv-refusal-kind, :refused or :unaffordable); the reservation refusal :refused exactly when fn-sn-refuse-reservation-enabledp holds, the known abort :aborted exactly when fn-sn-known-abort-enabledp holds, else :fault; :begin :begun and :declare-group :declared exactly when their gates hold (fn-pout-begin-admitsp, fn-pout-declare-group-admitsp; fn-pout-begin-unfolds, fn-pout-declare-group-unfolds name them as the transitions' tests). KEYSTONES fn-pout-prepare-{article,identity,topic,retention,consumer}-answers-the-store-change, fn-pout-refuse-reservation-answers-the-host-test, fn-pout-known-abort-answers-the-host-test, fn-pout-declare-group-answers-the-host-test (no hypothesis) and fn-pout-begin-answers-the-host-test (hypothesis: a non-NIL connection identifier; the host's are naturals): WORD equals the comparison the host line made (Store unchanged -> refusal, owner core unchanged -> :refused, the phase-and-change test of the refusal and the abort), so the served behaviour is unchanged and the ten host comparisons are deleted. The Store lemma fn-pout-sn-prepares-stage-or-keep: every Store prepare (fn-sn-prepare-retention, -consumer, -topic, fn-ccar-sn-prepare-identity, fn-prc-spc-prepare) returns its Store or stages from :reserved. No outcome is uncertain: every entry is pure. The topic entry's consumer-projection refusal (books/owner-prepare-outcome-topic.lisp): fn-pout-staged-topic-passes-the-consumer-projection (hypotheses fn-sn-statep and fn-snt-consumerp: whenever fn-sn-prepare-topic would stage E the carried consumer projection admits E at the next sequence; the u32 ceiling is no exception, fn-csi-candidate-sequence-below-max) and fn-pout-topic-entry-is-the-store-prepare-under-the-consumer-relation (the entry's Store is fn-sn-prepare-topic's): the arm is unreachable on every Store the consumer relation holds of (fn-csi-full-relationp is preserved by the Store's normal steps, crash and recovery), and reachable under fn-lgoc-invariantp alone, which does not carry the consumer relation (so the test is what lets fn-psrv-prepare-topic-preserves-invariant hold without it).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-290",
+        "PRF-299"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-prepare-outcome.lisp",
+        "tests/acl2/owner-prepare-outcome-tests.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/host-decisions-2-2026-09-27.md",
+        "books/owner-prepare-outcome-topic.lisp",
+        "tests/acl2/owner-prepare-outcome-topic-tests.lisp",
+        "tests/test_native_known_abort.py"
+      ],
+      "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet A of planning/evidence/host-decisions-2026-09-27.md). Teeth: tests/acl2/owner-prepare-outcome-tests.lisp (prefix pot-): for every entry a REACHABLE witness of each word over owners the log route's host steps reach (owner-log-ocl-tests' *lgt-reserved*/*lgt-oc0*, prepare-served's and host-decisions' staged owners), asserting WORD, that NEXT is the owner the host installed (*pst-prepared*, *ois-staged*, *pse-topic-staged*, *pst-ret-staged*, *pse-consumer-staged*, *psa-topic-aborted*) and that WORD equals the former host comparison: article :prepared/:refused (retired group)/:unaffordable (budget 0)/:refused (already staged); identity :prepared/:refused (retired fn.test); topic, retention, consumer :prepared/:refused; refuse-reservation :refused/:fault; known abort :aborted (topic, article)/:fault; begin :begun/:refused (pending, unknown id); declare-group :declared/:refused (same name, no clock). CORRUPTED-STATE hypothesis-removal witness for the begin keystone: a connection whose identifier is NIL, where the gate admits and the comparison said :refused. Topic teeth (tests/acl2/owner-prepare-outcome-topic-tests.lisp, prefix pott-): REACHABLE witnesses with the consumer unbootstrapped (*lgt-reserved*) and bootstrapped (the consumer bootstrap finished, reserved again, the install ACL2 proposes there); CORRUPTED-STATE hypothesis-removal witness *pott-bad*: fn-lgoc-invariantp and fn-sn-statep hold, the consumer frontier is one past the next sequence, fn-sn-prepare-topic would stage the install and the entry refuses it (both conclusions fail).",
+      "events": [
+        "fn-pout-prepare-article-answers-the-store-change",
+        "fn-pout-prepare-identity-answers-the-store-change",
+        "fn-pout-prepare-topic-answers-the-store-change",
+        "fn-pout-prepare-retention-answers-the-store-change",
+        "fn-pout-prepare-consumer-answers-the-store-change",
+        "fn-pout-refuse-reservation-answers-the-host-test",
+        "fn-pout-known-abort-answers-the-host-test",
+        "fn-pout-begin-answers-the-host-test",
+        "fn-pout-declare-group-answers-the-host-test",
+        "fn-pout-prepare-article-is-sbud-prepare-when-served",
+        "fn-pout-staged-topic-passes-the-consumer-projection",
+        "fn-pout-topic-entry-is-the-store-prepare-under-the-consumer-relation"
+      ]
+    },
+    {
+      "id": "PRF-304",
+      "title": "The local control socket's launch decision is ACL2's: a worker exactly when the plane is not stopping and the live workers are below ACL2's ceiling, BUSY by name at and past it",
+      "statement": "books/native-control-launch.lisp (prefix fn-ncla-). Subject fn-ncla-launch-disposition, called through host/native-control-host.lisp fn-native-control-host-launch-disposition by host/native/control.lisp fnn-control-launch-client under the control lock, over the host's two observations (the stop flag, the live worker count). KEYSTONE fn-ncla-launch-exactly-below-the-ceiling: :launch iff not stopping and the count is a natural below fn-native-control-max-active-clients, a launch never takes the live workers past the ceiling, every answer is :stopping, :busy or :launch. fn-ncla-at-the-ceiling-is-busy: at or past the ceiling a live plane answers :busy. The host's comparison (>= workers max-clients) is deleted; the host relays the disposition (the worker, the BUSY frame, or the close).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/native-control-launch.lisp",
+        "tests/acl2/native-control-launch-tests.lisp",
+        "host/native-control-host.lisp",
+        "host/native/control.lisp",
+        "planning/evidence/host-decisions-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet B of planning/evidence/host-decisions-2026-09-27.md). Teeth: tests/acl2/native-control-launch-tests.lisp: :launch idle and one below the ceiling (16), :busy at and one past it, :stopping over everything, :busy for a count that is no natural; hypothesis removal for fn-ncla-at-the-ceiling-is-busy (stopping at the ceiling answers :stopping; one below answers :launch).",
+      "events": [
+        "fn-ncla-launch-exactly-below-the-ceiling",
+        "fn-ncla-at-the-ceiling-is-busy"
+      ]
+    },
+    {
+      "id": "PRF-305",
+      "title": "A lab host's raw clock reading becomes a clock observation in ACL2: units, the DTN epoch and whether the wall is usable are decided there",
+      "statement": "books/clock-reading.lisp (prefix fn-clkr-). Subject fn-clkr-observation-of-ns, called by host/bp-ingress-host.lisp fn-bpi-host-observation (the lab BP ingress, Python bridge; fn-bpi-host-context). KEYSTONE fn-clkr-observation-of-ns-decides-the-wall, no hypothesis: every reading is a fn-clock-observationp; it has a wall exactly when the host claims one, the reading is a natural at or after the DTN epoch (2000-01-01, *fn-clkr-dtn-epoch-unix-ms*, equal to books/nntp-responses' *fn-nntp-unix-dtn-offset-ms*) and the error bound is a natural; then its wall is the reading's milliseconds past the epoch and its error the host's bound, each within the clock's range. The host's ns-to-ms arithmetic, epoch comparison and constant *fn-bpi-host-dtn-epoch-ms* are deleted. Scope: the native owner's own reading (host/native/io.lisp fnn-owner-wall-milliseconds) still converts gettimeofday and decides has-wall by the sign in host code; recorded as the next item of this kind.",
+      "milestone": "M5",
+      "requirements": [
+        "FLR-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/clock-reading.lisp",
+        "tests/acl2/clock-reading-tests.lisp",
+        "host/bp-ingress-host.lisp",
+        "planning/evidence/host-decisions-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet C). Teeth: tests/acl2/clock-reading-tests.lisp: one DTN epoch in the tree (equal to the NNTP book's); a 2026 reading with 500 ms bound (wall, error and monotonic asserted); the epoch itself usable, one millisecond before it not; each usability conjunct removed takes the wall away (no claim, negative reading, negative and non-numeric error); a malformed monotonic counter is still an observation.",
+      "events": [
+        "fn-clkr-observation-of-ns-decides-the-wall"
+      ]
+    },
+    {
+      "id": "PRF-306",
+      "title": "The inspect verb's provenance of a Message-ID is ACL2's: the live node's binding, its retention pin and the wire/legacy dispatch of the recorded evidence",
+      "statement": "books/provenance-inspect.lisp (prefix fn-provi-). Subject fn-provi-of-msgid, called by host/store-node-host.lisp fn-store-prov-for-msgid (tools/run_store.py inspect; off the served path). fn-provi-pin-of-msgid: the pin of the node's binding of the Message-ID (NIL for a refused decode :bad, an unbound Message-ID or a released pin); fn-provi-evidence-description: a string evidence through fn-prov-of-wire (the wire form decoded, the legacy rendering passed through), any other value as itself, then fn-prov-describe. fn-provi-of-msgid-unfolds names the lookup; fn-provi-bad-msgid-has-no-provenance. The host's walk of bindings and pins and its string/wire dispatch are deleted.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-007"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/provenance-inspect.lisp",
+        "tests/acl2/provenance-inspect-tests.lisp",
+        "host/store-node-host.lisp",
+        "planning/evidence/host-decisions-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet C). Teeth: tests/acl2/provenance-inspect-tests.lisp: REACHABLE, the configured owner after <ocmt@example> committed (owner-log-ocl-tests' *lgt-finished*): the live node binds it, holds its pin (evidence own-release:<ocmt@example>), and the lookup is that evidence described; NIL for an unknown Message-ID, for :bad, and on the node before the article committed.",
+      "events": [
+        "fn-provi-of-msgid-unfolds",
+        "fn-provi-bad-msgid-has-no-provenance"
+      ]
     }
   ]
 }

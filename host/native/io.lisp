@@ -2753,6 +2753,12 @@ frontier is derived from the log, design 2026-09-27 section 3.3)."
 
 (defun fnn-publish (store sequence record)
   "The record's publication: the record log's P-BATCH (fnn-log-publish)."
+  ;; Developer injection only, no process-death cut (FN_NATIVE_POST_FAULT=
+  ;; record-prepublish:refuse, fnn-post-test-fault): a known refusal before
+  ;; anything of the record is written, which the owner resolves by ACL2's
+  ;; known abort (host/native/owner.lisp fnn-owner-publish-prepared;
+  ;; tests/test_native_known_abort.py).
+  (fnn-at store :record-prepublish)
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
   (fnn-log-publish store sequence record))
@@ -3733,7 +3739,8 @@ books/store-init-log-publication.lisp)."
   '(:finish-consumed :finish-durable :log-written :log-fenced))
 
 (defun fnn-post-test-fault ()
-  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.
+  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector, or
+record-prepublish:refuse (a known refusal before the record's first write).
 
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
 fnn-at boundaries.  SIGKILL cannot run unwind-protect, so the next command
@@ -3746,6 +3753,14 @@ observes a genuine new-process image."
         (let* ((label (subseq raw 0 colon))
                (point (intern (string-upcase label) :keyword))
                (action (subseq raw (1+ colon))))
+          ;; The one injection-only point: a known refusal before the
+          ;; record's first write (fnn-publish), never a kill.
+          (when (eq point :record-prepublish)
+            (unless (string= action "refuse")
+              (fnn-fault "FN_NATIVE_POST_FAULT record-prepublish takes only :refuse"))
+            (return-from fnn-post-test-fault
+              (list point 'fnn-store-error
+                    "developer-only known refusal before publication")))
           (unless (or (member point +fnn-post-model-cuts+)
                       (member point +fnn-post-log-model-cuts+))
             (fnn-fault "unknown FN_NATIVE_POST_FAULT cut: ~a" label))
