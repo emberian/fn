@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1210 |
-| Certification roots in the Makefile | 1163 |
-| Books inside the root closure | 1199 |
-| `defthm` and `defthmd` events | 17711 |
-| `defun` events | 12303 |
-| Functions with verified guards | 2433 |
-| Functions declared `:verify-guards nil` and never verified | 1291 |
-| Functions left at the default with an explicit guard | 6788 |
-| Functions left at the default with no guard | 1791 |
-| `assert-event` checks | 17731 |
+| Books read | 1214 |
+| Certification roots in the Makefile | 1167 |
+| Books inside the root closure | 1203 |
+| `defthm` and `defthmd` events | 17860 |
+| `defun` events | 12358 |
+| Functions with verified guards | 2439 |
+| Functions declared `:verify-guards nil` and never verified | 1319 |
+| Functions left at the default with an explicit guard | 6808 |
+| Functions left at the default with no guard | 1792 |
+| `assert-event` checks | 17746 |
 | `must-fail` checks | 2142 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 91 |
-| Theorems flagged SUSPECT by shape | 188 |
-| Export-hygiene warnings | 204 |
+| Theorems flagged SUSPECT by shape | 190 |
+| Export-hygiene warnings | 205 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 210 |
-| Include-hygiene warnings | 1235 |
-| Host-names warnings | 1357 |
+| Include-hygiene warnings | 1240 |
+| Host-names warnings | 1358 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -663,6 +663,9 @@ that `make certify` requests.
 | `books/store-capacity-config.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/store-capacity-vector.lisp` | root | 40 | 17 | 0/4/12/1 | 0 | 0 | 5 |
 | `books/store-carried-folds.lisp` | root | 12 | 5 | 0/2/3/0 | 0 | 0 | 2 |
+| `books/store-checkpoint-arena-load.lisp` | root | 53 | 7 | 0/3/3/1 | 0 | 0 | 2 |
+| `books/store-checkpoint-arena-writer.lisp` | root | 40 | 11 | 4/2/5/0 | 0 | 0 | 0 |
+| `books/store-checkpoint-arena.lisp` | root | 53 | 24 | 2/10/12/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-buffer.lisp` | root | 30 | 8 | 1/0/7/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-codec.lisp` | root | 67 | 46 | 14/2/30/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-open.lisp` | root | 37 | 30 | 11/0/19/0 | 0 | 0 | 0 |
@@ -1203,6 +1206,7 @@ that `make certify` requests.
 | `tests/acl2/store-capacity-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 14 | 1 | 0 |
 | `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 1 | 0 |
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 49 | 8 | 0 |
+| `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 3 | 13 | 0/13/0/0 | 15 | 0 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 6 | 0/6/0/0 | 13 | 8 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 50 | 8 | 0 |
@@ -1458,6 +1462,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scat-pin-trie-is-built` | `books/served-catalog.lisp` | 1246 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep |
 | `fn-scf-debt-from-of-atom` | `books/store-carried-folds.lisp` | 43 | branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
 | `fn-scf-tally-records-of-atom` | `books/store-carried-folds.lisp` | 49 | branch-of-definition: the hypothesis negates a branch test of fn-pcb-tally-records and the conclusion is that branch's value |
+| `fn-scka-car-run-segments` | `books/store-checkpoint-arena-load.lisp` | 371 | reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-scka-select-named-unfolds` | `books/store-checkpoint-arena-load.lisp` | 703 | branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value |
 | `fn-sco-select-named-unfolds` | `books/store-checkpoint-tables.lisp` | 972 | branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value |
 | `fn-sctr-plan-segments-nil` | `books/store-checkpoint-tables-reader.lisp` | 553 | branch-of-definition: the hypothesis negates a branch test of fn-sccr-plan-segments and the conclusion is that branch's value |
 | `fn-served-dispatch-without-advance-is-core` | `books/served.lisp` | 1470 | branch-of-definition: the hypothesis negates a branch test of fn-served-dispatch and the conclusion is that branch's value |

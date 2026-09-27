@@ -3704,7 +3704,16 @@
         "fn-ock-one-publication-in-flight",
         "fn-ock-publication-next-decides-by-the-rule",
         "fn-ock-finish-binds-the-captured-prefix",
-        "fn-ock-fast-path-within-k-by-definition"
+        "fn-ock-fast-path-within-k-by-definition",
+        "fn-intern-events-is-intern-at",
+        "fn-intern-events-arena-is-payloads",
+        "fn-scka-load-of-written-file",
+        "fn-scka-seal-n-compose",
+        "fn-scka-recover-from-checkpoint-is-full-recover",
+        "fn-scka-recover-rows-rii-is-recover-rows",
+        "fn-scka-write-run-is-run-segments",
+        "fn-scka-next-checkpoint-is-capture",
+        "fn-scka-select-named-refuses-the-arena-by-name"
       ]
     },
     {
