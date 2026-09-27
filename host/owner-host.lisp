@@ -245,7 +245,7 @@
 ;; install from the extended value with `fn-ock-recover-extended'
 ;; (fn-owner-recover-extended below).  From a verified checkpoint
 ;; (fn-owner-recover-from-checkpoint) the records are the suffix after S; on
-;; a full replay (fn-owner-recover) the checkpoint is the capture of the
+;; a full replay (fn-owner-recover-rows) the checkpoint is the capture of the
 ;; empty prefix and the records are the whole history.  The keystone
 ;; fn-owner-recover-from-checkpoint-equals-full-recover says both install the
 ;; owner of the full open, the composition
@@ -278,6 +278,9 @@
              ; next publication, the newest durable checkpoint's S (set by
              ; fn-owner-sco-note-durable), and the count of the last attempt.
              (state (f-put-global 'fn-owner-sco-base extended state))
+             ; The base's canonical payload count (the arena's count at the
+             ; open: fn-owner-sco-note-base-payloads), nil until noted.
+             (state (f-put-global 'fn-owner-sco-base-payloads nil state))
              (state (f-put-global 'fn-owner-sco-durable nil state))
              (state (f-put-global 'fn-owner-sco-attempted nil state))
              ; PKT-492: the publication the owner deferred by name, or nil.
@@ -313,49 +316,38 @@
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
          (car opened) state)))))
 
-; The records flip: both opens intern the decoded journal into the arena
-; first (host/store-node-host.lisp fn-store-sn-recover's note), so the
-; extended capture is over ROWS; (mv nil KEYWORD fn-arena state).
-(defun fn-owner-recover (octet-records frontier config-octet-records max-conns
-                                       fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (let ((records (fn-store-decode-records octet-records))
-        (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-        (fn-store-intern-records records fn-arena)
-        (if (equal rows :bad)
-            (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended
-             (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+;; The records flip: both opens intern the decoded journal into the arena
+;; first, so the extended capture is over ROWS.  No :program entry here
+;; updates the arena (invariant-risk; host/store-node-host.lisp
+;; fn-store-sn-recover-records' note): the bridge (tools/run_owner.py
+;; recover) decodes with fn-store-sn-recover-records, empties the arena and
+;; interns with the guard-verified fn-intern-events at top level, then calls
+;; this entry over the rows.  The native owner installs from the Store open
+;; instead (fn-owner-recover-from-store-open).  (mv nil KEYWORD state).
+(defun fn-owner-recover-rows (rows frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal rows :bad) (equal config-records :bad))
+        (value :fault)
+      (fn-owner-recover-extended
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+       config-records frontier max-conns state))))
 
-; The open from the checkpoint the Store open decoded and verified
-; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
-; the records after it.
-(defun fn-owner-recover-from-checkpoint (suffix-octet-records frontier config-octet-records
-                                                              max-conns fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+; The open from the checkpoint the Store open loaded (`fn-store-sco-checkpoint',
+; host/store-node-host.lisp) over the ROWS of the records after it, which the
+; caller interned ON TOP of the loaded arena (fn-intern-events records nil 0:
+; host/native/io.lisp fnn-recover-suffix-rows); the entry reads no arena.
+; books/store-checkpoint-arena.lisp fn-scka-recover-from-checkpoint-is-full-
+; recover: the extension is the full recover's.  (mv nil KEYWORD state).
+(defun fn-owner-recover-from-checkpoint (rows frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
-        (records (fn-store-decode-records suffix-octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
-      ; The checkpoint's rows reference no handle (fn-store-sco-decode).
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-        (fn-store-intern-records records fn-arena)
-        (if (equal rows :bad)
-            (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended
-             (fn-rii-sco-extend checkpoint config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+    (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad))
+        (value :fault)
+      (fn-owner-recover-extended
+       (fn-rii-sco-extend checkpoint config-records rows)
+       config-records frontier max-conns state))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -455,6 +447,17 @@
                              state)))
     (value :noted)))
 
+; The base's canonical payload count after the Store open: the arena's
+; count the host read (host/native/owner.lisp fnn-owner-recover-core).  Both
+; opens intern at the canonical handles from the emptied arena (the full
+; recover) or from the checkpoint's canonical arena (fn-scka-load), so the
+; arena holds exactly the canonical payloads of the opened history, which is
+; the base's (fn-scka-next-checkpoint-is-capture's H0).
+(defun fn-owner-sco-note-base-payloads (count state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-sco-base-payloads (and (natp count) count) state)))
+    (value :noted)))
+
 ; The publication the owner deferred by name, (:deferred REASON ESTIMATE
 ; BUDGET) as fn-ock-publication-stream answered it, or nil; the status
 ; report carries it (host/native-live-status-host.lisp).
@@ -546,7 +549,38 @@
                  (fn-owner-sco-budget override profile)
                  (fn-sf-frontier (fn-sn-files st))
                  free
-                 revision))))
+                 revision
+                 (fn-owner-sco-global 'fn-owner-sco-base-payloads state)))))
+
+; Off the mutex, over the values captured above and the live arena, READ
+; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
+; of the captured rows' canonical rows (books/store-checkpoint-arena-writer.lisp
+; fn-scka-next-checkpoint: BASE extended over the canonical rows of the rows
+; after it, handles from H0; KEYSTONE fn-scka-next-checkpoint-is-capture;
+; the whole capture when no H0 was noted), then the setup of the arena run
+; (fn-scka-write-setup) and of the file (fn-scka-publication-setup: the
+; decision by name over the whole file's octets before anything is
+; allocated).  (list SETUP NEXT N ARUN), N the canonical payload count (the
+; next base's H0), ARUN (N COUNT STATE0) for fnn-checkpoint-write-steps.
+; The arena is read at handles below the count the capture saw: the owner
+; thread only appends to it (a seal never moves a sealed payload's bytes),
+; so what is read is what was sealed before the capture.
+(defun fn-owner-sco-prepare (base h0 configs records frontier revision seg budget free
+                                  fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
+                     (fn-scka-next-checkpoint base h0 configs records fn-arena)))
+         (next (if (or (null next0) (equal next0 :bad))
+                   (let ((canon (fn-scka-canon-rows records fn-arena 0)))
+                     (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
+                 next0)))
+    (if (equal next :bad)
+        (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
+      (let* ((ws (fn-scka-write-setup records seg fn-arena))
+             (setup (fn-scka-publication-setup next frontier revision seg budget free
+                                               (nth 3 ws))))
+        (list setup next (nth 0 ws)
+              (list (nth 0 ws) (nth 2 ws) (fn-scka-initial-state records (nth 1 ws) 0)))))))
 
 ; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
 ; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),
@@ -561,9 +595,12 @@
 ; durable checkpoint, and a deferred VERDICT is carried (for the due path
 ; and the status report) until a later verdict replaces it.  Answers S, or
 ; :none.
-(defun fn-owner-sco-publication-done (next durablep verdict state)
+(defun fn-owner-sco-publication-done (next payloads durablep verdict state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-sco-base next state))
+         ; NEXT's canonical payload count, the next publication's H0
+         (state (f-put-global 'fn-owner-sco-base-payloads (and (natp payloads) payloads)
+                              state))
          ; nothing in flight; the durable S below is NEXT's sequence, the
          ; count the capture was handed (fn-ock-finish-binds-the-captured-
          ; prefix), never the count now

@@ -1281,14 +1281,14 @@ and their teeth in `tests/acl2/owner-config-tests.lisp`.
   `fn-ocfg-crash-at-any-instant-recovers-the-live-generation`: if nothing is
   staged and the durable configuration history replays through
   `fn-cnode-config-replay` (the configuration-only
-  replay; `fn-owner-recover` calls `fn-cpr-replay`, see "P6 recovery as the
+  replay; `fn-owner-recover-rows` calls `fn-cpr-replay`, see "P6 recovery as the
   host calls it" below) to the live configuration, then over the live arm's exact events
   (reconfigure, close the private connection, complete;
   `host/native/admin.lisp:123-146`) the old history replays to the live
   configuration until the record is durable, and afterwards the history with
   the record appended replays `:ok` to exactly the configuration completion
   publishes, at the record's generation, with nothing staged. The statement
-  chains from `fn-owner-recover` across every later live reconfiguration.
+  chains from `fn-owner-recover-rows` across every later live reconfiguration.
 
 Two defects were found and fixed on the way. `fn-ocfg-complete` published
 through `fn-cnode-apply-config` on the live node, which is not a configured
@@ -1387,7 +1387,7 @@ the stage).
 ### P6 recovery as the host calls it (2026-09-24)
 
 Headline 2 is restated over the replay recovery calls, in
-`books/config-crash-replay.lisp`. `fn-owner-recover`
+`books/config-crash-replay.lisp`. `fn-owner-recover-rows`
 (`host/owner-host.lisp:173`, reached from the native owner at
 `host/native/owner.lisp:467`) replays `(fn-cpr-replay config-records
 records)`: the decoded configuration journal and the decoded Store journal.
