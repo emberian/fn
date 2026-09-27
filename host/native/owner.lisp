@@ -846,7 +846,7 @@ checkpoint's S, or NIL."
   (sched nil))
 
 (defun fnn-make-owner-gate ()
-  (%make-fnn-owner-gate :sched (fnn-core 'fn-ocp-init)))
+  (%make-fnn-owner-gate :sched (fnn-core 'fn-otm-init)))
 
 (defun fnn-owner-class-index (class)
   "The class's slot, ACL2's (fn-osch-class-index); a name ACL2 does not
@@ -867,7 +867,9 @@ recognise is a host fault."
   (destructuring-bind (class sched)
       ;; books/owner-commit-steps.lisp: the phase of the commit in flight is
       ;; part of ACL2's value; the six counts are the host's observation.
-      (fnn-call 'fn-ocp-next (fnn-owner-gate-sched gate)
+      ;; books/owner-time-model.lisp: the value also carries the disk's
+      ;; state; the pick is the pipeline's (fn-otm-next-is-ocp-next).
+      (fnn-call 'fn-otm-next (fnn-owner-gate-sched gate)
                 (coerce (fnn-owner-gate-waiting gate) 'list))
     (setf (fnn-owner-gate-sched gate) sched
           (fnn-owner-gate-turn gate) (and class (fnn-owner-class-index class)))
@@ -909,17 +911,96 @@ the next class (none when nothing waits: fn-osch-next answers nil)."
     (setf (fnn-owner-gate-busy gate) nil
           (fnn-owner-gate-holder gate) nil
           (fnn-owner-gate-sched gate)
-          (fnn-core 'fn-ocp-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
+          (fnn-core 'fn-otm-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
     (fnn-owner-gate-pick gate)))
 
+(defun fnn-owner-monotonic-ms ()
+  "One reading of the monotonic clock, in milliseconds: the only clock the
+disk's deadline logic reads (books/owner-time-model.lisp takes it as NOW;
+the host compares no times)."
+  (floor (* (get-internal-real-time) 1000) internal-time-units-per-second))
+
 (defun fnn-owner-sched-snapshot (service)
-  "ACL2's scheduler value, for `health' (fn-osch-health-lines)."
+  "ACL2's scheduler value for `health' and `status'
+(books/owner-time-model.lisp fn-otm-health-lines, fn-otm-disk-lines): a clock
+event is appended on demand first, so the figures are at the render's time."
+  (fnn-owner-disk-event service :clock)
   (let ((gate (fnn-owner-service-gate service)))
-    ;; books/owner-commit-pipeline.lisp's value carries the ocs value
-    ;; (fn-ocp-ocs), whose health lines the status page renders.
-    (fnn-core 'fn-ocp-ocs
-              (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-                (fnn-owner-gate-sched gate)))))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (fnn-owner-gate-sched gate))))
+
+;;; The disk's events (books/owner-time-model.lisp, lane time-model, PRF-311).
+;;; Each carries one monotonic reading, which ACL2 records before it applies
+;;; the event; every disk decision reads the recorded time.  The reading is
+;;; taken INSIDE the gate mutex, which orders every clock event, so a
+;;; reading below the recorded time is a true regression of the clock and
+;;; never two producers' readings arriving out of order.  The gate mutex is
+;;; held for the reading and the one ACL2 call.
+
+(defun fnn-owner-disk-event (service kind &optional (deadline 0))
+  "Append the disk event KIND (:clock, :issue with DEADLINE, :return) at a
+fresh reading to ACL2's value and write the service log line ACL2 renders
+for its word.  Returns the word."
+  (let* ((gate (fnn-owner-service-gate service))
+         (word nil) (line nil))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (destructuring-bind (w sched)
+          (fnn-call 'fn-otm-disk-event (fnn-owner-gate-sched gate) kind
+                    (fnn-owner-monotonic-ms) deadline)
+        (unless (member w '(:issued :returned :recovered :became-slow :none
+                            :clock-regressed :fault))
+          (fnn-fault "owner returned a malformed disk event word ~a" w))
+        (when (eq w :fault)
+          (fnn-fault "owner refused the disk event ~a" kind))
+        (setf (fnn-owner-gate-sched gate) sched
+              word w
+              line (fnn-core 'fn-otm-log-line sched w))))
+    (when line (fnn-log-line line))
+    word))
+
+(defun fnn-owner-disk-wait-ms (service)
+  "ACL2's timed wait for the committer (fn-otm-wait-ms): milliseconds, or nil."
+  (let ((gate (fnn-owner-service-gate service)))
+    (let ((ms (fnn-core 'fn-otm-wait-ms
+                        (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                          (fnn-owner-gate-sched gate)))))
+      (unless (or (null ms) (and (integerp ms) (plusp ms)))
+        (fnn-fault "owner returned a malformed wait ~a" ms))
+      ms)))
+
+(defun fnn-owner-disk-admit (service)
+  "A served POST's admission (fn-otm-admit-post): a clock event is appended
+on demand first.  :admit or :shed."
+  (fnn-owner-disk-event service :clock)
+  (let* ((gate (fnn-owner-service-gate service))
+         (word (fnn-core 'fn-otm-admit-post
+                         (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                           (fnn-owner-gate-sched gate)))))
+    (unless (member word '(:admit :shed))
+      (fnn-fault "owner returned a malformed admission ~a" word))
+    word))
+
+(defun fnn-owner-shed-queued-locked (service)
+  "The disk is slow: every queued served POST, oldest first, is answered
+ACL2's try-later refusal (host/owner-host.lisp fn-owner-shed-outcome:
+fn-own-outcome's :refused outcome, nothing stored, with the reason line)
+and delivered to its connection.  Stops at a queued submission that is not
+a served POST (ACL2's fn-owner-queue-head-served-p) or when the owner takes
+nothing.  The caller holds the owner mutex.  Returns the number shed."
+  (let ((n 0) (gate (fnn-owner-service-gate service)))
+    (loop
+      (unless (fnn-owner-core 'fn-owner-queue-head-served-p) (return))
+      (let* ((took (fnn-owner-take))
+             (taken (fnn-owner-taken-word took)))
+        (unless (eq taken :taken) (return))
+        (let ((cid (fnn-nat (fnn-owner-taken-id took))))
+          (fnn-owner-action 'fn-owner-shed-outcome cid
+                            (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                              (fnn-owner-gate-sched gate)))
+          (fnn-owner-log)
+          (fnn-owner-deliver service cid (fnn-owner-list-global 'fn-owner-output))
+          (incf n))))
+    n))
 
 (defmacro fnn-owner-gated ((service class) &body body)
   "Run BODY under the owner mutex, admitted by the gate as CLASS."
@@ -2250,6 +2331,13 @@ fnn-owner-commit-queued-locked.  Returns (values WORD CONDITION)."
   (let ((ms (fnn-developer-selector "FN_NATIVE_OWNER_TEST_BARRIER_MS")))
     (when (and ms (every #'digit-char-p ms) (plusp (length ms)))
       (sleep (/ (parse-integer ms) 1000))))
+  ;; Developer image only (lane time-model): a stalled device.  While the
+  ;; named file exists the barrier does not proceed, as an fdatasync on a
+  ;; device under maintenance does not return; removing it is the device
+  ;; coming back (tests/test_native_slow_disk.py).
+  (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_DISK_STALL_FILE")))
+    (when (and stall (plusp (length stall)))
+      (loop while (probe-file stall) do (sleep 0.05))))
   (fnn-log-sync-sealed-batch (fnn-owner-service-store service)))
 
 (defun fnn-owner-commit-start-event (members uncertain)
@@ -2370,7 +2458,7 @@ reads the phase it leaves.  Called inside the committer's :commit quanta."
   (let ((gate (fnn-owner-service-gate service)))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
       (destructuring-bind (action sched)
-          (fnn-call 'fn-ocp-commit-event (fnn-owner-gate-sched gate) event)
+          (fnn-call 'fn-otm-commit-event (fnn-owner-gate-sched gate) event)
         (unless (member action '(:sync :wait :complete :stop :none :fault))
           (fnn-fault "owner returned a malformed commit step ~a" action))
         (when (eq action :fault)
@@ -2382,7 +2470,7 @@ reads the phase it leaves.  Called inside the committer's :commit quanta."
   "ACL2's wake for the committer while a batch is in flight
 (fn-ocp-committer-wake): :collect, :start-next or :wait."
   (let ((gate (fnn-owner-service-gate service)))
-    (let ((wake (fnn-core 'fn-ocp-committer-wake
+    (let ((wake (fnn-core 'fn-otm-committer-wake
                           (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
                             (fnn-owner-gate-sched gate))
                           returned queued)))
@@ -2420,10 +2508,13 @@ flight).  While any batch is in flight or open ACL2's pick admits only
 leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil)
-        (next nil) (next-deferred nil) (syncer nil) (result nil))
+        (next nil) (next-deferred nil) (syncer nil) (result nil) (deadline 0))
     (fnn-owner-serialized
      service nil
      (lambda ()
+       ;; Lane time-model: the barrier's deadline, from the configuration
+       ;; generation current at the START (fn-owner-barrier-deadline).
+       (setq deadline (fnn-owner-core 'fn-owner-barrier-deadline))
        ;; PKT-828: the view the readers read while this batch is in flight.
        (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred)
@@ -2439,21 +2530,46 @@ leave only in its COMPLETE, after its barrier returned
      :commit)
     (loop while (eq action :sync) do
       (multiple-value-setq (syncer result) (fnn-owner-start-syncer service))
+      ;; Lane time-model (PRF-311): the barrier is a request with a
+      ;; deadline; its issue is a disk event at this reading.
+      (fnn-owner-disk-event service :issue deadline)
       (setq action nil)
       ;; While the barrier runs: ACL2 wakes the committer to START-NEXT (a
       ;; queued member, no next batch open) or to COLLECT the barrier's word.
+      ;; The wait is timed by ACL2 (fn-otm-wait-ms: to the deadline, then the
+      ;; clock cadence); at each expiry the committer appends a clock event,
+      ;; which enters the disk's :slow mode past the deadline.  A timeout
+      ;; is never a failure: the batch stays in flight.
       (loop
-        (let ((wake nil))
-          (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-            (loop
-              (setq wake (fnn-owner-commit-wake
-                          service (fnn-owner-service-synced service)
-                          (plusp (fnn-owner-service-queued service))))
-              (unless (eq wake :wait) (return))
-              (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
-                                        (fnn-owner-service-commit-lock service))))
-          (when (eq wake :collect) (return))
+        (let ((wake nil) (expired nil))
+          (block waiting
+            (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+              (loop
+                (setq wake (fnn-owner-commit-wake
+                            service (fnn-owner-service-synced service)
+                            (plusp (fnn-owner-service-queued service))))
+                (unless (eq wake :wait) (return-from waiting))
+                (let ((ms (fnn-owner-disk-wait-ms service)))
+                  (unless (if ms
+                              (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                                        (fnn-owner-service-commit-lock service)
+                                                        :timeout (/ ms 1000))
+                            (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                                      (fnn-owner-service-commit-lock service)))
+                    ;; Timed out: SBCL returns without the mutex held, so
+                    ;; leave WITH-MUTEX touching nothing it protects.
+                    (setq expired t)
+                    (return-from waiting))))))
+          (when expired
+            (fnn-owner-disk-event service :clock)
+            (setq wake :expired))
+          (when (eq wake :collect)
+            ;; The barrier's completion, observed: a disk event at this
+            ;; reading (:recovered after a slow episode).
+            (fnn-owner-disk-event service :return)
+            (return))
           ;; :start-next
+          (when (eq wake :start-next)
           (let ((step nil))
             (fnn-owner-gated (service :commit)
               (fnn-owner-shared-action-locked
@@ -2480,7 +2596,7 @@ leave only in its COMPLETE, after its barrier returned
                      ;; stops (its COMPLETE below finds it stopping).
                      (fnn-owner-commit-complete-locked
                       service :stop (append members next) deferred)
-                     (setq members nil next nil)))))))))
+                     (setq members nil next nil))))))))))
       (sb-thread:join-thread syncer :default nil)
       (destructuring-bind (word . condition) (car result)
         ;; COMPLETE runs whatever the barrier observed, and the batch leaves
@@ -2491,6 +2607,9 @@ leave only in its COMPLETE, after its barrier returned
             (unwind-protect
                  (let ((step (fnn-owner-commit-event service word))
                        (store (fnn-owner-service-store service)))
+                   ;; The next batch's barrier (sealed below) gets the
+                   ;; deadline of the configuration current now.
+                   (setq deadline (fnn-owner-core 'fn-owner-barrier-deadline))
                    (fnn-owner-shared-action-locked
                     service nil
                     (lambda ()
@@ -3055,6 +3174,16 @@ EPIPE and the client saw a bare close)."
                      (t (setq completion nil uncertain t))))
              (setq submitted nil))
            (when (and submitted (fnn-owner-service-batching service))
+             ;; Lane time-model (PRF-311): while the disk is slow (a barrier
+             ;; pending past its deadline at this quantum's recorded time,
+             ;; books/owner-time-model.lisp fn-otm-admit-post), the queued
+             ;; served POSTs -- this one included -- are refused try-later
+             ;; with ACL2's reason line, nothing stored; each reply is
+             ;; delivered as a completion (this connection's is taken at
+             ;; once by its await).  Otherwise the submission waits for the
+             ;; next batch, as before.
+             (when (eq (fnn-owner-disk-admit service) :shed)
+               (fnn-owner-shed-queued-locked service))
              (fnn-owner-note-queued service)
              (return-from step
                (values :await step

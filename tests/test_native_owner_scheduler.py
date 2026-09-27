@@ -74,20 +74,21 @@ class SchedulerSourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text()
         serialized = owner[owner.index("(defun fnn-owner-serialized "):owner.index("(defun fnn-owner-consume-connection-fault")]
         self.assertIn("(fnn-owner-gated (service class)", serialized)
-        # books/owner-commit-pipeline.lisp (lane log-2) over
+        # books/owner-time-model.lisp (lane time-model: fn-otm-next-is-ocp-next)
+        # over books/owner-commit-pipeline.lisp (lane log-2) over
         # books/owner-commit-steps.lisp (PKT-688 (4) slice 2): the gate's pick
         # and fold are fn-ocp-next / fn-ocp-observe, which are fn-ocs-next's
         # (fn-ocp-next-is-ocs-next; fn-ocm-next's pick outside a batch,
         # fn-osch-next's for the four classes: PRF-267, PRF-248).
-        self.assertIn("'fn-ocp-next", owner)
-        self.assertIn("'fn-ocp-observe", owner)
+        self.assertIn("'fn-otm-next", owner)
+        self.assertIn("'fn-otm-observe", owner)
         # The committer's pipeline: START (it seals) as a :commit quantum, the
         # SYNC in the syncer thread with the owner released, at most one
         # START-NEXT (not sealed) behind it, then COMPLETE as a :commit
         # quantum, which seals the next batch only after the replies.
         batch = owner[owner.index("(defun fnn-owner-commit-pipeline "):owner.index("(defun fnn-owner-committer-loop")]
-        self.assertIn("'fn-ocp-commit-event", owner)
-        self.assertIn("'fn-ocp-committer-wake", owner)
+        self.assertIn("'fn-otm-commit-event", owner)
+        self.assertIn("'fn-otm-committer-wake", owner)
         self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
                         batch.index("(fnn-owner-start-syncer service)"))
         self.assertLess(batch.index("(fnn-owner-start-syncer service)"),
