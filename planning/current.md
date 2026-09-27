@@ -28,7 +28,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P10](#p10) every cut is a model crash point | `fn-bs-recover-program-keeps-relation-at-every-cut` | yes | yes: `certify-20260927T151414Z-2381225` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | yes: `certify-20260927T151414Z-2381225` | no: source changed since 69046a76 | no: profile not deployed |
 | [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260927T151414Z-2381225` | no: source changed since 69046a76 | no: profile not deployed |
-| [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-disk` | yes | cache only: `certify-20260927T151414Z-2381225` | no: source changed since 69046a76 | no: dev source not on the node |
+| [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | cache only: `certify-20260927T151414Z-2381225` | lab only: `10674f330` | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260927T151414Z-2381225` | no: source changed since 69046a76 | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | yes: `certify-20260927T143733Z-3888299` | no: source changed since 69046a76 | no: dev source not on the node |
 
@@ -180,15 +180,15 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 ### M5
 
-**maintenance: operator compaction.** `operator CONFIG store compact` is decided in ACL2: the pack it writes fits the free space the host observes on the store's filesystem (PKT-169), and a reclaim keeps the reconstructed history.
+**maintenance: compaction and reclaim over the record log.** `operator CONFIG store compact` checkpoints the store with the log rotated and drops the segments the checkpoint covers, and `store reclaim` checkpoints exactly the reclaiming pack's rewrite of the committed history (a held article is never touched), both decided in ACL2 over the one store format, 9.
 
-- Host-called subject: `fn-cverb-decide` at host/checkpoint-host.lisp:215.
-- Keystone: `fn-cverb-pack-fits-the-disk` (books/store-compact-verb.lisp:281; PRF-073 (uncertified-at-current-digest), PRF-129 (uncertified-at-current-digest)); no archived manifest records it passed at the current source and closure; `certify-20260927T151414Z-2381225` installed a cached pair for them, made by a run not archived.
-- Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile developer image, checkpoint cuts through both entries (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/store-compact-verb.lisp`, `host/checkpoint-host.lisp`.
-- Deployed: no: node image `bbf52159`; changed since it: `books/store-compact-verb.lisp`, `host/checkpoint-host.lisp`.
-- Latest positive result: 10 of 10 checkpoint cuts pass through both entries on the developer image ([m5-compact-verb](evidence/m5-compact-verb-2026-09-24.md)).
-- Remaining obstruction: a lost newest transaction file is not detectable at open (a post-commit witness is ember's decision); the pack unit caps compaction at 4 MiB of history; covered files are checked at open, not proved.
-- Next positive gate: the deployed store compacted offline by the procedure in the record, with headroom stated before and after and which bound it does not relieve.
+- Host-called subject: `fn-lgr-decide-stream` at host/checkpoint-host.lisp:293, equated by `fn-lgr-decide-stream-is-lgr-decide` (books/store-log-reclaim.lisp:97).
+- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:47; PRF-271 (uncertified-at-current-digest)); no archived manifest records it passed at the current source and closure; `certify-20260927T151414Z-2381225` installed a cached pair for them, made by a run not archived.
+- Tested: lane image of `10674f330` ([log-recovery-2026-09-27](evidence/log-recovery-2026-09-27.md)), profile developer and production lane images (s2c): log_compaction 7/7 (rotation and drop kill cuts, reclaim, refusals), store_export 4/4; not a shared qualification.
+- Deployed: no: node image `bbf52159`; absent from it: `books/store-log-reclaim.lisp`.
+- Latest positive result: log_compaction 7/7 and store_export 4/4 on both lane images; a 40,000-article compact 40-139 s at 4.7 GB, from 2,963 s and 16.4 GB on the per-file layout ([log-recovery](evidence/log-recovery-2026-09-27.md)); the verb's own open streams the log since log-open-stream.
+- Remaining obstruction: the drop's keystone fn-lg-segment-drop-preserves-the-open (PRF-270) is stated over fn-lgs-open-chain-records, which the streamed open (log-open-stream, fn-lgw-run-is-the-open) no longer calls, and no theorem on dev composes fn-lgw-run-is-the-open over segments into that fold: the equation is owed; the power-loss rig's log route over compaction was NOT RUN in the log-recovery record.
+- Next positive gate: the compaction and reclaim cases on one shared qualified format-9 image, and the power-loss rig's log route (compaction, reclaim, export, import) run.
 
 ### M6
 

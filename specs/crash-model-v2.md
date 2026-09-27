@@ -7,6 +7,15 @@ the `fn-bs-` prefix and the theorem names are proposals for the packets in
 §6; the prefix must be registered in `docs/prefixes.md` before the first book
 is added.
 
+Scope note (2026-09-27): the store's one format is now the record log
+(`fn-store-9`, specs/storage.md STO-028 and STO-034). The per-file layout
+this model's examples use (`transactions/`, the allocation frontier, the
+committed-history marker) is no longer opened by any image; the log's own
+crash theorem is over the same byte model (books/store-log-crash.lisp,
+PRF-244, planning/evidence/w6-log-core-2026-09-27.md), and the log's
+rotation and drop cuts are in STO-034. The text below is kept as the
+model's design record.
+
 Replaces, when the packets land: the crash constructor as the source of the
 "old or new" and "absent or present" shapes in
 [store-refinement.md](store-refinement.md) §"Observable events" item 15 and
