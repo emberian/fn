@@ -14,7 +14,9 @@ fnn-command-store-import read and write.  On the image under test:
 * the import refuses by name, exit 1, writing no store: a MANIFEST with one
   octet changed (manifest-mismatch NAME), an existing store (store-exists)
   and a raised field that breaks a relation (profile REASON); a raised field
-  that keeps the relations is imported and reported by `status`;
+  that keeps the relations is imported and reported by `status`; a damaged
+  archive -- an entry dropped or over its work bound, a torn record, a
+  profile that does not decode -- is refused by name, never a fault;
 * a store made by another release (synthesized by
   tests/older_release_store.py: a format-7 frame, a format-8 frame (the
   per-file layout before the record log), and the thirteen-field
@@ -145,6 +147,66 @@ class StoreExportTests(ProfileFixture):
         raised = self.operator_with(config2, "store", "import", str(archive),
                                     "--max-transactions", "1000")
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
+
+    def test_a_damaged_archive_is_refused_by_name_never_a_fault(self):
+        """Lane fuzz-nntp (planning/evidence/fuzz-nntp-2026-09-27.md): the
+        archive is external input.  A dropped entry, an entry over its work
+        bound, a torn record and a profile the codec does not decode are
+        refusals of that archive by name (exit 1, no store written); before
+        the fix they were faults (exit 4): `[Errno 2]', `store file exceeds
+        bound' naming a record for a damaged profile, and `ACL2 returned a
+        non-natural' for a record that does not decode."""
+        self.served_store()
+        archive = self.root / "archive"
+        exported = self.op("store", "export", str(archive))
+        self.assertEqual(exported.returncode, EXIT_OK, exported.stderr.decode())
+        store2 = self.root / "store2"
+        config2 = self.second_config(store2)
+        first = sorted((archive / "records").iterdir())[0].name
+
+        def reseal(root):
+            # A MANIFEST that matches the damaged files (sha256sum's form),
+            # so the refusal is the one after the MANIFEST check.
+            lines = []
+            for line in (root / "MANIFEST").read_text(encoding="ascii").splitlines():
+                name = line.split("  ", 1)[1]
+                lines.append("{}  {}".format(
+                    hashlib.sha256((root / name).read_bytes()).hexdigest(), name))
+            (root / "MANIFEST").write_text("\n".join(lines) + "\n", encoding="ascii")
+
+        def torn(root):
+            path = root / "records" / first
+            path.write_bytes(path.read_bytes()[:10])
+
+        def flipped_profile(root):
+            data = bytearray((root / "profile").read_bytes())
+            data[len(data) // 2] ^= 1
+            (root / "profile").write_bytes(bytes(data))
+
+        cases = [
+            ("dropped MANIFEST", lambda r: (r / "MANIFEST").unlink(),
+             b"reason=archive-incomplete entry=MANIFEST"),
+            ("dropped profile", lambda r: (r / "profile").unlink(),
+             b"reason=archive-incomplete entry=profile"),
+            ("frontier over its bound", lambda r: (r / "frontier").write_bytes(b"\0" * 5000),
+             b"reason=entry-over-bound entry=frontier"),
+            ("flipped profile", flipped_profile, b"reason=manifest-mismatch profile"),
+            ("torn record", torn, b"reason=manifest-mismatch records/"),
+            ("torn record, resealed", lambda r: (torn(r), reseal(r)),
+             b"reason=record-out-of-sequence"),
+            ("flipped profile, resealed", lambda r: (flipped_profile(r), reseal(r)),
+             b"import refused reason="),
+        ]
+        for label, damage, expected in cases:
+            with self.subTest(case=label):
+                bad = self.root / "bad"
+                shutil.rmtree(bad, ignore_errors=True)
+                shutil.copytree(archive, bad)
+                damage(bad)
+                got = self.operator_with(config2, "store", "import", str(bad))
+                self.assertEqual(got.returncode, EXIT_REFUSED, got.stderr.decode())
+                self.assertIn(expected, got.stderr + got.stdout)
+                self.assertFalse(store2.exists())
 
     def test_an_import_killed_in_the_log_publishes_no_store(self):
         """The import's log writes (P-BATCH's append and barrier into the

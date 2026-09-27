@@ -1,0 +1,13 @@
+{
+ "articles": 12,
+ "campaign": "store",
+ "class": "unnamed-fault",
+ "mutation": {
+  "file": "MANIFEST",
+  "kind": "import-drop",
+  "op": "drop"
+ },
+ "note": "Was: import exit 4 `[Errno 2] No such file or directory: .../MANIFEST'. Now: import refused reason=archive-incomplete entry=MANIFEST, exit 1.",
+ "packet": "fixed here",
+ "status": "fixed"
+}

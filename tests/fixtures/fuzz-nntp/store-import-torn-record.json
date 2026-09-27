@@ -1,0 +1,14 @@
+{
+ "articles": 12,
+ "campaign": "store",
+ "class": "unnamed-fault",
+ "mutation": {
+  "cut": 10,
+  "file": "records/00000000000000000003.txn",
+  "kind": "import-torn",
+  "op": "torn"
+ },
+ "note": "Was: import exit 4 `ACL2 returned a non-natural' (the host's fnn-nat on the record's sequence decode). Now: refused by the plan, manifest-mismatch records/...",
+ "packet": "fixed here",
+ "status": "fixed"
+}
