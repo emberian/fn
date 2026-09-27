@@ -710,7 +710,7 @@ checkpoint's S, or NIL."
                   (fnn-node-secret-directory store)))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  (multiple-value-bind (store records) (fnn-open-live-store root t fault)
+  (multiple-value-bind (store count) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (progn
@@ -718,7 +718,7 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store records max-connections)
+            (fnn-owner-recover-core store count max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
@@ -767,7 +767,10 @@ checkpoint's S, or NIL."
                     (unless (eq (fnn-owner-feed-word restart) :restarted)
                       (fnn-fault "owner refused the feed restart"))
                     (fnn-owner-feed-flush service restart))))
-              (fnn-owner-key-statement-recover service records)
+              ;; The open keeps no records (PKT-823): the pending key
+              ;; statement is read off the newest record alone.
+              (fnn-owner-key-statement-recover
+               service (and (plusp count) (list (fnn-history-last-record store))))
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))

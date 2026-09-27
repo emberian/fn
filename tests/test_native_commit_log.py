@@ -284,6 +284,38 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr[-800:])
         self.assertTrue((probe_root / "journal" / "000001.log").is_file())
 
+    def test_format_9_history_is_read_from_the_log_after_the_open(self):
+        # The open answers the history's COUNT and keeps no records (PKT-823);
+        # a verb that needs the records reads them after the open
+        # (fnn-history-records), which on format 9 is the log kernel's
+        # committed records, never transactions/ (lane rm2-format9).
+        root = self.root / "history"
+        root.mkdir()
+        store = root / "store"
+        env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
+        env.pop("FN_NATIVE_STORE_FORMAT", None)
+
+        def fn(*argv):
+            return subprocess.run([self.image, "--fn", *argv], env=env,
+                                  capture_output=True, timeout=600)
+        init = fn("store", str(store), "init", GROUP)
+        self.assertEqual(init.returncode, 0, init.stderr[-800:])
+        for i in (910, 911, 912):
+            payload = root / ("payload-%d" % i)
+            payload.write_bytes(article(i))
+            posted = fn("store", str(store), "post", msgid(i), str(payload), "-", "-", GROUP)
+            self.assertEqual(posted.returncode, 0, posted.stderr[-800:])
+            self.assertIn(b"committed sequence=", posted.stdout)
+        self.assertFalse((store / "transactions").exists()
+                         and any((store / "transactions").iterdir()))
+        recovered = fn("store", str(store), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
+        self.assertIn(b"recovered transactions=3 articles=3", recovered.stdout)
+        published = fn("checkpoint", "publish", str(store))
+        self.assertEqual(published.returncode, 0,
+                         (published.stdout[-800:], published.stderr[-800:]))
+        self.assertIn(b"records=3", published.stdout)
+
     def test_format_8_selector_keeps_the_per_file_layout(self):
         node = Node(self.image, self.root)
         node.init(env={"FN_NATIVE_STORE_FORMAT": "8"})

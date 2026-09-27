@@ -54,7 +54,13 @@ class HistoryMarkerSourceTests(unittest.TestCase):
         self.assertIn("'fn-hmr-open-verdict", check)
         self.assertIn("'fn-hmr-catch-up", check)
         replay = native_cuts.host_function(io, "fnn-recover-full-replay")
-        self.assertIn("(fnn-check-history-marker store (length records))", replay)
+        # The streaming open checks the marker against the files it will
+        # replay; the pack path's history is fnn-committed-history's, which
+        # checks it against the records it reconstructs.
+        self.assertIn("(fnn-check-history-marker store (length files))", replay)
+        self.assertIn("(fnn-committed-history store)", replay)
+        committed = native_cuts.host_function(io, "fnn-committed-history")
+        self.assertIn("(fnn-check-history-marker store (length records))", committed)
         # Every caller of fnn-finish marks the commit first.
         for text, name in ((io, "fnn-command-post"), (io, "fnn-command-probe"),
                            (owner, "fnn-owner-publish-prepared")):
