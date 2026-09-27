@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1222 |
 | Certification roots in the Makefile | 1175 |
 | Books inside the root closure | 1211 |
-| `defthm` and `defthmd` events | 17980 |
+| `defthm` and `defthmd` events | 17981 |
 | `defun` events | 12441 |
 | Functions with verified guards | 2446 |
 | Functions declared `:verify-guards nil` and never verified | 1437 |
 | Functions left at the default with an explicit guard | 6850 |
 | Functions left at the default with no guard | 1708 |
-| `assert-event` checks | 17861 |
+| `assert-event` checks | 17865 |
 | `must-fail` checks | 2149 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 92 |
@@ -1212,7 +1212,7 @@ that `make certify` requests.
 | `tests/acl2/store-capacity-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 14 | 1 | 0 |
 | `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 1 | 0 |
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 49 | 8 | 0 |
-| `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 3 | 16 | 0/16/0/0 | 19 | 0 | 0 |
+| `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 4 | 16 | 0/16/0/0 | 23 | 0 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 6 | 0/6/0/0 | 15 | 9 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 50 | 8 | 0 |

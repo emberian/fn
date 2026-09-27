@@ -415,6 +415,71 @@
         (not (equal (sckat-walk-short n)
                     (list nil (reverse (nth 2 r)) (reverse (nth 3 r))))))))
 
+; fn-scka-write-run-is-run-segments without "(fn-arena-p fn-arena)" (a
+; logical value no stobj holds: the recognizer carries the hypothesis): a
+; sealed "payload" that is not an octet list (here an improper list) is
+; copied as it is, and the buffer is then no octet list, which no frame's
+; octets are.  The retained hypotheses hold of the one-source run: its
+; batches sum to its payload count.
+(defthm sckat-a-non-arena-payload-is-not-octets
+  (and (not (fn-arena-p '((1 2 . 3))))
+       (equal (fn-scka-sum '(1)) (len (fn-scka-src-payloads '(0) '((1 2 . 3)))))
+       (not (fn-octets-p (mv-nth 1 (fn-scka-append-batch '(0) 1 '((1 2 . 3)) nil)))))
+  :hints (("Goal" :in-theory (enable fn-arena-p-is-payload-listp)))
+  :rule-classes nil)
+
+;; -----------------------------------------------------------------------------
+;; 3c. REPRESENTATION BOUNDS of the load keystone (checkpoint-arena-3).
+;; fn-scka-load-of-written-file assumes the file's counts fit the codec's
+;; fields: the run's and each table's segment count below 2^64 (the
+;; (< (+ 1 (len ks)) *fn-scc-u64-bound*) and fn-sct-programs-widthp
+;; hypotheses), S below 2^64, every chunk shorter than 2^64 octets
+;; (fn-scc-chunk-listp), and at most 2^32 records (the P table's reference
+;; index keys a u32).  No store reaches them: the profile's bounds are far
+;; below, and a file past them cannot be built to load.  So the witness for
+;; each hypothesis is at the FIELD it protects: the value at the bound reads
+;; back, the value one past it does not (the count the loader would read is
+;; not the count written), which is how the keystone's conclusion fails
+;; without it.  Component-level witnesses, labelled as such.
+
+; The segment count (the header's count field, both the arena run's and a
+; table run's): 2^64 - 1 reads back, 2^64 reads as 0.
+(assert-event
+ (let ((at (fn-scc-parse-header (fn-scc-header 0 (1- *fn-scc-u64-bound*) 5 3)))
+       (past (fn-scc-parse-header (fn-scc-header 0 *fn-scc-u64-bound* 5 3))))
+   (and (equal (nth 1 at) (1- *fn-scc-u64-bound*))
+        (consp past)
+        (not (equal (nth 1 past) *fn-scc-u64-bound*))
+        (equal (nth 1 past) 0))))
+
+; S (the header's sequence field): 2^64 - 1 reads back, 2^64 reads as 0,
+; so the loader's check that the F row's S is the run's compares a
+; different number.
+(assert-event
+ (let ((at (fn-scc-parse-header (fn-scc-header 0 2 5 (1- *fn-scc-u64-bound*))))
+       (past (fn-scc-parse-header (fn-scc-header 0 2 5 *fn-scc-u64-bound*))))
+   (and (equal (nth 3 at) (1- *fn-scc-u64-bound*))
+        (not (equal (nth 3 past) *fn-scc-u64-bound*))
+        (equal (nth 3 past) 0))))
+
+; A chunk's length (the header's length field): 2^64 octets would read as
+; an empty chunk.
+(assert-event
+ (let ((at (fn-scc-parse-header (fn-scc-header 0 2 (1- *fn-scc-u64-bound*) 3)))
+       (past (fn-scc-parse-header (fn-scc-header 0 2 *fn-scc-u64-bound* 3))))
+   (and (equal (nth 2 at) (1- *fn-scc-u64-bound*))
+        (not (equal (nth 2 past) *fn-scc-u64-bound*))
+        (equal (nth 2 past) 0))))
+
+; At most 2^32 records: the P table's reference index (fn-cei-build, the
+; E and R tables' ref op) finds the payload at 2^32 - 1 and nothing at
+; 2^32, so a reference past it is :dangling and the load refuses.
+(assert-event
+ (let ((ix (fn-cei-put *fn-cbor-max-uint* (list 7 7)
+                       (fn-cei-put (+ 1 *fn-cbor-max-uint*) (list 9 9) nil))))
+   (and (equal (fn-sct-ref-get *fn-cbor-max-uint* ix) (list 7 7))
+        (null (fn-sct-ref-get (+ 1 *fn-cbor-max-uint*) ix)))))
+
 ; -----------------------------------------------------------------------------
 ; 4. The owner's next checkpoint (fn-scka-next-checkpoint-is-capture): BASE
 ; the capture (under BASE-CONFIGS) of the canonical rows of the first PLEN
