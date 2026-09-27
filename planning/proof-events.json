@@ -908,6 +908,11 @@
           "kind": "theorem",
           "name": "fn-rcon-ocfg-io-is-ocfg-step",
           "note": "The owner's transaction observation: host/owner-host.lisp:349 fn-owner-io calls fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io operation result)) for every configured owner, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (:record-directory :ok reaches the completing owner, :error fences, other operations)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-ingress-prepare-carried-is-prepare",
+          "note": "The BP ingress prepare: host/bp-ingress-host.lisp fn-bpi-host-prepare calls fn-bpi-ingress-prepare-carried (books/bp-ingress-carried.lisp) over the arena's count; under fn-snt-relation it equals fn-bpi-ingress-prepare, every argument (the policy test without fn-sn-statep, the prepare fn-pcar-spc-prepare without the replay). With the host's seal it is the entry fn-bpi-ingress-prepare-interned (fn-bpi-ingress-prepare-interned-unfolds). Teeth: tests/acl2/bp-ingress-carried-tests.lisp (related reserved store prepares alike; related duplicate refused alike; CORRUPTED store with a refused-reservation node over the durable history: the carried prepare stages the duplicate, the specification refuses it)."
         }
       ]
     },
@@ -2651,6 +2656,11 @@
           "kind": "theorem",
           "name": "fn-inj-injected-article-is-a-reinjection-of-its-source",
           "note": "The keystone the three above rest on, over fn-inj-decide. One hypothesis with a must-fail (tests/acl2/injection-tests.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-operator-retry-at-the-entry-is-the-stored-injection",
+          "note": "flip-L8-2: at the host's entry (host/owner-host.lisp fn-owner-operator-submit calls fn-own-operator-stored-octets through the arena), ALPHA of the held article under its handle being the first injection makes the decision that stored injection. Witness on a Date-less article whose fresh re-injection differs, the regression over the handle, and the alpha separation (tests/acl2/owner-operator-tests.lisp)."
         }
       ]
     },
@@ -7272,7 +7282,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-small-profile-fits-a-small-machine"
+          "name": "fn-heap-small-profile-run-fits-a-small-machine"
         },
         {
           "kind": "theorem",
@@ -7360,11 +7370,27 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-storeless-decide-is-small-and-fits"
+          "name": "fn-heap-store-figure-holds-every-store"
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-operation-figure-octets-observed-is-at-most-unobserved"
+          "name": "fn-heap-with-nursery-holds-the-trigger"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-figure-observed-is-at-most-unobserved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-operation-decide-holds-the-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-first-run-accepted-is-within-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-storeless-decide-is-small-and-fits"
         }
       ]
     },
@@ -8566,10 +8592,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ctl-withdrawal-plan-record-is-bound"
         },
         {
@@ -8623,6 +8645,11 @@
         {
           "kind": "theorem",
           "name": "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-control-of-fields",
+          "note": "flip-L8-2: the control fact decided at intern (books/catalog-record.lisp fn-held-facts-of, fn-hf-control-of-held-facts-of) is the target, Cancel-Key and Cancel-Lock readers over the row's bytes, so the TLOCKS a record carries are the target's locks (tests/acl2/control-visible-tests, owner-cancel-refresh-tests)."
         }
       ]
     },
@@ -9748,6 +9775,26 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-olr-crash-reads-a-prefix-of-the-history",
+          "note": "Subject: the kernel transitions host/native/io.lisp fnn-log-take/-append/-fence call (fn-olr-take, fn-lgk-append, fn-lgk-fence); the link kept by fn-olr-linkp-of-*."
+        }
+      ]
+    },
+    {
+      "id": "PRF-265",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocm-commit-waits-at-most-the-bound",
+          "note": "Teeth: tests/acl2/owner-commit-class-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-266",
+      "events": [
+        {
+          "kind": "theorem",
           "name": "fn-scw-window-count-is-fit"
         },
         {
@@ -9761,6 +9808,19 @@
         {
           "kind": "theorem",
           "name": "fn-rcls-decide-is-rclp-decide"
+        }
+      ]
+    },
+    {
+      "id": "PRF-267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-srb-admitted-history-is-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srb-within-h-is-within-the-bound"
         }
       ]
     }

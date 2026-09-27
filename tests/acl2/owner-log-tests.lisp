@@ -433,11 +433,11 @@
 (defconst *olt-operator-groups* (list (olt-text "not.carried")))
 (assert-event
  (equal (fn-own-operator-submit-result *olt-served* *olt-operator-msgid*
-                                       *olt-operator-groups* *olt-source*)
+                                       *olt-operator-groups* *olt-source* :absent)
         :refused))
 (defconst *olt-control-refusal*
   (fn-olog-control-refusal-line *olt-served* *olt-operator-msgid*
-                                *olt-operator-groups* *olt-source*))
+                                *olt-operator-groups* *olt-source* :absent))
 (assert-event (equal (fn-olog-line-word *olt-control-refusal*) (olt-text "refused")))
 ; The article names fn.letters and the operator asked for not.carried: the
 ; decision is the injection's :control-mismatch, and the line names it.
@@ -450,17 +450,17 @@
 (defconst *olt-operator-ok-groups* (list (olt-text "fn.letters")))
 (assert-event
  (equal (fn-own-operator-submit-result *olt-served* *olt-operator-ok-msgid*
-                                       *olt-operator-ok-groups* *olt-source*)
+                                       *olt-operator-ok-groups* *olt-source* :absent)
         :busy))
 (assert-event
  (null (fn-olog-control-refusal-line *olt-served* *olt-operator-ok-msgid*
-                                     *olt-operator-ok-groups* *olt-source*)))
+                                     *olt-operator-ok-groups* *olt-source* :absent)))
 ; The weaker statement "a control line says refused whenever the submit did
 ; not submit" is false: :busy is not a refusal and has no line.
 (must-fail
  (defthm olt-control-refusal-line-for-every-non-submission
-   (implies (not (equal (fn-own-operator-submit-result o m g x) :submitted))
-            (equal (fn-olog-line-word (fn-olog-control-refusal-line o m g x))
+   (implies (not (equal (fn-own-operator-submit-result o m g x st) :submitted))
+            (equal (fn-olog-line-word (fn-olog-control-refusal-line o m g x st))
                    (fn-olog-text "refused")))
    :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text
                                     fn-own-operator-submit-result)

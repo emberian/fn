@@ -168,6 +168,24 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertEqual(result.returncode, run_store.EXIT_OK, result.stderr)
         return store
 
+    def initialized_per_file(self, name):
+        """A store of the per-file layout (format 8: transactions/ and the
+        allocation frontier), for a case that writes that layout's files by
+        hand (lane commit-onto-log: `init' writes format 9, the record log;
+        a developer image writes format 8 under FN_NATIVE_STORE_FORMAT=8, and
+        every image opens it)."""
+        if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
+            self.skipTest("build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is "
+                          "required: FN_NATIVE_STORE_FORMAT is a developer-image selector")
+        store = self.base / name
+        env = dict(os.environ, FN_NATIVE_STORE_FORMAT="8")
+        env.pop("FN_NATIVE_INIT_FAULT", None)
+        result = subprocess.run([str(DEVELOPER), "--fn", "store", str(store), "init"],
+                                cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, check=False)
+        self.assertEqual(result.returncode, run_store.EXIT_OK, result.stderr)
+        return store
+
     def test_missing_staging_is_a_current_native_fault(self):
         store = self.initialized("missing-staging")
         (store / "staging").rmdir()
@@ -273,7 +291,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
 
     def test_atomic_hybrid_article_without_enrollment_faults_and_retains_bytes(self):
         """ACL2 emits kind-4 history whose missing kind-3 predecessor is fatal."""
-        store = self.initialized("missing-hybrid-enrollment")
+        store = self.initialized_per_file("missing-hybrid-enrollment")
         transaction, frontier = missing_enrollment_fixture()
         transaction_path = store / "transactions" / "00000000000000000000.txn"
         frontier_path = store / "allocation-frontier.json"

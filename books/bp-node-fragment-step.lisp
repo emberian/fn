@@ -714,5 +714,12 @@
                                fn-bpnf-family-apply-at
                                fn-bpnf-family-v1-frame
                                fn-bpnf-family-record-atp
-                               fn-bpnf-active-set)))
+                               fn-bpnf-active-set
+                               ;; The used lemma's conclusion is the goal's;
+                               ;; opening it (and the held expiry under it)
+                               ;; cost 3.3M steps of useless rewriting.
+                               fn-bpnf-family-rows-livep
+                               fn-bpah-held-expiry
+                               fn-bpnf-heldp
+                               fn-bpnf-ingress-principal)))
   :rule-classes nil)

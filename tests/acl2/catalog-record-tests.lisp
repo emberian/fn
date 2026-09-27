@@ -138,7 +138,8 @@
          (fn-cat-intern-list *crt-w* nil 0 nil)
          (and (fn-held-p held)
               (equal (fn-record-payload held) 0)
-              (equal (fn-held-facts held) (list (len *crt-art*) 14 2))
+              (equal (fn-held-facts held)
+                     (list (len *crt-art*) 14 2 (fn-ctl-control-of *crt-art*)))
               (equal (fn-hc-generation (fn-held-context held)) 0)
               (equal fn-arena (list *crt-art*))
               (equal (fn-held-wire-of held fn-arena) *crt-w*))))
@@ -213,4 +214,5 @@
   (with-local-stobj fn-arena
     (mv-let (result fn-arena) (crt-exec-run fn-arena) result)))
 
-(assert-event (equal (crt-exec) (list 2 0 1 t t t t (list (len *crt-art*) 14 2))))
+(assert-event (equal (crt-exec) (list 2 0 1 t t t t (list (len *crt-art*) 14 2
+                                                     (fn-ctl-control-of *crt-art*)))))

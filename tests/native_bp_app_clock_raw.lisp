@@ -15,6 +15,12 @@
         (fn-owner-operator-submit :accepted)
         (fn-owner-stamp-status (push :stamp-status *events*) *stamp-status*)
         (otherwise (error "unexpected owner action ~s" name))))
+; The operator submit reads the stored octets through the arena (flip-L8-2):
+; the dispatcher calls it as an arena action.
+(defun fnn-owner-arena-action (name &rest args)
+  (apply #'fnn-owner-action name args))
+(defun fnn-core-arena-state (name &rest args)
+  (declare (ignore name args)) nil)
 ; Operator logging is a side effect after the ACL2 outcome (the same stub as
 ; native_owner_bound_commit_raw.lisp); it decides nothing here.
 (defun fnn-owner-log (&rest arguments) (declare (ignore arguments)) nil)

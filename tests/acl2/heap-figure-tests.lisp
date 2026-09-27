@@ -1,7 +1,9 @@
-; Teeth for books/heap-figure (PRF-198): the figures of the presets on the
-; 69046a76 image's core, the keystone's reachable witness and one
-; counterexample and one must-fail per hypothesis, the small preset on a
-; small machine, init's default, and the report line the host prints.
+; Teeth for books/heap-figure (PRF-198, re-derived by reservation-after-flip):
+; the figures of the presets on the 69046a76 image's core (a natural CORE:
+; the whole file counted as dynamic content) and on the production image's
+; observation (FILE . DYNAMIC), the keystones' reachable witnesses and one
+; counterexample and one must-fail per hypothesis, the small preset's run on
+; a small machine, init's default, and the report line the host prints.
 (in-package "ACL2")
 (include-book "../../books/heap-figure")
 (include-book "../../books/codec-attach")
@@ -12,53 +14,68 @@
 (defconst *hft-nursery* (* 64 1024 1024))    ; +fnn-gc-nursery-octets+
 (defconst *hft-2g* (* 2048 *fn-heap-mib*))
 
-; The keystone's conclusion, and its hypotheses one by one.
-(defun hft-conclusion (profile core nursery observations used)
-  (declare (xargs :mode :program))
-  (let ((decision (fn-heap-decide profile core nursery observations)))
-    (and (<= (+ core nursery
-                (* 2 *fn-heap-octets-per-list-octet*
-                   (+ used used (fn-bs-profile-max-record-octets profile)))
-                (* 2 (fn-ock-capture-budget profile)))
-             (* *fn-heap-mib* (fn-heap-decision-mb decision)))
-         (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
-             (fn-heap-machine-octets observations)))))
+;; The production image's observation (hbox, 8ee846d9a): a 200,411,640-octet
+;; core holding 114,644,864 octets of dynamic content.
+(defconst *hft-prod-core* '(200411640 . 114644864))
+(defconst *hft-big* 132000000000)
+(defconst *hft-1536* (* 1536 *fn-heap-mib*))   ; OpenBSD's default login class
 
-(defun hft-hyps (profile core nursery observations used)
+; The keystone's conclusion, and its hypotheses one by one.
+(defun hft-conclusion (profile core nursery observations used n ou on)
+  (declare (xargs :mode :program))
+  (let* ((decision (fn-heap-decide profile core nursery observations))
+         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
+    (and (<= (fn-heap-store-need profile core used n ou on
+                                 (fn-heap-nursery-trigger d nursery))
+             d)
+         (<= d (fn-heap-machine-octets observations)))))
+
+(defun hft-hyps (profile core nursery observations used n ou on)
   (declare (xargs :mode :program))
   (list (fn-bs-profile-admittedp profile)
         (equal (car (fn-heap-decide profile core nursery observations)) :heap)
-        (<= used (fn-bs-profile-max-history-octets profile))
-        (natp core)
-        (natp nursery)))
+        (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+        (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+        (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
+        (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile)))))
 
 ; -----------------------------------------------------------------------------
-; The figures (SBCL megabytes; the machine 2 GiB).
+; The figures (SBCL megabytes).  The small preset at its bounds: the state of
+; 16,384 records in 16 groups and a full replay of them, 1,924 MB on the
+; 69046a76 core, 1,662 MB on the production image (dev before this lane:
+; 1,003 and 824).  The larger presets are refused on these machines.
 
 (assert! (equal (fn-heap-figure-octets *fn-heap-small-profile* *hft-core* *hft-nursery*)
-                1051710130))
+                2017186482))
 (assert! (equal (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
                                 (list *hft-2g*))
-                '(:heap 1003 "small" 2048)))
+                '(:heap 1924 "small" 2048)))
+(assert! (equal (fn-heap-decide *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                (list *hft-big*))
+                '(:heap 1662 "small" 125885)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-development* *hft-core* *hft-nursery*
                                 (list *hft-2g*))
-                '(:refused :machine-cannot-hold-profile 2673 2048)))
+                '(:refused :machine-cannot-hold-profile 7934 2048)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-scale* *hft-core* *hft-nursery*
-                                (list 132000000000))
-                '(:heap 54753 "scale" 125885)))
+                                (list *hft-big*))
+                '(:refused :machine-cannot-hold-profile 221127 125885)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-defaults* *hft-core* *hft-nursery*
-                                (list 132000000000))
-                '(:refused :machine-cannot-hold-profile 73402933 125885)))
-; No store: the image must fit, then the store-less figure, 1,024 MB
-; whatever the machine (PKT-686 item 3), not the machine.
-(assert! (equal (fn-heap-decide nil *hft-core* *hft-nursery* (list *hft-2g*))
-                '(:heap 1024 "none" 2048)))
-(assert! (equal (fn-heap-decide nil *hft-core* *hft-nursery* (list 132000000000))
-                '(:heap 1024 "none" 125885)))
-(assert! (equal (fn-heap-decide nil *hft-core* *hft-nursery* (list (* 256 *fn-heap-mib*)))
-                '(:refused :machine-cannot-hold-image 436 256)))
+                                (list *hft-big*))
+                '(:refused :machine-cannot-hold-profile 10990324339 125885)))
 (assert! (equal (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery* nil)
                 '(:refused :machine-memory-unobserved 0 0)))
+
+; The image observation: the least of the file and the dynamic space in use.
+(assert! (equal (fn-heap-core-dynamic *hft-prod-core*) 114644864))
+(assert! (equal (fn-heap-core-file *hft-prod-core*) 200411640))
+(assert! (equal (fn-heap-core-dynamic '(100 . 500)) 100))
+(assert! (equal (fn-heap-core-dynamic 389141032) 389141032))
+
+; The collector's trigger the host sets: a sixteenth of the space, 8 MiB at
+; least, the host's 64 MiB cap at most.
+(assert! (equal (fn-heap-nursery-trigger (* 256 *fn-heap-mib*) *hft-nursery*) (* 16 *fn-heap-mib*)))
+(assert! (equal (fn-heap-nursery-trigger (* 64 *fn-heap-mib*) *hft-nursery*) (* 8 *fn-heap-mib*)))
+(assert! (equal (fn-heap-nursery-trigger (* 4096 *fn-heap-mib*) *hft-nursery*) *hft-nursery*))
 
 ; The machine is the least positive observation.
 (assert! (equal (fn-heap-machine-octets (list 132000000000 nil 0 *hft-2g* 4294967296))
@@ -74,205 +91,183 @@
 (assert! (equal (fn-heap-report-line
                  (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
                                  (list *hft-2g*)))
-                "heap=1003 MB profile=small machine=2048 MB"))
+                "heap=1924 MB profile=small machine=2048 MB"))
 (assert! (equal (fn-heap-report-line
                  (fn-heap-decide *fn-bs-profile-development* *hft-core* *hft-nursery*
                                  (list *hft-2g*)))
-                "refused machine-cannot-hold-profile heap=2673 MB machine=2048 MB"))
-(assert! (equal (fn-heap-decision-exit-code '(:heap 1003 "small" 2048)) 0))
+                "refused machine-cannot-hold-profile heap=7934 MB machine=2048 MB"))
+(assert! (equal (fn-heap-decision-exit-code '(:heap 1924 "small" 2048)) 0))
 (assert! (equal (fn-heap-decision-exit-code
-                 '(:refused :machine-cannot-hold-profile 2673 2048))
+                 '(:refused :machine-cannot-hold-profile 7934 2048))
                 1))
 
 ; -----------------------------------------------------------------------------
 ; The keystone: a reachable witness with every hypothesis and the conclusion
-; (the small store full to H), then per hypothesis a counterexample where the
-; others hold, it fails, and the conclusion fails, and the must-fail of the
-; theorem without it.  Each must-fail runs under the keystone's own hints, so
-; it shows the keystone's proof fails without that hypothesis (open, the five
-; searches took 23.4, 3.6, 3.9, 3.9 and 3.9 s on persvati; hinted, 0.1 s each);
-; the concrete counterexample above each one is the evidence of falsity.
+; (the small store full to H and T, and a full replay of it), then per
+; hypothesis a counterexample where the others hold, it fails, and the
+; conclusion fails, and the must-fail of the theorem without it (under the
+; keystone's own hints).
 
-(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-core* *hft-nursery*
-                          (list *hft-2g*) 8388608)
-                '(t t t t t)))
-(assert! (hft-conclusion *fn-heap-small-profile* *hft-core* *hft-nursery*
-                         (list *hft-2g*) 8388608))
+(defconst *hft-h* 8388608)
+(defconst *hft-t* 16384)
 
-; Without the admitted profile: no profile, an image that exactly fills the
-; store-less figure's 1,024 MiB; the capture buffer's framing no longer fits.
-(assert! (equal (hft-hyps nil (- (* 1024 *fn-heap-mib*) *hft-nursery*) *hft-nursery*
-                          (list *hft-2g*) 0)
-                '(nil t t t t)))
-(assert! (not (hft-conclusion nil (- (* 1024 *fn-heap-mib*) *hft-nursery*) *hft-nursery*
-                              (list *hft-2g*) 0)))
-(must-fail
- (defthm hft-without-admitted
-   (let ((decision (fn-heap-decide profile core nursery observations)))
-     (implies (and (equal (car decision) :heap)
-                   (<= used (fn-bs-profile-max-history-octets profile))
-                   (natp core) (natp nursery))
-              (<= (+ core nursery
-                     (* 2 *fn-heap-octets-per-list-octet*
-                        (+ used used (fn-bs-profile-max-record-octets profile)))
-                     (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
-   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
-                                       fn-bs-profile-admittedp
-                                       fn-bs-profile-max-history-octets
-                                       fn-bs-profile-max-record-octets
-                                       fn-bs-profile-field
-                                       fn-heap-profile-word))
-            :use ((:instance fn-heap-mb-of-covers
-                             (octets (fn-heap-figure-octets profile core nursery))))))))
+(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                          (list *hft-2g*) *hft-h* *hft-t* *hft-h* *hft-t*)
+                '(t t t t t t)))
+(assert! (hft-conclusion *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                         (list *hft-2g*) *hft-h* *hft-t* *hft-h* *hft-t*))
 
-; Without the accepted decision: the development profile on 2 GiB is refused.
-(assert! (equal (hft-hyps *fn-bs-profile-development* *hft-core* *hft-nursery*
-                          (list *hft-2g*) 0)
-                '(t nil t t t)))
-(assert! (not (hft-conclusion *fn-bs-profile-development* *hft-core* *hft-nursery*
-                              (list *hft-2g*) 0)))
-(must-fail
- (defthm hft-without-heap
-   (let ((decision (fn-heap-decide profile core nursery observations)))
-     (implies (and (fn-bs-profile-admittedp profile)
-                   (<= used (fn-bs-profile-max-history-octets profile))
-                   (natp core) (natp nursery))
-              (<= (+ core nursery
-                     (* 2 *fn-heap-octets-per-list-octet*
-                        (+ used used (fn-bs-profile-max-record-octets profile)))
-                     (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
-   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
-                                       fn-bs-profile-admittedp
-                                       fn-bs-profile-max-history-octets
-                                       fn-bs-profile-max-record-octets
-                                       fn-bs-profile-field
-                                       fn-heap-profile-word))
-            :use ((:instance fn-heap-mb-of-covers
-                             (octets (fn-heap-figure-octets profile core nursery))))))))
+(defmacro hft-must-fail (name &rest hyps)
+  `(must-fail
+    (defthm ,name
+      (let* ((decision (fn-heap-decide profile core nursery observations))
+             (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
+        (implies (and ,@hyps)
+                 (<= (fn-heap-store-need profile core used n ou on
+                                         (fn-heap-nursery-trigger d nursery))
+                     d)))
+      :hints (("Goal" :in-theory (e/d () (fn-heap-profile-word fn-bs-profile-admittedp
+                                          fn-bs-profile-max-history-octets
+                                          fn-bs-profile-max-transactions
+                                          fn-heap-machine-octets fn-heap-storeless-decide))
+               :use ((:instance fn-heap-mb-of-covers
+                                (octets (fn-heap-figure-octets profile core nursery)))
+                     (:instance fn-heap-store-figure-holds-every-store
+                                (observed nil)
+                                (d (* *fn-heap-mib*
+                                      (fn-heap-mb-of (fn-heap-figure-octets profile core
+                                                                            nursery)))))))))))
 
-; Without the history bound: a history past H.
-(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-core* *hft-nursery*
-                          (list *hft-2g*) (expt 2 40))
-                '(t t nil t t)))
-(assert! (not (hft-conclusion *fn-heap-small-profile* *hft-core* *hft-nursery*
-                              (list *hft-2g*) (expt 2 40))))
-(must-fail
- (defthm hft-without-history-bound
-   (let ((decision (fn-heap-decide profile core nursery observations)))
-     (implies (and (fn-bs-profile-admittedp profile)
-                   (equal (car decision) :heap)
-                   (natp core) (natp nursery))
-              (<= (+ core nursery
-                     (* 2 *fn-heap-octets-per-list-octet*
-                        (+ used used (fn-bs-profile-max-record-octets profile)))
-                     (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
-   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
-                                       fn-bs-profile-admittedp
-                                       fn-bs-profile-max-history-octets
-                                       fn-bs-profile-max-record-octets
-                                       fn-bs-profile-field
-                                       fn-heap-profile-word))
-            :use ((:instance fn-heap-mb-of-covers
-                             (octets (fn-heap-figure-octets profile core nursery))))))))
+; Without the admitted profile: no profile, whose decision is the store-less
+; figure: a 100 MiB image, no nursery cap, a machine of exactly its room; the
+; heap is the image, and the collector's 8 MiB least trigger does not fit.
+(assert! (equal (hft-hyps nil (* 100 *fn-heap-mib*) 0 (list (* 206 *fn-heap-mib*)) 0 0 0 0)
+                '(nil t t t t t)))
+(assert! (not (hft-conclusion nil (* 100 *fn-heap-mib*) 0 (list (* 206 *fn-heap-mib*))
+                              0 0 0 0)))
+(hft-must-fail hft-without-admitted
+               (equal (car decision) :heap)
+               (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+               (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
 
-; Without a natural core: a fractional core the figure reads as 0.
-(assert! (equal (hft-hyps *fn-heap-small-profile* (+ 1000000000 1/2) *hft-nursery*
-                          (list *hft-2g*) 0)
-                '(t t t nil t)))
-(assert! (not (hft-conclusion *fn-heap-small-profile* (+ 1000000000 1/2) *hft-nursery*
-                              (list *hft-2g*) 0)))
-(must-fail
- (defthm hft-without-natp-core
-   (let ((decision (fn-heap-decide profile core nursery observations)))
-     (implies (and (fn-bs-profile-admittedp profile)
-                   (equal (car decision) :heap)
-                   (<= used (fn-bs-profile-max-history-octets profile))
-                   (natp nursery))
-              (<= (+ core nursery
-                     (* 2 *fn-heap-octets-per-list-octet*
-                        (+ used used (fn-bs-profile-max-record-octets profile)))
-                     (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
-   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
-                                       fn-bs-profile-admittedp
-                                       fn-bs-profile-max-history-octets
-                                       fn-bs-profile-max-record-octets
-                                       fn-bs-profile-field
-                                       fn-heap-profile-word))
-            :use ((:instance fn-heap-mb-of-covers
-                             (octets (fn-heap-figure-octets profile core nursery))))))))
+; Without the accepted decision: the small store on 1,536 MiB, refused.
+(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                          (list *hft-1536*) *hft-h* *hft-t* *hft-h* *hft-t*)
+                '(t nil t t t t)))
+(assert! (not (hft-conclusion *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                              (list *hft-1536*) *hft-h* *hft-t* *hft-h* *hft-t*)))
+(hft-must-fail hft-without-heap
+               (fn-bs-profile-admittedp profile)
+               (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+               (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
 
-; Without a natural nursery: the same with the nursery.
-(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-core* (+ 1000000000 1/2)
-                          (list *hft-2g*) 0)
-                '(t t t t nil)))
-(assert! (not (hft-conclusion *fn-heap-small-profile* *hft-core* (+ 1000000000 1/2)
-                              (list *hft-2g*) 0)))
-(must-fail
- (defthm hft-without-natp-nursery
-   (let ((decision (fn-heap-decide profile core nursery observations)))
-     (implies (and (fn-bs-profile-admittedp profile)
-                   (equal (car decision) :heap)
-                   (<= used (fn-bs-profile-max-history-octets profile))
-                   (natp core))
-              (<= (+ core nursery
-                     (* 2 *fn-heap-octets-per-list-octet*
-                        (+ used used (fn-bs-profile-max-record-octets profile)))
-                     (* 2 (fn-ock-capture-budget profile)))
-                  (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
-   :hints (("Goal" :in-theory (e/d () (fn-ock-capture-budget
-                                       fn-bs-profile-admittedp
-                                       fn-bs-profile-max-history-octets
-                                       fn-bs-profile-max-record-octets
-                                       fn-bs-profile-field
-                                       fn-heap-profile-word))
-            :use ((:instance fn-heap-mb-of-covers
-                             (octets (fn-heap-figure-octets profile core nursery))))))))
+; Without USED within H: a state of 100 H.
+(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                          (list *hft-2g*) (* 100 *hft-h*) *hft-t* *hft-h* *hft-t*)
+                '(t t nil t t t)))
+(assert! (not (hft-conclusion *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                              (list *hft-2g*) (* 100 *hft-h*) *hft-t* *hft-h* *hft-t*)))
+(hft-must-fail hft-without-used
+               (fn-bs-profile-admittedp profile)
+               (equal (car decision) :heap)
+               (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+               (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
+
+; Without N within T: ten times T records.
+(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                          (list *hft-2g*) *hft-h* (* 10 *hft-t*) *hft-h* *hft-t*)
+                '(t t t nil t t)))
+(assert! (not (hft-conclusion *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                              (list *hft-2g*) *hft-h* (* 10 *hft-t*) *hft-h* *hft-t*)))
+(hft-must-fail hft-without-records
+               (fn-bs-profile-admittedp profile)
+               (equal (car decision) :heap)
+               (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
+
+; Without the replay's octets within H: a replay of 10 H.
+(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                          (list *hft-2g*) *hft-h* *hft-t* (* 10 *hft-h*) *hft-t*)
+                '(t t t t nil t)))
+(assert! (not (hft-conclusion *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                              (list *hft-2g*) *hft-h* *hft-t* (* 10 *hft-h*) *hft-t*)))
+(hft-must-fail hft-without-open-octets
+               (fn-bs-profile-admittedp profile)
+               (equal (car decision) :heap)
+               (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+               (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
+
+; Without the replay's records within T: a replay of 10 T records.
+(assert! (equal (hft-hyps *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                          (list *hft-2g*) *hft-h* *hft-t* *hft-h* (* 10 *hft-t*))
+                '(t t t t t nil)))
+(assert! (not (hft-conclusion *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                              (list *hft-2g*) *hft-h* *hft-t* *hft-h* (* 10 *hft-t*))))
+(hft-must-fail hft-without-open-records
+               (fn-bs-profile-admittedp profile)
+               (equal (car decision) :heap)
+               (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+               (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+               (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile))))
 
 ; -----------------------------------------------------------------------------
 ; The refusal theorem's witnesses: both arms reached on admitted profiles.
 
 (assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
-                                     (list (* 1002 *fn-heap-mib*))))
+                                     (list (* 1923 *fn-heap-mib*))))
                 :refused))
 (assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
-                                     (list (* 1003 *fn-heap-mib*))))
+                                     (list (* 1924 *fn-heap-mib*))))
                 :heap))
 
 ; -----------------------------------------------------------------------------
-; The small machine: witness at the bound, and per hypothesis a counterexample.
+; The small machine: the run of an empty small store.  Witness at the bound,
+; and per hypothesis a counterexample.
 
-(assert! (equal (car (fn-heap-decide *fn-heap-small-profile* (* 512 *fn-heap-mib*)
-                                     *hft-nursery* (list (* 1536 *fn-heap-mib*))))
+(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* (* 512 *fn-heap-mib*)
+                                          *hft-nursery* (list *hft-1536*) '(0 . 0))
+                '(:heap 1041 "small" 1536)))
+; a core of more than 512 MiB of dynamic content
+(assert! (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile*
+                                               (* 1024 *fn-heap-mib*) *hft-nursery*
+                                               (list *hft-1536*) '(0 . 0)))
+                :refused))
+; (no nursery hypothesis: even a 1 GiB cap is accepted, the trigger being a
+; sixteenth of the space)
+(assert! (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile*
+                                               (* 512 *fn-heap-mib*) (* 1024 *fn-heap-mib*)
+                                               (list *hft-1536*) '(0 . 0)))
                 :heap))
-; a core past 512 MiB
-(assert! (equal (car (fn-heap-decide *fn-heap-small-profile* (* 1024 *fn-heap-mib*)
-                                     *hft-nursery* (list (* 1536 *fn-heap-mib*))))
-                :refused))
-; a nursery past 64 MiB
-(assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core*
-                                     (* 1024 *fn-heap-mib*) (list (* 1536 *fn-heap-mib*))))
-                :refused))
 ; a machine under 1536 MiB
-(assert! (equal (car (fn-heap-decide *fn-heap-small-profile* (* 512 *fn-heap-mib*)
-                                     *hft-nursery* (list (* 1024 *fn-heap-mib*))))
+(assert! (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile*
+                                               (* 512 *fn-heap-mib*) *hft-nursery*
+                                               (list (* 1024 *fn-heap-mib*)) '(0 . 0)))
                 :refused))
 ; a machine that is not a positive integer is no observation
-(assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
-                                     (list (+ (* 1536 *fn-heap-mib*) 1/2))))
+(assert! (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-core*
+                                               *hft-nursery*
+                                               (list (+ (* 1536 *fn-heap-mib*) 1/2))
+                                               '(0 . 0)))
                 :refused))
 (must-fail
  (defthm hft-small-without-machine-bound
-   (implies (and (<= core (* 512 *fn-heap-mib*))
-                 (<= nursery (* 64 *fn-heap-mib*))
+   (implies (and (<= (fn-heap-core-dynamic core) (* 512 *fn-heap-mib*))
                  (posp machine))
-            (equal (car (fn-heap-decide *fn-heap-small-profile* core nursery
-                                        (list machine)))
+            (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* core nursery
+                                                  (list machine) '(0 . 0)))
                    :heap))
-   :hints (("Goal" :in-theory (enable fn-heap-mb-of)))))
+   :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets)
+                                   (fn-heap-profile-word))
+            :use ((:instance fn-heap-with-nursery-is-at-most-an-eighth-more
+                             (base (fn-heap-store-base-octets *fn-heap-small-profile* core
+                                                              '(0 . 0)))))))))
 
 ; -----------------------------------------------------------------------------
 ; init's default.
@@ -294,7 +289,6 @@
 
 (defconst *hft-bsd-core* 195856696)
 (defconst *hft-4g* (* 4096 *fn-heap-mib*))
-(defconst *hft-1536* (* 1536 *fn-heap-mib*))   ; OpenBSD's default login class
 
 (defun hft-sl-conclusion (core nursery machine)
   (declare (xargs :mode :program))
@@ -334,19 +328,19 @@
 (assert! (equal (car (fn-heap-storeless-decide 0 0 (+ *hft-4g* 1/2))) :refused))
 
 ; -----------------------------------------------------------------------------
-; The operation's figure (PKT-686).  fn-heap-operation-decide-holds-the-
-; operation: reachable witnesses (`store reclaim' of the small store full to
-; H on a 2 GiB machine with the 195,856,696-octet core the OpenBSD guest
-; built, the same on the 69046a76 core on 4 GiB, and -- item 1 -- the
-; measured 3,000-article store observed at 7,271,160 octets), then per
-; hypothesis a counterexample where the others hold and the conclusion
-; fails, and the must-fail of the keystone without it.
+; The operation's figure (PKT-686, reconciled by reservation-after-flip).
+; fn-heap-operation-decide-holds-the-operation: the offline verbs' measured
+; list copies; reachable witnesses (`store reclaim' of the small store full
+; to H on a 2 GiB machine with the 195,856,696-octet core the OpenBSD guest
+; built, the same on the 69046a76 core on 4 GiB, and the measured
+; 3,000-article store observed at 7,271,160 octets in 3,000 files), then per
+; hypothesis a counterexample and the must-fail of the keystone without it.
 
 (defun hft-op-conclusion (action profile core nursery observations observed used)
   (declare (xargs :mode :program))
   (let ((decision (fn-heap-operation-decide action profile core nursery observations
                                             observed)))
-    (and (<= (+ core nursery
+    (and (<= (+ (fn-heap-core-dynamic core) nursery
                 (* 2 *fn-heap-octets-per-list-octet*
                    (+ (* (fn-heap-operation-history-copies action) used)
                       (fn-bs-profile-max-record-octets profile)
@@ -358,93 +352,101 @@
 
 (defun hft-op-hyps (action profile core nursery observations observed used)
   (declare (xargs :mode :program))
-  (list (fn-bs-profile-admittedp profile)
+  (list (if (member-equal action *fn-heap-list-actions*) t nil)
+        (fn-bs-profile-admittedp profile)
         (equal (car (fn-heap-operation-decide action profile core nursery observations
                                               observed))
                :heap)
-        (<= used (fn-heap-operation-history-octets action profile observed))
-        (natp core)
+        (<= used (fn-bs-profile-max-history-octets profile))
+        (if (natp (fn-heap-observed-octets observed))
+            (<= used (fn-heap-observed-octets observed))
+          t)
         (natp nursery)))
 
-; The compaction verbs count six copies, every other command two; a
-; serve-class command's decision is fn-heap-decide's, whatever it observed.
+; The compaction verbs count six copies, every other command two; any other
+; command unobserved decides as fn-heap-decide, and observed as the run
+; does; `init' judges an empty store whatever it was handed.
 (assert! (equal (fn-heap-operation-history-copies :reclaim) 6))
 (assert! (equal (fn-heap-operation-history-copies :compact) 6))
 (assert! (equal (fn-heap-operation-history-copies :run) 2))
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) nil)
                 '(:heap 1843 "small" 2048)))
-(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
-                                          *hft-nursery* (list *hft-2g*) 100000)
+(assert! (equal (fn-heap-operation-decide :status *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) nil)
                 (fn-heap-decide *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
                                 (list *hft-2g*))))
-; Item 1: the offline verbs by the store's observed history.  An empty store
-; reclaims in 307 MB, the measured 3,000-article store (7,271,160 octets) in
-; 1,639 MB, a store of 100,000 octets in 325 MB; its recover in 313 MB where
-; `run' keeps H's 819 MB.  An observation past H changes nothing.
+(assert! (equal (fn-heap-operation-decide :status *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))
+                (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))))
+(assert! (equal (fn-heap-operation-decide :init *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) nil)
+                '(:heap 672 "small" 2048)))
+; By the store's observed history: an empty store reclaims in 672 MB, the
+; measured 3,000-article store in 1,639 MB (its six list copies), a store of
+; 100,000 octets in 50 files compacts, recovers and runs in 681 MB, where an
+; unobserved run keeps the bounds' 1,740 MB.  An observation past H or T
+; changes nothing; octets without a count take T's records.
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
-                                          *hft-nursery* (list *hft-2g*) 0)
-                '(:heap 307 "small" 2048)))
+                                          *hft-nursery* (list *hft-2g*) '(0 . 0))
+                '(:heap 672 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
-                                          *hft-nursery* (list *hft-2g*) 7271160)
-                '(:heap 1639 "small" 2048)))
+                                          *hft-nursery* (list *hft-4g*) '(7271160 . 3000))
+                '(:heap 1639 "small" 4096)))
 (assert! (equal (fn-heap-operation-decide :compact *fn-heap-small-profile* *hft-bsd-core*
-                                          *hft-nursery* (list *hft-2g*) 100000)
-                '(:heap 325 "small" 2048)))
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))
+                '(:heap 681 "small" 2048)))
+(assert! (equal (fn-heap-operation-decide :recover *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))
+                '(:heap 681 "small" 2048)))
+(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))
+                '(:heap 681 "small" 2048)))
+(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) nil)
+                '(:heap 1740 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :recover *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) 100000)
-                '(:heap 313 "small" 2048)))
-(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
-                                          *hft-nursery* (list *hft-2g*) 100000)
-                '(:heap 819 "small" 2048)))
-; A full store's files exceed H (the budget counts payloads, the files hold
-; whole records): an observation past H is the figure's term, up to the
-; recovery input bound.
-(assert! (equal (fn-heap-operation-history-octets :reclaim *fn-heap-small-profile* 9000000)
-                9000000))
-(assert! (< (fn-heap-operation-figure-octets :reclaim *fn-heap-small-profile* *hft-bsd-core*
-                                             *hft-nursery* nil)
-            (fn-heap-operation-figure-octets :reclaim *fn-heap-small-profile* *hft-bsd-core*
-                                             *hft-nursery* 9000000)))
-(assert! (equal (fn-heap-operation-history-octets :reclaim *fn-heap-small-profile*
-                                                  (expt 10 12))
-                (fn-srb-replay-input-bound *fn-heap-small-profile*)))
-(assert! (equal (fn-heap-operation-history-octets :run *fn-heap-small-profile* 100)
-                8388608))
-; Under OpenBSD's default 1,536 MiB data limit the small store's reclaim at H
-; is refused by name, where `run' is accepted; observed empty, it is accepted.
+                '(:heap 1234 "small" 2048)))
+(assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*)
+                                          (cons (* 2 8388608) (* 2 16384)))
+                (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) nil)))
+; Under OpenBSD's default 1,536 MiB data limit the small store's reclaim and
+; run at the bounds are refused by name; observed empty, both are accepted.
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-1536*) nil)
                 '(:refused :machine-cannot-hold-profile 1843 1536)))
-(assert! (equal (car (fn-heap-operation-decide :reclaim *fn-heap-small-profile*
-                                               *hft-bsd-core* *hft-nursery*
-                                               (list *hft-1536*) 0))
-                :heap))
-(assert! (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
-                                               *hft-nursery* (list *hft-1536*) nil))
-                :heap))
-; An observation within H only lowers the figure.
+(assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-1536*) '(0 . 0))
+                '(:heap 672 "small" 1536)))
+(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-1536*) '(0 . 0))
+                '(:heap 672 "small" 1536)))
+; The observation only lowers the figure.
 (assert! (< (fn-heap-operation-figure-octets :reclaim *fn-heap-small-profile* *hft-bsd-core*
-                                             *hft-nursery* 7271160)
+                                             *hft-nursery* '(7271160 . 3000))
             (fn-heap-operation-figure-octets :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                              *hft-nursery* nil)))
 
 ; The witnesses: every hypothesis and the conclusion.
 (assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
                              (list *hft-2g*) nil 8388608)
-                '(t t t t t)))
+                '(t t t t t t)))
 (assert! (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
                             (list *hft-2g*) nil 8388608))
 (assert! (equal (hft-op-hyps :compact *fn-heap-small-profile* *hft-core* *hft-nursery*
                              (list *hft-4g*) nil 8388608)
-                '(t t t t t)))
+                '(t t t t t t)))
 (assert! (hft-op-conclusion :compact *fn-heap-small-profile* *hft-core* *hft-nursery*
                             (list *hft-4g*) nil 8388608))
 (assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
-                             (list *hft-2g*) 7271160 7271160)
-                '(t t t t t)))
+                             (list *hft-4g*) '(7271160 . 3000) 7271160)
+                '(t t t t t t)))
 (assert! (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
-                            (list *hft-2g*) 7271160 7271160))
+                            (list *hft-4g*) '(7271160 . 3000) 7271160))
 
 (defmacro hft-op-must-fail (name &rest hyps)
   `(must-fail
@@ -452,89 +454,374 @@
       (let ((decision (fn-heap-operation-decide action profile core nursery observations
                                                 observed)))
         (implies (and ,@hyps)
-                 (<= (+ core nursery
+                 (<= (+ (fn-heap-core-dynamic core) nursery
                         (* 2 *fn-heap-octets-per-list-octet*
                            (+ (* (fn-heap-operation-history-copies action) used)
                               (fn-bs-profile-max-record-octets profile)
                               (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile))))
                         (* 2 (fn-ock-capture-budget profile)))
                      (* *fn-heap-mib* (fn-heap-decision-mb decision)))))
-      :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets
-                                       fn-heap-operation-list-octets fn-heap-buffer-octets
-                                       fn-heap-operation-history-octets)
-                                      (fn-ock-capture-budget
-                                       fn-bs-profile-admittedp
-                                       fn-bs-profile-max-history-octets
-                                       fn-bs-profile-max-record-octets
-                                       fn-bs-profile-field
-                                       fn-heap-profile-word))
-               :use ((:instance fn-heap-mb-of-covers
+      :hints (("Goal" :in-theory (union-theories
+                                  '(fn-heap-operation-list-figure-octets
+                                    fn-heap-operation-list-octets fn-heap-buffer-octets
+                                    fn-heap-mb-of-natp fn-heap-operation-figure-octets-natp
+                                    fn-heap-nfix-of-operation-figure-octets natp nfix)
+                                  (theory 'minimal-theory))
+               :use (fn-heap-operation-decide-accepted
+                     fn-heap-operation-figure-holds-the-parts
+                     fn-heap-operation-used-within-the-history-octets
+                     (:instance fn-heap-mb-of-covers
                                 (octets (fn-heap-operation-figure-octets
                                          action profile core nursery observed)))))))))
+
+; Without an offline verb: `run' under a 4 GiB nursery cap, which the list
+; model counts whole and the store figure (the trigger the host sets) does not.
+(defconst *hft-4g-nursery* (* 4096 *fn-heap-mib*))
+(assert! (equal (hft-op-hyps :run *fn-heap-small-profile* *hft-bsd-core* *hft-4g-nursery*
+                             (list *hft-big*) nil 0)
+                '(nil t t t t t)))
+(assert! (not (hft-op-conclusion :run *fn-heap-small-profile* *hft-bsd-core*
+                                 *hft-4g-nursery* (list *hft-big*) nil 0)))
+(hft-op-must-fail hft-op-without-offline-verb
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (<= used (fn-bs-profile-max-history-octets profile))
+                  (implies (natp (fn-heap-observed-octets observed))
+                           (<= used (fn-heap-observed-octets observed)))
+                  (natp nursery))
 
 ; Without the admitted profile: no store, whose figure is the store-less
 ; one: an image of exactly 1,024 MiB with the nursery fills it, and the
 ; capture buffers of no profile do not fit beside.
 (defconst *hft-full-core* (- (* 1024 *fn-heap-mib*) *hft-nursery*))
 (assert! (equal (hft-op-hyps :reclaim nil *hft-full-core* *hft-nursery* (list *hft-4g*) nil 0)
-                '(nil t t t t)))
+                '(t nil t t t t)))
 (assert! (not (hft-op-conclusion :reclaim nil *hft-full-core* *hft-nursery*
                                  (list *hft-4g*) nil 0)))
 (hft-op-must-fail hft-op-without-admitted
+                  (member-equal action *fn-heap-list-actions*)
                   (equal (car decision) :heap)
-                  (<= used (fn-heap-operation-history-octets action profile observed))
-                  (natp core) (natp nursery))
+                  (<= used (fn-bs-profile-max-history-octets profile))
+                  (implies (natp (fn-heap-observed-octets observed))
+                           (<= used (fn-heap-observed-octets observed)))
+                  (natp nursery))
 
 ; Without the accepted decision: the reclaim at H under 1,536 MiB.
 (assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
                              (list *hft-1536*) nil 8388608)
-                '(t nil t t t)))
+                '(t t nil t t t)))
 (assert! (not (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                  *hft-nursery* (list *hft-1536*) nil 8388608)))
 (hft-op-must-fail hft-op-without-heap
+                  (member-equal action *fn-heap-list-actions*)
                   (fn-bs-profile-admittedp profile)
-                  (<= used (fn-heap-operation-history-octets action profile observed))
-                  (natp core) (natp nursery))
-
-; Without USED within the history term: a history twice H, unobserved.
-(assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
-                             (list *hft-2g*) nil (* 2 8388608))
-                '(t t nil t t)))
-(assert! (not (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core*
-                                 *hft-nursery* (list *hft-2g*) nil (* 2 8388608))))
-(hft-op-must-fail hft-op-without-used-within-the-term
-                  (fn-bs-profile-admittedp profile)
-                  (equal (car decision) :heap)
-                  (natp core) (natp nursery))
-
-; The history hypothesis with an observation (item 1): the probe observed
-; 100,000 octets and the reclaim holds the measured store's 7,271,160.
-(assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
-                             (list *hft-2g*) 100000 7271160)
-                '(t t nil t t)))
-(assert! (not (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core*
-                                 *hft-nursery* (list *hft-2g*) 100000 7271160)))
-
-; Without a natural core: a fractional core the figure reads as 0.
-(assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* (+ 2000000000 1/2)
-                             *hft-nursery* (list *hft-4g*) nil 0)
-                '(t t t nil t)))
-(assert! (not (hft-op-conclusion :reclaim *fn-heap-small-profile* (+ 2000000000 1/2)
-                                 *hft-nursery* (list *hft-4g*) nil 0)))
-(hft-op-must-fail hft-op-without-natp-core
-                  (fn-bs-profile-admittedp profile)
-                  (equal (car decision) :heap)
-                  (<= used (fn-heap-operation-history-octets action profile observed))
+                  (<= used (fn-bs-profile-max-history-octets profile))
+                  (implies (natp (fn-heap-observed-octets observed))
+                           (<= used (fn-heap-observed-octets observed)))
                   (natp nursery))
 
-; Without a natural nursery: the same with the nursery.
+; Without USED within H: a history twice H, unobserved.
+(assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
+                             (list *hft-2g*) nil (* 2 8388608))
+                '(t t t nil t t)))
+(assert! (not (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core*
+                                 *hft-nursery* (list *hft-2g*) nil (* 2 8388608))))
+(hft-op-must-fail hft-op-without-used-within-h
+                  (member-equal action *fn-heap-list-actions*)
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (implies (natp (fn-heap-observed-octets observed))
+                           (<= used (fn-heap-observed-octets observed)))
+                  (natp nursery))
+
+; Without USED within the observed octets: the probe observed 100,000 octets
+; in 50 files and the reclaim holds the measured store's 7,271,160.
+(assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
+                             (list *hft-2g*) '(100000 . 50) 7271160)
+                '(t t t t nil t)))
+(assert! (not (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core*
+                                 *hft-nursery* (list *hft-2g*) '(100000 . 50) 7271160)))
+(hft-op-must-fail hft-op-without-used-within-observed
+                  (member-equal action *fn-heap-list-actions*)
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (<= used (fn-bs-profile-max-history-octets profile))
+                  (natp nursery))
+
+; Without a natural nursery: a fractional nursery the figure reads as 0.
 (assert! (equal (hft-op-hyps :reclaim *fn-heap-small-profile* *hft-bsd-core*
                              (+ 2000000000 1/2) (list *hft-4g*) nil 0)
-                '(t t t t nil)))
+                '(t t t t t nil)))
 (assert! (not (hft-op-conclusion :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                  (+ 2000000000 1/2) (list *hft-4g*) nil 0)))
 (hft-op-must-fail hft-op-without-natp-nursery
+                  (member-equal action *fn-heap-list-actions*)
                   (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
-                  (<= used (fn-heap-operation-history-octets action profile observed))
-                  (natp core))
+                  (<= used (fn-bs-profile-max-history-octets profile))
+                  (implies (natp (fn-heap-observed-octets observed))
+                           (<= used (fn-heap-observed-octets observed))))
+
+; -----------------------------------------------------------------------------
+; fn-heap-operation-decide-holds-the-store: the store model under every
+; command's figure, the open's input within the observation.  Witnesses: the
+; run of the measured 1,000-post store (2,465,160 octets in 1,000 files) at
+; the production image's observation, with the store grown to H and T; the
+; reclaim of the same; then per hypothesis a counterexample and a must-fail.
+
+(defun hft-st-conclusion (action profile core nursery observations observed used n ou on)
+  (declare (xargs :mode :program))
+  (let* ((decision (fn-heap-operation-decide action profile core nursery observations
+                                             observed))
+         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
+    (and (<= (fn-heap-store-need profile core used n ou on
+                                 (fn-heap-nursery-trigger d nursery))
+             d)
+         (<= d (fn-heap-machine-octets observations)))))
+
+(defun hft-st-hyps (action profile core nursery observations observed used n ou on)
+  (declare (xargs :mode :program))
+  (list (fn-bs-profile-admittedp profile)
+        (equal (car (fn-heap-operation-decide action profile core nursery observations
+                                              observed))
+               :heap)
+        (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+        (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+        (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+        (<= (nfix on) (fn-heap-open-records-bound profile observed))))
+
+(defconst *hft-1000* '(2465160 . 1000))
+(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-prod-core*
+                                          *hft-nursery* (list *hft-2g*) *hft-1000*)
+                '(:heap 791 "small" 2048)))
+(assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                             (list *hft-2g*) *hft-1000* *hft-h* *hft-t* 2465160 1000)
+                '(t t t t t t)))
+(assert! (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                            (list *hft-2g*) *hft-1000* *hft-h* *hft-t* 2465160 1000))
+(assert! (equal (hft-st-hyps :reclaim *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                             (list *hft-2g*) *hft-1000* *hft-h* *hft-t* 2465160 1000)
+                '(t t t t t t)))
+(assert! (hft-st-conclusion :reclaim *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                            (list *hft-2g*) *hft-1000* *hft-h* *hft-t* 2465160 1000))
+
+(defmacro hft-st-must-fail (name &rest hyps)
+  `(must-fail
+    (defthm ,name
+      (let* ((decision (fn-heap-operation-decide action profile core nursery observations
+                                                 observed))
+             (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
+        (implies (and ,@hyps)
+                 (<= (fn-heap-store-need profile core used n ou on
+                                         (fn-heap-nursery-trigger d nursery))
+                     d)))
+      :hints (("Goal" :in-theory (union-theories
+                                  '(fn-heap-mb-of-natp fn-heap-operation-figure-octets-natp
+                                    fn-heap-nfix-of-operation-figure-octets natp)
+                                  (theory 'minimal-theory))
+               :use (fn-heap-operation-decide-accepted
+                     fn-heap-operation-figure-holds-the-parts
+                     (:instance fn-heap-mb-of-covers
+                                (octets (fn-heap-operation-figure-octets
+                                         action profile core nursery observed)))
+                     (:instance fn-heap-store-figure-holds-every-store
+                                (d (* *fn-heap-mib*
+                                      (fn-heap-mb-of (fn-heap-operation-figure-octets
+                                                      action profile core nursery
+                                                      observed)))))))))))
+
+; Without the admitted profile: no store; a 100 MiB image, no nursery cap, a
+; machine of exactly the store-less room: the heap is the image, and the
+; collector's 8 MiB least trigger does not fit beside it.
+(assert! (equal (fn-heap-operation-decide :run nil (* 100 *fn-heap-mib*) 0
+                                          (list (* 206 *fn-heap-mib*)) nil)
+                '(:heap 100 "none" 206)))
+(assert! (equal (hft-st-hyps :run nil (* 100 *fn-heap-mib*) 0 (list (* 206 *fn-heap-mib*))
+                             nil 0 0 0 0)
+                '(nil t t t t t)))
+(assert! (not (hft-st-conclusion :run nil (* 100 *fn-heap-mib*) 0
+                                 (list (* 206 *fn-heap-mib*)) nil 0 0 0 0)))
+(hft-st-must-fail hft-st-without-admitted
+                  (equal (car decision) :heap)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+
+; Without the accepted decision: the unobserved run under 1,536 MiB.
+(assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                             (list *hft-1536*) nil *hft-h* *hft-t* *hft-h* *hft-t*)
+                '(t nil t t t t)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                 (list *hft-1536*) nil *hft-h* *hft-t* *hft-h* *hft-t*)))
+(hft-st-must-fail hft-st-without-heap
+                  (fn-bs-profile-admittedp profile)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+
+; Without USED within H: the run's state of 100 H.
+(assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                             (list *hft-2g*) *hft-1000* (* 100 *hft-h*) *hft-t* 0 0)
+                '(t t nil t t t)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                 (list *hft-2g*) *hft-1000* (* 100 *hft-h*) *hft-t* 0 0)))
+(hft-st-must-fail hft-st-without-used
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+
+; Without N within T: ten times T records.
+(assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                             (list *hft-2g*) *hft-1000* *hft-h* (* 10 *hft-t*) 0 0)
+                '(t t t nil t t)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                 (list *hft-2g*) *hft-1000* *hft-h* (* 10 *hft-t*) 0 0)))
+(hft-st-must-fail hft-st-without-records
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+
+; Without the open's octets within the observation: an empty store observed,
+; a replay of H.
+(assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                             (list *hft-2g*) '(0 . 0) *hft-h* *hft-t* *hft-h* 0)
+                '(t t t t nil t)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                 (list *hft-2g*) '(0 . 0) *hft-h* *hft-t* *hft-h* 0)))
+(hft-st-must-fail hft-st-without-open-octets
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+
+; Without the open's records within the observation: an empty store
+; observed, a replay of T records.
+(assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                             (list *hft-2g*) '(0 . 0) *hft-h* *hft-t* 0 *hft-t*)
+                '(t t t t t nil)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                 (list *hft-2g*) '(0 . 0) *hft-h* *hft-t* 0 *hft-t*)))
+(hft-st-must-fail hft-st-without-open-records
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed)))
+
+; -----------------------------------------------------------------------------
+; books/heap-store-figure's keystones directly.  fn-heap-with-nursery-holds-
+; the-trigger: witness at the small store's base (the trigger a sixteenth of
+; the space), and without D at least the figure: one megabyte less than the
+; base itself.  fn-heap-store-figure-holds-every-store: witness at the figure
+; itself with the store full and a full replay of it; each hypothesis's
+; counterexample (the others holding) and must-fail.
+
+(defconst *hft-base* (fn-heap-store-base-octets *fn-heap-small-profile* *hft-prod-core* nil))
+(defconst *hft-fig* (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core*
+                                                 *hft-nursery* nil))
+(assert! (<= (+ *hft-base* (* 2 (fn-heap-nursery-trigger *hft-fig* *hft-nursery*))) *hft-fig*))
+(assert! (< *hft-fig* (+ *hft-base* (* 2 (fn-heap-nursery-trigger *hft-fig* *hft-nursery*))
+                         (* 1 *fn-heap-mib*))))
+(assert! (not (<= (+ *hft-base* (* 2 (fn-heap-nursery-trigger (- *hft-base* *fn-heap-mib*)
+                                                              *hft-nursery*)))
+                  (- *hft-base* *fn-heap-mib*))))
+(must-fail
+ (defthm hft-with-nursery-without-the-figure
+   (implies (and (natp d) (natp base))
+            (<= (+ base (* 2 (fn-heap-nursery-trigger d nursery))) d))
+   :rule-classes nil))
+
+(defun hft-sf-hyps (d observed used n ou on)
+  (declare (xargs :mode :program))
+  (list (natp d)
+        (<= (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core*
+                                         *hft-nursery* observed)
+            d)
+        (<= (nfix used) *hft-h*) (<= (nfix n) *hft-t*)
+        (<= (nfix ou) (fn-heap-open-octets-bound *fn-heap-small-profile* observed))
+        (<= (nfix on) (fn-heap-open-records-bound *fn-heap-small-profile* observed))))
+
+(defun hft-sf-conclusion (d observed used n ou on)
+  (declare (xargs :mode :program))
+  (declare (ignore observed))
+  (<= (fn-heap-store-need *fn-heap-small-profile* *hft-prod-core* used n ou on
+                          (fn-heap-nursery-trigger d *hft-nursery*))
+      d))
+
+(assert! (equal (hft-sf-hyps *hft-fig* nil *hft-h* *hft-t* *hft-h* *hft-t*) '(t t t t t t)))
+(assert! (hft-sf-conclusion *hft-fig* nil *hft-h* *hft-t* *hft-h* *hft-t*))
+; D a fraction: the figure plus one half.
+(assert! (equal (hft-sf-hyps (+ *hft-fig* 1/2) nil 0 0 0 0) '(nil t t t t t)))
+; D under the figure: a megabyte less, the store full.
+(assert! (equal (hft-sf-hyps (- *hft-fig* *fn-heap-mib*) nil *hft-h* *hft-t* *hft-h* *hft-t*)
+                '(t nil t t t t)))
+(assert! (not (hft-sf-conclusion (- *hft-fig* *fn-heap-mib*) nil *hft-h* *hft-t* *hft-h* *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil (* 100 *hft-h*) *hft-t* *hft-h* *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil *hft-h* (* 10 *hft-t*) *hft-h* *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil *hft-h* *hft-t* (* 10 *hft-h*) *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil *hft-h* *hft-t* *hft-h* (* 10 *hft-t*))))
+; An observed empty store: its figure holds no replay of H.
+(defconst *hft-fig0* (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core*
+                                                  *hft-nursery* '(0 . 0)))
+(assert! (equal (hft-sf-hyps *hft-fig0* '(0 . 0) *hft-h* *hft-t* *hft-h* 0) '(t t t t nil t)))
+(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-h* *hft-t* *hft-h* 0)))
+(assert! (equal (hft-sf-hyps *hft-fig0* '(0 . 0) *hft-h* *hft-t* 0 *hft-t*) '(t t t t t nil)))
+(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-h* *hft-t* 0 *hft-t*)))
+
+(defmacro hft-sf-must-fail (name &rest hyps)
+  `(must-fail
+    (defthm ,name
+      (implies (and ,@hyps)
+               (<= (fn-heap-store-need profile core used n ou on
+                                       (fn-heap-nursery-trigger d nursery))
+                   d))
+      :hints (("Goal" :in-theory (union-theories
+                                  '(fn-heap-store-figure-octets fn-heap-store-base-octets-natp
+                                    fn-heap-nfix-of-nursery-trigger)
+                                  (theory 'minimal-theory))
+               :use ((:instance fn-heap-with-nursery-holds-the-trigger
+                                (base (fn-heap-store-base-octets profile core observed)))))))))
+
+(hft-sf-must-fail hft-sf-without-natp-d
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-the-figure
+                  (natp d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-used
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-records
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-open-octets
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-open-records
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed)))

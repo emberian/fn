@@ -4,6 +4,7 @@
 ; conclusion fails without it.
 (in-package "ACL2")
 (include-book "../../books/control-visible")
+(include-book "../../books/catalog-record")   ; fn-held-facts-of: the rows' facts
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *cvt-p* (make-list 32 :initial-element 17))
@@ -109,6 +110,33 @@
 (defconst *cvt-v0* (list (cons "<t@example.invalid>" *cvt-p-verified*)))
 (defconst *cvt-v1* (cons (cons "<c2@example.invalid>" *cvt-p-verified*) *cvt-v0*))
 
+; The Store's history the refresh reads the control facts from (records
+; flip: an archive article holds a handle; its row holds the facts decided
+; from its bytes at intern, books/catalog-record.lisp fn-held-facts-of).  A
+; row of BYTES at sequence SEQ and txid TXID; its handle is SEQ.
+(defun cvt-rec (seq txid msgid groups bytes)
+  (fn-held-make seq txid 1 msgid seq groups "a" "s" "e" 2 :legacy
+                (fn-held-facts-of bytes)
+                (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0) nil nil))
+(defconst *cvt-t-bytes*
+  (cvt-octets (list "From: p@example.invalid" "Newsgroups: fn.mod.a"
+                    "Message-ID: <t@example.invalid>" "Subject: t")))
+(defconst *cvt-o-bytes*
+  (cvt-octets (list "From: o@example.invalid" "Newsgroups: fn.mod.a"
+                    "Message-ID: <o@example.invalid>" "Subject: o")))
+(defconst *cvt-rt* (cvt-rec 0 4 "<t@example.invalid>" '("fn.mod.a") *cvt-t-bytes*))
+(defconst *cvt-rc2* (cvt-rec 1 5 "<c2@example.invalid>" '("control.cancel")
+                             (fn-article-payload *cvt-c2*)))
+(defconst *cvt-ro* (cvt-rec 2 6 "<o@example.invalid>" '("fn.mod.a") *cvt-o-bytes*))
+(defconst *cvt-hist* (list *cvt-rt* *cvt-rc2*))
+(assert-event
+ (and (fn-held-p *cvt-rc2*)
+      (equal (fn-ctl-row-control "<c2@example.invalid>" *cvt-hist*)
+             (fn-ctl-control-of (fn-article-payload *cvt-c2*)))
+      (equal (fn-ctl-control-target (fn-ctl-row-control "<c2@example.invalid>" *cvt-hist*))
+             "<t@example.invalid>")
+      (null (fn-ctl-control-target (fn-ctl-row-control "<t@example.invalid>" *cvt-hist*)))))
+
 ; Witness: the old view (T O) under no records; the refresh sees C2 consed
 ; with its verdict; the record it decides withdraws T by the author basis,
 ; the incremental list is (C2 O), and so is the definition's.
@@ -116,7 +144,7 @@
  (let* ((old (list *cvt-t* *cvt-o*))
         (new (cons *cvt-c2* old))
         (vis (fn-ctl-visible-articles old nil *cvt-v0*))
-        (ws2 (fn-ctl-refresh-withdrawals new old nil *cvt-v1* nil nil)))
+        (ws2 (fn-ctl-refresh-withdrawals new old nil *cvt-v1* *cvt-hist* nil)))
    (and (equal vis old)
         (equal (len ws2) 1)
         (equal (fn-ctl-w-target (car ws2)) "<t@example.invalid>")
@@ -165,22 +193,16 @@
 ; not a state (duplicate group names) has a visible state that is not one.
 (assert-event
  ;; After the records flip the acceptance state's articles carry HANDLES
- ;; (PKT-635): C3 and T3 below, at handles 0 and 1.  The withdrawals are
- ;; decided over their wire forms (the bytes the handles name: C3B, T3B);
- ;; that the served refresh reads them through the arena is the readers'
- ;; lane (flip-L3 LANEDUMP REQUEST).
- (let* ((c3b (fn-make-article "<c2@example.invalid>" (fn-article-payload *cvt-c2*)
-                              (list "control.cancel") (list (cons "control.cancel" 1)) t :legacy))
-        (t3b (fn-make-article "<t@example.invalid>" nil (list "fn.mod.a")
-                              (list (cons "fn.mod.a" 1)) t :legacy))
-        (c3 (fn-make-article "<c2@example.invalid>" 0
+ ;; (PKT-635): C3 and T3 below, at handles 1 and 0.  The withdrawals are
+ ;; decided from their rows' control facts in the history (flip-L8-2).
+ (let* ((c3 (fn-make-article "<c2@example.invalid>" 1
                              (list "control.cancel") (list (cons "control.cancel" 1)) t :legacy))
-        (t3 (fn-make-article "<t@example.invalid>" 1 (list "fn.mod.a")
+        (t3 (fn-make-article "<t@example.invalid>" 0 (list "fn.mod.a")
                              (list (cons "fn.mod.a" 1)) t :legacy))
         (st (fn-make-state (list "control.cancel" "fn.mod.a")
                            (list (cons "control.cancel" 2) (cons "fn.mod.a" 2))
                            (list c3 t3) 2 nil nil))
-        (ws (fn-ctl-articles-withdrawals (list c3b t3b) *cvt-v1* nil nil))
+        (ws (fn-ctl-articles-withdrawals (list c3 t3) *cvt-v1* *cvt-hist* nil))
         (vis (fn-ctl-visible-state st ws *cvt-v1*)))
    (and (fn-statep st)
         (equal (len ws) 1)
@@ -206,9 +228,11 @@
                                      "Supersedes: <t@example.invalid>"))
                    (list "fn.mod.a") nil t nil))
 (defconst *cvt-vs* (cons (cons "<s@example.invalid>" *cvt-p-verified*) *cvt-v0*))
+(defconst *cvt-s-hist*
+  (list *cvt-rt* (cvt-rec 3 7 "<s@example.invalid>" '("fn.mod.a") (fn-article-payload *cvt-s*))))
 (assert-event
  (let* ((arts (list *cvt-s* *cvt-t*))
-        (ws (fn-ctl-articles-withdrawals arts *cvt-vs* nil nil)))
+        (ws (fn-ctl-articles-withdrawals arts *cvt-vs* *cvt-s-hist* nil)))
    (and (equal (fn-ctl-target-octets (fn-article-payload *cvt-s*))
                "<t@example.invalid>")
         (equal (fn-ctl-classify-octets (fn-article-payload *cvt-s*)) :ordinary)
@@ -233,20 +257,14 @@
                                "Supersedes: <t@example.invalid>"))))))
 ; An unverified superseder withdraws nothing (the plan declines).
 (assert-event
- (null (fn-ctl-articles-withdrawals (list *cvt-s* *cvt-t*) *cvt-v0* nil nil)))
+ (null (fn-ctl-articles-withdrawals (list *cvt-s* *cvt-t*) *cvt-v0* *cvt-s-hist* nil)))
 
 ; ---------------------------------------------------------------------------
 ; control-c3d.  fn-ctl-refresh-withdrawals-is-the-journal: live equals
 ; recovery.  Journal: T accepted at txid 4, P's cancel C2 at txid 5, O at 6;
 ; a grant (P, cancel, fn.mod.*) at txid 1; a revoke appended at txid 9.
-; The journal's records are the history's retained rows (a held row: the
-; payload a handle; books/held-record.lisp).
-(defun cvt-rec (seq txid msgid groups)
-  (fn-held-plain (fn-record-make seq txid 1 msgid '(65) groups "a" "s" "e" 2 :legacy)
-                 seq))
-(defconst *cvt-rt* (cvt-rec 0 4 "<t@example.invalid>" '("fn.mod.a")))
-(defconst *cvt-rc2* (cvt-rec 1 5 "<c2@example.invalid>" '("control.cancel")))
-(defconst *cvt-ro* (cvt-rec 2 6 "<o@example.invalid>" '("fn.mod.a")))
+; The journal's records are the history's retained rows (*cvt-rt*,
+; *cvt-rc2*, *cvt-ro* above: held rows whose facts are their bytes').
 (defconst *cvt-grant*
   (fn-cfg-record-make 0 1 1 (list (fn-cfg-grant-control "fn.mod.*" *cvt-p-hex* "cancel"))
                       nil))
@@ -273,7 +291,7 @@
    (and (equal ws (list (fn-ctl-withdrawal-make "<t@example.invalid>"
                                                 "<c2@example.invalid>" *cvt-p-hex*
                                                 (list "fn.mod.*") 1)))
-        (fn-ctl-all-recorded-p *cvt-jold* (list *cvt-rt* *cvt-rc2*))
+        (fn-ctl-history-grows-by-p (list *cvt-ro*) (cons *cvt-o* *cvt-jold*) *cvt-jold*)
         (fn-ctl-entries-below-p (fn-ctl-archive-entries *cvt-jold* *cvt-jv0*
                                                         (list *cvt-rt* *cvt-rc2*))
                                 9)
@@ -284,17 +302,18 @@
  (assert-event
   (cvt-journal-conclusion nil *cvt-jv* (list *cvt-rt* *cvt-rc2*) (list *cvt-ro*)
                           (list *cvt-grant*) (list *cvt-revoke-9*))))
-; Hypothesis 2 removed (every withdrawing article recorded): C2's record
-; arrives only in the appended records, so the carried record was decided
-; under the configuration at no txid, and recovery's under txid 5.
+; Hypothesis 4 removed (the history grew by the new article's rows only):
+; C2's row arrives only in the appended records, so the carried view decided
+; nothing for C2 and recovery withdraws T.
 (assert-event
- (not (fn-ctl-all-recorded-p *cvt-jold* (list *cvt-rt*))))
+ (not (fn-ctl-history-grows-by-p (list *cvt-rc2* *cvt-ro*) (cons *cvt-o* *cvt-jold*)
+                                 *cvt-jold*)))
 (must-fail
  (assert-event
   (cvt-journal-conclusion (cvt-journal-ws *cvt-jv0* (list *cvt-rt*) (list *cvt-grant*))
                           *cvt-jv* (list *cvt-rt*) (list *cvt-rc2* *cvt-ro*)
                           (list *cvt-grant*) (list *cvt-revoke-9*))))
-; Hypothesis 3 removed (the verdicts grew only by a fresh Message-ID): the
+; Hypothesis 2 removed (the verdicts grew only by a fresh Message-ID): the
 ; new pair names C2 again, verified as Q's.
 (must-fail
  (assert-event
@@ -303,7 +322,7 @@
                           (cons (cons "<c2@example.invalid>" *cvt-q-verified*) *cvt-jv0*)
                           (list *cvt-rt* *cvt-rc2*) (list *cvt-ro*)
                           (list *cvt-grant*) (list *cvt-revoke-9*))))
-; Hypothesis 4 removed (appended configuration records come later): a
+; Hypothesis 3 removed (appended configuration records come later): a
 ; revoke at txid 3, before the cancel, changes recovery's decision.
 (assert-event
  (not (fn-ctl-entries-below-p (fn-ctl-archive-entries *cvt-jold* *cvt-jv0*
@@ -315,3 +334,75 @@
                                           (list *cvt-grant*))
                           *cvt-jv* (list *cvt-rt* *cvt-rc2*) (list *cvt-ro*)
                           (list *cvt-grant*) (list *cvt-revoke-3*))))
+
+; ---------------------------------------------------------------------------
+; flip-L8-2.  A Cancel-Lock cancel through the history's control facts, the
+; cancel relayed AHEAD of its target (RFC 8315; SEC-006): C holds
+; `Cancel-Key: sha256:K' and no verdict (a key record), T holds the lock
+; Base64(SHA-256(K)).  The view holding only C decides C's record with no
+; target locks (T has no row); when T arrives the refresh resolves the record
+; to T's row's locks, T is withdrawn, and the carried records are
+; recovery's (fn-ctl-refresh-withdrawals-is-the-journal).
+(defconst *cvt-key* (fn-record-string-octets "c2VrcmV0LWtleS1mb3ItdA=="))
+(defconst *cvt-lock* (fn-record-octets-string (fn-ctl-lock-of-key *cvt-key*)))
+(defconst *cvt-kt-bytes*
+  (cvt-octets (list "From: p@example.invalid" "Newsgroups: fn.mod.a"
+                    "Message-ID: <kt@example.invalid>" "Subject: t"
+                    (concatenate 'string "Cancel-Lock: sha256:" *cvt-lock*))))
+(defconst *cvt-kc-bytes*
+  (cvt-octets (list "From: p@example.invalid" "Newsgroups: control.cancel"
+                    "Message-ID: <kc@example.invalid>"
+                    "Subject: cmsg cancel <kt@example.invalid>"
+                    "Control: cancel <kt@example.invalid>"
+                    "Cancel-Key: sha256:c2VrcmV0LWtleS1mb3ItdA==")))
+(defconst *cvt-kc* (fn-make-article "<kc@example.invalid>" 0 (list "control.cancel") nil t nil))
+(defconst *cvt-kt* (fn-make-article "<kt@example.invalid>" 1 (list "fn.mod.a") nil t nil))
+(defconst *cvt-rkc* (cvt-rec 0 3 "<kc@example.invalid>" '("control.cancel") *cvt-kc-bytes*))
+(defconst *cvt-rkt* (cvt-rec 1 4 "<kt@example.invalid>" '("fn.mod.a") *cvt-kt-bytes*))
+(defconst *cvt-kws0*
+  (fn-ctl-journal-withdrawals (fn-ctl-archive-entries (list *cvt-kc*) nil (list *cvt-rkc*)) nil))
+(defconst *cvt-kws1*
+  (fn-ctl-refresh-withdrawals (list *cvt-kt* *cvt-kc*) (list *cvt-kc*) *cvt-kws0* nil
+                              (list *cvt-rkc* *cvt-rkt*) nil))
+; Witness: C's record is a key record whose target locks are nil before T;
+; after T arrives it carries T's lock, the effect is :poster, T is not
+; visible, and every hypothesis of the keystone holds with its conclusion.
+(assert-event
+ (and (equal (fn-ctl-keys-octets *cvt-kc-bytes*) (list *cvt-key*))
+      (equal (fn-ctl-locks-octets *cvt-kt-bytes*) (list (fn-ctl-lock-of-key *cvt-key*)))
+      (equal (len *cvt-kws0*) 1)
+      (fn-ctl-key-principalp (fn-ctl-w-principal (car *cvt-kws0*)))
+      (null (fn-ctl-w-tlocks (car *cvt-kws0*)))
+      (equal (fn-ctl-visible-articles (list *cvt-kc*) *cvt-kws0* nil) (list *cvt-kc*))
+      (equal (len *cvt-kws1*) 1)
+      (equal (fn-ctl-w-tlocks (car *cvt-kws1*)) (list (fn-ctl-lock-of-key *cvt-key*)))
+      (equal (fn-ctl-withdrawal-effect (car *cvt-kws1*) (list "fn.mod.a") nil nil) :poster)
+      (equal (fn-ctl-visible-articles (list *cvt-kt* *cvt-kc*) *cvt-kws1* nil)
+             (list *cvt-kc*))
+      (equal (fn-ctl-refresh-visible (list *cvt-kt* *cvt-kc*) (list *cvt-kc*)
+                                     (list *cvt-kc*) *cvt-kws1* nil nil)
+             (list *cvt-kc*))
+      (fn-ctl-history-grows-by-p (list *cvt-rkt*) (list *cvt-kt* *cvt-kc*) (list *cvt-kc*))
+      (let ((more-c nil))   ; no configuration record appended
+        (or (atom more-c)
+            (fn-ctl-entries-below-p (fn-ctl-archive-entries (list *cvt-kc*) nil
+                                                            (list *cvt-rkc*))
+                                    (fn-cfg-record-txid (car more-c)))))
+      (equal *cvt-kws1*
+             (fn-ctl-journal-withdrawals
+              (fn-ctl-archive-entries (list *cvt-kt* *cvt-kc*) nil (list *cvt-rkc* *cvt-rkt*))
+              nil))))
+; The resolution is load-bearing: the old record unresolved leaves T served.
+(assert-event
+ (equal (fn-ctl-visible-articles (list *cvt-kt* *cvt-kc*) *cvt-kws0* nil)
+        (list *cvt-kt* *cvt-kc*)))
+; And the history is where the facts come from: with T's row but no C row,
+; nothing is decided at all.
+(assert-event
+ (null (fn-ctl-articles-withdrawals (list *cvt-kt* *cvt-kc*) nil (list *cvt-rkt*) nil)))
+; The recovery path's table (fn-ctl-row-table) decides as the walk does.
+(assert-event
+ (equal (fn-ctl-articles-withdrawals-in (list *cvt-kt* *cvt-kc*) nil
+                                        (fn-ctl-row-table (list *cvt-rkc* *cvt-rkt*) nil) nil)
+        *cvt-kws1*))
+
