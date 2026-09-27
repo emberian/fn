@@ -234,7 +234,7 @@
   (fn-exp-limits *cbt-v-empty* *fn-exp-owner-connection-bound* t nil))
 (defconst *cbt-loopback-lim*
   (fn-exp-limits *cbt-v-empty* *fn-exp-owner-connection-bound* nil nil))
-; fn-cbud-step-read-octets-under-a-rate.  H1 (posp (fn-exp-lim-steps lim)).
+; fn-cbud-step-read-octets-under-a-rate-by-definition.  H1 (posp (fn-exp-lim-steps lim)).
 ; Witness: the public limits, rate 64, read 512.
 (assert-event (equal (fn-exp-lim-steps *cbt-public-lim*) 64))
 (assert-event (equal (fn-cbud-step-read-octets *cbt-public-lim*) 512))

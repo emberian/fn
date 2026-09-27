@@ -8343,6 +8343,14 @@
         {
           "kind": "theorem",
           "name": "fn-cbud-launch-decide-keeps-the-store-figure"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-step-read-octets-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-read-covers-the-step"
         }
       ]
     },

@@ -65,7 +65,7 @@
 ;
 ; The read size of a served step: `fn-cbud-step-read-octets' (bounded by
 ; *fn-cbud-read-quantum*, `fn-cbud-step-read-octets-is-bounded'; 512 under
-; a step rate, `fn-cbud-step-read-octets-under-a-rate'; held by the figure,
+; a step rate, `fn-cbud-step-read-octets-under-a-rate-by-definition'; held by the figure,
 ; `fn-cbud-read-covers-the-step'), called through host/owner-host.lisp
 ; fn-owner-read-octets by host/native/owner.lisp fnn-owner-refresh-read-octets.
 ;
@@ -115,7 +115,7 @@
                                          *fn-cbud-read-quantum*))))
 
 ; Under a step rate the step is the rate's unit: 512 octets, as before.
-(defthm fn-cbud-step-read-octets-under-a-rate
+(defthm fn-cbud-step-read-octets-under-a-rate-by-definition
   (implies (posp (fn-exp-lim-steps lim))
            (equal (fn-cbud-step-read-octets lim) *fn-cbud-step-octets*)))
 
