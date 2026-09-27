@@ -7764,6 +7764,78 @@
       ]
     },
     {
+      "id": "PRF-208",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ores-sealed-plan-is-indexed-fetch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-len-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-feed-port-publication-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-staged-result-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-refused-is-a-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-record-peers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-frame-item-of-encode-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-submission-intent-publication-is-well-formed",
+          "note": "KEYSTONE: host/owner-host.lisp fn-owner-submission-intent returns this value; host/native/owner.lisp fnn-owner-feed-step checks it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-submission-resolution-publication-is-well-formed",
+          "note": "KEYSTONE: host/owner-host.lisp fn-owner-submission-resolution returns this value; host/native/owner.lisp fnn-owner-feed-step checks it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-feed-port-publication-p-without-effects"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-symbolp-of-submission-intent-word"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-symbolp-of-resolution-word"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-car-car-of-feed-resolution-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-take-result-by-definition",
+          "note": "host/owner-host.lisp fn-owner-take returns fn-ores-take-result; host/native/owner.lisp fnn-owner-take checks it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-take-idle-is-a-result"
+        }
+      ]
+    },
+    {
       "id": "PRF-231",
       "events": [
         {

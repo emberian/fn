@@ -4379,6 +4379,36 @@
       }
     },
     {
+      "id": "SCN-139",
+      "title": "An article posted on a node with two configured feed peers, by served POST or by `operator post`, is journaled to both peers' FNFD journals, in the plan's order, before the offer; a malformed typed result stops the owner by fault",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-019"
+      ],
+      "steps": [
+        "Start a native owner with two feed peers configured; POST one article.",
+        "Post a second article with `operator post` to the running owner (the control submission, in-flight id :control).",
+        "Read both peers' FNFD journals; let each feed tick offer the article.",
+        "(Raw harness) hand fnn-owner-feed-flush a publication whose plan names an unconfigured peer; hand the staging step a malformed ConfigResult."
+      ],
+      "expected": [
+        "240; each journal holds the enqueue frame for the article (sealed, trailer verifying) before its peer sees the offer.",
+        "exit 0 and `ok operator post`; the owner keeps running; both journals hold the second article's enqueue frame (batch AM faulted here: 54d23d01).",
+        "The offer and the reply follow the journal append; nothing on the wire differs from before.",
+        "fnn-fault (exit 4) naming the step; nothing appended for the unknown peer."
+      ],
+      "evidence": [
+        "planning/evidence/adapter-retirement-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_owner tests.test_native_peer_pull",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/adapter-retirement-2026-09-26.md"
+      }
+    },
+    {
       "id": "SCN-157",
       "title": "A peer named by a DNS name: the feed dials `localhost` under the system roots, a name mismatch is refused by name and retried, an unresolvable name is reported and retried, and peer add refuses a non-host",
       "milestone": "M3",
