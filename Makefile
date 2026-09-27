@@ -854,6 +854,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \
+	books/transit-header-limits \
+	tests/acl2/transit-header-limits-tests \
 	tests/acl2/owner-feed-form-tests \
 	books/owner-invariants \
 	books/owner-fault \
