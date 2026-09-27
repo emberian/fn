@@ -10589,6 +10589,31 @@
       ]
     },
     {
+      "id": "PRF-292",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oii-ocfg-prepare-identity-is-intern-then-step",
+          "note": "KEYSTONE. Under fn-own-relation the owner's identity entry at the arena's count is the (:prepare-identity ROW) step over the row fn-intern-event makes. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-identity-row-is-the-intern",
+          "note": "The unsealed row at the arena's count is the intern's row. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-seal-is-the-intern-arena",
+          "note": "The payload the host seals is the intern's arena update. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-composite-row-is-held",
+          "note": "A composite whose article decodes interns to a retained composite carrying it unchanged, and seals. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        }
+      ]
+    },
+    {
       "id": "PRF-266",
       "events": [
         {

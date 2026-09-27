@@ -65,6 +65,7 @@
 (include-book "../books/owner-intent-carried")
 ; The POST's article parsed once at take (fn-apc-; fn-owner-parse-carry).
 (include-book "../books/owner-parse-carried")
+(include-book "../books/owner-identity-intern")
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
@@ -1276,28 +1277,46 @@
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict
 ; fields that host code could recombine differently.
-(defun fn-owner-prepare-identity (event state)
-  (declare (xargs :stobjs state :mode :program))
+;; The owner's identity entry (lane signed-post, PRF-292).  Since the records
+;; flip the Store retains a composite as a ROW (fn-hstxa-p); the event ACL2
+;; built is the wire composite, so the entry stages the row the intern would
+;; make at the arena's count (books/owner-identity-intern.lisp
+;; fn-oii-ocfg-prepare-identity, KEYSTONE
+;; fn-oii-ocfg-prepare-identity-is-intern-then-step) and, when the Store took
+;; it and the intern seals (fn-oii-identity-sealsp), answers (:seal PAYLOAD):
+;; the host seals exactly those octets (fn-oii-seal-is-the-intern-arena), so
+;; a refused composite's bytes are never retained.  A keyring snapshot
+;; (fn-stxk-p) interns to itself and seals nothing.
+;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
+;; fn-ocfg-step of this event on every owner fn-own-relation admits
+;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
+;; it stages without replaying the appended history, whose replay the
+;; maintained store relation carries, and its candidate test reads the
+;; history's last record, not every record (PRF-193,
+;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
+;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
+;; carries.
+(defun fn-owner-prepare-identity (event fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((s (fn-owner-store state)))
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
-;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
-      ;; fn-ocfg-step of this event on every owner fn-own-relation admits
-      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
-      ;; it stages without replaying the appended history, whose replay the
-      ;; maintained store relation carries, and its candidate test reads the
-      ;; history's last record, not every record (PRF-193,
-      ;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
-      ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
-      ;; carries.
-      ;; fn-psrv-prepare-identity (lane prepare-served) is this prepare
-      ;; when the signed composite's article groups are served, and the
-      ;; owner unchanged otherwise (KEYSTONE
-      ;; fn-psrv-prepare-identity-preserves-invariant).
+      ;; fn-psrv-prepare-identity-at (books/owner-prepare-served.lisp): the
+      ;; owner's identity prepare over the ROW the intern makes of EVENT at
+      ;; the arena's count (signed-post: fn-oii-identity-row, KEYSTONE
+      ;; fn-oii-ocfg-prepare-identity-is-intern-then-step), when the row's
+      ;; article groups are served (prepare-served: fn-psrv-prepare-identity,
+      ;; KEYSTONE fn-psrv-prepare-identity-preserves-invariant, over the row
+      ;; -- over the wire event its served test answered t for every
+      ;; composite), and the owner unchanged otherwise.
       (let ((state (fn-owner-install-ocfg
-                    (fn-psrv-prepare-identity (fn-owner-ocfg state) event)
+                    (fn-psrv-prepare-identity-at (fn-owner-ocfg state) event
+                                                 (fn-arena-count fn-arena))
                     state)))
-        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+        (value (cond ((equal (fn-owner-store state) s) :refused)
+                     ((fn-oii-identity-sealsp event)
+                      (list :seal (fn-oii-identity-payload event)))
+                     (t :prepared)))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
