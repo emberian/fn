@@ -3467,6 +3467,10 @@
         {
           "kind": "theorem",
           "name": "fn-scka-next-checkpoint-is-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-select-named-refuses-the-arena-by-name"
         }
       ]
     },
