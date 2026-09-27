@@ -51,6 +51,9 @@
 ;; PKT-828: readers during a barrier at the reader view (host/owner-host.lisp
 ;; fn-owner-at-reader-view, fn-owner-reader-views-capture).
 (include-book "books/owner-reader-view")
+;; Lane time-model (PRF-308): the gate's value with the disk's deadline
+;; (fn-otm-*), over fn-ocp-*.
+(include-book "books/owner-time-model")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")

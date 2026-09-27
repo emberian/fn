@@ -62,6 +62,8 @@ class NativeCutTableTests(unittest.TestCase):
             # the committer's barrier delay and pipeline trace (log-2).
             "FN_NATIVE_CHECKPOINT_BATCH_FAULT", "FN_NATIVE_CHECKPOINT_BUDGET_TEST",
             "FN_NATIVE_OWNER_TEST_BARRIER_MS", "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE",
+            # lane time-model: a stalled device (the slow-disk native case).
+            "FN_NATIVE_TEST_DISK_STALL_FILE",
             # `store import''s publication cuts (fn-bs-imp-program).
             "FN_NATIVE_IMPORT_FAULT",
             # reclaim-lifecycle 1 and 2: the disk-free observation.  It is

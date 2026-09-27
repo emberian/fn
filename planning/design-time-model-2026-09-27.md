@@ -61,8 +61,8 @@ latency: the disk, every peer and client socket, and the clock. The rule:
    monotonic clock reading (`now`, milliseconds, from
    `get-internal-real-time`, CLOCK_MONOTONIC on Linux and Darwin) as an
    argument. Nothing in ACL2 reads a clock; the host never compares times.
-   A deadline expiring is the event `(:tick now)` delivered by whoever waits
-   (the committer's timed wait in slice 1).
+   A deadline expiring is a clock event `(:clock T)` appended by whoever waits
+   (the committer's timed wait in slice 1); section 3.7.
 3. **A timeout is not a failure.** An fdatasync that has not returned after
    its deadline is PENDING, not failed: the bytes may yet become durable.
    Only the device's own error (EIO, ENOSPC, EROFS) is a failure, and a
@@ -100,7 +100,7 @@ slow episodes. The disk's MODE is a function of that state and `now`:
 | `failed` | the device returned an error | today's recovery event: fence, every member uncertain, exit 3 |
 | `read-only` / `full` (slice 3) | the device refuses writes (EROFS / ENOSPC on an append) | a failed barrier today (exit 3). Proposed: the refusal is known *before* anything was appended (a pre-append ENOSPC is a refusal, not an ambiguity), so the node stays up serving reads and answers every write try-later with the reason, until the operator frees space or remounts; `health` exit 1 |
 
-Transitions are ACL2's: `ok -> slow` at the first `(:tick now)` or
+Transitions are ACL2's: `ok -> slow` at the first clock event `(:clock T)` or
 admission with `now - T >= D`; `slow -> ok` at the barrier's completion
 event (`recovered after N ms` in the log and in health until the next
 barrier); `* -> failed` at a failed completion. Recovery needs no operator
@@ -171,56 +171,80 @@ in a drain mode (new writes refused try-later with "maintenance", reads
 served, the in-flight batch allowed to complete), so an operator can quiesce
 writes before a device operation without stopping the service.
 
-### 3.7 Determinism: every time a decision reads is a recorded input
+### 3.7 Determinism: time is a recorded event, the fold reads the last one
 
-Requirement (ember, after Fare ch. 3, relayed by the coordinator 2026-09-27):
-"all sources of non-determinism are either eliminated or recorded". The
-owner's fold over the log must be deterministic: no owner step reads
-anything ambiently. For time that means:
+Requirements (ember, relayed by the coordinator 2026-09-27, after Fare
+ch. 3): "all sources of non-determinism are either eliminated or recorded";
+the log records the non-determinism the host produces, clock readings
+included, so the fold is a pure function of the log; a clock reading is an
+EVENT the host appends, never a call made inside an owner step; the fold's
+deadline logic reads the last recorded time.
 
-1. **Who reads the clock.** Only the host, and only at these points, each
-   reading passed as an argument into exactly one ACL2 call and used for
-   nothing else:
-   - `fnn-owner-advance-clock`, once per served read quantum (before the
-     read's transition): monotonic ms and wall ms into `fn-owner-observe`,
-     which stores the observation in the owner's `clock` field. Every
-     injection in that quantum stamps from that observation (RFC 5537
-     section 3.4). The shed admission of slice 1 reuses THIS reading
-     (`*fnn-owner-quantum-ms*`), not a second read, so one quantum has one
-     time.
-   - the committer, once per disk event: at a barrier's issue, at each
-     expiry of its timed wait (a tick), and at the completion it observes.
-   - the health/status render, once per request (the figure it prints).
-   Lane proto-determinism is auditing today's fold for the others
-   (`fnn-owner-wall-milliseconds`, salts, ordering); each it finds becomes
-   one of these named reading points or is removed.
-2. **What is recorded, and where.** A reading that reaches DURABLE state is
-   recorded in the record it produces: an article's injection date is in its
-   stored octets, a configuration record carries its observation. The fold
-   over the log (`fn-cpr-replay`, recovery's `fn-ock-recover-extended`)
-   consumes only records, so it reads no clock and replays byte for byte.
-   The disk-time events of this design produce NO record: a shed POST is
-   refused before anything is stored, a slow mode is a reply and a log line,
-   and a deadline never changes a batch's outcome
-   (fn-otm-disk-event-keeps-the-pipeline). So the durable fold is
-   independent of disk timing by construction, and that is a theorem, not a
-   convention.
-3. **Replaying decisions, not just state.** The non-durable decisions (which
-   POST was shed, when `slow` began) are functions of the scheduler value
-   and the readings above. Each is already in the service log with its
-   reading (`disk slow: a barrier has waited N ms`, the shed reply's `a
-   write has waited N ms`). Slice 2 adds the owner's decision journal: the
-   sequence of (event, reading) pairs the gate and the committer fed ACL2
-   (`fn-otm-disk-event`, `fn-otm-admit-post`, the picks), written by the
-   log writer thread (never on the owner), so a run's scheduling can be
-   re-driven through the same ACL2 functions and every decision compared
-   byte for byte. It is a trace, not a durable record: losing it loses
-   explanation, never state.
-4. **Deadline logic runs on recorded time only.** `fn-otm-*` takes `now`
-   as an argument; the disk record stores the issue reading (`since`) and
-   the deadline chosen at issue (from the configuration generation current
-   then), so the same inputs give the same mode, the same admission and the
-   same line. The host never compares two times.
+**The rule.** The host reads the monotonic clock and APPENDS a clock event
+`(:clock T)`; ACL2 records T in the owner's value (the last recorded time,
+kept monotone); every time-dependent decision (a deadline, an admission, a
+rendered figure; later retention and expiry) reads the last recorded time,
+never an argument taken from the environment at decision time. A decision
+that needs a fresh time asks for one ON DEMAND: the host appends a clock
+event immediately before it, in the same critical section.
+
+**Who appends clock events, and when.** Every disk-clock reading is taken
+inside the gate mutex that orders all clock events, so a reading below the
+recorded time is a true regression of the clock, never two producers'
+readings arriving out of order.
+
+| producer | when | cadence field |
+|---|---|---|
+| the committer | at each expiry of its timed wait while a barrier is pending (the wait is ACL2's `fn-otm-wait-ms`: the time to the deadline, then the cadence) | `clock-event-ms` (profile; default 1,000 ms) |
+| the committer | stamped on the barrier's issue and on its completion (the event carries its reading; recorded before the event is applied) | on demand |
+| a served read quantum | today's `fnn-owner-advance-clock` reading, once before the read's transition, feeds `fn-owner-observe` (the injection date); a POST's shed admission appends its own clock event just before it decides | on demand |
+| the health/status render | once, before the render | on demand |
+| an idle owner (slice 2) | at the cadence, so recorded time never lags wall progress by more than the cadence while nothing else happens (retention and expiry decisions) | `clock-event-ms` |
+
+**Where the events are recorded.** Two logs, by what the decision
+produces:
+
+- A decision that reaches DURABLE state (an injection date; slice 3:
+  retention expiry, a stall's uncertain answer) is preceded in the RECORD
+  LOG by the clock event it read: the event rides the same batch as the
+  records it stamps (one more entry, no extra fsync), so recovery's fold
+  (`fn-cpr-replay`, `fn-ock-recover-extended`) reads recorded time and
+  replays byte for byte. Today the injection's observation is inside the
+  article's stored octets, which is the same property for that one use.
+- A decision that produces NO durable state (the disk's mode, a shed POST,
+  health's figures) records its clock events in the owner's DECISION
+  JOURNAL (slice 2: the (event, reading) pairs the gate and committer fed
+  ACL2, written by the log writer thread, never on the owner), because the
+  record log is exactly what a slow disk cannot take: a clock event that
+  had to be durable before the node could say "the disk is slow" would wait
+  behind the stalled barrier it is measuring. The durable fold is
+  independent of these by theorem (fn-otm-disk-event-keeps-the-pipeline:
+  no disk event changes the pipeline's value; no shed produces a record).
+
+**A late or backward clock event** is recorded and decided by name, never
+smoothed:
+
+- *Backwards* (`T` below the last recorded time; a monotonic clock should
+  never do this, so it is a host or kernel defect): the event is recorded
+  as `:clock-regressed` (the count shows in health), the recorded time
+  stays at its maximum, and no deadline moves backwards: a mode already
+  `slow` stays slow. (The wall clock's own discontinuities stay
+  `fn-owner-observe`'s: `:refused`, `clock-unusable` replies.)
+- *Late* (the gap since the last clock event exceeds the cadence, e.g. the
+  committer thread was descheduled): the next event records the gap (slice
+  2: `:clock-late GAP` in the journal and in health). Deadline logic
+  applies at the recorded time, so a late event can only make a deadline
+  fire LATER than wall time would, never earlier: the answers stay honest
+  (a POST admitted near the deadline is pending, not lied to), and the
+  F4-W bound carries the cadence as a named term (H + Q_max + cadence).
+
+Slice 1 implements the rule for the disk's decisions: every disk event
+carries its reading and is recorded first (the disk state's `now` and
+`regressions`); `fn-otm-admit-post`, `fn-otm-wait-ms`, `fn-otm-disk-lines`,
+`fn-otm-shed-reply` read the recorded time only. The decision journal and
+the record log's clock entries are slices 2 and 3; lane proto-determinism
+hands over the other ambient reads it finds (`fnn-owner-wall-milliseconds`,
+salts, ordering), each of which becomes one of the producers above or goes.
 
 ## 4. The F4 bar this proposes
 
