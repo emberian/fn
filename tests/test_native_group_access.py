@@ -70,11 +70,14 @@ class GroupAccessSourceTests(unittest.TestCase):
             source = (ROOT / "books" / book).read_text(encoding="ascii")
             start = source.index(name)
             body = source[start:source.index("(defthm", start)]
+            # The posting configuration is the access view over the
+            # connection's moderation view (moderated-groups, PRF-228).
+            flat = " ".join(body.split())
             for view in ("(fn-auth-view-session as config)",
                          "(fn-auth-view-archive as config archive)",
                          "(fn-auth-view-index as config archive index)",
-                         "(fn-auth-view-config as config archive)"):
-                self.assertIn(view, body, book)
+                         "(fn-auth-view-config as (fn-auth-moderation-config as config) archive)"):
+                self.assertIn(view, flat, book)
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST and/or FN_NATIVE_DEVELOPER_HOST")
