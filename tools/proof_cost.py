@@ -6,7 +6,7 @@ archived and local manifests for measured attempts of each book at its current
 include-closure bytes. An installed certificate has no proof time in that run.
 `--manifest` keeps the one-run diagnostic and never fails.
 
-Two numbers, two jobs (D26 as amended 2026-09-27, docs/proofs.md "Proof cost"):
+Two numbers, two jobs (D26 as defined 2026-09-27; docs/proofs.md):
 
 - **Prover steps** are the ratchet. ACL2 counts them itself (`Prover steps
   counted:` in the CERTIFY-BOOK summary, tools/acl2_cost.py) and the same bytes
