@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1049 |
-| Certification roots in the Makefile | 1020 |
-| Books inside the root closure | 1041 |
-| `defthm` and `defthmd` events | 14934 |
-| `defun` events | 10345 |
-| Functions with verified guards | 2332 |
-| Functions declared `:verify-guards nil` and never verified | 806 |
-| Functions left at the default with an explicit guard | 5666 |
-| Functions left at the default with no guard | 1541 |
-| `assert-event` checks | 15407 |
-| `must-fail` checks | 1831 |
+| Books read | 1051 |
+| Certification roots in the Makefile | 1022 |
+| Books inside the root closure | 1043 |
+| `defthm` and `defthmd` events | 14950 |
+| `defun` events | 10352 |
+| Functions with verified guards | 2335 |
+| Functions declared `:verify-guards nil` and never verified | 807 |
+| Functions left at the default with an explicit guard | 5668 |
+| Functions left at the default with no guard | 1542 |
+| `assert-event` checks | 15440 |
+| `must-fail` checks | 1836 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 145 |
 | Export-hygiene warnings | 166 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 159 |
-| Include-hygiene warnings | 1041 |
+| Teeth-form warnings | 164 |
+| Include-hygiene warnings | 1043 |
 | Host-names warnings | 1188 |
 | Hand-written-record warnings | 18 |
 
@@ -321,6 +321,7 @@ that `make certify` requests.
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/config-carried-candidate.lisp` | root | 15 | 6 | 3/1/2/0 | 0 | 0 | 0 |
 | `books/config-crash-replay.lisp` | root | 18 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/config-descriptions.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/config-invariants.lisp` | root | 51 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -858,6 +859,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
+| `tests/acl2/config-carried-candidate-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 33 | 5 | 0 |
 | `tests/acl2/config-crash-replay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 35 | 3 | 0 |
 | `tests/acl2/config-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/config-owner-advance-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
