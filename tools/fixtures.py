@@ -61,6 +61,8 @@ import sys
 import time
 
 TREE = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(TREE / "tools"))
+import native_env  # noqa: E402
 ROOT = Path("/tank/fn/scratch/fixtures")
 WORK = Path("/dev/shm/fn-fixtures")
 PY = sys.executable or "python3"
@@ -149,10 +151,11 @@ class Context:
         # Lane membership-budget (ember, 2026-09-27): `init' refuses a profile
         # whose full store the budget (the recipe's unit) cannot hold, unless
         # a target budget is named; the fixtures are stores made for hbox and
-        # their recipes run the image directly: hbox's 96 GiB is the target.
-        self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE",
-                        FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev,
-                        FN_INIT_BUDGET_MB="98304")
+        # their recipes run the image directly: tools/native_env.py names the
+        # target once (harness_store_env).
+        self.env = native_env.harness_store_env(dict(
+            os.environ, ACL2_CUSTOMIZATION="NONE",
+            FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev))
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
         # The ACL2 bridge the BP recipe's harness starts (as hbox_native.sh
         # exports it).

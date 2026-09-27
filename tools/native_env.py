@@ -41,6 +41,27 @@ selector case started owners that never exit).  A module that falls back to
 another image when a variable is unset lists that read in FALLBACK: it is
 neither refused nor set, so the module keeps its own default (pass --env to
 point it elsewhere).
+
+The production image's identity (lane tooling-leftovers, 2026-09-27; wire-bounds
+hand-computed it): tests.test_native_peering and tests.test_native_admin
+check the running process against FN_NATIVE_LAUNCHER_SHA256,
+FN_NATIVE_CORE_SHA256, FN_NATIVE_RUNTIME_SHA256 and
+FN_NATIVE_IMAGE_SOURCE_SHA.  `identity` computes all four from an image,
+anywhere:
+
+    eval "$(python3 tools/native_env.py identity --image build/fn-host \
+        --source "$(git rev-parse HEAD)" --export)"
+
+hbox_native.sh runs it on the box after the image steps (on the image
+FN_NATIVE_HOST names when --env gives one); `plan` refuses a module that
+reads one when no production image is built and none is given.
+
+Harness stores (lane membership-budget): `init` refuses a profile whose
+full store the machine's budget cannot hold unless FN_INIT_BUDGET_MB names a
+target.  The fixtures, the power-loss and service-envelope harnesses and the
+pack-chain module make stores for hbox and run them directly; they take the
+target from `harness_store_env` here, HARNESS_INIT_BUDGET_MB (hbox's 96
+GiB), so it is written once.
 """
 
 from __future__ import annotations
@@ -132,6 +153,62 @@ MANUAL = {
     "FN_INN_SRC": "an installed INN 2.7 tree",
     "FN_DTN7_REPO": "a dtn7-rs checkout",
 }
+# The production image's identity: computed by `identity` from the image
+# on the box after the image steps, never typed.  A module reading one needs
+# the production image (or FN_NATIVE_HOST and the value by --env).
+IDENTITY = {
+    "FN_NATIVE_LAUNCHER_SHA256": "SHA-256 of the image's launcher (build/fn-host)",
+    "FN_NATIVE_CORE_SHA256": "SHA-256 of the image's core (build/fn-host.core)",
+    "FN_NATIVE_RUNTIME_SHA256": "SHA-256 of the SBCL runtime the launcher execs",
+    "FN_NATIVE_IMAGE_SOURCE_SHA": "the source revision the image was built from "
+                                  "(a commit, or HEAD+dirty for a worktree run)",
+}
+# The FN_INIT_BUDGET_MB a harness names for the stores it makes for hbox and
+# runs directly (hbox's 96 GiB): the one place it is written.
+HARNESS_INIT_BUDGET_MB = "98304"
+
+
+def harness_store_env(env: dict[str, str] | None = None) -> dict[str, str]:
+    """ENV (default os.environ) with the harness stores' init budget, unless set."""
+    import os
+    out = dict(os.environ if env is None else env)
+    out.setdefault("FN_INIT_BUDGET_MB", HARNESS_INIT_BUDGET_MB)
+    return out
+
+
+LAUNCHER_EXEC = re.compile(r'^exec "([^"]+)" ', re.M)
+
+
+def sha256_file(path: Path) -> str:
+    import hashlib
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def image_identity(image: Path, source: str | None = None) -> dict[str, str]:
+    """The four identity variables of IMAGE (a save-exec launcher beside IMAGE.core).
+
+    The runtime is the file the launcher's `exec "..."` line names.  A
+    variable whose file is missing is left out, never guessed.
+    """
+    found: dict[str, str] = {}
+    core = Path(str(image) + ".core")
+    if image.is_file():
+        found["FN_NATIVE_LAUNCHER_SHA256"] = sha256_file(image)
+        match = LAUNCHER_EXEC.search(image.read_text(encoding="utf-8", errors="replace"))
+        runtime = Path(match.group(1)) if match else None
+        if runtime is not None and runtime.is_file():
+            found["FN_NATIVE_RUNTIME_SHA256"] = sha256_file(runtime)
+    if core.is_file():
+        found["FN_NATIVE_CORE_SHA256"] = sha256_file(core)
+    if source:
+        found["FN_NATIVE_IMAGE_SOURCE_SHA"] = source
+    return found
+
+
 READ = re.compile(r'(?:environ\.get\(|environ\[|getenv\()\s*"(FN_[A-Z0-9_]+)"')
 
 
@@ -221,6 +298,12 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
                     notes.append(f"{module} reads {name} through a tests/ helper it "
                                  f"imports (not set: the {IMAGES[name][0]} image is not "
                                  f"built; add it to --images if the module starts it)")
+            elif name in IDENTITY:
+                # Exported for every module by the identity step, from the
+                # production image (or the one FN_NATIVE_HOST names).
+                if (name in own and "production" not in images
+                        and "FN_NATIVE_HOST" not in given):
+                    missing.append((module, name, "production"))
             elif name in FIXED:
                 assignments.append(f"{name}={FIXED[name][0]}")
             elif name in MANUAL and not MANUAL[name].startswith(("falls back", "defaults")):
@@ -244,6 +327,9 @@ def readers() -> dict[str, list[str]]:
 
 
 def meaning(name: str) -> str:
+    if name in IDENTITY:
+        return ("identity: " + IDENTITY[name] + "; `native_env.py identity` computes it "
+                "after the image steps (refused when no production image is built)")
     if name in IMAGES:
         fallback = sorted(stem for stem, var in FALLBACK if var == name)
         return ("image: " + " or ".join(IMAGES[name]) + " (set when built; refused when not)"
@@ -258,7 +344,7 @@ def meaning(name: str) -> str:
 def table() -> str:
     rows = ["| variable | modules reading it | what hbox_native.sh gives it |",
             "|---|---|---|"]
-    known = set(IMAGES) | set(FIXED) | set(MANUAL)
+    known = set(IMAGES) | set(FIXED) | set(MANUAL) | set(IDENTITY)
     for name, modules in sorted(readers().items()):
         if name not in known:
             continue
@@ -274,10 +360,26 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--env", action="append", default=[], help="NAME=VALUE the caller set")
     p.add_argument("modules", nargs="+")
     sub.add_parser("table", help="the variable table (Markdown)")
+    p = sub.add_parser("identity", help="the production image's four identity variables")
+    p.add_argument("--image", default="build/fn-host",
+                   help="the launcher (its core is IMAGE.core); default build/fn-host")
+    p.add_argument("--source", default=None, help="the source revision it was built from")
+    p.add_argument("--export", action="store_true", help="as `export NAME=VALUE` lines")
     arguments = parser.parse_args(argv)
     if arguments.command == "table":
         print(table())
         return 0
+    if arguments.command == "identity":
+        image = Path(arguments.image)
+        found = image_identity(image, arguments.source)
+        absent = [name for name in IDENTITY if name not in found]
+        for name in IDENTITY:
+            if name in found:
+                print(("export " if arguments.export else "") + f"{name}={found[name]}")
+        if absent:
+            print(f"native_env: identity of {image}: not set (no file, or no --source): "
+                  + ", ".join(absent), file=sys.stderr)
+        return 0 if found else 1
     images = [image for image in arguments.images.split(",") if image]
     given = dict(item.split("=", 1) for item in arguments.env)
     lines, refusals, notes = plan(images, given, arguments.modules)
