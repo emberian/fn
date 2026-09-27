@@ -1979,7 +1979,8 @@
         "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
         "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
         "fn-own-read-offers-against-the-live-node",
-        "fn-own-live-session-boundedp"
+        "fn-own-live-session-boundedp",
+        "fn-peer-full-store-is-a-retry-code"
       ]
     },
     {
@@ -3061,7 +3062,8 @@
       "progress_note": "The ACL2 local status codec, owner scope decision and native-control host test passed the scoped status/index run. The general accepted and nonaccepted kind-9 codec roundtrips and their isolating teeth certified in the selected hbox book/test roots at the exact new source bytes; these are proof-only changes to the executable codec. The earlier e160442f image passed unknown-consumer refusal, read-only status, advancing ACK and recovered status checks. The joined topic/index source has scoped certification but has not yet run on a matching saved image. The diagnostic does not assert application processing or discharge.",
       "events": [
         "fn-ncl-status-accepted-reply-roundtrip",
-        "fn-ncl-status-nonaccepted-reply-roundtrip"
+        "fn-ncl-status-nonaccepted-reply-roundtrip",
+        "fn-ncl-cli-after-retries-only-a-refused-register"
       ]
     },
     {
@@ -5159,7 +5161,8 @@
         "fn-nh-first-held-monotone",
         "fn-nh-pressedp-monotone",
         "fn-nh-live-report-is-the-store-report",
-        "fn-nh-fence-of-route"
+        "fn-nh-fence-of-route",
+        "fn-nh-deferring-peer-is-held"
       ]
     },
     {
@@ -6744,7 +6747,8 @@
         "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity",
         "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound",
         "fn-cvec-accepted-group-names-are-within-the-profile",
-        "fn-nop-init-plain-groups-are-within-the-profile"
+        "fn-nop-init-plain-groups-are-within-the-profile",
+        "fn-nop-mission-init-serves-control-cancel"
       ]
     },
     {
@@ -6784,7 +6788,9 @@
         "fn-cev-journal-holds-each-articles-record",
         "fn-cev-journal-records-are-withdrawals",
         "fn-cevg-parse-kind-is-a-kind",
-        "fn-nls-obligations-figures-are-the-retention-figures"
+        "fn-nls-obligations-figures-are-the-retention-figures",
+        "fn-nls-articles-left-is-zero-when-full",
+        "fn-nls-articles-left-is-at-most-the-transactions-left"
       ]
     },
     {
@@ -7065,7 +7071,7 @@
       "progress_note": "Lane post-identity-index (2026-09-26). REPL-admitted and certified singly on persvati (certify-20260926T153906Z-3532313, certify-20260926T154311Z-3572486); the batch certifies the union.",
       "events": [
         "fn-pidx-find-article-is-find-article",
-        "fn-pidx-existing-action-is-rclb-existing-action",
+        "fn-pidx-existing-action-is-store-existing-action",
         "fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
         "fn-pidx-find-in-visible-is-find",
         "fn-pidx-view-okp-of-live-owner",
@@ -7570,6 +7576,8 @@
         "fn-heap-init-decide-conservative-is-development-or-small",
         "fn-heap-init-decide-largest-takes-scale-when-it-fits",
         "fn-heap-figure-octets-grows-with-history-and-record",
+        "fn-heap-article-held-holds-the-article-record",
+        "fn-heap-article-held-meets-the-article-relations",
         "fn-heap-init-decide-conservative-is-a-friend-rung",
         "fn-heap-init-decide-conservative-holds-the-floor",
         "fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits"
@@ -8338,7 +8346,8 @@
         "fn-peer-tls-verification-sni-is-never-a-literal",
         "fn-peer-tls-select-named-default",
         "fn-peer-tls-select-is-a-check",
-        "fn-peer-host-name-is-not-an-ipv4-literal"
+        "fn-peer-host-name-is-not-an-ipv4-literal",
+        "fn-redeem-done-only-on-281-after-the-password"
       ]
     },
     {
@@ -8359,7 +8368,6 @@
         "fn-smid-payload-decode-of-payload",
         "fn-smid-mountinfo-step-preserves-best-okp",
         "fn-smid-recorded-store-opens-iff-same-filesystem",
-        "fn-smid-moved-mount-point-is-refused-by-name",
         "fn-smid-absent-record-is-refused",
         "fn-smid-open-verdict-opens-only-on-a-match",
         "fn-smid-start-refused-iff-required-and-unsafe",
@@ -8369,7 +8377,12 @@
         "fn-smid-open-decision-is-the-verdict",
         "fn-smid-empty-root-is-refused",
         "fn-smid-unrecorded-store-never-starts",
-        "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
+        "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision",
+        "fn-smid-same-fsid-view-opens",
+        "fn-smid-other-filesystem-is-refused-by-name",
+        "fn-smid-other-fsid-is-refused-by-name",
+        "fn-smid-unreported-fsid-moved-mount-is-refused-by-name",
+        "fn-smid-rebind-outside-opens-inside"
       ],
       "evidence": [
         "books/store-mount-identity.lisp",
