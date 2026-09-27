@@ -420,3 +420,40 @@ In rough priority. Each is one focused lane; base on batch/ay.
 5. Then 6.6.1 onward carries G3 and G4, arena-store-2 carries G1 and G6, and
    the 6.7.x series is where the extracted image (G2) can become the served
    one.
+
+## 7. "Put it down and be done and proud of it" (ember, 23:25Z; the coordinator's answer)
+
+Ember's read: most data structures are non-pathological and the
+representations are not naive. Agreed, with two exceptions that both
+surfaced today and are both owned: the served path walked the archive list
+for GROUP, LISTGROUP and ARTICLE-by-number because two dispatch arms answer
+the same commands and the slow one runs first (sca-join-5); and open rebuilt
+the whole history at every install (arena-store-2).
+
+The pathological part is the runtime, not the structures: about 90 MiB of
+SBCL and ACL2 core plus 64 MiB thread stacks to serve a few thousand
+articles, against 8 MB for the same program extracted to Chicken with
+byte-identical replies.
+
+Done and proud, with rough lane-weeks at today's cadence:
+1. v6.6.0 tagged with tools/fundamentals.py judging F1 to F8; F8 reported red
+   if it is. (days)
+2. F2 and F8 met: one served path per command; per-record state under 200
+   bytes; open near zero. (2 to 3)
+3. The served image is the extracted program, or plain SBCL without ACL2,
+   with the N-version differential as a make target. Ember's go. (2 to 4)
+4. defkeystone and defprotocol landed: teeth, registry rows, the dispatcher
+   and the reply lines derived; four lints retire. (3 to 4)
+5. Format 10 with the genesis event; the two dead profile fields go; replay
+   determinism total. (1)
+6. Two real peers (the OpenBSD friend; spwashi or pug) feeding for a week
+   with no operator touch. (1, after feed-queue)
+7. The Python surface cut: 172,393 lines of tools and tests is a second
+   implementation that can drift even under the rule that Python never
+   computes what ACL2 computes. (2)
+
+Total 12 to 16 lane-weeks: two to three weeks of a ten-lane swarm after the
+cut. Complecting to add on purpose: the time model (requests with one
+completion each) and the carried join invariant. Complecting to remove: the
+twin-per-representation hand proofs, the three boundary generators, the two
+dispatch paths, the two ACL2 builds. The swarm holds at ten lanes.
