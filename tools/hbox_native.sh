@@ -257,6 +257,19 @@ step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile F
 BOX
         done
     fi
+    # The production image's identity (tests/test_native_peering and the
+    # protected gates check the running process against it): exported when
+    # the tree holds that image, so a module needs no --env for it; an
+    # --env below still wins.
+    cat <<'BOX'
+if [ -x build/fn-host ] && [ -f build/fn-host.core ]; then
+    export FN_NATIVE_LAUNCHER_SHA256=$(sha256sum build/fn-host | cut -c1-64)
+    export FN_NATIVE_CORE_SHA256=$(sha256sum build/fn-host.core | cut -c1-64)
+    fnrt=$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' build/fn-host)
+    [ -n "$fnrt" ] && export FN_NATIVE_RUNTIME_SHA256=$(sha256sum "$fnrt" | cut -c1-64)
+fi
+BOX
+    echo "export FN_NATIVE_IMAGE_SOURCE_SHA=$REV"
     for assignment in $ENVS; do
         echo "export $assignment"
     done
