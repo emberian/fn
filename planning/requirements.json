@@ -382,7 +382,6 @@
         "PRF-254",
         "PRF-255",
         "PRF-264",
-        "PRF-276",
         "PRF-283",
         "PRF-272",
         "PRF-269",
@@ -3750,7 +3749,6 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-198",
-        "PRF-276",
         "PRF-283",
         "PRF-282"
       ],
