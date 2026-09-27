@@ -86,13 +86,13 @@
 ; host's (list :advance id) event.  Keep the dispatch equation explicit so
 ; the proof subject is the function actually called at that boundary.
 (defthm fn-ocari-called-advance-is-configured-advance
-  (equal (fn-ocfg-step oc (list :advance id))
+  (equal (fn-ocfg-step oc (list :advance id) fn-arena)
          (fn-ocfg-advance oc id))
   :hints (("Goal" :in-theory (enable fn-ocfg-step))))
 
 (defthm fn-ocari-called-advance-preserves-historical-reader-relation
   (implies (fn-ocri-relation oc)
-           (fn-ocri-relation (fn-ocfg-step oc (list :advance id))))
+           (fn-ocri-relation (fn-ocfg-step oc (list :advance id) fn-arena)))
   :hints (("Goal"
            :use (fn-ocari-advance-preserves-historical-reader-relation
                  fn-ocari-called-advance-is-configured-advance)

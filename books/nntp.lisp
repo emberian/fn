@@ -89,7 +89,8 @@
     (fn-nntp-single session "502 transit is not permitted on this connection"))
    (t (fn-nntp-single session "500 command not recognized"))))
 
-(defun fn-nntp-archive-command (session archive env keyword args)
+(defun fn-nntp-archive-command (session archive env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (cond
    ((fn-nntp-keywordp keyword "GROUP")
     (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
@@ -100,24 +101,24 @@
    ((fn-nntp-keywordp keyword "LIST")
     (fn-nntp-list-command session archive env args))
    ((fn-nntp-keywordp keyword "NEXT")
-    (if (null args) (fn-nntp-next-or-last session archive :next)
+    (if (null args) (fn-nntp-next-or-last session archive :next fn-arena)
       (fn-nntp-single session "501 syntax error")))
    ((fn-nntp-keywordp keyword "LAST")
-    (if (null args) (fn-nntp-next-or-last session archive :last)
+    (if (null args) (fn-nntp-next-or-last session archive :last fn-arena)
       (fn-nntp-single session "501 syntax error")))
-   ((fn-nntp-keywordp keyword "ARTICLE") (fn-nntp-retrieval session archive :article args))
-   ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args))
-   ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args))
-   ((fn-nntp-keywordp keyword "OVER") (fn-nntp-over-response session archive args))
+   ((fn-nntp-keywordp keyword "ARTICLE") (fn-nntp-retrieval session archive :article args fn-arena))
+   ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args fn-arena))
+   ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args fn-arena))
+   ((fn-nntp-keywordp keyword "OVER") (fn-nntp-over-response session archive args fn-arena))
    ; RFC 2980 sections 2.8 and 2.6: the legacy spellings of RFC 3977 sections
    ; 8.3 and 8.5.  Each is one call to the same renderer; the differences are
    ; the response codes those sections assign, and nothing else.
-   ((fn-nntp-keywordp keyword "XOVER") (fn-nntp-xover-response session archive args))
-   ((fn-nntp-keywordp keyword "HDR") (fn-nntp-hdr-response session archive args))
-   ((fn-nntp-keywordp keyword "XHDR") (fn-nntp-xhdr-response session archive args))
+   ((fn-nntp-keywordp keyword "XOVER") (fn-nntp-xover-response session archive args fn-arena))
+   ((fn-nntp-keywordp keyword "HDR") (fn-nntp-hdr-response session archive args fn-arena))
+   ((fn-nntp-keywordp keyword "XHDR") (fn-nntp-xhdr-response session archive args fn-arena))
    ; RFC 2980 section 2.9: XHDR with a wildmat filter on the rendered
    ; content.  The same renderer; see fn-nntp-xpat-lines-are-hdr-lines.
-   ((fn-nntp-keywordp keyword "XPAT") (fn-nntp-xpat-response session archive args))
+   ((fn-nntp-keywordp keyword "XPAT") (fn-nntp-xpat-response session archive args fn-arena))
    ((fn-nntp-keywordp keyword "NEWGROUPS")
     (fn-nntp-newgroups-response session archive env args))
    ; RFC 3977 section 7.4.  Like NEWGROUPS it reads the environment, for the
@@ -125,10 +126,11 @@
    ; the articles here, the configured groups there -- so it belongs to this
    ; arm and not to fn-nntp-session-command.
    ((fn-nntp-keywordp keyword "NEWNEWS")
-    (fn-nntp-newnews-response session archive env args))
-   (t (fn-nntp-retrieval session archive :stat args))))
+    (fn-nntp-newnews-response session archive env args fn-arena))
+   (t (fn-nntp-retrieval session archive :stat args fn-arena))))
 
-(defun fn-nntp-command (session archive env tokens)
+(defun fn-nntp-command (session archive env tokens fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
@@ -138,13 +140,14 @@
         ; RFC 3977 section 3.2.1 assigns 503 to a recognized command the server
         ; cannot carry out because it does not hold the required information.
         (if (fn-nntp-session-projected session)
-            (fn-nntp-archive-command session archive env keyword args)
+            (fn-nntp-archive-command session archive env keyword args fn-arena)
           (fn-nntp-single session "503 archive projection unavailable"))))))
 ; A single command event is the integration boundary.  Other wire events are
 ; rejected as syntax, and a closed session produces no further effects.  The
 ; archive projection is not revalidated here: fn-nntp-open-session decided it
 ; once and the session carries the verdict.
-(defun fn-nntp-step (session archive env wire-event)
+(defun fn-nntp-step (session archive env wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (or (not (fn-nntp-sessionp session))
           (not (equal (fn-nntp-session-openp session) t)))
       (fn-nntp-make-result session nil)
@@ -158,7 +161,7 @@
             (let ((tokens (fn-nntp-tokenize line)))
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
-                  (fn-nntp-command session archive env tokens)
+                  (fn-nntp-command session archive env tokens fn-arena)
                 (fn-nntp-single session "501 syntax error")))))
       (fn-nntp-single session "501 syntax error"))))
 
@@ -330,9 +333,10 @@
     (fn-nntp-single session "501 syntax error")))
 
 (defun fn-nntp-archive-command-pinned
-    (session archive index verdicts env keyword args)
+    (session archive index verdicts env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   ;; R3 (PRF-206): the Xref arms first (books/nntp-xref.lisp).
-  (let ((xref (fn-nntp-xref-reply session archive index env keyword args)))
+  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -359,8 +363,8 @@
         (fn-nntp-withdrawn-reply session t))
        ;; PRF-243: the served compatibility arms (books/nntp-reader-compat.lisp),
        ;; after the withdrawn arms so a withdrawn article stays `withdrawn'.
-       ((fn-rcompat-reply session archive index env keyword args)
-        (fn-rcompat-reply session archive index env keyword args))
+       ((fn-rcompat-reply session archive index env keyword args fn-arena)
+        (fn-rcompat-reply session archive index env keyword args fn-arena))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")
@@ -373,7 +377,7 @@
                ((fn-nntp-keywordp keyword "HEAD") :head)
                ((fn-nntp-keywordp keyword "BODY") :body)
                (t :stat))
-         (car args)))
+         (car args) fn-arena))
        ((and (fn-nntp-keywordp keyword "LISTGROUP")
              (fn-gidx-pinp index))
         (fn-gidx-listgroup-command
@@ -385,7 +389,7 @@
              (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
         (fn-nntp-over-range-indexed
          session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
-         (car args) (fn-nntp-keywordp keyword "XOVER")))
+         (car args) (fn-nntp-keywordp keyword "XOVER") fn-arena))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
@@ -398,9 +402,10 @@
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
         (fn-nntp-enrollment-hdr-response session archive index verdicts args))
-       (t (fn-nntp-archive-command session archive env keyword args))))))
+       (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
-(defun fn-nntp-command-pinned (session archive index verdicts env tokens)
+(defun fn-nntp-command-pinned (session archive index verdicts env tokens fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
@@ -409,10 +414,11 @@
           (fn-nntp-session-command session env keyword args)
         (if (fn-nntp-session-projected session)
             (fn-nntp-archive-command-pinned
-             session archive index verdicts env keyword args)
+             session archive index verdicts env keyword args fn-arena)
           (fn-nntp-single session "503 archive projection unavailable"))))))
 
-(defun fn-nntp-step-pinned (session archive index verdicts env wire-event)
+(defun fn-nntp-step-pinned (session archive index verdicts env wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (or (not (fn-nntp-sessionp session))
           (not (equal (fn-nntp-session-openp session) t)))
       (fn-nntp-make-result session nil)
@@ -427,7 +433,7 @@
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
                   (fn-nntp-command-pinned
-                   session archive index verdicts env tokens)
+                   session archive index verdicts env tokens fn-arena)
                 (fn-nntp-single session "501 syntax error")))))
       (fn-nntp-single session "501 syntax error"))))
 

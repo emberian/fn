@@ -170,17 +170,19 @@
 (assert-event (fn-auth-config-requiredp *pxt-pinned-open*))
 (defconst *pxt-s-pinned-open* (aut-session *pxt-pinned-open* nil))
 ; Witness: GROUP and POST are 480 and nothing is submitted.
-(assert-event (equal (aut-reply *pxt-s-pinned-open* "GROUP fn.letters")
+;; The arena and its lifts (in-arena-aut-reply, -aut-step, -fn-auth-step) are
+;; nntp-auth-teeth-tests': *aut-arena* holds *aut-payload* at handle 0.
+(assert-event (equal (in-arena-aut-reply *aut-arena* *pxt-s-pinned-open* "GROUP fn.letters")
                      (aut-single *aut-480*)))
-(assert-event (equal (aut-reply *pxt-s-pinned-open* "POST") (aut-single *aut-480*)))
-(assert-event (null (fn-post-result-submission (aut-step *pxt-s-pinned-open* "POST"))))
+(assert-event (equal (in-arena-aut-reply *aut-arena* *pxt-s-pinned-open* "POST") (aut-single *aut-480*)))
+(assert-event (null (fn-post-result-submission (in-arena-aut-step *aut-arena* *pxt-s-pinned-open* "POST"))))
 (assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "POST")))
 ; H0 dropped: under :open the operator's open configuration is pinned as it
 ; is, the session config is the pinned one, and GROUP runs.
 (defconst *pxt-pinned-under-open* (fn-exp-pinned-acfg *aut-open* *pxt-lim-open*))
 (assert-event (equal *pxt-pinned-under-open* *aut-open*))
 (must-fail
- (assert-event (equal (aut-reply *aut-s-open* "GROUP fn.letters")
+ (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-open* "GROUP fn.letters")
                       (aut-single *aut-480*))))
 ; H3 dropped: under :none, a session carrying the operator's open
 ; configuration (not the pinned one) answers GROUP.
@@ -190,25 +192,23 @@
 ; teeth (tests/acl2/nntp-auth-teeth-tests.lisp) keeps the pinned config
 ; *aut-required* = (fn-exp-pinned-acfg *aut-required* *pxt-lim*):
 (assert-event (equal (fn-auth-session-config *aut-forged*) *pxt-pinned*))
-(must-fail (assert-event (equal (aut-reply *aut-forged* "GROUP fn.letters")
+(must-fail (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-forged* "GROUP fn.letters")
                                 (aut-single *aut-480*))))
 (assert-event (equal (fn-auth-session-config *aut-s-handshaking*) *pxt-pinned*))
-(must-fail (assert-event (equal (aut-reply *aut-s-handshaking* "GROUP fn.letters")
+(must-fail (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-handshaking* "GROUP fn.letters")
                                 (aut-single *aut-480*))))
 (assert-event (equal (fn-auth-session-config (aut-authed)) *pxt-pinned*))
-(assert-event (not (equal (aut-reply (aut-authed) "ARTICLE 1") (aut-single *aut-480*))))
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* (aut-authed) "ARTICLE 1") (aut-single *aut-480*))))
 (assert-event
  (not (equal (fn-post-result-effects
-              (fn-auth-step *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs*
-                            (list :command *aut-over-long-line*)))
+              (in-arena-fn-auth-step *aut-arena* *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-over-long-line*)))
              (aut-single *aut-480*))))
 (assert-event
  (not (equal (fn-post-result-effects
-              (fn-auth-step *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs*
-                            (list :command *aut-over-long-argument-line*)))
+              (in-arena-fn-auth-step *aut-arena* *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-over-long-argument-line*)))
              (aut-single *aut-480*))))
 (assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "DATE"))))
-(assert-event (not (equal (aut-reply *aut-s-req* "DATE") (aut-single *aut-480*))))
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-s-req* "DATE") (aut-single *aut-480*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-exp-limits-never-drop-a-connection (and the two closes)

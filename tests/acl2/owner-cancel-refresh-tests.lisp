@@ -54,20 +54,27 @@
                                  2 841000000)
                  sequence))
 
-(defun ocr-post (o row)
-  (fn-own-run (fn-own-step o '(:begin 1)) (own-post-events row)))
+(defun ocr-post (o row fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-own-run (fn-own-step o '(:begin 1) fn-arena) (own-post-events row) fn-arena))
 
 (defun ocr-archive (o)
   (fn-article-msgids (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
 
 ; The two posts from *own-b* (reader A open at version 0, connection 1 open).
-(defun ocr-run (first second)
-  (ocr-post (ocr-post *own-b* first) second))
+(defun ocr-run (first second fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (ocr-post (ocr-post *own-b* first fn-arena) second fn-arena))
 
 (defconst *ocr-rt0* (ocr-row 0 "<lt@example>" *ocr-t-bytes*))
 (defconst *ocr-rc1* (ocr-row 1 "<lc@example>" (ocr-c-bytes *ocr-key*)))
-(defconst *ocr-t-first* (ocr-post *own-b* *ocr-rt0*))
-(defconst *ocr-after* (ocr-run *ocr-rt0* *ocr-rc1*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift ocr-post 2)
+(bpr-lift ocr-run 2)
+(defconst *ocr-t-first* (in-arena-ocr-post *sr-arena* *own-b* *ocr-rt0*))
+(defconst *ocr-after* (in-arena-ocr-run *sr-arena* *ocr-rt0* *ocr-rc1*))
 
 ; The rows carry the control facts of their bytes.
 (assert-event
@@ -103,7 +110,7 @@
 
 ; 2. A key that opens nothing: the record is made, it declines, T stays.
 (defconst *ocr-after-other*
-  (ocr-run *ocr-rt0* (ocr-row 1 "<lc@example>" (ocr-c-bytes *ocr-other-key*))))
+  (in-arena-ocr-run *sr-arena* *ocr-rt0* (ocr-row 1 "<lc@example>" (ocr-c-bytes *ocr-other-key*))))
 (assert-event
  (and (fn-own-relation *ocr-after-other*)
       (equal (len (fn-own-view-withdrawals (fn-own-view *ocr-after-other*))) 1)
@@ -115,8 +122,8 @@
 ;    row); when T completes the refresh resolves it, and T is never served.
 (defconst *ocr-rc0* (ocr-row 0 "<lc@example>" (ocr-c-bytes *ocr-key*)))
 (defconst *ocr-rt1* (ocr-row 1 "<lt@example>" *ocr-t-bytes*))
-(defconst *ocr-c-first* (ocr-post *own-b* *ocr-rc0*))
-(defconst *ocr-c-then-t* (ocr-run *ocr-rc0* *ocr-rt1*))
+(defconst *ocr-c-first* (in-arena-ocr-post *sr-arena* *own-b* *ocr-rc0*))
+(defconst *ocr-c-then-t* (in-arena-ocr-run *sr-arena* *ocr-rc0* *ocr-rt1*))
 (assert-event
  (let ((ws0 (fn-own-view-withdrawals (fn-own-view *ocr-c-first*)))
        (ws1 (fn-own-view-withdrawals (fn-own-view *ocr-c-then-t*))))

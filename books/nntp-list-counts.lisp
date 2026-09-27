@@ -114,7 +114,7 @@
                 (fn-nntp-keyword-tokenp (car args))
                 (fn-nntp-keywordp (car args) "COUNTS"))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
+                   session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-list-counts-command session archive (cdr args))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-pinned
@@ -317,10 +317,10 @@
                   (posp n)
                   (fn-nntp-number-tokenp number-token)
                   (equal (fn-nntp-decimal-value number-token) n))
-             (equal (fn-nntp-number-retrieval session archive kind number-token)
+             (equal (fn-nntp-number-retrieval session archive kind number-token fn-arena)
                     (fn-nntp-article-response
                      session article n kind t
-                     (fn-nntp-session-group session)))))
+                     (fn-nntp-session-group session) fn-arena))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-state-has-fresh-local-numbers (s archive))
                  (:instance fn-nntp-find-group-number-of-fresh-member

@@ -393,9 +393,9 @@
   :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines))))
 
 (defthm fn-nntp-article-section-is-response-text
-  (implies (equal (car (fn-nntp-article-section article kind)) :ok)
+  (implies (equal (car (fn-nntp-article-section article kind fn-arena)) :ok)
            (fn-nntp-block-textp
-            (car (cdr (fn-nntp-article-section article kind)))))
+            (car (cdr (fn-nntp-article-section article kind fn-arena)))))
   :hints (("Goal" :in-theory (enable fn-nntp-article-section))))
 
 (defthm fn-nntp-number-lines-are-response-text
@@ -769,7 +769,7 @@
 (defthm fn-nntp-effects-article-response
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-article-response session article number kind updatep group)))
+    (fn-nntp-article-response session article number kind updatep group fn-arena)))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-article-response fn-nntp-effectsp)
                 (fn-nntp-article-section
@@ -782,7 +782,7 @@
 (defthm fn-nntp-effects-current-retrieval
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-current-retrieval session archive kind)))
+    (fn-nntp-current-retrieval session archive kind fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-current-retrieval)
                                   (fn-nntp-article-response
                                    fn-nntp-available-article)))))
@@ -790,7 +790,7 @@
 (defthm fn-nntp-effects-number-retrieval
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-number-retrieval session archive kind token)))
+    (fn-nntp-number-retrieval session archive kind token fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-number-retrieval)
                                   (fn-nntp-article-response
                                    fn-nntp-find-group-number)))))
@@ -798,7 +798,7 @@
 (defthm fn-nntp-effects-msgid-retrieval
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-msgid-retrieval session archive kind token)))
+    (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval)
                                   (fn-nntp-article-response
                                    fn-find-article)))))
@@ -806,7 +806,7 @@
 (defthm fn-nntp-effects-retrieval
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-retrieval session archive kind args)))
+    (fn-nntp-retrieval session archive kind args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-retrieval)
                                   (fn-nntp-current-retrieval
                                    fn-nntp-number-retrieval
@@ -815,7 +815,7 @@
 (defthm fn-nntp-effects-next-or-last
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-next-or-last session archive direction)))
+    (fn-nntp-next-or-last session archive direction fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-next-or-last)
                                   (fn-nntp-article-response
                                    fn-nntp-available-article
@@ -947,16 +947,16 @@
            :in-theory (enable fn-nov-clean-line-listp fn-nntp-block-textp))))
 
 (defthm fn-nntp-over-block-is-block-text
-  (fn-nntp-block-textp (fn-nov-lines-for-numbers group numbers articles))
+  (fn-nntp-block-textp (fn-nov-lines-for-numbers group numbers articles fn-arena))
   :hints (("Goal" :use fn-nov-lines-for-numbers-are-clean
            :in-theory (disable fn-nov-lines-for-numbers-are-clean
                                fn-nov-lines-for-numbers))))
 
 (defthm fn-nntp-over-one-line-is-block-text
-  (implies (fn-nov-okp (fn-nov-overview article))
-           (fn-nntp-block-textp (list (fn-nov-line number (fn-nov-overview article)))))
+  (implies (fn-nov-okp (fn-nov-overview article fn-arena))
+           (fn-nntp-block-textp (list (fn-nov-line number (fn-nov-overview article fn-arena)))))
   :hints (("Goal" :use ((:instance fn-nov-line-is-a-clean-line
-                         (over (fn-nov-overview article)))
+                         (over (fn-nov-overview article fn-arena)))
                         (:instance fn-nov-overview-is-an-overview))
            :in-theory (e/d (fn-nntp-block-textp)
                            (fn-nov-line-is-a-clean-line
@@ -965,14 +965,14 @@
 
 (defthm fn-nntp-effects-over-current
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-over-current session archive)))
+   (fn-nntp-result-effects (fn-nntp-over-current session archive fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-current)
                                   (fn-nov-overview fn-nov-line
                                    fn-nntp-available-article fn-nntp-single)))))
 
 (defthm fn-nntp-effects-over-range
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-over-range session archive token)))
+   (fn-nntp-result-effects (fn-nntp-over-range session archive token fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range)
                                   (fn-nov-lines-for-numbers
                                    fn-nntp-group-range-numbers
@@ -980,7 +980,7 @@
 
 (defthm fn-nntp-effects-over-msgid
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-over-msgid session archive token)))
+   (fn-nntp-result-effects (fn-nntp-over-msgid session archive token fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-msgid)
                                   (fn-nov-overview fn-nov-line
                                    fn-find-article fn-nntp-single
@@ -988,7 +988,7 @@
 
 (defthm fn-nntp-effects-over-response
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-over-response session archive args)))
+   (fn-nntp-result-effects (fn-nntp-over-response session archive args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-response)
                                   (fn-nntp-over-current fn-nntp-over-range
                                    fn-nntp-over-msgid fn-nntp-single
@@ -1004,7 +1004,7 @@
 
 (defthm fn-nntp-effects-xover-range
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-xover-range session archive token)))
+   (fn-nntp-result-effects (fn-nntp-xover-range session archive token fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-xover-range)
                                   (fn-nov-lines-for-numbers
                                    fn-nntp-group-range-numbers
@@ -1023,7 +1023,7 @@
 ; closes it, the same theorem is 4,401 steps.
 (defthm fn-nntp-effects-xover-response
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-xover-response session archive args)))
+   (fn-nntp-result-effects (fn-nntp-xover-response session archive args fn-arena)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-xover-response)
                            (fn-nntp-over-current fn-nntp-xover-range
@@ -1034,11 +1034,11 @@
 
 (defthm fn-nntp-hdr-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nntp-hdr-lines-for-numbers field group numbers articles))
+   (fn-nntp-hdr-lines-for-numbers field group numbers articles fn-arena))
   :hints (("Goal" :use (fn-nntp-hdr-lines-for-numbers-are-clean
                         (:instance fn-nntp-hdr-clean-fields-are-clean-lines
                                    (lines (fn-nntp-hdr-lines-for-numbers
-                                           field group numbers articles))))
+                                           field group numbers articles fn-arena))))
            :in-theory (disable fn-nntp-hdr-lines-for-numbers-are-clean
                                fn-nntp-hdr-clean-fields-are-clean-lines
                                fn-nntp-hdr-lines-for-numbers))))
@@ -1073,23 +1073,23 @@
            (fn-nntp-block-textp
             (list (fn-nntp-hdr-line label
                                     (fn-nntp-hdr-octets
-                                     (fn-nntp-hdr-content field article))))))
+                                     (fn-nntp-hdr-content field article fn-arena))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-hdr-line-is-a-clean-field
                             (content (fn-nntp-hdr-octets
-                                      (fn-nntp-hdr-content field article))))
+                                      (fn-nntp-hdr-content field article fn-arena))))
                  (:instance fn-nntp-clean-field-is-response-text
                             (bytes (fn-nntp-hdr-line
                                     label
                                     (fn-nntp-hdr-octets
-                                     (fn-nntp-hdr-content field article))))))
+                                     (fn-nntp-hdr-content field article fn-arena))))))
            :in-theory (e/d (fn-nntp-block-textp)
                            (fn-nntp-hdr-line fn-nntp-hdr-content
                             fn-nntp-hdr-octets)))))
 
 (defthm fn-nntp-effects-hdr-current
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-hdr-current session archive field legacyp)))
+   (fn-nntp-result-effects (fn-nntp-hdr-current session archive field legacyp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-current
                                    fn-nov-decimal-field-is-clean)
                                   (fn-nntp-hdr-content fn-nntp-hdr-line
@@ -1099,7 +1099,7 @@
 (defthm fn-nntp-effects-hdr-range
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-hdr-range session archive field token legacyp)))
+    (fn-nntp-hdr-range session archive field token legacyp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-range)
                                   (fn-nntp-hdr-lines-for-numbers
                                    fn-nntp-group-range-numbers
@@ -1108,7 +1108,7 @@
 (defthm fn-nntp-effects-hdr-msgid
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-hdr-msgid session archive field token legacyp)))
+    (fn-nntp-hdr-msgid session archive field token legacyp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-msgid
                                    fn-nov-decimal-field-is-clean)
                                   (fn-nntp-hdr-content fn-nntp-hdr-line
@@ -1118,7 +1118,7 @@
 
 (defthm fn-nntp-effects-hdr-command
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-hdr-command session archive args legacyp)))
+   (fn-nntp-result-effects (fn-nntp-hdr-command session archive args legacyp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-command)
                                   (fn-nntp-hdr-current fn-nntp-hdr-range
                                    fn-nntp-hdr-msgid fn-nntp-single
@@ -1127,13 +1127,13 @@
 
 (defthm fn-nntp-effects-hdr-response
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-hdr-response session archive args)))
+   (fn-nntp-result-effects (fn-nntp-hdr-response session archive args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-response)
                                   (fn-nntp-hdr-command)))))
 
 (defthm fn-nntp-effects-xhdr-response
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-xhdr-response session archive args)))
+   (fn-nntp-result-effects (fn-nntp-xhdr-response session archive args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-xhdr-response)
                                   (fn-nntp-hdr-command)))))
 
@@ -1243,7 +1243,7 @@
 ; a candidate is projectable).
 (defthm fn-nntp-newnews-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nntp-newnews-scan groups threshold articles horizon))
+   (fn-nntp-newnews-scan groups threshold articles horizon fn-arena))
   :hints (("Goal" :use fn-nntp-newnews-lines-are-clean
            :in-theory (disable fn-nntp-newnews-lines-are-clean
                                fn-nntp-newnews-scan))))
@@ -1251,7 +1251,7 @@
 (defthm fn-nntp-effects-newnews-response
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-newnews-response session archive env args)))
+    (fn-nntp-newnews-response session archive env args fn-arena)))
   ; Keep the scan closed so the block-text lemma matches the served term.
   :hints (("Goal" :in-theory (e/d (fn-nntp-newnews-response)
                                   (fn-nntp-newnews-scan
@@ -1274,12 +1274,12 @@
 
 (defthm fn-nntp-xpat-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles))
+   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles fn-arena))
   :hints (("Goal" :use (fn-nntp-xpat-lines-are-clean
                         (:instance fn-nntp-hdr-clean-fields-are-clean-lines
                                    (lines (fn-nntp-xpat-lines-for-numbers
                                            field patterns group numbers
-                                           articles))))
+                                           articles fn-arena))))
            :in-theory (disable fn-nntp-xpat-lines-are-clean
                                fn-nntp-hdr-clean-fields-are-clean-lines
                                fn-nntp-xpat-lines-for-numbers))))
@@ -1292,7 +1292,7 @@
 (defthm fn-nntp-effects-xpat-range
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-xpat-range session archive field patterns token)))
+    (fn-nntp-xpat-range session archive field patterns token fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-range)
                                   (fn-nntp-xpat-lines-for-numbers
                                    fn-nntp-group-range-numbers
@@ -1305,11 +1305,11 @@
 ; and nothing new should be built on it.
 (defthm fn-nntp-xpat-msgid-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nntp-xpat-msgid-lines field patterns token article))
+   (fn-nntp-xpat-msgid-lines field patterns token article fn-arena))
   :hints (("Goal" :use (fn-nntp-xpat-msgid-lines-are-clean
                         (:instance fn-nntp-hdr-clean-fields-are-clean-lines
                                    (lines (fn-nntp-xpat-msgid-lines
-                                           field patterns token article))))
+                                           field patterns token article fn-arena))))
            :in-theory (disable fn-nntp-xpat-msgid-lines-are-clean
                                fn-nntp-hdr-clean-fields-are-clean-lines
                                fn-nntp-xpat-msgid-lines))))
@@ -1317,7 +1317,7 @@
 (defthm fn-nntp-effects-xpat-msgid
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-xpat-msgid session archive field patterns token)))
+    (fn-nntp-xpat-msgid session archive field patterns token fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-msgid)
                                   (fn-nntp-xpat-msgid-lines
                                    fn-nntp-hdr-content fn-nntp-hdr-okp
@@ -1327,7 +1327,7 @@
 
 (defthm fn-nntp-effects-xpat-response
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-xpat-response session archive args)))
+   (fn-nntp-result-effects (fn-nntp-xpat-response session archive args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-response)
                                   (fn-nntp-xpat-range fn-nntp-xpat-msgid
                                    fn-nntp-xpat-join fn-wildmat-parse-text
@@ -1461,7 +1461,7 @@
   (implies (fn-nntp-projectionp archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-archive-command session archive env keyword args))))
+             (fn-nntp-archive-command session archive env keyword args fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command)
                 (fn-nntp-projectionp
@@ -1479,7 +1479,7 @@
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-command session archive env tokens))))
+             (fn-nntp-command session archive env tokens fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-command)
                 (fn-nntp-session-command fn-nntp-archive-command
@@ -1492,7 +1492,7 @@
 (defthm fn-nntp-step-effects-well-formed
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-effectsp
-            (fn-nntp-result-effects (fn-nntp-step session archive env wire-event))))
+            (fn-nntp-result-effects (fn-nntp-step session archive env wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-step)
                 (fn-nntp-result-effects fn-nntp-make-result
@@ -1505,7 +1505,7 @@
 (defthm fn-nntp-closed-step-has-no-effects
   (implies (or (not (fn-nntp-sessionp session))
                (not (equal (fn-nntp-session-openp session) t)))
-           (equal (fn-nntp-result-effects (fn-nntp-step session archive env wire-event))
+           (equal (fn-nntp-result-effects (fn-nntp-step session archive env wire-event fn-arena))
                   nil))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step) (fn-nntp-command)))))
 
@@ -1513,7 +1513,7 @@
   (implies (or (not (fn-nntp-sessionp session))
                (not (equal (fn-nntp-session-openp session) t)))
            (fn-nntp-effectsp
-            (fn-nntp-result-effects (fn-nntp-step session archive env wire-event))))
+            (fn-nntp-result-effects (fn-nntp-step session archive env wire-event fn-arena))))
   :hints (("Goal" :use fn-nntp-closed-step-has-no-effects)))
 
 (defthm fn-nntp-quit-step-effects-well-formed
@@ -1521,7 +1521,7 @@
                 (equal (fn-nntp-session-openp session) t))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-step session archive env '(:command (81 85 73 84))))))
+             (fn-nntp-step session archive env '(:command (81 85 73 84)) fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step
                                    fn-nntp-command
                                    fn-nntp-session-command

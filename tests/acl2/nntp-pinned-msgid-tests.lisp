@@ -23,10 +23,9 @@
 (defconst *npm-t-arg* (list (fn-nntp-string-octets *npm-t-id*)))
 
 (defmacro npm-t-pinned (index keyword args)
-  `(fn-nntp-archive-command-pinned *npm-t-session* *npm-t-archive* ,index nil
-                                   nil ,keyword ,args))
+  `(in-arena-fn-nntp-archive-command-pinned *sr-arena* *npm-t-session* *npm-t-archive* ,index nil nil ,keyword ,args))
 (defmacro npm-t-scan (keyword args)
-  `(fn-nntp-archive-command *npm-t-session* *npm-t-archive* nil ,keyword ,args))
+  `(in-arena-fn-nntp-archive-command *sr-arena* *npm-t-session* *npm-t-archive* nil ,keyword ,args))
 
 ; Reachable, non-degenerate witness: one accepted article, its trie, and
 ; STAT / ARTICLE by its Message-ID answer 223 / 220 through the pinned trie,
@@ -35,6 +34,11 @@
 (assert-event (equal (fn-nntp-session-projected *npm-t-session*) t))
 (assert-event (fn-midx-correspondencep *npm-t-trie*
                                        (fn-state-articles *npm-t-archive*)))
+(include-book "arena-lift")
+;; The arena: handle 0 = *npm-t-payload*.
+(defconst *sr-arena* (list *npm-t-payload*))
+(bpr-lift fn-nntp-archive-command 5)
+(bpr-lift fn-nntp-archive-command-pinned 7)
 (assert-event (equal (npm-t-pinned *npm-t-trie* *npm-t-stat* *npm-t-arg*)
                      (npm-t-scan *npm-t-stat* *npm-t-arg*)))
 (assert-event (equal (npm-t-pinned *npm-t-trie* *npm-t-article* *npm-t-arg*)
@@ -51,9 +55,8 @@
 (must-fail
  (defthm npm-t-false-without-correspondence
    (implies (fn-nntp-keywordp keyword "STAT")
-            (equal (fn-nntp-archive-command-pinned
-                    session archive index verdicts env keyword args)
-                   (fn-nntp-archive-command session archive env keyword args)))))
+            (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena)
+                   (fn-nntp-archive-command session archive env keyword args fn-arena)))))
 
 ; Hypothesis 2, the keyword.  The pinned dispatcher is not the scan on
 ; every keyword: HDR :fn-verified is answered from the pinned verdicts.
@@ -66,6 +69,5 @@
  (defthm npm-t-false-without-keyword
    (implies (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                      (fn-state-articles archive))
-            (equal (fn-nntp-archive-command-pinned
-                    session archive index verdicts env keyword args)
-                   (fn-nntp-archive-command session archive env keyword args)))))
+            (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena)
+                   (fn-nntp-archive-command session archive env keyword args fn-arena)))))

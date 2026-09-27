@@ -10,10 +10,15 @@
 (defconst *scar-t-oc* *ocl-t-new-open*)
 (defconst *scar-t-o* (fn-ocfg-owner *scar-t-oc*))
 (defconst *scar-t-conn* (fn-own-find-conn 1 (fn-own-conns *scar-t-o*)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read-tls-prefix 3)
+(bpr-lift fn-scar-ocfg-read-tls-prefix 3)
 (defconst *scar-t-carried*
-  (fn-scar-ocfg-read-tls-prefix *scar-t-oc* 1 *ocl-t-live-group-command*))
+  (in-arena-fn-scar-ocfg-read-tls-prefix *sr-arena* *scar-t-oc* 1 *ocl-t-live-group-command*))
 (defconst *scar-t-reference*
-  (fn-ocfg-read-tls-prefix *scar-t-oc* 1 *ocl-t-live-group-command*))
+  (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *scar-t-oc* 1 *ocl-t-live-group-command*))
 
 (assert-event (fn-ocl-relation *scar-t-oc*))
 ; The shortcut is exercised: the served session pins a node, and it is the
@@ -59,21 +64,21 @@
 (assert-event (not (fn-ocl-relation *scar-t-bad-oc*)))
 (assert-event (not (fn-node-statep (fn-sn-node (fn-own-store *scar-t-bad-o*)))))
 (assert-event
- (not (equal (fn-scar-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command*)
-             (fn-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command*))))
+ (not (equal (in-arena-fn-scar-ocfg-read-tls-prefix *sr-arena* *scar-t-bad-oc* 1 *ocl-t-live-group-command*)
+             (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *scar-t-bad-oc* 1 *ocl-t-live-group-command*))))
 (assert-event
  (consp (fn-own-tls-result-effects
-         (fn-scar-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command*))))
+         (in-arena-fn-scar-ocfg-read-tls-prefix *sr-arena* *scar-t-bad-oc* 1 *ocl-t-live-group-command*))))
 (assert-event
  (not (fn-own-find-conn
        1 (fn-own-conns
           (fn-ocfg-owner
            (fn-own-tls-result-owner
-            (fn-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command*)))))))
+            (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *scar-t-bad-oc* 1 *ocl-t-live-group-command*)))))))
 (must-fail
  (defthm fn-scar-t-read-is-reference-without-relation
-   (equal (fn-scar-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command*)
-          (fn-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command*))))
+   (equal (fn-scar-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command* fn-arena)
+          (fn-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command* fn-arena))))
 
 ; The served-level hypothesis, on the session alone: the bad node as `live'.
 (defconst *scar-t-bad-session*

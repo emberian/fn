@@ -154,7 +154,7 @@
       (if (consp article)
           (fn-nntp-article-response
            session article (fn-nntp-msgid-local-number session article)
-           kind nil nil)
+           kind nil nil fn-arena)
         (fn-nntp-single session "430 no article with that message-id")))))
 
 (defun fn-nntp-number-retrieval-cat (session v kind token fn-arena fn-cat)
@@ -170,7 +170,7 @@
           (fn-nntp-single session "412 no newsgroup selected")
         (let ((article (fn-scat-number-article group number v fn-arena fn-cat)))
           (if (consp article)
-              (fn-nntp-article-response session article number kind t group)
+              (fn-nntp-article-response session article number kind t group fn-arena)
             (fn-nntp-single session "423 no article with that number")))))))
 
 (verify-guards fn-nntp-msgid-retrieval-cat)
@@ -180,7 +180,7 @@
   (implies (equal (fn-state-articles archive)
                   (fn-cat-view-articles v fn-arena fn-cat))
            (equal (fn-nntp-msgid-retrieval-cat session v kind token fn-arena fn-cat)
-                  (fn-nntp-msgid-retrieval session archive kind token)))
+                  (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
   :hints (("Goal"
            :in-theory (e/d (fn-nntp-msgid-retrieval-cat fn-nntp-msgid-retrieval)
                            (fn-scat-msgid-article fn-find-article
@@ -200,7 +200,7 @@
                        (fn-cat-view-articles v fn-arena fn-cat))
                 (fn-cnx-freshp fn-cat))
            (equal (fn-nntp-number-retrieval-cat session v kind token fn-arena fn-cat)
-                  (fn-nntp-number-retrieval session archive kind token)))
+                  (fn-nntp-number-retrieval session archive kind token fn-arena)))
   :hints (("Goal"
            :in-theory (e/d (fn-nntp-number-retrieval-cat fn-nntp-number-retrieval)
                            (fn-scat-number-article fn-nntp-find-group-number
@@ -587,8 +587,8 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-article-payload article))))
-                       (fn-nov-overview article)
+                            (not (fn-nntp-article-tombstonep article fn-arena)))
+                       (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
             (cons (fn-nov-line number over)
@@ -600,7 +600,7 @@
   (implies (and (fn-cnx-freshp fn-cat) group)
            (equal (fn-nov-lines-for-numbers-cat group numbers v fn-arena fn-cat)
                   (fn-nov-lines-for-numbers group numbers
-                                            (fn-cat-view-articles v fn-arena fn-cat))))
+                                            (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
   :hints (("Goal" :induct (fn-nov-lines-for-numbers-cat group numbers v fn-arena fn-cat)
            :in-theory (e/d (fn-nov-lines-for-numbers)
                            (fn-scat-available-article fn-cat-view-articles
@@ -630,8 +630,8 @@
                 (natp (fn-nntp-range-high (fn-nntp-parse-range token))))
            (equal (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat)
                   (if legacyp
-                      (fn-nntp-xover-range session archive token)
-                    (fn-nntp-over-range session archive token))))
+                      (fn-nntp-xover-range session archive token fn-arena)
+                    (fn-nntp-over-range session archive token fn-arena))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-over-range fn-nntp-xover-range)
                            (fn-scat-range-numbers fn-nov-lines-for-numbers-cat
@@ -916,7 +916,7 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article)
+                          (fn-nntp-hdr-content field article fn-arena)
                         (list :error))))
         (if (fn-nntp-hdr-okp content)
             (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
@@ -929,7 +929,7 @@
   (implies (and (fn-cnx-freshp fn-cat) group)
            (equal (fn-nntp-hdr-lines-for-numbers-cat field group numbers v fn-arena fn-cat)
                   (fn-nntp-hdr-lines-for-numbers field group numbers
-                                                 (fn-cat-view-articles v fn-arena fn-cat))))
+                                                 (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
   :hints (("Goal" :induct (fn-nntp-hdr-lines-for-numbers-cat field group numbers v fn-arena fn-cat)
            :in-theory (e/d (fn-nntp-hdr-lines-for-numbers)
                            (fn-scat-available-article fn-cat-view-articles
@@ -952,7 +952,7 @@
                   (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
                     (if (not (consp article))
                         (fn-nntp-single session "420 no current article")
-                      (let ((content (fn-nntp-hdr-content field article)))
+                      (let ((content (fn-nntp-hdr-content field article fn-arena)))
                         (if (fn-nntp-hdr-okp content)
                             (fn-nntp-multi
                              session (fn-nntp-hdr-initial legacyp)
@@ -981,7 +981,7 @@
                                                             v fn-arena fn-cat)))
                         (if (not (consp article))
                             (fn-nntp-single session "430 no article with that message-id")
-                          (let ((content (fn-nntp-hdr-content field article)))
+                          (let ((content (fn-nntp-hdr-content field article fn-arena)))
                             (if (fn-nntp-hdr-okp content)
                                 (fn-nntp-multi
                                  session (fn-nntp-hdr-initial legacyp)
@@ -997,7 +997,7 @@
   (implies (and (fn-cnx-freshp fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat)
-                  (fn-nntp-hdr-command session archive args legacyp)))
+                  (fn-nntp-hdr-command session archive args legacyp fn-arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds (token (cadr args))))
            :in-theory (e/d (fn-nntp-hdr-command fn-nntp-hdr-current fn-nntp-hdr-range
@@ -1023,7 +1023,7 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article)
+                          (fn-nntp-hdr-content field article fn-arena)
                         (list :error))))
         (if (and (fn-nntp-hdr-okp content)
                  (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
@@ -1039,7 +1039,7 @@
   (implies (and (fn-cnx-freshp fn-cat) group)
            (equal (fn-nntp-xpat-lines-for-numbers-cat field patterns group numbers v fn-arena fn-cat)
                   (fn-nntp-xpat-lines-for-numbers field patterns group numbers
-                                                  (fn-cat-view-articles v fn-arena fn-cat))))
+                                                  (fn-cat-view-articles v fn-arena fn-cat) fn-arena)))
   :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers-cat field patterns group numbers v fn-arena fn-cat)
            :in-theory (e/d (fn-nntp-xpat-lines-for-numbers)
                            (fn-scat-available-article fn-cat-view-articles
@@ -1078,18 +1078,18 @@
                                                       v fn-arena fn-cat)))
                   (if (not (consp article))
                       (fn-nntp-single session "430 no article with that message-id")
-                    (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article)))
+                    (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article fn-arena)))
                         (fn-nntp-single session "503 stored article framing unavailable")
                       (fn-nntp-multi session (fn-nntp-hdr-initial t)
                                      (fn-nntp-xpat-msgid-lines field patterns token
-                                                               article)))))
+                                                               article fn-arena)))))
               (fn-nntp-single session "501 syntax error"))))))))
 
 (defthm fn-nntp-xpat-response-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
            (equal (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)
-                  (fn-nntp-xpat-response session archive args)))
+                  (fn-nntp-xpat-response session archive args fn-arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds (token (cadr args))))
            :in-theory (e/d (fn-nntp-xpat-response fn-nntp-xpat-range fn-nntp-xpat-msgid)
@@ -1118,7 +1118,7 @@
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
-  (let ((xref (fn-nntp-xref-reply session archive index env keyword args)))
+  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -1144,8 +1144,8 @@
         (fn-nntp-withdrawn-reply session t))
        ;; PRF-243: the served compatibility arms, where the pinned dispatcher
        ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned).
-       ((fn-rcompat-reply session archive index env keyword args)
-        (fn-rcompat-reply session archive index env keyword args))
+       ((fn-rcompat-reply session archive index env keyword args fn-arena)
+        (fn-rcompat-reply session archive index env keyword args fn-arena))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")
@@ -1204,7 +1204,7 @@
         (fn-nntp-hdr-command-cat session args v t fn-arena fn-cat))
        ((fn-nntp-keywordp keyword "XPAT")
         (fn-nntp-xpat-response-cat session args v fn-arena fn-cat))
-       (t (fn-nntp-archive-command session archive env keyword args))))))
+       (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
 ;;; KEYSTONE (the boundary theorem of this increment): under archive = the
 ;;; view's articles, trie = its Message-ID index and a fresh number column,
@@ -1220,14 +1220,14 @@
                      (fn-nntp-keywordp keyword "STAT"))
                  (consp args) (null (cdr args))
                  (fn-nntp-number-tokenp (car args)))
-            (equal (fn-nntp-archive-command session archive env keyword args)
+            (equal (fn-nntp-archive-command session archive env keyword args fn-arena)
                    (fn-nntp-number-retrieval
                     session archive
                     (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
                           ((fn-nntp-keywordp keyword "HEAD") :head)
                           ((fn-nntp-keywordp keyword "BODY") :body)
                           (t :stat))
-                    (car args))))
+                    (car args) fn-arena)))
    :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command fn-nntp-retrieval)
                                    (fn-nntp-number-retrieval fn-nntp-msgid-retrieval
                                     fn-nntp-current-retrieval fn-nntp-number-tokenp
@@ -1282,7 +1282,7 @@
            (equal (fn-nntp-archive-command-cat
                    session archive index verdicts env keyword args v fn-arena fn-cat)
                   (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)))
+                   session archive index verdicts env keyword args fn-arena)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-cat fn-nntp-archive-command-pinned
                             fn-nntp-archive-command fn-nntp-list-command

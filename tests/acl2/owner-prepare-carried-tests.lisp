@@ -9,8 +9,12 @@
 ; :reserved with the durable history before the article, and the record is
 ; that submission's own (owner-served-invariants-tests osi-sub-record).
 (defconst *pcar-t-record* (osi-sub-record 2 2 *osi-sub*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-run 2)
 (defconst *pcar-t-o*
-  (fn-own-run *own-taken* (fn-own-take 4 (own-post-events *pcar-t-record*))))
+  (in-arena-fn-own-run *sr-arena* *own-taken* (fn-own-take 4 (own-post-events *pcar-t-record*))))
 (defconst *pcar-t-oc* (fn-ocfg-make *pcar-t-o* *osi-cfg* nil nil))
 (defconst *pcar-t-files* (fn-sn-files (fn-own-store *pcar-t-o*)))
 (assert-event (fn-own-relation *pcar-t-o*))

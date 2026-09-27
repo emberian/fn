@@ -76,9 +76,13 @@
                                                   (fn-cfg-value *oat-cfg*)))
                                   4)
                     *oat-post-config*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read-tls-prefix 3)
+(bpr-lift fn-ocfg-step 2)
 (defconst *oat-oc0*
-  (fn-ocfg-step (fn-ocfg-make *oat-owner0* *oat-cfg* nil nil)
-                (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
+  (in-arena-fn-ocfg-step *sr-arena* (fn-ocfg-make *oat-owner0* *oat-cfg* nil nil) (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
 (assert-event (fn-ocfg-statep *oat-oc0*))
 (assert-event (not (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner *oat-oc0*))
                                      (fn-own-conns (fn-ocfg-owner *oat-oc0*)))))
@@ -153,7 +157,7 @@
 (defconst *oat-served-conn*
   (fn-own-tls-served-conn (fn-ocfg-owner *oat-oc1*) *oat-conn*))
 (assert-event (fn-served-connp *oat-served-conn*))
-(defconst *oat-read* (fn-ocfg-read-tls-prefix *oat-oc1* *oat-id* *oat-post-read*))
+(defconst *oat-read* (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *oat-oc1* *oat-id* *oat-post-read*))
 (defconst *oat-submission*
   (fn-served-submission (fn-own-tls-result-effects *oat-read*)))
 (assert-event (fn-inj-injectedp *oat-submission*))
@@ -191,7 +195,7 @@
    (let ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
      (fn-oag-names-agentp
       (fn-served-submission
-       (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets)))
+       (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
       (fn-inj-config-agent (fn-own-conn-config conn))))
    :hints (("Goal"
             :in-theory (e/d (fn-ocfg-read-tls-prefix fn-own-tls-make-result

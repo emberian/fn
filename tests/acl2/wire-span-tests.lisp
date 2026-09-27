@@ -1,22 +1,20 @@
 ; fn: teeth for books/wire-span.lisp (REP-012, PRF-181).
 ;
 ; What this book is evidence FOR.  fn-wire-feed-span consumes a range of the
-; octet buffer by span; its KEYSTONE fn-wire-feed-span-is-feed-bytes says the
-; index scan (its :exec) equals feeding the range's bytes one at a time through
-; fn-wire-feed-byte (its :logic), and fn-wire-span-fold-is-feed-proper says
-; that byte feed is fn-wire-feed-proper over the slice.  So the span over
-; [i, end) of the buffer is exactly the reference machine over those octets:
-; the article it frames, the dot-unstuffing, the line and body limits and the
-; refusals are the reference's, whatever the read boundaries.
+; octet buffer by span: fn-wire-span-fold, the byte fold read by index, and
+; fn-wire-span-fold-is-feed-proper says that fold is fn-wire-feed-proper over
+; the slice.  So the span over [i, end) of the buffer is exactly the reference
+; machine over those octets: the article it frames, the dot-unstuffing, the
+; line and body limits and the refusals are the reference's, whatever the read
+; boundaries.  (The per-line index scan is books/wire-scan.lisp fn-wire-scan;
+; its teeth are tests/acl2/served-scan-tests.lisp.)
 ;
 ; The witnesses run the executable path on a live local buffer, the way the
 ; host runs it, and cross two reads with a line split at the boundary and a
-; dot-stuffed line.  The must-fails remove a guard hypothesis and show the
-; keystone equality no longer holds.
+; dot-stuffed line.
 
 (in-package "ACL2")
 (include-book "../../books/wire-span")
-(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every function it may reach is guard-verified.
@@ -124,35 +122,8 @@
         :closed))
 
 ; -----------------------------------------------------------------------------
-; Teeth for the keystone fn-wire-feed-span-is-feed-bytes: one must-fail per
-; guard hypothesis, showing the scan/fold equality fails without it.
-
-; Without (fn-octets-p fn-octets): the scan reads cells the fold's byte model
-; does not, so the two disagree on a non-octet "buffer".
-(must-fail
- (defthm wst-keystone-needs-octets-p
-   (implies (and (fn-wire-fast-statep wire-state)
-                 (natp i) (natp end)
-                 (<= end (fn-octets-len fn-octets)))
-            (equal (fn-wire-span-scan wire-state i end fn-octets)
-                   (fn-wire-span-fold wire-state i end fn-octets)))))
-
-; Without (<= end (fn-octets-len fn-octets)): a range past the buffer's end is
-; not decided by the scan the way the fold's guard requires.
-(must-fail
- (defthm wst-keystone-needs-range-within-buffer
-   (implies (and (fn-wire-fast-statep wire-state)
-                 (fn-octets-p fn-octets)
-                 (natp i) (natp end))
-            (equal (fn-wire-span-scan wire-state i end fn-octets)
-                   (fn-wire-span-fold wire-state i end fn-octets)))))
-
-; Without (fn-wire-fast-statep wire-state): the scan's per-byte execution
-; invariant is what makes it the fold; drop it and the equality is unproved.
-(must-fail
- (defthm wst-keystone-needs-fast-statep
-   (implies (and (fn-octets-p fn-octets)
-                 (natp i) (natp end)
-                 (<= end (fn-octets-len fn-octets)))
-            (equal (fn-wire-span-scan wire-state i end fn-octets)
-                   (fn-wire-span-fold wire-state i end fn-octets)))))
+; No must-fails.  The three that stood here named fn-wire-span-scan, a function
+; no book defines, so each "failed" for that reason and tested nothing (lane
+; input-loop, 2026-09-27).  The index scan they anticipated is
+; books/wire-scan.lisp fn-wire-scan, whose keystone fn-wire-scan-is-span-fold
+; has no hypothesis to remove; its teeth are tests/acl2/served-scan-tests.lisp.

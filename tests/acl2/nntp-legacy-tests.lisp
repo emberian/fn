@@ -50,11 +50,26 @@
 (assert-event (equal (fn-nntp-dtn-unix-seconds 811728000000) 1758412800))
 
 (defconst *lg-session0* (fn-nntp-open-session *lg-archive*))
-(defun lg-step (session env text)
+(defun lg-step (session env text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-nntp-step session *lg-archive* env
-                (list :command (fn-nntp-string-octets text))))
+                (list :command (fn-nntp-string-octets text)) fn-arena))
+(include-book "arena-lift")
+(defconst *lg-phrase-payload*
+  (append (fn-nntp-string-octets "Message-ID: <Phrase@Id.invalid>") '(13 10)
+          (fn-nntp-string-octets "Subject: Hello there world") '(13 10)
+          '(13 10)
+          (fn-nntp-string-octets "Hi") '(13 10)))
+;; The arena: handle 0 = *lg-payload*, 1 = *lg-phrase-payload*.
+(defconst *sr-arena* (list *lg-payload* *lg-phrase-payload*))
+(bpr-lift fn-nntp-hdr-content 2)
+(bpr-lift fn-nntp-hdr-lines-for-numbers 4)
+(bpr-lift fn-nntp-step 4)
+(bpr-lift fn-nntp-xpat-lines-for-numbers 5)
+(bpr-lift fn-nntp-xpat-selects-everythingp 5)
+(bpr-lift lg-step 3)
 (defconst *lg-session*
-  (fn-nntp-result-session (lg-step *lg-session0* *lg-env* "GROUP fn.letters")))
+  (fn-nntp-result-session (in-arena-lg-step *sr-arena* *lg-session0* *lg-env* "GROUP fn.letters")))
 
 ; The expected-reply assembler.  Independent of fn-nntp-multi: it writes its
 ; own CRLFs and never stuffs.
@@ -68,7 +83,7 @@
 (defun lg-single (text)
   (list (list :reply (append (fn-nntp-string-octets text) '(13 10)))))
 (defmacro lg-reply (env text)
-  `(fn-nntp-result-effects (lg-step *lg-session* ,env ,text)))
+  `(fn-nntp-result-effects (in-arena-lg-step *sr-arena* *lg-session* ,env ,text)))
 
 ; The one overview line this archive renders, written field by field: number,
 ; subject, from, date, message-id, references, bytes, lines, TAB separated
@@ -100,7 +115,7 @@
 (assert-event (equal (lg-reply *lg-env* "XOVER <Case@Id.invalid>")
                      (lg-single "501 syntax error")))
 (assert-event (equal (fn-nntp-result-effects
-                      (lg-step *lg-session0* *lg-env* "XOVER 1-"))
+                      (in-arena-lg-step *sr-arena* *lg-session0* *lg-env* "XOVER 1-"))
                      (lg-single "412 no newsgroup selected")))
 
 ; -----------------------------------------------------------------------------
@@ -208,20 +223,22 @@
     "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS" "ARTICLE" "HEAD" "BODY"
     "STAT" "OVER"
     "XOVER" "HDR" "XHDR" "XPAT"))
-(defun lg-all-dispatchedp (keywords)
+(defun lg-all-dispatchedp (keywords fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp keywords)
       (and (not (equal (fn-nntp-result-effects
-                        (lg-step *lg-session* *lg-env* (car keywords)))
+                        (lg-step *lg-session* *lg-env* (car keywords) fn-arena))
                        (lg-single "500 command not recognized")))
-           (lg-all-dispatchedp (cdr keywords)))
+           (lg-all-dispatchedp (cdr keywords) fn-arena))
     t))
-(assert-event (lg-all-dispatchedp *lg-help-keywords*))
+(bpr-lift lg-all-dispatchedp 1)
+(assert-event (in-arena-lg-all-dispatchedp *sr-arena* *lg-help-keywords*))
 ; The control: a keyword the dispatcher does not know does answer 500, so the
 ; assertion above is not vacuous.  XPATH is RFC 2980 section 2.10, which this
 ; reader refuses to implement (it would publish storage filenames); it is a
 ; real unimplemented legacy keyword, not an invented one.
 (assert-event (equal (fn-nntp-result-effects
-                      (lg-step *lg-session* *lg-env* "XPATH"))
+                      (in-arena-lg-step *sr-arena* *lg-session* *lg-env* "XPATH"))
                      (lg-single "500 command not recognized")))
 
 ; -----------------------------------------------------------------------------
@@ -242,30 +259,19 @@
 (assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *")
                      (lg-reply *lg-env* "XHDR subject 1-1")))
 (assert-event
- (fn-nntp-xpat-selects-everythingp
-  (fn-nntp-string-octets "subject")
-  (fn-wildmat-result-value (fn-wildmat-parse (fn-nntp-string-octets "*")))
-  "fn.letters" (list 1) (fn-state-articles *lg-archive*)))
+ (in-arena-fn-nntp-xpat-selects-everythingp *sr-arena* (fn-nntp-string-octets "subject") (fn-wildmat-result-value (fn-wildmat-parse (fn-nntp-string-octets "*"))) "fn.letters" (list 1) (fn-state-articles *lg-archive*)))
 ; ... and the hypothesis of that theorem has a tooth: a pattern that selects
 ; nothing makes the two blocks differ.
 (assert-event
- (not (fn-nntp-xpat-selects-everythingp
-       (fn-nntp-string-octets "subject")
-       (fn-wildmat-result-value
-        (fn-wildmat-parse (fn-nntp-string-octets "nomatch")))
-       "fn.letters" (list 1) (fn-state-articles *lg-archive*))))
+ (not (in-arena-fn-nntp-xpat-selects-everythingp *sr-arena* (fn-nntp-string-octets "subject") (fn-wildmat-result-value
+        (fn-wildmat-parse (fn-nntp-string-octets "nomatch"))) "fn.letters" (list 1) (fn-state-articles *lg-archive*))))
 (assert-event (not (equal (lg-reply *lg-env* "XPAT subject 1-1 nomatch")
                           (lg-reply *lg-env* "XHDR subject 1-1"))))
 ; Every XPAT line is an XHDR line: the parity keystone, on this transcript.
 (assert-event
  (subsetp-equal
-  (fn-nntp-xpat-lines-for-numbers
-   (fn-nntp-string-octets "subject")
-   (fn-wildmat-result-value (fn-wildmat-parse (fn-nntp-string-octets "*est*")))
-   "fn.letters" (list 1) (fn-state-articles *lg-archive*))
-  (fn-nntp-hdr-lines-for-numbers (fn-nntp-string-octets "subject")
-                                 "fn.letters" (list 1)
-                                 (fn-state-articles *lg-archive*))))
+  (in-arena-fn-nntp-xpat-lines-for-numbers *sr-arena* (fn-nntp-string-octets "subject") (fn-wildmat-result-value (fn-wildmat-parse (fn-nntp-string-octets "*est*"))) "fn.letters" (list 1) (fn-state-articles *lg-archive*))
+  (in-arena-fn-nntp-hdr-lines-for-numbers *sr-arena* (fn-nntp-string-octets "subject") "fn.letters" (list 1) (fn-state-articles *lg-archive*))))
 ; The message-id form: section 2.9 renders the message-id as the label, as
 ; XHDR does, and 430 when no such article exists.
 (assert-event (equal (lg-reply *lg-env* "XPAT subject <Case@Id.invalid> *")
@@ -278,7 +284,7 @@
                      (lg-block "221 header follows" (list "1 2"))))
 ; No newsgroup selected: the range form is 412, as HDR's is.
 (assert-event (equal (fn-nntp-result-effects
-                      (lg-step *lg-session0* *lg-env* "XPAT subject 1-1 *"))
+                      (in-arena-lg-step *sr-arena* *lg-session0* *lg-env* "XPAT subject 1-1 *"))
                      (lg-single "412 no newsgroup selected")))
 ; Syntax: at least one pattern is required, the field must be a field name,
 ; and the second token must be a range or a message-id.
@@ -358,11 +364,6 @@
 ; witnessed matching.  A second one-article archive supplies a phrase.
 
 (defconst *lg-phrase-id* "<Phrase@Id.invalid>")
-(defconst *lg-phrase-payload*
-  (append (fn-nntp-string-octets "Message-ID: <Phrase@Id.invalid>") '(13 10)
-          (fn-nntp-string-octets "Subject: Hello there world") '(13 10)
-          '(13 10)
-          (fn-nntp-string-octets "Hi") '(13 10)))
 ; by specification: the flip -- the phrase payload's handle.
 (defconst *lg-phrase-payload-handle* 1)
 (defconst *lg-phrase-archive*
@@ -373,14 +374,11 @@
 (assert-event (fn-nntp-projectionp *lg-phrase-archive*))
 (defconst *lg-phrase-session*
   (fn-nntp-result-session
-   (fn-nntp-step (fn-nntp-open-session *lg-phrase-archive*) *lg-phrase-archive*
-                 *lg-env*
-                 (list :command
+   (in-arena-fn-nntp-step *sr-arena* (fn-nntp-open-session *lg-phrase-archive*) *lg-phrase-archive* *lg-env* (list :command
                        (fn-nntp-string-octets "GROUP fn.letters")))))
 (defmacro lg-phrase-reply (text)
   `(fn-nntp-result-effects
-    (fn-nntp-step *lg-phrase-session* *lg-phrase-archive* *lg-env*
-                  (list :command (fn-nntp-string-octets ,text)))))
+    (in-arena-fn-nntp-step *sr-arena* *lg-phrase-session* *lg-phrase-archive* *lg-env* (list :command (fn-nntp-string-octets ,text)))))
 
 ; The single-token control first, so the phrase cases below are read against a
 ; reply that did not depend on the join at all.
@@ -443,7 +441,7 @@
 (assert-event (equal (fn-article-payload *lg-article*) *lg-payload-handle*))
 (assert-event
  (equal (fn-nntp-hdr-octets
-         (fn-nntp-hdr-content (fn-nntp-string-octets "from") *lg-article*))
+         (in-arena-fn-nntp-hdr-content *sr-arena* (fn-nntp-string-octets "from") *lg-article*))
         nil))
 ; Hypothesis (not metadata): ":lines" matches no header of the article and yet
 ; renders "2", because a metadata item is calculated, not read (§8.5.2).
@@ -454,7 +452,7 @@
               (fn-nntp-string-octets ":lines")))))
 (assert-event
  (equal (fn-nntp-hdr-octets
-         (fn-nntp-hdr-content (fn-nntp-string-octets ":lines") *lg-article*))
+         (in-arena-fn-nntp-hdr-content *sr-arena* (fn-nntp-string-octets ":lines") *lg-article*))
         (fn-nntp-string-octets "2")))
 ; Hypothesis (the field is absent): Subject is present and renders non-empty.
 (assert-event
@@ -464,7 +462,7 @@
          (fn-nntp-string-octets "subject"))))
 (assert-event
  (equal (fn-nntp-hdr-octets
-         (fn-nntp-hdr-content (fn-nntp-string-octets "subject") *lg-article*))
+         (in-arena-fn-nntp-hdr-content *sr-arena* (fn-nntp-string-octets "subject") *lg-article*))
         (fn-nntp-string-octets "Test")))
 
 ; fn-nntp-xover-agrees-with-over-on-a-nonempty-range.  Hypothesis (consp

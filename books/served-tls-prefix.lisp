@@ -41,15 +41,15 @@
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr counted))))
 
-(defun fn-served-feed-counted (conn octets)
-  (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))
+(defun fn-served-feed-counted (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-wire-fast-statep (fn-served-conn-wire conn))
                   :verify-guards nil
                   :measure (len octets)))
   (if (or (not (consp octets))
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-tls-handshakingp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (let ((here (fn-served-feed-byte conn (car octets))))
+    (let ((here (fn-served-feed-byte conn (car octets) fn-arena)))
       ;; PKT-600: yield after the octet that completed a submission; the rest
       ;; of the read is the next read's input.
       (if (fn-served-submission (fn-served-result-effects here))
@@ -57,7 +57,7 @@
            1 (fn-served-make-result (fn-served-result-conn here)
                                     (fn-served-result-effects here)))
         (let* ((tail (fn-served-feed-counted
-                      (fn-served-result-conn here) (cdr octets)))
+                      (fn-served-result-conn here) (cdr octets) fn-arena))
                (tail-result (fn-served-counted-result tail)))
           (fn-served-counted-make
            (+ 1 (fn-served-counted-consumed tail))
@@ -70,9 +70,9 @@
 
 (defthm fn-served-feed-counted-consumed-is-natural
   (natp (fn-served-counted-consumed
-         (fn-served-feed-counted conn octets)))
+         (fn-served-feed-counted conn octets fn-arena)))
   :rule-classes :type-prescription
-  :hints (("Goal" :induct (fn-served-feed-counted conn octets)
+  :hints (("Goal" :induct (fn-served-feed-counted conn octets fn-arena)
            :in-theory (enable fn-served-feed-counted
                               fn-served-counted-make
                               fn-served-counted-consumed))))
@@ -87,13 +87,13 @@
 
 (local
  (defthm fn-served-dispatch-events-effects-are-a-true-list
-   (true-listp (fn-served-result-effects (fn-served-dispatch-events conn events)))
-   :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+   (true-listp (fn-served-result-effects (fn-served-dispatch-events conn events fn-arena)))
+   :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
             :in-theory (disable fn-served-dispatch)))))
 
 (local
  (defthm fn-served-feed-byte-effects-are-a-true-list
-   (true-listp (fn-served-result-effects (fn-served-feed-byte conn byte)))
+   (true-listp (fn-served-result-effects (fn-served-feed-byte conn byte fn-arena)))
    :hints (("Goal" :in-theory (e/d (fn-served-feed-byte)
                                    (fn-served-dispatch-events fn-wire-feed-byte))))))
 
@@ -111,14 +111,14 @@
 ; was `fn-served-feed-counted-result-is-feed' over the whole read.)
 (defthm fn-served-feed-counted-result-is-feed-of-consumed-prefix
   (equal (fn-served-counted-result
-          (fn-served-feed-counted conn octets))
+          (fn-served-feed-counted conn octets fn-arena))
          (fn-served-feed conn
                          (take (fn-served-counted-consumed
-                                (fn-served-feed-counted conn octets))
-                               octets)))
+                                (fn-served-feed-counted conn octets fn-arena))
+                               octets) fn-arena))
   :hints (("Goal"
-           :induct (fn-served-feed-counted conn octets)
-           :expand ((:free (x) (fn-served-feed x nil)))
+           :induct (fn-served-feed-counted conn octets fn-arena)
+           :expand ((:free (x) (fn-served-feed x nil fn-arena)))
            :in-theory (e/d (fn-served-feed-counted fn-served-feed take)
                            (fn-served-counted-make
                             fn-served-counted-result
@@ -128,20 +128,20 @@
 
 (defthm fn-served-feed-counted-consumed-is-bounded
   (<= (fn-served-counted-consumed
-       (fn-served-feed-counted conn octets))
+       (fn-served-feed-counted conn octets fn-arena))
       (len octets))
   :rule-classes :linear
-  :hints (("Goal" :induct (fn-served-feed-counted conn octets)
+  :hints (("Goal" :induct (fn-served-feed-counted conn octets fn-arena)
            :in-theory (enable fn-served-feed-counted
                               fn-served-counted-make
                               fn-served-counted-consumed))))
 
 ; Common transition under the fixed-spine/scalar execution invariant.
-(defun fn-served-step-counted-core (conn octets)
-  (declare (xargs :guard
+(defun fn-served-step-counted-core (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard
                   (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let* ((wire (fn-served-conn-wire conn))
-         (fed (fn-served-feed-counted conn octets))
+         (fed (fn-served-feed-counted conn octets fn-arena))
          (result (fn-served-counted-result fed))
          (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
     (fn-served-counted-make
@@ -163,23 +163,23 @@
               nil)))))))
 
 ; Total checked reference, retaining the historical malformed-wire no-op.
-(defun fn-served-step-counted (conn octets)
-  (declare (xargs :guard t))
+(defun fn-served-step-counted (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-wire-statep (fn-served-conn-wire conn)))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (fn-served-step-counted-core conn octets)))
+    (fn-served-step-counted-core conn octets fn-arena)))
 
 ; Production entry: only the fixed spine and scalars are checked per read.
-(defun fn-served-step-counted-fast (conn octets)
-  (declare (xargs :guard t))
+(defun fn-served-step-counted-fast (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (fn-served-step-counted-core conn octets)))
+    (fn-served-step-counted-core conn octets fn-arena)))
 
 (defthm fn-served-step-counted-fast-is-reference
   (implies (fn-wire-statep (fn-served-conn-wire conn))
-           (equal (fn-served-step-counted-fast conn octets)
-                  (fn-served-step-counted conn octets)))
+           (equal (fn-served-step-counted-fast conn octets fn-arena)
+                  (fn-served-step-counted conn octets fn-arena)))
   :hints (("Goal"
            :in-theory (enable fn-served-step-counted-fast
                               fn-served-step-counted)
@@ -193,11 +193,11 @@
 ; fn-owner-chunk-span through books/served-span.lisp).  No hypothesis.
 (defthm fn-served-step-counted-result-is-step-of-consumed-prefix
   (equal (fn-served-counted-result
-          (fn-served-step-counted conn octets))
+          (fn-served-step-counted conn octets fn-arena))
          (fn-served-step conn
                          (take (fn-served-counted-consumed
-                                (fn-served-step-counted conn octets))
-                               octets)))
+                                (fn-served-step-counted conn octets fn-arena))
+                               octets) fn-arena))
   :hints (("Goal"
            :in-theory (e/d (fn-served-step-counted
                             fn-served-step-counted-core
@@ -215,7 +215,7 @@
 ; consumed is a `take', not a named octet list.
 (defthm fn-served-step-preserves-connp-of-any-input
   (implies (fn-served-connp conn)
-           (fn-served-connp (fn-served-result-conn (fn-served-step conn octets))))
+           (fn-served-connp (fn-served-result-conn (fn-served-step conn octets fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-served-step)
                                   (fn-served-feed fn-wire-statep fn-served-connp))
            :use ((:instance fn-served-feed-preserves-connp)
@@ -227,13 +227,13 @@
            (fn-served-connp
             (fn-served-result-conn
              (fn-served-counted-result
-              (fn-served-step-counted-fast conn octets)))))
+              (fn-served-step-counted-fast conn octets fn-arena)))))
   :hints (("Goal"
            :use ((:instance fn-served-step-counted-fast-is-reference)
                  (:instance fn-served-step-counted-result-is-step-of-consumed-prefix)
                  (:instance fn-served-step-preserves-connp-of-any-input
                             (octets (take (fn-served-counted-consumed
-                                           (fn-served-step-counted conn octets))
+                                           (fn-served-step-counted conn octets fn-arena))
                                           octets))))
            :in-theory (disable fn-served-step-counted-fast-is-reference
                                fn-served-step-counted-result-is-step-of-consumed-prefix
@@ -246,7 +246,7 @@
 
 (defthm fn-served-step-counted-fast-consumed-is-bounded
   (<= (fn-served-counted-consumed
-       (fn-served-step-counted-fast conn octets))
+       (fn-served-step-counted-fast conn octets fn-arena))
       (len octets))
   :rule-classes :linear
   :hints (("Goal"
@@ -258,7 +258,7 @@
 
 (defthm fn-served-step-counted-fast-consumed-is-natural
   (natp (fn-served-counted-consumed
-         (fn-served-step-counted-fast conn octets)))
+         (fn-served-step-counted-fast conn octets fn-arena)))
   :rule-classes :type-prescription
   :hints (("Goal"
            :in-theory (enable fn-served-step-counted-fast
@@ -269,7 +269,7 @@
 
 (defthm fn-served-step-counted-consumed-is-bounded
   (<= (fn-served-counted-consumed
-       (fn-served-step-counted conn octets))
+       (fn-served-step-counted conn octets fn-arena))
       (len octets))
   :rule-classes :linear
   :hints (("Goal"
@@ -280,7 +280,7 @@
 
 (defthm fn-served-step-counted-consumed-is-natural
   (natp (fn-served-counted-consumed
-         (fn-served-step-counted conn octets)))
+         (fn-served-step-counted conn octets fn-arena)))
   :rule-classes :type-prescription
   :hints (("Goal"
            :in-theory (enable fn-served-step-counted
@@ -299,12 +299,12 @@
 ; duplication.  The suffix is transport input, never another NNTP parse.
 (defthm fn-served-tls-prefix-suffix-accounting
   (let ((count (fn-served-counted-consumed
-                (fn-served-step-counted conn octets))))
+                (fn-served-step-counted conn octets fn-arena))))
     (equal (append (take count octets) (nthcdr count octets)) octets))
   :hints (("Goal"
            :use ((:instance fn-served-tls-take-nthcdr-reconstructs
                             (n (fn-served-counted-consumed
-                                (fn-served-step-counted conn octets)))
+                                (fn-served-step-counted conn octets fn-arena)))
                             (xs octets))
                  (:instance fn-served-step-counted-consumed-is-bounded)
                  (:instance fn-served-step-counted-consumed-is-natural))
@@ -393,7 +393,7 @@
  (defthm fn-served-dispatch-core-carries-at-most-one-submission
    (implies (fn-served-connp conn)
             (<= (len (fn-served-submissions
-                      (fn-served-result-effects (fn-served-dispatch-core conn event))))
+                      (fn-served-result-effects (fn-served-dispatch-core conn event fn-arena))))
                 1))
    :rule-classes :linear
    :hints (("Goal"
@@ -427,7 +427,7 @@
  (defthm fn-served-dispatch-carries-at-most-one-submission
    (implies (fn-served-connp conn)
             (<= (len (fn-served-submissions
-                      (fn-served-result-effects (fn-served-dispatch conn event))))
+                      (fn-served-result-effects (fn-served-dispatch conn event fn-arena))))
                 1))
    :rule-classes :linear
    :hints (("Goal"
@@ -467,7 +467,7 @@
  (defthm fn-served-feed-byte-preserves-connp
    (implies (fn-served-connp conn)
             (fn-served-connp
-             (fn-served-result-conn (fn-served-feed-byte conn byte))))
+             (fn-served-result-conn (fn-served-feed-byte conn byte fn-arena))))
    :hints (("Goal" :in-theory (e/d (fn-served-feed-byte)
                                    (fn-served-dispatch-events fn-wire-feed-byte
                                     fn-served-connp))))))
@@ -476,7 +476,7 @@
  (defthm fn-served-feed-byte-carries-at-most-one-submission
    (implies (fn-served-connp conn)
             (<= (len (fn-served-submissions
-                      (fn-served-result-effects (fn-served-feed-byte conn byte))))
+                      (fn-served-result-effects (fn-served-feed-byte conn byte fn-arena))))
                 1))
    :rule-classes :linear
    :hints (("Goal"
@@ -494,10 +494,10 @@
             (<= (len (fn-served-submissions
                       (fn-served-result-effects
                        (fn-served-counted-result
-                        (fn-served-feed-counted conn octets)))))
+                        (fn-served-feed-counted conn octets fn-arena)))))
                 1))
    :rule-classes :linear
-   :hints (("Goal" :induct (fn-served-feed-counted conn octets)
+   :hints (("Goal" :induct (fn-served-feed-counted conn octets fn-arena)
             :in-theory (e/d (fn-served-feed-counted)
                             (fn-served-counted-make
                              fn-served-counted-result fn-served-counted-consumed
@@ -513,7 +513,7 @@
            (<= (len (fn-served-submissions
                      (fn-served-result-effects
                       (fn-served-counted-result
-                       (fn-served-step-counted conn octets)))))
+                       (fn-served-step-counted conn octets fn-arena)))))
                1))
   :rule-classes :linear
   :hints (("Goal" :in-theory (e/d (fn-served-step-counted fn-served-step-counted-core
@@ -541,42 +541,42 @@
    (implies (and (natp n) (<= n (len xs)))
             (equal (len (nthcdr n xs)) (- (len xs) n)))))
 
-(defun fn-served-drain (conn octets)
-  (declare (xargs :guard t
+(defun fn-served-drain (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
                   :verify-guards nil
                   :measure (len octets)
                   :hints (("Goal" :in-theory (disable fn-served-step-counted)))))
-  (let* ((counted (fn-served-step-counted conn octets))
+  (let* ((counted (fn-served-step-counted conn octets fn-arena))
          (k (fn-served-counted-consumed counted))
          (result (fn-served-counted-result counted)))
     (if (or (zp k) (<= (len octets) k))
         result
       (let ((tail (fn-served-drain (fn-served-result-conn result)
-                                   (nthcdr k octets))))
+                                   (nthcdr k octets) fn-arena)))
         (fn-served-make-result
          (fn-served-result-conn tail)
          (append (fn-served-result-effects result)
                  (fn-served-result-effects tail)))))))
 
-(defun fn-served-drain-run (conn chunks)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-served-drain-run (conn chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp chunks)
-      (let* ((here (fn-served-drain conn (car chunks)))
+      (let* ((here (fn-served-drain conn (car chunks) fn-arena))
              (tail (fn-served-drain-run (fn-served-result-conn here)
-                                        (cdr chunks))))
+                                        (cdr chunks) fn-arena)))
         (fn-served-make-result
          (fn-served-result-conn tail)
          (append (fn-served-result-effects here)
                  (fn-served-result-effects tail))))
-    (fn-served-drain conn nil)))
+    (fn-served-drain conn nil fn-arena)))
 
 ; The submissions the owner takes, one per yield, in order.
-(defun fn-served-drain-taken (conn octets)
-  (declare (xargs :guard t
+(defun fn-served-drain-taken (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
                   :verify-guards nil
                   :measure (len octets)
                   :hints (("Goal" :in-theory (disable fn-served-step-counted)))))
-  (let* ((counted (fn-served-step-counted conn octets))
+  (let* ((counted (fn-served-step-counted conn octets fn-arena))
          (k (fn-served-counted-consumed counted))
          (result (fn-served-counted-result counted))
          (one (fn-served-submission (fn-served-result-effects result))))
@@ -584,17 +584,17 @@
         (if one (list one) nil)
       (append (if one (list one) nil)
               (fn-served-drain-taken (fn-served-result-conn result)
-                                     (nthcdr k octets))))))
+                                     (nthcdr k octets) fn-arena)))))
 
 ; A read that consumed nothing met a closed wire, a handshaking session or an
 ; empty read; one read of the whole input is then the same no-op.
 (local
  (defthm fn-served-feed-counted-consumed-zero-is-a-no-op
-   (implies (equal (fn-served-counted-consumed (fn-served-feed-counted conn octets)) 0)
-            (equal (fn-served-feed conn octets)
+   (implies (equal (fn-served-counted-consumed (fn-served-feed-counted conn octets fn-arena)) 0)
+            (equal (fn-served-feed conn octets fn-arena)
                    (fn-served-make-result conn nil)))
-   :hints (("Goal" :expand ((fn-served-feed conn octets)
-                            (fn-served-feed-counted conn octets))
+   :hints (("Goal" :expand ((fn-served-feed conn octets fn-arena)
+                            (fn-served-feed-counted conn octets fn-arena))
             :in-theory (e/d ()
                             (fn-served-counted-make fn-served-counted-consumed
                              fn-served-counted-result
@@ -603,23 +603,23 @@
 
 (local
  (defthm fn-served-step-of-nothing
-   (equal (fn-served-step conn nil)
+   (equal (fn-served-step conn nil fn-arena)
           (fn-served-make-result conn nil))
    :hints (("Goal" :in-theory (enable fn-served-step fn-served-feed)))))
 
 (local
  (defthm fn-served-step-counted-consumed-zero
-   (implies (equal (fn-served-counted-consumed (fn-served-step-counted conn octets)) 0)
-            (and (equal (fn-served-step conn octets)
+   (implies (equal (fn-served-counted-consumed (fn-served-step-counted conn octets fn-arena)) 0)
+            (and (equal (fn-served-step conn octets fn-arena)
                         (fn-served-make-result conn nil))
-                 (equal (fn-served-counted-result (fn-served-step-counted conn octets))
+                 (equal (fn-served-counted-result (fn-served-step-counted conn octets fn-arena))
                         (fn-served-make-result conn nil))))
    :hints (("Goal" :in-theory (e/d (fn-served-step-counted fn-served-step-counted-core
                                     fn-served-counted-make fn-served-counted-consumed
                                     fn-served-counted-result fn-served-step)
                                    (fn-served-feed fn-served-feed-counted
                                     fn-served-feed-counted-result-is-feed-of-consumed-prefix))
-            :expand ((fn-served-feed conn nil))
+            :expand ((fn-served-feed conn nil fn-arena))
             :use ((:instance fn-served-feed-counted-consumed-zero-is-a-no-op)
                   (:instance fn-served-feed-counted-result-is-feed-of-consumed-prefix))))))
 
@@ -630,16 +630,16 @@
 
 (local
  (defthm fn-served-feed-of-true-list-fix
-   (equal (fn-served-feed conn (true-list-fix octets))
-          (fn-served-feed conn octets))
-   :hints (("Goal" :induct (fn-served-feed conn octets)
+   (equal (fn-served-feed conn (true-list-fix octets) fn-arena)
+          (fn-served-feed conn octets fn-arena))
+   :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
             :in-theory (e/d (fn-served-feed true-list-fix)
                             (fn-served-feed-byte))))))
 
 (local
  (defthm fn-served-step-of-true-list-fix
-   (equal (fn-served-step conn (true-list-fix octets))
-          (fn-served-step conn octets))
+   (equal (fn-served-step conn (true-list-fix octets) fn-arena)
+          (fn-served-step conn octets fn-arena))
    :hints (("Goal" :in-theory (e/d (fn-served-step) (fn-served-feed))))))
 
 (local
@@ -655,28 +655,28 @@
 (local
  (defthm fn-served-tls-feed-of-closed-wire
    (implies (fn-served-closed-wirep (fn-served-conn-wire conn))
-            (equal (fn-served-feed conn octets)
+            (equal (fn-served-feed conn octets fn-arena)
                    (fn-served-make-result conn nil)))
-   :hints (("Goal" :expand ((fn-served-feed conn octets))))))
+   :hints (("Goal" :expand ((fn-served-feed conn octets fn-arena))))))
 
 ; The step's close effect is on the edge of the wire's closing, so one read of
 ; a concatenation is the read of its prefix then of its suffix, whatever the
 ; octets (fn-served-feed-of-append, no hypothesis).
 (local
  (defthm fn-served-step-of-append-any
-   (equal (fn-served-step conn (append left right))
+   (equal (fn-served-step conn (append left right) fn-arena)
           (fn-served-make-result
            (fn-served-result-conn
-            (fn-served-step (fn-served-result-conn (fn-served-step conn left)) right))
-           (append (fn-served-result-effects (fn-served-step conn left))
+            (fn-served-step (fn-served-result-conn (fn-served-step conn left fn-arena)) right fn-arena))
+           (append (fn-served-result-effects (fn-served-step conn left fn-arena))
                    (fn-served-result-effects
-                    (fn-served-step (fn-served-result-conn (fn-served-step conn left))
-                                    right)))))
+                    (fn-served-step (fn-served-result-conn (fn-served-step conn left fn-arena))
+                                    right fn-arena)))))
    :hints (("Goal"
             :do-not-induct t
             :cases ((fn-served-closed-wirep
                      (fn-served-conn-wire
-                      (fn-served-result-conn (fn-served-feed conn left)))))
+                      (fn-served-result-conn (fn-served-feed conn left fn-arena)))))
             :in-theory (e/d (fn-served-step)
                             (fn-served-feed fn-wire-statep))
             :use ((:instance fn-served-feed-preserves-wire-statep (octets left)))))))
@@ -685,17 +685,17 @@
 ;; prefix the counted step consumed, then the read of the suffix.
 (local
  (defthm fn-served-step-splits-at-the-yield
-   (let* ((counted (fn-served-step-counted conn octets))
+   (let* ((counted (fn-served-step-counted conn octets fn-arena))
           (k (fn-served-counted-consumed counted))
           (result (fn-served-counted-result counted)))
-     (equal (fn-served-step conn octets)
+     (equal (fn-served-step conn octets fn-arena)
             (fn-served-make-result
              (fn-served-result-conn
-              (fn-served-step (fn-served-result-conn result) (nthcdr k octets)))
+              (fn-served-step (fn-served-result-conn result) (nthcdr k octets) fn-arena))
              (append (fn-served-result-effects result)
                      (fn-served-result-effects
                       (fn-served-step (fn-served-result-conn result)
-                                      (nthcdr k octets)))))))
+                                      (nthcdr k octets) fn-arena))))))
    :rule-classes nil
    :hints (("Goal"
             :do-not-induct t
@@ -708,23 +708,23 @@
                   (:instance fn-served-step-counted-consumed-is-bounded)
                   (:instance fn-served-step-of-append-any
                              (left (take (fn-served-counted-consumed
-                                          (fn-served-step-counted conn octets))
+                                          (fn-served-step-counted conn octets fn-arena))
                                          octets))
                              (right (nthcdr (fn-served-counted-consumed
-                                             (fn-served-step-counted conn octets))
+                                             (fn-served-step-counted conn octets fn-arena))
                                             octets)))
                   (:instance fn-served-tls-append-take-nthcdr
                              (n (fn-served-counted-consumed
-                                 (fn-served-step-counted conn octets)))
+                                 (fn-served-step-counted conn octets fn-arena)))
                              (xs octets)))))))
 
 ; KEYSTONE (PRF-213): the resumable step driven to exhaustion is one read of
 ; the whole input.  No hypothesis: the yield after a submission changes where
 ; the host re-enters, never what is framed or answered.
 (defthm fn-served-drain-is-step
-  (equal (fn-served-drain conn octets)
-         (fn-served-step conn octets))
-  :hints (("Goal" :induct (fn-served-drain conn octets)
+  (equal (fn-served-drain conn octets fn-arena)
+         (fn-served-step conn octets fn-arena))
+  :hints (("Goal" :induct (fn-served-drain conn octets fn-arena)
            :in-theory (e/d () (fn-served-step fn-served-step-counted)))
           ("Subgoal *1/2" :use ((:instance fn-served-step-splits-at-the-yield)))
           ("Subgoal *1/1" :use ((:instance fn-served-step-splits-at-the-yield)
@@ -733,16 +733,16 @@
 
 (local
  (defthm fn-served-drain-run-is-run
-   (equal (fn-served-drain-run conn chunks)
-          (fn-served-run conn chunks))
-   :hints (("Goal" :induct (fn-served-drain-run conn chunks)
+   (equal (fn-served-drain-run conn chunks fn-arena)
+          (fn-served-run conn chunks fn-arena))
+   :hints (("Goal" :induct (fn-served-drain-run conn chunks fn-arena)
             :in-theory (e/d (fn-served-run) (fn-served-drain fn-served-step))))))
 
 (local
  (defthm fn-served-run-is-the-concatenated-step-any
-   (equal (fn-served-run conn chunks)
-          (fn-served-step conn (fn-served-concat chunks)))
-   :hints (("Goal" :induct (fn-served-run conn chunks)
+   (equal (fn-served-run conn chunks fn-arena)
+          (fn-served-step conn (fn-served-concat chunks) fn-arena))
+   :hints (("Goal" :induct (fn-served-run conn chunks fn-arena)
             :in-theory (e/d (fn-served-run fn-served-concat)
                             (fn-served-step))))))
 
@@ -753,8 +753,8 @@
 ; octet-list and invariant premises of fn-served-run-is-the-concatenated-step
 ; are not needed here.
 (defthm fn-served-drain-run-is-the-concatenated-step
-  (equal (fn-served-drain-run conn chunks)
-         (fn-served-step conn (fn-served-concat chunks)))
+  (equal (fn-served-drain-run conn chunks fn-arena)
+         (fn-served-step conn (fn-served-concat chunks) fn-arena))
   :hints (("Goal"
            :in-theory (disable fn-served-drain-run fn-served-run fn-served-step
                                fn-served-concat))))
@@ -764,8 +764,8 @@
 ; wherever a submission made a read yield.
 (defthm fn-served-drain-run-is-boundary-independent
   (implies (equal (fn-served-concat one) (fn-served-concat two))
-           (equal (fn-served-drain-run conn one)
-                  (fn-served-drain-run conn two)))
+           (equal (fn-served-drain-run conn one fn-arena)
+                  (fn-served-drain-run conn two fn-arena)))
   :hints (("Goal" :in-theory (disable fn-served-drain-run fn-served-step
                                       fn-served-concat))))
 
@@ -774,10 +774,10 @@
 ; Before PKT-600 the read took the first and dropped the rest.
 (defthm fn-served-drain-takes-every-submission
   (implies (fn-served-connp conn)
-           (equal (fn-served-drain-taken conn octets)
+           (equal (fn-served-drain-taken conn octets fn-arena)
                   (fn-served-submissions
-                   (fn-served-result-effects (fn-served-step conn octets)))))
-  :hints (("Goal" :induct (fn-served-drain-taken conn octets)
+                   (fn-served-result-effects (fn-served-step conn octets fn-arena)))))
+  :hints (("Goal" :induct (fn-served-drain-taken conn octets fn-arena)
            :in-theory (e/d ()
                            (fn-served-step fn-served-step-counted fn-served-connp
                             fn-served-step-counted-carries-at-most-one-submission)))
@@ -786,36 +786,36 @@
                  (:instance fn-served-submissions-of-at-most-one
                             (effects (fn-served-result-effects
                                       (fn-served-counted-result
-                                       (fn-served-step-counted conn octets)))))
+                                       (fn-served-step-counted conn octets fn-arena)))))
                  (:instance fn-served-step-counted-result-is-step-of-consumed-prefix)
                  (:instance fn-served-step-counted-consumed-is-bounded)
                  (:instance fn-served-step-preserves-connp-of-any-input
                             (octets (take (fn-served-counted-consumed
-                                           (fn-served-step-counted conn octets))
+                                           (fn-served-step-counted conn octets fn-arena))
                                           octets)))))
           ("Subgoal *1/2" :use ((:instance fn-served-step-splits-at-the-yield)
                  (:instance fn-served-step-counted-carries-at-most-one-submission)
                  (:instance fn-served-submissions-of-at-most-one
                             (effects (fn-served-result-effects
                                       (fn-served-counted-result
-                                       (fn-served-step-counted conn octets)))))
+                                       (fn-served-step-counted conn octets fn-arena)))))
                  (:instance fn-served-step-counted-result-is-step-of-consumed-prefix)
                  (:instance fn-served-step-counted-consumed-is-bounded)
                  (:instance fn-served-step-preserves-connp-of-any-input
                             (octets (take (fn-served-counted-consumed
-                                           (fn-served-step-counted conn octets))
+                                           (fn-served-step-counted conn octets fn-arena))
                                           octets)))))
           ("Subgoal *1/1" :use ((:instance fn-served-step-splits-at-the-yield)
                  (:instance fn-served-step-counted-carries-at-most-one-submission)
                  (:instance fn-served-submissions-of-at-most-one
                             (effects (fn-served-result-effects
                                       (fn-served-counted-result
-                                       (fn-served-step-counted conn octets)))))
+                                       (fn-served-step-counted conn octets fn-arena)))))
                  (:instance fn-served-step-counted-result-is-step-of-consumed-prefix)
                  (:instance fn-served-step-counted-consumed-is-bounded)
                  (:instance fn-served-step-preserves-connp-of-any-input
                             (octets (take (fn-served-counted-consumed
-                                           (fn-served-step-counted conn octets))
+                                           (fn-served-step-counted conn octets fn-arena))
                                           octets)))))))
 
 (in-theory (disable fn-served-drain fn-served-drain-run fn-served-drain-taken))

@@ -222,15 +222,15 @@ def build_snapshot(projection):
         _, numbers = projection.call("(fn9p-numbers {} state)".format(group_index))
         for number_index, number in enumerate(lines(numbers)):
             found, payload = projection.call(
-                "(fn9p-article {} {} state)".format(group_index, number_index))
+                "(fn9p-article {} {} fn-arena state)".format(group_index, number_index))
             group.add(node(number, False, payload if found else None,
                            None if found else "stored article framing unavailable"))
 
     by_id = node(b"by-id", True)
     root.add(by_id)
-    _, identifiers = projection.call("(fn9p-ids state)")
+    _, identifiers = projection.call("(fn9p-ids fn-arena state)")
     for index, name in enumerate(lines(identifiers)):
-        found, payload = projection.call("(fn9p-id-article {} state)".format(index))
+        found, payload = projection.call("(fn9p-id-article {} fn-arena state)".format(index))
         by_id.add(node(name, False, payload if found else None,
                        None if found else "stored article framing unavailable"))
 

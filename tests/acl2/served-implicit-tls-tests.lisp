@@ -18,18 +18,21 @@
   (fn-sit-opened nil (fn-midx-build nil) nil nil *fn-nntp-max-initial-line-octets*
                  1048576 *sit-config* *sit-observation* *sit-observation* acfg))
 
-(defun sit-implicit (acfg)
-  (fn-served-result-conn (fn-served-dispatch (sit-open acfg) *fn-sit-established-event*)))
+(defun sit-implicit (acfg fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-served-result-conn (fn-served-dispatch (sit-open acfg) *fn-sit-established-event* fn-arena)))
 
-(defun sit-starttls (acfg)
+(defun sit-starttls (acfg fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-served-result-conn
    (fn-served-dispatch
-    (fn-served-result-conn (fn-served-dispatch (sit-open acfg) *fn-sit-starttls-event*))
-    *fn-sit-established-event*)))
+    (fn-served-result-conn (fn-served-dispatch (sit-open acfg) *fn-sit-starttls-event* fn-arena))
+    *fn-sit-established-event* fn-arena)))
 
-(defun sit-command (conn text)
+(defun sit-command (conn text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-served-result-effects
-   (fn-served-dispatch conn (list :command (fn-nntp-string-octets text)))))
+   (fn-served-dispatch conn (list :command (fn-nntp-string-octets text)) fn-arena)))
 
 (defun sit-reply (conn text)
   (fn-nntp-single (fn-auth-reader-session (fn-served-conn-session conn)) text))
@@ -39,26 +42,33 @@
 ; Both hypotheses hold, and the two connections are equal.
 (assert-event (fn-auth-configp *sit-acfg*))
 (assert-event (fn-auth-config-tls-availablep *sit-acfg*))
-(assert-event (equal (sit-implicit *sit-acfg*) (sit-starttls *sit-acfg*)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-served-dispatch 2)
+(bpr-lift sit-command 2)
+(bpr-lift sit-implicit 1)
+(bpr-lift sit-starttls 1)
+(assert-event (equal (in-arena-sit-implicit *sr-arena* *sit-acfg*) (in-arena-sit-starttls *sr-arena* *sit-acfg*)))
 ; The STARTTLS path really went through 382 and the handshake effect.
 (assert-event
  (member-equal (fn-auth-starttls-effect)
-               (sit-command (sit-open *sit-acfg*) "STARTTLS")))
+               (in-arena-sit-command *sr-arena* (sit-open *sit-acfg*) "STARTTLS")))
 ; And the common state behaves as a protected connection: STARTTLS again
 ; is 502, and AUTHINFO USER is not refused 483 under protected_only.
 (assert-event
- (equal (sit-command (sit-implicit *sit-acfg*) "STARTTLS")
+ (equal (in-arena-sit-command *sr-arena* (in-arena-sit-implicit *sr-arena* *sit-acfg*) "STARTTLS")
         (fn-nntp-result-effects
-         (sit-reply (sit-implicit *sit-acfg*) "502 a TLS layer is already active"))))
+         (sit-reply (in-arena-sit-implicit *sr-arena* *sit-acfg*) "502 a TLS layer is already active"))))
 (assert-event
- (not (equal (sit-command (sit-implicit *sit-acfg*) "AUTHINFO USER guest")
+ (not (equal (in-arena-sit-command *sr-arena* (in-arena-sit-implicit *sr-arena* *sit-acfg*) "AUTHINFO USER guest")
              (fn-nntp-result-effects
-              (sit-reply (sit-implicit *sit-acfg*)
+              (sit-reply (in-arena-sit-implicit *sr-arena* *sit-acfg*)
                          "483 a protected channel is required; use STARTTLS")))))
 ; Before either event the same command IS refused 483: the protection is
 ; the event's.
 (assert-event
- (equal (sit-command (sit-open *sit-acfg*) "AUTHINFO USER guest")
+ (equal (in-arena-sit-command *sr-arena* (sit-open *sit-acfg*) "AUTHINFO USER guest")
         (fn-nntp-result-effects
          (sit-reply (sit-open *sit-acfg*)
                     "483 a protected channel is required; use STARTTLS"))))
@@ -71,9 +81,9 @@
 (assert-event (fn-auth-configp *sit-no-tls*))
 (assert-event (not (fn-auth-config-tls-availablep *sit-no-tls*)))
 (assert-event (not (member-equal (fn-auth-starttls-effect)
-                                 (sit-command (sit-open *sit-no-tls*) "STARTTLS"))))
+                                 (in-arena-sit-command *sr-arena* (sit-open *sit-no-tls*) "STARTTLS"))))
 (assert-event
- (equal (sit-command (sit-open *sit-no-tls*) "STARTTLS")
+ (equal (in-arena-sit-command *sr-arena* (sit-open *sit-no-tls*) "STARTTLS")
         (fn-nntp-result-effects
          (sit-reply (sit-open *sit-no-tls*) "580 can not initiate TLS negotiation"))))
 
@@ -84,7 +94,7 @@
 (assert-event (fn-auth-config-tls-availablep *sit-malformed*))
 (assert-event (not (fn-auth-configp *sit-malformed*)))
 (assert-event (not (member-equal (fn-auth-starttls-effect)
-                                 (sit-command (sit-open *sit-malformed*) "STARTTLS"))))
+                                 (in-arena-sit-command *sr-arena* (sit-open *sit-malformed*) "STARTTLS"))))
 
 (defmacro sit-keystone-without (hyps)
   `(defthm sit-keystone-weakened
@@ -95,14 +105,14 @@
                 (and (member-equal
                       (fn-auth-starttls-effect)
                       (fn-served-result-effects
-                       (fn-served-dispatch c0 *fn-sit-starttls-event*)))
+                       (fn-served-dispatch c0 *fn-sit-starttls-event* fn-arena)))
                      (equal (fn-served-result-conn
-                             (fn-served-dispatch c0 *fn-sit-established-event*))
+                             (fn-served-dispatch c0 *fn-sit-established-event* fn-arena))
                             (fn-served-result-conn
                              (fn-served-dispatch
                               (fn-served-result-conn
-                               (fn-served-dispatch c0 *fn-sit-starttls-event*))
-                              *fn-sit-established-event*))))))
+                               (fn-served-dispatch c0 *fn-sit-starttls-event* fn-arena))
+                              *fn-sit-established-event* fn-arena))))))
      :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch
                                         fn-served-open-group-indexed
                                         fn-served-open-indexed
@@ -121,10 +131,10 @@
 ; fn-served-implicit-tls-session-is-protected: the witness.
 (assert-event
  (null (fn-served-result-effects
-        (fn-served-dispatch (sit-open *sit-acfg*) *fn-sit-established-event*))))
-(assert-event (fn-auth-session-tlsp (fn-served-conn-session (sit-implicit *sit-acfg*))))
+        (in-arena-fn-served-dispatch *sr-arena* (sit-open *sit-acfg*) *fn-sit-established-event*))))
+(assert-event (fn-auth-session-tlsp (fn-served-conn-session (in-arena-sit-implicit *sr-arena* *sit-acfg*))))
 (assert-event
- (not (fn-auth-session-handshakingp (fn-served-conn-session (sit-implicit *sit-acfg*)))))
+ (not (fn-auth-session-handshakingp (fn-served-conn-session (in-arena-sit-implicit *sr-arena* *sit-acfg*)))))
 ; The conclusion is not the opened state's: before the event there is no
 ; TLS layer.
 (assert-event (not (fn-auth-session-tlsp (fn-served-conn-session (sit-open *sit-acfg*)))))
@@ -133,4 +143,4 @@
 (assert-event
  (fn-auth-session-handshakingp
   (fn-served-conn-session
-   (fn-served-result-conn (fn-served-dispatch (sit-open *sit-acfg*) *fn-sit-starttls-event*)))))
+   (fn-served-result-conn (in-arena-fn-served-dispatch *sr-arena* (sit-open *sit-acfg*) *fn-sit-starttls-event*)))))

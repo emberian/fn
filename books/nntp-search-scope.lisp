@@ -40,17 +40,18 @@
 ; The numbers of the scope the node's XPAT renders a line for: the same
 ; recursion as fn-nntp-xpat-lines-for-numbers, returning the number instead
 ; of the line.
-(defun fn-nss-hits (field patterns group numbers articles)
+(defun fn-nss-hits (field patterns group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp numbers)
       (let* ((article (fn-nntp-available-article group (car numbers) articles))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article)
+                          (fn-nntp-hdr-content field article fn-arena)
                         (list :error))))
         (if (and (fn-nntp-hdr-okp content)
                  (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
             (cons (car numbers)
-                  (fn-nss-hits field patterns group (cdr numbers) articles))
-          (fn-nss-hits field patterns group (cdr numbers) articles)))
+                  (fn-nss-hits field patterns group (cdr numbers) articles fn-arena))
+          (fn-nss-hits field patterns group (cdr numbers) articles fn-arena)))
     nil))
 
 (local
@@ -58,38 +59,38 @@
    (implies (and (consp (fn-nntp-available-article group number articles))
                  (fn-nntp-hdr-okp
                   (fn-nntp-hdr-content
-                   field (fn-nntp-available-article group number articles))))
+                   field (fn-nntp-available-article group number articles) fn-arena)))
             (equal (fn-nntp-hdr-lines-for-numbers field group (cons number rest)
-                                                  articles)
+                                                  articles fn-arena)
                    (cons (fn-nntp-hdr-line
                           (fn-nntp-decimal-field number)
                           (fn-nntp-hdr-octets
                            (fn-nntp-hdr-content
                             field
-                            (fn-nntp-available-article group number articles))))
+                            (fn-nntp-available-article group number articles) fn-arena)))
                          (fn-nntp-hdr-lines-for-numbers field group rest
-                                                        articles))))
+                                                        articles fn-arena))))
    :hints (("Goal" :expand ((fn-nntp-hdr-lines-for-numbers
-                             field group (cons number rest) articles))
+                             field group (cons number rest) articles fn-arena))
             :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-line
                                 fn-nntp-hdr-octets fn-nntp-available-article)))))
 
 (local
  (defthm fn-nss-hdr-lines-of-no-numbers
    (implies (not (consp numbers))
-            (equal (fn-nntp-hdr-lines-for-numbers field group numbers articles)
+            (equal (fn-nntp-hdr-lines-for-numbers field group numbers articles fn-arena)
                    nil))
    :hints (("Goal" :expand ((fn-nntp-hdr-lines-for-numbers field group numbers
-                                                           articles))))))
+                                                           articles fn-arena))))))
 
 (defthm fn-nss-xpat-lines-are-the-hdr-lines-of-the-hits
-  (equal (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles)
+  (equal (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles fn-arena)
          (fn-nntp-hdr-lines-for-numbers
-          field group (fn-nss-hits field patterns group numbers articles)
-          articles))
-  :hints (("Goal" :induct (fn-nss-hits field patterns group numbers articles)
+          field group (fn-nss-hits field patterns group numbers articles fn-arena)
+          articles fn-arena))
+  :hints (("Goal" :induct (fn-nss-hits field patterns group numbers articles fn-arena)
            :expand ((fn-nntp-xpat-lines-for-numbers field patterns group numbers
-                                                    articles))
+                                                    articles fn-arena))
            :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-line
                                fn-nntp-hdr-octets fn-nntp-xpat-matchesp
                                fn-nntp-available-article
@@ -106,18 +107,18 @@
 
 (local
  (defthm fn-nss-member-of-hits
-   (iff (member-equal number (fn-nss-hits field patterns group numbers articles))
+   (iff (member-equal number (fn-nss-hits field patterns group numbers articles fn-arena))
         (and (member-equal number numbers)
              (consp (fn-nntp-available-article group number articles))
              (fn-nntp-hdr-okp
               (fn-nntp-hdr-content
-               field (fn-nntp-available-article group number articles)))
+               field (fn-nntp-available-article group number articles) fn-arena))
              (fn-nntp-xpat-matchesp
               patterns
               (fn-nntp-hdr-octets
                (fn-nntp-hdr-content
-                field (fn-nntp-available-article group number articles))))))
-   :hints (("Goal" :induct (fn-nss-hits field patterns group numbers articles)
+                field (fn-nntp-available-article group number articles) fn-arena)))))
+   :hints (("Goal" :induct (fn-nss-hits field patterns group numbers articles fn-arena)
             :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-octets
                                 fn-nntp-xpat-matchesp fn-nntp-available-article)))))
 
@@ -149,19 +150,19 @@
                      (fn-nss-hits field patterns group
                                   (fn-nntp-group-range-numbers group low high
                                                                articles)
-                                  articles))
+                                  articles fn-arena))
        (and (posp number)
             (<= low number)
             (<= number high)
             (consp (fn-nntp-available-article group number articles))
             (fn-nntp-hdr-okp
              (fn-nntp-hdr-content
-              field (fn-nntp-available-article group number articles)))
+              field (fn-nntp-available-article group number articles) fn-arena))
             (fn-nntp-xpat-matchesp
              patterns
              (fn-nntp-hdr-octets
               (fn-nntp-hdr-content
-               field (fn-nntp-available-article group number articles))))))
+               field (fn-nntp-available-article group number articles) fn-arena)))))
   :hints (("Goal" :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-octets
                                       fn-nntp-xpat-matchesp
                                       fn-nntp-available-article
@@ -185,7 +186,7 @@
                               (fn-nss-hits field patterns
                                            (fn-nntp-session-group session)
                                            numbers
-                                           (fn-state-articles archive)))))
+                                           (fn-state-articles archive) fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-number-withdrawn-p)
                                   (fn-nntp-hdr-content fn-nntp-hdr-octets
                                    fn-nntp-xpat-matchesp
@@ -236,7 +237,7 @@
                   (fn-wildmat-result-okp parsed)
                   group)
              (equal (fn-nntp-step-pinned session archive index verdicts env
-                                         (list :command line))
+                                         (list :command line) fn-arena)
                     (fn-nntp-multi
                      session (fn-nntp-hdr-initial t)
                      (fn-nntp-hdr-lines-for-numbers
@@ -245,8 +246,8 @@
                                    (fn-nntp-group-range-numbers
                                     group (fn-nntp-range-low range)
                                     (fn-nntp-range-high range) articles)
-                                   articles)
-                      articles)))))
+                                   articles fn-arena)
+                      articles fn-arena)))))
   :hints (("Goal" :do-not-induct t
            :use (fn-nntp-step-pinned-xpat-is-the-xpat-response (:instance fn-nss-xpat-keyword-is-a-keyword-token (token (car (fn-nntp-tokenize line)))))
            :in-theory (e/d (fn-nntp-xpat-response fn-nntp-xpat-range)

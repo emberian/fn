@@ -53,7 +53,7 @@
 ; list; every use in this book is a literal.
 (defmacro rp-reply (session archive env line)
   `(fn-nntp-result-effects
-    (fn-nntp-step ,session ,archive ,env (list :command ',line))))
+    (in-arena-fn-nntp-step *sr-arena* ,session ,archive ,env (list :command ',line))))
 
 ; -----------------------------------------------------------------------------
 ; The calendar conversion, pinned at boundaries an off-by-one would move
@@ -75,6 +75,12 @@
 ; -----------------------------------------------------------------------------
 ; DATE (RFC 3977 section 7.1)
 
+(include-book "arena-lift")
+(defconst *rp-fold-payload* '(77 101 115 115 97 103 101 45 73 68 58 32 60 70 111 108 100 64 73 100 46 105 110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 79 110 101 9 84 119 111 13 10 9 84 104 114 101 101 13 10 13 10 66 111 100 121 13 10))
+;; The arena: handle 0 = *rp-payload*, 1 = *rp-fold-payload*.
+(defconst *sr-arena* (list *rp-payload* *rp-fold-payload*))
+(bpr-lift fn-nntp-step 4)
+(bpr-lift fn-nov-overview 1)
 (assert-event
  (equal (rp-reply *rp-session0* *rp-archive* *rp-env* (68 65 84 69))
         (list (fn-nntp-reply-effect '(49 49 49 32 50 48 50 54 48 57 49 57 49 50 51 52 53 54 13 10)))))
@@ -99,8 +105,7 @@
 ; Section 5.3.2: the command affects the server state in no way.
 (assert-event
  (equal (fn-nntp-result-session
-         (fn-nntp-step *rp-session0* *rp-archive* *rp-env*
-                       (list :command '(77 79 68 69 32 82 69 65 68 69 82))))
+         (in-arena-fn-nntp-step *sr-arena* *rp-session0* *rp-archive* *rp-env* (list :command '(77 79 68 69 32 82 69 65 68 69 82))))
         *rp-session0*))
 
 (assert-event
@@ -177,12 +182,10 @@
 ; Same format as LIST ACTIVE (section 7.3.2), so the blocks must agree.
 (defconst *rp-list-active*
   (fn-nntp-result-effects
-   (fn-nntp-step *rp-session0* *rp-archive* *rp-env*
-                 (list :command '(76 73 83 84 32 65 67 84 73 86 69)))))
+   (in-arena-fn-nntp-step *sr-arena* *rp-session0* *rp-archive* *rp-env* (list :command '(76 73 83 84 32 65 67 84 73 86 69)))))
 (defconst *rp-newgroups-all*
   (fn-nntp-result-effects
-   (fn-nntp-step *rp-session0* *rp-archive* *rp-env*
-                 (list :command '(78 69 87 71 82 79 85 80 83 32 49 57 55 48 48 49 48 49 32 48 48 48 48 48 48 32 71 77 84)))))
+   (in-arena-fn-nntp-step *sr-arena* *rp-session0* *rp-archive* *rp-env* (list :command '(78 69 87 71 82 79 85 80 83 32 49 57 55 48 48 49 48 49 32 48 48 48 48 48 48 32 71 77 84)))))
 (assert-event
  (equal *rp-newgroups-all*
         (list (fn-nntp-reply-effect
@@ -233,8 +236,7 @@
 
 (defconst *rp-selected*
   (fn-nntp-result-session
-   (fn-nntp-step *rp-session0* *rp-archive* *rp-env*
-                 (list :command '(71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115)))))
+   (in-arena-fn-nntp-step *sr-arena* *rp-session0* *rp-archive* *rp-env* (list :command '(71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115)))))
 
 ; The eight mandatory fields, TAB separated, in section 8.3.2's order.  From,
 ; Date and References are absent from the stored article, so those fields are
@@ -252,8 +254,7 @@
                '(50 50 52 32 111 118 101 114 118 105 101 119 32 105 110 102 111 114 109 97 116 105 111 110 32 102 111 108 108 111 119 115 13 10 48 9 84 101 115 116 9 9 9 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 9 9 54 49 9 50 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-session
-         (fn-nntp-step *rp-selected* *rp-archive* *rp-env*
-                       (list :command '(79 86 69 82 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
+         (in-arena-fn-nntp-step *sr-arena* *rp-selected* *rp-archive* *rp-env* (list :command '(79 86 69 82 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
         *rp-selected*))
 
 ; A range, an open range, and a range containing nothing.
@@ -294,8 +295,7 @@
 ; An empty group has an invalid current article, so the third form is 420.
 (defconst *rp-empty-selected*
   (fn-nntp-result-session
-   (fn-nntp-step *rp-session0* *rp-archive* *rp-env*
-                 (list :command '(71 82 79 85 80 32 102 110 46 101 109 112 116 121)))))
+   (in-arena-fn-nntp-step *sr-arena* *rp-session0* *rp-archive* *rp-env* (list :command '(71 82 79 85 80 32 102 110 46 101 109 112 116 121)))))
 (assert-event
  (equal (rp-reply *rp-empty-selected* *rp-archive* *rp-env* (79 86 69 82))
         (list (fn-nntp-reply-effect '(52 50 48 32 110 111 32 99 117 114 114 101 110 116 32 97 114 116 105 99 108 101 13 10)))))
@@ -303,13 +303,12 @@
 ; -----------------------------------------------------------------------------
 ; The section 8.3.2 transformation, on an article that needs it
 
-(defconst *rp-fold-payload* '(77 101 115 115 97 103 101 45 73 68 58 32 60 70 111 108 100 64 73 100 46 105 110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 79 110 101 9 84 119 111 13 10 9 84 104 114 101 101 13 10 13 10 66 111 100 121 13 10))
 (defconst *rp-fold-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *rp-groups*) 1 "<Fold@Id.invalid>"
                       1 '("fn.letters") 841000000)
    0 1 :durable))
-(defconst *rp-fold-over* (fn-nov-overview (car (fn-state-articles *rp-fold-archive*))))
+(defconst *rp-fold-over* (in-arena-fn-nov-overview *sr-arena* (car (fn-state-articles *rp-fold-archive*))))
 (assert-event (fn-nov-okp *rp-fold-over*))
 ; Folding is undone and the embedded TAB becomes one space: no TAB survives to
 ; invent a field boundary, and no CRLF survives to split the line.

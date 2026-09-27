@@ -166,7 +166,7 @@
                 (equal (fn-peer-session-transfer ps) (list kind msgid)))
            (equal (fn-post-result-submission
                    (fn-peer-step-pinned ps archive index verdicts config observation
-                                        injection (list :article lines)))
+                                        injection (list :article lines) fn-arena))
                   (fn-peer-make-submission (fn-peer-session-peer ps) kind msgid
                                            (fn-post-body-octets lines))))
   :rule-classes nil
@@ -206,7 +206,7 @@
 (local (defthm fn-peer-step-keeps-outstanding-offers-within-the-peer-bound
   (<= (nfix (fn-peer-session-inflight
              (fn-post-result-session
-              (fn-peer-step ps archive config observation injection wire-event))))
+              (fn-peer-step ps archive config observation injection wire-event fn-arena))))
       (max (nfix (fn-peer-session-inflight ps))
            (nfix (fn-cfg-peer-inbound-max-inflight
                   (fn-cfg-peer-find (fn-peer-session-peer ps)
@@ -227,7 +227,7 @@
   (<= (nfix (fn-peer-session-inflight
              (fn-post-result-session
               (fn-peer-step-pinned ps archive index verdicts config observation
-                                   injection wire-event))))
+                                   injection wire-event fn-arena))))
       (max (nfix (fn-peer-session-inflight ps))
            (nfix (fn-cfg-peer-inbound-max-inflight
                   (fn-cfg-peer-find (fn-peer-session-peer ps)
