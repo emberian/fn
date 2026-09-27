@@ -239,6 +239,18 @@ array's size); it decides nothing ACL2 decides."
     (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
     st))
 
+(defun fnn-octets-pub-release ()
+  "Empty the publication buffer and give its array back after a checkpoint's
+publication (the verb's or the owner's thread): the array grew to the
+largest step the publication wrote and nothing needs it until the next
+publication, which regrows it (per-record-state PKT-PRS-2: 8.4 MB kept at
+10,000 records).  A bound on retained memory only; the logical value, the
+empty list, is unchanged, and it decides nothing ACL2 decides."
+  (let ((st (fnn-live-octets-pub)))
+    (setf (svref st 1) 0)
+    (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
+    st))
+
 (defun fnn-octets-reserve (n)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
   (fn-octets$c-reserve n (fnn-live-octets)))
@@ -531,23 +543,32 @@ receive an OS error for every failed read."
            (fnn-fault "read returned an invalid count"))
           (t count))))
 
-(defun fnn-read-bounded-fd (fd maximum)
-  "Read at most MAXIMUM octets from one already validated descriptor."
-  (let ((chunks nil) (remaining (+ maximum 1)) (total 0))
-             (loop while (> remaining 0) do
-               (let* ((buffer (fnn-make-octets (min 65536 remaining)))
-                      (count (fnn-read-fd fd buffer)))
-                 (when (zerop count) (return))
-                 (push (subseq buffer 0 count) chunks)
-                 (incf total count)
-                 (decf remaining count)))
-             (when (> total maximum)
+(defun fnn-read-bounded-fd (fd maximum &optional size)
+  "Read at most MAXIMUM octets from one already validated descriptor.
+SIZE, the descriptor's fstat size when the caller has it, sizes the first
+read's buffer exactly and the next read is a one-octet probe for end of file,
+so a file that did not change is read into one vector with no copy; the reads
+still go to end of file, and past MAXIMUM is refused whatever SIZE said."
+  (let ((chunks nil) (remaining (+ maximum 1)) (total 0)
+        (next (if (and size (> size 0)) size 65536)))
+    (loop while (> remaining 0) do
+      (let* ((buffer (fnn-make-octets (min next remaining)))
+             (count (fnn-read-fd fd buffer)))
+        (when (zerop count) (return))
+        (push (if (= count (length buffer)) buffer (subseq buffer 0 count)) chunks)
+        (incf total count)
+        (decf remaining count)
+        ;; After the hinted read, one octet asks whether the file ended.
+        (setq next (if (and size (= total size)) 1 65536))))
+    (when (> total maximum)
       (fnn-overbound "file exceeds ACL2-owned bound"))
-             (let ((data (fnn-make-octets total)) (at 0))
-               (dolist (chunk (nreverse chunks))
-                 (replace data chunk :start1 at)
-                 (incf at (length chunk)))
-      data)))
+    (if (and chunks (null (cdr chunks)))
+        (car chunks)
+        (let ((data (fnn-make-octets total)) (at 0))
+          (dolist (chunk (nreverse chunks))
+            (replace data chunk :start1 at)
+            (incf at (length chunk)))
+          data))))
 
 (defun fnn-read-regular-bounded (path maximum)
   "Read one regular, non-symlink file through a no-follow descriptor."
@@ -558,7 +579,7 @@ receive an OS error for every failed read."
              (fnn-fault "refusing non-regular store file: ~a" path))
            (when (> (sb-posix:stat-size info) maximum)
              (fnn-overbound "store file exceeds bound: ~a" path))
-           (fnn-read-bounded-fd fd maximum))
+           (fnn-read-bounded-fd fd maximum (sb-posix:stat-size info)))
       (fnn-close fd))))
 
 (defun fnn-check-regular (path)
@@ -1109,7 +1130,7 @@ saved profile stays a fault."
   (fnn-nat (fnn-core 'fn-store-record-sequence (fnn-octet-list record))))
 (defun fnn-bridge-record-txid (record)
   (fnn-nat (fnn-core 'fn-store-record-txid (fnn-octet-list record))))
-(defun fnn-bridge-recover (records frontier config-records)
+(defun fnn-bridge-recover (next-chunk frontier config-records)
   "Replay the configuration history and then the article history.
 
 The core replays `config-records' with the article records through
@@ -1118,33 +1139,50 @@ configured node, and opens the observed store through `fn-cpo-open-observed'
 (host/store-node-host.lisp `fn-store-sn-recover-rows'); a store with no
 configuration record never reaches here.
 
-The history goes over in CHUNKS (PKT-823; books/store-recover-stream.lisp): a
-chunk closes where ACL2 says (`fn-srs-chunk-fullp', a work quantum: one record
-is always taken first, so no record is refused or split for its size), and
-only that chunk is ever an octet list.  Per chunk, ACL2 decodes it
-(`fn-store-decode-records', which is `fn-srs-decode') and the guard-verified
-`fn-srs-intern-step' interns it into the arena, accumulating the rows; the
-arena is cleared first and updated only by those direct calls, so no :program
-entry updates it (invariant-risk: flip-L6-2).  KEYSTONE
-fn-srs-steps-are-one-step-of-the-concatenation: every chunking gives the rows
-and arena one step over the whole history gives.  The host supplies octets,
-passes ACL2's values back unread, and decides nothing about them."
+The history goes over in CHUNKS (PKT-823; books/store-recover-stream.lisp).
+NEXT-CHUNK answers ACL2's decode of the next chunk, or :END: the file reader
+(`fnn-recover-file-chunks') answers `fn-srs-checked-decode' of a numbered
+chunk, the pack path (`fnn-recover-record-chunks') `fn-store-decode-records'
+(`fn-srs-decode') of a chunk of records already checked.  Per chunk the
+guard-verified `fn-srs-intern-step' interns it into the arena, accumulating
+the rows; the arena is cleared first and updated only by those direct calls,
+so no :program entry updates it (invariant-risk: flip-L6-2).  KEYSTONES
+fn-srs-steps-are-one-step-of-the-concatenation (every chunking gives the rows
+and arena one step over the whole history gives) and
+fn-srs-checked-step-is-the-step (a numbered chunk's two calls are the step
+over its records).  The host supplies octets, passes ACL2's values back
+unread, and decides nothing about them."
   (let ((configs (mapcar #'fnn-octet-list config-records))
         (arena (fnn-live-arena))
         (acc nil))
     (fnn-call 'fn-arena-clear arena)
-    (loop while records do
-      (let ((chunk nil) (octets 0))
-        (loop while (and records (not (fnn-core 'fn-srs-chunk-fullp octets))) do
-          (let ((record (pop records)))
-            (incf octets (length record))
-            (push (fnn-octet-list record) chunk)))
-        (let ((decoded (fnn-core 'fn-store-decode-records (nreverse chunk))))
-          (setq acc (first (fnn-call 'fn-srs-intern-step acc decoded arena))))
+    (loop
+      (let ((decoded (funcall next-chunk)))
+        (when (eq decoded :end) (return))
+        (when (eq decoded :sequence)
+          (fnn-fault "record sequence does not match immutable filename"))
+        (setq acc (first (fnn-call 'fn-srs-intern-step acc decoded arena)))
         (when (eq acc :bad)
           (return-from fnn-bridge-recover :fault))))
     (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
                                 (fnn-core 'fn-srs-rows acc) frontier configs))))
+
+(defun fnn-recover-record-chunks (records)
+  "A chunk source over RECORDS (octet vectors, or octet lists: the log
+kernel's committed records, taken as they are; checked already): each call
+converts the next chunk to octet lists and answers ACL2's decode of it; a
+chunk closes where ACL2 says (`fn-srs-chunk-fullp', a work quantum: one
+record is always taken first, so no record is refused or split for its size)."
+  (lambda ()
+    (if (null records)
+        :end
+        (let ((chunk nil) (octets 0))
+          (loop while (and records (not (fnn-core 'fn-srs-chunk-fullp octets))) do
+            (let ((record (pop records)))
+              (incf octets (length record))
+              (push (fnn-octet-list record) chunk)))
+          (fnn-core 'fn-store-decode-records (nreverse chunk))))))
+
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."
@@ -1323,7 +1361,7 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ; without that optional layer retains authoritative full replay and reports
 ; no selected checkpoint.
 (defvar *fnn-checkpoint-recover-callback*
-  (lambda (store records) (declare (ignore store records)) '(:none)))
+  (lambda (store count) (declare (ignore store count)) '(:none)))
 ; A selected lossless prefix pack may reconstruct records before the one
 ; generic decoder/replay call.  Without the optional pack layer this is the
 ; identity function.
@@ -1332,6 +1370,11 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
     (declare (ignore store sequences actual-lower)) records))
 (defvar *fnn-pack-lower-bound-callback*
   (lambda (store) (declare (ignore store)) 0))
+; True when a selected pack reconstructs the history's prefix, so the open
+; reads the history through `fnn-committed-history' (the pack's
+; reconstruction and the suffix files) rather than streaming the files.
+(defvar *fnn-pack-selected-callback*
+  (lambda (store) (declare (ignore store)) nil))
 (defvar *fnn-pack-status-callback* nil)
 
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
@@ -1442,6 +1485,27 @@ host has no SHA-256 of its own."
         (fnn-fault "frame refused: ~(~a~)" reason)))
     (fnn-as-octets (second value))))
 
+(defun fnn-unframe-list (raw)
+  "FNN-UNFRAME answering ACL2's octet list of the record itself: the streaming
+open hands it to the step as it is (fnn-recover-file-chunks), so the record is
+not made a vector and then a list again.  The file goes over as one octet list
+of its protected prefix and the trailer's octets (the frame's trailer size is
+ACL2's constant, as fnn-digest-of splits it): ACL2 digests the prefix itself
+and answers the payload as the prefix's tail, with no copy
+(host/store-host.lisp fn-store-unframe-split, books/store-recover-stream.lisp
+KEYSTONE fn-srs-unframe-is-the-frame-decode).  A file shorter than a trailer
+goes over whole, as fnn-unframe sends it."
+  (let* ((cut (- (length raw) (fnn-constant :trailer)))
+         (value (if (< cut 0)
+                    (fnn-core 'fn-store-frame-store-decode (fnn-octet-list raw) nil)
+                    (fnn-core 'fn-store-unframe-split
+                              (loop for i below cut collect (aref raw i))
+                              (loop for i from cut below (length raw) collect (aref raw i))))))
+    (unless (and (consp value) (eq (first value) :ok))
+      (let ((reason (if (and (consp value) (consp (cdr value))) (second value) :unknown)))
+        (fnn-fault "frame refused: ~(~a~)" reason)))
+    (second value)))
+
 (defun fnn-subject-id (payload)
   "Content identity v1 (books/identity), derived end to end in ACL2.
 `books/crypto-attach.lisp' attaches SHA-256 to `fn-frame-digest', so the
@@ -1529,12 +1593,14 @@ resolves the names against `domain' and the host carries that list verbatim."
   (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil)
-  ;; Whether the open returns the whole history's record octets (the verbs
-  ;; that pack, compact or export take them).  The owner opens with NIL: after
-  ;; a state-checkpoint open the covered prefix lives in the arena and the
-  ;; checkpoint's rows, and is not re-encoded as octet lists (checkpoint-arena-2;
-  ;; fnn-recover-from-state-checkpoint).
-  (history t)
+  ;; The open answers the history's record COUNT and keeps no records
+  ;; (PKT-823); a verb that needs them reads them after the open
+  ;; (fnn-history-records).  On format 9 the open records here how the log
+  ;; holds the history (fnn-recover-log): (PREFIXP CLOSED GENESIS ACTIVE):
+  ;; whether a checkpoint covers dropped segments (the prefix is then its
+  ;; rows'), the closed segments scanned and the genesis the scan started
+  ;; from, and the active segment's index (fnn-log-history-records).
+  (log-history nil)
   ;; Lane commit-onto-log: the commit route ACL2 names from the profile
   ;; (fn-store-profile-logp: format 9) and, on that route, the open record
   ;; log (an fnn-log: the segment's descriptor and the log kernel).
@@ -2296,17 +2362,57 @@ empties it first (fnn-bridge-recover)."
           (values :ok (second answer))
           (values :refused 0)))))
 
+(defun fnn-recover-file-chunks (store files)
+  "A chunk source over the transaction FILES ((sequence . path) ...): each call
+reads the next chunk's files, unframes each (fnn-unframe-list), checks the
+aggregate against ACL2's replay bound as it goes, and answers ACL2's
+`fn-srs-checked-decode' of the numbered chunk ((SEQUENCE . RECORD) ...): the
+chunk's decode, or :sequence when a record's sequence is not its file's
+number (KEYSTONE fn-srs-checked-decode-is-the-per-file-check: the per-file
+check `fnn-durable-records' makes, in the one decode).  One bounded read per
+file, at the persisted profile's record ceiling plus the frame overhead
+(host/store-host.lisp `fn-store-profile-read-bound').  Only the chunk being
+decoded is in memory: the files are read as the replay takes them."
+  (let ((aggregate 0)
+        (bound (fnn-core 'fn-store-profile-read-bound (fnn-store-config store))))
+    (lambda ()
+      (if (null files)
+          :end
+          (let ((chunk nil) (octets 0))
+            (loop while (and files (not (fnn-core 'fn-srs-chunk-fullp octets))) do
+              (destructuring-bind (sequence . path) (pop files)
+                (fnn-check-regular path)
+                (let* ((record (fnn-unframe-list (fnn-read-regular-bounded path bound)))
+                       (length (length record)))
+                  (incf aggregate length)
+                  (incf octets length)
+                  ;; ACL2's bound (fn-profile-replay-within-boundp).
+                  (unless (fnn-core 'fn-store-profile-replay-within-bound
+                                    (fnn-store-config store) aggregate)
+                    (fnn-fault "transaction recovery input exceeds configured bound"))
+                  (push (cons sequence record) chunk))))
+            (fnn-core 'fn-srs-checked-decode (nreverse chunk)))))))
+
 (defun fnn-recover-full-replay (store config-records &optional (reason nil))
-  "Today's open: every durable record, then one full replay."
-  (let ((records nil))
-    (multiple-value-bind (physical-records actual-lower physical-sequences)
-        (fnn-durable-records
-         store (funcall *fnn-pack-lower-bound-callback* store))
-      (setq records (funcall *fnn-pack-recover-callback*
-                             store physical-records physical-sequences
-                             actual-lower)))
-    (fnn-check-history-marker store (length records))
-    (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records)))
+  "Today's open: every durable record, then one full replay, taken in chunks;
+answers the history's record count.  Without a selected pack the transaction
+files are read a chunk at a time as the replay takes them
+(`fnn-recover-file-chunks'), so the history is never in memory at once
+besides the arena; with one, the pack reconstructs the prefix first
+(`fnn-committed-history', which checks the marker) and the records go over in
+chunks.  A caller that needs the records' octets reads them with
+`fnn-committed-history'."
+  (let* ((count nil)
+         (next (if (funcall *fnn-pack-selected-callback* store)
+                   (let ((records (fnn-committed-history store)))
+                     (setq count (length records))
+                     (fnn-recover-record-chunks records))
+                   (let ((files (fnn-transaction-files
+                                 store (funcall *fnn-pack-lower-bound-callback* store))))
+                     (setq count (length files))
+                     (fnn-check-history-marker store (length files))
+                     (fnn-recover-file-chunks store files)))))
+    (let ((action (fnn-bridge-recover next (fnn-store-frontier store) config-records)))
       ;; A named refusal of the open (books/store-open-pre-c1.lisp
       ;; fn-sopc-classified-open): ACL2 renders the line.
       (when (eq action :refused)
@@ -2318,7 +2424,7 @@ empties it first (fnn-bridge-recover)."
         (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
     (when reason
       (setf (fnn-store-open-mode store) (list :full-replay reason)))
-    records))
+    count))
 
 (defun fnn-read-suffix-records (store pairs)
   "Read the transaction files PAIRS ((sequence . path) ...) as fnn-durable-records does."
@@ -2353,29 +2459,11 @@ arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
           (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
                                       rows (fnn-store-frontier store) configs))))))
 
-(defun fnn-state-checkpoint-prefix-octets ()
-  "The record octets of the prefix the state checkpoint covered, encoded from
-the checkpoint's rows through the arena (host/store-node-host.lisp
-fn-store-sco-prefix-octets): O(prefix) lists, for a verb that takes the
-whole history's octets."
-  (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets)))
-
-(defun fnn-open-last-record (store records)
-  "The history's last record's octets, or NIL: the last of RECORDS, or, after a
-state-checkpoint open that did not take the history and read no suffix, the
-covered prefix's last (fn-store-sco-last-record-octets)."
-  (or (car (last records))
-      (and (not (fnn-store-history store))
-           (eq (first (fnn-store-open-mode store)) :checkpoint)
-           (let ((octets (fnn-core-arena-state 'fn-store-sco-last-record-octets)))
-             (and octets (fnn-as-octets octets))))))
-
 (defun fnn-recover-from-state-checkpoint (store config-records)
-  "The records of the history when the checkpoint opened the Store, else :FULL
-after recording why not in open-mode (the caller then replays in full).  An
-open that does not take the history (fnn-store-history NIL: the owner)
-answers the suffix's records only; the prefix is the arena's and the
-checkpoint's rows."
+  "The history's record COUNT when the checkpoint opened the Store, else :FULL
+after recording why not in open-mode (the caller then replays in full).  The
+covered prefix is not re-encoded (PKT-823): a caller that needs the records
+reads them after the open (`fnn-history-records')."
   (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
     (let* ((lower (funcall *fnn-pack-lower-bound-callback* store))
            (pairs (if (eq status :ok) (fnn-transaction-files store lower) nil))
@@ -2410,9 +2498,9 @@ checkpoint's rows."
           (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
           (return-from fnn-recover-from-state-checkpoint :full))
         (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (if (fnn-store-history store)
-            (append (fnn-state-checkpoint-prefix-octets) suffix)
-            suffix)))))
+        ;; The history's count; a caller that needs the records reads them
+        ;; (fnn-committed-history), so the prefix is not re-encoded here.
+        (+ s (length suffix))))))
 
 (defun fnn-open-report (store)
   (let ((mode (fnn-store-open-mode store)))
@@ -2844,6 +2932,20 @@ which the process is killed, or NIL."
             (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
           k)))))
 
+(defun fnn-checkpoint-walk (records)
+  "The walk of the owner's captured RECORDS: each canonical payload's length
+and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
+bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
+one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
+(ROWS' LACC SACC), ROWS' empty."
+  (let ((walk (list records nil nil)) (arena (fnn-live-arena)))
+    (loop
+      (when (atom (first walk)) (return walk))
+      (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
+                           (second walk) (third walk) arena))
+      (unless (and (consp walk) (= (length walk) 3))
+        (fnn-fault "ACL2 returned a malformed checkpoint walk")))))
+
 (defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
   "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
 the head, each later step one batch of whole canonical payloads read through
@@ -2907,15 +3009,6 @@ number of steps."
           (when (and fault (= steps (1+ fault)))
             (sb-posix:kill (sb-posix:getpid) sb-posix:sigkill)))))))
 
-(defun fnn-open-history-count (store records)
-  "The length of the history the open recovered: S plus the suffix after a
-checkpoint open (whether or not RECORDS carries the prefix: an open without
-the history keeps it in the arena), else RECORDS' length."
-  (let ((mode (fnn-store-open-mode store)))
-    (if (eq (first mode) :checkpoint)
-        (+ (second mode) (third mode))
-      (length records))))
-
 (defun fnn-state-checkpoint-publish-steps (store count)
   "Publish the exact-state checkpoint of the recovered STORE (P3) and return
 the report line.  ACL2 extends the checkpoint the open used over the
@@ -2937,9 +3030,17 @@ it covers are dropped (fnn-log-drop; T8)."
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
          (position (and (fnn-store-logp store) (fnn-log-rotate store)))
+         ;; one walk of the live rows, a bounded number per call: each
+         ;; canonical payload's length and source (fn-store-sco-pass-step)
+         (walked (progn
+                   (fnn-core-state 'fn-store-sco-pass-begin)
+                   (loop until (fnn-core-arena-state 'fn-store-sco-pass-step
+                                                     +fnn-checkpoint-batch-rows+))
+                   t))
          (answer (fnn-core-arena-state 'fn-store-sco-publish-setup segment budget
                                        (fnn-disk-free-octets store)
                                        (fnn-checkpoint-revision) position)))
+    (declare (ignore walked))
     (unless (and (consp answer) (= (length answer) 3)
                  (consp (first answer)) (integerp (second answer))
                  (= (second answer) count))
@@ -2955,11 +3056,13 @@ it covers are dropped (fnn-log-drop; T8)."
                      (second verdict) (third verdict) (fourth verdict)))
         ((and (consp verdict) (eq (first verdict) :plan) (integerp (second verdict)))
          (let ((st (fnn-live-octets-pub)) (steps 0) (dropped 0))
-           (fnn-state-checkpoint-write
-            store
-            (lambda (fd)
-              (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                      profile st arun))))
+           (unwind-protect
+                (fnn-state-checkpoint-write
+                 store
+                 (lambda (fd)
+                   (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
+                                                           profile st arun))))
+             (fnn-octets-pub-release))
            (when position
              (handler-case
                  (setq dropped (fnn-log-drop store (fnn-log-covered-indices store (first position))))
@@ -2974,28 +3077,29 @@ it covers are dropped (fnn-log-drop; T8)."
   "`store checkpoint': open the store as `recover' does (the exclusive writer
 lock, so a running owner refuses this) and publish its exact-state checkpoint
 (fnn-state-checkpoint-publish-steps)."
-  ;; The open keeps the covered prefix in the arena (no history octet lists:
-  ;; the checkpoint is written from the state, D27).
-  (multiple-value-bind (store records)
-      (fnn-open-live-store root t (fnn-state-checkpoint-test-fault) nil)
+  (multiple-value-bind (store count)
+      (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
     (unwind-protect
-         (progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps
-                               store (fnn-open-history-count store records)))
+         (progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps store count))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
 (defun fnn-recover (store)
+  "Open STORE: the history replayed (from the state checkpoint or in full),
+the recovery barriers, the staging sweep and the marker catch-up.  Answers
+the history's record COUNT; the records themselves are not kept (PKT-823): a
+caller that needs their octets reads them with `fnn-committed-history'."
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
         (fnn-store-marker-catch-up store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
   (when (fnn-store-logp store)
     (return-from fnn-recover (fnn-recover-log store)))
-  (let ((records nil))
+  (let ((count nil))
     (handler-case
         (progn
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
-            (setq records (fnn-with-pack-memo
+            (setq count (fnn-with-pack-memo
                             (let ((opened (fnn-recover-from-state-checkpoint
                                            store config-records)))
                               (if (eq opened :full)
@@ -3057,20 +3161,10 @@ lock, so a running owner refuses this) and publish its exact-state checkpoint
     ; Full journal replay above remains authoritative.  The checkpoint layer
     ; restores into separate ACL2 globals and compares that image with
     ; fn-store-sn; it cannot reset or replace the live node.
-    ;; An open without the history (the owner) hands the generation
-    ;; checkpoint layer the whole history only when it has a generation to
-    ;; compare (its directory exists); the prefix is then encoded once, here.
     (setf (fnn-store-checkpoint-outcome store)
-          (funcall *fnn-checkpoint-recover-callback* store
-                   (if (and (not (fnn-store-history store))
-                            (eq (first (fnn-store-open-mode store)) :checkpoint)
-                            ;; the generation directory (checkpoint.lisp
-                            ;; fnn-checkpoints; this layer is optional)
-                            (fnn-lstat (fnn-join (fnn-store-root store) "checkpoints")))
-                       (append (fnn-state-checkpoint-prefix-octets) records)
-                       records)))
+          (funcall *fnn-checkpoint-recover-callback* store count))
     (setf (fnn-store-fenced store) nil)
-    records))
+    count))
 
 (defun fnn-require-writer (store)
   (unless (and (fnn-store-writable store) (fnn-store-lock-fd store))
@@ -3343,9 +3437,11 @@ prints its octets."
           ((fnn-octet-list-p text) (fnn-refuse "~a" (fnn-octets-string text)))
           (t (fnn-fault "ACL2 returned a malformed POST boundary refusal")))))
 
-(defun fnn-open-live-store (root writable &optional fault (history t))
+(defun fnn-open-live-store (root writable &optional fault)
+  "Acquire and open ROOT: the store and the history's record COUNT (PKT-823);
+the records are read after the open by the verbs that need them
+(`fnn-history-records')."
   (let ((store (make-fnn-store root :writable writable :fault fault)))
-    (setf (fnn-store-history store) history)
     (fnn-acquire store)
     (handler-case
         (progn
@@ -3702,19 +3798,137 @@ groups is refused, never created as a group."
                :message (format nil "init refused: ~(~a~)" (second plan)))
       (fnn-command-init root (second plan) (third plan)))))
 
+(defconstant +fnn-log-history-prefix-chunk+ 1024
+  "Covered-prefix records encoded per ACL2 call while a verb streams the
+history (a work quantum per call, never a bound on the store).")
+
+(defun fnn-log-history-each (store fn)
+  "Call FN on each record of a format-9 STORE's history, in log order, as
+octets, read as the open read it (fnn-recover-log, its plan in
+fnn-store-log-history): when a checkpoint covers dropped segments, the
+covered prefix encoded from the loaded checkpoint's rows a chunk at a time
+(fn-store-sco-prefix-octets-range); then each closed segment the open scanned,
+read again from disk with the chain carried from the scan's genesis
+(fnn-log-read-closed-segment); then the active segment's committed records
+(the log kernel: the open's, and every batch fenced since).  No list of the
+history is built.  After a rotation in this process (a checkpoint's
+P-ROTATE, and then its drop), or once the loaded checkpoint was released,
+the plan no longer names the history: that read is a fault, never a shorter
+history."
+  (destructuring-bind (prefixp closed genesis active) (fnn-log-history-plan store)
+    (declare (ignore active))
+    (when prefixp
+      (let ((s (second (fnn-store-open-mode store))))
+        (loop for start from 0 below s by +fnn-log-history-prefix-chunk+ do
+          (dolist (octets (fnn-core-arena-state 'fn-store-sco-prefix-octets-range start
+                                                (min +fnn-log-history-prefix-chunk+ (- s start))))
+            (funcall fn (fnn-as-octets octets))))))
+    (let ((unit (fnn-store-log-unit)) (max (fnn-store-log-max store)))
+      (dolist (k closed)
+        (multiple-value-bind (records last)
+            (fnn-log-read-closed-segment store k genesis unit max)
+          (dolist (record records) (funcall fn (fnn-octets record)))
+          (setq genesis last))))
+    (dolist (record (fnn-core 'fn-lgk-committed (fnn-log-kernel (fnn-store-log store))))
+      (funcall fn (fnn-octets record)))))
+
+(defun fnn-log-history-records (store)
+  "A format-9 STORE's history as a list, each record's exact octets in log
+order (`fnn-log-history-each' collected), for the verbs that take the whole
+list (checkpoint publish, export, the offline configure's fallback)."
+  (let ((records nil))
+    (fnn-log-history-each store (lambda (record) (push record records)))
+    (nreverse records)))
+
+(defun fnn-log-history-plan (store)
+  "The open's plan (fnn-store-log-history), checked against the log: a fault
+before the open or after a rotation in this process."
+  (let ((log (fnn-store-log store)) (plan (fnn-store-log-history store)))
+    (unless (and log plan)
+      (fnn-fault "a format-9 store's history was read before its open"))
+    (unless (eql (fnn-log-index log) (fourth plan))
+      (fnn-fault "the log rotated since the open; its history is the new checkpoint's"))
+    (when (eq (first plan) :released)
+      (fnn-fault "the checkpoint holding the log's covered prefix was released after the open"))
+    plan))
+
+(defun fnn-log-history-release-prefix (store)
+  "The loaded checkpoint was released (fn-store-sco-clear): a covered prefix
+can no longer be read from its rows."
+  (let ((plan (fnn-store-log-history store)))
+    (when (and plan (first plan))
+      (setf (first (fnn-store-log-history store)) :released))))
+
+(defun fnn-log-closed-records (store)
+  "The records of the closed segments the open scanned, read again (octet
+vectors, in order)."
+  (destructuring-bind (prefixp closed genesis active) (fnn-log-history-plan store)
+    (declare (ignore prefixp active))
+    (let ((unit (fnn-store-log-unit)) (max (fnn-store-log-max store)) (parts nil))
+      (dolist (k closed)
+        (multiple-value-bind (records last)
+            (fnn-log-read-closed-segment store k genesis unit max)
+          (push (mapcar #'fnn-octets records) parts)
+          (setq genesis last)))
+      (apply #'append (nreverse parts)))))
+
+(defun fnn-history-records (store)
+  "The history of the acquired and opened STORE as the open reads it, each
+record's exact octets in sequence order.  Format 9 (the one store format,
+D34): the record log as the open read it (`fnn-log-history-records').  The
+per-file branch (the selected pack's records and then the suffix files,
+`fnn-durable-records' and the pack callbacks, as `fnn-recover-full-replay')
+is the per-file open's twin; the open refuses a format-8 profile by name
+(books/store-profile-open.lisp :store-format), so it is
+unreachable-in-composition with that open (PKT-COL-1's remainder).  The open no longer keeps them
+(PKT-823): a verb that needs the records' octets after `fnn-open-live-store'
+reads them here, under the lock the open took, which no writer shares, so
+they are the records the open replayed.  No file length or directory listing
+stands in for a record."
+  (if (fnn-store-logp store)
+      (fnn-log-history-records store)
+      (multiple-value-bind (physical lower sequences)
+          (fnn-durable-records store (funcall *fnn-pack-lower-bound-callback* store))
+        (funcall *fnn-pack-recover-callback* store physical sequences lower))))
+
+(defun fnn-history-last-record (store)
+  "The history's newest record's octets, or NIL when there is none: the newest
+transaction file past the selected pack (the history is the pack's records and
+then those files, `fnn-history-records'), unframed as the open unframes it;
+without such a file, the last of the pack's reconstruction.  Read after the
+open, under its lock, so it is the record the open replayed last.  Format
+9: the log kernel's last committed record, else the last closed segment's
+the open scanned, else (a checkpoint open whose suffix is empty) the
+covered prefix's last (fn-store-sco-last-record-octets)."
+  (when (fnn-store-logp store)
+    (return-from fnn-history-last-record
+      (let ((last (car (last (fnn-core 'fn-lgk-committed
+                                       (fnn-log-kernel (fnn-store-log store)))))))
+        (cond (last (fnn-octets last))
+              ((car (last (fnn-log-closed-records store))))
+              ((first (fnn-log-history-plan store))
+               (let ((octets (fnn-core-arena-state 'fn-store-sco-last-record-octets)))
+                 (and octets (fnn-as-octets octets))))
+              (t nil)))))
+  (let ((files (fnn-transaction-files store (funcall *fnn-pack-lower-bound-callback* store))))
+    (if files
+        (let ((path (cdr (car (last files)))))
+          (fnn-check-regular path)
+          (fnn-unframe (fnn-read-regular-bounded
+                        path (fnn-core 'fn-store-profile-read-bound (fnn-store-config store)))))
+        (car (last (fnn-history-records store))))))
+
 (defun fnn-committed-history (store)
-  "The committed history of the acquired STORE as the open reads it: the
-selected pack's records and then the suffix files (`fnn-durable-records' and
-the pack callbacks, as `fnn-recover-full-replay'), each record's exact octets
-in sequence order, the committed-history marker checked against their count
-(`fnn-check-history-marker').  The caller holds STORE's writer lock for as
-long as it uses the result.  No file length or directory listing stands in
-for a record."
-  (multiple-value-bind (physical lower sequences)
-      (fnn-durable-records store (funcall *fnn-pack-lower-bound-callback* store))
-    (let ((records (funcall *fnn-pack-recover-callback* store physical sequences lower)))
-      (fnn-check-history-marker store (length records))
-      records)))
+  "`fnn-history-records' with the committed-history marker checked against
+their count (`fnn-check-history-marker'), for a reader that has not opened
+STORE through `fnn-recover'.  The caller holds STORE's writer lock for as
+long as it uses the result.  A format-9 store has no marker object (M := D:
+the log's last complete entry is the committed history, `fnn-mark-committed'),
+so its history is the log's, unchecked here."
+  (let ((records (fnn-history-records store)))
+    (unless (fnn-store-logp store)
+      (fnn-check-history-marker store (length records)))
+    records))
 
 ;;; `store export DIR' and `store import DIR' (D34, books/store-export.lisp).
 
@@ -3735,14 +3949,15 @@ for a record."
 (defun fnn-command-store-export (root dir)
   "Offline: write the archive of ROOT's committed history to DIR (it must not
 exist).  The store is acquired under its writer lock (a running owner refuses
-this), the history is the one the open reads (on format 9 the records the
-open recovered: the checkpoint's then the log's; on format 8
-`fnn-committed-history': the selected pack's records then the suffix files,
-the marker checked), and the entries and MANIFEST are ACL2's
+this), the history is the one the open reads, read after the open
+(`fnn-committed-history': on format 9 the log as the open read it, the
+checkpoint's covered prefix then the scanned segments,
+`fnn-log-history-records'), and the entries and MANIFEST are ACL2's
 (fn-sxp-entries, fn-sxp-manifest)."
   (when (fnn-lstat dir)
     (fnn-refuse "export refused reason=archive-exists"))
-  (multiple-value-bind (store recovered) (fnn-open-live-store root nil)
+  (multiple-value-bind (store count) (fnn-open-live-store root nil)
+    (declare (ignore count))
     (unwind-protect
          (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
                 ;; Format 9 holds no frontier file: the archive carries the
@@ -3755,15 +3970,13 @@ the marker checked), and the entries and MANIFEST are ACL2's
                              (fnn-read-regular-bounded (fnn-frontier-path store) 4096))))
                 (configs (mapcar (lambda (pair) (cons (car pair) (fnn-octet-list (cdr pair))))
                                  (fnn-config-record-observation store)))
-                ;; Format 9: the history the open recovered -- the
-                ;; checkpoint's records, then the log's scan from the
+                ;; The history the open recovered, read after it: on format
+                ;; 9 the checkpoint's records, then the log's scan from the
                 ;; segment its F row names (T8: the whole chain).
                 (records (mapcar (lambda (record)
                                    (cons (fnn-bridge-record-sequence record)
                                          (fnn-octet-list record)))
-                                 (if (fnn-store-logp store)
-                                     recovered
-                                   (fnn-committed-history store))))
+                                 (fnn-committed-history store)))
                 (entries (fnn-core 'fn-sxp-entries profile frontier configs records))
                 (manifest (fnn-core 'fn-sxp-manifest entries)))
            (unless (and (consp entries) (fnn-octet-list-p manifest))
@@ -4025,7 +4238,13 @@ presence of the two names is classified by fn-bs-imp-classify."
            (fnn-record-filesystem-at-init stage request policy)
            (when logp
              (fnn-log-init-segment stage)
-             (fnn-log-write-history stage values records))))
+             (fnn-log-write-history stage values records)))
+         ;; The staged tree's subdirectories: a format-9 store's are init's
+         ;; (journal/ among them: fnn-log-init-segment's caller makes it
+         ;; since log-2's initializer program).
+         (if logp
+             (fnn-core 'fn-bs-init-log-subdir-names)
+             '("transactions" "staging" "config")))
         (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
         +fnn-exit-ok+))))
 
@@ -4082,9 +4301,9 @@ books/store-init-log-publication.lisp)."
                ;; the staged store or refuses it.
                (multiple-value-bind (opened replayed) (fnn-open-live-store stage-root t)
                  (unwind-protect
-                      (unless (= (length replayed) record-count)
+                      (unless (= replayed record-count)
                         (fnn-fault "the staged store replayed ~d of ~d records"
-                                   (length replayed) record-count))
+                                   replayed record-count))
                    (fnn-store-close opened)))
                (fnn-pub-at stage kind "validated")
                (setq attempted t)
@@ -4289,11 +4508,11 @@ this reads only whether there is one."
       (values "anchor=none" +fnn-exit-ok+)))
 
 (defun fnn-command-recover (root)
-  (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-recovery-test-fault))
+  (multiple-value-bind (store count) (fnn-open-live-store root t (fnn-recovery-test-fault))
     (unwind-protect
          (multiple-value-bind (report code) (fnn-anchor-report store)
            (fnn-out "recovered transactions=~d articles=~d ~a ~a ~a"
-                    (length records) (fnn-bridge-article-count)
+                    count (fnn-bridge-article-count)
                     (fnn-orphan-report store) report
                     (fnn-checkpoint-report store))
            (fnn-out "~a" (fnn-open-report store))
@@ -4481,12 +4700,12 @@ same size (fnn-probe-article), so the served reader can frame it."
                              (float internal-time-units-per-second 1d0))))
       (fnn-store-close store)
       (let ((before (get-internal-real-time)))
-        (multiple-value-bind (reopened records) (fnn-open-live-store root nil)
+        (multiple-value-bind (reopened replayed) (fnn-open-live-store root nil)
           (let ((reopen-seconds (/ (- (get-internal-real-time) before)
                                    (float internal-time-units-per-second 1d0))))
             (unwind-protect
                  (progn
-                   (unless (and (= (length records) count) (= (fnn-bridge-article-count) count)
+                   (unless (and (= replayed count) (= (fnn-bridge-article-count) count)
                                 (= (fnn-bridge-pin-count) count)
                                 (= (fnn-bridge-group-next 0) (1+ count))
                                 (= (fnn-bridge-group-next 1) (1+ count))
@@ -5496,8 +5715,12 @@ init completes, never truncates): the retry branch, not the program."
 
 (defun fnn-recover-log-replay (store records config-records)
   "The replay the per-file open runs (fnn-recover-full-replay), over the
-log's records."
-  (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records)))
+log's records (the kernel's committed octet lists), in the chunks ACL2 closes
+(`fnn-recover-record-chunks', as the pack path: PRF-261's
+fn-srs-steps-are-one-step-of-the-concatenation, any chunking opens the same
+Store); the history's COUNT (the open keeps no records, PKT-823)."
+  (let ((action (fnn-bridge-recover (fnn-recover-record-chunks records)
+                                    (fnn-store-frontier store) config-records)))
     (when (eq action :refused)
       (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
         (unless (stringp text)
@@ -5505,11 +5728,15 @@ log's records."
         (error 'fnn-store-open-refusal :message text)))
     (unless (eq action :recovering)
       (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
-  records)
+  (length records))
 
 (defun fnn-recover-log-from-state-checkpoint (store config-records records)
   "fnn-recover-from-state-checkpoint over the log's records: the suffix is
-the records at or after the checkpoint's S (the log holds every record)."
+the records at or after the checkpoint's S (the log holds every record).
+Answers the history's COUNT, S plus the suffix's (PKT-823): the covered
+prefix is not re-encoded (fn-store-sco-prefix-octets), since the log holds
+it (`fnn-log-history-records'); NIL when the open falls back to the full
+replay."
   (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
     (let* ((count (if (eq status :ok)
                       (fnn-core 'fn-store-sco-observed-count
@@ -5530,9 +5757,7 @@ the records at or after the checkpoint's S (the log holds every record)."
           (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
           (return-from fnn-recover-log-from-state-checkpoint nil))
         (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (if (fnn-store-history store)
-            (append (fnn-state-checkpoint-prefix-octets) suffix)
-          suffix)))))
+        (+ s (length suffix))))))
 
 (defun fnn-store-recovery-barriers (store)
   "The five recovery barriers' thunks, in the model's order: the config file,
@@ -5658,32 +5883,41 @@ record in order, and the active segment's log."
     (loop for (k . more) on scan do
       (let ((path (fnn-segment-path-at store k)))
         (if more
-            ;; A closed segment: the fold's step (books/store-log-segments.lisp
-            ;; fn-lgs-open-chain-records and fn-lgs-open-chain-last over the
-            ;; one segment, T8's subject) after the splice check.
-            (let* ((extent (fnn-log-observed-extent path))
-                   (fd (fnn-log-open-segment path extent unit t)))
-              (unwind-protect
-                   (let ((text (fnn-log-read-string fd extent)))
-                     (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
-                       (error 'fnn-store-open-refusal
-                              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-                     (push (mapcar #'fnn-octets
-                                   (fnn-core 'fn-lgs-open-chain-records (list text) genesis unit max))
-                           records)
-                     (setq genesis (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)))
-                (fnn-close fd)))
+            (multiple-value-bind (closed last)
+                (fnn-log-read-closed-segment store k genesis unit max)
+              (push closed records)
+              (setq genesis last))
           (progn
             (fnn-log-complete-rotation store path)
             (let ((log (if (fnn-store-writable store)
                            (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis)
                          (fnn-log-open-read-only path unit max genesis))))
               (setf (fnn-log-index log) k)
-              (push (mapcar #'fnn-octets (fnn-core 'fn-lgk-committed (fnn-log-kernel log)))
-                    records)
+              ;; The kernel's committed records as the kernel holds them
+              ;; (octet lists), not copied: the replay's chunks read them in
+              ;; place (PKT-823).
+              (push (fnn-core 'fn-lgk-committed (fnn-log-kernel log)) records)
               (return-from fnn-log-scan-segments
                 (values (apply #'append (nreverse records)) log)))))))
     (fnn-fault "the log's open plan named no segment")))
+
+(defun fnn-log-read-closed-segment (store k genesis unit max)
+  "A closed segment K read only: the fold's step (books/store-log-segments.lisp
+fn-lgs-open-chain-records and fn-lgs-open-chain-last over the one segment,
+T8's subject) after the splice check.  (values RECORDS LAST): its records
+(octet lists, ACL2's) and the chain's last trailer, the next segment's
+genesis."
+  (let* ((path (fnn-segment-path-at store k))
+         (extent (fnn-log-observed-extent path))
+         (fd (fnn-log-open-segment path extent unit t)))
+    (unwind-protect
+         (let ((text (fnn-log-read-string fd extent)))
+           (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
+             (error 'fnn-store-open-refusal
+                    :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
+           (values (fnn-core 'fn-lgs-open-chain-records (list text) genesis unit max)
+                   (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)))
+      (fnn-close fd))))
 
 (defun fnn-recover-log-from-log-checkpoint (store config-records suffix s)
   "The open from a checkpoint whose F row names the log's first suffix
@@ -5700,11 +5934,10 @@ refused by name."
       (error 'fnn-store-open-refusal
              :message "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open"))
     (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-    ;; An open that does not take the history (the owner) keeps the prefix
-    ;; in the arena and the checkpoint's rows (checkpoint-arena-2).
-    (if (fnn-store-history store)
-        (append (fnn-state-checkpoint-prefix-octets) suffix)
-      suffix)))
+    ;; The history's count (PKT-823); the prefix stays in the arena and the
+    ;; checkpoint's rows, encoded only for a verb that reads the history
+    ;; (fnn-log-history-records).
+    (+ s (length suffix))))
 
 (defun fnn-recover-log (store)
   "The open of a format-9 store.  The checkpoint first: its F row names where
@@ -5719,8 +5952,10 @@ over the scanned records, floored at the checkpoint's), then the replay: over
 the checkpoint when its F row names a position, else the per-file open's
 choice (fnn-recover-log-from-state-checkpoint or the full replay); then the
 five recovery barriers the per-file open runs, and a writable open finishes
-an interrupted drop."
-  (let ((records nil) (drop nil))
+an interrupted drop.  Answers the history's record COUNT, as `fnn-recover'
+does, and records how the log holds the history (fnn-store-log-history) for
+`fnn-log-history-records'."
+  (let ((count nil) (drop nil))
     (handler-case
         (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
           (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
@@ -5744,14 +5979,19 @@ an interrupted drop."
               ;; txid), at least the checkpoint's frontier at S (the dropped
               ;; segments' txids), and the log kernel caught up to it.
               (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
-                                             (mapcar #'fnn-octet-list scanned)
+                                             scanned
                                              (max floor (fnn-core 'fn-lgk-next-txid
                                                                   (fnn-log-kernel log)))))))
                 (setf (fnn-log-kernel log) (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) next)
                       (fnn-store-log store) log
                       (fnn-store-frontier store) next))
+              (setf (fnn-store-log-history store)
+                    (let ((scan (second plan)))
+                      (list (and log-position t) (butlast scan)
+                            (if log-position (second log-position) *fn-lg-genesis*)
+                            (car (last scan)))))
               (let ((config-records (fnn-config-records store)))
-                (setq records
+                (setq count
                       (if log-position
                           (fnn-recover-log-from-log-checkpoint store config-records scanned
                                                                sequence)
@@ -5798,9 +6038,9 @@ an interrupted drop."
           (setf (fnn-store-fenced store) t)
           (fnn-indeterminate "the drop of covered log segments is uncertain: ~a" e))))
     (setf (fnn-store-checkpoint-outcome store)
-          (funcall *fnn-checkpoint-recover-callback* store records))
+          (funcall *fnn-checkpoint-recover-callback* store count))
     (setf (fnn-store-fenced store) nil)
-    records))
+    count))
 
 (defun fnn-log-reserve (store current-txid)
   "The member's reservation on the log route (fn-olr-ocfg-reserve through

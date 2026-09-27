@@ -732,10 +732,7 @@ checkpoint's S, or NIL."
                   (fnn-node-secret-directory store)))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  ;; The owner does not take the history's octets (fnn-owner-recover-core
-  ;; installs from the Store open's extension): after a state-checkpoint open
-  ;; the covered prefix is not re-encoded (checkpoint-arena-2).
-  (multiple-value-bind (store records) (fnn-open-live-store root t fault nil)
+  (multiple-value-bind (store count) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (progn
@@ -743,7 +740,7 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store records max-connections)
+            (fnn-owner-recover-core store count max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
@@ -792,13 +789,18 @@ checkpoint's S, or NIL."
                     (unless (eq (fnn-owner-feed-word restart) :restarted)
                       (fnn-fault "owner refused the feed restart"))
                     (fnn-owner-feed-flush service restart))))
+              ;; The open keeps no records (PKT-823): the pending key
+              ;; statement is read off the newest record alone.
               (fnn-owner-key-statement-recover
-               service (let ((last (fnn-open-last-record store records))) (and last (list last))))
+               service (and (plusp count) (list (fnn-history-last-record store))))
               ;; The Store open's loaded checkpoint is consumed (the owner's
               ;; base is the open's extension, fn-owner-sco-base): release it,
               ;; so the reopened owner does not hold the checkpoint's capture
-              ;; beside the extension (checkpoint-arena-2's reopen heap).
+              ;; beside the extension (checkpoint-arena-2's reopen heap).  A
+              ;; later read of a format-9 history whose prefix was the
+              ;; checkpoint's then faults by name (fnn-log-history-plan).
               (fnn-core-state 'fn-store-sco-clear)
+              (fnn-log-history-release-prefix store)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))
@@ -2144,6 +2146,11 @@ nil when nothing was queued (or the store does not commit through the log)."
                 (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
                   (setf (fnn-owner-service-queued service)
                         (max 1 (fnn-owner-service-queued service)))))
+              ;; Developer image only: the START's member count against
+              ;; the operator's bound (the pipelined native cases).
+              (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
+                (fnn-err "start: seal=~a bmax=~d members=~d" seal (fnn-log-bmax log)
+                         (length members)))
               (when (and seal members (not uncertain))
                 (fnn-log-seal-open-batch store)))
           (fnn-store-indeterminate (e)
@@ -2267,6 +2274,14 @@ was queued)."
         (t (fnn-fault "owner named ~a for an inline commit" action))))
     (length members)))
 
+(defun fnn-owner-reader-capture (event)
+  "The reader view's capture at the committer's EVENT (host/owner-host.lisp
+fn-owner-reader-views-capture, books/owner-reader-view.lisp fn-ocv-capture):
+:start before a START's drain, :next before a START-NEXT's, :unnext after a
+START-NEXT that took nobody, :complete after a COMPLETE's replies, :drop
+after a START that took nobody or a stop.  The caller holds the owner."
+  (fnn-owner-core 'fn-owner-reader-views-capture event))
+
 (defun fnn-owner-commit-event (service event)
   "Apply the commit's EVENT to ACL2's scheduler value (books/owner-commit-pipeline.lisp
 fn-ocp-commit-event) and return the ACTION it names; the gate's next pick
@@ -2328,14 +2343,17 @@ leave only in its COMPLETE, after its barrier returned
     (fnn-owner-serialized
      service nil
      (lambda ()
+       ;; PKT-828: the view the readers read while this batch is in flight.
+       (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred)
          (fnn-owner-commit-start-locked service))
        (setq action (fnn-owner-commit-event
                      service (fnn-owner-commit-start-event members uncertain)))
        (case action
          (:sync nil)
-         (:stop (fnn-owner-commit-complete-locked service :stop members deferred))
-         (:none nil)
+         (:stop (fnn-owner-reader-capture :drop)
+                (fnn-owner-commit-complete-locked service :stop members deferred))
+         (:none (fnn-owner-reader-capture :drop))
          (t (fnn-fault "owner named ~a after a START" action))))
      :commit)
     (loop while (eq action :sync) do
@@ -2360,6 +2378,9 @@ leave only in its COMPLETE, after its barrier returned
               (fnn-owner-shared-action-locked
                service nil
                (lambda ()
+                 ;; PKT-828: the next batch's reader view, taken before its
+                 ;; members join the working view.
+                 (fnn-owner-reader-capture :next)
                  (multiple-value-bind (m u d)
                      (fnn-owner-commit-start-locked service :seal nil)
                    (setq next m next-deferred d)
@@ -2371,7 +2392,9 @@ leave only in its COMPLETE, after its barrier returned
                                service (cond (u :next-uncertain)
                                              ((null m) :next-none)
                                              (t :next-started))))
+                   (when (and (null m) (not u)) (fnn-owner-reader-capture :unnext))
                    (when (eq step :stop)
+                     (fnn-owner-reader-capture :drop)
                      ;; Every member of both batches is uncertain; the owner
                      ;; stops (its COMPLETE below finds it stopping).
                      (fnn-owner-commit-complete-locked
@@ -2398,10 +2421,16 @@ leave only in its COMPLETE, after its barrier returned
                       (cond ((fnn-owner-service-stopping service)
                              ;; Stopped during the barrier: no member is
                              ;; answered (uncertain to its client).
+                             (fnn-owner-reader-capture :drop)
                              (dolist (m (append members next))
                                (fnn-owner-deliver service (first m) :uncertain)))
                             ((eq step :complete)
                              (fnn-owner-commit-complete-locked service :complete members deferred)
+                             ;; PKT-828: in the same quantum as the replies,
+                             ;; the readers' view advances past this batch
+                             ;; (to the next batch's capture, or the working
+                             ;; view when none is open).
+                             (fnn-owner-reader-capture :complete)
                              ;; The next batch, prepared behind the barrier,
                              ;; is sealed now and becomes the batch in flight.
                              (when next
@@ -2409,9 +2438,11 @@ leave only in its COMPLETE, after its barrier returned
                                  (handler-case (fnn-log-seal-open-batch store)
                                    (fnn-store-indeterminate (e)
                                      (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+                                     (fnn-owner-reader-capture :drop)
                                      (fnn-owner-commit-complete-locked service :stop next next-deferred)
                                      (setq next nil))))))
                             ((eq step :stop)
+                             (fnn-owner-reader-capture :drop)
                              (fnn-owner-commit-complete-locked
                               service :stop (append members next) deferred)
                              (setq next nil))
@@ -3060,7 +3091,8 @@ the crash keystone) and serving continues."
               ;; READS the live arena below the captured count).
               (destructuring-bind (setup prepared-next n arun)
                   (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
-                            frontier revision position segment budget free (fnn-live-arena))
+                            frontier revision position segment budget free
+                            (fnn-checkpoint-walk records) (fnn-live-arena))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -3080,12 +3112,15 @@ the crash keystone) and serving continues."
                          (store (fnn-owner-service-store service)))
                      (handler-case
                          (progn
-                           (fnn-state-checkpoint-write
-                            store
-                            (lambda (fd)
-                              (setq steps (fnn-checkpoint-write-steps
-                                           fd setup segment sequence (fnn-store-config store)
-                                           (fnn-live-octets-pub) arun))))
+                           (unwind-protect
+                                (fnn-state-checkpoint-write
+                                 store
+                                 (lambda (fd)
+                                   (setq steps (fnn-checkpoint-write-steps
+                                                fd setup segment sequence (fnn-store-config store)
+                                                (fnn-live-octets-pub) arun))))
+                             ;; the buffer's array back (PKT-PRS-2)
+                             (fnn-octets-pub-release))
                            (setq durablep t)
                            ;; T8: the installed checkpoint covers the segments
                            ;; below its first suffix segment; they go now,

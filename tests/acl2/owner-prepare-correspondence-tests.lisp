@@ -169,7 +169,7 @@
    (fn-own-next-id *opc-related-owner*)
    (fn-own-max-conns *opc-related-owner*)
    (fn-own-pending *opc-related-owner*)
-   (fn-own-ledger *opc-related-owner*)
+   (fn-own-ledger-field *opc-related-owner*)
    (fn-own-clock *opc-related-owner*)
    (fn-own-facts *opc-related-owner*)
    (fn-own-config *opc-related-owner*)

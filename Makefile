@@ -510,6 +510,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-identity-index-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
+	books/store-profile-carried \
+	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
@@ -874,6 +876,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
+	books/store-checkpoint-share \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
@@ -951,6 +954,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/owner-prepare-served \
+	books/store-prepare-served \
+	books/owner-prepare-served-ocl \
+	tests/acl2/owner-prepare-served-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1138,6 +1145,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-steps-tests \
 	books/owner-commit-pipeline \
 	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-reader-view \
+	tests/acl2/owner-reader-view-tests \
 	books/store-log-route-programs \
 	tests/acl2/store-log-route-programs-tests \
 	books/owner-open-carried \

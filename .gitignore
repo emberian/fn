@@ -13,3 +13,6 @@ var/
 # (`evidence_manifests.py sync --add`).  Ignoring the rest keeps an exploratory
 # run out of the history and keeps `git status` readable in a lane worktree.
 planning/evidence/manifests/*.json
+
+# Lane scratch (BRIEF-COMMON: never committed)
+/LANEDUMP.md

@@ -49,25 +49,40 @@
 (assert-event (and (not (fn-ocs-in-flight-p (fn-ocs-phase *ocst-s-idle-lasti*)))
                    (fn-ocs-lasti *ocst-s-idle-lasti*)))
 
-; --- fn-ocs-in-flight-admits-only-inspect-and-commit -------------------------
-; Witness: in flight, every class waits; the pick is :inspect or :commit.
+; --- fn-ocs-in-flight-admits-only-inspect-commit-and-reader ------------------
+; Witness: in flight, every class waits; the pick is :inspect, :commit or
+; :reader (PKT-828: readers run during the barrier, at the reader view).
 (assert-event (and (fn-ocs-in-flight-p (fn-ocs-phase *ocst-s-flight*))
                    (member-equal (ocst-class *ocst-s-flight* *ocst-all*)
-                                 '(:inspect :commit nil))))
+                                 '(:inspect :commit :reader nil))))
 (assert-event (equal (ocst-class *ocst-s-flight* *ocst-all*) :inspect))
 (assert-event (equal (ocst-class *ocst-s-flight-lasti* *ocst-all*) :commit))
-; Only readers wait during the barrier: nobody is admitted (they wait for
-; the COMPLETE).
-(assert-event (equal (ocst-class *ocst-s-flight* *ocst-readers*) nil))
+; Only readers wait during the barrier: they are admitted.
+(assert-event (equal (ocst-class *ocst-s-flight* *ocst-readers*) :reader))
+; Control, a control-socket poster and transit wait in flight (nobody is
+; admitted), and are admitted once the batch is done.
+(defconst *ocst-control-poster-transit* '(1 0 1 1 0 0))
+(assert-event (equal (ocst-class *ocst-s-flight* *ocst-control-poster-transit*) nil))
 ; Hypothesis removal: out of a batch (the COMPLETE ran: :fenced then
-; :completed) the same readers ARE admitted -- the conclusion fails.
+; :completed) control IS admitted -- the conclusion fails.
 (defconst *ocst-s-done*
   (ocst-event (ocst-event *ocst-s-flight* :fenced) :completed))
 (assert-event (not (fn-ocs-in-flight-p (fn-ocs-phase *ocst-s-done*))))
 (assert-event (equal (ocst-class *ocst-s-done* *ocst-readers*) :reader))
+(assert-event (equal (ocst-class *ocst-s-done* *ocst-control-poster-transit*) :control))
 (must-fail
- (assert-event (member-equal (ocst-class *ocst-s-done* *ocst-readers*)
-                             '(:inspect :commit nil))))
+ (assert-event (member-equal (ocst-class *ocst-s-done* *ocst-control-poster-transit*)
+                             '(:inspect :commit :reader nil))))
+
+; --- fn-ocs-in-flight-commit-before-reader -------------------------------------
+; Witness: in flight, the commit and readers wait (no inspect): the commit.
+(defconst *ocst-commit-readers* '(0 3 0 0 1 0))
+(assert-event (equal (ocst-class *ocst-s-flight* *ocst-commit-readers*) :commit))
+; Hypothesis removal: no commit waiting -- the reader.
+(assert-event (equal (ocst-class *ocst-s-flight* *ocst-readers*) :reader))
+; Hypothesis removal: out of a batch the commit class is fn-ocm-next's
+; (admitted when idle or after its bound): readers first.
+(assert-event (equal (ocst-class *ocst-s-done* *ocst-commit-readers*) :reader))
 
 ; --- fn-ocs-next-otherwise-is-ocm-next --------------------------------------
 ; Witness: out of a batch, LASTI set, readers and an inspect wait: the pick
@@ -77,10 +92,13 @@
                    (equal (ocst-class *ocst-s-idle-lasti* *ocst-readers-inspect*)
                           (ocst-ocm-class (fn-ocs-ocm *ocst-s-idle-lasti*)
                                           (fn-ocs-w4 *ocst-readers-inspect*) nil))))
-; Hypothesis removal (in flight): the pick is not fn-ocm-next's.
-(assert-event (not (equal (ocst-class *ocst-s-flight-lasti* *ocst-readers-inspect*)
+; Hypothesis removal (in flight): control and readers wait; fn-ocm-next
+; would pick control, the in-flight pick is the reader.
+(defconst *ocst-control-readers-inspect* '(1 3 0 0 0 1))
+(assert-event (equal (ocst-class *ocst-s-flight-lasti* *ocst-control-readers-inspect*) :reader))
+(assert-event (not (equal (ocst-class *ocst-s-flight-lasti* *ocst-control-readers-inspect*)
                           (ocst-ocm-class (fn-ocs-ocm *ocst-s-flight-lasti*)
-                                          (fn-ocs-w4 *ocst-readers-inspect*) nil))))
+                                          (fn-ocs-w4 *ocst-control-readers-inspect*) nil))))
 ; Hypothesis removal (an :inspect pick): not fn-ocm-next's either.
 (assert-event (equal (ocst-class (fn-ocs-init) *ocst-readers-inspect*) :inspect))
 (assert-event (not (equal (ocst-class (fn-ocs-init) *ocst-readers-inspect*)
@@ -156,10 +174,10 @@
                    (not (equal (ocst-class *ocst-s-done* *ocst-readers*) :inspect))))
 ; fn-ocs-inspect-waiting-picks-someone: witness in a batch with LASTI set and
 ; no commit waiting (the inspect runs again); removed: nobody waits for
-; the owner in a batch but readers -- nobody is picked.
+; the owner in a batch but control -- nobody is picked.
 (assert-event (and (fn-ocs-inspect-waits-p *ocst-inspect-only*)
                    (equal (ocst-class *ocst-s-flight-lasti* *ocst-inspect-only*) :inspect)))
-(assert-event (null (ocst-class *ocst-s-flight-lasti* *ocst-readers*)))
+(assert-event (null (ocst-class *ocst-s-flight-lasti* *ocst-control-poster-transit*)))
 ; fn-ocs-other-pick-clears-lasti: the commit's pick in a batch clears it; an
 ; inspect pick sets it (the hypothesis "not :inspect" removed).
 (assert-event (and (equal (ocst-class *ocst-s-flight-lasti* *ocst-commit-inspect*) :commit)

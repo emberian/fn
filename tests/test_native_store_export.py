@@ -103,7 +103,10 @@ class StoreExportTests(ProfileFixture):
         # archive, file for file: the same profile, frontier, configuration
         # records and records (PRF-205 over the log).
         self.assertTrue((store2 / "journal" / "000001.log").is_file())
-        self.assertEqual([p for p in (store2 / "transactions").iterdir() if p.is_file()], [])
+        # No transaction file: a format-9 import stages init's directories
+        # (journal/, no transactions/), so the directory may be absent.
+        tdir = store2 / "transactions"
+        self.assertEqual([p for p in tdir.iterdir() if p.is_file()] if tdir.exists() else [], [])
         again_archive = self.root / "archive-again"
         reexported = self.operator_with(config2, "store", "export", str(again_archive))
         self.assertEqual(reexported.returncode, EXIT_OK, reexported.stderr.decode())
