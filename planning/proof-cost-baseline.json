@@ -4,23 +4,30 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
+    "books/bp-node-forward-plan": {
+      "seconds": 11.385,
+      "run": "certify-20260927T043101Z-713885",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/catalog-refresh": {
-      "seconds": 27.828,
-      "run": "certify-20260927T041820Z-3234137",
+      "seconds": 25.348,
+      "run": "certify-20260927T043030Z-3367090",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/consumer-store-invariants": {
-      "seconds": 10.758,
-      "run": "certify-20260927T040858Z-642715",
+      "seconds": 10.087,
+      "run": "certify-20260927T043101Z-713885",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 11.76,
-      "run": "certify-20260927T040858Z-642715",
+      "seconds": 13.493,
+      "run": "certify-20260927T043101Z-713885",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
