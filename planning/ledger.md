@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1270 |
 | Certification roots in the Makefile | 1223 |
 | Books inside the root closure | 1259 |
-| `defthm` and `defthmd` events | 18846 |
-| `defun` events | 12969 |
+| `defthm` and `defthmd` events | 18851 |
+| `defun` events | 12983 |
 | Functions with verified guards | 2480 |
-| Functions declared `:verify-guards nil` and never verified | 1524 |
+| Functions declared `:verify-guards nil` and never verified | 1533 |
 | Functions left at the default with an explicit guard | 7223 |
-| Functions left at the default with no guard | 1742 |
-| `assert-event` checks | 18577 |
+| Functions left at the default with no guard | 1747 |
+| `assert-event` checks | 18676 |
 | `must-fail` checks | 2135 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 94 |
@@ -962,10 +962,10 @@ that `make certify` requests.
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 68 | 0 | 0 |
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/cancel-lock-d25-tests.lisp` | root | 0 | 13 | 0/6/0/7 | 17 | 1 | 0 |
-| `tests/acl2/cancel-lock-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 34 | 1 | 0 |
+| `tests/acl2/cancel-lock-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 36 | 1 | 0 |
 | `tests/acl2/catalog-commit-tests.lisp` | root | 10 | 8 | 0/0/0/8 | 6 | 2 | 0 |
 | `tests/acl2/catalog-delta-tests.lisp` | root | 7 | 5 | 0/0/0/5 | 4 | 2 | 0 |
-| `tests/acl2/catalog-entries-tests.lisp` | root | 4 | 14 | 0/2/0/12 | 44 | 0 | 0 |
+| `tests/acl2/catalog-entries-tests.lisp` | root | 4 | 15 | 0/3/0/12 | 51 | 0 | 0 |
 | `tests/acl2/catalog-load-index-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 1 | 0 |
 | `tests/acl2/catalog-number-index-tests.lisp` | root | 8 | 4 | 0/0/0/4 | 2 | 3 | 0 |
 | `tests/acl2/catalog-record-tests.lisp` | root | 11 | 2 | 0/0/0/2 | 3 | 6 | 0 |
@@ -993,7 +993,7 @@ that `make certify` requests.
 | `tests/acl2/config-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/config-owner-advance-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 1 | 0 |
 | `tests/acl2/config-owner-advance-reader-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
-| `tests/acl2/config-owner-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 2 | 0 |
+| `tests/acl2/config-owner-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 2 | 0 |
 | `tests/acl2/config-owner-live-authorize-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 30 | 4 | 0 |
 | `tests/acl2/config-owner-live-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 55 | 2 | 0 |
 | `tests/acl2/config-owner-publish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 39 | 7 | 0 |
@@ -1053,7 +1053,7 @@ that `make certify` requests.
 | `tests/acl2/group-number-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 7 | 0 |
 | `tests/acl2/group-status-tests.lisp` | - | 0 | 7 | 0/2/2/3 | 42 | 2 | 0 |
 | `tests/acl2/heap-figure-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 0 | 3 | 0 |
-| `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 0 | 14 | 0 |
+| `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 0 | 14 | 0 |
 | `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `tests/acl2/held-rows-tests.lisp` | root | 0 | 17 | 0/17/0/0 | 9 | 0 | 0 |
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 13 | 2 | 0 |
@@ -1096,7 +1096,7 @@ that `make certify` requests.
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 83 | 2 | 0 |
 | `tests/acl2/native-health-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 87 | 17 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
-| `tests/acl2/native-live-status-tests.lisp` | root | 1 | 8 | 0/5/2/1 | 65 | 15 | 0 |
+| `tests/acl2/native-live-status-tests.lisp` | root | 1 | 9 | 0/6/2/1 | 72 | 15 | 0 |
 | `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 23 | 5 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 292 | 25 | 0 |
@@ -1137,8 +1137,8 @@ that `make certify` requests.
 | `tests/acl2/owner-checkpoint-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 10 | 0 |
 | `tests/acl2/owner-commit-carried-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 26 | 5 | 0 |
 | `tests/acl2/owner-commit-class-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 16 | 2 | 0 |
-| `tests/acl2/owner-commit-pipeline-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 33 | 2 | 0 |
-| `tests/acl2/owner-commit-steps-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 66 | 6 | 0 |
+| `tests/acl2/owner-commit-pipeline-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 40 | 2 | 0 |
+| `tests/acl2/owner-commit-steps-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 75 | 6 | 0 |
 | `tests/acl2/owner-config-observe-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 149 | 1 | 0 |
 | `tests/acl2/owner-enrollment-read-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 31 | 9 | 0 |
@@ -1147,27 +1147,27 @@ that `make certify` requests.
 | `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 2 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 2 | 3 | 0/0/2/1 | 133 | 6 | 0 |
 | `tests/acl2/owner-feed-txid-reuse-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 6 | 0 | 0 |
-| `tests/acl2/owner-identity-intern-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
+| `tests/acl2/owner-identity-intern-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 17 | 0 | 0 |
 | `tests/acl2/owner-identity-served-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 29 | 0 | 0 |
 | `tests/acl2/owner-injection-info-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 1 | 0 |
 | `tests/acl2/owner-intent-carried-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 28 | 5 | 0 |
 | `tests/acl2/owner-log-ocl-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 106 | 0 | 0 |
 | `tests/acl2/owner-log-reopen-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 3 | 0 |
 | `tests/acl2/owner-log-route-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
-| `tests/acl2/owner-log-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 73 | 13 | 0 |
+| `tests/acl2/owner-log-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 75 | 13 | 0 |
 | `tests/acl2/owner-numbering-tests.lisp` | root | 0 | 7 | 0/4/0/3 | 34 | 5 | 0 |
 | `tests/acl2/owner-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 10 | 0 |
 | `tests/acl2/owner-operator-tests.lisp` | root | 0 | 5 | 0/2/0/3 | 44 | 8 | 0 |
-| `tests/acl2/owner-parse-carried-tests.lisp` | root | 0 | 5 | 0/2/0/3 | 73 | 5 | 0 |
-| `tests/acl2/owner-prepare-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 2 | 0 |
+| `tests/acl2/owner-parse-carried-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 84 | 5 | 0 |
+| `tests/acl2/owner-prepare-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 2 | 0 |
 | `tests/acl2/owner-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 26 | 1 | 0 |
 | `tests/acl2/owner-prepare-served-abort-tests.lisp` | root | 0 | 6 | 0/1/0/5 | 1 | 0 | 0 |
 | `tests/acl2/owner-prepare-served-events-tests.lisp` | root | 0 | 5 | 0/1/0/4 | 57 | 0 | 0 |
-| `tests/acl2/owner-prepare-served-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 51 | 0 | 0 |
-| `tests/acl2/owner-reader-read-tests.lisp` | root | 1 | 10 | 0/5/0/5 | 27 | 2 | 0 |
+| `tests/acl2/owner-prepare-served-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 58 | 0 | 0 |
+| `tests/acl2/owner-reader-read-tests.lisp` | root | 1 | 10 | 0/5/0/5 | 32 | 2 | 0 |
 | `tests/acl2/owner-reader-view-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 28 | 1 | 0 |
 | `tests/acl2/owner-recover-ocl-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 3 | 0 |
-| `tests/acl2/owner-refresh-indexed-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 6 | 2 | 0 |
+| `tests/acl2/owner-refresh-indexed-tests.lisp` | root | 0 | 5 | 0/2/0/3 | 11 | 2 | 0 |
 | `tests/acl2/owner-results-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 2 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 5 | 1 | 0 |
 | `tests/acl2/owner-scheduler-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 26 | 4 | 0 |
@@ -1183,7 +1183,7 @@ that `make certify` requests.
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/payload-arena-paged-tests.lisp` | root | 0 | 5 | 0/0/1/4 | 3 | 0 | 0 |
 | `tests/acl2/payload-arena-tests.lisp` | root | 22 | 13 | 0/0/1/12 | 7 | 10 | 0 |
-| `tests/acl2/payload-lz-tests.lisp` | root | 2 | 4 | 0/2/2/0 | 9 | 3 | 0 |
+| `tests/acl2/payload-lz-tests.lisp` | root | 7 | 4 | 0/2/2/0 | 9 | 3 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 15 | 0 |
 | `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 114 | 20 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
@@ -1196,7 +1196,7 @@ that `make certify` requests.
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 84 | 20 | 0 |
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 34 | 5 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
-| `tests/acl2/post-fields-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 2 | 0 |
+| `tests/acl2/post-fields-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 2 | 0 |
 | `tests/acl2/post-identity-index-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 17 | 7 | 0 |
 | `tests/acl2/post-retain-carried-tests.lisp` | root | 0 | 4 | 0/0/1/3 | 15 | 2 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 8 | 0/1/0/7 | 65 | 12 | 0 |
@@ -1251,11 +1251,11 @@ that `make certify` requests.
 | `tests/acl2/store-budget-stored-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 15 | 1 | 0 |
 | `tests/acl2/store-budget-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 29 | 3 | 0 |
 | `tests/acl2/store-capacity-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 14 | 1 | 0 |
-| `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 1 | 0 |
+| `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 43 | 1 | 0 |
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 49 | 8 | 0 |
-| `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 3 | 17 | 0/17/0/0 | 24 | 0 | 0 |
+| `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 3 | 19 | 0/19/0/0 | 26 | 0 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
-| `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 6 | 0/6/0/0 | 15 | 9 | 0 |
+| `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 8 | 0/8/0/0 | 16 | 9 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 50 | 8 | 0 |
 | `tests/acl2/store-compact-window-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 4 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
@@ -1293,7 +1293,7 @@ that `make certify` requests.
 | `tests/acl2/store-node-existing-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 12 | 8 | 0 |
 | `tests/acl2/store-node-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 0 | 0 |
 | `tests/acl2/store-node-index-tests.lisp` | root | 0 | 14 | 0/9/3/2 | 82 | 0 | 0 |
-| `tests/acl2/store-node-resolution-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 25 | 0 | 0 |
+| `tests/acl2/store-node-resolution-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 31 | 0 | 0 |
 | `tests/acl2/store-node-resolution-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/store-node-retention-tests.lisp` | root | 0 | 8 | 0/1/0/7 | 43 | 8 | 0 |
 | `tests/acl2/store-node-teeth-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 56 | 0 | 0 |
@@ -1314,7 +1314,7 @@ that `make certify` requests.
 | `tests/acl2/store-reclaim-holders-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/store-reclaim-pack-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 29 | 8 | 0 |
 | `tests/acl2/store-reclaim-stream-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 10 | 2 | 0 |
-| `tests/acl2/store-reclaim-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 57 | 20 | 0 |
+| `tests/acl2/store-reclaim-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 69 | 20 | 0 |
 | `tests/acl2/store-recover-stream-tests.lisp` | root | 2 | 11 | 0/11/0/0 | 15 | 0 | 1 |
 | `tests/acl2/store-replay-bound-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/store-retention-codec-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
