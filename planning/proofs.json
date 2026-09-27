@@ -8065,7 +8065,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/checkpoint-pack-chain-once.lisp",
         "tests/acl2/checkpoint-pack-chain-once-tests.lisp",
@@ -8075,9 +8075,10 @@
         "planning/evidence/open-by-index-2026-09-26.md",
         "books/catalog-load-index.lisp",
         "tests/acl2/catalog-load-index-tests.lisp",
-        "books/catalog-entries.lisp"
+        "books/catalog-entries.lisp",
+        "planning/evidence/manifests/certify-20260927T020711Z-1880439.json"
       ],
-      "progress_note": "Lane open-by-index (2026-09-26): admitted in the persvati REPL; certification and the native module in the record.",
+      "progress_note": "Lane open-by-index (2026-09-26/27): certified by persvati farm run run-20260927T020711Z (certify-20260927T020711Z-1880439: the two books and their test books); hbox run-20260927T003414Z-f8e9 certified the chain book before its comment was renumbered.",
       "events": [
         "fn-ccco-entry-step-is-entry-step",
         "fn-ccco-coverage-chain-is-coverage-chain",
@@ -8092,7 +8093,6 @@
         "fn-ccco-decode-link-is-decode-link",
         "fn-obi-load-is-cat-load",
         "fn-obi-intern-range-is-intern-list",
-        "fn-obi-seal-range-is-seal-of-slice",
         "fn-obi-load-from-empty-establishes-relation"
       ]
     }

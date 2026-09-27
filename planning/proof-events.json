@@ -7674,10 +7674,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-obi-seal-range-is-seal-of-slice"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-obi-load-from-empty-establishes-relation"
         }
       ]
