@@ -18,6 +18,7 @@
 (define-condition fnn-store-fault (fnn-store-error) ())
 (define-condition fnn-os-error (error) ())
 (define-condition fnn-tls-error (error) ())
+(define-condition fnn-tls-handshake-error (fnn-tls-error) ())
 
 (defconstant +fnn-max-read+ 512)
 

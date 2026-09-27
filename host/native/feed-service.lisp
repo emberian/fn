@@ -458,13 +458,19 @@ ACL2 framer."
                     ((zerop (length incoming))
                      (fnn-feed-consume runtime link nil t now))
                     (t (fnn-feed-consume runtime link incoming nil now))))))
-      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) ()
+      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
+           fnn-peer-dial-error) (condition)
         (if (fnn-feed-stoppingp runtime)
             (fnn-feed-close-link runtime link)
           (multiple-value-bind (ignored host port backoff timeout security auth)
               (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                                   (fnn-feed-link-peer-octets link))
-            (declare (ignore ignored host port timeout security auth))
+            (declare (ignore ignored port timeout security auth))
+            ;; PKT-613: a refused STARTTLS handshake (the name, the chain, the
+            ;; configured check) is a dial outcome and is logged by name; a
+            ;; later I/O loss on an established link is not a dial.
+            (when (typep condition '(or fnn-tls-handshake-error fnn-peer-dial-error))
+              (fnn-peer-dial-report :feed (fnn-feed-link-peer-octets link) host condition))
             (fnn-feed-drop-link runtime link now backoff)))))))
 
 (defun fnn-feed-worker (runtime)
