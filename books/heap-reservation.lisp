@@ -910,6 +910,15 @@
                                   :heap)))))
   :hints (("Goal" :in-theory (e/d (fn-heap-reserve-acceptsp)
                                   (fn-heap-init-decide fn-heap-init-decision-request
+                                   ;; lane fix-line-stack: the figure's and
+                                   ;; the decision's definitions are
+                                   ;; useless here (3.8 s -> 0.1 s)
+                                   fn-heap-figure-octets
+                                   fn-heap-decide fn-bs-profile-field fn-bs-profile-validp
+                                   fn-heap-reserve-decide-keeps-heap-figures-refusals
+                                   fn-heap-reserve-decide-refuses-exactly-past-the-machine
+                                   fn-ock-capture-budget fn-bs-profile-max-history-octets
+                                   fn-bs-profile-max-record-octets
                                    fn-heap-reserve-decide fn-bs-profile-resolve
                                    fn-bs-profile-admittedp fn-heap-init-chosen
                                    fn-heap-init-reservation-octets
