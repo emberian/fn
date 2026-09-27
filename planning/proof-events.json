@@ -6963,10 +6963,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cat-ocl-relation-of-article-finish"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cat-ocl-relation-before-article-finish"
         },
         {
@@ -7148,7 +7144,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sca-load-history-establishes-relation"
+          "name": "fn-sca-load-held-rows-establishes-relation"
         },
         {
           "kind": "theorem",
@@ -10848,10 +10844,6 @@
         {
           "kind": "theorem",
           "name": "fn-orr-relation-of-with-view"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocvp-step-preserves-inv"
         }
       ]
     }
