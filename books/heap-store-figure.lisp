@@ -13,32 +13,51 @@
 ;
 ;   THE STATE a store of USED payload octets and N records keeps, after a
 ;   full collection:
-;     arena    the byte array, one byte per octet; it doubles when full
-;              (fn-arn-write-octet), so its capacity is at most twice the
-;              octets it holds, and while a resize copies it the old array
-;              is live beside the new: 3 x USED at the peak.  A large object:
-;              the collector never copies it.
-;     handles  the offset and size arrays, 8 bytes each per handle, doubling
-;              the same way: 48 x N at the peak.
-;     records  the rest of a record's retained state (the held record, its
-;              catalog rows, the Message-ID and group indexes, the views):
-;              small objects the collector copies, so twice.  Measured at
-;              3.5 to 3.7 KiB a record after a reopen and 4.4 to 4.8 KiB while
-;              serving, whatever the article's size or its Subject's length
-;              (1,000 and 2,000 articles of 400 octets to 8,000 octets, a
-;              1,500-octet folded Subject), plus 0.25 KiB for each group past
-;              the first the article is posted to: *fn-heap-record-octets*
-;              and *fn-heap-membership-octets* a group, G groups a record at
-;              most (the profile's max-groups-per-article).
+;     arena    `fn-heap-arena-octets', a named parameter.  Today (dev: the
+;              paged arena of arena-offheap stage 1, books/payload-arena-
+;              paged.lisp) the payload octets in fixed pages of 256 KiB that
+;              are never copied, the last page partly filled, and the page
+;              table's pointers (a doubling of pointers, never of octets):
+;              USED + one page + 32 octets a page.  Large objects: the
+;              collector never copies them.  Lane arena-offheap-3 (payloads
+;              read from the log files) replaces the term with its cache
+;              bound; the keystones use only its monotonicity.
+;     handles  the offset and size arrays, 8 bytes each per handle, doubling:
+;              48 x N at the peak.
+;     records  the rest of a record's retained state: small objects the
+;              collector copies, so twice.  *fn-heap-record-octets* is the
+;              measured live state a record, less its payload, on dev after
+;              per-record-state (the log kernel holds only the COUNT, PRF-282)
+;              and catalog-columns (the catalog on the served path): 8 to 10
+;              KB a record posted or reopened (1,000 x 2 KiB, 10,000 x 400;
+;              planning/evidence/catalog-columns-2026-09-27.md section 4,
+;              per-record-state-2026-09-27.md section 4), plus about 1.3 KB
+;              for a realistic 45-character Message-ID in the two tries
+;              (per-record-state section 2): 12 KiB.  The 5 KiB it replaces
+;              was measured before the catalog and the carried retention trie
+;              and was BELOW the measurement.  *fn-heap-membership-octets* a
+;              group the record is posted to (measured 137 + 45 octets), G
+;              groups a record at most (the profile's max-groups-per-article).
+;              Lane history-columns lowers the record term (the history as
+;              columns: 200 octets a record is its target) with its record.
 ;
-;   THE OPEN's transient: the recovery decodes the retained records as octet
-;   lists before it interns their payloads (host/native/io.lisp fnn-recover:
-;   fn-store-sn-recover-records, then fn-intern-events, then the rows), so a
-;   full replay -- every open whose checkpoint is absent or unreadable, and
-;   today every open of the flipped image, whose checkpoints read back
-;   `corrupt' (the record, section 4) -- holds *fn-heap-open-list-copies*
-;   list copies of the history at 16 octets per octet, twice for the
-;   collector, and *fn-heap-open-record-octets* of small objects a record.
+;   THE OPEN's transient, since log-open-stream (PRF-283) and rm2-format9: the
+;   open reads one log entry at a time and the full replay takes each record
+;   straight into the replay's chunk, so no list of the history exists; what
+;   is live beside the state is one entry's octet list and one chunk (closed
+;   at *fn-heap-open-chunk-octets* = books/store-recover-stream.lisp's
+;   *fn-srs-chunk-octets*, plus the record that fills it) as octet lists and
+;   their decode (*fn-heap-open-list-copies* lists of at most chunk + R
+;   octets at 16 octets per octet, twice for the collector); on the
+;   checkpoint paths the scanned suffix's record vectors (at most the
+;   input's octets, small objects: twice); and the replay's per-record spine
+;   and index build beside the rows the state already counts,
+;   *fn-heap-open-record-octets* a record.  Measured (log-open-stream's
+;   record, section 3b: 10,000 x 32 KiB full replay, 1,029 MB peak over 640
+;   MB live at the replay) the transient is the chunk's, not the history's.
+;   Before, the open held *two* list copies of the whole history (64 octets
+;   per history octet) and 16 KiB a record: the 64 H term was 48 GiB of the
+;   scale preset's figure.
 ;
 ;   THE REQUEST IN FLIGHT: the served POST's record and three copies of its
 ;   header as lists (as heap-figure counted them: 2 x 16 x (R + 3 HDR)); and
@@ -166,28 +185,52 @@
 ; -----------------------------------------------------------------------------
 ; The measured terms (the record, sections 2 and 3).
 
-(defconst *fn-heap-arena-octets-per-octet* 3)
+(defconst *fn-heap-arena-page-octets* 262144)       ; *fn-arp-page*
+(defconst *fn-heap-arena-page-pointer-octets* 32)
 (defconst *fn-heap-handle-octets* 48)
-(defconst *fn-heap-record-octets* 5120)
+(defconst *fn-heap-record-octets* 12288)
 (defconst *fn-heap-membership-octets* 320)
+(defconst *fn-heap-open-chunk-octets* 1048576)      ; *fn-srs-chunk-octets*
 (defconst *fn-heap-open-list-copies* 2)
-(defconst *fn-heap-open-record-octets* 16384)
+(defconst *fn-heap-open-record-octets* 1024)
 (defconst *fn-heap-inflight-header-copies* 3)
 
-; THE ARENA's cost, a named parameter: today's in-heap byte array, three
-; octets per payload octet at a resize's peak.  Lane arena-offheap (the
-; coordinator's decision, 2026-09-27: payloads read on demand from the
-; transaction and log files, a paged arena) replaces this term with its cache
-; bound; the keystones below hold for any definition of it that grows with
-; USED (fn-heap-arena-octets-monotone is all they use of it).
+; THE ARENA's cost, a named parameter: today's paged arena (arena-offheap
+; stage 1): the payload octets, under one page of the last page's slack, and
+; the page table's pointers for at most USED / page + 1 pages.  (Before it,
+; the one byte array doubling: three octets per octet at a resize's peak.)
+; Lane arena-offheap-3 (payloads read on demand from the log files) replaces
+; this term with its cache bound; the keystones below hold for any
+; definition of it that grows with USED (fn-heap-arena-octets-monotone is
+; all they use of it).
 (defun fn-heap-arena-octets (used)
   (declare (xargs :guard t))
-  (* *fn-heap-arena-octets-per-octet* (nfix used)))
+  (+ (nfix used) *fn-heap-arena-page-octets*
+     (* *fn-heap-arena-page-pointer-octets*
+        (+ 1 (floor (nfix used) *fn-heap-arena-page-octets*)))))
+
+(local
+ (defthm fn-heap-floor-page-monotone
+   (implies (and (natp a) (natp b) (<= a b))
+            (<= (floor a 262144) (floor b 262144)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable floor)))))
+
+(local
+ (defthm fn-heap-arena-pointers-monotone
+   (implies (<= (nfix a) (nfix b))
+            (<= (* 32 (+ 1 (floor (nfix a) 262144)))
+                (* 32 (+ 1 (floor (nfix b) 262144)))))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-heap-floor-page-monotone (a (nfix a)) (b (nfix b))))
+            :in-theory (disable floor)))))
 
 (defthm fn-heap-arena-octets-monotone
   (implies (<= (nfix u1) (nfix u2))
            (<= (fn-heap-arena-octets u1) (fn-heap-arena-octets u2)))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-arena-octets) (theory 'minimal-theory))
+           :use ((:instance fn-heap-arena-pointers-monotone (a u1) (b u2))))))
 
 (defthm fn-heap-arena-octets-natp
   (natp (fn-heap-arena-octets used))
@@ -203,10 +246,15 @@
            (* *fn-heap-membership-octets*
               (nfix (fn-bs-profile-max-groups-per-article profile)))))))
 
-; The open's transient over an input of OU octets in ON records.
-(defun fn-heap-store-open-octets (ou on)
+; The open's transient over an input of OU octets in ON records: one chunk
+; and one entry as lists (at most the chunk and a record of R octets), the
+; checkpoint suffix's vectors, and the per-record build.
+(defun fn-heap-store-open-octets (profile ou on)
   (declare (xargs :guard t))
-  (+ (* 2 *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies* (nfix ou))
+  (+ (* 2 *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
+        (+ *fn-heap-open-chunk-octets*
+           (nfix (fn-bs-profile-max-record-octets profile))))
+     (* 2 (nfix ou))
      (* 2 *fn-heap-open-record-octets* (nfix on))))
 
 ; The request in flight and the two octet buffers.
@@ -225,7 +273,7 @@
   (declare (xargs :guard t))
   (+ (fn-heap-core-dynamic core)
      (fn-heap-store-state-octets profile used n)
-     (fn-heap-store-open-octets ou on)
+     (fn-heap-store-open-octets profile ou on)
      (fn-heap-store-inflight-octets profile)
      (* 2 (nfix trigger))))
 
@@ -274,7 +322,8 @@
   (+ (fn-heap-core-dynamic core)
      (fn-heap-store-state-octets profile (fn-bs-profile-max-history-octets profile)
                                  (fn-bs-profile-max-transactions profile))
-     (fn-heap-store-open-octets (fn-heap-open-octets-bound profile observed)
+     (fn-heap-store-open-octets profile
+                                (fn-heap-open-octets-bound profile observed)
                                 (fn-heap-open-records-bound profile observed))
      (fn-heap-store-inflight-octets profile)))
 
@@ -317,8 +366,8 @@
 (local
  (defthm fn-heap-store-open-octets-monotone
    (implies (and (<= (nfix ou) (nfix h)) (<= (nfix on) (nfix tt)))
-            (<= (fn-heap-store-open-octets ou on)
-                (fn-heap-store-open-octets h tt)))
+            (<= (fn-heap-store-open-octets profile ou on)
+                (fn-heap-store-open-octets profile h tt)))
    :rule-classes nil))
 
 (local
@@ -448,6 +497,7 @@
   :hints (("Goal" :in-theory (e/d (fn-heap-store-base-octets fn-heap-store-state-octets
                                    fn-heap-store-open-octets fn-heap-store-inflight-octets)
                                   (fn-ock-capture-budget fn-heap-open-bounds-of-nil
+                                   fn-heap-arena-octets
                                    fn-heap-open-octets-bound fn-heap-open-records-bound
                                    fn-bs-profile-max-history-octets
                                    fn-bs-profile-max-transactions
@@ -455,7 +505,10 @@
                                    fn-bs-profile-max-record-octets
                                    fn-bs-profile-field))
            :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
-                 (:instance fn-heap-open-bounds-of-nil (profile p2)))
+                 (:instance fn-heap-open-bounds-of-nil (profile p2))
+                 (:instance fn-heap-arena-octets-monotone
+                            (u1 (fn-bs-profile-max-history-octets p1))
+                            (u2 (fn-bs-profile-max-history-octets p2))))
            :nonlinearp t)))
 
 (in-theory (disable fn-heap-store-need fn-heap-store-base-octets

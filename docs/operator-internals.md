@@ -212,36 +212,38 @@ headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-
 node the heap its store profile needs on this machine, and refuses a profile
 the machine cannot hold before anything runs (exit 1, on stderr
 `fn: refused machine-cannot-hold-profile heap=MB MB machine=M MB`). The
-figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp, and since lane
-reservation-after-flip `fn-heap-store-need`, books/heap-store-figure.lisp):
-the image's dynamic content (the least of the core file and
-`sb-kernel:dynamic-usage` the probe observes, not the whole core), three
-times the history octets in use, per-record and per-membership terms for the
-records on disk (5,120 octets a record plus 320 a group membership, the
-measured served state with a margin), the open's replay of what is on disk
-(64 octets per octet and 32 KiB per record), the capture budget twice, and
-twice the collection nursery the host now asks ACL2 for
-(`fn-heap-nursery-trigger`: a sixteenth of the space, at least 8 MiB, at most
-64 MiB); the figure is the least space D with D >= base + 2 trigger(D). The
-thread stacks are added by books/heap-reservation.lisp (30 threads: 12 fixed,
-2 I/O loops, 16 control clients; a connection is no thread since
-connection-multiplexing). The input is what the launcher's probe
-(`heap -- ARGV`, packaging/fn) observes on disk, so a store is sized by the
-history it holds, not only its bounds. The machine is the least of its
-physical memory, the cgroup's `memory.max` (Linux) and the data-size limit
-(`ulimit -d`; OpenBSD's login class). `status` and `health` end with
-`heap=MB MB profile=WORD machine=M MB`. The installed launcher ignores the
-caller's `SBCL_USER_ARGS` and `FN_TEST_HEAP_MB`; a checkout's `packaging/fn`
-takes the tests' `FN_TEST_HEAP_MB`.
+figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp and
+books/heap-store-figure.lisp): the image's dynamic content, the state of the
+profile's largest store (its payloads in the paged arena, one octet each; 12
+KiB a record and 320 octets a group membership, twice for the collector:
+the measured live state of per-record-state and catalog-columns), the open's
+transient (the open streams one entry and one 1 MiB chunk at a time: no copy
+of the history), the record and header in flight, two checkpoint buffers of
+three times H, and the collector's room at the trigger the host sets; the
+machine is the least of its physical memory, the cgroup's `memory.max`
+(Linux) and the data-size limit (`ulimit -d`; OpenBSD's login class).
+`status` and `health` end with the reservation the launcher makes for the
+store's next `run` over the store on disk (`fn-heap-status-decide`, the same
+decision as the launcher's probe): `heap=MB MB profile=WORD machine=M MB
+stack=KB KB threads=N`. The thread stacks are added by
+books/heap-reservation.lisp (30 threads: 12 fixed, 2 I/O loops, 16 control
+clients; a connection is no thread since connection-multiplexing). The
+installed launcher ignores the caller's `SBCL_USER_ARGS` and
+`FN_TEST_HEAP_MB`; a checkout's `packaging/fn` takes the tests'
+`FN_TEST_HEAP_MB`. The presets' full-store figures on a 389 MB core:
 
-Figures on hbox's production image (planning/evidence/reservation-after-flip-2026-09-27.md
-section 4): the small preset's empty store runs in 586 MB, its 1,000-post
-store in 862 MB, and the preset at its bounds (T 16,384, G 16, H 8 MiB)
-needs 1,662 MB; scale's first run is about 171,600 MB (its G = 65,535 makes
-the per-membership term dominate) and development's about 6,540 MB, so
-neither is a machine-sized choice. The default preset (T 2^32-1, H 1 TiB)
-is refused on every machine (PKT-582). A later reservation figure for scale
-at `init` is an open lane (build/coordinator/WAVE-STATE.md 16:04Z).
+| preset | T | H | R | A | G | K | heap |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,232 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
+| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 7,506 MB: refused on a 2 GB machine |
+| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 173,021 MB |
+| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 10 PiB: refused on every machine (PKT-582) |
+
+The development and scale figures are their group memberships: a record may
+be posted to G = 65,535 groups and nothing else bounds a store's
+memberships, so the state is 2 x T x 320 x G octets (scale at T = 1,048,576:
+about 40 TiB). A node sized for many records names
+`--max-groups-per-article` (16 in the small preset).
 
 `init` with no `--profile` and no capacity field (and every `init` under a
 `mission`, which fixes the profile) takes the largest friend-sized rung the
