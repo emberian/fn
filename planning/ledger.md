@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1275 |
-| Certification roots in the Makefile | 1228 |
-| Books inside the root closure | 1264 |
-| `defthm` and `defthmd` events | 18900 |
-| `defun` events | 12919 |
-| Functions with verified guards | 2477 |
-| Functions declared `:verify-guards nil` and never verified | 1532 |
-| Functions left at the default with an explicit guard | 7116 |
-| Functions left at the default with no guard | 1794 |
-| `assert-event` checks | 18485 |
+| Books read | 1277 |
+| Certification roots in the Makefile | 1230 |
+| Books inside the root closure | 1266 |
+| `defthm` and `defthmd` events | 18955 |
+| `defun` events | 12977 |
+| Functions with verified guards | 2480 |
+| Functions declared `:verify-guards nil` and never verified | 1543 |
+| Functions left at the default with an explicit guard | 7159 |
+| Functions left at the default with no guard | 1795 |
+| `assert-event` checks | 18498 |
 | `must-fail` checks | 2182 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
-| Theorems flagged SUSPECT by shape | 215 |
-| Export-hygiene warnings | 216 |
+| Theorems flagged SUSPECT by shape | 216 |
+| Export-hygiene warnings | 224 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 221 |
-| Include-hygiene warnings | 1357 |
-| Host-names warnings | 1396 |
+| Include-hygiene warnings | 1360 |
+| Host-names warnings | 1397 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -716,6 +716,7 @@ that `make certify` requests.
 | `books/store-log-crash.lisp` | root | 93 | 17 | 0/14/2/1 | 0 | 0 | 0 |
 | `books/store-log-decode.lisp` | root | 22 | 8 | 0/0/7/1 | 0 | 0 | 1 |
 | `books/store-log-extend.lisp` | root | 62 | 10 | 0/7/3/0 | 0 | 0 | 0 |
+| `books/store-log-kernel-concrete.lisp` | root | 55 | 48 | 3/6/39/0 | 0 | 0 | 1 |
 | `books/store-log-kernel.lisp` | root | 51 | 20 | 0/7/13/0 | 0 | 0 | 1 |
 | `books/store-log-programs.lisp` | root | 6 | 13 | 0/8/5/0 | 0 | 0 | 0 |
 | `books/store-log-reclaim.lisp` | root | 3 | 2 | 0/2/0/0 | 0 | 0 | 1 |
@@ -1284,6 +1285,7 @@ that `make certify` requests.
 | `tests/acl2/store-intern-tests.lisp` | root | 1 | 10 | 0/7/0/3 | 28 | 0 | 0 |
 | `tests/acl2/store-log-decode-tests.lisp` | root | 0 | 4 | 0/1/3/0 | 4 | 0 | 0 |
 | `tests/acl2/store-log-extend-tests.lisp` | root | 0 | 23 | 0/18/5/0 | 17 | 0 | 0 |
+| `tests/acl2/store-log-kernel-concrete-tests.lisp` | root | 0 | 10 | 0/5/4/1 | 13 | 0 | 0 |
 | `tests/acl2/store-log-kernel-tests.lisp` | root | 0 | 20 | 0/15/5/0 | 11 | 0 | 0 |
 | `tests/acl2/store-log-programs-tests.lisp` | root | 0 | 23 | 0/19/4/0 | 19 | 0 | 0 |
 | `tests/acl2/store-log-reclaim-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 3 | 0 |
@@ -1465,6 +1467,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lgkc-log-of-atom` | `books/store-log-kernel.lisp` | 362 | branch-of-definition: the hypothesis negates a branch test of fn-lg-log and the conclusion is that branch's value |
 | `fn-lgoc-store-of-rcon-io` | `books/owner-log-ocl.lisp` | 331 | closed-theory-corollary: proved only by fn-lgoc-rcon-io-is-owner-with-store, fn-lgoc-store-of-owner-with-store |
 | `fn-lgr-rewrites-are-the-events` | `books/store-log-reclaim.lisp` | 82 | definition-restated: the conclusion is the body of fn-rclp-events |
+| `fn-lgx-trailer-is-trailer` | `books/store-log-kernel-concrete.lisp` | 185 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-mod-inj-append-of-a-cons` | `books/moderation.lisp` | 358 | branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value |
 | `fn-mod-named-entries-of-no-groups` | `books/moderation.lisp` | 101 | branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value |
 | `fn-ncr-cli-plan-without-the-flag-by-definition` | `books/consumer-reason.lisp` | 178 | branch-of-definition: the hypothesis negates a branch test of fn-ncr-cli-plan and the conclusion is that branch's value |
