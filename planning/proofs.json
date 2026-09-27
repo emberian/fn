@@ -7784,6 +7784,35 @@
         "fn-bphh-request-article-matches-is-wire",
         "fn-bphh-octets-at-p-is-equal-payload"
       ]
+    },
+    {
+      "id": "PRF-216",
+      "title": "The record log's scan reads back a well-formed log exactly, and a torn append scans to the old history, the new record, or a forgery",
+      "statement": "books/store-log.lisp (the storage-log design's prototype, planning/design-2026-09-27-storage-log.md section 5.2). An entry is an FNLG frame whose payload is the previous entry's trailer (32 octets, the chain) and the committed record's octets, padded with zeros to the write unit (fn-lg-entry); a log is the chained entries of a record list from a genesis trailer (fn-lg-log); the scan reads complete chained entries from the front and answers (records . aligned-end) (fn-lg-scan). fn-lg-scan-of-log-append: for (fn-frame-digestp prev) and (fn-lg-recordsp records max), the scan of (append (fn-lg-log records prev unit) x) is (append records (car (scan x from the log's last trailer))) with the log's length added to the consumed count; fn-lg-scan-of-log: alone, exactly (cons records (len log)): the frontier is the last complete entry's end. fn-lg-torn-variant-len: a torn variant of a write (fn-bs-torn-variantp, the byte model's crash of the one pending write) is no longer than the write. fn-lg-scan-of-torn-entry: for a record within max and a torn variant OBSERVED of (fn-lg-entry prev record unit), the scan of OBSERVED is (nil . 0), or (cons (list record) (len entry)), or (fn-lg-forgeryp observed prev max frame): the first slice validates as a chained frame and is not the written one, the event A-CRYPTO-TRAILER excludes (SHA-256's collision figure, about 2^-128, quoted pessimistically). fn-lg-scan-of-log-then-torn-entry: the composition over a log followed by a torn append. The shift lemma (a crash of an aligned append to a NON-EMPTY inode) and the A-CRYPTO-TRAILER corollary are lane log-core's (planning/briefs-wave5/w6-log-core.txt).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-005",
+        "STO-022"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log.lisp",
+        "tests/acl2/store-log-tests.lisp",
+        "planning/evidence/storage-log-design-2026-09-27.md",
+        "planning/design-2026-09-27-storage-log.md"
+      ],
+      "progress_note": "Lane storage-log-design (Fable 5.1, 2026-09-27): a design lane's prototype book. Teeth: tests/acl2/store-log-tests.lisp (a two-record log read back; six crash images of one appended entry as explicit admissible choices of fn-bs-crash: the last unit dropped, the first zeroed, a middle unit garbled, the exact write, the exact write with garbled padding, nothing landed; a stale chained entry beyond the tail not read; hypothesis removal for the digest, the record bound and the torn-variant hypothesis).",
+      "pending_subject": "No host line calls fn-lg-* yet: the design's lanes (w6-log-core, w6-log-owner, w6-log-recovery) build the kernel, the host entries fnn-log-append/-fence/-recover and the commit path onto them.",
+      "events": [
+        "fn-lg-scan-of-log-append",
+        "fn-lg-scan-of-log",
+        "fn-lg-torn-variant-len",
+        "fn-lg-scan-of-torn-entry",
+        "fn-lg-scan-of-log-then-torn-entry"
+      ]
     }
   ]
 }

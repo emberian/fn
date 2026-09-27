@@ -7292,6 +7292,31 @@
           "name": "fn-bphh-octets-at-p-is-equal-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-216",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-log-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-torn-variant-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-torn-entry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-log-then-torn-entry"
+        }
+      ]
     }
   ]
 }
