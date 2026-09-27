@@ -7684,6 +7684,31 @@
           "name": "fn-arena-seal-range-is-seal-list"
         }
       ]
+    },
+    {
+      "id": "PRF-217",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import writes fn-bs-imp-program step for step (native_cuts.verify_import_cut_map). Teeth: tests/acl2/store-import-publication-tests.lisp (reachable run, every landing at import-published, six hypothesis-removal witnesses)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-imp-classify-by-what-is-known",
+          "note": "The recovery classification over every crash image; host: fnn-command-store-import calls fn-bs-imp-classify (fnn-import-classify). Teeth: the four verdicts reached at import-published in the test book."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store",
+          "note": "KEYSTONE (PKT-647). Host: host/native/io.lisp fnn-command-init-published (operator init, host/native/operator.lisp fnn-operator-execute-init) writes fn-bs-init-pub-program through fnn-staged-publication (native_cuts.verify_init_publication_cut_map). Teeth: tests/acl2/store-init-publication-tests.lisp (reachable run with the transactions directory empty, every verdict at init-published, fresh-transactions-id and honest-outcome hypothesis-removal witnesses)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-pub-classify-by-what-is-known",
+          "note": "Host: fnn-command-init-published classifies a leftover ROOT.init-* through fnn-import-classify (fn-bs-imp-classify) and asks fn-bs-init-pub-admission. Teeth: every admission arm in the test book."
+        }
+      ]
     }
   ]
 }

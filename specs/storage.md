@@ -1068,3 +1068,34 @@ admits it by the ordinary open (full replay) before it appears at its path.
 The import of an export replays the same history under the same profile
 (PRF-205). The MANIFEST is a transport check: the digest seam is abstract.
 
+STO-029: `store import` publishes by an explicit program (P-IMPORT,
+books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is
+created beside ROOT, every file of the plan is written and fsynced, every
+subdirectory and the staged directory are fsynced, the ordinary open admits
+it, it is renamed onto ROOT without replacing an existing destination
+(renameat2 RENAME_NOREPLACE; an existing ROOT is `store-exists`, exit 1) and
+the parent is fsynced. A crash at any cut, or an ambiguous rename or barrier
+outcome, leaves no store at ROOT or the complete imported store (PRF-217).
+Recovery classifies what it observes (ACL2 `fn-bs-imp-classify`): a staged
+directory without ROOT is `interrupted-import` (no store was published;
+remove it by name and import again); a staged directory beside ROOT is
+`publication-uncertain` (run recover on ROOT, then remove the staged
+directory), never "no store was created". `store export` is Store-history
+export, not a node backup (docs/operator.md).
+
+`operator init` publishes the empty store by the same program (P-INIT-PUB,
+books/store-init-publication.lisp `fn-bs-init-pub-program`: init's plan --
+the three subdirectories, `config.json`, the allocation frontier and the
+generation-1 configuration record -- staged in `ROOT.init-XXXX`, init's cut
+names). A crash leaves no store at ROOT or the complete empty store, nothing
+named in `transactions/` (PRF-217,
+`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`).
+Before writing, ACL2's admission (`fn-bs-init-pub-admission`) refuses a
+leftover staged directory by name (`interrupted-init`: remove it and init
+again; `publication-uncertain`) and an existing ROOT without the store's
+entries (`store-path-exists`). On OpenBSD, which has no renameat2, import
+and init hold an exclusive flock on `ROOT.lock` for the whole program and
+re-check ROOT's absence under it immediately before rename(2); the residual
+(a process ignoring the lock creates an empty directory at ROOT in that
+window) is an operator constraint (docs/operator.md).
+

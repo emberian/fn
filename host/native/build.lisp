@@ -190,8 +190,14 @@
 (include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan.
+;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; publication (staged, validated, no-replace rename, parent fenced) and
+;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
+(include-book "books/store-import-publication")
+;; `operator init` publishes the empty store by the same program (PKT-647):
+;; fnn-command-init-published asks fn-bs-init-pub-admission.
+(include-book "books/store-init-publication")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.

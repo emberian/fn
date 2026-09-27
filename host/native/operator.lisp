@@ -306,7 +306,7 @@ observation into the outcome and this function only carries it out."
                      (code (progn
                              (unless (consp profile)
                                (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                             (fnn-command-init root groups profile))))
+                             (fnn-command-init-published root groups profile))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
                 code))))

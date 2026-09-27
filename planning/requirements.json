@@ -3934,6 +3934,30 @@
         "planning/evidence/manifests/certify-20260927T030010Z-2442389.json"
       ],
       "implementation_note": "Lane records-freeze (2026-09-26/27, PKT-293): the generic, its byte-array attachment, the intern's coordinates, the replay theorems and the reclamation identity are certified (PRF-221); the image attaches the byte array (host/native/build.lisp includes books/payload-arena-attach before any book naming fn-arena). Not yet served: no host line seals into the arena or loads the catalog (catalog-slice-5 step 8; acceptance-payload-arena PKT-635), so the retained bytes per stored octet are still sixteen on the running node until that join; the measurement belongs to it."
+    },
+    {
+      "id": "STO-029",
+      "title": "store import and operator init publish their staged store by a no-replace rename and a parent barrier: a crash leaves no store or the complete (init: empty) store, and an interrupted or ambiguous publication is refused by name",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-217"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-import-publication.lisp",
+        "tests/acl2/store-import-publication-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_import_publication.py",
+        "books/store-init-publication.lisp",
+        "tests/acl2/store-init-publication-tests.lisp",
+        "tests/test_native_init_publication.py"
+      ],
+      "implementation_note": "gpt-6 review 2026-09-26 section 7. The staged ROOT.import-XXXX is completed and fenced, admitted by the ordinary open, published by renameat2(RENAME_NOREPLACE) and the parent fenced; a leftover staged directory is classified by ACL2 (interrupted-import, publication-uncertain) and refused by name. Operator init (PKT-647) runs the same program with init's plan in ROOT.init-XXXX (fnn-command-init-published); a leftover is refused interrupted-init or publication-uncertain, an existing ROOT store-path-exists. OpenBSD: exclusive flock on ROOT.lock, ROOT re-checked before rename(2)."
     }
   ]
 }
