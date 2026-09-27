@@ -39,6 +39,7 @@ import unittest
 # The module, not its TestCase: a TestCase imported by name is collected and
 # run again as this module's own (the checkpoint suite ran twice here).
 from tests import test_native_checkpoint as checkpoint
+from tools import native_env
 
 IMAGE = checkpoint.IMAGE
 
@@ -91,9 +92,10 @@ class NativePackChainTests(unittest.TestCase):
         config, port = self.owner_config(store, name)
         # Lane membership-budget: the T = 2^20 profile's full store reserves
         # about 37 GB, past this module's 24 GB unit; the store is made for
-        # hbox (FN_INIT_BUDGET_MB names that target) and run directly.
+        # hbox (FN_INIT_BUDGET_MB names that target, tools/native_env.py) and
+        # run directly.
         init = self.native("operator", config, "init", *PROFILE_FLAGS, "fn.letters", "fn.test",
-                           env=dict(self.env, FN_INIT_BUDGET_MB="98304"))
+                           env=native_env.harness_store_env(self.env))
         self.assertIn("accepted operator init", init.stderr)
         self.native("store", store, "probe", str(n), "article")
         return store, config, port

@@ -488,7 +488,13 @@ and loads the book's forms up to the named event, stopping at the first one
 ACL2 refuses; `send NAME FORM` delivers one form and answers with the key
 checkpoints and the summary (`--full` for everything), an event wrapped in
 `with-prover-time-limit` so a search that stops returning costs a minute, not
-the session; `status`, `stop`, `list`. It is the loop the freeze lanes did not
+the session; `status`, `stop`, `list`. `start` puts the same limit on each
+of the book's own events as it loads them (`--load-limit S`, default
+`--limit`, 0 for none: two runaway lemmas once held sessions over ten
+minutes), stops at a form over it with that form's checkpoints in `status`,
+and leaves the session live just before it; `--ld-local` sends a
+from-source book's non-local `include-book` and `defpkg` forms ahead of its
+encapsulate, which ACL2 refuses them inside. It is the loop the freeze lanes did not
 have (the review's F5): seconds per attempt against cached certificates,
 instead of a closure run per attempt on the farm. A form ACL2 admits there is
 not a certificate; the event goes into the book and the book certifies.
@@ -646,7 +652,19 @@ images the run builds (`FN_NATIVE_HOST` is only ever the production image); a
 module that reads an image the run does not build is refused by name before
 anything ships, and a module whose every test skipped is reported
 `SKIPPED (N of N)` with each reason and makes the status 4, never OK
-(`tools/test_budget.py`'s exit bit 4).
+(`tools/test_budget.py`'s exit bit 4). The production image's identity
+(launcher, core and runtime SHA-256 and the source revision, which
+`test_native_peering` and `test_native_admin` check) comes from
+`native_env.py identity --image IMAGE --source REV --export`, which the box
+runs after the image steps and a local run can `eval`. The script copies
+itself and `tools/wait_for.sh` to a private directory and runs the copy, so
+editing or merging the worktree mid-run cannot change a running instance.
+A raw host file's load is checked without an image:
+`python3 tools/host_check.py --load` loads build.lisp's raw files in order
+into one bare ACL2 with SBCL's warnings on (the build compiles with
+`inhibit-warnings 3`, so it never sees them) and fails on a form's error, a
+wrong-arity call, a macro used before its definition, or a name nothing
+defines; `make check` runs it.
 [`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
 `submit` mirrors the worktree and starts the runner detached with its own log
 and status file, `wait` blocks with a bounded sleep-and-report loop and then
@@ -689,6 +707,13 @@ exits on its own (9 no directory, 10 no runner in the tree, 11 no writable
 `wait` returning 3 at its deadline without fetching abandoned every pair the
 run had already made, while the run itself kept going on the box; the timeout
 path now fetches and publishes first and prints what it left behind.
+Two words in the verdict were misread and are now loud: a run whose every
+book installed from the cache certified nothing (`ALL N BOOKS CAME FROM THE
+CACHE`), and a run or book ended by a signal (exit 143 is earlyoom's
+SIGTERM, 137 SIGKILL, an ACL2 exit of -N) is `KILLED`, listed apart from
+the proof failures, never `FAILED`. A certificate installed from any cache
+is dated no earlier than its source, which is what ACL2's provisional
+Complete checks (`certify_books.py --pcert` over an installed closure).
 
 Every harness that writes a record -- [`tools/deploy_gate.py`](../tools/deploy_gate.py),
 `twonode_gate.py`, `inn_lab.py`, `scale_gate.py`, `verdict.py`,

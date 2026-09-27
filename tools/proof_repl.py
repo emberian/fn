@@ -82,6 +82,18 @@ inside one encapsulate so their local events stay local.  `--host BOX`
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
 box itself FN_ACL2 and FN_CERT_CACHE default to that box's.
 
+Round 3 (lane tooling-leftovers, 2026-09-27): `start` sends each of the
+book's events under `with-prover-time-limit` too (`--load-limit S`, default
+`--limit`, 0 = none), so a runaway lemma is refused with its checkpoints in
+`status` (and the whole answer in build/proof-repl/NAME/load-refusal.txt)
+instead of holding the session for ten minutes; the session stays live just
+before it for `probe`/`send`.  `--ld-local` sends a from-source book's
+non-local `include-book` and `defpkg` forms before its encapsulate, since
+ACL2 refuses both inside one; local includes stay inside.  A pair installed
+from the cache is dated no earlier than its source (tools/certs.py
+`date_after_source`), so `certify_books.py --pcert` completes over a closure
+`--certify-missing` or an install put in place.
+
 A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
 sessions once held fifteen of persvati's sixteen slots).  `start` records
@@ -126,6 +138,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import fcntl
+import fractions
 import hashlib
 import json
 import os
@@ -706,9 +719,18 @@ def brief(output: str, keep: int = 60, where: str | None = None) -> str:
     return "\n".join(rendered)
 
 
+# Events ACL2 does not take inside `with-prover-time-limit` in a book's
+# scope, and that prove nothing anyway.
+UNLIMITED_HEADS = ("defpkg", "defttag")
+
+
 def wrap_limit(form: str, limit: float | None) -> str:
-    if limit and is_event(form):
-        return f"(with-prover-time-limit {int(limit)} {form})"
+    if limit and is_event(form) and head_and_name(form)[0] not in UNLIMITED_HEADS:
+        if float(limit).is_integer():
+            return f"(with-prover-time-limit {int(limit)} {form})"
+        # ACL2 takes a rational number of seconds.
+        fraction = fractions.Fraction(str(limit)).limit_denominator(1000)
+        return f"(with-prover-time-limit {fraction.numerator}/{fraction.denominator} {form})"
     return form
 
 
@@ -817,7 +839,15 @@ def _on_term(_number, _frame) -> None:
     raise _Terminated()
 
 
-def encapsulated(text: str, directory: Path, skip: set[str]) -> str:
+LOCAL_FORM = re.compile(r"^\(\s*local\b", re.IGNORECASE)
+# What ACL2 refuses in the scope of an encapsulate: a non-local include-book
+# ("does not permit non-local include-book forms in the scope of an
+# encapsulate") and defpkg ("not an embedded event form" there).
+HOISTED_HEADS = ("include-book", "defpkg")
+
+
+def encapsulated(text: str, directory: Path, skip: set[str],
+                 limit: float | None = None) -> tuple[list[str], str]:
     """A book's forms as one `(encapsulate () ...)`, so its local events stay local.
 
     Loaded form by form, a from-source book's `local` lemmas stay in the
@@ -825,37 +855,103 @@ def encapsulated(text: str, directory: Path, skip: set[str]) -> str:
     would not give them (octets-bulk: a dependent admitted in the REPL
     failed certification).  Inside an encapsulate they are dropped at its
     end, as an include drops them.  `in-package` is not an event and goes.
+
+    Answers (hoisted, encapsulate): the book's non-local `include-book` and
+    `defpkg` forms, in order, to send first -- ACL2 refuses both inside an
+    encapsulate, which made `--ld-local` fail on every book that includes
+    another (seven lanes, 2026-09-27) -- and the encapsulate of the rest.  A
+    non-local include is what an include of the book brings along, so it
+    belongs in the session anyway; a local one stays inside, local.  With
+    LIMIT, each event inside is wrapped in `with-prover-time-limit`, as a
+    `send` is, so one runaway lemma costs LIMIT seconds, not the session.
     """
-    kept = [form for form in forms(text)
-            if head_and_name(form)[0] != "in-package"
-            and include_target(form, directory) not in skip]
-    return "(encapsulate ()\n" + "\n".join(kept) + "\n)"
+    hoisted: list[str] = []
+    kept: list[str] = []
+    for form in forms(text):
+        head, _ = head_and_name(form)
+        if head == "in-package" or include_target(form, directory) in skip:
+            continue
+        if head in HOISTED_HEADS and not LOCAL_FORM.match(form):
+            hoisted.append(form)
+        else:
+            kept.append(wrap_limit(form, limit))
+    return hoisted, "(encapsulate ()\n" + "\n".join(kept) + "\n)"
+
+
+TIME_LIMIT_MARK = "[Time-limit]"
+
+
+def load_refusal(output: str, limit: float | None, where: str | None) -> str:
+    """What `status` prints for the form a load stopped at: the prover's own
+    checkpoints and summary, trimmed as a `send` answer is, and, when the
+    per-form limit is what stopped it, that sentence first."""
+    words = brief(output, where=where)
+    if TIME_LIMIT_MARK in output and limit:
+        return (f"over the per-form prover limit ({limit:g} s; start --load-limit S "
+                "raises it, 0 = none); its checkpoints:\n" + words)
+    return words
+
+
+def load_output_path(state: dict) -> Path | None:
+    """Where a load's refused form's whole answer is kept (beside the session)."""
+    name = state.get("name")
+    return (SESSIONS / name / "load-refusal.txt") if name else None
+
+
+def note_refusal(state: dict, output: str, limit: float | None) -> None:
+    path = load_output_path(state)
+    where = None
+    if path is not None:
+        with contextlib.suppress(OSError):
+            path.write_text("\n".join(output_lines(output)) + "\n", encoding="utf-8")
+            where = str(path)
+    state["error"] = load_refusal(output, limit, where)
+    state["load_time_limited"] = TIME_LIMIT_MARK in output
 
 
 def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
               skip: set[str], stop_before: str = "", stop_after: str = "",
-              record: bool = True, encapsulate: bool = False) -> bool:
+              record: bool = True, encapsulate: bool = False,
+              limit: float | None = None) -> bool:
     """Send one book's forms after setting the connected book directory to it.
 
     Local includes of SKIP (books this session loads from source) are not
     sent: their events are already here, and including the uncertified file
-    would process it again.  Answers False at the first refused form, having
-    recorded where in STATE.
+    would process it again.  Each event is wrapped in `with-prover-time-limit
+    LIMIT` (start --load-limit, default --limit), the same guard `send`
+    puts on a form: before 2026-09-27 a book's forms ran with no limit and
+    two runaway lemmas held their sessions over ten minutes.  A form over
+    the limit is refused like any other, with its checkpoints kept.  Answers
+    False at the first refused form, having recorded where in STATE.
     """
     source = ROOT / f"{book}.lisp"
     text = source.read_text(encoding="utf-8")
     where = "" if record else f"{book}: "
+    hard = max(load_timeout, (limit or 0) * 1.5 + 30)
     output, timed_out = acl2.send(f'(set-cbd "{source.parent}/")', load_timeout)
     if timed_out or errored(output):
         state["stopped_at"] = where + "set-cbd"
         state["error"] = "load timed out" if timed_out else brief(output)
         return False
     if encapsulate:
-        output, timed_out = acl2.send(encapsulated(text, source.parent, skip),
-                                      load_timeout * 4)
+        hoisted, body = encapsulated(text, source.parent, skip, limit)
+        for form in hoisted:
+            output, timed_out = acl2.send(form, hard)
+            if timed_out or errored(output):
+                state["stopped_at"] = where + form_label(0, form).split(" ", 1)[1]
+                if timed_out:
+                    state["error"] = "load timed out"
+                else:
+                    note_refusal(state, output, limit)
+                state["load_timed_out"] = timed_out
+                return False
+        output, timed_out = acl2.send(body, hard * 4)
         if timed_out or errored(output):
             state["stopped_at"] = where + "(encapsulate of the book)"
-            state["error"] = "load timed out" if timed_out else brief(output)
+            if timed_out:
+                state["error"] = "load timed out"
+            else:
+                note_refusal(state, output, limit)
             state["load_timed_out"] = timed_out
             return False
         cost = measure(output)
@@ -870,10 +966,13 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
             break
         if include_target(form, source.parent) in skip:
             continue
-        output, timed_out = acl2.send(form, load_timeout)
+        output, timed_out = acl2.send(wrap_limit(form, limit), hard)
         if timed_out or errored(output):
             state["stopped_at"] = where + (event or head)
-            state["error"] = ("load timed out" if timed_out else brief(output))
+            if timed_out:
+                state["error"] = "load timed out"
+            else:
+                note_refusal(state, output, limit)
             state["load_timed_out"] = timed_out
             return False
         cost = measure(output)
@@ -896,7 +995,8 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
 def serve(name: str, book: str, upto: str | None, through: str | None,
           limit: float, load_timeout: float, lock_fd: int,
           lane: str | None = None, idle_seconds: float | None = None,
-          ld: list[str] | None = None, ld_local: bool = False) -> int:
+          ld: list[str] | None = None, ld_local: bool = False,
+          load_limit: float | None = None) -> int:
     if idle_seconds is None:
         idle_seconds = default_idle_seconds()
     directory = session_dir(name)
@@ -911,7 +1011,8 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
              "lane": lane, "idle_seconds": idle_seconds, "started_at": now,
              "last_active": now, "acl2_pgid": None, "ended": None,
              "upto": upto, "through": through, "ld": ld, "ld_loaded": {},
-             "ld_local": ld_local}
+             "ld_local": ld_local,
+             "load_limit": limit if load_limit is None else load_limit}
     # SIGTERM (reap's fallback) unwinds through the finally below, which
     # kills the owned ACL2 group; without this it would outlive the server.
     signal.signal(signal.SIGTERM, _on_term)
@@ -931,12 +1032,14 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
                     directory / "log")
         state["acl2_pgid"] = acl2.pgid
         skip = set(ld)
+        per_form = state["load_limit"] or None
         loaded = all(load_book(acl2, one, state, load_timeout, skip, record=False,
-                               encapsulate=ld_local)
+                               encapsulate=ld_local, limit=per_form)
                      for one in ld)
         if loaded:
             load_book(acl2, book, state, load_timeout, skip,
-                      stop_before=(upto or "").lower(), stop_after=(through or "").lower())
+                      stop_before=(upto or "").lower(), stop_after=(through or "").lower(),
+                      limit=per_form)
         if state.get("load_timed_out"):
             acl2.kill()
         state["ready"] = acl2.alive()
@@ -1292,6 +1395,8 @@ def start(args) -> int:
         with open(directory / "server.log", "a", encoding="utf-8") as log:
             command = [sys.executable, __file__, "serve", args.name, args.book,
                        "--limit", str(args.limit), "--load-timeout", str(args.load_timeout),
+                       "--load-limit", str(args.limit if getattr(args, "load_limit", None)
+                                           is None else args.load_limit),
                        "--lock-fd", str(lock_fd),
                        "--idle-seconds", str(idle_from_args(args))]
             lane = getattr(args, "lane", None) or default_lane()
@@ -1348,6 +1453,10 @@ def status(args) -> int:
     if state["stopped_at"]:
         print(f"  stopped at {state['stopped_at']}:")
         print("  " + (state["error"] or "").replace("\n", "\n  "))
+        if state.get("load_time_limited") and live:
+            print(f"  the session is live just before it: `proof_repl.py probe {state['name']} "
+                  f"{state['stopped_at'].split(': ')[-1]} --hints '((...))'` tries hints "
+                  "beside it, `send` takes a fixed form")
     elif state["loaded"]:
         print(f"  last loaded: {state['loaded'][-1]}")
     last = state.get("last_active")
@@ -1650,6 +1759,7 @@ def probe(args) -> int:
             lane=main_state.get("lane") or getattr(args, "lane", None),
             idle_seconds=idle_seconds, ld=from_source, ld_missing=False,
             certify_missing=False, certify_jobs=4,
+            load_limit=main_state.get("load_limit"),
             ld_local=bool(main_state.get("ld_local")) and not args.book))
         state = read_state(name) or {}
         if started != 0 or state.get("stopped_at"):
@@ -2253,6 +2363,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="prover time limit per sent event, seconds")
     p.add_argument("--load-timeout", type=float, default=600.0,
                    help="hard limit per form while loading the book")
+    p.add_argument("--load-limit", type=float, default=None, metavar="S",
+                   help="prover time limit per event while loading (default --limit; "
+                        "0: none); a form over it is refused with its checkpoints")
     p.add_argument("--lane", default=None,
                    help="the owning lane (default $FN_LANE, else build/lanes/NAME)")
     p.add_argument("--idle-timeout", type=float, default=None, metavar="MIN",
@@ -2290,9 +2403,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--idle-seconds", type=float, default=None)
     p.add_argument("--ld", action="append", default=[])
     p.add_argument("--ld-local", action="store_true")
+    p.add_argument("--load-limit", type=float, default=None)
     p.set_defaults(run=lambda a: serve(a.name, a.book, a.upto, a.through, a.limit,
                                        a.load_timeout, a.lock_fd, a.lane, a.idle_seconds,
-                                       a.ld, a.ld_local))
+                                       a.ld, a.ld_local, a.load_limit))
     p = sub.add_parser("send", help="forms (one or several); `-` reads them from stdin")
     p.add_argument("name")
     p.add_argument("form")
