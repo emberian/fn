@@ -7238,7 +7238,23 @@
         "fn-cat-load-from-empty",
         "fn-cat-relation-of-withdraw",
         "fn-cat-relation-of-redecide",
-        "fn-cat-relation-of-complete"
+        "fn-cat-relation-of-complete",
+        "fn-cat-load-of-nil",
+        "fn-cat-load-of-append",
+        "fn-cat-relation-of-non-article-append",
+        "fn-cat-relation-is-prefix-relation",
+        "fn-cat-prefix-relation-of-growth",
+        "fn-cat-wire-list-of-withdraw",
+        "fn-cat-wire-list-of-redecide",
+        "fn-cat-prefix-relation-of-withdraw",
+        "fn-cat-prefix-relation-of-redecide",
+        "fn-cat-ocl-relation-at-recover",
+        "fn-cat-ocl-relation-at-init",
+        "fn-cat-ocl-relation-of-article-finish",
+        "fn-cat-ocl-relation-before-article-finish",
+        "fn-cat-ocl-relation-of-other-finish",
+        "fn-cat-ocl-relation-of-withdraw",
+        "fn-cat-ocl-relation-of-redecide"
       ],
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
@@ -7305,7 +7321,16 @@
         "fn-own-reader-sees-pinned-prefix-replay",
         "fn-ocl-own-read-survivor-has-history",
         "fn-ocl-read-preserves-historical-relation",
-        "fn-view-cancel-after-target"
+        "fn-view-cancel-after-target",
+        "fn-view-apply-is-refresh",
+        "fn-crf-apply-article-plain",
+        "fn-cat-view-below-of-commit",
+        "fn-cat-view-articles-of-commit-pinned",
+        "fn-cat-view-articles-of-commit-advanced",
+        "fn-cat-view-below-of-withdraw-pinned",
+        "fn-cat-view-articles-of-withdraw-pinned",
+        "fn-cat-view-below-of-withdraw-advanced",
+        "fn-cat-withdraw-then-commit-view"
       ]
     },
     {
@@ -7992,7 +8017,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
