@@ -7962,7 +7962,7 @@
       "progress_note": "Lane acceptance-payload-arena (2026-09-26): certified on persvati, run-20260927T001950Z-505f (certify-20260927T002614Z-565053: passed 2, failed 0, no book over 10 s at two jobs); every event REPL-admitted first."
     },
     {
-      "id": "PRF-233",
+      "id": "PRF-241",
       "title": "A committed delta applied in bounded steps under any schedule of quanta ends where its one-shot application does: the :policy range is re-decided exactly once, row by row",
       "statement": "books/config-policy-delta.lisp (lane config-consumer-catalog-2, 2026-09-27; PKT-601 (6), discharging catalog-delta's OPEN). KEYSTONE fn-cfgp-apply-in-quanta-is-apply-delta: for a delta satisfying fn-delta-p and a natural cursor at or before the delta's range start, fn-cat-apply-in-quanta (the resumable run of fn-cat-apply-delta-step, each step re-deciding at most its quantum of rows, fn-cat-apply-delta-step-bounded) under ANY list of quanta equals fn-cat-apply-delta, the one-shot application. Its inductive form fn-cfgp-policy-in-quanta-is-the-range: for a :policy delta with natural bounds, from ANY natural cursor the run is fn-cat-recontext-range from the later of the cursor and the range start to the range end clipped to the count. Scope: the catalog alone; no host line calls fn-cat-apply-in-quanta yet (the catalog serves no path until PKT-585's steps 4 to 9); which configuration change emits a :policy delta is not decided (the held context carries a keyring generation only; the record's packet).",
       "milestone": "M5",
