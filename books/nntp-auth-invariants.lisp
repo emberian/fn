@@ -472,6 +472,37 @@
 
 ; fn-served-conn-rebuilt-from-its-fields (books/served.lisp) is the eta law.
 
+; The re-pinned connection's fields, for the books that open the dispatch on
+; a GROUP or LISTGROUP line (books/nntp-auth-invariants.lisp).
+(local (defthm fn-served-repin-fields
+  (implies (fn-served-conn-live conn)
+           (and (equal (fn-served-conn-session (fn-served-repin conn))
+                       (fn-served-repin-session (fn-served-conn-session conn)
+                                                (fn-served-live-archive (fn-served-conn-live conn))))
+                (equal (fn-served-conn-archive (fn-served-repin conn))
+                       (fn-served-live-archive (fn-served-conn-live conn)))
+                (equal (fn-served-conn-config (fn-served-repin conn))
+                       (fn-served-conn-config conn))
+                (equal (fn-served-conn-observation (fn-served-repin conn))
+                       (fn-served-conn-observation conn))
+                (equal (fn-served-conn-injection (fn-served-repin conn))
+                       (fn-served-conn-injection conn))
+                (equal (fn-served-conn-verdicts (fn-served-repin conn))
+                       (fn-served-live-verdicts (fn-served-conn-live conn)))
+                (equal (fn-served-conn-index (fn-served-repin conn))
+                       (fn-served-live-index (fn-served-conn-live conn)))
+                (equal (fn-served-conn-group-index (fn-served-repin conn))
+                       (fn-served-live-buckets (fn-served-conn-live conn)))
+                (equal (fn-served-conn-control (fn-served-repin conn))
+                       (fn-served-live-control (fn-served-conn-live conn)))
+                (fn-served-conn-shapep (fn-served-repin conn))))
+  :hints (("Goal" :in-theory (enable fn-served-repin)))))
+
+(local (defthm fn-served-repin-without-live
+  (implies (not (fn-served-conn-live conn))
+           (equal (fn-served-repin conn) conn))
+  :hints (("Goal" :in-theory (enable fn-served-repin)))))
+
 (local (defthm fn-served-connp-has-an-auth-session
   (implies (fn-served-connp c)
            (fn-auth-sessionp (fn-served-conn-session c)))
@@ -485,7 +516,16 @@
 ; unauthenticated connection whose policy requires authentication leaves the
 ; ENTIRE connection as it was -- wire framing, session, pinned archive and
 ; indexes -- and its only effect is the 480 line, so no :submit effect leaves.
-(defthm fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing
+;
+; Since NNT-042 the dispatch of a GROUP or LISTGROUP line runs over the
+; connection re-pinned at the live view and keeps that re-pin only on a 211
+; (books/served.lisp fn-served-dispatch).  The theorem is first proved over
+; the dispatch proper for any connection, then for the dispatch by cases: no
+; advance; an advance on a connection without a live view (the re-pin is the
+; identity); an advance on one with a live view, where the re-pinned
+; connection is a connection with the same authentication facts, is refused
+; by the same 480, and the failed selection hands the original back.
+(local (defthm fn-served-dispatch-core-of-a-gated-command-is-480-and-changes-nothing
   (implies (and (fn-served-connp conn)
                 (not (fn-auth-session-handshakingp
                       (fn-served-conn-session conn)))
@@ -495,20 +535,16 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
-           ; NNT-042: GROUP and LISTGROUP are restricted keywords; refused
-           ; (480), their selection failed, and a failed selection keeps
-           ; the previous view and cursor (fn-served-failed-selection-keeps-
-           ; the-connection): the whole connection is still as it was.
            (and (equal (fn-served-result-conn
-                        (fn-served-dispatch conn (list :command line)))
+                        (fn-served-dispatch-core conn (list :command line)))
                        conn)
                 (equal (fn-served-result-effects
-                        (fn-served-dispatch conn (list :command line)))
+                        (fn-served-dispatch-core conn (list :command line)))
                        (fn-auth-single (fn-served-conn-session conn)
                                        "480 authentication required"))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-repin)
+           :in-theory (e/d (fn-served-dispatch-core)
                            (fn-auth-step-pinned fn-auth-single fn-auth-sessionp
                             fn-auth-config-requiredp fn-auth-restricted-keywordp
                             fn-served-conn-pinned-index fn-served-connp
@@ -526,7 +562,82 @@
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn)))
                  (:instance fn-served-connp-has-an-auth-session (c conn))
-                 (:instance fn-served-conn-rebuilt-from-its-fields (c conn))))))
+                 (:instance fn-served-conn-rebuilt-from-its-fields (c conn)))))))
+
+; The one-line reply does not depend on the session it is rendered for.
+(local (defthm fn-auth-single-is-the-line
+  (equal (fn-auth-single as text)
+         (list (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets text)))))
+  :hints (("Goal" :in-theory (enable fn-auth-single fn-nntp-single
+                                     fn-nntp-make-result fn-nntp-result-effects)))))
+
+; A 480 is not a 211: the failed selection keeps the connection.
+(local (defthm fn-served-selectedp-of-480
+  (not (fn-served-selectedp (fn-auth-single as "480 authentication required")))
+  :hints (("Goal" :in-theory (enable fn-served-selectedp fn-nntp-reply-effect
+                                     fn-nntp-crlf fn-nntp-string-octets)))))
+
+(local (defthm fn-served-repin-keeps-the-gate
+  (implies (fn-served-conn-live conn)
+           (and (equal (fn-auth-session-handshakingp
+                        (fn-served-conn-session (fn-served-repin conn)))
+                       (fn-auth-session-handshakingp (fn-served-conn-session conn)))
+                (equal (fn-auth-session-config
+                        (fn-served-conn-session (fn-served-repin conn)))
+                       (fn-auth-session-config (fn-served-conn-session conn)))
+                (equal (fn-auth-session-subject
+                        (fn-served-conn-session (fn-served-repin conn)))
+                       (fn-auth-session-subject (fn-served-conn-session conn)))))
+  :hints (("Goal" :in-theory (disable fn-served-repin-session)))))
+
+(defthm fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing
+  (implies (and (fn-served-connp conn)
+                (not (fn-auth-session-handshakingp
+                      (fn-served-conn-session conn)))
+                (fn-auth-config-requiredp
+                 (fn-auth-session-config (fn-served-conn-session conn)))
+                (not (fn-auth-session-subject (fn-served-conn-session conn)))
+                (fn-nntp-command-inputp line)
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
+           (and (equal (fn-served-result-conn
+                        (fn-served-dispatch conn (list :command line)))
+                       conn)
+                (equal (fn-served-result-effects
+                        (fn-served-dispatch conn (list :command line)))
+                       (fn-auth-single (fn-served-conn-session conn)
+                                       "480 authentication required"))))
+  :hints (("Goal"
+           :do-not-induct t
+           :cases ((not (fn-served-advance-eventp (list :command line)))
+                   (and (fn-served-advance-eventp (list :command line))
+                        (not (fn-served-conn-live conn)))
+                   (and (fn-served-advance-eventp (list :command line))
+                        (fn-served-conn-live conn)))
+           :in-theory (e/d (fn-served-dispatch)
+                           (fn-served-dispatch-core fn-served-repin fn-served-selectedp
+                            fn-served-advance-eventp fn-served-repin-session
+                            fn-auth-single fn-auth-sessionp fn-served-connp
+                            fn-auth-config-requiredp fn-auth-restricted-keywordp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-command-arguments-at-mostp
+                            fn-served-conn-with-wire fn-served-make-conn-live
+                            fn-served-dispatch-core-of-a-gated-command-is-480-and-changes-nothing
+                            fn-served-repin-preserves-connp
+                            fn-served-conn-with-wire-of-own-wire
+                            fn-served-connp-is-shape fn-auth-single-is-the-line))
+           :use ((:instance fn-served-dispatch-core-of-a-gated-command-is-480-and-changes-nothing)
+                 (:instance fn-served-dispatch-core-of-a-gated-command-is-480-and-changes-nothing
+                            (conn (fn-served-repin conn)))
+                 (:instance fn-served-repin-preserves-connp)
+                 (:instance fn-served-connp-is-shape (c conn))
+                 (:instance fn-served-conn-with-wire-of-own-wire (c conn))
+                 (:instance fn-auth-single-is-the-line
+                            (as (fn-served-conn-session conn))
+                            (text "480 authentication required"))
+                 (:instance fn-auth-single-is-the-line
+                            (as (fn-served-conn-session (fn-served-repin conn)))
+                            (text "480 authentication required"))))))
 
 ; KEYSTONE (a), served.  AUTHINFO on a clear connection under protected-only
 ; leaves the entire connection as it was and answers exactly 483.

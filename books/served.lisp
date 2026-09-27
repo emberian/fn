@@ -1190,7 +1190,7 @@
 ; command's own selection effects.  When it failed (411, 412, 480, 501,
 ; 503) the previous view and cursor are kept: the connection is handed back
 ; as it was, with the wire framing state the dispatch left, and only the
-; reply leaves (planning/review-2026-09-26-gpt6-wave5.md section 1; NNT-042).
+; reply leaves (gpt-6's wave-5 review of 2026-09-26, section 1; NNT-042).
 ; Every other event is the dispatch proper.
 (defun fn-served-dispatch (conn event)
   (declare (xargs :guard t))

@@ -529,17 +529,25 @@
                   (fn-ocfg-pin-find other (fn-ocfg-pins oc))))
   :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner))))
 
+(defthm fn-ocfg-pin-set-absent-is-unchanged
+  (implies (not (fn-ocfg-pin-find id pins))
+           (equal (fn-ocfg-pin-set id cfg pins) pins))
+  :hints (("Goal" :induct (fn-ocfg-pin-set id cfg pins)
+           :in-theory (enable fn-ocfg-pin-set fn-ocfg-pin-find))))
+
+; A surviving connection keeps its pin, moved to the current configuration
+; when the read re-pinned it (NNT-042); a pin the table lacks is not created.
 (defthm fn-ocfg-with-read-owner-pin-iff-survives
   (equal (fn-ocfg-pin-find
           id (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner repinned)))
          (if (fn-own-find-conn id (fn-own-conns owner))
-             (if repinned
-                 (fn-ocfg-config oc)
+             (if (and repinned (fn-ocfg-pin-find id (fn-ocfg-pins oc)))
+                 (cons id (fn-ocfg-config oc))
                (fn-ocfg-pin-find id (fn-ocfg-pins oc)))
            nil))
-  :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner
-                                      fn-ocfg-pin-remove fn-ocfg-pin-set
-                                      fn-ocfg-pin-find))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-with-read-owner)
+                                  (fn-ocfg-pin-remove fn-ocfg-pin-set
+                                   fn-ocfg-pin-find)))))
 
 (defun fn-ocfg-read (oc id octets)
   (declare (xargs :guard t))

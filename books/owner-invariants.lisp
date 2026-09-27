@@ -1048,6 +1048,29 @@
                                    fn-own-conn-boundedp
                                    fn-served-open-peer-indexed)))))
 
+; The connection `fn-own-advance' re-pins at the view carries the view's
+; control pin, and that pin is okp against the connection's own prefix
+; (the view's): the conn-okp conjunct control-c3e added.
+(defthm fn-own-conn-okp-of-view-pin
+  (implies (and (fn-own-view-okp view groups capacity records)
+                (natp id)
+                (fn-own-conn-boundedp
+                 (fn-own-conn-make-group-indexed
+                  id (fn-own-view-version view) (fn-own-view-frontier view)
+                  wire session (fn-own-view-archive view) config obs
+                  (fn-own-view-verdicts view) (fn-own-view-index view)
+                  (fn-own-view-group-index view) (fn-own-view-control view))
+                 groups))
+           (fn-own-conn-okp
+            (fn-own-conn-make-group-indexed
+             id (fn-own-view-version view) (fn-own-view-frontier view)
+             wire session (fn-own-view-archive view) config obs
+             (fn-own-view-verdicts view) (fn-own-view-index view)
+             (fn-own-view-group-index view) (fn-own-view-control view))
+            groups capacity records))
+  :hints (("Goal" :in-theory (disable fn-own-conn-make-group-indexed
+                                      fn-own-conn-boundedp))))
+
 ; NNT-042: the read hands the served connection the owner's committed view as
 ; its live pin and takes the pin back (fn-own-finish-read).  What comes back
 ; is the connection's own pin or the view's (fn-served-step-pin-is-old-or-live,
@@ -1234,29 +1257,6 @@
                            (fn-own-conns-okp fn-own-view-okp fn-own-conn-make-group-indexed
                             fn-own-conn-boundedp fn-own-find-conn-okp fn-own-conn-okp
                             fn-served-dispatch fn-own-served-conn fn-served-pin-old-or-live-p)))))
-
-; The connection `fn-own-advance' re-pins at the view carries the view's
-; control pin, and that pin is okp against the connection's own prefix
-; (the view's): the conn-okp conjunct control-c3e added.
-(defthm fn-own-conn-okp-of-view-pin
-  (implies (and (fn-own-view-okp view groups capacity records)
-                (natp id)
-                (fn-own-conn-boundedp
-                 (fn-own-conn-make-group-indexed
-                  id (fn-own-view-version view) (fn-own-view-frontier view)
-                  wire session (fn-own-view-archive view) config obs
-                  (fn-own-view-verdicts view) (fn-own-view-index view)
-                  (fn-own-view-group-index view) (fn-own-view-control view))
-                 groups))
-           (fn-own-conn-okp
-            (fn-own-conn-make-group-indexed
-             id (fn-own-view-version view) (fn-own-view-frontier view)
-             wire session (fn-own-view-archive view) config obs
-             (fn-own-view-verdicts view) (fn-own-view-index view)
-             (fn-own-view-group-index view) (fn-own-view-control view))
-            groups capacity records))
-  :hints (("Goal" :in-theory (disable fn-own-conn-make-group-indexed
-                                      fn-own-conn-boundedp))))
 
 (defthm fn-own-advance-preserves-relation
   (implies (fn-own-relation o)
@@ -2385,6 +2385,27 @@
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-of-replace-conn-same
                             (conn next))))))
+
+; The served connection the owner builds, field by field (proof vocabulary
+; for the read-back theorems below; books/owner.lisp fn-own-served-conn).
+(local
+ (defthm fn-own-served-conn-fields
+   (let ((c (fn-own-served-conn o conn session)))
+     (and (equal (fn-served-conn-wire c) (fn-own-conn-wire conn))
+          (equal (fn-served-conn-session c) session)
+          (equal (fn-served-conn-archive c) (fn-own-conn-archive conn))
+          (equal (fn-served-conn-config c) (fn-own-conn-config conn))
+          (equal (fn-served-conn-observation c) (fn-own-conn-observation conn))
+          (equal (fn-served-conn-injection c) (fn-own-clock o))
+          (equal (fn-served-conn-verdicts c) (fn-own-conn-verdicts conn))
+          (equal (fn-served-conn-index c) (fn-own-conn-index conn))
+          (equal (fn-served-conn-group-index c) (fn-own-conn-group-index conn))
+          (equal (fn-served-conn-control c) (fn-own-conn-control conn))
+          (equal (fn-served-conn-pinned c)
+                 (fn-served-pinned-make (fn-own-conn-version conn)
+                                        (fn-own-conn-frontier conn) nil))
+          (equal (fn-served-conn-live c) (fn-own-view-live (fn-own-view o)))))
+   :hints (("Goal" :in-theory (enable fn-own-served-conn)))))
 
 ; NNT-042: the survivor keeps its identifier; its pin is the old one or the
 ; view's (fn-served-step-pin-is-old-or-live), and which one is what

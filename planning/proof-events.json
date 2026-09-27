@@ -6838,19 +6838,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-served-successful-selection-is-the-repinned-dispatch"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-served-failed-selection-keeps-the-connection"
         },
         {
           "kind": "theorem",
           "name": "fn-served-dispatch-effects-are-the-repinned-dispatch-effects"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-served-dispatch-without-advance-is-core"
         },
         {
           "kind": "theorem",
