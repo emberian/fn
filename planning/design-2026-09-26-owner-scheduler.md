@@ -9,7 +9,7 @@ and one POST every 0.5 s, control-socket requests queued past their 10 s
 deadline from t = 384 s, served reads had minute-long outliers, POST p99 was
 84 s). The measured numbers are in
 planning/evidence/owner-scheduler-2026-09-26.md; the requirement is HST-023,
-the proof target PRF-248, the scenario SCN-168.
+the proof target PRF-248, the scenario SCN-171.
 
 ## 0. What was wrong, in one sentence each
 
