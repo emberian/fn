@@ -5090,6 +5090,15 @@ never touched by an open."
             (or (cdr (assoc 'fn-octets-lg (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the log walk's buffer stobj is not in this image")))))
 
+(defvar *fnn-log-stream-finish* nil
+  "While the full replay scans the log (fnn-recover-log): a function the
+stream calls at each segment's end for the fold of that segment's records'
+txids over 1, which the replay took from its one decode of each record
+(fn-lgb-decode-next); the stream then steps without the fold
+(fn-lgw-step-buf-nf) and sets its NEXT to that fold (fn-lgw-set-next):
+books/store-log-walk-once.lisp KEYSTONE fn-lgw-run-nf-then-fold-is-run.
+NIL otherwise: the step folds (fn-lgw-step-buf).")
+
 (defun fnn-log-stream-segment (fd extent unit max genesis sink)
   "The segment's decode from GENESIS as a stream of entries
 (books/store-log-stream.lisp): at the state's offset the header octets ACL2
@@ -5106,7 +5115,8 @@ splice or a stale segment, refused by name (fn-lgw-broken, which is
 fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
 (fn-lgw-kernel)."
   (let ((st (fnn-core 'fn-lgw-start genesis 1))
-        (buf (fnn-live-octets-lg)))
+        (buf (fnn-live-octets-lg))
+        (finish *fnn-log-stream-finish*))
     (unwind-protect
          (loop until (fnn-core 'fn-lgw-stop st) do
            (let* ((pos (fnn-nat (fnn-core 'fn-lgw-pos st)))
@@ -5118,7 +5128,7 @@ fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
              (setf (svref buf 0) e
                    (svref buf 1) (length e))
              (destructuring-bind (took records next)
-                 (fnn-call 'fn-lgw-step-buf st unit max extent buf)
+                 (fnn-call (if finish 'fn-lgw-step-buf-nf 'fn-lgw-step-buf) st unit max extent buf)
                (when took
                  (if *fnn-extent-file*
                      ;; The full replay's extent seals (PRF-294): each record's
@@ -5134,6 +5144,9 @@ fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
                (setq st next))))
       (setf (svref buf 1) 0
             (svref buf 0) (fnn-make-octets 0)))
+    ;; The fold the replay took from its decode of this segment's records.
+    (when finish
+      (setq st (fnn-core 'fn-lgw-set-next st (fnn-nat (funcall finish)))))
     (when (fnn-core 'fn-lgw-broken st)
       (error 'fnn-store-open-refusal
              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
@@ -5371,13 +5384,16 @@ init completes, never truncates): the retry branch, not the program."
 
 (defun fnn-recover-log-stream-begin ()
   "The full replay of a history that arrives a record at a time: the replay
-begun (fnn-bridge-recover-begin), an empty chunk, its octet count, and the
-next txid folded over the decoded chunks (fn-store-log-next-txid-of-events).  The
+begun (fnn-bridge-recover-begin), an empty chunk, its octet count, the
+next txid folded over the decoded chunks (fn-store-log-next-txid-of-events),
+the chunk's places, and (SIXTH) the log stream's txid fold over the current
+segment's records from 1, taken from the same decode (fn-lgb-decode-next) and
+handed to the stream at the segment's end (*fnn-log-stream-finish*).  The
 chunks close where ACL2 says (fn-srs-chunk-fullp before a record is added, one
 record always taken first), as fnn-recover-record-chunks closes them; any
 chunking opens the same Store (PRF-261
 fn-srs-steps-are-one-step-of-the-concatenation)."
-  (list (fnn-bridge-recover-begin) nil 0 0 nil))
+  (list (fnn-bridge-recover-begin) nil 0 0 nil 1))
 
 (defun fnn-recover-log-stream-flush (replay)
   "The open chunk decoded and interned.  With places (the stream's, FIFTH),
@@ -5389,7 +5405,13 @@ placed record faithful at its place)."
   (when (second replay)
     (let* ((chunk (nreverse (second replay)))
            (places (nreverse (fifth replay)))
-           (decoded (fnn-core 'fn-store-decode-records chunk)))
+           ;; The chunk's events and the fold of its records' txids over the
+           ;; segment's fold so far, from one decode of each record
+           ;; (books/store-log-walk-once.lisp fn-lgb-decode-next: EQUAL to
+           ;; fn-srs-decode and fn-lgw-next-fold).
+           (answer (fnn-call 'fn-lgb-decode-next chunk (sixth replay)))
+           (decoded (first answer)))
+      (setf (sixth replay) (second answer))
       (when (consp decoded)
         (setf (fourth replay)
               (fnn-core 'fn-store-log-next-txid-of-events decoded (fourth replay))))
@@ -5769,7 +5791,17 @@ does, and records how the log holds the history (fnn-store-log-history) for
                    (config-records (fnn-config-records store))
                    (acc 0) (kept nil) (decoded nil) (scanned 0) (newest nil)
                    (replay (and full (fnn-recover-log-stream-begin)))
-                   (log (fnn-log-scan-segments
+                   (log (let ((*fnn-log-stream-finish*
+                                ;; The full replay decodes every record once:
+                                ;; at each segment's end its pending chunk is
+                                ;; decoded, and the stream takes the fold
+                                ;; of the segment's txids from that decode
+                                ;; (books/store-log-walk-once.lisp).
+                                (and replay
+                                     (lambda ()
+                                       (fnn-recover-log-stream-flush replay)
+                                       (prog1 (sixth replay) (setf (sixth replay) 1))))))
+                         (fnn-log-scan-segments
                          store (second plan) genesis
                          (lambda (record)
                            (incf scanned)
@@ -5786,7 +5818,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                   (setq acc (fnn-core 'fn-store-log-next-txid-step record acc))
                                   (push (fnn-octets record) kept))))
                          ;; the full replay seals extents: each record's place
-                         replay)))
+                         replay))))
               ;; The streamed replay folded the txids from its decoded chunks
               ;; (the last chunk decoded here, before the frontier is derived).
               (when replay

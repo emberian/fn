@@ -6,6 +6,9 @@
 (in-package "ACL2")
 (include-book "../../books/store-log-route")
 (include-book "std/testing/must-fail" :dir :system)
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 ; A recovered empty kernel at next txid 1, and records at txids 1 and 2.
 (defconst *slrt-ks* (fn-lgk-make nil *fn-lg-genesis* 0 1 nil nil 0 :ready))

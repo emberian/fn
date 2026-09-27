@@ -12,6 +12,9 @@
 ; what the correspondence carries.
 (in-package "ACL2")
 (include-book "../../books/store-log-kernel-concrete")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun slc-unit () (declare (xargs :guard t)) 4)
 (defun slc-max () (declare (xargs :guard t)) 4096)

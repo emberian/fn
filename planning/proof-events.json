@@ -11110,6 +11110,31 @@
           "name": "fn-ipo-facts-context-is-facts-and-context"
         }
       ]
+    },
+    {
+      "id": "PRF-325",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-run-nf-then-fold-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-run-of-set-next-is-run-nf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-step-buf-nf-is-step-nf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decode-next-exec-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decode-next-exec-fold"
+        }
+      ]
     }
   ]
 }

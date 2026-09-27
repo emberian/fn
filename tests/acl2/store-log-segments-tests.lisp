@@ -6,6 +6,9 @@
 (include-book "../../books/store-log-segments")
 (include-book "../../books/frame-trailer")
 (include-book "std/testing/must-fail" :dir :system)
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Names.

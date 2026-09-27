@@ -23,6 +23,9 @@
 ;       as the list step does.
 (in-package "ACL2")
 (include-book "../../books/store-log-buffer")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun slb-unit () (declare (xargs :guard t)) 4)
 (defun slb-max () (declare (xargs :guard t)) 4096)

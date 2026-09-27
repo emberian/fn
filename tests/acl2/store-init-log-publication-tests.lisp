@@ -7,6 +7,9 @@
 ; the complete store whose segment is zeros, and the empty log's teeth.
 (in-package "ACL2")
 (include-book "../../books/store-init-log-publication")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun sil-bs () (declare (xargs :guard t))
   (fn-bs-make 4 nil (list (cons :parent nil)) nil 0))

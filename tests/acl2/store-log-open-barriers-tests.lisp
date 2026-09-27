@@ -4,6 +4,9 @@
 (in-package "ACL2")
 (include-book "../../books/store-log-open-barriers")
 (include-book "store-log-kernel-tests")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun slob-step (bs ks)
   (declare (xargs :verify-guards nil))

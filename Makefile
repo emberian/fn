@@ -393,6 +393,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-stream-tests \
 	books/store-log-buffer \
 	tests/acl2/store-log-buffer-tests \
+	books/store-log-walk-once \
+	tests/acl2/store-log-walk-once-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
