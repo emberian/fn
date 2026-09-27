@@ -206,8 +206,19 @@ clock regressed: readings=1
 ; the first item alone satisfies it
 (assert-event (fn-otm-barrier-walk-okp *otmt-s1* (list (list *otmt-rc* :next-started))))
 
+; The refutation of the keystone without fn-otm-barrier-pending-p is the idle
+; witness above, stated as a theorem (proved by evaluation):
+(defthm otmt-bound-needs-pending-refuted
+  (let ((s *otmt-idle*) (ws (list (list *otmt-cr* nil))))
+    (and (not (fn-otm-barrier-pending-p s))
+         (fn-otm-barrier-walk-okp s ws)
+         (not (equal (fn-otm-walk-others s ws) 0))))
+  :rule-classes nil)
+; The weakened statement also does not prove; bounded, because the unbounded
+; search ran 145M prover steps (180 s) before it failed (batch AX).
 (must-fail-checked
- (defthm otmt-tooth-bound-needs-pending
-   (implies (fn-otm-barrier-walk-okp s ws)
-            (equal (fn-otm-walk-others s ws) 0))
-   :rule-classes nil))
+ (with-prover-step-limit 200000
+  (defthm otmt-tooth-bound-needs-pending
+    (implies (fn-otm-barrier-walk-okp s ws)
+             (equal (fn-otm-walk-others s ws) 0))
+    :rule-classes nil)))
