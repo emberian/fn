@@ -243,6 +243,13 @@ def load(a):
     owner = Owner(image, d, env, "load-%d" % state["count"], a.open_timeout)
     try:
         load_into(owner, author, d, state, a.to, deadline)
+        # --settle S: leave the owner running S seconds after the last POST
+        # before the stop, so the automatic publication decided at a
+        # publication's finish (fn-ock-publication-next, PKT-583 (b)) can
+        # capture the load's final frontier; the reopen then measures the
+        # policy, not the harness's stop.
+        if a.settle:
+            time.sleep(a.settle)
     finally:
         owner.stop()
         save_state(d, state)
@@ -602,6 +609,8 @@ def main(argv=None):
     me.add_argument("--octets", type=int, default=2048, help="a fresh DIR only")
     me.add_argument("--signed-every", type=int, default=256, help="a fresh DIR only")
     me.add_argument("--budget", type=int, default=1500, help="seconds the load step may spend")
+    me.add_argument("--settle", type=int, default=0,
+                    help="seconds the owner runs on after the load's last POST before the stop")
     me.add_argument("--session-posts", type=int, default=None,
                     help="at most this many preload POSTs per owner process (then exit 75: the next unit resumes)")
     me.add_argument("--samples", type=int, default=100)

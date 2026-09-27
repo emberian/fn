@@ -399,10 +399,26 @@ stays authoritative, and the file may be deleted at any time.
   open of the whole history (`fn-sn-recover-from-checkpoint-equals-full-recover`).
   Otherwise it replays in full. Status prints `open=checkpoint:S suffix=k`
   or `open=full-replay reason=R` (absent, corrupt, ahead-of-history,
-  suffix-exceeds-k).
+  suffix-exceeds-k). **K is the fast path's threshold, not a guaranteed
+  maximum suffix** (decided 2026-09-26, gpt-6's review section 2; ember may
+  choose the guarantee later): a suffix within K is served from the
+  checkpoint, a longer one is the full replay, the honest fallback to the
+  same state (`fn-ock-fast-path-within-k-by-definition`,
+  books/owner-checkpoint-open.lisp). The suffix a publication leaves is
+  about the commits made while it ran, which no due rule can bound; when it
+  exceeds K the remedies are a cheaper publication, reserved service or
+  admission limiting, never a second capture meanwhile.
 - **Not yet.** K0 coverage of the publish program's root rename is open.
   (The owner opens from the checkpoint and publishes at K/2 since
-  owner-checkpoint-open, PRF-083.)
+  owner-checkpoint-open, PRF-083. The recovery-lag policy since
+  checkpoint-pipeline-5, `fn-ock-publication-next`: ONE publication in
+  flight, a due observation meanwhile ONE coalesced request (recorded, and
+  nothing else: no second capture, no second estimate, no cancellation of
+  the publication running), and when it finishes the owner decides again at
+  the newest committed frontier by the same rule, at once rather than at
+  the next accept; the durable S a finish records is the count the capture
+  was handed, never the count when the write returned
+  (`fn-ock-one-publication-in-flight`, `fn-ock-finish-binds-the-captured-prefix`).)
 
 STO-016: The checkpoint open costs less than the full replay it replaces,
 and a publication does not hold served commands.
@@ -437,7 +453,7 @@ encoded and encodes through the octet buffer, never as octet lists.
 
 - **The estimate and the budget.** Before any encode ACL2 computes the
   file's length from the tables' metadata, allocating nothing and touching
-  no payload octet (`fn-ockp-estimate`, books/owner-checkpoint-pipeline.lisp;
+  no payload octet (`fn-ockp-estimate`, books/owner-checkpoint-writer.lisp;
   equal to the table codec's file length,
   `fn-ockp-estimate-is-len-file-octets`), and compares it with the
   profile's checkpoint budget, the file bound an open refuses a checkpoint
@@ -454,7 +470,7 @@ encoded and encodes through the octet buffer, never as octet lists.
   by the operator's declared history (D27), not the data a store holds.
 - **The stream.** The publication thread encodes the tables step by step
   into its own octet buffer (the abstract stobj fn-octets-pub of
-  books/owner-checkpoint-pipeline.lisp, a second stobj congruent to the
+  books/owner-checkpoint-writer.lisp, a second stobj congruent to the
   served attempt's `fn-octets`, so nothing is shared off the mutex), the
   buffer holding one step's rows and one segment's residue, never the file,
   and writes each step's frames straight from that buffer through the
@@ -492,7 +508,7 @@ journal replays.
   (`fn-sccr-admit-segment`) are reused, and the admission refuses another
   schema by name: `open=full-replay reason=checkpoint-schema`
   (`fn-sco-select-named`). One store format (D34): no schema-2 reader.
-- **The pipeline** (books/owner-checkpoint-pipeline.lisp). Capture (O(1)
+- **The pipeline** (books/owner-checkpoint-writer.lisp: the definitions and the step-level twins; books/owner-checkpoint-pipeline.lisp: the loop keystone and the invariants). Capture (O(1)
   under the mutex: the base, the configuration history, the record list by
   pointer, the frontier, the free space, the source revision); the estimate
   from the tables' metadata without encoding or touching a payload octet,

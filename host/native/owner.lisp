@@ -2216,10 +2216,14 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
-  (destructuring-bind (base configs records segment count suffix budget frontier free revision)
+  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision)
       captured
     (declare (ignore count))
-    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
+    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
+          ;; the writer's segment: ACL2's choice under the record bound R the
+          ;; capture handed over (fn-ockp-segment-octets, the verb's derivation)
+          (segment (fnn-core 'fn-ockp-segment-octets record-octets
+                             +fnn-checkpoint-batch-octets+)))
       (flet ((elapsed ()
                (round (* 1000 (- (get-internal-real-time) started))
                       internal-time-units-per-second)))
@@ -2273,13 +2277,23 @@ the crash keystone) and serving continues."
           (setf (fnn-owner-service-publisher service) nil
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq)))))))
+                        (fnn-owner-service-workers service) :test #'eq))))
+      ;; PKT-583 (b): the publication finished; decide again from the newest
+      ;; committed frontier now, not at the next accept (a load's tail has
+      ;; none), so a coalesced request is served as soon as it can be and a
+      ;; store that stopped posting is left with its suffix under K/2.
+      ;; fnn-owner-maybe-publish takes the mutex itself and refuses while
+      ;; stopping; at most one publication is in flight (fn-ock-one-
+      ;; publication-in-flight).
+      (fnn-owner-maybe-publish service))))
 
 (defun fnn-owner-maybe-publish (service)
-  "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
-never inside a command: when fn-ock-publication-duep says the suffix since
-the newest durable checkpoint reached half the profile's K (and no deferred
-publication is blocked on the profile's budget or the space, PKT-492), ACL2
+  "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts
+and when a publication finishes, never inside a command: when
+fn-ock-publication-next says :due (fn-ock-publication-duep: the suffix since
+the newest durable checkpoint reached half the profile's K; no deferred
+publication is blocked on the profile's budget or the space, PKT-492; none in
+flight, else the observation is the one coalesced request, PKT-583 (b)), ACL2
 records the attempt and hands back the values the publication reads
 (fn-owner-sco-capture) under the owner mutex, O(1): the record list by
 pointer, the frontier, the free space the host observed by statvfs and the

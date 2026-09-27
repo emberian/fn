@@ -3397,6 +3397,22 @@
         {
           "kind": "theorem",
           "name": "fn-bs-read-ranges-concatenate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-one-publication-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-publication-next-decides-by-the-rule"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-finish-binds-the-captured-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ock-fast-path-within-k-by-definition"
         }
       ]
     },
@@ -6573,6 +6589,84 @@
       ]
     },
     {
+      "id": "PRF-199",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-file-of-file-is-the-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-capture-of-tables-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-of-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-of-rows-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-rows-of-rows-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-agreep-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-programs-of-table-programs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-decode-of-run-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-file-of-file-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-writes-the-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-is-the-remaining"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-encode-batch-ok-is-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-of-encodable-never-refuses-a-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-setup-not-unencodable-never-refuses-a-row"
+        }
+      ]
+    },
+    {
+      "id": "PRF-200",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-decide-defers-by-the-estimate"
+        }
+      ]
+    },
+    {
       "id": "PRF-193",
       "events": [
         {
@@ -7197,64 +7291,6 @@
           "kind": "theorem",
           "name": "fn-own-feed-connect-in-stream-form-offers-check",
           "note": "KEYSTONE. Subject fn-own-feed-connect then fn-feed-offer (host/owner-host.lisp fn-owner-feed-tick). Teeth: tests/acl2/owner-feed-form-tests.lisp."
-        }
-      ]
-    },
-    {
-      "id": "PRF-199",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-file-of-file-is-the-capture"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-capture-of-tables-of-capture"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-run-of-program"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-run-of-rows-program"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-rows-of-rows-program"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-agreep-of-build"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-programs-of-table-programs"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-run-decode-of-run-segments"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-file-of-file-segments"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-run-writes-the-file"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-run-is-the-remaining"
-        }
-      ]
-    },
-    {
-      "id": "PRF-200",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-decide-defers-by-the-estimate"
         }
       ]
     },
