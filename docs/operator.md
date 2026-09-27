@@ -548,6 +548,32 @@ If `recover` refuses with `pre-C1 control record ... run store repair-control`,
 the store was made by a release before 2026-09-25 and holds a cancel filed
 in an old way. Keep the store as it is and ask the developers.
 
+### A damaged record log
+
+A crash can only leave the last write unfinished. fn drops that write at the
+next start and says so: `log torn-tail at=000001.log:OFFSET`.
+
+If saved data is damaged and saved data follows it (a failing disk, a bad
+copy), fn does not guess. `status`, `recover` and `run` all refuse:
+
+```
+refused ... reason=log-damaged at=000001.log:4096 first-valid=8192 valid-after=11 records=11 ...
+```
+
+Nothing is written, and the node does not start. First copy the whole store
+somewhere safe, and check the disk. If you have a good copy of the store
+(a backup, or a peer that holds the articles), use it. Otherwise you can keep
+everything before the damage and drop the rest, by naming the place exactly
+as the refusal names it:
+
+```
+fn operator CONFIG recover --repair truncate 000001.log:4096
+```
+
+fn keeps the damaged file as `quarantine/000001.log.damaged-at-4096` first,
+then answers `log repaired at=... dropped-valid-entries=N dropped-records=M`.
+The dropped articles are gone from this store; a peer may offer them again.
+
 ### The node does not start
 
 fn never stops without saying why. The reason is one line starting
