@@ -147,11 +147,11 @@ nobody owns it; EMBER = a decision.
 - The 8 MB static Chicken binary (section 2.7) is the other floor.
 
 ### 2.6 Hashing
-- fn-digest is a constrained attached function; only Cancel-Lock (RFC 8315) and
-  HKDF-SHA256 require SHA-256. Native SHA-256 attachment (20 to 30x) and a
-  hash-once bitmap: FLIGHT (digest-native). BLAKE3 with Bao verified streaming
-  as the page and extent digest: prototype FLIGHT; adopting a second C library
-  is EMBER.
+- fn-digest is a constrained attached function. digest-native landed the native
+  digest seam with a startup self-check (READY) and vendored BLAKE3; ember chose
+  BLAKE3 as fn's own digest (SHA-256 only for Cancel-Lock). blake3-digest:
+  FLIGHT — the ACL2 definition, the attachment, the C library behind the seam,
+  Bao for large extents, and the digest half of format 10.
 
 ### 2.7 Extraction (the target compiler)
 - An extractor over ACL2's translated :exec terms with pluggable backends.
@@ -400,10 +400,12 @@ In rough priority. Each is one focused lane; base on batch/ay.
    health exit code while stalled.
 2. Build the served image without ACL2 (A-TARGET-COMPILER row; 2 to 4
    lane-days), and A-EXTRACT as an assumption row.
-3. BLAKE3 as a second C library: digest-native measured it (3.0 GB/s; 8.2 µs to
-   verify a 16 KiB page) against arena-store's per-page SHA-256 (9.4 µs) and
-   recommends NO: about 35 ms saved per million-record open does not pay for a
-   second C library. Native SHA-256 in the images is landed.
+3. BLAKE3: decided by ember at 00:20Z on 2026-09-28. BLAKE3 is fn's own digest
+   everywhere fn chooses the algorithm; SHA-256 survives only where an RFC
+   forces it on the wire (Cancel-Lock, RFC 8315). digest-native's measurement
+   (about 35 ms saved per million-record open) was read by the coordinator as
+   a "no"; ember's preference is about the algorithm, not the microseconds.
+   Lane blake3-digest owns it, as the digest half of store format 10.
 4. Compression dictionary persistence.
 5. MemoryMax fixed by store size, or by profile.
 6. Persist the hbox ARC cap (24 GiB at runtime today).
