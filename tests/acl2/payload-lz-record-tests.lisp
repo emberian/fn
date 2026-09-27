@@ -7,7 +7,7 @@
 ; copied from tests/acl2/payload-lz-tests.lisp (generated there by
 ; planning/evidence/codec-c1-2026-09-27/witness.py).
 (in-package "ACL2")
-(include-book "../../books/payload-lz-record")
+(include-book "../../books/payload-lz-replay")
 ; The codec attached to its seam, so the record's encoding and decoding execute.
 (include-book "../../books/records-attach")
 (include-book "must-fail-checked")

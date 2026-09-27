@@ -408,6 +408,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-lz-tests \
 	books/payload-lz-value \
 	books/payload-lz-record \
+	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
