@@ -72,6 +72,17 @@ library's loader, no RPATH outside, every DT_NEEDED carried or the C
 library; every shared-object name in the saved core carried, the C library,
 or the system TLS library HST-016 names).
 
+HST-029: A release's `clients/` (packaging/install-clients.sh: the friends'
+web reader and the other client programs, Python 3.9+) is held apart from the
+node's path. `tools/runpath_check.py --tree` walks the node without
+`clients/`, holds `clients/` to its own rule (Python source in `clients/lib/`
+only, no object code or bytecode, launchers in `clients/bin/` that run only
+`python3` and file-name tools, service templates that start
+`PREFIX/clients/bin/fn-reader`), and fails when any script, launcher or
+service of the node's names `clients/`: nothing the node runs can start a
+client. HST-018's claim is the node's; the clients' requirement (Python) is
+stated in `clients/README.txt`.
+
 HST-021: The Linux release runs on glibc 2.36 (Debian 12) and later. No
 ELF object it bundles (the SBCL runtime, libsodium, libfn-mldsa65) needs a
 `GLIBC_x.y` symbol version above `GLIBC_FLOOR` in `tools/runpath_check.py`,

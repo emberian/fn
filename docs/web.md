@@ -1,113 +1,182 @@
-# The web reader
+# Read it in your browser
 
-The web reader lets you read and post on an fn node from your browser. It
-runs on your own computer and shows pages only to that computer. Words you
-may not know are in [the short glossary](README.md#words-you-will-meet).
+Your node comes with a web page where you and your friends read and write
+in its groups, from any browser, phone included. We call it the web reader.
+It runs on the same machine as your node, beside it. Your friends need only
+a browser: nothing to install, and they make their own account from an
+invitation code.
 
-## Starting it
+Words you may not know are in
+[the short glossary](README.md#words-you-will-meet). How to use the pages
+once they are up is in [the friends' reader](reader.md).
 
-You need Python 3 (nothing else), the node's address, its certificate file
-and your login. The web reader is not in the release: it is
-`tools/fn_web.py` in fn's source, and it needs the files beside it in
-`tools/`. On your own computer:
+## What you need
 
-1. Get fn's source once, the node's certificate from its operator, and make
-   two folders:
+- Your node, installed and running ([Installing fn](install.md)).
+- A web name for it, like `news.example.org`, that points at this machine,
+  with ports 80 and 443 reaching it. Your friends type this name.
+- Python 3 for the reader: `apt install python3` (OpenBSD:
+  `pkg_add python3`). The node itself never uses Python.
+- Caddy, which gives the page its padlock (HTTPS): `apt install caddy`.
+
+The reader is in the release you installed, in `/opt/fn/clients/`
+(OpenBSD: `/usr/local/fn/clients/`).
+
+## 1. Install the reader
+
+As root. If you are installing fn now, add `--reader`:
+
+```sh
+sh fn/install.sh --reader
+```
+
+If fn is already installed, run the installed copy with `--reader`:
+
+```sh
+sh /opt/fn/install.sh --reader
+```
+
+It makes an account `fn-reader` and a folder `/var/lib/fn-reader` (OpenBSD:
+`_fnreader` and `/var/fn-reader`). The folder holds the reader's settings,
+`reader.conf`, and a copy of your node's certificate. It installs the
+service. It starts nothing yet.
+
+## 2. Tell it where your node is
+
+Open `/var/lib/fn-reader/reader.conf` in an editor. Change two lines:
+
+- `node =` your node's name or address, as its certificate names it, then
+  `:` and its TLS port. That is `563` if you added `tls_port = 563` to
+  `fn.toml` ([how](install.md#reading-and-posting-from-another-machine)).
+  Its plain port (the `--port` you gave `mission`, like `119`) works too: the
+  reader then switches to TLS itself.
+- `site =` the name your friends see at the top of every page.
+
+If your node's certificate is from Let's Encrypt (or another public
+authority), also remove the `tls-cert` line and the `#` before
+`system-ca = yes`. If you made the certificate yourself, leave them as they
+are: the installer copied it.
+
+Every friend reaches your node through the reader, so to your node they all
+come from one address: this machine's. Tell the node that address is yours,
+so it does not count them as one busy visitor. Use the address you gave
+`mission --host`, as the service account:
+
+```sh
+fn operator /var/lib/fn/fn.toml policy set exposure-trusted 203.0.113.7/32
+```
+
+## 3. Start it
+
+```sh
+systemctl enable --now fn-reader     # OpenBSD: rcctl enable fn_reader && rcctl start fn_reader
+systemctl status fn-reader
+```
+
+The status ends with a line like:
+
+```
+fn reader: news.example.org:563 (TLS) for Our news; open http://127.0.0.1:8920/ behind the HTTPS proxy
+```
+
+## 4. Give it a padlock with Caddy
+
+Caddy answers your friends' browsers over HTTPS and passes them to the
+reader. It gets the certificate for your web name by itself.
+
+1. Copy the block from `/opt/fn/clients/share/caddy/fn-reader.caddy` into
+   `/etc/caddy/Caddyfile`, and put your web name in place of
+   `news.example.org`:
+
+   ```
+   news.example.org {
+   	reverse_proxy 127.0.0.1:8920
+   }
+   ```
+
+2. Reload Caddy:
 
    ```sh
-   git clone https://github.com/emberian/fn ~/fn
-   mkdir -p ~/.fn ~/.fn-web
-   cp cert.pem ~/.fn/news-cert.pem      # the file the operator gave you
+   systemctl reload caddy
    ```
 
-2. Start the reader. `--node` is the node's name and its **plain** port
-   (119, or the `--port` its operator chose): the reader switches to TLS
-   itself (STARTTLS). The TLS-only port (563) does not work here:
+3. Open `https://news.example.org/` in your browser. You see the sign-in
+   page.
 
-   ```sh
-   cd ~/fn
-   python3 tools/fn_web.py --node news.example.org:119 --tls-cert ~/.fn/news-cert.pem \
-     --user carol --outbox ~/.fn-web/outbox
-   ```
+## 5. Invite your friends
 
-3. Type your password when asked. (Or set `FN_CLIENT_PASSWORD`, or use
-   `--credentials FILE` with a `user password` file only you can read.)
+Make one invitation code per friend. It works once. Without `--expires`, it
+lasts a week:
 
-4. You will see:
+```sh
+fn operator /var/lib/fn/fn.toml account invite
+```
 
-   ```
-   fn web client: carol at news.example.org:119 · TLSv1.3, certificate verified; open http://127.0.0.1:8919/
-   ```
+Send your friend the web address and the code, over a channel you trust.
+They open the page, press **Make your account**, type the code, and choose
+a name and a password. Then they are in. The same name and password work in
+a newsreader like tin, too.
 
-   Open that address in your browser.
+To make yourself an account, do the same. Accounts made with
+`principal set-password` sign in here as well.
 
-If it does not start, the exit code says why: `1` the node refused the
-login or the certificate did not match, `3` the node could not be reached,
-`2` no password or a wrong option.
+## If it goes wrong
 
-The password stays in the reader's memory. It is never written to a file,
-page or log.
+- **"We can't reach the server right now."** The reader cannot reach your
+  node. Check that the node runs (`fn operator /var/lib/fn/fn.toml health`)
+  and that `node =` in `reader.conf` has the right name and port. Then
+  `systemctl restart fn-reader`. `journalctl -u fn-reader` shows what the
+  reader said.
+- **"We couldn't confirm the server is the real one."** The reader did not
+  send the password, because your node's certificate did not match. The
+  name in `node =` must be one the certificate names. If you replaced the
+  certificate, copy the new one to `/var/lib/fn-reader/node-cert.pem`
+  (or use `system-ca = yes` for a public certificate), then restart the
+  reader.
+- **"Too many tries."** Someone typed a wrong password many times. Wait a
+  few minutes.
+- **The page does not load at all.** That is Caddy: `systemctl status caddy`.
+  Your web name must point at this machine, and ports 80 and 443 must reach
+  it.
+- **"The server did not accept that"** when making an account: the code was
+  used, has expired, or the name is taken. Make a new code.
 
-## Using it
+After you change `reader.conf`, restart the reader:
+`systemctl restart fn-reader`.
 
-- **Groups** (the home page) lists each group with how many articles you
-  have not opened.
-- **A group** shows its articles, newest window of 40 first, with replies
-  indented under what they answer. A red dot marks articles you have not
-  opened. "Older" and "Newer" move through the group.
-- **An article** shows the text, who it claims to be from, and whether the
-  node says it was signed. The From line is a claim, not a proof.
-- **Reply** fills in the subject and the thread for you.
-- **Conversation** shows a whole thread.
-- **A withdrawn article** says so. It existed and may have been read;
-  copies elsewhere are not erased.
+## What the reader can and cannot do
 
-Your read marks are kept on this computer only, in `~/.fn-web/`. The node
-does not know what you have read.
+- It runs as its own account. It cannot open your node's folder: not the
+  articles, not the control socket, not the passwords, not the node's keys.
+- It signs in to your node as each friend, with that friend's own name and
+  password, like a newsreader would. Your node checks every password and
+  decides every group, post and removal.
+- It knows a friend's password only while they are signed in, in memory.
+  It never writes a password down.
+- It keeps, in `/var/lib/fn-reader`, what each friend has read and a copy of
+  what each sent.
+- It listens only on this machine. Only Caddy talks to it.
 
-## After you post
+The details are in
+[the engineers' reference](operator-internals.md#the-friends-web-reader).
 
-You will see one of three pages:
+## A reader on your own computer
 
-- **accepted** (green): the node saved it.
-- **refused** (pink): the node did not save it, and shows why. "Edit as a new
-  post" lets you fix it and try again.
-- **uncertain** (yellow): the post may or may not have been saved. **Do not
-  post it again as new.** Use "Re-send this same article to settle it". This
-  is always safe: it never makes a second copy.
+`fn-web` is a smaller reader for one person, on their own computer, where
+only that computer can open it. It is in `clients/bin/` of any unpacked
+release. It needs Python 3, the node's address, its certificate file (from
+its operator) and your login:
 
-Refreshing a result page never posts again.
+```sh
+fn/clients/bin/fn-web --node news.example.org:563 --tls-cert ~/node-cert.pem --user carol --outbox ~/.fn-web/outbox
+```
 
-## Options
+Type your password when asked, then open the address it prints
+(`http://127.0.0.1:8919/`). Port 563 is the node's TLS port; its plain port
+(119) works too. `fn-web --help` lists the options. Posts it could not
+confirm are kept in `--outbox`, so an uncertain post can be settled later
+by sending the same article again, never a second copy.
 
-- `--outbox DIR` keeps your posts and drafts across restarts, so an
-  uncertain post can still be settled later. The folder's parent must
-  exist. It holds up to 128 records. When full, stop the reader and move old
-  records out.
-- `--port N`: the local port (default 8919).
-- `--from 'Name <you@example.org>'`: your From line.
-- `--keyring FILE`: authors' public keys you trust. Then each article is
-  also checked here, not only by the node (see
-  [checking a signature](agents.md#checking-a-signature-yourself)).
-- `--marks FILE` moves the read marks. `--no-marks` keeps none.
-- `--plain`: no encryption and no login, for a test node on your own
-  machine only:
-
-  ```sh
-  python3 tools/fn_web.py --node 127.0.0.1:1119 --plain --port 8919
-  ```
-
-- One login per reader. To read as someone else, start another with
-  `--user` and another `--port`.
-
-`--node` with a host name works only if the node's certificate carries that
-name.
-
-## Safety
-
-The reader answers only this computer (`127.0.0.1`). It refuses requests
-from other websites, and every form carries a secret token. Anyone logged in
-to this computer could use it, so do not run it on a shared machine.
-
-Posts from the web reader are not signed. The node shows them as `absent`
-(no signature).
+It exits `1` if the node refused the login or the certificate did not
+match, `3` if the node could not be reached, and `2` for no password or a
+wrong option.

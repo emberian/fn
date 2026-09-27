@@ -4706,6 +4706,56 @@
         "planning/evidence/time-model-2026-09-27.md"
       ],
       "implementation_note": "Slice 1 of planning/design-time-model-2026-09-27.md. The committer's wait for the syncer is timed by ACL2 and appends clock events; the barrier's deadline is the live configuration's barrier-deadline-ms limit (default 5,000 ms; the admin verb to set it is slice 2). A POST shed while slow gets fn-own-outcome's :refused outcome with ACL2's reason line (441; RFC 3977 section 6.3.1). Not yet: the stall deadline H and the in-flight members' uncertain answer, 440 at the POST command, IHAVE 436 during slow, mutating control try-later, the inline barrier and configuration publication as requests."
+    },
+    {
+      "id": "WEB-004",
+      "title": "The release carries the friends' web reader as its own service beside the node, reaching the node only as an NNTP client on its TLS port or with STARTTLS, redeeming invitations through fn redeem, its account shut out of the node folder",
+      "specification": "specs/human-client.md#the-reader-in-the-release",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "packaging/install-clients.sh",
+        "packaging/install.sh",
+        "packaging/fn-reader.service.in",
+        "packaging/fn_reader.rc.in",
+        "packaging/fn-reader.caddy",
+        "tools/fn_reader.py",
+        "tools/fn_client.py",
+        "tools/nntp_session.py",
+        "tests/test_fn_reader.py",
+        "tests/test_fn_web_native.py",
+        "tests/friends_tarball.sh",
+        "docs/web.md",
+        "docs/operator-internals.md"
+      ],
+      "implementation_note": "A permitted external client (AGENTS.md): the node decides every login, account, group, post and withdrawal. The reader's own policy is local and stated as such: the pacing of refused logins below the node's exposure-auth-failures, the per-browser pause, the session and form tokens.",
+      "note": "The OpenBSD rc.d script is rendered and checked by runpath_check but was not run on an OpenBSD machine by this lane."
+    },
+    {
+      "id": "HST-029",
+      "title": "A release's clients/ (Python) is held apart from the node's path: runpath_check's clients rule and the separation",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/install-clients.sh",
+        "packaging/fn-client-launcher",
+        "packaging/release-tarball.sh",
+        "tests/test_release_tarball.py"
+      ],
+      "implementation_note": "--tree skips clients/ in the node walk, checks it under clients_check, and fails any node script, launcher or service that names clients/; witnesses in tests/test_runpath_check.py (a node service starting a client, bin/fn naming clients/, object code or a foreign command in clients/, a reader service starting bin/fn)."
     }
   ]
 }

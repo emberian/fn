@@ -161,7 +161,7 @@ class NativeWebClientTests(unittest.TestCase):
             def start_owner(fault=False):
                 env = dict(environment)
                 if fault:
-                    env["FN_NATIVE_POST_FAULT"] = "record-attempted:kill"
+                    env["FN_NATIVE_POST_FAULT"] = "log-fenced:kill"
                 process = subprocess.Popen(
                     [str(IMAGE), "--fn", "owner", "run", str(store),
                      str(port), "0", "8"], cwd=ROOT, env=env,
@@ -847,8 +847,11 @@ class NativeReaderImplicitTlsTests(unittest.TestCase):
             '[auth]\nrequired = true\nprotected_only = true\n'.format(
                 cls.store, cls.port, cls.tls_port, cls.cert, key, root / "control.sock"),
             encoding="ascii")
+        # control.cancel: where a reader's own cancel is filed (a mission
+        # serves it; without it the node refuses the cancel by name).
         done = subprocess.run([str(IMAGE), "--fn", "operator", str(cls.config), "init",
-                               "local.general"], cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                               "local.general", "control.cancel"], cwd=ROOT, env=env,
+                              stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=240, check=False)
         assert done.returncode == 0, done.stderr.decode(errors="replace")
         # The release's bin/fn: the reader runs `fn redeem' through it.

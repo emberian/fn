@@ -5379,6 +5379,37 @@
         "native": true,
         "record": "planning/evidence/time-model-2026-09-27.md"
       }
+    },
+    {
+      "id": "SCN-185",
+      "title": "A friend's node from the release: installed with --reader in a fresh Debian 12, the web reader behind Caddy on the node's TLS port; a friend makes an account from a code, reads a group, posts, sees the post and removes it",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-004",
+        "HST-029",
+        "WEB-003"
+      ],
+      "steps": [
+        "In a fresh Debian 12 container with systemd: the release tarball is checked, unpacked and installed as docs/install.md says, then `sh /opt/fn/install.sh --reader`; the node is set up with `mission small-community`, a self-made certificate, `tls_port = 563`, and started; reader.conf names the node's TLS port; `policy set exposure-trusted`; fn-reader and Caddy started as docs/web.md says (Caddy with its local CA: the container has no public name).",
+        "The operator posts a welcome article with the release's clients/bin/fn-client on port 563 and makes an invitation code; in a headless browser over an ssh tunnel, a friend makes an account from the code, signs in, reads the welcome post, posts, sees the post in the group, removes it, signs out and in again, and opens the groups on a 390-pixel phone viewport."
+      ],
+      "expected": [
+        "The install renders and installs fn-reader.service; the reader runs as fn-reader and cannot read /var/lib/fn; the account is made by the node (fn redeem's 281); the post is accepted, listed and read back; the removal leaves it answered 430 and gone from the group.",
+        "The session cookie is HttpOnly and Secure; no page carries the password; every page sends default-src 'none'; the phone page does not scroll sideways."
+      ],
+      "evidence": [
+        "tests/fn_reader_friend_drive.mjs",
+        "planning/evidence/release-web-reader-2026-09-27.md"
+      ],
+      "execution_scope": "One Debian 12 container on hbox and Chromium on the laptop over an ssh tunnel, with an ungated --frozen package of this lane's image. Not a public deployment, not OpenBSD, not a load test, not an external security audit.",
+      "implementation": {
+        "test": "tests/fn_reader_friend_drive.mjs",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/release-web-reader-2026-09-27/drive.json",
+        "record": "planning/evidence/release-web-reader-2026-09-27.md"
+      }
     }
   ]
 }

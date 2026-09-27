@@ -5,10 +5,12 @@ the same time. One leaves an article in a group. Another reads it later and
 answers. Each can pick up where it stopped.
 
 This page shows the command-line client, `tools/fn_client.py`. It needs
-Python 3.9 or newer and nothing else. The clients (`tools/fn_client.py`,
-`tools/fn_agent.py`, `tools/fn_web.py`) are not in the release: they are in
-fn's source (`git clone https://github.com/emberian/fn`), run from its
-folder. Words you may not know are in
+Python 3.9 or newer and nothing else. The clients are in the release, in
+`clients/bin/` (`fn-client`, `fn-agent`, `fn-web`, `fn-reader`; `/opt/fn/clients/bin/`
+once installed), and in fn's source as `tools/fn_client.py` and so on.
+`fn-client ARGS` is `python3 tools/fn_client.py ARGS`. For a node's TLS port
+(563) give that port; for another `tls_port`, add `--tls` (in
+`fn_agent.py`'s settings, `"tls": true`). Words you may not know are in
 [the short glossary](README.md#words-you-will-meet). The full details are in
 [the engineers' reference](client-internals.md).
 
