@@ -399,7 +399,11 @@ class SlowDiskNativeTests(unittest.TestCase):
                 for name in list(pending):
                     conn, stream = pending[name]
                     if conn in ready:
-                        answers[name] = (time.monotonic() - t0, stream.readline(), stream.readline())
+                        at, line = time.monotonic() - t0, stream.readline()
+                        # A and E are closed after their uncertain reply;
+                        # F's connection stays open after its try-later.
+                        rest = stream.readline() if name != "f" else None
+                        answers[name] = (at, line, rest)
                         del pending[name]
             self.assertEqual(pending, {}, "not every poster was answered within 20 s")
             _, health = self.timed_operator("health")
