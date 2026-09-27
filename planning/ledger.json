@@ -1108,7 +1108,7 @@
     "roots": 1099,
     "theorems": 16514,
     "functions": 11442,
-    "assert_events": 16740,
+    "assert_events": 16741,
     "must_fails": 2023,
     "prover_refusals": 0,
     "encapsulates": 82,
@@ -20699,7 +20699,7 @@
       "assert_events": 18,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 29,
+      "defconsts": 28,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -27647,7 +27647,7 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 25,
+      "assert_events": 26,
       "must_fails": 2,
       "prover_refusals": 0,
       "defconsts": 17,
@@ -29938,7 +29938,7 @@
       "assert_events": 62,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 35,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -34060,7 +34060,7 @@
     {
       "theorem": "fn-scat-built-listgroup-is-fold",
       "book": "books/served-catalog.lisp",
-      "line": 1260,
+      "line": 1264,
       "reasons": [
         "instance-corollary: the statement is fn-gidx-listgroup-command-of-build instantiated, discharging nothing"
       ]
@@ -34068,7 +34068,7 @@
     {
       "theorem": "fn-scat-built-trie-corresponds",
       "book": "books/served-catalog.lisp",
-      "line": 1249,
+      "line": 1253,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -34076,7 +34076,7 @@
     {
       "theorem": "fn-scat-pin-trie-is-built",
       "book": "books/served-catalog.lisp",
-      "line": 1242,
+      "line": 1246,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep"
       ]
@@ -36751,7 +36751,7 @@
       {
         "check": "thm",
         "book": "tests/acl2/nntp-reader-compat-tests.lisp",
-        "line": 255,
+        "line": 262,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -53921,35 +53921,35 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 867,
+        "line": 869,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 867,
+        "line": 869,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1574,
+        "line": 1576,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2508,
+        "line": 2510,
         "name": "fn-scar-ocfg-read-span",
         "source": "books/served-span.lisp",
         "reason": "defined in books/served-span.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2652,
+        "line": 2654,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
