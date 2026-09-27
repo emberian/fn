@@ -322,6 +322,11 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                 self.assertEqual(node.proc.returncode, -9, cut)
                 acked = sorted(i for i, r in replies.items() if r.startswith(b"240"))
                 self.assertGreater(len(acked), 200, cut)
+                # The death came inside the extension: the segment is past its
+                # initial extent (preallocated; at log-extent-fenced also fenced).
+                grown = segment.stat().st_size
+                self.assertGreater(grown, initial, cut)
+                self.assertEqual(grown % 4096, 0, cut)
                 node.start()
                 try:
                     c = Conn(node.port)
@@ -335,8 +340,12 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                     self.assertTrue(all(r.startswith(b"240") for r in more.values()), cut)
                 finally:
                     node.stop()
-                self.assertGreater(segment.stat().st_size, initial, cut)
-                self.assertEqual(segment.stat().st_size % 4096, 0, cut)
+                # The next owner went on: the active segment (a checkpoint may
+                # have rotated past 000001.log and dropped it) is whole units.
+                segments = sorted((node.store / "journal").glob("*.log"))
+                self.assertTrue(segments, cut)
+                for path in segments:
+                    self.assertEqual(path.stat().st_size % 4096, 0, (cut, path.name))
 
     def test_store_post_and_probe_commit_through_the_log(self):
         # The developer entries that commit without an owner (fnn-command-post,
