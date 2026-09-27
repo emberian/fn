@@ -71,8 +71,15 @@ class SchedulerSourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text()
         serialized = owner[owner.index("(defun fnn-owner-serialized "):owner.index("(defun fnn-owner-consume-connection-fault")]
         self.assertIn("(fnn-owner-gated (service class)", serialized)
-        self.assertIn("'fn-osch-next", owner)
-        self.assertIn("'fn-osch-observe", owner)
+        # Lane commit-onto-log: the gate asks books/owner-commit-class.lisp,
+        # whose every non-commit pick is fn-osch-next's
+        # (fn-ocm-next-otherwise-is-osch-next) and whose fold is
+        # fn-osch-observe's for the four classes.
+        self.assertIn("'fn-ocm-next", owner)
+        self.assertIn("'fn-ocm-observe", owner)
+        commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
+        self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
+        self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)
         self.assertIn("'fn-splan-window", owner)
         self.assertNotIn("fnn-owner-reply-from-buffer", owner)
         self.assertNotIn("(defun fnn-owner-exposure-wait", owner)

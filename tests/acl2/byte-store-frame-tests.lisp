@@ -285,10 +285,15 @@
 (assert-event (null (fn-bs-profile-of *bsft-format-7-scale*)))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *bsft-format-7-scale*)))
                      0))
+; The presets are format 9 (lane commit-onto-log: the record log).
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*)))
+                     9))
+(assert-event (equal (cdr (assoc-equal "format"
+                                       (fn-bs-profile-report
+                                        (fn-bs-profile-as-format-8 *fn-bs-profile-scale*))))
                      8))
 (assert-event (equal (fn-bs-profile-report *bsft-free*)
-                     (cons '("format" . 8)
+                     (cons '("format" . 9)
                            (append
                             (pairlis$ (strip-cdrs (take 12 *fn-bs-profile-field-names*))
                                       (take 12 (nthcdr 2 *bsft-free*)))

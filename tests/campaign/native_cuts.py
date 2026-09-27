@@ -206,6 +206,32 @@ LOG_CUTS = (
 # The host primitive that performs each log step kind, and its cut call.
 LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync "}
 
+# The served commit on a format-9 store (lane commit-onto-log): P-BATCH as the
+# owner's commit quantum runs it (host/native/owner.lisp
+# fnn-owner-commit-queued-locked).  Each member's finish (fnn-finish: cuts
+# finish-consumed, finish-durable) is its in-memory completion, in order,
+# BEFORE the batch's append and barrier (fnn-log-commit-open-batch, `fnn-at'
+# after each program's host call); no member's reply leaves the owner before
+# log-fenced.  So a process death at a finish cut of a served POST leaves its
+# record unwritten (absent), at log-written a prefix of the batch (either),
+# from log-fenced on the whole batch (present).  A batch of one outside a
+# quantum (fnn-log-publish: the control socket's post, retention, identity,
+# consumer and topic events) runs append and barrier first and its finish
+# cuts are then present: POST_LOG_ONE_CANDIDATE.
+POST_LOG_CUTS = (
+    NativeCut("finish-consumed", "fn-bs-finish-program", "absent"),
+    NativeCut("finish-durable", "fn-bs-finish-program", "absent"),
+    NativeCut("log-written", "fn-lg-append-program", "either", book=LOG_BOOK),
+    NativeCut("log-fenced", "fn-lg-fence-program", "present",
+              follows="fn-lg-append-program", book=LOG_BOOK),
+)
+POST_LOG_ONE_CANDIDATE = {"log-written": "either", "log-fenced": "present",
+                          "finish-consumed": "present", "finish-durable": "present"}
+# The host's order for the batch's two programs: the program's host call,
+# then the `fnn-at' of its cut.
+POST_LOG_HOST = (("(fnn-log-append ", "(fnn-at store :log-written)"),
+                 ("(fnn-log-fence ", "(fnn-at store :log-fenced)"))
+
 def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
     source = (ROOT / "host/native/io.lisp").read_text()
     match = re.search(r"\(defparameter \+{}\+\s+'\((.*?)\)\)".format(parameter),
@@ -859,4 +885,49 @@ def verify_log_cut_map() -> None:
                                          if s.kind == kind):
                 raise AssertionError("{}: {} count differs from {}".format(host, kind, program))
     for cut in LOG_CUTS:
+        cut_step_index(cut)
+
+
+def verify_post_log_cut_map() -> None:
+    """The served log route's cuts: the declared names (+fnn-post-log-model-
+    cuts+) are POST_LOG_CUTS's; the log programs' own cuts are its last two,
+    in order; fnn-log-commit-open-batch calls fnn-log-append then cuts
+    log-written, then fnn-log-fence then cuts log-fenced; fnn-finish holds the
+    two finish cuts; a batch of one (fnn-log-publish) is committed before the
+    record's place is observed; and the commit quantum drains its members
+    (their finishes) before it commits the batch, and delivers their replies
+    only after."""
+    declared = tuple(c.name for c in POST_LOG_CUTS)
+    if declared != native_declared_cut_names("fnn-post-log-model-cuts"):
+        raise AssertionError("native/model post-log cuts differ")
+    program_cuts = (model_cut_names("fn-lg-append-program", LOG_BOOK)
+                    + model_cut_names("fn-lg-fence-program", LOG_BOOK))
+    if declared[2:] != program_cuts:
+        raise AssertionError("post-log cuts are not the log programs': {!r}".format(program_cuts))
+    source = (ROOT / "host/native/io.lisp").read_text()
+    body = host_function(source, "fnn-log-commit-open-batch")
+    at = 0
+    for call, cut in POST_LOG_HOST:
+        for needle in (call, cut):
+            found = body.find(needle, at)
+            if found < 0:
+                raise AssertionError("fnn-log-commit-open-batch: {} missing or out of order".format(needle))
+            at = found + len(needle)
+    publish = host_function(source, "fnn-log-publish")
+    commit, order = publish.find("(fnn-log-commit-open-batch "), publish.find("(fnn-observe store :log-order)")
+    if not (0 <= commit < order):
+        raise AssertionError("fnn-log-publish observes the record's place before a batch of one is fenced")
+    finish = host_function(source, "fnn-finish")
+    for name in declared[:2]:
+        if "(fnn-at store :{})".format(name) not in finish:
+            raise AssertionError("fnn-finish lacks the {} cut".format(name))
+    owner = (ROOT / "host/native/owner.lisp").read_text()
+    quantum = host_function(owner, "fnn-owner-commit-queued-locked")
+    drain = quantum.find("(fnn-owner-drain-one ")
+    batch = quantum.find("(fnn-log-commit-open-batch ")
+    ack = quantum.find("(fnn-log-batch-finish ")
+    deliver = quantum.rfind("(fnn-owner-deliver ")
+    if not (0 <= drain < batch < ack < deliver):
+        raise AssertionError("the commit quantum's order is not drain, batch, acknowledge, deliver")
+    for cut in POST_LOG_CUTS[2:]:
         cut_step_index(cut)

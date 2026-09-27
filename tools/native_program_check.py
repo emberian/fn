@@ -646,6 +646,16 @@ class Walk:
                 self.one_iteration.append("static nil, arm skipped: {}".format(show(f, 60)))
             live = {"when": [], "unless": f[2:], "if": f[3:]}[head]
             self.walk_body(live, env, mode, stack)
+        elif (head in ("when", "if") and isinstance(f[1], list) and len(f[1]) == 2
+              and f[1][0] == "fnn-store-logp"):
+            # Lane commit-onto-log: the record-log route of a format-9 store
+            # is another program (P-BATCH, P-LOG-RECOVER), checked by
+            # tests/campaign/native_cuts.py verify_log_cut_map and
+            # verify_post_log_cut_map; this check reads the per-file route.
+            if mode == "success":
+                self.one_iteration.append("record-log route arm skipped: {}".format(show(f, 60)))
+            if head == "if":
+                self.walk_body(f[3:], env, mode, stack)
         elif head == "dolist":
             self.walk(f[1][1], env, mode, stack)
             if mode == "success":

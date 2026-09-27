@@ -9745,6 +9745,26 @@
           "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
         }
       ]
+    },
+    {
+      "id": "PRF-264",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-olr-crash-reads-a-prefix-of-the-history",
+          "note": "Subject: the kernel transitions host/native/io.lisp fnn-log-take/-append/-fence call (fn-olr-take, fn-lgk-append, fn-lgk-fence); the link kept by fn-olr-linkp-of-*."
+        }
+      ]
+    },
+    {
+      "id": "PRF-265",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocm-commit-waits-at-most-the-bound",
+          "note": "Teeth: tests/acl2/owner-commit-class-tests.lisp."
+        }
+      ]
     }
   ]
 }

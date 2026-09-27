@@ -9,7 +9,8 @@
   "fn-rev12-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
   "fn-6.7.n-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
   "fn-6.7.n-openbsd-amd64.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
-  "fn-6.7.n+rev12-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition"
+  "fn-6.7.n+rev12-platform.tar.gz": "a release tarball's file name (packaging/release-tarball.sh, HST-017), not a Lisp definition",
+  "fn-store-9": "a store format word, not a Lisp definition: the profile frame's first text field, books/byte-store-frame.lisp *fn-bs-meta-format-9* (lane commit-onto-log, STO-028)"
  },
  "stale": {
   "PKT-446": {

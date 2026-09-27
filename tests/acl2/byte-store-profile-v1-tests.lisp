@@ -35,8 +35,12 @@
 (assert-event (equal (fn-bs-config-decode
                       (fn-bs-config-encode *bspv1-saved-development*))
                      *bspv1-saved-development*))
-(assert-event (equal *fn-bs-profile-scale* *bspv1-saved-scale*))
-(assert-event (equal *fn-bs-profile-development* *bspv1-saved-development*))
+; Since lane commit-onto-log the presets are format 9: the same values under
+; the record log's format word.
+(assert-event (equal (fn-bs-profile-as-format-8 *fn-bs-profile-scale*) *bspv1-saved-scale*))
+(assert-event (equal (fn-bs-profile-as-format-8 *fn-bs-profile-development*)
+                     *bspv1-saved-development*))
+(assert-event (equal (car *fn-bs-profile-scale*) *fn-bs-meta-format-9*))
 ; R is tight there: the article record of (A, G) is exactly R.
 (assert-event (equal (fn-record-encoded-octets-ceiling 32768 65535) 17138486))
 

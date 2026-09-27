@@ -9737,6 +9737,56 @@
         "fn-cwd-page-of-a-refusal",
         "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
       ]
+    },
+    {
+      "id": "PRF-264",
+      "title": "A format-9 store's commit goes through the record log, and any crash with a batch in flight reads back a prefix of the history that extends the committed records",
+      "statement": "Subjects: the log kernel's transitions the host calls (host/native/io.lisp fnn-log-take -> fn-olr-take, fnn-log-append -> fn-lgk-append, fnn-log-fence -> fn-lgk-fence), over the state fn-olr-linkp relates to the store node's history. fn-olr-crash-reads-a-prefix-of-the-history (books/store-log-route.lisp, KEYSTONE): under fn-lgk-relp, a batch in flight, an admissible crash image (fn-bs-crash-imagep) and the link, the scan of the durable content is a prefix of the history and extends fn-lgk-committed, or the damaged entry is a forgery (A-CRYPTO-TRAILER, T2). The link is kept by every transition (fn-olr-linkp-of-recovery, -of-take, -of-append, -of-fence, -of-finish-one, -of-consume-to); fn-olr-take-is-the-prepare-at-the-owners-txid, fn-olr-take-agrees-with-the-owner, fn-olr-take-keeps-the-bounds and fn-olr-take-preserves-relation tie the take to the owner's prepare; fn-olr-consume-to-reaches-the-owner and -preserves-relation/-okp the replies after the barrier; fn-olr-sn-reserve-reaches-reserved and fn-olr-sn-order-reaches-completing (books/store-log-route-phases.lisp) the node's phases; fn-olr-sn-reserve/-order-is-the-file-route-by-definition and the owner's fn-olr-ocfg-*-is-the-file-route-by-definition name the unchanged route. Measured (pre-flip base, hbox): fsyncs per POST 7.0 -> 0.27 (NVMe) / 0.31 (tank); 200 power cuts, 0 violations (planning/evidence/commit-onto-log-2026-09-27.md). Ids assigned by batch AV (commit-onto-log took none).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-244",
+        "PRF-245"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-route.lisp",
+        "books/store-log-route-phases.lisp",
+        "books/owner-log-route.lisp",
+        "tests/acl2/store-log-route-tests.lisp",
+        "tests/acl2/owner-log-route-tests.lisp",
+        "tests/test_native_commit_log.py",
+        "planning/evidence/commit-onto-log-2026-09-27.md"
+      ],
+      "events": [
+        "fn-olr-crash-reads-a-prefix-of-the-history"
+      ]
+    },
+    {
+      "id": "PRF-265",
+      "title": "A waiting commit batch is taken within a bounded number of the owner scheduler's picks",
+      "statement": "Subject fn-ocm-next (books/owner-commit-class.lisp), the :commit class beside the scheduler's (fn-osch-next otherwise: fn-ocm-next-otherwise-is-osch-next), which the owner's gate asks. fn-ocm-commit-waits-at-most-the-bound (KEYSTONE): for any sequence of wake-ups the number of picks before :commit (fn-ocm-commit-delay) is at most *fn-ocm-bound* less the picks already skipped; fn-ocm-commit-only-when-idle-or-due and fn-ocm-commit-pick-keeps-the-sched say when it is taken and that the scheduler's own state is kept. Teeth: tests/acl2/owner-commit-class-tests.lisp. Ids assigned by batch AV (commit-onto-log took none).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-248"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-commit-class.lisp",
+        "tests/acl2/owner-commit-class-tests.lisp",
+        "planning/evidence/commit-onto-log-2026-09-27.md"
+      ],
+      "events": [
+        "fn-ocm-commit-waits-at-most-the-bound"
+      ]
     }
   ]
 }
