@@ -34,6 +34,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host-developer"))
+# The developer image: the only one that honours a developer selector
+# (FN_NATIVE_OWNER_TEST_BARRIER_MS); a production image refuses to start.
+DEVELOPER = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 
 SCHED_HEAD = re.compile(rb"^sched order=control,reader,poster,transit bound=(\d+) cursor=(\d+)$", re.M)
 SCHED_ROW = re.compile(
@@ -125,11 +128,11 @@ class SchedulerNativeTests(unittest.TestCase):
             cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=timeout, check=False)
 
-    def start_owner(self, extra=None):
+    def start_owner(self, extra=None, image=None):
         env = environment()
         env.update(extra or {})
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
             cwd=ROOT, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, bufsize=0)
         self.addCleanup(self.reap, process)
@@ -322,6 +325,7 @@ class SchedulerNativeTests(unittest.TestCase):
               % (len(latencies), max(latencies), sorted(latencies)[len(latencies) // 2],
                  rows["control"], rows["reader"]))
 
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def test_status_is_answered_while_a_batch_barrier_is_in_flight(self):
         # PKT-688 (4) slice 2 (books/owner-commit-steps.lisp, PRF-259).  The
         # developer selector holds the committer's barrier open for 6 s with
@@ -332,7 +336,8 @@ class SchedulerNativeTests(unittest.TestCase):
         # 240 leaves only after the barrier (fn-ocs-complete-only-after-the-barrier).
         self.reap(self.owner)
         hold = 6.0
-        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))})
+        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
+                                      image=DEVELOPER)
         reader_conn, reader = self.connect()
         poster_conn, poster = self.connect()
         with reader_conn, poster_conn:
