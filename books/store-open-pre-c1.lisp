@@ -215,6 +215,11 @@
                                                fn-stxa-shapep fn-stxk-shapep fn-stxe-shapep
                                                (:executable-counterpart equal))))))
 
+; The identity fold unwraps a history event as fn-hw-composite does.
+(defthm fn-sopc-identity-wire-is-hw-composite
+  (equal (fn-replay-identity-wire e) (fn-hw-composite e))
+  :hints (("Goal" :in-theory (enable fn-replay-identity-wire fn-hw-composite))))
+
 ; KEYSTONE (the site).  No identity step admits a pre-C1 control record: from
 ; any context the step answers a context that is not :ok, at the same
 ; cursor.  So the fold stops exactly at such a record and names nothing
@@ -236,7 +241,7 @@
                                         fn-stxk-context fn-stxk-context-kind
                                         fn-stxk-context-next
                                         fn-sopc-pre-c1-control-record-facts
-                                        fn-replay-identity-wire fn-hw-composite
+                                        fn-sopc-identity-wire-is-hw-composite
                                         car-cons cdr-cons
                                         (:executable-counterpart equal))))))
 
@@ -295,6 +300,8 @@
            :in-theory (union-theories (theory 'minimal-theory)
                                       '(fn-replay-identity fn-store-event-p
                                         fn-sopc-pre-c1-control-record-facts
+                                        fn-stxk-fault fn-stxk-context
+                                        fn-stxk-context-kind fn-stxk-context-next
                                         car-cons cdr-cons
                                         (:definition fn-replay-identity-loop)
                                         (:executable-counterpart equal))))))
