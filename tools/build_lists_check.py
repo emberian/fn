@@ -97,7 +97,13 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
                  "the DTN image names :control in *fnn-image-omitted-surfaces*, so "
                  "fnn-operator-execute-admin takes :offline without calling it"
            for name in ("fn-native-control-host-liveness",
-                        "fn-native-control-host-liveness-note")}}),
+                        "fn-native-control-host-liveness-note")},
+         "fn-native-control-host-moderation-encode":
+             "operator.lisp's `moderation approve|reject` and `article withdraw` "
+             "executor (PKT-657); fnn-operator-dispatch-plan maps :moderate to the "
+             ":control surface, which build-dtn.lisp names in "
+             "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage "
+             "exit) before this call"}),
     "host/peer-invite-host.lisp": (
         "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
         "which build-dtn.lisp does not load: the operator refuses `peer "
@@ -149,6 +155,12 @@ DTN_RAW_REACH: dict[tuple[str, str], str] = {
         "the owner answered over the control socket, and fnn-operator-status-once "
         "takes that arm only when the image does not omit :control, which "
         "build-dtn.lisp names in *fnn-image-omitted-surfaces*",
+    ("host/native/operator.lisp", "fnn-control-reasoned-exchange"):
+        "operator.lisp's `moderation approve|reject` and `article withdraw` "
+        "executor (control request 21, PKT-657); fnn-operator-dispatch-plan maps "
+        ":moderate to the :control surface, which build-dtn.lisp names in "
+        "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage "
+        "exit) before this call",
     ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
         "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
         "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",
