@@ -442,8 +442,11 @@ def verify_init_publication_cut_map() -> None:
     if order != sorted(order):
         raise AssertionError("fnn-command-init-published publishes before ACL2 admits")
     operator = (ROOT / "host/native/operator.lisp").read_text()
-    if "(fnn-command-init-published root groups profile)" not in host_function(
-            operator, "fnn-operator-execute-init"):
+    # The call, whitespace collapsed: the root, the groups, the profile and
+    # (since batch AS's merge of store-mount-identity) the mission's
+    # durability policy.
+    if "(fnn-command-init-published root groups profile" not in " ".join(host_function(
+            operator, "fnn-operator-execute-init").split()):
         raise AssertionError("operator init does not run the publication program")
     verify_staged_publication(source, "init", declared)
 
