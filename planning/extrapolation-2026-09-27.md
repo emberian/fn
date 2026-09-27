@@ -400,7 +400,10 @@ In rough priority. Each is one focused lane; base on batch/ay.
    health exit code while stalled.
 2. Build the served image without ACL2 (A-TARGET-COMPILER row; 2 to 4
    lane-days), and A-EXTRACT as an assumption row.
-3. BLAKE3 as a second C library, if digest-native's numbers justify it.
+3. BLAKE3 as a second C library: digest-native measured it (3.0 GB/s; 8.2 µs to
+   verify a 16 KiB page) against arena-store's per-page SHA-256 (9.4 µs) and
+   recommends NO: about 35 ms saved per million-record open does not pay for a
+   second C library. Native SHA-256 in the images is landed.
 4. Compression dictionary persistence.
 5. MemoryMax fixed by store size, or by profile.
 6. Persist the hbox ARC cap (24 GiB at runtime today).
