@@ -916,9 +916,21 @@
                                   (fn-sf-statep fn-node-statep fn-sn-prepare
                                    fn-intern-row-at fn-record-p)))))
 
+;; The keyring and generation conjuncts of the entry's gate are fn-sn-statep's:
+;; off a statep store both the entry and fn-sn-prepare return S, so the
+;; keystone needs only that W is a wire record.
+(local (defthm fn-si-prepare-off-state-is-identity
+  (implies (not (fn-sn-statep s)) (equal (fn-sn-prepare s row) s))
+  :hints (("Goal" :in-theory (enable fn-sn-prepare)))))
+
+(local (defthm fn-si-statep-keyring-fields
+  (implies (fn-sn-statep s)
+           (and (fn-prin-keyringp (fn-sn-keyring s))
+                (natp (fn-sn-keyring-generation s))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep))))))
+
 (defthm fn-store-prepare-interned-is-intern-then-prepare
-  (implies (and (fn-record-p w) (fn-prin-keyringp (fn-sn-keyring s))
-                (natp (fn-sn-keyring-generation s)))
+  (implies (fn-record-p w)
            (let* ((k (fn-sn-keyring s)) (g (fn-sn-keyring-generation s))
                   (row (mv-nth 0 (fn-cat-intern-list w k g fn-arena)))
                   (next (fn-sn-prepare s row)))
@@ -927,8 +939,9 @@
                          (if (equal next s)
                              fn-arena
                            (mv-nth 1 (fn-cat-intern-list w k g fn-arena)))))))
-  :hints (("Goal" :in-theory (e/d (fn-store-prepare-interned)
-                                  (fn-sn-prepare fn-intern-row-at)))))
+  :hints (("Goal" :cases ((fn-sn-statep s))
+           :in-theory (e/d (fn-store-prepare-interned)
+                           (fn-sn-prepare fn-intern-row-at fn-sn-statep)))))
 
 ;; What the entry does to the arena, stated on its own: a refused prepare
 ;; leaves the arena exactly as it was (no refused article's bytes are
