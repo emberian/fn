@@ -54,7 +54,8 @@
   (fn-cpa-clone-input-pathp path))
 
 (defun fn-store-checkpoint-clone-phase (marker-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp marker-octets)))
   (value (fn-cpa-clone-phase-of-octets
           (f-get-global 'fn-store-sn state) marker-octets)))
 
@@ -74,7 +75,8 @@
 ; checkpoint frame carries the arena's bytes (the same open item as the state
 ; checkpoint, host/store-node-host.lisp fn-store-sco-decode).
 (defun fn-store-checkpoint-protected (octet-records frontier state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let* ((decoded (fn-store-decode-records octet-records))
          (records (if (equal decoded :bad) :bad
                     (fn-store-intern-records-local decoded))))
@@ -95,7 +97,8 @@
   (fn-cpc-selection-protected generation))
 
 (defun fn-store-checkpoint-selection-decode (octets digest)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-cpc-selection-decode octets digest))
 
 ; ACL2 owns the complete checkpoint directory vocabulary, its finite
@@ -145,7 +148,8 @@
     (if (null names) nil :bad)))
 
 (defun fn-store-checkpoint-namespace-plan (name-octets values)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp name-octets)))
   (let ((names (fn-store-checkpoint-names-octets->chars name-octets)))
     (if (equal names :bad) '(:error :octets)
       (fn-cpp-namespace-plan names
@@ -269,7 +273,8 @@
   (fn-rcls-init))
 
 (defun fn-store-reclaim-step (acc octets ctx)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-rcls-step acc octets ctx))
 
 (defun fn-store-reclaim-decide-stream (profile clock acc frontier lower names
@@ -284,7 +289,8 @@
 ;; fn-lgr-decide-stream, over compact-arena's fold fn-rcls-*): one record's
 ;; rewrite, and the decision over the fold.
 (defun fn-store-log-reclaim-event (octets ctx)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-rclp-event octets ctx))
 
 (defun fn-store-log-reclaim-decide-stream (profile clock acc dry state)
@@ -331,7 +337,8 @@
 ; installed for the restore call; the reply carries only its sequence and
 ; frontier so the host can slice the suffix ACL2 will revalidate.
 (defun fn-store-checkpoint-decode (octets digest max-frontier max-sequence state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (let ((decoded (fn-cpc-frame-decode octets digest (fn-store-sn-domain state)
                                       (fn-store-sn-capacity state) max-frontier
                                       max-sequence)))
@@ -347,7 +354,8 @@
 ; (fn-checkpoint-plus-suffix-equals-full-replay); its result node is kept for
 ; the differential comparison below.
 (defun fn-store-checkpoint-restore (octet-suffix frontier state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp octet-suffix)))
   (let* ((decoded (fn-store-decode-records octet-suffix))
          (suffix (if (equal decoded :bad) :bad
                    (fn-store-intern-records-local decoded))))

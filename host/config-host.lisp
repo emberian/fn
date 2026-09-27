@@ -72,7 +72,8 @@
   ; (NEWGROUPS, LIST ACTIVE.TIMES).  The codec decides whether the reading
   ; fits its schema (`fn-native-admin-clock-observation'); one that does not
   ; stamps the record with the zero observation, as before.
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp name-octets-list)))
   (let ((clock (fn-native-admin-clock-observation monotonic wall)))
     (fn-cfg-host-initial-octets-stamped
      name-octets-list

@@ -63,7 +63,8 @@
   (fn-pinv-request-encode kind received))
 
 (defun fn-pinv-host-request-decode (kind octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-pinv-request-decode kind octets))
 
 (defun fn-pinv-host-kind (verb)
@@ -103,7 +104,8 @@
   (fn-pinv-confirm-request-encode acceptance invitation))
 
 (defun fn-pinv-host-confirm-request-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-pinv-confirm-request-decode octets))
 
 (defun fn-native-operator-host-result-peering-words (result)
@@ -120,7 +122,8 @@
   (fn-pinv-bindings-request-encode))
 
 (defun fn-pinv-host-bindings-request-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-pinv-bindings-request-decode octets))
 
 ;; PRF-166 (PKT-325): `keys redecide MSGID' (kind 12) and its operator words.
@@ -129,7 +132,8 @@
   (fn-pinv-redecide-request-encode msgid))
 
 (defun fn-pinv-host-redecide-request-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-pinv-redecide-request-decode octets))
 
 (defun fn-native-operator-host-result-keys-msgid-octets (result)
