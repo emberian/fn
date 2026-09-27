@@ -34,7 +34,7 @@
 ; -----------------------------------------------------------------------------
 ; A. The rows and the schema.
 
-(defconst *fn-hp-schema* '((:u64) (:octets)))
+(defconst *fn-hp-schema* '((:u64) (:u64) (:octets)))
 
 (defthm fn-hp-schema-bschemap
   (adt-bschemap *fn-hp-schema*))
@@ -62,30 +62,58 @@
   (unsigned-byte-p 64 (fn-hp-mkey ev salt))
   :hints (("Goal" :in-theory (disable logxor mod fn-hist-fnv))))
 
-; An event the image can hold: its tree encodes to octets
-; (`fn-sccb-treep-encodes-octets'); the writer refuses any other by name.
-(defun fn-hp-events-okp (h)
-  (declare (xargs :guard t))
-  (if (atom h) (null h) (and (fn-sccb-treep (car h)) (fn-hp-events-okp (cdr h)))))
+; The tree's octets padded with zeros to a multiple of 8, so every pool
+; entry starts on a word and an append writes whole words.
+(defun fn-hp-pad8-count (n)
+  (declare (xargs :guard (natp n)))
+  (mod (- 8 (mod (nfix n) 8)) 8))
 
+(defun fn-hp-pad8 (x)
+  (declare (xargs :guard (true-listp x)))
+  (append x (adt-zeros (fn-hp-pad8-count (len x)))))
+
+; An event the image can hold: its tree encodes to octets
+; (`fn-sccb-treep-encodes-octets') of a u64 length; the writer refuses any
+; other by name.
+(defun fn-hp-evp (ev)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-sccb-treep ev) (unsigned-byte-p 64 (len (fn-scc-encode ev)))))
+
+(defun fn-hp-events-okp (h)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom h) (null h) (and (fn-hp-evp (car h)) (fn-hp-events-okp (cdr h)))))
+
+; A row: MKEY, the tree's length, its padded octets.
 (defun fn-hp-row (ev salt)
-  (declare (xargs :guard (fn-sccb-treep ev)))
-  (list (fn-hp-mkey ev salt) (fn-scc-encode ev)))
+  (declare (xargs :guard (fn-sccb-treep ev) :verify-guards nil))
+  (let ((enc (fn-scc-encode ev)))
+    (list (fn-hp-mkey ev salt) (len enc) (fn-hp-pad8 enc))))
 
 (defun fn-hp-rows (h salt)
-  (declare (xargs :guard (fn-hp-events-okp h)))
+  (declare (xargs :verify-guards nil))
   (if (atom h) nil (cons (fn-hp-row (car h) salt) (fn-hp-rows (cdr h) salt))))
 
 (local
  (defthm fn-hp-octetsp-of-scc-octets
    (implies (fn-scc-octet-listp x) (adt-octetsp x))))
 
+(defthm fn-hp-octetsp-pad8
+  (implies (adt-octetsp x) (adt-octetsp (fn-hp-pad8 x))))
+
+(in-theory (disable fn-hp-pad8))
+
+(defthm fn-hp-rec-p-of-row
+  (implies (fn-hp-evp ev)
+           (adt-rec-p *fn-hp-schema* (fn-hp-row ev salt)))
+  :hints (("Goal" :in-theory (disable fn-scc-encode fn-hp-mkey))))
+
 (defthm fn-hp-rows-seq-p
   (implies (fn-hp-events-okp h)
            (adt-seq-p *fn-hp-schema* (fn-hp-rows h salt)))
-  :hints (("Goal" :in-theory (disable fn-scc-encode fn-hp-mkey))))
+  :hints (("Goal" :in-theory (disable fn-hp-row fn-hp-evp adt-rec-p))))
 
-(defthm fn-hp-len-rows (equal (len (fn-hp-rows h salt)) (len h)))
+(defthm fn-hp-len-rows (equal (len (fn-hp-rows h salt)) (len h))
+  :hints (("Goal" :in-theory (disable fn-hp-row))))
 
 ; -----------------------------------------------------------------------------
 ; B. The image and its decoder.
@@ -95,19 +123,30 @@
   (declare (xargs :verify-guards nil))
   (adt-ser *fn-hp-schema* (fn-hp-rows h salt)))
 
-; Each row's tree decoded; its MKEY must be the decoded event's.  Every
-; check refuses by name; none repairs.
+; Each row's tree decoded from its padded octets; the padding must be the
+; canonical one and MKEY the decoded event's.  Every check refuses by name;
+; none repairs.
+(defun fn-hp-dec-row (row salt)
+  (declare (xargs :verify-guards nil))
+  (let* ((n (nfix (cadr row))) (bytes (caddr row)))
+    (if (not (and (<= n (len bytes)) (equal bytes (fn-hp-pad8 (take n bytes)))))
+        (list :refused :padding)
+      (let ((d (fn-scc-decode-tree (take n bytes))))
+        (cond ((not (eq (car d) :ok)) (list :refused :tree))
+              ((not (equal (car row) (fn-hp-mkey (cadr d) salt))) (list :refused :mkey))
+              (t d))))))
+
 (defun fn-hp-dec-events (rows salt)
   (declare (xargs :verify-guards nil))
   (if (atom rows)
       (list :ok nil)
-    (let ((d (fn-scc-decode-tree (cadr (car rows)))))
-      (cond ((not (eq (car d) :ok)) (list :refused :tree))
-            ((not (equal (car (car rows)) (fn-hp-mkey (cadr d) salt))) (list :refused :mkey))
-            (t (let ((rest (fn-hp-dec-events (cdr rows) salt)))
-                 (if (eq (car rest) :ok)
-                     (list :ok (cons (cadr d) (cadr rest)))
-                   rest)))))))
+    (let ((d (fn-hp-dec-row (car rows) salt)))
+      (if (not (eq (car d) :ok))
+          d
+        (let ((rest (fn-hp-dec-events (cdr rows) salt)))
+          (if (eq (car rest) :ok)
+              (list :ok (cons (cadr d) (cadr rest)))
+            rest))))))
 
 (defun fn-hp-decode (b salt)
   (declare (xargs :verify-guards nil))
@@ -121,10 +160,27 @@
    :hints (("Goal" :use ((:instance fn-scc-decode-tree-of-encode))
             :in-theory (disable fn-scc-decode-tree-of-encode fn-scc-decode-tree fn-scc-program)))))
 
+(local
+ (defthm fn-hp-take-of-pad8
+   (implies (true-listp x)
+            (equal (take (len x) (fn-hp-pad8 x)) x))
+   :hints (("Goal" :in-theory (enable fn-hp-pad8)))))
+
+(local
+ (defthm fn-hp-len-pad8-bound
+   (<= (len x) (len (fn-hp-pad8 x)))
+   :hints (("Goal" :in-theory (enable fn-hp-pad8)))
+   :rule-classes :linear))
+
+(defthm fn-hp-dec-row-of-row
+  (implies (fn-hp-evp ev)
+           (equal (fn-hp-dec-row (fn-hp-row ev salt) salt) (list :ok ev)))
+  :hints (("Goal" :in-theory (disable fn-scc-program fn-hp-mkey fn-scc-decode-tree))))
+
 (defthm fn-hp-dec-events-of-rows
   (implies (fn-hp-events-okp h)
            (equal (fn-hp-dec-events (fn-hp-rows h salt) salt) (list :ok h)))
-  :hints (("Goal" :in-theory (disable fn-scc-program fn-hp-mkey fn-scc-decode-tree))))
+  :hints (("Goal" :in-theory (disable fn-hp-dec-row fn-hp-row fn-hp-evp))))
 
 ; KEYSTONE (the round trip): the decoder inverts the image on every history
 ; whose events encode and whose image is addressable by u64 offsets.
@@ -162,7 +218,12 @@
                        (fn-hp-page (adt-ser s a) k)))
            (equal (mv-nth 0 (pgs-x-page-digest k pgs-mem fn-shs))
                   (pgs-octets-be-nat (nth k (adt-page-digests s a)))))
-  :hints (("Goal" :in-theory (e/d (pgs-x-page-digest) (adt-ser pgs-x-words-digest)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance pgs-x-words-digest-is-sha256 (sel 0) (base (* k 2048)) (nb 256))
+                 (:instance adt-page-digest-nth))
+           :in-theory (e/d (pgs-x-page-digest fn-hp-page)
+                           (adt-ser pgs-x-words-digest pgs-x-words-digest-is-sha256 adt-page-digest-nth
+                            adt-page-digests fn-sha256 pgs-words-le-octets pgs-octets-be-nat)))))
 
 ; -----------------------------------------------------------------------------
 ; D. The region plan: what an append changes.
@@ -521,20 +582,21 @@
 
 (defthm fn-hp-regs-octets-of-regs
   (equal (fn-hp-regs-octets (adt-regs *fn-hp-schema* rows))
-         (+ (* 24 (len rows)) (len (adt-rows-pool *fn-hp-schema* rows))))
+         (+ (* 32 (len rows)) (len (adt-rows-pool *fn-hp-schema* rows))))
   :hints (("Goal" :do-not-induct t :in-theory (enable adt-regs)
-           :expand ((adt-transpose 3 (adt-rows-cells '((:u64) (:octets)) rows 0))
-                    (adt-transpose 2 (adt-cdrs (adt-rows-cells '((:u64) (:octets)) rows 0)))
-                    (adt-transpose 1 (adt-cdrs (adt-cdrs (adt-rows-cells '((:u64) (:octets)) rows 0))))))))
+           :expand ((adt-transpose 4 (adt-rows-cells *fn-hp-schema* rows 0))
+                    (adt-transpose 3 (adt-cdrs (adt-rows-cells *fn-hp-schema* rows 0)))
+                    (adt-transpose 2 (adt-cdrs (adt-cdrs (adt-rows-cells *fn-hp-schema* rows 0))))
+                    (adt-transpose 1 (adt-cdrs (adt-cdrs (adt-cdrs (adt-rows-cells *fn-hp-schema* rows 0)))))))))
 
 (defun fn-hp-enc-len (new)
-  ; the octets of NEW's event trees
-  (declare (xargs :guard (fn-hp-events-okp new) :verify-guards nil))
-  (if (atom new) 0 (+ (len (fn-scc-encode (car new))) (fn-hp-enc-len (cdr new)))))
+  ; the pool octets of NEW's rows: each tree padded to a word
+  (declare (xargs :verify-guards nil))
+  (if (atom new) 0 (+ (len (fn-hp-pad8 (fn-scc-encode (car new)))) (fn-hp-enc-len (cdr new)))))
 
 (local
  (defthm fn-hp-row-pool-of-row
-   (equal (adt-row-pool *fn-hp-schema* (fn-hp-row ev salt)) (fn-scc-encode ev))
+   (equal (adt-row-pool *fn-hp-schema* (fn-hp-row ev salt)) (fn-hp-pad8 (fn-scc-encode ev)))
    :hints (("Goal" :in-theory (disable fn-scc-encode fn-hp-mkey)))))
 
 (defthm fn-hp-len-rows-pool
@@ -542,13 +604,13 @@
   :hints (("Goal" :in-theory (disable fn-scc-encode fn-hp-mkey fn-hp-row adt-row-pool))))
 
 ; KEYSTONE (the region plan, 2): while no region doubles, an append of K
-; events dirties at most 9 + (24 K + their tree octets) / 16384 pages: the
-; header, and per region (four) at most two partial pages plus the pages
-; its new octets fill.  O(K + columns).
+; events dirties at most 11 + (32 K + their padded tree octets) / 16384
+; pages: the header, and per region (five) at most two partial pages plus
+; the pages its new octets fill.  O(K + columns).
 (defthm fn-hp-append-dirty-bound
   (implies (fn-hp-caps-same (fn-hp-regs h salt) (fn-hp-regs (append h new) salt))
            (<= (* *adt-page* (len (fn-hp-append-dirty h new salt)))
-               (+ (* 9 *adt-page*) (* 24 (len new)) (fn-hp-enc-len new))))
+               (+ (* 11 *adt-page*) (* 32 (len new)) (fn-hp-enc-len new))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hp-dirty-pages-bound (base 1)
                   (regs (adt-regs *fn-hp-schema* (fn-hp-rows h salt)))
