@@ -988,6 +988,8 @@
                                         (fn-node-retention (fn-sn-node s))))
                  (state (if (equal record :clock-unusable)
                             state
+                          (let ((state (f-put-global 'fn-owner-retain-carry
+                                                     carry state)))
                           (fn-owner-install-ocfg
                            ; fn-prc-sbud-prepare, equal to PRF-191's
                            ; fn-pidx-sbud-prepare under fn-prc-carryp
@@ -998,7 +1000,7 @@
                            ; trie and the retention admission the carried id
                            ; trie, decided once.
                            (fn-prc-sbud-prepare before row budget carry)
-                           (f-put-global 'fn-owner-retain-carry carry state)))))
+                           state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
