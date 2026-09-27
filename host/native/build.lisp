@@ -32,6 +32,8 @@
 ;; host/owner-host.lisp fn-owner-reply-buffer calls fn-served-reply-to-buffer.
 (include-book "books/served-reply-buffer")
 (include-book "books/owner-open-carried")
+;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
+(include-book "books/reader-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
@@ -49,6 +51,9 @@
 (include-book "books/checkpoint-compaction-preservation")
 ; The pack chain the open walks and compaction extends (P5).
 (include-book "books/checkpoint-pack-chain")
+; Each link decoded once per open (PRF-240): host/checkpoint-host.lisp's
+; chain step, coverage and observation call fn-ccco-*.
+(include-book "books/checkpoint-pack-chain-once")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
@@ -157,6 +162,7 @@
 ;; The fair base job offer, the named attempt result and the status-report
 ;; effect join (PRF-120): fnn-bps-foundation-step calls fn-bpnj-step.
 (include-book "books/bp-node-job-offer")
+(include-book "books/bp-node-job-cursor")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")

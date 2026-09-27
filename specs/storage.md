@@ -255,6 +255,60 @@ duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or
 promised-but-unaccounted retention can become visible.
 
+### The store's filesystem (STO-031)
+
+STO-031: A Store opens only on the filesystem its record names: `init` records the identity of the filesystem the store root is on, every open observes it again and is refused by name when the record is absent, invalid or names another filesystem, and `store rebind-filesystem` records a deliberate move; the owner's start is refused by name when the store requires durable storage and its mount observably disables it.
+
+A node's Store belongs on a provisioned volume (PKT-579). When the volume is
+not mounted, the store path resolves into the directory underneath, on the
+filesystem holding the mount point, and an open there would serve, or begin,
+a different history. This is a local fn guarantee; no RFC speaks to it.
+
+- **The record.** `filesystem-identity.fnmi` in the store root: an FN frame
+  (magic `FNMI`, version 1, kind 1, ACL2's trailer) whose payload is five
+  u16-length fields: the kernel's filesystem id (statfs `f_fsid`), the
+  filesystem type, the mount point containing the store root, the mount's
+  source, and the durability policy (0 or 1). `init` (operator and
+  developer), `store import` and the developer probe write it once, by stage,
+  fsync, rename and a root fsync (books/store-mount-identity.lisp
+  `fn-smid-record-plan`; host/native/io.lisp `fnn-record-filesystem-at-init`).
+- **The observation.** Linux: `f_fsid` from statfs, and the line of
+  `/proc/self/mountinfo` whose mount point is the longest component prefix of
+  the root's resolved path (a later line wins a tie), parsed and selected in
+  ACL2 (`fn-smid-mountinfo-step`; a line past 65,536 octets makes the
+  observation unobserved, never guessed). OpenBSD and macOS: statfs's
+  `f_fsid`, `f_fstypename`, `f_mntonname`, `f_mntfromname`.
+- **Same filesystem** (`fn-smid-same-filesystemp`): type and mount point
+  agree and, where both fsids are reported (nonzero), the fsids agree; where
+  either is not (OpenBSD reports zeros to an unprivileged process) the
+  sources agree. A remount of the same volume on another loop device is the
+  same filesystem; another volume at the same mount point is not.
+- **The open** (`fn-smid-open-decision`, called by `fnn-acquire` before any
+  other read, so by every open; it is `fn-smid-open-verdict` wherever a
+  record is present): `:open`, or refused by name as `store filesystem
+  unobserved`, `store filesystem unrecorded` (a root with neither record nor
+  `config.json`: the empty directory where the volume should be), `store
+  filesystem record invalid`, or `store filesystem changed: expected ...,
+  found ...; mount the node volume or run `store rebind-filesystem` after
+  moving the store deliberately`. Nothing is created or written at a refused
+  open. A complete store with no record (made before the record, or whose
+  `init` died before writing it) opens offline with a warning naming the
+  remedy, and its owner's start is refused (`fn-smid-start-verdict`).
+- **Rebind** (`store rebind-filesystem [--storage-require-durable on|off]`,
+  operator; `store ROOT rebind-filesystem [on|off]`, developer): under the
+  writer lock, with the profile and frontier loaded but the identity not
+  checked, records the current observation, keeping the store's policy or
+  setting it (`fn-smid-rebind-plan`).
+- **The durability policy** (PKT-648, `fn-smid-start-verdict`): the owner's
+  start of a store with policy 1 is refused by name when its mount carries
+  `nobarrier` or `barrier=0` or is tmpfs or ramfs; with policy 0 it starts.
+  The owner's start, `status` and `health` print the warning for such a
+  mount (`fn-smid-durability-warning`); an ordinary open does not. `init` and `store import` record policy 1
+  under a mission's configuration (the release and public node) and 0
+  otherwise (`fn-smid-init-policy`). ZFS `sync=disabled` and a drive's
+  volatile cache are not observable here and remain the operator's
+  obligation (docs/operator.md, Storage requirements).
+
 ## Commit protocol
 
 The semantic phases are:

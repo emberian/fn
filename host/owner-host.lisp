@@ -406,9 +406,13 @@
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global name state) (f-get-global name state) nil))
 
+; The committed record count, read from the owner store's derived event index
+; (fn-sbud-count-is-used, books/store-budget.lisp, under fn-ceis-indexedp, which
+; every host-installed owner store satisfies: fn-osi-live-owner-store-is-indexed,
+; books/owner-store-indexed.lisp), not by a len of the history.
 (defun fn-owner-sco-count (state)
   (declare (xargs :stobjs state :mode :program))
-  (len (fn-sf-records (fn-sn-files (fn-own-store (fn-owner-core state))))))
+  (fn-sbud-count (fn-own-store (fn-owner-core state))))
 
 ; The newest durable checkpoint the Store open verified: its S, or NIL.
 (defun fn-owner-sco-note-durable (sequence state)
@@ -492,7 +496,8 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
          (records (fn-sf-records (fn-sn-files st)))
-         (count (len records))
+         ; (len records), read from the index: fn-sbud-count-is-used.
+         (count (fn-sbud-count st))
          (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
          (profile (fn-owner-store-profile state))
          (state (f-put-global 'fn-owner-sco-attempted count state))

@@ -1462,6 +1462,7 @@
         "PRF-188",
         "PRF-191",
         "PRF-192",
+        "PRF-227",
         "PRF-218"
       ],
       "verification": [
@@ -2562,6 +2563,7 @@
         "PRF-132",
         "PRF-144",
         "PRF-139",
+        "PRF-226",
         "PRF-220"
       ],
       "verification": [
@@ -2593,7 +2595,10 @@
         "books/bp-receipt.lisp",
         "host/bp-receipt-journal-host.lisp",
         "host/native/bp-app.lisp",
-        "planning/evidence/mission-signed-2-2026-09-26.md"
+        "planning/evidence/mission-signed-2-2026-09-26.md",
+        "books/bp-node-job-cursor.lisp",
+        "tests/acl2/bp-node-job-cursor-tests.lisp",
+        "planning/evidence/bp-cursors-2026-09-27.md"
       ],
       "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed. Custody (PRF-128, lane mission-signed; D23): a relay takes custody only over an admitted channel; a bundle from a refused channel is refused at reception with the admission's reason (fn-bpaj-admitted-receive-event, called by fnn-bps-receive); a local policy (D23): RFC 9171 leaves the acceptance of a received bundle to the node. A signed article (PRF-132, lane mission-signed-2; D23, D25): the BP receiver binds the article record of the kind-4 composite its Store committed and never submits it a second time; the verdict the delivery is bound to is the receiving Store's own (fn-bpaj-dispatch-fast, called by fn-bprj-request-action)."
     },
@@ -2939,7 +2944,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-085"
+        "PRF-085",
+        "PRF-240"
       ],
       "verification": [
         "proof",
@@ -3436,9 +3442,10 @@
         "books/config-physical-replay.lisp",
         "books/store-checkpoint-open.lisp",
         "planning/evidence/caps-to-profile-2026-09-26.md",
-        "books/config-carried-candidate.lisp"
+        "books/config-carried-candidate.lisp",
+        "books/config-carried-open.lisp"
       ],
-      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold (PRF-209, SCN-140): one open and one candidate open per request. Open: a configuration checkpoint so an open reads only the records after it, and the candidate open extended from the open (PKT-510, PKT-601)."
+      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold and decides its candidate open from the open's own result, and verifies by reading its published record back instead of reopening (PRF-209, SCN-140; PKT-601 (1), (2)): one open per request. Open: the configuration-only fold still runs over the configuration history once per request."
     },
     {
       "id": "REP-013",
@@ -3451,7 +3458,9 @@
         "PRF-202",
         "PRF-203",
         "PRF-204",
-        "PRF-221"
+        "PRF-221",
+        "PRF-229",
+        "PRF-241"
       ],
       "verification": [
         "proof",
@@ -3461,11 +3470,14 @@
       "evidence": [
         "books/catalog-commit.lisp",
         "books/catalog-delta.lisp",
+        "books/catalog-number-index.lisp",
         "books/catalog-record.lisp",
         "books/catalog.lisp",
         "planning/evidence/catalog-slice-2026-09-26.md",
         "tests/acl2/catalog-commit-tests.lisp",
-        "tests/acl2/catalog-delta-tests.lisp"
+        "tests/acl2/catalog-delta-tests.lisp",
+        "tests/acl2/catalog-number-index-tests.lisp",
+        "books/config-policy-delta.lisp"
       ],
       "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement).",
       "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
@@ -3986,6 +3998,49 @@
         "planning/evidence/header-limits-profile-2026-09-27.md"
       ],
       "implementation_note": "Fields 15 to 17 (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
+    },
+    {
+      "id": "NNT-048",
+      "title": "A peer's host may be an RFC 1123 host name as well as an IPv4 literal; the node resolves a name on every connection attempt and never hands a literal to the resolver; a TLS transport verifies the certificate against its configured name under either a pinned anchor file or the system's public roots, the default for a named peer; a name mismatch is refused by name and a resolution failure is a named, retried condition, never a fault",
+      "specification": "specs/peering.md#124-peer-hosts-by-name-and-the-tls-check-pkt-613",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-231"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-host.lisp",
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py",
+        "planning/evidence/peers-by-name-2026-09-27.md"
+      ],
+      "implementation_note": "PKT-613 (public-node gap d, fn half). RFC 1123 section 2.1 host syntax, RFC 6066 section 3 (no literal in SNI) are RFC requirements; resolving on every attempt, the system roots as the named default and the named dial outcomes are fn guarantees; refusing a trailing dot and IPv6 peer literals is local policy."
+    },
+    {
+      "id": "STO-031",
+      "title": "A Store opens only on the filesystem its record names: a missing node volume, a moved or restored store, or a missing or invalid record is refused by name at every open, `store rebind-filesystem` records a deliberate move, and the owner's start is refused by name when the store requires durable storage on a mount that observably disables it",
+      "specification": "specs/storage.md#the-stores-filesystem-sto-031",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-232"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-mount-identity.lisp",
+        "tests/acl2/store-mount-identity-tests.lisp",
+        "tests/test_native_store_mount_identity.py",
+        "planning/evidence/store-mount-identity-2026-09-27.md"
+      ],
+      "implementation_note": "Lane store-mount-identity (2026-09-27; PKT-579, PKT-648). The record filesystem-identity.fnmi (FNMI frame: fsid, type, mount point, source, policy) is written by init, store import and the developer probe; fnn-acquire asks fn-smid-open-verdict before any other read; fnn-owner-install asks fn-smid-start-verdict; `store rebind-filesystem [--storage-require-durable on|off]` (operator) and `store ROOT rebind-filesystem [on|off]` (developer). Policy 1 under a mission's configuration, 0 otherwise; every open warns on nobarrier/barrier=0/tmpfs/ramfs."
     }
   ]
 }

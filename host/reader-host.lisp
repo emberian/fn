@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../books/store-node")
 (include-book "../books/served")
+(include-book "../books/reader-open-carried")
 
 (defconst *fn-reader-groups* '("fn.letters"))
 (defconst *fn-reader-id* "<reader@example.invalid>")
@@ -69,12 +70,24 @@
 ; starts a fresh wire/session pair but keeps the selected immutable snapshot.
 ; The store variant reads only the actual-node projection of the composed
 ; file/node state reconstructed by the store adapter.
+;; The selection (books/reader-open-carried.lisp fn-rdc-selection): the
+;; archive recognised once, with its verdicts and its Message-ID trie built
+;; once.  The reader's archive is immutable under its shared lock, so every
+;; connection opens over this one value (fn-rdc-reset-is-served-open).
+(defun fn-reader-install-selection (sel state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (fn-rdc-readyp sel)
+      (let* ((state (f-put-global 'fn-reader-selection sel state))
+             (state (f-put-global 'fn-reader-archive (fn-rdc-archive sel) state))
+             (state (f-put-global 'fn-reader-verdicts (fn-rdc-verdicts sel) state))
+             (state (f-put-global 'fn-reader-action :ready state)))
+        (value :ready))
+    (let ((state (f-put-global 'fn-reader-action :refused state)))
+      (value :refused))))
+
 (defun fn-reader-use-seed (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-reader-archive *fn-reader-archive* state))
-         (state (f-put-global 'fn-reader-verdicts nil state))
-         (state (f-put-global 'fn-reader-action :ready state)))
-    (value :ready)))
+  (fn-reader-install-selection (fn-rdc-selection *fn-reader-archive* nil) state))
 
 ; The operator's posting permission and the host's clock reading.  A clock
 ; reading is an observation, not a computed value: books/clock.lisp says what
@@ -101,20 +114,8 @@
 ; 3977 section 3.1's 512-octet initial line.
 (defun fn-reader-use-store (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((store (f-get-global 'fn-store-sn state)))
-    (if (fn-sn-statep store)
-        (let ((node (fn-sn-node store)))
-        (let ((archive (fn-node-acceptance node)))
-          (if (fn-nntp-projectionp archive)
-              (let* ((state (f-put-global 'fn-reader-archive archive state))
-                     (state (f-put-global 'fn-reader-verdicts
-                                          (fn-sn-verdicts store) state))
-                     (state (f-put-global 'fn-reader-action :ready state)))
-                (value :ready))
-            (let ((state (f-put-global 'fn-reader-action :refused state)))
-              (value :refused)))))
-      (let ((state (f-put-global 'fn-reader-action :refused state)))
-        (value :refused)))))
+  (fn-reader-install-selection
+   (fn-rdc-store-selection (f-get-global 'fn-store-sn state)) state))
 
 ; Opening a connection is the one place the whole-archive projection recognizer
 ; runs.  fn-nntp-open-session records its verdict in the session; no command
@@ -136,14 +137,15 @@
                   nil))
          ; RFC 3977's 512 includes CRLF; wire state holds only content before
          ; that delimiter.
-         (verdicts (if (boundp-global 'fn-reader-verdicts state)
-                       (f-get-global 'fn-reader-verdicts state)
-                     nil))
+         (sel (if (boundp-global 'fn-reader-selection state)
+                  (f-get-global 'fn-reader-selection state)
+                nil))
+         ; fn-rdc-reset-is-served-open (books/reader-open-carried.lisp): the
+         ; reference open of the selected archive, pinned with its verdicts,
+         ; with the trie and the recognisers taken from the selection.
          (state (fn-reader-install-result
-                 (fn-served-pin-verdicts
-                  (fn-served-open archive 510 8192 config clock clock
-                                  (fn-auth-open-config))
-                  verdicts)
+                 (fn-rdc-reset sel 510 8192 config clock clock
+                               (fn-auth-open-config))
                  state)))
     (value :ready)))
 

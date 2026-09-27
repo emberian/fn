@@ -544,6 +544,10 @@ checkpoint's S, or NIL."
     (let ((service nil))
       (handler-case
           (progn
+            ;; PKT-648: the store's durability policy against its mount
+            ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
+            ;; before the owner serves anything.
+            (fnn-check-filesystem-identity store t)
             (fnn-owner-recover-core store records max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:

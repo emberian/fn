@@ -277,6 +277,15 @@ def clone(a):
     shutil.copytree(src, dst, symlinks=True)
     for stale in ("c.sock", "c.sock.lock", "fn.toml"):
         (dst / stale).unlink(missing_ok=True)
+    # PKT-579: a copy on another filesystem is a deliberate move (and a
+    # store older than the filesystem record has none): record where the
+    # copy is, keeping its durability policy.
+    rebound = subprocess.run([load_state(dst)["image"], "--fn", "store", str(dst / "store"),
+                              "rebind-filesystem"], stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT)
+    if rebound.returncode:
+        raise SystemExit("rebind-filesystem rc=%d: %r" % (rebound.returncode,
+                                                         rebound.stdout[-400:]))
     dropped = None
     if a.drop_checkpoint:
         # The state checkpoint is derived (the full replay is authoritative

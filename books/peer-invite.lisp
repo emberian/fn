@@ -35,6 +35,8 @@
 (include-book "config")
 ; PRF-124: the peer record the confirm step configures.
 (include-book "peer-config")
+; PKT-613 (PRF-231): the Host and Inviter-Host an invitation may carry.
+(include-book "peer-host")
 
 ; -----------------------------------------------------------------------------
 ; Total selectors and octet helpers
@@ -412,17 +414,27 @@
         (cons "Inviter-Host" inviter-host)
         (cons "Inviter-Port" inviter-port)))
 
+; PKT-613 (PRF-231): Host is an IPv4 literal or an RFC 1123 host name, and
+; so is Inviter-Host unless it is `-'; a name is carried as written and
+; resolved by the dialling node on each attempt.  Any other text is no
+; invitation (the host refuses the words before signing).
+(defun fn-pinv-hosts-okp (host inviter-host)
+  (declare (xargs :guard t))
+  (and (fn-peer-hostp host)
+       (or (equal inviter-host '(45)) (fn-peer-hostp inviter-host))))
+
 (defun fn-pinv-invitation-source (date-ms nonce principal token keys name path
                                           groups host port inviter-host
                                           inviter-port)
   (declare (xargs :guard t))
+  (and (fn-pinv-hosts-okp host inviter-host)
   (fn-pinv-source "fn-invitation"
                   (append (fn-pinv-text "<fn-invite-") (fn-pinv-hex nonce)
                           (fn-pinv-text "@fn-peering.invalid>"))
                   date-ms
                   (fn-pinv-invitation-fields nonce principal token keys name
                                              path groups host port
-                                             inviter-host inviter-port)))
+                                             inviter-host inviter-port))))
 
 (defun fn-pinv-source-id (source)
   (declare (xargs :guard t))

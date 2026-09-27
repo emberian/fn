@@ -4499,6 +4499,95 @@
         "log": "planning/evidence/usenet-headers-3-2026-09-26-native.log",
         "record": "planning/evidence/usenet-headers-3-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-154",
+      "title": "Draining a contact of N ready base jobs examines each job record once and answers the head scan's offers in order",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-009"
+      ],
+      "steps": [
+        "Queue N base jobs for one peer on its routed hop (N = 1,000 through the machine's own :enqueue records; N = 10,000 as copies of one queued job, above the 4,096-record ceiling).",
+        "Drain one contact, asking before every offer, with the head scan (fn-bpnj-contact-next) and with the cursor (fn-bpnjc-contact-next), driving each offer's outcome.",
+        "Count the job records each drain's asks examine and time both drains and the transitions alone (tools/bench/bp-drain-bench.lisp)."
+      ],
+      "expected": [
+        "Both drains offer the same N jobs in the same order.",
+        "The cursor's asks examine N records in all (the head scan's about 2N^2), and the cursor drain's wall less the transitions' is a small constant share."
+      ],
+      "evidence": [
+        "tools/bench/bp-drain-bench.lisp",
+        "planning/evidence/bp-cursors-2026-09-27.md"
+      ]
+    },
+    {
+      "id": "SCN-157",
+      "title": "A peer named by a DNS name: the feed dials `localhost` under the system roots, a name mismatch is refused by name and retried, an unresolvable name is reported and retried, and peer add refuses a non-host",
+      "milestone": "M3",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peer_by_name",
+        "cases": [
+          "test_feed_by_name_under_the_system_roots",
+          "test_name_mismatch_is_refused_by_name_and_retried",
+          "test_resolution_failure_is_named_and_retried",
+          "test_peer_add_refuses_a_host_that_is_not_a_host"
+        ],
+        "native": true,
+        "record": "planning/evidence/peers-by-name-2026-09-27.md",
+        "log": "planning/evidence/peers-by-name-2026-09-27/native-peer-by-name-production.log"
+      },
+      "requirements": [
+        "NNT-048"
+      ],
+      "steps": [
+        "Scratch CA; nodes A and B with CA-signed certificates; A started with SSL_CERT_FILE=CA; A's peer B added as host localhost, starttls - - (the host's name, the system roots); post on A.",
+        "Same, B's certificate names other.test.",
+        "A's peer B at no-such-peer.invalid; post on A.",
+        "peer add with host bad_host.example, and with 127.0.0.1 and server name `-`."
+      ],
+      "evidence": [
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py"
+      ],
+      "expected": [
+        "The article arrives on B byte-identical; no dial failure line.",
+        "At least two `peer dial via=feed ... host=localhost outcome=name-mismatch retry=yes` lines; nothing arrives; both nodes alive.",
+        "At least two `outcome=unresolved retry=yes` lines; A alive and serving the article.",
+        "Both refused with a nonzero exit; no record written."
+      ]
+    },
+    {
+      "id": "SCN-159",
+      "title": "A store is opened on the filesystem it was made on, refused by name when its path now lands on another filesystem (the node volume missing) or holds no record, rebound deliberately and opened; a store requiring durable storage is refused at start on tmpfs and starts once the risk is accepted",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests/test_native_store_mount_identity.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/store-mount-identity-2026-09-27.md",
+        "log": "planning/evidence/store-mount-identity-2026-09-27/native-run.log"
+      },
+      "requirements": [
+        "STO-031"
+      ],
+      "steps": [
+        "init a store in a temporary directory; recover opens it; a copy on the same filesystem opens.",
+        "copy it onto another filesystem (tmpfs to ZFS on hbox): recover and status are refused with `store filesystem changed: expected ..., found ...`; `store rebind-filesystem` records the move and recover opens it.",
+        "an empty directory at the store path is refused as `store filesystem unrecorded` and nothing is created there; a corrupted record is refused as `record invalid`, a removed one as `unrecorded`; rebind opens it.",
+        "an operator store on tmpfs (policy 0) warns at status and starts; with `--storage-require-durable on` its start is refused by name; with `off` it starts again.",
+        "by hand on hbox (root): a loop-mounted ext4 volume opens; unmounted, the empty directory underneath is refused by name; rebind works (the record)."
+      ],
+      "evidence": [
+        "planning/evidence/store-mount-identity-2026-09-27.md",
+        "planning/evidence/store-mount-identity-2026-09-27/native-run.log",
+        "planning/evidence/store-mount-identity-2026-09-27/loop-mount.log",
+        "tests/test_native_store_mount_identity.py"
+      ],
+      "expected": "Opens on the filesystem it was made on; on another filesystem, on an empty directory, or with a missing or corrupted record every open exits 1 with ACL2's named line and writes nothing; rebind-filesystem records the move and the store opens; a policy-1 store on tmpfs or nobarrier is refused at start by name and a policy-0 one warns and starts."
     }
   ]
 }

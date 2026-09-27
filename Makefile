@@ -216,6 +216,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
 	tests/acl2/store-profile-namespace-tests \
+	books/store-mount-identity \
+	tests/acl2/store-mount-identity-tests \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
@@ -317,6 +319,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-compaction-preservation-tests \
 	books/checkpoint-pack-chain \
 	tests/acl2/checkpoint-pack-chain-tests \
+	books/checkpoint-pack-chain-once \
+	tests/acl2/checkpoint-pack-chain-once-tests \
+	books/catalog-load-index \
+	tests/acl2/catalog-load-index-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \
@@ -386,6 +392,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-capacity-config-tests \
 	books/config-carried-candidate \
 	tests/acl2/config-carried-candidate-tests \
+	books/config-carried-open \
+	tests/acl2/config-carried-open-tests \
+	tests/acl2/config-carried-readback-tests \
+	books/config-policy-delta \
+	tests/acl2/config-policy-delta-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -527,6 +538,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-job-offer \
 	books/bp-node-job-offer-progress \
 	tests/acl2/bp-node-job-offer-tests \
+	books/bp-node-job-cursor \
+	tests/acl2/bp-node-job-cursor-tests \
 	books/bp-node-run-class \
 	tests/acl2/bp-run-class-tests \
 	tests/acl2/outcome-class-tests \
@@ -762,6 +775,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-view \
 	books/catalog-entries \
 	books/catalog-refresh \
+	books/catalog-number-index \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -782,6 +796,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-refresh-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
+	tests/acl2/catalog-number-index-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -990,6 +1005,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-reply-buffer-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	books/reader-open-carried \
+	tests/acl2/reader-open-carried-tests \
 	tests/acl2/group-number-index-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \

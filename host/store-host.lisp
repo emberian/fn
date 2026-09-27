@@ -22,6 +22,7 @@
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-facts")
 (include-book "../books/store-profile-open")
+(include-book "../books/store-mount-identity")
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")

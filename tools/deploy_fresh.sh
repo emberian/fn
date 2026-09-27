@@ -413,6 +413,10 @@ elif [ "$STORE" = import ]; then
   if [ ! -f "$TARGET/store/keys/node-secret.key" ]; then
     run clean_env "$FN" --fn store "$TARGET/store" node-secret create
   fi
+  # PKT-579: the copy is a deliberate move onto TARGET's filesystem (and a
+  # store older than the filesystem record has none): record where it is
+  # now, keeping its durability policy.
+  run clean_env "$FN" operator "$TARGET/fn.toml" store rebind-filesystem
 else
   # shellcheck disable=SC2086
   run clean_env "$FN" operator "$TARGET/fn.toml" init $INIT_ARGS $NODE_GROUPS
