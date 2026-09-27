@@ -171,6 +171,57 @@ in a drain mode (new writes refused try-later with "maintenance", reads
 served, the in-flight batch allowed to complete), so an operator can quiesce
 writes before a device operation without stopping the service.
 
+### 3.7 Determinism: every time a decision reads is a recorded input
+
+Requirement (ember, after Fare ch. 3, relayed by the coordinator 2026-09-27):
+"all sources of non-determinism are either eliminated or recorded". The
+owner's fold over the log must be deterministic: no owner step reads
+anything ambiently. For time that means:
+
+1. **Who reads the clock.** Only the host, and only at these points, each
+   reading passed as an argument into exactly one ACL2 call and used for
+   nothing else:
+   - `fnn-owner-advance-clock`, once per served read quantum (before the
+     read's transition): monotonic ms and wall ms into `fn-owner-observe`,
+     which stores the observation in the owner's `clock` field. Every
+     injection in that quantum stamps from that observation (RFC 5537
+     section 3.4). The shed admission of slice 1 reuses THIS reading
+     (`*fnn-owner-quantum-ms*`), not a second read, so one quantum has one
+     time.
+   - the committer, once per disk event: at a barrier's issue, at each
+     expiry of its timed wait (a tick), and at the completion it observes.
+   - the health/status render, once per request (the figure it prints).
+   Lane proto-determinism is auditing today's fold for the others
+   (`fnn-owner-wall-milliseconds`, salts, ordering); each it finds becomes
+   one of these named reading points or is removed.
+2. **What is recorded, and where.** A reading that reaches DURABLE state is
+   recorded in the record it produces: an article's injection date is in its
+   stored octets, a configuration record carries its observation. The fold
+   over the log (`fn-cpr-replay`, recovery's `fn-ock-recover-extended`)
+   consumes only records, so it reads no clock and replays byte for byte.
+   The disk-time events of this design produce NO record: a shed POST is
+   refused before anything is stored, a slow mode is a reply and a log line,
+   and a deadline never changes a batch's outcome
+   (fn-otm-disk-event-keeps-the-pipeline). So the durable fold is
+   independent of disk timing by construction, and that is a theorem, not a
+   convention.
+3. **Replaying decisions, not just state.** The non-durable decisions (which
+   POST was shed, when `slow` began) are functions of the scheduler value
+   and the readings above. Each is already in the service log with its
+   reading (`disk slow: a barrier has waited N ms`, the shed reply's `a
+   write has waited N ms`). Slice 2 adds the owner's decision journal: the
+   sequence of (event, reading) pairs the gate and the committer fed ACL2
+   (`fn-otm-disk-event`, `fn-otm-admit-post`, the picks), written by the
+   log writer thread (never on the owner), so a run's scheduling can be
+   re-driven through the same ACL2 functions and every decision compared
+   byte for byte. It is a trace, not a durable record: losing it loses
+   explanation, never state.
+4. **Deadline logic runs on recorded time only.** `fn-otm-*` takes `now`
+   as an argument; the disk record stores the issue reading (`since`) and
+   the deadline chosen at issue (from the configuration generation current
+   then), so the same inputs give the same mode, the same admission and the
+   same line. The host never compares two times.
+
 ## 4. The F4 bar this proposes
 
 F4 as written ("every control request within 10 s; no read past the
