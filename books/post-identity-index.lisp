@@ -70,6 +70,7 @@
 (include-book "config-owner-live")
 (include-book "store-reclaim-buffer")
 (include-book "msgid-index-concrete")
+(include-book "store-intern")
 
 ; -----------------------------------------------------------------------------
 ; The lookup
@@ -179,9 +180,11 @@
 ; -----------------------------------------------------------------------------
 ; (1) The duplicate-versus-conflict decision the host asks before a prepare.
 
-(defun fn-pidx-existing-action (msgid fn-octets groups o)
-  ; fn-rclb-existing-action with the article found through the view trie.
-  (declare (xargs :stobjs fn-octets :guard t))
+(defun fn-pidx-existing-action (msgid fn-octets groups o fn-arena)
+  ; fn-rclb-existing-action with the article found through the view trie and,
+  ; after the records flip, its stored bytes read through the arena by the
+  ; article's handle (books/store-intern.lisp fn-handle-bytes).
+  (declare (xargs :stobjs (fn-octets fn-arena) :guard t))
   (let ((article (fn-pidx-find-article
                   msgid
                   (fn-state-articles
@@ -189,26 +192,50 @@
                   (fn-own-view o))))
     (if article
         (if (and (fn-rclb-same-articlep (fn-record-string-octets msgid) fn-octets
-                                        (fn-article-payload article))
+                                        (fn-handle-bytes (fn-article-payload article)
+                                                         fn-arena))
                  (equal groups (fn-article-groups article)))
             :duplicate
           :conflict)
       nil)))
 
-; KEYSTONE (1).  The host's call is the buffer decision it replaced, and so,
-; by fn-rclb-existing-action-is-rcl-existing-action, the tombstone-aware
-; verdict of books/store-reclaim.lisp.
-(defthm fn-pidx-existing-action-is-rclb-existing-action
+; KEYSTONE (1).  The host's call is the Store's duplicate entry over the
+; buffer's logical value, books/store-intern.lisp fn-store-existing-action,
+; whose keystone fn-store-existing-action-is-the-verdict-over-alpha makes it
+; D25's tombstone-aware verdict (fn-rcl-action-over) over ALPHA of the
+; acceptance articles: the stored bytes read by handle.
+(defthm fn-pidx-existing-action-is-store-existing-action
   (implies (and (fn-ocl-view-visiblep (fn-own-view o))
-                (fn-scar-view-indexedp o))
-           (equal (fn-pidx-existing-action msgid fn-octets groups o)
-                  (fn-rclb-existing-action msgid fn-octets groups
-                                           (fn-own-store o))))
+                (fn-scar-view-indexedp o)
+                (fn-octets-p fn-octets))
+           (equal (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
+                  (fn-store-existing-action msgid fn-octets groups
+                                            (fn-own-store o) fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-pidx-existing-action
-                                   fn-rclb-existing-action
-                                   fn-scar-view-indexedp)
-                                  (fn-rclb-same-articlep fn-ocl-view-visiblep
-                                   fn-midx-correspondencep fn-find-article)))))
+                                   fn-store-existing-action
+                                   fn-scar-view-indexedp
+                                   fn-rclb-same-articlep fn-rcl-same-articlep)
+                                  (fn-ocl-view-visiblep
+                                   fn-midx-correspondencep fn-find-article
+                                   fn-rclb-same-as-tombstonep fn-rcl-same-as-tombstonep
+                                   fn-rcl-tombstonep fn-pbb-same-articlep fn-pb-same-articlep
+                                   fn-octets-p fn-handle-bytes))
+           :use ((:instance fn-pbb-same-articlep-is-pb-same-articlep
+                            (msgid (fn-record-string-octets msgid))
+                            (held-payload (fn-handle-bytes
+                                           (fn-article-payload
+                                            (fn-find-article msgid (fn-state-articles
+                                                                    (fn-node-acceptance
+                                                                     (fn-sn-node (fn-own-store o))))))
+                                           fn-arena)))
+                 (:instance fn-rclb-same-as-tombstonep-is-rcl
+                            (msgid (fn-record-string-octets msgid))
+                            (tomb (fn-handle-bytes
+                                   (fn-article-payload
+                                    (fn-find-article msgid (fn-state-articles
+                                                            (fn-node-acceptance
+                                                             (fn-sn-node (fn-own-store o))))))
+                                   fn-arena)))))))
 
 ; -----------------------------------------------------------------------------
 ; (2) and (3) The prepare chain.
@@ -230,7 +257,8 @@
             (consp (fn-state-pending s))
             (not (natp generation))
             (not (stringp msgid))
-            (not (fn-octet-listp payload))
+            ; PKT-635: the acceptance payload is the arena handle.
+            (not (natp payload))
             (not (fn-record-stampp stamp))
             (not (fn-selection-validp groups (fn-state-groups s)))
             (fn-pidx-find-article msgid (fn-state-articles s) view))
@@ -350,8 +378,10 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
-           (fn-rcon-record-p record)
+           (fn-held-p record)
            (not (equal (fn-record-stamp record) :legacy))
+           (equal (fn-hc-generation (fn-held-context record))
+                  (fn-sn-keyring-generation s))
            (eq (car (fn-rcon-cpe-projection-step
                      (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-pidx-sn-prepare-node (fn-sn-node s) record view))
@@ -369,9 +399,8 @@
   :hints (("Goal" :in-theory (e/d (fn-pidx-spc-prepare fn-pcar-spc-prepare)
                                   (fn-sn-statep fn-pcar-stage-record
                                    fn-sn-prepare-node fn-rcon-sn-record-bindsp
-                                   fn-rcon-record-p fn-rcon-cpe-projection-step
+                                   fn-held-p fn-rcon-cpe-projection-step
                                    fn-sn-update fn-pcar-spc-prepare-is-spc-prepare
-                                   fn-rcon-record-p-is-record-p
                                    fn-rcon-cpe-projection-step-is-cpe-projection-step
                                    fn-rcon-sn-record-bindsp-is-sn-record-bindsp
                                    fn-pcar-stage-record-is-stage-record)))))

@@ -270,6 +270,17 @@ reader (mv erp val state); the arena is updated in place either way."
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
 
+(defun fnn-core-buffer-arena-state (name &rest args)
+  "A wrapper over the octet buffer, the arena and state (in that order, after
+ARGS): its value.  The owner's POST entries read the payload from the buffer
+and seal it into the arena (host/owner-host.lisp fn-owner-prepare-buffer)."
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name (append args (list (fnn-live-octets) (fnn-live-arena)
+                                                *the-live-state*)))
+    (declare (ignore ignored))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
 (defun fnn-core-buffer-state (name &rest args)
   "A `state`-returning wrapper over the buffer, (mv erp value state) with the
 live buffer passed before state: its value."
