@@ -53,7 +53,7 @@
     ("docs/install.md#2-the-first-node" 4 "status")
     ("docs/install.md#2-the-first-node" 5 "health")
     ("docs/install.md#3-peering-with-a-friend" 1 "peer" "keygen" "/var/lib/fn/keys")
-    ("docs/install.md#3-peering-with-a-friend" 2 "peer" "invite" "friend" "local.*" "198.51.100.9" "119" "friend.example.net" "/var/lib/fn/keys" "/var/lib/fn/invitation-for-friend" "203.0.113.7" "119")
+    ("docs/install.md#3-peering-with-a-friend" 2 "peer" "invite" "friend" "local.*" "198.51.100.9" "119" "news.example.org" "/var/lib/fn/keys" "/var/lib/fn/invitation-for-friend" "203.0.113.7" "119")
     ("docs/install.md#3-peering-with-a-friend" 3 "peer" "accept" "/var/lib/fn/invitation-for-friend" "/var/lib/fn/keys" "friend.example.net" "198.51.100.9:119" "/var/lib/fn/acceptance-for-you")
     ("docs/install.md#3-peering-with-a-friend" 4 "peer" "confirm" "/var/lib/fn/acceptance-for-you" "/var/lib/fn/invitation-for-friend")
     ("docs/install.md#3-peering-with-a-friend" 5 "peer" "list")

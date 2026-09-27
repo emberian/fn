@@ -1,11 +1,13 @@
-# fn configuration.  `fn init` writes this file; every subcommand reads it
-# (default ./fn.toml, or --config <path>).  See docs/operator.md.
+# fn configuration.  `fn operator CONFIG mission small-community --host ADDR
+# --port N` writes one; every `fn operator CONFIG VERB` reads the CONFIG it
+# names.  See share/fn/docs/install.md (docs/install.md in the source).
 
 [store]
 # The store root.  It holds the journal, the writer lock, the configuration
 # records that name the served groups, and the freshness anchor.  The served
 # groups are NOT listed here: they are durable configuration records that
-# ACL2 replays, changed with `fn group create` and `fn group retire`.
+# ACL2 replays, changed with `fn operator CONFIG group create` and
+# `fn operator CONFIG group retire`.
 path = "/var/lib/fn/store"
 
 [listener]
@@ -21,7 +23,7 @@ port = 1119
 
 [auth]
 # RFC 4643 AUTHINFO.  Omit the whole table and the node requires no login,
-# which is what `fn init` writes unless you pass --auth-required.
+# `mission small-community` writes this table with both set to true.
 #
 #   required        a connection must authenticate before a command that
 #                   changes durable state or discloses article content
@@ -32,7 +34,8 @@ port = 1119
 #   protected_only  RFC 4643 section 2.3.2: AUTHINFO answers 483 until a TLS
 #                   layer is active.  Set it whenever the node is reachable
 #                   off the box, because USER/PASS crosses in the clear.
-#   path            the credential file `fn principal set-password` writes.
+#   path            the credential file `fn operator CONFIG principal
+#                   set-password` writes.
 #                   Default <store>/auth.toml, mode 0600.  It holds salted
 #                   verifiers (books/auth-secret.lisp), never secrets.
 #
