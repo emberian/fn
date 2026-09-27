@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-foundation")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnf-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpnf-peer* (cons :dtn '(47 47 102 110 45 98 47)))
@@ -110,7 +110,7 @@
                     (fn-bpnf-issued *bpnf-pending*) 2 0)))
 (assert-event (not (fn-bpnf-operation-matchp
                     (fn-bpnf-issued *bpnf-pending*) 3 1)))
-(must-fail
+(must-fail-checked
  (assert-event (not (fn-bpnf-operation-matchp
                      (fn-bpnf-issued *bpnf-pending*) 3 0))))
 
@@ -178,12 +178,12 @@
 (assert-event (not (equal (fn-bpnf-receive-decision
                            (fn-bpnf-held-list *bpnf-s1*) *bpnf-ingress-p* *bpnf-bundle*)
                           :fresh)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-receive-decision
           (fn-bpnf-held-list *bpnf-s1*) *bpnf-ingress-p* *bpnf-bundle*)
          :fresh)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-held-list *bpnf-s1*)
          (fn-bpnf-held-list *bpnf-pending*))))
@@ -212,7 +212,7 @@
  (not (equal (fn-bpnf-answer-state
               (fn-bpnf-step *bpnf-pending* '(:persist-result 3 0 :refused)))
              *bpnf-pending*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-state
           (fn-bpnf-step *bpnf-pending* '(:persist-result 3 0 :refused)))
@@ -248,7 +248,7 @@
          (fn-bpnf-step (fn-bpnf-answer-state *bpnf-second-proposal*)
                         '(:persist-result 3 0 :durable)))
         (fn-bpnf-answer-state *bpnf-second-proposal*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnf-operation-matchp
    (fn-bpnf-issued (fn-bpnf-answer-state *bpnf-second-proposal*)) 3 0)))
@@ -260,7 +260,7 @@
                                        (list :receive-bundle *bpnf-bundle* '(1 2)
                                              *bpnf-ingress-p*)))))
              :persist)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-next-op
           (fn-bpnf-answer-state
@@ -276,4 +276,4 @@
 (assert-event (fn-bpnf-wait-wakes-p *bpnf-wait* '((:route . 5))))
 (assert-event (equal (nth 1 *bpnf-wait*) '(:bundle 1)))
 (assert-event (fn-bpnf-waitp *bpnf-wait*))
-(must-fail (assert-event (fn-bpnf-wait-wakes-p *bpnf-wait* '((:route . 4)))))
+(must-fail-checked (assert-event (fn-bpnf-wait-wakes-p *bpnf-wait* '((:route . 4)))))

@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-recovery")
 (include-book "byte-store-stable-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bsk0r-configs* (list *fn-cfg-default-record*))
 
@@ -113,11 +113,11 @@
 (assert-event
  (and (equal (fn-bs-crash *fn-bs-empty-store* nil) *fn-bs-empty-store*)
       (not (fn-bs-store-relation *fn-bs-empty-store* (fn-sf-initial-state) *bsk5-arena*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation *fn-bs-empty-store*
                         (fn-bs-recovery-entry-kernel *fn-bs-empty-store* nil) *bsk5-arena*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsk0r-cuts-related (bsk0r-run *fn-bs-empty-store*
                                  (fn-bs-recovery-entry-kernel *fn-bs-empty-store* nil)
@@ -139,7 +139,7 @@
         (fn-bs-fencedp bs ino)
         (equal (fn-bs-lookup (bsk0r-torn) :transactions (fn-bs-txn-name 0)) ino)
         (not (equal (fn-bs-content (bsk0r-torn) ino) (fn-bs-durable-content bs ino))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation (bsk0r-torn) (fn-bs-recovery-entry-kernel (bsk0r-torn) (bsk0r-scan-r (bsk0r-torn))) *bsk5-arena*)))
 
@@ -157,7 +157,7 @@
         (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
    (and (fn-bs-run-relatedp run *bsk5-arena*)
         (equal (fn-sf-phase (cdr (nth 16 run))) :fault))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((image (bsk0r-keep (bsk0r-linked)))
          (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
@@ -168,11 +168,11 @@
 ; refuses, and its "kernel" is not related to the image.
 (assert-event
  (not (fn-sn-open-okp (bsk0r-open nil (bsk0r-keep (bsk0r-linked))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((image (bsk0r-keep (bsk0r-linked))))
     (fn-bs-store-relation image (bsk0r-host nil image) *bsk5-arena*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((image (bsk0r-keep (bsk0r-linked))))
     (bsk0r-cuts-related (bsk0r-run image (bsk0r-host nil image)
@@ -201,12 +201,12 @@
         (bsk0r-l-arm bs ks (bsk5-frame-2) '(:eio . :issued))
         (bsk0r-l-arm bs ks (bsk5-frame-2) '(:eio . 0)))))
 ; Drop the relation: the retained-record kernel over the initial image.
-(must-fail
+(must-fail-checked
  (assert-event (bsk0r-l-arm (bsk5-initial) (bsk0r-l-prepared) (bsk5-frame-2) '(:eio . :issued))))
 ; Drop the input contract: the first record's frame for the second record.
 (assert-event
  (not (fn-bs-record-inputp (bsk0r-l-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame) *bsk5-arena*)))
-(must-fail
+(must-fail-checked
  (assert-event (bsk0r-l-arm (car (bsk0r-l-start)) (bsk0r-l-prepared) (bsk5-frame) '(:eio . :issued))))
 ; Drop the absent stage: O_EXCL fails, the run stops before pair 6.
 (defun bsk0r-l-occupied ()
@@ -218,5 +218,5 @@
                                  (fn-bs-dirs bs))
                 (fn-bs-pending bs) (fn-bs-next-ino bs))))
 (assert-event (fn-bs-lookup (bsk0r-l-occupied) :staging ".stage-k5-2"))
-(must-fail
+(must-fail-checked
  (assert-event (bsk0r-l-arm (bsk0r-l-occupied) (bsk0r-l-prepared) (bsk5-frame-2) '(:eio . :issued))))

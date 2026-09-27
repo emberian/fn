@@ -10,7 +10,7 @@
 (in-package "ACL2")
 (include-book "../../books/served-tls-prefix")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun spt-o (s) (fn-nntp-string-octets s))
 (defun spt-line (s) (append (spt-o s) '(13 10)))
@@ -230,7 +230,7 @@
 (assert-event (not (equal (in-arena-fn-served-drain-run *sr-arena* *spt-feed* (list *spt-t1*))
                           (in-arena-fn-served-drain-run *sr-arena* *spt-feed* (list *spt-two-takethis*)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm spt-boundary-independence-without-equal-octets
     (equal (fn-served-drain-run conn one fn-arena)
            (fn-served-drain-run conn two fn-arena)))))
@@ -239,7 +239,7 @@
 ; the false "the one-read fold carries at most one submission" (what the owner
 ; relied on before PKT-600) is refuted by the two-POST read above.
 (local
- (must-fail
+ (must-fail-checked
   (defthm spt-one-read-carries-at-most-one-submission
     (implies (fn-served-connp conn)
              (<= (len (fn-served-submissions
@@ -254,7 +254,7 @@
 (assert-event (not (equal (fn-served-counted-result (in-arena-spt-counted *sr-arena* *spt-reader* *spt-two-posts*))
                           (in-arena-fn-served-step *sr-arena* *spt-reader* *spt-two-posts*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm spt-old-counted-result-is-whole-step
     (equal (fn-served-counted-result (fn-served-step-counted conn octets fn-arena))
            (fn-served-step conn octets fn-arena)))))

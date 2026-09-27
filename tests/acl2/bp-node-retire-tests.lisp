@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-retire")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;; A journal root after generation 2 was selected: generation 0
 ;; ("lifecycle") and 1 with rows, generation 2 (selected) with one row, a
@@ -70,11 +70,11 @@
 ;; open's view loses it.
 (assert-event
  (member-equal (fn-bpnr-generation-directory 2) (fn-bpnr-retired-names (bpret-names) 3)))
-(must-fail
+(must-fail-checked
  (assert-event (bpret-all-cuts-keep 9 3)))
 ;; Without "no other name the open reads is retired": if the open read
 ;; "lifecycle" (the legacy generation), the program changes it.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnr-open-view (fn-bpnr-apply-ops (bpret-tree) (take 3 (bpret-ops 2)))
                             '("lifecycle") *bpret-budget*)

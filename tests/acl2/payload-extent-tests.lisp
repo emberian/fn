@@ -11,7 +11,7 @@
 (include-book "../../books/payload-extent")
 ; The attached frame digest, so the log's own encoder (fn-lg-log) executes.
 (include-book "../../books/crypto-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-arx-list-places (w state)) :common-lisp-compliant)
@@ -77,7 +77,7 @@
 
 ; Without the faithful read the extent's durable octets are unconstrained.
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pxt-denotes-without-faithful
     (implies (fn-arx-extent-of 3 *pxt-pos* *pxt-r* *pxt-w*)
              (equal (fn-durable-octets 3 (nth 3 (fn-arx-extent-of 3 *pxt-pos* *pxt-r* *pxt-w*))
@@ -87,14 +87,14 @@
 ; fn-arx-intern-step-refines: without the faithful read, or on a value that
 ; is not an arena, the two steps are not provably equal.
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pxt-refines-without-faithful
     (implies (fn-arena-p fn-arena)
              (equal (fn-arx-intern-step acc ws rs ps fn-arena)
                     (fn-srs-intern-step acc ws fn-arena)))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pxt-refines-without-arena-p
     (implies (fn-arx-faithful-p rs ps)
              (equal (fn-arx-intern-step acc ws rs ps fn-arena)
@@ -135,21 +135,21 @@
 ;; Hypothesis-removal must-fails (bounded search: a failed search, not a
 ;; counterexample).
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pxt-chunks-without-faithful
     (implies (and (fn-arena-p fn-arena) (fn-srs-chunksp chunks))
              (equal (fn-arx-steps chunks placess acc fn-arena)
                     (fn-srs-steps chunks acc fn-arena)))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pxt-chunks-without-arena-p
     (implies (and (fn-srs-chunksp chunks) (fn-arx-faithful-chunks-p chunks placess))
              (equal (fn-arx-steps chunks placess acc fn-arena)
                     (fn-srs-steps chunks acc fn-arena)))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pxt-chunks-without-chunksp
     (implies (and (fn-arena-p fn-arena) (fn-arx-faithful-chunks-p chunks placess))
              (let ((steps (fn-arx-steps chunks placess acc fn-arena))
@@ -166,7 +166,7 @@
 ; fn-arx-entry-ok-of-durable: without the file holding the prefix's digest
 ; after it, a read is not provably accepted; with it, it is.
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pxt-entry-ok-without-trailer
     (implies (natp elen)
              (fn-arx-entry-ok (append (fn-durable-octets file eoff elen)

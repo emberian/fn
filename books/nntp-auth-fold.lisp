@@ -1030,7 +1030,7 @@
                            (fn-served-feed-byte
                             fn-auth-fold-safe-connp
                             fn-served-closed-wirep
-                            fn-served-tls-handshakingp)))))
+                            fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)))))
 
 (defthm fn-auth-fold-feed-has-no-local-submission
   (implies (fn-auth-fold-safe-connp conn)
@@ -1042,7 +1042,7 @@
                             fn-auth-fold-safe-connp
                             fn-auth-fold-no-local-effectsp
                             fn-served-closed-wirep
-                            fn-served-tls-handshakingp)))))
+                            fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)))))
 
 (defthm fn-auth-fold-step-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)

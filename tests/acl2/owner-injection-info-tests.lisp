@@ -3,7 +3,7 @@
 ; node's Cancel-Lock in front and the Injection-Info parameters in the block.
 (in-package "ACL2")
 (include-book "../../books/owner-injection-info")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun oiit-codes (cs)
   (declare (xargs :guard (character-listp cs)))
@@ -49,7 +49,7 @@ Hello, news.
    (not (equal (fn-pb-subject (fn-own-sub-stored-octets *oiit-cfg* sub *oiit-ring*)
                               *oiit-agent* (fn-inj-decision-msgid *oiit-d*))
                (cons :source *oiit-source*)))))
-(must-fail
+(must-fail-checked
  (defthm oiit-any-stored-octets-have-the-source
    (equal (fn-pb-subject (fn-own-sub-stored-octets cfg sub ring)
                          (fn-inj-config-agent config)

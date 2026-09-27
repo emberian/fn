@@ -520,12 +520,12 @@
         (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
 
 (defun fn-rclp-decide (profile rule now s records frontier lower names
-                               generations selected disk-free dry)
-  (declare (xargs :guard t :verify-guards nil))
+                               generations selected disk-free dry fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let* ((used (len records))
          (reclaim (fn-bs-pack-reclaim-plan
                    names (fn-bs-profile-max-transactions profile) lower))
-         (counts (fn-rcl-store-counts rule now s))
+         (counts (fn-rcl-store-counts rule now s fn-arena))
          (ctx (fn-rclp-ctx rule now s))
          (msgids (fn-rclp-rewritten-msgids records ctx)))
     (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
@@ -568,7 +568,7 @@
 ; that list is a theorem about the bytes the host writes.
 (defthm fn-rclp-decide-publishes-the-rewrite
   (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected disk-free dry)))
+                           generations selected disk-free dry fn-arena)))
     (implies (equal (car d) :reclaim)
              (and (equal (nth 1 d) *fn-rclp-steps*)
                   (equal (car (fn-cc-capture
@@ -599,7 +599,7 @@
 ; the store's filesystem.
 (defthm fn-rclp-pack-fits-the-disk
   (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected disk-free dry)))
+                           generations selected disk-free dry fn-arena)))
     (implies (equal (car d) :reclaim)
              (<= (+ (len (nth 4 d)) *fn-frame-trailer-octets*) disk-free)))
   :rule-classes nil
@@ -632,7 +632,7 @@
 ; one-link chain; `fn-ccc-retire-plan' then retires every link of the old one.
 (defthm fn-rclp-reclaiming-pack-is-a-first-link
   (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected disk-free dry))
+                           generations selected disk-free dry fn-arena))
         (summary (cadr (fn-cc-capture (fn-rclp-events records (fn-rclp-ctx rule now s))
                                       frontier))))
     (implies (equal (car d) :reclaim)
@@ -669,7 +669,7 @@
 ; :reclaim.
 (defthm fn-rclp-keep-forever-writes-nothing
   (not (equal (car (fn-rclp-decide profile '(:keep-forever) now s records frontier
-                                   lower names generations selected disk-free dry))
+                                   lower names generations selected disk-free dry fn-arena))
               :reclaim))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-rclp-events fn-rclp-freed fn-cc-capture

@@ -473,6 +473,28 @@ input to a safe protocol boundary or close the connection. Do not reinterpret
 the remainder of an oversized article as fresh commands. Response framing must
 preserve payload octets subject to the specified wire transformation.
 
+QUIT ends the connection's input (RFC 3977 section 5.4: the server
+acknowledges QUIT and closes the connection). No octet after the QUIT line is
+framed or answered, whatever the read boundaries: the served fold stops on
+`fn-served-haltedp` (the reader session QUIT closed, or the TLS handshake owed
+after 382), and `fn-served-step-stops-at-quit` (books/served.lisp, PRF-312)
+says a read whose prefix leaves the session quit serves exactly what the
+prefix serves. Before it the commands books/nntp-auth.lisp answers itself
+(AUTHINFO with its credential check, STARTTLS with its 382 and handshake,
+CAPABILITIES, XREDEEM) were answered after the 205 (fuzz-nntp F1).
+
+A transit article (IHAVE after 335, TAKETHIS) meets the same octet bound as a
+POST: the transit connection's body limit is the smaller of the operator's
+profile bound A and the peer record's `inbound-max-octets`
+(`fn-own-peer-body-limit`, books/owner.lisp), the served run retains at most
+that limit of an article before its verdict
+(`fn-tb-served-run-retains-at-most-the-body-limit`, books/transit-bound.lisp,
+PRF-313), and the cut article is refused by name, 437 (IHAVE) or 439 with the
+Message-ID (TAKETHIS, RFC 4644 section 2.5.2), and the connection closed.
+Before it a peer streaming an endless TAKETHIS body grew the owner to 3.94 GiB
+(fuzz-nntp F2): `peer add` writes the record codec's 4 GiB ceiling as
+`inbound-max-octets`, and that alone was the limit.
+
 ## Posting and projection
 
 NNT-004: distinguish proto-article submission from a stored/relayed article.

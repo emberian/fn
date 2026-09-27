@@ -11,7 +11,7 @@
 ; entry, tag 0x87, is skipped).
 (in-package "ACL2")
 (include-book "../../books/tls-reload")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *tlst-not-before* (fn-record-string-octets "260926222343Z"))
 (defconst *tlst-not-after* (fn-record-string-octets "261225222343Z"))
@@ -107,7 +107,7 @@
 
 ; Each conjunct is needed: acceptance without it is not a theorem.
 (defmacro tlst-without (&rest conjuncts)
-  `(must-fail
+  `(must-fail-checked
     (with-prover-step-limit
      100000
      (defthm tlst-accept-without

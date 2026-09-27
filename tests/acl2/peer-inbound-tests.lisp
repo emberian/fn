@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/peer-inbound-invariants")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The peer record and the configuration (books/peer-config.lisp)
@@ -618,6 +618,20 @@
                      (list (pt-reply "436 transfer failed; the article was not received") (fn-nntp-close-effect))))
 (assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "QUIT")))
                      (list (pt-reply "436 the article was not received; closing") (fn-nntp-close-effect))))
+; The wire cut the article at the connection's body limit (fuzz-nntp F2):
+; refused by name and for good -- IHAVE 437 with the size's reason text,
+; TAKETHIS 439 echoing the Message-ID (RFC 4644 section 2.5.2) -- and closed,
+; since the rest of the body is never read.  Not the retry code: the same
+; article would be cut again.
+(defconst *pt-overlimit* '(:reject :body-overlimit))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-r1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))
+                     (list (pt-reply "437 transfer rejected; article exceeds the configured size") (fn-nntp-close-effect))))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))
+                     (list (pt-reply "439 <alt@example.invalid>") (fn-nntp-close-effect))))
+(assert-event (fn-nntp-effectsp (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))))
+; The transfer is over either way: no submission, the session awaits nothing.
+(assert-event (null (fn-post-result-submission (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))))
+(assert-event (null (fn-peer-session-transfer (fn-post-result-session (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*)))))
 ; Every transit reply above is a typed effect list.
 (assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-c1*)))
 (assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-c2*)))
@@ -733,7 +747,7 @@
                                   "" "From the fn INN interop lab.")))))
 ; The statement has no hypothesis.  Tooth: the stronger claim that the relay
 ; changes nothing is false, and INN's article is the value that says so.
-(must-fail
+(must-fail-checked
  (defthm pt-relay-changes-nothing
    (equal (fn-peer-relayed-octets cfg peer octets) octets)
    :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
@@ -752,7 +766,7 @@
                                    (list (fn-cfg-set-policy "path-identity" "fnB.hbox.test")
                                          (fn-cfg-set-peer-delta *pt-peer*)))
                            *fn-cfg-default-stamp*))))
-(must-fail
+(must-fail-checked
  (defthm pt-relay-by-another-node-changes-nothing
    (equal (fn-peer-relayed-octets cfg2 peer (fn-peer-relayed-octets cfg peer octets))
           (fn-peer-relayed-octets cfg peer octets))
@@ -764,7 +778,7 @@
 ; Keystone: no Xref is stored.
 (assert-event (fn-pu-xref-freep *pt-inn-stored*))
 ; No hypothesis.  Tooth: what arrived had one.
-(must-fail
+(must-fail-checked
  (defthm pt-every-article-is-xref-free
    (fn-pu-xref-freep octets)))
 (assert-event (not (fn-pu-xref-freep *pt-inn-fed*)))
@@ -774,7 +788,7 @@
 (assert-event (not (fn-pu-path-markedp *pt-inn-fed* (fn-peer-local-identity *pt-cfg*))))
 ; Tooth for the one hypothesis: a node with no path identity updates no Path
 ; (the policy slot is unset), so what it stores names nothing.
-(must-fail
+(must-fail-checked
  (defthm pt-relay-names-a-node-without-an-identity
    (fn-pu-path-markedp (fn-peer-relayed-octets cfg peer octets)
                        (fn-peer-local-identity cfg))
@@ -864,7 +878,7 @@
 (assert-event (not (equal (fn-pu-path-contents
                            (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
                           (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pu-path-contents
                        (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
                       (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))

@@ -7,7 +7,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-feed")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: every function this book calls is guard verified in the
@@ -145,7 +145,7 @@
 ; nodeC's valid outbound feed has no matching group.  Without the table
 ; recognizer, a duplicate nodeB key can make a later offerable row a target
 ; while lookup reads an earlier non-offerable row.
-(must-fail (assert-event
+(must-fail-checked (assert-event
   (fn-own-feed-offerablep
    (fn-own-feed-record-of "nodeC" *oft-tbl*)
    nil *oft-groups* *oft-path*)))
@@ -157,7 +157,7 @@
 (assert-event (not (fn-own-feed-tablep *oft-bad-duplicate-table*)))
 (assert-event (member-equal "nodeB"
   (fn-own-feed-targets *oft-bad-duplicate-table* nil *oft-groups* *oft-path*)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
   (fn-own-feed-offerablep
    (fn-own-feed-record-of "nodeB" *oft-bad-duplicate-table*)
    nil *oft-groups* *oft-path*)))
@@ -505,7 +505,7 @@
 (assert-event (fn-own-feed-entry-of "nodeC" *oft-tbl*))
 (assert-event (not (fn-own-feed-offerablep (fn-own-feed-record-of "nodeC" *oft-tbl*)
                                            nil *oft-groups* *oft-path*)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
   (member-equal "nodeC" (fn-own-feed-targets *oft-tbl* nil *oft-groups* *oft-path*))))
 ; The other two hypotheses (the table recognizer and the bound entry) have no
 ; tooth because they are not needed: the conclusion follows from the scope
@@ -534,14 +534,14 @@
 ; recognizer accepts.  nodeB is not a target, and it is the origin.
 (assert-event (not (member-equal "nodeB" (fn-own-feed-targets *oft-tbl* "nodeB"
                                                               *oft-groups* *oft-path*))))
-(must-fail (assert-event (oft-loop-conclusion *oft-tbl* "nodeB" "nodeB" *oft-path*)))
+(must-fail-checked (assert-event (oft-loop-conclusion *oft-tbl* "nodeB" "nodeB" *oft-path*)))
 ; Tooth (membership), Path half: the article nodeB has already relayed.
 (defconst *oft-seen-path* (fn-own-feed-path-of *oft-seen*))
 (assert-event (not (member-equal "nodeB" (fn-own-feed-targets
                                           *oft-tbl* nil
                                           (fn-own-feed-groups-of *oft-seen*)
                                           *oft-seen-path*))))
-(must-fail (assert-event (oft-loop-conclusion *oft-tbl* "nodeB" nil *oft-seen-path*)))
+(must-fail-checked (assert-event (oft-loop-conclusion *oft-tbl* "nodeB" nil *oft-seen-path*)))
 ; Tooth (table recognizer): two entries keyed nodeB, the first with nodeB's
 ; record, the second with the record of a peer nodeE that feeds fn.*.  The
 ; second passes the decision for the seen article, so nodeB is a target; the
@@ -559,5 +559,5 @@
                                      *oft-bad-loop-table* nil
                                      (fn-own-feed-groups-of *oft-seen*)
                                      *oft-seen-path*)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
   (oft-loop-conclusion *oft-bad-loop-table* "nodeB" nil *oft-seen-path*)))

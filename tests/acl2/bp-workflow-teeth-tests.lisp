@@ -9,7 +9,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/bp-workflow-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: a committed node, a durable enqueue and
@@ -75,7 +75,7 @@
 ; stronger, and ACL2 refuses it.
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpw-teeth-trace-does-not-preserve-the-state
     (equal (fn-bp-trace *bpw-teeth-state* *bpw-teeth-events*)
            *bpw-teeth-state*))))

@@ -10,7 +10,7 @@
 (include-book "../../books/bp-node-profile-admission")
 (include-book "../../books/bp-fragment")
 (include-book "bp-channel-ingress-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnpat-adu* (fn-bpnpf-bundle-adu-length *bpnf-bundle*))
 (defconst *bpnpat-wire-octets* (len *bpnf-wire*))
@@ -41,7 +41,7 @@
    (and (not (fn-bpnpf-profilep p))
         (not (equal (bpnpat-answer p *bpcin-result* *bpnf-wire*)
                     *bpcin-admitted-answer*)))))
-(must-fail
+(must-fail-checked
  (defthm bpnpat-within-without-profile
    (implies (and (fn-cbor-at-mostp wire (fn-bpnpf-bundle-octets profile))
                  (implies (fn-bpnf-receive-wire-readyp
@@ -63,7 +63,7 @@
              '(:refused :bundle-beyond-profile))
       (not (equal (bpnpat-answer *bpnpat-short-bundle* *bpcin-result* *bpnf-wire*)
                   *bpcin-admitted-answer*))))
-(must-fail
+(must-fail-checked
  (defthm bpnpat-within-without-bundle-bound
    (implies (and (fn-bpnpf-profilep profile)
                  (implies (fn-bpnf-receive-wire-readyp
@@ -86,7 +86,7 @@
                (fn-bpnpf-adu-octets *bpnpat-short-adu*)))
       (equal (bpnpat-answer *bpnpat-short-adu* *bpcin-result* *bpnf-wire*)
              '(:refused :adu-beyond-profile))))
-(must-fail
+(must-fail-checked
  (defthm bpnpat-within-without-adu-bound
    (implies (and (fn-bpnpf-profilep profile)
                  (fn-cbor-at-mostp wire (fn-bpnpf-bundle-octets profile)))
@@ -111,7 +111,7 @@
    (and (equal r '(:refused :profile))
         (not (fn-bpnf-receive-wire-readyp r))
         (not (fn-bpnpf-profilep '(0 0 0 0))))))
-(must-fail
+(must-fail-checked
  (defthm bpnpat-ready-without-ready
    (fn-bpnpf-profilep profile)
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
@@ -129,7 +129,7 @@
         (not (fn-cbor-at-mostp *bpnf-wire* (fn-bpnpf-bundle-octets short)))
         (equal (bpnpat-answer short *bpcin-ambiguous* *bpnf-wire*)
                '(:refused :ambiguous-peer)))))
-(must-fail
+(must-fail-checked
  (defthm bpnpat-refuses-without-admitted-channel
    (implies (and (fn-bpnpf-profilep profile)
                  (not (fn-cbor-at-mostp wire (fn-bpnpf-bundle-octets profile))))
@@ -143,7 +143,7 @@
 (assert-event
  (equal (bpnpat-answer '(64 16777216 1) *bpcin-result* *bpnf-wire*)
         '(:refused :profile)))
-(must-fail
+(must-fail-checked
  (defthm bpnpat-refuses-without-profile
    (implies (and (not (equal (fn-cbor-ag-car admission) :refused))
                  (not (fn-cbor-at-mostp wire (fn-bpnpf-bundle-octets profile))))

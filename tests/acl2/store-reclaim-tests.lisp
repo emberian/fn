@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-reclaim")
 (include-book "../../books/nntp-reclaimed")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 ; Two stored articles in group "g", numbers 1 and 2, stamped at second 100.
@@ -68,14 +68,14 @@
 ; Tooth: without (fn-rcl-rulep rule) -- a zero-day rule stages nothing, and
 ; the configuration still reads keep-forever.
 (assert-event (not (fn-rcl-rulep '(:release-after 0))))
-(must-fail (assert-event (equal (fn-rcl-config-rule
+(must-fail-checked (assert-event (equal (fn-rcl-config-rule
                                  (fn-cfg-apply *rt-v0* 1 nil
                                                (fn-rcl-rule-deltas '(:release-after 0))))
                                 '(:release-after 0))))
 ; Tooth for fn-rcl-config-rule-without-a-row-keeps-forever: with a row.
 (defconst *rt-v1* (fn-cfg-apply *rt-v0* 1 nil (fn-rcl-rule-deltas *rt-rall*)))
 (assert-event (fn-rcl-limit-row (fn-cfg-limits *rt-v1*) *fn-rcl-rule-slot*))
-(must-fail (assert-event (equal (fn-rcl-config-rule *rt-v1*) '(:keep-forever))))
+(must-fail-checked (assert-event (equal (fn-rcl-config-rule *rt-v1*) '(:keep-forever))))
 
 ; --- The decision (fn-rcl-reclaimable-is-no-obligation-names-it): both sides.
 (defmacro rt-both (rule now h verdicts article expect)
@@ -132,7 +132,7 @@
 (assert-event (equal (fn-accept-prepare *rt-s1* 0 "<a1@x>" 0 '("g") 200) *rt-s1*))
 (assert-event (not (equal (fn-accept-prepare *rt-s1* 0 "<a3@x>" 0 '("g") 200) *rt-s1*)))
 ; Tooth for fn-rcl-reclaim-preserves-statep: a non-state stays a non-state.
-(must-fail (assert-event (fn-statep (fn-rcl-reclaim-state 7 "<a1@x>" *rt-tomb*))))
+(must-fail-checked (assert-event (fn-statep (fn-rcl-reclaim-state 7 "<a1@x>" *rt-tomb*))))
 
 ; fn-rcl-prepare-commutes-with-reclaim: a new article staged either way.
 (assert-event (equal (fn-accept-prepare *rt-s1* 0 "<a3@x>" *rt-h3* '("g") 200)
@@ -146,7 +146,7 @@
                                   (list *rt-a2* (fn-make-article "<a1@x>" 'x '("g") '(("g" . 1)) t 100))
                                   2 nil nil))
 (assert-event (not (fn-statep *rt-bad*)))
-(must-fail (assert-event (equal (fn-accept-prepare (fn-rcl-reclaim-state *rt-bad* "<a1@x>" *rt-tomb*)
+(must-fail-checked (assert-event (equal (fn-accept-prepare (fn-rcl-reclaim-state *rt-bad* "<a1@x>" *rt-tomb*)
                                                    0 "<a3@x>" *rt-h3* '("g") 200)
                                 (fn-rcl-reclaim-state
                                  (fn-accept-prepare *rt-bad* 0 "<a3@x>" *rt-h3* '("g") 200)
@@ -158,7 +158,7 @@
 (assert-event (equal (fn-rcl-reclaim-if-permitted *rt-s* '(:keep-forever) 0 *rt-none* nil "<a1@x>" *rt-tomb*)
                      *rt-s*))
 ; Tooth: with neither hypothesis (no holder, a releasing rule) it changes.
-(must-fail (assert-event (equal (fn-rcl-reclaim-if-permitted *rt-s* *rt-rall* 0 *rt-none* nil
+(must-fail-checked (assert-event (equal (fn-rcl-reclaim-if-permitted *rt-s* *rt-rall* 0 *rt-none* nil
                                                              "<a1@x>" *rt-tomb*)
                                 *rt-s*)))
 
@@ -189,7 +189,7 @@
                                          (fn-rcl-reclaim-articles *rt-arts1* "<a1@x>" *rt-t2*))
                      :conflict))
 (assert-event (not (fn-rcl-collisionp *rt-p1* *rt-tomb-octets*)))
-(must-fail (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g")
+(must-fail-checked (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g")
                                                     (fn-rcl-reclaim-articles *rt-arts1* "<a1@x>" *rt-t2*))
                                 (fn-rcl-action-over "<a1@x>" *rt-p1* '("g") *rt-arts1*))))
 
@@ -224,11 +224,11 @@
 (assert-event (equal (in-arena-fn-nntp-article-response *sr-arena* *rt-session* *rt-r1* 1 :body t "g")
                      (fn-nntp-single *rt-session* "423 article reclaimed")))
 ; Teeth: a live article is served; an article with no usable identifier is 503.
-(must-fail (assert-event (equal (in-arena-fn-nntp-article-response *sr-arena* *rt-session* *rt-a1-wire* 1 :article t "g")
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-article-response *sr-arena* *rt-session* *rt-a1-wire* 1 :article t "g")
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
 (defconst *rt-noid* (fn-make-article "no-angle" *rt-tomb-octets* '("g") '(("g" . 1)) t 100))
 (assert-event (not (fn-nntp-article-idp *rt-noid*)))
-(must-fail (assert-event (equal (in-arena-fn-nntp-article-response *sr-arena* *rt-session* *rt-noid* 1 :article t "g")
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-article-response *sr-arena* *rt-session* *rt-noid* 1 :article t "g")
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
 
 ; fn-nntp-number-retrieval-answers-reclaimed: ARTICLE 1 in "g".
@@ -240,15 +240,15 @@
 (assert-event (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *rt-session* *rt-s1-served* :article *rt-tok1*)
                      (fn-nntp-single *rt-session* "423 article reclaimed")))
 ; Tooth (tombstone hypothesis): article 2 is live and is not answered so.
-(must-fail (assert-event (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *rt-session* *rt-s1-served* :article '(50))
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *rt-session* *rt-s1-served* :article '(50))
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
 ; Tooth (a selected group): with none, 412.
-(must-fail (assert-event (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (fn-nntp-make-session t nil nil t) *rt-s1-served* :article *rt-tok1*)
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (fn-nntp-make-session t nil nil t) *rt-s1-served* :article *rt-tok1*)
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
 ; By Message-ID over the scan the indexed lookup refines: 430.
 (assert-event (equal (in-arena-fn-nntp-msgid-retrieval *sr-arena* *rt-session* *rt-s1-served* :article (fn-record-string-octets "<a1@x>"))
                      (fn-nntp-single *rt-session* "430 article reclaimed")))
-(must-fail (assert-event (equal (in-arena-fn-nntp-msgid-retrieval *sr-arena* *rt-session* *rt-s1-served* :article (fn-record-string-octets "<a2@x>"))
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-msgid-retrieval *sr-arena* *rt-session* *rt-s1-served* :article (fn-record-string-octets "<a2@x>"))
                                 (fn-nntp-single *rt-session* "430 article reclaimed"))))
 
 ; --- OVER and NEWNEWS drop a reclaimed article (lane reclaim-host).
@@ -282,29 +282,29 @@
 (assert-event (equal (car (in-arena-fn-nntp-over-response *sr-arena* *rt-session* (fn-make-state '("g") '(("g" . 3)) (list *rt-wa2* *rt-wa1*) 2 nil nil) (list *rt-wid1*)))
                      (car (fn-nntp-multi *rt-session* "224 overview information follows" nil))))
 ; Tooth (tombstone): the live article 2.
-(must-fail (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-ws* (list (fn-record-string-octets "<w2@x>")))
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-ws* (list (fn-record-string-octets "<w2@x>")))
                                 (fn-nntp-single *rt-session* "430 article reclaimed"))))
 ; Tooth (a Message-ID token): the number token 1 is a range.
-(must-fail (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-ws* (list '(49)))
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-ws* (list '(49)))
                                 (fn-nntp-single *rt-session* "430 article reclaimed"))))
 ; Tooth (the article is held): an unknown Message-ID.
-(must-fail (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-ws* (list (fn-record-string-octets "<zz@x>")))
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-ws* (list (fn-record-string-octets "<zz@x>")))
                                 (fn-nntp-single *rt-session* "430 article reclaimed"))))
 
 ; fn-nntp-over-current-answers-reclaimed, and its teeth.
 (defconst *rt-cur1* (fn-nntp-make-session t "g" 1 t))
 (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-cur1* *rt-ws* nil)
                      (fn-nntp-single *rt-cur1* "423 article reclaimed")))
-(must-fail (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t "g" 2 t) *rt-ws* nil)
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t "g" 2 t) *rt-ws* nil)
                                 (fn-nntp-single (fn-nntp-make-session t "g" 2 t)
                                                 "423 article reclaimed"))))
-(must-fail (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t nil 1 t) *rt-ws* nil)
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t nil 1 t) *rt-ws* nil)
                                 (fn-nntp-single (fn-nntp-make-session t nil 1 t)
                                                 "423 article reclaimed"))))
-(must-fail (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t "g" nil t) *rt-ws* nil)
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t "g" nil t) *rt-ws* nil)
                                 (fn-nntp-single (fn-nntp-make-session t "g" nil t)
                                                 "423 article reclaimed"))))
-(must-fail (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t "g" 7 t) *rt-ws* nil)
+(must-fail-checked (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* (fn-nntp-make-session t "g" 7 t) *rt-ws* nil)
                                 (fn-nntp-single (fn-nntp-make-session t "g" 7 t)
                                                 "423 article reclaimed"))))
 
@@ -313,7 +313,7 @@
 (assert-event (equal (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(1 2) *rt-warts*)
                      (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(2) *rt-warts*)))
 ; Tooth (tombstone): removing the live 2 changes the lines.
-(must-fail (assert-event (equal (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(1 2) *rt-warts*)
+(must-fail-checked (assert-event (equal (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(1 2) *rt-warts*)
                                 (in-arena-fn-nov-lines-for-numbers *sr-arena* "g" '(1) *rt-warts*))))
 
 ; fn-nntp-newnews-scan-lists-only-live-articles: 2 is listed, 1 is not,
@@ -324,7 +324,7 @@
                    (fn-nntp-newnews-newp 0 100 :none)
                    (equal (in-arena-fn-nntp-newnews-live-ids *sr-arena* *rt-warts*) *rt-nn*)))
 ; Tooth (membership in the scan): the reclaimed id is not a live id.
-(must-fail (assert-event (member-equal (fn-nntp-string-octets "<w1@x>")
+(must-fail-checked (assert-event (member-equal (fn-nntp-string-octets "<w1@x>")
                                        (in-arena-fn-nntp-newnews-live-ids *sr-arena* *rt-warts*))))
 
 ; -----------------------------------------------------------------------------

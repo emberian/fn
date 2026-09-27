@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-admin")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-na-test-argv (words)
   (if (consp words)
@@ -240,7 +240,7 @@
 ; unlocked value above (lock-owned = NIL, status :refused, jpub NIL).
 ; (1) The acceptance hypothesis dropped: a refused result says nothing of
 ; the lock.
-(must-fail
+(must-fail-checked
  (defthm fn-na-lock-without-acceptance
    (let ((result (fn-native-admin-publication-authorize
                   records frontier config-records record lock-owned observed-names
@@ -254,7 +254,7 @@
 ; (2) The publication-state hypothesis replaced by its negation: a result
 ; with no jpub, which the executor never runs, may come from an unlocked
 ; process.
-(must-fail
+(must-fail-checked
  (defthm fn-na-lock-without-a-publication-state
    (let ((result (fn-native-admin-publication-authorize
                   records frontier config-records record lock-owned observed-names
@@ -284,7 +284,7 @@
 (assert-event (null (fn-native-admin-publication-jpub *fn-na-past-bound*)))
 ;; The acceptance hypothesis dropped: the refused value carries no natural
 ;; generation, so the conclusion fails at it.
-(must-fail
+(must-fail-checked
  (defthm fn-na-bound-without-acceptance
    (let ((result (fn-native-admin-publication-authorize
                   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t nil 1)))
@@ -659,7 +659,7 @@
  (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
                                 "dtn://sender/" 0)
                (fn-cfg-peers (fn-cfg-value *fn-na-bp-carries-replayed*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (member-equal (fn-cfg-row-make "relay" "bp-boundary-carries"
                                  "dtn://sender/" 0)
@@ -863,7 +863,7 @@
 (assert-event (equal (fn-native-admin-result-reason
                       (fn-native-admin-plan *fn-na-improper-reserved-argv*))
                      :argv))
-(must-fail
+(must-fail-checked
  (defthm fn-na-reserved-create-without-argvp
    (implies (and (equal (fn-native-admin-words argv) (list "group" "create" name))
                  (fn-native-admin-group-name-reservedp name))
@@ -880,7 +880,7 @@
                                     fn-native-admin-decimal-value))))))
 ; (2) Without the `group create' words: `group retire example.test' is
 ; accepted (the witness above).
-(must-fail
+(must-fail-checked
  (defthm fn-na-reserved-without-create
    (implies (and (fn-native-admin-argvp argv)
                  (fn-native-admin-group-name-reservedp name))
@@ -896,7 +896,7 @@
                                     fn-native-admin-decimalp
                                     fn-native-admin-decimal-value))))))
 ; (3) Without the reservation: `group create fn.test' is accepted.
-(must-fail
+(must-fail-checked
  (defthm fn-na-create-refused-without-reservation
    (implies (and (fn-native-admin-argvp argv)
                  (equal (fn-native-admin-words argv) (list "group" "create" name)))
@@ -917,7 +917,7 @@
 ; "Example.a" would be creatable; without the whole-name "example" disjunct,
 ; "example" would; without the "example." prefix, "example.test" would.
 (assert-event (not (fn-native-admin-group-name-creatablep "Example.a")))
-(must-fail
+(must-fail-checked
  (defthm fn-na-creatable-without-case-fold
    (equal (fn-native-admin-group-name-creatablep text)
           (and (fn-record-group-namep text)
@@ -932,7 +932,7 @@
    :hints (("Goal" :in-theory (disable fn-record-group-namep
                                        fn-native-admin-fold-octets
                                        fn-record-string-octets)))))
-(must-fail
+(must-fail-checked
  (defthm fn-na-creatable-without-only-component
    (equal (fn-native-admin-group-name-creatablep text)
           (and (fn-record-group-namep text)
@@ -947,7 +947,7 @@
    :hints (("Goal" :in-theory (disable fn-record-group-namep
                                        fn-native-admin-fold-octets
                                        fn-record-string-octets)))))
-(must-fail
+(must-fail-checked
  (defthm fn-na-creatable-without-example-prefix
    (equal (fn-native-admin-group-name-creatablep text)
           (and (fn-record-group-namep text)
@@ -1059,21 +1059,21 @@
          (fn-record-string-octets "to.peer") 'tail))
 (assert-event (equal (fn-native-admin-words *fn-na-improper-special-argv*)
                      '("group" "create" "to.peer")))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-native-admin-plan *fn-na-improper-special-argv*)
          (fn-native-admin-result :accepted nil :create-group
                                  (caddr *fn-na-improper-special-argv*) 0 nil nil))))
 ; (2) Without the `group create' words: `group retire to.peer' plans a
 ; :remove-group.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((argv (fn-na-test-argv '("group" "retire" "to.peer"))))
     (equal (fn-native-admin-plan argv)
            (fn-native-admin-result :accepted nil :create-group
                                    (caddr argv) 0 nil nil)))))
 ; (3) Without creatability: a reserved name is refused.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((argv (fn-na-test-argv '("group" "create" "example.to"))))
     (equal (fn-native-admin-plan argv)
@@ -1166,7 +1166,7 @@
 (defconst *fn-na-dirty-rows*
   (list (fn-cfg-row-make "relay" "bp-boundary-carries" "dtn://a b/" 0)))
 (assert-event (not (fn-native-admin-peer-extra-cleanp *fn-na-dirty-rows*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-native-admin-peer-extra-decode
           (append (fn-native-admin-peer-extra-octets *fn-na-dirty-rows*)

@@ -26,11 +26,9 @@
 ;   (:dry-run MSGIDS FREED COUNTS)  what a run would reclaim; nothing written
 ;   (:reclaim MSGIDS FREED RECORDS COUNTS)
 ;                                   RECORDS: the rewritten history
-; COUNTS read the articles through the arena (books/store-reclaim-holders.lisp
-; fn-rcl-store-counts-arena; lane matrix-reds-reclaim): the arena is only read.
 (defun fn-lgr-decide (profile rule now s records dry fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (let* ((counts (fn-rcl-store-counts-arena rule now s fn-arena))
+  (let* ((counts (fn-rcl-store-counts rule now s fn-arena))
          (ctx (fn-rclp-ctx rule now s))
          (msgids (fn-rclp-rewritten-msgids records ctx)))
     (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
@@ -72,7 +70,7 @@
 ;                                         per-record rewrites, in order
 (defun fn-lgr-decide-stream (profile rule now s acc dry fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (let ((counts (fn-rcl-store-counts-arena rule now s fn-arena))
+  (let ((counts (fn-rcl-store-counts rule now s fn-arena))
         (msgids (rev (nth 1 acc)))
         (freed (nth 2 acc)))
     (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
@@ -108,5 +106,5 @@
   :hints (("Goal" :use ((:instance fn-rcls-fold-of-init (ctx (fn-rclp-ctx rule now s))))
                   :in-theory (e/d (fn-lgr-decide fn-lgr-decide-stream)
                                   (fn-rcls-fold fn-rclp-events fn-rclp-freed
-                                   fn-rclp-rewritten-msgids fn-rcl-store-counts-arena
+                                   fn-rclp-rewritten-msgids fn-rcl-store-counts
                                    fn-rclp-ctx fn-bs-profile-admittedp)))))

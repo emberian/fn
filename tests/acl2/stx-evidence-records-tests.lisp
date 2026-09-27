@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/stx-evidence-records")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *stxe-profile-unknown* '(117 110 107 110 111 119 110 45 118 49))
 (defconst *stxe-evidence*
@@ -69,7 +69,7 @@
       (equal (fn-stxe-keyring-profile
               '(102 110 45 104 121 98 114 105 100 45 118 51))
              '(102 110 45 104 121 98 114 105 100 45 118 51))))
-(must-fail
+(must-fail-checked
  (defthm stxe-keyring-profile-identity-without-off-v2
    (equal (fn-stxe-keyring-profile profile) profile)
    :hints (("Goal" :in-theory (enable fn-stxe-keyring-profile)))))
@@ -87,7 +87,7 @@
         *stxe-revoked-evidence*))
 (assert-event (null (fn-stxe-code-token 6)))
 ; Tooth (the token is one of the five): a sixth keyword is no record.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-stxe-p (fn-stxe-make 5 9 13 "<revoked@example.invalid>" :withdrawn
                            (make-list 32 :initial-element 7) 5

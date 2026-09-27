@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-held-payload")
 (include-book "catalog-record-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; A request whose article field (position 9) is ART.
 (defun bphht-req (art)
@@ -54,7 +54,7 @@
 (defthm bphht-list-model-refuses
   (equal (equal '(1 2) (fn-arena-payload 0 '((1 2 . 3)))) nil)
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm bphht-equation-without-arena
    (equal (fn-bphh-octets-at-p '(1 2) 0 0 '((1 2 . 3)))
           (equal '(1 2) (fn-arena-payload 0 '((1 2 . 3)))))

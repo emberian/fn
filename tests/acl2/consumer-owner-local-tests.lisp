@@ -1,6 +1,6 @@
 ; Actual local-owner proposal subject, with committed Store witnesses.
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/consumer-owner-local")
 
 (defun colt-reserve (s)
@@ -71,7 +71,7 @@
          (fn-cp-nth 1
           (fn-cp-cursor-decode (cadr *colt-position*))))))
 (assert-event (equal (fn-col-status *colt-o1* '(88)) '(:refused :unknown-consumer)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cp-nth 3 (fn-col-status *colt-o1* '(88)))
          (- (fn-cp-nth 2 (fn-col-status *colt-o1* '(88)))

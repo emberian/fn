@@ -1,6 +1,7 @@
 ; Real syscall failures followed by the host's classified error observation.
 ; The concrete metadata seam supplies executable, nondegenerate witnesses.
 (in-package "ACL2")
+(include-book "must-fail-checked")
 (include-book "byte-store-relation-tests")
 (include-book "../../books/byte-store-program-invariants")
 (include-book "../../books/codec-attach")
@@ -95,7 +96,7 @@
 
 (assert-event (fn-bs-frontier-noncommit-observationp '(:frontier-dir :error)))
 ; The relation premise of the actual-step observation theorem is necessary.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((pair (cons (fn-bs-initial-image 4 nil (fn-bs-test-frontier))
                      (fn-sf-initial-state)))
@@ -103,7 +104,7 @@
     (fn-bs-store-relation (car after) (cdr after) 'nil))))
 ; The event-domain premise is necessary: announcing directory success BEFORE
 ; the real fence lets the kernel reserve a frontier that can still disappear.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                       ".allocation-test" (fn-bs-test-next)))
@@ -124,7 +125,7 @@
 
 ; Fresh allocation needs the relation's allocation invariant. Reusing 0
 ; aliases the real config inode while keeping its nonempty metadata bytes.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((bs (fn-bs-initial-image 4 (fn-bs-test-config) (fn-bs-test-frontier)))
          (bad (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs)
@@ -134,14 +135,14 @@
 ; The :ready hypothesis of authority quietness is necessary at the real
 ; post-rename cut; dropping the relation permits that byte image to be
 ; paired incorrectly with a :ready kernel as well.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                       ".allocation-test" (fn-bs-test-next)))
          (pair (nth 9 run)))
     (and (equal (fn-bs-ops-for-dir (fn-bs-pending (car pair)) :root) nil)
          (equal (fn-bs-ops-for-dir (fn-bs-pending (car pair)) :transactions) nil)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                       ".allocation-test" (fn-bs-test-next)))
@@ -153,7 +154,7 @@
 ; Commit observation: one independent must-fail per hypothesis.
 ; No relation: malformed config, but the attempted phase and committed
 ; frontier (quiet root, candidate bytes durable) both hold.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                       ".allocation-test" (fn-bs-test-next)))
@@ -162,7 +163,7 @@
          (after (fn-sf-frontier-dir-result ks :ok)))
     (and (fn-bs-store-relation bs after 'nil) (equal (fn-sf-phase after) :reserved)))))
 ; No phase premise: a commit observation cannot skip the replace observation.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                       ".allocation-test" (fn-bs-test-next)))
@@ -171,7 +172,7 @@
          (after (fn-sf-frontier-dir-result ks :ok)))
     (and (fn-bs-store-relation bs after 'nil) (equal (fn-sf-phase after) :reserved)))))
 ; No byte commit: the real attempted state before the root fence.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                       ".allocation-test" (fn-bs-test-next)))

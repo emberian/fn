@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-hybrid-control")
 (include-book "std/testing/assert-equal" :dir :system)
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *nhc-principal* (make-list 32 :initial-element 1))
@@ -88,6 +88,6 @@
                        (fn-nhc-author-refusal :carrier :unknown-group)))
                      :unknown-group))
 ; The named words are refusals, and the vocabulary's non-refusals are not.
-(must-fail (assert-event (equal (fn-native-control-status-class :uncertain) :refused)))
-(must-fail (assert-event (equal (fn-nhc-author-refusal :carrier :path-present)
+(must-fail-checked (assert-event (equal (fn-native-control-status-class :uncertain) :refused)))
+(must-fail-checked (assert-event (equal (fn-nhc-author-refusal :carrier :path-present)
                                 :unknown-group)))

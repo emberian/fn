@@ -6,7 +6,7 @@
 ; grammar, and the FNLS kind-3 request.
 (in-package "ACL2")
 (include-book "../../books/control-evidence")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defun cet-string (octets) (fn-record-octets-string octets))
@@ -97,7 +97,7 @@
 ; Without the hypothesis (records other than the journal: none carried) the
 ; conclusion fails: the decision is a withdrawal the records do not hold.
 (assert-event (not (equal nil *cet-ws*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (iff (member-equal (cet-plan *cet-v*) nil)
        (fn-ctl-withdrawalp (cet-plan *cet-v*)))))
@@ -111,12 +111,12 @@
       (member-equal (fn-cev-log-line (cet-plan *cet-v*)) (fn-cev-log-lines *cet-ws*))))
 ; Without the withdrawal-record hypothesis (a decline) the words are not a log line.
 (assert-event (not (fn-ctl-withdrawalp (cet-plan nil))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cev-decision-line (cet-plan nil))
          (append (fn-nls-text "decision=") (fn-cev-log-line (cet-plan nil))))))
 ; Without the relation hypothesis the line is in no log of the carried records.
-(must-fail
+(must-fail-checked
  (assert-event
   (member-equal (fn-cev-log-line (cet-plan *cet-v*)) (fn-cev-log-lines nil))))
 
@@ -165,14 +165,14 @@
 (assert-event (not (equal (car (fn-cev-any-request-decode
                                 (fn-cev-any-request-encode '(:control-evidence . "nope") 0)))
                           :live-status)))
-(must-fail
+(must-fail-checked
  (defthm cevt-any-round-trip-without-kind
    (implies (and (equal kind '(:control-evidence . "nope")) (equal offset 0)
                  (fn-record-uint32p offset))
             (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
                    (list :live-status kind offset)))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm cevt-round-trip-without-kind
    (implies (and (equal kind '(:control-evidence . "nope")) (equal offset 0)
                  (fn-record-uint32p offset))
@@ -185,14 +185,14 @@
 (assert-event (not (equal (car (fn-cev-any-request-decode
                                 (fn-cev-any-request-encode :control-log 4294967296)))
                           :live-status)))
-(must-fail
+(must-fail-checked
  (defthm cevt-any-round-trip-without-offset
    (implies (and (equal kind :control-log) (equal offset 4294967296)
                  (or (member-equal kind *fn-nls-kinds*) (fn-cevg-kindp kind)))
             (equal (fn-cev-any-request-decode (fn-cev-any-request-encode kind offset))
                    (list :live-status kind offset)))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm cevt-round-trip-without-offset
    (implies (and (equal kind :control-log) (equal offset 4294967296)
                  (fn-cevg-kindp kind))

@@ -2,7 +2,7 @@
 (include-book "../../books/bp-app-handoff-time")
 (include-book "bp-app-handoff-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpaht-arrival* (fn-clock-observation 1000 0 0 nil))
 (defconst *bpaht-live* (fn-clock-observation 1001 0 0 nil))
@@ -29,11 +29,11 @@
 (assert-event (equal (car (fn-bpah-pending-decision-at
                            *bpah-state* *bpah-local* *bpaht-live*))
                      :uncertain))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpah-pending-decision-at
                *bpah-state* *bpah-local* *bpaht-live*)) :ready)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpah-pending-decision-at
                *bpaht-state* *bpah-local* *bpaht-expired*)) :ready)))
@@ -213,7 +213,7 @@
  (equal (fn-bpah-select-oldest-at nil *bpah-local*
                                     *bpaht-wall-less* *bpaht-old-held*)
         *bpaht-old-held*))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-held-expiry
           (fn-bpah-select-oldest-at nil *bpah-local*
@@ -222,7 +222,7 @@
 (assert-event
  (null (fn-bpah-select-oldest-at nil *bpah-local*
                                     *bpaht-wall-less* nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-held-expiry
           (fn-bpah-select-oldest-at nil *bpah-local*

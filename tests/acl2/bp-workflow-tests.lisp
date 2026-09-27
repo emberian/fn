@@ -1,7 +1,7 @@
 ; Executable BPv7 durable-outbox workflow scenarios.
 (in-package "ACL2")
 (include-book "../../books/bp-workflow-transport-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bp-groups* '("fn.letters"))
 ; by specification: the flip -- the node's acceptance machine carries the
@@ -171,7 +171,7 @@
 (assert-event
  (equal (fn-bp-observe-transport *bp-accepted* "work-1" "attempt-0" 0 :intent)
         *bp-accepted*))
-(must-fail (assert-event (fn-bp-transport-transition-okp :bpa-accepted :intent)))
+(must-fail-checked (assert-event (fn-bp-transport-transition-okp :bpa-accepted :intent)))
 ; Any backward step is refused, not only the step to :intent.
 (defconst *bp-forwarded*
   (fn-bp-observe-transport *bp-accepted* "work-1" "attempt-0" 0 :forwarded))
@@ -184,7 +184,7 @@
  (equal (fn-bp-observe-transport *bp-forwarded* "work-1" "attempt-0" 0
                                  :bpa-accepted)
         *bp-forwarded*))
-(must-fail (assert-event (fn-bp-transport-transition-okp :forwarded :attempted)))
+(must-fail-checked (assert-event (fn-bp-transport-transition-okp :forwarded :attempted)))
 ; The relation is not "refuse everything": forward steps are accepted and a
 ; repeated observation is a no-op.
 (assert-event
@@ -207,8 +207,8 @@
  (equal (fn-bp-observe-transport *bp-retryable* "work-1" "attempt-0" 0
                                  :delivered)
         *bp-retryable*))
-(must-fail (assert-event (fn-bp-transport-transition-okp :delivered :expired)))
-(must-fail (assert-event (fn-bp-transport-transition-okp :unknown :delivered)))
+(must-fail-checked (assert-event (fn-bp-transport-transition-okp :delivered :expired)))
+(must-fail-checked (assert-event (fn-bp-transport-transition-okp :unknown :delivered)))
 ; The rank conclusion, executed on a refused and on an accepted observation.
 (assert-event
  (<= (fn-bp-status-rank (fn-bpt-status *bp-accepted*))
@@ -256,7 +256,7 @@
         (fn-bp-step *bp-attempt-pending* (fn-bp-restart-event))))))
 ; After a restart the fenced intent found committed installs :unknown and
 ; still emits no :submit: the attempt has to be retried under policy.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpt-submitp
    (fn-bp-result-effects
@@ -266,7 +266,7 @@
 ; is emitted from a pending :enqueue, so the conclusion's pending kind fails.
 (assert-event (member-equal '(:enqueue-ack "work-1")
                             (fn-bp-result-effects *bp-enqueue-result*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bp-pending-kind (fn-bp-state-pending *bp-enqueue-pending*))
          :attempt)))
@@ -276,4 +276,4 @@
  (equal (fn-bp-result-effects
          (fn-bp-step *bp-empty* (fn-bp-storage-complete-event 12 0 :durable)))
         nil))
-(must-fail (assert-event (consp (fn-bp-state-pending *bp-empty*))))
+(must-fail-checked (assert-event (consp (fn-bp-state-pending *bp-empty*))))

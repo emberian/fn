@@ -2,7 +2,7 @@
 (include-book "../../books/bp-fnbs-deletion-codec")
 (include-book "bp-report-deletion-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (fn-cbor-octet-listp
                (fn-bpnf-delete-frame *bprd-request-record*)))
@@ -19,7 +19,7 @@
                               *bprd-request-record*) '(0)))))
 (assert-event (null (fn-bpnf-delete-unframe
                      (cdr (fn-bpnf-delete-frame *bprd-request-record*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnf-delete-unframe
    (append (fn-bpnf-delete-frame *bprd-request-record*) '(0)))))

@@ -1,7 +1,7 @@
 ; Reachable FNBS sequence-frontier witnesses and teeth.
 (in-package "ACL2")
 (include-book "../../books/bp-node-records")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnr-zero* (fn-bpn-sequence-reserve 0))
 (assert-event (fn-bpn-sequence-reservationp *bpnr-zero*))
@@ -39,7 +39,7 @@
 ; Teeth for fn-bpn-sequence-reserve-advances-frontier's two hypotheses.
 ; The non-frontier value violates only the recognizer hypothesis.
 (assert-event (not (fn-bpn-sequence-frontierp -1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-sequence-reservationp (fn-bpn-sequence-reserve -1))))
 
@@ -47,7 +47,7 @@
 (assert-event (fn-bpn-sequence-frontierp *fn-bpc-max-uint*))
 (assert-event (equal (fn-bpn-sequence-reserve *fn-bpc-max-uint*)
                      '(:refused :sequence-exhausted)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-sequence-reservationp
    (fn-bpn-sequence-reserve *fn-bpc-max-uint*))))

@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/peer-refused-offers")
 (include-book "../../books/peer-transit-forms")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun th-o (s) (fn-nntp-string-octets s))
 (defun th-lines (strings)
@@ -175,7 +175,7 @@
 (assert-event (and (not (fn-cfg-peer-find "ghost" (fn-cfg-peers (fn-cfg-value *th-cfg*))))
                    (fn-peer-intrinsic-refusal (th-o "<bp@example.invalid>") *th-badpath*)
                    (not (th-k1-conclusion *th-cfg* "ghost" "<bp@example.invalid>" *th-badpath* nil))))
-(must-fail
+(must-fail-checked
  (defthm th-k1-without-a-record
    (implies (and (fn-af-message-idp msgid) (fn-peer-intrinsic-refusal msgid octets))
             (equal (fn-peer-decide-transfer node cfg peer msgid octets clock id subject)
@@ -216,7 +216,7 @@
 ; Capacity 0 (the operator turned the memory off): a new entry empties it.
 (assert-event (equal (fn-rof-record *th-m3* 0 "<d@x>" :no-date) nil))
 (assert-event (null (fn-rof-record nil 0 "<d@x>" :no-date)))
-(must-fail
+(must-fail-checked
  (defthm th-eviction-without-capacity-equality
    (implies (and (true-listp mem) (posp cap) reason (not (fn-rof-lookup msgid mem)))
             (equal (fn-rof-record mem cap msgid reason)
@@ -265,7 +265,7 @@
                      (fn-peer-decision :refuse :path-syntax)))
 ; Hypothesis removal (history): without it the claim is false, because a
 ; held Message-ID is answered duplicate before the memory is read.
-(must-fail
+(must-fail-checked
  (defthm th-offer-without-history
    (implies (and (fn-af-message-idp msgid)
                  (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))

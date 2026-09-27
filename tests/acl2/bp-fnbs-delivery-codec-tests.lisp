@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-delivery-codec")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpah-delivered*
   (fn-bpah-delivery-record 3 8 2 '(1 2 3) :request-accepted '(114 105 100)))
@@ -20,7 +20,7 @@
                      :bad))
 (assert-event (null (fn-bpah-delivery-unframe
                      (append (fn-bpah-delivery-frame *bpah-delivered*) '(0)))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpah-delivery-unframe
                        (append (fn-bpah-delivery-frame *bpah-delivered*) '(0)))
                       *bpah-delivered*)))

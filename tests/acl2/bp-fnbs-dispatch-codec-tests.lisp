@@ -4,7 +4,7 @@
 (include-book "../../books/bp-fnbs-dispatch-codec")
 (include-book "../../books/bp-fnbs-dispatch-invariants")
 (include-book "../../books/bp-clock-domain")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-test-bpnp-dispatch*
   (fn-bpnp-dispatch-record
@@ -47,7 +47,7 @@
 (assert-event (not (fn-bpnp-dispatch-recordp *fn-test-bpnp-overlong-identity*)))
 (assert-event
  (equal (fn-bpnp-dispatch-frame *fn-test-bpnp-overlong-identity*) :bad))
-(must-fail
+(must-fail-checked
  (defthm fn-test-bpnp-round-trip-needs-record
    (equal (fn-bpnp-dispatch-unframe
            (fn-bpnp-dispatch-frame *fn-test-bpnp-overlong-identity*))

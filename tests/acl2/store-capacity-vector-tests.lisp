@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-intern")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cvt-p*
   (fn-bs-profile-set-fields *fn-bs-profile-defaults*
@@ -231,7 +231,7 @@
       (equal (fn-cvec-article-budget-for *cvt-p* 1 (+ *cvt-a* *cvt-r*)
                                          *cvt-record* 1)
              0)))
-(must-fail
+(must-fail-checked
  (defthm cvt-article-without-the-verdict
    (fn-cvec-roomp *cvt-p* 2 (+ *cvt-a* *cvt-r* *cvt-len*) 1)
    :rule-classes nil))

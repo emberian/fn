@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-fragment-expiry")
 (include-book "bp-node-fragment-family-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The existing family is complete.  An old kind-5 row without an arrival
 ; clock anchor is unknown and cannot authorize a new family proposal.
@@ -42,7 +42,7 @@
          (car (fn-bpnf-held-list *bpnfe-live-state*))
          *bpnfe-expired-observation*)
         '(:blocked :expiry)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnf-family-plan-at
                *bpnfe-live-state*

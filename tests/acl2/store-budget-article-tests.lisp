@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "profile-monotonicity-tests")
 (include-book "../../books/store-budget-article")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sbat-fig* (fn-sbud-article-figure 32768 400))
 (assert-event (equal *sbat-fig* 138251))
@@ -51,7 +51,7 @@
 
 ; Hypothesis: the verdict.  At 184 462 the verdict refuses and the total is
 ; past H (above).
-(must-fail
+(must-fail-checked
  (defthm sbat-without-the-verdict
    (implies (and (not (fn-record-widep record))
                  (<= (len (fn-record-payload record)) (nfix payload-length))
@@ -143,7 +143,7 @@
       (not (fn-profile-replay-within-boundp
             *pmt-old* (+ (- 250000 66619)
                          (len (fn-record-encode *sbat-tight-charge*)))))))
-(must-fail
+(must-fail-checked
  (defthm sbat-producer-width-without-the-charge-hypothesis
    (implies (and (equal (fn-sbud-article-verdict-at profile used bytes-used
                                                     payload-length group-count)

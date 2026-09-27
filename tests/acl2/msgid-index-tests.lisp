@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/msgid-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-midx-a*
   (fn-make-article "<a@example.invalid>" '(1 2) '("fn.test")
@@ -34,14 +34,14 @@
                          (list *fn-midx-a-conflict* *fn-midx-a*)))
         *fn-midx-a-conflict*))
 
-(must-fail
+(must-fail-checked
  (defthm fn-midx-false-last-duplicate-wins
    (equal (fn-midx-lookup "<a@example.invalid>"
                           (fn-midx-build
                            (list *fn-midx-a-conflict* *fn-midx-a*)))
           *fn-midx-a*)))
 
-(must-fail
+(must-fail-checked
  (defthm fn-midx-false-lookup-without-matching-key
    (equal (fn-midx-lookup "<missing@example.invalid>"
                           (fn-midx-build (list *fn-midx-a*)))
@@ -71,11 +71,11 @@
         *fn-midx-a*))
 
 ; Dropping either query hypothesis changes the result for malformed input.
-(must-fail
+(must-fail-checked
  (defthm fn-midx-false-empty-query-correspondence
    (equal (fn-midx-lookup "" (fn-midx-build (list *fn-midx-malformed*)))
           (fn-find-article "" (list *fn-midx-malformed*)))))
-(must-fail
+(must-fail-checked
  (defthm fn-midx-false-nonstring-query-correspondence
    (equal (fn-midx-lookup nil (fn-midx-build (list *fn-midx-malformed*)))
           (fn-find-article nil (list *fn-midx-malformed*)))))
@@ -97,7 +97,7 @@
 
 ; A stale root is observably wrong for the new accepted article: refresh's
 ; premise must relate the old root to the old list.
-(must-fail
+(must-fail-checked
  (defthm fn-midx-false-refresh-with-stale-root
    (fn-midx-correspondencep
     (fn-midx-refresh nil (list *fn-midx-a*)

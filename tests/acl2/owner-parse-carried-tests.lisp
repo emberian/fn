@@ -1,7 +1,7 @@
 ; Teeth for books/owner-parse-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-parse-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-commit-carried-tests")
 
 ; The host runs compiled code: every function it calls here is
@@ -252,22 +252,22 @@
                           (apc-t-c-intent *apc-t-c-carry*))))
 
 ; The keystone and the host-line equalities without fn-apc-p.
-(must-fail
+(must-fail-checked
  (defthm apc-t-parse-without-apc-p
    (equal (fn-apc-parse octets carry) (fn-article-parse octets))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-filing-without-apc-p
    (equal (fn-apc-filing-plan received groups domain carry)
           (fn-pa-filing-plan received groups domain))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-transit-verdict-without-apc-p
    (equal (fn-apc-transit-verdict received snapshots carried transitp ed ml carry)
           (fn-pcb-transit-verdict received snapshots carried transitp ed ml))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-row-without-apc-p
    (equal (fn-apc-intern-row-at w keyring generation h carry)
           (fn-intern-row-at w keyring generation h))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-intent-without-apc-p
    (implies (fn-icar-carryp icar)
             (equal (fn-apc-submission-intent o icar carry evidence generation txid)
@@ -311,3 +311,91 @@
                                          (concatenate 'string "240 article received OK"
                                                       (coerce (list (code-char 13) (code-char 10))
                                                               'string)))))))
+
+; =============================================================================
+; Audit packet G2-P4 (lane audit-fixes, sub-lane g12b): a biting witness for
+; fn-apc-own-finish-is-ccar-own-finish's two hypotheses.  The carry reaches
+; the finish only through the stored octets of an ACCOUNT's submission (the
+; Cancel-Lock the owner writes reads the parse's fields), and no reached
+; owner in these books posts under a login.  CONSTRUCTED owner (labelled):
+; owner-tests' taken owner (*own-taken*) with its in-flight submission
+; replaced by the same injected article under the login "alice" and an
+; account (owner-cancel-lock-tests' shape) and a node secret; from it the
+; Store runs the host's post events (owner-tests' own-post-events) over the
+; record the host stages for that submission -- its stored octets, the
+; account's lock in front of the injected octets -- to :completing.
+(defconst *apc-g-secret*
+  (list (fn-ns-create-entry (fn-record-string-octets "fn.test") (make-list 32 :initial-element 7))))
+(defconst *apc-g-account* (make-list 32 :initial-element 1))
+(defconst *apc-g-sub*
+  (let ((s *osi-sub*))
+    (fn-own-sub-make-author (fn-own-sub-id s) (fn-own-sub-version s) (fn-own-sub-mark s)
+                            (fn-own-sub-decision s) (fn-record-string-octets "alice") *apc-g-account*)))
+(defun apc-g-with-sub (o sub secret)
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+               sub (fn-own-feeds o) secret (fn-own-refused o)))
+(defconst *apc-g-taken* (apc-g-with-sub *own-taken* *apc-g-sub* *apc-g-secret*))
+(defconst *apc-g-stored* (fn-own-sub-stored-octets *osi-cfg* *apc-g-sub* *apc-g-secret*))
+(defconst *apc-g-wire* (osi-record-of-wire 2 2 *apc-g-sub* *apc-g-stored*))
+(defconst *apc-g-o*
+  (in-arena-fn-own-run *sr-arena* *apc-g-taken*
+                       (osi-drop-last (own-post-events (osi-record-of 2 2 *apc-g-sub* *apc-g-stored*)))))
+(defconst *apc-g-prior* (osi-prior *apc-g-wire*))
+(defconst *apc-g-tk* (fn-apc-take *osi-cfg* *apc-g-sub* *apc-g-secret*))
+(defconst *apc-g-carry* (cdr *apc-g-tk*))
+(defconst *apc-g-x*
+  (fn-ipp-injected-octets (fn-own-sub-decision *apc-g-sub*) *apc-g-secret*
+                          (fn-own-sub-login *apc-g-sub*) *osi-cfg*))
+; The corrupted carry (no take writes it): the injected octets carried with
+; the parse of the same octets under a Cancel-Lock header, so the owner
+; thinks the author locked the article and writes no lock of its own.
+(defconst *apc-g-bad*
+  (list (cons *apc-g-x*
+              (fn-article-parse (append (fn-nntp-string-octets "Cancel-Lock: sha256:AAAA") '(13 10)
+                                        *apc-g-x*)))))
+(defconst *apc-g-finish* (apc-t-eval *apc-g-o* *osi-cfg* *apc-g-prior* *apc-g-carry*))
+(defconst *apc-g-bad-finish* (apc-t-eval *apc-g-o* *osi-cfg* *apc-g-prior* *apc-g-bad*))
+; Positive: the take's carry, both hypotheses, the equality; the finish is
+; :durable and the account's lock is in the stored octets (non-degenerate:
+; stored /= injected).
+(assert-event
+ (and (equal (car *apc-g-tk*) *apc-g-stored*)
+      (not (equal *apc-g-stored* *apc-g-x*))
+      (fn-apc-p *apc-g-carry*)
+      (fn-ceis-indexedp (fn-own-store *apc-g-o*))
+      (fn-sn-completion-enabledp (fn-own-store *apc-g-o*))
+      (equal (nth 0 *apc-g-finish*) (nth 1 *apc-g-finish*))
+      (equal (car (nth 0 *apc-g-finish*)) :durable)))
+; Removal of (fn-apc-p carry): the index hypothesis holds; the carried
+; stored octets lose the lock, so the finish answers :fault where the
+; reference answers :durable.
+(assert-event
+ (and (not (fn-apc-p *apc-g-bad*))
+      (fn-ceis-indexedp (fn-own-store *apc-g-o*))
+      (equal (fn-apc-sub-stored-octets *osi-cfg* *apc-g-sub* *apc-g-secret* *apc-g-bad*) *apc-g-x*)
+      (equal (car (nth 0 *apc-g-bad-finish*)) :fault)
+      (equal (car (nth 1 *apc-g-bad-finish*)) :durable)
+      (not (equal (nth 0 *apc-g-bad-finish*) (nth 1 *apc-g-bad-finish*)))))
+; Removal of (fn-ceis-indexedp (fn-own-store o)) (CORRUPTED Store): the same
+; owner with its Store's event index built from no history; fn-apc-p holds,
+; the Store is a state and completion-enabled, and the indexed completion's
+; owner differs from the reference's (same word).
+(defconst *apc-g-bad-s* (fn-sn-with-event-index (fn-own-store *apc-g-o*) (fn-cei-build nil)))
+(defconst *apc-g-bad-o*
+  (let ((o *apc-g-o*))
+    (fn-own-make *apc-g-bad-s* (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+                 (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+                 (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+(defconst *apc-g-bad-s-finish* (apc-t-eval *apc-g-bad-o* *osi-cfg* *apc-g-prior* *apc-g-carry*))
+(assert-event
+ (and (fn-apc-p *apc-g-carry*)
+      (fn-sn-statep *apc-g-bad-s*)
+      (fn-ccar-completion-enabledp *apc-g-bad-s*)
+      (not (fn-ceis-indexedp *apc-g-bad-s*))
+      (not (equal (nth 0 *apc-g-bad-s-finish*) (nth 1 *apc-g-bad-s-finish*)))))
+; Not done here: fn-apc-own-outcome-is-acar-own-outcome's fn-apc-p (the carry
+; is read only for peer targets, and no owner here posts with a peer) and
+; fn-apc-submission-intent-is-reference's fn-icar-carryp.

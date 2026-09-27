@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-prepare-correspondence")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 ; A reachable, non-degenerate witness with one durable record already in the
@@ -103,7 +103,7 @@
         :record-staged))
 (assert-event
  (equal (fn-sn-prepare *spc-stale* *spc-duplicate*) *spc-stale*))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-spc-prepare *spc-stale* *spc-duplicate*)
          (fn-sn-prepare *spc-stale* *spc-duplicate*))))
@@ -140,7 +140,7 @@
                      *spc-stale-consumer*))
 (assert-event (equal (fn-sn-prepare *spc-stale-consumer* *spc-second*)
                      *spc-stale-consumer*))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-sf-phase
                       (fn-sn-files (fn-spc-prepare *spc-stale-consumer*
                                                    *spc-second*)))

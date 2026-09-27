@@ -2,7 +2,7 @@
 (include-book "../../books/bp-native-app-fast")
 (include-book "bp-native-app-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Recovery is the one deep validation boundary.  Its successful result carries
 ; the invariant used by every subsequent served projection.
@@ -151,7 +151,7 @@
                    (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))
                           :found)
                    (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-bad-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))))))
-(must-fail
+(must-fail-checked
  (thm (implies (and (fn-ceis-indexedp *bpaj-bad-store*)
                     (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))
                            :found))
@@ -172,7 +172,7 @@
                    (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))
                           :found)
                    (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-cut-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))))))
-(must-fail
+(must-fail-checked
  (thm (implies (and (fn-sn-statep *bpaj-cut-store*)
                     (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))
                            :found))

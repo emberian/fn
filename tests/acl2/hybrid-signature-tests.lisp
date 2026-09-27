@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/hybrid-signature")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (local (in-theory (enable fn-hybrid-signature-vocabulary)))
 
@@ -123,27 +123,27 @@
               *hs-source*))))
 
 ; Teeth: neither theorem follows after deleting one of its essential premises.
-(must-fail
+(must-fail-checked
  (defthm hybrid-without-ml-observation
    (implies (and (fn-hsig-subject-p principal keys source)
                  (fn-hsig-signatures-p signatures)
                  (equal ed :verified))
             (fn-hsig-authorize principal keys source signatures observed ed ml))))
-(must-fail
+(must-fail-checked
  (defthm hybrid-without-signature-shape
    (implies (and (fn-hsig-subject-p principal keys source)
                  (equal ed :verified) (equal ml :verified))
             (fn-hsig-authorize principal keys source signatures observed ed ml))))
 
 ;; Teeth for the -by-definition v1 equalities: without the v1 length they fail.
-(must-fail
+(must-fail-checked
  (defthm hs-preimage-at-v1-without-length
    (equal (fn-hsig-signed-preimage-at (fn-hsig-source-version source)
                                       principal keys source)
           (fn-hsig-signed-preimage principal keys source))
    :hints (("Goal" :in-theory (enable fn-hsig-signed-preimage-at
                                       fn-hsig-source-version)))))
-(must-fail
+(must-fail-checked
  (defthm hs-authorize-at-v1-without-length
    (equal (fn-hsig-authorize-at (fn-hsig-source-version source)
                                 principal keys source signatures observed ed ml)

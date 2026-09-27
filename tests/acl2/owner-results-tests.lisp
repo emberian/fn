@@ -6,7 +6,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-results")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Two FNFD enqueue records for two peers, in journal order.
 (defconst *ort-inn* '(105 110 110))                   ; "inn"
@@ -191,7 +191,7 @@
         (fn-ores-records-sealp (fn-icar-submission-resolution-records o nil :durable 7 0 0))
         (not (fn-ores-feed-publication-p
               (fn-ores-submission-resolution-publication o nil :durable 7 0 0))))))
-(must-fail
+(must-fail-checked
  (defthm ort-intent-without-inflight-idp
    (implies (fn-ores-records-sealp
              (cdr (fn-icar-submission-intent o carry evidence generation txid)))
@@ -209,7 +209,7 @@
       (not (fn-ores-records-sealp *ort-bad-records*))
       (not (fn-ores-feed-publication-p
             (fn-ores-feed-port-publication :ready *ort-bad-records* nil :control nil)))))
-(must-fail
+(must-fail-checked
  (defthm ort-resolution-without-records-sealp
    (implies (fn-ores-inflight-idp o)
             (fn-ores-feed-publication-p

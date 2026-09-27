@@ -1,7 +1,7 @@
 ; Teeth for books/nntp-pinned-msgid.lisp.
 (in-package "ACL2")
 (include-book "../../books/nntp-pinned-msgid")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *npm-t-id* "<Case@Id.invalid>")
 (defconst *npm-t-payload*
@@ -52,7 +52,7 @@
 ; archive (here the empty one) answers 430 where the scan answers 223.
 (assert-event (not (equal (npm-t-pinned nil *npm-t-stat* *npm-t-arg*)
                           (npm-t-scan *npm-t-stat* *npm-t-arg*))))
-(must-fail
+(must-fail-checked
  (defthm npm-t-false-without-correspondence
    (implies (fn-nntp-keywordp keyword "STAT")
             (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena)
@@ -65,7 +65,7 @@
                                  (fn-nntp-string-octets *npm-t-id*)))
 (assert-event (not (equal (npm-t-pinned *npm-t-trie* *npm-t-hdr* *npm-t-hdr-args*)
                           (npm-t-scan *npm-t-hdr* *npm-t-hdr-args*))))
-(must-fail
+(must-fail-checked
  (defthm npm-t-false-without-keyword
    (implies (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                      (fn-state-articles archive))

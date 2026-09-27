@@ -11,7 +11,7 @@
 (include-book "../../books/owner-reader-read")
 (include-book "owner-log-ocl-tests")
 (include-book "arena-lift")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (equal (list (symbol-class 'fn-orr-read-span (w state))
@@ -200,7 +200,7 @@
 ; ground owners here (a related owner's configuration is its history's
 ; replay); the keystone's own proof does not go through without it (failed
 ; proof search with the keystone's hints, not a counterexample).
-(must-fail
+(must-fail-checked
  (defthm orrt-needs-the-configuration
    (implies (and (consp views)
                  (equal (car views) (fn-own-view (fn-ocfg-owner oc0)))
@@ -229,8 +229,10 @@
                                        (theory 'minimal-theory))))))
 
 ; Without the catalog premise the keystone's own proof does not go through
-; (failed proof search with its hints, not a counterexample).
-(must-fail
+; (failed proof search with its hints, not a counterexample).  The
+; counterexample is at the end of this book (g12b-orr-catalog-premise-fails-
+; on-a-stale-catalog: a stale catalog, the host's read answering 211 1).
+(must-fail-checked
  (defthm orrt-needs-the-catalog
    (implies (and (consp views)
                  (equal (car views) (fn-own-view (fn-ocfg-owner oc0)))
@@ -374,3 +376,146 @@
  (and (fn-ocl-view-configp (fn-ocfg-with-view *lgt-finished* (orrt-view *orrt-bad-oc0*)))
       (fn-ocl-view-configp (fn-ocfg-with-view *lgt-oc0* (orrt-view *lgt-finished*)))
       (fn-ocl-view-configp (fn-ocfg-with-view *ocp-new* (orrt-view *ocp-closed*)))))
+
+; -----------------------------------------------------------------------------
+; Teeth for fn-ocl-view-configp-of-a-view-captured-before-appends (audit
+; packet G1-5, lane audit-fixes).  Each is a CORRUPTED state: an owner whose
+; configuration field is not its history's replay (no transition builds one).
+; The three configuration hypotheses are separated by giving one owner a
+; foreign configuration (*ocp-new*'s, which serves fn.live).
+(defun orrt-with-config (oc config)
+  (fn-ocfg-make (fn-ocfg-owner oc) config (fn-ocfg-pins oc) (fn-ocfg-staged oc)))
+(defun orrt-configp-hyps (oc0 oc)
+  (declare (xargs :verify-guards nil))
+  (list (fn-ocl-view-configp oc0)
+        (fn-ocl-view-historyp (fn-ocfg-owner oc0))
+        (equal (orrt-records oc)
+               (append (orrt-records oc0) (nthcdr (len (orrt-records oc0)) (orrt-records oc))))
+        (equal (orrt-history oc) (orrt-history oc0))
+        (equal (fn-ocfg-config oc) (fn-ocfg-config oc0))))
+(defun orrt-configp-concl (oc0 oc)
+  (declare (xargs :verify-guards nil))
+  (fn-ocl-view-configp (fn-ocfg-with-view oc (orrt-view oc0))))
+(defconst *orrt-foreign-config* (fn-ocfg-config *ocp-new*))
+(assert-event (not (equal *orrt-foreign-config* (fn-ocfg-config *lgt-oc0*))))
+; Reached pair (the positive witness above), as the list of hypotheses.
+(assert-event (and (equal (orrt-configp-hyps *lgt-oc0* *lgt-finished*) '(t t t t t))
+                   (orrt-configp-concl *lgt-oc0* *lgt-finished*)))
+; Without (equal (fn-ocfg-config oc) (fn-ocfg-config oc0)): the working
+; owner carries the foreign configuration.
+(assert-event
+ (and (equal (orrt-configp-hyps *lgt-oc0* (orrt-with-config *lgt-finished* *orrt-foreign-config*))
+             '(t t t t nil))
+      (not (orrt-configp-concl *lgt-oc0* (orrt-with-config *lgt-finished* *orrt-foreign-config*)))))
+; Without (fn-ocl-view-configp oc0): both owners carry the foreign
+; configuration (equal to each other, the replay of neither).
+(assert-event
+ (and (equal (orrt-configp-hyps (orrt-with-config *lgt-oc0* *orrt-foreign-config*)
+                                (orrt-with-config *lgt-finished* *orrt-foreign-config*))
+             '(nil t t t t))
+      (not (orrt-configp-concl (orrt-with-config *lgt-oc0* *orrt-foreign-config*)
+                               (orrt-with-config *lgt-finished* *orrt-foreign-config*)))))
+; Without the equal configuration histories: the publication pair with the
+; published owner's configuration field left at the pre-publication one.
+(assert-event
+ (and (equal (orrt-configp-hyps *ocp-closed* (orrt-with-config *ocp-new* (fn-ocfg-config *ocp-closed*)))
+             '(t t t nil t))
+      (not (orrt-configp-concl *ocp-closed* (orrt-with-config *ocp-new* (fn-ocfg-config *ocp-closed*))))))
+; No removal witness for fn-ocl-view-historyp or the records append: on the
+; reached and constructed pairs the view's prefix replays to the same
+; configuration (the swapped and relabelled pairs above).
+
+; =============================================================================
+; Audit packet G1-5 (lane audit-fixes, sub-lane g12b): the keystone's catalog
+; premise, evaluated.  The host's catalog is loaded as the host loads it
+; (books/served-catalog-owner.lisp fn-sca-load-held-rows over the Store's
+; rows), and fn-orr-read-span -- the host's own call, not the twin -- runs
+; over it on live stobjs.
+(include-book "../../books/served-catalog-owner")
+(defun g12b-cat-rows (i n fn-cat)
+  (declare (xargs :mode :program :stobjs fn-cat))
+  (if (and (natp i) (natp n) (< i n))
+      (cons (fn-cat-at i fn-cat) (g12b-cat-rows (1+ i) n fn-cat))
+    nil))
+(defun g12b-host-read-in (oc views id octs rows payloads fn-octets fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-octets fn-arena fn-cat)))
+  (let* ((fn-octets (fn-octets-from-list octs fn-octets))
+         (fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+                                        fn-arena fn-cat)))
+    (mv (list (fn-orr-read-span oc views id 0 (len octs) fn-octets fn-arena fn-cat)
+              (fn-cat-count fn-cat)
+              (g12b-cat-rows 0 (fn-cat-count fn-cat) fn-cat))
+        fn-octets fn-arena fn-cat)))
+(defun g12b-host-read (oc views id octs rows payloads)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-octets
+    (mv-let (result fn-octets)
+      (with-local-stobj fn-arena
+        (mv-let (result fn-octets fn-arena)
+          (with-local-stobj fn-cat
+            (mv-let (result fn-octets fn-arena fn-cat)
+              (g12b-host-read-in oc views id octs rows payloads fn-octets fn-arena fn-cat)
+              (mv result fn-octets fn-arena)))
+          (mv result fn-octets)))
+      result)))
+; The arena holds the POST's bytes at the article row's handle (2), as the
+; host's entry interned them; the catalog is loaded from the working Store's
+; three rows (two retention events, the article: one catalog row).
+(defconst *g12b-p* (fn-record-payload (own-record-wire 2 8 "<ocmt@example>")))
+(defconst *g12b-payloads* (list *g12b-p* *g12b-p* *g12b-p*))
+(assert-event (equal (fn-record-payload (car (last (orrt-records *lgt-finished*)))) 2))
+(defconst *g12b-read*
+  (g12b-host-read *lgt-finished* *orrt-views* 0 *orrt-group* (orrt-records *lgt-finished*)
+                  *g12b-payloads*))
+
+; Positive witness of fn-orr-read-span-at-a-captured-view-restores-the-owner
+; with its catalog premise: the host's call over the live catalog answers
+; exactly what the twin answered (so orrt-concl, asserted above for the twin,
+; is the host's conclusion: the reader reads the capture, 211 0), the catalog
+; holds the article, and the premise holds of the catalog's logical value
+; (its rows read back through fn-cat-at) and the arena's -- decided by ACL2
+; on ground terms, since fn-scr-owner-catalogp is a defun-nx.
+(assert-event (and (equal (car *g12b-read*) *orrt-r*)
+                   (equal (cadr *g12b-read*) 1)
+                   (orrt-hyps *orrt-views* *lgt-oc0* *lgt-finished* *orrt-group*)
+                   (orrt-concl *orrt-views* *lgt-finished* 0 *orrt-group*)))
+(make-event
+ `(defthm g12b-orr-catalog-premise-at-the-witness
+    (fn-scr-owner-catalogp ',(fn-ocfg-owner (fn-ocfg-with-view *lgt-finished* (car *orrt-views*)))
+                           0 ',*g12b-payloads* ',(caddr *g12b-read*))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn-scr-owner-catalogp fn-scr-conn-okp fn-scr-conn-catalogp
+                                       fn-scr-live-catalogp fn-scr-fields-catalogp
+                                       fn-scr-catalogp)))))
+
+; Removal of the catalog premise (CORRUPTED catalog, not reached): the same
+; owners, views and read, every other hypothesis as above; the catalog holds
+; the article one cursor early (its row at sequence 0, below the capture's
+; version 2), so the catalog's view at the reader's pinned version shows an
+; article the captured archive does not.  The premise is false (decided by
+; ACL2), and the host's read answers 211 1 where the capture answers 211 0:
+; the conclusion's effects conjunct fails.
+(defconst *g12b-stale-read*
+  (g12b-host-read *lgt-finished* *orrt-views* 0 *orrt-group*
+                  (list (own-record 0 8 "<ocmt@example>")) (list *g12b-p*)))
+(make-event
+ `(defthm g12b-orr-catalog-premise-fails-on-a-stale-catalog
+    (not (fn-scr-owner-catalogp ',(fn-ocfg-owner (fn-ocfg-with-view *lgt-finished* (car *orrt-views*)))
+                                0 ',(list *g12b-p*) ',(caddr *g12b-stale-read*)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn-scr-owner-catalogp fn-scr-conn-okp fn-scr-conn-catalogp
+                                       fn-scr-live-catalogp fn-scr-fields-catalogp
+                                       fn-scr-catalogp)))))
+(assert-event
+ (let ((r (car *g12b-stale-read*)))
+   (and (orrt-hyps *orrt-views* *lgt-oc0* *lgt-finished* *orrt-group*)
+        (equal (fn-own-view-version (car *orrt-views*)) 2)
+        (equal (fn-own-tls-result-effects r)
+               (list (list :reply (append (fn-nntp-string-octets "211 1 1 1 fn.letters")
+                                          '(13 10)))))
+        (not (equal (fn-own-tls-result-effects r)
+                    (car (in-arena-fn-ocfg-read *orrt-arena*
+                                                (fn-ocfg-with-view *lgt-finished* (car *orrt-views*)) 0
+                                                (take (fn-own-tls-result-consumed r) *orrt-group*))))))))

@@ -1,7 +1,7 @@
 ; Committed prefix interpretation, including every nonarticle journal slot.
 (in-package "ACL2")
 (include-book "../../books/consumer-store-projection")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defconst *cppt-boot* (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
@@ -55,5 +55,5 @@
                       (cadr *cppt-rolled*)
                       (fn-cpe-make 5 5 5 (list :ack *cppt-cursor*)) 5)
                      '(:refused :operation)))
-(must-fail (defthm cppt-ack-needs-current-scope
+(must-fail-checked (defthm cppt-ack-needs-current-scope
              (equal (car (fn-cpe-projection-step s event expected)) :ok)))

@@ -9,7 +9,7 @@
 ; no onward work at all.
 (in-package "ACL2")
 (include-book "../../books/relay-crash-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (include-book "arena-lift")
@@ -230,19 +230,19 @@
 ; must-fail siblings
 
 ; fn-relay-forwarding-receipt-has-durable-onward-obligation without invp.
-(must-fail
+(must-fail-checked
  (defthm ry-teeth-promise-alone-has-no-obligation
    (consp (fn-relay-find-undertaking "up-work-1"
                                      (fn-relay-undertakings *ry-promise-alone*)))))
 ; A pending enqueue is not a durable onward work.
-(must-fail
+(must-fail-checked
  (defthm ry-teeth-pending-enqueue-is-not-durable
    (fn-relay-onward-presentp (fn-relay-sender *ry-enqueue-pending*) "onward-1")))
 ; A receipt intent is not a promise.
-(must-fail
+(must-fail-checked
  (defthm ry-teeth-intent-is-not-a-promise
    (consp (fn-relay-receipt *ry-pending* "up-work-1"))))
 ; Archival receipts carry no onward work: the forwarding conclusion is false there.
-(must-fail
+(must-fail-checked
  (defthm ry-teeth-archived-receipt-has-no-onward-work
    (consp (fn-bp-state-works (fn-relay-sender *ry-archived*)))))

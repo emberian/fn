@@ -9,7 +9,7 @@
 ; the end.
 (in-package "ACL2")
 (include-book "../../books/injection-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-t-good* '(70 114 111 109 58 32 112 111 115 116 101 114 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 13 10 83 117 98 106 101 99 116 58 32 104 101 108 108 111 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 108 101 116 116 101 114 115 13 10 13 10 72 101 108 108 111 44 32 110 101 119 115 46 13 10))
 (defconst *fn-t-withid* '(70 114 111 109 58 32 112 111 115 116 101 114 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 13 10 83 117 98 106 101 99 116 58 32 104 101 108 108 111 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 108 101 116 116 101 114 115 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 97 46 98 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 72 101 108 108 111 44 32 110 101 119 115 46 13 10))
@@ -300,7 +300,7 @@
 (assert-event (not (member-equal 64 (it-from-value *it-yue-proto*))))
 ; Tooth for the one hypothesis: without the injection, a parsed From need not
 ; be a mailbox-list -- `From: yue' parses and is not one.
-(must-fail
+(must-fail-checked
  (defthm it-from-without-injection
    (let* ((article (fn-article-result-article (fn-article-parse source)))
           (value (fn-article-field-unfolded-value
@@ -345,7 +345,7 @@
 (assert-event (not (fn-mbx-mailbox-listp
                     (append (it-octets " a@b ") (make-list 8192 :initial-element 32)))))
 ; Tooth for the one hypothesis: without it, a value need not name "@".
-(must-fail
+(must-fail-checked
  (defthm it-every-value-names-an-address
    (member-equal 64 value)))
 (assert-event (not (member-equal 64 (it-octets " yue"))))
@@ -370,7 +370,7 @@
 (assert-event (not (fn-inj-reinjectionp *it-lab-proto* *it-lab-proto* *it-lab-agent*
                                         (fn-inj-decision-msgid *it-lab-decision*))))
 ; Tooth for the one hypothesis: a refusal's octets (none) are no injection.
-(must-fail
+(must-fail-checked
  (defthm it-reinjection-without-injection
    (fn-inj-reinjectionp
     (fn-inj-decision-octets (fn-inj-decide source config observation))
@@ -390,7 +390,7 @@
                                                        (list (it-octets "fn.letters"))
                                                        32768)
                                    *it-lab-obs*))))
-(must-fail
+(must-fail-checked
  (defthm it-every-configuration-allows-posting
    (fn-inj-config-allow config)))
 
@@ -431,7 +431,7 @@
 ; Teeth: without "both supplied" the octets are not Path, Injection-Info and
 ; the source (the Date-less *fn-t-withid* carries a stamp); without
 ; "otherwise" there is no Injection-Date (the lab's article).
-(must-fail
+(must-fail-checked
  (defthm it-no-stamp-without-both-supplied
    (implies (fn-inj-injectedp (fn-inj-decide source config observation))
             (equal (fn-inj-decision-octets (fn-inj-decide source config observation))
@@ -446,7 +446,7 @@
                           (append (fn-inj-path-line *fn-t-agent*)
                                   (fn-inj-injection-info-line *fn-t-agent*)
                                   *fn-t-withid*))))
-(must-fail
+(must-fail-checked
  (defthm it-stamp-always
    (implies (fn-inj-injectedp (fn-inj-decide source config observation))
             (fn-inj-prefixp
@@ -502,7 +502,7 @@
                                                      *it-lab-cfg* *it-lab-obs*))
               *it-lab-agent* (it-octets "<first@example.invalid>")))))
 ; Tooth for the one hypothesis: a refusal's octets give back no source.
-(must-fail
+(must-fail-checked
  (defthm it-inverse-without-injection
    (equal (fn-inj-source-of
            (fn-inj-decision-octets (fn-inj-decide source config observation))
@@ -609,7 +609,7 @@
 ; source is not a suffix (the tooth of that theorem's new hypothesis).
 (assert-event (not (fn-inj-suffixp *it-tin-post*
                                    (fn-inj-decision-octets *it-tin-post-d*))))
-(must-fail
+(must-fail-checked
  (defthm it-suffix-without-the-no-path-hypothesis
    (implies (fn-inj-injectedp (fn-inj-decide source config observation))
             (fn-inj-suffixp source
@@ -668,13 +668,13 @@
                       *it-lab-agent*)
                      (cons t *it-tin-dated*)))
 (assert-event (null (fn-inj-path-offset *it-lab-proto*)))
-(must-fail
+(must-fail-checked
  (defthm it-unsplice-without-an-offset
    (equal (fn-inj-unsplice (fn-inj-splice x (fn-inj-path-offset x)
                                           (fn-inj-path-insert agent))
                            agent)
           (cons t x))))
-(must-fail
+(must-fail-checked
  (defthm it-scan-without-a-hit
    (equal (fn-inj-path-scan (append (fn-inj-take-n (fn-inj-path-scan x bol) x) y) bol)
           (fn-inj-path-scan x bol))))

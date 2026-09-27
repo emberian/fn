@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/store-compact-verb.
 (in-package "ACL2")
 (include-book "../../books/store-compact-verb")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
 
@@ -141,7 +141,7 @@
 ; Tooth (the decision, the keystone's one hypothesis): without the pack
 ; decision the conclusion fails on the short disk.
 (local
- (must-fail
+ (must-fail-checked
   (defthm cvt-disk-without-decision
     (<= (cvt-pack-file) (cvt-small)))))
 ;; No compaction unit (P5, chained packs): a 4097-event history, one over a
@@ -187,7 +187,7 @@
 (assert-event (fn-cc-octet-event-listp (nthcdr 5 *cvt-records*) 5 5 6))
 (assert-event (not (equal (fn-cverb-decide *cvt-dev* *cvt-records* 5 nil nil nil nil)
                           (list :compact *fn-cverb-pack-steps*))))
-(local (must-fail (defthm cvt-capture-without-decision
+(local (must-fail-checked (defthm cvt-capture-without-decision
                     (equal (car (fn-ccc-capture-link *cvt-records* 5 5 0 nil)) :ok))))
 ;; Without a uint32 frontier: one record at txid 2^32-1 is a valid suffix
 ;; under frontier 2^32; the link's frontier would be 2^32 and is refused.
@@ -199,22 +199,22 @@
 (assert-event (not (fn-record-uint32p 4294967296)))
 (assert-event (equal (fn-cverb-decide *cvt-dev* *cvt-top* 0 nil nil nil *cvt-disk*)
                      (list :compact *fn-cverb-pack-steps*)))
-(local (must-fail (defthm cvt-capture-without-uint32-frontier
+(local (must-fail-checked (defthm cvt-capture-without-uint32-frontier
                     (equal (car (fn-ccc-capture-link *cvt-top* 0 0 0 nil)) :ok))))
 ;; Without the valid suffix: bytes that are no Store event are packed by the
 ;; decision (it reads sizes only) and refused by the capture.
 (assert-event
  (equal (fn-cverb-decide *cvt-dev* '((1 2 3)) 0 (list (fn-bs-txn-name 0)) nil nil *cvt-disk*)
         (list :compact *fn-cverb-pack-steps*)))
-(local (must-fail (defthm cvt-capture-without-event-list
+(local (must-fail-checked (defthm cvt-capture-without-event-list
                     (equal (car (fn-ccc-capture-link '((1 2 3)) 0 0 0 nil)) :ok))))
 ;; Without a uint32 generation or an octet digest: the link names them.
-(local (must-fail (defthm cvt-capture-without-uint32-generation
+(local (must-fail-checked (defthm cvt-capture-without-uint32-generation
                     (equal (car (fn-ccc-capture-link *cvt-records* 1 1 4294967296 nil))
                            :ok))))
 (assert-event (fn-cc-octet-event-listp (nthcdr 1 *cvt-records*) 1 1 6))
 (assert-event (equal (car (fn-ccc-capture-link *cvt-records* 1 1 0 nil)) :ok))
-(local (must-fail (defthm cvt-capture-without-octet-digest
+(local (must-fail-checked (defthm cvt-capture-without-octet-digest
                     (equal (car (fn-ccc-capture-link *cvt-records* 1 1 0 '(256)))
                            :ok))))
 
@@ -228,7 +228,7 @@
 ; counterexample, and opened (seventeen fields, lane header-limits-profile)
 ; the failing search took 16.8 s of case splits.
 (local
- (must-fail
+ (must-fail-checked
   (defthm cvt-count-without-preset
     (implies (fn-bs-profile-validp profile)
              (<= (fn-bs-profile-max-transactions profile) *fn-cc-max-events*))
@@ -263,6 +263,6 @@
          (equal (append (cons *cvt-a0-row* 7) nil) (list *cvt-a0-row*))))
 (assert-event (fn-sn-observed-historyp 5 (list *cvt-a0-row*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm cvt-gate-without-true-list
     (fn-sn-observed-historyp 5 (cons *cvt-a0-row* 7)))))

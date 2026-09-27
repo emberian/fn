@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-relation")
 (include-book "../../books/byte-store-frame")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defun fn-bs-test-config () (fn-bs-initial-config-octets))
@@ -52,7 +52,7 @@
 
 ; Initialization keystone: without its initial-input boundary, the actual
 ; initializer finishes but cannot establish a valid configuration relation.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation
    (car (car (last (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
@@ -63,23 +63,23 @@
 ; Additional constructor/guard cases. With the concrete codec, malformed
 ; octets also fail metadata validation, so these are NOT claimed to isolate
 ; each conjunct of fn-bs-initial-inputp independently.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 0 (fn-bs-test-config) (fn-bs-test-frontier))
                        (fn-sf-initial-state) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 '(256) (fn-bs-test-frontier))
                        (fn-sf-initial-state) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 (fn-bs-test-config) '(256))
                        (fn-sf-initial-state) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 nil (fn-bs-test-frontier))
                        (fn-sf-initial-state) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 (fn-bs-test-config) (fn-bs-test-next))
                        (fn-sf-initial-state) 'nil)))
@@ -88,27 +88,27 @@
 ; initial-input boundary, and the successor-input boundary. The unit=0,
 ; config=nil, and old-frontier-as-next cases below each drop exactly one.
 ; The remaining cases separately exercise malformed input guards.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 0 (fn-bs-test-config)
                        (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 '(256)
                        (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 (fn-bs-test-config)
                        '(256) ".allocation-test" (fn-bs-test-next)) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 nil
                        (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 (fn-bs-test-config)
                        (fn-bs-test-next) ".allocation-test" (fn-bs-test-next)) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 (fn-bs-test-config)
                        (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-frontier)) 'nil)))

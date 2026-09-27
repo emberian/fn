@@ -266,11 +266,7 @@
                                   (fn-post-body-octets (car (cdr wire-event)))))
       (fn-post-make-result
        (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
-       (append (fn-peer-single
-                ps (if (equal (car transfer) :ihave)
-                       "436 transfer failed; the article was not received"
-                     "436 the article was not received; closing"))
-               (list (fn-nntp-close-effect)))
+       (fn-peer-transfer-unreceived-effects ps transfer wire-event)
        nil))))
 
 (defthm fn-pgc-transfer-step-is-peer-step

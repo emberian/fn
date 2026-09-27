@@ -6,7 +6,7 @@
 ; connection closed.
 (in-package "ACL2")
 (include-book "../../books/config-owner-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-owner-publish-tests")
 
 ; -----------------------------------------------------------------------------
@@ -42,7 +42,7 @@
 (assert-event (equal (car *oclct-forged-full*) :durable))
 (assert-event (not (equal *oclct-forged-carried* *oclct-forged-full*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-oclc-publish-is-publish-without-the-invariant
     (equal (fn-oclc-publish oc generation max-octets)
            (fn-ocl-publish oc generation max-octets))
@@ -58,7 +58,7 @@
 ; answers :recovery-required and keeps that owner, which does not satisfy it.
 (assert-event (not (fn-ocl-relation (cadr *oclct-forged-carried*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-oclc-publish-carries-ocl-relation-without-the-invariant
     (fn-ocl-relation (mv-nth 1 (fn-oclc-publish oc generation max-octets)))
     :rule-classes nil

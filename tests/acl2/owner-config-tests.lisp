@@ -17,7 +17,7 @@
 (include-book "held-rows-tests")
 (include-book "../../books/owner-config")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the pin table, the recognizer and the three connection
@@ -655,4 +655,4 @@
               :in-theory (disable fn-ocfg-open fn-own-find-conn
                                   fn-auth-session-peer)))))
 (ocfg-r-unbound-thm ocfg-r-unbound-full ((car (fn-ocfg-open oc acfg))))
-(local (must-fail (ocfg-r-unbound-thm ocfg-r-unbound-without-acceptance ())))
+(local (must-fail-checked (ocfg-r-unbound-thm ocfg-r-unbound-without-acceptance ())))

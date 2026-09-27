@@ -6,7 +6,7 @@
 ; positively and then as a must-fail.
 (in-package "ACL2")
 (include-book "../../books/config-owner-publish")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-owner-live-tests")
 
 (defconst *ocp-max* 32768)
@@ -82,7 +82,7 @@
 (assert-event (not (equal (fn-ocfg-owner *ocp-published*)
                           (fn-ocfg-owner *ocp-closed*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-publish-keeps-the-owner-is-false
     (implies (equal (mv-nth 0 (fn-ocl-publish oc generation max-octets)) :durable)
              (equal (fn-ocfg-owner (mv-nth 1 (fn-ocl-publish oc generation max-octets)))
@@ -116,7 +116,7 @@
                           (fn-cfg-apply-record (fn-ocfg-config *ocp-forged*)
                                                (fn-ocfg-staged *ocp-forged*)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-publish-installs-the-whole-record-without-history
     (implies (equal (mv-nth 0 (fn-ocl-publish oc generation max-octets)) :durable)
              (equal (fn-ocfg-config (mv-nth 1 (fn-ocl-publish oc generation max-octets)))
@@ -131,7 +131,7 @@
 (assert-event (not (equal (fn-ocfg-staged (cadr *ocp-wrong*))
                           (fn-ocfg-staged (in-arena-fn-ocfg-step *sr-arena* *ocp-closed* '(:complete))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-publish-agrees-with-complete-without-durable
     (equal (fn-ocfg-staged (mv-nth 1 (fn-ocl-publish oc generation max-octets)))
            (fn-ocfg-staged (fn-ocfg-step oc (list :complete) fn-arena)))
@@ -159,7 +159,7 @@
  (fn-ocfg-staged
   (in-arena-fn-ocfg-step *sr-arena* *ocp-admin* (list :reconfigure 1 (fn-ocl-request-deltas :remove-group "fn.test")))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-request-refused-without-an-open-reader
     (implies (equal (fn-nntp-session-group
                      (fn-auth-reader-session (fn-own-conn-session conn)))
@@ -176,7 +176,7 @@
  (fn-ocfg-staged
   (in-arena-fn-ocfg-step *sr-arena* *ocp-selected* (list :reconfigure 1 (fn-ocl-request-deltas :create-group "fn.live")))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-request-refused-without-the-reader-group
     (implies (member-equal conn (fn-own-conns (fn-ocfg-owner oc)))
              (equal (fn-ocfg-step oc (list :reconfigure id
@@ -191,13 +191,13 @@
 (assert-event (null (fn-ocl-request-deltas :set-capacity "fn.test")))
 (assert-event (not (fn-cfg-delta-listp (fn-ocl-request-deltas :create-group 7))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-request-deltas-of-any-kind-are-nonempty
     (consp (fn-ocl-request-deltas kind name))
     :rule-classes nil
     :hints (("Goal" :do-not-induct t)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-request-deltas-of-any-name-are-typed
     (implies (member-equal kind '(:create-group :remove-group))
              (fn-cfg-delta-listp (fn-ocl-request-deltas kind name)))

@@ -19,7 +19,7 @@
 (include-book "../../books/bp-node-rotation")
 (include-book "../../books/bp-node-rotation-step")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;; ---------------------------------------------------------------------
 ;; Fixtures: one small transit bundle A received, dispatched, attempted.
@@ -144,7 +144,7 @@
              (fn-bpnp-step *bpcx-issued-s* (list :base *bpcx-enqueue*))))
       (fn-bpn-answer-effects
        (fn-bpn-step (fn-bpnf-base *bpcx-issued-s*) *bpcx-enqueue*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects
           (fn-bpnp-step *bpcx-issued-s* (list :base *bpcx-enqueue*)))
@@ -159,7 +159,7 @@
       (fn-bpah-delivery-uncertainp *bpcx-du-s*)
       (null (fn-bpnf-answer-effects
              (fn-bpnp-step *bpcx-du-s* (list :base *bpcx-enqueue*))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects
           (fn-bpnp-step *bpcx-du-s* (list :base *bpcx-enqueue*)))
@@ -188,7 +188,7 @@
               (cons :release (cdr (car effects)))
             (car effects))
           (bpcx-mutant-release (cdr effects)))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpnpb-effects-confinedp (bpcx-mutant-release *bpcx-s4-effects*))))
 
 ;; ---------------------------------------------------------------------
@@ -280,7 +280,7 @@
              (fn-bpnf-held-list *bpcx-n05-f1*))
       (equal (fn-bpn-nth 2 (car (fn-bpnp-waits (fn-bpnf-answer-state *bpcx-n05-f1-open*))))
              :credit)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-effect-kind-memberp :persist-attempt (fn-bpnf-answer-effects *bpcx-n05-f1-open*))))
 (assert-event
@@ -293,7 +293,7 @@
       (equal (fn-bpnd-free (fn-bpnp-used *bpcx-n05-f2-s2*) (fn-bpnp-debt *bpcx-n05-f2-s2*)
                            *fn-bpnp-control-margin*) 0)
       (equal (fn-bpnp-debt *bpcx-n05-f2-s2*) (fn-bpnd-debt *bpcx-n05-f2-s2* *bpcx-local*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (< (fn-bpnd-free (fn-bpnp-used *bpcx-n05-f2-s2*) (fn-bpnp-debt *bpcx-n05-f2-s2*)
                    *fn-bpnp-control-margin*) 0)))
@@ -313,7 +313,7 @@
       (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpcx-n06-recovered*))
              (fn-bpnf-held-list *bpcx-s1*))
       (null (fn-bpnf-issued (fn-bpnf-answer-state *bpcx-n06-recovered*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpn-nth 2 (car (fn-bpnf-answer-effects *bpcx-n06-uncertain*))) :stored)))
 
@@ -347,10 +347,10 @@
       (null (fn-bpnf-answer-effects *bpcx-n08-tick*))))
 ;; Today's selector would strand it: the pre-policy candidate test (no
 ;; attempt slot at all) rejects the recovered row.
-(must-fail
+(must-fail-checked
  (assert-event
   (null (fn-bpn-nth 13 (car (fn-bpnf-held-list *bpcx-n08-r*))))))
-(must-fail
+(must-fail-checked
  (assert-event (null (fn-bpnf-answer-effects *bpcx-n08-reopen*))))
 ;; Recovery clears both volatile fields.  Teeth of
 ;; fn-bpnp-recovery-success-clears-sessions-and-pending-image
@@ -386,7 +386,7 @@
                        (fn-bpnf-answer-state *bpcx-stale-recovered*)))))
       (equal (fn-bpnp-sessions (fn-bpnf-answer-state *bpcx-stale-recovered*))
              (fn-bpnp-sessions *bpcx-s3*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (and (null (fn-bpnp-sessions (fn-bpnf-answer-state *bpcx-stale-recovered*)))
        (null (fn-bpnp-pending-image (fn-bpnf-answer-state *bpcx-stale-recovered*))))))
@@ -462,17 +462,17 @@
              '(:fault :conflict-row))))
 ;; Mutation: the pre-kind-14 machine (the lower step's bare refusal) writes
 ;; no record, so the recorded-branch conjunct has teeth.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-effect-kind-memberp :persist-conflict
    (fn-bpnf-answer-effects (fn-bpnf-step *bpcx-s1* *bpcx-n11-event*)))))
 ;; Branch predicate dropped (spec 11.1 T5 row): the kind-14 :persist-conflict
 ;; is an effect of a local administrative input, so the widened class must
 ;; admit it; the conflict is never :stored.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects *bpcx-n11*) *bpcx-n11-refusal*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects (bpcx-n11-result :durable))
          (list (list :receive-answer *bpcx-ingress* :stored)))))
@@ -492,13 +492,13 @@
 ;; record although the record would be well formed and admitted.
 (defconst *bpcx-n11-legacy* (butlast *bpcx-n11-event* 1))
 (assert-event (not (fn-bpnp-host-eventp *bpcx-n11-legacy*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects (fn-bpnp-step *bpcx-s1* *bpcx-n11-legacy*))))
          :persist-conflict)))
 ;; not-issued dropped: the record-issued state answers :busy.
 (assert-event (fn-bpnf-issued *bpcx-n11-s*))
-(must-fail (assert-event (bpcx-conflict-concl *bpcx-n11-s* *bpcx-n11-event*)))
+(must-fail-checked (assert-event (bpcx-conflict-concl *bpcx-n11-s* *bpcx-n11-event*)))
 ;; no-uncertain-delivery dropped: a delivery-uncertain state holding the
 ;; request answers nothing to a conflicting copy of it.
 (defconst *bpcx-req-conflict*
@@ -515,19 +515,19 @@
       (equal (fn-bpnf-receive-decision (fn-bpnf-held-list *bpcx-du-s*)
                                        *bpcx-ingress* *bpcx-req-conflict*)
              :identity-conflict)))
-(must-fail (assert-event (bpcx-conflict-concl *bpcx-du-s* *bpcx-req-conflict-event*)))
+(must-fail-checked (assert-event (bpcx-conflict-concl *bpcx-du-s* *bpcx-req-conflict-event*)))
 ;; next-op bound dropped (corrupted-state witness): at the terminal
 ;; operation ID the reception is refused :arguments.  Not reachable through
 ;; fn-bpnp-step: recovery resets next-op to 0 and each operation advances it
 ;; by one, so the terminal ID needs 2^64 operations in one epoch.
 (defconst *bpcx-s1-terminal* (update-nth 9 *fn-frame-max-nat* *bpcx-s1*))
-(must-fail (assert-event (bpcx-conflict-concl *bpcx-s1-terminal* *bpcx-n11-event*)))
+(must-fail-checked (assert-event (bpcx-conflict-concl *bpcx-s1-terminal* *bpcx-n11-event*)))
 ;; epoch and next-op natp dropped (corrupted-state witnesses).  Neither is
 ;; reachable through fn-bpnp-step: the initial state has epoch 0 and next-op
 ;; 0, recovery admits only a fn-frame-natp new epoch and resets next-op to
 ;; 0, and next-op only grows by one below the bound above.
-(must-fail (assert-event (bpcx-conflict-concl (update-nth 8 -1 *bpcx-s1*) *bpcx-n11-event*)))
-(must-fail (assert-event (bpcx-conflict-concl (update-nth 9 -1 *bpcx-s1*) *bpcx-n11-event*)))
+(must-fail-checked (assert-event (bpcx-conflict-concl (update-nth 8 -1 *bpcx-s1*) *bpcx-n11-event*)))
+(must-fail-checked (assert-event (bpcx-conflict-concl (update-nth 9 -1 *bpcx-s1*) *bpcx-n11-event*)))
 ;; next-arrival natp dropped, REACHED through fn-bpnp-step: recovery admits
 ;; an arrival frontier of 2^64 (fn-bpnf-recover-fnbs-step bounds it by
 ;; *fn-frame-max-nat* + 1), so the recovered S1 keeps A held, has a frame
@@ -572,10 +572,10 @@
 (defconst *bpcx-n11-badwire*
   (update-nth 2 (fn-bpb-encode *bpcx-a*) *bpcx-n11-event*))
 (assert-event (fn-bpnp-host-eventp *bpcx-n11-badwire*))
-(must-fail (assert-event (bpcx-conflict-concl *bpcx-s1* *bpcx-n11-badwire*)))
+(must-fail-checked (assert-event (bpcx-conflict-concl *bpcx-s1* *bpcx-n11-badwire*)))
 ;; identity-conflict decision dropped: BP-R06's aged retransmission is a
 ;; duplicate, answered :duplicate with no record.
-(must-fail
+(must-fail-checked
  (assert-event
   (bpcx-conflict-concl *bpcx-s1* (bpcx-receive-event (fn-bpb-encode *bpcx-a-aged*)))))
 ;; Credit conjunct: at exhausted journal credit the same reception gets the
@@ -589,20 +589,20 @@
 ;; Teeth of fn-bpnp-step-conflict-publication-answers-refusal: a stale
 ;; operation ID changes nothing (operation-match dropped); a pending store
 ;; operation answers :stored, not the refusal (:conflict kind dropped).
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects
           (fn-bpnp-step *bpcx-n11-s* (list :persist-result (fn-bpnf-epoch *bpcx-s1*)
                                            (1+ (fn-bpnf-next-op *bpcx-s1*)) :durable)))
          *bpcx-n11-refusal*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects (bpcx-durable *bpcx-a-proposal*))
          (list (list :receive-answer *bpcx-ingress* :identity-conflict)))))
 ;; status :pending dropped: the uncertain record fences; its persist result
 ;; is ignored.
 (defconst *bpcx-n11-u* (fn-bpnf-answer-state (bpcx-n11-result :uncertain)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects
           (fn-bpnp-step *bpcx-n11-u* (list :persist-result (fn-bpnf-epoch *bpcx-s1*)
@@ -635,7 +635,7 @@
              *bpcx-n11-record*)))
 ;; The issued :conflict operation is an fn-bpnf-operationp only because the
 ;; kind list names :conflict: the same row with an unlisted kind is not one.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnf-operationp (update-nth 3 :rotate (fn-bpnf-issued *bpcx-n11-s*)))))
 ;; Each binding the keystone concludes, broken alone, refuses authority:
@@ -718,34 +718,34 @@
 (assert-event (bpcx-fences-different-boot (bpcx-domain-event *bpcx-plan-b*)))
 ;; seven-field event dropped: the six-field recovery carries no domain and
 ;; recovers across the boot change (why the host must pass the decision).
-(must-fail (assert-event (bpcx-fences-different-boot *bpcx-n08-recover-event*)))
+(must-fail-checked (assert-event (bpcx-fences-different-boot *bpcx-n08-recover-event*)))
 ;; plan equality dropped: an event claiming (:same A) while boot B observed.
-(must-fail (assert-event (bpcx-fences-different-boot
+(must-fail-checked (assert-event (bpcx-fences-different-boot
                           (bpcx-domain-event (list :same *bpcx-boot-a*)))))
 ;; present dropped: no saved record, legacy rows present.
-(must-fail (assert-event (bpcx-fences-different-boot
+(must-fail-checked (assert-event (bpcx-fences-different-boot
                           (bpcx-domain-event
                            (fn-bpnf-clock-domain-plan nil nil *bpcx-observed-b* t t t)))))
 ;; saved record decodes dropped: damaged saved bytes.
-(must-fail (assert-event (bpcx-fences-different-boot
+(must-fail-checked (assert-event (bpcx-fences-different-boot
                           (bpcx-domain-event
                            (fn-bpnf-clock-domain-plan '(1 2 3) t *bpcx-observed-b* nil t nil)))))
 ;; observed ID decodes dropped: an observation without its LF.
-(must-fail (assert-event (bpcx-fences-different-boot
+(must-fail-checked (assert-event (bpcx-fences-different-boot
                           (bpcx-domain-event
                            (fn-bpnf-clock-domain-plan *bpcx-saved-a* t *bpcx-boot-b* nil t nil)))))
 ;; the IDs differ dropped: the same boot recovers.
-(must-fail (assert-event (bpcx-fences-different-boot (bpcx-domain-event *bpcx-plan-a*))))
+(must-fail-checked (assert-event (bpcx-fences-different-boot (bpcx-domain-event *bpcx-plan-a*))))
 ;; Teeth of fn-bpnp-step-ready-recovery-is-same-boot: with boot B observed
 ;; and boot A saved (conclusion false), a ready answer needs each
 ;; hypothesis dropped: the six-field event, or an event whose domain is not
 ;; the plan of those observations.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (car (car (fn-bpnf-answer-effects
                          (fn-bpnp-step *bpcx-s3* *bpcx-n08-recover-event*))))
               :restart-ready))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (car (car (fn-bpnf-answer-effects
                          (fn-bpnp-step *bpcx-s3* (bpcx-domain-event
@@ -755,10 +755,10 @@
 (assert-event (not (equal (car (car (fn-bpnf-answer-effects *bpcx-n07*))) :restart-ready)))
 ;; Teeth of fn-bpnp-step-domain-disagreement-fences: admitted domain (:same)
 ;; is not fenced; a six-field event is not fenced.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects *bpcx-n07-same*))) :restart-fault)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects *bpcx-n08-recovered*))) :restart-fault)))
 ;; :initialize admits only a recovery with nothing retained.
@@ -774,7 +774,7 @@
 (assert-event
  (and (equal (fn-bpnf-held-list *bpcx-r02-r*) (fn-bpnf-held-list *bpcx-s1*))
       (equal (car (car (fn-bpnf-answer-effects *bpcx-r02-tick*))) :persist-dispatch)))
-(must-fail
+(must-fail-checked
  (assert-event (null (fn-bpnf-answer-effects *bpcx-r02-tick*))))
 
 ;; BP-R06: a retransmission differing only in Bundle Age is a duplicate.
@@ -793,10 +793,10 @@
              (fn-bpnf-held-list *bpcx-s1*))
       (equal (fn-bpnf-held-list (fn-bpnf-answer-state (bpcx-durable *bpcx-r07*)))
              (fn-bpnf-held-list *bpcx-s1*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpn-nth 2 (car (fn-bpnf-answer-effects *bpcx-r06*))) :identity-conflict)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects (bpcx-durable *bpcx-r07*))
          (list (list :receive-answer *bpcx-ingress* :duplicate)))))
@@ -807,7 +807,7 @@
  (and (fn-bpnp-host-eventp *bpcx-r15-event*)
       (equal (fn-bpnf-answer-effects *bpcx-r15*) '((:forward-stale 1 2 (1 . 9))))
       (equal (fn-bpnf-answer-state *bpcx-r15*) *bpcx-s3*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpnf-answer-state *bpcx-r15*) (fn-bpnf-answer-state *bpcx-sent*))))
 
 ;; BP-R16: a held bundle already past its lifetime at the progress
@@ -818,7 +818,7 @@
       (equal (fn-bpnp-held-expiry (car (fn-bpnf-held-list *bpcx-s1*)) *bpcx-late-obs*)
              :expired)
       (null (fn-bpnf-answer-effects *bpcx-r16*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects *bpcx-r16*))) :persist-dispatch)))
 
@@ -937,17 +937,17 @@
              *bpcx-r17-stranded-report*)))
 ;; Teeth: without the last row the replay is the live count before it (2);
 ;; a row out of order faults; a count that is not one more does not apply.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bpcx-replayed (take 3 *bpcx-r17-rows*))
          (fn-bpnf-held-list *bpcx-r17-b3*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnf-family-replay-rows
                (list (nth 1 *bpcx-r17-rows*) *bpcx-r17-k5*)
                (fn-bpnf-base *bpcx-raw-s0*)))
          :ready)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnp-deferral-apply
                (update-nth 5 3 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects
@@ -956,19 +956,19 @@
          :ready)))
 ;; Teeth of the proposal, one per hypothesis: the marker names another
 ;; operation; an operation is issued; the state is in another epoch.
-(must-fail
+(must-fail-checked
  (assert-event
   (bpcx-proposes-count-p *bpcx-r17-d1*
                          (update-nth 2 (1+ (fn-bpn-nth 2 *bpcx-r17-busy1-event*))
                                      *bpcx-r17-busy1-event*) 1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (bpcx-proposes-count-p
    (update-nth 6 (fn-bpnf-operation (fn-bpnf-epoch *bpcx-r17-d1*) 99
                                     :store nil :pending)
                *bpcx-r17-d1*)
    *bpcx-r17-busy1-event* 1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (bpcx-proposes-count-p (update-nth 8 (1+ (fn-bpnf-epoch *bpcx-r17-d1*))
                                      *bpcx-r17-d1*)
@@ -982,15 +982,15 @@
                                     (bpcx-obs-at 6000) 3))
         (fn-bpnp-busy-strandedp (car (fn-bpnf-held-list *bpcx-r17-b3*)) 3)
         (not (fn-bpnp-busy-strandedp (car (fn-bpnf-held-list *bpcx-r17-b3*)) 4)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bpnp-busy-blockedp (car (fn-bpnf-held-list *bpcx-r17-b3*))
                               (fn-bpnp-waits *bpcx-r17-b3*) (bpcx-obs-at 60000) 3))))
-(must-fail
+(must-fail-checked
  (assert-event (null (fn-bpnf-answer-effects *bpcx-r17-redeliver2*))))
 ;; Tooth of fn-bpnp-progress-reports-a-stranded-row: a tick that selects a
 ;; row (the backoff over, under the budget) delivers instead of reporting.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-answer-effects *bpcx-r17-redeliver2*)
          (list (list :delivery-stranded *bpcx-r17-key* 1)))))
@@ -1164,7 +1164,7 @@
       (fn-bpnf-answer-effects
        (fn-bpnp-step (fn-bpnf-answer-state (bpcx-n16-proj-new))
                      '(:persist-result 2 0 :durable)))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpn-nth 1 (bpcx-n16-proj-reopen)) 3)))
 
 ;; Teeth of fn-bpnp-rotate-step-proposes-only-own-projection: the proposal
@@ -1177,7 +1177,7 @@
  (equal (fn-bpnf-answer-effects
          (fn-bpnp-step *bpcx-n16-busy* (list :rotate 1 *bpcx-n16-ck*)))
         '((:rotation-refused 1))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects
                     (fn-bpnp-step *bpcx-n16-busy* (list :rotate 1 *bpcx-n16-ck*)))))
@@ -1215,7 +1215,7 @@
              (fn-bpnp-step (fn-bpnf-answer-state
                             (fn-bpnp-step (bpcx-n16-r) '(:persist-result 2 0 :uncertain)))
                            '(:persist-result 2 0 :durable))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnp-used (fn-bpnf-answer-state
                         (fn-bpnp-step (bpcx-n16-r) '(:persist-result 2 0 :refused))))
@@ -1279,7 +1279,7 @@
                                  (append (bpcx-n16-rows0) (list (bpcx-n16-row-b2)))
                                  '(:none))))
              :ready)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bpcx-n16-reopen0 (list (bpcx-n16-row-b2)) *bpcx-n16-budget*)
          (update-nth 5 1 (fn-bpnr-recover-auto-event
@@ -1291,7 +1291,7 @@
  (equal (car (fn-bpn-nth 4 (fn-bpnr-recover-auto-event
                             *bpcx-raw-s0* nil :ready nil '(:damaged))))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bpcx-n16-reopen0 nil *bpcx-n16-budget*)
          (list :recover-fnbs 3 nil :ready
@@ -1303,7 +1303,7 @@
 ;; Octets absent (a budget the value does not fit): the selection is
 ;; damaged and recovery faults where the conclusion names a ready replay.
 (assert-event (null (fn-bpnr-checkpoint-octets (bpcx-n16-rck0) 2)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bpcx-n16-reopen0 nil 2)
          (list :recover-fnbs 3 nil :ready
@@ -1320,7 +1320,7 @@
 (assert-event
  (equal (car (fn-bpnr-replay-from nil *bpcx-n16-bad-rows* (fn-bpnf-base *bpcx-raw-s0*)))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnr-recover-auto-event
           *bpcx-raw-s0* nil :ready nil
@@ -1346,7 +1346,7 @@
  (and (equal (fn-bpnr-crash-visible :marker-staged nil (bpcx-n16-octets) :new) nil)
       (equal (fn-bpnr-crash-visible :marker-attempted nil (bpcx-n16-octets) :new)
              (bpcx-n16-octets))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnr-crash-visible :directory nil (bpcx-n16-octets) :new)
          (bpcx-n16-octets))))
@@ -1378,7 +1378,7 @@
         :durable))
 (assert-event
  (not (equal (fn-bpn-nth 3 (fn-bpnf-issued *bpcx-n16-busy*)) :checkpoint)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnp-step *bpcx-n16-busy* *bpcx-n16-busy-result*)
          (fn-bpnp-rotation-persist-step
@@ -1394,7 +1394,7 @@
                             (fn-bpnp-step (bpcx-n16-improper)
                                           '(:persist-result 2 0 :durable))))
              1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnp-used (fn-bpnf-answer-state
                         (fn-bpnp-step (bpcx-n16-improper)

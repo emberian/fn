@@ -5,7 +5,7 @@
 ; out of the RFCs, never by calling the response builder under test.
 (in-package "ACL2")
 (include-book "../../books/nntp-xpat")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *xp-groups* '("fn.letters" "fn.empty"))
 (defconst *xp-id* "<Probe@Id.invalid>")
@@ -139,7 +139,7 @@
 (assert-event (fn-nntp-xpat-matchesp (xp-parsed "*") *xp-content*))
 (assert-event (not (fn-nntp-xpat-matchesp (append (xp-parsed "*") *xp-negated*)
                                           *xp-content*)))
-(must-fail
+(must-fail-checked
  (defthm xp-alternation-without-positive-alternatives
    (iff (fn-nntp-xpat-matchesp (append p q) content)
         (or (fn-nntp-xpat-matchesp p content)

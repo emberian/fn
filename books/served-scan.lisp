@@ -35,7 +35,7 @@
                                                       fn-served-submission)))))
   (if (or (not (natp i)) (not (natp end)) (>= i end)
           (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-tls-handshakingp conn))
+          (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
     (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
            (next (fn-wsp-next w))
@@ -100,9 +100,9 @@
 
 (local
  (defthm fn-sscan-handshaking-of-with-wire
-   (equal (fn-served-tls-handshakingp (fn-served-conn-with-wire conn w))
-          (fn-served-tls-handshakingp conn))
-   :hints (("Goal" :in-theory (enable fn-served-tls-handshakingp)))))
+   (equal (fn-served-haltedp (fn-served-conn-with-wire conn w))
+          (fn-served-haltedp conn))
+   :hints (("Goal" :in-theory (enable fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)))))
 
 (local
  (defthm fn-sscan-feed-byte-without-event-keeps-open
@@ -146,7 +146,7 @@
  (defthm fn-sscan-feed-counted-cons
    (equal (fn-scar-feed-counted conn (cons b rest) live trie arts fn-arena)
           (if (or (fn-served-closed-wirep (fn-served-conn-wire conn))
-                  (fn-served-tls-handshakingp conn))
+                  (fn-served-haltedp conn))
               (fn-served-counted-make 0 (fn-served-make-result conn nil))
             (let ((here (fn-scar-feed-byte conn b live trie arts fn-arena)))
               (if (fn-served-submission (fn-served-result-effects here))
@@ -184,7 +184,7 @@
 (local
  (defthm fn-sscan-feed-counted-splits
    (implies (and (not (fn-served-closed-wirep (fn-served-conn-wire conn)))
-                 (not (fn-served-tls-handshakingp conn))
+                 (not (fn-served-haltedp conn))
                  (natp i) (natp end) (< i end))
             (equal
              (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets)
@@ -217,7 +217,7 @@
                              fn-served-counted-result)
                             (fn-wire-feed-byte fn-wire-fast-statep
                              fn-scar-dispatch-events fn-scar-feed-counted
-                             fn-served-submission fn-served-tls-handshakingp))
+                             fn-served-submission fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp))
             :expand ((fn-wire-span-fold (fn-served-conn-wire conn)
                                         i end fn-octets))))))
 
@@ -235,7 +235,7 @@
                             fn-scar-feed-counted fn-sscan-feed-counted-cons
                             fn-sscan-slice-open
                             fn-served-submission fn-served-closed-wirep
-                            fn-served-tls-handshakingp)))
+                            fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)))
           (and stable-under-simplificationp
                '(:expand ((fn-scar-feed-counted conn
                                                 (fn-oct-slice-list i end fn-octets)

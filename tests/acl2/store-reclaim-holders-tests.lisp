@@ -3,8 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-holders")
 (include-book "../../books/native-live-status")
-(include-book "std/testing/must-fail" :dir :system)
-(include-book "arena-lift")
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 ; A verified article (*stxt-r1*) and the keyring it verifies under.
 (include-book "stx-transit-tests")
@@ -14,6 +13,28 @@
 ; octets-stobj-tests (not included: it depends on the octet buffer books).
 (defconst *rht-s0* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
 (defconst *rht-art* (car (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-s0*)))))
+; Since the records flip the article holds a payload HANDLE; its stored
+; bytes are the handle's in the arena that interned the owner's journal.
+(defconst *rht-bytes*
+  (fn-hrt-bytes *osi-completing-prior* (fn-article-payload *rht-art*)))
+(assert-event (and (natp (fn-article-payload *rht-art*))
+                   (fn-cbor-octet-listp *rht-bytes*) (consp *rht-bytes*)))
+
+; The arena of the fixture's history (audit-fixes, 2026-09-27): the payloads
+; the host's entry interned from the owner's journal, in handle order, so
+; that sealing them in order rebuilds the arena its articles' handles name.
+(defun rcl-prior-payloads (prior i fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel)
+      nil
+    (let ((b (fn-hrt-bytes prior i)))
+      (if (consp b)
+          (cons b (rcl-prior-payloads prior (+ 1 i) (- fuel 1)))
+        nil))))
+(defconst *rht-payloads* (rcl-prior-payloads *osi-completing-prior* 0 64))
+(assert-event (equal (nth (fn-article-payload *rht-art*) *rht-payloads*) *rht-bytes*))
+(bpr-lift fn-rcl-store-counts 3)
+(bpr-lift fn-nls-reclaim-words 3)
 (defconst *rht-m* (car (fn-article-memberships *rht-art*)))
 (defconst *rht-g* (car *rht-m*))
 (defconst *rht-n* (cdr *rht-m*))
@@ -36,20 +57,20 @@
                      :held-consumer-cursor))
 (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*) nil *rht-art*))
 ; Tooth (a lagging consumer): caught up, the conclusion fails.
-(must-fail (assert-event (not (fn-rcl-reclaimable *rht-rule* 0
+(must-fail-checked (assert-event (not (fn-rcl-reclaimable *rht-rule* 0
                                                   (fn-rcl-store-holders *rht-caught*)
                                                   nil *rht-art*))))
 ; Tooth (numbered, posp n): an article with no membership is not held.
 (defconst *rht-bare* (fn-make-article (fn-article-msgid *rht-art*) (fn-article-payload *rht-art*)
                                       (fn-article-groups *rht-art*) nil t
                                       (fn-article-stamp *rht-art*)))
-(must-fail (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
+(must-fail-checked (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
                                                   nil *rht-bare*))))
 ; Tooth (the group is served): numbered only in a group the store lacks.
 (defconst *rht-other* (fn-make-article (fn-article-msgid *rht-art*) (fn-article-payload *rht-art*)
                                        (fn-article-groups *rht-art*) '(("zz.none" . 1)) t
                                        (fn-article-stamp *rht-art*)))
-(must-fail (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
+(must-fail-checked (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
                                                   nil *rht-other*))))
 
 ; The verdict list.  Every article the fixture accepted has a verdict
@@ -64,7 +85,7 @@
 (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
                                   (fn-sn-verdicts *rht-caught*) *rht-art*))
 ; Tooth (the entry is :absent): an :unverified verdict holds the article.
-(must-fail (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
+(must-fail-checked (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
                                              (list (cons *rht-msgid* '(:unverified :signature 0)))
                                              *rht-art*)))
 
@@ -88,106 +109,90 @@
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict-of-octets (fn-article-payload *stxt-r1*) nil 0))
                      :unverified))
-(must-fail (assert-event (equal (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)
+(must-fail-checked (assert-event (equal (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)
                                 nil)))
 
-; The counts: caught up, the article is counted reclaimable and nothing
-; held; lagging, nothing is reclaimable and it is counted held.
-(assert-event (let ((c (fn-rcl-store-counts *rht-rule* 0 *rht-caught*)))
-                (and (<= 1 (nth 0 c)) (<= (len (fn-article-payload *rht-art*)) (nth 1 c))
+; The counts: caught up, the article is counted reclaimable (its stored
+; octets among the reclaimable octets) and nothing held; lagging, nothing is
+; reclaimable and it is counted held.
+(assert-event (let ((c (in-arena-fn-rcl-store-counts *rht-payloads* *rht-rule* 0 *rht-caught*)))
+                (and (<= 1 (nth 0 c)) (<= (len *rht-bytes*) (nth 1 c))
                      (equal (nth 4 c) 0))))
-(assert-event (let ((c (fn-rcl-store-counts *rht-rule* 0 *rht-lag*)))
+(assert-event (let ((c (in-arena-fn-rcl-store-counts *rht-payloads* *rht-rule* 0 *rht-lag*)))
                 (and (equal (nth 0 c) 0) (<= 1 (nth 4 c)))))
 ; Keep-forever (no row): nothing reclaimable, nothing counted held.
-(assert-event (equal (fn-rcl-store-counts '(:keep-forever) 0 *rht-caught*) (list 0 0 0 0 0)))
+(assert-event (equal (in-arena-fn-rcl-store-counts *rht-payloads* '(:keep-forever) 0 *rht-caught*) (list 0 0 0 0 0)))
 
 ; The status words over the configuration's rule (no row: keep-forever).
 (assert-event
- (equal (fn-nls-reclaim-words *rht-caught* (fn-cfg-initial) '(nil nil (:full-replay :absent) nil) fn-arena)
+ (equal (in-arena-fn-nls-reclaim-words *rht-payloads* *rht-caught* (fn-cfg-initial) '(nil nil (:full-replay :absent) nil))
         (fn-record-string-octets
          "reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0")))
 
 ; -----------------------------------------------------------------------------
-; The counts over the ARENA (lane matrix-reds-reclaim).  The fixture is a
-; flipped Store: its three articles carry handles 2, 1 and 0 (the tested
-; article *rht-art* is handle 2); the arena below holds, at each handle, the
-; bytes the arena that interned the completing journal holds there, or, for
-; the reclaimed case, *rht-art*'s tombstone at its handle.
-(defconst *rht-h* (fn-article-payload *rht-art*))
-(defconst *rht-b0* (fn-hrt-bytes *osi-completing-prior* 0))
-(defconst *rht-b1* (fn-hrt-bytes *osi-completing-prior* 1))
-(defconst *rht-arena* (list *rht-b0* *rht-b1* *rht-art-octets*))
-(defconst *rht-tomb*
-  (fn-rcl-tombstone-of *rht-art-octets* (fn-record-string-octets *rht-msgid*)))
-(defconst *rht-tomb-arena* (list *rht-b0* *rht-b1* *rht-tomb*))
-(defconst *rht-live-octets* (+ (len *rht-b0*) (len *rht-b1*) (len *rht-art-octets*)))
-(defconst *rht-freed* (- (len *rht-art-octets*) (len *rht-tomb*)))
-(assert-event (and (equal *rht-h* 2)
-                   (fn-rcl-tombstonep *rht-tomb*)
-                   (not (fn-rcl-tombstonep *rht-art-octets*))
-                   (consp *rht-b0*) (consp *rht-b1*)
-                   (< 0 *rht-freed*)
-                   (equal (len (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-caught*))))
-                          3)))
-(defun rht-counts-model (rule now s fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((models (fn-rcl-articles-alpha
-                 (fn-state-articles (fn-node-acceptance (fn-sn-node s))) fn-arena)))
-    (append (fn-rcl-summary rule now (fn-rcl-store-holders s) (fn-sn-verdicts s) models)
-            (list (fn-rcl-held-count rule now (fn-rcl-store-holders s) (fn-sn-verdicts s)
-                                     models)))))
-(bpr-lift fn-rcl-store-counts-arena 3)
-(bpr-lift rht-counts-model 3)
-(bpr-lift fn-rcl-verdict-arena 5)
+; The counts over the arena (audit-fixes, 2026-09-27; KEYSTONE
+; fn-rcl-store-counts-is-the-model-over-alpha).  Before this the counts read
+; each article's HANDLE as its octets: the caught-up store (three articles,
+; all reclaimable under the releasing rule) answered (3 0 0 0 0), no
+; reclaimable octet, where its articles hold 23, 23 and 328 octets.
+(bpr-lift fn-rcl-articles-alpha 1)
+(defconst *rht-articles* (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-caught*))))
+(defconst *rht-counts* (in-arena-fn-rcl-store-counts *rht-payloads* *rht-rule* 0 *rht-caught*))
+(defun rht-lens (payloads)
+  (if (consp payloads) (+ (len (car payloads)) (rht-lens (cdr payloads))) 0))
+(assert-event (and (equal (len *rht-articles*) 3) (equal (len *rht-payloads*) 3)))
+(assert-event (equal *rht-counts* (list 3 (rht-lens *rht-payloads*) 0 0 0)))
+(assert-event (equal (rht-lens *rht-payloads*) 374))
+(assert-event (< 0 (len *rht-bytes*)))
+; The keystone, evaluated: the counts are the octet-list model's over ALPHA.
+(defconst *rht-alpha* (in-arena-fn-rcl-articles-alpha *rht-payloads* *rht-articles*))
+(assert-event
+ (equal *rht-counts*
+        (append (fn-rcl-summary *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
+                                (fn-sn-verdicts *rht-caught*) *rht-alpha*)
+                (list (fn-rcl-held-count *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
+                                         (fn-sn-verdicts *rht-caught*) *rht-alpha*)))))
+; The model over the handles themselves (what the counts computed before the
+; fix): no reclaimable octet.
+(assert-event
+ (equal (fn-rcl-summary *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
+                        (fn-sn-verdicts *rht-caught*) *rht-articles*)
+        (list 3 0 0 0)))
 
-; fn-rcl-store-counts-arena-is-the-model-counts, reachable: caught up, the
-; three articles are reclaimable and the octet count is the bytes under
-; their handles; with *rht-art* reclaimed (its tombstone under its handle)
-; it counts as reclaimed and its freed octets are its recorded length less
-; the tombstone's.  Each equals the octet-list model's counts over the
-; articles' octet models.
+; Tooth (the arena is what the counts read): an arena whose handle holds
+; fewer octets changes the reclaimable octets.
+(defun rht-with-payload (payloads i bytes)
+  (declare (xargs :verify-guards nil))
+  (update-nth i bytes payloads))
+(defconst *rht-short-payloads*
+  (rht-with-payload *rht-payloads* (fn-article-payload *rht-art*) (take 3 *rht-bytes*)))
 (assert-event
- (equal (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-caught*)
-        (list 3 *rht-live-octets* 0 0 0)))
-(assert-event
- (equal (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-caught*)
-        (list 2 (+ (len *rht-b0*) (len *rht-b1*)) 1 *rht-freed* 0)))
-(assert-event
- (and (equal (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-caught*)
-             (in-arena-rht-counts-model *rht-arena* *rht-rule* 0 *rht-caught*))
-      (equal (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-caught*)
-             (in-arena-rht-counts-model *rht-tomb-arena* *rht-rule* 0 *rht-caught*))))
-; Lagging, the live articles are held; the reclaimed one stays reclaimed.
-(assert-event
- (equal (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-lag*)
-        (list 0 0 0 0 3)))
-(assert-event
- (equal (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-lag*)
-        (list 0 0 1 *rht-freed* 2)))
-; The mutation (the pre-lane counts, which parsed the handles): the wire
-; counts over the flipped Store count no octets, and the reclaimed article
-; as reclaimable again.
-(assert-event (equal (fn-rcl-store-counts *rht-rule* 0 *rht-caught*) (list 3 0 0 0 0)))
-(must-fail
- (assert-event
-  (equal (fn-rcl-store-counts *rht-rule* 0 *rht-caught*)
-         (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-caught*))))
-(must-fail
- (assert-event
-  (equal (fn-rcl-store-counts *rht-rule* 0 *rht-caught*)
-         (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-caught*))))
+ (equal (in-arena-fn-rcl-store-counts *rht-short-payloads* *rht-rule* 0 *rht-caught*)
+        (list 3 (+ 3 (- (rht-lens *rht-payloads*) (len *rht-bytes*))) 0 0 0)))
 
-; fn-rcl-verdict-arena-is-the-model-verdict: the tombstone under the handle
-; is :already-reclaimed, the live octets :reclaimable; the wire verdict of
-; the handle itself (the mutation) is never :already-reclaimed.
+; A reclaimed article: its handle holds the tombstone of its bytes.  It is
+; counted reclaimed, with the octets its tombstone records as freed, and no
+; longer reclaimable; over the handle alone it was counted reclaimable again.
+(defconst *rht-tomb* (fn-rcl-tombstone-of *rht-bytes* (fn-record-string-octets *rht-msgid*)))
+(assert-event (fn-rcl-tombstonep *rht-tomb*))
+(defconst *rht-tomb-payloads*
+  (rht-with-payload *rht-payloads* (fn-article-payload *rht-art*) *rht-tomb*))
 (assert-event
- (and (equal (in-arena-fn-rcl-verdict-arena *rht-tomb-arena* *rht-rule* 0
-                                            (fn-rcl-store-holders *rht-caught*) nil *rht-art*)
-             :already-reclaimed)
-      (equal (in-arena-fn-rcl-verdict-arena *rht-arena* *rht-rule* 0
-                                            (fn-rcl-store-holders *rht-caught*) nil *rht-art*)
-             :reclaimable)))
-(must-fail
- (assert-event
-  (equal (fn-rcl-verdict *rht-rule* 0 (fn-rcl-store-holders *rht-caught*) nil *rht-art*)
-         :already-reclaimed)))
+ (equal (in-arena-fn-rcl-store-counts *rht-tomb-payloads* *rht-rule* 0 *rht-caught*)
+        (list 2 (- (rht-lens *rht-payloads*) (len *rht-bytes*))
+              1 (nfix (- (fn-rcl-tomb-length *rht-tomb*) (len *rht-tomb*))) 0)))
+(assert-event (< 0 (nfix (- (fn-rcl-tomb-length *rht-tomb*) (len *rht-tomb*)))))
+(assert-event (equal (fn-rcl-tomb-length *rht-tomb*) (len *rht-bytes*)))
+
+; The status line under the releasing rule (the configuration row `retention
+; set released-by-all-holders' writes): the reclaimable octets are the
+; articles' stored lengths (374), not 0.
+(defconst *rht-release-cfg*
+  (fn-cfg-make 1 (fn-cfg-apply (fn-cfg-empty-value) 1 nil (fn-rcl-rule-deltas *rht-rule*))))
+(assert-event (equal (fn-rcl-config-rule (fn-cfg-value *rht-release-cfg*)) *rht-rule*))
+(assert-event
+ (equal (in-arena-fn-nls-reclaim-words *rht-payloads* *rht-caught* *rht-release-cfg*
+                                       '(nil nil (:full-replay :absent) nil))
+        (append (fn-record-string-octets "reclaim rule=released-by-all-holders reclaimable=3")
+                (fn-record-string-octets " reclaimable-octets=374")
+                (fn-record-string-octets " held=0 reclaimed=0 freed-octets=0"))))

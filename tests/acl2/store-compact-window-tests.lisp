@@ -5,7 +5,7 @@
 ; keystone without it.
 (in-package "ACL2")
 (include-book "../../books/store-compact-window")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *cwt-a0*
@@ -76,7 +76,7 @@
                                                   *cwt-names* nil nil *cwt-disk*)
                           (fn-cverb-decide *cwt-dev* *cwt-records* 3 *cwt-names* nil nil
                                            *cwt-disk*))))
-(must-fail
+(must-fail-checked
  (defthm cwt-decide-without-used
    (implies (equal window (fn-scw-window records lower))
             (equal (fn-cverb-decide-window profile used lower window names generations
@@ -97,7 +97,7 @@
 (assert-event (equal (fn-cverb-decide-window *cwt-dev* 5 0 nil *cwt-names* nil nil
                                              *cwt-short*)
                      (list :compact *fn-cverb-pack-steps*)))
-(must-fail
+(must-fail-checked
  (defthm cwt-decide-without-window
    (implies (equal used (len records))
             (equal (fn-cverb-decide-window profile used lower window names generations
@@ -128,7 +128,7 @@
 (assert-event (not (equal (fn-ccc-capture-link-window 10 (fn-scw-window *cwt-records* 5)
                                                       5 6 0 nil)
                           (fn-ccc-capture-link *cwt-records* 5 6 0 nil))))
-(must-fail
+(must-fail-checked
  (defthm cwt-capture-without-used
    (implies (equal window (fn-scw-window records lower))
             (equal (fn-ccc-capture-link-window used window lower lower-frontier
@@ -143,7 +143,7 @@
 ; link covering one event, where the fit covers five.
 (assert-event (not (equal (fn-ccc-capture-link-window 5 (take 1 *cwt-records*) 0 0 0 nil)
                           (fn-ccc-capture-link *cwt-records* 0 0 0 nil))))
-(must-fail
+(must-fail-checked
  (defthm cwt-capture-without-window
    (implies (equal used (len records))
             (equal (fn-ccc-capture-link-window used window lower lower-frontier

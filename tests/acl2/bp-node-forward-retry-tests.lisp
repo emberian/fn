@@ -9,7 +9,7 @@
 (include-book "../../books/bp-node-forward-retry")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 
 (defconst *bpfr-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
@@ -138,7 +138,7 @@
              (fn-bpnf-held-list *bpfr-r7*))
       (null (fn-bpnf-issued (fn-bpnf-answer-state *bpfr-o7*)))
       (equal (fn-bpnp-debt (fn-bpnf-answer-state *bpfr-o7*)) (fn-bpnp-debt *bpfr-r7*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects *bpfr-o7*))) :persist-attempt)))
 ;; A live attempt (current epoch) is never re-offered: the same session
@@ -166,43 +166,43 @@
       (equal (car (fn-bpnp-forward-image *bpfr-h* *bpfr-local* *bpfr-obs*)) :ready)
       (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 32768 *bpfr-local* nil 100))))
 ;; member dropped: the row is not in the scanned list.
-(must-fail (assert-event (bpfr-offers-h (bpfr-scan nil 32768 *bpfr-local* nil 100))))
+(must-fail-checked (assert-event (bpfr-offers-h (bpfr-scan nil 32768 *bpfr-local* nil 100))))
 ;; only-candidate dropped: an older fresh candidate to the same peer wins.
 (assert-event
  (fn-bpnp-forward-candidatep *bpfr-fresh* *bpfr-dest* *bpfr-obs* *bpfr-e* 3))
-(must-fail
+(must-fail-checked
  (assert-event
   (bpfr-offers-h (bpfr-scan (list *bpfr-fresh* *bpfr-h*) 32768 *bpfr-local* nil 100))))
 ;; candidatep dropped: a live attempt (current epoch) is not re-offered.
 (assert-event
  (not (fn-bpnp-forward-candidatep *bpfr-live* *bpfr-dest* *bpfr-obs*
                                   (fn-bpnf-epoch *bpfr-s3*) 3)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnp-forward-scan (list *bpfr-live*) *bpfr-dest* 32768 *bpfr-local*
                                     *bpfr-obs* nil 100 (fn-bpnf-epoch *bpfr-s3*) 3))
          :ready)))
 ;; mru-wait dropped.
-(must-fail
+(must-fail-checked
  (assert-event
   (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 32768 *bpfr-local*
                             (list (list :bpnp-wait *bpfr-key* :mru *bpfr-dest* 32768))
                             100))))
 ;; credit-blocked dropped.
-(must-fail
+(must-fail-checked
  (assert-event
   (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 32768 *bpfr-local*
                             (list (list :bpnp-wait *bpfr-key* :credit 5)) 3))))
 ;; image-ready dropped: no forwarding image at an invalid local node.
 (assert-event
  (not (equal (car (fn-bpnp-forward-image *bpfr-h* :bad *bpfr-obs*)) :ready)))
-(must-fail (assert-event (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 32768 :bad nil 100))))
+(must-fail-checked (assert-event (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 32768 :bad nil 100))))
 ;; fits dropped: a 10-octet transfer MRU.
-(must-fail (assert-event (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 10 *bpfr-local* nil 100))))
+(must-fail-checked (assert-event (bpfr-offers-h (bpfr-scan (list *bpfr-h*) 10 *bpfr-local* nil 100))))
 
 ;; Teeth of fn-bpnp-step-session-offer-is-the-scan-choice: witness *bpfr-o1*
 ;; above; without an offer (the live-attempt session) the scan is not ready.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnp-forward-scan
                (reverse (fn-bpnf-held-list *bpfr-s3*)) *bpfr-dest* 32768 *bpfr-local*
@@ -219,7 +219,7 @@
    (and (equal (fn-bpn-nth 1 image) (fn-bpb-encode (fn-bpn-nth 2 image)))
         (equal (fn-bpb-bundle-primary (fn-bpn-nth 2 image))
                (fn-bpb-bundle-primary *bpfr-a*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((image (fn-bpnp-forward-image *bpfr-h* :bad *bpfr-obs*)))
     (equal (fn-bpn-nth 1 image) (fn-bpb-encode (fn-bpn-nth 2 image))))))
@@ -239,7 +239,7 @@
 (assert-event (fn-bpnp-attempt-matches-heldp *bpfr-rec* *bpfr-at-bound*))
 (assert-event (not (fn-bpnp-under-budgetp *bpfr-at-bound* 3)))
 (assert-event (fn-bpnp-under-budgetp *bpfr-at-bound* 4))
-(must-fail
+(must-fail-checked
  (assert-event
   (<= (fn-bpnp-attempt-retries
        (fn-bpn-nth 13 (fn-bpnp-attempted-held *bpfr-at-bound* *bpfr-rec*)))
@@ -260,7 +260,7 @@
        (fn-bpnf-held-list
         (fn-bpnf-answer-state (bpfr-durable (bpfr-reopen *bpfr-r1*))))
        3)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnp-retries-boundedp
    (fn-bpnf-held-list
@@ -268,8 +268,8 @@
      (let ((effect (car (fn-bpnf-answer-effects (bpfr-reopen *bpfr-r1*)))))
        (fn-bpnp-step *bpfr-pending-over*
                      (list :persist-result (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
-                           :durable))))
-   3))))
+                           :durable)))))
+   3)))
 
 ;; ---------------------------------------------------------------------
 ;; The retry count survives recovery from the durable rows themselves.
@@ -338,7 +338,7 @@
                             (list '(:fence :test))))))
 (assert-event
  (equal (car (car (fn-bpnf-answer-effects *bpfr-fenced*))) :restart-fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpfr-fenced*))
          (bpfr-replayed *bpfr-rows3*))))
@@ -350,7 +350,7 @@
 ;; :failed, not a refusal result.
 (assert-event (equal (fn-bpnp-tcpcl-outcome :refused 3) '(:refused 3)))
 (assert-event (equal (fn-bpnp-tcpcl-outcome :refused nil) :failed))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpnp-tcpcl-outcome :refused nil) (list :refused nil))))
 (assert-event (equal (fn-bpnp-tcpcl-outcome :accepted nil) :sent))
 (assert-event (equal (fn-bpnp-tcpcl-outcome :uncertain nil) :uncertain))
@@ -378,7 +378,7 @@
 (make-event `(defconst *bpfr-stale*
                ',(bpfr-result *bpfr-s4* '(:refused 3) (cons 99 99))))
 (assert-event (equal (car (car (fn-bpnf-answer-effects *bpfr-stale*))) :forward-stale))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpn-nth 8 (fn-bpn-nth 3 (car (fn-bpnf-answer-effects *bpfr-stale*))))
          '(:refused 3))))
@@ -398,5 +398,5 @@
  (let ((h (car (fn-bpnf-held-list (fn-bpnf-answer-state *bpfr-refuse3-settled*)))))
    (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
         (null (fn-bpn-nth 13 h)))))
-(must-fail
+(must-fail-checked
  (assert-event (not (fn-bpnp-forward-terminalp (fn-bpnp-tcpcl-outcome :refused 1)))))

@@ -5,7 +5,7 @@
 ; shape, what it depends on, and the claim this book does NOT make.
 (in-package "ACL2")
 (include-book "../../books/posting-account")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-pat-codes (cs)
   (declare (xargs :guard (character-listp cs)))
@@ -47,14 +47,14 @@
 
 ; fn-pa-account-value-depends-only-on-the-mac: its hypothesis is needed
 ; (two logins, one secret, two values: the witness above).
-(must-fail
+(must-fail-checked
  (defthm fn-pat-value-without-equal-macs
    (equal (fn-pa-account-value secret login1) (fn-pa-account-value secret login2))))
 ; NOT CLAIMED: one value, one login.  That is HMAC-SHA256's collision
 ; resistance, a cryptographic assumption about the real function; for n
 ; logins under one secret a shared value has probability at most
 ; n(n-1)/2^257.
-(must-fail
+(must-fail-checked
  (defthm fn-pat-value-determines-the-login
    (implies (equal (fn-pa-account-value secret login1)
                    (fn-pa-account-value secret login2))

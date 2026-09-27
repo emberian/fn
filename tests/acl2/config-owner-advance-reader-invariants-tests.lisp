@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/config-owner-advance-reader-invariants")
 (include-book "config-owner-advance-invariants-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (fn-ocri-relation *ocl-t-new-open*))
 (assert-event (fn-ocri-relation *ocla-t-advanced*))
@@ -28,7 +28,7 @@
  (not (fn-ocri-relation
        (fn-ocfg-advance *ocla-t-duplicate* 0))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocari-advance-without-reader-relation
     (fn-ocri-relation (fn-ocfg-advance oc id))
     :rule-classes nil)))

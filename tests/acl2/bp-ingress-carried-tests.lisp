@@ -8,7 +8,7 @@
 ; its node replaced by an empty one (a CORRUPTED state, labelled).
 (in-package "ACL2")
 (include-book "../../books/bp-ingress-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "bp-ingress-tests")
 
 ; Reachable POSITIVE witness.  Antecedent: the store is related.
@@ -54,5 +54,5 @@
   (fn-bpi-ingress-prepare *bpic-stale* *bpi-policy* *bpi-context* *bpi-adu* 1))
 (assert-event (equal (fn-bpi-result-kind *bpic-stale-carried*) :prepared))
 (assert-event (equal *bpic-stale-spec* '(:rejected :store-refused)))
-(must-fail
+(must-fail-checked
  (assert-event (equal *bpic-stale-carried* *bpic-stale-spec*)))

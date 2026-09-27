@@ -8,7 +8,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-budget-stored")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sbst-groups* '("fn.letters"))
 (defconst *sbst-ws*
@@ -121,7 +121,7 @@
 (thm (not (equal (fn-sbud-record-octets *sbst-lying-rows*)
                  (fn-sbud-stored-octets *sbst-lying-rows* *sbst-arena-value*))))
 (thm (not (fn-sbud-rows-extents-okp *sbst-lying-rows* *sbst-arena-value*)))
-(must-fail
+(must-fail-checked
  (defthm sbst-octets-without-the-relation
    (equal (fn-sbud-record-octets *sbst-lying-rows*)
           (fn-sbud-stored-octets *sbst-lying-rows* *sbst-arena-value*))))

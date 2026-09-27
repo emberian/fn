@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-held-projection")
 (include-book "bp-fnbs-family-replay-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bphpt-base () (declare (xargs :guard t :verify-guards nil))
   (fn-bpnf-base *bpnff-state*))
@@ -60,7 +60,7 @@
  (equal (car (fn-bphp-replay-rows (bpnfr-replay-rows) (bphpt-base) nil nil nil 0
                                   (fn-bpn-machine-state-max-octets (bphpt-base))))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bphp-replay-rows (bpnfr-replay-rows) (bphpt-base) nil nil nil 0
                               (fn-bpn-machine-state-max-octets (bphpt-base)))

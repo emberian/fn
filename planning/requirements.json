@@ -893,7 +893,6 @@
       "keystones": [
         "fn-bp-transport-step-preserves-receipt",
         "fn-bp-transport-trace-preserves-receipt",
-        "fn-bp-unchecked-receipt-is-no-op",
         "fn-bpo-receipt-success-requires-local-policy",
         "fn-bpo-receipt-success-is-actual-journal-preparation"
       ],
@@ -1257,7 +1256,9 @@
       "milestone": "M3",
       "status": "implemented",
       "proof_targets": [
-        "PRF-006"
+        "PRF-006",
+        "PRF-312",
+        "PRF-313"
       ],
       "verification": [
         "proof",
@@ -4713,7 +4714,7 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-312"
+        "PRF-314"
       ],
       "verification": [
         "proof",

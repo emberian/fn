@@ -650,7 +650,7 @@
                                                       fn-served-submission)))))
   (if (or (not (natp i)) (not (natp end)) (>= i end)
           (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-tls-handshakingp conn))
+          (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
     (let ((here (fn-scr-feed-byte conn (fn-octets-get i fn-octets) live trie arts fn-arena fn-cat)))
       (if (fn-served-submission (fn-served-result-effects here))
@@ -807,7 +807,7 @@
                                                       fn-served-submission)))))
   (if (or (not (natp i)) (not (natp end)) (>= i end)
           (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-tls-handshakingp conn))
+          (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
     (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
            (next (fn-wsp-next w))
@@ -863,9 +863,9 @@
 
 (local
  (defthm fn-scrs-handshaking-of-with-wire
-   (equal (fn-served-tls-handshakingp (fn-served-conn-with-wire conn w))
-          (fn-served-tls-handshakingp conn))
-   :hints (("Goal" :in-theory (enable fn-served-tls-handshakingp)))))
+   (equal (fn-served-haltedp (fn-served-conn-with-wire conn w))
+          (fn-served-haltedp conn))
+   :hints (("Goal" :in-theory (enable fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)))))
 
 (local
  (defthm fn-scrs-feed-byte-without-event-keeps-open
@@ -904,7 +904,7 @@
 (local
  (defthm fn-scrs-feed-span-splits
    (implies (and (not (fn-served-closed-wirep (fn-served-conn-wire conn)))
-                 (not (fn-served-tls-handshakingp conn))
+                 (not (fn-served-haltedp conn))
                  (natp i) (natp end) (< i end))
             (equal
              (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)
@@ -934,7 +934,7 @@
                              fn-served-counted-result)
                             (fn-wire-feed-byte fn-wire-fast-statep
                              fn-scr-dispatch-events
-                             fn-served-submission fn-served-tls-handshakingp))
+                             fn-served-submission fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp))
             :expand ((fn-wire-span-fold (fn-served-conn-wire conn)
                                         i end fn-octets)
                      (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat))))))
@@ -949,7 +949,7 @@
            :in-theory (e/d (fn-scr-scan-span fn-wire-scan-is-span-fold)
                            (fn-scr-dispatch-events fn-wire-fast-statep
                             fn-served-submission fn-served-closed-wirep
-                            fn-served-tls-handshakingp)))
+                            fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)))
           (and stable-under-simplificationp
                '(:expand ((fn-scr-feed-span conn i end live trie arts fn-octets
                                             fn-arena fn-cat))))))

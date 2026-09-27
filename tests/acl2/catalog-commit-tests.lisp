@@ -25,7 +25,7 @@
 (include-book "../../books/catalog-commit")
 (include-book "store-node-tests")
 (include-book "held-rows-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code.
@@ -242,7 +242,7 @@
                 (equal (fn-cat-count c2) 2)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm cct-w-no-token-conclusion
    (mv-let (result pending2 c2)
      (fn-cat-complete (cons 8 2) *cct-pc* *cct-c*)
@@ -358,7 +358,7 @@
          (not (equal (fn-sn-finish-held s *cct-h* *cct-ctx*) (fn-sn-finish s)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm cct-w-no-alpha-conclusion
    (equal (fn-sn-finish-held *cct-s* *cct-other* *cct-ctx*) (fn-sn-finish *cct-s*))
    :rule-classes nil))

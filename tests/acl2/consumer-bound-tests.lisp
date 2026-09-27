@@ -12,7 +12,7 @@
 ;   "3"  query fn.private.x  unbound         (the operator's)
 ;   "4"  query fn.private.x  bound to alice  (alice has no rule)
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/consumer-bound")
 
 ; --- the Store -------------------------------------------------------------
@@ -319,9 +319,9 @@
 (assert-event (not (equal (car (cbt-poll *cbt-oc* *cbt-c1* *cbt-secret*)) :poll)))
 (assert-event (not (fn-cbind-event-readablep
                     (fn-cbind-read-pattern *cbt-oc* "bob") (caddr *cbt-d1*))))
-(must-fail (assert-event (cbt-k1 *cbt-oc* *cbt-acfg* *cbt-c1* *cbt-secret*)))
+(must-fail-checked (assert-event (cbt-k1 *cbt-oc* *cbt-acfg* *cbt-c1* *cbt-secret*)))
 ; ... and a wrong password: the credential conjunct fails.
-(must-fail (assert-event (cbt-k1 *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-wrong*)))
+(must-fail-checked (assert-event (cbt-k1 *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-wrong*)))
 
 ; --- KEYSTONE 2 and 3 witnesses (no hypotheses) ------------------------------
 ; Each disjunct is reached: the consumer's own answer, and a refusal.
@@ -344,10 +344,10 @@
 (assert-event (not (fn-cbind-config-login *cbt-oc* *cbt-c3*)))
 (assert-event (fn-cbind-config-login *cbt-oc* *cbt-c2*))
 ; Without "unbound": bound "2"'s plain poll is not the consumer poll.
-(must-fail (assert-event (equal (cbt-plain *cbt-oc* *cbt-c2*)
+(must-fail-checked (assert-event (equal (cbt-plain *cbt-oc* *cbt-c2*)
                                 (cbt-report *cbt-o* *cbt-c2*))))
 ; Without "bound": unbound "3"'s plain poll is not refused :bound.
-(must-fail (assert-event (equal (cbt-plain *cbt-oc* *cbt-c3*)
+(must-fail-checked (assert-event (equal (cbt-plain *cbt-oc* *cbt-c3*)
                                 '(:refused :bound))))
 ; The plain ack's "decodable" hypothesis, CORRUPTED state: a binding row
 ; named "" (admission refuses it, :consumer-name) binds the consumer an
@@ -362,6 +362,6 @@
 (assert-event (not (equal (fn-cp-nth 0 (fn-cp-cursor-decode '(1 2 3))) :ok)))
 (assert-event (fn-cbind-config-login *cbt-oc-corrupt*
                                      (fn-cp-nth 3 (fn-cp-nth 1 (fn-cp-cursor-decode '(1 2 3))))))
-(must-fail (assert-event (equal (fn-cbind-plain-ack *cbt-oc-corrupt* '(1 2 3))
+(must-fail-checked (assert-event (equal (fn-cbind-plain-ack *cbt-oc-corrupt* '(1 2 3))
                                 '(:refused :bound))))
 

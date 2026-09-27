@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/bp-workflow-replay-status")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (defconst *bpr-groups* '("fn.test"))
 ; by specification: the flip -- the node's acceptance machine carries the
 ; payload as an arena handle (natp), never octets (books/acceptance.lisp
@@ -177,13 +177,13 @@
 ; duplicate and fences the pending intent at restart.
 (defconst *bpr-dup* (list *bpr-config* *bpr-enqueue* *bpr-enqueue*))
 (assert-event (not (car (fn-bp-replay-journal *bpr-node* *bpr-dup*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bp-journal-nth 1 (fn-bp-replay-journal *bpr-node* *bpr-dup*))
          (fn-bp-trace *bpr-s0* (fn-bp-journal-denotation *bpr-dup*)))))
 ; Teeth (fn-bp-replay-journal-success-is-binding-state, hypothesis okp): a
 ; refused image is not a state at all.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bp-binding-statep
    (fn-bp-journal-nth 1 (fn-bp-replay-journal *bpr-node* '((:config "x")))))))
@@ -209,7 +209,7 @@
  (equal (fn-bp-apply-journal-record *bpr-all-state* *bpr-config*)
         (list nil *bpr-all-state* nil)))
 ; Teeth (hypothesis: the record is malformed): the same journal without it succeeds.
-(must-fail (assert-event (not (car (fn-bp-replay-journal *bpr-node* *bpr-all-kinds*)))))
+(must-fail-checked (assert-event (not (car (fn-bp-replay-journal *bpr-node* *bpr-all-kinds*)))))
 
 ; ---------------------------------------------------------------------------
 ; The live entry point is one fn-bp-step (fn-bp-apply-journal-record-is-step-when-ok).
@@ -278,7 +278,7 @@
   (fn-bp-apply-journal-record *bpr-att-restarted* '(:outcome 11 0 :recovery :committed)))
 (assert-event (car *bpr-att-recovered*))
 (assert-event (equal (fn-bp-journal-nth 2 *bpr-att-recovered*) nil))
-(must-fail (assert-event (fn-bprt-submitp (fn-bp-journal-nth 2 *bpr-att-recovered*))))
+(must-fail-checked (assert-event (fn-bprt-submitp (fn-bp-journal-nth 2 *bpr-att-recovered*))))
 (assert-event
  (equal (fn-bp-attempt-status
          (fn-bp-work-attempt
@@ -287,7 +287,7 @@
 ; Teeth for the :submit hypothesis: an :enqueue-ack leaves a pending :enqueue.
 (assert-event
  (member-equal '(:enqueue-ack "work:a") (fn-bp-journal-nth 2 *bpr-enq-durable*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bp-pending-kind (fn-bp-state-pending *bpr-enq-state*)) :attempt)))
 
@@ -313,7 +313,7 @@
      "dtn://local/" "dtn://peer/" "policy:1" 3600)))
 (assert-event (car *bpr-ghost-next*))
 (assert-event (fn-bp-statep (fn-bp-journal-nth 1 *bpr-ghost-next*)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bp-binding-statep (fn-bp-journal-nth 1 *bpr-ghost-next*))))
 
 ; ---------------------------------------------------------------------------

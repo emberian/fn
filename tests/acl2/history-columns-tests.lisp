@@ -17,7 +17,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/history-columns")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every exec function is guard-verified.
@@ -185,7 +185,7 @@
                    (cons *hct-a* :tail))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-hist-load))))
-(must-fail
+(must-fail-checked
  (defthm hct-false-load-without-true-listp
    (equal (fn-hist-load events salt fn-hist) events)))
 
@@ -205,7 +205,7 @@
                    (not (equal (fn-cei-count *hct-corrupt*)
                                (fn-hist-count *hct-events*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm hct-false-count-without-correspondence
    (equal (fn-cei-count *hct-corrupt*) (fn-hist-count *hct-events*))))
 
@@ -231,7 +231,7 @@
                    (not (equal (fn-cei-get :x *hct-index*)
                                (fn-hist-at :x *hct-events*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm hct-false-at-without-natp
    (implies (fn-cei-correspondencep index fn-hist)
             (equal (fn-cei-get seq index) (fn-hist-at seq fn-hist)))))
@@ -260,7 +260,7 @@
                    (not (equal (fn-cei-msgid-records "<a@x>" *hct-short*)
                                (fn-hist-msgid-records "<a@x>" *hct-events*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm hct-false-msgid-without-correspondence
    (equal (fn-cei-msgid-records "<a@x>" *hct-short*)
           (fn-hist-msgid-records "<a@x>" *hct-events*))))

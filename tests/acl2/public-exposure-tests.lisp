@@ -10,7 +10,7 @@
 (in-package "ACL2")
 (include-book "../../books/public-exposure")
 (include-book "nntp-auth-teeth-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Fixtures
@@ -97,7 +97,7 @@
 ; premise (there are none) holds, and the first conclusion is false.
 (defconst *pxt-r0* (pxt-open *pxt-oc* (fn-exp-initial) *pxt-lim-closed* *pxt-a* 5000))
 (assert-event (null (fn-exp-open-id *pxt-r0*)))
-(must-fail
+(must-fail-checked
  (assert-event (< (len (fn-own-conns (fn-ocfg-owner *pxt-oc*)))
                   (fn-exp-lim-total *pxt-lim-closed*))))
 ; A lowered limit (reconfiguration) closes nothing and admits nothing more
@@ -127,13 +127,13 @@
 ; H3 dropped: the deferred charge keeps H1 and H2; its "before" count is 2,
 ; not below the budget of 2.
 (assert-event (fn-exp-find 5 (fn-exp-conns (cdr *pxt-c2*))))
-(must-fail
+(must-fail-checked
  (assert-event (< (fn-exp-count-in *pxt-a* 5 (fn-exp-rates (cdr *pxt-c2*)))
                   (fn-exp-lim-steps *pxt-lim*))))
 ; H2 dropped: with no budget every step proceeds, even over a count of 2.
 (assert-event (equal (car (fn-exp-charge (cdr *pxt-c2*) *pxt-lim-no-steps* 5 5300))
                      :proceed))
-(must-fail
+(must-fail-checked
  (assert-event (< (fn-exp-count-in *pxt-a* 5 (fn-exp-rates (cdr *pxt-c2*)))
                   (fn-exp-lim-steps *pxt-lim-no-steps*))))
 ; H1 dropped: an unknown connection proceeds, and the address its (absent)
@@ -141,7 +141,7 @@
 (defconst *pxt-xs-nil*
   (fn-exp-make nil (list (list nil 5 5)) nil nil (list 0 0 0 0 0 0 0 0 0)))
 (assert-event (equal (car (fn-exp-charge *pxt-xs-nil* *pxt-lim* 99 5300)) :proceed))
-(must-fail
+(must-fail-checked
  (assert-event (< (fn-exp-count-in nil 5 (fn-exp-rates *pxt-xs-nil*))
                   (fn-exp-lim-steps *pxt-lim*))))
 
@@ -181,7 +181,7 @@
 ; is, the session config is the pinned one, and GROUP runs.
 (defconst *pxt-pinned-under-open* (fn-exp-pinned-acfg *aut-open* *pxt-lim-open*))
 (assert-event (equal *pxt-pinned-under-open* *aut-open*))
-(must-fail
+(must-fail-checked
  (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-open* "GROUP fn.letters")
                       (aut-single *aut-480*))))
 ; H3 dropped: under :none, a session carrying the operator's open
@@ -192,10 +192,10 @@
 ; teeth (tests/acl2/nntp-auth-teeth-tests.lisp) keeps the pinned config
 ; *aut-required* = (fn-exp-pinned-acfg *aut-required* *pxt-lim*):
 (assert-event (equal (fn-auth-session-config *aut-forged*) *pxt-pinned*))
-(must-fail (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-forged* "GROUP fn.letters")
+(must-fail-checked (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-forged* "GROUP fn.letters")
                                 (aut-single *aut-480*))))
 (assert-event (equal (fn-auth-session-config *aut-s-handshaking*) *pxt-pinned*))
-(must-fail (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-handshaking* "GROUP fn.letters")
+(must-fail-checked (assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-handshaking* "GROUP fn.letters")
                                 (aut-single *aut-480*))))
 (assert-event (equal (fn-auth-session-config (aut-authed)) *pxt-pinned*))
 (assert-event (not (equal (in-arena-aut-reply *aut-arena* (aut-authed) "ARTICLE 1") (aut-single *aut-480*))))
@@ -319,7 +319,7 @@
 (assert-event (< (fn-exp-connections-capacity *pxt-v-cap-u32*)
                  *fn-exp-owner-connection-bound*))
 (assert-event (not (fn-cfg-limits-withinp (fn-cfg-limits *pxt-v-cap-wide*))))
-(must-fail
+(must-fail-checked
  (assert-event (< (fn-exp-connections-capacity *pxt-v-cap-wide*)
                   *fn-exp-owner-connection-bound*)))
 
@@ -332,7 +332,7 @@
                      40))
 ; H1 dropped: an owner bounded at the old 32 clips 40 to 31.
 (assert-event (not (< 40 32)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-exp-lim-total (fn-exp-limits *pxt-v-cap40* 32 t nil)) 40)))
 
 ; KEYSTONE fn-exp-open-refuses-exactly-at-the-capacity.
@@ -376,7 +376,7 @@
 (defconst *pxt-lim-wide*
   (fn-exp-limits *pxt-v-cap-wide* *fn-exp-owner-connection-bound* t nil))
 (assert-event (not (fn-exp-auth-refusesp (fn-exp-initial) *pxt-lim-wide* *pxt-a* 5000)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *pxt-lim-wide*
                                              *fn-cbor-max-uint* *pxt-a* 5000)
                       (list :admit))))
@@ -385,7 +385,7 @@
 (defconst *pxt-xs-failed*
   (fn-exp-make nil nil (list (list *pxt-a* 0 10)) nil (list 0 0 0 0 0 0 0 0 0)))
 (assert-event (fn-exp-auth-refusesp *pxt-xs-failed* *pxt-lim-cap40* *pxt-a* 5000))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-exp-admit-decision *pxt-xs-failed* *pxt-lim-cap40* 0 *pxt-a* 5000)
                       (list :admit))))
 
@@ -419,7 +419,7 @@
 (defconst *pxt-xs-wan*
   (fn-exp-open-state (pxt-open *pxt-run-oc* (fn-exp-initial) *pxt-lim-trusted* *pxt-wan* 5000)))
 (assert-event (not (fn-exp-trusted-addressp *pxt-wan* (fn-exp-lim-trusted *pxt-lim-trusted*))))
-(must-fail
+(must-fail-checked
  (assert-event (not (equal (fn-exp-admit-decision *pxt-xs-wan* *pxt-lim-trusted* 1 *pxt-wan* 5001)
                            (list :refuse *fn-exp-address-line* 2)))))
 
@@ -436,7 +436,7 @@
 (defconst *pxt-xs-lan* (fn-exp-open-state *pxt-t1*))
 (assert-event (<= (fn-exp-lim-per-address *pxt-lim-trusted*)
                   (fn-exp-count-address *pxt-lan* (fn-exp-conns *pxt-xs-lan*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-exp-admit-decision *pxt-xs-lan* *pxt-lim-trusted* 1 *pxt-lan* 5001)
                       (list :refuse *fn-exp-address-line* 2))))
 ; H2 dropped: two 481s from the WAN address (the limit is 2) refuse by auth.
@@ -444,12 +444,12 @@
   (fn-exp-make (fn-exp-conns *pxt-xs-wan*) nil (list (list *pxt-wan* 0 2)) nil
                (list 0 0 0 0 0 0 0 0 0)))
 (assert-event (fn-exp-auth-refusesp *pxt-xs-wan-failed* *pxt-lim-trusted* *pxt-wan* 5001))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-exp-admit-decision *pxt-xs-wan-failed* *pxt-lim-trusted* 1
                                              *pxt-wan* 5001)
                       (list :refuse *fn-exp-address-line* 2))))
 ; H3 dropped: at the total the decision is busy, not the address's.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-exp-admit-decision *pxt-xs-wan* *pxt-lim-trusted* 5 *pxt-wan* 5001)
                       (list :refuse *fn-exp-address-line* 2))))
 

@@ -2,7 +2,7 @@
 ; link decoded once per open, every answer the reference's under a sound memo.
 (in-package "ACL2")
 (include-book "../../books/checkpoint-pack-chain-once")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 ; The fixtures of tests/acl2/checkpoint-pack-chain-tests.lisp: a two-link
@@ -98,17 +98,17 @@
 (assert-event (not (fn-ccco-memo-soundp *ct-memo-lie*)))
 (assert-event (not (equal (fn-ccco-entry-step *ct-fb* *ct-db* *ct-bound* *ct-memo-lie*)
                           (fn-ccc-entry-step *ct-fb* *ct-db* *ct-bound*))))
-(local (must-fail (defthm ct-step-without-sound-memo
+(local (must-fail-checked (defthm ct-step-without-sound-memo
                     (equal (fn-ccco-entry-step framed digest max memo)
                            (fn-ccc-entry-step framed digest max)))))
 (assert-event (not (equal (fn-ccco-coverage-chain *ct-chain* 5 6 *ct-bound* *ct-memo-lie*)
                           (fn-ccc-coverage-chain *ct-chain* 5 6 *ct-bound*))))
-(local (must-fail (defthm ct-coverage-without-sound-memo
+(local (must-fail-checked (defthm ct-coverage-without-sound-memo
                     (equal (fn-ccco-coverage-chain framed count frontier max memo)
                            (fn-ccc-coverage-chain framed count frontier max)))))
 (assert-event (not (equal (fn-ccco-observe-chain *ct-chain* *ct-observed* 6 *ct-bound* *ct-memo-lie*)
                           (fn-ccc-observe-chain *ct-chain* *ct-observed* 6 *ct-bound*))))
-(local (must-fail (defthm ct-observe-without-sound-memo
+(local (must-fail-checked (defthm ct-observe-without-sound-memo
                     (equal (fn-ccco-observe-chain framed observed frontier max memo)
                            (fn-ccc-observe-chain framed observed frontier max)))))
 
@@ -124,7 +124,7 @@
 (defconst *ct-entries-short* (list (list 0 *ct-short-a* *ct-da*)))
 (assert-event (and (fn-ccco-links-chainedp *ct-entries-short*)
                    (not (fn-ccc-links-okp *ct-entries-short*))))
-(local (must-fail (defthm ct-links-okp-without-decoded
+(local (must-fail-checked (defthm ct-links-okp-without-decoded
                     (equal (fn-ccc-links-okp entries)
                            (fn-ccco-links-chainedp entries)))))
 
@@ -181,6 +181,6 @@
 (assert-event (not (fn-ccco-memo-soundp *ct-memo-lie*)))
 (assert-event (not (equal (fn-ccco-coverage-headers *ct-chain* 5 6 *ct-bound* *ct-memo-lie*)
                           (fn-ccc-coverage-chain *ct-chain* 5 6 *ct-bound*))))
-(local (must-fail (defthm ct-coverage-headers-without-sound-memo
+(local (must-fail-checked (defthm ct-coverage-headers-without-sound-memo
                     (equal (fn-ccco-coverage-headers framed count frontier max memo)
                            (fn-ccc-coverage-chain framed count frontier max)))))

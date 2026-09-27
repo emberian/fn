@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-retention-publication")
 (include-book "byte-store-record-provenance-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bsrp-run ()
   (fn-bs-run (bsk6-start) (bsk6-retention-prepared)
@@ -106,7 +106,7 @@
         (not (bsrp-applied-exactp bs ks ".stage-k6-retention"
                                   (fn-bs-txn-name 1)
                                   (bsk6-retention-frame))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsrp-applied-exactp (bsk6-prior-final-set-and-delete)
                        (bsk6-retention-prepared) ".stage-k6-retention"
@@ -121,7 +121,7 @@
         (not (fn-bs-lookup bs :staging ".stage-k6-retention"))
         (not (bsrp-applied-exactp bs ks ".stage-k6-retention"
                                   (fn-bs-txn-name 1) (bsk5-frame-2))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsrp-applied-exactp (bsk6-start) (bsk6-retention-prepared)
                        ".stage-k6-retention" (fn-bs-txn-name 1)
@@ -138,7 +138,7 @@
         (not (bsrp-applied-exactp bs ks ".stage-k6-retention"
                                   (fn-bs-txn-name 1)
                                   (bsk6-retention-frame))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsrp-applied-exactp (bsrp-existing-stage) (bsk6-retention-prepared)
                        ".stage-k6-retention" (fn-bs-txn-name 1)
@@ -146,13 +146,13 @@
 
 ; If the error were treated as a known abort, this would falsely claim the
 ; new final name absent even when the directory applied the link.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bs-lookup (car (nth 11 (bsrp-dir-eio-run :apply)))
                      :transactions (fn-bs-txn-name 1)))))
 
 ; Conversely, the same error does not certify that the candidate landed.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bs-durable-records
           (car (nth 11 (bsrp-dir-eio-run :drop))))

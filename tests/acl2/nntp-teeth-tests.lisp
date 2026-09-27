@@ -10,7 +10,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/nntp-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; This book reasons about the NNTP transitions themselves, so it opens the
 ; vocabularies the five books of the nntp cluster withdraw at their export
@@ -110,7 +110,7 @@
        *nnt-archive*)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm nnt-teeth-step-without-a-consistent-session
     (fn-nntp-session-consistentp
      (fn-nntp-result-session
@@ -128,7 +128,7 @@
        *nnt-archive*)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm nnt-teeth-step-without-a-valid-cursor
     (fn-nntp-session-consistentp
      (fn-nntp-result-session

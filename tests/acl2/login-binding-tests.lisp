@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/login-binding")
 (include-book "peer-authored-accept-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *lbt-login* (fn-record-string-octets "ember"))
 (defconst *lbt-other-login* (fn-record-string-octets "guest"))
@@ -95,7 +95,7 @@
  (equal (car (fn-lb-owner-gate *lbt-o-guest* *lbt-cfg-off* *lbt-bindings*
                                *pat-relayed*))
         :pass))
-(must-fail
+(must-fail-checked
  (assert-event (equal (nth 2 (lbt-plan))
                       (fn-lb-binding (fn-lb-inflight-login *lbt-o-guest*)
                                      *lbt-bindings*))))
@@ -105,7 +105,7 @@
  (equal (fn-lb-owner-gate *lbt-o-guest* *lbt-cfg-on* *lbt-bindings*
                           *pat-relayed*)
         (list :refused :login-not-bound *lbt-other-login*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-lb-owner-gate *lbt-o-guest* *lbt-cfg-on* *lbt-bindings*
                                 *pat-relayed*))
@@ -114,13 +114,13 @@
 ; principal is not nil.
 (assert-event
  (equal (car (fn-lb-owner-gate *lbt-o* *lbt-cfg-on* nil *pat-relayed*)) :pass))
-(must-fail (assert-event (equal (nth 2 (lbt-plan)) nil)))
+(must-fail-checked (assert-event (equal (nth 2 (lbt-plan)) nil)))
 ; Without the plan's :ok: no enrollment, the plan refuses, and its third
 ; element is not the principal.
 (assert-event
  (equal (fn-pa-current-plan *pat-relayed* nil nil nil)
         (list :refused :local-enrollment)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (nth 2 (fn-pa-current-plan *pat-relayed* nil nil nil))
                       *tha-principal*)))
 
@@ -130,17 +130,17 @@
  (equal (fn-lb-owner-gate *lbt-o* *lbt-cfg-on* *lbt-bindings* *tha-root-source*)
         (list :refused :login-unsigned *lbt-login*)))
 ; Without the policy, without a binding, or with a carrier: not refused so.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-lb-owner-gate *lbt-o* *lbt-cfg-off* *lbt-bindings*
                                 *tha-root-source*))
          :refused)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-lb-owner-gate *lbt-o-unauthenticated* *lbt-cfg-on*
                                 *lbt-bindings* *tha-root-source*))
          :refused)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-lb-owner-gate *lbt-o* *lbt-cfg-on* *lbt-bindings* *pat-relayed*)
          (list :refused :login-unsigned *lbt-login*))))
@@ -148,16 +148,16 @@
 ; --- fn-lb-bound-login-other-principal-is-refused --------------------------
 ; Witness above (guest).  Without the policy, without a binding, or with the
 ; carrier naming the binding: not refused.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-lb-owner-gate *lbt-o-guest* *lbt-cfg-off* *lbt-bindings*
                                 *pat-relayed*))
          :refused)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-lb-owner-gate *lbt-o-guest* *lbt-cfg-on* nil *pat-relayed*))
          :refused)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-lb-owner-gate *lbt-o* *lbt-cfg-on* *lbt-bindings*
                                 *pat-relayed*))
@@ -174,7 +174,7 @@
         :pass))
 ; With the policy and a binding, both refuse (the witnesses above): the
 ; hypothesis is what makes them pass.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-lb-owner-gate *lbt-o* *lbt-cfg-on* *lbt-bindings*
                                 *tha-root-source*))

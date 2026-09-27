@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-publication")
 (include-book "bp-fnbs-codec-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpnfp-issued-state ()
   (fn-bpnf-answer-state *bpnfc-proposal*))
@@ -48,7 +48,7 @@
                              '(:persist-result 9 0 :uncertain)))
               9 0 (nth 3 *bpnfc-effect*) t t))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnf-publication-operationp
    (fn-bpnf-publication-authorize

@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-store-invariants")
 (include-book "consumer-store-node-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (fn-csi-completed-prefixp *csnt-initial*))
 (assert-event (fn-csi-completed-prefixp *csnt-after-boot*))
@@ -73,13 +73,13 @@
 (assert-event (not (fn-csi-completed-prefixp *csit-corrupt-projection*)))
 (assert-event (not (fn-csi-livep *csit-corrupt-projection*)))
 (assert-event (not (fn-csi-full-relationp *csit-corrupt-projection*)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (fn-csi-completed-prefixp *csit-corrupt-projection*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-csi-full-relationp
    (fn-snrt-step *csit-corrupt-projection* '(:io :unknown nil)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-csi-livep
    (fn-snrt-step *csnt-after-boot* '(:crash :old :absent)))))
@@ -124,7 +124,7 @@
 (assert-event
  (not (fn-sn-observed-consumer-okp
        (list *csit-register-before-bootstrap*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-sn-observed-consumer-okp
    (list *csit-register-before-bootstrap*))))

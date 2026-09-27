@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-run-class")
 (include-book "bp-node-job-offer-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;; ---------------------------------------------------------------------------
 ;; fn-bprc-exit-code-separates-the-classes.  Witness: the five codes.
@@ -23,7 +23,7 @@
       (member-equal :fenced *fn-bprc-classes*)
       (not (equal :bogus :fenced))
       (equal (fn-bprc-exit-code :bogus) (fn-bprc-exit-code :fenced))))
-(must-fail
+(must-fail-checked
  (defthm bprct-codes-without-c1-class
    (implies (and (member-equal c2 *fn-bprc-classes*) (not (equal c1 c2)))
             (not (equal (fn-bprc-exit-code c1) (fn-bprc-exit-code c2))))
@@ -32,7 +32,7 @@
  (and (member-equal :fenced *fn-bprc-classes*)
       (not (member-equal :bogus *fn-bprc-classes*))
       (equal (fn-bprc-exit-code :fenced) (fn-bprc-exit-code :bogus))))
-(must-fail
+(must-fail-checked
  (defthm bprct-codes-without-c2-class
    (implies (and (member-equal c1 *fn-bprc-classes*) (not (equal c1 c2)))
             (not (equal (fn-bprc-exit-code c1) (fn-bprc-exit-code c2))))
@@ -41,7 +41,7 @@
 (assert-event
  (and (member-equal :interrupted *fn-bprc-classes*)
       (equal (fn-bprc-exit-code :interrupted) (fn-bprc-exit-code :interrupted))))
-(must-fail
+(must-fail-checked
  (defthm bprct-codes-without-distinct
    (implies (and (member-equal c1 *fn-bprc-classes*)
                  (member-equal c2 *fn-bprc-classes*))
@@ -85,7 +85,7 @@
  (and (not (fn-bprc-connection-local-wordsp '(:failed :lost)))
       (equal (fn-bprc-class (fn-bprc-note-all (fn-bprc-empty) '(:failed :lost)))
              :fenced)))
-(must-fail
+(must-fail-checked
  (defthm bprct-local-without-hypothesis
    (not (equal (fn-bprc-class (fn-bprc-note-all (fn-bprc-empty) words))
                :fenced))
@@ -150,7 +150,7 @@
       (not (equal (fn-bpnj-attempt-token *jo-st-a* *jo-key2*) 1))
       (not (equal (bprct-run-class *jo-st-a* *jo-key2* 1 :failed)
                   (fn-bprc-transfer-class :failed)))))
-(must-fail
+(must-fail-checked
  (defthm bprct-job-result-without-attempt
    (let* ((base (fn-bpnf-base st))
           (token (fn-bpn-machine-state-next-token base)))

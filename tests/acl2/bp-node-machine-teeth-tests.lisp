@@ -5,7 +5,7 @@
 (include-book "../../books/bp-node-progress-selection-invariants")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnmt-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
 (defconst *bpnmt-sender* (cons :dtn '(47 47 98 112 45 115 101 110 100 101 114 47)))
@@ -181,7 +181,7 @@
                     (fn-bpnp-step
                      (fn-bpnf-answer-state *bpnmt-n03-receive-proposal*)
                      *bpnmt-n03-kind5-durable-event*)))) 1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal
    (fn-bpnf-held-list
@@ -233,7 +233,7 @@
              (list (list :progress-wait *bpnmt-n03-old-key* :route 1)))
       (equal (fn-bpnf-held-list (fn-bpnf-answer-state *bpnmt-n03-woken*))
              (fn-bpnf-held-list *bpnmt-n03-s2*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects *bpnmt-n03-woken*)))
          :deliver)))
@@ -261,7 +261,7 @@
               (fn-bpnp-waits
                (fn-bpnf-answer-state *bpnmt-n03-fault-recovery*)))
              (list :bpnp-wait *bpnmt-n03-old-key* :route 0))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bpnp-waits
         (fn-bpnf-answer-state *bpnmt-n03-fault-recovery*)))))
@@ -309,7 +309,7 @@
              (fn-bpnf-operation
               (fn-bpnf-epoch *bpnmt-n03-s2*) (fn-bpnf-next-op *bpnmt-n03-s2*)
               :dispatch (fn-bpn-nth 4 *bpnmt-fwd-issued*) :pending))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal *bpnmt-fwd-issued* (fn-bpnf-issued *bpnmt-n03-s2*))))
 
@@ -324,7 +324,7 @@
       (null (fn-bpnf-issued *bpnmt-n03-s0*))
       *bpnmt-receive-issued*
       (not (equal (fn-bpn-nth 3 *bpnmt-receive-issued*) :dispatch))))
-(must-fail
+(must-fail-checked
  (assert-event
   (or (equal *bpnmt-receive-issued* (fn-bpnf-issued *bpnmt-n03-s0*))
       (and (null (fn-bpnf-issued *bpnmt-n03-s0*))

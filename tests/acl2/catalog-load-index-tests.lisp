@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/catalog-load-index (PRF-240's load by extents).
 (in-package "ACL2")
 (include-book "../../books/catalog-load-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 ; One article whose payload is the buffer's cells [2, 5), beside a
@@ -38,7 +38,7 @@
 (defthm obi-off-load-differs
   (not (equal (fn-obi-load *obi-rows* *obi-extents-off* *obi-buf* nil 0 nil nil)
               (fn-cat-load *obi-rows* nil 0 nil nil))))
-(local (must-fail (defthm obi-load-without-agreement
+(local (must-fail-checked (defthm obi-load-without-agreement
                     (equal (fn-obi-load rows extents fn-octets keyring generation fn-arena fn-cat)
                            (fn-cat-load rows keyring generation fn-arena fn-cat))
                     :hints (("Goal" :do-not-induct t

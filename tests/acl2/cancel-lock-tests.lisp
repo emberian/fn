@@ -10,7 +10,7 @@
 (include-book "../../books/cancel-lock")
 (include-book "../../books/control-visible")
 (include-book "../../books/catalog-record")   ; fn-held-facts-of: the rows' facts
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun clt-octets (s) (fn-record-string-octets s))
 (defun clt-crlf-join (lines)
@@ -156,7 +156,7 @@
         (list :decline :self-target)))
 
 ; Must-fail: the keystone without its conclusion's poster disjunct.
-(must-fail
+(must-fail-checked
  (defthm clt-poster-arm-is-necessary
    (let ((w (fn-ctl-withdrawal-plan cause verdict target keys cfg)))
      (implies (and (fn-ctl-withdrawalp w)

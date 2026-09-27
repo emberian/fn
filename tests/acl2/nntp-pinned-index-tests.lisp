@@ -2,7 +2,7 @@
 ; spellings consume the pinned Message-ID index.
 (in-package "ACL2")
 (include-book "../../books/nntp")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-pidx-id* "<indexed@fn.invalid>")
 (defconst *fn-pidx-body*
@@ -47,7 +47,7 @@
 
 ; The correspondence premise is load-bearing: a stale pin gives a 430 where
 ; the accepted archive gives a 223 success.
-(must-fail
+(must-fail-checked
  (defthm fn-pidx-false-stale-index-refines-accepted-stat
    (equal (fn-nntp-step-pinned *fn-pidx-session* *fn-pidx-archive* nil nil *fn-pidx-env* (list :command (fn-pidx-line "STAT")) fn-arena)
           (fn-nntp-step *fn-pidx-session* *fn-pidx-archive* *fn-pidx-env* (list :command (fn-pidx-line "STAT")) fn-arena))))

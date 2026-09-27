@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/config-owner-live-authorize")
 (include-book "../../books/owner-log-ocl")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-owner-publish-tests")
 
 (defconst *olaut-st* (fn-own-store (fn-ocfg-owner *ocp-closed*)))
@@ -133,7 +133,7 @@
 ; Each hypothesis's removal, as the theorem it would be (the witnesses above
 ; are its counterexamples).
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 1000000
   (defthm olaut-without-the-invariant
     (let* ((st (fn-own-store (fn-ocfg-owner oc))) (files (fn-sn-files st)))
@@ -150,7 +150,7 @@
     :hints (("Goal" :do-not-induct t :in-theory (disable fn-olau-authorize
                                                          fn-cvec-native-admin-authorize)))))))
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 1000000
   (defthm olaut-without-ready
     (let* ((st (fn-own-store (fn-ocfg-owner oc))) (files (fn-sn-files st)))
@@ -168,7 +168,7 @@
                                                          fn-cvec-native-admin-authorize
                                                          fn-ocl-relation)))))))
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 1000000
   (defthm olaut-without-the-carried-history
     (let* ((st (fn-own-store (fn-ocfg-owner oc))) (files (fn-sn-files st)))
@@ -186,7 +186,7 @@
                                                          fn-cvec-native-admin-authorize
                                                          fn-ocl-relation)))))))
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 1000000
   (defthm olaut-without-the-frontier-txid
     (let* ((st (fn-own-store (fn-ocfg-owner oc))) (files (fn-sn-files st)))

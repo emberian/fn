@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/checkpoint-pack-chain (chained packs, P5).
 (in-package "ACL2")
 (include-book "../../books/checkpoint-pack-chain")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 ; The five-event history of the compaction tests: txids 0..4, frontier 6.
@@ -66,13 +66,13 @@
 (assert-event (and (consp *ct-bad-a*)
                    (fn-ccc-prefixp (fn-ccc-links-events *ct-bad-a*) *ct-h*)
                    (equal (car (fn-ccc-capture-link *ct-h* 3 3 0 *ct-da*)) :ok)))
-(local (must-fail (defthm ct-extends-without-chain
+(local (must-fail-checked (defthm ct-extends-without-chain
                     (fn-ccc-links-okp (cons (list 1 *ct-link-b* *ct-db*) *ct-bad-a*)))))
 ; Without the prefix: the chain's records are not the history's; the new
 ; chain is not a prefix of it.
 (defconst *ct-other* (list (nth 1 *ct-h*) (nth 0 *ct-h*) (nth 2 *ct-h*)
                            (nth 3 *ct-h*) (nth 4 *ct-h*)))
-(local (must-fail (defthm ct-extends-without-prefix
+(local (must-fail-checked (defthm ct-extends-without-prefix
                     (fn-ccc-prefixp (fn-ccc-links-events
                                      (cons (list 1 *ct-link-b* *ct-db*) *ct-one*))
                                     *ct-other*))))
@@ -94,20 +94,20 @@
                      (list :ok *ct-h* 6)))
 ; Without integrity (the digest is not the trailer): refused.
 (defconst *ct-chain-torn* (list (list 1 *ct-fb* *ct-da*) (list 0 *ct-fa* *ct-da*)))
-(local (must-fail (defthm ct-reconstructs-without-integrity
+(local (must-fail-checked (defthm ct-reconstructs-without-integrity
                     (equal (fn-ccc-observe-chain *ct-chain-torn* *ct-observed* 6 *ct-bound*)
                            (list :ok *ct-h* 6)))))
 ; Without a linked chain: B names a foreign predecessor digest.
 (defconst *ct-chain-unlinked* (list (list 1 *ct-fb* *ct-db*)
                                     (list 0 *ct-fa* *ct-da*) ))
 (make-event `(defconst *ct-fb-foreign* ',(append (fn-ccc-encode-link (cadr (fn-ccc-capture-link *ct-h* 3 3 0 *ct-db*))) *ct-db*)))
-(local (must-fail (defthm ct-reconstructs-without-link
+(local (must-fail-checked (defthm ct-reconstructs-without-link
                     (equal (fn-ccc-observe-chain
                             (list (list 1 *ct-fb-foreign* *ct-db*) (list 0 *ct-fa* *ct-da*))
                             *ct-observed* 6 *ct-bound*)
                            (list :ok *ct-h* 6)))))
 ; Without the prefix: the observation holds another history.
-(local (must-fail (defthm ct-reconstructs-without-prefix
+(local (must-fail-checked (defthm ct-reconstructs-without-prefix
                     (equal (fn-ccc-observe-chain *ct-chain*
                                                  (list (list 0 (nth 1 *ct-h*)) (list 1 (nth 0 *ct-h*))
                                                        (list 2 (nth 2 *ct-h*)) (list 3 (nth 3 *ct-h*))
@@ -115,14 +115,14 @@
                                                  6 *ct-bound*)
                            (list :ok *ct-other* 6)))))
 ; Without a complete observation: a missing newest record is not H.
-(local (must-fail (defthm ct-reconstructs-without-complete-observation
+(local (must-fail-checked (defthm ct-reconstructs-without-complete-observation
                     (equal (fn-ccc-observe-chain *ct-chain* (butlast *ct-observed* 1)
                                                  6 *ct-bound*)
                            (list :ok (append *ct-h* (list (nth 4 *ct-h*))) 6)))))
 ; Without a valid suffix under the final frontier: frontier 5 is below txid 4 + 1
 ; for a record above the chain.
 (defconst *ct-short* (list (list 0 *ct-fa* *ct-da*)))
-(local (must-fail (defthm ct-reconstructs-without-valid-suffix
+(local (must-fail-checked (defthm ct-reconstructs-without-valid-suffix
                     (equal (fn-ccc-observe-chain *ct-short* *ct-observed* 4 *ct-bound*)
                            (list :ok *ct-h* 4)))))
 
@@ -168,7 +168,7 @@
                    (equal (+ 4 (len *ct-from-4*)) (len *ct-gap-h*))
                    (fn-cc-valid-suffixp (fn-ccc-chain-summary *ct-short-entries*)
                                         (fn-cc-observation-suffix *ct-from-4* 3) 6)))
-(local (must-fail (defthm ct-reconstructs-without-n-within-boundary
+(local (must-fail-checked (defthm ct-reconstructs-without-n-within-boundary
                     (equal (fn-ccc-observe-chain *ct-short* *ct-from-4* 6 *ct-bound*)
                            (list :ok *ct-gap-h* 6)))))
 
@@ -183,7 +183,7 @@
               (fn-ccc-pairs-match *ct-observed* *ct-dotted-h*)
               (equal (+ 0 (len *ct-observed*)) (len *ct-dotted-h*)))
          :rule-classes nil))
-(local (must-fail (defthm ct-reconstructs-without-true-list
+(local (must-fail-checked (defthm ct-reconstructs-without-true-list
                     (equal (fn-ccc-observe-chain *ct-chain* *ct-observed* 6 *ct-bound*)
                            (list :ok *ct-dotted-h* 6)))))
 ; Without the files matching H: link A alone, the complete observation of the
@@ -198,7 +198,7 @@
                    (equal (len *ct-observed*) (len *ct-other-4*))
                    (fn-cc-valid-suffixp (fn-ccc-chain-summary *ct-short-entries*)
                                         (fn-cc-observation-suffix *ct-observed* 3) 6)))
-(local (must-fail (defthm ct-reconstructs-without-pairs-match
+(local (must-fail-checked (defthm ct-reconstructs-without-pairs-match
                     (equal (fn-ccc-observe-chain *ct-short* *ct-observed* 6 *ct-bound*)
                            (list :ok *ct-other-4* 6)))))
 ; Not toothed: the contiguity of the observation.  Below the boundary a gap
@@ -219,11 +219,11 @@
 (assert-event (equal (fn-ccc-walk *ct-image* 1 2 *ct-bound*) *ct-chain*))
 (assert-event (equal (fn-ccc-walk *ct-image* 0 2 *ct-bound*) (list (list 0 *ct-fa* *ct-da*))))
 ; Without the old chain's files kept: the image lost generation 0.
-(local (must-fail (defthm ct-crash-without-agreement
+(local (must-fail-checked (defthm ct-crash-without-agreement
                     (equal (fn-ccc-walk (list (cons 1 (cons *ct-fb* *ct-db*))) 1 2 *ct-bound*)
                            *ct-chain*))))
 ; Without the new link's complete bytes: a torn candidate is selected.
-(local (must-fail (defthm ct-crash-without-complete-candidate
+(local (must-fail-checked (defthm ct-crash-without-complete-candidate
                     (not (equal (fn-ccc-walk (list (cons 1 (cons (butlast *ct-fb* 1) *ct-db*))
                                                    (cons 0 (cons *ct-fa* *ct-da*)))
                                              1 2 *ct-bound*)
@@ -253,11 +253,11 @@
                      (equal (cdr (car e)) *ct-image*))))
 ; Teeth: without its one hypothesis (the chain's boundary is the whole
 ; history), the no-op conclusion fails; the witness is one uncovered record.
-(must-fail
+(must-fail-checked
  (thm (equal (fn-ccc-capture-link records lower lf gen digest)
              (list :nothing-uncovered lower))
       :hints (("Goal" :in-theory (enable fn-ccc-capture-link)))))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-ccc-capture-link *ct-h* 4 4 1 *ct-db*)
              (list :nothing-uncovered 4))))
 
@@ -322,7 +322,7 @@
                     (fn-ccc-entries-generations (revappend (take 2 *ct-links-swapped*) nil)))
                    (not (fn-ccc-new-links-okp (revappend (take 2 *ct-links-swapped*) nil)
                                               nil *ct-bound*))))
-(local (must-fail (defthm ct-link-cut-without-order
+(local (must-fail-checked (defthm ct-link-cut-without-order
                     (equal (fn-ccc-walk (car (nth 5 *ct-run-swapped*))
                                         (cdr (nth 5 *ct-run-swapped*)) 2 *ct-bound*)
                            (revappend (take 2 *ct-links-swapped*) nil)))))
@@ -334,7 +334,7 @@
 ; the history; the same observation over the host's chain answers it.
 (assert-event (equal (fn-ccc-observe-chain *ct-chain* nil 6 *ct-bound*)
                      (list :ok *ct-h* 6)))
-(local (must-fail (defthm ct-link-cut-reopen-without-order
+(local (must-fail-checked (defthm ct-link-cut-reopen-without-order
                     (equal (fn-ccc-observe-chain
                             (fn-ccc-walk (car (nth 5 *ct-run-swapped*))
                                          (cdr (nth 5 *ct-run-swapped*)) 2 *ct-bound*)
@@ -358,7 +358,7 @@
                    (not (no-duplicatesp-equal
                          (fn-ccc-entries-generations
                           (revappend (take 2 *ct-links-reused*) nil))))))
-(local (must-fail (defthm ct-link-cut-without-fresh-generations
+(local (must-fail-checked (defthm ct-link-cut-without-fresh-generations
                     (equal (fn-ccc-walk (car (nth 5 *ct-run-reused*))
                                         (cdr (nth 5 *ct-run-reused*)) 2 *ct-bound*)
                            (revappend (take 2 *ct-links-reused*) nil)))))
@@ -379,7 +379,7 @@
                    (no-duplicatesp-equal
                     (fn-ccc-entries-generations
                      (revappend (take 1 *ct-links-orphan*) :bad)))))
-(local (must-fail (defthm ct-link-cut-without-old-chain
+(local (must-fail-checked (defthm ct-link-cut-without-old-chain
                     (equal (fn-ccc-walk (car (nth 2 *ct-run-orphan*))
                                         (cdr (nth 2 *ct-run-orphan*)) 1 *ct-bound*)
                            (revappend (take 1 *ct-links-orphan*) :bad)))))
@@ -397,7 +397,7 @@
                                          nil *ct-bound*)
                    (no-duplicatesp-equal
                     (fn-ccc-entries-generations (revappend (take 1 *ct-links-long*) nil)))))
-(local (must-fail (defthm ct-link-cut-without-triples
+(local (must-fail-checked (defthm ct-link-cut-without-triples
                     (equal (fn-ccc-walk (car (nth 2 *ct-run-long*))
                                         (cdr (nth 2 *ct-run-long*)) 1 *ct-bound*)
                            (revappend (take 1 *ct-links-long*) nil)))))

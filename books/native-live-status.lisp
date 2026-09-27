@@ -305,12 +305,11 @@ whether a checkpoint served this process's open."
 
 (defun fn-nls-reclaim-words (s cfg obs fn-arena)
   "`reclaim rule=R reclaimable=N reclaimable-octets=N held=N reclaimed=N
-freed-octets=N', each article read through the arena (only read):
-books/store-reclaim-holders.lisp fn-rcl-store-counts-arena."
+freed-octets=N'."
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let* ((rule (fn-rcl-config-rule (fn-cfg-value cfg)))
          (stamp (fn-record-stamp-of-observation (fn-nls-obs-clock obs)))
-         (counts (fn-rcl-store-counts-arena rule (if (natp stamp) stamp nil) s fn-arena)))
+         (counts (fn-rcl-store-counts rule (if (natp stamp) stamp nil) s fn-arena)))
     (append (fn-nls-text "reclaim rule=") (fn-nls-rule-words rule)
             (fn-nls-field "reclaimable" (nth 0 counts))
             (fn-nls-field "reclaimable-octets" (nth 1 counts))
@@ -453,8 +452,7 @@ books/store-reclaim-holders.lisp fn-rcl-store-counts-arena."
 
 S is the Store state, PROFILE its persisted profile, BYTES its committed
 record octets, CFG the configuration, PINS the open connections'
-configuration pins (nil with no owner), OBS the host's open observation,
-FN-ARENA the payload arena the reclaim counts read (only read)."
+configuration pins (nil with no owner), OBS the host's open observation."
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((equal kind :peers)

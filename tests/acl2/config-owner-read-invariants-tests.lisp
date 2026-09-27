@@ -4,7 +4,7 @@
 (include-book "../../books/config-owner-read-invariants")
 (include-book "config-owner-live-tests")
 (include-book "served-tls-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *ocri-live* *ocl-t-new-open*)
 (defconst *ocri-new-group*
@@ -82,7 +82,7 @@
  (fn-ocri-relation
   (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-forged-old-pin* 0 *ocri-new-group*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ocri-read-without-relation-is-not-preserved
     (fn-ocri-relation (cdr (fn-ocfg-read oc id octets fn-arena)))
     :rule-classes nil)))
@@ -112,7 +112,7 @@
 (assert-event (not (fn-ocri-relation *ocri-bad-oc*)))
 (assert-event
  (not (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil)))))
-(must-fail
+(must-fail-checked
  (defthm ocri-open-without-carried-wire-and-index
    (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil)))))
 (assert-event
@@ -120,7 +120,7 @@
        (fn-own-tls-result-owner
         (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *ocri-bad-oc* 0 '(65)))
        (cdr (in-arena-fn-ocfg-read *sr-arena* *ocri-bad-oc* 0 '(65))))))
-(must-fail
+(must-fail-checked
  (defthm ocri-host-read-without-carried-wire
    (equal
     (fn-own-tls-result-owner

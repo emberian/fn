@@ -18,7 +18,7 @@
 (in-package "ACL2")
 
 (include-book "../../books/served-catalog-owner")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;; A wire record: the payload names its Message-ID and carries one body line.
 (defun scot-payload (msgid)
@@ -184,13 +184,13 @@
 
 ;; The load's keystone needs a natural generation (the row's context fails
 ;; fn-hc-p otherwise); the completion's needs the pending's token.
-(must-fail
+(must-fail-checked
  (defthm scot-load-needs-natp-generation
    (mv-let (fn-arena2 fn-cat2)
      (fn-sca-load-history records view-index keyring generation fn-arena fn-cat)
      (fn-cat-history-relation records fn-arena2 fn-cat2))))
 
-(must-fail
+(must-fail-checked
  (defthm scot-complete-needs-the-token
    (implies (and (fn-cat-history-relation records fn-arena fn-cat)
                  (fn-pc-p pending)

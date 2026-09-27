@@ -8,7 +8,7 @@
 (include-book "../../books/bp-receipt-alpha")
 (include-book "bp-signed-binding-tests")
 (include-book "arena-lift")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The keystone's right-hand side: the pre-flip gate over ALPHA.
 (defun bpra-over-alpha (store record fn-arena)
@@ -80,7 +80,7 @@
                                                       *bpra-forged-record*))
 (assert-event (not (in-arena-bpra-over-alpha *bsb-payloads* *bpra-forged-store*
                                              *bpra-forged-record*)))
-(must-fail
+(must-fail-checked
  (assert-event (iff (in-arena-fn-bpr-store-record-acceptedp *bsb-payloads* *bpra-forged-store*
                                                             *bpra-forged-record*)
                     (in-arena-bpra-over-alpha *bsb-payloads* *bpra-forged-store*

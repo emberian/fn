@@ -4,7 +4,7 @@
 ; fn-cwait-request-encode / -decode (fn-native-control-host-consumer-
 ; request-encode / -decode) and fn-cwait-cli-plan (-consumer-cli-plan).
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/consumer-wait-codec")
 
 (defconst *cwc-id* '(97 103 101 110 116 45 49))            ; agent-1
@@ -50,11 +50,11 @@
 (assert-event (equal (fn-cwait-request-encode :wait *cwc-long-id* 30) :bad))
 (assert-event (equal (fn-cwait-request-encode :bound-wait *cwc-id* (list 30 nil))
                      :bad))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cwait-request-decode (fn-cwait-request-encode :wait *cwc-id* 3601))
          (list :consumer :wait *cwc-id* 3601))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cwait-request-decode
           (fn-cwait-request-encode :bound-wait *cwc-long-id* (list 30 *cwc-secret*)))
@@ -105,11 +105,11 @@
 (assert-event (equal (fn-ncl-request-decode
                       (fn-cwait-request-encode :wait *cwc-id* 30))
                      '(:refused :kind)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cwait-request-decode (fn-cwait-request-encode :wait *cwc-id* 30))
          (fn-ncl-request-decode (fn-cwait-request-encode :wait *cwc-id* 30)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cwait-request-encode :wait *cwc-id* 30)
          (fn-ncl-request-encode :wait *cwc-id* 30))))
@@ -149,7 +149,7 @@
 (assert-event
  (equal (fn-cwait-cli-plan '(112 111 108 108) (list '(47 99) *cwc-id* '(47 107) '(47 114)))
         (fn-ncl-cli-plan '(112 111 108 108) (list '(47 99) *cwc-id* '(47 107) '(47 114)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cwait-cli-plan *cwc-w* (list '(47 99) *cwc-id* '(47 107) '(47 114)
                                           *fn-cwait-timeout-flag* *cwc-30*))

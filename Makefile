@@ -957,6 +957,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-owner-live-authorize-tests \
 	books/owner-prepare-served \
 	books/store-prepare-served \
+	tests/acl2/store-prepare-served-tests \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
 	tests/acl2/owner-prepare-served-events-tests \
@@ -1030,6 +1031,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-log \
 	books/owner-results \
 	books/owner-served-bound \
+	books/transit-bound \
+	tests/acl2/wire-bounds-tests \
 	books/owner-log-reopen \
 	books/owner-bound-commit \
 	books/consumer-event-index \
@@ -1152,6 +1155,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/login-binding-live-tests \
 	tests/acl2/native-admin-peer-budget-tests \
 	tests/acl2/account-list-tests \
+	tests/acl2/accounts-snapshot-tests \
+	tests/acl2/accounts-tests \
+	tests/acl2/feed-totality-tests \
+	tests/acl2/group-access-tests \
+	tests/acl2/group-status-tests \
+	tests/acl2/moderation-tests \
+	tests/acl2/peer-host-tests \
+	tests/acl2/sha256-stobj-tests \
+	tests/acl2/topic-history-identity-disjoint-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \
 	books/public-exposure-reply \
@@ -1403,6 +1415,17 @@ check:
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
+# A tooth whose body does not translate passes as a must-fail and bites
+# nothing: std must-fail accepts ANY error, silently.  The keystone audit of
+# 2026-09-27 found 41 forms in two test books calling functions at pre-flip
+# arities, so PRF-191/132/144 had never been evaluated while certification
+# was green.  Every must-fail in tests/acl2 is `must-fail-checked`
+# (tests/acl2/must-fail-checked.lisp), which translates the body's claim
+# first and so makes certification refuse such a tooth; this fails on a bare
+# must-fail unless its line declares `; must-fail-ok: <reason>`.
+# `--convert` rewrites bare ones after a merge.  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/must_fail_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_must_fail_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
