@@ -6,6 +6,21 @@
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/replay")
+; Every codec seam's attachment (books/codec-attach.lisp), as in build.lisp:
+; `store recover' decodes the journal (host/store-host.lisp
+; fn-store-record-sequence -> fn-store-event-decode-exact), and without the
+; attachment the constrained decoder has no body (hbox 08:27Z: "ACL2 error in
+; fn-store-record-sequence: EV-FNCALL-NULL-BODY-ER ... FN-RECORD-DECODE-EXACT").
+(include-book "books/codec-attach")
+;; The record encoder's attachment over the concrete recognizer
+;; (books/records-attach-concrete.lisp), as in build.lisp.
+(include-book "books/records-attach-concrete")
+;; The payload arena's byte-array attachment (books/payload-arena-attach.lisp)
+;; must precede the first book that introduces the generic `fn-arena' (ACL2
+;; refuses the attach-stobj once the name is in use).  Since the records flip
+;; the held record reaches the arena, so nearly every book below does: it
+;; comes right after the codec and record attachments, before any of them.
+(include-book "books/payload-arena-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
@@ -55,11 +70,6 @@
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
-;; The records flip: host/store-host.lisp includes books/store-intern (the
-;; intern at the entries), which names the payload arena `fn-arena'; the
-;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
-;; first include that introduces the generic, so it comes here.
-(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
@@ -73,6 +83,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ; A developer image by definition (the header): its `store' selectors
+        ; are developer-image selectors, refused by a production profile.
+        (fnn-select-image-profile "developer")
         (fnn-select-release-version)
         (defun fn-native-entry (st)
           (declare (ignore st))
@@ -83,6 +96,11 @@
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 :q
+; The saved world is the full certified world (this is evidence tooling, never
+; a release image); tools/build_native_host.sh checks the marker
+; host/native/strip-world.lisp prints for it (HST-025).
+(load "host/native/strip-world.lisp")
+(fnn-save-world-flavor "full" "build/fn-host-store-test")
 (save-exec "build/fn-host-store-test" "fn native store test host"
            :return-from-lp '(fn-native-entry state)
            :inert-args t :host-lisp-args "--noinform"

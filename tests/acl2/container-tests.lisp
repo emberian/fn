@@ -71,9 +71,64 @@
  (equal (fn-ct-find-provider *ct-id-a* (fn-ct-articles *ct-container*) *ct-digests*)
         (cons *ct-a* *ct-digest-a*)))
 
+;
+; by specification: the flip -- publication threads the payload arena
+; (books/container.lisp fn-ct-publish-article seals a staged article's
+; octets at the handle the node holds).  Each run below is on a fresh arena;
+; ctt-* return the result, ctt-*-arena the arena's payloads oldest first.
+(defun ctt-payloads (h n fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil
+                  :measure (nfix (- (nfix n) (nfix h)))))
+  (if (and (natp h) (natp n) (< h n))
+      (cons (fn-arena-payload h fn-arena) (ctt-payloads (1+ h) n fn-arena))
+    nil))
+(defun ctt-container-in (s c digests obligation-digests completions store profile
+                           generation groups evidence stamp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (r fn-arena)
+    (fn-ct-publish-container s c digests obligation-digests completions store profile
+                             generation groups evidence stamp fn-arena)
+    (mv (list r (ctt-payloads 0 (fn-arena-count fn-arena) fn-arena)) fn-arena)))
+(defun ctt-container-both (s c digests obligation-digests completions store profile
+                             generation groups evidence stamp)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (ctt-container-in s c digests obligation-digests completions store profile
+                        generation groups evidence stamp fn-arena)
+      r)))
+(defmacro ctt-container (&rest args) `(car (ctt-container-both ,@args)))
+(defmacro ctt-container-arena (&rest args) `(cadr (ctt-container-both ,@args)))
+(defun ctt-article-in (s a digest articles digests store profile generation groups
+                         evidence obligation-digest completion stamp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (r fn-arena)
+    (fn-ct-publish-article s a digest articles digests store profile generation groups
+                           evidence obligation-digest completion stamp fn-arena)
+    (mv (list r (ctt-payloads 0 (fn-arena-count fn-arena) fn-arena)) fn-arena)))
+(defun ctt-article-both (s a digest articles digests store profile generation groups
+                           evidence obligation-digest completion stamp)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (ctt-article-in s a digest articles digests store profile generation groups
+                      evidence obligation-digest completion stamp fn-arena)
+      r)))
+(defmacro ctt-article (&rest args) `(car (ctt-article-both ,@args)))
+(defmacro ctt-article-arena (&rest args) `(cadr (ctt-article-both ,@args)))
+(defun ctt-list (s candidates digests obligation-digests completions articles
+                   all-digests store profile generation groups evidence stamp)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (fn-ct-publish-list s candidates digests obligation-digests completions articles
+                          all-digests store profile generation groups evidence stamp
+                          fn-arena)
+      r)))
+
 ; Publication of the whole container.
 (defconst *ct-run*
-  (fn-ct-publish-container *ct-node* *ct-container* *ct-digests* *ct-obligations*
+  (ctt-container *ct-node* *ct-container* *ct-digests* *ct-obligations*
                            '(:durable :durable :durable) nil *ct-profile*
                            1 *ct-groups* "release" 841000000))
 (assert-event (equal (fn-frame-item 0 *ct-run*) :ok))
@@ -96,9 +151,24 @@
         (list :accepted "<b@example.invalid>" *ct-id-b*
               (fn-ct-obligation-string *ct-obligation-3*))))
 (assert-event (equal (fn-frame-item 3 *ct-run*) nil))
+; by specification: the flip -- A and B hold handles 0 and 1 of the run's
+; arena, which reads their octets (T, invalid, sealed nothing).
+(assert-event
+ (and (equal (ctt-container-arena *ct-node* *ct-container* *ct-digests* *ct-obligations*
+                                  '(:durable :durable :durable) nil *ct-profile*
+                                  1 *ct-groups* "release" 841000000)
+             (list (fn-ct-article-octets *ct-a*) (fn-ct-article-octets *ct-b*)))
+      (equal (fn-article-payload (fn-find-article "<a@example.invalid>"
+                                                  (fn-state-articles
+                                                   (fn-node-acceptance *ct-final*))))
+             0)
+      (equal (fn-article-payload (fn-find-article "<b@example.invalid>"
+                                                  (fn-state-articles
+                                                   (fn-node-acceptance *ct-final*))))
+             1)))
 ; The unknown object was carried and changed nothing.
 (assert-event
- (equal (fn-ct-publish-container
+ (equal (ctt-container
          *ct-node* (fn-ct-make-container 1 (list *ct-t* *ct-a* *ct-b*) nil)
          *ct-digests* *ct-obligations* '(:durable :durable :durable) nil
          *ct-profile* 1 *ct-groups* "release" 841000000)
@@ -107,7 +177,7 @@
 ; Refusals that never reach the node: version, missing dependency, cycles,
 ; sizes, a non-durable completion.
 (assert-event
- (equal (fn-ct-publish-container
+ (equal (ctt-container
          *ct-node* (fn-ct-make-container 2 (list *ct-a*) nil) (list *ct-digest-a*)
          (list *ct-obligation-1*) '(:durable) nil *ct-profile* 1 *ct-groups*
          "release" 841000000)
@@ -134,7 +204,7 @@
                       (make-list 65 :initial-element 0) nil))
 (assert-event (not (fn-ct-article-shapep *ct-oversize* *ct-profile*)))
 (defconst *ct-aborted*
-  (fn-ct-publish-article *ct-node* *ct-a* *ct-digest-a* (list *ct-a*)
+  (ctt-article *ct-node* *ct-a* *ct-digest-a* (list *ct-a*)
                          (list *ct-digest-a*) nil *ct-profile* 1 *ct-groups*
                          "release" *ct-obligation-1* :aborted 841000000))
 (assert-event (equal (fn-ct-result-status *ct-aborted*) :not-durable))
@@ -147,7 +217,7 @@
 ; publishes only the first.
 (defconst *ct-a-prime* (fn-ct-make-article "<a@example.invalid>" *ct-id-c* '(67) nil))
 (defconst *ct-conflict-run*
-  (fn-ct-publish-container
+  (ctt-container
    *ct-node* (fn-ct-make-container 1 (list *ct-a* *ct-a-prime*) nil)
    (list *ct-digest-a* *ct-digest-c*) (list *ct-obligation-1* *ct-obligation-2*)
    '(:durable :durable) nil *ct-profile* 1 *ct-groups* "release" 841000000))
@@ -161,7 +231,7 @@
 ; Teeth for fn-ct-receipt-implies-validated: the tampered article gets no
 ; receipt and is not valid, so dropping the hypothesis loses the conclusion.
 (defconst *ct-t-result*
-  (fn-ct-publish-article *ct-node* *ct-t* *ct-digest-t* (fn-ct-articles *ct-container*)
+  (ctt-article *ct-node* *ct-t* *ct-digest-t* (fn-ct-articles *ct-container*)
                          *ct-digests* nil *ct-profile* 1 *ct-groups* "release"
                          *ct-obligation-1* :durable 841000000))
 (assert-event (not (fn-ct-receiptp (fn-ct-result-receipt *ct-t-result*))))
@@ -187,11 +257,38 @@
 ; Teeth for fn-ct-invalid-article-leaves-node-unchanged: a valid article
 ; moves the node.
 (defconst *ct-a-result*
-  (fn-ct-publish-article *ct-node* *ct-a* *ct-digest-a* (fn-ct-articles *ct-container*)
+  (ctt-article *ct-node* *ct-a* *ct-digest-a* (fn-ct-articles *ct-container*)
                          *ct-digests* nil *ct-profile* 1 *ct-groups* "release"
                          *ct-obligation-2* :durable 841000000))
 (assert-event (equal (fn-ct-result-status *ct-a-result*) :accepted))
 (assert-event (not (equal (fn-ct-result-state *ct-a-result*) *ct-node*)))
+;
+; fn-ct-publish-article-seals-exactly-a-staged-article.  Witness: A accepted
+; on the empty arena is held under handle 0, and handle 0 reads A's octets
+; (the only payload sealed); the non-durable A is staged too and sealed.
+(defun ctt-held-payload (msgid s)
+  (fn-article-payload (fn-find-article msgid (fn-state-articles (fn-node-acceptance s)))))
+(assert-event
+ (and (member-equal (fn-ct-result-status *ct-a-result*) '(:accepted :not-durable))
+      (equal (ctt-article-arena *ct-node* *ct-a* *ct-digest-a* (fn-ct-articles *ct-container*)
+                                *ct-digests* nil *ct-profile* 1 *ct-groups* "release"
+                                *ct-obligation-2* :durable 841000000)
+             (list (fn-ct-article-octets *ct-a*)))
+      (equal (ctt-held-payload "<a@example.invalid>" (fn-ct-result-state *ct-a-result*)) 0)))
+(assert-event
+ (and (equal (fn-ct-result-status *ct-aborted*) :not-durable)
+      (equal (ctt-article-arena *ct-node* *ct-a* *ct-digest-a* (list *ct-a*)
+                                (list *ct-digest-a*) nil *ct-profile* 1 *ct-groups*
+                                "release" *ct-obligation-1* :aborted 841000000)
+             (list (fn-ct-article-octets *ct-a*)))))
+; Hypothesis removed (the article was not staged): the tampered article
+; (invalid) and the article the tiny node refuses leave the arena empty.
+(assert-event
+ (and (equal (fn-ct-result-status *ct-t-result*) :invalid)
+      (equal (ctt-article-arena *ct-node* *ct-t* *ct-digest-t* (fn-ct-articles *ct-container*)
+                                *ct-digests* nil *ct-profile* 1 *ct-groups* "release"
+                                *ct-obligation-1* :durable 841000000)
+             nil)))
 
 ; Teeth for fn-ct-store-resolved-verdict-ignores-siblings: B resolves its
 ; dependency only through its sibling, so its verdict does depend on the
@@ -261,14 +358,14 @@
 ; Teeth for fn-ct-invalid-head-does-not-block-siblings: a valid head changes
 ; the state its siblings see.
 (assert-event
- (not (equal (fn-frame-item 0 (fn-ct-publish-list
+ (not (equal (fn-frame-item 0 (ctt-list
                                 *ct-node* (list *ct-a* *ct-b*)
                                 (list *ct-digest-a* *ct-digest-b*)
                                 (list *ct-obligation-1* *ct-obligation-2*)
                                 '(:durable :durable)
                                 (list *ct-a* *ct-b*) (list *ct-digest-a* *ct-digest-b*)
                                 nil *ct-profile* 1 *ct-groups* "release" 841000000))
-             (fn-frame-item 0 (fn-ct-publish-list
+             (fn-frame-item 0 (ctt-list
                                 *ct-node* (list *ct-b*)
                                 (list *ct-digest-b*)
                                 (list *ct-obligation-2*)
@@ -280,11 +377,18 @@
 ; retention capacity for the charge) is :refused, and the article is absent.
 (defconst *ct-tiny-node* (fn-node-initial-state *ct-groups* 1))
 (defconst *ct-refused*
-  (fn-ct-publish-article *ct-tiny-node* *ct-a* *ct-digest-a* (list *ct-a*)
+  (ctt-article *ct-tiny-node* *ct-a* *ct-digest-a* (list *ct-a*)
                          (list *ct-digest-a*) nil *ct-profile* 1 *ct-groups*
                          "release" *ct-obligation-1* :durable 841000000))
 (assert-event (equal (fn-ct-result-status *ct-refused*) :refused))
 (assert-event (equal (fn-ct-result-receipt *ct-refused*) nil))
+; (fn-ct-publish-article-seals-exactly-a-staged-article: a refused article
+; seals nothing.)
+(assert-event
+ (equal (ctt-article-arena *ct-tiny-node* *ct-a* *ct-digest-a* (list *ct-a*)
+                           (list *ct-digest-a*) nil *ct-profile* 1 *ct-groups*
+                           "release" *ct-obligation-1* :durable 841000000)
+        nil))
 (assert-event (not (fn-acceptedp "<a@example.invalid>"
                                  (fn-state-articles
                                   (fn-node-acceptance (fn-ct-result-state *ct-refused*))))))
@@ -294,17 +398,17 @@
 (defconst *ct-big-unknown* (list 7 (make-list 17 :initial-element 0)))
 (assert-event (not (fn-ct-unknowns-okp (list *ct-big-unknown*) *ct-profile*)))
 (assert-event
- (equal (fn-ct-publish-container
+ (equal (ctt-container
          *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-big-unknown*))
          (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
          *ct-profile* 1 *ct-groups* "release" 841000000)
         '(:refused :container)))
 (assert-event
- (not (equal (fn-ct-publish-container
+ (not (equal (ctt-container
               *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-unknown*))
               (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
               *ct-profile* 1 *ct-groups* "release" 841000000)
-             (fn-ct-publish-container
+             (ctt-container
               *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-big-unknown*))
               (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
               *ct-profile* 1 *ct-groups* "release" 841000000))))

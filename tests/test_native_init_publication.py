@@ -27,7 +27,9 @@ What this module checks:
   present ROOT is the complete empty store (`status` exit 0,
   transactions=0) that a second init refuses (STORE-EXISTS); an absent ROOT
   leaves one staged directory, which the next init names
-  (reason=interrupted-init), after whose removal init succeeds.
+  (reason=interrupted-init), after whose removal init succeeds;
+* two init processes of one image killed at the same cut leave stages with
+  different suffixes (PKT-819: the random state is seeded per process).
 
 Not checked here: power loss (lane power-loss's campaign carries these cut
 names), and the non-Linux ROOT.lock path (OpenBSD evidence is scoped
@@ -156,6 +158,26 @@ class InitCutTests(InitFixture):
         self.assertEqual(self.stages(), [])
         self.assert_empty_store()
         return "absent"
+
+    def test_two_inits_stage_under_different_names(self):
+        """PKT-819: the stage suffix is drawn from a state each process seeds
+        from the OS's entropy, not one the image carried from its build: two
+        init processes killed at the same cut leave differently named
+        stages."""
+        cut = next(c for c in native_cuts.INIT_PUB_CUTS if c.candidate == "absent")
+        env = verbs.environment()
+        env["FN_NATIVE_INIT_FAULT"] = "{}:kill".format(cut.name)
+        names = []
+        for _ in range(2):
+            died = self.init_words(env=env)
+            self.assertEqual(died.returncode, -signal.SIGKILL, (died.stdout + died.stderr).decode())
+            stages = self.stages()
+            self.assertEqual(len(stages), 1, stages)
+            names.append(stages[0].name)
+            shutil.rmtree(stages[0])
+        self.assertFalse(self.store.exists())
+        self.assertNotEqual(names[0], names[1], names)
+        print("init stages:", names)
 
     def test_every_cut_leaves_no_store_or_the_complete_empty_store(self):
         seen = {}

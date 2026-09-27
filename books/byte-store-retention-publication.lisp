@@ -71,10 +71,15 @@
                   (payload (fn-store-event-encode event)))
                  (:instance fn-bs-k0-host-frame-decodes-event
                   (payload (fn-store-event-encode event))))
+           ; The two retention-encoding rewrites rebuild the event's encoding
+           ; as items under every append the frame opens: 4.0M prover steps
+           ; (10.3 s, persvati) with them, 2,923 without (owner-books-split).
            :in-theory (e/d (fn-bs-record-inputp)
                            (fn-bs-record-of-octets fn-store-event-encode
                             fn-store-event-decode-exact
-                            fn-frame-store-protected fn-frame-trailer)))))
+                            fn-frame-store-protected fn-frame-trailer
+                            fn-bsrp-retention-encoding-is-canonical
+                            fn-srci-retention-encoding-is-items)))))
 
 (defthm fn-bsrp-retention-host-arguments-reach-related-attempted-cut
   (implies

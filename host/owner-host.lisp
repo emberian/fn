@@ -881,8 +881,11 @@
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
                 (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
-              (let ((fn-arena (fn-arena-seal-list payload fn-arena)))
-                (mv nil :prepared fn-arena state)))))))))))))
+              ; The entry reads the arena only (no invariant-risk: it runs
+              ; compiled, no callee re-checks its guard); it names the payload
+              ; and the host seals it with one fn-arena-seal-list call
+              ; (tools/run_owner.py prepare), exactly when the Store changed.
+              (mv nil (list :seal payload) fn-arena state))))))))))))
 
 (defun fn-owner-refuse-reservation (fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -976,8 +979,12 @@
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
                 (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
-              (let ((fn-arena (fn-arena-seal-buffer fn-octets fn-arena)))
-                (mv nil :prepared fn-arena state)))))))))))))
+              ; Reads the arena and the buffer only (no invariant-risk; see
+              ; fn-owner-prepare): :seal-buffer tells the host to seal the
+              ; buffer's payload with one fn-arena-seal-buffer call
+              ; (host/native/owner.lisp fnn-owner-attempt), exactly when the
+              ; Store changed.
+              (mv nil :seal-buffer fn-arena state))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)
@@ -1089,8 +1096,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-status (fn-owner-core state) consumer)))
 
-(defun fn-owner-consumer-local-poll (consumer state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-consumer-local-poll (consumer fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   ;; PKT-254: ACL2 encodes the selected event and refuses a report the
   ;; poll reply cannot carry by name (books/consumer-owner-local.lisp
   ;; fn-col-poll-report; fn-col-poll-report-fits-or-refuses-by-name,
@@ -1100,7 +1107,10 @@
   ;; PRF-234: fn-cbind-plain-poll is fn-col-poll-report for an unbound
   ;; consumer and refuses (:bound) a bound one (books/consumer-bound.lisp
   ;; fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll).
-  (value (fn-cbind-plain-poll (fn-owner-ocfg state) consumer)))
+  ;; The records flip: a selected article is a held row, whose report reads
+  ;; its bytes through the live arena (fn-cbind-plain-poll-over,
+  ;; fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll).
+  (value (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer fn-arena)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1416,10 +1426,12 @@
 ; fn-cbind-ack-is-the-consumer-ack-or-a-refusal).  The host carries the
 ; decoded consumer id or cursor and the password octets; it compares
 ; nothing.
-(defun fn-owner-consumer-local-bound-poll (consumer secret state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)
-                        consumer secret)))
+(defun fn-owner-consumer-local-bound-poll (consumer secret fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  ;; Over the live arena (records flip): fn-cbind-poll-over-delivers-only-
+  ;; readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal.
+  (value (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
+                             consumer secret fn-arena)))
 
 ;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
 ;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
@@ -1427,10 +1439,12 @@
 ;; when that is an empty page before the deadline.  The admission of one
 ;; more waiter.  host/native/owner.lisp fnn-owner-consumer-local-wait calls
 ;; both under the owner mutex.
-(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cwait-step (fn-owner-ocfg state) (fn-owner-auth state)
-                        consumer secret elapsed seconds)))
+(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  ;; Over the live arena (records flip):
+  ;; fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page.
+  (value (fn-cwait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
+                             consumer secret elapsed seconds fn-arena)))
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :mode :program))

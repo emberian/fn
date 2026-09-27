@@ -399,6 +399,26 @@
 
 (in-theory (disable fn-ccar-completion-enabledp))
 
+; fn-sn-accepted-delta (books/store-node.lisp) reads the completion record
+; through fn-sn-completion-record, i.e. fn-sn-find-record over the whole
+; history: the one history scan left in the carried finish (flip-L6-2:
+; 0.23 s and 346 MB per POST at N = 10,000, hbox store-test image).  This is
+; the same delta over the record fn-ccar-completion-record finds.
+(defun fn-ccar-accepted-delta (s)
+  (declare (xargs :guard (fn-sn-statep s)))
+  (let ((record (fn-ccar-completion-record s)))
+    (if (fn-held-p record) (fn-hc-delta (fn-held-context record)) nil)))
+
+(defthm fn-ccar-accepted-delta-is-accepted-delta
+  (implies (fn-sn-statep s)
+           (equal (fn-ccar-accepted-delta s) (fn-sn-accepted-delta s)))
+  :hints (("Goal" :in-theory (e/d (fn-ccar-accepted-delta fn-sn-accepted-delta
+                                   fn-ccar-completion-record-is-completion-record)
+                                  (fn-ccar-completion-record fn-sn-completion-record
+                                   fn-sn-statep fn-held-p)))))
+
+(in-theory (disable fn-ccar-accepted-delta))
+
 ; fn-sn-finish's enabled branch with the carried record and kind.  The gate
 ; is its caller's: the guard says it holds, so it is not evaluated again.
 (defun fn-ccar-sn-finish-enabled (s)
@@ -438,7 +458,7 @@
            (fn-sn-update-accepted
             s (fn-sf-emit-success files sequence txid)
             node
-            (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s))
+            (fn-stx-index-add (fn-sn-index s) (fn-ccar-accepted-delta s))
             (fn-record-msgid record)
             ; the row's context, decided at intern (records-flip), as the
             ; reference finish reads it
@@ -460,6 +480,7 @@
                          fn-evc-carried-definitions
                          fn-ccar-completion-enabledp-is-reference
                          fn-ccar-completion-record-is-completion-record
+                         fn-ccar-accepted-delta-is-accepted-delta
                          fn-ccar-cpe-projection-step-is-cpe-projection-step
                          fn-ccar-th-prefix-step-is-th-prefix-step)
                        (theory 'minimal-theory))

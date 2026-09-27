@@ -59,6 +59,10 @@ LD = ' :ld-error-action :return :ld-error-triples t)'
 # The store bridge's boot, in order.  `run_store.Acl2Store` sends exactly
 # these when no image is used; the image is these forms, saved.
 STORE_FORMS = (
+    # The records flip: the payload arena's byte-array attachment precedes
+    # every include whose closure holds books/payload-arena's defstobj, as in
+    # the image (host/native/build*.lisp: the first include).
+    '(include-book "books/payload-arena-attach")',
     '(include-book "books/replay")',
     # Every codec seam's attachment: the books call the constrained
     # encoders and decoders; this makes them evaluate.
@@ -67,10 +71,6 @@ STORE_FORMS = (
     '(include-book "books/records-attach-concrete")',
     # The store bridge's record dispatchers call the concrete twins.
     '(include-book "books/records-concrete")',
-    # The records flip: host/store-host.lisp includes books/store-intern,
-    # which names the payload arena; its byte-array attachment must precede
-    # the generic (books/payload-arena-attach.lisp), as in the image.
-    '(include-book "books/payload-arena-attach")',
     '(ld "host/store-host.lisp"' + LD,
     # The state checkpoint's publication over the octet buffer
     # (rep-wave-d-2): host/store-node-host.lisp fn-store-sco-publish-plan

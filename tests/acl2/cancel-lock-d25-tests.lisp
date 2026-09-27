@@ -4,8 +4,9 @@
 ; its lock are unchanged, the retrying account's cancel opens nothing, and a
 ; changed user-supplied Cancel-Lock is a conflict.
 ;
-; The subject is fn-rcl-existing-action over fn-own-sub-stored-octets (the
-; host's verdict over the octets fn-owner-take stages).  The sources are
+; The subject is fn-store-existing-action over fn-own-sub-stored-octets (the
+; host's verdict over the octets fn-owner-take stages), run over the arena
+; that interned the held article (cdt-entry).  The sources are
 ; injected by the real fn-inj-decide at two clock readings 37 s apart and
 ; held by the real Store (the tests/acl2/source-routes-tests.lisp fixture).
 (in-package "ACL2")
@@ -82,6 +83,18 @@
 (defun cdt-alpha-action (stored msgid payload groups s)
   (declare (xargs :verify-guards nil))
   (fn-hrt-existing-action (list (cdt-wire stored)) msgid payload groups s))
+;; The entry the host calls (books/store-intern.lisp fn-store-existing-action)
+;; over the arena that interned STORED: the held bytes read by handle.
+(defun cdt-entry-in (stored msgid payload groups s fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events (list (cdt-wire stored)) nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-store-existing-action msgid payload groups s fn-arena) fn-arena)))
+(defun cdt-entry (stored msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena) (cdt-entry-in stored msgid payload groups s fn-arena) r)))
 (defun cdt-held (s)
   (fn-find-article *cdt-msgid* (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
 
@@ -123,7 +136,7 @@
                             (cdt-sub *cdt-plain* *cdt-b* "bob" *cdt-bob*)
                             *cdt-ring1* *cdt-plain* *cdt-a* *cdt-b* *cdt-groups*)
       (not (equal *cdt-bob-octets* *cdt-held-octets*))
-      (equal (fn-rcl-existing-action *cdt-msgid* *cdt-bob-octets* *cdt-groups* *cdt-s*)
+      (equal (cdt-entry *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* *cdt-groups* *cdt-s*)
              :duplicate)))
 ; The same verdict over alpha (the bytes under the held handle).
 (assert-event
@@ -137,7 +150,7 @@
                             (cdt-sub *cdt-plain* *cdt-b* "alice" *cdt-alice*)
                             *cdt-ring1* *cdt-plain* *cdt-a* *cdt-b* *cdt-groups*)
       (not (equal *cdt-alice-e2-octets* *cdt-held-octets*))
-      (equal (fn-rcl-existing-action *cdt-msgid* *cdt-alice-e2-octets* *cdt-groups* *cdt-s*)
+      (equal (cdt-entry *cdt-held-octets* *cdt-msgid* *cdt-alice-e2-octets* *cdt-groups* *cdt-s*)
              :duplicate)))
 (assert-event
  (equal (cdt-alpha-action *cdt-held-octets* *cdt-msgid* *cdt-alice-e2-octets* *cdt-groups*
@@ -163,7 +176,7 @@
 ; Removal of "the same groups": the same source filed elsewhere is a conflict.
 (assert-event
  (and (not (equal '("fn.other") (fn-article-groups (cdt-held *cdt-s*))))
-      (equal (fn-rcl-existing-action *cdt-msgid* *cdt-bob-octets* '("fn.other") *cdt-s*)
+      (equal (cdt-entry *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* '("fn.other") *cdt-s*)
              :conflict)))
 (assert-event
  (equal (cdt-alpha-action *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* '("fn.other") *cdt-s*)
@@ -172,7 +185,7 @@
 ; its stored octets (none) are not the held article.
 (assert-event
  (and (not (fn-inj-injectedp (cdt-d *cdt-plain* *cdt-no-wall*)))
-      (not (equal (fn-rcl-existing-action
+      (not (equal (cdt-entry *cdt-held-octets*
                    *cdt-msgid* (cdt-stored *cdt-plain* *cdt-no-wall* "bob" *cdt-bob* *cdt-ring1*)
                    *cdt-groups* *cdt-s*)
                   :duplicate))))
@@ -185,7 +198,7 @@
 ; Removal of "the held article is this source's": a store holding nothing
 ; under the Message-ID answers nil.
 (assert-event
- (equal (fn-rcl-existing-action "<other@example.invalid>" *cdt-bob-octets* *cdt-groups* *cdt-s*)
+ (equal (cdt-entry *cdt-held-octets* "<other@example.invalid>" *cdt-bob-octets* *cdt-groups* *cdt-s*)
         nil))
 (assert-event
  (equal (cdt-alpha-action *cdt-held-octets* "<other@example.invalid>" *cdt-bob-octets*
@@ -199,14 +212,14 @@
          (db (fn-inj-decide source2 config b)))
      (implies (and (equal (fn-own-sub-decision sub-a) da)
                    (equal (fn-own-sub-decision sub-b) db)
-                   (equal (fn-article-payload held)
+                   (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
                           (fn-own-sub-stored-octets cfg-a sub-a ring-a))
                    (fn-inj-injectedp da) (fn-inj-injectedp db)
                    (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                    (equal groups (fn-article-groups held)))
-              (equal (fn-rcl-existing-action
-                      msgid (fn-own-sub-stored-octets cfg-b sub-b ring-b) groups s)
+              (equal (fn-store-existing-action
+                      msgid (fn-own-sub-stored-octets cfg-b sub-b ring-b) groups s fn-arena)
                      :duplicate)))))
 
 ; ---------------------------------------------------------------------------
@@ -223,11 +236,11 @@
              (fn-ipp-injected-octets (cdt-d *cdt-locked* *cdt-a*) *cdt-ring1* (cdt-text "alice") nil))
       (not (equal *cdt-locked* *cdt-relocked*))
       (fn-inj-injectedp (cdt-d *cdt-relocked* *cdt-b*))
-      (equal (fn-rcl-existing-action
+      (equal (cdt-entry *cdt-locked-octets*
               *cdt-msgid* (cdt-stored *cdt-relocked* *cdt-b* "alice" *cdt-alice* *cdt-ring1*)
               *cdt-groups* *cdt-s2*)
              :conflict)
-      (equal (fn-rcl-existing-action
+      (equal (cdt-entry *cdt-locked-octets*
               *cdt-msgid* (cdt-stored *cdt-locked* *cdt-b* "bob" *cdt-bob* *cdt-ring2*)
               *cdt-groups* *cdt-s2*)
              :duplicate)))
@@ -250,7 +263,7 @@
  (and (equal *cdt-plain* *cdt-plain*)
       (not (equal (fn-ctl-locks-octets *cdt-bob-octets*)
                   (fn-ctl-locks-octets *cdt-held-octets*)))
-      (not (equal (fn-rcl-existing-action *cdt-msgid* *cdt-bob-octets* *cdt-groups* *cdt-s*)
+      (not (equal (cdt-entry *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* *cdt-groups* *cdt-s*)
                   :conflict))))
 (assert-event
  (not (equal (cdt-alpha-action *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* *cdt-groups*

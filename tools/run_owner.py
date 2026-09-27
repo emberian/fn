@@ -31,6 +31,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        NO_FAULTS, ScriptedFaults, Store,
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
                        acl2_keyword, acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
+                       decimal_list,
                        durable_post, exit_code_for, group_codes, metadata,
                        validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
@@ -155,7 +156,21 @@ class Acl2Owner(Acl2Store):
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
         form += " " + str(charge) + " fn-arena state)"
-        return self._symbol(form)
+        output = self.call(form)
+        body = acl2_result(output)
+        # An accepted prepare answers (:SEAL OCTETS); the bridge seals exactly
+        # those octets (host/owner-host.lisp fn-owner-prepare: the entry only
+        # reads the arena).
+        if body.upper().startswith(b"(:SEAL ") and body.endswith(b")"):
+            inner = body[len(b"(:SEAL "):-1].strip()
+            octets = [] if inner.upper() == b"NIL" else decimal_list(inner)
+            if octets is None or any(value > 255 for value in octets):
+                raise StoreError("ACL2 returned a malformed seal")
+            sealed = self.call("(fn-arena-seal-list '" + self.numeric_list(octets) + " fn-arena)")
+            if acl2_result(sealed).lower() != b"<fn-arena>":
+                raise StoreError("the arena seal returned no arena")
+            return "prepared"
+        return acl2_owner_symbol(output)
 
     def existing_action(self, msgid, payload, group_codes):
         form = "(fn-owner-existing-action '" + self.literal(msgid)

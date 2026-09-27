@@ -796,8 +796,18 @@
   :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-step) (:d fn-ocfg-advance)
                                    (:d fn-ocfg-close) (:d fn-ocfg-pass)
                                    (:d fn-ocfg-reconfigure) (:d fn-ocfg-complete))
+                                  ; the connection search and the rules tried on
+                                  ; every consp/car and wire term never decide
+                                  ; a pin: 835k prover steps with them, 579k
+                                  ; and a third of the time without
+                                  ; (owner-books-split).
                                   (fn-own-step fn-own-advance fn-own-close
-                                   fn-own-open fn-own-complete fn-own-begin))))))
+                                   fn-own-open fn-own-complete fn-own-begin
+                                   fn-own-find-conn fn-nntp-article-idp-is-consp
+                                   fn-snrt-new-success-is-actual-matching-durable-completion
+                                   fn-nntp-response-text-true-listp
+                                   fn-wire-next-loop-event-needs-input
+                                   fn-wire-next-event-needs-input))))))
 
 ; KEYSTONE.  Every connection keeps the configuration generation it opened
 ; at, for as long as it is not advanced.

@@ -1,6 +1,8 @@
 ; Teeth for books/consumer-wait.lisp (PRF-252, CNS-007): a consumer wait.
 ; The subjects are what host/owner-host.lisp calls:
-; fn-owner-consumer-local-wait-step calls fn-cwait-step and
+; fn-owner-consumer-local-wait-step calls fn-cwait-step (fn-cwait-step-over
+; once the host lane switches it, flip-bridge's REQUEST; its loop is
+; fn-cwait-run-over) and
 ; fn-owner-consumer-local-wait-admit calls fn-cwait-admit (both from
 ; host/native/owner.lisp fnn-owner-consumer-local-wait).
 ;
@@ -239,6 +241,95 @@
         (fn-cwait-run (list (cons *cwt-oc-full* 1200))
                       *cwt-acfg* *cwt-c2* *cwt-secret* 30)))
 ; Without its hypothesis (the first step answered): the page is not empty.
+(must-fail
+ (assert-event (fn-cwait-empty-pagep
+                (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))))
+
+; --- KEYSTONE 2 over the arena: fn-cwait-run-over-answers-the-poll-at-its-
+; return-point, the loop over the host's step fn-cwait-step-over.  Each
+; observation carries the payloads sealed since the one before; the run
+; starts on an empty arena.  CWT-RUN-OVER answers (R POLL-AT-RETURN
+; PAYLOADS): the run's answer, the poll over the arena it returned with of
+; the owner configuration it names, and that arena's payloads.
+(defun cwt-payloads (h n fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil
+                  :measure (nfix (- (nfix n) (nfix h)))))
+  (if (and (natp h) (natp n) (< h n))
+      (cons (fn-arena-payload h fn-arena) (cwt-payloads (1+ h) n fn-arena))
+    nil))
+(defun cwt-run-over-in (observations id secret fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (r fn-arena)
+    (fn-cwait-run-over observations *cwt-acfg* id secret 30 fn-arena)
+    (mv (list r
+              (and r (fn-cwait-poll-over (caddr r) *cwt-acfg* id secret fn-arena))
+              (cwt-payloads 0 (fn-arena-count fn-arena) fn-arena))
+        fn-arena)))
+(defun cwt-run-over (observations id secret)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (x fn-arena) (cwt-run-over-in observations id secret fn-arena) x)))
+; The wait of "2": admitted on the empty Store (nothing sealed), woken 1 200
+; ms later by the commit of the news (its payload sealed at handle 0): it
+; answers the news, the poll over the arena of the configuration it
+; returned in.
+(defconst *cwt-obs*
+  (list (list* *cwt-oc-empty* 0 nil) (list* *cwt-oc-full* 1200 (list '(78)))))
+;; (Nullary functions, not constants: the digest attachment is not callable
+;; in a defconst.)
+(defun cwt-run-over-news () (cwt-run-over *cwt-obs* *cwt-c2* *cwt-secret*))
+(assert-event
+ (let ((r (car (cwt-run-over-news))))
+   (and r (equal (car r) :answer)
+        (equal (cadr r) (cadr (cwt-run-over-news)))
+        (equal (cadr r) (cwt-news))
+        (equal (caddr r) *cwt-oc-full*)
+        (equal (cadddr r) 1200)
+        (not (fn-cwait-empty-pagep (cadr r)))
+        (equal (caddr (cwt-run-over-news)) '((78))))))
+; The wait of "1" over the same commits: no news for it; it times out on the
+; empty page at 30 000 ms, which is its deadline.
+(defun cwt-timeout-over ()
+  (cwt-run-over (append *cwt-obs* (list (list* *cwt-oc-full* 30000 nil))) *cwt-c1* nil))
+(assert-event
+ (let ((r (car (cwt-timeout-over))))
+   (and (equal (car r) :answer)
+        (equal (cadr r) (cadr (cwt-timeout-over)))
+        (natp (cadddr r))
+        (fn-cwait-empty-pagep (cadr r))
+        (<= (fn-cwait-deadline-ms 30) (cadddr r)))))
+; Without its hypothesis (the run answered): no observation answers.
+(assert-event (null (car (cwt-run-over (list (list* *cwt-oc-empty* 0 nil)) *cwt-c1* nil))))
+(must-fail
+ (assert-event
+  (equal (car (car (cwt-run-over (list (list* *cwt-oc-empty* 0 nil)) *cwt-c1* nil)))
+         :answer)))
+; The inner implication without each hypothesis: the answer not empty (the
+; news at 1 200 ms is before the deadline); elapsed not natural (a malformed
+; elapsed answers the empty page at once).
+(must-fail
+ (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (car (cwt-run-over-news))))))
+(defun cwt-bad-over () (cwt-run-over (list (list* *cwt-oc-empty* 'x nil)) *cwt-c1* nil))
+(assert-event (and (fn-cwait-empty-pagep (cadr (car (cwt-bad-over))))
+                   (not (natp (cadddr (car (cwt-bad-over)))))))
+(must-fail
+ (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (car (cwt-bad-over))))))
+; Mutation witness (no hypothesis of the keystone): without the news's seal
+; the row names a handle the arena lacks, and the answer is not the news.
+(must-fail
+ (assert-event
+  (equal (cadr (car (cwt-run-over (list (list* *cwt-oc-full* 1200 nil)) *cwt-c2* *cwt-secret*)))
+         (cwt-news))))
+
+; --- fn-cwait-run-over-sleeps-only-over-empty-pages --------------------------
+; The first observation (the empty Store at 0 ms) is an empty page before
+; the deadline, and the run from it is the run from the next one.
+(assert-event
+ (and (fn-cwait-empty-pagep (cwt-poll *cwt-oc-empty* *cwt-c2* *cwt-secret*))
+      (equal (cwt-step *cwt-oc-empty* *cwt-c2* *cwt-secret* 0 30) '(:sleep 30000))
+      (equal (car (cwt-run-over-news))
+             (car (cwt-run-over (cdr *cwt-obs*) *cwt-c2* *cwt-secret*)))))
+; Without its hypothesis (the step answered): the page is not empty.
 (must-fail
  (assert-event (fn-cwait-empty-pagep
                 (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))))

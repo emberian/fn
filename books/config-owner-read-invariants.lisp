@@ -44,6 +44,40 @@
 ; The outer function is the one host/owner-host.lisp calls on each socket
 ; chunk.  Historical replay and exact per-connection pins establish the
 ; selected wire premise of the direct counted/full equivalence theorem.
+(local
+ (defthm fn-ocri-found-conn-has-wire-state
+   (implies (and (fn-ocri-relation oc)
+                 (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+            (fn-wire-statep
+             (fn-own-conn-wire
+              (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
+   :hints (("Goal"
+            :use ((:instance fn-ocri-found-conn-is-carried
+                             (conns (fn-own-conns (fn-ocfg-owner oc)))))
+            :in-theory (e/d (fn-ocri-relation fn-ocri-connp)
+                            (fn-ocri-found-conn-is-carried fn-ocl-relation
+                             fn-ocri-viewp fn-ocri-conns-p fn-wire-statep
+                             fn-midx-correspondencep fn-sn-verdict-listp))))))
+
+(local
+ (defthm fn-ocri-missing-tls-read-is-read
+   (implies
+    (not (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+    (let* ((tls (fn-ocfg-read-tls-prefix oc id octets fn-arena))
+           (full (fn-ocfg-read oc id (take (fn-own-tls-result-consumed tls)
+                                           octets) fn-arena)))
+      (and (equal (fn-own-tls-result-effects tls) (car full))
+           (equal (fn-own-tls-result-owner tls) (cdr full)))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-ocfg-read-tls-prefix
+                             fn-own-read-tls-prefix fn-ocfg-read fn-own-read-full
+                             fn-own-tls-make-result
+                             fn-own-tls-result-consumed
+                             fn-own-tls-result-effects
+                             fn-own-tls-result-owner
+                             fn-own-tls-result-repinned)
+                            (fn-ocfg-with-read-owner))))))
+
 (defthm fn-ocri-host-tls-read-refines-historical-read
   (implies
    (fn-ocri-relation oc)
@@ -53,20 +87,10 @@
      (and (equal (fn-own-tls-result-effects tls) (car full))
           (equal (fn-own-tls-result-owner tls) (cdr full)))))
   :hints (("Goal"
-           :cases ((fn-own-find-conn id
-                                      (fn-own-conns (fn-ocfg-owner oc))))
-           :use ((:instance fn-ocri-found-conn-is-carried
-                            (conns (fn-own-conns (fn-ocfg-owner oc))))
-                 (:instance fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix))
-           :in-theory (e/d (fn-ocfg-read-tls-prefix
-                            fn-own-read-tls-prefix fn-ocfg-read fn-own-read
-                            fn-own-tls-make-result
-                            fn-own-tls-result-consumed
-                            fn-own-tls-result-effects
-                            fn-own-tls-result-owner
-                            fn-ocfg-with-read-owner)
-                           (fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix
-                               fn-ocri-found-conn-is-carried)))))
+           :use (fn-ocri-found-conn-has-wire-state
+                 fn-ocri-missing-tls-read-is-read
+                 fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix)
+           :in-theory (theory 'minimal-theory))))
 
 (defthm fn-ocri-conns-p-of-remove
   (implies (fn-ocri-conns-p conns)
@@ -284,4 +308,5 @@
   :hints (("Goal"
            :use (fn-ocl-read-preserves-historical-relation
                  fn-ocri-read-preserves-added-reader-invariants)
-           :in-theory (enable fn-ocri-relation))))
+           :in-theory (union-theories '(fn-ocri-relation)
+                                      (theory 'minimal-theory)))))

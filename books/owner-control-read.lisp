@@ -244,10 +244,13 @@
 (local
  (defthm fn-octl-list-active-times-effects-true-listp
    (true-listp (fn-nntp-result-effects (fn-nntp-list-active-times session env args)))
+   ; The wildmat decoder is opened on the argument and never contributes:
+   ; 288k prover steps with it, 32k without (owner-books-split).
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-list-active-times fn-nntp-single fn-nntp-multi
                                     fn-nntp-multi-octets fn-nntp-make-result)
-                                   (fn-nntp-result-effects))))))
+                                   (fn-nntp-result-effects fn-wildmat-decode-aux
+                                    fn-wildmat-utf8-next))))))
 
 (local
  (defthm fn-octl-list-counts-effects-true-listp
@@ -383,10 +386,12 @@
 (local
  (defthm fn-octl-gidx-list-counts-command-effects-true-listp
    (true-listp (fn-nntp-result-effects (fn-gidx-list-counts-command session archive buckets args)))
+   ; As above: 414k prover steps with the wildmat decoder, 44k without.
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-gidx-list-counts-command fn-nntp-single fn-nntp-multi
                                     fn-nntp-multi-octets fn-nntp-make-result)
-                                   (fn-nntp-result-effects))))))
+                                   (fn-nntp-result-effects fn-wildmat-decode-aux
+                                    fn-wildmat-utf8-next))))))
 
 (local
  (defthm fn-octl-withdrawn-reply-effects-true-listp
@@ -655,9 +660,17 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-octl-served-step-archive-command
                   (conn (fn-octl-served-conn o (fn-own-find-conn id (fn-own-conns o))))))
+           ; The effects-shape and wire-input rules below are tried on every
+           ; reply and wire term and never apply: 345k prover steps with
+           ; them, 96k without (owner-books-split).
            :in-theory (e/d (fn-own-read fn-own-read-full fn-own-finish-read
                             fn-octl-served-conn fn-own-served-conn)
-                           (fn-octl-served-step-archive-command fn-octl-reply
+                           (fn-auth-effects-carry-no-submission
+                            fn-auth-nntp-effects-are-auth-effects
+                            fn-served-submission fn-wire-octet-listp
+                            fn-wire-next-event-needs-input
+                            fn-wire-next-loop-event-needs-input
+                            fn-octl-served-step-archive-command fn-octl-reply
                             fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
                             fn-own-conn-observation fn-own-conn-verdicts
