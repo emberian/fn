@@ -62,6 +62,17 @@ ROOT = Path("/tank/fn/scratch/fixtures")
 WORK = Path("/dev/shm/fn-fixtures")
 PY = sys.executable or "python3"
 EVIDENCE = "planning/evidence"
+# The capacity the posting recipes init with: `--profile default` was the
+# old defaults (T = 2^32-1); the preset now holds 128 transactions, and its
+# record and article bounds (R 64 MiB, A 16 MiB) charge each connection more
+# than an owner admits; H is 512 MiB, room for 10,000 articles of 32 KiB.
+# So: the presets' R, A and G with room for the recipes' N.  Every recipe
+# runs in a 40 GB unit, as tools/service_envelope.py's do: in a 24 GB unit
+# the owner of a scale-sized profile refuses to start
+# (`connections-exceed-memory ... holds=0`, books/connection-budget.lisp).
+CAPACITY = ("--max-transactions", "1048576", "--max-history-octets", "536870912",
+            "--max-open-suffix", "65536", "--max-record-octets", "17138486",
+            "--max-article-octets", "32768", "--max-groups-per-article", "65535")
 
 # Fixtures a rebuild replaces under a stable name, or that D34 retired.
 RETIRED = {
@@ -163,12 +174,16 @@ def recipe_chain(ctx: Context, n: int) -> None:
 def recipe_posted(ctx: Context, script: str, n: int) -> None:
     """N POSTs of 2,048 octets into fn.test (default profile) over NNTP."""
     work = ctx.work / "load"
+    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(CAPACITY))
     if script == "measure":
         ctx.run([PY, TREE / EVIDENCE / "over-number-index-2026-09-26/measure.py", "load",
-                 TREE, ctx.image, work, n])
+                 TREE, ctx.image, work, n], env=env)
     else:
         ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
-                 ctx.image, work, n])
+                 ctx.image, work, n], env=env)
+    load = json.loads((work / "load.json").read_text())
+    if load.get("init_rc") != 0 or load.get("n") != n:
+        raise RuntimeError("load.json: init_rc={} n={}".format(load.get("init_rc"), load.get("n")))
     copy_entries(work, ctx.dest, ["store"])
     shutil.copy2(work / "load.json", ctx.dest / "origin.json")
 
@@ -205,7 +220,8 @@ def recipe_rep_store(ctx: Context, n: int, octets: int) -> None:
     work.mkdir(parents=True)
     ctx.run([PY, TREE / "tools/rep_measure.py", "--image", ctx.image, "--work", work / "m",
              "--articles", n, "--octets", octets, "--samples", 32, "--readers", 3,
-             "--json", work / "rep.json", "--skip-reopen", "--skip-checkpoint"])
+             "--json", work / "rep.json", "--skip-reopen", "--skip-checkpoint",
+             *("--init-flag=" + w for w in CAPACITY)])
     store = work / "m" / "store"
     copy_entries(store, ctx.dest, sorted(p.name for p in store.iterdir()
                                          if not p.name.startswith("store-checkpoint")
@@ -226,7 +242,7 @@ def recipe_bp_open(ctx: Context) -> None:
 
 
 class Fixture:
-    def __init__(self, name, recipe=None, mem="24G", readme="", static=False,
+    def __init__(self, name, recipe=None, mem="40G", readme="", static=False,
                  stores=("store",), tar=None):
         self.name, self.recipe, self.mem, self.readme, self.static = name, recipe, mem, readme, static
         # The stores it holds (relative paths; "." is the directory itself),
@@ -241,10 +257,12 @@ REGISTRY = [
                    "before-view, retention and compact output. FN_P5_FIXTURE for "
                    "tests.test_native_pack_chain; scenario steps name it."),
     Fixture("n10k-2k", lambda c: recipe_posted(c, "measure", 10000),
-            readme="N = 10,000 x 2,048-octet articles in fn.test (default profile), POSTed by "
+            readme="N = 10,000 x 2,048-octet articles in fn.test (--profile default with "
+                   "CAPACITY: T 1048576, H 512 MiB, K 65536, the presets' R, A, G), POSTed by "
                    "over-number-index measure.py load; msgids as msgid_measure.msgid."),
     Fixture("n1k-2k", lambda c: recipe_posted(c, "postmeasure", 1000),
-            readme="N = 1,000 x 2,048-octet articles in fn.test (default profile), POSTed by "
+            readme="N = 1,000 x 2,048-octet articles in fn.test (--profile default with "
+                   "CAPACITY), POSTed by "
                    "post-identity-index postmeasure.py load; msgids as rep_measure.article(i)."),
     Fixture("signed-n1000-2k-32", lambda c: recipe_signed(c, 1000),
             readme="prof_signed.py load --n 1000 --signed 32 --probes 40: store (profile scale, "
@@ -258,7 +276,8 @@ REGISTRY = [
                    "(their paths name the build directory: rewrite them in a copy)."),
     Fixture("checkpoint-pipeline-n10k-32k", lambda c: recipe_rep_store(c, 10000, 32768),
             stores=(".",),
-            readme="10,000 articles of 32 KiB (default profile) by tools/rep_measure.py; the "
+            readme="10,000 articles of 32 KiB (--profile default with CAPACITY) by "
+                   "tools/rep_measure.py; the "
                    "directory is the store, with no state checkpoint (the first open is a full "
                    "replay). Copy it before use: the verbs write writer.lock and a checkpoint."),
     Fixture("bp-checkpoint-open-1311", recipe_bp_open, stores=("t/store",),
