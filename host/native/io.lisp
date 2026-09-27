@@ -5749,18 +5749,22 @@ init completes, never truncates): the retry branch, not the program."
 
 (defun fnn-recover-log-stream-begin ()
   "The full replay of a history that arrives a record at a time: the replay
-begun (fnn-bridge-recover-begin), an empty chunk and its octet count.  The
+begun (fnn-bridge-recover-begin), an empty chunk, its octet count, and the
+next txid folded over the decoded chunks (fn-store-log-next-txid-of-events).  The
 chunks close where ACL2 says (fn-srs-chunk-fullp before a record is added, one
 record always taken first), as fnn-recover-record-chunks closes them; any
 chunking opens the same Store (PRF-261
 fn-srs-steps-are-one-step-of-the-concatenation)."
-  (list (fnn-bridge-recover-begin) nil 0))
+  (list (fnn-bridge-recover-begin) nil 0 0))
 
 (defun fnn-recover-log-stream-flush (replay)
   (when (second replay)
-    (unless (fnn-bridge-recover-step (first replay)
-                                     (fnn-core 'fn-store-decode-records (nreverse (second replay))))
-      (fnn-fault "ACL2 replay rejected committed transaction history"))
+    (let ((decoded (fnn-core 'fn-store-decode-records (nreverse (second replay)))))
+      (when (consp decoded)
+        (setf (fourth replay)
+              (fnn-core 'fn-store-log-next-txid-of-events decoded (fourth replay))))
+      (unless (fnn-bridge-recover-step (first replay) decoded)
+        (fnn-fault "ACL2 replay rejected committed transaction history")))
     (setf (second replay) nil (third replay) 0)))
 
 (defun fnn-recover-log-stream-take (replay record)
@@ -6062,9 +6066,10 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                       (second plan) (first log-position))))
             (setq drop (third plan))
             ;; The records arrive one at a time (fnn-log-scan-segments), each
-            ;; folded into the next txid (fn-store-log-next-txid-step: one past
-            ;; the largest txid of every record the log holds, of every event
-            ;; kind).  With no checkpoint to open from (no F row position, no
+            ;; folded into the next txid (one past the largest txid of every
+            ;; record the log holds, of every event kind: fn-store-log-next-
+            ;; txid-step per record, or -of-events over the replay's decoded
+            ;; chunks when the replay streams).  With no checkpoint to open from (no F row position, no
             ;; state checkpoint: ACL2's selection over a count of 0, the call
             ;; fnn-recover-log-from-state-checkpoint makes, answers the full
             ;; replay before any record is read), each record goes straight to
@@ -6086,10 +6091,16 @@ does, and records how the log holds the history (fnn-store-log-history) for
                          store (second plan) genesis
                          (lambda (record)
                            (incf scanned)
-                           (setq acc (fnn-core 'fn-store-log-next-txid-step record acc))
                            (if replay
                                (fnn-recover-log-stream-take replay record)
-                             (push (fnn-octets record) kept))))))
+                             (progn
+                               (setq acc (fnn-core 'fn-store-log-next-txid-step record acc))
+                               (push (fnn-octets record) kept)))))))
+              ;; The streamed replay folded the txids from its decoded chunks
+              ;; (the last chunk decoded here, before the frontier is derived).
+              (when replay
+                (fnn-recover-log-stream-flush replay)
+                (setq acc (fourth replay)))
               (fnn-log-batch-reset log)
               ;; The frontier: the fold, at least the checkpoint's frontier at S
               ;; (the dropped segments' txids) and the log kernel's next, and
