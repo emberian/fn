@@ -394,6 +394,8 @@ and the boundary ACL2 computed over them."
 (setq *fnn-pack-status-callback* #'fnn-pack-chain-report)
 (setq *fnn-pack-recover-callback* #'fnn-pack-recover-records)
 (setq *fnn-pack-lower-bound-callback* #'fnn-pack-lower-bound)
+(setq *fnn-pack-selected-callback*
+      (lambda (store) (and (nth-value 1 (fnn-pack-selected-raw-and-coverage store)) t)))
 
 (defun fnn-checkpoint-namespace-observation-limit (store)
   "D27, PRF-171: the opened profile's retained-generation capacity plus the
@@ -611,8 +613,10 @@ selection-* process-death cuts (fn-cpp-marker-step)."
         (fnn-checkpoint-corrupt "selection marker does not decode: ~s" answer))
       (second answer))))
 
-(defun fnn-checkpoint-restore-selected (store records)
-  "Validate selected checkpoint and compare checkpoint+suffix to full replay."
+(defun fnn-checkpoint-restore-selected (store count)
+  "Validate selected checkpoint and compare checkpoint+suffix to full replay.
+COUNT is the history's record count (fnn-recover); the suffix's records are
+read only when a generation is selected (fnn-history-records)."
   (handler-case
       (let ((directory (fnn-checkpoints store)))
         (unless (fnn-lstat directory) (return-from fnn-checkpoint-restore-selected '(:none)))
@@ -629,14 +633,14 @@ selection-* process-death cuts (fn-cpp-marker-step)."
                          path (+ (fnn-constant :overhead) (fnn-constant :max-inbound))))
                    (decoded (fnn-core-state 'fn-store-checkpoint-decode
                                             (fnn-octet-list raw) (fnn-digest-of raw)
-                                            (fnn-store-frontier store) (length records))))
+                                            (fnn-store-frontier store) count)))
               (unless (and (listp decoded) (eq (first decoded) :ok)
                            (integerp (second decoded))
-                           (<= 0 (second decoded) (length records)))
+                           (<= 0 (second decoded) count))
                 (fnn-checkpoint-corrupt "selected generation ~d does not decode: ~s"
                                         generation decoded))
               (let* ((sequence (second decoded))
-                     (suffix (nthcdr sequence records))
+                     (suffix (nthcdr sequence (fnn-history-records store)))
                      (restored (fnn-core-state 'fn-store-checkpoint-restore
                                                (mapcar #'fnn-octet-list suffix)
                                                (fnn-store-frontier store))))
@@ -682,9 +686,11 @@ selection-* process-death cuts (fn-cpp-marker-step)."
                 verb)))
 
 (defun fnn-checkpoint-command-publish (root selectp)
-  (multiple-value-bind (store records) (fnn-open-live-store root t)
+  (multiple-value-bind (store count) (fnn-open-live-store root t)
+    (declare (ignore count))
     (unwind-protect
-         (let ((generation (fnn-checkpoint-publish store records)))
+         (let* ((records (fnn-history-records store))
+                (generation (fnn-checkpoint-publish store records)))
            (when selectp (fnn-checkpoint-select store generation))
            (fnn-out "published generation=~d records=~d selected=~a"
                     generation (length records) (if selectp "yes" "no"))
@@ -713,15 +719,17 @@ selection-* process-death cuts (fn-cpp-marker-step)."
       (fnn-store-close store))))
 
 (defun fnn-checkpoint-command-pack (root selectp)
-  (multiple-value-bind (store records) (fnn-open-live-store root t)
+  (multiple-value-bind (store count) (fnn-open-live-store root t)
+    (declare (ignore count))
     (fnn-refuse-on-log-route store "pack")
     (unwind-protect
-         (multiple-value-bind (generation line) (fnn-pack-publish store records selectp)
+         (let ((records (fnn-history-records store)))
+          (multiple-value-bind (generation line) (fnn-pack-publish store records selectp)
            (if (eq generation :nothing-uncovered)
                (fnn-out "~a" line)
                (fnn-out "packed generation=~d records=~d selected=~a"
                         generation (length records) (if selectp "yes" "no")))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 (defun fnn-checkpoint-command-pack-reclaim (root)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
@@ -840,10 +848,10 @@ kept, and a rerun continues from them."
 checkpoint's rotation and the drop of the segments it covers (design
 2026-09-27 storage-log section 6; T8 fn-lg-segment-drop-preserves-the-open):
 a state checkpoint is published at the history's end with the log rotated,
-then the covered segments are unlinked.  The open keeps the covered prefix in
-the arena (no octet list of the history: D27; the checkpoint is written from
-the state).  Format 8: the pack chain."
-  (multiple-value-bind (store records) (fnn-open-live-store root t nil nil)
+then the covered segments are unlinked.  The open answers the history's
+count and keeps no records (PKT-823); the checkpoint is written from the
+state (D27)."
+  (multiple-value-bind (store count) (fnn-open-live-store root t)
     (unwind-protect
          (progn
            ;; Every store an image opens is format 9 (batch AW: a format-8
@@ -851,9 +859,8 @@ the state).  Format 8: the pack chain."
            ;; per-file layout's, deleted with it (design section 9 row 5).
            (unless (fnn-store-logp store)
              (fnn-fault "a store that is not on the record log opened"))
-           (let ((count (fnn-open-history-count store records)))
-             (fnn-out "compacted steps=checkpoint,drop records=~d ~a"
-                      count (fnn-state-checkpoint-publish-steps store count)))
+           (fnn-out "compacted steps=checkpoint,drop records=~d ~a"
+                    count (fnn-state-checkpoint-publish-steps store count))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -1008,28 +1015,7 @@ the state).  Format 8: the pack chain."
                    (length msgids) freed generation (length retired) msgids))))
       (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
 
-(defconstant +fnn-log-reclaim-prefix-chunk+ 1024
-  "Covered-prefix records encoded per ACL2 call while the reclaim streams the
-history (a work quantum per call, never a bound on the store).")
-
-(defun fnn-log-history-each (store records fn)
-  "Call FN on each record of the history the open recovered, in order, as
-octets: the covered prefix encoded from the checkpoint's rows a chunk at a
-time (fn-store-sco-prefix-octets-range), then RECORDS (the suffix the open
-read; the whole history after a full replay).  No list of the history's
-octet lists is built."
-  (let ((mode (fnn-store-open-mode store)))
-    (when (eq (first mode) :checkpoint)
-      (let ((s (second mode)))
-        (loop for start from 0 below s by +fnn-log-reclaim-prefix-chunk+ do
-          (let ((chunk (fnn-core-arena-state 'fn-store-sco-prefix-octets-range start
-                                             (min +fnn-log-reclaim-prefix-chunk+ (- s start)))))
-            (dolist (octets chunk)
-              (funcall fn (fnn-as-octets octets)))))))
-    (dolist (record records)
-      (funcall fn record))))
-
-(defun fnn-log-reclaim-steps (store records dry)
+(defun fnn-log-reclaim-steps (store dry)
   "`store reclaim' on a format-9 store (books/store-log-reclaim.lisp): the
 history streamed one record at a time into ACL2's fold (fn-rcls-step under the
 store's context, compact-arena's books/store-reclaim-stream.lisp) with each
@@ -1047,7 +1033,7 @@ octets leave the disk with them.  Returns the report line."
          (count 0)
          (rewritten nil))
     (fnn-log-history-each
-     store records
+     store
      (lambda (record)
        (let ((octets (fnn-octet-list record)))
          (incf count)
@@ -1092,13 +1078,14 @@ octets leave the disk with them.  Returns the report line."
         (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision"))))))
 
 (defun fnn-command-reclaim (root dry)
-  ;; The open keeps the covered prefix in the arena; the reclaim streams it
-  ;; (fnn-log-history-each).
-  (multiple-value-bind (store records) (fnn-open-live-store root (not dry) nil nil)
+  ;; The open answers the history's count; the reclaim streams the history
+  ;; after it, as the open read it (fnn-log-history-each).
+  (multiple-value-bind (store count) (fnn-open-live-store root (not dry))
+    (declare (ignore count))
     (unwind-protect
          (progn (fnn-out "~a" (if (fnn-store-logp store)
-                                  (fnn-log-reclaim-steps store records dry)
-                                (fnn-reclaim-steps store records dry)))
+                                  (fnn-log-reclaim-steps store dry)
+                                (fnn-reclaim-steps store (fnn-history-records store) dry)))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 

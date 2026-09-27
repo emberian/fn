@@ -10492,6 +10492,38 @@
         "fn-prc-admissiblep-is-admissiblep",
         "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
       ]
+    },
+    {
+      "id": "PRF-266",
+      "title": "The open streams the transaction files: the numbered chunk checks each file's sequence in its one decode, and the unframe answers the payload without copying it",
+      "statement": "Subjects, called by the host: fn-srs-checked-decode and fn-srs-unframe (books/store-recover-stream.lisp sections 5 and 6). host/native/io.lisp fnn-recover-full-replay (fnn-recover: every full-replay open, the store verbs and the owner start) reads the transaction files a chunk at a time as the replay takes them (fnn-recover-file-chunks): each file unframed by fnn-unframe-list, which sends the file as its protected prefix and its trailer to host/store-host.lisp fn-store-unframe-split (fn-srs-unframe), then the chunk of (FILE-NUMBER . RECORD) pairs to fn-srs-checked-decode, then its value to the guard-verified fn-srs-intern-step unless it answered :sequence (the host faults, as the per-file check did). KEYSTONE fn-srs-checked-decode-is-the-per-file-check: for every numbered chunk, fn-srs-checked-decode is :bad when a record does not decode, otherwise :sequence unless every record's sequence (fn-srs-record-sequence, which host/store-host.lisp fn-store-record-sequence is) is its file's number, and otherwise the decode of the chunk's records. fn-srs-checked-step-is-the-step: the host's two calls over a numbered chunk are fn-srs-step over its records, so PRF-261's fold keystone carries over. KEYSTONE fn-srs-unframe-is-the-frame-decode (no hypothesis, guard-verified subject): fn-srs-unframe of PREFIX and TRAILER is fn-frame-store-decode of their concatenation with fn-frame-trailer of PREFIX, which is what fnn-unframe computed for the whole file and its digest; on a well-formed frame its payload is PREFIX's own tail (no copy). Scope: the full-replay path without a selected pack (with one, the history is fnn-committed-history's and goes over in chunks by PRF-261); the open now answers the record count, and the verbs that need the records read them with fnn-history-records, which on a format-9 store reads the record log (fnn-log-history-records: the log kernel's committed records) and on format 8 the per-file layout (lane rm2-format9).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-261"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-recover-stream.lisp",
+        "tests/acl2/store-recover-stream-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "planning/evidence/recover-memory-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T101827Z-2393395.json",
+        "planning/evidence/manifests/certify-20260927T102055Z-2406623.json",
+        "planning/evidence/manifests/certify-20260927T115349Z-494554.json",
+        "planning/evidence/rm2-format9-2026-09-27.md"
+      ],
+      "progress_note": "Lane recover-memory-2 (2026-09-27, PKT-823 items 1-4): every form REPL-admitted on hbox; certified on hbox at the lane's book bytes (books/store-recover-stream 6.2 s in certify-20260927T101827Z-2393395; tests/acl2/store-recover-stream-tests 2.6 s at 2 jobs, farm run-20260927T102005Z-f809, certify-20260927T102055Z-2406623). Measured on the 32 KiB fixture, interleaved: peak dynamic 1,811 -> 1,514 MB, live after the open 1,148 -> 831 MB, consed 49.0 -> 16.0 GB; production image recover RSS 1.83 -> 1.25 GB.",
+      "events": [
+        "fn-srs-checked-decode-is-the-per-file-check",
+        "fn-srs-checked-step-is-the-step",
+        "fn-srs-unframe-is-the-frame-decode"
+      ]
     }
   ]
 }

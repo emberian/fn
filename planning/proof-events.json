@@ -10551,6 +10551,26 @@
           "name": "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
         }
       ]
+    },
+    {
+      "id": "PRF-266",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-srs-checked-decode-is-the-per-file-check",
+          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-recover-file-chunks answers fn-srs-checked-decode of each numbered chunk; fnn-bridge-recover faults on :sequence and passes a list to fn-srs-intern-step. Teeth: tests/acl2/store-recover-stream-tests.lisp (numbered history; misnumbered files; an undecodable record; the :sequence hypothesis removal)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-checked-step-is-the-step",
+          "note": "The host's two calls per numbered chunk are fn-srs-step over its records, so PRF-261's fold keystone applies."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-unframe-is-the-frame-decode",
+          "note": "KEYSTONE (PKT-823), no hypothesis. Host: host/native/io.lisp fnn-unframe-list calls host/store-host.lisp fn-store-unframe-split (fn-srs-unframe of the file's protected prefix and trailer). Teeth: a real frame opens to its record; a wrong trailer is :integrity; a non-octet prefix is the decode's refusal."
+        }
+      ]
     }
   ]
 }

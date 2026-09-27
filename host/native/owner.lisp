@@ -732,10 +732,7 @@ checkpoint's S, or NIL."
                   (fnn-node-secret-directory store)))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  ;; The owner does not take the history's octets (fnn-owner-recover-core
-  ;; installs from the Store open's extension): after a state-checkpoint open
-  ;; the covered prefix is not re-encoded (checkpoint-arena-2).
-  (multiple-value-bind (store records) (fnn-open-live-store root t fault nil)
+  (multiple-value-bind (store count) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (progn
@@ -743,7 +740,7 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store records max-connections)
+            (fnn-owner-recover-core store count max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
@@ -792,13 +789,18 @@ checkpoint's S, or NIL."
                     (unless (eq (fnn-owner-feed-word restart) :restarted)
                       (fnn-fault "owner refused the feed restart"))
                     (fnn-owner-feed-flush service restart))))
+              ;; The open keeps no records (PKT-823): the pending key
+              ;; statement is read off the newest record alone.
               (fnn-owner-key-statement-recover
-               service (let ((last (fnn-open-last-record store records))) (and last (list last))))
+               service (and (plusp count) (list (fnn-history-last-record store))))
               ;; The Store open's loaded checkpoint is consumed (the owner's
               ;; base is the open's extension, fn-owner-sco-base): release it,
               ;; so the reopened owner does not hold the checkpoint's capture
-              ;; beside the extension (checkpoint-arena-2's reopen heap).
+              ;; beside the extension (checkpoint-arena-2's reopen heap).  A
+              ;; later read of a format-9 history whose prefix was the
+              ;; checkpoint's then faults by name (fnn-log-history-plan).
               (fnn-core-state 'fn-store-sco-clear)
+              (fnn-log-history-release-prefix store)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))

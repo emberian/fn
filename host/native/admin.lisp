@@ -334,7 +334,8 @@ turning a refusal into a physical mutation."
     ; refusal; this command never starts another owner.
     (let ((store nil))
       (unwind-protect
-           (multiple-value-bind (opened records) (fnn-open-live-store root t)
+           (multiple-value-bind (opened count) (fnn-open-live-store root t)
+             (declare (ignore count))
              (setq store opened)
              (fnn-require-writer store)
              (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
@@ -345,7 +346,8 @@ turning a refusal into a physical mutation."
                       (config-records (fnn-config-records-from-observation observation))
                       (authorization
                         (or (fnn-admin-authorize-carried store config-records record names)
-                            (fnn-admin-authorize store records config-records record names))))
+                            (fnn-admin-authorize store (fnn-history-records store)
+                                                 config-records record names))))
                  (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
                  ; The durable publisher is the acceptance boundary.  Verify
                  ; the published file under the retained exclusive lock:
