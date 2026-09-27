@@ -10692,6 +10692,35 @@
       ]
     },
     {
+      "id": "PRF-297",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-crlf-validp-is-crlf-lines-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-blank-linep-is-split-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-of-bytes-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-article-reply-exec-is-the-reply"
+        }
+      ]
+    },
+    {
       "id": "PRF-291",
       "events": [
         {
