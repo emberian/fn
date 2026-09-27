@@ -48,7 +48,13 @@ class NativeServedCostTests(unittest.TestCase):
         # Since scheduler-3 (PKT-828) through fn-orr-read-span
         # (books/owner-reader-read.lisp), which calls fn-scr-ocfg-read-span
         # on both arms: at the captured reader view and, with none, directly.
-        self.assertIn("(fn-orr-read-span", definition(host, "fn-owner-chunk-span-at"))
+        # Since time-model-2 (PRF-323) the host calls fn-otm-read-span
+        # (books/owner-time-admission.lisp), which is fn-orr-read-span on
+        # both arms: admitted as is, shedding with the posting bit off.
+        self.assertIn("(fn-otm-read-span", definition(host, "fn-owner-chunk-span-at"))
+        admission = definition((ROOT / "books/owner-time-admission.lisp").read_text(),
+                               "fn-otm-read-span")
+        self.assertEqual(admission.count("(fn-orr-read-span"), 2)
         reader = definition((ROOT / "books/owner-reader-read.lisp").read_text(),
                             "fn-orr-read-span")
         self.assertEqual(reader.count("(fn-scr-ocfg-read-span"), 2)

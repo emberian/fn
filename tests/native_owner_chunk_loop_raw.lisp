@@ -262,10 +262,10 @@ unbounded (&rest or &key)."
     (fn-owner-chunk-span
      ;; ADMIT is the disk's write admission at this read's recorded time
      ;; (lane time-model-2); no disk here is slow, so every read admits.
-     (destructuring-bind (cid start end admit) args
+     (destructuring-bind (cid start end admit replies) args
        (declare (ignore cid))
-       (unless (eq admit :admit)
-         (error "a read was handed the admission ~s; no disk here sheds" admit))
+       (unless (and (eq admit :admit) (null replies))
+         (error "a read was handed the admission ~s ~s; no disk here sheds" admit replies))
        (take-step (subseq *buffer* start end))))))
 
 ;; The disk's clock and admission (books/owner-time-model.lisp): the event is
@@ -312,6 +312,8 @@ unbounded (&rest or &key)."
      (let ((octets (if (second args) (fnn-octets (second args)) *output*)))
        (if (> (length octets) 0) (list octets) nil)))
     (fn-otm-admit-post (push :admit *timeline*) :admit)
+    ;; The disk admits, so no reply names a reason (fn-otm-shed-replies).
+    (fn-otm-shed-replies nil)
     (fn-otm-log-line nil)))
 (defun fnn-owner-render-next (plan)
   (if plan

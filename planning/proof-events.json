@@ -11101,6 +11101,18 @@
         {
           "kind": "theorem",
           "name": "fn-otm-closed-posting-never-awaits-an-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-closed-posting-answers-the-generic-440"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-posting-disallowed-refusal-is-the-generic-441"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-disk-reply-effects-is-a-map"
         }
       ]
     }

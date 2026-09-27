@@ -433,3 +433,108 @@ clock regressed: readings=1
                    (equal (fn-otm-cfg-with-allow (fn-otm-cfg-with-allow *t2-cfg* nil)
                                                  (fn-inj-config-allow *t2-cfg*))
                           *t2-cfg*)))
+
+; =============================================================================
+; The replies name the disk's reason (lane ax-fix/reply-text).  The host's
+; call, fn-otm-read-span, on live stobjs over owner-reader-read-tests' owner
+; (*lgt-finished*: a configured owner that permits posting, connection 0 a
+; reader) and its catalog, as g12b-host-read runs fn-orr-read-span.
+(include-book "owner-reader-read-tests")
+(defun t2r-host-read-in (oc views id octs admit replies rows payloads fn-octets fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-octets fn-arena fn-cat)))
+  (let* ((fn-octets (fn-octets-from-list octs fn-octets))
+         (fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+                                        fn-arena fn-cat)))
+    (mv (fn-otm-read-span oc views id 0 (len octs) admit replies fn-octets fn-arena fn-cat)
+        fn-octets fn-arena fn-cat)))
+(defun t2r-host-read (oc views id octs admit replies)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-octets
+    (mv-let (result fn-octets)
+      (with-local-stobj fn-arena
+        (mv-let (result fn-octets fn-arena)
+          (with-local-stobj fn-cat
+            (mv-let (result fn-octets fn-arena fn-cat)
+              (t2r-host-read-in oc views id octs admit replies (orrt-records *lgt-finished*)
+                                *g12b-payloads* fn-octets fn-arena fn-cat)
+              (mv result fn-octets fn-arena)))
+          (mv result fn-octets)))
+      result)))
+(defun t2r-effect-text (effect)
+  (declare (xargs :mode :program))
+  (coerce (fn-nntp-octets-chars (cadr effect)) 'string))
+(defconst *t2r-post* (append (fn-nntp-string-octets "POST") '(13 10)))
+(defconst *t2r-crlf* (coerce (list (code-char 13) (code-char 10)) 'string))
+
+; The replies the host reads with the admission (fn-otm-shed-replies): the
+; stalled disk's 440 and 441 name the stall with its figures; slow, the
+; slowness; while the disk admits there are none.
+(assert-event
+ (equal (fn-otm-shed-replies *t2-stalled*)
+        (cons (append (otmt-text "440 posting not permitted now; the disk is stalled (a write has waited 5000 ms, deadline 2000 ms), try again later") '(13 10))
+              (append (otmt-text "441 posting failed; the disk is stalled (a write has waited 5000 ms, deadline 2000 ms): nothing was stored, try again later") '(13 10)))))
+(assert-event
+ (equal (car (fn-otm-shed-replies *t2-slow*))
+        (append (otmt-text "440 posting not permitted now; the disk is slow (a write has waited 2000 ms, deadline 2000 ms), try again later") '(13 10))))
+(assert-event (and (equal (fn-otm-admit-post *t2-s1*) :admit)
+                   (null (fn-otm-shed-replies *t2-s1*))
+                   (null (fn-otm-shed-replies *t2-back*))))
+
+; KEYSTONE fn-otm-read-span-while-shedding, its effects conjunct with the
+; rewrite taken.  MUTATION witness: the reached owner's connections were
+; opened under a configuration without posting (its owner's injection
+; configuration is NIL), so connection 0's posting bit is turned on, as a
+; connection opened under a posting configuration has it
+; (fn-otm-owner-with-allow).  Admitted, its POST is offered (340 and the
+; article marker); while the stalled disk sheds, the host's call answers
+; ACL2's 440 with the disk's reason, one reply, the whole command consumed,
+; and the connection's bit is back on afterwards.
+(defconst *t2r-open* (fn-otm-owner-with-allow *lgt-finished* 0 t))
+(defconst *t2r-open-admit* (t2r-host-read *t2r-open* *orrt-views* 0 *t2r-post* :admit nil))
+(defconst *t2r-open-shed*
+  (t2r-host-read *t2r-open* *orrt-views* 0 *t2r-post* :shed (fn-otm-shed-replies *t2-stalled*)))
+(assert-event
+ (let ((effects (fn-own-tls-result-effects *t2r-open-admit*)))
+   (and (fn-otm-conn-allow *t2r-open* 0)
+        (fn-own-conn-shapep (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *t2r-open*))))
+        (fn-post-offeredp effects)
+        (equal (t2r-effect-text (car effects))
+               (concatenate 'string "340 send article to be posted" *t2r-crlf*)))))
+(assert-event
+ (let ((effects (fn-own-tls-result-effects *t2r-open-shed*)))
+   (and (equal effects (list (list :reply (car (fn-otm-shed-replies *t2-stalled*)))))
+        (equal (t2r-effect-text (car effects))
+               (concatenate 'string "440 posting not permitted now; the disk is stalled (a write has waited 5000 ms, deadline 2000 ms), try again later" *t2r-crlf*))
+        (not (fn-post-offeredp effects))
+        (equal (fn-own-tls-result-consumed *t2r-open-shed*) (len *t2r-post*))
+        (fn-otm-conn-allow (fn-own-tls-result-owner *t2r-open-shed*) 0))))
+; The conclusion's rewrite is the served machine's 440 replaced: the same
+; read with no replies answers the generic 440.
+(assert-event
+ (equal (fn-own-tls-result-effects
+         (t2r-host-read *t2r-open* *orrt-views* 0 *t2r-post* :shed nil))
+        (list *fn-otm-generic-440*)))
+; REACHED, the rewrite's condition: on the reached owner, whose connection 0
+; does not permit posting, the shed read's 440 is the served machine's own:
+; the disk is not the reason that connection may not post.
+(defconst *t2r-closed-shed*
+  (t2r-host-read *lgt-finished* *orrt-views* 0 *t2r-post* :shed (fn-otm-shed-replies *t2-stalled*)))
+(assert-event (and (not (fn-otm-conn-allow *lgt-finished* 0))
+                   (equal (fn-own-tls-result-effects *t2r-closed-shed*)
+                          (list *fn-otm-generic-440*))))
+; The 441 of an article whose POST got 340 before (the served machine's
+; :posting-disallowed refusal, fn-otm-posting-disallowed-refusal-is-the-
+; generic-441), among other effects: only it is replaced, by the slow
+; disk's line; the rest is kept, in place.
+(defconst *t2r-other* (list :reply (append (otmt-text "211 0 0 0 fn.letters") '(13 10))))
+(assert-event
+ (equal (fn-otm-disk-reply-effects (list *t2r-other* *fn-otm-generic-441* '(:close))
+                                   (fn-otm-shed-replies *t2-slow*))
+        (list *t2r-other*
+              (list :reply (append (otmt-text "441 posting failed; the disk is slow (a write has waited 2000 ms, deadline 2000 ms): nothing was stored, try again later") '(13 10)))
+              '(:close))))
+(assert-event (equal (t2r-effect-text *fn-otm-generic-441*)
+                     (concatenate 'string "441 posting failed; posting is not permitted" *t2r-crlf*)))
+
