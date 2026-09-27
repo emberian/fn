@@ -1,6 +1,6 @@
 ; fn: a served step's reply as an immutable RENDER PLAN, pulled in windows off
 ; the owner mutex (wave 5, lane owner-scheduler, 2026-09-26; D27; HST-023;
-; PRF-237; gpt-6's consolidation review section 7: "immutable read/render
+; PRF-248; gpt-6's consolidation review section 7: "immutable read/render
 ; plans produced against pinned views, and I/O execution that consumes those
 ; plans").
 ;
@@ -26,7 +26,7 @@
 ;                        reply before)
 ;   fn-splan-donep      (plan) -> whether nothing remains
 ;
-; The keystones (PRF-237):
+; The keystones (PRF-248):
 ;   fn-splan-window-is-a-prefix-of-the-reply: the window's octets (the
 ;     buffer's range [0, len)) followed by what the continuation still owes
 ;     are exactly what the plan owed, and the window is at most W octets
@@ -82,6 +82,48 @@
   (declare (xargs :guard t))
   (and (atom (fn-splan-cur p))
        (fn-splan-rest-donep (fn-splan-rest p))))
+
+; The next window's size, ACL2's decision for the host (host/native/owner.lisp
+; fnn-owner-render-next asks it before every fn-splan-window): the remaining
+; octets of the effect the window starts in.  A materialized effect (an octet
+; list the arm built inside the step) is rendered whole, because holding its
+; list while the socket drains costs sixteen octets per octet where the
+; rendered vector costs one; a fixed window bounds a window only over an
+; effect that points into the pinned view (the design's section 3.3; no such
+; kind yet).  Zero exactly when the plan is done, so the host's loop
+; progresses (fn-splan-window-size-is-positive-until-done with the prefix
+; keystone's progress conjunct).
+(defun fn-splan-rest-head-len (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (if (consp (fn-srb-effect-octets (car rest)))
+          (len (fn-srb-effect-octets (car rest)))
+        (fn-splan-rest-head-len (cdr rest)))
+    0))
+
+(defun fn-splan-window-size (p)
+  (declare (xargs :guard t))
+  (if (consp (fn-splan-cur p))
+      (len (fn-splan-cur p))
+    (fn-splan-rest-head-len (fn-splan-rest p))))
+
+(local
+ (defthm fn-splan-rest-head-len-positive-iff-not-done
+   (iff (posp (fn-splan-rest-head-len rest))
+        (not (fn-splan-rest-donep rest)))))
+
+(local
+ (defthm fn-splan-len-posp-of-consp
+   (implies (consp x) (posp (len x)))
+   :hints (("Goal" :expand ((len x))))))
+
+(defthm fn-splan-window-size-is-positive-until-done
+  (iff (posp (fn-splan-window-size p))
+       (not (fn-splan-donep p)))
+  :hints (("Goal" :in-theory (disable posp fn-splan-rest-donep fn-splan-rest-head-len)
+           :use ((:instance fn-splan-rest-head-len-positive-iff-not-done
+                            (rest (fn-splan-rest p)))
+                 (:instance fn-splan-len-posp-of-consp (x (fn-splan-cur p)))))))
 
 ; -----------------------------------------------------------------------------
 ; One window into the buffer: up to K octets appended at the fill point.
@@ -292,7 +334,7 @@
   (true-listp (fn-splan-remaining p)))
 
 (defthm fn-splan-windows-are-the-reply
-  ; KEYSTONE (PRF-237).  Whatever the window size W and however many windows N
+  ; KEYSTONE (PRF-248).  Whatever the window size W and however many windows N
   ; the socket took, once the plan is done the octets written are the reply
   ; the served machine decided.
   ; The one hypothesis: the loop ran until the plan was done (a plan that
@@ -313,8 +355,9 @@
 
 ; -----------------------------------------------------------------------------
 ; The served step's typed result (adapter-retirement-2's ServedStep fence,
-; PKT-616 (b); the shape its books/owner-results.lisp names as
-; (:served-step WORD REPLY ...) with the PLAN's effects in the reply slot).
+; PKT-616 (b): the shape that lane named (:served-step WORD REPLY ...), here
+; with the PLAN's effects in the reply slot; its own book was reverted at
+; batch AQ, so this is the one definition heading to dev).
 ; host/owner-host.lisp fn-owner-chunk-span returns one instead of six
 ; globals; host/native/owner.lisp fnn-owner-handle-chunk checks the shape
 ; once (fn-splan-step-p) and reads it through the accessors.

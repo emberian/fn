@@ -86,7 +86,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                   (result nil)
                   (receipt nil))
              (multiple-value-setq (result receipt)
-               (fnn-owner-serialized
+               (fnn-owner-transit-serialized
                 owner nil
                 (lambda ()
                   ;; Config can change after preflight and before this lock.
@@ -160,7 +160,7 @@ observations back.  Nil when there is nothing to observe."
     (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
       (return-from fnn-bpnode-receipt-result
         (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
-    (fnn-owner-serialized
+    (fnn-owner-transit-serialized
      owner nil
      (lambda ()
        (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)

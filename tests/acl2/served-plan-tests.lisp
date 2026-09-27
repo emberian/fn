@@ -1,4 +1,4 @@
-; Witnesses and teeth for books/served-plan.lisp (PRF-237; lane
+; Witnesses and teeth for books/served-plan.lisp (PRF-248; lane
 ; owner-scheduler, 2026-09-26).
 ;
 ; Keystone 1 (`fn-splan-window-is-a-prefix-of-the-reply'): the window's
@@ -51,10 +51,13 @@
         (list (first r) acc n)))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE 1: the reachable witness (W = 5 over the 14-octet reply).
+; KEYSTONE 1: the reachable witness (W = 5 over the 14-octet reply).  The
+; progress conjunct's antecedent holds here: W is positive, the plan is not
+; done, and the window's status is :ok (asserted with the conclusion).
 (defconst *spt-p* (fn-splan-of-effects *spt-effects*))
 (assert-event (equal (fn-splan-remaining *spt-p*) *spt-reply*))
 (assert-event (equal (len *spt-reply*) 14))
+(assert-event (not (fn-splan-donep *spt-p*)))
 (assert-event
  (let ((r (spt-window *spt-stale* *spt-p* 5)))
    (and (equal (first r) :ok)
@@ -82,13 +85,43 @@
  (let ((r (spt-window *spt-stale* *spt-pbad* 5)))
    (equal (append (second r) (fn-splan-remaining (fourth r)))
           (fn-splan-remaining *spt-pbad*))))
-; (b) a positive W -- W = 0 writes nothing of an unfinished plan.
+; (b) a positive W -- W = 0 writes nothing of an unfinished plan (the
+; retained hypotheses hold: the status is :ok and the plan is not done).
+(assert-event (equal (first (spt-window *spt-stale* *spt-p* 0)) :ok))
+(assert-event (not (fn-splan-donep *spt-p*)))
 (assert-event (equal (third (spt-window *spt-stale* *spt-p* 0)) 0))
 (must-fail (assert-event (posp (third (spt-window *spt-stale* *spt-p* 0)))))
-; (c) an unfinished plan -- a done plan writes nothing.
+; (c) an unfinished plan -- a done plan writes nothing (the status is :ok
+; and W is positive).
 (defconst *spt-done* (fn-splan-of-effects (list (list :close))))
 (assert-event (fn-splan-donep *spt-done*))
+(assert-event (equal (first (spt-window *spt-stale* *spt-done* 5)) :ok))
 (must-fail (assert-event (posp (third (spt-window *spt-stale* *spt-done* 5)))))
+
+; -----------------------------------------------------------------------------
+; The window size ACL2 hands the host (fn-splan-window-size): the whole of
+; the effect the window starts in, positive exactly while the plan is not
+; done (fn-splan-window-size-is-positive-until-done).  The reachable witness:
+; the two reply effects are two windows, the :close between them costs none.
+(assert-event (equal (fn-splan-window-size *spt-p*) 7))
+(assert-event (and (posp (fn-splan-window-size *spt-p*)) (not (fn-splan-donep *spt-p*))))
+(assert-event
+ (let* ((r1 (spt-window *spt-stale* *spt-p* (fn-splan-window-size *spt-p*)))
+        (r2 (spt-window *spt-stale* (fourth r1) (fn-splan-window-size (fourth r1)))))
+   (and (equal (first r1) :ok) (equal (first r2) :ok)
+        (equal (second r1) '(50 50 48 32 49 13 10))
+        (equal (fn-splan-window-size (fourth r1)) 7)
+        (equal (second r2) '(104 105 13 10 46 13 10))
+        (equal (append (second r1) (second r2)) *spt-reply*)
+        (fn-splan-donep (fourth r2))
+        (equal (fn-splan-window-size (fourth r2)) 0))))
+; A plan whose current effect is spent and whose rest starts with an
+; effect without octets: the size is the next reply effect's, not zero.
+(defconst *spt-mid* (cons nil (list (list :close) (list :reply '(104 105)))))
+(assert-event (and (not (fn-splan-donep *spt-mid*)) (equal (fn-splan-window-size *spt-mid*) 2)))
+; The other side of the iff: a done plan's size is zero.
+(assert-event (equal (fn-splan-window-size *spt-done*) 0))
+(must-fail (assert-event (posp (fn-splan-window-size *spt-done*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 2: the drained windows are the reply (W = 5: three windows; W =

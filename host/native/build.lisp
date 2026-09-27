@@ -29,7 +29,7 @@
 (include-book "books/public-exposure")
 (include-book "books/public-exposure-reply")
 ;; PRF-192: the served read's reply as a range of the octet buffer.  HST-023
-;; (PRF-237): the reply is a render PLAN over the step's effects, rendered off
+;; (PRF-248): the reply is a render PLAN over the step's effects, rendered off
 ;; the owner mutex a window at a time: host/owner-host.lisp fn-owner-chunk-span
 ;; calls fn-splan-step-make, host/native/owner.lisp fnn-owner-render-next calls
 ;; fn-splan-window and the gate calls fn-osch-next (books/owner-scheduler).
@@ -317,6 +317,8 @@
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
+        ; Its connections on a fixed set of I/O loops (PKT-605).
+        (load "host/native/mux.lisp")
         ; The outbound feed is a lifecycle extension of that same owner.  The
         ; public operator activates it; the developer-only low-level owner
         ; entry retains its separate diagnostic surface.

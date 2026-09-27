@@ -81,7 +81,7 @@
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
 (include-book "../books/store-reclaim-buffer")
-; HST-023 (PRF-237): the served step's typed result and render plan.
+; HST-023 (PRF-248): the served step's typed result and render plan.
 (include-book "../books/served-plan")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
@@ -101,7 +101,11 @@
 (include-book "../books/public-exposure")
 ; fn-exp-observe-effects: the observation without building the reply.
 (include-book "../books/public-exposure-reply")
-; PRF-192: the served reply as a range of the octet buffer (fn-owner-reply-buffer).
+; PKT-605 (PRF-223): the connection budget the run installs and every live
+; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
+(include-book "../books/connection-budget")
+; PRF-192: the served reply as a range of the octet buffer (fn-served-reply-to-buffer;
+; since HST-023 the host renders the step's plan off the mutex instead).
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
@@ -183,11 +187,12 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-core state)))
 
-; The served read's install (fn-owner-chunk): every projection
-; `fn-owner-install-effects' makes EXCEPT the reply octets, which are never
-; built as a list here: `fn-owner-output' is NIL, and the host writes the
-; reply from the octet buffer that `fn-owner-reply-buffer' fills from
-; `fn-owner-effects' (PRF-192, books/served-reply-buffer.lisp).
+; The served read's install (fn-owner-chunk, the bridge's list read): every
+; projection `fn-owner-install-effects' makes EXCEPT the reply octets, which
+; are never built as a list here: `fn-owner-output' is NIL and the reply is
+; the effects' (the native host renders the step's plan off the mutex,
+; fn-owner-chunk-span and books/served-plan.lisp, HST-023; before it the
+; octet buffer of PRF-192, books/served-reply-buffer.lisp).
 (defun fn-owner-install-served-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
@@ -598,7 +603,7 @@
 ; exact record that the host persists.  Python carries only the kind/name
 ; request and the resulting octets.
 
-(defun fn-owner-reconfigure-deltas (id deltas state)
+(defun fn-owner-reconfigure-deltas-admitted (id deltas state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((oc (fn-owner-ocfg state))
          (reason (fn-ocfg-reconfig-refusal oc id deltas))
@@ -611,6 +616,55 @@
           (value :staged))
       (let ((state (f-put-global 'fn-owner-config-reason reason state)))
         (value :refused)))))
+
+;; PKT-605 (PRF-223): the bound the run installed (fn-owner-connection-budget)
+;; is kept by every live reconfiguration: a delta list whose configuration
+;; holds more connections than the machine does is refused by name,
+;; :connections-exceed-memory, before the owner stages anything
+;; (books/connection-budget.lisp fn-cbud-deltas-refusal-keeps-the-capacity-held).
+;; Every live path reaches this function (native-admin, peer-invite, auth).
+(defun fn-owner-connection-bound (state)
+  (declare (xargs :stobjs state :mode :program))
+  (and (boundp-global 'fn-owner-connection-bound state)
+       (f-get-global 'fn-owner-connection-bound state)))
+
+(defun fn-owner-reconfigure-deltas (id deltas state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((oc (fn-owner-ocfg state))
+         (memory (fn-cbud-deltas-refusal
+                  (fn-cfg-value (fn-ocfg-config oc))
+                  (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
+                  (fn-own-clock (fn-ocfg-owner oc))
+                  deltas (fn-owner-connection-bound state))))
+    (if memory
+        (let ((state (f-put-global 'fn-owner-config-reason memory state)))
+          (value :refused))
+      (fn-owner-reconfigure-deltas-admitted id deltas state))))
+
+(defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
+                                           tlsp state)
+  ; Once per run, after recovery and before listen (host/native/mux.lisp
+  ; fnn-mux-budget-install, from fnn-owner-run).  MACHINE, DYNAMIC (the
+  ; dynamic space this process has), CORE, THREADS and STACK are the host's
+  ; observations; NURSERY its collection trigger;
+  ; PROFILE the store's; TLSP whether a TLS context is loaded.  The capacity
+  ; is the live configuration's.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((capacity (fn-exp-connections-capacity (fn-cfg-value (fn-owner-config state))))
+         (article (fn-bs-profile-max-article-octets profile))
+         (hneed (fn-heap-figure-octets profile core nursery))
+         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack
+                                 article tlsp))
+         (state (f-put-global 'fn-owner-connection-bound
+                              (and (equal (car d) :hold) (fn-cbud-held-bound d))
+                              state))
+         (state (f-put-global 'fn-owner-connection-budget-line
+                              (fn-record-string-octets
+                               (if (equal (car d) :hold)
+                                   (fn-cbud-hold-line d article tlsp)
+                                 (fn-cbud-refusal-line d article tlsp machine)))
+                              state)))
+    (value (car d))))
 
 (defun fn-owner-reconfigure (id kind name-octets state)
   ; :staged leaves exactly one encoded configuration record in the output
@@ -2391,7 +2445,7 @@
 ; fn-scar-ocfg-read-tls-prefix over (fn-oct-slice-list start end fn-octets)
 ; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation).
 ;
-; HST-023 (PRF-237; adapter-retirement-2's ServedStep, PKT-616 (b)): the
+; HST-023 (PRF-248; adapter-retirement-2's ServedStep, PKT-616 (b)): the
 ; result is ONE typed value, `fn-splan-step-make' of the step's effects, its
 ; close, STARTTLS and submission projections (fn-served-closingp,
 ; fn-served-starttlsp, fn-served-submission: what fn-owner-install-effects

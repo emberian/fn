@@ -9,7 +9,7 @@ and one POST every 0.5 s, control-socket requests queued past their 10 s
 deadline from t = 384 s, served reads had minute-long outliers, POST p99 was
 84 s). The measured numbers are in
 planning/evidence/owner-scheduler-2026-09-26.md; the requirement is HST-023,
-the proof target PRF-237, the scenario SCN-163.
+the proof target PRF-248, the scenario SCN-168.
 
 ## 0. What was wrong, in one sentence each
 
@@ -49,15 +49,25 @@ the proof target PRF-237, the scenario SCN-163.
    result IS the plan: `fn-splan-step-make` carries the effects, and
    `fn-splan-step-plan` appends the drain's completion reply, the redeem
    reply and the exposure close as `(:reply octets)` effects. Rendering is
-   `fn-splan-window`: at most W octets into a buffer that belongs to the
-   rendering thread, the continuation an immutable value again.
-3. **I/O execution** (outside the mutex; the connection's thread today,
-   connection-multiplexing's event loop when it lands). It receives the
-   octets, asks for a step, renders the plan a window at a time and writes
-   each window before asking for the next, and hands the step's outcomes
-   (close, STARTTLS, consumed prefix, submission) back into the connection's
-   bookkeeping. It holds no owner state; it calls the owner only through
-   `fnn-owner-serialized`.
+   `fn-splan-window` into a fresh buffer of the window's size, the
+   continuation an immutable value again; ACL2 sizes the window
+   (`fn-splan-window-size`, section 3.3): the remaining octets of the effect
+   the window starts in, zero exactly when the plan is done
+   (`fn-splan-window-size-is-positive-until-done`).
+3. **I/O execution** (outside the mutex; connection-multiplexing's I/O
+   loop, host/native/mux.lisp, two threads for every connection). It
+   receives the octets, asks for a step, renders the plan's first window
+   (`fnn-mux-queue-plan`) and, each time the socket has taken a window,
+   renders the next (`fnn-mux-flush`) before it reads the connection again;
+   the connection record holds one window and the plan's continuation,
+   never the whole reply, and hands the step's outcomes (close, STARTTLS,
+   consumed prefix, submission) back into its bookkeeping. A deferred step
+   (`:defer MS`, the exposure charge) arms the connection's resume timer
+   and the same octets are stepped again. The loop holds no owner state; it
+   calls the owner only through `fnn-owner-serialized` with the
+   connection's class. A pull's logical connection renders its plan the
+   same way in the pull thread (host/native/pull-service.lisp
+   `fnn-pull-local-send`).
 
 What leaves the critical section: the rendering of ARTICLE, BODY, HEAD, OVER
 and every other reply's bytes (the array writes and the copy), the socket
@@ -71,17 +81,26 @@ the ACL2 globals (a pointer copy, O(1)).
 
 ## 2. Service classes and the fairness rule (ACL2 decides)
 
-Four classes, in `*fn-osch-order*`: **control** (control-socket requests:
-status, health, group create, control grant, admin, key management; the
-maintenance steps: capture, publication done, log reopen; connection open,
-close and release bookkeeping), **reader** (a reader connection's served
-steps, its greeting, its idle decision), **poster** (a submission through
-the control socket: `operator post`, the hybrid author path, a BP
-application submission), **transit** (a peer connection's served steps, the
-outbound feed's steps, the pull feed's steps). The class of a quantum is
+Four classes, in `*fn-osch-order*`: **control** (the control socket's
+requests: status, health, group create, control grant, admin, key
+management, the hybrid author path; and the maintenance steps: the
+checkpoint capture, the publication's done step, the log reopen),
+**reader** (a reader connection's quanta: its open, served steps, idle
+decision, TLS establishment, close and release), **poster** (the operator's
+submission through the control socket, `operator post`:
+`fnn-owner-control-submit-serialized`), **transit** (a peer connection's
+quanta, the push feed's steps, the pull feed's, the BP node's and its
+applications': `fnn-owner-transit-serialized`). The class of a quantum is
 the socket it arrived on: a host observation, never a decision about the
-request's content. A served POST is a reader quantum whose step includes the
-drain, as before: "POST's semantic step is unchanged".
+request's content; a connection's later quanta carry the class its open
+established (ACL2 named a peer: transit), so the control class holds no
+per-connection bookkeeping and a control request queues only behind other
+control requests and maintenance. A served POST is a reader quantum whose
+step includes the drain, as before: "POST's semantic step is unchanged".
+Every caller names its class explicitly or through the transit wrapper; the
+default of `fnn-owner-serialized` is control, the class of the callers
+that are the control socket's (admin, auth, keys, login bindings, peer
+invite, hybrid control).
 
 The rule (books/owner-scheduler.lisp): the host keeps a count of waiting
 threads per class and a per-class FIFO of arrival tickets; when the owner is
@@ -90,7 +109,7 @@ first class with a waiter in cyclic order from a cursor, and the cursor
 moves to the slot after it. Within the picked class the head ticket enters.
 A quantum is what runs between the gate's admission and the release.
 
-**The theorem** (`fn-osch-control-waits-at-most-the-bound`, PRF-237): for
+**The theorem** (`fn-osch-control-waits-at-most-the-bound`, PRF-248): for
 every cursor and every sequence of waiting observations in which control has
 a waiter, at most `*fn-osch-bound*` = 3 quanta of the other classes run
 before a control quantum. So a control request's wall-clock wait is at most
@@ -135,7 +154,9 @@ section 3.3.
   remains (the loop progresses).
 - **The mutex is held only across a bounded step.** Every entry is
   `fnn-owner-gated`; nothing renders, writes a socket, sleeps or waits on a
-  log inside. The gate records each hold's duration and each wait's
+  log inside; a thread that enters the gate while it holds the owner is a
+  host fault (the nested quantum would wait on itself; SBCL's recursive-lock
+  error said the same before the gate). The gate records each hold's duration and each wait's
   duration and folds them into ACL2's histogram (`fn-osch-observe`; the row
   invariant `fn-osch-row-observe-keeps-okp`: the five buckets sum to the
   holds), which `health` prints. A hold over a second is visible as such.
@@ -151,8 +172,10 @@ SUBMITTEDP CONSUMED REFUSAL-LINES EXPOSURE-CLOSE)` (`fn-splan-step-make`,
 recognizer `fn-splan-step-p` checked once at the boundary) instead of
 installing six globals; the host reads it through the accessors. This is the
 shape adapter-retirement-2's `books/owner-results.lisp` names as ServedStep
-with the plan's effects in the reply slot; when both are on dev one of the
-two definitions goes (deletion map row 6).
+with the plan's effects in the reply slot. Batch AQ reverted
+adapter-retirement's merge (two modules red on the batch image), so
+`fn-splan-step-make` is the ServedStep heading to dev; when that lane's
+book returns, one of the two definitions goes (deletion map row 6).
 
 ### 3.3 The plan effects the arms will emit (specified, not implemented here)
 
@@ -174,32 +197,66 @@ expands off the mutex, so an arm can emit the plan and not the bytes:
   owner; the version pinned by the connection resolves the handle.
 
 Each kind adds one case to `fn-splan-fill` and one keystone; the loop, the
-windows and the host are unchanged. These are the arms' books
+windows and the host are unchanged.
+
+**The window size is ACL2's** (`fn-splan-window-size`, asked by
+`fnn-owner-render-next` before every window). Today every effect is
+materialized: an octet list the arm built inside the step. Holding that
+list while a slow client drains the reply costs sixteen octets per octet
+(a cons and a fixnum) where the rendered vector costs one, so a windowed
+render of a materialized effect would retain up to sixteen times the reply
+per draining connection and falsify connection-multiplexing's
+per-connection figure (books/connection-budget.lisp, PRF-223: two
+articles and a status line). The rule is therefore: the window is the
+whole of the effect it starts in, one loop pass of O(reply) rendering
+(tens of milliseconds for a 3 MiB list, the same order as the socket
+write) and one vector retained while the socket drains; the
+per-connection reply term stays the mux lane's, and PKT-644 (a) stays open
+until the arms emit the pinned kinds above, whose windows are the fixed W
+that bounds the loop's work per pass (a pointer into the pinned view
+retains nothing). A plan of several effects (a POST's 340 and its
+completion, an XREDEEM's reply, the exposure close) is several windows,
+so the loop's next-window path is exercised now. These are the arms' books
 (catalog-slice, served-line-iterative), not this lane's; the interface is
 recorded in build/lanes/owner-scheduler/LANEDUMP.md.
 
 ## 4. The host (host/native/owner.lisp, control.lisp; owner-host.lisp)
 
 - The gate: `fnn-owner-gate` (a short mutex and a condition variable; the
-  per-class waiting counts, tickets and serving counters; ACL2's scheduler
-  value). `fnn-owner-gate-enter` waits until the owner is free, ACL2 named
-  this thread's class and the thread holds the class's head ticket;
-  `fnn-owner-gate-leave` folds the hold and wait, and asks ACL2 for the next
-  class while waiters remain. `fnn-owner-gated` wraps the (now uncontended)
-  owner mutex in the two. The gate mutex is held for a list update and one
-  ACL2 call, never across a step or I/O.
+  per-class waiting counts, tickets and serving counters; the holding
+  thread; ACL2's scheduler value). `fnn-owner-gate-enter` waits until the
+  owner is free, ACL2 named this thread's class and the thread holds the
+  class's head ticket; `fnn-owner-gate-leave` folds the hold and wait and
+  asks ACL2 for the next class (nil when nobody waits). The class's slot is
+  ACL2's too (`fn-osch-classp`, `fn-osch-class-index`); the host keeps no
+  order of its own. `fnn-owner-gated` wraps the (now uncontended) owner
+  mutex in the two. The gate mutex is held for a list update and one ACL2
+  call, never across a step or I/O.
 - `fnn-owner-serialized (service cid thunk &optional (class :control))`: every
-  semantic entry names its class; the served step, idle, TLS-established,
-  close and release carry the connection's class (:reader, or :transit for a
-  connection ACL2 named a peer at open); the control-socket submission is
-  :poster; everything else defaults to :control.
+  semantic entry names its class; the loop's open is :reader and its later
+  quanta (step, idle, TLS-established, close, release) carry the
+  connection's class (:transit for a connection ACL2 named a peer at open);
+  the control-socket submission is :poster; the feeds, the pull and BP call
+  `fnn-owner-transit-serialized`; the control socket's other verbs default to
+  :control.
 - `fnn-owner-handle-chunk`: one gate pass per read: the clock, the charge
   (`(values :defer MS)` when ACL2 defers), the span read, the typed step, the
   refusal lines to the log queue, the drain when the step submitted, the
   redeem, the fence on an uncertain outcome; returns the PLAN and the step's
-  five outcomes. `fnn-owner-write-plan` renders and writes it a window at a
-  time off the mutex (`fnn-owner-render-next`, the interface
-  connection-multiplexing's loop consumes).
+  five outcomes.
+- The loop (host/native/mux.lisp): `fnn-mux-step` hands the step the
+  connection's class and turns `:defer` into the resume timer (the mux's
+  own pre-step charge, `fnn-mux-charge`, is gone: one gate pass per read);
+  `fnn-mux-queue-plan` renders the first window (`fnn-owner-render-next`:
+  ACL2's size, a fresh buffer, `fn-splan-window`) and `fnn-mux-flush`
+  renders each next window when the socket took the last, off the mutex; the
+  record holds `plan` (the continuation) and `class`. The mux's host-list
+  edits (clients, workers) moved from the raw owner mutex to the roster
+  mutex. tests/native_owner_chunk_loop_raw.lisp drives the shipped loop and
+  step against stubs (three clock readings for an open and two chunks now:
+  the charge no longer costs a reading of its own).
+- host/native/pull-service.lisp `fnn-pull-local-send` renders the plan into
+  the pull's reply (it had read the step's first value as octets).
 - The roster mutex protects the host lists (workers, clients, publisher, the
   stop flag's publication to the accept threads); their edits no longer
   queue at the gate.
@@ -212,12 +269,16 @@ recorded in build/lanes/owner-scheduler/LANEDUMP.md.
 | # | Removed | Replaced by | Where |
 | --- | --- | --- | --- |
 | 1 | `fnn-owner-exposure-wait`: a second critical section per read for the charge | the charge decided in the step's critical section; `(values :defer MS)` to the caller | host/native/owner.lisp |
-| 2 | `fnn-owner-reply-from-buffer` and `fn-owner-reply-buffer`: the reply rendered into the live `fn-octets` and copied out under the mutex | the plan rendered into the connection's own buffer off the mutex (`fnn-owner-render-next`, `fn-splan-window`) | host/native/owner.lisp, host/owner-host.lisp |
+| 2 | `fnn-owner-reply-from-buffer` and `fn-owner-reply-buffer`: the reply rendered into the live `fn-octets` and copied out under the mutex | the plan rendered into a fresh buffer per window off the mutex (`fnn-owner-render-next`, `fn-splan-window`, the loop's `fnn-mux-flush`) | host/native/owner.lisp, host/owner-host.lisp, host/native/mux.lisp |
 | 3 | the six served-step mailboxes read by the host after `fn-owner-chunk-span` (`fn-owner-effects`, `-closep`, `-starttlsp`, `-submittedp`, `-consumed`, `-refusal-lines`) | one typed result, `fn-splan-step-make`, checked once (`fn-owner-chunk`, the Python bridge's list read, still installs them) | host/owner-host.lisp |
 | 4 | `fn-owner-output` as a byte vector for the drain's completion (`fnn-owner-octets-global`) | the completion as the ACL2 octet list, a plan effect (`fnn-owner-list-global`) | host/native/owner.lisp `fnn-owner-drain-one` |
 | 5 | `fnn-with-owner` around host bookkeeping (client and worker lists, the publisher slot, the stop flag's client shutdown) and around `fnn-control-live-status-answer` | the roster mutex; the live status as a gated :control quantum | host/native/owner.lisp, host/native/control.lisp |
 | 6 | the runtime mutex's wake-up order as the scheduling decision | `fn-osch-next` (ACL2) with the host's per-class FIFO | host/native/owner.lisp |
 | 7 | (owed, not done here) the arms' in-step rendering of ARTICLE/OVER bytes | the plan effects of section 3.3 | books/nntp-responses.lisp, books/nntp-overview.lisp: the arms' lanes |
+| 8 | `fnn-mux-charge`: the loop's own gate pass for the exposure charge before every step | the charge decided in the step's quantum; `:defer` arms the resume timer | host/native/mux.lisp |
+| 9 | `fnn-with-owner` around the loop's host lists (clients, workers, the publisher) | the roster mutex | host/native/mux.lisp, host/native/owner.lisp |
+| 10 | `+fnn-owner-classes+`, `fnn-owner-class-index` by position, `(some #'plusp waiting)`: the host's copy of the class order and of the idle test | `fn-osch-classp`, `fn-osch-class-index`, `fn-osch-next`'s nil | host/native/owner.lisp |
+| 11 | `+fnn-owner-render-window+` = 65,536 and `fnn-owner-write-plan` (the per-connection thread's window loop) | `fn-splan-window-size` (ACL2) and the loop's `fnn-mux-queue-plan` / `fnn-mux-flush` | host/native/owner.lisp, host/native/mux.lisp |
 
 The socket writes were already outside the mutex (PRF-192); the FNFD feed
 journal's write and fsync stay inside the POST's quantum (the authoritative
@@ -233,6 +294,16 @@ journal is not a log); the service log was already an offered queue
   class's head ticket is the host's (a raw Lisp queue under a mutex, read
   by inspection and exercised by tests/test_native_owner_scheduler.py), not
   a theorem.
+- The bound is on the control class's turn, not on one request's place in
+  its FIFO: a control request behind N control requests (or a maintenance
+  step) waits N + 1 turns, each at most three quanta of the other classes
+  away. That is why no per-connection quantum is control.
+- A materialized reply is one window: the loop's pass renders the whole
+  list (tens of milliseconds for 3 MiB, on the loop thread that owns that
+  connection) rather than retain the list sixteen-fold while a slow client
+  drains. The fixed window W that bounds the loop's work per pass arrives
+  with the pinned effect kinds (section 3.3); until then PKT-644 (a) is
+  open with this reason.
 - The rendering off the mutex assumes the effects are immutable and the
   pinned view outlives the connection's use of it, which is ACL2's value
   semantics and the pin policy (NNT-042); a reclamation that rewrote a row's

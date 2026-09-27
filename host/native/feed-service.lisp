@@ -103,7 +103,7 @@ closed by this worker, preserving the one-closer rule."
   (fnn-octets value))
 
 (defun fnn-feed-peer-list (service)
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (fnn-owner-name-list (fnn-owner-core 'fn-owner-feed-peers)))))
@@ -124,7 +124,7 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-dial-plan (service peer-octets)
   "Read ACL2's endpoint, queue, retry delay, and TCP completion deadline."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (let ((queued (fnn-owner-core 'fn-owner-feed-has-queued peer-octets))
@@ -179,7 +179,7 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-connect-core (service peer-octets fd user pass allow-clear)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (fnn-feed-checked-word
@@ -187,7 +187,7 @@ closed by this worker, preserving the one-closer rule."
       '(:await-greeting :await-tls) 'fn-owner-feed-dial-open))))
 
 (defun fnn-feed-tls-established-core (service link)
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (let ((word (fnn-feed-checked-word
@@ -231,7 +231,7 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-tick (service link now)
   "One ACL2 tick.  Its command, if any, is copied only after FNFD append."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (let ((word (fnn-feed-checked-word
@@ -249,7 +249,7 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-reply-step (service link octets now)
   "Apply one ACL2-framed reply event, never a host-parsed line."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (let ((word (fnn-feed-checked-word
@@ -285,7 +285,7 @@ closed by this worker, preserving the one-closer rule."
 
 (defun fnn-feed-lost (service link now)
   "Record one peer-local loss before closing or retrying its socket."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (let ((word (fnn-feed-checked-word

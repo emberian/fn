@@ -7557,7 +7557,7 @@
       ]
     },
     {
-      "id": "PRF-237",
+      "id": "PRF-248",
       "events": [
         {
           "kind": "theorem",
@@ -7594,6 +7594,51 @@
         {
           "kind": "theorem",
           "name": "fn-splan-step-plan-remaining"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-window-size-is-positive-until-done"
+        }
+      ]
+    },
+    {
+      "id": "PRF-223",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-bound-holds-its-connections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-bound-is-the-most"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-limit-holds-its-connections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-limit-is-the-most"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-run-decide-holds-the-capacity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-run-decide-refuses-exactly-past-the-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-admitted-connections-fit-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-deltas-refusal-keeps-the-capacity-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-launch-decide-keeps-the-store-figure"
         }
       ]
     }

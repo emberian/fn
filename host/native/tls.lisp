@@ -658,6 +658,89 @@ pointer and length required by SSL_write's retry contract."
                                            "write" disposition))))))))
     nil))
 
+;;; The multiplexed served path (host/native/mux.lisp; lane
+;;; connection-multiplexing, PKT-605).  The loop never waits inside OpenSSL:
+;;; each operation below makes one attempt and answers what the descriptor
+;;; must become ready for (:input or :output), and the loop polls for that.
+;;; SSL_MODE_ENABLE_PARTIAL_WRITE (1) and SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
+;;; (2) let a write that returned WANT_* be retried from a vector the
+;;; collector may have moved, with the remaining count; SSL_MODE_RELEASE_BUFFERS
+;;; (16) frees an idle session's record buffers (the per-connection figure,
+;;; books/connection-budget.lisp *fn-cbud-tls-octets*).  SSL_CTRL_MODE is 33.
+(defconstant +fnn-tls-ctrl-mode+ 33)
+(defconstant +fnn-tls-mux-modes+ (logior 1 2 16))
+
+(defun fnn-tls-accept-begin (context fd)
+  "A server session on FD for the loop's handshake, not yet started."
+  (let ((ssl nil))
+    (fnn-%err-clear-error)
+    ;; Under the context's lock: `tls reload' swaps the pointer (PRF-212).
+    (sb-thread:with-mutex ((fnn-tls-context-lock context))
+      (let ((pointer (fnn-tls-context-pointer context)))
+        (unless pointer
+          (error 'fnn-tls-handshake-error :detail "the TLS context is closed"))
+        (setq ssl (fnn-%ssl-new pointer))))
+    (when (fnn-tls-null-pointer-p ssl)
+      (error 'fnn-tls-handshake-error
+             :detail (format nil "SSL_new failed: ~a" (fnn-tls-error-stack))))
+    (unless (= (fnn-%ssl-set-fd ssl fd) 1)
+      (fnn-%ssl-free ssl)
+      (error 'fnn-tls-handshake-error
+             :detail (format nil "SSL_set_fd failed: ~a" (fnn-tls-error-stack))))
+    (fnn-%ssl-ctrl ssl +fnn-tls-ctrl-mode+ +fnn-tls-mux-modes+ (fnn-tls-null-pointer))
+    ssl))
+
+(defun fnn-tls-accept-step (ssl)
+  "One SSL_accept attempt: :done, or :input/:output to wait for.  A failure
+signals FNN-TLS-HANDSHAKE-ERROR; the caller frees SSL."
+  (fnn-%err-clear-error)
+  (let ((result (fnn-%ssl-accept ssl)))
+    (if (= result 1)
+        :done
+      (let ((disposition (fnn-tls-retry-direction ssl result)))
+        (if (member disposition '(:input :output))
+            disposition
+          (fnn-tls-operation-error 'fnn-tls-handshake-error "handshake"
+                                   disposition))))))
+
+(defun fnn-tls-channel-of (ssl fd)
+  (fnn-tls-channel-make :pointer ssl :fd fd))
+
+(defun fnn-tls-pending-p (channel)
+  (and (fnn-tls-channel-pointer channel)
+       (> (fnn-%ssl-pending (fnn-tls-channel-pointer channel)) 0)))
+
+(defun fnn-tls-read-now (channel &optional (limit +fnn-max-read+))
+  "One SSL_read attempt: decrypted octets (empty at close_notify), or
+:input/:output when the session must wait."
+  (let ((ssl (fnn-tls-channel-pointer channel))
+        (buffer (fnn-make-octets limit)))
+    (sb-sys:with-pinned-objects (buffer)
+      (fnn-%err-clear-error)
+      (let ((result (fnn-%ssl-read ssl (fnn-tls-pointer buffer) (length buffer))))
+        (if (> result 0)
+            (subseq buffer 0 result)
+          (let ((disposition (fnn-tls-retry-direction ssl result)))
+            (cond ((eq disposition :closed) (fnn-make-octets 0))
+                  ((member disposition '(:input :output)) disposition)
+                  (t (fnn-tls-operation-error 'fnn-tls-io-error "read"
+                                              disposition)))))))))
+
+(defun fnn-tls-write-now (channel data offset)
+  "One SSL_write attempt of DATA from OFFSET: the octets written, or
+:input/:output when the session must wait."
+  (let ((ssl (fnn-tls-channel-pointer channel))
+        (count (- (length data) offset)))
+    (sb-sys:with-pinned-objects (data)
+      (fnn-%err-clear-error)
+      (let ((result (fnn-%ssl-write ssl (fnn-tls-pointer data offset) count)))
+        (if (> result 0)
+            result
+          (let ((disposition (fnn-tls-retry-direction ssl result)))
+            (if (member disposition '(:input :output))
+                disposition
+              (fnn-tls-operation-error 'fnn-tls-io-error "write" disposition))))))))
+
 (defun fnn-tls-close-channel (channel)
   "Fast shutdown is intentional: NNTP has already ended and the underlying
 socket is closed immediately, so this channel is never reused."

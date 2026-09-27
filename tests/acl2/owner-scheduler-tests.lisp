@@ -1,4 +1,4 @@
-; Witnesses and teeth for books/owner-scheduler.lisp (PRF-237; lane
+; Witnesses and teeth for books/owner-scheduler.lisp (PRF-248; lane
 ; owner-scheduler, 2026-09-26).
 ;
 ; The keystone `fn-osch-control-waits-at-most-the-bound' has one hypothesis
@@ -61,7 +61,10 @@
    (and (null class) (equal s2 (fn-osch-init)))))
 
 ; -----------------------------------------------------------------------------
-; The fold: one observation, one class, one bucket; the row stays consistent.
+; The fold: one observation, one class, one bucket; the row stays consistent
+; (fn-osch-row-observe-keeps-okp: the input row is consistent, asserted, and
+; so is the output).
+(assert-event (fn-osch-row-okp (fn-osch-row 1 (fn-osch-init))))
 (defconst *osch-s1* (fn-osch-observe (fn-osch-init) :reader 5 1200))
 (assert-event (equal (fn-osch-holds 1 *osch-s1*) 1))
 (assert-event (equal (fn-osch-holds 0 *osch-s1*) 0))
@@ -74,6 +77,11 @@
 ; MUTATION (labelled): bumping the count without a bucket breaks the invariant.
 (must-fail
  (assert-event (fn-osch-row-okp (fn-osch-bump 0 (fn-osch-row 1 *osch-s2*)))))
+; MUST-FAIL for fn-osch-row-observe-keeps-okp's hypothesis: a row that is
+; not consistent, observed, is not consistent after either.
+(defconst *osch-bad-row* (fn-osch-bump 0 (fn-osch-row 1 *osch-s2*)))
+(assert-event (not (fn-osch-row-okp *osch-bad-row*)))
+(must-fail (assert-event (fn-osch-row-okp (fn-osch-row-observe *osch-bad-row* 5 0))))
 
 ; -----------------------------------------------------------------------------
 ; The health lines, as text.

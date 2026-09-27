@@ -412,17 +412,23 @@ the live `fn-octets`, filled under the service mutex and copied out once
 before the mutex was released.
 
 HST-023: The owner mutex is entered through a gate whose next class ACL2
-picks, and a served reply is an immutable render plan the connection's
-thread writes off the mutex in bounded windows. The native owner keeps one
+picks, and a served reply is an immutable render plan the connection's I/O
+loop writes off the mutex in windows ACL2 sizes. The native owner keeps one
 mutation owner (every bounded semantic step runs under the service mutex),
 and the decision the Lisp runtime's mutex used to make -- which waiting
 thread runs the next step -- is ACL2's (books/owner-scheduler.lisp
 `fn-osch-next`): four service classes, control (with maintenance), reader,
 poster and transit, in that cyclic order; the host observes how many threads
-of each class wait (the class of a request is the socket it arrived on: the
-control socket, a reader connection, a peer connection, a submission through
-the control socket) and asks ACL2 which class runs the next quantum; within
-a class the host serves arrival order. The keystone
+of each class wait (the class of a quantum is the socket it arrived on: the
+control socket's requests and the maintenance steps are control; a reader
+connection's open, steps, idle, close and release are reader; a peer
+connection's, the feeds', the pull's and the BP node's quanta are transit; a
+submission through the control socket is poster) and asks ACL2 which class
+runs the next quantum (the class's slot too is ACL2's, `fn-osch-class-index`);
+within a class the host serves arrival order, so the bound below is on the
+class's turn, and a control request behind N control requests waits N + 1
+turns; a thread that re-enters the gate while it holds the owner is a host
+fault. The keystone
 `fn-osch-control-waits-at-most-the-bound`: while control has a waiter, at
 most three quanta of the other classes run before a control quantum, from
 any cursor. A quantum is one bounded semantic step, unchanged by this
@@ -432,15 +438,23 @@ decided in the same critical section as the step it admits. What leaves the
 critical section is the reply's rendering: `fn-owner-chunk-span` returns one
 typed step result (books/served-plan.lisp `fn-splan-step-make`: the effects,
 the close, STARTTLS and submission projections, the consumed prefix, the
-refusal lines and the exposure close) and the connection's thread renders
-the plan into its own buffer, never the live `fn-octets`, at most 65,536
-octets per `fn-splan-window` call, writing each window before the next. The
-keystones `fn-splan-window-is-a-prefix-of-the-reply` (a window followed by
+refusal lines and the exposure close) and the connection's I/O loop
+(host/native/mux.lisp) renders the plan into a fresh private buffer, never
+the live `fn-octets`, one window per `fn-splan-window` call, writing each
+window before it renders the next and holding one window and the plan's
+continuation, never the whole reply. ACL2 sizes each window
+(`fn-splan-window-size`: the remaining octets of the effect the window
+starts in, so a materialized reply effect is rendered whole rather than held
+as a list sixteen times its size while the socket drains; zero exactly when
+the plan is done, `fn-splan-window-size-is-positive-until-done`, so the loop
+progresses). The keystones `fn-splan-window-is-a-prefix-of-the-reply` (a window followed by
 the continuation's debt is the plan's debt, and an unfinished plan's window
 writes something) and `fn-splan-windows-are-the-reply` (a plan drained to
 done wrote exactly `fn-served-reply-octets` of the effects) say the bytes on
 the socket are the bytes the served machine decided, whatever the window
-size and however the socket paced the windows. `health` prints, after the
+size and however the socket paced the windows; a pull's logical connection
+renders its plan the same way (host/native/pull-service.lisp). `health`
+prints, after the
 log-sink line, one line per class with its holds in five buckets (under 1,
 10, 100 and 1,000 ms and at least a second), the longest hold, the longest
 wait and the waits of a second or more, folded by ACL2
@@ -849,3 +863,61 @@ the image launcher's own figure; the installed launcher ignores both
 `FN_TEST_HEAP_MB` and the caller's `SBCL_USER_ARGS`. The D27 default profile
 (H = 1 TiB) needs about 70 TiB and is refused on every machine (PKT-582).
 PRF-198; the native case is SCN-127.
+
+
+## Served connections
+
+HST-024: The node serves every reader and transit connection from a fixed set
+of I/O loop threads, and a connection capacity the machine cannot hold beside
+the store is refused by name, at start and at a live change. Lane
+connection-multiplexing (2026-09-26, PKT-605; PRF-223).
+
+The owner thread structure is unchanged: every protocol, exposure and owner
+decision is a call through `fnn-owner-serialized`, one at a time. What
+changed is who waits. host/native/mux.lisp runs `+fnn-mux-loops+` (2)
+threads, each polling (poll(2), Linux and OpenBSD alike) the connections it
+owns and a wake pipe; the accept threads hand each accepted socket to a loop
+instead of starting a thread for it. A connection is a record: the input the
+next step is handed (one `+fnn-max-read+` read, or the suffix a step left),
+the one reply being written (the connection is neither read nor stepped
+while it is queued, so a client that does not read meets TCP backpressure
+and holds one reply), and its timers: the exposure wait (`fn-exp-charge`'s
+milliseconds), the idle check (`fn-exp-idle` each second without input), the
+send deadline (10 s), the handshake deadline (10 s) and the drain after a
+graceful close (1 s). TLS never waits inside OpenSSL: SSL_accept, SSL_read
+and SSL_write are single attempts answering which readiness to wait for,
+with partial writes, moving write buffers and released idle buffers; at
+most 8 handshakes per loop are in progress. An implicit-TLS connection meets
+`fn-exp-open` before any handshake work (PKT-639), when a handshake slot is
+free; until then it waits unadmitted (no handshake work, no share of the
+capacity) in a queue of at most 256 per loop for at most 10 s, and past that
+it is closed (`busy`, `timeout`). A refused one is closed without SSL_accept; a TLS failure is
+named in the service log (`tls refused reason=... connection=N`, PKT-640).
+
+The memory (books/connection-budget.lisp): a connection costs a heap part
+(the record, its input, the one reply of the stated workload -- the
+profile's largest article rendered, 2A + 1,024 octets -- and a parser in the
+middle of an article, 32 octets of heap per octet of the line and body
+bounds) and a native part (the kernel's socket buffers; the TLS session when
+a context is loaded). The base is heap-figure's figure for the store, the
+core outside the dynamic space and the fixed threads (12 + the loops + the
+control clients) with their stacks and 4 MiB of runtime each. The bound is
+the machine less the base, divided by the per-connection figure. At `run`,
+after recovery and before listen, ACL2 decides the live capacity against it
+(`fn-cbud-run-decide`, host `fn-owner-connection-budget`): `connections
+holds=B per-connection=K KiB` to the service log, or `refused
+connections-exceed-memory capacity=C holds=B per-connection=K KiB machine=M
+MB` and exit 1. A live reconfiguration whose capacity passes the bound the
+run held is refused `:connections-exceed-memory` before anything is staged
+(`fn-owner-reconfigure-deltas`). Trusted sources count in the capacity like
+every other (the trusted range exempts a source from the per-address rule
+only, PRF-211). The launcher's heap probe adds room in the dynamic space for
+the heap parts of the connections the machine holds, at most 1,024
+(`fn-cbud-launch-decide`): it runs before the configuration journal is
+read, so it cannot see the capacity row (PKT-644).
+
+Not claimed: a reply larger than the stated workload's (an OVER or LISTGROUP
+over a large range) is outside the figure until replies are rendered in
+windows (lane owner-scheduler's plans; PKT-644); the measured constants
+(record, kernel, TLS) are measurements pinned by tests/test_native_mux.py,
+not theorems.

@@ -3913,7 +3913,7 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-237"
+        "PRF-248"
       ],
       "verification": [
         "proof",
@@ -3932,6 +3932,34 @@
         "planning/evidence/owner-scheduler-2026-09-26.md"
       ],
       "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read)."
+    },
+    {
+      "id": "HST-024",
+      "title": "The node serves reader and transit connections from a fixed set of I/O loop threads, and a connection capacity the machine cannot hold beside the store is refused by name at start and at a live change",
+      "specification": "specs/host.md#served-connections",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-223"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/connection-budget.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "host/native/mux.lisp",
+        "host/native/owner.lisp",
+        "host/native/tls.lisp",
+        "host/owner-host.lisp",
+        "host/native/heap.lisp",
+        "tests/test_native_mux.py",
+        "tools/mux_measure.py",
+        "specs/host.md",
+        "planning/evidence/connection-multiplexing-2026-09-26.md"
+      ],
+      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images."
     }
   ]
 }

@@ -10,7 +10,7 @@
 
 ;;;
 ;;; The scheduler (planning/design-2026-09-26-owner-scheduler.md; HST-023;
-;;; PRF-237): the mutex is entered through a GATE.  A thread names its
+;;; PRF-248): the mutex is entered through a GATE.  A thread names its
 ;;; SERVICE CLASS (:control, :reader, :poster, :transit) and waits at the
 ;;; gate; ACL2 decides which class runs next (books/owner-scheduler.lisp
 ;;; fn-osch-next: the first waiting class in cyclic order from a cursor, so a
@@ -20,8 +20,8 @@
 ;;; one thread.  What a quantum is stays what it was, one bounded semantic
 ;;; step; what left the critical section is the reply's rendering: a served
 ;;; step returns an immutable render PLAN (books/served-plan.lisp) and the
-;;; connection's thread renders it into its own buffer, a window at a time,
-;;; after the mutex is released (fnn-owner-render-next, fnn-owner-write-plan).
+;;; I/O loop (host/native/mux.lisp) renders it into a fresh buffer, a window
+;;; at a time, after the mutex is released (fnn-owner-render-next).
 ;;; The live octet buffer `fn-octets' is now input-only under the mutex.
 
 (in-package "ACL2")
@@ -65,6 +65,9 @@
   (gate nil) (roster (sb-thread:make-mutex :name "fn owner roster"))
   ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
   (publisher nil)
+  ;; The I/O loops that serve every reader and transit connection
+  ;; (host/native/mux.lisp), and the round-robin cursor over them.
+  (mux nil) (mux-next 0)
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
@@ -106,55 +109,51 @@
       (fnn-fault "owner returned non-octets in ~a" name))
     (fnn-octets value)))
 
-;;; The render plan (books/served-plan.lisp; HST-023, PRF-237).  A served
+;;; The render plan (books/served-plan.lisp; HST-023, PRF-248).  A served
 ;;; step answers with an immutable PLAN (the step's effects, whose reply
-;;; octets are pointers into the connection's pinned archive) and the
-;;; connection's thread renders it OFF the mutex, at most
-;;; +fnn-owner-render-window+ octets per call into its own buffer, writing
-;;; each window before it asks for the next.  fn-splan-window's keystone says
-;;; the windows concatenate to fn-served-reply-octets of the effects; a
+;;; octets are pointers into the connection's pinned archive) and the I/O
+;;; loop (host/native/mux.lisp fnn-mux-queue-plan, fnn-mux-flush) renders it
+;;; OFF the mutex, one window at a time into a fresh buffer of the window's
+;;; size, writing each window before it asks for the next.  ACL2 sizes each
+;;; window (fn-splan-window-size): a materialized effect, an octet list the
+;;; arm built inside the step, is rendered whole, because holding its list
+;;; while the socket drains costs sixteen octets per octet where the vector
+;;; costs one (so the per-connection reply term of
+;;; books/connection-budget.lisp stays the reply's size; it becomes a fixed
+;;; window when the arms emit effects that point into the pinned view, the
+;;; design's section 3.3, PKT-644 (a)).  fn-splan-window's keystone says the
+;;; windows concatenate to fn-served-reply-octets of the effects; a
 ;;; :malformed status (a reply effect that is not octets) is a core fault, as
 ;;; a non-octet reply was before.  The buffer is a private `fn-octets$c'
 ;;; object (books/octets-stobj.lisp's foundation), never the live stobj:
 ;;; nothing touches the live `fn-octets' outside the mutex.
-(defconstant +fnn-owner-render-window+ 65536)
+(defun fnn-make-render-buffer (n)
+  "A private render buffer that holds N octets."
+  (fn-octets$c-reserve n (create-fn-octets$c)))
 
-(defun fnn-make-render-buffer (&optional (w +fnn-owner-render-window+))
-  "A private render buffer that holds W octets without growing."
-  (fn-octets$c-reserve w (create-fn-octets$c)))
-
-(defun fnn-owner-render-next (plan w buffer)
-  "Render up to W octets of PLAN into BUFFER: (values OCTETS PLAN-REST DONEP)."
-  (destructuring-bind (status rest buf) (fnn-call 'fn-splan-window plan w buffer)
-    (unless (eq status :ok)
-      (fnn-fault "owner returned non-octets in its served reply"))
-    (values (subseq (the fnn-octets (svref buf 0)) 0 (svref buf 1))
-            rest
-            (and (fnn-core 'fn-splan-donep rest) t))))
-
-(defun fnn-owner-write-plan (service fd channel plan buffer)
-  "Write PLAN to the socket, a window at a time, until nothing remains."
-  (loop
-    (multiple-value-bind (octets rest donep)
-        (fnn-owner-render-next plan +fnn-owner-render-window+ buffer)
-      (when (> (length octets) 0)
-        (fnn-owner-connection-call
-         service :send-reply
-         (lambda () (fnn-owner-send fd channel octets 10))))
-      (when donep (return))
-      (setq plan rest))))
+(defun fnn-owner-render-next (plan)
+  "Render the next window of PLAN: (values OCTETS PLAN-REST DONEP), OCTETS a
+fresh vector (empty only when nothing remained), DONEP when nothing remains
+after it."
+  (let ((size (fnn-core 'fn-splan-window-size plan)))
+    (unless (and (integerp size) (>= size 0))
+      (fnn-fault "owner returned a malformed render window size"))
+    (destructuring-bind (status rest buf)
+        (fnn-call 'fn-splan-window plan size (fnn-make-render-buffer size))
+      (unless (eq status :ok)
+        (fnn-fault "owner returned non-octets in its served reply"))
+      (let ((array (svref buf 0)) (fill (svref buf 1)))
+        (values (if (= fill (length array))
+                    (the fnn-octets array)
+                  (subseq (the fnn-octets array) 0 fill))
+                rest
+                (and (fnn-core 'fn-splan-donep rest) t))))))
 
 (defun fnn-owner-list-global (name)
   "An ACL2 octet list left in NAME, as the list (no vector is made)."
   (let ((value (fnn-global name)))
     (unless (fnn-octet-list-p value)
       (fnn-fault "owner returned non-octets in ~a" name))
-    value))
-
-(defun fnn-owner-bool-global (name)
-  (let ((value (fnn-global name)))
-    (unless (member value '(t nil))
-      (fnn-fault "owner returned non-boolean in ~a" name))
     value))
 
 (defun fnn-owner-action (name &rest args)
@@ -591,7 +590,7 @@ checkpoint's S, or NIL."
                 (fnn-fault "owner did not complete recovery barriers")))
             ;; The first reading, against a clock-less owner.  Every later
             ;; reading is taken at the event that decides under it, in
-            ;; fnn-owner-serve-client and fnn-owner-handle-chunk: this one is
+            ;; fnn-mux-begin and fnn-owner-handle-chunk: this one is
             ;; not an anchor the run is dated against.
             (unless (eq (fnn-owner-advance-clock) :observed)
               (fnn-fault "owner refused its first clock observation"))
@@ -623,20 +622,17 @@ checkpoint's S, or NIL."
           (fnn-store-close store)
           (error e))))))
 
-(defmacro fnn-with-owner ((service) &body body)
-  `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
-
 (defmacro fnn-with-roster ((service) &body body)
   `(sb-thread:with-mutex ((fnn-owner-service-roster ,service)) ,@body))
 
 ;;; The scheduler gate (books/owner-scheduler.lisp).  Every entry to the owner
 ;;; mutex names its class; the gate keeps how many threads of each class wait
 ;;; (a host observation), the per-class arrival tickets, whether a thread is
-;;; inside, the class ACL2 last admitted, and ACL2's scheduler value (the
-;;; cursor and the hold/wait fold `health' prints).  The gate mutex is held
-;;; for a list update and one ACL2 call, never across a step or any I/O.
-(defconstant +fnn-owner-classes+ '(:control :reader :poster :transit))
-
+;;; inside and which, the class ACL2 last admitted, and ACL2's scheduler
+;;; value (the cursor and the hold/wait fold `health' prints).  The class's
+;;; slot is ACL2's (fn-osch-class-index over *fn-osch-order*); the host
+;;; keeps no order of its own.  The gate mutex is held for a list update and
+;;; one ACL2 call, never across a step or any I/O.
 (defstruct (fnn-owner-gate (:constructor %make-fnn-owner-gate))
   (mutex (sb-thread:make-mutex :name "fn owner gate"))
   (ready (sb-thread:make-waitqueue :name "fn owner gate ready"))
@@ -644,6 +640,7 @@ checkpoint's S, or NIL."
   (next-ticket (make-array 4 :initial-element 0))
   (serving (make-array 4 :initial-element 0))
   (busy nil)
+  (holder nil)
   (turn nil)
   (sched nil))
 
@@ -651,15 +648,21 @@ checkpoint's S, or NIL."
   (%make-fnn-owner-gate :sched (fnn-core 'fn-osch-init)))
 
 (defun fnn-owner-class-index (class)
-  (or (position class +fnn-owner-classes+)
-      (fnn-fault "unknown owner service class ~a" class)))
+  "The class's slot, ACL2's (fn-osch-class-index); a name ACL2 does not
+recognise is a host fault."
+  (unless (fnn-core 'fn-osch-classp class)
+    (fnn-fault "unknown owner service class ~a" class))
+  (let ((i (fnn-core 'fn-osch-class-index class)))
+    (unless (and (integerp i) (<= 0 i 3))
+      (fnn-fault "owner returned a malformed service class slot"))
+    i))
 
 (defun fnn-ms-since (started)
   (round (* 1000 (- (get-internal-real-time) started)) internal-time-units-per-second))
 
 (defun fnn-owner-gate-pick (gate)
-  "The owner is free and nobody was admitted: ask ACL2 which class runs.
-The caller holds the gate mutex."
+  "The owner is free and nobody was admitted: ask ACL2 which class runs
+(nil when no class waits).  The caller holds the gate mutex."
   (destructuring-bind (class sched)
       (fnn-call 'fn-osch-next (fnn-owner-gate-sched gate)
                 (coerce (fnn-owner-gate-waiting gate) 'list))
@@ -668,11 +671,15 @@ The caller holds the gate mutex."
     (sb-thread:condition-broadcast (fnn-owner-gate-ready gate))))
 
 (defun fnn-owner-gate-enter (gate class)
-  "Wait at the gate as CLASS until admitted; return the wait in milliseconds."
+  "Wait at the gate as CLASS until admitted; return the wait in milliseconds.
+A thread already inside cannot enter again: a nested quantum would wait on
+itself for ever, so it is a fault here (as SBCL's recursive-lock error was)."
   (let* ((i (fnn-owner-class-index class))
          (started (get-internal-real-time))
          (ticket nil))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (when (eq (fnn-owner-gate-holder gate) sb-thread:*current-thread*)
+        (fnn-fault "owner re-entered by the thread holding it"))
       (setq ticket (svref (fnn-owner-gate-next-ticket gate) i))
       (incf (svref (fnn-owner-gate-next-ticket gate) i))
       (incf (svref (fnn-owner-gate-waiting gate) i))
@@ -683,6 +690,7 @@ The caller holds the gate mutex."
                    (eql (fnn-owner-gate-turn gate) i)
                    (= ticket (svref (fnn-owner-gate-serving gate) i)))
           (setf (fnn-owner-gate-busy gate) t
+                (fnn-owner-gate-holder gate) sb-thread:*current-thread*
                 (fnn-owner-gate-turn gate) nil)
           (incf (svref (fnn-owner-gate-serving gate) i))
           (decf (svref (fnn-owner-gate-waiting gate) i))
@@ -692,14 +700,14 @@ The caller holds the gate mutex."
     (fnn-ms-since started)))
 
 (defun fnn-owner-gate-leave (gate class hold-ms wait-ms)
-  "Leave the owner: fold this quantum's hold and wait, admit the next class."
+  "Leave the owner: fold this quantum's hold and wait, and let ACL2 admit
+the next class (none when nothing waits: fn-osch-next answers nil)."
   (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
     (setf (fnn-owner-gate-busy gate) nil
+          (fnn-owner-gate-holder gate) nil
           (fnn-owner-gate-sched gate)
           (fnn-core 'fn-osch-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
-    (if (some #'plusp (fnn-owner-gate-waiting gate))
-        (fnn-owner-gate-pick gate)
-      (sb-thread:condition-broadcast (fnn-owner-gate-ready gate)))))
+    (fnn-owner-gate-pick gate)))
 
 (defun fnn-owner-sched-snapshot (service)
   "ACL2's scheduler value, for `health' (fn-osch-health-lines)."
@@ -798,15 +806,23 @@ before the mutex can be released, so no queued client can mutate afterward."
 (defun fnn-owner-serialized (service cid thunk &optional (class :control))
   "Run one semantic action, fencing before its mutex can be released.
 
-CLASS is the service class the gate admits this quantum as (+fnn-owner-classes+):
-:reader for a reader connection's step, :transit for a peer connection's or
-a feed's, :poster for a submission through the control socket, and :control
-(the default) for control-socket requests, maintenance and connection
-bookkeeping."
+CLASS is the service class the gate admits this quantum as
+(books/owner-scheduler.lisp *fn-osch-order*): :reader for a reader
+connection's quanta (its open, steps, idle, close and release), :transit for
+a peer connection's and for the feeds', the BP node's and its applications'
+(fnn-owner-transit-serialized), :poster for a submission through the control
+socket, and :control (the default) for the control socket's requests and the
+maintenance steps (the checkpoint capture, the publication's done step, the
+log reopen)."
   (fnn-owner-gated (service class)
     (when (fnn-owner-service-stopping service)
       (fnn-refuse "owner service is stopping"))
     (fnn-owner-shared-action-locked service cid thunk)))
+
+(defun fnn-owner-transit-serialized (service cid thunk)
+  "fnn-owner-serialized for a peer's quantum (the :transit class): the push
+and pull feeds, the BP node and its applications."
+  (fnn-owner-serialized service cid thunk :transit))
 
 (defun fnn-owner-consume-connection-fault (service operation)
   "Consume the private injection under the roster mutex, without a core step."
@@ -1922,7 +1938,8 @@ refused, not injected under a stale time (D10-a)."
                                 reason))
                       status))
                 :clock-unusable))
-         (when armed (fnn-owner-control-disarm-fault store armed)))))))
+         (when armed (fnn-owner-control-disarm-fault store armed)))))
+   :poster))
 
 (defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader))
   "Run one owner read and its serial writer drain under the service mutex,
@@ -1932,7 +1949,8 @@ Returns (values PLAN CLOSING STARTTLS CONSUMED REDEEMED SUBMITTED), PLAN the
 immutable render plan of this step's whole reply (books/served-plan.lisp
 fn-splan-step-plan: the step's effects, then the drain's completion, the
 redeem reply and the exposure close), which the caller renders and writes
-OFF the mutex (fnn-owner-write-plan); or (values :defer MS) when ACL2's work
+OFF the mutex (host/native/mux.lisp fnn-mux-queue-plan and fnn-mux-flush
+through fnn-owner-render-next); or (values :defer MS) when ACL2's work
 budget defers this step (PRF-161 fn-exp-charge, decided in the same critical
 section as the step it admits: one gate pass per read, not two): the caller
 waits MS and calls again with the same INCOMING.
@@ -2057,319 +2075,15 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
     (values (if (= (length address) 4) :inet :inet6)
             (coerce address 'list))))
 
-(defun fnn-owner-serve-client (service socket &optional implicit-tls)
-  ;; RETAINED is the part of the last socket read the served machine has not
-  ;; consumed yet.  It is this connection's, never the service's, and the
-  ;; socket is read only when it is empty, so it holds at most one
-  ;; +fnn-max-read+ read minus one octet (host/native/io.lisp fnn-recv) and
-  ;; cannot grow while a client keeps sending.
-  (let ((fd (fnn-socket-fd socket)) (cid nil) (channel nil) (retained nil)
-        ;; PRF-161: the id the exposure state registered, released in the
-        ;; unwind whatever path cleared CID.
-        (opened-cid nil)
-        ;; The service class this connection's quanta are admitted as: a peer
-        ;; connection (ACL2 named the peer at open) is :transit, else :reader.
-        (class :reader)
-        ;; This connection's render buffer (books/served-plan.lisp): the
-        ;; reply's windows are rendered into it off the mutex.
-        (buffer (fnn-make-render-buffer)))
-    (unwind-protect
-         (handler-case
-             (progn
-               ;; PRF-162: an implicit-TLS connection completes SSL_accept
-               ;; before the owner opens anything, so a failed handshake
-               ;; costs no connection slot and sends no greeting.
-               (when implicit-tls
-                 (setq channel
-                       (fnn-tls-accept (fnn-owner-service-tls-context service)
-                                       fd 10)))
-               (multiple-value-bind (family address)
-                   (fnn-owner-socket-address service socket)
-                 (multiple-value-bind (opened greeting peerp)
-                   (fnn-owner-serialized
-                    service nil
-                    (lambda ()
-                      ;; fn-own-open pins this reading into the connection as
-                      ;; its READER environment (DATE, NEWGROUPS).  Taking it
-                      ;; here is what makes DATE answer when the connection
-                      ;; was accepted rather than when the process started.
-                      (fnn-owner-advance-clock)
-                      (let ((peer
-                              (fnn-owner-core
-                               'fn-owner-peer-for-socket-address
-                               family address)))
-                        (unless (or (null peer) (fnn-octet-list-p peer))
-                          (fnn-fault "owner returned a malformed peer identity"))
-                        ;; PRF-161: ACL2 admits or refuses the connection
-                        ;; under the limits in force (books/public-exposure.lisp
-                        ;; fn-exp-open) and opens it in the same call.  A
-                        ;; refusal leaves the 400 in fn-owner-output.
-                        (let ((opened (fnn-owner-core 'fn-owner-exposure-open
-                                                      family address peer)))
-                          (when opened (fnn-owner-log))
-                          (values opened
-                                  (fnn-owner-octets-global 'fn-owner-output)
-                                  (and peer t)))))
-                    :reader)
-                   (unless (and opened (integerp opened))
-                     ;; RFC 3977 5.1.1 note [2]: after a 400 greeting the
-                     ;; server immediately closes the connection.
-                     (when (> (length greeting) 0)
-                       (fnn-owner-connection-call
-                        service :send-greeting
-                        (lambda ()
-                          (fnn-owner-send fd channel greeting 10)
-                          (fnn-graceful-close fd))))
-                     (return-from fnn-owner-serve-client nil))
-                   (setq cid opened opened-cid opened
-                         class (if peerp :transit :reader))
-                   ;; The event a STARTTLS connection gets after its
-                   ;; handshake, and nothing else: the connection is then
-                   ;; the STARTTLS session after 382
-                   ;; (fn-served-implicit-tls-is-the-starttls-session).
-                   (when implicit-tls
-                     (fnn-owner-serialized
-                      service cid
-                      (lambda ()
-                        (unless (eq (fnn-owner-action
-                                     'fn-owner-tls-established cid)
-                                    :ok)
-                          (fnn-fault "owner rejected established TLS")))
-                      class))
-                   (when (> (length greeting) 0)
-                     (fnn-owner-connection-call
-                      service :send-greeting
-                      (lambda () (fnn-owner-send fd channel greeting 10))))))
-               (loop
-                 ;; ONCE serves this client on the accept thread itself.  It
-                 ;; must consume the signal flag here too, or an idle/partial
-                 ;; command prevents that thread from reaching service stop.
-                 (when (or *fnn-sigterm-requested*
-                           (fnn-owner-service-stopping service))
-                   (return))
-                 (let ((incoming
-                         (or retained
-                             (fnn-owner-connection-call
-                              service :receive
-                              (lambda ()
-                                (let ((value (fnn-owner-receive service fd channel 1)))
-                                  (unless (or (eq value :timeout)
-                                              (typep value 'fnn-octets))
-                                    (error "malformed connection receive result"))
-                                  value))))))
-                   ;; Whatever this step does not consume is set again below;
-                   ;; nothing carried here is ever read from the socket twice.
-                   (setq retained nil)
-                   (cond ((eq incoming :timeout)
-                          ;; RFC 3977 3.1's autologout, decided by ACL2
-                          ;; (fn-exp-idle): the close sends nothing.
-                          (when (eq (fnn-owner-exposure-idle service cid class) :close)
-                            (fnn-owner-connection-call
-                             service :graceful-close
-                             (lambda ()
-                               (when channel
-                                 (fnn-tls-close-channel channel)
-                                 (setq channel nil))
-                               (fnn-graceful-close fd)))
-                            (return)))
-                         ((zerop (length incoming)) (return))
-                         (t (let ((results (multiple-value-list
-                                            (fnn-owner-handle-chunk service cid incoming
-                                                                    socket class))))
-                            (if (eq (first results) :defer)
-                                ;; PRF-161: ACL2 deferred this step; the same
-                                ;; octets are the next step's input, after
-                                ;; the wait it named (at most a second at a
-                                ;; time, so a stop is seen).
-                                (progn
-                                  (setq retained incoming)
-                                  (unless (or *fnn-sigterm-requested*
-                                              (fnn-owner-service-stopping service))
-                                    (sleep (/ (min (second results) 1000) 1000))))
-                            (destructuring-bind (plan closing starttls consumed
-                                                 redeemed submitted)
-                                results
-                              (cond
-                                (channel
-                                 ;; Once protected, no transport suffix may be
-                                 ;; reclassified as a second TLS handshake.
-                                 ;; A step that closes the wire (an article
-                                 ;; over fn-own-body-limit: fn-wire-close
-                                 ;; ... :body-overlimit, books/wire.lisp)
-                                 ;; stops at the octet that closed it, as on
-                                 ;; the plaintext path below: its reply (the
-                                 ;; 441 naming the size) is sent and the
-                                 ;; connection ends with the rest unread.
-                                 ;; Stopping the process there turned one
-                                 ;; client's refusal into every client's
-                                 ;; closed socket (large-article, 2026-09-25).
-                                 ;; PRF-164: an XREDEEM PASS stops the fold at
-                                 ;; its line; what the client sent after it is
-                                 ;; the next step's input, already decrypted.
-                                 ;; PKT-600 (PRF-213): so does an article's
-                                 ;; submission: the next article or command
-                                 ;; in this record is the next step's input.
-                                 (cond ((or closing (= consumed (length incoming))))
-                                       ((or redeemed submitted)
-                                        (setq retained (subseq incoming consumed)))
-                                       (t (fnn-fault "protected owner read left a TLS suffix"))))
-                                ((fnn-owner-service-tls-context service)
-                                 ;; The worker is the sole socket reader.  A
-                                 ;; failed/short consume closes this connection;
-                                 ;; the ACL2 transition is never replayed.
-                                 (fnn-tls-consume-plaintext
-                                  fd (subseq incoming 0 consumed) 10))
-                                ((/= consumed (length incoming))
-                                 ;; The suffix is the next step's input, and
-                                 ;; it is already in hand.  The served machine
-                                 ;; stops after the octet that completed a
-                                 ;; submission (PKT-600, PRF-213: two
-                                 ;; pipelined TAKETHIS or POST articles in one
-                                 ;; read are two steps, each committed and
-                                 ;; answered before the next is framed), and
-                                 ;; at the octet that closed the wire:
-                                 ;; an article over fn-own-body-limit
-                                 ;; (books/owner.lisp, the record codec's
-                                 ;; *fn-record-max-payload* = 32768) makes fn-wire-after-line answer
-                                 ;; (fn-wire-close ... :body-overlimit)
-                                 ;; (books/wire.lisp), and
-                                 ;; fn-served-feed-counted
-                                 ;; (books/served-tls-prefix.lisp) consumes no
-                                 ;; further octet, which
-                                 ;; fn-served-tls-prefix-suffix-accounting
-                                 ;; states as the partition this line honours.
-                                 ;; A client that sends a long article breaks
-                                 ;; no invariant: the 441 below and the close
-                                 ;; that follows it are the answer, and this
-                                 ;; used to stop the whole process instead.
-                                 ;;
-                                 ;; A step that consumes nothing and neither
-                                 ;; closes nor hands the transport over IS a
-                                 ;; broken invariant: the same octets fed
-                                 ;; again cannot make progress.
-                                 (when (and (zerop consumed)
-                                            (not closing) (not starttls))
-                                   (fnn-fault
-                                    "owner consumed no octets and left the connection open"))
-                                 (setq retained (subseq incoming consumed))))
-                              ;; The reply, rendered and written OFF the
-                              ;; mutex, a window at a time
-                              ;; (books/served-plan.lisp; HST-023).
-                              (fnn-owner-write-plan service fd channel plan buffer)
-                              (when starttls
-                                (when channel
-                                  (fnn-fault "owner requested STARTTLS on a protected channel"))
-                                (unless (fnn-owner-service-tls-context service)
-                                  (fnn-fault "owner requested STARTTLS without a TLS context"))
-                                ;; Only successful SSL_accept makes the ACL2
-                                ;; session protected.  Pipelined ClientHello
-                                ;; bytes remained unread after exact consume.
-                                (setq channel
-                                      (fnn-tls-accept
-                                       (fnn-owner-service-tls-context service)
-                                       fd 10))
-                                (fnn-owner-serialized
-                                 service cid
-                                 (lambda ()
-                                   (unless (eq (fnn-owner-action
-                                                'fn-owner-tls-established cid)
-                                               :ok)
-                                     (fnn-fault "owner rejected established TLS")))
-                                 class))
-                              (when closing
-                                ;; The final reply must reach the client
-                                ;; before the close: a peer still sending
-                                ;; (an oversize article) would otherwise
-                                ;; take a reset that discards the 441 in its
-                                ;; receive queue.  On a protected channel the
-                                ;; TLS close_notify goes first, then the same
-                                ;; bounded drain as plaintext.
-                                (fnn-owner-connection-call
-                                 service :graceful-close
-                                 (lambda ()
-                                   (when channel
-                                     (fnn-tls-close-channel channel)
-                                     (setq channel nil))
-                                   (fnn-graceful-close fd)))
-                                (return))))))))))
-           (fnn-store-indeterminate (e)
-             ;; The shared boundary has already stopped mutation; prevent the
-             ;; unwind cleanup from attempting a later close transition.
-             (setq cid nil)
-             (fnn-owner-fence-service service)
-             (fnn-err "owner uncertain; recovery required: ~a" e))
-           (fnn-store-fault (e)
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (fnn-owner-fault-service service faulted-cid e)))
-           (fnn-owner-connection-fault (e)
-             ;; Clear CID before any secondary send failure.  Exactly one ACL2
-             ;; fault transition owns semantic cleanup for this connection.
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (handler-case
-                   (let ((reply (and faulted-cid
-                                     (fnn-owner-abandon-connection
-                                      service faulted-cid e))))
-                     (when (and reply (> (length reply) 0))
-                       (ignore-errors (fnn-owner-send fd channel reply 10))))
-                 ;; A failure of the core fault transition is shared.  Its
-                 ;; serialized boundary already fenced before unlocking; this
-                 ;; nested handler keeps the worker available to join cleanly.
-                 (fnn-store-indeterminate (nested)
-                   (fnn-owner-fence-service service)
-                   (fnn-err "owner uncertain while abandoning connection: ~a"
-                            nested))
-                 (serious-condition (nested)
-                   (fnn-owner-fault-service service nil nested)))))
-           ((or fnn-store-error fnn-os-error sb-bsd-sockets:socket-error) (e)
-             (fnn-err "owner connection: ~a" e))
-           (fnn-tls-error (e)
-             ;; Certificate/handshake/record failure is scoped to this peer.
-             ;; The owner connection is removed in the unwind cleanup and the
-             ;; listener and shared TLS context remain live.
-             (fnn-err "owner TLS connection: ~a" e))
-           (serious-condition (e)
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (fnn-owner-fault-service service faulted-cid e))))
-      (when cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service cid (lambda () (fnn-owner-action 'fn-owner-close cid)) class)))
-      (when opened-cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service nil
-           (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid))
-           class)))
-      (when channel (fnn-tls-close-channel channel))
-      (fnn-socket-shut socket))))
-
-(defun fnn-owner-client-done (service socket)
-  (fnn-with-roster (service)
-    (setf (fnn-owner-service-clients service)
-          (delete socket (fnn-owner-service-clients service) :test #'eq)
-          (fnn-owner-service-workers service)
-          (delete sb-thread:*current-thread*
-                  (fnn-owner-service-workers service) :test #'eq))))
-
+;;; A connection is served by one of the service's I/O loops
+;;; (host/native/mux.lisp fnn-mux-adopt), not a thread of its own: the
+;;; worker this file used to start per connection held a control stack and
+;;; runtime regions for the connection's whole life (PKT-605).  Everything
+;;; the worker did, in its order and under its handlers, is the loop's
+;;; connection record now.
 (defun fnn-owner-launch-client (service socket &optional implicit-tls)
-  "Register the socket and worker before either can enter the owner core."
-  (fnn-with-roster (service)
-    (if (fnn-owner-service-stopping service)
-        (progn (ignore-errors (fnn-socket-shut socket)) nil)
-      (progn
-        (push socket (fnn-owner-service-clients service))
-        (let ((worker
-                (sb-thread:make-thread
-                 (lambda ()
-                   (unwind-protect (fnn-owner-serve-client service socket
-                                                           implicit-tls)
-                     (fnn-owner-client-done service socket)))
-                 :name "fn owner client")))
-          (push worker (fnn-owner-service-workers service))
-          worker)))))
+  "Register the socket with a loop before it can enter the owner core."
+  (fnn-mux-adopt service socket implicit-tls))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
@@ -2574,7 +2288,7 @@ thread is a worker, so the stop joins it with the clients."
           (unless (eq socket :timeout)
             (if once
                 (progn
-                  (fnn-owner-serve-client service socket)
+                  (fnn-mux-serve-once service socket)
                   (return))
               (fnn-owner-launch-client service socket)))
           ;; Before the next accept: the owner's checkpoint publication,
@@ -2634,6 +2348,11 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)
+                  ;; PKT-605 (PRF-223): the live capacity against this
+                  ;; machine (books/connection-budget.lisp), refused by name
+                  ;; before anything listens; then the I/O loops.
+                  (fnn-mux-budget-install service tls-context)
+                  (fnn-mux-start service)
                   ;; PKT-283's native witness: the Store is recovered and
                   ;; its writer lock held, and no control socket listens
                   ;; yet (the startup hooks start it), so `health' must say

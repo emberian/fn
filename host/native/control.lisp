@@ -643,8 +643,10 @@ transition."
     ;; the store opens, so a malformed value never surfaces on a worker after
     ;; a durable submission.
     (fnn-control-stop-cut-armed-p)
-    (fnn-owner-run-normalized store-octets listener-host-octets listener-port
-                              oncep max-connections tls-context tls-port)))
+    ;; PKT-605: the connection budget counts these clients' threads.
+    (let ((*fnn-mux-control-clients* max-clients))
+      (fnn-owner-run-normalized store-octets listener-host-octets listener-port
+                                oncep max-connections tls-context tls-port))))
 
 (defun fnn-control-connect (path)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket
