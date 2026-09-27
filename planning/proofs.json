@@ -10343,6 +10343,33 @@
         "fn-ocfg-at-reader-view-reads-the-reader-view",
         "fn-ocfg-with-view-keeps-the-rest"
       ]
+    },
+    {
+      "id": "PRF-298",
+      "title": "A live owner's administrative publication is authorized from its carried state: no Store record read and no history replayed, equal to the replaying authorization under the owner invariant",
+      "statement": "books/config-owner-live-authorize.lisp fn-olau-authorize (host/owner-host.lisp fn-owner-cfg-native-admin-authorize, called by host/native/admin.lisp fnn-admin-authorize-owner from fnn-owner-live-reconfigure-locked for every live configuration verb): fn-native-admin-publication-authorize under the profile's group-name bound and configuration generations, with the candidate open replaced by fn-olau-candidatep -- the ready phase, the observed configuration history equal to the carried one, the configuration-only fold one step from the observed history's, the record at the frontier with the next sequence, and the one record accepted by and applied to the carried node and configuration (fn-cnode-carried-acceptablep, fn-oclc-apply), its node accepting the frontier. KEYSTONE fn-olau-authorize-is-the-replayed-authorization (hypotheses: fn-ocl-relation OC, the conjunct of fn-lgoc-invariantp it needs; the store at :ready; CONFIG-RECORDS the carried configuration history; the record's txid the frontier; fn-olau-events-reopenp of the Store history, its identity, consumer and topic replays and identity typing): fn-olau-authorize equals fn-cvec-native-admin-authorize over the carried rows and frontier on every arm. fn-olau-candidatep-is-the-replayed-candidate (fn-cpo-history-relation, :ready, the carried configuration, a record at the frontier, the reopen conditions): the carried candidate is fn-native-admin-candidate-openp of the extended history.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-287",
+        "PRF-274",
+        "PRF-209"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-owner-live-authorize.lisp",
+        "tests/acl2/config-owner-live-authorize-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/admin.lisp"
+      ],
+      "progress_note": "Lane log-recovery-2 (Opus 5.5, 2026-09-27; PKT-837). hot_path_check's fn-cpr-loop finding (the candidate replay on the live administrative path) is gone. Teeth: tests/acl2/config-owner-live-authorize-tests.lisp: the native live arm's staged group request (fn-lgoc-invariantp holds; carried = replayed = :accepted at generation 3, 00000003.cfg; lock and occupied-name refusals agree); hypothesis removal, each with the other hypotheses checked: the forged owner (initial configuration claimed), the owner at :reserved after fn-olr-ocfg-reserve (invariant kept), a disk configuration history differing in one stamp, a record below the frontier -- in each the replay accepts and the carried authorization refuses. fn-olau-events-reopenp has no ground witness yet: fn-ocl-relation does not carry the Store history's identity, consumer and topic replays (the owner's open established them); carrying them is the remainder.",
+      "events": [
+        "fn-olau-candidatep-is-the-replayed-candidate",
+        "fn-olau-authorize-is-the-replayed-authorization"
+      ]
     }
   ]
 }

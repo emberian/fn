@@ -10238,6 +10238,21 @@
           "name": "fn-ocfg-with-view-keeps-the-rest"
         }
       ]
+    },
+    {
+      "id": "PRF-298",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-olau-candidatep-is-the-replayed-candidate",
+          "note": "The carried candidate is the candidate open of the extended history. Teeth: tests/acl2/config-owner-live-authorize-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olau-authorize-is-the-replayed-authorization",
+          "note": "host/owner-host.lisp fn-owner-cfg-native-admin-authorize (host/native/admin.lisp fnn-admin-authorize-owner). Teeth: tests/acl2/config-owner-live-authorize-tests.lisp."
+        }
+      ]
     }
   ]
 }

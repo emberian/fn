@@ -77,9 +77,10 @@ set, exact record, candidate replay/open result and generated final name."
                   (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
 (defun fnn-admin-authorize-owner (store config-records record observed-names)
-  "A live owner's authorization on a format-9 store: ACL2's
-fn-owner-cfg-native-admin-authorize over the owner's carried history (its
-rows), the same decision fnn-admin-authorize asks over a history it reads."
+  "A live owner's authorization: ACL2's fn-owner-cfg-native-admin-authorize
+from the owner's carried state (books/config-owner-live-authorize.lisp
+fn-olau-authorize, PKT-837), equal to the decision fnn-admin-authorize asks
+over a history it reads (fn-olau-authorize-is-the-replayed-authorization)."
   (let ((result (fnn-owner-core
                  'fn-owner-cfg-native-admin-authorize
                  (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
@@ -243,15 +244,10 @@ Answers :accepted once the record is durable and the owner installed it, or
          (observation (fnn-config-record-observation store))
          (config-records (fnn-config-records-from-observation observation))
          (authorization
-           (if (fnn-store-logp store)
-               ;; Format 9: over the history the owner carries (its rows),
-               ;; not a re-read of the per-file layout (which a format-9
-               ;; store does not have).
-               (fnn-admin-authorize-owner store config-records record
-                                          (mapcar #'car observation))
-             (fnn-admin-authorize store (fnn-durable-records store)
-                                  config-records record
-                                  (mapcar #'car observation)))))
+           ;; Over the state the owner carries (PKT-837): no Store record
+           ;; read, no history replayed.
+           (fnn-admin-authorize-owner store config-records record
+                                      (mapcar #'car observation))))
     (multiple-value-bind (published ignored-name)
         (fnn-admin-publish store record authorization)
       (declare (ignore ignored-name))
