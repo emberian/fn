@@ -27,6 +27,7 @@
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
+(include-book "../books/store-log-route")
 
 (defconst *fn-store-max-text* 512)
 
@@ -405,6 +406,24 @@
 
 (defun fn-store-metadata-initial-config-frame ()
   (fn-bs-initial-config-octets))
+
+;; The commit route of an opened store (lane commit-onto-log): T for a
+;; format-9 profile, whose commits go through the record log.
+(defun fn-store-profile-logp (values)
+  (fn-bs-profile-logp values))
+
+;; The frame a developer `init' writes under FN_NATIVE_STORE_FORMAT=8: the
+;; same profile in the per-file layout (PKT-COL-1), or NIL.
+(defun fn-store-metadata-config-frame-format-8 (profile)
+  (let ((frame (fn-bs-config-frame-for-profile profile)))
+    (and frame
+         (let ((values (fn-bs-config-decode frame)))
+           (and values (fn-bs-config-encode (fn-bs-profile-as-format-8 values)))))))
+
+;; The record log's layout (books/store-log-route.lisp).
+(defun fn-store-log-segment-name () (fn-olr-segment-name))
+(defun fn-store-log-unit () (fn-olr-unit))
+(defun fn-store-log-initial-extent () (fn-olr-initial-extent))
 
 ;; The store profile (D27, format 8): every value the host reads from it is
 ;; one of these accessors over the decoded values, never a list position.

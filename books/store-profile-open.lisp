@@ -52,7 +52,7 @@
         (k (fn-bs-pf 8 values)))
     (cond ((not (fn-frame-values-okp *fn-bs-meta-profile-spec* values))
            :layout)
-          ((not (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*))
+          ((not (fn-bs-meta-formatp (fn-bs-meta-nth 0 values)))
            :format)
           ((not (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*))
            :frontier-format)
@@ -141,11 +141,12 @@
               (fn-frame-parse-value word)
             nil))))))
 
-; D34: a sealed profile frame whose format is not the one format.
+; D34: a sealed profile frame whose format is not a format this image opens
+; (9, and 8 while PKT-COL-1 stands).
 (defun fn-spo-foreign-formatp (octets)
   (declare (xargs :guard t))
   (let ((word (fn-spo-saved-format-word octets)))
-    (and word (not (equal word *fn-bs-meta-format-8*)) t)))
+    (and word (not (fn-bs-meta-formatp word)) t)))
 
 (defun fn-spo-in-the-windowp (saved)
   (declare (xargs :guard t))
@@ -215,7 +216,7 @@
  (defthm fn-bs-profile-v2-valid-shape
    (implies (fn-bs-profile-v2-validp values)
             (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
-                 (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*)
+                 (fn-bs-meta-formatp (fn-bs-meta-nth 0 values))
                  (equal (fn-bs-meta-nth 1 values)
                         *fn-bs-meta-frontier-format*)))
    :rule-classes :forward-chaining
@@ -246,7 +247,7 @@
 (local
  (defun fn-spo-shapep (values)
    (and (fn-frame-values-okp *fn-bs-meta-profile-spec* values)
-        (equal (fn-bs-meta-nth 0 values) *fn-bs-meta-format-8*)
+        (fn-bs-meta-formatp (fn-bs-meta-nth 0 values))
         (equal (fn-bs-meta-nth 1 values) *fn-bs-meta-frontier-format*))))
 
 (local
@@ -442,7 +443,7 @@
 (local
  (defthm fn-spo-window-names-format-8
    (implies (fn-spo-in-the-windowp values)
-            (equal (car values) *fn-bs-meta-format-8*))
+            (fn-bs-meta-formatp (car values)))
    :hints (("Goal" :in-theory (e/d (fn-spo-in-the-windowp fn-bs-profile-invalid-reason
                                     fn-bs-meta-nth)
                                    (fn-bs-pf fn-frame-values-okp

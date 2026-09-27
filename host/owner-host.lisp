@@ -50,6 +50,7 @@
 (include-book "../books/post-identity-index")
 ; PRF-180: the per-POST caches advanced through the derived event index.
 (include-book "../books/store-carried-folds")
+(include-book "../books/owner-log-route")
 (include-book "../books/owner-advance-carried")
 (include-book "../books/owner-intent-carried")
 (include-book "../books/owner-commit-ocl")
@@ -780,11 +781,25 @@
 ;; (fn-rcon-ocfg-io-is-ocfg-step, no hypothesis): its :record-directory arm
 ;; pairs the staged record's sequence and transaction id through the
 ;; concrete record dispatchers instead of fn-record-p's octet lists.
+;; On a format-9 store the member's reservation and its place in the log are
+;; the two composite steps of books/owner-log-route.lisp (fn-olr-ocfg-reserve,
+;; fn-olr-ocfg-order: the file route's success sequences, by definition).
 (defun fn-owner-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-install-ocfg
-                (fn-rcon-ocfg-io (fn-owner-ocfg state) operation result) state)))
+  (let* ((oc (fn-owner-ocfg state))
+         (state (fn-owner-install-ocfg
+                 (case operation
+                   (:log-reserve (fn-olr-ocfg-reserve oc))
+                   (:log-order (fn-olr-ocfg-order oc))
+                   (t (fn-rcon-ocfg-io oc operation result)))
+                 state)))
     (value (fn-sf-phase (fn-sn-files (fn-owner-store state))))))
+
+;; The operator's bounds on one log batch, from the live configuration.
+(defun fn-owner-log-bounds (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-owner-config state)))
+    (value (list (fn-olr-bmax v) (fn-olr-omax v)))))
 
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
                           subject-octets evidence-octets charge state)

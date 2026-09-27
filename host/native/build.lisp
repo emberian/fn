@@ -36,6 +36,7 @@
 (include-book "books/served-reply-buffer")
 (include-book "books/served-plan")
 (include-book "books/owner-scheduler")
+(include-book "books/owner-commit-class")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
