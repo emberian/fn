@@ -1580,6 +1580,7 @@
 ; exact authored octets through fn-own-control-submit: a signature binds
 ; those octets, and neither path is this verb.
 ; The handle of the node's article with MSGID, or :absent.
+(fn-payload-kind fn-own-stored-handle :source "returns the stored article's handle")
 (defun fn-own-stored-handle (node msgid)
   (declare (xargs :guard t))
   (let ((article (fn-find-article (fn-record-octets-string msgid)
@@ -2288,6 +2289,7 @@
 ; The article one peer is owed, from the committed node.  The feed queue
 ; holds Message-IDs and no bytes (specs/peering.md sec. 3.1); this is where
 ; the bytes come from, at the moment the peer says it wants them.
+(fn-payload-kind fn-own-feed-article :source "returns the article's handle (the host reads octets through fn-ofa-feed-article)")
 (defun fn-own-feed-article (o msgid)
   (declare (xargs :guard t))
   (let ((a (fn-find-article

@@ -70,6 +70,7 @@
 ;; each payload's length; lane served-readers: OVER 1-2000 spent a third of
 ;; its time walking every payload to count it).  Logically the length of the
 ;; article's bytes.
+(fn-payload-kind fn-nntp-article-length :handle "reads the arena at the handle")
 (defun fn-nntp-article-length (article fn-arena)
   (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory '(fn-nntp-payload-bytes
@@ -83,6 +84,7 @@
                    (fn-arena-payload-len p fn-arena)
                  (len (fn-nntp-article-bytes article fn-arena))))))
 
+(fn-payload-kind fn-nntp-article-tombstonep :handle "reads the arena at the handle")
 (defun fn-nntp-article-tombstonep (article fn-arena)
   (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory '(fn-nntp-tombstonep-unfolds

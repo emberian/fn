@@ -892,6 +892,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-join-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
+	books/payload-kinds \
+	tests/acl2/payload-kinds-tests \
 	books/owner-feed-article \
 	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
@@ -1394,6 +1396,9 @@ check:
 # skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
 # are static, need no ACL2 and take about a second.
 	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py
+# A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
+# that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
+	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

@@ -31,6 +31,7 @@
 ; flip refuses everything but a handle.
 (in-package "ACL2")
 (include-book "records-shape")
+(include-book "payload-kinds")
 (include-book "defrecord")
 (include-book "stx-accept-records")
 
@@ -107,7 +108,7 @@
            (fn-held-txid fn-record-uint64p)
            (fn-held-generation fn-record-uint64p)
            (fn-held-msgid fn-record-msgidp)
-           (fn-held-payload natp)
+           (fn-held-payload fn-payload-handle-p)
            (fn-held-groups fn-record-groups-validp)
            (fn-held-obligation-id fn-record-metadata-bytes-p)
            (fn-held-content-subject fn-record-metadata-bytes-p)
