@@ -10011,6 +10011,39 @@
           "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/store-log-reclaim-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-279",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rit-hasp-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-is-knownp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-of-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-carryp-of-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-admissiblep-is-admissiblep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
+        }
+      ]
     }
   ]
 }
