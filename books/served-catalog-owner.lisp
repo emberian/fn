@@ -38,8 +38,10 @@
 ; (fn-cat-prepare-is-seal-then-prepare-sealed) without a second seal.
 ;
 ; R (books/catalog-relation.lisp fn-cat-history-relation) is established by E
-; (fn-cat-ocl-relation-at-recover) and preserved by T2 in both forms
-; (fn-cat-ocl-relation-of-article-finish, fn-cat-relation-of-complete-hidden)
+; (fn-sca-ocl-relation-at-recover, fn-sca-ocl-relation-at-full-open, below,
+; over the host's fn-sca-load-held-rows) and preserved by T2 in both forms
+; (fn-sca-ocl-relation-of-finish below over the host's fn-sca-finish;
+; fn-cat-ocl-relation-of-article-finish, fn-cat-relation-of-complete-hidden)
 ; and by T4 (fn-cat-ocl-relation-of-withdraw), all in books/catalog-entries
 ; and catalog-relation; the theorems below are this book's shapes of those
 ; keystones over the functions the host calls.
@@ -585,6 +587,131 @@
                             fn-rows-wire-of fn-sf-record-valuesp fn-rows-handles-inp
                             fn-wire-event-listp)))))
 
+
+; The installed store's rows are store events: the owner's live relation
+; carries the store's structural state (books/owner-commit-carried.lisp
+; fn-ccar-ocl-relation-carries-sn-statep), whose record list is one.
+(defthm fn-sca-ocl-store-rows-are-values
+  (implies (fn-ocl-relation oc)
+           (fn-sf-record-valuesp (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+  :hints (("Goal" :use ((:instance fn-ccar-ocl-relation-carries-sn-statep))
+           :in-theory (e/d (fn-sn-statep fn-sf-statep)
+                           (fn-ocl-relation fn-sf-phase-shapep fn-sf-success-listp fn-node-statep)))))
+
+; KEYSTONE (E at the host's entries, over the flipped store).  The owner
+; host/owner-host.lisp fn-owner-install-extended installs from the capture of
+; any prefix of ROWS extended over any suffix (fn-owner-recover-rows: prefix
+; nil; fn-owner-recover-from-checkpoint, -from-store-open: the verified
+; checkpoint's rows), when it is not :fault, holds exactly those rows at an
+; idle store, and the catalog the host then loads from them
+; (fn-sca-load-held-rows, under any view index) is in R with it -- R over
+; ALPHA of the rows through the arena the rows' handles index.  The two row
+; hypotheses are what the open's intern establishes (full open below) and
+; what a checkpoint load must establish of its rows; that the rows are store
+; events follows from the install (fn-sca-ocl-store-rows-are-values).  The
+; host extends with fn-rii-sco-extend, which is fn-sco-extend
+; (books/replay-identity-index.lisp fn-rii-sco-extend-is-sco-extend).
+(defthm fn-sca-ocl-relation-at-recover
+  (let* ((oc (fn-ock-recover-extended
+              (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
+              configs frontier max-conns))
+         (rows (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+    (implies (and (not (equal oc :fault))
+                  (fn-arena-p fn-arena)
+                  (fn-rows-handles-inp (append prefix suffix) fn-arena)
+                  (fn-wire-event-listp (fn-rows-wire-of (append prefix suffix) fn-arena)))
+             (and (equal rows (append prefix suffix))
+                  (fn-own-store-idlep (fn-own-store (fn-ocfg-owner oc)))
+                  (fn-cat-ocl-relation oc fn-arena
+                                       (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))))
+  :hints (("Goal" :use (fn-ock-recover-installs-ocl-relation
+                        fn-owner-recover-from-checkpoint-equals-full-recover
+                        (:instance fn-cbo-recover-full-store (events (append prefix suffix)))
+                        (:instance fn-cbo-open-ok-records-and-phase (events (append prefix suffix)))
+                        (:instance fn-sca-ocl-store-rows-are-values
+                                   (oc (fn-ock-recover-extended
+                                        (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
+                                        configs frontier max-conns)))
+                        (:instance fn-sca-load-held-rows-establishes-relation
+                                   (rows (append prefix suffix))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-cat-ocl-relation)))))
+
+; The open's intern: an event list the intern accepts is a list of wire
+; events (fn-intern-event refuses every other value).
+(local (defthm fn-sca-intern-event-accepts-wire-event
+   (implies (not (equal (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad))
+            (fn-wire-event-p w))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn-intern-event fn-wire-event-p
+                                                mv-nth car-cons cdr-cons
+                                                (:executable-counterpart zp)
+                                                (:executable-counterpart equal))
+                                              (theory 'minimal-theory))))))
+
+(defthm fn-sca-intern-events-accepts-wire-events
+  (implies (and (true-listp ws)
+                (not (equal (mv-nth 0 (fn-intern-events ws keyring generation fn-arena)) :bad)))
+           (fn-wire-event-listp ws))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
+           :in-theory (union-theories '(fn-intern-events fn-wire-event-listp true-listp
+                                        mv-nth car-cons cdr-cons (:executable-counterpart zp)
+                                        (:executable-counterpart equal)
+                                        (:executable-counterpart fn-wire-event-listp)
+                                        (:induction fn-intern-events))
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/4" :use ((:instance fn-sca-intern-event-accepts-wire-event (w (car ws)))))
+          ("Subgoal *1/3" :use ((:instance fn-sca-intern-event-accepts-wire-event (w (car ws)))))
+          ("Subgoal *1/2" :use ((:instance fn-sca-intern-event-accepts-wire-event (w (car ws)))))))
+
+; KEYSTONE (E2 and E1, the full open).  The rows the open interns from the
+; decoded journal WS into the cleared arena (books/store-intern.lisp
+; fn-intern-events under the open's keyring nil and generation 0; the native
+; chunked intern is the same step, books/store-recover-stream.lisp
+; fn-srs-one-step-is-the-intern-of-the-decode): the installed store's
+; history is WS through that arena, and the catalog the host loads is in R.
+; The hypotheses are the host's own checks (:bad, :fault) and WS a true list.
+(local (defthm fn-sca-arena-p-of-clear
+   (fn-arena-p (fn-arena-clear fn-arena))
+   :hints (("Goal" :in-theory (enable fn-arena-clear)))))
+
+(defthm fn-sca-ocl-relation-at-full-open
+  (let* ((arena0 (fn-arena-clear fn-arena))
+         (rows (mv-nth 0 (fn-intern-events ws nil 0 arena0)))
+         (arena (mv-nth 1 (fn-intern-events ws nil 0 arena0)))
+         (oc (fn-ock-recover-extended
+              (fn-sco-extend (fn-sco-capture configs nil) configs rows)
+              configs frontier max-conns)))
+    (implies (and (true-listp ws)
+                  (not (equal rows :bad))
+                  (not (equal oc :fault)))
+             (and (equal (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                          arena)
+                         ws)
+                  (fn-cat-ocl-relation
+                   oc arena
+                   (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                          view-index arena fn-cat)))))
+  :hints (("Goal" :use ((:instance fn-sca-ocl-relation-at-recover
+                                   (prefix nil)
+                                   (suffix (mv-nth 0 (fn-intern-events ws nil 0 (fn-arena-clear fn-arena))))
+                                   (fn-arena (mv-nth 1 (fn-intern-events ws nil 0 (fn-arena-clear fn-arena)))))
+                        (:instance fn-sca-intern-events-accepts-wire-events
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-arena-p
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-handles-in
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-materializes
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-are-store-events
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(binary-append fn-sca-arena-p-of-clear
+                                        (:executable-counterpart natp)
+                                        (:executable-counterpart consp))))))
+
 ;; -----------------------------------------------------------------------------
 ; The finish the host calls (fn-owner-finish-submission): T4 BEFORE T2.
 ;
@@ -657,6 +784,52 @@
                  (:instance fn-sca-complete-keeps-the-relation
                             (fn-cat (fn-sca-withdraw-targets targets view-index
                                                              (fn-pc-expected pending) fn-cat)))))))
+
+
+; KEYSTONE (T2 at the host's finish, over the flipped store).
+; host/owner-host.lisp fn-owner-finish-submission installs the finished owner
+; (fn-apc-own-finish, which is fn-ccar-own-finish under the carried parse
+; and the store's event index: books/owner-parse-carried.lisp
+; fn-apc-own-finish-is-own-finish) and then runs fn-sca-finish with the token
+; it reads off the store's completion, (sequence-or-txid of the completion .
+; the pending's expected).  Before the finish the store is at :completing,
+; the ARTICLES of its rows through the arena are the catalog's history
+; RECORDS0 followed by the completing record W, and the pending holds the
+; store's own row for W (fn-cat-prepare-sealed: its handle is in the arena
+; and it materializes to W).  After, R holds as the equality at the idle
+; store, with the owner's live relation.
+(defthm fn-sca-ocl-relation-of-finish
+  (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+         (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
+         (w (fn-held-wire-of (fn-pc-held pending) fn-arena)))
+    (implies (and (fn-ocl-relation oc)
+                  (fn-cat-history-relation records0 fn-arena fn-cat)
+                  (fn-sn-completion-enabledp s)
+                  (equal (fn-sf-article-records (fn-rows-wire-of (fn-sf-records (fn-sn-files s)) fn-arena))
+                         (append (fn-sf-article-records records0) (list w)))
+                  (fn-pc-p pending)
+                  (equal token (fn-pc-token pending))
+                  (equal (fn-pc-expected pending) (fn-cat-count fn-cat))
+                  (< (fn-record-payload (fn-pc-held pending)) (fn-arena-count fn-arena))
+                  (fn-record-p w))
+             (fn-cat-ocl-relation
+              (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))
+              fn-arena
+              (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat)))))
+  :hints (("Goal" :use ((:instance fn-cat-ocl-relation-of-article-finish-by
+                                   (w (fn-held-wire-of (fn-pc-held pending) fn-arena))
+                                   (fn-cat2 (mv-nth 2 (fn-sca-finish
+                                                       (cons (nfix (cdr (fn-sf-completion
+                                                                         (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+                                                             (fn-pc-expected pending))
+                                                       pending view-index targets fn-cat))))
+                        (:instance fn-sca-finish-keeps-the-relation
+                                   (records records0)
+                                   (token (cons (nfix (cdr (fn-sf-completion
+                                                            (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+                                                (fn-pc-expected pending)))
+                                   (w (fn-held-wire-of (fn-pc-held pending) fn-arena))))
+           :in-theory (theory 'minimal-theory))))
 
 (local (defthm fn-sca-view-articles-of-complete-pinned
    (implies (and (natp v) (<= v (fn-cat-count fn-cat)))

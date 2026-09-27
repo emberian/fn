@@ -6997,14 +6997,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cat-ocl-relation-at-recover"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cat-ocl-relation-at-init"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cat-ocl-relation-of-article-finish"
         },
         {
@@ -7022,6 +7014,30 @@
         {
           "kind": "theorem",
           "name": "fn-cat-ocl-relation-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-article-finish-by"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-relation-at-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-relation-at-full-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-relation-of-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-intern-events-accepts-wire-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-store-rows-are-values"
         }
       ]
     },

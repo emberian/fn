@@ -1,49 +1,35 @@
 ; fn: teeth for books/catalog-entries.lisp (wave 5, lane catalog-boundary-owner,
 ; 2026-09-26).
 ;
-; What this book is evidence FOR.  `fn-cat-ocl-relation-at-recover': the owner
-; host/owner-host.lisp fn-owner-recover-extended installs from the capture of
-; a prefix extended over a suffix -- here a one-article history under the
-; default configuration record, opened :ok on both splits -- is in R with
-; the catalog the load fold builds from the creators over the same history:
-; every conjunct evaluated (fn-ocl-relation, the idle phase, the records,
-; and the exec fold's fn-cat-history-relation on live stobjs).  Hypothesis
-; removal: an install the host refuses (connection bound not natural) is
-; :fault and :fault satisfies no relation; a generation that is not natural
-; makes the interned rows fail fn-held-p and the relation false (on the
-; logical side, by evaluation).  `fn-cat-load-of-append': loading the prefix
-; then the suffix on live stobjs materializes the same rows as loading the
-; history.
+; What this book is evidence FOR (restated over the flipped store by lane
+; catalog-columns, 2026-09-27; the relation reads ALPHA of the store's rows,
+; books/store-intern.lisp fn-rows-wire-of, and the entries are the host's):
 ;
-; `fn-cat-ocl-relation-of-article-finish' (T2): on owner-tests' recipe (the
-; model owner posting one article up to :completing) every store-side
-; conjunct is evaluated -- the completion is enabled, the history's articles
-; are the (empty) catalog's rows followed by the completing record, the
-; finish keeps the records and returns an idle store -- and the catalog side
-; on the logical side: fn-cat-complete by the pending's token over the
-; interned record restores the equality, and a stale token or a mismatched
-; expected leaves the catalog behind the history.  NOT witnessed here: the
-; `fn-ocl-relation' conjunct itself on a :completing owner (the configured
-; owner the host installs opens at :recovering and needs the recovery
-; barriers and fn-ocfg-open before a post; tests/acl2/owner-checkpoint-open-
-; tests.lisp witnesses fn-ocl-relation of the installed owner, and
-; books/owner-commit-ocl.lisp's keystone carries it across the commit);
-; this sentence is the label.
-;
-; After the records flip (2026-09-27) the store's history holds interned
-; ROWS (books/store-intern.lisp fn-intern-events: the payload position a
-; HANDLE into the arena), so the history the owner is recovered from is the
-; one article's row, and every relation this book stated over wire records
-; is checked over ALPHA of the rows (fn-rows-wire-of through the arena that
-; holds the payload).  The host's catalog load at recovery is
-; books/served-catalog-owner.lisp fn-sca-load-held-rows over the store's
-; rows (KEYSTONE fn-sca-load-held-rows-establishes-relation); the POST's
-; catalog row is fn-cat-prepare-sealed over the row the store prepared.
-; FINDING (labelled at the forms below): fn-cat-ocl-relation reads the
-; store's records through fn-sf-article-records, which keeps only
-; fn-record-p values; a held row is never fn-record-p, so over the flipped
-; store it reads NO articles, and the T2 keystone's antecedent is
-; unsatisfiable there.
+; books/served-catalog-owner.lisp fn-sca-ocl-relation-at-full-open (E1/E2):
+; the host's full open on live stobjs -- the arena cleared, the one-article
+; journal interned, the owner installed over the rows, the catalog loaded by
+; fn-sca-load-held-rows -- with every hypothesis and conclusion conjunct
+; evaluated (the catalog holds the article); removal witnesses for (true-listp
+; ws) and (not :fault); the :bad check labelled (no witness constructible).
+; fn-sca-ocl-relation-at-recover (E3, any prefix/suffix split): the two
+; splits install the same owner at an idle store holding the rows; removal
+; witnesses for fn-rows-handles-inp and fn-arena-p (evaluated) and for
+; fn-wire-event-listp (symbolic: its only falsifier under the others is a
+; payload over *fn-record-max-payload* octets).
+; fn-sca-ocl-relation-of-finish (T2 at fn-owner-finish-submission): a
+; configured owner at :completing (owner-advance-carried-tests' recipe)
+; over an arena holding its payloads, the host's catalog, pending, token and
+; targets: every hypothesis and conclusion conjunct evaluated; removal
+; witnesses for the token, the expected count, the catalog's relation, the
+; articles equation and the handle; fn-ocl-relation and the completion gate
+; only jointly (the node-replaced owner closes the gate too); fn-pc-p and
+; fn-record-p of W labelled below.
+; fn-cat-load-of-append: loading the prefix then the suffix on live stobjs
+; materializes the same rows as loading the history.
+; The model-level T2 (fn-cat-ocl-relation-of-article-finish, over
+; fn-cat-complete) on owner-tests' recipe: the store side evaluated, the
+; catalog side on the logical side with the stale-token and
+; mismatched-expected witnesses.
 
 (in-package "ACL2")
 (include-book "../../books/catalog-entries")
@@ -51,6 +37,7 @@
 (include-book "../../books/crypto-attach")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "owner-advance-carried-tests")   ; T2: a configured owner at :completing
 
 (assert-event
  (and (eq (symbol-class 'fn-cat-history-prefix-relation (w state)) :ideal)
@@ -159,12 +146,9 @@
                                     (fn-own-view *cet-own*))
                      (list 1 t t *cet-h* 1)))
 
-;; FINDING (books/catalog-entries.lisp on the flipped store): the relation
-;; fn-cat-ocl-relation states reads the store's records through
-;; fn-sf-article-records, which keeps only fn-record-p values; the recovered
-;; store's row is not one, so it reads no article, while ALPHA of the rows
-;; reads the one.  The keystone's catalog (fn-cat-load over the same history)
-;; loads nothing from rows (its generation-0 image above is over wire records).
+;; Why R reads ALPHA of the rows (the vacuity catalog-columns removed): a
+;; held row is never fn-record-p, so fn-sf-article-records of the raw rows
+;; is empty, while ALPHA of the rows reads the one article.
 (assert-event (and (not (fn-record-p *cet-r0*))
                    (equal (fn-sf-article-records *cet-hr*) nil)
                    (equal (fn-sf-article-records (cet-wires *cet-payloads* *cet-hr*)) *cet-h*)))
@@ -224,6 +208,141 @@
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
+; E at the host's entries over the flipped store (catalog-columns,
+; 2026-09-27): books/served-catalog-owner.lisp fn-sca-ocl-relation-at-full-open
+; and fn-sca-ocl-relation-at-recover, over the catalog the host loads
+; (fn-sca-load-held-rows).  fn-cat-ocl-relation is non-executable
+; (defun-nx); its conjuncts at an idle store are evaluated: the owner's live
+; relation, the idle phase, and R over ALPHA of the store's rows.
+
+;; The host's full open, on live stobjs: the arena cleared, the decoded
+;; journal WS interned (keyring nil, generation 0), the owner installed over
+;; the rows, the catalog loaded from the installed store's rows.
+(defun cet-open-run (ws max-conns fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let ((fn-arena (fn-arena-clear fn-arena)))
+    (mv-let (rows fn-arena)
+      (fn-intern-events ws nil 0 fn-arena)
+      (if (equal rows :bad)
+          (mv :bad fn-arena fn-cat)
+        (let ((oc (fn-ock-recover-extended
+                   (fn-sco-extend (fn-sco-capture *cet-configs* nil) *cet-configs* rows)
+                   *cet-configs* 8 max-conns)))
+          (if (equal oc :fault)
+              (mv :fault fn-arena fn-cat)
+            (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+                   (srows (fn-sf-records (fn-sn-files s)))
+                   (fn-cat (fn-sca-load-held-rows
+                            srows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+                            fn-arena fn-cat)))
+              (mv (list (equal (fn-rows-wire-of srows fn-arena) ws)
+                        (fn-ocl-relation oc)
+                        (if (fn-own-store-idlep s) t nil)
+                        (fn-cat-history-relation (fn-rows-wire-of srows fn-arena) fn-arena fn-cat)
+                        (fn-cat-count fn-cat)
+                        (fn-cat-wire-list 0 fn-arena fn-cat))
+                  fn-arena fn-cat))))))))
+
+(defun cet-open-exec (ws max-conns)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (cet-open-run ws max-conns fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+; fn-sca-ocl-relation-at-full-open, reachable positive witness (non-vacuous:
+; the catalog holds the one article, materialized to the journal's record):
+; every hypothesis (WS a true list, the intern not :bad, the install not
+; :fault) and every conjunct of the conclusion.
+(assert-event (true-listp *cet-h*))
+(assert-event (not (equal (cet-rows *cet-h*) :bad)))
+(assert-event (equal (cet-open-exec *cet-h* 4) (list t t t t 1 *cet-h*)))
+; Hypothesis removal, (true-listp ws): a journal with an improper tail.  The
+; intern stops at the tail (not :bad), the install is not :fault, R holds,
+; and the conclusion's first conjunct fails: the store's history is not WS.
+(defconst *cet-improper* (cons *cet-w0* 'tail))
+(assert-event (not (true-listp *cet-improper*)))
+(assert-event (not (equal (cet-rows *cet-improper*) :bad)))
+(assert-event (equal (cet-open-exec *cet-improper* 4) (list nil t t t 1 *cet-h*)))
+; Hypothesis removal, (not (equal oc :fault)): the host refuses the install
+; (connection bound not natural); the intern and WS hold, and :fault is in
+; no relation (fn-cat-ocl-relation's first conjunct).
+(assert-event (equal (cet-open-exec *cet-h* nil) :fault))
+(assert-event (not (fn-ocl-relation :fault)))
+; (not (equal rows :bad)) is the host's own check before the install; no
+; removal witness is constructible here: every refused intern tried makes the
+; install :fault (the retained hypothesis fails too), and the weakened
+; theorem is NOT proved (a failed proof search is not a counterexample).
+(assert-event (equal (cet-open-exec (list *cet-w0* 17) 4) :bad))
+(assert-event (equal (fn-ock-recover-extended
+                      (fn-sco-extend (fn-sco-capture *cet-configs* nil) *cet-configs* :bad)
+                      *cet-configs* 8 4)
+                     :fault))
+
+; fn-sca-ocl-relation-at-recover, the checkpoint split (prefix the rows,
+; suffix nil) and the full split: the installed store holds exactly the rows
+; at an idle store (asserted above: *cet-full*, *cet-ckpt*), and over the
+; arena holding the payload the three row hypotheses and R hold
+; (cet-held-exec above: (1 t t ...) -- its second element is the conjunction
+; of fn-arena-p, the rows' values, the handles and the wire events).
+; Hypothesis removal (logical side: the arena is its list of payloads):
+;  (fn-rows-handles-inp): the empty arena.  The arena is one, ALPHA of the
+;  row is a wire record (its payload read as no octets), the handle is
+;  outside, and R fails (its handle conjunct).
+;  (fn-arena-p): a second, unreferenced payload that is no octet list.  The
+;  handle is inside, ALPHA of the row is the record, and R fails (its arena
+;  conjunct).
+(defthm cet-w-at-recover-handles-and-arena-needed
+  (let* ((own (fn-ocfg-owner *cet-ckpt*))
+         (rows (fn-sf-records (fn-sn-files (fn-own-store own))))
+         (idx (fn-own-view-index (fn-own-view own)))
+         (bad-arena (list (fn-record-payload *cet-w0*) 'not-octets)))
+    (and (equal rows (append *cet-hr* nil))
+         (fn-arena-p nil)
+         (fn-wire-event-listp (fn-rows-wire-of rows nil))
+         (not (fn-rows-handles-inp rows nil))
+         (not (fn-cat-history-relation (fn-rows-wire-of rows nil) nil
+                                       (fn-sca-load-held-rows rows idx nil nil)))
+         (fn-rows-handles-inp rows bad-arena)
+         (equal (fn-rows-wire-of rows bad-arena) *cet-h*)
+         (fn-wire-event-listp (fn-rows-wire-of rows bad-arena))
+         (not (fn-arena-p bad-arena))
+         (not (fn-cat-history-relation (fn-rows-wire-of rows bad-arena) bad-arena
+                                       (fn-sca-load-held-rows rows idx bad-arena nil)))))
+  :rule-classes nil)
+
+;  (fn-wire-event-listp (fn-rows-wire-of ...)): with the arena an arena and
+;  the handle inside, ALPHA of a held row fails to be a wire record only when
+;  its payload exceeds *fn-record-max-payload* (4,261,412,864 octets), too
+;  long to evaluate; the witness is symbolic over any such payload P: the
+;  retained hypotheses hold, the removed one fails, and R fails (the catalog
+;  commits the row, the history's articles are empty).
+(defthm cet-w-at-recover-wire-events-needed
+  (let* ((own (fn-ocfg-owner *cet-ckpt*))
+         (rows (fn-sf-records (fn-sn-files (fn-own-store own))))
+         (idx (fn-own-view-index (fn-own-view own))))
+    (implies (and (fn-cbor-octet-listp p) (< *fn-record-max-payload* (len p)))
+             (and (fn-arena-p (list p))
+                  (fn-rows-handles-inp rows (list p))
+                  (not (fn-wire-event-listp (fn-rows-wire-of rows (list p))))
+                  (not (fn-cat-history-relation (fn-rows-wire-of rows (list p)) (list p)
+                                                (fn-sca-load-held-rows rows idx (list p) nil))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-rows-wire-of fn-row-wire-of fn-row-bytes fn-held-wire
+                                     fn-rows-handles-inp fn-row-handle-inp fn-wire-event-listp
+                                     fn-wire-event-p fn-record-p fn-record-payloadp
+                                     fn-cat-history-relation fn-sf-article-records
+                                     fn-record-shapep fn-store-retention-event-p
+                                     fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
+                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp
+                                     fn-th-topic-eventp fn-th-local-admin-eventp
+                                     fn-record-internals fn-store-event-nth
+                                     fn-arena-p-is-payload-listp fn-arn-payload-listp))))
+
+; -----------------------------------------------------------------------------
 ; T2: the article completion.  owner-tests' recipe: the model owner, one
 ; reader, a CLI connection posting one article up to :completing.
 
@@ -246,11 +365,11 @@
 ;; The payloads the arena holds at handles 0, 1, ...: the article's bytes at
 ;; handle 0, as after the host's seal of the POST (the store prepares the
 ;; ROW, fn-intern-row-at at the arena's count before the seal).
-(defconst *sr-arena* *cet-payloads*)
+(defconst *cet-sr-arena* *cet-payloads*)
 (bpr-lift fn-own-run 2)
 (bpr-lift fn-own-step 2)
-(defconst *cet-begun* (in-arena-fn-own-step *sr-arena* (in-arena-fn-own-step *sr-arena* *cet-a* '(:open)) '(:begin 1)))
-(defconst *cet-completing* (in-arena-fn-own-run *sr-arena* *cet-begun* (butlast (cet-post-events *cet-r0*) 1)))
+(defconst *cet-begun* (in-arena-fn-own-step *cet-sr-arena* (in-arena-fn-own-step *cet-sr-arena* *cet-a* '(:open)) '(:begin 1)))
+(defconst *cet-completing* (in-arena-fn-own-run *cet-sr-arena* *cet-begun* (butlast (cet-post-events *cet-r0*) 1)))
 (defconst *cet-s* (fn-own-store *cet-completing*))
 (defconst *cet-records* (fn-sf-records (fn-sn-files *cet-s*)))
 
@@ -266,11 +385,9 @@
 (assert-event (fn-record-p *cet-w0*))
 ;; The octet record's prepare is refused: the store stays short of :completing.
 (assert-event (not (fn-sn-completion-enabledp
-                    (fn-own-store (in-arena-fn-own-run *sr-arena* *cet-begun*
+                    (fn-own-store (in-arena-fn-own-run *cet-sr-arena* *cet-begun*
                                                        (butlast (cet-post-events *cet-w0*) 1))))))
-;; FINDING (as above): the T2 keystone's antecedent reads the store's records
-;; through fn-sf-article-records, which sees no article in the row history,
-;; so it cannot equal (append ... (list w)) on the flipped store.
+;; (as above) the raw rows read no article; ALPHA of them the one.
 (assert-event (equal (fn-sf-article-records *cet-records*) nil))
 
 ; The store-side conclusion: the host's finish keeps the records and leaves
@@ -316,3 +433,142 @@
                                                                     (fn-pc-make (cons 0 0) 1 held nil nil)
                                                                     nil)))))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; T2 at the host's finish over the flipped store (catalog-columns,
+; 2026-09-27): books/served-catalog-owner.lisp fn-sca-ocl-relation-of-finish.
+; The configured owner of owner-advance-carried-tests (config-owner-live's
+; opened owner, one POST run through fn-ocfg-step to :completing; its three
+; article rows name handles 0, 1, 2, each the same bytes), over an arena
+; holding those payloads.  The catalog is the host's load of the rows before
+; the completing one; the pending is the store's own row prepared after the
+; seal (fn-cat-prepare-sealed); the token is the host's, read off the
+; store's completion; the targets are the host's (fn-sca-targets-of over the
+; finished view's withdrawals).  Every hypothesis and every conjunct of the
+; conclusion (fn-cat-ocl-relation's, at the idle store) is evaluated.
+
+(defconst *cet-p* (fn-record-payload (own-record-wire 0 0 "<x>")))
+(defconst *cet-t2-payloads* (list *cet-p* *cet-p* *cet-p*))
+(defconst *cet-t2-oc*
+  (in-arena-acar-t-ocfg-run *cet-t2-payloads* *scar-t-oc*
+                            (osi-drop-last (own-post-events *acar-t-record*))))
+
+;; MODE: nil the host's pending; (:expected E) a pending made directly with
+;; expected E (same token shape); (:token T) the host's pending, token T.
+;; NCAT, NREC: the catalog is loaded from the first NCAT rows, RECORDS0 is
+;; ALPHA of the first NREC rows.
+(defun cet-t2-run (oc payloads ncat nrec mode fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (o (fn-ocfg-owner oc))
+         (s (fn-own-store o))
+         (rows (fn-sf-records (fn-sn-files s)))
+         (records0 (fn-rows-wire-of (take nrec rows) fn-arena))
+         (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-own-view-index (fn-own-view o))
+                                        fn-arena fn-cat))
+         (row (fn-sn-completion-record s))
+         (w (fn-held-wire-of row fn-arena))
+         (pending (if (and (consp mode) (eq (car mode) :expected))
+                      (fn-pc-make (cons (nfix (fn-record-txid row)) (cadr mode)) (cadr mode)
+                                  row nil nil)
+                    (fn-cat-prepare-sealed w row nil nil nil fn-arena fn-cat)))
+         (token (if (and (consp mode) (eq (car mode) :token))
+                    (cadr mode)
+                  (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending))))
+         (hyps (list (fn-ocl-relation oc)
+                     (fn-cat-history-relation records0 fn-arena fn-cat)
+                     (fn-sn-completion-enabledp s)
+                     (equal (fn-sf-article-records (fn-rows-wire-of rows fn-arena))
+                            (append (fn-sf-article-records records0) (list w)))
+                     (fn-pc-p pending)
+                     (equal token (fn-pc-token pending))
+                     (equal (fn-pc-expected pending) (fn-cat-count fn-cat))
+                     (< (fn-record-payload (fn-pc-held pending)) (fn-arena-count fn-arena))
+                     (fn-record-p w)))
+         (finished (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish o (fn-ocfg-config oc) fn-arena))))
+         (fo (fn-ocfg-owner finished))
+         (targets (fn-sca-targets-of (fn-record-msgid row)
+                                     (fn-own-view-withdrawals (fn-own-view fo)))))
+    (mv-let (word pending2 fn-cat)
+      (fn-sca-finish token pending (fn-own-view-index (fn-own-view fo)) targets fn-cat)
+      (declare (ignore word pending2))
+      (mv (list hyps
+                (list (fn-ocl-relation finished)
+                      (if (fn-own-store-idlep (fn-own-store fo)) t nil)
+                      (fn-cat-history-relation
+                       (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store fo))) fn-arena)
+                       fn-arena fn-cat)
+                      (fn-cat-count fn-cat)))
+          fn-arena fn-cat))))
+
+(defun cet-t2-exec (oc payloads ncat nrec mode)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (cet-t2-run oc payloads ncat nrec mode fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(defconst *cet-t2-n* (len (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *cet-t2-oc*))))))
+(defconst *cet-t2-all* (list t t t t t t t t t))
+
+; The history: two retention events, then the completing article (handle 2).
+(assert-event (equal *cet-t2-n* 3))
+(assert-event (equal (fn-record-payload (fn-sn-completion-record
+                                         (fn-own-store (fn-ocfg-owner *cet-t2-oc*))))
+                     2))
+
+; Reachable positive witness: all nine hypotheses, and the conclusion (the
+; owner's live relation after the finish, the idle store, R as the
+; equality), the catalog holding the history's one article (non-vacuous: R
+; reads ALPHA of the rows, and the retention rows are skipped).
+(assert-event (equal (cet-t2-exec *cet-t2-oc* *cet-t2-payloads* 2 2 nil)
+                     (list *cet-t2-all* (list t t t 1))))
+
+; Hypothesis removal (each: every retained hypothesis holds, the removed one
+; fails, and the conclusion fails -- here its R conjunct).
+;  (equal token (fn-pc-token pending)): a stale token; the catalog refuses.
+(assert-event (equal (cet-t2-exec *cet-t2-oc* *cet-t2-payloads* 2 2 '(:token (99 . 0)))
+                     (list (list t t t t t nil t t t) (list t t nil 0))))
+;  (equal (fn-pc-expected pending) (fn-cat-count fn-cat)): a pending that
+;  expected one more row than the catalog holds.
+(assert-event (equal (cet-t2-exec *cet-t2-oc* *cet-t2-payloads* 2 2 '(:expected 1))
+                     (list (list t t t t t t nil t t) (list t t nil 0))))
+;  (fn-cat-history-relation records0 fn-arena fn-cat): the catalog already
+;  holds the article (loaded from all three rows) while RECORDS0 does not.
+(assert-event (equal (cet-t2-exec *cet-t2-oc* *cet-t2-payloads* 3 2 nil)
+                     (list (list t nil t t t t t t t) (list t t nil 2))))
+;  the articles equation: RECORDS0 already holds the article (and the
+;  catalog with it), so the history is not RECORDS0 followed by W.
+(assert-event (equal (cet-t2-exec *cet-t2-oc* *cet-t2-payloads* 3 3 nil)
+                     (list (list t t t nil t t t t t) (list t t nil 2))))
+;  (< handle (fn-arena-count fn-arena)): an arena of two payloads; the row's
+;  handle is outside (ALPHA reads no octets for it, still a record, the
+;  equation holds), the pending made at the count directly, and R fails
+;  (its handle conjunct).
+(assert-event (equal (cet-t2-exec *cet-t2-oc* (list *cet-p* *cet-p*) 2 2 '(:expected 0))
+                     (list (list t t t t t t t nil t) (list t t nil 1))))
+
+;  (fn-ocl-relation oc), JOINTLY with the completion gate: the same owner
+;  with its store's node replaced (owner-advance-carried-tests'
+;  *scar-t-bad-node*) fails both, and the owner after the finish is in no
+;  relation.  No owner tried here fails the relation alone.
+;  NOT witnessed alone: (fn-pc-p pending) (the host's pending is always
+;  fn-cat-prepare-sealed's, a pc when it is not refused by name) and
+;  (fn-record-p W) (its only falsifier under the rest is a payload over
+;  *fn-record-max-payload* octets); the gate (fn-sn-completion-enabledp)
+;  only jointly, above.
+(defconst *cet-t2-bad*
+  (let* ((oc *cet-t2-oc*) (o (fn-ocfg-owner oc)))
+    (fn-ocfg-make
+     (fn-own-make (update-nth 3 *scar-t-bad-node* (fn-own-store o)) (fn-own-view o) (fn-own-conns o)
+                  (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
+                  (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                  (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
+                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
+     (fn-ocfg-config oc) (fn-ocfg-pins oc) (fn-ocfg-staged oc))))
+(assert-event (equal (cet-t2-exec *cet-t2-bad* *cet-t2-payloads* 2 2 nil)
+                     (list (list nil t nil t t t t t t) (list nil nil t 1))))
