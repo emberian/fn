@@ -138,7 +138,7 @@
          (fn-durable-octets 7 120 20))
   :rule-classes nil)
 
-; --- The stage (lane arena-offheap-3, PRF-296).  A buffer seal stages its
+; --- The stage (lane arena-offheap-3, PRF-305).  A buffer seal stages its
 ; copy: handle 1 reads (1 2 3 4) from its stage slot; a release of a STAGED
 ; handle keeps the copy; the reseat re-points handle 1 at an extent (its
 ; length is then the extent's, 4) and the release frees the slot; handle 0

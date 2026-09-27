@@ -17,7 +17,7 @@
 ; cache, ACL2 checks the entry's trailer, and a mismatch is refused by name
 ; (books/payload-extent.lisp; host/native/extent.lisp).
 ;
-; The STAGE (lane arena-offheap-3, PRF-296): an array of page stobjs, one
+; The STAGE (lane arena-offheap-3, PRF-305): an array of page stobjs, one
 ; slot per handle, sized on demand.  A BUFFER seal (the owner's POST
 ; prepare, before its log batch is durable) copies the payload into the
 ; handle's own stage page and marks the handle :staged; once the batch is

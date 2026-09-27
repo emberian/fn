@@ -7017,14 +7017,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cat-ocl-relation-at-recover"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cat-ocl-relation-at-init"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cat-ocl-relation-of-article-finish"
         },
         {
@@ -7042,6 +7034,38 @@
         {
           "kind": "theorem",
           "name": "fn-cat-ocl-relation-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-article-finish-by"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-relation-at-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-relation-at-full-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-relation-of-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-intern-events-accepts-wire-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-ocl-store-rows-are-values"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-intern-events-composites-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-held-rowsp-of-record-values"
         }
       ]
     },
@@ -10130,6 +10154,26 @@
         {
           "kind": "theorem",
           "name": "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-duplicate-segment-fence-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-recovered-segment-fence-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-file-fence-keeps-entry-operations"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-one-barrier-loses-a-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-journal-fence-keeps-the-rotated-segment"
         }
       ]
     },
@@ -10636,7 +10680,17 @@
         {
           "kind": "theorem",
           "name": "fn-psrv-prepare-identity-preserves-invariant",
-          "note": "host/owner-host.lisp fn-owner-prepare-identity: fn-psrv-prepare-identity (the signed composite's article groups are tested)."
+          "note": "host/owner-host.lisp fn-owner-prepare-identity now calls fn-oiis-prepare-identity (books/owner-identity-served.lisp), this theorem at the row signed-post interns. Teeth: tests/acl2/owner-prepare-served-events-tests.lisp (reachable keyring and composite-row witnesses, the unserved composite refused)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oiis-prepare-identity-preserves-invariant",
+          "note": "KEYSTONE for the host line: host/owner-host.lisp fn-owner-prepare-identity calls fn-oiis-prepare-identity over the wire value and the arena's count. Teeth: tests/acl2/owner-identity-served-tests.lisp (*ois-staged* reachable positive, *pse-t2-reserved* refused by name, the wire value where the row is expected, *ois-bad* corrupted-state)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oiis-prepare-identity-unfolds",
+          "note": "-unfolds: the entry is fn-oii-ocfg-prepare-identity when the interned row is served, the owner unchanged otherwise; both branches witnessed in tests/acl2/owner-identity-served-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -10752,7 +10806,7 @@
       ]
     },
     {
-      "id": "PRF-296",
+      "id": "PRF-305",
       "events": [
         {
           "kind": "theorem",
@@ -10785,6 +10839,216 @@
         {
           "kind": "theorem",
           "name": "fn-arx-commit-reseats-keep-the-arena"
+        }
+      ]
+    },
+    {
+      "id": "PRF-296",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orr-read-span-at-a-captured-view-restores-the-owner"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocvp-reader-view-is-at-the-current-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-a-publication-waits-for-the-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-span-read-is-historical-read"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-span-read-keeps-the-reader-relation-and-the-rest"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-restoring-the-working-view-keeps-the-reader-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-reader-relation-at-a-captured-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orr-relation-of-with-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocvp-step-preserves-inv"
+        }
+      ]
+    },
+    {
+      "id": "PRF-293",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oii-ocfg-prepare-identity-is-intern-then-step",
+          "note": "KEYSTONE. Under fn-own-relation the owner's identity entry at the arena's count is the (:prepare-identity ROW) step over the row fn-intern-event makes. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-identity-row-is-the-intern",
+          "note": "The unsealed row at the arena's count is the intern's row. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-seal-is-the-intern-arena",
+          "note": "The payload the host seals is the intern's arena update. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-composite-row-is-held",
+          "note": "A composite whose article decodes interns to a retained composite carrying it unchanged, and seals. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-301",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hist-load-is-the-history",
+          "note": "KEYSTONE. The open's load answers the history for every salt. Teeth: tests/acl2/history-columns-tests.lisp (positive; improper-list removal; must-fail)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-count-serves-cei-count",
+          "note": "Teeth: positive and a corrupted index (removal of the correspondence)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-at-serves-cei-get",
+          "note": "Teeth: positive at four sequences; removal of the correspondence and of natp; the 2^32 bound symbolic (hct-at-past-the-bound-is-nil-in-the-index)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-msgid-records-serve-cei",
+          "note": "Teeth: positive at five Message-IDs incl. a composite's article; removal of the correspondence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-append{correspondence}",
+          "note": "defabsstobj obligation; the exec columns run on a live stobj against the list under two salts, growth past 16 rows and a real 32-bit collision; a labelled corrupted-state witness."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-msgid-records{correspondence}",
+          "note": "defabsstobj obligation (as above)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-sync-after-run-is-the-history",
+          "note": "KEYSTONE (stage 2a). Teeth: tests/acl2/history-columns-store-tests.lisp (positive on owner-operator-tests' related owner and a run; removal of R; removal of fn-own-relation NOT constructed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-sync-of-prefix-is-the-history",
+          "note": "Teeth: live stobj sync at prefix lengths 0, 2, 4; removal of the prefix hypothesis; must-fail."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-bytes-carried-is-bytes-extend",
+          "note": "Teeth: live stobj, valid/absent/over-count caches; removal of R; must-fail."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-debt-carried-is-debt-extend",
+          "note": "Teeth: as bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-usage-carried-is-usage-extend",
+          "note": "Teeth: as bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-count-is-used",
+          "note": "Teeth: as bytes (the count column)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-282",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-run-refines-the-kernel",
+          "note": "Subject: the concrete kernel transitions host/native/io.lisp fnn-log-* call (fn-lgc-open, -t-prepare, -take, -consume-to, -append, the seal's -sealed-extent, -fence, -fence-failed, -finish-one, -rotate); equal under fn-lgc-of to the fn-lgk-* run PRF-264 speaks of, over the pipelined commit's operations."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-log-len-is-the-log-length",
+          "note": "Subject: fn-lgc-log-len, the length fnn-log-ensure-extent / fnn-log-append / fnn-log-fence use through fn-lgc-append-len, fn-lgc-fitsp and fn-lgc-fence; guard-verified, no octet built."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-extend-program-keeps-the-relation",
+          "note": "Host: fnn-log-ensure-extent runs fn-lg-extend-program over the concrete kernel."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-sealed-extent-fits-the-batch",
+          "note": "Host: fnn-log-ensure-extent then fnn-log-append (the seal)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-300",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-textp-is-a-record-metadata-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-textp-is-exactly-the-record-metadata-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-identity-text-is-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-post-evidence-is-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-group-name-requestp-is-bounded-by-the-codec"
+        }
+      ]
+    },
+    {
+      "id": "PRF-299",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-is-exact-node-abort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-cannot-acknowledge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves-invariant"
         }
       ]
     }

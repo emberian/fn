@@ -376,3 +376,74 @@
 (assert-event
  (fn-snt-relation (fn-sn-observed-seed *sit-groups* 32 1 *sit-orphan-history*)))
 (assert-event (fn-snt-relation *sit-orphan-recovered*))
+
+; ---------------------------------------------------------------------------
+; The deferred known abort (lane host-decisions, 2026-09-27).  Before it, a
+; known abort of a staged identity record was the identity
+; (`fn-sn-known-abort-enabledp' asked `fn-sn-record-bindsp' of every
+; non-retention candidate, which only a held row satisfies), so the owner
+; answered :fault and the host fenced where the abort was known.
+;
+; Reachable positive witness, keyring snapshot (`*sit-staged-identity*',
+; built above by the real reserve and `fn-sn-prepare-identity'): the whole
+; antecedent -- the relation, the record phase, a non-held candidate, the
+; gate -- and the whole conclusion: `:ready', the node advanced over the
+; consumed id to the frontier, the durable history and the successes
+; unchanged, the relation kept.
+(make-event `(defconst *sit-identity-aborted* ',(fn-sn-known-abort *sit-staged-identity*)))
+(assert-event (fn-snt-relation *sit-staged-identity*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-identity*)) :record-staged))
+(assert-event (fn-stxk-p (fn-sf-record-candidate (fn-sn-files *sit-staged-identity*))))
+(assert-event (fn-sn-known-abort-enabledp *sit-staged-identity*))
+(assert-event (not (equal *sit-identity-aborted* *sit-staged-identity*)))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-identity-aborted*)) :ready))
+(assert-event
+ (equal (fn-sn-node *sit-identity-aborted*)
+        (fn-replay-advance-txid (fn-sn-node *sit-staged-identity*)
+                                (fn-sf-frontier (fn-sn-files *sit-staged-identity*)))))
+(assert-event
+ (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *sit-identity-aborted*)))
+        (fn-sf-frontier (fn-sn-files *sit-identity-aborted*))))
+(assert-event (equal (fn-sf-records (fn-sn-files *sit-identity-aborted*))
+                     (fn-sf-records (fn-sn-files *sit-staged-identity*))))
+(assert-event (equal (fn-sf-successes (fn-sn-files *sit-identity-aborted*))
+                     (fn-sf-successes (fn-sn-files *sit-staged-identity*))))
+(assert-event (fn-snt-relation *sit-identity-aborted*))
+
+; Reachable positive witness, signed composite (a `fn-hstxa-p' row, not a
+; `fn-held-p' one), at the other abort phase: its data barrier returned, so
+; the abort takes `fn-sf-prepublish-abort'.
+(make-event `(defconst *sit-staged-composite-durable*
+               ',(fn-sn-io (fn-sn-prepare-identity (fn-sit-reserve *sit-after-enrollment*)
+                                                  *sit-composite*)
+                           :record-file :ok)))
+(make-event `(defconst *sit-composite-aborted* ',(fn-sn-known-abort *sit-staged-composite-durable*)))
+(assert-event (fn-snt-relation *sit-staged-composite-durable*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-composite-durable*))
+                     :record-data-durable))
+(assert-event (fn-hstxa-p (fn-sf-record-candidate (fn-sn-files *sit-staged-composite-durable*))))
+(assert-event (not (fn-held-p (fn-sf-record-candidate (fn-sn-files *sit-staged-composite-durable*)))))
+(assert-event (fn-sn-known-abort-enabledp *sit-staged-composite-durable*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-composite-aborted*)) :ready))
+(assert-event
+ (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *sit-composite-aborted*)))
+        (fn-sf-frontier (fn-sn-files *sit-composite-aborted*))))
+(assert-event (equal (fn-sf-records (fn-sn-files *sit-composite-aborted*))
+                     (fn-sf-records (fn-sn-files *sit-staged-composite-durable*))))
+(assert-event (fn-snt-relation *sit-composite-aborted*))
+
+; CORRUPTED-STATE witness (not reachable: the relation is false of it): the
+; staged snapshot with its live node already advanced past the event's
+; transaction id.  The event no longer applies, the gate refuses, and the
+; abort is the identity -- the gate is what separates it from the witness
+; above, not the candidate's kind.
+(make-event
+ `(defconst *sit-corrupt-staged-identity*
+    ',(fn-sn-update *sit-staged-identity* (fn-sn-files *sit-staged-identity*)
+                    (fn-replay-advance-txid (fn-sn-node *sit-staged-identity*)
+                                            (fn-sf-frontier (fn-sn-files *sit-staged-identity*))))))
+(assert-event (fn-sn-statep *sit-corrupt-staged-identity*))
+(assert-event (not (fn-snt-relation *sit-corrupt-staged-identity*)))
+(assert-event (not (fn-sn-known-abort-enabledp *sit-corrupt-staged-identity*)))
+(assert-event (equal (fn-sn-known-abort *sit-corrupt-staged-identity*)
+                     *sit-corrupt-staged-identity*))

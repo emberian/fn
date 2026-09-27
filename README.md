@@ -57,7 +57,7 @@ fn is free software under the [AGPL-3.0](LICENSE). Start with
 small and self-contained, and `help wanted` marks bigger pieces. You can
 build on fn without touching a proof: clients, gateways, packages.
 
-A first check of the repository needs only Python 3.10 or newer:
+A first check of the repository needs only Python 3.11 or newer:
 
 ```sh
 git clone https://github.com/emberian/fn

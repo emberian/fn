@@ -104,3 +104,32 @@
 (assert-event (not (fn-sn-completion-enabledp *csnt-bad-completion*)))
 (assert-event (equal (fn-sn-finish *csnt-bad-completion*)
                      *csnt-bad-completion*))
+
+; The deferred known abort of a staged consumer event (lane host-decisions,
+; 2026-09-27; books/store-node-resolution `fn-sn-known-abort').  Before it
+; the abort of this state was the identity.  Reachable positive witness:
+; `*csnt-staged-ack*' is the real reserve and `fn-sn-prepare-consumer' of the
+; ack; the antecedent (relation, record phase, a consumer candidate, the
+; gate) and the conclusion (`:ready', the node at the frontier, the history
+; and the projection those of the committed registration, the relation).
+(defconst *csnt-ack-aborted* (fn-sn-known-abort *csnt-staged-ack*))
+(assert-event (fn-snt-relation *csnt-staged-ack*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *csnt-staged-ack*)) :record-staged))
+(assert-event (fn-cpe-eventp (fn-sf-record-candidate (fn-sn-files *csnt-staged-ack*))))
+(assert-event (fn-sn-known-abort-enabledp *csnt-staged-ack*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *csnt-ack-aborted*)) :ready))
+(assert-event
+ (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *csnt-ack-aborted*)))
+        (fn-sf-frontier (fn-sn-files *csnt-ack-aborted*))))
+(assert-event (equal (fn-sf-records (fn-sn-files *csnt-ack-aborted*))
+                     (fn-sf-records (fn-sn-files *csnt-after-reg*))))
+(assert-event (equal (fn-sn-consumer *csnt-ack-aborted*)
+                     (fn-sn-consumer *csnt-after-reg*)))
+(assert-event (fn-snt-relation *csnt-ack-aborted*))
+; The ack can be staged again after the abort, at the same Store sequence
+; (the abort consumed only the transaction id): the machine is open, not
+; fenced.
+(assert-event
+ (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare-consumer (csnt-reserve *csnt-ack-aborted*)
+                                                          (fn-cpe-make 2 3 3 (list :ack *csnt-cursor*)))))
+        :record-staged))

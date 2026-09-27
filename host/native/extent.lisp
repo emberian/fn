@@ -154,13 +154,3 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
   "Forget the cache (a store close or a reopen); descriptors stay open."
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (setq *fnn-extent-cache* nil)))
-
-(defun fnn-extent-places (path places count)
-  "The open's positions for the COUNT records the scan read from the segment
-at PATH: per record (FILE . PLACE), FILE this segment's new realizer id,
-PLACE ACL2's (fn-arx-text-places over the segment's entries); NIL for every
-record when ACL2 placed fewer or more (each record then stays resident)."
-  (if (and (consp places) (= (length places) count))
-      (let ((file (fnn-extent-register path)))
-        (mapcar (lambda (p) (cons file p)) places))
-      (make-list count :initial-element nil)))

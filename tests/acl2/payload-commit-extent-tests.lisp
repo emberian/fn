@@ -1,4 +1,4 @@
-; Tests for books/payload-commit-extent.lisp (lane arena-offheap-3, PRF-296).
+; Tests for books/payload-commit-extent.lisp (lane arena-offheap-3, PRF-305).
 ;
 ; 1. The functions the host calls are guard-verified.
 ; 2. The place search on a live arena: a record holding handle 0's payload

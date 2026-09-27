@@ -192,7 +192,9 @@ A transaction file is one frame of the grammar in
 [`books/frame.lisp`](../books/frame.lisp), shared with both journals:
 magic `FNST`, version, record kind, a four-octet big-endian payload length,
 the encoded record, and a 32-octet integrity trailer. The store format is
-the profile's (format 8, D27; a format-7 store opens under its translation),
+the profile's (format 8 when this experiment ran, D27; since 2026-09-27 the
+one store format is 9, the record log, and a format-8 or format-7 profile is
+refused at the open by name, specs/storage.md STO-028),
 and it is owned by [`books/byte-store-frame.lisp`](../books/byte-store-frame.lisp)
 rather than by a host constant: both hosts refuse a store whose decoded
 profile `fn-bs-profile-admittedp` does not admit (the native owner at install,

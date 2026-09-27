@@ -297,6 +297,12 @@ generation namespace.
 
 ### Selected-pack reclaim crash cuts
 
+(This and the next section describe the per-file layout (format 8),
+which no image opens since 2026-09-27; on the record log `pack`,
+`pack-reclaim` and `pack-retire` refuse by name, `reason=record-log`, and
+compaction and reclamation are the log's rotation and drop,
+specs/storage.md STO-034 and STO-028.)
+
 `fnn-pack-prefix-reclaim` calls the logical
 `fn-bs-pack-reclaim-plan` on the bounded, sorted physical transaction
 namespace.  The plan returns only surviving names below the selected pack's

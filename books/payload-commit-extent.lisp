@@ -1,4 +1,4 @@
-; fn: the COMMIT's extent reseat (lane arena-offheap-3, 2026-09-27; PRF-296;
+; fn: the COMMIT's extent reseat (lane arena-offheap-3, 2026-09-27; PRF-305;
 ; record planning/evidence/arena-offheap-3-2026-09-27.md).
 ;
 ; A POST's payload is sealed at its prepare, before its log batch is durable:
@@ -308,7 +308,7 @@
                             (p (nth h fn-arena)))))))
 
 ; -----------------------------------------------------------------------------
-; 3. KEYSTONE (PRF-296).  The commit's reseat keeps the arena: when the file
+; 3. KEYSTONE (PRF-305).  The commit's reseat keeps the arena: when the file
 ; holds, at the entry's record position, the record the log wrote there
 ; (the faithful write: the log's pwrite and barrier returned, A-HOST, and the
 ; file keeps what it durably holds, A-DURABLE-EXTENT), every handle's payload
@@ -347,7 +347,7 @@
                       (nth 3 m)))
            (fn-arx-commit-faithful-p (cdr members))))))
 
-; KEYSTONE (PRF-296).  The batch the host reseats (fnn-log-reseat-fenced):
+; KEYSTONE (PRF-305).  The batch the host reseats (fnn-log-reseat-fenced):
 ; every member faithful, the arena is unchanged.
 (defthm fn-arx-commit-reseats-keep-the-arena
   (implies (and (fn-arena-p fn-arena)

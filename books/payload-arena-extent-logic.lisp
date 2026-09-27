@@ -46,7 +46,7 @@
            (ignore eoff elen trailer))
   (fn-oct-snoc fn-arena$a (fn-durable-octets file poff plen)))
 
-; The RESEAT (lane arena-offheap-3, PRF-296): handle H is re-pointed at the
+; The RESEAT (lane arena-offheap-3, PRF-305): handle H is re-pointed at the
 ; extent the log wrote its payload to, once the log's barrier made it
 ; durable.  The logical value at H becomes the extent's durable octets; when
 ; those are the payload H held (the faithful write, which ACL2 checks before

@@ -346,6 +346,10 @@ function supplied no observation at all, which is a defect here."
 (defun fnn-owner-finish ()
   (fnn-owner-action 'fn-owner-finish))
 
+(defun fnn-owner-finish-identity ()
+  "An identity event's completion with the catalog's T4 then T2 (host/owner-host.lisp fn-owner-finish-identity)."
+  (fnn-owner-core 'fn-owner-finish-identity))
+
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
   (fnn-owner-core 'fn-owner-finish-submission))
@@ -987,7 +991,19 @@ Only a known semantic refusal may leave this boundary without first fencing.
 An indeterminate observation is exit 3.  A core/store fault, an unclassified
 OS failure, or any other serious condition is exit 4.  The fence is installed
 before the mutex can be released, so no queued client can mutate afterward."
-  (handler-case (funcall thunk)
+  (handler-case
+      (if (fnn-developer-selector "FN_NATIVE_FAULT_BACKTRACE")
+          ;; Developer image only: the stack of a memory fault or any other
+          ;; serious condition, printed where it was signalled (the handler
+          ;; below has unwound it).
+          (handler-bind ((serious-condition
+                           (lambda (c)
+                             (unless (typep c 'fnn-store-error)
+                               (ignore-errors
+                                (fnn-err "fault backtrace: ~a" c)
+                                (sb-debug:print-backtrace :count 80 :stream *error-output*))))))
+            (funcall thunk))
+        (funcall thunk))
     (fnn-store-indeterminate (condition)
       (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
       (error condition))
@@ -1625,7 +1641,25 @@ reason before any Store call.  An ordinary article's groups are unchanged."
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-      (let ((prepared (fnn-owner-action 'fn-owner-prepare-identity event)))
+      ;; The entry stages the interned row and reads the arena only; when
+      ;; the Store took a composite it names the article's payload and the
+      ;; host seals exactly those octets (host/owner-host.lisp
+      ;; fn-owner-prepare-identity, books/owner-identity-intern.lisp).
+      (let ((prepared (fnn-core-arena-state 'fn-owner-prepare-identity event)))
+        (when (and (consp prepared) (eq (first prepared) :seal))
+          (unless (and (consp (rest prepared)) (null (cddr prepared))
+                       (fnn-octet-list-p (second prepared)))
+            (fnn-fault "ACL2 returned a malformed identity seal"))
+          (fnn-seal-octets (second prepared))
+          ;; The catalog's row for the article the event carries, after the
+          ;; one seal (fn-owner-cat-prepare-sealed), completed by
+          ;; fn-owner-finish-identity at the durable finish.
+          (unless (eq (fnn-owner-action 'fn-owner-cat-prepare-sealed) :prepared)
+            (fnn-fault "owner did not prepare the catalog row of the identity event"))
+          (setq *fnn-finish-callback* #'fnn-owner-finish-identity)
+          (setq prepared :prepared))
+        (unless (keywordp prepared)
+          (fnn-fault "owner returned non-action from fn-owner-prepare-identity"))
         (unless (eq prepared :prepared)
           (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
             (fnn-indeterminate "owner could not consume refused identity reservation"))
@@ -2839,7 +2873,55 @@ refused, not injected under a stale time (D10-a)."
          (when armed (fnn-owner-control-disarm-fault store armed)))))
    :poster))
 
+(defun fnn-owner-redeem-quantum (service cid)
+  "PRF-164 (PKT-439), PKT-828 open item 2: an XREDEEM PASS's publication in
+its own quantum of ACL2's publication class (books/owner-reader-read.lisp
+fn-ocs-publication-class, the class the control socket's live
+reconfiguration runs as), which the scheduler never admits while a batch is
+in flight (fn-ocs-a-publication-waits-for-the-complete): the connection waits
+for the COMPLETE in the gate, holding nothing, and the publication never runs
+under a reader capture (fn-ocvp-reader-view-is-at-the-current-generation).
+Its reply promises a durable credential (281 only after the configuration
+record is durable), so it does not join the log's next batch: the record is
+a configuration record, published by its own immutable publication.
+Answers ACL2's rendered 281 or 482, or NIL when the connection no longer
+waits."
+  (let ((class (fnn-core 'fn-ocs-publication-class)))
+    (unless (eq class :control)
+      (fnn-fault "owner returned a malformed publication class ~a" class))
+    (fnn-owner-serialized
+     service cid
+     (lambda ()
+       (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
+            (fnn-octet-list (fnn-owner-account-redeem service cid))))
+     class)))
+
 (defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader))
+  "One served read (fnn-owner-handle-chunk-read, a quantum of CLASS) and,
+when it left an XREDEEM PASS waiting, the publication's own quantum
+(fnn-owner-redeem-quantum); the step's plan carries the redeem reply after
+the read's effects, as when both ran in one quantum.  The values are
+fnn-owner-handle-chunk-read's: (values PLAN CLOSING STARTTLS CONSUMED
+REDEEMED SUBMITTED), (values :defer MS), or (values :await STEP REDEEM
+CLOSING STARTTLS CONSUMED)."
+  (let ((results (multiple-value-list
+                  (fnn-owner-handle-chunk-read service cid incoming socket class))))
+    (case (first results)
+      (:redeem
+       (destructuring-bind (tag step completion closing starttls consumed submitted) results
+         (declare (ignore tag))
+         (let ((redeem (fnn-owner-redeem-quantum service cid)))
+           (values (fnn-core 'fn-splan-step-plan step completion redeem)
+                   closing starttls consumed (and redeem t) submitted))))
+      (:await
+       (destructuring-bind (tag step waiting closing starttls consumed) results
+         (declare (ignore tag))
+         (values :await step (and waiting (fnn-owner-redeem-quantum service cid))
+                 closing starttls consumed)))
+      (t (values-list results)))))
+
+
+(defun fnn-owner-handle-chunk-read (service cid incoming socket class)
   "Run one owner read and its serial writer drain under the service mutex,
 admitted by the gate as CLASS (:reader, or :transit for a peer connection).
 
@@ -2929,8 +3011,7 @@ EPIPE and the client saw a bare close)."
              (fnn-owner-note-queued service)
              (return-from step
                (values :await step
-                       (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
-                            (fnn-octet-list (fnn-owner-account-redeem service cid)))
+                       (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid) t)
                        closing starttls consumed)))
            (when submitted
              (multiple-value-bind (reply-cid done stop)
@@ -2939,9 +3020,11 @@ EPIPE and the client saw a bare close)."
                  (fnn-fault "writer drained a different connection"))
                (setq completion done uncertain stop)))
            ;; PRF-164: an XREDEEM PASS left this connection holding; the
-           ;; owner plans and publishes, and only then renders 281 or 482.
-           (when (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
-             (setq redeem (fnn-octet-list (fnn-owner-account-redeem service cid))))
+           ;; owner plans and publishes, and only then renders 281 or 482 --
+           ;; in its OWN quantum (fnn-owner-handle-chunk), not this reader's.
+           (when (and (not uncertain)
+                      (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid))
+             (setq redeem :pending))
            (when uncertain
              (fnn-owner-stop-service-locked service +fnn-exit-uncertain+ socket))
            ;; PRF-161: the step reached this address's failed-login limit
@@ -2954,9 +3037,12 @@ EPIPE and the client saw a bare close)."
            ;; the span fold books/served-span.lisp fn-scar-feed-span), so the
            ;; caller feeds the rest of INCOMING as the next read, after this
            ;; read's reply and the article's outcome are sent.
-           (values (fnn-core 'fn-splan-step-plan step completion redeem)
-                   (or closing uncertain) starttls consumed (and redeem t)
-                   submitted)))))
+           (if (eq redeem :pending)
+               (values :redeem step completion (or closing uncertain) starttls
+                       consumed submitted)
+             (values (fnn-core 'fn-splan-step-plan step completion nil)
+                     (or closing uncertain) starttls consumed nil
+                     submitted))))))
    class))
 
 (defun fnn-owner-exposure-idle (service cid &optional (class :reader))

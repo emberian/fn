@@ -500,5 +500,97 @@ class SchedulerNativeTests(unittest.TestCase):
         self.assertTrue(stat_b3.startswith(b"223"), stat_b3)
 
 
+    def test_a_redeem_during_a_barrier_waits_for_the_complete_without_holding_the_owner(self):
+        # PKT-828 open item 2 (books/owner-reader-read.lisp).  An XREDEEM PASS
+        # publishes a configuration record: its reply (281) promises the
+        # credential is durable, and the record is a configuration record,
+        # not a log record, so it runs in a quantum of its own of ACL2's
+        # publication class (fnn-owner-redeem-quantum, fn-ocs-publication-
+        # class), which the scheduler never admits while a batch is in flight
+        # (fn-ocs-a-publication-waits-for-the-complete).  Barrier held 4 s: a
+        # POST's batch goes in flight; the PASS, sent 0.5 s in, is answered
+        # 281 only after the COMPLETE (with the 240, not before it), while a
+        # reader's GROUP 1 s in is answered inside the barrier (the redeem
+        # holds nothing while it waits).  The account then logs in.
+        import ssl
+        self.reap(self.owner)
+        hold = 4.0
+        cert, key = self.root / "cert.pem", self.root / "key.pem"
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
+                        "-out", str(cert), "-days", "2", "-nodes", "-subj", "/CN=127.0.0.1",
+                        "-addext", "subjectAltName=IP:127.0.0.1"], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        tls_port = free_port()
+        self.config.write_text(
+            '[store]\npath = "{}"\n'
+            '[listener]\nhost = "127.0.0.1"\nport = {}\ntls_port = {}\n'
+            'tls_cert = "{}"\ntls_key = "{}"\n'
+            '[control]\npath = "{}"\n[auth]\nprotected_only = true\n'.format(
+                self.store, self.port, tls_port, cert, key, self.control),
+            encoding="ascii")
+        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
+                                      image=DEVELOPER)
+        invited = self.operator("account", "invite", "--expires", "3600")
+        self.assertEqual(invited.returncode, 0, invited.stderr.decode())
+        codes = re.findall(rb"^[0-9a-f]{32}$", invited.stdout, re.M)
+        self.assertEqual(len(codes), 1, invited.stdout)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+
+        def tls():
+            raw = socket.create_connection(("127.0.0.1", tls_port), timeout=120)
+            conn = context.wrap_socket(raw)
+            stream = conn.makefile("rwb")
+            self.assertTrue(stream.readline().startswith(b"200"))
+            return conn, stream
+
+        redeem_conn, redeem = tls()
+        reader_conn, reader = self.connect()
+        poster_conn, poster = self.connect()
+        with redeem_conn, reader_conn, poster_conn:
+            redeem.write(b"XREDEEM " + codes[0] + b" robin\r\n")
+            redeem.flush()
+            self.assertTrue(redeem.readline().startswith(b"381"))
+            before = self.group_count(reader)
+            self.begin_post(poster, b"redeem-barrier@example.invalid", b"held at the barrier\r\n")
+            t0 = time.monotonic()
+            time.sleep(0.5)
+            redeem.write(b"XREDEEM PASS battery-staple-horse\r\n")
+            redeem.flush()
+            time.sleep(0.5)
+            during = self.group_count(reader)
+            during_at = time.monotonic() - t0
+            redeemed = redeem.readline()
+            redeemed_at = time.monotonic() - t0
+            posted = poster.readline()
+            posted_at = time.monotonic() - t0
+            for stream in (redeem, reader, poster):
+                stream.write(b"QUIT\r\n")
+                stream.flush()
+        login_conn, login = tls()
+        with login_conn:
+            login.write(b"AUTHINFO USER robin\r\n")
+            login.flush()
+            user = login.readline()
+            login.write(b"AUTHINFO PASS battery-staple-horse\r\n")
+            login.flush()
+            authed = login.readline()
+            login.write(b"QUIT\r\n")
+            login.flush()
+        print("redeem during a barrier (%.1fs): GROUP %d at %.3fs (before %d); 281 at %.3fs %r; "
+              "240 at %.3fs; login %r %r"
+              % (hold, during, during_at, before, redeemed_at, redeemed[:3], posted_at,
+                 user[:3], authed[:3]))
+        self.assertTrue(posted.startswith(b"240"), posted)
+        self.assertTrue(redeemed.startswith(b"281"), redeemed)
+        # The reader was served inside the barrier while the PASS waited.
+        self.assertLess(during_at, hold - 0.5, during_at)
+        self.assertEqual(during, before)
+        # The publication waited for the batch's COMPLETE.
+        self.assertGreaterEqual(redeemed_at, hold - 0.1, redeemed_at)
+        self.assertTrue(user.startswith(b"381"), user)
+        self.assertTrue(authed.startswith(b"281"), authed)
+
 if __name__ == "__main__":
     unittest.main()

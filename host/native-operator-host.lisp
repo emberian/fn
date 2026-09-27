@@ -249,6 +249,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-store-outcome result observed))
 
+(defun fn-native-operator-host-control-outcome (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-control-outcome result))
+
 (defun fn-native-operator-host-result-hint (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-hint result))

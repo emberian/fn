@@ -495,10 +495,20 @@ not a certificate; the event goes into the book and the book certifies.
 A session holds a pool slot for its life, so it belongs to a lane and ends
 with it: `start` records the lane (`--lane`, `$FN_LANE`, or the tree's name:
 `build/lanes/NAME`, persvati's `~/fn-gates/NAME-repl`) and stops itself after
-`--idle-seconds` (default 7200) without a `send`; `list` shows each session's
-lane, age, idle time and deadline, and `reap [--lane NAME | --older-than S]
-[--root TREE ...]` stops dead, overdue or a merged lane's sessions, signalling
-only the PIDs its state names (PKT-346).
+`--idle-timeout MIN` minutes without a form sent (default 20, from
+`$FN_REPL_IDLE_MIN` when set, 0 for never; lane post-alloc-3, 2026-09-27,
+after hbox's 22 slots were held mostly by idle sessions under the old 2-hour
+default). A stopped session keeps `stopped.json`, so a later `send` answers
+that it stopped after N minutes idle rather than "no live session"; every
+command that runs forms resets the clock, `status`, `list` and `reap` do
+not. Before a long wait between sends (a farm run, an `hbox_native` run),
+start with a longer `--idle-timeout` or 0. `status` prints when the session
+stops; `list` shows each session's lane, age, idle time, deadline and time
+left; and `reap [--lane NAME | --older-than S | --idle MIN | --all]
+[--root TREE ...] [--dry-run] [--host BOX]` stops dead, overdue, idle or a
+merged lane's sessions, `--idle` and `--all` across every session tree on
+the machine, signalling only the PIDs its state names after checking each is
+still that session's server (PKT-346).
 Each answer carries ACL2's own `Time:` and prover-step count for the form,
 which do not move with the box's load as elapsed seconds do; `send` takes
 several forms, `send-range NAME BOOK --from EVENT --until EVENT` sends a

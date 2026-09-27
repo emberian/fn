@@ -311,7 +311,8 @@
         "PRF-010",
         "PRF-067",
         "PRF-089",
-        "PRF-189"
+        "PRF-189",
+        "PRF-301"
       ],
       "verification": [
         "proof",
@@ -382,8 +383,10 @@
         "PRF-254",
         "PRF-255",
         "PRF-264",
+        "PRF-297",
         "PRF-272",
-        "PRF-269"
+        "PRF-269",
+        "PRF-282"
       ],
       "verification": [
         "proof",
@@ -1588,7 +1591,8 @@
         "PRF-275",
         "PRF-276",
         "PRF-278",
-        "PRF-283"
+        "PRF-283",
+        "PRF-293"
       ],
       "verification": [
         "proof",
@@ -2603,7 +2607,8 @@
         "PRF-139",
         "PRF-226",
         "PRF-220",
-        "PRF-259"
+        "PRF-259",
+        "PRF-293"
       ],
       "verification": [
         "proof",
@@ -2785,7 +2790,7 @@
         "PRF-294",
         "PRF-281",
         "PRF-295",
-        "PRF-296"
+        "PRF-305"
       ],
       "verification": [
         "proof",
@@ -3084,7 +3089,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-167",
-        "PRF-178"
+        "PRF-178",
+        "PRF-300"
       ],
       "verification": [
         "proof",
@@ -3094,9 +3100,10 @@
         "books/consumer-position.lisp",
         "books/consumer-owner-local.lisp",
         "planning/evidence/community-bounds-2026-09-26.md",
-        "planning/evidence/control-reply-fit-2026-09-26.md"
+        "planning/evidence/control-reply-fit-2026-09-26.md",
+        "books/post-fields.lisp"
       ],
-      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168). The record bound R is refused past the consumer poll reply's report ceiling (PRF-178, PKT-467): the poll reply's width admits every valid profile."
+      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168). The record bound R is refused past the consumer poll reply's report ceiling (PRF-178, PKT-467): the poll reply's width admits every valid profile. The Store record's three metadata fields are node-generated and bounded by the record codec's metadata domain, checked by ACL2 (books/post-fields.lisp, PRF-300); the host's 512-octet text constant is deleted."
     },
     {
       "id": "HST-009",
@@ -3753,7 +3760,10 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-198"
+        "PRF-198",
+        "PRF-301",
+        "PRF-297",
+        "PRF-282"
       ],
       "verification": [
         "proof",
@@ -4334,7 +4344,7 @@
         "PRF-294",
         "PRF-281",
         "PRF-295",
-        "PRF-296"
+        "PRF-305"
       ],
       "verification": [
         "proof",
@@ -4549,7 +4559,9 @@
         "PRF-286",
         "PRF-287",
         "PRF-290",
-        "PRF-291"
+        "PRF-291",
+        "PRF-299",
+        "PRF-296"
       ],
       "verification": [
         "proof",
@@ -4573,6 +4585,7 @@
         "books/config-store-steps.lisp",
         "books/owner-log-ocl.lisp",
         "planning/evidence/control-quanta-2-2026-09-27.md",
+        "books/owner-reader-read.lisp",
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
         "planning/evidence/prepare-served-2026-09-27.md"

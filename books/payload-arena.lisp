@@ -520,7 +520,7 @@
               (1+ (fn-arena-count fn-arena))))
   :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-seal-extent fn-arena-count))))
 
-; KEYSTONE (PRF-296) fn-arena-reseat-extent-payload: the reseat re-points
+; KEYSTONE (PRF-305) fn-arena-reseat-extent-payload: the reseat re-points
 ; handle H at the extent: H denotes the extent's durable octets, every other
 ; handle keeps its payload, the count is unchanged.
 (defthm fn-arena-reseat-extent-payload
@@ -544,7 +544,7 @@
             (equal (update-nth h (nth h a) a) a))
    :hints (("Goal" :in-theory (enable update-nth nth)))))
 
-; KEYSTONE (PRF-296) fn-arena-reseat-extent-keeps-a-faithful-arena: when the
+; KEYSTONE (PRF-305) fn-arena-reseat-extent-keeps-a-faithful-arena: when the
 ; extent's durable octets are the payload H holds (the faithful write: the
 ; log wrote those octets there and fenced them), the reseat leaves the arena
 ; -- every handle's payload, so every theorem over it -- unchanged.  This is
