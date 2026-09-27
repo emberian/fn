@@ -3715,7 +3715,12 @@
         "fn-scka-recover-rows-rii-is-recover-rows",
         "fn-scka-write-run-is-run-segments",
         "fn-scka-next-checkpoint-is-capture",
-        "fn-scka-select-named-refuses-the-arena-by-name"
+        "fn-scka-select-named-refuses-the-arena-by-name",
+        "fn-sshr-share-is-identity",
+        "fn-scka-src-payloads-of-canon-srcs",
+        "fn-scka-srcs-n-compose",
+        "fn-scka-srcs-n-complete",
+        "fn-scka-restore-base-of-strip-of-capture"
       ]
     },
     {
