@@ -26,10 +26,13 @@
  (equal (list (symbol-class 'fn-wire-scan (w state))
               (symbol-class 'fn-wscan-plain-end (w state))
               (symbol-class 'fn-wscan-revonto (w state))
+              (symbol-class 'fn-wscan-slice-onto (w state))
+              (symbol-class 'fn-wscan-linep (w state))
               (symbol-class 'fn-scar-scan-span (w state))
               (symbol-class 'fn-scar-step-span-core (w state)))
         '(:common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
-          :common-lisp-compliant :common-lisp-compliant)))
+          :common-lisp-compliant :common-lisp-compliant :common-lisp-compliant
+          :common-lisp-compliant)))
 
 (defun sct-o (s) (fn-nntp-string-octets s))
 (defun sct-line (s) (append (sct-o s) '(13 10)))
@@ -112,6 +115,24 @@
                (list (fn-wire-article-event (list (list 46 104 105) (list 97 98)))))
         (equal (fn-wsp-next r) 13)
         (equal (fn-wire-state-mode (fn-wsp-state r)) :command))))
+;; The whole-line branch (item 4, lane input-loop-2) is reached: a line whose
+;; CR LF lies inside the range, from an empty retained line, is taken at once
+;; and built forward; a line whose end is past the range is not (the run path).
+(defun sct-linep (ws octets i end fn-octets)
+  (declare (xargs :stobjs fn-octets :verify-guards nil))
+  (let ((fn-octets (fn-octets-from-list octets fn-octets)))
+    (mv (list (fn-wscan-linep ws i end fn-octets)
+              (fn-wscan-slice-onto i (- end 2) nil fn-octets))
+        fn-octets)))
+(defun sct-linep-value (ws octets i end)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (v fn-octets) (sct-linep ws octets i end fn-octets) v)))
+(assert-event (equal (sct-linep-value *sct-command* *sct-commands* 0 6)
+                     (list t (sct-o "HELP"))))
+(assert-event (equal (car (sct-linep-value *sct-command* *sct-commands* 0 5)) nil))
+(assert-event (equal (sct-linep-value *sct-article* *sct-body* 6 10)
+                     (list t (list 97 98))))
 ; A command line is one event after its LF.
 (assert-event
  (let ((r (sct-wire-whole-value *sct-command* *sct-commands*)))
