@@ -465,8 +465,9 @@
 (assert-event (equal (fn-own-feed-lost-one "nodeD" *oft-in-flight* *oft-obs*)
                      *oft-in-flight*))
 (assert-event (null (fn-own-feed-lost-records-of "nodeD" *oft-in-flight* *oft-obs*)))
-; A :done entry is NOT requeued by a loss -- the peer answered and the
-; outcome is settled; requeueing it would be the second transfer K5 forbids.
+; A delivered entry is NOT requeued by a loss -- the peer answered, the
+; outcome is settled and the entry has left the queue (PRF-335); requeueing
+; it would be the second transfer K5 forbids.
 (defconst *oft-done*
   (fn-own-feed-put "nodeB" (fn-own-feed-record-of "nodeB" *oft-in-flight*)
                    (mv-let (g effects)
@@ -477,16 +478,14 @@
                      (declare (ignore effects))
                      g)
                    *oft-in-flight*))
-(assert-event (equal (fn-feed-state-of *oft-msgid*
-                                       (fn-feed-queue (fn-own-feed-find "nodeB" *oft-done*)))
-                     :done))
+(assert-event (not (consp (fn-feed-find *oft-msgid*
+                                       (fn-feed-queue (fn-own-feed-find "nodeB" *oft-done*))))))
 (assert-event (consp (fn-own-feed-lost-records-of "nodeB" *oft-done* *oft-obs*)))
-(assert-event (equal (fn-feed-state-of *oft-msgid*
+(assert-event (not (consp (fn-feed-find *oft-msgid*
                                        (fn-feed-queue
                                         (fn-own-feed-find
                                          "nodeB" (fn-own-feed-lost-one
-                                                  "nodeB" *oft-done* *oft-obs*))))
-                     :done))
+                                                  "nodeB" *oft-done* *oft-obs*)))))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for fn-own-feed-targets-omit-no-offerable-peer and

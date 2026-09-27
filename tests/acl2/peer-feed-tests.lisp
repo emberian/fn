@@ -96,7 +96,9 @@
 
 (defconst *ff4* (nth 0 (mv-list 2 (fn-feed-observe *ff3* (fn-feed-response 239 *ff-a*)
                                            nil *ff-obs*))))
-(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff4*)) :done))
+;; PRF-335: the 239 RETIRES the entry; the queue holds only <b@fn>.
+(assert-event (not (consp (fn-feed-find *ff-a* (fn-feed-queue *ff4*)))))
+(assert-event (equal (len (fn-feed-queue *ff4*)) 1))
 (assert-event (equal (fn-feed-inflight-count (fn-feed-queue *ff4*)) 0))
 
 ; A finished entry is never selected again; the next selection is the second
@@ -142,7 +144,8 @@
 (assert-event (equal (fn-feed-next-attempt *ff7*) 4))
 (defconst *ff8* (nth 0 (mv-list 2 (fn-feed-observe *ff7* (fn-feed-response 435 *ff-b*)
                                            nil *ff-obs-later*))))
-(assert-event (equal (fn-feed-state-of *ff-b* (fn-feed-queue *ff8*)) :done))
+(assert-event (not (consp (fn-feed-find *ff-b* (fn-feed-queue *ff8*)))))
+(assert-event (null (fn-feed-queue *ff8*)))
 (assert-event (null (fn-feed-selection *ff8* *ff-obs-later*)))
 
 ; -----------------------------------------------------------------------------
@@ -167,8 +170,7 @@
 
 (defconst *ff-replayed* (fn-feed-replay *ff0* *ff-journal*))
 (assert-event (fn-feedp *ff-replayed*))
-(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-replayed*))
-                     :done))
+(assert-event (not (consp (fn-feed-find *ff-a* (fn-feed-queue *ff-replayed*)))))
 (assert-event (fn-feed-sentp (fn-feed-state-of *ff-b*
                                                (fn-feed-queue *ff-replayed*))))
 (assert-event (equal (fn-feed-state-of *ff-c* (fn-feed-queue *ff-replayed*))
@@ -204,8 +206,7 @@
 (defconst *ff-settled*
   (nth 0 (mv-list 2 (fn-feed-observe *ff-after-restart*
                              (fn-feed-response 438 *ff-b*) nil *ff-obs*))))
-(assert-event (equal (fn-feed-state-of *ff-b* (fn-feed-queue *ff-settled*))
-                     :done))
+(assert-event (not (consp (fn-feed-find *ff-b* (fn-feed-queue *ff-settled*)))))
 
 ; The whole journal, replayed, settles to the same queue states as the live
 ; feed it came from: replay determinism, on ground values.
@@ -288,10 +289,59 @@
 ; hypothesis.  Each is an `assert-event' on the negated conclusion, never a
 ; general negated `must-fail'.
 
-; `fn-feed-at-most-one-accepted-outcome' -- drop `fn-feed-drivenp'.  A
-; fabricated journal with two 239 outcomes for one attempt is well-formed
-; (`fn-feed-journalp') and counts two; it is not driven, and that is the
-; hypothesis doing the work.
+;; PRF-335 keystones, over the scenario 4 journal (a reachable run: it is
+;; driven from the opened feed).  `fn-feed-queue-length-is-undelivered':
+;; three enqueues, one final answer, so two entries -- the delivered <a@fn>
+;; is not among them.
+(assert-event (equal (fn-feed-count-enqueues *ff-peer* *ff-journal*) 3))
+(assert-event (equal (fn-feed-count-finals *ff-peer* *ff-journal*) 1))
+(assert-event (equal (len (fn-feed-queue *ff-replayed*))
+                     (- (+ (len (fn-feed-queue *ff0*))
+                           (fn-feed-count-enqueues *ff-peer* *ff-journal*))
+                        (fn-feed-count-finals *ff-peer* *ff-journal*))))
+(assert-event (equal (len (fn-feed-queue *ff-replayed*)) 2))
+
+;; `fn-feed-final-outcome-retires-for-good': the antecedent holds for
+;; <a@fn> and the conclusion does; for <b@fn> (sent, no answer) the
+;; antecedent fails and <b@fn> is present.
+(assert-event (fn-feed-retired-byp *ff-peer* *ff-a* *ff-journal*))
+(assert-event (not (fn-feed-presentp *ff-a* *ff-replayed*)))
+(assert-event (not (fn-feed-retired-byp *ff-peer* *ff-b* *ff-journal*)))
+(assert-event (fn-feed-presentp *ff-b* *ff-replayed*))
+
+;; The live feed agrees: 1,024-plus deliveries leave no trace in the queue.
+;; A peer with room for ONE entry takes five articles in turn, each
+;; enqueued, offered and answered 239; before PRF-335 the second enqueue
+;; was refused (the delivered entry held the only slot).
+(defun ff-one-slot-run (f ids tick)
+  (declare (xargs :mode :program))
+  (if (atom ids)
+      f
+    (let ((g (fn-feed-enqueue f (car ids) tick)))
+      (mv-let (h fx1) (fn-feed-tick-step g *ff-obs*)
+        (declare (ignore fx1))
+        (mv-let (k fx2) (fn-feed-observe h (fn-feed-response 238 (car ids))
+                                         '(65 10) *ff-obs*)
+          (declare (ignore fx2))
+          (mv-let (m fx3) (fn-feed-observe k (fn-feed-response 239 (car ids))
+                                           nil *ff-obs*)
+            (declare (ignore fx3))
+            (ff-one-slot-run m (cdr ids) (+ 1 tick))))))))
+(defconst *ff-one-slot*
+  (fn-feed-open *ff-peer* (fn-feed-limits 1 1000 3 t) *ff-contact* 7))
+(defconst *ff-one-slot-ids*
+  '((60 49 62) (60 50 62) (60 51 62) (60 52 62) (60 53 62)))
+(defconst *ff-one-slot-after* (ff-one-slot-run *ff-one-slot* *ff-one-slot-ids* 1))
+(assert-event (fn-feedp *ff-one-slot-after*))
+(assert-event (null (fn-feed-queue *ff-one-slot-after*)))
+(assert-event (equal (fn-feed-next-attempt *ff-one-slot-after*) 6))
+
+;; Teeth for `fn-feed-queue-length-is-undelivered' and
+;; `fn-feed-accepted-outcomes-bounded-by-enqueues' -- drop `fn-feed-drivenp'.
+;; A fabricated journal with two 239 outcomes for one attempt is well-formed
+;; (`fn-feed-journalp'), is not driven, counts two accepted outcomes against
+;; one enqueue, and its length equation is off by one (the second outcome
+;; retires nothing).
 (defconst *ff-forged-journal*
   (list (fn-feed-journal-entry :feed-enqueue (list *ff-peer* *ff-a* 1))
         (fn-feed-journal-entry :feed-offer (list *ff-peer* *ff-a* 1 2))
@@ -302,21 +352,58 @@
 (assert-event (equal (fn-feed-count-accepted *ff-peer* *ff-a*
                                              *ff-forged-journal*)
                      2))
+(assert-event (equal (fn-feed-count-enqueued *ff-peer* *ff-a*
+                                             *ff-forged-journal*)
+                     1))
+(assert-event (not (fn-feed-presentp *ff-a* *ff0*)))
+(assert-event (not (equal (len (fn-feed-queue (fn-feed-replay *ff0* *ff-forged-journal*)))
+                          (- (+ (len (fn-feed-queue *ff0*))
+                                (fn-feed-count-enqueues *ff-peer* *ff-forged-journal*))
+                             (fn-feed-count-finals *ff-peer* *ff-forged-journal*)))))
 
-; `fn-feed-at-most-one-accepted-outcome' -- drop `fn-feedp'.  A forged feed
-; whose queue holds the same Message-ID twice is not `fn-feedp'; the second
-; entry is invisible to `fn-feed-state-of', so the fold's "once done, always
-; done" argument has no purchase on it.
-(defconst *ff-forged-feed*
-  (fn-feed-make *ff-peer* *ff-limits*
-                (list (fn-feed-entry *ff-a* :done 0 0)
-                      (fn-feed-entry *ff-a* :queued 0 0))
-                *ff-contact* 0 7 1))
-(assert-event (not (fn-feedp *ff-forged-feed*)))
-(assert-event (fn-feed-distinctp *ff2-fx*))
-(assert-event (not (fn-feed-distinctp (fn-feed-queue *ff-forged-feed*))))
-(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-forged-feed*))
-                     :done))
+;; `fn-feed-final-outcome-retires-for-good' -- drop `fn-feed-drivenp': a 239
+;; for an entry that was never offered is a final record, but the machine
+;; retires only what is in flight, so <a@fn> is still there.
+(defconst *ff-unoffered-outcome*
+  (list (fn-feed-journal-entry :feed-enqueue (list *ff-peer* *ff-a* 1))
+        (fn-feed-journal-entry :feed-outcome (list *ff-peer* *ff-a* 1 239))))
+(assert-event (not (fn-feed-drivenp *ff0* *ff-unoffered-outcome*)))
+(assert-event (fn-feed-retired-byp *ff-peer* *ff-a* *ff-unoffered-outcome*))
+(assert-event (fn-feed-presentp *ff-a* (fn-feed-replay *ff0* *ff-unoffered-outcome*)))
+
+;; `fn-feed-final-outcome-retires-for-good' -- drop `fn-feed-retired-byp': a
+;; later enqueue of the same Message-ID puts it back (driven, since the
+;; retired entry no longer blocks it).
+(defconst *ff-twice-owed*
+  (list (fn-feed-journal-entry :feed-enqueue (list *ff-peer* *ff-a* 1))
+        (fn-feed-journal-entry :feed-offer (list *ff-peer* *ff-a* 1 2))
+        (fn-feed-journal-entry :feed-outcome (list *ff-peer* *ff-a* 1 239))
+        (fn-feed-journal-entry :feed-enqueue (list *ff-peer* *ff-a* 3))
+        (fn-feed-journal-entry :feed-offer (list *ff-peer* *ff-a* 2 4))
+        (fn-feed-journal-entry :feed-outcome (list *ff-peer* *ff-a* 2 239))
+        (fn-feed-journal-entry :feed-enqueue (list *ff-peer* *ff-a* 5))))
+(assert-event (fn-feed-journalp *ff-twice-owed*))
+(assert-event (fn-feed-drivenp *ff0* *ff-twice-owed*))
+(assert-event (not (fn-feed-retired-byp *ff-peer* *ff-a* *ff-twice-owed*)))
+(assert-event (fn-feed-presentp *ff-a* (fn-feed-replay *ff0* *ff-twice-owed*)))
+
+;; `fn-feed-at-most-one-accepted-outcome' -- drop the owed-once hypothesis.
+;; The same run, driven: the Message-ID was owed three times, answered 239
+;; twice.  The feed alone does not refuse a second enqueue of a delivered
+;; Message-ID; the bound is the enqueue count
+;; (`fn-feed-accepted-outcomes-bounded-by-enqueues' holds: 2 <= 3 + 0).
+(assert-event (equal (fn-feed-count-accepted *ff-peer* *ff-a* *ff-twice-owed*) 2))
+(assert-event (equal (fn-feed-count-enqueued *ff-peer* *ff-a* *ff-twice-owed*) 3))
+(assert-event (not (<= (+ (fn-feed-count-enqueued *ff-peer* *ff-a* *ff-twice-owed*)
+                          (if (fn-feed-presentp *ff-a* *ff0*) 1 0))
+                       1)))
+;; And its positive witness: the scenario 4 journal owes <a@fn> once, and
+;; one accepted outcome is recorded.
+(assert-event (fn-feed-drivenp *ff0* *ff-journal*))
+(assert-event (<= (+ (fn-feed-count-enqueued *ff-peer* *ff-a* *ff-journal*)
+                     (if (fn-feed-presentp *ff-a* *ff0*) 1 0))
+                  1))
+(assert-event (equal (fn-feed-count-accepted *ff-peer* *ff-a* *ff-journal*) 1))
 
 ; `fn-feed-restart-emits-no-transfer' -- the SEPARATING WITNESS, and why the
 ; theorem carries no `fn-feedp' hypothesis any more.  `*ff5*' has <b@fn> in

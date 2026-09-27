@@ -7,8 +7,14 @@
 ;
 ; The four claims, each a theorem below:
 ;
-;   1. In a journal a feed machine could have written, at most one accepted
-;      outcome is ever recorded for one (peer, Message-ID).
+;   0. The queue holds undelivered obligations, never history (PRF-335): its
+;      length is the enqueues minus the final answers, and a final answer
+;      retires the entry for good.  `fn-feed-queue-length-is-undelivered',
+;      `fn-feed-final-outcome-retires-for-good'.
+;   1. In a journal a feed machine could have written, the accepted
+;      outcomes for one (peer, Message-ID) are at most the times it was
+;      owed, so at most one when it is owed once.
+;      `fn-feed-accepted-outcomes-bounded-by-enqueues',
 ;      `fn-feed-at-most-one-accepted-outcome'.
 ;   2. A finished entry is never offered again, and after a restart no
 ;      TAKETHIS can be emitted until a fresh CHECK/IHAVE has been offered and
@@ -416,6 +422,83 @@
 (defthm fn-feed-len-of-append-one
   (equal (len (append xs (list e))) (+ 1 (len xs))))
 
+; Retirement (PRF-335): `fn-feed-done' removes the entry.  Each conjunct of
+; `fn-feedp' survives a removal, the length drops by exactly one when the
+; entry was there, and every OTHER Message-ID reads the same entry.
+(defthm fn-feed-entry-listp-of-retire
+  (implies (fn-feed-entry-listp xs)
+           (fn-feed-entry-listp (fn-feed-queue-retire xs msgid))))
+
+(defthm fn-feed-msgids-of-retire-not-member
+  (implies (not (member-equal x (fn-feed-msgids xs)))
+           (not (member-equal x (fn-feed-msgids (fn-feed-queue-retire xs msgid))))))
+
+(defthm fn-feed-distinctp-of-retire
+  (implies (fn-feed-distinctp xs)
+           (fn-feed-distinctp (fn-feed-queue-retire xs msgid))))
+
+(defthm fn-feed-len-of-retire
+  (implies (fn-feed-entry-listp xs)
+           (equal (len (fn-feed-queue-retire xs msgid))
+                  (if (consp (fn-feed-find msgid xs))
+                      (+ -1 (len xs))
+                    (len xs)))))
+
+(defthm fn-feed-inflight-count-of-retire
+  (<= (fn-feed-inflight-count (fn-feed-queue-retire xs msgid))
+      (fn-feed-inflight-count xs))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
+
+(defthm fn-feed-attempts-belowp-of-retire
+  (implies (fn-feed-attempts-belowp xs n)
+           (fn-feed-attempts-belowp (fn-feed-queue-retire xs msgid) n))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
+
+(defthm fn-feed-find-of-retire-other
+  (implies (not (equal x msgid))
+           (equal (fn-feed-find x (fn-feed-queue-retire xs msgid))
+                  (fn-feed-find x xs))))
+
+(defthm fn-feed-state-of-of-retire-other
+  (implies (not (equal x msgid))
+           (equal (fn-feed-state-of x (fn-feed-queue-retire xs msgid))
+                  (fn-feed-state-of x xs)))
+  :hints (("Goal" :in-theory (disable fn-feed-find))))
+
+(local
+ (defthm fn-feed-find-when-not-member
+   (implies (and (fn-feed-entry-listp xs)
+                 (not (member-equal msgid (fn-feed-msgids xs))))
+            (not (consp (fn-feed-find msgid xs))))))
+
+; The retired entry is gone: in a distinct queue the first match was the
+; only one.
+(defthm fn-feed-find-of-retire-same
+  (implies (and (fn-feed-entry-listp xs) (fn-feed-distinctp xs))
+           (not (consp (fn-feed-find msgid (fn-feed-queue-retire xs msgid))))))
+
+(defthm fn-feed-state-of-of-retire-same
+  (implies (and (fn-feed-entry-listp xs) (fn-feed-distinctp xs))
+           (equal (fn-feed-state-of msgid (fn-feed-queue-retire xs msgid))
+                  nil))
+  :hints (("Goal" :use fn-feed-find-of-retire-same
+           :in-theory (e/d (fn-feed-entry-state) (fn-feed-find-of-retire-same)))))
+
+; `fn-feed-droppedp' across a removal, stated with no disequality between the
+; entry read and the entry removed, like the set-state form above.
+(defthm fn-feed-droppedp-of-state-of-retire
+  (implies (and (fn-feed-entry-listp xs) (fn-feed-distinctp xs)
+                (not (fn-feed-droppedp (fn-feed-state-of x xs))))
+           (not (fn-feed-droppedp (fn-feed-state-of x (fn-feed-queue-retire xs msgid)))))
+  :hints (("Goal" :cases ((equal x msgid))
+           :in-theory (disable fn-feed-droppedp fn-feed-state-of))))
+
+; An absent Message-ID stays absent under a removal.
+(defthm fn-feed-find-of-retire-when-absent
+  (implies (and (fn-feed-entry-listp xs) (not (consp (fn-feed-find x xs))))
+           (not (consp (fn-feed-find x (fn-feed-queue-retire xs msgid))))))
+
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: backoff is monotone (specs/peering.md sec. 3.2)
 
@@ -636,9 +719,20 @@
                             (n (fn-feed-next-attempt f))
                             (a (fn-feed-state-attempt
                                 (fn-feed-state-of
-                                 msgid (fn-feed-queue f))))))
+                                 msgid (fn-feed-queue f)))))
+                 ; The exact count at the offered entry, and that the entry
+                 ; is there: the transfer swaps one in-flight state for
+                 ; another.
+                 (:instance fn-feed-inflight-count-of-set-state-exact
+                            (xs (fn-feed-queue f))
+                            (s (list :sent (fn-feed-state-attempt
+                                            (fn-feed-state-of
+                                             msgid (fn-feed-queue f))))))
+                 (:instance fn-feed-find-is-consp-when-the-state-is-a-state
+                            (xs (fn-feed-queue f))))
            :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-state-of
-                               fn-feed-find))))
+                               fn-feed-find
+                               fn-feed-inflight-count-of-set-state-exact))))
 
 (defthm fn-feed-done-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-done f msgid)))
@@ -985,125 +1079,229 @@
             (fn-feed-selection (fn-feed-restart f) obs))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE: at most one accepted outcome per (peer, Message-ID)
+; KEYSTONES (PRF-335): the queue holds undelivered obligations, never history
 ;
-; `fn-feed-drivenp' says the record list is one a feed machine could have
-; written: every record was admissible in the state the fold had reached.  It
-; is a check over the fold, never the conclusion.  Once an entry is `:done' no
-; driven record can make it in flight again, and only an in-flight entry can
-; carry an outcome, so a second accepted outcome is not a journal.
+; A final answer (235/239 accepted, 435/438 the peer has it, 437/439 the
+; peer refused it) RETIRES the entry.  Three statements over the replay fold
+; the host runs at open (`fn-own-feed-recover' -> `fn-feed-replay') and over
+; every driven journal a live feed writes:
+;
+;   * `fn-feed-queue-length-is-undelivered': the queue's length is what it
+;     started with, plus the enqueues, minus the final answers.  Nothing
+;     delivered counts against max-queue.
+;   * `fn-feed-final-outcome-retires-for-good': after a final answer for a
+;     Message-ID, and no later enqueue of it, the Message-ID is not in the
+;     queue -- after a restart too, since the restart is this fold.
+;   * `fn-feed-accepted-outcomes-bounded-by-enqueues': exactly-once is now
+;     per obligation.  A retired entry no longer blocks a second enqueue of
+;     the same Message-ID, so the feed alone cannot refuse one; the bound is
+;     the number of times the Message-ID was owed.  The owner owes a
+;     Message-ID once per durable acceptance (a Message-ID the Store already
+;     holds is refused as a duplicate before any feed intent), and the peer's
+;     435/438 answers anything beyond.  `fn-feed-at-most-one-accepted-outcome'
+;     keeps its name with that hypothesis stated.
 
-(defthm fn-feed-donep-is-not-inflight
-  (implies (equal (fn-feed-state-of msgid xs) :done)
-           (not (fn-feed-state-inflightp (fn-feed-state-of msgid xs)))))
+(defconst *fn-feed-final-codes* '(235 239 435 438 437 439))
 
-; The offer-state vocabulary is closed at every form from here to the end of
-; the book, and nothing else is: the dispatcher and its arms stay OPEN (this
-; is a theorem about ONE record, so the case split is the content), and the
-; queue lemmas above -- `fn-feed-state-of-of-set-state-other',
-; `-of-settle-when-not-inflight', `fn-feed-find-of-append-when-present' --
-; are stated in that vocabulary and can only match while it is closed.  With
-; it open the goal reaches `fn-feed-entry-state' of `fn-feed-find' of
-; `fn-feed-queue-settle' and no rule applies (`Subgoal 103.59''').
-(defthm fn-feed-done-survives-a-driven-record
+(defun fn-feed-enqueue-kindp (kind)
+  (declare (xargs :guard t))
+  (and (member-equal kind '(:feed-enqueue :feed-commit)) t))
+
+(defun fn-feed-final-recordp (kind values)
+  (declare (xargs :guard t))
+  (and (equal kind :feed-outcome)
+       (member-equal (fn-frame-item 3 values) *fn-feed-final-codes*)
+       t))
+
+(defun fn-feed-count-enqueues (peer es)
+  (declare (xargs :guard t))
+  (if (atom es)
+      0
+      (+ (if (and (fn-feed-enqueue-kindp (fn-feed-journal-kind (car es)))
+                  (equal (fn-feed-record-peer (fn-feed-journal-values (car es)))
+                         peer))
+             1 0)
+         (fn-feed-count-enqueues peer (cdr es)))))
+
+(defun fn-feed-count-finals (peer es)
+  (declare (xargs :guard t))
+  (if (atom es)
+      0
+      (+ (if (and (fn-feed-final-recordp (fn-feed-journal-kind (car es))
+                                         (fn-feed-journal-values (car es)))
+                  (equal (fn-feed-record-peer (fn-feed-journal-values (car es)))
+                         peer))
+             1 0)
+         (fn-feed-count-finals peer (cdr es)))))
+
+(defun fn-feed-enqueue-of-recordp (peer msgid e)
+  (declare (xargs :guard t))
+  (and (fn-feed-enqueue-kindp (fn-feed-journal-kind e))
+       (equal (fn-feed-record-peer (fn-feed-journal-values e)) peer)
+       (equal (fn-feed-record-msgid (fn-feed-journal-values e)) msgid)))
+
+(defun fn-feed-count-enqueued (peer msgid es)
+  (declare (xargs :guard t))
+  (if (atom es)
+      0
+      (+ (if (fn-feed-enqueue-of-recordp peer msgid (car es)) 1 0)
+         (fn-feed-count-enqueued peer msgid (cdr es)))))
+
+(defun fn-feed-final-of-recordp (peer msgid e)
+  (declare (xargs :guard t))
+  (and (fn-feed-final-recordp (fn-feed-journal-kind e) (fn-feed-journal-values e))
+       (equal (fn-feed-record-peer (fn-feed-journal-values e)) peer)
+       (equal (fn-feed-record-msgid (fn-feed-journal-values e)) msgid)))
+
+; A final answer for MSGID with no enqueue of it after.
+(defun fn-feed-retired-byp (peer msgid es)
+  (declare (xargs :guard t))
+  (if (atom es)
+      nil
+      (or (and (fn-feed-final-of-recordp peer msgid (car es))
+               (equal (fn-feed-count-enqueued peer msgid (cdr es)) 0))
+          (fn-feed-retired-byp peer msgid (cdr es)))))
+
+(defun fn-feed-presentp (msgid f)
+  (declare (xargs :guard t))
+  (consp (fn-feed-find msgid (fn-feed-queue f))))
+
+; The one-record steps.  The dispatcher stays OPEN (the case split over the
+; record kinds is the content) and every transition and state predicate
+; stays closed: the prover's case split over the kinds is the proof.
+(defthm fn-feed-apply-record-len
   (implies (and (fn-feedp f)
-                (equal (fn-feed-state-of msgid (fn-feed-queue f)) :done)
                 (fn-feed-record-drivenp f kind values))
-           (equal (fn-feed-state-of
-                   msgid (fn-feed-queue (fn-feed-apply-record f kind values)))
-                  :done))
+           (equal (len (fn-feed-queue (fn-feed-apply-record f kind values)))
+                  (+ (len (fn-feed-queue f))
+                     (if (fn-feed-enqueue-kindp kind) 1 0)
+                     (if (fn-feed-final-recordp kind values) -1 0))))
   :hints (("Goal"
-           ; Whether the record names THIS entry is the content, and the
-           ; prover cannot get the disequality by itself: in the arms that
-           ; write a state, `fn-feed-record-drivenp' says the written entry
-           ; is `:queued', in flight, or not `:done', while this one is
-           ; `:done' -- joining those two is a case split, not a rewrite.
-           ; Split once here and every arm closes from the queue lemmas.
-           :cases ((equal msgid (fn-feed-record-msgid values)))
-           :in-theory (disable (:d fn-feedp) fn-feed-with-queue
-                               fn-feed-with-backoff fn-feed-with-conn
-                               fn-feed-backoff-delay fn-feed-find
+           :in-theory (disable (:d fn-feedp) fn-feed-with-backoff
+                               fn-feed-with-conn fn-feed-backoff-delay
+                               fn-feed-find
                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
                                (:d fn-feed-dropped)))))
 
-; Stated over the journal ENTRY, not over a loose `(kind values)' pair: the
-; fold's induction step carries `(car es)', and a rule whose conclusion is
-; `(not (equal kind :feed-outcome))' has `f' and `msgid' free, so it never
-; fires there (ACL2 says so: `Warning [Free]').  Same content -- a driven
-; record cannot be an accepted outcome for an entry that is already `:done',
-; because only an in-flight entry admits an outcome -- in the shape the
-; keystone below needs.
-(defthm fn-feed-done-is-not-an-accepted-outcome-record
+(defthm fn-feed-absent-survives-a-driven-record
   (implies (and (fn-feedp f)
-                (equal (fn-feed-state-of msgid (fn-feed-queue f)) :done)
-                (fn-feed-record-drivenp f (fn-feed-journal-kind e)
-                                        (fn-feed-journal-values e)))
-           (not (fn-feed-accepted-outcomep (fn-feed-peer f) msgid e)))
-  :hints (("Goal" :in-theory (disable (:d fn-feedp) fn-feed-with-queue
-                               fn-feed-with-backoff fn-feed-with-conn
-                               fn-feed-backoff-delay fn-feed-find
+                (fn-feed-record-drivenp f kind values)
+                (not (fn-feed-presentp msgid f))
+                (not (and (fn-feed-enqueue-kindp kind)
+                          (equal (fn-feed-record-msgid values) msgid))))
+           (not (fn-feed-presentp msgid (fn-feed-apply-record f kind values))))
+  :hints (("Goal"
+           :in-theory (disable (:d fn-feedp) fn-feed-with-backoff
+                               fn-feed-with-conn fn-feed-backoff-delay
+                               fn-feed-find
                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
                                (:d fn-feed-dropped)))))
 
-(defthm fn-feed-done-means-no-more-accepted-outcomes
-  (implies (and (fn-feedp f)
-                (equal (fn-feed-state-of msgid (fn-feed-queue f)) :done)
-                (fn-feed-drivenp f es))
-           (and (equal (fn-feed-state-of
-                        msgid (fn-feed-queue (fn-feed-replay f es)))
-                       :done)
-                (equal (fn-feed-count-accepted (fn-feed-peer f) msgid es) 0)))
-  :hints (("Goal" :induct (fn-feed-drivenp f es)
-           :in-theory (disable (:d fn-feed-apply-record)
-                               (:d fn-feed-record-drivenp) (:d fn-feedp)
-                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
-                               (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped)))))
-
-; Over the journal ENTRY, for the same reason as the lemma above: the fold
-; carries `(car es)', and a statement over a loose `(kind values)' pair asks
-; the prover for `(fn-feed-journal-entry (fn-feed-journal-kind e)
-; (fn-feed-journal-values e)) = e', which is true only for a well-formed
-; entry and is not the content of anything here.
-(defthm fn-feed-accepted-outcome-makes-it-done
+; Over the journal ENTRY, not a loose `(kind values)' pair: the fold's
+; induction step carries `(car es)'.
+(defthm fn-feed-final-outcome-retires-it
   (implies (and (fn-feedp f)
                 (fn-feed-record-drivenp f (fn-feed-journal-kind e)
                                         (fn-feed-journal-values e))
-                (fn-feed-accepted-outcomep (fn-feed-peer f) msgid e))
-           (equal (fn-feed-state-of
-                   msgid
-                   (fn-feed-queue
-                    (fn-feed-apply-record f (fn-feed-journal-kind e)
-                                          (fn-feed-journal-values e))))
-                  :done))
-  :hints (("Goal" :in-theory (disable (:d fn-feedp) fn-feed-with-queue
-                               fn-feed-with-backoff fn-feed-with-conn
-                               fn-feed-backoff-delay fn-feed-find
+                (fn-feed-final-of-recordp (fn-feed-peer f) msgid e))
+           (and (fn-feed-presentp msgid f)
+                (not (fn-feed-presentp
+                      msgid
+                      (fn-feed-apply-record f (fn-feed-journal-kind e)
+                                            (fn-feed-journal-values e))))))
+  :hints (("Goal"
+           :in-theory (disable (:d fn-feedp) fn-feed-with-backoff
+                               fn-feed-with-conn fn-feed-backoff-delay
+                               fn-feed-find
                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
                                (:d fn-feed-dropped)))))
 
-; The head step of the keystone below, and the one thing its induction
-; cannot do by itself.  In the arm where the head record IS an accepted
-; outcome for this (peer, Message-ID), the induction hypothesis gives only
-; `<= 1' over the tail, and one plus one is two; what closes it is that the
-; head makes the entry `:done', after which the tail holds NO accepted
-; outcome at all.  Chaining those two is a `:use' of the two theorems above
-; at one instance, not a rule: stated as a rewrite on the tail's count, with
-; the two named instances cited, so nothing new fires anywhere else.  It is
-; `local' and it is the whole content of `Subgoal *1/2.3''''.
+(defthm fn-feed-enqueue-record-needs-absent
+  (implies (and (fn-feed-record-drivenp f (fn-feed-journal-kind e)
+                                        (fn-feed-journal-values e))
+                (fn-feed-enqueue-of-recordp (fn-feed-peer f) msgid e))
+           (not (fn-feed-presentp msgid f)))
+  :hints (("Goal" :in-theory (disable (:d fn-feedp) fn-feed-find))))
+
+(defthm fn-feed-record-drivenp-names-the-peer
+  (implies (fn-feed-record-drivenp f kind values)
+           (equal (fn-feed-record-peer values) (fn-feed-peer f)))
+  :rule-classes :forward-chaining)
+
+; A driven journal starts from a recognized feed: every record's
+; admissibility asks `fn-feedp' of the state before it, and the empty journal
+; asks it of the start.  So `fn-feedp' is not a separate hypothesis of the
+; keystones below.
+(defthm fn-feed-record-drivenp-implies-feedp
+  (implies (fn-feed-record-drivenp f kind values) (fn-feedp f))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (union-theories '(fn-feed-record-drivenp)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-feed-drivenp-implies-feedp
+  (implies (fn-feed-drivenp f es) (fn-feedp f))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :expand ((fn-feed-drivenp f es))
+           :in-theory (disable (:d fn-feedp) (:d fn-feed-apply-record)))))
+
+(defthm fn-feed-queue-length-is-undelivered
+  (implies (fn-feed-drivenp f es)
+           (equal (len (fn-feed-queue (fn-feed-replay f es)))
+                  (- (+ (len (fn-feed-queue f))
+                        (fn-feed-count-enqueues (fn-feed-peer f) es))
+                     (fn-feed-count-finals (fn-feed-peer f) es))))
+  :hints (("Goal" :induct (fn-feed-drivenp f es)
+           :in-theory (disable (:d fn-feed-apply-record)
+                               (:d fn-feed-record-drivenp) (:d fn-feedp)
+                               fn-feed-journal-entryp fn-feed-record-peer
+                               fn-feed-enqueue-kindp fn-feed-final-recordp))))
+
+(defthm fn-feed-absent-survives-a-driven-entry
+  (implies (and (fn-feedp f)
+                (fn-feed-record-drivenp f (fn-feed-journal-kind e)
+                                        (fn-feed-journal-values e))
+                (not (fn-feed-presentp msgid f))
+                (not (fn-feed-enqueue-of-recordp (fn-feed-peer f) msgid e)))
+           (not (fn-feed-presentp
+                 msgid (fn-feed-apply-record f (fn-feed-journal-kind e)
+                                             (fn-feed-journal-values e)))))
+  :hints (("Goal" :use ((:instance fn-feed-absent-survives-a-driven-record
+                                   (kind (fn-feed-journal-kind e))
+                                   (values (fn-feed-journal-values e)))
+                        (:instance fn-feed-record-drivenp-names-the-peer
+                                   (kind (fn-feed-journal-kind e))
+                                   (values (fn-feed-journal-values e))))
+           :in-theory (disable fn-feed-absent-survives-a-driven-record
+                               fn-feed-record-drivenp-names-the-peer
+                               fn-feed-presentp fn-feedp fn-feed-apply-record
+                               fn-feed-record-drivenp))))
+
 (local
- (defthm fn-feed-count-accepted-after-an-accepted-head
+ (defthm fn-feed-absent-survives-no-enqueue
+   (implies (and (fn-feedp f) (fn-feed-drivenp f es)
+                 (not (fn-feed-presentp msgid f))
+                 (equal (fn-feed-count-enqueued (fn-feed-peer f) msgid es) 0))
+            (not (fn-feed-presentp msgid (fn-feed-replay f es))))
+   :hints (("Goal" :induct (fn-feed-drivenp f es)
+            :in-theory (disable (:d fn-feed-apply-record)
+                                (:d fn-feed-record-drivenp) (:d fn-feedp)
+                                fn-feed-journal-entryp fn-feed-journal-kind
+                                fn-feed-journal-values
+                                fn-feed-presentp fn-feed-enqueue-of-recordp)))))
+
+; The head step: the final answer retires the entry, and nothing after it
+; enqueues the Message-ID again.
+(local
+ (defthm fn-feed-retired-at-the-head
    (implies (and (fn-feedp f)
                  (fn-feed-record-drivenp f (fn-feed-journal-kind (car es))
                                          (fn-feed-journal-values (car es)))
@@ -1111,42 +1309,109 @@
                   (fn-feed-apply-record f (fn-feed-journal-kind (car es))
                                         (fn-feed-journal-values (car es)))
                   (cdr es))
-                 (fn-feed-accepted-outcomep (fn-feed-peer f) msgid (car es)))
-            (equal (fn-feed-count-accepted (fn-feed-peer f) msgid (cdr es))
-                   0))
+                 (fn-feed-final-of-recordp (fn-feed-peer f) msgid (car es))
+                 (equal (fn-feed-count-enqueued (fn-feed-peer f) msgid (cdr es))
+                        0))
+            (not (fn-feed-presentp
+                  msgid
+                  (fn-feed-replay
+                   (fn-feed-apply-record f (fn-feed-journal-kind (car es))
+                                         (fn-feed-journal-values (car es)))
+                   (cdr es)))))
    :hints (("Goal"
-            :use ((:instance fn-feed-accepted-outcome-makes-it-done
-                             (e (car es)))
-                  (:instance fn-feed-done-means-no-more-accepted-outcomes
+            :use ((:instance fn-feed-final-outcome-retires-it (e (car es)))
+                  (:instance fn-feed-absent-survives-no-enqueue
                              (f (fn-feed-apply-record
                                  f (fn-feed-journal-kind (car es))
                                  (fn-feed-journal-values (car es))))
-                             (es (cdr es))))
-            :in-theory (disable fn-feed-accepted-outcome-makes-it-done
-                                fn-feed-done-means-no-more-accepted-outcomes
-                                (:d fn-feed-apply-record)
-                                (:d fn-feed-record-drivenp)
-                                (:d fn-feedp) fn-feed-with-queue
-                                fn-feed-with-backoff fn-feed-with-conn
-                                fn-feed-backoff-delay fn-feed-find
-                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
-                               (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped))))))
+                             (es (cdr es)))
+                  (:instance fn-feed-apply-record-preserves-feedp
+                             (kind (fn-feed-journal-kind (car es)))
+                             (values (fn-feed-journal-values (car es)))))
+            :in-theory (disable fn-feed-final-outcome-retires-it
+                                fn-feed-absent-survives-no-enqueue
+                                fn-feed-apply-record-preserves-feedp
+                                fn-feed-presentp fn-feedp fn-feed-apply-record
+                                fn-feed-record-drivenp fn-feed-drivenp
+                                fn-feed-replay fn-feed-final-of-recordp
+                                fn-feed-journal-kind fn-feed-journal-values)))))
 
-(defthm fn-feed-at-most-one-accepted-outcome
-  (implies (and (fn-feedp f) (fn-feed-drivenp f es))
-           (<= (fn-feed-count-accepted (fn-feed-peer f) msgid es) 1))
+(defthm fn-feed-final-outcome-retires-for-good
+  (implies (and (fn-feed-drivenp f es)
+                (fn-feed-retired-byp (fn-feed-peer f) msgid es))
+           (not (fn-feed-presentp msgid (fn-feed-replay f es))))
+  :hints (("Goal" :induct (fn-feed-drivenp f es)
+           :in-theory (disable (:d fn-feed-apply-record)
+                               (:d fn-feed-record-drivenp) (:d fn-feedp)
+                               fn-feed-journal-entryp fn-feed-journal-kind
+                               fn-feed-journal-values
+                               fn-feed-presentp fn-feed-final-of-recordp))))
+
+(local
+ (defthm fn-feed-accepted-is-final
+   (implies (fn-feed-accepted-outcomep peer msgid e)
+            (fn-feed-final-of-recordp peer msgid e))))
+
+; One record's accounting: an accepted answer spends the presence the entry
+; had; an enqueue creates the presence; nothing else creates it.
+(local
+ (defthm fn-feed-one-record-accounting
+   (implies (and (fn-feedp f)
+                 (fn-feed-record-drivenp f (fn-feed-journal-kind e)
+                                         (fn-feed-journal-values e)))
+            (<= (+ (if (fn-feed-accepted-outcomep (fn-feed-peer f) msgid e) 1 0)
+                   (if (fn-feed-presentp
+                        msgid (fn-feed-apply-record f (fn-feed-journal-kind e)
+                                                    (fn-feed-journal-values e)))
+                       1 0))
+                (+ (if (fn-feed-enqueue-of-recordp (fn-feed-peer f) msgid e) 1 0)
+                   (if (fn-feed-presentp msgid f) 1 0))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-feed-final-outcome-retires-it)
+                  (:instance fn-feed-accepted-is-final (peer (fn-feed-peer f)))
+                  (:instance fn-feed-enqueue-record-needs-absent)
+                  (:instance fn-feed-absent-survives-a-driven-entry))
+            :in-theory (disable fn-feed-final-outcome-retires-it
+                                fn-feed-accepted-is-final
+                                fn-feed-enqueue-record-needs-absent
+                                fn-feed-absent-survives-a-driven-entry
+                                fn-feed-presentp fn-feedp fn-feed-apply-record
+                                fn-feed-record-drivenp fn-feed-final-of-recordp
+                                fn-feed-accepted-outcomep
+                                fn-feed-enqueue-of-recordp
+                                fn-feed-journal-kind fn-feed-journal-values)))))
+
+(defthm fn-feed-accepted-outcomes-bounded-by-enqueues
+  (implies (fn-feed-drivenp f es)
+           (<= (fn-feed-count-accepted (fn-feed-peer f) msgid es)
+               (+ (fn-feed-count-enqueued (fn-feed-peer f) msgid es)
+                  (if (fn-feed-presentp msgid f) 1 0))))
   :rule-classes :linear
   :hints (("Goal" :induct (fn-feed-drivenp f es)
            :in-theory (disable (:d fn-feed-apply-record)
                                (:d fn-feed-record-drivenp) (:d fn-feedp)
-                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
-                               (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped)))))
+                               fn-feed-journal-entryp fn-feed-journal-kind
+                               fn-feed-journal-values
+                               fn-feed-accepted-outcomep
+                               fn-feed-enqueue-of-recordp
+                               fn-feed-presentp))
+          ("Subgoal *1/2" :use ((:instance fn-feed-one-record-accounting
+                                           (e (car es)))))))
+
+; Exactly-once per (peer, Message-ID) when the Message-ID is owed once: it is
+; either in the queue and never enqueued again, or enqueued once.
+(defthm fn-feed-at-most-one-accepted-outcome
+  (implies (and (fn-feed-drivenp f es)
+                (<= (+ (fn-feed-count-enqueued (fn-feed-peer f) msgid es)
+                       (if (fn-feed-presentp msgid f) 1 0))
+                    1))
+           (<= (fn-feed-count-accepted (fn-feed-peer f) msgid es) 1))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-feed-accepted-outcomes-bounded-by-enqueues
+           :in-theory (disable fn-feed-accepted-outcomes-bounded-by-enqueues
+                               fn-feed-presentp fn-feedp fn-feed-drivenp))))
+
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: nothing is dropped without a drop record naming the reason
@@ -1248,11 +1513,18 @@
     fn-feed-attempts-belowp-of-requeue-inflight
     fn-feed-attempts-belowp-of-requeue
     fn-feed-attempts-belowp-of-set-state-not-inflight
-    fn-feed-donep-is-not-inflight
     fn-feed-inflight-count-zero-means-not-inflight
-    fn-feed-done-survives-a-driven-record
-    fn-feed-done-is-not-an-accepted-outcome-record
-    fn-feed-accepted-outcome-makes-it-done
-    fn-feed-not-dropped-survives-a-non-drop-record))
+    fn-feed-not-dropped-survives-a-non-drop-record
+    ; PRF-335: the removal vocabulary and the one-record steps.
+    fn-feed-entry-listp-of-retire fn-feed-msgids-of-retire-not-member
+    fn-feed-distinctp-of-retire fn-feed-len-of-retire
+    fn-feed-inflight-count-of-retire fn-feed-attempts-belowp-of-retire
+    fn-feed-find-of-retire-other fn-feed-state-of-of-retire-other
+    fn-feed-find-of-retire-same fn-feed-state-of-of-retire-same
+    fn-feed-droppedp-of-state-of-retire fn-feed-find-of-retire-when-absent
+    fn-feed-apply-record-len fn-feed-absent-survives-a-driven-record
+    fn-feed-final-outcome-retires-it fn-feed-enqueue-record-needs-absent
+    fn-feed-record-drivenp-names-the-peer fn-feed-record-drivenp-implies-feedp
+    fn-feed-absent-survives-a-driven-entry))
 
 (in-theory (disable fn-feed-invariants-vocabulary))

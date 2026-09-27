@@ -2,7 +2,15 @@
 ;
 ; One feed state per configured outbound peer.  The queue holds Message-IDs
 ; and an offer state; no article bytes live here (the article is rendered from
-; the store when it is offered).  Every decision the feed takes is journaled
+; the store when it is offered).  It holds UNDELIVERED obligations only: a
+; final answer from the peer (235/239 accepted, 435/438 it has it, 437/439 it
+; refused it) RETIRES the entry (`fn-feed-done', `fn-feed-queue-retire'), so
+; the queue's length is what is still owed to the peer, never history
+; (PRF-335, `fn-feed-queue-length-is-undelivered' in peer-feed-invariants).
+; The outcome record in the journal is what keeps the answer.  Before
+; PRF-335 a delivered entry stayed as `:done' and counted against the
+; peer's max-queue, so after 1,024 articles every local post was refused
+; (planning/evidence/openbsd-rehearsal-2026-09-27.md, stop 1).  Every decision the feed takes is journaled
 ; in the FNFD record family below BEFORE the effect it authorizes, and
 ; `fn-feed-replay' folds those records back into a feed state.  That fold and
 ; the restart it feeds are what make the offer exactly-once per peer: the
@@ -82,8 +90,9 @@
 ; -----------------------------------------------------------------------------
 ; The offer state of a queue entry
 ;
-; :queued | (:offered n) | (:sent n) | :done | (:dropped reason).
-; These five glue predicates are the only place a state's spelling is opened;
+; :queued | (:offered n) | (:sent n) | (:dropped reason).  There is no
+; delivered state: a delivered entry leaves the queue (`fn-feed-done').
+; These glue predicates are the only place a state's spelling is opened;
 ; every rule above them is stated in this vocabulary (docs/proof-style.md
 ; sec. 8: glue predicates in accessor vocabulary may leave the book enabled).
 
@@ -118,7 +127,6 @@
 (defun fn-feed-state-okp (s)
   (declare (xargs :guard t))
   (or (equal s :queued)
-      (equal s :done)
       (fn-feed-offeredp s)
       (fn-feed-sentp s)
       (fn-feed-droppedp s)))
@@ -326,6 +334,17 @@
                                (fn-feed-entry-tick (car xs)))
                 (car xs))
             (fn-feed-queue-settle (cdr xs)))))
+
+; Retire: the entry for MSGID leaves the queue.  Work is one walk of the
+; queue, which holds only undelivered entries.  The queue is distinct
+; (`fn-feed-distinctp'), so the first match is the only one.
+(defun fn-feed-queue-retire (xs msgid)
+  (declare (xargs :guard t))
+  (if (atom xs)
+      nil
+      (if (equal (fn-feed-entry-msgid (car xs)) msgid)
+          (cdr xs)
+          (cons (car xs) (fn-feed-queue-retire (cdr xs) msgid)))))
 
 ; -----------------------------------------------------------------------------
 ; The per-peer limits, copied from the peer record's outbound half at open
@@ -674,8 +693,8 @@
                             article)))))))
 
 ; 235/239 (accepted), 435/438 (the peer has it), 437/439 (the peer refused it):
-; the entry is finished either way.  Which of the three it was is in the
-; outcome record, never lost.
+; the entry is finished either way, and it is RETIRED: it leaves the queue.
+; Which of the three it was is in the outcome record, never lost.
 (defun fn-feed-done (f msgid)
   (declare (xargs :guard t))
   (if (or (not (fn-feedp f))
@@ -683,7 +702,7 @@
                 (fn-feed-state-of msgid (fn-feed-queue f)))))
       f
       (fn-feed-with-queue
-       f (fn-feed-queue-set-state (fn-feed-queue f) msgid :done))))
+       f (fn-feed-queue-retire (fn-feed-queue f) msgid))))
 
 (defun fn-feed-with-backoff (f until)
   (declare (xargs :guard t))
@@ -737,8 +756,7 @@
   (declare (xargs :guard t))
   (if (or (not (fn-feedp f))
           (not (consp (fn-feed-find msgid (fn-feed-queue f))))
-          (fn-feed-droppedp (fn-feed-state-of msgid (fn-feed-queue f)))
-          (equal (fn-feed-state-of msgid (fn-feed-queue f)) :done))
+          (fn-feed-droppedp (fn-feed-state-of msgid (fn-feed-queue f))))
       f
       (fn-feed-with-queue
        f (fn-feed-queue-set-state (fn-feed-queue f) msgid
@@ -1174,7 +1192,6 @@
           ((equal kind :feed-lost) t)
           ((equal kind :feed-drop)
            (and (consp (fn-feed-find msgid (fn-feed-queue f)))
-                (not (equal (fn-feed-state-of msgid (fn-feed-queue f)) :done))
                 (not (fn-feed-droppedp
                       (fn-feed-state-of msgid (fn-feed-queue f))))))
           ((equal kind :feed-restart) t)
