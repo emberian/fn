@@ -4297,7 +4297,8 @@
       "milestone": "M6",
       "status": "specified",
       "proof_targets": [
-        "PRF-243"
+        "PRF-243",
+        "PRF-290"
       ],
       "verification": [
         "proof",

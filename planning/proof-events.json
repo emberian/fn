@@ -10411,6 +10411,35 @@
           "note": "Under the owner invariant an authorized record's installed Store satisfies fn-cpo-history-relation over the extended configuration history and the unchanged Store history. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-290",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-crlf-validp-is-crlf-lines-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-blank-linep-is-split-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-of-bytes-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-article-reply-exec-is-the-reply"
+        }
+      ]
     }
   ]
 }
