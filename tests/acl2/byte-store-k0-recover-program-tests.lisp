@@ -28,19 +28,25 @@
          (declare (ignore r))
          (and (fn-bs-k0-coveredp bs1 ks1 *bsk5-arena*)
               (or (equal ks1 ks) (equal (car step) :observe))))))
+(defun bskv-link () (car (bskv-r 10)))
+(defun bskv-rename () (car (bskv-f 11)))
+; The reopened kernel holds the RETAINED rows whose alpha is the scan (the
+; host opens over the interned scan): here the dying process's own rows,
+; fn-bs-scanned-rows of its kernel at the crash pair.
+(defun bskv-rows (bs)
+  (fn-bs-scanned-rows (if (equal bs (bskv-rename)) (cdr (bskv-f 11)) (cdr (bskv-r 10)))
+                      bs *bsk5-arena*))
 (defun bskv-k (bs n)
   (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store bs))
-                          (fn-bs-scan-records (fn-bs-scan-store bs)) n))
+                          (bskv-rows bs) n))
 (defun bskv-run (bs ks) (fn-bs-run bs ks (fn-bs-recover-program) nil nil nil))
 (defun bskv-prog-concl (bs ks)
   (let ((run (bskv-run bs ks)))
-    (and (fn-bs-k0v-steps-coveredp (cons (cons bs ks) run) (fn-bs-recover-program))
+    (and (fn-bs-k0v-steps-coveredp (cons (cons bs ks) run) (fn-bs-recover-program) *bsk5-arena*)
          (fn-bs-run-relatedp run *bsk5-arena*)
          (equal (len run) 17)
          (equal (car (nth 16 run)) (fn-bs-k0v-drained bs))
          (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
-(defun bskv-link () (car (bskv-r 10)))
-(defun bskv-rename () (car (bskv-f 11)))
 
 ; ---------------------------------------------------------------------------
 ; The window with a pending link.  Related to the reopened kernel, which
@@ -98,7 +104,7 @@
 ; image: a staging entry is still pending.
 (defun bskv-open (configs bs)
   (fn-cpo-open-observed configs (fn-bs-scan-frontier (fn-bs-scan-store bs))
-                        (fn-bs-scan-records (fn-bs-scan-store bs))))
+                        (bskv-rows bs)))
 (defun bskv-host (configs bs) (fn-sn-files (fn-sn-open-state (bskv-open configs bs))))
 (defun bskv-rerecovery-concl (configs bs)
   (and (fn-bs-store-relation bs (bskv-host configs bs) *bsk5-arena*)
@@ -109,8 +115,22 @@
 (assert-event (not (fn-bs-replay-visiblep (bskv-admin-k))))
 (assert-event (fn-bs-k0w-authority-quietp (bskv-admin)))
 (assert-event (consp (fn-bs-pending (bskv-admin))))
+(assert-event (fn-bs-recovered-rowsp (bskv-admin) (bskv-rows (bskv-admin)) *bsk5-arena*))
 (assert-event (fn-sn-open-okp (bskv-open *bskv-configs* (bskv-admin))))
 (assert-event (bskv-rerecovery-concl *bskv-configs* (bskv-admin)))
+; Teeth for the rows hypothesis: the scan holds an article, so its wire
+; records are not the retained rows (fn-bs-recovered-rowsp fails of them)
+; and the kernel reopened over the wire records is related to no byte
+; state here.
+(assert-event (not (fn-bs-recovered-rowsp (bskv-admin)
+                                          (fn-bs-scan-records (fn-bs-scan-store (bskv-admin)))
+                                          *bsk5-arena*)))
+(must-fail
+ (assert-event
+  (fn-bs-store-relation (bskv-admin)
+                        (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store (bskv-admin)))
+                                                (fn-bs-scan-records (fn-bs-scan-store (bskv-admin))) 0)
+                        *bsk5-arena*)))
 (assert-event (equal (bskv-host *bskv-configs* (bskv-admin)) (bskv-k (bskv-admin) 0)))
 ; Teeth.  Open success: no configuration record, the open is refused.
 (assert-event (not (fn-sn-open-okp (bskv-open nil (bskv-admin)))))

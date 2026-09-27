@@ -254,7 +254,7 @@
                             fn-bs-root-rename-dropped fn-bs-k0s-root-rename-landed fn-bs-k0m-has-root-rename
                             fn-bs-k0m-root-rename-onlyp fn-bs-finish-inputp fn-bs-replay-visiblep
                             fn-bs-crash-imagep fn-bs-fsync-dir fn-bs-k0s-fsync-dir-ok-is-fence)))))
-(defun fn-bs-k0b-marker-step-coveredp (pre step outcome ks groups capacity)
+(defun fn-bs-k0b-marker-step-coveredp (pre step outcome ks groups capacity arena)
   (declare (xargs :guard t :verify-guards nil))
   (mv-let (r bs1 ks1) (fn-bs-step (car pre) (cdr pre) step outcome groups capacity)
     (declare (ignore r))
@@ -278,11 +278,11 @@
                 (fn-bs-k0b-marker-fsync-outcomep bs stage octets outcome))
            (let ((run (fn-bs-run bs ks (fn-bs-marker-program stage octets) nil groups capacity))
                  (prog (fn-bs-marker-program stage octets)))
-             (and (fn-bs-k0b-marker-step-coveredp (cons bs ks) (nth 0 prog) outcome ks groups capacity)
-                  (fn-bs-k0b-marker-step-coveredp (nth 1 run) (nth 2 prog) outcome ks groups capacity)
-                  (fn-bs-k0b-marker-step-coveredp (nth 3 run) (nth 4 prog) outcome ks groups capacity)
-                  (fn-bs-k0b-marker-step-coveredp (nth 5 run) (nth 6 prog) outcome ks groups capacity)
-                  (fn-bs-k0b-marker-step-coveredp (nth 7 run) (nth 8 prog) outcome ks groups capacity))))
+             (and (fn-bs-k0b-marker-step-coveredp (cons bs ks) (nth 0 prog) outcome ks groups capacity arena)
+                  (fn-bs-k0b-marker-step-coveredp (nth 1 run) (nth 2 prog) outcome ks groups capacity arena)
+                  (fn-bs-k0b-marker-step-coveredp (nth 3 run) (nth 4 prog) outcome ks groups capacity arena)
+                  (fn-bs-k0b-marker-step-coveredp (nth 5 run) (nth 6 prog) outcome ks groups capacity arena)
+                  (fn-bs-k0b-marker-step-coveredp (nth 7 run) (nth 8 prog) outcome ks groups capacity arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0b-marker-pairs-by-step fn-bs-k0m-completing-window-facts fn-bs-k0b-marker-step-inputs

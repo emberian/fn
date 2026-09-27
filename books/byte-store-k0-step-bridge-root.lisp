@@ -213,7 +213,7 @@
 ; Every step of the program, from the pair the successful run reaches
 ; before it, with any outcome (the stage fsync with :ok or a well-formed crash
 ; selection of its writes): the result is covered and the kernel unchanged.
-(defun fn-bs-k0r-step-coveredp (pre step outcome ks groups capacity)
+(defun fn-bs-k0r-step-coveredp (pre step outcome ks groups capacity arena)
   (declare (xargs :guard t :verify-guards nil))
   (mv-let (r bs1 ks1) (fn-bs-step (car pre) (cdr pre) step outcome groups capacity)
     (declare (ignore r))
@@ -221,18 +221,18 @@
 (defmacro fn-bs-k0r-any-outcome-body (program)
   `(let ((run (fn-bs-run bs ks (,program stage octets) nil groups capacity))
          (prog (,program stage octets)))
-     (and (fn-bs-k0r-step-coveredp (cons bs ks) (nth 0 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 1 run) (nth 2 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 3 run) (nth 4 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 5 run) (nth 6 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 7 run) (nth 8 prog) outcome ks groups capacity))))
+     (and (fn-bs-k0r-step-coveredp (cons bs ks) (nth 0 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 1 run) (nth 2 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 3 run) (nth 4 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 5 run) (nth 6 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 7 run) (nth 8 prog) outcome ks groups capacity arena))))
 (defthm fn-bs-k0r-pair-steps-covered
   (implies (and (fn-bs-k0r-hyps) (fn-bs-k0r-fsync-outcomep bs stage octets outcome))
-           (and (fn-bs-k0r-step-coveredp (cons bs ks) (list :create :staging stage) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s1 bs stage) ks) (list :write-all :staging stage octets) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s2 bs stage octets) ks) (list :fsync-file :staging stage) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s3 bs stage octets) ks) (list :rename :staging stage :root name) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0r-s4 bs stage octets name) ks) (list :fsync-dir :root) outcome ks groups capacity)))
+           (and (fn-bs-k0r-step-coveredp (cons bs ks) (list :create :staging stage) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s1 bs stage) ks) (list :write-all :staging stage octets) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s2 bs stage octets) ks) (list :fsync-file :staging stage) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s3 bs stage octets) ks) (list :rename :staging stage :root name) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0r-s4 bs stage octets name) ks) (list :fsync-dir :root) outcome ks groups capacity arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0r-pairs-by-step fn-bs-k0r-step-inputs

@@ -172,12 +172,12 @@
                             (fn-bs-store-relation fn-bs-recovered-kernel fn-sf-statep k0v-recovered-kernel-is-state
                              fn-sf-record-listp fn-bs-fence-dir k0v-fence-step fn-bs-k0v-drained-is-quiet
                              fn-bs-k0w-authority-quietp))))))
-(defun fn-bs-k0v-steps-coveredp (pairs steps)
+(defun fn-bs-k0v-steps-coveredp (pairs steps arena)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp steps)
       (and (consp pairs)
            (fn-bs-k0-step-inputp (car (car pairs)) (cdr (car pairs)) (car steps) :ok arena)
-           (fn-bs-k0v-steps-coveredp (cdr pairs) (cdr steps)))
+           (fn-bs-k0v-steps-coveredp (cdr pairs) (cdr steps) arena))
     t))
 (local
  (defthm k0v-recovered-kernel-phase
@@ -217,7 +217,7 @@
                           (cons (fn-bs-k0v-drained bs) (fn-bs-recovered-kernel f r 4))
                           (cons (fn-bs-k0v-drained bs) (fn-bs-recovered-kernel f r 5))
                           (cons (fn-bs-k0v-drained bs) (fn-bs-recovered-kernel f r 5))))
-                                           (fn-bs-recover-program))
+                                           (fn-bs-recover-program) arena)
                  (fn-bs-run-relatedp (list (cons bs (fn-bs-recovered-kernel f r 0))
                           (cons bs (fn-bs-recovered-kernel f r 0))
                           (cons bs (fn-bs-recovered-kernel f r 0))
@@ -260,7 +260,7 @@
   (implies (fn-bs-store-relation bs (fn-bs-recovered-kernel f r 0) arena)
            (let ((run (fn-bs-run bs (fn-bs-recovered-kernel f r 0) (fn-bs-recover-program) nil groups capacity)))
              (and (fn-bs-k0v-steps-coveredp (cons (cons bs (fn-bs-recovered-kernel f r 0)) run)
-                                            (fn-bs-recover-program))
+                                            (fn-bs-recover-program) arena)
                   (fn-bs-run-relatedp run arena)
                   (equal (len run) 17)
                   (equal (car (nth 16 run)) (fn-bs-k0v-drained bs))
@@ -322,27 +322,50 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds fn-bs-k0v-quiet-view-reads-durable fn-bs-k0v-quiet-kernel-admits-durable
+                 (:instance fn-bs-alpha-recovery-crash-image-is-alpha-of-a-kernel-one (s ks)
+                            (frontier (fn-bs-durable-frontier bs)) (records (fn-bs-durable-records bs)))
                  (:instance fn-sf-recovery-admissible-image-facts (s ks) (frontier (fn-bs-durable-frontier bs))
-                            (records (fn-bs-durable-records bs))))
+                            (records (fn-bs-kernel-image-records ks (fn-bs-durable-records bs) arena))))
            :in-theory (e/d (fn-bs-scan-store fn-bs-durable-frontier fn-bs-contiguous-namesp)
-                           (fn-bs-store-relation fn-bs-lookup fn-bs-content fn-bs-names fn-bs-read-records fn-bs-durable-names
+                           (fn-bs-kernel-image-records fn-bs-store-relation fn-bs-lookup fn-bs-content fn-bs-names fn-bs-read-records fn-bs-durable-names
                             fn-bs-durable-records fn-bs-durable-entry fn-bs-durable-content fn-sf-statep
                             fn-sf-recovery-crash-imagep fn-bs-alpha-recovery-crash-imagep fn-sf-record-listp fn-bs-k0w-authority-quietp
                             fn-bs-txn-names fn-sf-recovery-admissible-image-facts)))))
-(defthm fn-bs-k0v-quiet-pair-relates-to-rerecovered-kernel
+;; The witness rows: a quiet related pair's own kernel rows (the kernel image
+;; records whose alpha is the durable scan) satisfy fn-bs-recovered-rowsp, so the
+;; rows hypothesis below is satisfiable at every quiet related pair.
+(defthm fn-bs-k0v-quiet-pair-has-recovered-rows
   (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0w-authority-quietp bs))
+           (fn-bs-recovered-rowsp bs (fn-bs-scanned-rows ks bs arena) arena))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0v-quiet-scan-is-durable fn-bs-k0v-quiet-kernel-admits-durable
+                 (:instance fn-bs-alpha-recovery-crash-image-is-alpha-of-a-kernel-one (s ks)
+                            (frontier (fn-bs-durable-frontier bs)) (records (fn-bs-durable-records bs)))
+                 (:instance fn-sf-recovery-admissible-image-facts (s ks) (frontier (fn-bs-durable-frontier bs))
+                            (records (fn-bs-kernel-image-records ks (fn-bs-durable-records bs) arena))))
+           :in-theory (union-theories '(fn-bs-recovered-rowsp fn-bs-scanned-rows fn-bs-scan-frontier
+                                        fn-bs-scan-records car-cons cdr-cons nth-0-cons nth-add1 (:executable-counterpart zp)
+                                        (:executable-counterpart nfix) (:executable-counterpart binary-+))
+                                      (theory 'minimal-theory)))))
+(defthm fn-bs-k0v-quiet-pair-relates-to-rerecovered-kernel
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0w-authority-quietp bs)
+                (fn-bs-recovered-rowsp bs rows arena))
            (fn-bs-store-relation bs (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store bs))
-                                                            (fn-bs-scan-records (fn-bs-scan-store bs)) 0) arena))
+                                                            rows 0) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds fn-bs-k0v-quiet-scan-is-durable fn-bs-k0v-quiet-kernel-admits-durable
                  fn-bs-store-relation-implies-the-pending-shape
+                 (:instance fn-bs-alpha-recovery-crash-image-is-alpha-of-a-kernel-one (s ks)
+                            (frontier (fn-bs-durable-frontier bs)) (records (fn-bs-durable-records bs)))
                  (:instance fn-sf-recovery-admissible-image-facts (s ks) (frontier (fn-bs-durable-frontier bs))
-                            (records (fn-bs-durable-records bs)))
-                 (:instance k0v-recovered-kernel-is-state (f (fn-bs-durable-frontier bs)) (r (fn-bs-durable-records bs)) (n 0)))
+                            (records (fn-bs-kernel-image-records ks (fn-bs-durable-records bs) arena)))
+                 (:instance fn-bs-recovered-rowsp (image bs))
+                 (:instance k0v-recovered-kernel-is-state (f (fn-bs-durable-frontier bs)) (r rows) (n 0)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-replay-matches-scan fn-bs-scan-okp fn-bs-scan-frontier fn-bs-scan-records
                             fn-bs-k0w-authority-quietp)
-                           (fn-bs-scan-store fn-bs-durable-frontier fn-bs-durable-records fn-bs-statep fn-sf-statep
+                           (fn-bs-kernel-image-records fn-bs-recovered-rowsp fn-bs-scan-store fn-bs-durable-frontier fn-bs-durable-records fn-bs-statep fn-sf-statep
                             fn-bs-pending-shape-okp fn-bs-authority-fencedp fn-bs-authority-knownp fn-bs-recovered-kernel
                             fn-sf-recovery-crash-imagep fn-bs-alpha-recovery-crash-imagep fn-sf-record-listp fn-sf-recovery-admissible-image-facts
                             k0v-recovered-kernel-is-state fn-bs-durable-content fn-bs-durable-entry fn-bs-durable-names
@@ -350,16 +373,17 @@
 (defthm fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut
   (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-k0w-authority-quietp bs)
+                (fn-bs-recovered-rowsp bs rows arena)
                 (fn-sn-open-okp (fn-cpo-open-observed configs
                                                       (fn-bs-scan-frontier (fn-bs-scan-store bs))
-                                                      (fn-bs-scan-records (fn-bs-scan-store bs)))))
+                                                      rows)))
            (let* ((host (fn-sn-files (fn-sn-open-state
                                       (fn-cpo-open-observed configs
                                                             (fn-bs-scan-frontier (fn-bs-scan-store bs))
-                                                            (fn-bs-scan-records (fn-bs-scan-store bs))))))
+                                                            rows))))
                   (run (fn-bs-run bs host (fn-bs-recover-program) nil groups capacity)))
              (and (fn-bs-store-relation bs host arena)
-                  (fn-bs-k0v-steps-coveredp (cons (cons bs host) run) (fn-bs-recover-program))
+                  (fn-bs-k0v-steps-coveredp (cons (cons bs host) run) (fn-bs-recover-program) arena)
                   (fn-bs-run-relatedp run arena)
                   (equal (len run) 17)
                   (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
@@ -368,12 +392,12 @@
            :use (fn-bs-k0v-quiet-pair-relates-to-rerecovered-kernel
                  (:instance fn-bs-host-reopened-kernel-is-the-recovered-kernel
                   (frontier (fn-bs-scan-frontier (fn-bs-scan-store bs)))
-                  (events (fn-bs-scan-records (fn-bs-scan-store bs))))
+                  (events rows))
                  (:instance fn-bs-k0v-recover-program-by-step
                   (f (fn-bs-scan-frontier (fn-bs-scan-store bs)))
-                  (r (fn-bs-scan-records (fn-bs-scan-store bs))))
+                  (r rows))
                  (:instance k0v-recovered-kernel-phase
                   (f (fn-bs-scan-frontier (fn-bs-scan-store bs)))
-                  (r (fn-bs-scan-records (fn-bs-scan-store bs))) (n 5)))
+                  (r rows) (n 5)))
            :in-theory (union-theories '((:executable-counterpart equal) (:executable-counterpart if))
                                       (theory 'minimal-theory)))))
