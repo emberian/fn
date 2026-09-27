@@ -45,6 +45,9 @@
 # the start instead.  The box run survives a dropped ssh (nohup).
 #
 # Options: --name NAME, --label LABEL, --images LIST, --mem SIZE,
+# --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
+# keeps the toolchain's: e.g. a --tls-limit 65536 wrapper, since the served
+# image's load exhausted SBCL's thread-local storage at 16384 on 2026-09-27),
 # --jobs N (certify, default 8), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
@@ -60,6 +63,7 @@ NAME=$(basename "$HERE")
 LABEL=
 IMAGES=developer
 MEM=24G
+IMAGE_ACL2=
 JOBS=8
 BUILD=1
 DETACH=0
@@ -74,6 +78,7 @@ while [ $# -gt 0 ]; do
         --label) LABEL=$2; shift 2 ;;
         --images) IMAGES=$2; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
+        --image-acl2) IMAGE_ACL2=$2; shift 2 ;;
         --jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
         --detach) DETACH=1; shift ;;
@@ -237,7 +242,7 @@ BOX
                 dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer world=full ;;
             esac
             cat <<BOX
-step image-$image env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
+step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
 BOX
         done
     fi
