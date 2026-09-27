@@ -205,7 +205,7 @@
   (declare (xargs :guard t))
   (fn-mvb-after-blank (fn-article-payload a)))
 
-(defun fn-mvb-approve (raw ws verdicts cfg clock node login id)
+(defun fn-mvb-approve (raw ws verdicts cfg clock login id)
   (declare (xargs :guard t))
   (let ((e (fn-mvb-held-envelope raw ws verdicts (fn-inj-config-closed cfg)
                                  login id)))
@@ -319,8 +319,7 @@
          (id (fn-record-octets-string id))
          (reason (fn-record-octets-string reason)))
     (cond ((equal op :approve)
-           (fn-mvb-approve raw ws verdicts cfg (fn-own-clock o)
-                           (fn-sn-node (fn-own-store o)) login id))
+           (fn-mvb-approve raw ws verdicts cfg (fn-own-clock o) login id))
           ((equal op :reject)
            (fn-mvb-reject raw ws verdicts cfg (fn-own-clock o)
                           (fn-sn-node (fn-own-store o)) rows login id reason))
@@ -342,8 +341,7 @@
                 (rows (fn-cfg-authorities (fn-cfg-value (fn-ocfg-config oc)))))
            (cond ((equal op :approve)
                   (fn-mvb-approve (fn-own-view-raw v) (fn-own-view-withdrawals v)
-                                  (fn-own-view-verdicts v) cfg (fn-own-clock o)
-                                  (fn-sn-node (fn-own-store o)) login
+                                  (fn-own-view-verdicts v) cfg (fn-own-clock o) login
                                   (fn-record-octets-string id)))
                  ((equal op :reject)
                   (fn-mvb-reject (fn-own-view-raw v) (fn-own-view-withdrawals v)
@@ -373,9 +371,9 @@
 ; `fn-own-operator-decision-is-an-injection-of-the-payload').  Subject:
 ; `fn-mvb-approve', called by `fn-mvb-plan'.
 (defthm fn-mvb-approve-commits-the-held-article-approved
-  (implies (equal (car (fn-mvb-approve raw ws verdicts cfg clock node login id))
+  (implies (equal (car (fn-mvb-approve raw ws verdicts cfg clock login id))
                   :submit)
-           (let* ((plan (fn-mvb-approve raw ws verdicts cfg clock node login id))
+           (let* ((plan (fn-mvb-approve raw ws verdicts cfg clock login id))
                   (a (fn-cev-find-article (fn-mvb-envelope-id id) raw))
                   (octets (fn-mvb-approved-article login (fn-mvb-held-article a)))
                   (d (fn-post-gated-decision octets (fn-mvb-login-config cfg login)
@@ -404,7 +402,7 @@
   (implies (not (fn-mvb-moderates-some
                  login (fn-article-groups (fn-cev-find-article (fn-mvb-envelope-id id) raw))
                  (fn-inj-config-closed cfg)))
-           (and (equal (car (fn-mvb-approve raw ws verdicts cfg clock node login id))
+           (and (equal (car (fn-mvb-approve raw ws verdicts cfg clock login id))
                        :refused)
                 (equal (car (fn-mvb-reject raw ws verdicts cfg clock node rows login id reason))
                        :refused)))

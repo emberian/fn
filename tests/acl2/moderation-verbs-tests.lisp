@@ -62,7 +62,7 @@
 ; 2. Approve.
 
 (defun mvt-approve (raw ws login id)
-  (fn-mvb-approve raw ws nil *mvt-cfg* *mvt-obs* *mvt-node* (mvt-o login) id))
+  (fn-mvb-approve raw ws nil *mvt-cfg* *mvt-obs* (mvt-o login) id))
 (defconst *mvt-approved* (mvt-approve *mvt-raw* nil "alice" "<m1@example.invalid>"))
 (defconst *mvt-approved-octets*
   (fn-mvb-approved-article (mvt-o "alice") (fn-mvb-held-article *mvt-env*)))

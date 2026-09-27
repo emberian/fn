@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/control-served")
 (include-book "../../books/control-visible")
+(include-book "held-rows-tests")   ; fn-hrt-row-at: the history's rows
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun csv-line (text)
@@ -41,7 +42,17 @@
         (cons "<c@example.invalid>" *csv-p-verified*)
         (cons "<d@example.invalid>" *csv-q-verified*)))
 (defconst *csv-raw* (list *csv-d* *csv-c* *csv-t* *csv-o*))
-(defconst *csv-ws* (fn-ctl-articles-withdrawals *csv-raw* *csv-verdicts* nil nil))
+; The Store's history: after the records flip the refresh reads a cancel's
+; target from its row's control fact (flip-L8-2); each row is interned from
+; its article's bytes (handle = sequence).
+(defun csv-row (seq msgid bytes groups)
+  (fn-hrt-row-at (fn-record-make seq seq 1 msgid bytes groups "a" "s" "e" 2 :legacy) seq))
+(defconst *csv-hist*
+  (list (csv-row 0 "<t@example.invalid>" '(65) '("fn.mod.a"))
+        (csv-row 1 "<o@example.invalid>" '(65) '("fn.mod.a"))
+        (csv-row 2 "<c@example.invalid>" (fn-article-payload *csv-c*) '("control.cancel"))
+        (csv-row 3 "<d@example.invalid>" (fn-article-payload *csv-d*) '("control.cancel"))))
+(defconst *csv-ws* (fn-ctl-articles-withdrawals *csv-raw* *csv-verdicts* *csv-hist* nil))
 (defconst *csv-vis* (fn-ctl-visible-articles *csv-raw* *csv-ws* *csv-verdicts*))
 (defconst *csv-w* (fn-ctl-withdrawn-articles *csv-raw* *csv-ws* *csv-verdicts*))
 
@@ -68,7 +79,7 @@
 (assert-event
  (let* ((old (list *csv-t* *csv-o*))
         (new (cons *csv-c* old))
-        (ws (fn-ctl-articles-withdrawals new *csv-verdicts* nil nil))
+        (ws (fn-ctl-articles-withdrawals new *csv-verdicts* *csv-hist* nil))
         (vis (fn-ctl-visible-articles new ws *csv-verdicts*)))
    (and (equal (fn-ctl-subseq-diff old old) nil)
         (equal (fn-ctl-refresh-withdrawn new old vis old nil) (list *csv-t*))
@@ -80,7 +91,7 @@
  (assert-event
   (let* ((old (list *csv-t* *csv-o*))
          (new (cons *csv-a* old))
-         (ws (fn-ctl-articles-withdrawals new *csv-verdicts* nil nil))
+         (ws (fn-ctl-articles-withdrawals new *csv-verdicts* *csv-hist* nil))
          (vis (fn-ctl-visible-articles new ws *csv-verdicts*)))
     (equal (fn-ctl-refresh-withdrawn new old vis old (list *csv-o*))
            (fn-ctl-withdrawn-articles new ws *csv-verdicts*)))))
@@ -89,7 +100,7 @@
  (assert-event
   (let* ((old (list *csv-t* *csv-o*))
          (new (cons *csv-c* old))
-         (ws (fn-ctl-articles-withdrawals new *csv-verdicts* nil nil)))
+         (ws (fn-ctl-articles-withdrawals new *csv-verdicts* *csv-hist* nil)))
     (equal (fn-ctl-refresh-withdrawn new old new old nil)
            (fn-ctl-withdrawn-articles new ws *csv-verdicts*)))))
 ; control-c3e: the merge copies the withdrawn tail as a true list, so the
@@ -97,7 +108,7 @@
 ; now agrees too.
 (assert-event
  (let* ((raw (cons *csv-c* (cons *csv-t* 5)))
-        (ws (fn-ctl-articles-withdrawals raw *csv-verdicts* nil nil))
+        (ws (fn-ctl-articles-withdrawals raw *csv-verdicts* *csv-hist* nil))
         (vis (fn-ctl-visible-articles raw ws *csv-verdicts*)))
    (and (equal (fn-ctl-refresh-withdrawn raw nil vis nil nil) (list *csv-t*))
         (equal (fn-ctl-refresh-withdrawn raw nil vis nil nil)
