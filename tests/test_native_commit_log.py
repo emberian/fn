@@ -252,6 +252,38 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                 finally:
                     node.stop()
 
+    def test_store_post_and_probe_commit_through_the_log(self):
+        # The developer entries that commit without an owner (fnn-command-post,
+        # fnn-command-probe) take the same route: a batch of one each.
+        root = self.root / "direct"
+        root.mkdir()
+        store = root / "store"
+        env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
+        env.pop("FN_NATIVE_STORE_FORMAT", None)
+        init = subprocess.run([self.image, "--fn", "store", str(store), "init", GROUP],
+                              env=env, capture_output=True, timeout=600)
+        self.assertEqual(init.returncode, 0, init.stderr[-800:])
+        self.assertTrue((store / "journal" / "000001.log").is_file())
+        payload = root / "payload"
+        payload.write_bytes(article(900))
+        posted = [subprocess.run(
+            [self.image, "--fn", "store", str(store), "post", msgid(900),
+             str(payload), "-", "-", GROUP], env=env, capture_output=True, timeout=600)
+            for _ in range(2)]
+        self.assertEqual(posted[0].returncode, 0, posted[0].stderr[-800:])
+        self.assertIn(b"committed sequence=", posted[0].stdout)
+        # The reopen replays the log: the second is the same article, a duplicate.
+        self.assertEqual(posted[1].returncode, 0, posted[1].stderr[-800:])
+        self.assertIn(b"duplicate", posted[1].stdout)
+        self.assertEqual(
+            sorted(p.name for p in (store / "transactions").iterdir())
+            if (store / "transactions").exists() else [], [])
+        probe_root = root / "probe"
+        probe = subprocess.run([self.image, "--fn", "store", str(probe_root), "probe", "5"],
+                               env=env, capture_output=True, timeout=900)
+        self.assertEqual(probe.returncode, 0, probe.stderr[-800:])
+        self.assertTrue((probe_root / "journal" / "000001.log").is_file())
+
     def test_format_8_selector_keeps_the_per_file_layout(self):
         node = Node(self.image, self.root)
         node.init(env={"FN_NATIVE_STORE_FORMAT": "8"})
