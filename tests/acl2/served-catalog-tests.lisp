@@ -51,7 +51,9 @@
   (and (equal (fn-scat-msgid-article "<c@x>" 3 *sct-a* *sct-c*)
               (fn-cat-row-article 2 *sct-a* *sct-c*))
        (consp (fn-scat-msgid-article "<c@x>" 3 *sct-a* *sct-c*))
-       (equal (fn-article-payload (fn-scat-msgid-article "<c@x>" 3 *sct-a* *sct-c*))
+       ;; the article carries row 2's handle; a reader serves its bytes by the arena
+       (equal (fn-article-payload (fn-scat-msgid-article "<c@x>" 3 *sct-a* *sct-c*)) 2)
+       (equal (fn-nntp-article-bytes (fn-scat-msgid-article "<c@x>" 3 *sct-a* *sct-c*) *sct-a*)
               *sct-p2*)
        (equal (fn-scat-msgid-article "<c@x>" 2 *sct-a* *sct-c*) nil)
        (equal (fn-scat-msgid-article "<a@x>" 2 *sct-a* *sct-c*)

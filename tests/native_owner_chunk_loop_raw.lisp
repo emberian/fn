@@ -161,7 +161,7 @@
   (setq *output* (fnn-ascii (fourth *step*)))
   :ok)
 
-(defun fnn-core-buffer-state (name &rest args)
+(defun fnn-core-buffer-catalog-state (name &rest args)
   (ecase name
     (fn-owner-chunk-span
      (destructuring-bind (cid start end) args
