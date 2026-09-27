@@ -5,9 +5,14 @@
 
 (defconst *bpb-groups* '("fn.letters"))
 (defconst *bpb-node-empty* (fn-node-initial-state *bpb-groups* 16))
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).
+; The one article (octets (98 111 117 110 100 13 10) before the flip) is
+; handle 0.
 (defconst *bpb-node-prepared*
   (fn-node-prepare *bpb-node-empty* 17 "<bound@example.invalid>"
-                   '(98 111 117 110 100 13 10) *bpb-groups*
+                   0 *bpb-groups*
                    "archive-bound" "subject-bound" "release-bound" 8 841000000))
 (defconst *bpb-node*
   (fn-node-complete *bpb-node-prepared* 0 17 :durable))

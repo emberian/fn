@@ -10,14 +10,15 @@
 ; (host/reader-host.lisp *fn-reader-archive*): one committed article in one
 ; group, as fn-accept-prepare and fn-accept-complete leave it.
 (defconst *rdc-t-groups* '("fn.letters"))
+; by specification: the flip -- the acceptance machine carries the payload as
+; an arena handle (natp), never octets; the host seeds the arena with the
+; article's octets (*fn-reader-payload*, "Message-ID: <reader@example.invalid>
+; CRLF CRLF Hello CRLF") and the archive holds handle 0.
 (defconst *rdc-t-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *rdc-t-groups*) 1
                       "<reader@example.invalid>"
-                      '(77 101 115 115 97 103 101 45 73 68 58 32 60 114 101 97
-                        100 101 114 64 101 120 97 109 112 108 101 46 105 110
-                        118 97 108 105 100 62 13 10 13 10 72 101 108 108 111
-                        13 10)
+                      0
                       *rdc-t-groups* :legacy)
    0 1 :durable))
 (defconst *rdc-t-verdicts* '(("<reader@example.invalid>" . :pinned-for-the-test)))
