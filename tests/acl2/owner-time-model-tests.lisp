@@ -137,7 +137,10 @@ clock regressed: readings=1
                  (<= (fn-otm-now s) reading))
             (equal (fn-otm-admit-post (mv-nth 1 (fn-otm-disk-event s :clock reading deadline)))
                    :shed))
-   :rule-classes nil))
+   :rule-classes nil
+   ;; Fail fast (lane time-model-2): no induction, the event and the
+   ;; admission kept closed; the reached witness above is the refutation.
+   :hints (("Goal" :do-not-induct t :in-theory (disable fn-otm-disk-event fn-otm-admit-post)))))
 
 ; --- fn-otm-return-recovers: without a pending barrier, a return is a fault.
 (assert-event (equal (otmt-disk-word (fn-otm-init) :return 5 0) :fault))
@@ -212,7 +215,8 @@ clock regressed: readings=1
  (defthm otmt-tooth-bound-needs-pending
    (implies (fn-otm-barrier-walk-okp s ws)
             (equal (fn-otm-walk-others s ws) 0))
-   :rule-classes nil))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t))))
 
 ; =============================================================================
 ; Slice 2 (lane time-model-2): H, the stall's release, F4-W, the journal.
