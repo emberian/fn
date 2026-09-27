@@ -4444,6 +4444,36 @@
         "At least two `outcome=unresolved retry=yes` lines; A alive and serving the article.",
         "Both refused with a nonzero exit; no record written."
       ]
+    },
+    {
+      "id": "SCN-159",
+      "title": "A store is opened on the filesystem it was made on, refused by name when its path now lands on another filesystem (the node volume missing) or holds no record, rebound deliberately and opened; a store requiring durable storage is refused at start on tmpfs and starts once the risk is accepted",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests/test_native_store_mount_identity.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/store-mount-identity-2026-09-27.md",
+        "log": "planning/evidence/store-mount-identity-2026-09-27/native-run.log"
+      },
+      "requirements": [
+        "STO-031"
+      ],
+      "steps": [
+        "init a store in a temporary directory; recover opens it; a copy on the same filesystem opens.",
+        "copy it onto another filesystem (tmpfs to ZFS on hbox): recover and status are refused with `store filesystem changed: expected ..., found ...`; `store rebind-filesystem` records the move and recover opens it.",
+        "an empty directory at the store path is refused as `store filesystem unrecorded` and nothing is created there; a corrupted record is refused as `record invalid`, a removed one as `unrecorded`; rebind opens it.",
+        "an operator store on tmpfs (policy 0) warns at status and starts; with `--storage-require-durable on` its start is refused by name; with `off` it starts again.",
+        "by hand on hbox (root): a loop-mounted ext4 volume opens; unmounted, the empty directory underneath is refused by name; rebind works (the record)."
+      ],
+      "evidence": [
+        "planning/evidence/store-mount-identity-2026-09-27.md",
+        "planning/evidence/store-mount-identity-2026-09-27/native-run.log",
+        "planning/evidence/store-mount-identity-2026-09-27/loop-mount.log",
+        "tests/test_native_store_mount_identity.py"
+      ],
+      "expected": "Opens on the filesystem it was made on; on another filesystem, on an empty directory, or with a missing or corrupted record every open exits 1 with ACL2's named line and writes nothing; rebind-filesystem records the move and the store opens; a policy-1 store on tmpfs or nobarrier is refused at start by name and a policy-0 one warns and starts."
     }
   ]
 }

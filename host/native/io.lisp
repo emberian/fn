@@ -1796,6 +1796,9 @@ acknowledged without its marker."
 (defun fnn-acquire (store)
   (fnn-safe-directory (fnn-store-root store))
   (fnn-require-clone-activated store)
+  ;; PKT-579: the store root is on the filesystem its record names, or the
+  ;; open is refused by name before anything else is read.
+  (fnn-check-filesystem-identity store)
   (fnn-safe-directory (fnn-transactions store))
   (fnn-safe-directory (fnn-staging store))
   (handler-case
@@ -2192,6 +2195,248 @@ handed to fnn-state-checkpoint-write."
             (fnn-fault "invalid FN_NATIVE_DISK_FREE (expected octets)"))
           (min free n))
         free)))
+
+;;; PKT-579: the filesystem a Store lives on (books/store-mount-identity.lisp,
+;;; PRF-232).  `init' records the identity of the filesystem the store root
+;;; is on; every open (fnn-acquire) observes it again and ACL2 decides:
+;;; opened, or refused by name (unobserved, unrecorded, record invalid,
+;;; changed).  The owner's start (fnn-owner-install) also asks the store's
+;;; durability policy (PKT-648): refused by name when the store requires
+;;; durable storage and the mount observably disables it.  The host reads
+;;; statfs and /proc/self/mountinfo and hands ACL2 the facts; the mount table
+;;; is parsed and the containing mount selected in ACL2
+;;; (fn-smid-mountinfo-step), never here.
+
+(defun fnn-filesystem-record-path (store)
+  (fnn-join (fnn-store-root store) "filesystem-identity.fnmi"))
+
+(sb-alien:define-alien-routine
+    (#+(and darwin x86-64) "statfs$INODE64" #-(and darwin x86-64) "statfs"
+     fnn-%statfs)
+    sb-alien:int
+  (path sb-alien:c-string) (buffer (* (sb-alien:unsigned 8))))
+
+(defun fnn-statfs-octets (path)
+  "The raw struct statfs of PATH as octets (4096 is larger than every layout
+below: Linux 120, OpenBSD 568, macOS 2168), or NIL when statfs fails."
+  (let ((buffer (sb-alien:make-alien (sb-alien:unsigned 8) 4096)))
+    (unwind-protect
+         (when (zerop (fnn-%statfs path buffer))
+           (let ((out (fnn-make-octets 4096)) (sap (sb-alien:alien-sap buffer)))
+             (dotimes (i 4096 out)
+               (setf (aref out i) (sb-sys:sap-ref-8 sap i)))))
+      (sb-alien:free-alien buffer))))
+
+(defun fnn-statfs-field (raw start width)
+  "The octets of the NUL-terminated char[WIDTH] at START."
+  (let* ((end (+ start width))
+         (nul (or (position 0 raw :start start :end end) end)))
+    (fnn-octet-list (subseq raw start nul))))
+
+(defun fnn-realpath (path)
+  "realpath(3) of PATH as octets, or NIL."
+  (let ((result (sb-alien:alien-funcall
+                 (sb-alien:extern-alien "realpath"
+                                        (function (* sb-alien:char) sb-alien:c-string (* sb-alien:char)))
+                 path nil)))
+    (unless (sb-alien:null-alien result)
+      (unwind-protect
+           (let ((sap (sb-alien:alien-sap result)) (octets nil))
+             (loop for i from 0
+                   for b = (sb-sys:sap-ref-8 sap i)
+                   until (zerop b) do (push b octets))
+             (nreverse octets))
+        (sb-alien:alien-funcall
+         (sb-alien:extern-alien "free" (function sb-alien:void (* sb-alien:char))) result)))))
+
+(defun fnn-mountinfo-best (path)
+  "Fold /proc/self/mountinfo line by line through ACL2's selection.  A line
+longer than ACL2's bound is handed over as :overlong, never truncated."
+  (let* ((fd (fnn-open "/proc/self/mountinfo" sb-posix:o-rdonly))
+         (limit (fnn-core 'fn-smid-mountinfo-line-max))
+         (line (make-array 256 :element-type '(unsigned-byte 8) :adjustable t :fill-pointer 0))
+         (overlong nil) (best nil)
+         (buffer (fnn-make-octets 65536)))
+    (flet ((flush ()
+             (when (or overlong (plusp (fill-pointer line)))
+               (setq best (fnn-core 'fn-smid-mountinfo-step best
+                                    (if overlong :overlong (coerce line 'list))
+                                    path)))
+             (setf (fill-pointer line) 0 overlong nil)))
+      (unwind-protect
+           (loop
+             (let ((count (fnn-read-fd fd buffer)))
+               (when (zerop count) (flush) (return best))
+               (dotimes (i count)
+                 (let ((b (aref buffer i)))
+                   (cond ((= b 10) (flush))
+                         (overlong nil)
+                         ((>= (fill-pointer line) limit) (setq overlong t))
+                         (t (vector-push-extend b line)))))))
+        (fnn-close fd)))))
+
+(defun fnn-filesystem-observation (root)
+  "What statfs and the mount table say about the filesystem ROOT is on:
+ACL2's observation, (:observed ...) or (:unobserved)."
+  (handler-case
+      (let ((raw (fnn-statfs-octets root)))
+        (if (null raw)
+            (list :unobserved)
+            #+linux
+            (let ((path (fnn-realpath root)))
+              (if (null path)
+                  (list :unobserved)
+                  ;; f_fsid at 56 (struct statfs, x86-64).
+                  (fnn-core 'fn-smid-linux-observation
+                            (fnn-octet-list (subseq raw 56 64))
+                            (fnn-mountinfo-best path))))
+            ;; OpenBSD amd64 7.9: f_fsid 96, f_fstypename 120[16],
+            ;; f_mntonname 136[90], f_mntfromname 226[90].
+            #+openbsd
+            (fnn-core 'fn-smid-statfs-observation
+                      (fnn-octet-list (subseq raw 96 104))
+                      (fnn-statfs-field raw 120 16)
+                      (fnn-statfs-field raw 136 90)
+                      (fnn-statfs-field raw 226 90))
+            ;; macOS (64-bit inode): f_fsid 48, f_fstypename 72[16],
+            ;; f_mntonname 88[1024], f_mntfromname 1112[1024].
+            #+darwin
+            (fnn-core 'fn-smid-statfs-observation
+                      (fnn-octet-list (subseq raw 48 56))
+                      (fnn-statfs-field raw 72 16)
+                      (fnn-statfs-field raw 88 1024)
+                      (fnn-statfs-field raw 1112 1024))
+            #-(or linux openbsd darwin)
+            (list :unobserved)))
+    (fnn-os-error () (list :unobserved))))
+
+(defun fnn-filesystem-record-observation (store)
+  "(:absent), or (:present OCTETS DIGEST): the record file's octets and ACL2's
+trailer over its protected prefix.  A file past ACL2's bound is a record that
+does not decode."
+  (let ((path (fnn-filesystem-record-path store)))
+    (if (null (fnn-check-regular path))
+        (list :absent)
+        (let ((raw (handler-case
+                       (fnn-read-regular-bounded
+                        path (fnn-core 'fn-smid-record-frame-limit))
+                     (fnn-input-overbound () nil))))
+          (if (null raw)
+              (list :present nil nil)
+              (list :present (fnn-octet-list raw) (fnn-digest-of raw)))))))
+
+(defun fnn-filesystem-text (octets)
+  (unless (fnn-octet-list-p octets)
+    (fnn-fault "ACL2 returned a malformed filesystem line"))
+  (fnn-octets-string (fnn-octets octets)))
+
+(defun fnn-filesystem-durability-warn (root &optional observation)
+  "PKT-648: print ACL2's warning when the filesystem under ROOT observably
+disables durability (nobarrier, barrier=0, tmpfs, ramfs); nothing otherwise.
+The owner's start and `status'/`health' call it, not every open."
+  (let ((warning (fnn-core 'fn-smid-durability-warning
+                           (or observation (fnn-filesystem-observation root)))))
+    (when warning (fnn-err "~a" (fnn-filesystem-text warning)))))
+
+(defun fnn-check-filesystem-identity (store &optional start)
+  "The open's decision (ACL2 fn-smid-open-verdict), or with START the owner
+start's (fn-smid-start-verdict): refused by name, never opened elsewhere.
+A start that proceeds prints the durability warning."
+  (let* ((observation (fnn-filesystem-observation (fnn-store-root store)))
+         (record (fnn-filesystem-record-observation store))
+         (verdict (if start
+                      (fnn-core 'fn-smid-start-verdict record observation)
+                      ;; CONFIGURED: config.json is a regular file here (a
+                      ;; store made before the record opens offline with a
+                      ;; warning; an empty root is refused).
+                      (fnn-core 'fn-smid-open-decision record observation
+                                (if (fnn-check-regular (fnn-config-path store)) t nil)))))
+    (when (and (not start) (consp verdict) (eq (first verdict) :open-unrecorded))
+      (fnn-err "~a" (fnn-filesystem-text
+                     (fnn-core 'fn-smid-unrecorded-warning verdict)))
+      (return-from fnn-check-filesystem-identity verdict))
+    (unless (equal verdict (if start '(:start) '(:open)))
+      (let ((text (fnn-core 'fn-smid-refusal-text verdict)))
+        (unless text
+          (fnn-fault "ACL2 returned no text for a filesystem refusal"))
+        (error 'fnn-store-open-refusal :message (fnn-filesystem-text text))))
+    (when start
+      (fnn-filesystem-durability-warn (fnn-store-root store) observation))
+    verdict))
+
+(defun fnn-publish-filesystem-record (store protected)
+  "Replace the record by PROTECTED sealed with ACL2's trailer: stage, fsync,
+rename, fsync the root.  The caller holds the writer lock.  A failure before
+the rename is a known failure (the stage is removed, or left to the staging
+sweep under its .stage- prefix); after it, uncertain."
+  (unless (fnn-octet-list-p protected)
+    (fnn-fault "ACL2 returned a malformed filesystem record"))
+  (let ((stage (fnn-join (fnn-staging store)
+                         (format nil ".stage-filesystem-~d-~a"
+                                 (sb-posix:getpid) (fnn-random-hex 12)))))
+    (handler-case (fnn-write-staged stage (fnn-seal protected))
+      (fnn-os-error (e)
+        (ignore-errors (fnn-unlink stage))
+        (fnn-refuse-io "cannot stage the filesystem record: ~a" e)))
+    (handler-case
+        (progn (fnn-replace stage (fnn-filesystem-record-path store))
+               (fnn-fsync-dir (fnn-store-root store)))
+      (fnn-os-error (e)
+        (fnn-indeterminate "filesystem record replacement is uncertain: ~a" e)))
+    :published))
+
+(defun fnn-record-filesystem-at-init (store profile &optional policy)
+  "After fnn-initialize: record the identity under POLICY (1 or 0, the init's
+--storage-require-durable) or else the preset's policy, once.
+An existing record is kept (a repeated `init' over an existing store); the
+open that follows checks it."
+  (when (eq (first (fnn-filesystem-record-observation store)) :absent)
+    (let ((lock-fd (fnn-open-lock store t t)))
+      (setf (fnn-store-lock-fd store) lock-fd)
+      (unwind-protect
+           (let ((plan (fnn-core 'fn-smid-record-plan
+                                 (fnn-filesystem-observation (fnn-store-root store))
+                                 (or policy (fnn-core 'fn-smid-init-policy nil)))))
+             (unless (and (consp plan) (member (first plan) '(:record :refused)))
+               (fnn-fault "ACL2 returned a malformed filesystem record plan"))
+             (when (eq (first plan) :refused)
+               (error 'fnn-store-open-refusal
+                      :message (fnn-filesystem-text
+                                (fnn-core 'fn-smid-refusal-text plan))))
+             (when (eq (first (fnn-filesystem-record-observation store)) :absent)
+               (fnn-publish-filesystem-record store (second plan))))
+        (setf (fnn-store-lock-fd store) nil)
+        (ignore-errors (fnn-flock lock-fd +fnn-lock-un+))
+        (fnn-close lock-fd)))))
+
+(defun fnn-command-rebind-filesystem (root requested)
+  "`store ROOT rebind-filesystem [on|off]': record the filesystem the store
+is on now, for a deliberate move or a restored backup.  The store's writer
+lock is taken (a running owner refuses this) and its profile and frontier
+load, but the identity is not checked: that is what this replaces.
+REQUESTED is 1, 0 or NIL (keep the store's policy)."
+  (let ((store (make-fnn-store root :writable t)))
+    (fnn-safe-directory (fnn-store-root store))
+    (fnn-safe-directory (fnn-staging store))
+    (setf (fnn-store-lock-fd store) (fnn-open-lock store t nil))
+    (unwind-protect
+         (progn
+           (fnn-load-config store)
+           (fnn-load-frontier store)
+           (let* ((record (fnn-filesystem-record-observation store))
+                  (observation (fnn-filesystem-observation (fnn-store-root store)))
+                  (plan (fnn-core 'fn-smid-rebind-plan record observation requested)))
+             (unless (and (consp plan) (member (first plan) '(:record :refused)))
+               (fnn-fault "ACL2 returned a malformed rebind plan"))
+             (when (eq (first plan) :refused)
+               (error 'fnn-store-open-refusal
+                      :message (fnn-filesystem-text
+                                (fnn-core 'fn-smid-refusal-text plan))))
+             (fnn-publish-filesystem-record store (second plan))
+             (fnn-out "~a" (fnn-filesystem-text
+                            (fnn-core 'fn-smid-rebind-text record observation requested)))))
+      (fnn-store-close store))
+    +fnn-exit-ok+))
 
 ;;; The batch loop both entries run (host/native/owner.lisp
 ;;; fnn-owner-publish-captured on its thread; the verb below): ACL2's
@@ -2749,10 +2994,11 @@ in-process retry."
                       (t (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT action: ~a" action)))
                 "developer-only native recovery fault"))))))
 
-(defun fnn-command-init (root groups &optional (profile :development))
+(defun fnn-command-init (root groups &optional (profile :development) policy)
   (let ((store (make-fnn-store root :writable t :fault (fnn-init-test-fault))))
     (unwind-protect
          (progn (fnn-initialize store (or groups +fnn-default-groups+) profile)
+                (fnn-record-filesystem-at-init store profile policy)
                 (fnn-acquire store)
                 (fnn-out "initialized ~a" (fnn-store-root store)))
       (fnn-store-close store))
@@ -2840,7 +3086,7 @@ entries and MANIFEST are ACL2's (fn-sxp-entries, fn-sxp-manifest)."
 (defun fnn-archive-read-dir (dir sub)
   (sort (copy-list (fnn-list-directory (fnn-join dir sub))) #'string<))
 
-(defun fnn-command-store-import (root dir request)
+(defun fnn-command-store-import (root dir request &optional policy)
   "Offline: make a new store at ROOT (it must not exist) from the archive at
 DIR.  ACL2's plan (fn-sxp-import-plan) checks the MANIFEST, the order and the
 profile (REQUEST's field overrides over the archive's) and refuses by name;
@@ -2903,6 +3149,10 @@ renames it onto ROOT only when the open admitted it."
                                   (fnn-frame (fnn-octets (cdr record)))))
         (dolist (sub '("transactions" "staging" "config"))
           (fnn-fsync-dir (fnn-join stage-root sub)))
+        ;; The imported store is a new store on the filesystem ROOT is on
+        ;; (its stage is ROOT's sibling): its record, under the import's
+        ;; policy (fn-smid-init-policy: 1), before the ordinary open.
+        (fnn-record-filesystem-at-init stage request policy)
         (fnn-fsync-dir stage-root)
         ;; The ordinary open admits the imported history or refuses it.
         (multiple-value-bind (opened replayed) (fnn-open-live-store stage-root t)
@@ -3166,6 +3416,7 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
       (fnn-store-close store))))
 
 (defun fnn-command-status (root)
+  (fnn-filesystem-durability-warn root)
   (fnn-command-live-report root :status))
 
 (defun fnn-command-retention (root)
@@ -3239,6 +3490,7 @@ same size (fnn-probe-article), so the served reader can frame it."
          (store (make-fnn-store root :writable t))
          (payload nil))
     (fnn-initialize store)
+    (fnn-record-filesystem-at-init store :development)
     (fnn-acquire store)
     (fnn-bridge-reset)
     (fnn-recover store)
@@ -4003,6 +4255,15 @@ serialized profile when the saved image later starts."
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
+                 ;; PKT-579: record the filesystem the store is on now.
+                 ((string= command "rebind-filesystem")
+                  (fnn-command-rebind-filesystem
+                   root
+                   (cond ((null rest) nil)
+                         ((and (null (cdr rest)) (string= (first rest) "on")) 1)
+                         ((and (null (cdr rest)) (string= (first rest) "off")) 0)
+                         (t (error 'fnn-usage-error
+                                   :message "rebind-filesystem takes on, off or nothing")))))
                  ;; PKT-444: the repair of a pre-C1 control record.  Its
                  ;; semantics wait on ember; until then it refuses by name
                  ;; and touches nothing.

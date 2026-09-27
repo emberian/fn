@@ -927,8 +927,48 @@ barriers on:
 The power-loss campaign (`planning/evidence/power-loss-2026-09-26.md`) found
 no acknowledged POST lost at any of 1,281 cuts on ext4 with barriers on; with
 `barrier=0` acknowledged POSTs were lost at 36 of 40 cuts, and the file
-system was unmountable or unreadable at the other 4. fn does not yet refuse a
-detectable bad mount at start (PKT-648).
+system was unmountable or unreadable at the other 4.
+
+What fn observes of this, and what it does (PKT-648; specs/storage.md, "The
+store's filesystem"):
+
+- The owner's start, `status` and `health` print a warning naming the
+  filesystem when the store's mount has `nobarrier` or `barrier=0`, or is
+  tmpfs or ramfs. ZFS `sync=disabled` and a drive's volatile cache are not
+  visible to fn; they stay the operator's to check.
+- The store's setting `storage-require-durable` turns that warning into a
+  refusal of the owner's start (`start refused: store filesystem ... this
+  store requires durable storage (storage-require-durable)`). `init` turns it
+  on for a store made under a mission's configuration (the release and the
+  public node) and off otherwise (tests and benchmarks run on tmpfs on
+  purpose). Change it with `fn operator CONFIG store rebind-filesystem
+  --storage-require-durable on` (or `off`, accepting the risk).
+
+### The node volume
+
+Put the store on its own provisioned volume, mounted at boot. `init` records
+the identity of the filesystem the store is on (its id, type, mount point
+and device), and every open checks it: when the volume is not mounted, the
+store path lands on the filesystem underneath, and the open is refused by
+name instead of serving or starting another history there:
+
+```
+store filesystem changed: expected ext4 at /srv/fn-public from /dev/nvme1n1p1 (fsid ...), found ext4 at / from /dev/nvme0n1p4 (fsid ...); mount the node volume or run `store rebind-filesystem` after moving the store deliberately
+```
+
+An empty directory where the volume should be is refused as `store
+filesystem unrecorded`. A store made before the record (every store before
+2026-09-27) opens offline with a warning, and its owner does not start until
+it is rebound once. After a deliberate move (another volume, a restored
+backup, a copy to another machine) record the new place:
+
+```
+fn operator /etc/fn/fn.toml store rebind-filesystem
+```
+
+It takes the writer lock (a running owner refuses it), keeps the store's
+`storage-require-durable` setting unless you give one, and prints what it
+recorded and what it replaced.
 
 ## Initialize
 

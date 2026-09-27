@@ -3969,6 +3969,27 @@
         "planning/evidence/peers-by-name-2026-09-27.md"
       ],
       "implementation_note": "PKT-613 (public-node gap d, fn half). RFC 1123 section 2.1 host syntax, RFC 6066 section 3 (no literal in SNI) are RFC requirements; resolving on every attempt, the system roots as the named default and the named dial outcomes are fn guarantees; refusing a trailing dot and IPv6 peer literals is local policy."
+    },
+    {
+      "id": "STO-031",
+      "title": "A Store opens only on the filesystem its record names: a missing node volume, a moved or restored store, or a missing or invalid record is refused by name at every open, `store rebind-filesystem` records a deliberate move, and the owner's start is refused by name when the store requires durable storage on a mount that observably disables it",
+      "specification": "specs/storage.md#the-stores-filesystem-sto-031",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-232"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-mount-identity.lisp",
+        "tests/acl2/store-mount-identity-tests.lisp",
+        "tests/test_native_store_mount_identity.py",
+        "planning/evidence/store-mount-identity-2026-09-27.md"
+      ],
+      "implementation_note": "Lane store-mount-identity (2026-09-27; PKT-579, PKT-648). The record filesystem-identity.fnmi (FNMI frame: fsid, type, mount point, source, policy) is written by init, store import and the developer probe; fnn-acquire asks fn-smid-open-verdict before any other read; fnn-owner-install asks fn-smid-start-verdict; `store rebind-filesystem [--storage-require-durable on|off]` (operator) and `store ROOT rebind-filesystem [on|off]` (developer). Policy 1 under a mission's configuration, 0 otherwise; every open warns on nobarrier/barrier=0/tmpfs/ramfs."
     }
   ]
 }
