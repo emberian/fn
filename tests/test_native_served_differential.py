@@ -128,7 +128,12 @@ class NativeServedDifferentialTests(unittest.TestCase):
 
     def test_whole_transcript_agrees(self):
         served = self.assertAgree([MULTI_COMMAND])
+        # The seeded archive holds one article, number 1 in fn.letters, so
+        # RFC 3977 section 6.1.1.2's count, low and high are 1 1 1 (the empty
+        # group's "211 0 1 0" was the seed refused by prepare: PRF-219 made
+        # the payload an arena handle; host/reader-host.lisp).
         self.assertIn(b"211 1 1 1 fn.letters\r\n", served)
+        self.assertIn(b"223 1 <reader@example.invalid> retrieved\r\n", served)
 
     def test_cut_inside_a_command_agrees(self):
         self.assertAgree([MULTI_COMMAND[:12], MULTI_COMMAND[12:]])

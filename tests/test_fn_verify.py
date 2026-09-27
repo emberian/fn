@@ -37,6 +37,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_verify  # noqa: E402
+from tools.wire_stream import whole_stream
 
 TOOL = ROOT / "tools" / "fn_verify.py"
 
@@ -85,7 +86,7 @@ class FakeNode:
             threading.Thread(target=self.session, args=(conn,), daemon=True).start()
 
     def session(self, conn):
-        with conn, conn.makefile("rwb", buffering=0) as stream:
+        with conn, whole_stream(conn) as stream:
             stream.write(b"200 fake node\r\n")
             for raw in stream:
                 verb, _, arg = raw.decode().strip().partition(" ")
@@ -635,7 +636,7 @@ class LyingProxy:
 
     def session(self, conn):
         node = self.upstream()
-        with conn, conn.makefile("rwb", buffering=0) as stream:
+        with conn, whole_stream(conn) as stream:
             stream.write(b"200 proxy\r\n")
             for raw in stream:
                 command = raw.decode().strip()

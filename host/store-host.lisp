@@ -23,6 +23,7 @@
 (include-book "../books/byte-store-txn-name")
 (include-book "../books/store-budget-naming")
 (include-book "../books/store-profile-facts")
+(include-book "../books/store-replay-bound")
 (include-book "../books/store-profile-open")
 (include-book "../books/store-mount-identity")
 (include-book "../books/store-profile-namespace")
@@ -540,10 +541,11 @@
       :admissible
     :refused))
 
-;; The replay bound every open checks per record
-;; (books/store-profile-facts.lisp).
+;; The replay bound every open checks per record: H plus T records' encoding
+;; overhead (books/store-replay-bound.lisp; every history the profile admits
+;; is within it, `fn-srb-admitted-history-is-within-the-bound').
 (defun fn-store-profile-replay-within-bound (profile aggregate)
-  (fn-profile-replay-within-boundp profile aggregate))
+  (fn-srb-replay-within-boundp profile aggregate))
 
 (defun fn-store-publication-kind-ceiling (kind)
   (fn-store-publication-ceiling kind))

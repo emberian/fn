@@ -2431,13 +2431,6 @@ arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
           (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
                                       rows (fnn-store-frontier store) configs))))))
 
-(defun fnn-state-checkpoint-prefix-octets ()
-  "The record octets of the prefix the state checkpoint covered, encoded from
-the checkpoint's rows through the arena (host/store-node-host.lisp
-fn-store-sco-prefix-octets): O(prefix) lists, for a verb that takes the
-whole history's octets."
-  (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets)))
-
 (defun fnn-recover-from-state-checkpoint (store config-records)
   "The history's record COUNT when the checkpoint opened the Store, else :FULL
 after recording why not in open-mode (the caller then replays in full).  The
@@ -3753,22 +3746,47 @@ groups is refused, never created as a group."
                :message (format nil "init refused: ~(~a~)" (second plan)))
       (fnn-command-init root (second plan) (third plan)))))
 
-(defun fnn-log-history-records (store)
-  "A format-9 STORE's history, each record's exact octets in log order, read
-as the open read it (fnn-recover-log, its plan in fnn-store-log-history):
-when a checkpoint covers dropped segments, the covered prefix from the
-checkpoint's rows (fnn-state-checkpoint-prefix-octets, the loaded
-checkpoint's); then each closed segment the open scanned, read again from
-disk with the chain carried from the scan's genesis
+(defconstant +fnn-log-history-prefix-chunk+ 1024
+  "Covered-prefix records encoded per ACL2 call while a verb streams the
+history (a work quantum per call, never a bound on the store).")
+
+(defun fnn-log-history-each (store fn)
+  "Call FN on each record of a format-9 STORE's history, in log order, as
+octets, read as the open read it (fnn-recover-log, its plan in
+fnn-store-log-history): when a checkpoint covers dropped segments, the
+covered prefix encoded from the loaded checkpoint's rows a chunk at a time
+(fn-store-sco-prefix-octets-range); then each closed segment the open scanned,
+read again from disk with the chain carried from the scan's genesis
 (fnn-log-read-closed-segment); then the active segment's committed records
-(the log kernel: the open's, and every batch fenced since).  After a rotation
-in this process (a checkpoint's P-ROTATE, and then its drop) the plan no
-longer names the log's segments: that read is a fault, never a shorter
+(the log kernel: the open's, and every batch fenced since).  No list of the
+history is built.  After a rotation in this process (a checkpoint's
+P-ROTATE, and then its drop), or once the loaded checkpoint was released,
+the plan no longer names the history: that read is a fault, never a shorter
 history."
-  (append (and (first (fnn-log-history-plan store)) (fnn-state-checkpoint-prefix-octets))
-          (fnn-log-closed-records store)
-          (mapcar #'fnn-octets (fnn-core 'fn-lgk-committed
-                                         (fnn-log-kernel (fnn-store-log store))))))
+  (destructuring-bind (prefixp closed genesis active) (fnn-log-history-plan store)
+    (declare (ignore active))
+    (when prefixp
+      (let ((s (second (fnn-store-open-mode store))))
+        (loop for start from 0 below s by +fnn-log-history-prefix-chunk+ do
+          (dolist (octets (fnn-core-arena-state 'fn-store-sco-prefix-octets-range start
+                                                (min +fnn-log-history-prefix-chunk+ (- s start))))
+            (funcall fn (fnn-as-octets octets))))))
+    (let ((unit (fnn-store-log-unit)) (max (fnn-store-log-max store)))
+      (dolist (k closed)
+        (multiple-value-bind (records last)
+            (fnn-log-read-closed-segment store k genesis unit max)
+          (dolist (record records) (funcall fn (fnn-octets record)))
+          (setq genesis last))))
+    (dolist (record (fnn-core 'fn-lgk-committed (fnn-log-kernel (fnn-store-log store))))
+      (funcall fn (fnn-octets record)))))
+
+(defun fnn-log-history-records (store)
+  "A format-9 STORE's history as a list, each record's exact octets in log
+order (`fnn-log-history-each' collected), for the verbs that take the whole
+list (checkpoint publish, export, the offline configure's fallback)."
+  (let ((records nil))
+    (fnn-log-history-each store (lambda (record) (push record records)))
+    (nreverse records)))
 
 (defun fnn-log-history-plan (store)
   "The open's plan (fnn-store-log-history), checked against the log: a fault
@@ -5849,15 +5867,15 @@ genesis."
                    (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)))
       (fnn-close fd))))
 
-(defun fnn-recover-log-from-log-checkpoint (store config-records suffix)
+(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s)
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
 is the whole history), replayed over the checkpoint
 (fn-store-sn-recover-from-checkpoint).  The covered segments may be gone, so
 there is no full replay to fall back to: a checkpoint the open cannot use is
 refused by name."
-  (multiple-value-bind (status s) (fnn-state-checkpoint-load store)
-    (declare (ignore status))
+  (progn
+    ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
     (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
       (fnn-core-state 'fn-store-sco-clear)
       (fnn-bridge-reset)
@@ -5888,7 +5906,6 @@ does, and records how the log holds the history (fnn-store-log-history) for
   (let ((count nil) (drop nil))
     (handler-case
         (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
-          (declare (ignore sequence))
           (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
                  (log-position (first position))
                  (floor (if log-position (fnn-nat (second position)) 0))
@@ -5924,7 +5941,8 @@ does, and records how the log holds the history (fnn-store-log-history) for
               (let ((config-records (fnn-config-records store)))
                 (setq count
                       (if log-position
-                          (fnn-recover-log-from-log-checkpoint store config-records scanned)
+                          (fnn-recover-log-from-log-checkpoint store config-records scanned
+                                                               sequence)
                         (or (fnn-recover-log-from-state-checkpoint store config-records scanned)
                             (fnn-recover-log-replay store scanned config-records)))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)

@@ -41,6 +41,8 @@ import ssl
 import subprocess
 import sys
 import time
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # the repository root
+from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
 
 ACCEPTED, REFUSED, UNCERTAIN, FAULT = "ACCEPTED", "REFUSED", "UNCERTAIN", "FAULT"
 EXIT = {ACCEPTED: 0, REFUSED: 1, UNCERTAIN: 3, FAULT: 4}
@@ -430,7 +432,7 @@ class FnSide:
                 raise Outcome(REFUSED, node["name"] + " refused STARTTLS")
             context = ssl.create_default_context(cafile=node["certificate"])
             with context.wrap_socket(raw, server_hostname="localhost") as tls:
-                with tls.makefile("rwb", buffering=0) as stream:
+                with whole_stream(tls) as stream:
                     stream.write(b"AUTHINFO USER " + node["login"].encode() + b"\r\n")
                     if not stream.readline().startswith(b"381 "):
                         raise Outcome(REFUSED, node["name"] + " refused AUTHINFO USER")
