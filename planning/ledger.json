@@ -29943,6 +29943,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
+        "../../books/crypto-attach",
         "../../books/relay-crash-invariants"
       ],
       "system_includes": [
