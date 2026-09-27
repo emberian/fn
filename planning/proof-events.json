@@ -7183,10 +7183,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-reserve-first-run-accepted-is-within-the-machine"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-storeless-decide-is-small-and-fits"
         },
         {
