@@ -2310,7 +2310,7 @@ leave only in its COMPLETE, after its barrier returned
                                    (fnn-store-indeterminate (e)
                                      (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
                                      (fnn-owner-commit-complete-locked service next t next-deferred)
-                                     (setq next nil)))))
+                                     (setq next nil))))))
                             ((eq step :stop)
                              (fnn-owner-commit-complete-locked
                               service (append members next) t deferred)
