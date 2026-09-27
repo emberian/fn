@@ -902,7 +902,7 @@
 (defconst *pt-idap* (pt-o "<ap1@example.invalid>"))
 ; Refused by name: an unapproved article in the moderated group leaves the
 ; node as it was (the keystone's hypothesis fails; nothing is staged).
-(defconst *pt-mt1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob" "s")))
+(defconst *pt-mt1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob" "s" 0)))
 (assert-event (equal (nth 1 *pt-mt1*) (fn-peer-decision :refuse :unapproved-moderated)))
 (assert-event (equal (nth 0 *pt-mt1*) *pt-node0*))
 (assert-event (not (fn-peer-article-approvedp *pt-a1*)))
@@ -910,7 +910,7 @@
 (assert-event (equal (nth 1 *pt-t1*) (fn-peer-decision :want nil)))
 ; Reachable positive witness: the hypothesis holds (the node changed), the
 ; staged groups name the moderated group, and the article carries Approved.
-(defconst *pt-mt2* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-idap* *pt-ap* *pt-obs* 2 "ob" "s")))
+(defconst *pt-mt2* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-idap* *pt-ap* *pt-obs* 2 "ob" "s" 0)))
 (assert-event (equal (nth 1 *pt-mt2*) (fn-peer-decision :want nil)))
 (assert-event (not (equal (nth 0 *pt-mt2*) *pt-node0*)))
 (assert-event (fn-peer-article-approvedp *pt-ap*))
@@ -921,7 +921,7 @@
 ; transfer *pt-t1*), an unapproved article leaves the node unchanged (the
 ; hypothesis fails) and the conclusion fails: the pending groups name the
 ; moderated group and the article carries no Approved.
-(defconst *pt-mt3* (mv-list 2 (fn-peer-transfer (nth 0 *pt-t1*) *pt-cfg-mod* "innA" *pt-idalt* *pt-alt* *pt-obs* 2 "ob" "s")))
+(defconst *pt-mt3* (mv-list 2 (fn-peer-transfer (nth 0 *pt-t1*) *pt-cfg-mod* "innA" *pt-idalt* *pt-alt* *pt-obs* 2 "ob" "s" 1)))
 (assert-event (equal (nth 0 *pt-mt3*) (nth 0 *pt-t1*)))
 (assert-event (not (fn-peer-article-approvedp *pt-alt*)))
 (assert-event (fn-peer-moderated-namesp

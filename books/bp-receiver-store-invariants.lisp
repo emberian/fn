@@ -323,7 +323,7 @@
                                   (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))
                                   fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp)
-                                  (fn-bpr-rows-stand-for fn-arena)))))
+                                  (fn-bpr-rows-stand-for)))))
 (defthm fn-bprv-derived-context-backed
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-context-backedp store config (fn-bpr-context-from-request record request) fn-arena))
