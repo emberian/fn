@@ -102,8 +102,9 @@
     :inflight-limit :capacity :out-of-scope :loop :no-date :date-future :no-clock
     :proto-article :oversize :unknown-group :date-cutoff
     :unapproved-moderated
-    :no-path :path-syntax :date-syntax))
-
+    :no-path :path-syntax :date-syntax
+    ; PRF-230: the store profile's header limits, each by its field's name.
+    :header-fields-limit :header-lines-limit :header-octets-limit))
 
 (defun fn-peer-decision-shapep (x)
   (declare (xargs :guard t))
@@ -162,6 +163,12 @@
         ((equal reason :path-syntax) "malformed Path")
         ((equal reason :date-syntax) "unreadable Injection-Date or Date")
         ((equal reason :date-future) "dated in the future")
+        ((equal reason :header-fields-limit)
+         "the header has more fields than the profile's max-header-fields")
+        ((equal reason :header-lines-limit)
+         "the header has more lines than the profile's max-header-lines")
+        ((equal reason :header-octets-limit)
+         "the header has more octets than the profile's max-header-octets")
         (t "refused")))
 
 ; -----------------------------------------------------------------------------
@@ -527,6 +534,34 @@
                   (len (fn-peer-relayed-octets cfg peer octets)))))
            (fn-peer-decision :refuse :capacity))
           (t (fn-peer-decision :want nil)))))
+
+;; The transfer decision under the store profile's header limits (PRF-230,
+;; PKT-660; D27): a relayed article is admitted exactly as a POST is, under
+;; the operator's max-header-fields, -lines and -octets, and one past them is
+;; refused by the limit's name (437 to IHAVE, 439 to TAKETHIS).  The census
+;; is of the octets this node would store, `fn-peer-relayed-octets' (RFC 5537
+;; section 3.6: the article is rejected rather than modified), so what is
+;; stored reparses under the limits it was admitted under.  A refusal or a
+;; duplicate is `fn-peer-decide-transfer''s own answer; a want or a deferral
+;; past the limits becomes the refusal.  The host calls this one
+;; (host/owner-host.lisp `fn-owner-transit-decide'; the owner's BP transit
+;; `fn-own-bp-transit-submit-result'); books/transit-header-limits.lisp
+;; proves it admits exactly what the parse under LIMITS admits.
+(defun fn-peer-header-limit-refusal (cfg peer octets limits)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-article-census-refusal
+   (fn-article-header-census (fn-peer-relayed-octets cfg peer octets))
+   limits))
+
+(defun fn-peer-decide-transfer-under
+    (node cfg peer msgid octets clock id subject limits)
+  (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
+  (let ((d (fn-peer-decide-transfer node cfg peer msgid octets clock id
+                                    subject)))
+    (if (member-equal (fn-peer-decision-kind d) '(:want :defer))
+        (let ((limit (fn-peer-header-limit-refusal cfg peer octets limits)))
+          (if limit (fn-peer-decision :refuse limit) d))
+      d)))
 
 ; -----------------------------------------------------------------------------
 ; The transfer: the post path on arguments ACL2 computed from the octets

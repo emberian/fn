@@ -3,6 +3,7 @@
 ; and observed, explicitly configured local transport provenance.
 (in-package "ACL2")
 (include-book "../books/bp-ingress")
+(include-book "../books/article-header-census")
 (include-book "../books/bp-primary")
 (include-book "../books/clock")
 ;
@@ -86,11 +87,18 @@
 ; groups are its Newsgroups mapped through the host policy.  An ADU that
 ; composition rejects (syntax, Message-ID, an unmapped group) answers
 ; :rejected, never a budget word.
+; A header past the profile's limits (PRF-230, PKT-660) answers the limit's
+; name, as the served POST refuses it: `fn-article-census-refusal' against
+; `fn-bs-profile-header-limits' of the same profile.
 (defun fn-bpi-host-article-verdict (profile adu state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((parsed (fn-article-parse adu)))
+  (let ((parsed (fn-article-parse adu))
+        (limit (fn-article-census-refusal
+                (fn-article-header-census adu)
+                (fn-bs-profile-header-limits profile))))
     (if (not (fn-article-result-okp parsed))
         (value :rejected)
+      (if limit (value limit)
       (let ((proto (fn-af-proto-article-check
                     (fn-article-result-article parsed))))
         (if (not (and (equal (car proto) :ok) (car (cdr proto))))
@@ -101,7 +109,7 @@
                 (value :rejected)
               (fn-store-sn-article-verdict profile (len adu)
                                            (len (car (cdr mapped)))
-                                           state))))))))
+                                           state)))))))))
 
 (defun fn-bpi-host-reset (state)
   (declare (xargs :stobjs state :mode :program))

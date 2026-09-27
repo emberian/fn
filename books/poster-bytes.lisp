@@ -68,14 +68,47 @@
   (declare (xargs :guard t))
   (not (equal (fn-inj-strip field x) :no)))
 
+; The octets of r before its first ";", or :no when it has none.
+(defun fn-pb-upto-semicolon (r)
+  (declare (xargs :guard t))
+  (if (consp r)
+      (if (equal (car r) 59)
+          nil
+        (let ((rest (fn-pb-upto-semicolon (cdr r))))
+          (if (equal rest :no) :no (cons (car r) rest))))
+    :no))
+
+; The agent an Injection-Info LINE with parameters names (PKT-597,
+; books/injection-info-params.lisp): the octets before the first ";", when
+; the whole line is that agent's line with a parameter run
+; (books/injection.lisp fn-inj-strip-info leaves nothing after it).
+(defun fn-pb-params-line-agent (line)
+  (declare (xargs :guard t))
+  (let ((agent (fn-pb-upto-semicolon
+                (fn-inj-strip *fn-inj-injection-info-field* line))))
+    (if (and (consp agent) (equal (fn-inj-strip-info agent line) nil))
+        agent
+      nil)))
+
+(in-theory (disable fn-pb-params-line-agent))
+
+; The plain line's agent, else the agent of the line with parameters: an
+; article stored with Injection-Info parameters still names its agent, so
+; D25 reads its v3 block as before.  An agent is a dot-atom and never holds
+; ";", so a line with parameters is never read as a plain line naming
+; AGENT; PARAMS (fn-ipp-a-supplied-path-retry-is-the-same-article).
 (defun fn-pb-info-line-agent (x)
   (declare (xargs :guard t))
   (let* ((line (fn-pb-line x))
          (r (fn-inj-strip *fn-inj-injection-info-field* line)))
-    (if (and (true-listp r) (< 2 (len r)))
-        (let ((agent (fn-inj-take (- (len r) 2) r)))
-          (if (equal (fn-inj-injection-info-line agent) line) agent nil))
-      nil)))
+    (or (if (and (true-listp r) (< 2 (len r)))
+            (let ((agent (fn-inj-take (- (len r) 2) r)))
+              (if (and (equal (fn-inj-injection-info-line agent) line)
+                       (not (member-equal 59 agent)))
+                  agent
+                nil))
+          nil)
+        (fn-pb-params-line-agent line))))
 
 (defun fn-pb-block-agent (x msgid)
   (declare (xargs :guard t))

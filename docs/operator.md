@@ -7,8 +7,8 @@ makes no availability or flight-readiness claim; see
 [architecture](architecture.md) for the boundaries and
 [failures](../specs/failures.md) for what durability here assumes.
 
-**Installing from a release** (`fn-REV-linux-x86_64.tar.gz` or
-`fn-REV-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
+**Installing from a release** (`fn-6.7.N-linux-x86_64.tar.gz` or
+`fn-6.7.N-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
 is the whole path from the download to a node others reach over TLS, and it
 names nothing outside the release. This page is the reference for the
 operator's verbs beyond it: status and health in depth, recovery, peering
@@ -90,6 +90,32 @@ entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
 locked to find that out. An existing store is adopted by `run` and repaired by
 `recover`; `init` does not reinitialise one.
 
+`init` never builds the store in place (PKT-647). It builds the empty store
+in a new directory `ROOT.init-XXXX` beside the configured store ROOT and
+publishes it by the same program as `store import` (below; `fn-bs-imp-program`
+with init's cut names, `fn-bs-init-pub-program` in
+`books/store-init-publication.lisp`): each file created exclusively, written
+and fenced, the directories fenced, the staged store opened the ordinary way,
+renamed onto ROOT without replacing anything, ROOT's parent fenced. A crash
+at any point leaves no store at ROOT or the complete empty store
+(`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`),
+never a partial one. Before writing anything `init` looks for a staged
+directory an earlier `init` left, and ACL2 answers
+(`fn-bs-init-pub-admission` over `fn-bs-imp-classify`):
+
+- `init refused reason=interrupted-init stage=PATH` (exit 1): ROOT is absent,
+  so no store was published. Remove PATH and run `init` again.
+- `init refused reason=publication-uncertain stage=PATH` (exit 1): ROOT is
+  present as well; run `recover`, then remove PATH.
+- `init refused reason=store-path-exists` (exit 1): ROOT exists (an empty
+  directory, say) without the store's entries. `init` creates the store
+  directory itself and never fills or replaces an existing one: remove it or
+  name another path.
+
+An OS error before the rename is a known failure (1, `init failed before
+publication: ...; remove PATH`); at or after it the outcome is uncertain (3,
+`init publication uncertain state=STATE stage=PATH root=ROOT`).
+
 The converse is refused too, with its own code. Every verb that opens the
 store (`run`, `post`, `status`, `pins`, `obligations`, `health`, `recover`,
 `store ...`, `group`, `capacity`, `peer`, `policy`, `bp-boundary`,
@@ -107,8 +133,9 @@ refused operator status NO-STORE
 never a fault (4); the word `NO-STORE` and the `run:` line, not the code,
 tell it from another refusal. ACL2 decides it (`fn-native-operator-store-outcome`,
 `fn-native-operator-absent-store-is-refused`, books/native-operator.lisp);
-a store with some of its entries (an interrupted `init`) is not "no store"
-and goes to the open, which recovers or refuses it.
+a store with some of its entries is not "no store" and goes to the open,
+which recovers or refuses it (an interrupted `init` of this release leaves
+no such store: see above).
 
 **Init under a mission.** A `fn.toml` written by `mission NAME` carries
 `[ops] mission`, and the mission fixes the store profile: `init` then takes
@@ -227,6 +254,15 @@ fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 100
 imported records=7 configuration=1
 ```
 
+`store export` is a Store-history export, not a node backup. It carries the
+profile, the allocation frontier, the configuration records and the Store
+records, and nothing else: not the node's private state and secrets (the TLS
+keys, credentials, the HKDF and pseudonym roots), not peer journals, not
+consumer or application state held outside the Store, and not the other
+persistence domains (the BP and TCPCL stores). The MANIFEST's SHA-256 per
+entry says each file is the one the export wrote; it does not establish that
+the archive is the newest history of that node.
+
 `store export DIR` takes the store's writer lock, so it is refused (1, `store
 is already locked`) while an owner runs; DIR must not exist (`export refused
 reason=archive-exists`). The archive is a directory: `profile` (config.json's
@@ -239,9 +275,47 @@ store: the configured store must not exist (`import refused
 reason=store-exists`); ACL2's plan (`fn-sxp-import-plan`) refuses a MANIFEST
 that does not match (`reason=manifest-mismatch NAME`), a record out of
 sequence (`reason=record-out-of-sequence N`) and a profile the codec cannot
-represent (`reason=profile REASON`), each exit 1 with nothing written; the
-store is then built beside its path, opened the ordinary way (full replay),
-and renamed into place only when that open admitted it. Fields only matter
+represent (`reason=profile REASON`), each exit 1 with nothing written.
+
+The import then publishes the store in the order of the byte program
+`fn-bs-imp-program` (`books/store-import-publication.lisp`): it stages the
+store in a new directory `ROOT.import-XXXX` beside the configured store ROOT
+(each file created exclusively, written and fenced, then the subdirectories
+and the staged directory fenced), opens the staged store the ordinary way
+(full replay), renames it onto ROOT with a rename that never replaces an
+existing ROOT (`renameat2` with `RENAME_NOREPLACE` on Linux; on OpenBSD, which
+has no such rename, see below), and fences ROOT's parent directory.
+
+**On OpenBSD** (no `renameat2`), `store import` and `init` hold an exclusive
+advisory lock (`flock`) on the sibling file `ROOT.lock` for the whole
+program, and re-check under it, immediately before `rename(2)`, that ROOT is
+absent; `rename(2)` itself refuses a non-empty directory or a file at ROOT.
+A second fn import or init of the same ROOT is refused while the lock is
+held (1, `publication refused reason=publication-locked`). The residual
+window is a process that does not take the lock creating an EMPTY directory
+at ROOT between that check and the rename: `rename(2)` would replace it. So
+on OpenBSD, **nothing but fn may create ROOT**: do not pre-create the store
+directory, and do not run another tool that makes it. `ROOT.lock` stays
+beside ROOT (removing it could race a second process that already opened
+it); it holds no data. A ROOT that appears before the rename is refused
+(1, `import refused reason=store-exists stage=PATH`) and the staged
+directory PATH is left for you to remove. An OS error before the rename is a
+known failure (1, `import failed before publication: ...; remove PATH`); at
+or after the rename the outcome is uncertain (3, `import publication
+uncertain state=STATE stage=PATH root=ROOT`).
+
+Before writing anything, the import looks beside ROOT for a staged directory
+an earlier import left (killed, or failed), and ACL2 classifies what it finds
+(`fn-bs-imp-classify`, from whether the staged directory and ROOT are
+present):
+
+- `import refused reason=interrupted-import stage=PATH` (exit 1): ROOT is
+  absent, so no store was published. Remove PATH and import again.
+- `import refused reason=publication-uncertain stage=PATH` (exit 1): ROOT is
+  present as well. Never read this as "no store was created": run `recover`
+  on the configured store, then remove PATH.
+
+Fields only matter
 upward in practice (the records were committed under the old bounds, and the
 import's open refuses a history the new profile cannot hold). The retention
 charge capacity is a different number and IS reconfigurable
@@ -555,8 +629,14 @@ default image profile's include closure is green at its digest
 load-checks the certificates from the cache, builds and freezes the
 production image, stages it with `packaging/install-native.sh`, checks that
 no Python is on the deployed path (`tools/runpath_check.py --tree`) and that
-`bin/fn --version` prints REV, and packs `fn-REV12-PLATFORM.tar.gz` with a
-`SHA256SUMS` beside it. The tarball holds one directory `fn/`: `install.sh`,
+`bin/fn --version` prints `fn 6.7.N (REV12)`, and packs
+`fn-6.7.N-PLATFORM.tar.gz` with a `SHA256SUMS` beside it. The version 6.7.N
+is the one line of the file `VERSION` at the root of the tree: the image
+build reads it into the image and the packaging names the tarball by it, and
+the cut tags REV `v6.7.N` (planning/release-v6.7.0.md is the cut's
+checklist; `tools/cut_release.sh` runs its mechanical gates). The `--frozen`
+form packages an already built image as `fn-6.7.N+REV12-PLATFORM.tar.gz`,
+which is not a release. The tarball holds one directory `fn/`: `install.sh`,
 `bin/fn`, `libexec/fn/` (the frozen launcher, the production core,
 `source-revision`, the SBCL runtime, libsodium and libfn-mldsa65; the TLS
 library is the system's), `share/fn/` (the service template,
@@ -578,12 +658,13 @@ image's core.
 
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
---version` prints the 40-digit source revision recorded beside the image's
+--version` prints `fn 6.7.N (REV12)`: the release version built into the
+image and the first twelve digits of the source revision recorded beside its
 core (`libexec/fn/source-revision`; exit 1 when the image records none).
 
 ### On OpenBSD (amd64, 7.9)
 
-The OpenBSD tarball, fn-REV12-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
+The OpenBSD tarball, fn-6.7.N-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
 (`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
 run in the build VM). It carries the SBCL runtime with its one non-base
 library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
@@ -611,10 +692,10 @@ Three OpenBSD rules decide where it lives and how it starts:
 As root, with the tarball and its sum in `/tmp`:
 
 ```sh
-cd /tmp && sha256 -C fn-REV12-openbsd-amd64.tar.gz.sha256 fn-REV12-openbsd-amd64.tar.gz
-cd /usr/local && tar xzf /tmp/fn-REV12-openbsd-amd64.tar.gz
-cd fn-REV12 && sha256 -q -c SHA256SUMS               # every file in it
-F=/usr/local/fn-REV12/bin/fn
+cd /tmp && sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
+cd /usr/local && tar xzf /tmp/fn-6.7.N-openbsd-amd64.tar.gz
+cd fn && sha256 -q -c SHA256SUMS                     # every file in it
+F=/usr/local/fn/bin/fn
 C=/var/fn/fn.toml
 useradd -d /var/fn -s /sbin/nologin -c fn-node _fn
 install -d -o _fn -g _fn -m 0700 /var/fn /var/fn/tls /var/fn/log
@@ -627,7 +708,8 @@ chown _fn:_fn /var/fn/tls/*.pem && chmod 600 /var/fn/tls/key.pem
 su -s /bin/sh _fn -c "$F operator $C init"
 su -s /bin/sh _fn -c "$F operator $C policy set path-identity fnbsd.friends.fn.invalid"
 su -s /bin/sh _fn -c "$F operator $C principal set-password ember --posting"
-install -m 0555 /usr/local/fn-REV12/share/fn/rc.d/fn /etc/rc.d/fn
+sed -e 's|@PREFIX@|/usr/local/fn|g' -e 's|@NODE@|/var/fn|g' -e 's|@USER@|_fn|g' \
+  /usr/local/fn/share/fn/rc.d/fn.rc.in > /etc/rc.d/fn && chmod 0555 /etc/rc.d/fn
 rcctl enable fn && rcctl start fn
 ```
 
@@ -719,7 +801,8 @@ which answers nothing on a production image.
 | --- | --- | --- |
 | `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`) |
 | `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
-| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts |
+| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-pub-program`, eio or kill) |
+| `FN_NATIVE_IMPORT_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-import-model-cuts+` (a repeated cut at its first occurrence) | `store import`'s publication cuts (`fn-bs-imp-program`) |
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
 | `FN_NATIVE_AUTH_ADMIN_FAULT` | `CUT:eio\|kill` | the AUTHINFO credential writer's cuts |
@@ -1417,6 +1500,44 @@ tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
 certificate), `tls none` a node without `tls_cert`, and `tls unknown
 REASON` an owner that did not answer the question (an owner older than
 this command answers `owner-lacks-tls-reload`).
+### What a login's post discloses: Injection-Info's posting-account
+
+Every article a login posts is stored with one line
+
+```
+Injection-Info: news.example.org; posting-account="8c59...f172"; mail-complaints-to="abuse@example.org"
+```
+
+(RFC 5536 §3.2.8). The `posting-account` value is 64 hex digits derived
+from the login under the node secret (`STORE/keys/node-secret.key`). It is
+a **linkable pseudonym**, not anonymity, and it travels with the article to
+every peer and reader: anyone can see that two articles with one value came
+from one login on this node. Nobody without the node secret can read the
+login out of it, or its length, or test a guessed login. By enabling
+authenticated posting the operator authorizes that disclosure; tell the
+people you give logins to. An anonymous post (where the node allows one)
+carries no `posting-account`. A new node secret gives every login a new
+value; a login name you reuse for another person carries the old value.
+
+The complaints address is a policy, set live:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml policy set complaints-to abuse@example.org
+```
+
+It must be a plain `local@domain` address (dot-atoms, no quotes); anything
+else is refused. To answer a complaint that quotes a `posting-account`,
+compute the value for a login and compare:
+
+```
+packaging/fn-native operator /etc/fn/fn.toml account hash alice
+```
+
+It prints the value `alice`'s posts carry (it reads the node secret, with
+the same permission checks as the owner; the secret itself is never
+printed). Articles relayed from peers keep the peer's own `Injection-Info`
+untouched. The decision is ACL2's (`books/injection-info-params.lisp`,
+`specs/nntp.md` "Injection-Info parameters").
 
 ### Bind a login to its signing principal
 
@@ -1817,8 +1938,12 @@ refused at open by name (`open refused reason=store-format: reinstall from
 the release and import`, exit 1). The archive carries the committed records,
 the configuration records, the profile and the allocation frontier; the
 store identity and consumer state are records, so they travel with them.
-Feed journals and BP spools do not: a reinstalled node re-peers. Keep the
-archive until the new node serves; it is the only copy.
+Feed journals and BP spools do not: a reinstalled node re-peers. It is a
+Store-history export, not a node backup: the node's secrets and private
+state (TLS keys, credentials, the HKDF and pseudonym roots), peer journals
+and the BP and TCPCL stores are kept separately, and the MANIFEST does not
+say the archive is the node's newest history. Keep the archive until the new
+node serves; it is the only copy of that history.
 
 What an older release refuses of this store's records (facts about releases, not a rollback procedure: under D34 a deploy is a fresh install and an older release is never started over a newer store):
 

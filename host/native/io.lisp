@@ -2461,6 +2461,14 @@ REQUESTED is 1, 0 or NIL (keep the store's policy)."
   "Rows of a table per pipeline step: a work bound per scheduling step (D27),
 never a bound on the store; the file is the same at every batch size.")
 
+(defconstant +fnn-checkpoint-batch-octets+ (* 4 1024 1024)
+  "Octets per pipeline step: the step ends after the row that brings the
+publication buffer's fill to this (fn-ockp-encode-batch), so a step's
+residency is under this plus one row plus one segment's residue whatever the
+rows' sizes (gpt-6, review 2026-09-26 section 2: one record can be large).
+A work bound per step, never a bound on the store; the file is the same at
+every value.")
+
 (defun fnn-checkpoint-revision ()
   "The writer's source revision for the checkpoint's F row: the recorded one
 (fnn-source-revision), or \"unknown\" on an image that records none (a
@@ -2490,6 +2498,7 @@ which the process is killed, or NIL."
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
       (let ((answer (fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+
+                              +fnn-checkpoint-batch-octets+
                               segment sequence segment-bound file-bound st)))
         ;; fnn-call answers the multiple-value list: VERDICT FRAMES STATE'
         ;; and the stobj.
@@ -2498,8 +2507,10 @@ which the process is killed, or NIL."
         (destructuring-bind (verdict frames next &rest stobj) answer
           (declare (ignore stobj))
           (unless (eq verdict :ok)
-            (fnn-refuse-io "the checkpoint pipeline refused a frame the open would refuse: ~a"
-                           verdict))
+            ;; (:refused REASON): a frame the open would refuse; :unencodable:
+            ;; a row the codec cannot write (unreachable after a setup that
+            ;; did not say so: fn-ockp-setup-not-unencodable-never-refuses-a-row)
+            (fnn-refuse-io "the checkpoint pipeline refused by name: ~a" verdict))
           (unless (or (null frames) (fnn-plan-p frames st))
             (fnn-fault "ACL2 returned a malformed checkpoint step"))
           (fnn-plan-write-all fd frames st)
@@ -2525,7 +2536,12 @@ buffer at once."
       (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
     (unwind-protect
          (let* ((profile (fnn-store-config store))
-                (segment (fnn-profile-nat 'fn-store-profile-max-record-octets store))
+                ;; the writer's segment: ACL2's choice under the record bound
+                ;; (fn-ockp-segment-octets: the smaller of R and a quarter of
+                ;; the step's octets); the same derivation as the owner's thread
+                (segment (fnn-core 'fn-ockp-segment-octets
+                                   (fnn-profile-nat 'fn-store-profile-max-record-octets store)
+                                   +fnn-checkpoint-batch-octets+))
                 (budget (fnn-core 'fn-ock-capture-budget profile))
                 (answer (fnn-core-state 'fn-store-sco-publish-setup segment budget
                                         (fnn-disk-free-octets store)
@@ -2942,6 +2958,13 @@ prints its octets."
 (defparameter +fnn-init-test-controls+
   '("init-config-records-first-enumerate" "init-config-records-final-enumerate"))
 
+;; books/store-init-publication.lisp fn-bs-init-pub-program's cuts: the
+;; import's program with init's names, in program order.
+(defparameter +fnn-init-publication-cuts+
+  '("init-stage-created" "init-subdir-created" "init-file-created"
+    "init-file-written" "init-file-durable" "init-subdir-durable"
+    "init-staged-durable" "init-validated" "init-published" "init-durable"))
+
 (defun fnn-init-test-fault ()
   "Developer-only FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill|eacces selector.
 
@@ -2955,6 +2978,7 @@ a source-pinned post-syscall cut."
           (fnn-fault "invalid FN_NATIVE_INIT_FAULT (expected MODEL-CUT:eio|kill|eacces)"))
         (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
           (unless (or (member label +fnn-init-model-cuts+ :test #'string=)
+                      (member label +fnn-init-publication-cuts+ :test #'string=)
                       (member label +fnn-init-test-controls+ :test #'string=))
             (fnn-fault "unknown FN_NATIVE_INIT_FAULT cut: ~a" label))
           (list (intern (string-upcase label) :keyword)
@@ -3159,6 +3183,55 @@ current one)."
       (fnn-store-close store))
     +fnn-exit-ok+))
 
+(defun fnn-command-init-published (root groups profile &optional policy)
+  "`operator CONFIG init' (PKT-647): build the empty store beside ROOT, in
+ROOT.init-XXXX, and publish it without replacing anything
+(books/store-init-publication.lisp fn-bs-init-pub-program, through
+fnn-staged-publication).  Its plan is ACL2's three frames: the profile, the
+allocation frontier 0 and the generation-1 configuration record.  Before
+writing anything the host observes a leftover ROOT.init-* and ROOT, and
+ACL2's admission (fn-bs-init-pub-admission over fn-bs-imp-classify) proceeds
+or refuses by name, saying what to run."
+  (let* ((root-path (string-right-trim "/" root))
+         (leftover (fnn-import-leftover-stage root-path "init"))
+         (verdict (and leftover (fnn-import-classify leftover root-path)))
+         (admission (fnn-core 'fn-bs-init-pub-admission verdict
+                              (and (fnn-lstat root-path) t))))
+    (cond ((eq admission :proceed))
+          ((equal admission '(:refused :interrupted-init))
+           (fnn-refuse "init refused reason=interrupted-init stage=~a: no store was published at ~a; remove ~a and run init again"
+                       leftover root-path leftover))
+          ((equal admission '(:refused :publication-uncertain))
+           (fnn-refuse "init refused reason=publication-uncertain stage=~a: an earlier init may have published ~a; run recover, then remove ~a"
+                       leftover root-path leftover))
+          ((equal admission '(:refused :store-path-exists))
+           (fnn-refuse "init refused reason=store-path-exists: ~a exists; init creates the store directory and never fills an existing one"
+                       root-path))
+          (t (fnn-fault "ACL2 returned a malformed init admission")))
+    (let* ((stage-root (format nil "~a.init-~a" root-path (fnn-random-hex 6)))
+           (stage (make-fnn-store stage-root :writable t :fault (fnn-init-test-fault))))
+      (fnn-staged-publication
+       "init" stage root-path
+       ;; fn-bs-init-pub-files, in its order.
+       (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
+             (cons (fnn-frontier-path stage) (fnn-metadata-frontier-frame 0))
+             (cons (fnn-config-record-path stage 1)
+                   (fnn-bridge-config-initial (or groups +fnn-default-groups+))))
+       0
+       (lambda (stage) (fnn-record-filesystem-at-init stage profile policy)))
+      ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
+      ;; once the store is published (outside fn-bs-init-pub-program: a
+      ;; death between the two leaves the complete store without
+      ;; keys/node-secret.key, which `run' refuses by name until
+      ;; `store ROOT node-secret create'; PKT-694).
+      (let ((published (make-fnn-store root-path :writable t)))
+        (unwind-protect
+             (progn (fnn-acquire published)
+                    (fnn-node-secret-create published nil :keep))
+          (fnn-store-close published)))
+      (fnn-out "initialized ~a" root-path)
+      +fnn-exit-ok+)))
+
 (defun fnn-command-developer-init (root words)
   "Developer `store ROOT init [PROFILE-FLAGS] [GROUP ...]': ACL2 reads the
 words (books/native-operator.lisp fn-nop-developer-init) with the operator's
@@ -3241,13 +3314,177 @@ entries and MANIFEST are ACL2's (fn-sxp-entries, fn-sxp-manifest)."
 (defun fnn-archive-read-dir (dir sub)
   (sort (copy-list (fnn-list-directory (fnn-join dir sub))) #'string<))
 
+;; books/store-import-publication.lisp fn-bs-imp-program's cuts, in program
+;; order.  The per-subdirectory and per-file cuts repeat; `fnn-at' fires at
+;; every match, so the selected cut stops the import at its first occurrence.
+(defparameter +fnn-import-model-cuts+
+  '("import-stage-created" "import-subdir-created" "import-file-created"
+    "import-file-written" "import-file-durable" "import-subdir-durable"
+    "import-staged-durable" "import-validated" "import-published"
+    "import-durable"))
+
+(defun fnn-import-test-fault ()
+  "Developer-only FN_NATIVE_IMPORT_FAULT=MODEL-CUT:eio|kill selector for
+fn-bs-imp-program's cuts."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_IMPORT_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_IMPORT_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
+          (unless (member label +fnn-import-model-cuts+ :test #'string=)
+            (fnn-fault "unknown FN_NATIVE_IMPORT_FAULT cut: ~a" label))
+          (list (intern (string-upcase label) :keyword)
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault "invalid FN_NATIVE_IMPORT_FAULT action: ~a" action)))
+                "developer-only native import fault"))))))
+
+(defun fnn-pub-at (store kind suffix)
+  "The cut KIND-SUFFIX of fn-bs-imp-program (KIND \"import\") or of
+fn-bs-init-pub-program (KIND \"init\": the same program, init's cut names)."
+  (fnn-at store (intern (string-upcase (fnn-concat kind "-" suffix)) :keyword)))
+
+(defun fnn-import-write-file (store path octets &optional (kind "import"))
+  "fn-bs-imp-file-steps: create PATH (it must not exist), write OCTETS, fence
+it, with the program's cut after each of the three syscalls."
+  (let ((fd (fnn-open path (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                    +fnn-o-nofollow+)
+                      #o600)))
+    (unwind-protect
+         (progn
+           (fnn-pub-at store kind "file-created")
+           (fnn-write-all fd (fnn-octets octets))
+           (fnn-pub-at store kind "file-written")
+           (fnn-fsync-file fd)
+           (fnn-pub-at store kind "file-durable"))
+      (fnn-close fd))))
+
+#+linux
+(sb-alien:define-alien-routine ("renameat2" fnn-%import-renameat2)
+    sb-alien:int
+  (old-directory sb-alien:int) (old-name sb-alien:c-string)
+  (new-directory sb-alien:int) (new-name sb-alien:c-string)
+  (flags sb-alien:unsigned-int))
+
+(defun fnn-rename-no-replace (old new)
+  "Rename OLD onto NEW without replacing an existing NEW (fn-bs-imp-program's
+:rename-dir-noreplace).  NIL once renamed; :EXISTS when NEW exists and nothing
+was renamed; :UNSUPPORTED when the filesystem refuses the no-replace flag and
+nothing was renamed.  Any other failure is an fnn-os-error, whose outcome the
+caller does not know."
+  #+linux
+  (let ((result (fnn-%import-renameat2 -100 old -100 new 1)))   ; AT_FDCWD, RENAME_NOREPLACE
+    (if (>= result 0)
+        nil
+      (let ((errno (sb-alien:get-errno)))
+        (cond ((= errno sb-posix:eexist) :exists)
+              ((or (= errno sb-posix:einval) (= errno sb-posix:enosys)) :unsupported)
+              (t (fnn-os-fail errno new))))))
+  ;; No renameat2 here (OpenBSD).  The caller holds NEW.lock
+  ;; (fnn-publication-lock) for the whole program; NEW is observed absent
+  ;; under it immediately before rename(2), which itself refuses a
+  ;; non-empty directory and a non-directory at NEW.  Residual: a process
+  ;; that does not take the lock creates an EMPTY directory at NEW between
+  ;; the lstat and the rename, and it is replaced (docs/operator.md: an
+  ;; operator constraint).  The OpenBSD evidence is scoped separately.
+  #-linux
+  (if (fnn-lstat new)
+      :exists
+    (handler-case (progn (sb-posix:rename old new) nil)
+      (sb-posix:syscall-error (e)
+        (let ((errno (sb-posix:syscall-errno e)))
+          (if (member errno (list sb-posix:eexist sb-posix:enotempty sb-posix:enotdir))
+              :exists
+            (fnn-os-fail errno new)))))))
+
+(defun fnn-publication-lock (root-path)
+  "Where rename(2) has no no-replace flag (OpenBSD), the publication program
+(import, init) holds an exclusive advisory lock on the sibling ROOT.lock for
+its whole run, and fnn-rename-no-replace re-checks ROOT's absence under it
+immediately before rename(2).  The residual is a process that does not take
+the lock and creates an EMPTY directory at ROOT in that window: rename(2)
+replaces it.  That is an operator constraint (docs/operator.md): nothing but
+fn creates ROOT.  A second fn publication is refused, never waited on.  NIL
+on Linux, where renameat2(RENAME_NOREPLACE) refuses any existing ROOT."
+  #+linux (declare (ignore root-path))
+  #+linux nil
+  #-linux
+  (let ((fd (fnn-open (fnn-concat root-path ".lock")
+                      (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+) #o600)))
+    (handler-case (progn (unless (fnn-regular-p (fnn-fstat fd))
+                           (fnn-fault "refusing non-regular publication lock ~a.lock" root-path))
+                         (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
+                         fd)
+      (fnn-os-error ()
+        (fnn-close fd)
+        (fnn-refuse "publication refused reason=publication-locked: another fn process holds ~a.lock"
+                    root-path))
+      (error (e) (fnn-close fd) (error e)))))
+
+(defun fnn-publication-unlock (fd)
+  (when fd
+    (ignore-errors (fnn-flock fd +fnn-lock-un+))
+    (fnn-close fd)))
+
+(defun fnn-import-leftover-stage (root-path &optional (kind "import"))
+  "The path of the first entry of ROOT-PATH's parent named BASENAME.KIND-*
+(BASENAME being ROOT-PATH's last component), or NIL.  The directory is
+streamed and one name retained."
+  (let* ((parent (fnn-parent root-path))
+         (slash (position #\/ root-path :from-end t))
+         (prefix (fnn-concat (if slash (subseq root-path (1+ slash)) root-path)
+                             "." kind "-"))
+         (found nil))
+    (when (fnn-lstat parent)
+      (let ((dir (fnn-posix (parent) (sb-posix:opendir parent))))
+        (unwind-protect
+             (loop
+               (let ((entry (fnn-posix (parent) (sb-posix:readdir dir))))
+                 (when (sb-alien:null-alien entry) (return))
+                 (let ((name (sb-posix:dirent-name entry)))
+                   (when (and (> (length name) (length prefix))
+                              (string= prefix name :end2 (length prefix)))
+                     (setq found name)
+                     (return)))))
+          (fnn-posix (parent) (sb-posix:closedir dir)))))
+    (and found (fnn-join parent found))))
+
+(defun fnn-import-classify (stage-root root-path)
+  "ACL2's reading (fn-bs-imp-classify) of whether STAGE-ROOT and ROOT-PATH
+are present."
+  (let ((verdict (fnn-core 'fn-bs-imp-classify
+                           (and (fnn-lstat stage-root) t)
+                           (and (fnn-lstat root-path) t))))
+    (unless (member verdict '(:no-store :not-published :publication-uncertain :store-present))
+      (fnn-fault "ACL2 returned a malformed import classification"))
+    verdict))
+
 (defun fnn-command-store-import (root dir request &optional policy)
   "Offline: make a new store at ROOT (it must not exist) from the archive at
 DIR.  ACL2's plan (fn-sxp-import-plan) checks the MANIFEST, the order and the
 profile (REQUEST's field overrides over the archive's) and refuses by name;
 the host writes the plan's files into ROOT.import-XXXX as init writes its
 files, opens that store the ordinary way (full replay, marker catch-up), and
-renames it onto ROOT only when the open admitted it."
+publishes it by a no-replace rename onto ROOT only when the open admitted
+it, then fences ROOT's parent: books/store-import-publication.lisp
+fn-bs-imp-program, step for step, with its cuts (+fnn-import-model-cuts+).
+A staged directory left beside ROOT by an earlier import is classified by
+fn-bs-imp-classify and refused by name before anything is written.  An OS
+error before the rename is a known failure (exit 1, the staged directory
+named); at or after it the outcome is uncertain (exit 3) and the observed
+presence of the two names is classified by fn-bs-imp-classify."
+  (let* ((root-path (string-right-trim "/" root))
+         (leftover (fnn-import-leftover-stage root-path)))
+    (when leftover
+      (case (fnn-import-classify leftover root-path)
+        (:not-published
+         (fnn-refuse "import refused reason=interrupted-import stage=~a: no store was published; remove ~a and import again"
+                     leftover leftover))
+        (:publication-uncertain
+         (fnn-refuse "import refused reason=publication-uncertain stage=~a: run recover on ~a, then remove ~a"
+                     leftover root-path leftover))
+        (t (fnn-fault "ACL2 classified a present staged directory as absent")))))
   (when (fnn-lstat root)
     (fnn-refuse "import refused reason=store-exists"))
   (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-join dir "profile") 16384)))
@@ -3288,38 +3525,108 @@ renames it onto ROOT only when the open admitted it."
                           ((keywordp detail) (string-downcase (symbol-name detail)))
                           (t detail)))))
     (destructuring-bind (values frontier configs records) (rest plan)
-      (let* ((stage-root (format nil "~a.import-~a" (string-right-trim "/" root) (fnn-random-hex 6)))
-             (stage (make-fnn-store stage-root :writable t)))
-        (fnn-mkdir stage-root #o700)
-        (dolist (sub '("transactions" "staging" "config"))
-          (fnn-mkdir (fnn-join stage-root sub) #o700))
-        (fnn-archive-write-file (fnn-config-path stage)
-                                (fnn-core 'fn-bs-config-encode values))
-        (fnn-archive-write-file (fnn-frontier-path stage) frontier)
-        (dolist (config configs)
-          (fnn-archive-write-file (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
-        (dolist (record records)
-          (fnn-archive-write-file (fnn-join (fnn-transactions stage)
-                                            (fnn-transaction-name (car record)))
-                                  (fnn-frame (fnn-octets (cdr record)))))
-        (dolist (sub '("transactions" "staging" "config"))
-          (fnn-fsync-dir (fnn-join stage-root sub)))
-        ;; The imported store is a new store on the filesystem ROOT is on
-        ;; (its stage is ROOT's sibling): its record, under the import's
-        ;; policy (fn-smid-init-policy: 1), before the ordinary open.
-        (fnn-record-filesystem-at-init stage request policy)
-        (fnn-fsync-dir stage-root)
-        ;; The ordinary open admits the imported history or refuses it.
-        (multiple-value-bind (opened replayed) (fnn-open-live-store stage-root t)
-          (unwind-protect
-               (unless (= (length replayed) (length records))
-                 (fnn-fault "the imported store replayed ~d of ~d records"
-                            (length replayed) (length records)))
-            (fnn-store-close opened)))
-        (fnn-replace stage-root root)
-        (fnn-fsync-dir (directory-namestring (string-right-trim "/" root)))
+      (let* ((root-path (string-right-trim "/" root))
+             (stage-root (format nil "~a.import-~a" root-path (fnn-random-hex 6)))
+             (stage (make-fnn-store stage-root :writable t :fault (fnn-import-test-fault))))
+        (fnn-staged-publication
+         "import" stage root-path
+         ;; fn-sxp-import-plan's files, in its order.
+         (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values))
+                       (cons (fnn-frontier-path stage) frontier))
+                 (mapcar (lambda (config)
+                           (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
+                         configs)
+                 (mapcar (lambda (record)
+                           (cons (fnn-join (fnn-transactions stage)
+                                           (fnn-transaction-name (car record)))
+                                 (fnn-frame (fnn-octets (cdr record)))))
+                         records))
+         (length records)
+         ;; The imported store is a new store on the filesystem ROOT is on
+         ;; (its stage is ROOT's sibling): its record, under the import's
+         ;; policy (fn-smid-init-policy: 1), before the ordinary open.
+         (lambda (stage) (fnn-record-filesystem-at-init stage request policy)))
         (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
         +fnn-exit-ok+))))
+
+(defun fnn-staged-publication (kind stage root-path files record-count
+                               &optional record-filesystem)
+  "Build the store STAGE (at ROOT-PATH.KIND-XXXX) from FILES, a list of
+(PATH . OCTETS) in plan order, admit it through the ordinary open (it must
+replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
+rename, then fence ROOT-PATH's parent: books/store-import-publication.lisp
+fn-bs-imp-program step for step, with its cuts (KIND \"import\") or
+books/store-init-publication.lisp fn-bs-init-pub-program's (KIND \"init\":
+the same steps, init's cut names).  An OS error before the rename is a known
+failure (exit 1, the staged directory named); at or after it the outcome is
+uncertain (exit 3) and the observed presence of the two names is classified
+by fn-bs-imp-classify."
+  (let* ((stage-root (fnn-store-root stage))
+         (parent (fnn-parent root-path))
+         (lock nil)
+         (created nil)
+         (attempted nil))
+    (handler-case
+        (unwind-protect
+             (progn
+               ;; OpenBSD has no renameat2: the whole program holds an
+               ;; exclusive advisory lock on ROOT.lock and re-checks ROOT's
+               ;; absence under it immediately before rename(2).
+               (setq lock (fnn-publication-lock root-path))
+               ;; fn-bs-imp-stage-steps
+               (fnn-mkdir stage-root #o700)
+               (setq created t)
+               (fnn-pub-at stage kind "stage-created")
+               ;; fn-bs-imp-subdir-steps
+               (dolist (sub '("transactions" "staging" "config"))
+                 (fnn-mkdir (fnn-join stage-root sub) #o700)
+                 (fnn-pub-at stage kind "subdir-created"))
+               ;; fn-bs-imp-files-steps
+               (dolist (file files)
+                 (fnn-import-write-file stage (car file) (cdr file) kind))
+               ;; fn-bs-imp-fence-steps
+               (dolist (sub '("transactions" "staging" "config"))
+                 (fnn-fsync-dir (fnn-join stage-root sub))
+                 (fnn-pub-at stage kind "subdir-durable"))
+               ;; fn-bs-imp-seal-steps
+               (fnn-fsync-dir stage-root)
+               (fnn-pub-at stage kind "staged-durable")
+               ;; The filesystem record (STO-031) the ordinary open checks,
+               ;; written into the sealed stage by RECORD-FILESYSTEM (the
+               ;; stage is ROOT's sibling, on ROOT's filesystem).
+               (when record-filesystem (funcall record-filesystem stage))
+               ;; fn-bs-imp-publication-program.  The ordinary open admits
+               ;; the staged store or refuses it.
+               (multiple-value-bind (opened replayed) (fnn-open-live-store stage-root t)
+                 (unwind-protect
+                      (unless (= (length replayed) record-count)
+                        (fnn-fault "the staged store replayed ~d of ~d records"
+                                   (length replayed) record-count))
+                   (fnn-store-close opened)))
+               (fnn-pub-at stage kind "validated")
+               (setq attempted t)
+               (case (fnn-rename-no-replace stage-root root-path)
+                 ((nil))
+                 (:exists
+                  (fnn-refuse "~a refused reason=store-exists stage=~a: remove ~a"
+                              kind stage-root stage-root))
+                 (:unsupported
+                  (fnn-refuse-io "~a failed before publication: the filesystem refuses a no-replace rename; remove ~a"
+                                 kind stage-root))
+                 (t (fnn-fault "invalid no-replace rename outcome")))
+               (fnn-pub-at stage kind "published")
+               (fnn-fsync-dir parent)
+               (fnn-pub-at stage kind "durable"))
+          (fnn-publication-unlock lock))
+      (fnn-os-error (e)
+        (cond ((not attempted)
+               (fnn-refuse-io "~a failed before publication: ~a; ~:[no staged directory was left~;remove ~a~]"
+                              kind e created stage-root))
+              (t
+               (let ((verdict (handler-case (fnn-import-classify stage-root root-path)
+                                (fnn-os-error () nil))))
+                 (fnn-indeterminate "~a publication uncertain state=~(~a~) stage=~a root=~a: ~a"
+                                    kind (or verdict "unobserved") stage-root root-path e))))))))
 
 (defparameter +fnn-cli-faults+
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
@@ -4271,6 +4578,36 @@ serialized profile when the saved image later starts."
 (defun fnn-developer-image-p ()
   (eq *fnn-image-profile* :developer))
 
+;;; The release version (VERSION at the tree root: 6.7.N, one line).  Read
+;;; once while constructing the saved image, as the profile above is, and
+;;; serialized into it; the packaging reads the same file for the tarball's
+;;; name (packaging/release-tarball.sh).  `fn --version' prints it with the
+;;; source revision recorded beside the core.
+(defvar *fnn-release-version* nil)
+
+(defun fnn-release-version-word-p (text)
+  "TEXT is 6.7.N with N a decimal numeral without a leading zero."
+  (and (stringp text)
+       (> (length text) 4)
+       (string= "6.7." text :end2 4)
+       (let ((n (subseq text 4)))
+         (and (every (lambda (c) (find c "0123456789")) n)
+              (or (string= n "0") (char/= (char n 0) #\0))))))
+
+(defun fnn-select-release-version (&optional (path "VERSION"))
+  "Build-time: take the release version from PATH (the build runs at the
+tree root), or stop the build."
+  (let ((line (with-open-file (in path :direction :input :if-does-not-exist nil
+                                       :external-format :latin-1)
+                (and in (read-line in nil nil)))))
+    (unless (fnn-release-version-word-p line)
+      (error "~a does not hold a release version 6.7.N (read ~s)" path line))
+    (setq *fnn-release-version* line)))
+
+(defun fnn-release-version ()
+  (or *fnn-release-version*
+      (fnn-refuse "this image records no release version (built without VERSION)")))
+
 (defun fnn-dash-nil (text) (if (string= text "-") nil text))
 
 ;;; Developer selectors: one table, one gate.
@@ -4287,7 +4624,7 @@ serialized profile when the saved image later starts."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
-    "FN_NATIVE_STATE_CHECKPOINT_FAULT"
+    "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
@@ -4366,9 +4703,9 @@ serialized profile when the saved image later starts."
   (cdr (assoc verb *fnn-verbs* :test #'string=)))
 
 
-;;; PKT-403: `fn --version' prints the source revision this image was built
-;;; from, as the installer recorded it beside the core
-;;; (packaging/install-native.sh writes libexec/fn/source-revision; the
+;;; PKT-403: `fn --version' prints the release version and the source
+;;; revision this image was built from, as the installer recorded it beside
+;;; the core (packaging/install-native.sh writes libexec/fn/source-revision; the
 ;;; frozen image directory carries the same file, tools/runbooks/
 ;;; hbox-image-build.sh).  The word is printed only when it is a 40-digit
 ;;; lowercase hex commit; anything else is an image without provenance.
@@ -4395,7 +4732,10 @@ serialized profile when the saved image later starts."
       (return-from fnn-dispatch (fnn-dispatch (list "operator" "-" "help"))))
     (when (and (null (rest args))
                (member (first args) '("--version" "version") :test #'string=))
-      (fnn-out "fn ~a" (fnn-source-revision))
+      ;; `fn 6.7.N (REV12)': the release version built into the image and
+      ;; the first twelve digits of the recorded source revision.
+      (let ((revision (fnn-source-revision)))
+        (fnn-out "fn ~a (~a)" (fnn-release-version) (subseq revision 0 12)))
       (return-from fnn-dispatch +fnn-exit-ok+))
     (need 1)
     (let ((verb (first args)))

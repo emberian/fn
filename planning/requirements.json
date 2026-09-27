@@ -374,7 +374,8 @@
       "proof_targets": [
         "PRF-007",
         "PRF-044",
-        "PRF-050"
+        "PRF-050",
+        "PRF-246"
       ],
       "verification": [
         "proof",
@@ -473,7 +474,8 @@
         "PRF-004",
         "PRF-080",
         "PRF-083",
-        "PRF-110"
+        "PRF-110",
+        "PRF-246"
       ],
       "verification": [
         "proof",
@@ -1278,7 +1280,8 @@
         "PRF-056",
         "PRF-057",
         "PRF-063",
-        "PRF-091"
+        "PRF-091",
+        "PRF-206"
       ],
       "verification": [
         "proof",
@@ -2770,6 +2773,7 @@
       "status": "specified",
       "proof_targets": [
         "PRF-201",
+        "PRF-221",
         "PRF-219"
       ],
       "verification": [
@@ -3172,7 +3176,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-169"
+        "PRF-169",
+        "PRF-246"
       ],
       "verification": [
         "proof",
@@ -3334,6 +3339,7 @@
         "books/native-live-status.lisp",
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp"
       ],
@@ -3495,6 +3501,7 @@
         "PRF-202",
         "PRF-203",
         "PRF-204",
+        "PRF-221",
         "PRF-229",
         "PRF-241"
       ],
@@ -3866,13 +3873,14 @@
       "evidence": [
         "books/store-checkpoint-tables.lisp",
         "books/store-checkpoint-tables-reader.lisp",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp",
         "tests/test_native_state_checkpoint.py",
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/checkpoint-pipeline-2026-09-26.md"
       ],
-      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy); the loop theorem fn-ockp-run-writes-the-file (PKT-583)."
+      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy). checkpoint-pipeline-5 (2026-09-26): the step's guard is the O(1) shape fn-ockp-statep (the rows' encodability is the setup's one check, carried as the invariant fn-ockp-step-preserves-encodable and checked per row as the encoder writes: B rows and BYTES octets per step, host/native/io.lisp +fnn-checkpoint-batch-rows+ 1024 and +fnn-checkpoint-batch-octets+ 4 MiB); the automatic publication's due path is fn-ock-publication-next (one in flight, one coalesced request, the decision again at the finish; K the fast-path threshold)."
     },
     {
       "id": "HST-020",
@@ -4231,6 +4239,76 @@
         "planning/evidence/reader-compat-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 sections 7.3, 8.4.2 and 8.5, RFC 6048 sections 2.3 and 2.6 and RFC 5536 section 3.2.14 are the RFC requirements; creation times from the creating configuration record and a view-restricted list are stronger fn guarantees; the configured default list with the view's groups as fallback, Bytes:/Lines:, and Xref generated at serve time are local policy (specs/nntp.md). Packets PKT-665 to PKT-668."
+    },
+    {
+      "id": "REP-014",
+      "title": "The payload arena is an attachable generic whose logical value is the list of sealed payloads; the byte array is an implementation attached in the image; a handle has identity, extent and lifetime; replay over the retained view equals replay over the wire view; a pinned reader's payload survives reclamation",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-221",
+        "PRF-118"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/records-freeze-2026-09-26.md",
+        "books/payload-arena.lisp",
+        "books/payload-arena-bytes.lisp",
+        "books/payload-arena-attach.lisp",
+        "books/records-freeze.lisp",
+        "planning/evidence/manifests/certify-20260927T030010Z-2442389.json"
+      ],
+      "implementation_note": "Lane records-freeze (2026-09-26/27, PKT-293): the generic, its byte-array attachment, the intern's coordinates, the replay theorems and the reclamation identity are certified (PRF-221); the image attaches the byte array (host/native/build.lisp includes books/payload-arena-attach before any book naming fn-arena). Not yet served: no host line seals into the arena or loads the catalog (catalog-slice-5 step 8; acceptance-payload-arena PKT-635), so the retained bytes per stored octet are still sixteen on the running node until that join; the measurement belongs to it."
+    },
+    {
+      "id": "STO-029",
+      "title": "store import and operator init publish their staged store by a no-replace rename and a parent barrier: a crash leaves no store or the complete (init: empty) store, and an interrupted or ambiguous publication is refused by name",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-217"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-import-publication.lisp",
+        "tests/acl2/store-import-publication-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_import_publication.py",
+        "books/store-init-publication.lisp",
+        "tests/acl2/store-init-publication-tests.lisp",
+        "tests/test_native_init_publication.py"
+      ],
+      "implementation_note": "gpt-6 review 2026-09-26 section 7. The staged ROOT.import-XXXX is completed and fenced, admitted by the ordinary open, published by renameat2(RENAME_NOREPLACE) and the parent fenced; a leftover staged directory is classified by ACL2 (interrupted-import, publication-uncertain) and refused by name. Operator init (PKT-647) runs the same program with init's plan in ROOT.init-XXXX (fnn-command-init-published); a leftover is refused interrupted-init or publication-uncertain, an existing ROOT store-path-exists. OpenBSD: exclusive flock on ROOT.lock, ROOT re-checked before rename(2)."
+    },
+    {
+      "id": "STO-030",
+      "title": "The header limits of one article (fields, physical lines, octets) are store profile fields, and admission refuses exactly past them by name",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-230"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/byte-store-frame.lisp",
+        "books/article-header-limits.lisp",
+        "books/injection.lisp",
+        "planning/evidence/header-limits-profile-2026-09-27.md"
+      ],
+      "implementation_note": "Fields 15 to 17 (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
     }
   ]
 }

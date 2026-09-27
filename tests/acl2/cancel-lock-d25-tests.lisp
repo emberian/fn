@@ -167,7 +167,10 @@
 (defconst *cdt-locked-octets* (cdt-stored *cdt-locked* *cdt-a* "alice" *cdt-alice* *cdt-ring1*))
 (defconst *cdt-s2* (cdt-store *cdt-locked-octets*))
 (assert-event
- (and (equal *cdt-locked-octets* (fn-inj-decision-octets (cdt-d *cdt-locked* *cdt-a*)))
+; (no node lock: the poster wrote one; the Injection-Info line carries
+; alice's posting-account parameter, PKT-597)
+ (and (equal *cdt-locked-octets*
+             (fn-ipp-injected-octets (cdt-d *cdt-locked* *cdt-a*) *cdt-ring1* (cdt-text "alice") nil))
       (not (equal *cdt-locked* *cdt-relocked*))
       (fn-inj-injectedp (cdt-d *cdt-relocked* *cdt-b*))
       (equal (fn-rcl-existing-action

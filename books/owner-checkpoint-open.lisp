@@ -280,6 +280,72 @@
            (equal (car (fn-sco-select :ok durable count k)) :checkpoint))
   :hints (("Goal" :in-theory (enable fn-sco-select))))
 
+; -----------------------------------------------------------------------------
+; The recovery-lag policy (checkpoint-pipeline-5, PKT-583 (b); gpt-6's review
+; of 2026-09-26 section 2).  ONE publication in flight: while one runs
+; (INFLIGHT is the count it captured) the owner starts no other, builds no
+; estimate and cancels nothing, and a due observation meanwhile is ONE
+; coalesced request (:coalesce; the host records it once, for the status
+; report, and nothing else happens).  When the publication finishes the
+; owner decides again from the newest committed frontier by the same rule
+; (`fn-ock-publication-duep' at the count then, against the durable S the
+; finish bound to the prefix it captured, never to the count at the finish).
+; K is a FAST-PATH THRESHOLD, not a guaranteed maximum suffix: a suffix
+; within K at the next open is served from the checkpoint, a longer one is
+; the full replay, the honest fallback to the same state
+; (fn-sn-recover-from-checkpoint-equals-full-recover).  The suffix at a
+; finish is about the commits during the publication (lambda * tau(S)),
+; which no due rule can bound: when it exceeds K the remedies are a cheaper
+; publication, reserved service or admission limiting (the record).
+(defun fn-ock-publication-next (durable count k attempted inflight blockedp)
+  (declare (xargs :guard t))
+  (cond ((natp inflight)
+         (if (fn-ock-publication-duep durable count k attempted) :coalesce :inflight))
+        (blockedp :blocked)
+        ((fn-ock-publication-duep durable count k attempted) :due)
+        (t :idle)))
+
+; Never two: while a publication is in flight the decision is never :due,
+; and the request it coalesces is the rule's observation, one word.
+(defthm fn-ock-one-publication-in-flight
+  (implies (natp inflight)
+           (and (not (equal (fn-ock-publication-next durable count k attempted inflight blockedp)
+                            :due))
+                (iff (equal (fn-ock-publication-next durable count k attempted inflight blockedp)
+                            :coalesce)
+                     (fn-ock-publication-duep durable count k attempted)))))
+
+; With nothing in flight the decision is the rule's at the frontier it is
+; given, unless a recorded deferral blocks.
+(defthm fn-ock-publication-next-decides-by-the-rule
+  (implies (not (natp inflight))
+           (iff (equal (fn-ock-publication-next durable count k attempted inflight blockedp) :due)
+                (and (not blockedp) (fn-ock-publication-duep durable count k attempted)))))
+
+; The finish binds the durable S to the prefix the publication captured: the
+; next checkpoint's sequence is the count of the records handed to the
+; capture, whatever the count is when the write returns.
+(defthm fn-ock-finish-binds-the-captured-prefix
+  (implies (fn-sn-observed-historyp frontier records)
+           (equal (fn-sco-sequence (fn-ock-next-checkpoint (fn-sco-capture configs prefix)
+                                                           configs records))
+                  (len records)))
+  :hints (("Goal" :use fn-ock-next-checkpoint-is-the-capture
+           :in-theory (e/d (fn-sco-sequence)
+                           (fn-ock-next-checkpoint fn-ock-next-checkpoint-is-the-capture)))))
+
+; K as the fast path's threshold, by the open's selection: the checkpoint a
+; finish left at S is served at the next open exactly when the suffix
+; committed since is within K; past K the open is the full replay.
+(defthm fn-ock-fast-path-within-k-by-definition
+  (implies (and (natp s) (natp count) (<= s count) (natp k))
+           (and (iff (equal (car (fn-sco-select :ok s count k)) :checkpoint)
+                     (<= (- count s) k))
+                (implies (< k (- count s))
+                         (equal (fn-sco-select :ok s count k)
+                                (list :full-replay :suffix-exceeds-k)))))
+  :hints (("Goal" :in-theory (enable fn-sco-select))))
+
 ; KEYSTONE of the one-pass Store open.  Over the capture of any prefix P
 ; extended over any Q (the checkpoint path; P = NIL is the full path), the
 ; open the host installs is the full open of P ++ Q, and when that open is

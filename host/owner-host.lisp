@@ -270,7 +270,11 @@
              (state (f-put-global 'fn-owner-sco-durable nil state))
              (state (f-put-global 'fn-owner-sco-attempted nil state))
              ; PKT-492: the publication the owner deferred by name, or nil.
-             (state (f-put-global 'fn-owner-sco-deferred nil state)))
+             (state (f-put-global 'fn-owner-sco-deferred nil state))
+             ; PKT-583 (b): the count the publication in flight captured, or
+             ; nil; and the one coalesced request observed while it ran.
+             (state (f-put-global 'fn-owner-sco-inflight nil state))
+             (state (f-put-global 'fn-owner-sco-pending nil state)))
         (value :recovering))))
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns state)
@@ -384,10 +388,18 @@
     (value (list (nfix (fn-sbud-payload-bound profile))
                  (nfix (fn-sbud-group-bound profile))))))
 
+; The served posting bound: the profile's article octets and its header
+; limits (fields 15 to 17, PRF-230), read from the opened profile; the host
+; computes nothing (ACL2's `fn-inj-post-bound', read back by
+; `fn-inj-make-config-full').  A store with no admitted profile keeps the
+; codec ceiling and the default header limits, as before.
 (defun fn-owner-served-post-bound (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
-    (if (posp bound) bound *fn-record-max-payload*)))
+  (let* ((profile (fn-owner-store-profile state))
+         (bound (fn-sbud-payload-bound profile)))
+    (if (and (posp bound) (fn-bs-profile-admittedp profile))
+        (fn-inj-post-bound bound (fn-bs-profile-header-limits profile))
+      (if (posp bound) bound *fn-record-max-payload*))))
 
 
 ;; The owner's publication (books/owner-checkpoint-open.lisp).  These read
@@ -430,27 +442,46 @@
   (declare (xargs :mode :program))
   (if (natp override) override (fn-ock-capture-budget profile)))
 
-; :due or :idle, by fn-ock-publication-duep under the profile's K, and never
-; while a deferred publication is blocked (fn-ock-publication-blockedp,
-; books/owner-checkpoint-pipeline.lisp: the checkpoint budget is still below
-; the estimate the deferral named; PKT-492).
-; FREE: the free octets of the store's filesystem the host observed by
-; statvfs (or nil); a space deferral stays blocked while the space is still
-; below the estimate it named (fn-ock-publication-blockedp, both reasons).
+;; :due, :idle, :blocked or :inflight, by fn-ock-publication-next
+;; (books/owner-checkpoint-open.lisp, PKT-583 (b)): the rule
+;; fn-ock-publication-duep under the profile's K at the newest committed
+;; frontier, never while a deferred publication is blocked
+;; (fn-ock-publication-blockedp, books/owner-checkpoint-pipeline.lisp: the
+;; checkpoint budget is still below the estimate the deferral named; PKT-492),
+;; and never while one is in flight: a due observation then is the ONE
+;; coalesced request, recorded here (fn-owner-sco-pending) and answered
+;; :inflight, so the host starts nothing; a decision made with nothing in
+;; flight clears the request (it was decided from the newest frontier).
+;; FREE: the free octets of the store's filesystem the host observed by
+;; statvfs (or nil); a space deferral stays blocked while the space is still
+;; below the estimate it named (fn-ock-publication-blockedp, both reasons).
 (defun fn-owner-sco-due (override free state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
-    (value (if (and profile
-                    (fn-ock-publication-duep
-                     (fn-owner-sco-global 'fn-owner-sco-durable state)
-                     (fn-owner-sco-count state)
-                     (fn-bs-profile-max-open-suffix profile)
-                     (fn-owner-sco-global 'fn-owner-sco-attempted state))
-                    (not (fn-ock-publication-blockedp
-                          (fn-owner-sco-deferred state)
-                          (fn-owner-sco-budget override profile)
-                          (fn-ockp-space free))))
-               :due :idle))))
+    (if (not profile)
+        (value :idle)
+      (let ((next (fn-ock-publication-next
+                   (fn-owner-sco-global 'fn-owner-sco-durable state)
+                   (fn-owner-sco-count state)
+                   (fn-bs-profile-max-open-suffix profile)
+                   (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                   (fn-owner-sco-global 'fn-owner-sco-inflight state)
+                   (fn-ock-publication-blockedp
+                    (fn-owner-sco-deferred state)
+                    (fn-owner-sco-budget override profile)
+                    (fn-ockp-space free)))))
+        (cond ((eq next :coalesce)
+               (let ((state (f-put-global 'fn-owner-sco-pending t state)))
+                 (value :inflight)))
+              ((eq next :inflight) (value :inflight))
+              (t (let ((state (f-put-global 'fn-owner-sco-pending nil state)))
+                   (value next))))))))
+
+; The one coalesced request, for the status report: t while a due
+; observation waits for the publication in flight to finish.
+(defun fn-owner-sco-pending (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-owner-sco-global 'fn-owner-sco-pending state))
 
 ; The publication in three steps (checkpoint-cost): the capture under the
 ; owner mutex, the encoding outside it, the result back under it.
@@ -473,7 +504,9 @@
          (count (fn-sbud-count st))
          (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
          (profile (fn-owner-store-profile state))
-         (state (f-put-global 'fn-owner-sco-attempted count state)))
+         (state (f-put-global 'fn-owner-sco-attempted count state))
+         ; the publication in flight, bound to the count it captures
+         (state (f-put-global 'fn-owner-sco-inflight count state)))
     (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
                  (fn-sn-config-history st)
                  records
@@ -501,6 +534,10 @@
 (defun fn-owner-sco-publication-done (next durablep verdict state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-sco-base next state))
+         ; nothing in flight; the durable S below is NEXT's sequence, the
+         ; count the capture was handed (fn-ock-finish-binds-the-captured-
+         ; prefix), never the count now
+         (state (f-put-global 'fn-owner-sco-inflight nil state))
          (state (if durablep
                     (f-put-global 'fn-owner-sco-durable (fn-sco-sequence next) state)
                   state))
@@ -1205,6 +1242,17 @@
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-submit-result owner msgid-octets
                                                 group-octets payload))
+         ; A refused submission keeps the decision's reason (a header
+         ; limit's name, PRF-230) for the delivery's refusal line.
+         (state (if (equal result :refused)
+                    (f-put-global
+                     'fn-owner-app-refusal-reason
+                     (fn-inj-decision-reason
+                      (fn-own-control-decision (fn-own-config owner)
+                                               msgid-octets group-octets
+                                               payload))
+                     state)
+                  state))
          (state (fn-owner-step (list :control-submit msgid-octets
                                      group-octets payload)
                                state)))
@@ -1223,9 +1271,10 @@
                     (f-put-global
                      'fn-owner-app-refusal-reason
                      (fn-peer-decision-reason
-                      (fn-peer-decide-transfer
+                      (fn-peer-decide-transfer-under
                        (fn-sn-node (fn-own-store owner)) cfg peer msgid-octets
-                       payload (fn-own-clock owner) id subject))
+                       payload (fn-own-clock owner) id subject
+                       (fn-own-config-header-limits (fn-own-config owner))))
                      state)
                   state))
          (state (fn-owner-step
@@ -1456,8 +1505,11 @@
              (subject (fn-store-octets->string subject-octets)))
         (if (or (equal id :bad) (equal subject :bad))
             (value :not-transit)
-          (let* ((d (fn-peer-decide-transfer node cfg peer msgid octets
-                                             (fn-own-clock owner) id subject))
+          ; PRF-230/PKT-660: under the opened profile's header limits, the
+          ; owner's injection configuration's, exactly as a POST.
+          (let* ((d (fn-peer-decide-transfer-under
+                     node cfg peer msgid octets (fn-own-clock owner) id subject
+                     (fn-own-config-header-limits (fn-own-config owner))))
                  (args (fn-peer-injection-arguments node cfg peer msgid octets
                                                     0 id subject
                                                     (fn-own-clock owner)))

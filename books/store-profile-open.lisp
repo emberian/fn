@@ -79,6 +79,16 @@
                      (fn-bs-profile-countp (fn-bs-pf 13 values))))
            :namespace-count-outside-width)
           ((< 1 (fn-bs-pf 14 values)) :history-marker-not-a-word)
+          ; The header-limit arms (lane header-limits-profile): the layout
+          ; grew three fields under D34, so every relation over it reads them
+          ; as `fn-bs-profile-invalid-reason' does.
+          ((or (< (fn-bs-pf 15 values) 1)
+               (< (fn-bs-pf 16 values) (fn-bs-pf 15 values)))
+           :max-header-fields-outside-lines)
+          ((< (fn-bs-pf 17 values) (fn-bs-pf 16 values))
+           :max-header-lines-above-octets)
+          ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf 17 values))
+           :max-header-octets-above-codec)
           (t nil))))
 
 (defun fn-bs-profile-v2-validp (values)
@@ -247,7 +257,7 @@
                    (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-8*))
                       (len (fn-frame-field-octets
                             :text *fn-bs-meta-frontier-format*))
-                      104)))
+                      128)))
    :hints (("Goal"
             :use ((:instance fn-spo-all-nat-fields-octets-len
                              (specs (cddr *fn-bs-meta-profile-spec*))
@@ -326,7 +336,8 @@
  (defthm fn-spo-saved-frame-of-valid-is-encode
    (implies (fn-bs-profile-validp values)
             (equal (fn-spo-saved-frame values) (fn-bs-config-encode values)))
-   :hints (("Goal" :in-theory (enable fn-spo-saved-frame fn-bs-config-encode)))))
+   :hints (("Goal" :in-theory (e/d (fn-spo-saved-frame fn-bs-config-encode)
+                                   (fn-bs-profile-validp))))))
 
 (local
  (defthm fn-spo-v2-valid-is-shape
@@ -343,7 +354,8 @@
  (defthm fn-spo-validp-is-admitted
    (implies (fn-bs-profile-validp values)
             (fn-bs-profile-admittedp values))
-   :hints (("Goal" :in-theory (enable fn-bs-profile-admittedp)))))
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-admittedp fn-bs-profile-of)
+                                   (fn-bs-profile-validp))))))
 
 (local
  (defthm fn-spo-saved-format-8-of-encode

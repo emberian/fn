@@ -48,7 +48,7 @@
 (defun oclt-conclusion (cfg sub secret)
   (let* ((d (fn-own-sub-decision sub))
          (account (fn-own-sub-account sub))
-         (x (fn-inj-decision-octets d))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg))
          (fields (fn-ctl-received-fields x)))
     (equal (fn-own-sub-stored-octets cfg sub secret)
            (append (fn-cll-line *fn-cll-lock-head*
@@ -61,6 +61,15 @@
 
 ; Witness.
 (defconst *oclt-stored* (fn-own-sub-stored-octets nil *oclt-sub* *oclt-secret*))
+; PKT-597: under the login the injected octets carry the posting-account
+; parameter in their one Injection-Info line (books/injection-info-params.lisp);
+; the lock goes in front of those.
+(defconst *oclt-with-params*
+  (fn-ipp-injected-octets (fn-own-sub-decision *oclt-sub*) *oclt-secret*
+                          (fn-own-sub-login *oclt-sub*) nil))
+(assert-event
+ (equal (len *oclt-with-params*)
+        (+ (len *oclt-injected*) (len *fn-ipp-account-open*) 64 1)))
 (assert-event (oclt-hyps *oclt-sub* *oclt-secret*))
 (assert-event (oclt-conclusion nil *oclt-sub* *oclt-secret*))
 ; Exactly one lock, alice's, parsed back from the stored octets; her key
@@ -75,14 +84,14 @@
  (not (fn-ctl-some-key-opens-p (list (fn-cl-key *oclt-e1* *oclt-bob* *oclt-msgid*))
                                (fn-ctl-locks-octets *oclt-stored*))))
 (assert-event (equal (len *oclt-stored*)
-                     (+ (len *oclt-injected*) (len *fn-cll-lock-head*)
+                     (+ (len *oclt-with-params*) (len *fn-cll-lock-head*)
                         *fn-cll-value-length* 2)))
 ; fn-own-stored-octets-keep-the-injected-octets: the projection is the
 ; injected octets (witness: a local submission whose octets open with "P").
 (assert-event
  (and (not (fn-peer-submissionp (fn-own-sub-decision *oclt-sub*)))
-      (not (equal (car *oclt-injected*) 67))
-      (equal (fn-cll-skip *oclt-stored*) *oclt-injected*)))
+      (not (equal (car *oclt-with-params*) 67))
+      (equal (fn-cll-skip *oclt-stored*) *oclt-with-params*)))
 
 ; Removal: a transit submission (the relayed arm; no lock).
 (defconst *oclt-transit*
@@ -116,8 +125,12 @@
                    "Cancel-Lock: sha256:OWNLOCKOWNLOCKOWNLOCKOWNLOCKOWNLOCKOWNLOCK123="
                    "" "hello")))
 (defconst *oclt-tin-sub* (oclt-sub *oclt-tin* *oclt-alice*))
+; (no lock is added; the Injection-Info line carries the login's
+; posting-account parameter, PKT-597)
 (assert-event (equal (fn-own-sub-stored-octets nil *oclt-tin-sub* *oclt-secret*)
-                     *oclt-tin*))
+                     (fn-ipp-injected-octets (fn-own-sub-decision *oclt-tin-sub*)
+                                             *oclt-secret*
+                                             (fn-own-sub-login *oclt-tin-sub*) nil)))
 (assert-event (not (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
 (must-fail (assert-event (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
 

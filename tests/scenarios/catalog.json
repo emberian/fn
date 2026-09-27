@@ -4770,6 +4770,118 @@
         "record": "planning/evidence/reader-compat-2026-09-27.md",
         "log": "planning/evidence/reader-compat-2026-09-27/module.log"
       }
+    },
+    {
+      "id": "SCN-167",
+      "title": "The arena's generic runs over the attached byte array: a record interned into the live arena materializes to itself, a pinned row list reads the same bytes across later seals and a reclaim, and the catalog loaded from a mixed history answers the store's identity index from its contexts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-014",
+        "REP-011"
+      ],
+      "steps": [
+        "books/payload-arena-attach.lisp fn-paa-smoke (at certification, the live fn-arena with fn-arena-bytes attached): clear, two seals, the intern of a ground wire record (handle 2), fn-arena-payload-len of the handle = the fn-hf-octets fact = the article's length, fn-held-wire-of the held record = the record, handle 0 still reads (1 2 3).",
+        "tests/acl2/records-freeze-tests.lisp rft-exec (live fn-arena and fn-cat, list foundation): fn-cat-load over (article, retention event, article) with keyring nil and generation 0; the two rows satisfy fn-rfz-handles-inp and fn-rfz-contexts-okp on the live arena; fn-rfz-index-of-rows equals fn-stx-index-of-store over the rows' articles; fn-rfz-wire-rows is the two wire records; after two more seals (a reclaim's tombstone and another) the same rows materialize the same.",
+        "tests/acl2/payload-arena-tests.lisp pat-bytes-exec / pat-exec: the same seals and reads on fn-arena-bytes directly and on the generic answer equal values.",
+        "The ground half: every theorem of books/records-freeze.lisp with its positive witness and, per hypothesis, a witness on which the retained hypotheses hold, the omitted one fails and the conclusion fails (must-fail)."
+      ],
+      "expected": "fn-paa-smoke prints (3 2 L L T (1 2 3) 5) with L the article's length and the assert-event holds; rft-exec's list of checks is all t with the wire rows (w0 w2); the two foundations' runs are equal.",
+      "evidence": [
+        "books/payload-arena-attach.lisp",
+        "tests/acl2/records-freeze-tests.lisp",
+        "tests/acl2/payload-arena-tests.lisp"
+      ],
+      "note": "Lane records-freeze (2026-09-26/27). The native half (the node's arena holding the served payloads) waits on the join with catalog-slice-5 step 8 and acceptance-payload-arena; no native module is owed by this lane."
+    },
+    {
+      "id": "SCN-148",
+      "title": "store import or operator init killed or failed at every cut of its publication program leaves no store or the complete (empty) store, and the next import or init says exactly what to do",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-029"
+      ],
+      "steps": [
+        "Export a served store; for every cut of tests/campaign/native_cuts.py IMPORT_CUTS and each of SIGKILL and EIO (FN_NATIVE_IMPORT_FAULT on the developer image), import it to a fresh ROOT.",
+        "Observe ROOT and any ROOT.import-* beside it; import again.",
+        "For every cut of tests/campaign/native_cuts.py INIT_PUB_CUTS and each of SIGKILL and EIO (FN_NATIVE_INIT_FAULT on the developer image), run operator init on a fresh ROOT; observe ROOT and any ROOT.init-*; init again."
+      ],
+      "expected": [
+        "Before the rename: exit 1 (EIO) or death, ROOT absent, the next import refuses reason=interrupted-import naming the staged directory; after its removal the import succeeds.",
+        "At and after the rename: ROOT, when present, opens to the exported history article for article; a staged directory beside a present ROOT is refused reason=publication-uncertain, never treated as no store.",
+        "An existing unrelated ROOT is never replaced (reason=store-exists).",
+        "init: before the rename ROOT is absent and the next init refuses reason=interrupted-init naming the staged directory, after whose removal init succeeds; at and after the rename a present ROOT is the empty store (status transactions=0) and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
+      ]
+    },
+    {
+      "id": "SCN-156",
+      "title": "a store whose profile raises max-header-fields to 1,000 accepts a 900-field POST and refuses 1,001 by name; the default profile refuses the 65th field and a 258-line header by name; a peer's IHAVE/TAKETHIS of the 65th field is refused 437 by name / 439 (PKT-660)",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-030"
+      ],
+      "steps": [
+        "`store ROOT init --max-header-fields 1000 --max-header-lines 2000 --max-header-octets 1048576 fn.test`; run the owner; POST a 900-field article; ARTICLE it; POST 1,000 and 1,001 fields.",
+        "`store ROOT init fn.test`; POST 64, 65 and 900 fields and a 258-physical-line header.",
+        "`store ROOT init fn.test`; `operator CONFIG peer add src ... 127.0.0.1 true`; from 127.0.0.1 IHAVE a 64-field and a 65-field relayed article, TAKETHIS a 65-field one."
+      ],
+      "expected": [
+        "240 for 900 and 1,000 fields, ARTICLE serves the 896 X- fields back; 441 naming max-header-fields for 1,001.",
+        "240 for 64 fields; 441 naming max-header-fields for 65 and 900; 441 naming max-header-lines for the 258-line header.",
+        "235 for 64 fields; `437 transfer rejected; the header has more fields than the profile's max-header-fields` for IHAVE of 65; `439 <id>` for TAKETHIS of 65."
+      ],
+      "evidence": [
+        "planning/evidence/header-limits-profile-2026-09-27.md",
+        "planning/evidence/header-limits-profile/native-header-limits.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_header_limits",
+        "cases": [
+          "test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name",
+          "test_the_default_profile_is_unchanged",
+          "test_peer_transit_is_refused_past_the_profile_limits_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/header-limits-profile-2026-09-27.md",
+        "log": "planning/evidence/header-limits-profile/native-header-limits.log"
+      }
+    },
+    {
+      "id": "SCN-168",
+      "title": "A friend's authenticated post carries Injection-Info with the login's posting-account pseudonym and the node's complaints address; the operator reproduces the value; a relayed article keeps its peer's line",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-004"
+      ],
+      "steps": [
+        "Init H (auth required; logins alice, bob) and A (peer-fed, no auth); start both.",
+        "On the running H: policy set complaints-to not-an-address (refused), then policy set complaints-to abuse@example.org.",
+        "alice and bob each POST an unsigned article on H; fetch each with ARTICLE.",
+        "operator account hash alice; operator account hash bob.",
+        "POST an article on A without a login; IHAVE to A an article carrying a peer's Injection-Info with parameters; fetch both."
+      ],
+      "expected": [
+        "The non-address is refused; the address is accepted live.",
+        "Each stored article on H has exactly one Injection-Info: AGENT; posting-account=\"HEX\"; mail-complaints-to=\"abuse@example.org\", HEX 64 lowercase hex digits, no octet of the login in the line.",
+        "account hash prints each login's HEX exactly; alice's and bob's differ.",
+        "A's anonymous post has an Injection-Info without posting-account; the relayed article's Injection-Info is the peer's line octet for octet."
+      ],
+      "evidence": [
+        "tests/test_native_injection_info.py",
+        "tests/acl2/injection-info-params-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_injection_info",
+        "cases": [
+          "test_injection_info_names_the_account_and_the_complaints_address"
+        ],
+        "native": true,
+        "log": "planning/evidence/usenet-headers-3-2026-09-26-native.log",
+        "record": "planning/evidence/usenet-headers-3-2026-09-26.md"
+      }
     }
   ]
 }

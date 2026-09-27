@@ -52,10 +52,10 @@
 (defthm fn-aw-charge-cost (equal (fn-aw-c (fn-aw-charge answer extra)) (+ extra (fn-aw-c answer))))
 (local (in-theory (disable fn-aw-charge)))
 
-(defun fn-aw-parse-lines (octets lines-left header-bytes fields-rev current header-rev)
+(defun fn-aw-parse-lines (octets limits lines-left header-bytes nfields fields-rev current header-rev)
   (declare (xargs :measure (nfix lines-left)))
   (if (zp lines-left)
-      (fn-aw-r (fn-article-error :limit) 1)
+      (fn-aw-r (fn-article-error :header-lines-limit) 1)
     (let ((next (fn-aw-next-line octets)))
       (if (not (fn-article-line-okp (fn-aw-v next)))
           (fn-aw-charge next 1)
@@ -73,9 +73,9 @@
                              (+ 1 (fn-aw-c next) (fn-aw-c body)
                                 (fn-aw-c header) (fn-aw-c fields))))))
             (let ((length1 (fn-aw-len line)))
-              (if (< *fn-article-max-header-octets*
+              (if (< (fn-article-limit-octets limits)
                      (+ header-bytes (fn-aw-v length1) 2))
-                  (fn-aw-r (fn-article-error :limit)
+                  (fn-aw-r (fn-article-error :header-octets-limit)
                            (+ 1 (fn-aw-c next) (fn-aw-c length1)))
                 (if (fn-article-wspp (car line))
                     (if (not current)
@@ -90,36 +90,38 @@
                                 (header (fn-aw-header-add header-rev line)))
                             (fn-aw-charge
                              (fn-aw-parse-lines
-                              rest (1- lines-left) (+ header-bytes (fn-aw-v length2) 2)
-                              fields-rev (fn-aw-v field) (fn-aw-v header))
+                              rest limits (1- lines-left) (+ header-bytes (fn-aw-v length2) 2)
+                              nfields fields-rev (fn-aw-v field) (fn-aw-v header))
                              (+ 1 (fn-aw-c next) (fn-aw-c length1) (fn-aw-c fold)
                                 (fn-aw-c length2) (fn-aw-c field) (fn-aw-c header)))))))
                   (let ((field-result (fn-aw-new-field line)))
                     (if (not (fn-article-line-okp (fn-aw-v field-result)))
                         (fn-aw-charge field-result
                                       (+ 1 (fn-aw-c next) (fn-aw-c length1)))
-                      (let ((count (if current (fn-aw-len fields-rev) (fn-aw-r 0 0))))
-                        (if (and current (<= (1- *fn-article-max-fields*) (fn-aw-v count)))
-                            (fn-aw-r (fn-article-error :limit)
-                                     (+ 1 (fn-aw-c next) (fn-aw-c length1)
-                                        (fn-aw-c field-result) (fn-aw-c count)))
-                          (let ((length2 (fn-aw-len line))
-                                (header (fn-aw-header-add header-rev line)))
-                            (fn-aw-charge
-                             (fn-aw-parse-lines
-                              rest (1- lines-left) (+ header-bytes (fn-aw-v length2) 2)
-                              (if current (cons current fields-rev) fields-rev)
-                              (fn-article-line-value (fn-aw-v field-result))
-                              (fn-aw-v header))
-                             (+ 1 (fn-aw-c next) (fn-aw-c length1)
-                                (fn-aw-c field-result) (fn-aw-c count)
-                                (fn-aw-c length2) (fn-aw-c header))))))))))))))))
+                      ; The field count is carried: one comparison, no walk.
+                      (if (<= (fn-article-limit-fields limits)
+                              (+ (if current 1 0) (nfix nfields)))
+                          (fn-aw-r (fn-article-error :header-fields-limit)
+                                   (+ 1 (fn-aw-c next) (fn-aw-c length1)
+                                      (fn-aw-c field-result)))
+                        (let ((length2 (fn-aw-len line))
+                              (header (fn-aw-header-add header-rev line)))
+                          (fn-aw-charge
+                           (fn-aw-parse-lines
+                            rest limits (1- lines-left) (+ header-bytes (fn-aw-v length2) 2)
+                            (if current (+ 1 (nfix nfields)) nfields)
+                            (if current (cons current fields-rev) fields-rev)
+                            (fn-article-line-value (fn-aw-v field-result))
+                            (fn-aw-v header))
+                           (+ 1 (fn-aw-c next) (fn-aw-c length1)
+                              (fn-aw-c field-result)
+                              (fn-aw-c length2) (fn-aw-c header)))))))))))))))
 )
 (defthm fn-aw-parse-lines-value
-  (equal (fn-aw-v (fn-aw-parse-lines octets lines-left header-bytes fields-rev current header-rev))
-         (fn-article-parse-lines octets lines-left header-bytes fields-rev current header-rev))
+  (equal (fn-aw-v (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev))
+         (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev))
   :hints (("Goal"
-    :induct (fn-article-parse-lines octets lines-left header-bytes fields-rev current header-rev)
+    :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)
     :in-theory (e/d (fn-aw-parse-lines fn-article-parse-lines)
                     (fn-aw-next-line fn-article-next-line
                      fn-aw-body fn-article-body-crlfp fn-aw-reverse
@@ -130,7 +132,7 @@
                      fn-aw-new-field fn-article-new-field
                      fn-article-line-okp fn-article-line-value fn-article-line-rest)))))
 
-(defun fn-aw-parse (octets)
+(defun fn-aw-parse-under (octets limits)
   (let ((preflight (fn-aw-at-most octets *fn-article-max-octets*)))
     (if (not (fn-aw-v preflight))
         (fn-aw-r (fn-article-error :limit) (1+ (fn-aw-c preflight)))
@@ -139,10 +141,19 @@
             (fn-aw-r (fn-article-error :invalid-header)
                      (+ 1 (fn-aw-c preflight) (fn-aw-c validation)))
           (fn-aw-charge
-           (fn-aw-parse-lines octets (1+ *fn-article-max-header-lines*) 0 nil nil nil)
+           (fn-aw-parse-lines octets limits (1+ (fn-article-limit-lines limits))
+                              0 0 nil nil nil)
            (+ 1 (fn-aw-c preflight) (fn-aw-c validation))))))))
+
+(defun fn-aw-parse (octets)
+  (fn-aw-parse-under octets *fn-article-ceiling-limits*))
+
+(defthm fn-article-parse-under-work-value
+  (equal (fn-aw-v (fn-aw-parse-under octets limits))
+         (fn-article-parse-under octets limits))
+  :hints (("Goal" :in-theory (disable fn-aw-at-most fn-cbor-at-mostp
+             fn-aw-octets fn-cbor-octet-listp fn-aw-parse-lines fn-article-parse-lines))))
 
 (defthm fn-article-parse-work-value
   (equal (fn-aw-v (fn-aw-parse octets)) (fn-article-parse octets))
-  :hints (("Goal" :in-theory (disable fn-aw-at-most fn-cbor-at-mostp
-             fn-aw-octets fn-cbor-octet-listp fn-aw-parse-lines fn-article-parse-lines))))
+  :hints (("Goal" :in-theory (disable fn-aw-parse-under fn-article-parse-under))))

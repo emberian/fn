@@ -677,6 +677,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ;; --read WILDMAT --post WILDMAT' (books/native-admin.lisp).
         ((equal (fn-ncfg-first words) "access")
          (fn-nop-parse-administration "account" argv config))
+        ;; PKT-597: `account hash LOGIN' prints the posting-account value an
+        ;; article posted under LOGIN carries (books/injection-info-policy.lisp
+        ;; fn-ipp-account-hash): the host reads the node secret, ACL2
+        ;; computes the value.  Nothing is written.
+        ((and (equal (fn-ncfg-first words) "hash")
+              (fn-ipp-login-wordp (fn-ncfg-second words))
+              (null (fn-ncfg-rest (fn-ncfg-rest words))))
+         (fn-nop-result :accepted :plan "account" config
+                        (list :account-hash (fn-ncfg-second words))))
         (t (fn-nop-usage :invalid-account-command "account" config words))))
 
 (defun fn-nop-parse-command (words config argv)
@@ -1224,9 +1233,19 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "motd")
            (equal (fn-native-operator-result-command result) "consumer")
            (and (equal (fn-native-operator-result-command result) "account")
-                (not (equal (fn-ncfg-first
-                             (fn-native-operator-result-arguments result))
-                            :account-invite))))))
+                (not (member-equal (fn-ncfg-first
+                                    (fn-native-operator-result-arguments result))
+                                   '(:account-invite :account-hash)))))))
+
+;; PKT-597: the login of an accepted `account hash' plan, or nil.
+(defun fn-native-operator-result-account-hash-login (result)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-native-operator-result-status result) :accepted)
+           (equal (fn-native-operator-result-command result) "account")
+           (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                  :account-hash))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
+    nil))
 
 ;; PRF-164: the seconds of an accepted `account invite' plan, or nil.
 (defun fn-native-operator-result-account-invite-seconds (result)
@@ -1407,6 +1426,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                        :account-invite))
            :account-invite)
+          ((and (equal (fn-native-operator-result-command result) "account")
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :account-hash))
+           :account-hash)
           ((equal (fn-native-operator-result-command result) "account") :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "keys") :keys)

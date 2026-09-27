@@ -63,7 +63,7 @@
 (local
  (defthm fn-pb-info-line-agent-of-an-info-line
    (implies (and (true-listp agent) (consp agent)
-                 (not (member-equal 10 agent)))
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent)))
             (equal (fn-pb-info-line-agent
                     (append (fn-inj-injection-info-line agent) rest))
                    agent))
@@ -158,7 +158,7 @@
 (local
  (defthm fn-pb-block-agent-of-a-block
    (implies (and (true-listp agent) (consp agent)
-                 (not (member-equal 10 agent))
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent))
                  (true-listp date) (equal (len date) 31))
             (equal (fn-pb-block-agent
                     (append (fn-inj-block date msgid agent gid gdate) rest)
@@ -190,7 +190,7 @@
 (local
  (defthm fn-pb-path-agent-of-a-block
    (implies (and (true-listp agent) (consp agent)
-                 (not (member-equal 10 agent))
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent))
                  (true-listp date) (equal (len date) 31))
             (equal (fn-pb-path-agent
                     (fn-inj-append (fn-inj-block date msgid agent gid gdate) rest)
@@ -204,7 +204,7 @@
 
 (defthm fn-pb-dot-atom-text-has-no-lf
   (implies (fn-af-dot-atom-text-aux bytes want)
-           (not (member-equal 10 bytes)))
+           (and (not (member-equal 10 bytes)) (not (member-equal 59 bytes))))
   :hints (("Goal" :in-theory (enable fn-af-dot-atom-text-aux fn-af-atextp))))
 
 (local
@@ -212,7 +212,8 @@
    (implies (fn-inj-configp config)
             (and (true-listp (fn-inj-config-agent config))
                  (consp (fn-inj-config-agent config))
-                 (not (member-equal 10 (fn-inj-config-agent config)))))
+                 (not (member-equal 10 (fn-inj-config-agent config)))
+                 (not (member-equal 59 (fn-inj-config-agent config)))))
    :hints (("Goal" :in-theory (enable fn-inj-configp fn-af-dot-atom-textp)))))
 
 (local

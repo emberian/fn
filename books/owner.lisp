@@ -1378,6 +1378,18 @@
 ; cannot alias a socket and no control request consumes a connection slot.
 (defconst *fn-own-control-id* :control)
 
+;; The header limits the owner admits under (PRF-230, PKT-660): its
+;; injection configuration's, which the host builds from the opened store
+;; profile (host/owner-host.lisp `fn-owner-served-post-bound'), so a control
+;; submission, a BP delivery and a peer transfer are refused past the same
+;; max-header-fields, -lines and -octets as a POST.  A configuration of
+;; another shape (none installed yet) reads the profile defaults.
+(defun fn-own-config-header-limits (cfg)
+  (declare (xargs :guard t))
+  (if (fn-inj-config-shapep cfg)
+      (fn-inj-config-header-limits cfg)
+    *fn-article-default-limits*))
+
 (defun fn-own-control-decision (cfg msgid groups octets)
   (declare (xargs :guard t))
   (if (and (fn-inj-config-allow cfg)
@@ -1390,8 +1402,14 @@
       ; The CLI supplies an already-authored article object.  Preserve those
       ; octets exactly; NNTP POST separately calls fn-inj-decide because it
       ; receives a proto-article.  Both become the same owner submission
-      ; record after that interface-specific boundary.
-      (fn-inj-make-decision :injected nil msgid groups octets)
+      ; record after that interface-specific boundary.  The profile's header
+      ; limits hold here as for POST, refused by the limit's name.
+      (let ((limit (fn-article-census-refusal
+                    (fn-article-header-census octets)
+                    (fn-own-config-header-limits cfg))))
+        (if limit
+            (fn-inj-refuse limit)
+          (fn-inj-make-decision :injected nil msgid groups octets)))
     (fn-inj-refuse :control-invalid)))
 
 (defun fn-own-control-submit-result (o msgid groups octets)
@@ -1427,13 +1445,15 @@
 ; A BP application has no served connection.  It may enqueue the very same
 ; peer transit submission as a TAKETHIS transfer, using the control id only
 ; as the synchronous writer correlation key.  Admission is the current
-; fn-peer-decide-transfer, not the control/posting policy.
+; fn-peer-decide-transfer under the profile's header limits
+; (fn-peer-decide-transfer-under), not the control/posting policy.
 (defun fn-own-bp-transit-submit-result
     (o cfg peer msgid octets id subject)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((decision (fn-peer-decide-transfer
+  (let ((decision (fn-peer-decide-transfer-under
                    (fn-sn-node (fn-own-store o)) cfg peer msgid octets
-                   (fn-own-clock o) id subject)))
+                   (fn-own-clock o) id subject
+                   (fn-own-config-header-limits (fn-own-config o)))))
     (cond ((not (equal (fn-peer-decision-kind decision) :want)) :refused)
           ((or (consp (fn-own-queue o)) (fn-own-inflight o)
                (fn-own-pending o)
@@ -1591,6 +1611,12 @@
   (declare (xargs :guard t))
   (fn-auth-session-subject as))
 
+
+; The submission's login is the one its :submit effect carries
+; (books/served.lisp fn-served-login, read by fn-served-submission-login):
+; the login of the session at the event that decided the article, so an
+; AUTHINFO earlier in the same read as a complete POST is the article's
+; login, and one later in the read never claims it (PKT-597).
 (defun fn-own-finish-read (o conn result)
   (declare (xargs :guard t))
   (let* ((effects (fn-served-result-effects result))
@@ -1619,8 +1645,8 @@
                     (fn-own-enqueue
                      o2 (fn-own-sub-make-author
                          id (fn-own-conn-version conn) nil decision
-                         (fn-own-session-login (fn-own-conn-session conn))
-                         (fn-own-session-account (fn-own-conn-session conn))))
+                         (fn-served-submission-login effects)
+                         (fn-served-submission-account effects)))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 

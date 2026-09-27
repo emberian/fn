@@ -158,8 +158,21 @@ def is_signed(i, every):
     return every > 0 and i % every == every // 2
 
 
+def ensure_node_secret(image, store, env):
+    """SEC-006: a store made before the node key files (a fixture or its
+    clone) gets its secret once; `run' refuses a store without one and a
+    start never creates it.  A store this image initialized has one."""
+    if (store / "keys" / "node-secret.key").exists():
+        return
+    made = subprocess.run([str(image), "--fn", "store", str(store), "node-secret", "create"],
+                          env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if made.returncode:
+        raise SystemExit("node-secret create rc=%d: %r" % (made.returncode, made.stdout[-600:]))
+
+
 class Owner:
     def __init__(self, image, d, env, label, timeout):
+        ensure_node_secret(image, d / "store", env)
         self.port = m.free_port()
         self.config = write_config(d, self.port)
         stderr = d / ("owner-%s.stderr" % label)
@@ -243,6 +256,13 @@ def load(a):
     owner = Owner(image, d, env, "load-%d" % state["count"], a.open_timeout)
     try:
         load_into(owner, author, d, state, a.to, deadline)
+        # --settle S: leave the owner running S seconds after the last POST
+        # before the stop, so the automatic publication decided at a
+        # publication's finish (fn-ock-publication-next, PKT-583 (b)) can
+        # capture the load's final frontier; the reopen then measures the
+        # policy, not the harness's stop.
+        if a.settle:
+            time.sleep(a.settle)
     finally:
         owner.stop()
         save_state(d, state)
@@ -611,6 +631,8 @@ def main(argv=None):
     me.add_argument("--octets", type=int, default=2048, help="a fresh DIR only")
     me.add_argument("--signed-every", type=int, default=256, help="a fresh DIR only")
     me.add_argument("--budget", type=int, default=1500, help="seconds the load step may spend")
+    me.add_argument("--settle", type=int, default=0,
+                    help="seconds the owner runs on after the load's last POST before the stop")
     me.add_argument("--session-posts", type=int, default=None,
                     help="at most this many preload POSTs per owner process (then exit 75: the next unit resumes)")
     me.add_argument("--samples", type=int, default=100)

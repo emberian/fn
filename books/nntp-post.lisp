@@ -159,6 +159,10 @@
   (declare (xargs :guard t))
   (cond
    ((equal reason :unparsable) "441 posting failed; the article is not valid syntax")
+   ;; PRF-230: the store profile's header limits, each by its field name.
+   ((equal reason :header-fields-limit) "441 posting failed; the header has more fields than the profile's max-header-fields")
+   ((equal reason :header-lines-limit) "441 posting failed; the header has more lines than the profile's max-header-lines")
+   ((equal reason :header-octets-limit) "441 posting failed; the header has more octets than the profile's max-header-octets")
    ;; O2 (books/group-status.lisp): RFC 3977 section 7.6.3 status "n".
    ((equal reason :group-read-only) "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
    ;; P3 (books/moderation.lisp): RFC 5537 section 3.5 item 7 and section 7.

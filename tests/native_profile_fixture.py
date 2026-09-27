@@ -21,9 +21,11 @@ EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = verbs.EXIT_OK, verbs.EXIT_REFUSED, verbs
 
 # The two preset frames `init --profile development|scale` writes in format 8
 # (planning/evidence/bounds-join-2026-09-25.md: the presets carry the
-# codec-ceiling G and R = the article record).
-DEVELOPMENT_FRAME = "a725e81ece4aec3d89e996bb4e7eb157fbf3fef1aaa670ad92e72f5ecc752460"
-SCALE_FRAME = "55960f4b130ea01fd0c730b7a1eb5b93f21a15a19c0779b53ff97d7a69a8a598"
+# codec-ceiling G and R = the article record; since header-limits-profile,
+# PRF-230, fields 15 to 17 the header limits: re-measured on batch AS's
+# image, `operator init --profile development|scale`).
+DEVELOPMENT_FRAME = "61802dbbbc943e84306c226d806bc7d9f458e487609c127f1b4a2fc402372cdf"
+SCALE_FRAME = "0d1757e3aa361602041f4869d683a286911426c91c00881ea75a1cd24fb5c83a"
 BUDGET = {"old": {128}, "new": {4096}, "either": {128, 4096}}
 FRAME = {128: DEVELOPMENT_FRAME, 4096: SCALE_FRAME}
 

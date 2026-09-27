@@ -28,6 +28,7 @@
 ; SEC-006: the served arm of the stored octets carries the login's
 ; RFC 8315 Cancel-Lock (books/cancel-lock.lisp fn-cl-served-payload).
 (include-book "cancel-lock")
+(include-book "injection-info-params")
 
 ; -----------------------------------------------------------------------------
 ; P2.  The 240 names this submission's record.
@@ -79,7 +80,8 @@
                                 (fn-peer-submission-octets d))
       (fn-cl-served-payload secret (fn-own-sub-account sub)
                             (fn-inj-decision-msgid d)
-                            (fn-inj-decision-octets d)))))
+                            (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+                                                    cfg)))))
 
 ;; The two arms, named by definition (they are not keystones).  A local or
 ;; control submission's staged octets are the generated lines, if any, and
@@ -93,18 +95,28 @@
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-cl-served-payload secret (fn-own-sub-account sub)
                                         (fn-own-sub-msgid sub)
-                                        (fn-own-sub-octets sub))))
+                                        (fn-ipp-injected-octets
+                                         (fn-own-sub-decision sub) secret
+                                         (fn-own-sub-login sub) cfg))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets
-                                     fn-own-sub-msgid))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
+                                   fn-own-sub-msgid)
+                                  (fn-ipp-injected-octets fn-cl-served-payload)))))
 
 (defthm fn-own-sub-stored-octets-without-an-account-by-definition
   (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
-                (not (fn-cl-accountp (fn-own-sub-account sub))))
+                (not (fn-cl-accountp (fn-own-sub-account sub)))
+                (not (fn-ipp-accountp secret (fn-own-sub-login sub)))
+                (not (fn-ipp-complaints cfg)))
            (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
+                                   fn-ipp-accountp)
+                                  (fn-ipp-injected-octets fn-ipp-complaints))
+           :use ((:instance fn-ipp-injected-octets-without-parameters
+                            (d (fn-own-sub-decision sub))
+                            (login (fn-own-sub-login sub)))))))
 
 (defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
   (implies (fn-peer-submissionp (fn-own-sub-decision sub))
@@ -128,7 +140,7 @@
 (defthm fn-own-stored-octets-carry-the-account-lock
   (let* ((d (fn-own-sub-decision sub))
          (account (fn-own-sub-account sub))
-         (x (fn-inj-decision-octets d))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg))
          (fields (fn-ctl-received-fields x)))
     (implies (and (not (fn-peer-submissionp d))
                   (fn-cl-lock-wanted-p secret account fields))
@@ -142,14 +154,16 @@
                             x))))
   :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
                                   (fn-cl-served-payload fn-cl-lock fn-cl-key-values
+                                   fn-ipp-injected-octets
                                    fn-ctl-received-fields fn-cll-line fn-cll-key-line
                                    fn-cl-lock-wanted-p))
            :use ((:instance fn-cl-served-payload-writes-one-account-lock
                             (ring secret)
                             (account (fn-own-sub-account sub))
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
-                            (payload (fn-inj-decision-octets
-                                      (fn-own-sub-decision sub))))))))
+                            (payload (fn-ipp-injected-octets
+                                      (fn-own-sub-decision sub) secret
+                                      (fn-own-sub-login sub) cfg)))))))
 
 ; KEYSTONE (D25 restored, gpt-6's wave-5 review section 3; subject
 ; fn-own-sub-stored-octets).  Whatever the key ring and the account, the
@@ -161,18 +175,19 @@
 ; articles do (books/cancel-lock-d25.lisp states the verdicts).
 (defthm fn-own-stored-octets-keep-the-injected-octets
   (let* ((d (fn-own-sub-decision sub))
-         (x (fn-inj-decision-octets d)))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg)))
     (implies (and (not (fn-peer-submissionp d))
                   (not (equal (car x) 67)))
              (equal (fn-cll-skip (fn-own-sub-stored-octets cfg sub secret)) x)))
   :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
-                                  (fn-cl-served-payload))
+                                  (fn-cl-served-payload fn-ipp-injected-octets))
            :use ((:instance fn-cl-served-payload-projects-to-the-injected-octets
                             (ring secret)
                             (account (fn-own-sub-account sub))
                             (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
-                            (payload (fn-inj-decision-octets
-                                      (fn-own-sub-decision sub))))))))
+                            (payload (fn-ipp-injected-octets
+                                      (fn-own-sub-decision sub) secret
+                                      (fn-own-sub-login sub) cfg)))))))
 
 (defun fn-own-completion-names-submission-p (o cfg)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))

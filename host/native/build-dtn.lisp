@@ -128,8 +128,14 @@
 (include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan.
+;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; publication (staged, validated, no-replace rename, parent fenced) and
+;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
+(include-book "books/store-import-publication")
+;; `operator init` publishes the empty store by the same program (PKT-647):
+;; fnn-command-init-published asks fn-bs-init-pub-admission.
+(include-book "books/store-init-publication")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
@@ -232,6 +238,10 @@
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
+        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; into the image for `fn --version'; a missing or malformed file
+        ; stops the build.
+        (fnn-select-release-version)
         (load "host/native/tls.lisp")
         (fnn-tls-initialize)
         (load "host/native/signatures.lisp")

@@ -100,26 +100,32 @@
                      '(:error :limit)))
 (assert-event (equal (fn-article-parse (fn-article-test-repeat 32769 65))
                      '(:error :limit)))
+; The header limits are the profile's (PRF-230): under the defaults,
+; exactly as before; the reading parser (the ceiling limits) admits both.
 (assert-event (fn-article-result-okp
-               (fn-article-parse (fn-article-test-fields 64))))
-(assert-event (equal (fn-article-parse (fn-article-test-fields 65))
-                     '(:error :limit)))
+               (fn-article-parse-under (fn-article-test-fields 64) *fn-article-default-limits*)))
+(assert-event (fn-article-result-okp (fn-article-parse (fn-article-test-fields 65))))
+(assert-event (equal (fn-article-parse-under (fn-article-test-fields 65) *fn-article-default-limits*)
+                     '(:error :header-fields-limit)))
 
 ; Exactly 256 physical header lines (one field plus 255 folds) are accepted;
 ; the next fold exceeds the line-count cap. Separately, 245 valid short-enough
 ; folds exceed only the 16,384-octet header budget.
 (assert-event (fn-article-result-okp
-               (fn-article-parse
-                (append '(88 58 32 120 13 10) (fn-article-test-folds 255)))))
+               (fn-article-parse-under
+                (append '(88 58 32 120 13 10) (fn-article-test-folds 255))
+                *fn-article-default-limits*)))
 (assert-event (equal
-               (fn-article-parse
-                (append '(88 58 32 120 13 10) (fn-article-test-folds 256)))
-               '(:error :limit)))
+               (fn-article-parse-under
+                (append '(88 58 32 120 13 10) (fn-article-test-folds 256))
+                *fn-article-default-limits*)
+               '(:error :header-lines-limit)))
 (assert-event (equal
-               (fn-article-parse
+               (fn-article-parse-under
                 (append '(88 58 32 120 13 10)
-                        (fn-article-test-long-folds 245)))
-               '(:error :limit)))
+                        (fn-article-test-long-folds 245))
+                *fn-article-default-limits*)
+               '(:error :header-octets-limit)))
 
 
 ; -----------------------------------------------------------------------------
