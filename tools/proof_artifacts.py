@@ -57,24 +57,49 @@ def forms(path: Path, pattern: re.Pattern[str]) -> list[str]:
 
 
 def profile_roots(root: Path, profile: str) -> list[str]:
-    """Certified roots named by the native image and deployed entry points."""
+    """Certified roots named by the native image and deployed entry points,
+    in the image's own load order: the build script's forms in sequence, each
+    `ld` followed where it occurs, then the entry points; a root keeps its
+    first place.  The order is load-bearing: an attachment book (the payload
+    arena's byte array, books/payload-arena-attach) must be included before
+    any book that introduces the generic it attaches (ACL2 refuses the
+    attach-stobj otherwise), exactly as host/native/build.lisp orders it, so
+    the artifact check loads what the image loads in the order it loads it."""
     selected = PROFILES[profile]
-    build = root / selected.build
-    roots = set(forms(build, INCLUDE))
-    pending = [(root / loaded).resolve() for loaded in forms(build, LOAD)]
-    pending.extend((root / loaded).resolve() for loaded in selected.entrypoints)
+    base = root.resolve()
+    ordered: list[str] = []
+    named: set[str] = set()
     seen: set[Path] = set()
-    while pending:
-        host_file = pending.pop()
-        if host_file in seen or not host_file.is_file():
-            continue
-        seen.add(host_file)
-        for included in forms(host_file, INCLUDE):
-            source = (host_file.parent / included).with_suffix(".lisp").resolve()
-            roots.add(source.relative_to(root.resolve()).with_suffix("").as_posix())
-        for loaded in forms(host_file, LOAD):
-            pending.append((host_file.parent / loaded).resolve())
-    return sorted(name.removesuffix(".lisp") for name in roots)
+
+    def add(name: str) -> None:
+        name = name.removesuffix(".lisp")
+        if name not in named:
+            named.add(name)
+            ordered.append(name)
+
+    def walk(script: Path, relative_to: Path, top: bool) -> None:
+        script = script.resolve()
+        if script in seen or not script.is_file():
+            return
+        seen.add(script)
+        for line in script.read_text(encoding="utf-8").splitlines():
+            included = INCLUDE.match(line)
+            if included:
+                if top:
+                    add(included.group(1))
+                else:
+                    source = (relative_to / included.group(1)).with_suffix(".lisp").resolve()
+                    add(source.relative_to(base).with_suffix("").as_posix())
+                continue
+            loaded = LOAD.match(line)
+            if loaded:
+                target = (root / loaded.group(1)) if top else (relative_to / loaded.group(1))
+                walk(target, target.resolve().parent, False)
+
+    walk(root / selected.build, root, True)
+    for entry in selected.entrypoints:
+        walk(root / entry, (root / entry).resolve().parent, False)
+    return ordered
 
 
 def load_driver(roots: list[str]) -> str:

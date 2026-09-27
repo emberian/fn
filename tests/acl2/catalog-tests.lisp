@@ -39,7 +39,7 @@
 
 (defun cat-held (seq msgid groups octets)
   (fn-held-make seq (+ 1 seq) 0 msgid seq groups "o" "s" "e" 1 5
-                (fn-hf-make octets 14 2 nil) (fn-hc-make :unverified nil 0) nil nil))
+                (fn-hf-make octets 14 2 nil) (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0) nil nil))
 
 (defconst *cat-h0* (cat-held 0 "<a@x>" '("fn.test") 100))
 (defconst *cat-h1* (cat-held 1 "<b@x>" '("fn.test") 200))
@@ -82,7 +82,7 @@
                       (fn-cat-visible-at 1 4 fn-cat)
                       (fn-cat-visible-at 3 3 fn-cat)   ; the cancel is above version 3
                       (fn-cat-count fn-cat)))
-         (fn-cat (fn-cat-redecide 1 (fn-hc-make :verified nil 7) fn-cat))
+         (fn-cat (fn-cat-redecide 1 (fn-hc-make (fn-stx-make-verdict :verified nil 7) nil 7) fn-cat))
          (redecided (fn-hc-generation (fn-held-context (fn-cat-at 1 fn-cat))))
          (fn-cat (fn-cat-clear fn-cat)))
     (mv (list before after redecided (fn-cat-count fn-cat)) fn-cat)))

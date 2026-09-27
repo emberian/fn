@@ -36,6 +36,12 @@
 ;; (books/records-attach-concrete.lisp): fn-rcon-record-encode-impl, equal to
 ;; fn-record-encode-impl on every input.
 (include-book "books/records-attach-concrete")
+;; The payload arena's byte-array attachment (books/payload-arena-attach.lisp)
+;; must precede the first book that introduces the generic `fn-arena' (ACL2
+;; refuses the attach-stobj once the name is in use).  Since the records flip
+;; the held record reaches the arena, so nearly every book below does: it
+;; comes right after the codec and record attachments, before any of them.
+(include-book "books/payload-arena-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
@@ -163,11 +169,6 @@
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
 (include-book "books/replay-identity-index")
-;; The records flip: host/store-host.lisp includes books/store-intern (the
-;; intern at the entries), which names the payload arena `fn-arena'; the
-;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
-;; first include that introduces the generic, so it comes here.
-(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
