@@ -1060,15 +1060,20 @@ class NativePeeringTests(unittest.TestCase):
     # queue at 1,024, so after 1,024 fed articles every local post was
     # refused with an unnamed 441 while health said healthy.
 
-    def fill_node(self, marker, down_port):
+    def fill_node(self, marker, down_port=None):
         """A node with two peers, both by source address: `injector'
         (127.0.0.1, inbound only: the test's raw TAKETHIS client) and
         `down' (127.0.0.2, outbound only, at DOWN_PORT)."""
         root = self.base / marker
         root.mkdir()
         port = free_port()
+        # Room for 12,000 transactions with a record bound small enough that
+        # the heap the profile asks for fits the test's 24 GiB scope.
         self.command([IMAGE, "--fn", "store", root / "store", "init",
-                      "--max-transactions", "20000", "fn.test"])
+                      "--max-transactions", "12000", "--max-record-octets", "262144",
+                      "--max-history-octets", "134217728",
+                      "--max-article-octets", "8192",
+                      "--max-groups-per-article", "8", "fn.test"])
         (root / "fn.toml").write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             '[control]\npath = "{}"\n'.format(root / "store", port,
@@ -1080,10 +1085,26 @@ class NativePeeringTests(unittest.TestCase):
         self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
                       "injector", "injector.example.invalid", "127.0.0.1",
                       str(free_port()), "fn.*", "-", "127.0.0.1", "true"])
-        self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
-                      "down", "down.example.invalid", "127.0.0.1",
-                      str(down_port), "-", "fn.*", "127.0.0.2", "true"])
+        if down_port is not None:
+            self.command([IMAGE, "--fn", "operator", node["config"], "peer", "add",
+                          "down", "down.example.invalid", "127.0.0.1",
+                          str(down_port), "-", "fn.*", "127.0.0.2", "true"])
         return node
+
+    def start_drained(self, node):
+        """start, then read the node's stdout and stderr on threads: 1,000
+        transits log 1,000 lines, and an unread pipe blocks the node."""
+        self.start(node)
+        node["log"] = []
+        for pipe in (node["process"].stdout, node["process"].stderr):
+            threading.Thread(target=lambda p=pipe: [node["log"].append(l) for l in p],
+                             daemon=True).start()
+
+    def stop_timed(self, node):
+        started = time.monotonic()
+        node["process"].terminate()
+        node["process"].wait(timeout=300)
+        return round(time.monotonic() - started, 2)
 
     def inject(self, node, ids):
         replies = []
@@ -1123,13 +1144,18 @@ class NativePeeringTests(unittest.TestCase):
         peer = ScriptedTransitPeer("203 streaming permitted")
         self.addCleanup(peer.close)
         node = self.fill_node("past-bound", peer.port)
-        self.start(node)
+        self.start_drained(node)
         ids = ["<past-{}@example.invalid>".format(n) for n in range(1100)]
-        replies = self.inject(node, ids)
-        codes = [r[:3] for r in replies]
-        self.assertEqual(set(codes), {b"239"}, [r for r in replies if r[:3] != b"239"][:5])
-        self.assertIsNotNone(peer.await_article(ids[-1], timeout=600),
-                             "the peer never received the last article")
+        # In batches the feed can drain: a batch past the peer's undelivered
+        # bound would be deferred (436), which is the saturated test's case.
+        for start in range(0, len(ids), 275):
+            batch = ids[start:start + 275]
+            replies = self.inject(node, batch)
+            codes = [r[:3] for r in replies]
+            self.assertEqual(set(codes), {b"239"},
+                             [r for r in replies if r[:3] != b"239"][:5])
+            self.assertIsNotNone(peer.await_article(batch[-1], timeout=600),
+                                 "the peer never received " + batch[-1])
         with peer.lock:
             received = set(peer.articles)
         self.assertEqual(received, set(ids))
@@ -1139,17 +1165,16 @@ class NativePeeringTests(unittest.TestCase):
         self.assertIsNotNone(peer.await_article(posted, timeout=120))
         health = self.health(node)
         self.assertIn(b"unavailable-peer clear", health.stdout, health.stdout)
-        node["process"].terminate()
-        node["process"].wait(timeout=60)
+        stopped = self.stop_timed(node)
         started = time.monotonic()
-        self.start(node)
+        self.start_drained(node)
         opened = time.monotonic() - started
         reply = self.nntp_post(node, "<past-after-restart@example.invalid>")
         self.assertTrue(reply.startswith(b"240"), reply)
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "feed-past-queue-bound-prf-335", "fed": len(received),
             "post": reply.decode("ascii", "replace").strip(),
-            "restart_to_listening_s": round(opened, 2),
+            "restart_to_listening_s": round(opened, 2), "stop_s": stopped,
             "identity": self.verify_process_identity(node)}, sort_keys=True))
         self.assertLess(opened, 15.0)
 
@@ -1161,7 +1186,7 @@ class NativePeeringTests(unittest.TestCase):
         saturated=1."""
         closed = free_port()
         node = self.fill_node("saturated", closed)
-        self.start(node)
+        self.start_drained(node)
         ids = ["<sat-{}@example.invalid>".format(n) for n in range(1026)]
         replies = self.inject(node, ids)
         codes = [r[:3] for r in replies]
@@ -1179,10 +1204,9 @@ class NativePeeringTests(unittest.TestCase):
         # and the refusal still named.  The open time with 1,024 undelivered
         # entries is printed (a measurement, not a bound: fn-feedp is still
         # re-checked per replayed record).
-        node["process"].terminate()
-        node["process"].wait(timeout=60)
+        stopped = self.stop_timed(node)
         started = time.monotonic()
-        self.start(node)
+        self.start_drained(node)
         opened = time.monotonic() - started
         again = self.nntp_post(node, "<sat-local-2@example.invalid>")
         self.assertIn(b"(feed-queue-full)", again)
@@ -1190,7 +1214,7 @@ class NativePeeringTests(unittest.TestCase):
             "kind": "feed-queue-saturated-prf-335",
             "post": reply.decode("ascii", "replace").strip(),
             "health": health.stdout.decode("ascii", "replace").splitlines()[:9],
-            "restart_to_listening_s": round(opened, 2),
+            "restart_to_listening_s": round(opened, 2), "stop_s": stopped,
             "identity": identity}, sort_keys=True))
 
     def test_obligations_report_of_five_thousand_articles_answers(self):
@@ -1200,9 +1224,10 @@ class NativePeeringTests(unittest.TestCase):
         fn-native-live-status-host-answer and stopped the node.  At 5,000
         the report answers, the owner keeps running, and `status' still
         answers after it."""
-        node = self.fill_node("obligations", free_port())
-        self.start(node)
+        node = self.fill_node("obligations")
+        self.start_drained(node)
         ids = ["<obl-{}@example.invalid>".format(n) for n in range(5000)]
+        # No outbound peer: nothing is fed, every article is held (keep-forever).
         replies = self.inject(node, ids)
         self.assertEqual(set(r[:3] for r in replies), {b"239"},
                          [r for r in replies if r[:3] != b"239"][:5])
