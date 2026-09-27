@@ -10671,6 +10671,35 @@
           "note": "host/owner-host.lisp fn-owner-reconfigure-unstage (host/native/admin.lisp fnn-owner-live-reconfigure-locked, the pre-publication refusal arms): fn-psrv-unstage keeps the invariant, the owner and its Store, and releases the configuration lock. Teeth: tests/acl2/owner-prepare-served-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-292",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-is-exact-node-abort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-cannot-acknowledge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves-invariant"
+        }
+      ]
     }
   ]
 }

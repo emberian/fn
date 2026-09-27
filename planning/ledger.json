@@ -43,6 +43,8 @@
     "tests/acl2/article-work-tests",
     "books/article-fields",
     "tests/acl2/article-fields-tests",
+    "books/post-fields",
+    "tests/acl2/post-fields-tests",
     "books/store-config",
     "books/sha256",
     "tests/acl2/sha256-tests",
@@ -1226,26 +1228,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1269,
-    "books_in_root_closure": 1258,
-    "roots": 1222,
-    "theorems": 18866,
-    "functions": 12889,
-    "assert_events": 18451,
-    "must_fails": 2182,
+    "books": 1271,
+    "books_in_root_closure": 1260,
+    "roots": 1224,
+    "theorems": 18885,
+    "functions": 12899,
+    "assert_events": 18526,
+    "must_fails": 2184,
     "prover_refusals": 0,
     "encapsulates": 99,
     "guards": {
       "verified": 2474,
       "declared-off": 1522,
-      "default-guarded": 7106,
+      "default-guarded": 7116,
       "default-unguarded": 1787
     },
     "suspect_theorems": 214,
-    "export_hygiene_warnings": 216,
+    "export_hygiene_warnings": 217,
     "enabled_projection_warnings": 49,
-    "teeth_form_warnings": 221,
-    "include_hygiene_warnings": 1353,
+    "teeth_form_warnings": 223,
+    "include_hygiene_warnings": 1355,
     "host_names_warnings": 1392,
     "hand_written_record_warnings": 18
   },
@@ -15689,6 +15691,35 @@
       "read_error": null
     },
     {
+      "book": "books/post-fields.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "article-fields",
+        "provenance-codec",
+        "records-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/post-identity-index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19205,7 +19236,7 @@
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
+      "theorems": 40,
       "functions": 8,
       "guards": {
         "verified": 6,
@@ -27787,10 +27818,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 32,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -32667,6 +32698,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/post-fields-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 32,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/crypto-attach",
+        "../../books/post-fields"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/post-identity-index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -34740,7 +34800,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 71,
+      "assert_events": 95,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 11,
@@ -36733,7 +36793,7 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
+      "assert_events": 36,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -36741,6 +36801,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/store-node",
+        "../../books/store-node-resolution",
         "topic-history-admission-tests",
         "topic-history-local-admin-tests"
       ],
@@ -38654,7 +38715,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 157,
+      "line": 171,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -38670,7 +38731,7 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 151,
+      "line": 165,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
       ]
@@ -39645,6 +39706,12 @@
         "theorem": "fn-pull-close-of-a-failed-round",
         "book": "books/peer-pull-session.lisp",
         "line": 408,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-pfld-textp-is-exactly-the-record-metadata-domain",
+        "book": "books/post-fields.lisp",
+        "line": 182,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -41639,6 +41706,18 @@
         "check": "ptf-k3-never-raises",
         "book": "tests/acl2/peer-transit-forms-tests.lisp",
         "line": 200,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "pft-textp-without-printable",
+        "book": "tests/acl2/post-fields-tests.lisp",
+        "line": 121,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "pft-identity-text-without-bound",
+        "book": "tests/acl2/post-fields-tests.lisp",
+        "line": 124,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -44928,6 +45007,20 @@
         "line": 54,
         "include": "feed-journal",
         "included": "books/feed-journal.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/post-fields.lisp",
+        "line": 36,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/post-fields.lisp",
+        "line": 37,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -51379,14 +51472,14 @@
       },
       {
         "book": "tests/acl2/topic-history-store-node-tests.lisp",
-        "line": 5,
+        "line": 7,
         "include": "topic-history-local-admin-tests",
         "included": "tests/acl2/topic-history-local-admin-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/topic-history-store-node-tests.lisp",
-        "line": 6,
+        "line": 8,
         "include": "topic-history-admission-tests",
         "included": "tests/acl2/topic-history-admission-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -51514,14 +51607,14 @@
     "host_names": [
       {
         "host": "host/bp-ingress-host.lisp",
-        "line": 132,
+        "line": 128,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/bp-ingress-host.lisp",
-        "line": 132,
+        "line": 128,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -61104,28 +61197,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1162,
+        "line": 1163,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1162,
+        "line": 1163,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2020,
+        "line": 2017,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 3181,
+        "line": 3177,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -61195,7 +61288,7 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 136,
+        "line": 120,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
