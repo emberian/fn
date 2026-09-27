@@ -332,7 +332,7 @@ transition."
          (fnn-fault "ACL2 returned a malformed live status page"))
        (setf *fnn-live-status-buffers* (second answer))
        (first answer)))
-   :control))
+   :inspect))
 
 (defun fnn-control-handle-client (control socket)
   (let* ((*fnn-owner-measure-label* :control)

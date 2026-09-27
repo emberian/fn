@@ -34,6 +34,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host-developer"))
+# The developer image: the only one that honours a developer selector
+# (FN_NATIVE_OWNER_TEST_BARRIER_MS); a production image refuses to start.
+DEVELOPER = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 
 SCHED_HEAD = re.compile(rb"^sched order=control,reader,poster,transit bound=(\d+) cursor=(\d+)$", re.M)
 SCHED_ROW = re.compile(
@@ -71,15 +74,23 @@ class SchedulerSourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text()
         serialized = owner[owner.index("(defun fnn-owner-serialized "):owner.index("(defun fnn-owner-consume-connection-fault")]
         self.assertIn("(fnn-owner-gated (service class)", serialized)
-        # Lane commit-onto-log: the gate asks books/owner-commit-class.lisp,
-        # whose every non-commit pick is fn-osch-next's
-        # (fn-ocm-next-otherwise-is-osch-next) and whose fold is
-        # fn-osch-observe's for the four classes.
-        self.assertIn("'fn-ocm-next", owner)
-        self.assertIn("'fn-ocm-observe", owner)
-        commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
-        self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
-        self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)
+        # books/owner-commit-steps.lisp (PKT-688 (4) slice 2): the gate's pick
+        # and fold are fn-ocs-next / fn-ocs-observe (fn-ocm-next's pick outside
+        # a batch, fn-osch-next's for the four classes: PRF-259, PRF-248).
+        self.assertIn("'fn-ocs-next", owner)
+        self.assertIn("'fn-ocs-observe", owner)
+        # The committer's batch: START and COMPLETE as :commit quanta, the
+        # barrier between them with the owner released.
+        batch = owner[owner.index("(defun fnn-owner-commit-batch "):owner.index("(defun fnn-owner-committer-loop")]
+        self.assertIn("'fn-ocs-commit-event", owner)
+        self.assertLess(batch.index("fnn-owner-commit-start-locked"),
+                        batch.index("(fnn-owner-commit-barrier service)"))
+        self.assertLess(batch.index("(fnn-owner-commit-barrier service)"),
+                        batch.index("(fnn-owner-gated (service :commit)"))
+        self.assertEqual(batch.count("(fnn-owner-commit-barrier service)"), 1)
+        control = (ROOT / "host" / "native" / "control.lisp").read_text()
+        live = control[control.index("(defun fnn-control-live-status-answer "):control.index("(defun fnn-control-handle-client")]
+        self.assertIn(":inspect))", live)
         self.assertIn("'fn-splan-window", owner)
         self.assertNotIn("fnn-owner-reply-from-buffer", owner)
         self.assertNotIn("(defun fnn-owner-exposure-wait", owner)
@@ -117,10 +128,12 @@ class SchedulerNativeTests(unittest.TestCase):
             cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=timeout, check=False)
 
-    def start_owner(self):
+    def start_owner(self, extra=None, image=None):
+        env = environment()
+        env.update(extra or {})
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, bufsize=0)
         self.addCleanup(self.reap, process)
         for _ in range(4):
@@ -311,6 +324,68 @@ class SchedulerNativeTests(unittest.TestCase):
         print("control status under 3 readers: n=%d max=%.3fs p50=%.3fs; sched control=%s reader=%s"
               % (len(latencies), max(latencies), sorted(latencies)[len(latencies) // 2],
                  rows["control"], rows["reader"]))
+
+    @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
+    def test_status_is_answered_while_a_batch_barrier_is_in_flight(self):
+        # PKT-688 (4) slice 2 (books/owner-commit-steps.lisp, PRF-259).  The
+        # developer selector holds the committer's barrier open for 6 s with
+        # the owner RELEASED.  While it is open: `status' (the :inspect class)
+        # is answered, each well before the barrier ends; a reader's GROUP
+        # (the :reader class) is NOT admitted until the batch's COMPLETE
+        # (fn-ocs-in-flight-admits-only-inspect-and-commit); and the POST's
+        # 240 leaves only after the barrier (fn-ocs-complete-only-after-the-barrier).
+        self.reap(self.owner)
+        hold = 6.0
+        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
+                                      image=DEVELOPER)
+        reader_conn, reader = self.connect()
+        poster_conn, poster = self.connect()
+        with reader_conn, poster_conn:
+            poster.write(b"POST\r\n")
+            poster.flush()
+            self.assertTrue(poster.readline().startswith(b"340"))
+            posted = time.monotonic()
+            poster.write(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
+                         b"Subject: in flight\r\nMessage-ID: <in-flight@example.invalid>\r\n\r\n"
+                         b"held at the barrier\r\n.\r\n")
+            poster.flush()
+            time.sleep(0.5)
+            group = {}
+
+            def read_group():
+                reader.write(b"GROUP fn.test\r\n")
+                reader.flush()
+                group["line"] = reader.readline()
+                group["at"] = time.monotonic() - posted
+
+            thread = threading.Thread(target=read_group, daemon=True)
+            thread.start()
+            answered = []
+            for _ in range(2):
+                status = self.operator("status", timeout=30)
+                answered.append(time.monotonic() - posted)
+                self.assertEqual(status.returncode, 0, status.stderr.decode())
+                self.assertIn(b"transactions=", status.stdout)
+            reply = poster.readline()
+            accepted = time.monotonic() - posted
+            thread.join(timeout=60)
+            self.assertTrue(reply.startswith(b"240"), reply)
+            self.assertTrue(group.get("line", b"").startswith(b"211"), group)
+            reader.write(b"QUIT\r\n")
+            reader.flush()
+            poster.write(b"QUIT\r\n")
+            poster.flush()
+        print("barrier held %.1fs: status answered at %s; 240 at %.3fs; GROUP at %.3fs"
+              % (hold, ["%.3f" % a for a in answered], accepted, group["at"]))
+        # The 240 waited for the barrier (the selector applies only to the
+        # log route's committer: a store that did not batch fails here).
+        self.assertGreaterEqual(accepted, hold - 0.1, accepted)
+        # Both status requests were answered while the barrier was open.
+        self.assertLess(max(answered), hold - 0.5, answered)
+        # The reader was held until the batch completed.
+        self.assertGreaterEqual(group["at"], hold - 0.1, group)
+        bound, rows = self.sched()
+        self.assertEqual(sorted(rows), ["control", "poster", "reader", "transit"])
 
 
 if __name__ == "__main__":
