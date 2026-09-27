@@ -34,11 +34,11 @@
 (defconst *rct-obs* (fn-clock-observation 5000 841000000000 1000 t))
 ; fn.one created at 840000000000, fn.gone at 840000500000 (not a group of
 ; the view: retired, or excluded by a restricted view), fn.two at
-; 841000000000.
+; 841100000000.
 (defconst *rct-facts*
   (list (fn-nntp-group-fact "fn.one" 840000000000 *rct-obs*)
         (fn-nntp-group-fact "fn.gone" 840000500000 *rct-obs*)
-        (fn-nntp-group-fact "fn.two" 841000000000 *rct-obs*)))
+        (fn-nntp-group-fact "fn.two" 841100000000 *rct-obs*)))
 (defun fn-rct-env (subs)
   (fn-nntp-env-full *rct-obs* *rct-facts* nil
                     (list nil nil *rct-server* nil *rct-facts* subs) nil))
@@ -67,7 +67,7 @@
 ; PKT-665: NEWGROUPS and LIST ACTIVE.TIMES list the view's groups created
 ; since the date, and never fn.gone.
 
-; 2026-08-26 00:00:00 is DTN 840672000000 ms: fn.two only.
+; 2026-08-26 00:00:00 is DTN 841017600000 ms: fn.two only.
 (assert-event
  (equal (fn-rct-cmd (fn-rct-env nil) "NEWGROUPS" '("20260826" "000000"))
         (fn-nntp-multi *rct-session* "231 list of new newsgroups follows"
@@ -97,7 +97,7 @@
 
 ; fn-rcompat-newgroups-names-member, reachable: fn.two is listed for the
 ; 2026-08-26 threshold; fn.one (too early) and fn.gone (not held) are not.
-(defconst *rct-threshold* 840672000000)
+(defconst *rct-threshold* 841017600000)
 (assert-event
  (and (member-equal "fn.two" (fn-rcompat-newgroups-names
                               *rct-threshold* *rct-groups* *rct-facts*))
@@ -241,15 +241,17 @@
         (fn-nntp-result-session
          (fn-nntp-retrieval *rct-session* *rct-state* :head
                             (fn-nntp-string-list-octets '("2"))))))
+(defconst *rct-no-cursor*
+  (fn-nntp-set-cursor (fn-nntp-open-session *rct-state*) "fn.two" nil))
 (assert-event
  (not (equal (fn-nntp-result-session
-              (fn-rcompat-retrieval *rct-session* *rct-state*
+              (fn-rcompat-retrieval *rct-no-cursor* *rct-state*
                                     (fn-gidx-pin-trie *rct-pin*) :head
-                                    (fn-nntp-string-list-octets '("2" "x"))
+                                    (fn-nntp-string-list-octets '("7" "x"))
                                     *rct-server*))
              (fn-nntp-result-session
-              (fn-nntp-retrieval *rct-session* *rct-state* :head
-                                 (fn-nntp-string-list-octets '("2" "x")))))))
+              (fn-nntp-retrieval *rct-no-cursor* *rct-state* :head
+                                 (fn-nntp-string-list-octets '("7" "x")))))))
 (must-fail
  (thm (equal (fn-nntp-result-session
               (fn-rcompat-retrieval session archive trie kind args server))
