@@ -4,30 +4,30 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/bp-node-forward-plan": {
-      "seconds": 11.335,
-      "run": "certify-20260926T231416Z-3967178",
+    "books/catalog-refresh": {
+      "seconds": 27.828,
+      "run": "certify-20260927T041820Z-3234137",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
-    "books/config-owner-live": {
-      "seconds": 12.44,
-      "run": "certify-20260926T231416Z-3967178",
-      "host": "persvati",
+    "books/consumer-store-invariants": {
+      "seconds": 10.758,
+      "run": "certify-20260927T040858Z-642715",
+      "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 11.735,
-      "run": "certify-20260926T231416Z-3967178",
-      "host": "persvati",
+      "seconds": 11.76,
+      "run": "certify-20260927T040858Z-642715",
+      "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
-    "tests/acl2/bp-node-rotation-buffer-tests": {
-      "seconds": 24.749,
-      "run": "certify-20260927T001141Z-384911",
+    "books/peer-authored-accept": {
+      "seconds": 10.533,
+      "run": "certify-20260927T023748Z-2203096",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
