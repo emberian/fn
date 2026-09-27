@@ -216,16 +216,23 @@ class NativeTopicLocalTest(unittest.TestCase):
         self.assertEqual(before_status.returncode, 0, before_status.stderr.decode())
         self.assertEqual(before_retention.returncode, 0,
                          before_retention.stderr.decode())
-        for words in (("checkpoint", "pack", self.store, "select"),
-                      ("checkpoint", "pack-reclaim", self.store),
-                      ("checkpoint", "pack", self.store, "select"),
-                      ("checkpoint", "pack-retire", self.store),
+        # Two compactions over the record log (the checkpoint's rotation and
+        # the covered segments' drop; lane log-recovery-2 re-targeted this
+        # from the pack chain), then a generation checkpoint.
+        for words in (("operator", self.config, "store", "compact"),
+                      ("operator", self.config, "store", "compact"),
                       ("checkpoint", "publish", self.store, "select")):
             result = self.invoke(*words)
             self.assertEqual(result.returncode, 0,
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
-        self.assertEqual(self.invoke("store", self.store, "status").stdout,
-                         before_status.stdout)
+
+        def state(result):
+            # The open's route (open=checkpoint:S after a compaction) is not
+            # the state; every other line is.
+            return [line for line in result.stdout.splitlines()
+                    if not line.startswith(b"open=")]
+        self.assertEqual(state(self.invoke("store", self.store, "status")),
+                         state(before_status))
         self.assertEqual(self.invoke("store", self.store, "retention").stdout,
                          before_retention.stdout)
         checkpoint = self.invoke("checkpoint", "status", self.store)

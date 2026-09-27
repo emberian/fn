@@ -29,9 +29,11 @@ reason=record-log on format 9):
   tests.test_native_log_compaction);
 * test_active_reader_blocks_pack_reclaim_and_reopen_keeps_archive_pin -- the
   reader's pin on a pack generation.
-The clone cases (opt-in FN_RUN_NATIVE_CLONE) still build their source with
-packs and compare pack files: not re-targeted here (clone over the log is the
-parent lane's REQUEST list).
+* test_fenced_clone_rollover_after_selected_pack_reclaim -- a clone of a
+  pack-reclaimed store compared pack files (lane log-recovery-2 deleted it
+  with the pack verbs); the clone over a compacted log is
+  test_clone_reopens_historical_authorship_verdict (opt-in
+  FN_RUN_NATIVE_CLONE), which compacts the source twice before the clone.
 """
 
 import os
@@ -134,165 +136,6 @@ class NativeCheckpointTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform.startswith("linux") and
                          os.environ.get("FN_RUN_NATIVE_CLONE") == "1",
                          "run only against a combined E2/checkpoint developer image")
-    def test_fenced_clone_rollover_after_selected_pack_reclaim(self):
-        source = self.initialized("clone-source")
-        control = self.base / "clone-source-control.sock"
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
-        config = self.base / "clone-source.toml"
-        config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(source, port, control),
-            encoding="ascii")
-        owner = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        try:
-            wait_for_announcement(owner, b"LISTENING ")
-            initial_cursor = self.consumer_history(control, "clone-worker")
-            # An accepted article after registration gives poll a real
-            # report and a cursor strictly beyond the zero ACK.  Poll itself
-            # is read-only; only the subsequent ACK changes durable progress.
-            msgid = "<clone-progress@example.invalid>"
-            progress_article = self.base / "clone-progress.eml"
-            progress_article.write_bytes(
-                b"From: author@example.invalid\r\n"
-                b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
-                b"Newsgroups: fn.letters\r\n"
-                b"Subject: clone progress\r\nMessage-ID: " +
-                msgid.encode("ascii") + b"\r\n\r\nadvance before clone\r\n")
-            self.native("operator", config, "post", "--message-id", msgid,
-                        "--payload", progress_article, "--group", "fn.letters")
-            advanced_cursor = self.base / "clone-worker-advanced.fncu"
-            report = self.base / "clone-worker-report.fnse"
-            self.assertIn("consumer accepted",
-                          self.native("consumer", "poll", control,
-                                      "clone-worker", advanced_cursor,
-                                      report).stdout)
-            self.assertTrue(report.read_bytes())
-            self.assertNotEqual(advanced_cursor.read_bytes(),
-                                initial_cursor.read_bytes())
-            self.assertIn("consumer accepted",
-                          self.native("consumer", "ack", control,
-                                      advanced_cursor).stdout)
-            old_cursor = advanced_cursor
-            settled = self.base / "clone-worker-settled.fncu"
-            self.native("consumer", "position", control, "clone-worker",
-                        settled)
-            self.assertEqual(settled.read_bytes(), advanced_cursor.read_bytes())
-        finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
-        self.native("checkpoint", "pack", source, "select")
-        self.native("checkpoint", "pack-reclaim", source)
-
-        # ACL2's native Store path width is enforced before an oversized or
-        # relative destination reaches filesystem traversal.
-        oversized = self.base / ("x" * 500)
-        refused = self.native("checkpoint", "clone", source, oversized,
-                              expected=run_store.EXIT_REFUSED)
-        self.assertIn("clone path", refused.stderr)
-        refused = self.native("checkpoint", "clone", source,
-                              "relative-target",
-                              expected=run_store.EXIT_REFUSED)
-        self.assertIn("clone path", refused.stderr)
-
-        # A nonempty destination is refused without touching its contents.
-        occupied = self.base / "occupied"
-        occupied.mkdir()
-        (occupied / "keep").write_bytes(b"preserve")
-        self.native("checkpoint", "clone", source, occupied,
-                    expected=run_store.EXIT_REFUSED)
-        self.assertEqual((occupied / "keep").read_bytes(), b"preserve")
-
-        target = self.base / "clone-target"
-        self.native("checkpoint", "clone", source, target)
-        self.assertFalse((target / "clone-pending.fnce").exists())
-        self.assertEqual(
-            (source / "packs" / "generation-0.fncp").read_bytes(),
-            (target / "packs" / "generation-0.fncp").read_bytes())
-        self.assertIn("articles=2",
-                      self.native("store", target, "recover").stdout)
-        # Prefix reclamation changed physical names, never dense history.
-        packed = self.native("checkpoint", "pack", target)
-        # Zero-position ACK is idempotent and adds no Store event.  The
-        # advancing ACK is the sole progress publication in this history.
-        self.assertIn("records=6", packed.stdout)
-        target_control = self.base / "clone-target-control.sock"
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            target_port = probe.getsockname()[1]
-        target_config = self.base / "clone-target.toml"
-        target_config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-            'port = {}\n[control]\npath = "{}"\n'.format(
-                target, target_port, target_control), encoding="ascii")
-        owner = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(target_config), "run"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        try:
-            wait_for_announcement(owner, b"LISTENING ")
-            refused = self.native("consumer", "ack", target_control,
-                                  old_cursor,
-                                  expected=run_store.EXIT_REFUSED)
-            self.assertIn("consumer refused", refused.stdout)
-            missing_position = self.base / "clone-old-position.fncu"
-            refused = self.native("consumer", "position", target_control,
-                                  "clone-worker", missing_position,
-                                  expected=run_store.EXIT_REFUSED)
-            self.assertIn("consumer refused", refused.stdout)
-            self.assertFalse(missing_position.exists())
-        finally:
-            diagnostic = stop_and_diagnostics(owner, timeout=60)
-            self.assertEqual(owner.returncode, 0, diagnostic)
-        self.native("checkpoint", "clone", source, target,
-                    expected=run_store.EXIT_REFUSED)
-
-        # Publication has not happened at this cut.  The abandoned sibling
-        # staging tree remains fenced, and the source remains recoverable.
-        prepublication = self.base / "clone-prepublication"
-        self.stopped_then_killed(
-            ("checkpoint", "clone", source, prepublication),
-            "clone-fence-durable")
-        self.assertFalse(prepublication.exists())
-        self.assertIn("articles=2",
-                      self.native("store", source, "recover").stdout)
-
-        for point in ("clone-published", "clone-rollover-durable"):
-            with self.subTest(point=point):
-                destination = self.base / point
-                self.stopped_then_killed(
-                    ("checkpoint", "clone", source, destination), point)
-                self.assertTrue((destination / "clone-pending.fnce").is_file())
-                refused = self.native("store", destination, "recover",
-                                      expected=run_store.EXIT_REFUSED)
-                self.assertIn("fenced pending durable incarnation", refused.stderr)
-                self.native("checkpoint", "clone-resume", destination)
-                self.assertFalse((destination / "clone-pending.fnce").exists())
-                self.assertIn("articles=2",
-                              self.native("store", destination, "recover").stdout)
-                packed = self.native("checkpoint", "pack", destination)
-                self.assertIn("records=6", packed.stdout)
-
-        # Process death after unlink is safe because the independent reopen
-        # already confirmed the durable rollover.  A power-loss claim still
-        # relies on the subsequent parent-directory fsync and OS contract.
-        unlinked = self.base / "clone-fence-unlinked"
-        self.stopped_then_killed(
-            ("checkpoint", "clone", source, unlinked),
-            "clone-fence-unlinked")
-        self.assertFalse((unlinked / "clone-pending.fnce").exists())
-        self.assertIn("articles=2",
-                      self.native("store", unlinked, "recover").stdout)
-        self.assertIn("records=6",
-                      self.native("checkpoint", "pack", unlinked).stdout)
-
-    @unittest.skipUnless(sys.platform.startswith("linux") and
-                         os.environ.get("FN_RUN_NATIVE_CLONE") == "1",
-                         "run only against a combined E2/checkpoint developer image")
     def test_clone_refuses_canonical_parent_alias_above_path_bound(self):
         long_parent = (self.base / ("a" * 180) / ("b" * 180) /
                        ("c" * 180))
@@ -372,14 +215,14 @@ class NativeCheckpointTests(unittest.TestCase):
             diagnostic = stop_and_diagnostics(owner, timeout=60)
             self.assertEqual(owner.returncode, 0, diagnostic)
 
-        self.native("checkpoint", "pack", source, "select")
-        self.native("checkpoint", "pack-reclaim", source)
-        # Replace the lossless pack as well as the physical transaction
-        # prefix.  The clone must still recover the historical author verdict
-        # and exact signed source from the surviving selected generation.
-        self.native("checkpoint", "pack", source, "select")
-        self.assertIn("retired pack-generations=1",
-                      self.native("checkpoint", "pack-retire", source).stdout)
+        # Compact twice (the log's rotation and the drop of the covered
+        # segments; lane log-recovery-2 re-targeted this from the pack
+        # chain): the clone must still recover the historical author verdict
+        # and exact signed source from the checkpoint and the surviving
+        # segment.
+        for _ in range(2):
+            self.assertIn("compacted steps=checkpoint,drop",
+                          self.native("operator", config, "store", "compact").stdout)
         target = self.base / "authored-clone"
         self.native("checkpoint", "clone", source, target)
         self.assertIn("articles=1",

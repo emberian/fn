@@ -544,6 +544,35 @@
       *fn-ncfg-default-max-connections*)
   :rule-classes nil)
 
+;; THE STATUS LINE (lane reservation-figure; ops-fixes' sweep: `status'
+;; printed heap=37643 MB for a node whose launcher reserved about 2.8 GB).
+;; `status' and `health' printed connection-budget's launch figure
+;; (fn-cbud-launch-decide: the store's heap plus room for as many connections
+;; as the machine holds, up to 1,024), which the launcher stopped passing when
+;; connections became records on the I/O loops (PRF-223).  They now print the
+;; decision the launcher's probe makes for the store's `run' over the store on
+;; disk: one figure.  The host calls this (host/native/heap.lisp
+;; fnn-heap-print-store-line).
+(defun fn-heap-status-decide (profile core nursery observations observed)
+  (declare (xargs :guard t))
+  (fn-heap-reserve-operation-decide :run profile core nursery observations
+                                    (fn-heap-reserve-run-connections
+                                     *fn-ncfg-default-max-connections*)
+                                    observed))
+
+;; KEYSTONE.  The status figure IS the launcher's run reservation, whatever
+;; the configuration's owner bound (the threads a run reserves do not depend
+;; on its connections: fn-heap-thread-count).
+(defthm fn-heap-status-decide-is-the-launchers-run-reservation
+  (equal (fn-heap-status-decide profile core nursery observations observed)
+         (fn-heap-reserve-operation-decide :run profile core nursery observations
+                                           (fn-heap-reserve-run-connections bound)
+                                           observed))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-heap-status-decide fn-heap-reserve-operation-decide
+                                fn-heap-reserve-of fn-heap-thread-count)
+                              (theory 'minimal-theory)))))
+
 ;; The store init makes, as its first run starts (lane reservation-after-
 ;; flip): no history on disk, so the launcher's probe observes (0 . 0) and the
 ;; run's figure is the profile's state and request in flight with an empty
@@ -1461,6 +1490,7 @@
              (fn-heap-store-state-octets profile (fn-bs-profile-max-history-octets profile)
                                          (fn-bs-profile-max-transactions profile))
              (fn-heap-store-open-octets
+              profile
               (nfix (fn-bs-profile-max-history-octets profile))
               (nfix (fn-bs-profile-max-transactions profile)))
              (fn-heap-store-inflight-octets profile))

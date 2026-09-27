@@ -1,14 +1,16 @@
 (in-package "ACL2")
 (include-book "bp-outbound-tests")
 (include-book "../../books/bp-ion-observation")
-(include-book "arena-lift")
+; The workflow entries read the payload arena (the records flip): each call
+; runs over an arena holding *bpo-payloads* (tests/acl2/arena-lift.lisp).
 (bpr-lift fn-bpio-bound-observation 7)
 (bpr-lift fn-bpio-bound-recordp 2)
 
 (defconst *bpio-line* "observed-v1|dtn://destination/|ipn:2.1|ipn:1.1|843544024799|4
 ")
 (defconst *bpio-bound*
-  (in-arena-fn-bpio-bound-observation *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0 "ipn:2.1" "ipn:1.1"
+  (in-arena-fn-bpio-bound-observation *bpo-payloads*
+   *bpo-state* "work:out" "attempt:out" 0 "ipn:2.1" "ipn:1.1"
    *bpio-line*))
 
 ; The application peer and BP destination are separate identities.
@@ -23,15 +25,20 @@
                        843544024799 4)))
 
 ; Every binding factor matters, including the attempt generation and route.
-(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads* *bpo-state* "work:out" "attempt:stale" 0
+(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads*
+                            *bpo-state* "work:out" "attempt:stale" 0
                             "ipn:2.1" "ipn:1.1" *bpio-line*)) :error))
-(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads* *bpo-state* "work:out" "attempt:out" 1
+(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads*
+                            *bpo-state* "work:out" "attempt:out" 1
                             "ipn:2.1" "ipn:1.1" *bpio-line*)) :error))
-(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0
+(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads*
+                            *bpo-state* "work:out" "attempt:out" 0
                             "ipn:9.1" "ipn:1.1" *bpio-line*)) :error))
-(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0
+(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads*
+                            *bpo-state* "work:out" "attempt:out" 0
                             "ipn:2.1" "ipn:9.1" *bpio-line*)) :error))
-(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0
+(assert-event (equal (car (in-arena-fn-bpio-bound-observation *bpo-payloads*
+                            *bpo-state* "work:out" "attempt:out" 0
                             "ipn:2.1" "ipn:1.1"
                             "observed-v1|dtn://other/|ipn:2.1|ipn:1.1|843544024799|4
 ")) :error))

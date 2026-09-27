@@ -2,8 +2,12 @@
 (include-book "../../books/bp-workflow-replay-status")
 (include-book "must-fail-checked")
 (defconst *bpr-groups* '("fn.test"))
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).
+; The one article (octets (65 13 10) before the flip) is handle 0.
 (defconst *bpr-prepared* (fn-node-prepare (fn-node-initial-state *bpr-groups* 8)
-  9 "<a@example.invalid>" 0 *bpr-groups* ; payload handle 0 (octets are refused since the flip)
+  9 "<a@example.invalid>" 0 *bpr-groups*
   "archive:a" "subject:a" "release:a" 1 841000000))
 (defconst *bpr-node* (fn-node-complete *bpr-prepared* 0 9 :durable))
 (defconst *bpr-config* '(:config "dtn://local/" "dtn://peer/" "policy:1"

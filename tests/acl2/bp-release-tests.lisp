@@ -16,9 +16,14 @@
 ; Reachable witness
 
 (defconst *rl-groups* '("fn.letters"))
-; Since the acceptance flip the node holds a payload HANDLE (a natp into the
-; arena), never octets: fn-accept-prepare refuses an octet-list payload.
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).
+; The first article (octets (72 105 13 10) before the flip) is handle 0; the
+; second article staged below carries the same octets in its own extent,
+; handle 1 (the POST seals every article as the next extent).
 (defconst *rl-payload* 0)
+(defconst *rl2-payload* 1)
 (defconst *rl-node-empty* (fn-node-initial-state *rl-groups* 16))
 (defconst *rl-node-prepared*
   (fn-node-prepare *rl-node-empty* 9 "<rl@example.invalid>" *rl-payload*
@@ -218,7 +223,7 @@
   (fn-bprl-with-node
    *rl-enqueued*
    (fn-node-prepare (fn-bp-state-node *rl-enqueued*) 10 "<rl2@example.invalid>"
-                    1 *rl-groups* "archive-rl2" "subject-rl2"
+                    *rl2-payload* *rl-groups* "archive-rl2" "subject-rl2"
                     "operator-release" 4 841000000)))
 (assert-event (fn-bp-binding-statep *rl-staged*))
 (assert-event (consp (fn-node-stage (fn-bp-state-node *rl-staged*))))

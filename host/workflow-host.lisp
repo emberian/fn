@@ -7,8 +7,12 @@
 ; store session having been opened in this ACL2 first.
 (include-book "../books/store-node")
 
+; The workflow entries that form a request read the article's octets through
+; the live payload arena (books/bp-outbound.lisp; the records flip): each takes
+; fn-arena before state, only reads it, and returns (mv erp val state), so
+; host/native/io.lisp fnn-core-state passes the live arena (fnn-trailing-kind).
 (defun fn-workflow-install-replay (records fn-arena state)
- (declare (xargs :stobjs (state fn-arena) :mode :program))
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (let* ((sn (f-get-global 'fn-store-sn state))
         (node (and sn (fn-sn-node sn)))
         (answer (fn-bpiw-replay-journal node records fn-arena)))
@@ -95,21 +99,21 @@
          (f-get-global 'fn-workflow-state state) receipt-id)))
 
 (defun fn-workflow-preflight-record (record fn-arena state)
- (declare (xargs :stobjs (state fn-arena) :mode :program))
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (let ((answer (fn-bpiw-apply
                 (f-get-global 'fn-workflow-state state)
                 (f-get-global 'fn-workflow-ion-state state) record fn-arena)))
   (value (if (car answer) :ready :fault))))
 
 (defun fn-workflow-preflight-history (records fn-arena state)
- (declare (xargs :stobjs (state fn-arena) :mode :program))
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (let* ((sn (f-get-global 'fn-store-sn state))
         (node (and sn (fn-sn-node sn)))
         (answer (fn-bpiw-replay-journal node records fn-arena)))
   (value (if (car answer) :ready :fault))))
 
 (defun fn-workflow-apply-record (record fn-arena state)
- (declare (xargs :stobjs (state fn-arena) :mode :program))
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (let ((answer (fn-bpiw-apply
                 (f-get-global 'fn-workflow-state state)
                 (f-get-global 'fn-workflow-ion-state state) record fn-arena)))
@@ -157,7 +161,7 @@
 ; one work, from the attempt record to the request ADU and its destination
 ; (books/bp-request-plan.lisp, keystone fn-bprq-plan-is-the-works-request).
 (defun fn-workflow-request-plan (work-id attempt-id fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (value (fn-bprq-plan (f-get-global 'fn-workflow-state state)
                        work-id attempt-id fn-arena)))
 
@@ -191,7 +195,7 @@
 
 (defun fn-workflow-ion-route-record
     (work-id attempt-id generation bp-destination own-bp-eid fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (value (fn-bpiw-route-record
           (f-get-global 'fn-workflow-state state)
           (f-get-global 'fn-workflow-ion-state state)
@@ -199,7 +203,7 @@
 
 (defun fn-workflow-ion-observation-record
     (work-id attempt-id generation bp-destination own-bp-eid raw fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (value (fn-bpiw-observation-record
           (f-get-global 'fn-workflow-state state)
           (f-get-global 'fn-workflow-ion-state state)
@@ -208,7 +212,7 @@
 
 (defun fn-workflow-ion-request-adu
     (work-id attempt-id generation fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((result (fn-bpo-request-adu
                  (f-get-global 'fn-workflow-state state)
                  work-id attempt-id generation fn-arena)))

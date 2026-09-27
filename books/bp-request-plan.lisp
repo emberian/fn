@@ -105,7 +105,8 @@
                   (fn-bp-journal-nth 1 a1) outcome))
              (generation (fn-bp-journal-nth 5 attempt))
              (result (fn-bpo-request-adu (fn-bp-journal-nth 1 a2)
-                                         work-id attempt-id generation fn-arena)))
+                                         work-id attempt-id generation
+                                         fn-arena)))
         (if (and (car a2)
                  (fn-bprq-submit-effectsp (fn-bp-journal-nth 2 a2)
                                           work-id attempt-id generation)
@@ -165,11 +166,14 @@
             (fn-bp-config-local-eid (fn-bp-state-config s))
             (fn-bp-work-peer-eid work) (fn-bp-work-policy-id work)
             (fn-bp-work-incarnation work) (fn-bp-work-auth-context work)
-            (fn-bp-work-terms-id work) (fn-bpo-article-octets article fn-arena))))
+            (fn-bp-work-terms-id work)
+            (fn-arena-payload (fn-article-payload article) fn-arena))))
      (and (equal (fn-bpa-decode-exact
                   (fn-bpo-result-value
                    (fn-bpo-request-adu s work-id attempt-id generation fn-arena)))
                  (list :ok request))
+          (natp (fn-article-payload article))
+          (< (fn-article-payload article) (fn-arena-count fn-arena))
           (fn-bpa-requestp request)
           (equal (fn-bpa-request-work-id request) work-id))))
   :rule-classes nil
@@ -196,7 +200,8 @@
                                fn-bp-work-peer-eid fn-bp-work-policy-id
                                fn-bp-work-incarnation fn-bp-work-auth-context
                                fn-bp-work-terms-id fn-bp-config-local-eid
-                               fn-article-payload fn-bpo-article-octets
+                               fn-article-payload fn-arena-payload
+                               fn-arena-count
                                fn-bp-work-msgid fn-state-articles
                                fn-node-acceptance fn-find-article))))
 
@@ -236,10 +241,17 @@
                                    fn-bprl-apply-journal-record
                                    fn-bpo-request-adu fn-bpo-result-okp
                                    fn-bpo-result-value
+                                   ; the request's own theorems are not needed
+                                   ; here; left enabled they re-derive the
+                                   ; encoding (15.9 s, 5.75M steps -> 6K)
                                    fn-bpo-request-result-value
                                    fn-bpo-request-result-okp
-                                   fn-bpo-request-message fn-bpa-requestp
-                                   fn-bpa-encode
+                                   fn-bpo-request-message fn-bpa-encode
+                                   fn-bpa-requestp
+                                   fn-bpo-request-message-is-exact-construction
+                                   fn-bpo-request-message-is-request
+                                   fn-bpo-request-success-decodes-exactly
+                                   fn-bpo-request-success-preserves-context-and-article
                                    fn-bprq-submit-effectsp)))))
 
 (defthm fn-bprq-attempt-record-names-its-attempt
@@ -257,8 +269,13 @@
 ; exactly WORK-ID: its attempt names WORK-ID and ATTEMPT-ID, its FNBS key is
 ; that attempt's (work, attempt, generation), its ADU decodes exactly to
 ; fn-bpa-make-request over the work WORK-ID holds in the image the host has
-; after publishing the plan's two records, whose work id field is WORK-ID,
+; after publishing the plan's two records, whose work id field is WORK-ID
+; and whose article is the octets the payload arena holds under the node
+; article's handle (a sealed handle; PKT-RT-1: never the handle itself),
 ; and the carrier's destination is that work's peer EID, the request's own.
+; Host: host/workflow-host.lisp fn-workflow-request-plan (`bp-obligation
+; request', host/native/bp-obligation.lisp), the live arena passed by
+; fnn-core-state; the arena is only read.
 (defthm fn-bprq-plan-is-the-works-request
   (implies
    (fn-bprq-plan s work-id attempt-id fn-arena)
@@ -278,13 +295,16 @@
             (fn-bp-config-local-eid (fn-bp-state-config s2))
             (fn-bp-work-peer-eid work) (fn-bp-work-policy-id work)
             (fn-bp-work-incarnation work) (fn-bp-work-auth-context work)
-            (fn-bp-work-terms-id work) (fn-bpo-article-octets article fn-arena))))
+            (fn-bp-work-terms-id work)
+            (fn-arena-payload (fn-article-payload article) fn-arena))))
      (and (equal (fn-bp-journal-nth 0 attempt) :attempt)
           (equal (fn-bp-journal-nth 3 attempt) work-id)
           (equal (fn-bp-journal-nth 4 attempt) attempt-id)
           (equal (fn-bprq-plan-key plan) (list work-id attempt-id generation))
           (equal (fn-bpa-decode-exact (fn-bprq-plan-adu plan))
                  (list :ok request))
+          (natp (fn-article-payload article))
+          (< (fn-article-payload article) (fn-arena-count fn-arena))
           (fn-bpa-requestp request)
           (equal (fn-bpa-request-work-id request) work-id)
           (equal (fn-bprq-plan-destination plan) (fn-bp-work-peer-eid work)))))

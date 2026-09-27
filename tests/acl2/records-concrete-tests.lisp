@@ -7,20 +7,22 @@
 (include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 
-; Reachable witness: the article row owner-served-invariants-tests'
+; Reachable witness: the article record owner-served-invariants-tests'
 ; *osi-completing* is completing (reached by fn-own-run from owner-tests).
-; Since the records flip the Store holds a HELD row (a payload handle, not
-; octets); *rcon-t-r* is its wire record, the row with the handle's bytes in
-; the arena that interned the owner's journal (*osi-completing-prior*, as the host's
-; entry built it).  Its Message-ID is 65 ASCII characters, its payload 328
-; octets, its three metadata strings 73, 77 and 77 characters.
+; Its Message-ID is 65 ASCII characters, its payload 328 octets, its three
+; metadata strings 73, 77 and 77 characters.
+; by specification: the flip -- the Store retains the article as a held row
+; (books/held-record.lisp, its payload a handle); the wire RECORD this book's
+; twins read is the one the row stands for over the arena that interned the
+; completing journal (owner-served-invariants-tests *osi-completing-prior*;
+; held-rows-tests fn-hrt-wire-of), the record the host encodes
+; (host/store-node-host.lisp: fn-rcon-store-event-encode of fn-row-wire-of).
 (defconst *rcon-t-row*
   (car (last (fn-sf-records (fn-sn-files (fn-own-store *osi-completing*))))))
-(assert-event (and (fn-held-p *rcon-t-row*)
-                   (natp (fn-record-payload *rcon-t-row*))))
 (defconst *rcon-t-r*
-  (fn-held-wire *rcon-t-row*
-                (fn-hrt-bytes *osi-completing-prior* (fn-record-payload *rcon-t-row*))))
+  (car (fn-hrt-wire-of *osi-completing-prior* (list *rcon-t-row*))))
+(assert-event (fn-held-p *rcon-t-row*))
+(assert-event (equal *rcon-t-r* (car (last *osi-completing-prior*))))
 (assert-event (fn-record-p *rcon-t-r*))
 (assert-event (fn-rcon-record-p *rcon-t-r*))
 (assert-event (equal (length (fn-record-msgid *rcon-t-r*)) 65))
@@ -30,9 +32,7 @@
                            (length (fn-record-release-evidence *rcon-t-r*)))
                      '(73 77 77)))
 
-; The twins on the witness, and on the non-records the dispatchers see.  The
-; Store's dispatchers read its rows (the held row); the record recognizers
-; read the wire record.
+; The twins on the witness, and on the non-records the dispatchers see.
 (defconst *rcon-t-retention*
   (fn-store-retention-event-make :undertake 7 9 9
                                  (fn-record-obligation-id *rcon-t-r*)
@@ -40,7 +40,7 @@
                                  (fn-record-release-evidence *rcon-t-r*) 1))
 (assert-event (fn-store-retention-event-p *rcon-t-retention*))
 (assert-event
- (let ((xs (list *rcon-t-row* *rcon-t-r* *rcon-t-retention* nil 5 "x" (list 1 2))))
+ (let ((xs (list *rcon-t-r* *rcon-t-row* *rcon-t-retention* nil 5 "x" (list 1 2))))
    (and (equal (fn-rcon-store-event-p *rcon-t-row*) t)
         (equal (fn-rcon-store-event-p *rcon-t-retention*) t)
         (equal (fn-rcon-store-event-sequence *rcon-t-retention*) 7)
@@ -65,8 +65,8 @@
                   (fn-sn-consumer (fn-own-store *osi-completing*)) *rcon-t-row*
                   (fn-sn-identity-next (fn-own-store *osi-completing*)))))
           (eq (car p) :ok))
-        (equal (fn-record-msgid *rcon-t-r*)
-               (fn-record-msgid *rcon-t-r*))
+        (equal (fn-record-msgid *rcon-t-row*)
+               (fn-record-msgid *rcon-t-row*))
         ;; every element: the twins agree with their references
         (equal (list (fn-rcon-record-p xs)
                      (fn-rcon-store-event-p xs)
@@ -211,17 +211,15 @@
 (defconst *rcon-t-attempted*
   (in-arena-fn-own-run *sr-arena* *own-taken* (osi-drop-last
                (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*))))))
-; The candidate is the held row the owner staged (the same row the completing
-; Store holds); its wire record, with the handle's bytes, is what is encoded.
+; by specification: the flip -- the staged candidate is the held row; the
+; record the encoder takes is the wire record it stands for (as above).
 (defconst *rcon-t-staged-row*
   (fn-sf-record-candidate (fn-sn-files (fn-own-store *rcon-t-attempted*))))
-(assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *rcon-t-attempted*)))
-                     :record-attempted))
 (assert-event (equal *rcon-t-staged-row* *rcon-t-row*))
 (defconst *rcon-t-staged*
-  (fn-held-wire *rcon-t-staged-row*
-                (fn-hrt-bytes *osi-completing-prior*
-                              (fn-record-payload *rcon-t-staged-row*))))
+  (car (fn-hrt-wire-of *osi-completing-prior* (list *rcon-t-staged-row*))))
+(assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *rcon-t-attempted*)))
+                     :record-attempted))
 (assert-event (fn-rcon-record-p *rcon-t-staged*))
 (assert-event (equal *rcon-t-staged* *rcon-t-r*))
 
@@ -281,12 +279,12 @@
 ; store-level observation's guard, fn-sn-statep, is needed for its compiled
 ; code (the file step reads the files' phase, fn-sf-statep's), so a copy
 ; with guard t is refused.
-(defun rcon-t-sn-io-unguarded (s operation result)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((old-files (fn-sn-files s))
-         (files (fn-rcon-sn-file-step old-files operation result)))
-    (fn-sn-update s files (fn-sn-node s))))
-(must-fail-checked (verify-guards rcon-t-sn-io-unguarded))
+(must-fail-checked
+ (defun rcon-t-sn-io-unguarded (s operation result)
+   (declare (xargs :guard t :verify-guards t))
+   (let* ((old-files (fn-sn-files s))
+          (files (fn-rcon-sn-file-step old-files operation result)))
+     (fn-sn-update s files (fn-sn-node s)))))
 (assert-event
  (and (eq (symbol-class 'fn-rcon-store-event-encode (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rcon-sbud-pending-sequence (w state)) :common-lisp-compliant)

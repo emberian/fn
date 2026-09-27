@@ -2,29 +2,28 @@
 ; workflow work/attempt.
 (in-package "ACL2")
 (include-book "../../books/bp-outbound")
+(include-book "arena-lift")
 
 (defconst *bpo-groups* '("fn.test"))
 (defconst *bpo-msgid* "<out@example.invalid>")
 (defconst *bpo-article* '(72 101 108 108 111 13 10))
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).  The
+; article's octets *bpo-article* are the arena's extent 0, so the node holds
+; handle 0; the request ADU below must still carry the octets.
+(defconst *bpo-article-handle* 0)
+; The arena the sender reads: *bpo-article* sealed at handle 0.
+(defconst *bpo-payloads* (list *bpo-article*))
+(bpr-lift fn-bpo-request-adu 4)
+(bpr-lift fn-bpo-request-message 4)
 (defconst *bpo-node-prepared*
   (fn-node-prepare
    (fn-node-initial-state *bpo-groups* 32)
-   4 *bpo-msgid* 0 *bpo-groups*
+   4 *bpo-msgid* *bpo-article-handle* *bpo-groups*
    "archive:out" "subject:out" "release:out" 1 841000000))
 (defconst *bpo-node*
   (fn-node-complete *bpo-node-prepared* 0 4 :durable))
-;; Since the acceptance flip (c5808cd72) the committed article holds a HANDLE
-;; at its payload position (0 here, as the Store's intern assigns it); the
-;; payload arena holds the article's bytes at that handle.  The request reads
-;; them through the arena (fn-bpo-article-octets).
-(defconst *bpo-payloads* (list *bpo-article*))
-(include-book "arena-lift")
-(bpr-lift fn-bpo-request-adu 4)
-(bpr-lift fn-bpo-request-message 4)
-(bpr-lift fn-bpo-article-octets 1)
-(assert-event (equal (fn-article-payload
-                      (fn-find-article *bpo-msgid* (fn-state-articles (fn-node-acceptance *bpo-node*))))
-                     0))
 (defconst *bpo-config-record*
   '(:config "dtn://source/" "dtn://destination/" "policy:out"
     "dtn://receipt-authority/" 3600 "source-incarnation:7" "auth:out"))
@@ -85,6 +84,84 @@
                      "terms:out"))
 (assert-event (equal (fn-bpa-request-article *bpo-request-message*)
                      *bpo-article*))
+;
+; ---------------------------------------------------------------------------
+; Teeth for the KEYSTONE fn-bpo-request-success-preserves-context-and-article
+; (PKT-RT-1): the hypothesis and the literal conclusion, each over an arena.
+(defun bpo-ks-hyp (s w a g fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-bpo-result-okp (fn-bpo-request-adu s w a g fn-arena)))
+(defun bpo-ks-concl (s w a g fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((request (fn-bpo-request-message s w a g fn-arena))
+         (work (fn-bp-find-work w (fn-bp-state-works s)))
+         (article (fn-find-article
+                   (fn-bp-work-msgid work)
+                   (fn-state-articles
+                    (fn-node-acceptance (fn-bp-state-node s))))))
+    (and (equal (fn-bpa-request-work-id request) (fn-bp-work-id work))
+         (equal (fn-bpa-request-subject request) (fn-bp-work-subject work))
+         (equal (fn-bpa-request-source-eid request)
+                (fn-bp-config-local-eid (fn-bp-state-config s)))
+         (equal (fn-bpa-request-destination-eid request)
+                (fn-bp-work-peer-eid work))
+         (equal (fn-bpa-request-policy-id request) (fn-bp-work-policy-id work))
+         (equal (fn-bpa-request-incarnation request)
+                (fn-bp-work-incarnation work))
+         (equal (fn-bpa-request-auth-context request)
+                (fn-bp-work-auth-context work))
+         (equal (fn-bpa-request-terms-id request) (fn-bp-work-terms-id work))
+         (natp (fn-article-payload article))
+         (< (fn-article-payload article) (fn-arena-count fn-arena))
+         (equal (fn-bpa-request-article request)
+                (fn-arena-payload (fn-article-payload article) fn-arena)))))
+(bpr-lift bpo-ks-hyp 4)
+(bpr-lift bpo-ks-concl 4)
+; Positive, reachable: the committed article's handle 0 is sealed with its
+; octets; the hypothesis and the whole conclusion hold, and the article that
+; crosses is the octets, not the handle.
+(assert-event
+ (in-arena-bpo-ks-hyp *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0))
+(assert-event
+ (in-arena-bpo-ks-concl *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0))
+(assert-event
+ (equal (fn-article-payload
+         (fn-find-article *bpo-msgid*
+                          (fn-state-articles (fn-node-acceptance *bpo-node*))))
+        *bpo-article-handle*))
+(assert-event (not (equal (fn-bpa-request-article *bpo-request-message*)
+                          *bpo-article-handle*)))
+; Hypothesis removal (the one hypothesis, a formed ADU): the same image over
+; an arena that has not sealed the article's handle.  The hypothesis fails
+; (the sender refuses) and so does the conclusion (the handle is not below
+; the arena's count).
+(assert-event
+ (not (in-arena-bpo-ks-hyp nil *bpo-state* "work:out" "attempt:out" 0)))
+(assert-event
+ (not (in-arena-bpo-ks-concl nil *bpo-state* "work:out" "attempt:out" 0)))
+; Mutation witness (the arena, not the node, decides the octets): an arena
+; holding other octets under handle 0 yields an ADU carrying those octets.
+(defconst *bpo-other-article* '(66 121 101 13 10))
+(assert-event
+ (equal (fn-bpa-request-article
+         (fn-bpa-result-message
+          (fn-bpa-decode-exact
+           (fn-bpo-result-value
+            (in-arena-fn-bpo-request-adu (list *bpo-other-article*)
+                                         *bpo-state* "work:out" "attempt:out"
+                                         0)))))
+        *bpo-other-article*))
+(assert-event
+ (in-arena-bpo-ks-concl (list *bpo-other-article*)
+                        *bpo-state* "work:out" "attempt:out" 0))
+; The PKT-RT-1 regression: the request built from the handle itself is not a
+; request (fn-bpa-requestp refuses it), which is why every send failed.
+(assert-event
+ (not (fn-bpa-requestp
+       (fn-bpa-make-request "work:out" "subject:out" "dtn://source/"
+                            "dtn://destination/" "policy:out"
+                            "source-incarnation:7" "auth:out" "terms:out"
+                            *bpo-article-handle*))))
 
 ; Stale attempt identity and missing work are refused.
 (assert-event
@@ -105,7 +182,7 @@
 (assert-event (fn-bp-statep *bpo-unbound-state*))
 (assert-event
  (not (fn-bpo-result-okp
-       (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-unbound-state* "work:out" "attempt:out" 0))))
+       (in-arena-fn-bpo-request-adu *bpo-payloads*         *bpo-unbound-state* "work:out" "attempt:out" 0))))
 
 ; The workflow admits strings larger than the portable 256-octet metadata
 ; profile.  Such a work remains a logical workflow state but cannot form an ADU.
@@ -125,7 +202,7 @@
 (assert-event (fn-bp-statep *bpo-long-state*))
 (assert-event
  (not (fn-bpo-result-okp
-       (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-long-state* *bpo-long-work-id* "attempt:out" 0))))
+       (in-arena-fn-bpo-request-adu *bpo-payloads*         *bpo-long-state* *bpo-long-work-id* "attempt:out" 0))))
 
 ; A matching returned receipt produces the actual local journal intent.  The
 ; caller's transaction pair appears in that record, never in the receipt ADU.
@@ -177,34 +254,3 @@
  (not (fn-bpo-result-okp
        (fn-bpo-receipt-intent-record
         *bpo-state* 12 0 '(0 1 2) t))))
-
-; -----------------------------------------------------------------------------
-; The flipped request (lane audit-fixes, sub-lane bpo).  Before this, the
-; request carried the article's payload position -- the handle 0 -- and every
-; request was refused (fn-bpa-requestp's article gate): the positive witness
-; above is the fix's reachable witness (the committed article's bytes cross
-; exactly).  fn-bpo-request-success-preserves-context-and-article's article
-; conjunct, literally: the request's article is fn-bpo-article-octets of the
-; work's article over the same arena.
-(assert-event
- (equal (fn-bpa-request-article *bpo-request-message*)
-        (in-arena-fn-bpo-article-octets
-         *bpo-payloads*
-         (fn-find-article *bpo-msgid* (fn-state-articles (fn-node-acceptance *bpo-node*))))))
-; The arena is what is read: over an arena whose handle 0 holds other bytes,
-; the request carries those bytes.
-(defconst *bpo-other-bytes* '(66 121 101 13 10))
-(assert-event
- (equal (fn-bpa-request-article
-         (fn-bpa-result-message
-          (fn-bpa-decode-exact
-           (fn-bpo-result-value
-            (in-arena-fn-bpo-request-adu (list *bpo-other-bytes*) *bpo-state*
-                                         "work:out" "attempt:out" 0)))))
-        *bpo-other-bytes*))
-; A handle outside the arena denotes no bytes and the request is refused (an
-; arena that never interned the article; the host's arena always has).  It
-; is not answered with an empty article.
-(assert-event
- (equal (in-arena-fn-bpo-request-adu nil *bpo-state* "work:out" "attempt:out" 0)
-        '(:error :request-refused)))

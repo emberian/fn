@@ -51,9 +51,11 @@
 ;
 ; The JOIN -- that the view a pin names in the catalog (books/served-catalog-
 ; chain.lisp fn-scr-view-of) holds the pinned archive's articles, the
-; hypothesis fn-scr-catalogp carries -- is stated here as fn-sca-join and is
-; an OPEN proof target (the boundary owner's R3): its teeth are in the test
-; book; what continues without it is the served path under the hypothesis.
+; hypothesis fn-scr-catalogp carries -- is stated here as fn-sca-join.  Its
+; invariant form fn-scj-joinp and its preservation at the host's article and
+; identity finishes are books/served-catalog-join.lisp (lane sca-join, PRF-302);
+; its establishment at the opens and the row equation (numbering) are still
+; OPEN, so the served chain keeps it as a hypothesis.
 
 (in-package "ACL2")
 
@@ -183,14 +185,21 @@
 ; -----------------------------------------------------------------------------
 ; T4: the completed article's withdrawal targets the view no longer shows.
 
-; The targets of the withdrawals CAUSE contributed: the view's list holds the
-; newest article's first (books/control-visible.lisp fn-ctl-refresh-
-; withdrawals, fn-ctl-prepend), so the scan stops at the first other cause.
+; The targets of the withdrawals CAUSE contributed: every withdrawal record
+; of the view's list whose cause is CAUSE (sca-join, 2026-09-27: the whole
+; list, not the run at its head; the refresh prepends the newest article's
+; records, but a head-run scan leans on an ordering of the list that no
+; invariant carries, and the join's preservation, books/served-catalog-join
+; fn-scj-view-after-finish-is-refresh, needs every record CAUSE made).  One
+; pass over the view's withdrawal list, as the refresh's own
+; fn-ctl-causes-p makes for every new article.
 (defun fn-sca-targets-of (cause ws)
   (declare (xargs :guard t))
-  (if (and (consp ws) (fn-ctl-withdrawalp (car ws))
-           (equal (fn-ctl-w-cause (car ws)) cause))
-      (cons (fn-ctl-w-target (car ws)) (fn-sca-targets-of cause (cdr ws)))
+  (if (consp ws)
+      (if (and (fn-ctl-withdrawalp (car ws))
+               (equal (fn-ctl-w-cause (car ws)) cause))
+          (cons (fn-ctl-w-target (car ws)) (fn-sca-targets-of cause (cdr ws)))
+        (fn-sca-targets-of cause (cdr ws)))
     nil))
 
 (defun fn-sca-withdraw-targets (targets view-index by fn-cat)
@@ -1161,10 +1170,11 @@
            :use ((:instance fn-sca-withdraw-targets-hides (by (fn-pc-expected pending)))))))
 
 ; -----------------------------------------------------------------------------
-; The join (OPEN): the view a pin names holds the pinned archive's articles.
-; Stated over the owner's current view: its version and archive.  Proving it
-; is the R-side completion of step 8; until then it is the hypothesis the
-; served chain carries (fn-scr-catalogp), with teeth in the test book.
+; The join: the view a pin names holds the pinned archive's articles.
+; Stated over the owner's current view: its version and archive.  Carried as
+; fn-scj-joinp and preserved by the finishes in books/served-catalog-join.lisp;
+; until its establishment at the opens lands it is the hypothesis the served
+; chain carries (fn-scr-catalogp).
 
 (defun-nx fn-sca-join (o fn-arena fn-cat)
   (equal (fn-state-articles (fn-own-view-archive (fn-own-view o)))

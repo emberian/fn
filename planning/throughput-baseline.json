@@ -39,10 +39,11 @@
       "dev": 1.03
     },
     "probe_bytes_consed_per_commit": {
-      "value": 1651892,
+      "value": 1036100,
       "floor": 262144,
       "release": 103341504,
-      "dev": 1651892
+      "dev": 1025840,
+      "note": "ratcheted 2026-09-27 17:35Z by batch AW at the coordinator's decision: measured 1,025,840 on img-15acb1714 (planning/evidence/throughput/15acb1714d4c-batch-aw-r21-20260927T171337Z.json, under load; the counter is deterministic: r4 and r5 images differed by 4 bytes), plus 1% margin; the release column still names bbf52159"
     },
     "post_median_ms": {
       "value": 1.545,

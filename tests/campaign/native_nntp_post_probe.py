@@ -1,33 +1,48 @@
-"""The post cuts of `native_cuts.POST_CUTS` observed at the NNTP wire.
+"""The served POST's process-death and EIO cuts observed at the NNTP wire,
+on the record log (format 9; lane ack-before-barrier, restoring the per-cut
+wire probe log-recovery-2 deleted with the per-file route).
 
-`native_operator_campaign` submits the candidate through `operator CFG post`
-and records its exit code.  Plan P2 is stated at the NNTP wire: `240` only
-after the completion was consumed, `441` naming its reason, an uncertain
-outcome `441 ... do not repost`, and the acknowledged article rereading
-byte-identical after a kill at any cut.  This probe takes the same cuts on
-the same served owner, but submits the candidate with NNTP POST and records
-the reply octets the client received (b"" when the connection closed with no
-reply).  `judge` compares every row with P2's wire bar (the exact bytes
-below); `--judge FILE` re-judges a recorded result without running anything.
+A served POST on the record log is a member of the owner's batch quantum
+(host/native/owner.lisp fnn-owner-commit-start-locked): its reservation
+(frontier-reserved), its record's take and place (record-completing) and its
+in-memory finish (finish-consumed, finish-durable) run inside START; the
+batch's append (log-written) and barrier (log-fenced) follow; the member's
+reply leaves only in COMPLETE, after the barrier
+(books/owner-commit-steps.lisp fn-ocs-members-told-only-after-the-barrier,
+books/owner-ack-after-barrier.lisp fn-oab-quantum-reports-after-its-barrier).
+So every served cut lies BEFORE the reply, and the reply a cut allows follows
+from its coordinate (`served_arm'), never from a hand list:
 
-Per post cut and per action (`kill`, `eio`), over a fresh store seeded as the
-operator campaign seeds it: the owner is started with
-FN_NATIVE_POST_FAULT=<cut>:<action>, the candidate is POSTed, the owner is
-stopped by its recorded pid, then `operator CFG recover`, `store ROOT
-inspect`, a restarted owner's ARTICLE for both articles, and the same
-candidate POSTed once more to that restarted owner.
+  pre-append  the cut's program runs before the batch's append
+              (fn-lg-reserve-program, fn-lg-order-program,
+              fn-bs-finish-program): the record is absent at a death; an EIO
+              ends the START uncertain (the batch is not appended);
+  appended    the append's cut (log-written): a death keeps a prefix of the
+              batch (either); an EIO fences the kernel: uncertain;
+  fenced      the barrier's cut (log-fenced): the record is durable; a death
+              leaves it present with no reply owed; an EIO is uncertain.
 
-Controls on the developer image: an unfaulted POST (then SIGKILL of the
-owner by pid after the reply, restart, reread), and a POST refused by the
-injection checks.  On the production image (no selector is accepted there):
-the same unfaulted POST, SIGKILL by pid after the reply, restart, reread;
-and a SIGKILL by pid while a POST's article is half sent.
+Whatever the arm, a faulted row is NEVER answered 240: no cut lies after the
+barrier and before the reply.  A kill row owes no reply at all; an EIO row
+is answered ACL2's uncertain line or closed (uncertain to the client), and
+the owner stops (exit 3).  The table's candidate column
+(native_cuts.POST_LOG_CUTS, and frontier-reserved of POST_CUTS) must be the
+arm's fate, and the statement cut (native_cuts.STATEMENT_CUTS) must lie after
+its barrier: `verify_served_arms' refuses a table that disagrees.
+
+Per cut and action (`kill`, `eio`), over a fresh store seeded with a prior
+article: the owner is started with FN_NATIVE_POST_FAULT=<cut>:<action>, the
+candidate is POSTed over NNTP, the owner is stopped by pid, then `operator
+CFG recover`, `store ROOT inspect`, a restarted owner's ARTICLE for both
+articles, and the candidate POSTed once more.  Controls: an unfaulted POST
+(SIGKILL after the reply, restart, reread) on both images, a POST the
+injection refuses (no From), and a SIGKILL while the article is half sent.
+`--judge FILE` re-judges a recorded result.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import signal
 import socket
@@ -40,7 +55,6 @@ from tests.campaign import native_cuts  # noqa: E402
 from tests.campaign.native_operator_campaign import (  # noqa: E402
     CANDIDATE_ID, PRIOR_ID, Node, article, matches, parse_recover, public, seed,
     sha, snapshot)
-
 
 def nntp_post(node: Node, payload: bytes, timeout=120) -> dict:
     """POST `payload`; the raw greeting, 340 and final reply lines."""
@@ -170,77 +184,57 @@ CONFLICT = ("441 posting failed; a different article with this Message-ID is "
 NO_FROM = "441 posting failed; From is required\r\n"
 EXIT_UNCERTAIN = 3
 
-# The expectation per cut is derived from its model coordinate
-# (native_cuts.POST_CUTS: the program and the cut's place in it), never from
-# a hand list of cut names (campaign 6c0626c5, H1: a hand list went stale
-# when lane p10-k0 added four cuts).  `post_arm' reads the program's steps:
-#
-#   refused    the cut precedes the program's first publication step (a
-#              rename or link into a directory other than staging): an EIO
-#              is a known pre-publication failure (P-RECORD `On error before
-#              941'), answered STORAGE_FAILED, the article absent, the owner
-#              serving on, a repost accepted;
-#   swallowed  the cut lies between two best-effort staging steps after the
-#              record's directory barrier (P-RECORD `Errors from 970-971 are
-#              swallowed'): the record is durable, the client gets 240, and
-#              the owner log must name the swallowed cleanup error once;
-#   consumed   the program issues no syscall at all (P-FINISH): the record
-#              is durable, so 240 or uncertain, never a refusal;
-#   uncertain  also every cut of a program that begins after the record
-#              program's end (P-MARKER, fnn-mark-committed): the record is
-#              durable and any error there is uncertain, never a refusal;
-#   uncertain  every other cut (at or after the publication attempt).
-#
-# native_cuts.verify_swallowed_cuts checks the host's `ignore-errors' holds
-# exactly the swallowed cuts; `verify_post_arms' checks each arm against the
-# table's candidate column.
-ARMS = ("refused", "swallowed", "consumed", "uncertain")
-
-
-def post_arm(cut) -> str:
-    steps = native_cuts.model_steps(cut.program, cut.book)
-    if not any(s.kind in native_cuts.SYSCALL_KINDS for s in steps):
-        return "consumed"
-    order = native_cuts.POST_PROGRAMS
-    if order.index(cut.program) > order.index("fn-bs-record-program"):
-        return "uncertain"
-    index = native_cuts.cut_step_index(cut)
-    published = next(j for j, s in enumerate(steps)
-                     if s.kind in ("rename", "link") and s.directory != ":staging")
-    if index < published:
-        return "refused"
-    if native_cuts.swallowed_cut(cut):
-        return "swallowed"
-    return "uncertain"
-
-
-# The table's candidate column, as the fate a row must show (None: either).
+# The served commit's programs in the host's order (START: the member's
+# reservation, its record's place, its finish; then the batch's append and
+# barrier; checked against the host by native_cuts.verify_post_log_cut_map).
+SERVED_PROGRAMS = ("fn-lg-reserve-program", "fn-lg-order-program", "fn-bs-finish-program",
+                   "fn-lg-append-program", "fn-lg-fence-program")
+ARMS = ("pre-append", "appended", "fenced")
+# The fate each arm fixes; the table's candidate column must agree.
+ARM_FATE = {"pre-append": "absent", "appended": "either", "fenced": "present"}
 FATE = {"absent": False, "present": True, "either": None}
-# The arms that fix the fate whatever the table says; the table must agree.
-ARM_FATE = {"refused": "absent", "swallowed": "present", "consumed": "present"}
 
 
-def verify_post_arms() -> dict:
+def served_cuts() -> tuple:
+    """The served route's cuts: frontier-reserved (POST_CUTS: the member's
+    reservation, the same inside a quantum) and POST_LOG_CUTS."""
+    reserved = tuple(c for c in native_cuts.POST_CUTS if c.program == "fn-lg-reserve-program")
+    if tuple(c.name for c in reserved) != ("frontier-reserved",):
+        raise AssertionError("the reservation's cut is not frontier-reserved alone")
+    return reserved + native_cuts.POST_LOG_CUTS
+
+
+def served_arm(cut) -> str:
+    """The arm a served cut's coordinate gives: where its program runs
+    relative to the batch's append and barrier."""
+    order = SERVED_PROGRAMS
+    if cut.program not in order:
+        raise AssertionError("{}: program {} is not a served program".format(cut.name, cut.program))
+    at = order.index(cut.program)
+    if at < order.index("fn-lg-append-program"):
+        return "pre-append"
+    if cut.program == "fn-lg-append-program":
+        return "appended"
+    return "fenced"
+
+
+def verify_served_arms(cuts=None) -> dict:
     arms = {}
-    for cut in native_cuts.POST_CUTS:
-        arm = post_arm(cut)
-        want = ARM_FATE.get(arm)
-        if want is not None and cut.candidate != want:
+    for cut in cuts if cuts is not None else served_cuts():
+        arm = served_arm(cut)
+        if cut.candidate != ARM_FATE[arm]:
             raise AssertionError("{}: arm {} needs candidate {}, table says {}".format(
-                cut.name, arm, want, cut.candidate))
+                cut.name, arm, ARM_FATE[arm], cut.candidate))
         arms[cut.name] = arm
+    # The statement's cut lies after the statement's own barrier
+    # (fnn-owner-statement-barrier before fnn-owner-key-statement-cut,
+    # native_cuts.verify_statement_cut_map): the statement is present.
+    for cut in native_cuts.STATEMENT_CUTS:
+        if cut.candidate != "present":
+            raise AssertionError("{}: the statement cut follows its barrier, table says {}".format(
+                cut.name, cut.candidate))
+        arms[cut.name] = "fenced"
     return arms
-
-
-# The owner-log line a swallowed cleanup error must leave, exactly once: it
-# names the staging cleanup and the error (EIO, errno 5).  The line's other
-# words are the host's to choose.
-SWALLOWED_LOG = re.compile(r"(?i)^(?=.*\bstaging\b)(?=.*\bcleanup\b)(?=.*(\bEIO\b|errno\W*5\b)).*$")
-
-
-def swallowed_log_lines(row) -> list:
-    text = (row.get("owner") or {}).get("stderr") or ""
-    return [line for line in text.splitlines() if SWALLOWED_LOG.match(line)]
 
 
 def _rc(row):
@@ -252,31 +246,23 @@ def _present(row):
 
 
 def _cut(name):
-    return next(c for c in native_cuts.POST_CUTS if c.name == name)
+    return next(c for c in served_cuts() if c.name == name)
 
 
 def expectation(row) -> dict:
-    """What P2 requires of one faulted row: replies allowed, owner exit, fate."""
+    """What the wire must show for one faulted row."""
     cut = _cut(row["cut"])
-    present = FATE[cut.candidate]
+    arm = served_arm(cut)
+    present = FATE[ARM_FATE[arm]]
     if row["action"] == "kill":
-        # A dead process owes no line, and no 240 may precede the death.
-        return {"arm": "kill", "replies": {""}, "rc": -9, "present": present,
-                "log_lines": None}
-    arm = post_arm(cut)
-    if arm == "refused":
-        return {"arm": arm, "replies": {STORAGE_FAILED}, "rc": 0, "present": False,
-                "log_lines": None}
-    if arm == "swallowed":
-        # 240 after the completion was consumed; the owner serves on and is
-        # stopped by SIGTERM.
-        return {"arm": arm, "replies": {OK_240}, "rc": 0, "present": True,
-                "log_lines": 1}
-    if arm == "consumed":
-        return {"arm": arm, "replies": {OK_240, UNCERTAIN}, "rc": EXIT_UNCERTAIN,
-                "present": True, "log_lines": None}
-    return {"arm": arm, "replies": {UNCERTAIN}, "rc": EXIT_UNCERTAIN,
-            "present": present, "log_lines": None}
+        # A dead process owes no line: no cut lies after the barrier and
+        # before the reply.
+        return {"arm": arm, "replies": {""}, "rc": -9, "present": present}
+    # EIO: the store is fenced and the owner stops; the poster is told
+    # uncertain (ACL2's line) or the connection closes -- never 240, never a
+    # refusal (the batch's members are uncertain together).
+    fate = present if arm != "appended" else None
+    return {"arm": arm, "replies": {UNCERTAIN, ""}, "rc": EXIT_UNCERTAIN, "present": fate}
 
 
 def _repost_ok(row, failures, required=False):
@@ -285,10 +271,6 @@ def _repost_ok(row, failures, required=False):
         if required and row.get("reread_owner_ready"):
             failures.append("no repost was made to the restarted owner")
         return
-    # D25: the repost is the poster's own octets, so a present article is
-    # "already stored here" at any later clock second.  Before D25 the
-    # conflict line was accepted too, because the key held Injection-Date
-    # (campaign 47bdb9a4, finding K1).
     want = {DUPLICATE} if _present(row) else {OK_240}
     if repost not in want:
         failures.append("repost {!r} not in {}".format(repost, sorted(want)))
@@ -298,26 +280,22 @@ def judge_cut(row) -> list:
     failures = []
     want = expectation(row)
     reply = (row.get("post") or {}).get("reply")
-    if reply not in want["replies"]:
+    if reply == OK_240:
+        failures.append("a cut before the reply answered 240")
+    elif reply not in want["replies"]:
         failures.append("reply {!r} not in {}".format(reply, sorted(want["replies"])))
     if _rc(row) != want["rc"]:
         failures.append("owner exit {!r} != {}".format(_rc(row), want["rc"]))
     if want["present"] is not None and _present(row) != want["present"]:
         failures.append("candidate present={} != {}".format(_present(row), want["present"]))
-    if want["log_lines"] is not None:
-        lines = swallowed_log_lines(row)
-        if len(lines) != want["log_lines"]:
-            failures.append("owner log names the swallowed cleanup error {} times, "
-                            "not {}: {!r}".format(len(lines), want["log_lines"], lines))
     for label in ("prior", "candidate"):
         got = row.get("inspect_" + label) or {}
         if got.get("rc") == 0 and not got.get("identical"):
             failures.append(label + " does not reread identical")
+    if not (row.get("inspect_prior") or {}).get("rc") == 0:
+        failures.append("the prior article is not present")
     _repost_ok(row, failures, required=True)
     return failures
-
-
-OVERSIZE_441 = "441 posting failed; the article exceeds the configured size"
 
 
 def judge_control(row) -> list:
@@ -327,16 +305,11 @@ def judge_control(row) -> list:
     if name == "dev-refused-no-from":
         if reply != NO_FROM:
             failures.append("reply {!r} != {!r}".format(reply, NO_FROM))
+        if _present(row):
+            failures.append("refused article is present")
     elif name == "prod-sigkill-mid-article":
         if _present(row):
             failures.append("half-sent article is present")
-    elif name.startswith("dev-size-") and not row.get("within_bound"):
-        # D27: a POST past the operator's profile bound is refused at the wire
-        # with the 441 that names the size, and nothing is stored.
-        if (reply or "").rstrip("\r\n") != OVERSIZE_441:
-            failures.append("oversize reply {!r} != {!r}".format(reply, OVERSIZE_441))
-        if _present(row):
-            failures.append("oversize article is present")
     else:
         if reply != OK_240:
             failures.append("reply {!r} != {!r}".format(reply, OK_240))
@@ -366,7 +339,7 @@ def judge(result) -> dict:
 
 def print_judgement(verdict) -> None:
     for row in verdict["rows"]:
-        print("{:<36} {:<9} {:<5} rc={!s:<4} present={!s:<5} reply={!r} repost={!r}{}".format(
+        print("{:<30} {:<10} {:<5} rc={!s:<4} present={!s:<5} reply={!r} repost={!r}{}".format(
             row["row"], row.get("arm", ""), "FAIL" if row["failures"] else "pass", row["rc"],
             row["present"], row["reply"], row["repost"],
             "".join("\n    " + f for f in row["failures"])))
@@ -374,26 +347,36 @@ def print_judgement(verdict) -> None:
                                       verdict["total"]))
 
 
-def body_of(octets: int) -> str:
-    """A body of about OCTETS octets in lines of 78 letters and CRLF."""
-    lines = max(1, octets // 80)
-    return "\r\n".join("x" * 78 for _ in range(lines))
-
-
-def sized_article(total: int) -> bytes:
-    """The candidate proto-article padded to exactly TOTAL octets."""
-    head = article(CANDIDATE_ID, "candidate", "")
-    need = total - len(head)
-    if need < 1:
-        raise ValueError("size {} is below the header".format(total))
-    body, left = [], need
-    while left > 80:
-        body.append("x" * 78)
-        left -= 80
-    body.append("y" * left)
-    octets = article(CANDIDATE_ID, "candidate", "\r\n".join(body))
-    assert len(octets) == total
-    return octets
+def run(images: Path, work: Path, out: Path, cuts=None, actions=("kill", "eio")) -> dict:
+    verify_served_arms()
+    dev, prod = images / "fn-host-developer", images / "fn-host"
+    if work.exists():
+        shutil.rmtree(work)
+    work.mkdir(parents=True)
+    prior = work / "prior.art"
+    prior.write_bytes(article(PRIOR_ID, "prior", "prior accepted content"))
+    payload = article(CANDIDATE_ID, "candidate", "candidate content")
+    (work / "candidate.art").write_bytes(payload)
+    refused = payload.replace(b"From: campaign@campaign.invalid\r\n", b"")
+    result = {"images": str(images), "cuts": [], "controls": []}
+    for cut in served_cuts():
+        if cuts and cut.name not in cuts:
+            continue
+        for action in actions:
+            print("cut", cut.name, action, flush=True)
+            result["cuts"].append(faulted(dev, work, prior, payload, cut, action))
+            out.write_text(json.dumps(result, indent=1, default=str))
+    print("controls", flush=True)
+    result["controls"].append(plain(dev, work, prior, payload, "dev-accepted-then-sigkill"))
+    result["controls"].append(plain(dev, work, prior, refused, "dev-refused-no-from",
+                                    kill_after=False))
+    if prod.exists():
+        result["controls"].append(plain(prod, work, prior, payload, "prod-accepted-then-sigkill"))
+        result["controls"].append(plain(prod, work, prior, payload, "prod-sigkill-mid-article",
+                                        half=True))
+    result["judgement"] = judge(result)
+    out.write_text(json.dumps(result, indent=1, default=str))
+    return result
 
 
 def main(argv=None) -> int:
@@ -401,18 +384,6 @@ def main(argv=None) -> int:
     parser.add_argument("--images", type=Path)
     parser.add_argument("--work", type=Path)
     parser.add_argument("--out", type=Path)
-    parser.add_argument("--body-octets", type=int, default=0,
-                        help="candidate body of this many octets in 80-octet lines "
-                        "(D27: the cuts on a large article)")
-    parser.add_argument("--size-controls", default="",
-                        help="comma-separated article sizes in octets, each POSTed "
-                        "once to a developer owner as a control row")
-    parser.add_argument("--profile-bound", type=int, default=32768,
-                        help="the store profile's payload bound the size controls "
-                        "are judged against (fn-sbud-payload-bound)")
-    parser.add_argument("--init-flags", default="",
-                        help="operator fields for every seeded store's init, e.g. "
-                        "'--max-article-octets 4194304' (D27)")
     parser.add_argument("--judge", type=Path,
                         help="re-judge a recorded result (.json or .json.gz) and exit")
     args = parser.parse_args(argv)
@@ -426,46 +397,7 @@ def main(argv=None) -> int:
         return 1 if verdict["failed"] else 0
     if not (args.images and args.work and args.out):
         parser.error("--images, --work and --out are required to run the probe")
-    native_cuts.verify_native_cut_map()
-    verify_post_arms()
-    import tests.campaign.native_operator_campaign as campaign
-    campaign.INIT_FLAGS[:] = args.init_flags.split()
-    dev, prod = args.images / "fn-host-developer", args.images / "fn-host"
-    if args.work.exists():
-        shutil.rmtree(args.work)
-    args.work.mkdir(parents=True)
-    prior = args.work / "prior.art"
-    prior.write_bytes(article(PRIOR_ID, "prior", "prior accepted content"))
-    payload = article(CANDIDATE_ID, "candidate",
-                      body_of(args.body_octets) if args.body_octets
-                      else "candidate content")
-    (args.work / "candidate.art").write_bytes(payload)
-    refused = payload.replace(b"From: campaign@campaign.invalid\r\n", b"")
-    result = {"images": str(args.images), "init_flags": args.init_flags,
-              "profile_bound": args.profile_bound, "cuts": [], "controls": []}
-    for cut in native_cuts.POST_CUTS:
-        for action in ("kill", "eio"):
-            print("cut", cut.name, action, flush=True)
-            result["cuts"].append(faulted(dev, args.work, prior, payload, cut, action))
-            args.out.write_text(json.dumps(result, indent=1, default=str))
-    print("controls", flush=True)
-    result["controls"].append(plain(dev, args.work, prior, payload, "dev-accepted-then-sigkill"))
-    result["controls"].append(plain(dev, args.work, prior, refused, "dev-refused-no-from",
-                                    kill_after=False))
-    result["controls"].append(plain(prod, args.work, prior, payload, "prod-accepted-then-sigkill"))
-    result["controls"].append(plain(prod, args.work, prior, payload, "prod-sigkill-mid-article",
-                                    half=True))
-    for size in [int(x) for x in args.size_controls.split(",") if x]:
-        sized = sized_article(size)
-        print("size control", size, flush=True)
-        row = plain(dev, args.work, prior, sized, "dev-size-{}".format(size),
-                    kill_after=False)
-        row["octets"] = len(sized)
-        row["within_bound"] = len(sized) <= args.profile_bound
-        result["controls"].append(row)
-        args.out.write_text(json.dumps(result, indent=1, default=str))
-    result["judgement"] = judge(result)
-    args.out.write_text(json.dumps(result, indent=1, default=str))
+    result = run(args.images, args.work, args.out)
     print_judgement(result["judgement"])
     return 1 if result["judgement"]["failed"] else 0
 

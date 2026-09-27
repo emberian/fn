@@ -17,13 +17,15 @@
 ; The successful prefix of a replay, before its trailing restart: the flag,
 ; the BP image and the ION state.
 (defun fn-bpiw-durable-fold (bp ion records fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil :measure (acl2-count records)))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil
+                  :measure (acl2-count records)))
   (if (endp records)
       (list t bp ion)
     (let ((answer (fn-bpiw-apply (fn-bpiw-replay-fence bp (car records))
                                  ion (car records) fn-arena)))
       (if (car answer)
-          (fn-bpiw-durable-fold (nth 1 answer) (nth 3 answer) (cdr records) fn-arena)
+          (fn-bpiw-durable-fold (nth 1 answer) (nth 3 answer) (cdr records)
+                                fn-arena)
         (list nil bp ion)))))
 
 ; Restart marks an in-flight attempt :restart-observed, which is retryable,
@@ -70,6 +72,13 @@
    :hints (("Goal" :in-theory (enable fn-bp-statep fn-bp-state-fenced)))))
 
 (local
+ (defthm fn-bpiw-restart-works-of-cons
+   (equal (fn-bp-restart-works (cons w ws))
+          (cons (fn-bp-restart-work w) (fn-bp-restart-works ws)))
+   :hints (("Goal" :in-theory (e/d (fn-bp-restart-works)
+                                   (fn-bp-restart-work))))))
+
+(local
  (defthm fn-bpiw-fenced-recovery-restarts-as-live-on-a-state
    (implies (and (fn-bp-statep f)
                  (fn-bpiw-recovery-outcomep r)
@@ -103,7 +112,10 @@
                              (result (fn-bp-journal-nth 4 r))))
             :in-theory (e/d (fn-bp-apply-journal-record fn-bpiw-replay-fence
                              fn-bpiw-recovery-outcomep)
+                            ; the restart's work marking is closed by the
+                            ; lemmas above (8.0 s, 3.2M steps -> 1.3 s, 0.6M)
                             (fn-bp-statep fn-bp-journal-recordp
+                             fn-bp-restart-works fn-bp-restart-work
                              fn-bp-restart-preserves-state
                              fn-bp-step-preserves-state
                              fn-bp-recover-preserves-state))))))
@@ -217,7 +229,8 @@
                                        (fn-bp-initial-state
                                         node (fn-bp-config-from-record
                                               (car records)))
-                                       (fn-bpiw-initial) (cdr records) fn-arena)))))
+                                       (fn-bpiw-initial) (cdr records)
+                                       fn-arena)))))
            :in-theory (e/d (fn-bpiw-replay-journal)
                            (fn-bpiw-apply fn-bpiw-replay-records
                             fn-bpiw-durable-fold

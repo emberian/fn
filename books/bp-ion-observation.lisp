@@ -86,11 +86,14 @@
        (fn-bp-u64p (nth 7 record))
        (natp (nth 8 record)) (< (nth 8 record) 4294967296)))
 
+; The request is read through the payload arena (books/bp-outbound.lisp): the
+; arena is only read here.
 (defun fn-bpio-bound-recordp (bpo-state record fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-bpio-recordp record)) nil
     (let ((request (fn-bpo-request-message
-                    bpo-state (nth 1 record) (nth 2 record) (nth 3 record) fn-arena)))
+                    bpo-state (nth 1 record) (nth 2 record) (nth 3 record)
+                    fn-arena)))
       (and (consp request)
            (equal (nth 4 record)
                   (fn-bpa-request-destination-eid request))))))
@@ -98,7 +101,8 @@
 ; The destination route is supplied independently from trusted configuration.
 ; It is deliberately distinct from the durable work's application peer EID.
 (defun fn-bpio-bound-observation (bpo-state work-id attempt-id generation
-                                       configured-bp-destination own-bp-eid line fn-arena)
+                                       configured-bp-destination own-bp-eid line
+                                       fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (let* ((observation (fn-bpio-decode line))
          (request (fn-bpo-request-message

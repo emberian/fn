@@ -95,6 +95,10 @@ class Conn:
         self.sock.close()
 
 
+# Every owner a case starts; tearDown reaps the ones still running.
+LIVE: list = []
+
+
 class Node:
     def __init__(self, image: str, root: Path, env=None):
         self.image, self.root = image, root
@@ -126,7 +130,25 @@ class Node:
         self.proc = subprocess.Popen([self.image, "--fn", "operator", str(self.config), "run"],
                                      env=dict(self.env, **(env or {})),
                                      stdout=subprocess.PIPE, stderr=self.stderr)
-        wait_for_announcement(self.proc, b"LISTENING ", timeout=600)
+        LIVE.append(self)
+        try:
+            wait_for_announcement(self.proc, b"LISTENING ", timeout=600)
+        except BaseException:
+            # An owner that never announced is still a process: never leave it.
+            self.reap()
+            raise
+
+    def reap(self):
+        """Kill this node's owner if it is still running (a test's safety net:
+        a timeout or a failed assertion must not leave an owner behind)."""
+        if self.proc is not None and self.proc.poll() is None:
+            self.proc.kill()
+            try:
+                self.proc.wait(timeout=60)
+            except subprocess.TimeoutExpired:
+                pass
+        if getattr(self, "stderr", None) is not None and not self.stderr.closed:
+            self.stderr.close()
 
     def stop(self):
         if self.proc and self.proc.poll() is None:
@@ -178,6 +200,8 @@ class CommitLogMixin:
         self.root = Path(self.dir.name)
 
     def tearDown(self):
+        while LIVE:
+            LIVE.pop().reap()
         self.dir.cleanup()
 
     def test_concurrent_posts_are_committed_through_the_log_and_served_again(self):
@@ -253,7 +277,8 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
 
     def test_every_post_log_cut_is_old_or_new_and_the_node_goes_on(self):
         names = tuple(cut.name for cut in native_cuts.POST_LOG_CUTS)
-        self.assertEqual(names, ("finish-consumed", "finish-durable", "log-written", "log-fenced"))
+        self.assertEqual(names, ("record-completing", "finish-consumed", "finish-durable",
+                                 "log-written", "log-fenced"))
         for k, cut in enumerate(native_cuts.POST_LOG_CUTS):
             with self.subTest(cut=cut.name):
                 root = self.root / cut.name

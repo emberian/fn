@@ -1,0 +1,15 @@
+{
+ "articles": 12,
+ "campaign": "store",
+ "class": "import-fault",
+ "mutation": {
+  "at": 20,
+  "bit": 1,
+  "file": "profile",
+  "kind": "import-flip",
+  "op": "flip"
+ },
+ "note": "Was: import exit 4 `store file exceeds bound: records/00000000000000000000.txn' (the record bound computed from a profile that does not decode). Now: import refused reason=manifest-mismatch profile, exit 1.",
+ "packet": "fixed here",
+ "status": "fixed"
+}

@@ -203,10 +203,15 @@ class NativeWebClientTests(unittest.TestCase):
                 self.assertEqual(composed[0], 200)
                 token = re.search(r"name='submission_id' value='([^']+)'",
                                   composed[2]).group(1)
+                # The record log's bytes (journal/): a save writes no record.
+                def journal():
+                    return {p.name: p.read_bytes()
+                            for p in sorted((store / "journal").glob("*")) if p.is_file()}
+                unsaved = journal()
                 saved = request("POST", "/post", {"submission_id": token,
                     "action": "save", "subject": "", "body": "rough draft"})
                 self.assertEqual(saved[0], 303)
-                self.assertEqual(list((store / "transactions").glob("*.txn")), [])
+                self.assertEqual(journal(), unsaved)
                 restart_web()
                 self.assertIn("rough draft", request("GET", "/draft?id=" + token)[2])
                 final_body = "native final source survives a lost reply"
@@ -240,10 +245,6 @@ class NativeWebClientTests(unittest.TestCase):
                 exact_article = ("\r\n".join(saved_record["lines"]) + "\r\n").encode()
                 self.assertTrue(source.stdout.endswith(exact_article))
                 self.assertIn(final_body.encode(), source.stdout)
-                before_files = {p.name: p.read_bytes()
-                                for p in (store / "transactions").glob("*.txn")}
-                self.assertEqual(len(before_files), 1)
-
                 owner = start_owner()
                 restart_web()
                 self.assertIn("badge uncertain", request("GET", "/result?id=" + token)[2])
@@ -251,12 +252,11 @@ class NativeWebClientTests(unittest.TestCase):
                     "POST", "/settle", {"submission_id": token})[1]["Location"])
                 self.assertIn("now serves this Message-ID", observed[2])
                 self.assertIn("badge uncertain", observed[2])
+                before_files = journal()
                 duplicate = request("POST", "/post", {"submission_id": token,
                     "action": "post", "subject": "Another article", "body": "do not send"})
                 self.assertEqual(duplicate[0], 303)
-                self.assertEqual({p.name: p.read_bytes()
-                                  for p in (store / "transactions").glob("*.txn")},
-                                 before_files)
+                self.assertEqual(journal(), before_files)
                 restart_web()
                 self.assertIn("now serves this Message-ID",
                               request("GET", "/result?id=" + token)[2])

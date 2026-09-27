@@ -35,6 +35,9 @@
 (defun fn-bpiw-observations (ion) (declare (xargs :guard t :verify-guards nil)) (cadr ion))
 (defun fn-bpiw-initial () (declare (xargs :guard t :verify-guards nil)) (list nil nil))
 
+; The route and observation gates read the attempt's request through the
+; payload arena (books/bp-outbound.lisp); every function below that takes
+; fn-arena only reads it.
 (defun fn-bpiw-route-admissiblep (bp ion record fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (not (fn-bpiw-route-recordp record)) nil
@@ -142,7 +145,8 @@
     bp))
 
 (defun fn-bpiw-replay-records (bp ion records effects fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil :measure (acl2-count records)))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil
+                  :measure (acl2-count records)))
   (if (endp records)
       (let ((restarted (fn-bp-step bp (fn-bp-restart-event))))
         (list t (fn-bp-result-state restarted)
@@ -163,7 +167,8 @@
                node (fn-bp-config-from-record (car records)))))
       (if (not (fn-bp-statep bp))
           (list nil nil nil (fn-bpiw-initial))
-        (fn-bpiw-replay-records bp (fn-bpiw-initial) (cdr records) nil fn-arena)))))
+        (fn-bpiw-replay-records bp (fn-bpiw-initial) (cdr records) nil
+                                fn-arena)))))
 
 (defthm fn-bpiw-ion-record-keeps-bp-state
   (implies (member-equal (car record) '(:ion-route :ion-observed))

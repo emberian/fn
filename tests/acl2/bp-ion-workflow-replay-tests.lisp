@@ -3,10 +3,9 @@
 (include-book "bp-ion-workflow-tests")
 (include-book "../../books/bp-ion-workflow-replay")
 (include-book "must-fail-checked")
-(include-book "arena-lift")
+; The workflow entries read the payload arena (the records flip): each call
+; runs over an arena holding *bpo-payloads* (tests/acl2/arena-lift.lisp).
 (bpr-lift fn-bpiw-durable-fold 3)
-(bpr-lift fn-bpiw-replay-journal 2)
-(bpr-lift fn-bpiw-apply 3)
 
 ; -----------------------------------------------------------------------------
 ; Reachable witnesses: the process dies with an intent durable and its outcome
@@ -38,7 +37,8 @@
  (equal (fn-bp-work-status
          "work:out"
          (fn-bp-state-works
-          (nth 1 (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* (append *bpiwr-enqueue-cut*
+          (nth 1 (in-arena-fn-bpiw-replay-journal *bpo-payloads*
+                  *bpo-node* (append *bpiwr-enqueue-cut*
                                      (list *bpiwr-committed*))))))
         :outstanding))
 ; Storage says absent: no work, and the fence is gone.
@@ -46,7 +46,8 @@
 (assert-event (bpiwr-agrees *bpiwr-open-1* *bpiwr-enqueue-cut* *bpiwr-absent*))
 (assert-event
  (not (fn-bp-state-fenced
-       (nth 1 (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* (append *bpiwr-enqueue-cut*
+       (nth 1 (in-arena-fn-bpiw-replay-journal *bpo-payloads*
+               *bpo-node* (append *bpiwr-enqueue-cut*
                                   (list *bpiwr-absent*)))))))
 
 ; Attempt intent cut: the recovered attempt is :unknown live and
@@ -71,7 +72,8 @@
   (append *bpiw-prefix*
           (list *bpiwr-retry*
                 (fn-bpiw-attempt-record
-                 (nth 1 (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node*
+                 (nth 1 (in-arena-fn-bpiw-replay-journal *bpo-payloads*
+                         *bpo-node*
                          (append *bpiw-prefix* (list *bpiwr-retry*))))
                  12 0 "work:out" "attempt:out2"))))
 (defconst *bpiwr-open-3*
@@ -86,7 +88,8 @@
 ; fold holds the pending unfenced, and the recovery outcome is a no-op there,
 ; which the live interpreter counts as refusal.
 (defconst *bpiwr-fold-1*
-  (in-arena-fn-bpiw-durable-fold *bpo-payloads* (fn-bp-initial-state *bpo-node*
+  (in-arena-fn-bpiw-durable-fold *bpo-payloads*
+   (fn-bp-initial-state *bpo-node*
                         (fn-bp-config-from-record *bpo-config-record*))
    (fn-bpiw-initial) (cdr *bpiwr-enqueue-cut*)))
 (assert-event (car *bpiwr-fold-1*))
@@ -122,7 +125,8 @@
                                   *bpiwr-reattempt*)))
 (must-fail-checked
  (defthm bpiwr-teeth-any-live-record-reopens
-   (car (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* (append *bpiwr-delivered-cut* (list *bpiwr-reattempt*))))))
+   (car (fn-bpiw-replay-journal
+         *bpo-node* (append *bpiwr-delivered-cut* (list *bpiwr-reattempt*)) fn-arena))))
 
 ; Without (car live): a recovery outcome for a transaction the image does not
 ; hold is refused live and by the history.
@@ -131,7 +135,8 @@
 (assert-event (fn-bpiw-recovery-outcomep *bpiwr-stranger*))
 (must-fail-checked
  (defthm bpiwr-teeth-unaccepted-recovery-reopens
-   (car (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* (append *bpiwr-enqueue-cut* (list *bpiwr-stranger*))))))
+   (car (fn-bpiw-replay-journal
+         *bpo-node* (append *bpiwr-enqueue-cut* (list *bpiwr-stranger*)) fn-arena))))
 
 ; (car open) has no separating witness: a failed open stops before any
 ; recovery outcome's fence, so its image holds no fenced pending and refuses

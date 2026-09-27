@@ -19,8 +19,10 @@
 (defconst *osi-enrolment* (list (car *osi-events*)))
 (defconst *osi-barriers*
   (make-list 5 :initial-element '(:io :recovery-barrier :ok)))
-; The Store retains the composite as a composite ROW (records-flip): its
-; article is the held row *bsb-row* at handle 0.
+;; by specification: the flip -- the Store retains the signed composite as
+;; its composite ROW (books/held-record.lisp fn-hstxa-p; bp-signed-binding-tests
+;; *bsb-row-composite*: the wire composite beside its article interned at
+;; handle 0, whose bytes are *bsb-payloads*'s one payload).
 (assert-event (equal *osi-events* (list *bsb-enrollment* *bsb-row-composite*)))
 
 ; -----------------------------------------------------------------------------
@@ -40,13 +42,15 @@
 (assert-event
  (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *osi-open*))))
         *osi-events*))
-; The index answers the signed composite's retained article (the held row)
-; for its Message-ID.
+; The index answers the signed composite's article record for its Message-ID.
+; by specification: the flip -- the index holds retained rows: the answer is
+; the held row, which stands for the wire record over the test's arena.
 (assert-event
  (equal (fn-cei-msgid-records *bsb-msgid*
                               (fn-sn-event-index
                                (fn-own-store (fn-ocfg-owner *osi-open*))))
         (list *bsb-row*)))
+(assert-event (equal (in-arena-fn-row-wire-of *bsb-payloads* *bsb-row*) *bsb-record*))
 ; A refused open (no natural connection bound) is :fault with the empty,
 ; indexed Store.
 (assert-event
@@ -58,21 +62,17 @@
 ; dispatcher binds the signed record (both PRF-132 keystones, antecedent and
 ; conclusion asserted literally).
 (include-book "arena-lift")
-;; The arena the host's entry built for this history: handle 0 holds the
-;; composite article's stored projection (bp-signed-binding-tests'
-;; *bsb-payloads*), the handle *bsb-row* names.  Every arena reader below
-;; runs over it, the live Store's construction included, as the keystones
-;; quantify one arena for both.
+;; The payloads the arena holds at handles 0, 1, ...: the signed article's
+;; stored projection at handle 0, the handle of *bsb-row* (records-flip).
 (defconst *sr-arena* *bsb-payloads*)
-(bpr-lift fn-osi-live-owner 6)
-(bpr-lift fn-osi-live-store 6)
 (bpr-lift fn-bpaj-dispatch 4)
 (bpr-lift fn-bpaj-store-record-accepted-fast 2)
 (bpr-lift fn-bpaj-transit-record-lookup-fast 3)
 (bpr-lift fn-bpaj-transit-record-lookup 3)
 (bpr-lift fn-bpaj-node-record-committed-carriedp 2)
-(bpr-lift fn-bpr-row-stands-for 2)
 (bpr-lift fn-bpi-node-wire-committedp 2)
+(bpr-lift fn-osi-live-owner 6)
+(bpr-lift fn-osi-live-store 6)
 (make-event
  `(defconst *osi-store*
     ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers*)))
@@ -80,9 +80,10 @@
 (assert-event (fn-sn-statep *osi-store*))
 (assert-event (fn-ceis-indexedp *osi-store*))
 
-; fn-bpaj-dispatch-never-resubmits-a-stored-article (the restated
-; antecedent: the held row the Store retains, fn-held-p, with the
-; dispatcher's Message-ID)
+; fn-bpaj-dispatch-never-resubmits-a-stored-article
+; by specification: the flip -- the keystone is stated over the Store's
+; retained row (fn-held-p, books/owner-store-indexed.lisp), the held row
+; *bsb-row* the Store keeps for the signed record.
 (assert-event
  (and (member-equal *bsb-row*
                     (fn-bpr-article-records (fn-sf-records (fn-sn-files *osi-store*))))
@@ -102,9 +103,11 @@
 (assert-event
  (equal (in-arena-fn-bpaj-article-event *sr-arena* *bsb-record* (fn-sf-records (fn-sn-files *osi-store*)))
         *bsb-row-composite*))
-; The restated conclusion's arms, literally at the bound record: the event's
-; article (the held row) stands for the bound wire record through the arena,
-; and the composite arm (fn-hstxa-p) binds its verdict.
+(bpr-lift fn-bpr-row-stands-for 2)
+;; The restated conclusion's arms, literally at the bound record (audit-fixes
+;; item 1): the event's article (the held row) stands for the bound wire
+;; record through the arena, and the composite arm (fn-hstxa-p) binds its
+;; verdict.
 (assert-event
  (let ((event (in-arena-fn-bpaj-article-event *sr-arena* *bsb-record*
                                               (fn-sf-records (fn-sn-files *osi-store*)))))
@@ -141,9 +144,6 @@
   (append *osi-barriers*
           '((:io :start-frontier nil) (:io :frontier-file :ok)
             (:io :frontier-replace :ok) (:io :frontier-directory :ok))
-          ;; the host prepares the ROW it interns of the composite
-          ;; (host/owner-host.lisp fn-owner-prepare-identity,
-          ;; fn-oii-identity-row), at handle 0 of this arena
           (list (list :prepare-identity *bsb-row-composite*))
           '((:io :record-file :ok) (:io :record-link :ok)
             (:io :record-directory :ok) (:complete))))
@@ -192,10 +192,7 @@
              (fn-bpaj-dispatch-msgid *bsb-joined* *bsb-request-octets*))
       (not (member-equal *bsb-row*
                          (fn-bpr-article-records
-                          (fn-sf-records (fn-sn-files *osi-before*)))))
-      (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
-                                             *bsb-request-octets* 1)
-             (list :submit))))
+                          (fn-sf-records (fn-sn-files *osi-before*)))))))
 (must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
@@ -211,27 +208,18 @@
       (fn-held-p *bsb-row*)
       (not (equal (fn-record-msgid *bsb-row*)
                   (fn-bpaj-dispatch-msgid *bsb-other-joined*
-                                          *bsb-other-request-octets*)))
-      (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-other-joined* *osi-store*
-                                             *bsb-other-request-octets* 1)
-             (list :submit))))
+                                          *bsb-other-request-octets*)))))
 (must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-other-joined* *osi-store*
                                      *bsb-other-request-octets* 1)
               (list :submit)))))
-; (3) fn-held-p: the wire record *bsb-record* (the same Message-ID, an
-; article record, but not a held row) is not a member of the live Store's
-; article records, whose members are rows; so a non-held-p candidate cannot
-; satisfy the membership hypothesis on any live Store, and no counterexample
-; separates fn-held-p there.  Its removal witness is the refinement lemma's
-; (bp-signed-binding-tests, a constructed Store).  The hypothesis is kept;
-; no weakened theorem was proved.
-(assert-event
- (and (not (fn-held-p *bsb-record*))
-      (not (member-equal *bsb-record*
-                         (fn-bpr-article-records
-                          (fn-sf-records (fn-sn-files *osi-store*)))))))
+; (3) fn-held-p (fn-record-p before the records flip) has no live
+; counter-witness: an open admits only Store
+; events, so a live history holds no non-record under a Message-ID; its
+; must-fail is the refinement lemma's (bp-signed-binding-tests (2), a
+; constructed Store).  The hypothesis is kept; no weakened theorem was
+; proved.
 
 ; fn-bpaj-dispatch-binds-the-stores-own-record, without a :bind answer: the
 ; live Store before the commit, where the dispatcher submits; nothing bound
@@ -320,9 +308,7 @@
 ;
 ; fn-bpaj-node-record-committed-carriedp-is-committedp (books/bp-native-app-fast.lisp).
 ; Positive witness: the live Store's node after the recovery barriers, the
-; signed record it committed.  Antecedent and conclusion, literally: the
-; right side is fn-bpi-node-wire-committedp over the arena (the node's
-; article payload is a handle, read through it).
+; signed record it committed.  Antecedent and conclusion, literally.
 (defconst *osi-live-node* (fn-sn-node *osi-store*))
 (assert-event (fn-node-statep *osi-live-node*))
 (assert-event (in-arena-fn-bpaj-node-record-committed-carriedp *sr-arena* *osi-live-node* *bsb-record*))

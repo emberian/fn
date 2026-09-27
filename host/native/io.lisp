@@ -277,6 +277,7 @@ return the index the bytes begin at."
 
 (defvar *fnn-arena* nil)
 (defvar *fnn-cat* nil)
+(defvar *fnn-hist* nil)
 
 (defun fnn-live-arena ()
   (or *fnn-arena*
@@ -284,13 +285,15 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-arena (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the payload arena stobj is not in this image")))))
 
-;;; The trailing stobjs of a state-returning entry: the live payload arena
-;;; and catalog (books/payload-arena.lisp fn-arena, books/catalog.lisp fn-cat)
-;;; when the entry's STOBJS-IN end in (fn-arena state) or (fn-arena fn-cat
-;;; state): the served readers read an article's bytes through the arena
-;;; (books/nntp-session.lisp fn-nntp-article-bytes; lane served-readers) and
-;;; the catalog's served chain and maintenance take both.  Read off the
-;;; entry's own STOBJS-IN (a property the image keeps: host/native/
+;;; The trailing stobjs of a state-returning entry: the live payload arena,
+;;; catalog and history columns (books/payload-arena.lisp fn-arena,
+;;; books/catalog.lisp fn-cat, books/history-columns.lisp fn-hist), in the
+;;; order the entry's STOBJS-IN names them just before state: the served
+;;; readers read an article's bytes through the arena (books/nntp-session.lisp
+;;; fn-nntp-article-bytes; lane served-readers), the catalog's served chain
+;;; and maintenance take both, and the owner's install and carried budget
+;;; readers take fn-hist (host/owner-host.lisp; lane history-columns-2).  Read
+;;; off the entry's own STOBJS-IN (a property the image keeps: host/native/
 ;;; strip-world.lisp), once per name, so a wrapper never carries a list that
 ;;; could go stale.
 (defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq))
@@ -301,34 +304,44 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-cat (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the catalog stobj is not in this image")))))
 
+(defun fnn-live-hist ()
+  (or *fnn-hist*
+      (setq *fnn-hist*
+            (or (cdr (assoc 'fn-hist (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the history stobj is not in this image")))))
+
 (defun fnn-trailing-kind (name)
+  "The names of NAME's live stobjs just before its trailing state, in order:
+the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
   (multiple-value-bind (known found) (gethash name *fnn-trailing-stobjs*)
     (if found
         known
       (setf (gethash name *fnn-trailing-stobjs*)
-            (let ((ins (stobjs-in name (w *the-live-state*))))
-              (cond ((and (>= (length ins) 3) (eq (car (last ins)) 'state)
-                          (eq (car (last ins 2)) 'fn-cat)
-                          (eq (car (last ins 3)) 'fn-arena))
-                     :arena-cat)
-                    ((and (>= (length ins) 2) (eq (car (last ins)) 'state)
-                          (eq (car (last ins 2)) 'fn-arena))
-                     :arena)
-                    (t nil)))))))
+            (let ((ins (reverse (stobjs-in name (w *the-live-state*))))
+                  (run nil))
+              (when (eq (car ins) 'state)
+                (loop for sym in (cdr ins)
+                      while (member sym '(fn-arena fn-cat fn-hist))
+                      do (push sym run)))
+              run)))))
+
+(defun fnn-live-stobj (sym)
+  (ecase sym
+    (fn-arena (fnn-live-arena))
+    (fn-cat (fnn-live-cat))
+    (fn-hist (fnn-live-hist))))
 
 (defun fnn-arena-then-state (name)
   "The trailing stobj arguments of the state-returning entry NAME."
-  (case (fnn-trailing-kind name)
-    (:arena-cat (list (fnn-live-arena) (fnn-live-cat) *the-live-state*))
-    (:arena (list (fnn-live-arena) *the-live-state*))
-    (t (list *the-live-state*))))
+  (append (mapcar #'fnn-live-stobj (fnn-trailing-kind name))
+          (list *the-live-state*)))
 
 (defun fnn-core-arena-state (name &rest args)
   "A wrapper over the arena and state, the live arena passed before state:
 its value.  An entry that seals returns (mv erp val fn-arena state) and a
 reader (mv erp val state); the arena is updated in place either way."
   (destructuring-bind (erp val &rest ignored)
-      (apply #'fnn-call name (append args (list (fnn-live-arena) *the-live-state*)))
+      (apply #'fnn-call name (append args (fnn-arena-then-state name)))
     (declare (ignore ignored))
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
@@ -338,8 +351,8 @@ reader (mv erp val state); the arena is updated in place either way."
 ARGS): its value.  The owner's POST entries read the payload from the buffer
 and seal it into the arena (host/owner-host.lisp fn-owner-prepare-buffer)."
   (destructuring-bind (erp val &rest ignored)
-      (apply #'fnn-call name (append args (list (fnn-live-octets) (fnn-live-arena)
-                                                *the-live-state*)))
+      (apply #'fnn-call name (append args (cons (fnn-live-octets)
+                                                (fnn-arena-then-state name))))
     (declare (ignore ignored))
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
@@ -1027,21 +1040,6 @@ execution-boundary fault, never a claim that the core refused an input."
 (defun fnn-global (name)
   (f-get-global name *the-live-state*))
 
-(defvar *fnn-pack-memo-depth* 0)
-(defmacro fnn-with-pack-memo (&body body)
-  "Run BODY with ACL2's pack-link memo scope open (host/checkpoint-host.lisp
-`fn-store-pack-memo-scope', books/checkpoint-pack-chain-once.lisp): each
-chain link BODY walks is decoded once; the memo is dropped when the outermost
-scope ends, however it ends."
-  `(progn
-     (when (= *fnn-pack-memo-depth* 0) (fnn-core-state 'fn-store-pack-memo-scope t))
-     (let ((*fnn-pack-memo-depth* (1+ *fnn-pack-memo-depth*)))
-       (unwind-protect (progn ,@body)
-         (when (= *fnn-pack-memo-depth* 1)
-           (fnn-core-state 'fn-store-pack-memo-scope nil))))))
-
-;;; Result whitelists, as tools/run_store.py accepts them.
-
 (defparameter +fnn-actions+
   '(:ready :prepared :durable :aborted :indeterminate :duplicate :conflict :absent :invalid
     :refused :fault :recovering :frontier-staged :frontier-data-durable :frontier-attempted
@@ -1115,16 +1113,6 @@ saved profile stays a fault."
       (fnn-fault "ACL2 returned malformed allocation frontier successor"))
     value))
 
-(defun fnn-transaction-name (sequence)
-  (let ((value (fnn-core 'fn-store-txn-name sequence)))
-    (unless (and (stringp value) (> (length value) 0)
-                 (null (position #\/ value)))
-      (fnn-fault "ACL2 refused transaction filename"))
-    value))
-
-;;; ---------------------------------------------------------------------------
-;;; The store bridge: fixed calls into host/store-node-host.lisp.
-
 (defun fnn-bridge-reset () (fnn-action (fnn-core-state 'fn-store-sn-reset)))
 (defun fnn-bridge-record-sequence (record)
   (fnn-nat (fnn-core 'fn-store-record-sequence (fnn-octet-list record))))
@@ -1176,6 +1164,17 @@ unread, and decides nothing about them."
   (let ((acc (first (fnn-call 'fn-srs-intern-step (car replay) decoded (fnn-live-arena)))))
     (setf (car replay) acc)
     (not (eq acc :bad))))
+
+
+(defun fnn-bridge-recover-step-extents (replay decoded chunk places)
+  "fnn-bridge-recover-step with the chunk's octets and places: the guard-
+verified fn-arx-intern-step (books/payload-extent.lisp) seals a placed
+record whose place holds its payload as an extent; NIL on :bad."
+  (let ((acc (first (fnn-call 'fn-arx-intern-step (car replay) decoded chunk places
+                              (fnn-live-arena)))))
+    (unless (eq acc :bad)
+      (setf (car replay) acc)
+      t)))
 
 (defun fnn-bridge-recover-end (replay frontier config-records)
   (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
@@ -1235,32 +1234,6 @@ returned representation; it is not a second filename policy."
                 (fnn-fault "ACL2 returned malformed configuration namespace entry"))
               (cons (first entry) (fnn-octets (second entry))))
             (third value))))
-
-(defun fnn-bridge-transaction-observation (observed limit selected-lower)
-  "Return ACL2-issued (sequence . filename) pairs for one bounded scan.
-
-The host passes observed names as octets and receives their canonical sequence
-binding.  It performs no filename parser, decimal conversion, or gap policy."
-  (let ((value (fnn-core 'fn-store-txn-observation-selected
-                         (mapcar (lambda (name)
-                                   (fnn-octet-list (fnn-string-octets name)))
-                                 observed)
-                         limit selected-lower)))
-    (unless (and (listp value) (eq (first value) :ok)
-                 (integerp (second value)) (>= (second value) 0)
-                 (listp (third value)))
-      (fnn-fault "ACL2 refused transaction namespace observation"))
-    (values
-     (mapcar (lambda (pair)
-              (unless (and (true-listp pair) (= (length pair) 2)
-                           (integerp (first pair)) (>= (first pair) 0)
-                           (stringp (second pair)))
-                (fnn-fault "ACL2 returned malformed transaction namespace pair"))
-              ;; fn-store-txn-observation has already decoded the observed
-              ;; UTF-8 octets and compared this string to fn-bs-txn-name.
-              (cons (first pair) (second pair)))
-             (third value))
-     (second value))))
 
 (defun fnn-bridge-staging-observation-limit ()
   "The ACL2-owned maximum number of staging names recovery may observe."
@@ -1326,11 +1299,19 @@ body, checking every callee's guard (the whole history, per POST)."
   (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
   t)
 
+(defvar *fnn-staged-handle* nil
+  "The handle the owner's last buffer prepare sealed (staged: books/payload-
+arena-extent.lisp), for the next record the log takes (fnn-log-take); ACL2
+checks the pairing before any reseat (fn-arx-commit-extent).")
+
 (defun fnn-seal-live-buffer ()
   "The arena update the owner's buffer prepare names (:seal-buffer): seal the
 octet buffer's payload through the guard-verified `fn-arena-seal-buffer'
-(books/payload-arena.lisp); see FNN-SEAL-OCTETS."
-  (fnn-call 'fn-arena-seal-buffer (fnn-live-octets) (fnn-live-arena))
+(books/payload-arena.lisp); see FNN-SEAL-OCTETS.  The node's arena stages
+the copy (a page of its own) until the commit reseats it as its log extent."
+  (let ((arena (fnn-live-arena)))
+    (setq *fnn-staged-handle* (first (fnn-call 'fn-arena-count arena)))
+    (fnn-call 'fn-arena-seal-buffer (fnn-live-octets) arena))
   t)
 
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
@@ -1371,27 +1352,12 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ; Developer fault cut, dynamically scoped to one canonical Store publication.
 ; NIL in normal operation.  The cut runs after the final link and before its
 ; directory barrier, so an injected EIO is an uncertain publication.
-(defvar *fnn-record-directory-fault-observer* nil)
+(defvar *fnn-record-barrier-fault-observer* nil)
 ; host/native/checkpoint.lisp installs this callback after it loads.  A build
 ; without that optional layer retains authoritative full replay and reports
 ; no selected checkpoint.
 (defvar *fnn-checkpoint-recover-callback*
   (lambda (store count) (declare (ignore store count)) '(:none)))
-; A selected lossless prefix pack may reconstruct records before the one
-; generic decoder/replay call.  Without the optional pack layer this is the
-; identity function.
-(defvar *fnn-pack-recover-callback*
-  (lambda (store records sequences actual-lower)
-    (declare (ignore store sequences actual-lower)) records))
-(defvar *fnn-pack-lower-bound-callback*
-  (lambda (store) (declare (ignore store)) 0))
-; True when a selected pack reconstructs the history's prefix, so the open
-; reads the history through `fnn-committed-history' (the pack's
-; reconstruction and the suffix files) rather than streaming the files.
-(defvar *fnn-pack-selected-callback*
-  (lambda (store) (declare (ignore store)) nil))
-(defvar *fnn-pack-status-callback* nil)
-
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
 (defun fnn-bridge-group-next (code) (fnn-nat (fnn-core-state 'fn-store-sn-group-next code)))
@@ -1485,42 +1451,6 @@ host has no SHA-256 of its own."
       nil
       (fnn-octet-list (fnn-trailer (subseq framed 0 (- (length framed) (fnn-constant :trailer)))))))
 
-(defun fnn-frame (record)
-  "ACL2 builds the protected prefix; the host appends the integrity trailer."
-  (let ((value (fnn-core 'fn-store-frame-store-protected (fnn-octet-list record))))
-    (when (or (keywordp value) (not (fnn-octet-list-p value)))
-      (fnn-fault "ACL2 refused to frame a transaction record"))
-    (fnn-seal value)))
-
-(defun fnn-unframe (raw)
-  "ACL2 parses the frame and compares the trailer with the host digest."
-  (let ((value (fnn-core 'fn-store-frame-store-decode (fnn-octet-list raw) (fnn-digest-of raw))))
-    (unless (and (consp value) (eq (first value) :ok))
-      (let ((reason (if (and (consp value) (consp (cdr value))) (second value) :unknown)))
-        (fnn-fault "frame refused: ~(~a~)" reason)))
-    (fnn-as-octets (second value))))
-
-(defun fnn-unframe-list (raw)
-  "FNN-UNFRAME answering ACL2's octet list of the record itself: the streaming
-open hands it to the step as it is (fnn-recover-file-chunks), so the record is
-not made a vector and then a list again.  The file goes over as one octet list
-of its protected prefix and the trailer's octets (the frame's trailer size is
-ACL2's constant, as fnn-digest-of splits it): ACL2 digests the prefix itself
-and answers the payload as the prefix's tail, with no copy
-(host/store-host.lisp fn-store-unframe-split, books/store-recover-stream.lisp
-KEYSTONE fn-srs-unframe-is-the-frame-decode).  A file shorter than a trailer
-goes over whole, as fnn-unframe sends it."
-  (let* ((cut (- (length raw) (fnn-constant :trailer)))
-         (value (if (< cut 0)
-                    (fnn-core 'fn-store-frame-store-decode (fnn-octet-list raw) nil)
-                    (fnn-core 'fn-store-unframe-split
-                              (loop for i below cut collect (aref raw i))
-                              (loop for i from cut below (length raw) collect (aref raw i))))))
-    (unless (and (consp value) (eq (first value) :ok))
-      (let ((reason (if (and (consp value) (consp (cdr value))) (second value) :unknown)))
-        (fnn-fault "frame refused: ~(~a~)" reason)))
-    (second value)))
-
 (defun fnn-subject-id (payload)
   "Content identity v1 (books/identity), derived end to end in ACL2.
 `books/crypto-attach.lisp' attaches SHA-256 to `fn-frame-digest', so the
@@ -1602,10 +1532,6 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; The replayed configuration the core hands back at recover.  The host
   ;; stores it and passes it back; it derives no name, code or generation.
   (config-generation nil) (config-served nil) (config-domain nil)
-  ;; D31: the committed-history frame this open writes before it returns
-  ;; (fn-hmr-catch-up), or NIL.  Set by fnn-check-history-marker, written by
-  ;; fnn-recover after its barriers, only by a writable open.
-  (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil)
   ;; The open answers the history's record COUNT and keeps no records
@@ -1616,6 +1542,13 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; rows'), the closed segments scanned and the genesis the scan started
   ;; from, and the active segment's index (fnn-log-history-records).
   (log-history nil)
+  ;; The newest record the open's scan handed to its sink (ACL2's octet
+  ;; list) and the active segment's committed count when the open ended:
+  ;; (COUNT RECORD), or NIL.  fnn-history-last-record answers it while the
+  ;; kernel's count is still COUNT (nothing committed since the open)
+  ;; instead of reading the log again (lane snapshot-open: that re-read was
+  ;; 1.3 s of a 40k open and 33 s of a 10k x 32 KiB one).
+  (log-last nil)
   ;; Lane commit-onto-log: the commit route ACL2 names from the profile
   ;; (fn-store-profile-logp: format 9) and, on that route, the open record
   ;; log (an fnn-log: the segment's descriptor and the log kernel).
@@ -1630,9 +1563,6 @@ resolves the names against `domain' and the host carries that list verbatim."
 ;; store runs under (books/byte-store-frame.lisp accessors).
 (defun fnn-config-max-payload (store)
   (fnn-profile-nat 'fn-store-profile-max-article-octets store))
-(defun fnn-config-max-transactions (store)
-  (fnn-profile-nat 'fn-store-profile-max-transactions store))
-
 (defun make-fnn-store (root &key writable fault)
   (let ((store (%make-fnn-store :root (fnn-absolute root) :writable writable)))
     (when fault
@@ -1658,12 +1588,6 @@ route's point and the record log's, lane commit-onto-log)."
           ((eq (fnn-store-fault-class store) :fnn-test-kill)
            (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
            (fnn-fault "test SIGKILL did not terminate the process"))
-          ;; Developer-only physical-fault harness handoff.  The process is
-          ;; stopped at :frontier-attempted or :record-attempted, after the
-          ;; authority rename/link and before its directory barrier.  Its
-          ;; driver must resume or terminate the exact PID it started.
-          ((eq (fnn-store-fault-class store) :fnn-test-stop)
-           (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop))
           ;; A test-only setup action.  fnn-config-record-names invokes this
           ;; immediately before its real fnn-list-directory call, so that call
           ;; itself returns EACCES.  A handler that turned its error into NIL
@@ -1718,7 +1642,6 @@ route's point and the record log's, lane commit-onto-log)."
                  (eql (fnn-core 'fn-lgs-segment-index name) k))
       (fnn-fault "ACL2 returned an invalid log segment name"))
     (fnn-join (fnn-journal-dir s) name)))
-(defun fnn-history-marker-path (s) (fnn-join (fnn-store-root s) "committed-history.json"))
 (defun fnn-config-dir (s) (fnn-join (fnn-store-root s) "config"))
 (defun fnn-config-record-name (generation)
   "The one persistent configuration filename renderer is ACL2's fixed-width
@@ -1882,34 +1805,6 @@ kernel may have issued the namespace operation even when it reports failure."
       ;; deliberately outside that handler so its selected outcome is visible.
       (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked"))))))
 
-(defun fnn-transaction-files (store &optional (selected-lower 0))
-  "ACL2-bound final namespace pairs, each path verified regular by the host."
-  (let* ((limit (fnn-config-max-transactions store))
-         ;; This is the physical resource boundary: readdir stops before an
-         ;; unbounded name list is retained.  Sorting only stabilizes the
-         ;; observed representation; ACL2 owns filename grammar and sequence.
-         (observed (handler-case
-                       (sort (fnn-list-directory-bounded (fnn-transactions store)
-                                                         limit "transaction namespace")
-                             #'string<)
-                     (fnn-os-error () (fnn-fault "cannot enumerate transactions"))))
-         (answer (multiple-value-list
-                  (fnn-bridge-transaction-observation observed limit selected-lower)))
-         (pairs (first answer)) (actual-lower (second answer)))
-    (values (mapcar (lambda (pair)
-              (let* ((sequence (car pair))
-                     (name (cdr pair))
-                     (path (fnn-join (fnn-transactions store) name))
-                     (st (fnn-lstat path)))
-                (when (or (null st) (fnn-symlink-p st) (not (fnn-regular-p st)))
-                  (fnn-fault "refusing transaction symlink or non-file"))
-                ;; SEQUENCE came from fn-store-txn-observation, whose exact
-                ;; filename comparison is the byte-store codec.  Durable
-                ;; record decoding below binds this value again before replay.
-                (cons sequence path)))
-                    pairs)
-            actual-lower)))
-
 (defun fnn-staging-observation (store)
   "One bounded physical observation for the ACL2 staging policy.
 
@@ -1985,107 +1880,15 @@ after the syscall."
                                 '(:refused :store-format))))
     (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
 
-(defun fnn-load-frontier (store)
-  (fnn-check-regular (fnn-frontier-path store))
-  (let ((raw (handler-case
-                 (fnn-read-regular-bounded (fnn-frontier-path store) 4096)
-               (fnn-os-error (e)
-                 (fnn-fault "invalid durable allocation frontier: ~a" e)))))
-    (when (and (> (length raw) 0) (= (aref raw 0) (char-code #\{)))
-      (fnn-fault "legacy JSON allocator is retained in place; explicit offline migration is required"))
-    (setf (fnn-store-frontier store) (fnn-metadata-frontier-decode raw))))
-
-;; The committed-history boundary (books/store-history-marker,
-;; books/store-history-required).  The open reads the marker once and ACL2
-;; (fn-hmr-open-verdict, under the profile's history-marker requirement)
-;; compares it with the length of the record list replay is handed: pack
-;; events plus suffix files.
-(defun fnn-history-marker-observation (store)
-  "(:absent) or (:present OCTETS): one bounded read of committed-history.json."
-  (let ((path (fnn-history-marker-path store)))
-    (if (null (fnn-check-regular path))
-        (list :absent)
-        (list :present
-              (fnn-octet-list
-               (handler-case (fnn-read-regular-bounded path 4096)
-                 (fnn-os-error (e)
-                   (fnn-fault "cannot read the committed-history marker: ~a" e))))))))
-
-(defun fnn-check-history-marker (store record-count)
-  "Refuse an open whose committed history is short of its marker, or whose
-required marker is missing; remember the frame the open must write.
-
-A refusal is detected damage to committed data (specs/storage.md STO-005):
-a fault naming ACL2's reason, never a silent rollback to the shorter history.
-An admitted open records ACL2's catch-up frame (fn-hmr-catch-up): the marker
-of the reconstructed count when the marker is absent or behind it, which
-fnn-recover writes before the open returns (D31 case 2)."
-  (let* ((observation (fnn-history-marker-observation store))
-         (verdict (fnn-core 'fn-hmr-open-verdict
-                            (fnn-store-config store) observation record-count))
-         (word (and (consp verdict) (first verdict))))
-    (case word
-      (:admitted
-       (let ((frame (fnn-core 'fn-hmr-catch-up
-                              (fnn-store-config store) observation record-count)))
-         (unless (or (null frame) (fnn-octet-list-p frame))
-           (fnn-fault "ACL2 returned a malformed committed-history catch-up"))
-         (setf (fnn-store-marker-catch-up store) frame))
-       verdict)
-      (:refused
-       (fnn-fault "committed history refused at open: ~(~a~)~@[ marker=~d~] records=~d"
-                  (second verdict) (third verdict) record-count))
-      (otherwise (fnn-fault "ACL2 returned a malformed committed-history verdict")))))
-
-(defun fnn-mark-committed (store sequence &optional catch-up)
-  "Replace the committed-history marker after record SEQUENCE is durable.
-
-With CATCH-UP (ACL2's fn-hmr-catch-up frame, SEQUENCE NIL) it is fnn-recover's
-catch-up: the same program and cuts, run after the recovery barriers made the
-reconstructed records durable and before the open returns.
-
-Every caller runs this after fnn-publish returned :durable and before
-fnn-finish, so a record the node acknowledges is below a durable marker, and
-nothing else (a reservation, an abort, a refusal, recovery) writes it.  The
-bytes are ACL2's (fn-hm-after-commit); the steps are fn-hm-marker-program's,
-and each cut is an `fnn-at' site named in fn-hm-marker-cut-names.  The stage
-uses the `.stage-' prefix the recovery sweep collects.  Any OS error is
-uncertain: the record is durable and the marker may or may not be replaced,
-so the store stays fenced and recovery decides; the transaction is never
-acknowledged without its marker."
-  ;; A format-9 store has no marker object: M := D, the log's last complete
-  ;; entry is the committed history (design 2026-09-27 section 3.4).
-  (when (fnn-store-logp store)
-    (return-from fnn-mark-committed nil))
-  (fnn-require-writer store)
-  (let ((frame (or catch-up (fnn-core 'fn-hm-after-commit sequence)))
-        (stage (fnn-join (fnn-staging store)
-                         (format nil ".stage-marker-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
-    (setf (fnn-store-fenced store) t)
-    (unless (fnn-octet-list-p frame)
-      (fnn-indeterminate "ACL2 returned no committed-history marker for sequence ~d" sequence))
-    (handler-case
-        (progn
-          (fnn-write-staged-at store stage (fnn-octets frame) :marker-created :marker-written)
-          (fnn-at store :marker-staged-durable)
-          (fnn-replace stage (fnn-history-marker-path store))
-          (fnn-at store :marker-replaced)
-          (fnn-fsync-dir (fnn-store-root store))
-          (fnn-at store :marker-durable)
-          :marked)
-      (fnn-os-error (e)
-        (fnn-indeterminate "committed-history marker update after durable sequence ~d is uncertain: ~a"
-                           sequence e)))))
-
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
-  ;; the core from the operator's group names.  The program is ACL2's by the
-  ;; profile's route: format 8 books/byte-store-initializer.lisp
-  ;; fn-bsi-current-init-program; format 9 (fn-store-profile-logp)
+  ;; the core from the operator's group names.  The program is ACL2's:
   ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (journal/
-  ;; and the segment in place of transactions/ and the allocator file).
+  ;; and the segment; every profile is format 9, fn-store-profile-logp).
   (let ((logp (fnn-core 'fn-store-profile-logp
                         (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))))
+    (unless logp
+      (fnn-fault "the init profile is not a record-log profile"))
     (fnn-safe-directory (fnn-store-root store) t store
                         "init-root-mkdir" "init-root-parent-fenced")
     (fnn-require-clone-activated store)
@@ -2093,16 +1896,12 @@ acknowledged without its marker."
       (unwind-protect
            (progn
              (fnn-init-cut store "init-lock-created")
-             (unless logp
-               (fnn-safe-directory (fnn-transactions store) t store
-                                   "init-transactions-mkdir" "init-transactions-parent-fenced"))
              (fnn-safe-directory (fnn-staging store) t store
                                  "init-staging-mkdir" "init-staging-parent-fenced")
              (fnn-safe-directory (fnn-config-dir store) t store
                                  "init-config-dir-mkdir" "init-config-dir-parent-fenced")
-             (when logp
-               (fnn-safe-directory (fnn-journal-dir store) t store
-                                   "init-journal-mkdir" "init-journal-parent-fenced"))
+             (fnn-safe-directory (fnn-journal-dir store) t store
+                                 "init-journal-mkdir" "init-journal-parent-fenced")
              (let ((config (fnn-metadata-config-frame profile)))
                (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
                        :published)
@@ -2118,21 +1917,8 @@ acknowledged without its marker."
                  (fnn-indeterminate "configuration history appeared during initialization"))
                (fnn-fsync-dir (fnn-config-dir store))
                (fnn-init-cut store "init-config-history-fenced"))
-             (cond
-               (logp
-                ;; fn-bsi-log-segment-steps.
-                (fnn-log-init-segment store))
-               (t
-                ;; A missing allocator alongside committed history would permit
-                ;; reuse of an aborted ID.  It is a fault, never an implicit 0.
-                (when (and (null (fnn-check-regular (fnn-frontier-path store)))
-                           (fnn-transaction-files store))
-                  (fnn-fault "refusing missing allocator frontier with committed history"))
-                (if (eq (fnn-publish-initial-file store (fnn-frontier-path store)
-                                                  (fnn-metadata-frontier-frame 0) "init-frontier-")
-                        :published)
-                    (setf (fnn-store-frontier store) 0)
-                    (fnn-load-frontier store))))
+             ;; fn-bsi-log-segment-steps.
+             (fnn-log-init-segment store)
              (fnn-fsync-regular (fnn-config-path store))
              (fnn-init-cut store "init-final-config-file-fenced")
              (dolist (name (fnn-config-record-names store :init-config-records-final-enumerate))
@@ -2140,11 +1926,6 @@ acknowledged without its marker."
                ;; The fresh branch has generation 1 only.  Existing history is
                ;; intentionally outside this packet.
                (fnn-init-cut store "init-final-config-record-file-fenced"))
-             (unless logp
-               (fnn-fsync-regular (fnn-frontier-path store))
-               (fnn-init-cut store "init-final-frontier-file-fenced")
-               (fnn-fsync-dir (fnn-transactions store))
-               (fnn-init-cut store "init-transactions-fenced"))
              (fnn-fsync-dir (fnn-store-root store))
              (fnn-init-cut store "init-root-fenced")
              (fnn-fsync-dir (fnn-parent (fnn-store-root store)))
@@ -2168,13 +1949,13 @@ acknowledged without its marker."
         ;; record log); the host keeps the answer and decides nothing.
         (setf (fnn-store-logp store)
               (and (fnn-core 'fn-store-profile-logp (fnn-store-config store)) t))
-        (cond ((fnn-store-logp store)
-               ;; The frontier is derived from the log at recovery
-               ;; (fnn-recover-log); there is no frontier file to read.
-               (fnn-safe-directory (fnn-journal-dir store)))
-              (t
-               (fnn-safe-directory (fnn-transactions store))
-               (fnn-load-frontier store))))
+        ;; Format 8 is refused by name at the profile's open
+        ;; (books/store-profile-open.lisp); a profile ACL2 does not read as the
+        ;; record log is a fault.  The frontier is derived from the log at
+        ;; recovery (fnn-recover-log).
+        (unless (fnn-store-logp store)
+          (fnn-fault "a store that is not on the record log opened"))
+        (fnn-safe-directory (fnn-journal-dir store)))
     (error (e) (fnn-store-close store) (error e))))
 
 (defun fnn-store-close (store)
@@ -2188,28 +1969,6 @@ acknowledged without its marker."
       (setf (fnn-store-lock-fd store) nil)
       (unwind-protect (fnn-flock fd +fnn-lock-un+)
         (fnn-close fd)))))
-
-(defun fnn-durable-records (store &optional (selected-lower 0))
-  (let ((records nil) (sequences nil) (aggregate 0)
-        ;; One bounded read per file, at the persisted profile's record
-        ;; ceiling plus the frame overhead (ACL2's figure,
-        ;; host/store-host.lisp `fn-store-profile-read-bound').
-        (bound (fnn-core 'fn-store-profile-read-bound (fnn-store-config store))))
-    (multiple-value-bind (files actual-lower)
-        (fnn-transaction-files store selected-lower)
-      (loop for (sequence . path) in files do
-        (fnn-check-regular path)
-        (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
-          (incf aggregate (length record))
-          ;; ACL2's bound (fn-profile-replay-within-boundp).
-          (unless (fnn-core 'fn-store-profile-replay-within-bound
-                            (fnn-store-config store) aggregate)
-            (fnn-fault "transaction recovery input exceeds configured bound"))
-          (unless (= (fnn-bridge-record-sequence record) sequence)
-            (fnn-fault "record sequence does not match immutable filename"))
-          (push sequence sequences)
-          (push record records)))
-      (values (nreverse records) actual-lower (nreverse sequences)))))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -2377,86 +2136,6 @@ empties it first (fnn-bridge-recover)."
           (values :ok (second answer))
           (values :refused 0)))))
 
-(defun fnn-recover-file-chunks (store files)
-  "A chunk source over the transaction FILES ((sequence . path) ...): each call
-reads the next chunk's files, unframes each (fnn-unframe-list), checks the
-aggregate against ACL2's replay bound as it goes, and answers ACL2's
-`fn-srs-checked-decode' of the numbered chunk ((SEQUENCE . RECORD) ...): the
-chunk's decode, or :sequence when a record's sequence is not its file's
-number (KEYSTONE fn-srs-checked-decode-is-the-per-file-check: the per-file
-check `fnn-durable-records' makes, in the one decode).  One bounded read per
-file, at the persisted profile's record ceiling plus the frame overhead
-(host/store-host.lisp `fn-store-profile-read-bound').  Only the chunk being
-decoded is in memory: the files are read as the replay takes them."
-  (let ((aggregate 0)
-        (bound (fnn-core 'fn-store-profile-read-bound (fnn-store-config store))))
-    (lambda ()
-      (if (null files)
-          :end
-          (let ((chunk nil) (octets 0))
-            (loop while (and files (not (fnn-core 'fn-srs-chunk-fullp octets))) do
-              (destructuring-bind (sequence . path) (pop files)
-                (fnn-check-regular path)
-                (let* ((record (fnn-unframe-list (fnn-read-regular-bounded path bound)))
-                       (length (length record)))
-                  (incf aggregate length)
-                  (incf octets length)
-                  ;; ACL2's bound (fn-profile-replay-within-boundp).
-                  (unless (fnn-core 'fn-store-profile-replay-within-bound
-                                    (fnn-store-config store) aggregate)
-                    (fnn-fault "transaction recovery input exceeds configured bound"))
-                  (push (cons sequence record) chunk))))
-            (fnn-core 'fn-srs-checked-decode (nreverse chunk)))))))
-
-(defun fnn-recover-full-replay (store config-records &optional (reason nil))
-  "Today's open: every durable record, then one full replay, taken in chunks;
-answers the history's record count.  Without a selected pack the transaction
-files are read a chunk at a time as the replay takes them
-(`fnn-recover-file-chunks'), so the history is never in memory at once
-besides the arena; with one, the pack reconstructs the prefix first
-(`fnn-committed-history', which checks the marker) and the records go over in
-chunks.  A caller that needs the records' octets reads them with
-`fnn-committed-history'."
-  (let* ((count nil)
-         (next (if (funcall *fnn-pack-selected-callback* store)
-                   (let ((records (fnn-committed-history store)))
-                     (setq count (length records))
-                     (fnn-recover-record-chunks records))
-                   (let ((files (fnn-transaction-files
-                                 store (funcall *fnn-pack-lower-bound-callback* store))))
-                     (setq count (length files))
-                     (fnn-check-history-marker store (length files))
-                     (fnn-recover-file-chunks store files)))))
-    (let ((action (fnn-bridge-recover next (fnn-store-frontier store) config-records)))
-      ;; A named refusal of the open (books/store-open-pre-c1.lisp
-      ;; fn-sopc-classified-open): ACL2 renders the line.
-      (when (eq action :refused)
-        (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
-          (unless (stringp text)
-            (fnn-fault "ACL2 refused the open without naming a reason"))
-          (error 'fnn-store-open-refusal :message text)))
-      (unless (eq action :recovering)
-        (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
-    (when reason
-      (setf (fnn-store-open-mode store) (list :full-replay reason)))
-    count))
-
-(defun fnn-read-suffix-records (store pairs)
-  "Read the transaction files PAIRS ((sequence . path) ...) as fnn-durable-records does."
-  (let ((records nil) (aggregate 0)
-        (bound (fnn-core 'fn-store-profile-read-bound (fnn-store-config store))))
-    (loop for (sequence . path) in pairs do
-      (fnn-check-regular path)
-      (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
-        (incf aggregate (length record))
-        (unless (fnn-core 'fn-store-profile-replay-within-bound
-                          (fnn-store-config store) aggregate)
-          (fnn-fault "transaction recovery input exceeds configured bound"))
-        (unless (= (fnn-bridge-record-sequence record) sequence)
-          (fnn-fault "record sequence does not match immutable filename"))
-        (push record records)))
-    (nreverse records)))
-
 (defun fnn-recover-suffix-rows (store suffix config-records)
   "The open from the loaded checkpoint: the suffix decoded
 (fn-store-sn-recover-records), interned ON TOP of the arena the load left by
@@ -2474,48 +2153,6 @@ arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
           (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
                                       rows (fnn-store-frontier store) configs))))))
 
-(defun fnn-recover-from-state-checkpoint (store config-records)
-  "The history's record COUNT when the checkpoint opened the Store, else :FULL
-after recording why not in open-mode (the caller then replays in full).  The
-covered prefix is not re-encoded (PKT-823): a caller that needs the records
-reads them after the open (`fnn-history-records')."
-  (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
-    (let* ((lower (funcall *fnn-pack-lower-bound-callback* store))
-           (pairs (if (eq status :ok) (fnn-transaction-files store lower) nil))
-           (count (if (eq status :ok)
-                      (fnn-core 'fn-store-sco-observed-count (mapcar #'car pairs) lower)
-                      0))
-           (choice (fnn-core 'fn-store-sco-select status sequence count
-                             (fnn-store-config store))))
-      (unless (and (consp choice) (member (first choice) '(:checkpoint :full-replay)))
-        (fnn-fault "ACL2 returned a malformed checkpoint selection"))
-      (when (eq (first choice) :full-replay)
-        (setf (fnn-store-open-mode store) (list :full-replay (second choice)))
-        (return-from fnn-recover-from-state-checkpoint :full))
-      (let* ((s (second choice))
-             (suffix
-               (if (>= s lower)
-                   ;; Only the files at or after S are read.
-                   (let ((drop (fnn-core 'fn-store-sco-covered-count (mapcar #'car pairs) s)))
-                     (fnn-read-suffix-records store (nthcdr drop pairs)))
-                   ;; A selected pack covers names past S: the pack is read
-                   ;; (one file) and the records before S are dropped.
-                   (multiple-value-bind (physical actual-lower sequences)
-                       (fnn-durable-records store lower)
-                     (nthcdr s (funcall *fnn-pack-recover-callback*
-                                        store physical sequences actual-lower))))))
-        (fnn-check-history-marker store (+ s (length suffix)))
-        (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
-          ;; Full replay is authoritative and decides; the checkpoint is
-          ;; derived.  Never serve a refused checkpoint open.
-          (fnn-core-state 'fn-store-sco-clear)
-          (fnn-bridge-reset)
-          (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
-          (return-from fnn-recover-from-state-checkpoint :full))
-        (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        ;; The history's count; a caller that needs the records reads them
-        ;; (fnn-committed-history), so the prefix is not re-encoded here.
-        (+ s (length suffix))))))
 
 (defun fnn-open-report (store)
   (let ((mode (fnn-store-open-mode store)))
@@ -2889,10 +2526,6 @@ REQUESTED is 1, 0 or NIL (keep the store's policy)."
     (unwind-protect
          (progn
            (fnn-load-config store)
-           (setf (fnn-store-logp store)
-                 (and (fnn-core 'fn-store-profile-logp (fnn-store-config store)) t))
-           (unless (fnn-store-logp store)
-             (fnn-load-frontier store))
            (let* ((record (fnn-filesystem-record-observation store))
                   (observation (fnn-filesystem-observation (fnn-store-root store)))
                   (plan (fnn-core 'fn-smid-rebind-plan record observation requested)))
@@ -3105,86 +2738,17 @@ lock, so a running owner refuses this) and publish its exact-state checkpoint
       (fnn-store-close store))))
 
 (defun fnn-recover (store)
-  "Open STORE: the history replayed (from the state checkpoint or in full),
-the recovery barriers, the staging sweep and the marker catch-up.  Answers
-the history's record COUNT; the records themselves are not kept (PKT-823): a
-caller that needs their octets reads them with `fnn-committed-history'."
+  "The open's recovery.  Every store an image opens is format 9 (the record
+log; a format-8 profile is refused by name at the open,
+books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name):
+fnn-recover-log.  Answers the history's record COUNT; the records themselves
+are not kept (PKT-823): a caller that needs their octets reads them with
+`fnn-committed-history'."
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
-        (fnn-store-marker-catch-up store) nil
         (fnn-store-open-mode store) '(:full-replay :absent))
-  (when (fnn-store-logp store)
-    (return-from fnn-recover (fnn-recover-log store)))
-  (let ((count nil))
-    (handler-case
-        (progn
-          (fnn-load-frontier store)
-          (let ((config-records (fnn-config-records store)))
-            (setq count (fnn-with-pack-memo
-                            (let ((opened (fnn-recover-from-state-checkpoint
-                                           store config-records)))
-                              (if (eq opened :full)
-                                  (fnn-recover-full-replay store config-records)
-                                  opened)))))
-          (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
-                (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
-                (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
-      ((or fnn-store-fault fnn-store-indeterminate fnn-store-open-refusal) (e)
-        (setf (fnn-store-fenced store) t)
-        (error e))
-      (fnn-store-error (e)
-        (setf (fnn-store-fenced store) t)
-        (fnn-fault "cannot reconstruct committed history: ~a" e)))
-    (fnn-at store :recover-replayed)
-    (handler-case
-        (let ((phase nil))
-          (loop for barrier in (list (lambda () (fnn-fsync-regular (fnn-config-path store)))
-                                 (lambda () (fnn-fsync-regular (fnn-frontier-path store)))
-                                 (lambda () (fnn-fsync-dir (fnn-transactions store)))
-                                 (lambda () (fnn-fsync-dir (fnn-store-root store)))
-                                 (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store)))))
-                for ordinal from 1 do
-            (handler-case (funcall barrier)
-              (fnn-os-error (e)
-                (fnn-observe store :recovery-barrier :uncertain)
-                (error e)))
-            (setq phase (fnn-observe store :recovery-barrier :ok))
-            (unless (member phase '(:recovering :ready))
-              (fnn-fault "ACL2 rejected recovered barrier ordering"))
-            (fnn-at store (intern (format nil "RECOVER-BARRIER-~d" ordinal) :keyword)))
-          (unless (eq phase :ready)
-            (fnn-fault "ACL2 did not complete all recovery barriers")))
-      (fnn-os-error ()
-        (setf (fnn-store-fenced store) t)
-        (fnn-indeterminate "cannot establish recovered namespace frontier")))
-    ;; The model's sweep transition is enabled only after the fifth recovery
-    ;; observation reached :ready.  A shared-lock reader may report its
-    ;; bounded observation, but it does not mutate a namespace it does not
-    ;; exclusively own.
-    (handler-case
-        (if (fnn-store-writable store)
-            (fnn-sweep-staging store)
-            (setf (fnn-store-orphans store) (fnn-staging-orphans store)))
-      ((or fnn-store-fault fnn-store-indeterminate) (e)
-        (setf (fnn-store-fenced store) t)
-        (error e)))
-    ;; D31 case 2: the marker catches up here, after the fifth barrier made
-    ;; every reconstructed record durable and before the open returns, so a
-    ;; record this process later answers as stored (a retry resolved as
-    ;; already stored, with no later commit) is below a durable marker.  A
-    ;; reader under the shared lock writes nothing and answers no submission.
-    ;; An error in the marker program is uncertain (exit 3); the next open
-    ;; catches up again.
-    (let ((frame (fnn-store-marker-catch-up store)))
-      (when (and frame (fnn-store-writable store))
-        (fnn-mark-committed store nil frame)
-        (setf (fnn-store-marker-catch-up store) nil)))
-    ; Full journal replay above remains authoritative.  The checkpoint layer
-    ; restores into separate ACL2 globals and compares that image with
-    ; fn-store-sn; it cannot reset or replace the live node.
-    (setf (fnn-store-checkpoint-outcome store)
-          (funcall *fnn-checkpoint-recover-callback* store count))
-    (setf (fnn-store-fenced store) nil)
-    count))
+  (unless (fnn-store-logp store)
+    (fnn-fault "a store that is not on the record log opened"))
+  (fnn-recover-log store))
 
 (defun fnn-require-writer (store)
   (unless (and (fnn-store-writable store) (fnn-store-lock-fd store))
@@ -3220,141 +2784,23 @@ recovery sweep owns."
       (fnn-close fd))))
 
 (defun fnn-advance-frontier (store current-txid)
-  "Report each allocator observation to the file kernel in order."
-  (when (fnn-store-logp store)
-    (return-from fnn-advance-frontier (fnn-log-reserve store current-txid)))
-  (fnn-require-writer store)
-  (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
-  (unless (eql current-txid (fnn-store-frontier store))
-    (setf (fnn-store-fenced store) t)
-    (fnn-fault "ACL2 allocator and durable frontier disagree"))
-  (let* ((next (fnn-metadata-frontier-next current-txid))
-         (contents (and next (fnn-metadata-frontier-frame next)))
-         (stage (fnn-join (fnn-staging store)
-                          (format nil ".allocation-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
-         (attempted nil))
-    (when (null next)
-      (fnn-refuse "finite transaction-ID domain exhausted"))
-    (handler-case
-        (progn
-          (unless (eq (fnn-observe store :start-frontier) :frontier-staged)
-            (setf (fnn-store-fenced store) t)
-            (fnn-fault "ACL2 rejected allocator start"))
-          (fnn-write-staged-at store stage contents :frontier-created :frontier-written)
-          (setf (fnn-store-fenced store) t)
-          (unless (eq (fnn-observe store :frontier-file :ok) :frontier-data-durable)
-            (fnn-fault "ACL2 rejected durable allocator file"))
-          (fnn-at store :frontier-staged-durable)
-          (setq attempted t)
-          (setf (fnn-store-fenced store) t)
-          (handler-case (fnn-replace stage (fnn-frontier-path store))
-            (fnn-os-error (e) (fnn-observe store :frontier-replace :error) (error e)))
-          (fnn-at store :frontier-replaced)
-          (unless (eq (fnn-observe store :frontier-replace :ok) :frontier-attempted)
-            (fnn-indeterminate "ACL2 rejected allocator replacement after the namespace attempt"))
-          (fnn-at store :frontier-attempted)
-          (setf (fnn-store-fenced store) t)
-          (handler-case (progn (fnn-at store :frontier-barrier)
-                               (fnn-fsync-dir (fnn-store-root store)))
-            (fnn-os-error (e) (fnn-observe store :frontier-directory :error) (error e)))
-          (fnn-at store :frontier-durable)
-          (unless (eq (fnn-observe store :frontier-directory :ok) :reserved)
-            (fnn-indeterminate "ACL2 rejected durable allocator frontier after its barrier"))
-          (setf (fnn-store-fenced store) nil (fnn-store-frontier store) next)
-          (fnn-at store :frontier-reserved)
-          next)
-      (fnn-os-error (e)
-        (when attempted
-          (setf (fnn-store-fenced store) t)
-          (fnn-indeterminate "allocation-frontier update is indeterminate"))
-        (fnn-observe store :frontier-file :known-fail)
-        (fnn-refuse-io "known pre-publication allocator failure: ~a" e)))))
-
-(defun fnn-log-staging-cleanup (step stage sequence condition)
-  "Log the swallowed error CONDITION of fnn-publish's staging cleanup STEP.
-
-The line is ACL2's (books/owner-log.lisp fn-olog-staging-cleanup-line): the
-step, the sequence of the durable record, the stage path, the errno when the
-condition is an OS error, and the condition's report as SBCL gives it.  If
-rendering or writing the line fails, stderr says so and names both errors;
-the record is durable either way and the caller's outcome does not change."
-  (handler-case
-      (fnn-log-line
-       (fnn-core 'fn-olog-staging-cleanup-line
-                 step
-                 (fnn-octet-list (fnn-string-octets stage))
-                 sequence
-                 (and (typep condition 'fnn-os-error) (fnn-os-errno condition))
-                 (fnn-octet-list (fnn-string-octets (princ-to-string condition)))))
-    (error (failure)
-      (ignore-errors
-       (fnn-err "service log line for a swallowed staging cleanup error failed: ~a; the swallowed error: ~a"
-                failure condition)))))
+  "The allocator's reservation: the record log's (fnn-log-reserve; the
+frontier is derived from the log, design 2026-09-27 section 3.3)."
+  (unless (fnn-store-logp store)
+    (fnn-fault "a store that is not on the record log opened"))
+  (fnn-log-reserve store current-txid))
 
 (defun fnn-publish (store sequence record)
-  (when (fnn-store-logp store)
-    (return-from fnn-publish (fnn-log-publish store sequence record)))
-  (fnn-require-writer store)
-  (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
-  ; This is a final assertion after preparation.  Normal resource refusal was
-  ; already decided from the ACL2 kind ceiling before allocator reservation.
-  (unless (eq (fnn-core 'fn-store-publication-admissibility
-                        (fnn-store-config store) sequence (length record))
-              :admissible)
-    (fnn-refuse "prepared Store transaction exceeds persisted profile"))
-  (let* ((final (fnn-join (fnn-transactions store) (fnn-transaction-name sequence)))
-         (stage (fnn-join (fnn-staging store)
-                          (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
-         (data (fnn-frame record))
-         (attempted nil))
-    (handler-case
-        (progn
-          (fnn-write-staged-at store stage data :record-created :record-written)
-          (setf (fnn-store-fenced store) t)
-          (unless (eq (fnn-observe store :record-file :ok) :record-data-durable)
-            (fnn-fault "ACL2 rejected durable record file"))
-          (setf (fnn-store-fenced store) nil)
-          (fnn-at store :record-staged-durable)
-          (setq attempted t)
-          (setf (fnn-store-fenced store) t)
-          (handler-case (fnn-link stage final)
-            (fnn-os-error (e) (fnn-observe store :record-link :error) (error e)))
-          (fnn-at store :record-linked)
-          (unless (eq (fnn-observe store :record-link :ok) :record-attempted)
-            (setf (fnn-store-fenced store) t)
-            (fnn-indeterminate "ACL2 rejected record publication after the final-name attempt"))
-          (fnn-at store :record-attempted)
-          (handler-case (progn (fnn-at store :record-barrier)
-                               (when *fnn-record-directory-fault-observer*
-                                 (funcall *fnn-record-directory-fault-observer*
-                                          final))
-                               (fnn-fsync-dir (fnn-transactions store)))
-            (fnn-os-error (e) (fnn-observe store :record-directory :error) (error e)))
-          (fnn-at store :record-durable)
-          (unless (eq (fnn-observe store :record-directory :ok) :completing)
-            (fnn-indeterminate "ACL2 rejected record directory barrier after publication"))
-          (setf (fnn-store-completion-pending store) t)
-          (fnn-at store :record-completing)
-          ;; Best-effort cleanup: an error here is swallowed, as the model's
-          ;; P-RECORD says, and that includes an EIO selected at the
-          ;; `record-stage-unlinked' cut between the unlink and its barrier.
-          ;; Swallowed, not silent: each such error leaves one service-log
-          ;; line (fnn-log-staging-cleanup), and nothing that line does can
-          ;; change the outcome, since the `ignore-errors' holds it too.
-          (let ((step :unlink))
-            (ignore-errors
-             (handler-case (progn (fnn-unlink stage)
-                                  (setq step :directory-barrier)
-                                  (fnn-at store :record-stage-unlinked)
-                                  (fnn-fsync-dir (fnn-staging store)))
-               (error (e) (fnn-log-staging-cleanup step stage sequence e)))))
-          (fnn-at store :record-staging-cleaned)
-          :durable)
-      (fnn-os-error (e)
-        (when attempted
-          (setf (fnn-store-fenced store) t)
-          (fnn-indeterminate "transaction publication outcome is indeterminate"))
-        (fnn-refuse-io "known pre-publication store failure: ~a" e)))))
+  "The record's publication: the record log's P-BATCH (fnn-log-publish)."
+  ;; Developer injection only, no process-death cut (FN_NATIVE_POST_FAULT=
+  ;; record-prepublish:refuse, fnn-post-test-fault): a known refusal before
+  ;; anything of the record is written, which the owner resolves by ACL2's
+  ;; known abort (host/native/owner.lisp fnn-owner-publish-prepared;
+  ;; tests/test_native_known_abort.py).
+  (fnn-at store :record-prepublish)
+  (unless (fnn-store-logp store)
+    (fnn-fault "a store that is not on the record log opened"))
+  (fnn-log-publish store sequence record))
 
 (defun fnn-finish (store)
   "Open the writer gate only after exact fn-sn durable completion."
@@ -3386,7 +2832,9 @@ the record is durable either way and the caller's outcome does not change."
     ;; now (fn-lgc-finish-one).  Inside a batch the committer acknowledges
     ;; each member after the batch's barrier (fnn-log-batch-finish).
     (when (and (fnn-store-logp store) (not *fnn-log-batch*))
-      (fnn-log-ack (fnn-store-log store) 1))
+      (fnn-log-ack (fnn-store-log store) 1)
+      ;; and its staged payload reseated as its log extent (PRF-309)
+      (fnn-log-reseat-fenced (fnn-store-log store)))
     (handler-case (fnn-at store :finish-durable)
       (fnn-os-error (e)
         (setf (fnn-store-fenced store) t)
@@ -3493,7 +2941,6 @@ the records are read after the open by the verbs that need them
 
 (defparameter +fnn-init-model-cuts+
   '("init-root-mkdir" "init-root-parent-fenced" "init-lock-created"
-    "init-transactions-mkdir" "init-transactions-parent-fenced"
     "init-staging-mkdir" "init-staging-parent-fenced"
     "init-config-dir-mkdir" "init-config-dir-parent-fenced"
     "init-config-created" "init-config-written" "init-config-file-fenced"
@@ -3501,17 +2948,14 @@ the records are read after the open by the verbs that need them
     "init-history-created" "init-history-written" "init-history-file-fenced"
     "init-history-linked" "init-history-link-eexist" "init-history-root-fenced" "init-history-stage-unlinked"
     "init-config-history-fenced"
-    "init-frontier-created" "init-frontier-written" "init-frontier-file-fenced"
-    "init-frontier-linked" "init-frontier-link-eexist" "init-frontier-root-fenced" "init-frontier-stage-unlinked"
     "init-final-config-file-fenced" "init-final-config-record-file-fenced"
-    "init-final-frontier-file-fenced" "init-transactions-fenced"
     "init-root-fenced" "init-parent-fenced"
     ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 9).
     "init-journal-mkdir" "init-journal-parent-fenced"
     "init-segment-created" "init-segment-written" "init-segment-file-fenced"
     "init-journal-segment-fenced"))
 
-;; These controls are intentionally outside fn-bsi-current-init-program: they
+;; These controls are intentionally outside fn-bsi-log-init-program: they
 ;; fail *before* a directory enumeration to verify the host does not confuse
 ;; an OS error with an empty configuration history.
 (defparameter +fnn-init-test-controls+
@@ -3572,10 +3016,7 @@ in-process retry."
         (unless colon
           (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT (expected MODEL-CUT:eio|kill)"))
         (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
-          ;; The recovery's marker catch-up runs the marker program, whose
-          ;; cuts are ACL2's table (books/store-history-marker).
-          (unless (or (member label +fnn-recovery-model-cuts+ :test #'string=)
-                      (member label (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
+          (unless (member label +fnn-recovery-model-cuts+ :test #'string=)
             (fnn-fault "unknown FN_NATIVE_RECOVERY_FAULT cut: ~a" label))
           (list (intern (string-upcase label) :keyword)
                 (cond ((string= action "eio") 'fnn-os-error)
@@ -3772,26 +3213,21 @@ or refuses by name, saying what to run."
            (logp (fnn-core 'fn-store-profile-logp
                            (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))
            (record (fnn-bridge-config-initial (or groups +fnn-default-groups+))))
+      (unless logp
+        (fnn-fault "the init profile is not a record-log profile"))
       (fnn-staged-publication
        "init" stage root-path
-       (if logp
-           ;; books/store-init-log-publication.lisp fn-bs-init-log-files, in
-           ;; its order: the profile, the generation-1 configuration record,
-           ;; the segment's ACL2 extent of zeros.  No allocator file and no
-           ;; transactions/ (a format-9 store reads neither).
-           (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
-                 (cons (fnn-config-record-path stage 1) record)
-                 (cons (fnn-segment-path stage)
-                       (fnn-make-octets (fnn-nat (fnn-core 'fn-store-log-initial-extent)))))
-           ;; fn-bs-init-pub-files, in its order.
-           (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
-                 (cons (fnn-frontier-path stage) (fnn-metadata-frontier-frame 0))
-                 (cons (fnn-config-record-path stage 1) record)))
+       ;; books/store-init-log-publication.lisp fn-bs-init-log-files, in
+       ;; its order: the profile, the generation-1 configuration record,
+       ;; the segment's ACL2 extent of zeros.  No allocator file and no
+       ;; transactions/ (a format-9 store reads neither).
+       (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
+             (cons (fnn-config-record-path stage 1) record)
+             (cons (fnn-segment-path stage)
+                   (fnn-make-octets (fnn-nat (fnn-core 'fn-store-log-initial-extent)))))
        0
        (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
-       (if logp
-           (fnn-core 'fn-bs-init-log-subdir-names)
-           '("transactions" "staging" "config")))
+       (fnn-core 'fn-bs-init-log-subdir-names))
       ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
       ;; once the store is published (outside fn-bs-init-pub-program: a
       ;; death between the two leaves the complete store without
@@ -3891,61 +3327,48 @@ vectors, in order)."
 (defun fnn-history-records (store)
   "The history of the acquired and opened STORE as the open reads it, each
 record's exact octets in sequence order.  Format 9 (the one store format,
-D34): the record log as the open read it (`fnn-log-history-records').  The
-per-file branch (the selected pack's records and then the suffix files,
-`fnn-durable-records' and the pack callbacks, as `fnn-recover-full-replay')
-is the per-file open's twin; the open refuses a format-8 profile by name
-(books/store-profile-open.lisp :store-format), so it is
-unreachable-in-composition with that open (PKT-COL-1's remainder).  The open no longer keeps them
+D34): the record log as the open read it (`fnn-log-history-records'); the
+per-file branch went with the per-file layout (PKT-838).  The open no longer keeps them
 (PKT-823): a verb that needs the records' octets after `fnn-open-live-store'
 reads them here, under the lock the open took, which no writer shares, so
 they are the records the open replayed.  No file length or directory listing
 stands in for a record."
-  (if (fnn-store-logp store)
-      (fnn-log-history-records store)
-      (multiple-value-bind (physical lower sequences)
-          (fnn-durable-records store (funcall *fnn-pack-lower-bound-callback* store))
-        (funcall *fnn-pack-recover-callback* store physical sequences lower))))
+  (unless (fnn-store-logp store)
+    (fnn-fault "a store that is not on the record log opened"))
+  (fnn-log-history-records store))
 
 (defun fnn-history-last-record (store)
-  "The history's newest record's octets, or NIL when there is none: the newest
-transaction file past the selected pack (the history is the pack's records and
-then those files, `fnn-history-records'), unframed as the open unframes it;
-without such a file, the last of the pack's reconstruction.  Read after the
-open, under its lock, so it is the record the open replayed last.  Format
-9: the active segment's last committed record (fnn-log-read-active-segment), else the last closed segment's
-the open scanned, else (a checkpoint open whose suffix is empty) the
-covered prefix's last (fn-store-sco-last-record-octets)."
-  (when (fnn-store-logp store)
-    (return-from fnn-history-last-record
-      (let ((last nil))
-        (fnn-log-history-plan store)
-        (fnn-log-read-active-segment store (lambda (r) (setq last (fnn-octets r))))
-        (cond (last last)
-              ((car (last (fnn-log-closed-records store))))
-              ((first (fnn-log-history-plan store))
-               (let ((octets (fnn-core-arena-state 'fn-store-sco-last-record-octets)))
-                 (and octets (fnn-as-octets octets))))
-              (t nil)))))
-  (let ((files (fnn-transaction-files store (funcall *fnn-pack-lower-bound-callback* store))))
-    (if files
-        (let ((path (cdr (car (last files)))))
-          (fnn-check-regular path)
-          (fnn-unframe (fnn-read-regular-bounded
-                        path (fnn-core 'fn-store-profile-read-bound (fnn-store-config store)))))
-        (car (last (fnn-history-records store))))))
+  "The history's newest record's octets, or NIL when there is none.  Read
+after the open, under its lock, so it is the record the open replayed last:
+the open's own newest record while nothing was committed since
+(snapshot-open), else the active segment's last committed record
+(fnn-log-read-active-segment), else the last closed segment's the open
+scanned, else (a checkpoint open whose suffix is empty) the covered prefix's
+last (fn-store-sco-last-record-octets)."
+  (unless (fnn-store-logp store)
+    (fnn-fault "a store that is not on the record log opened"))
+  (let ((last nil)
+        (noted (fnn-store-log-last store)))
+    (fnn-log-history-plan store)
+    ;; The open's own newest record, while no record was committed since
+    ;; (the rotation check is fnn-log-history-plan's).
+    (when (and noted
+               (eql (first noted) (fnn-log-committed-count store)))
+      (return-from fnn-history-last-record (fnn-octets (second noted))))
+    (fnn-log-read-active-segment store (lambda (r) (setq last (fnn-octets r))))
+    (cond (last last)
+          ((car (last (fnn-log-closed-records store))))
+          ((first (fnn-log-history-plan store))
+           (let ((octets (fnn-core-arena-state 'fn-store-sco-last-record-octets)))
+             (and octets (fnn-as-octets octets))))
+          (t nil))))
 
 (defun fnn-committed-history (store)
-  "`fnn-history-records' with the committed-history marker checked against
-their count (`fnn-check-history-marker'), for a reader that has not opened
-STORE through `fnn-recover'.  The caller holds STORE's writer lock for as
-long as it uses the result.  A format-9 store has no marker object (M := D:
-the log's last complete entry is the committed history, `fnn-mark-committed'),
-so its history is the log's, unchecked here."
-  (let ((records (fnn-history-records store)))
-    (unless (fnn-store-logp store)
-      (fnn-check-history-marker store (length records)))
-    records))
+  "`fnn-history-records', for a reader that has not opened STORE through `fnn-recover'.  The caller
+holds STORE's writer lock for as long as it uses the result.  A format-9 store
+has no marker object (M := D: the log's last complete entry is the committed
+history)."
+  (fnn-history-records store))
 
 ;;; `store export DIR' and `store import DIR' (D34, books/store-export.lisp).
 
@@ -3982,9 +3405,7 @@ checkpoint's covered prefix then the scanned segments,
                 ;; fn-store-log-next-txid), so the entry means what a
                 ;; format-8 archive's does.
                 (frontier (fnn-octet-list
-                           (if (fnn-store-logp store)
-                               (fnn-metadata-frontier-frame (fnn-store-frontier store))
-                             (fnn-read-regular-bounded (fnn-frontier-path store) 4096))))
+                           (fnn-metadata-frontier-frame (fnn-store-frontier store))))
                 (configs (mapcar (lambda (pair) (cons (car pair) (fnn-octet-list (cdr pair))))
                                  (fnn-config-record-observation store)))
                 ;; The history the open recovered, read after it: on format
@@ -4013,6 +3434,19 @@ checkpoint's covered prefix then the scanned segments,
 
 (defun fnn-archive-read-dir (dir sub)
   (sort (copy-list (fnn-list-directory (fnn-join dir sub))) #'string<))
+
+;;; One entry of an archive `store import' reads.  The archive is external
+;;; input: an entry that is absent or larger than its work bound is a
+;;; refusal of that archive by the entry's name (exit 1), never a fault of
+;;; the host (lane fuzz-nntp found `[Errno 2]' and `store file exceeds bound'
+;;; faults, exit 4, from a dropped MANIFEST and an enlarged frontier).
+(defun fnn-archive-entry (dir name maximum)
+  (let ((path (fnn-join dir name)))
+    (unless (fnn-check-regular path)
+      (fnn-refuse "import refused reason=archive-incomplete entry=~a" name))
+    (handler-case (fnn-read-regular-bounded path maximum)
+      (fnn-input-overbound ()
+        (fnn-refuse "import refused reason=entry-over-bound entry=~a bound=~d" name maximum)))))
 
 ;; books/store-import-publication.lisp fn-bs-imp-program's cuts, in program
 ;; order.  The per-subdirectory and per-file cuts repeat; `fnn-at' fires at
@@ -4187,32 +3621,42 @@ presence of the two names is classified by fn-bs-imp-classify."
         (t (fnn-fault "ACL2 classified a present staged directory as absent")))))
   (when (fnn-lstat root)
     (fnn-refuse "import refused reason=store-exists"))
-  (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-join dir "profile") 16384)))
-         (frontier (fnn-octet-list (fnn-read-regular-bounded (fnn-join dir "frontier") 4096)))
+  (let* ((profile (fnn-octet-list (fnn-archive-entry dir "profile" 16384)))
+         (frontier (fnn-octet-list (fnn-archive-entry dir "frontier" 4096)))
          (config-names (fnn-archive-read-dir dir "config"))
          (record-names (fnn-archive-read-dir dir "records"))
          ;; Work bounds, not data bounds: one record file is read within the
          ;; archive profile's record bound (the bound it was committed under),
-         ;; and the MANIFEST within one line per entry.
-         (record-bound (fnn-core 'fn-store-profile-read-bound
-                                 (fnn-core 'fn-bs-config-decode profile)))
+         ;; and the MANIFEST within one line per entry.  A profile the codec
+         ;; does not decode gives no bound: no record is read, and the plan
+         ;; below refuses the archive by name (its MANIFEST check comes first
+         ;; and names the profile when its octets changed; lane fuzz-nntp,
+         ;; planning/evidence/fuzz-nntp-2026-09-27.md).
+         (decoded (fnn-core 'fn-bs-config-decode profile))
+         (record-bound (and decoded (fnn-core 'fn-store-profile-read-bound decoded)))
          (manifest (fnn-octet-list
-                    (fnn-read-regular-bounded
-                     (fnn-join dir "MANIFEST")
+                    (fnn-archive-entry
+                     dir "MANIFEST"
                      (* 512 (+ 2 (length config-names) (length record-names))))))
          (configs (mapcar (lambda (name)
                             (cons name (fnn-octet-list
-                                        (fnn-read-regular-bounded
-                                         (fnn-join (fnn-join dir "config") name)
+                                        (fnn-archive-entry
+                                         dir (fnn-join "config" name)
                                          +fnn-config-record-bytes+))))
                           config-names))
-         (records (mapcar (lambda (name)
-                            (let ((octets (fnn-read-regular-bounded
-                                           (fnn-join (fnn-join dir "records") name)
-                                           record-bound)))
-                              (cons (fnn-bridge-record-sequence octets)
-                                    (fnn-octet-list octets))))
-                          record-names))
+         ;; The sequence is ACL2's decode of the record, whatever it is: a
+         ;; record that does not decode is not a natural, and
+         ;; fn-sxp-out-of-sequence refuses it by name (after the MANIFEST
+         ;; check), instead of the host faulting on ACL2's answer.
+         (records (and record-bound
+                       (mapcar (lambda (name)
+                                 (let ((octets (fnn-archive-entry
+                                                dir (fnn-join "records" name)
+                                                record-bound)))
+                                   (cons (fnn-core 'fn-store-record-sequence
+                                                   (fnn-octet-list octets))
+                                         (fnn-octet-list octets))))
+                               record-names)))
          (plan (fnn-core 'fn-sxp-import-plan manifest profile frontier configs records
                          (or request '(:current nil)))))
     (unless (and (consp plan) (member (first plan) '(:import :refused)))
@@ -4229,6 +3673,8 @@ presence of the two names is classified by fn-bs-imp-classify."
              (stage-root (format nil "~a.import-~a" root-path (fnn-random-hex 6)))
              (stage (make-fnn-store stage-root :writable t :fault (fnn-import-test-fault)))
              (logp (fnn-core 'fn-store-profile-logp values)))
+        (unless logp
+          (fnn-fault "ACL2's import plan is not a record-log profile"))
         (fnn-staged-publication
          "import" stage root-path
          ;; fn-sxp-import-plan's files, in its order.  The plan's profile is
@@ -4237,24 +3683,13 @@ presence of the two names is classified by fn-bs-imp-classify."
          ;; the profile, the configuration records, the segment's ACL2 extent
          ;; of zeros; no allocator file, no transactions/), and the records go
          ;; into the log below, not into transaction files.
-         (if logp
-             (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values)))
-                     (mapcar (lambda (config)
-                               (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
-                             configs)
-                     (list (cons (fnn-segment-path stage)
-                                 (fnn-make-octets
-                                  (fnn-nat (fnn-core 'fn-store-log-initial-extent))))))
-           (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values))
-                         (cons (fnn-frontier-path stage) frontier))
-                   (mapcar (lambda (config)
-                             (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
-                           configs)
-                   (mapcar (lambda (record)
-                             (cons (fnn-join (fnn-transactions stage)
-                                             (fnn-transaction-name (car record)))
-                                   (fnn-frame (fnn-octets (cdr record)))))
-                           records)))
+         (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values)))
+                 (mapcar (lambda (config)
+                           (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
+                         configs)
+                 (list (cons (fnn-segment-path stage)
+                             (fnn-make-octets
+                              (fnn-nat (fnn-core 'fn-store-log-initial-extent))))))
          (length records)
          ;; The imported store is a new store on the filesystem ROOT is on
          ;; (its stage is ROOT's sibling): its record, under the import's
@@ -4264,15 +3699,12 @@ presence of the two names is classified by fn-bs-imp-classify."
          ;; admits it.
          (lambda (stage)
            (fnn-record-filesystem-at-init stage request policy)
-           (when logp
-             (fnn-log-init-segment stage)
-             (fnn-log-write-history stage values records)))
+           (fnn-log-init-segment stage)
+           (fnn-log-write-history stage values records))
          ;; The staged tree's subdirectories: a format-9 store's are init's
          ;; (journal/ among them: fnn-log-init-segment's caller makes it
          ;; since log-2's initializer program).
-         (if logp
-             (fnn-core 'fn-bs-init-log-subdir-names)
-             '("transactions" "staging" "config")))
+         (fnn-core 'fn-bs-init-log-subdir-names))
         (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
         +fnn-exit-ok+))))
 
@@ -4359,45 +3791,30 @@ books/store-init-log-publication.lisp)."
                                     kind (or verdict "unobserved") stage-root root-path e))))))))
 
 (defparameter +fnn-cli-faults+
-  (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
-                                 "injected known abort before publication"))
-        ;; On the record log (format 9) the same outcomes arm the log's
-        ;; cuts: after the batch's barrier (the record durable) and at the
-        ;; batch's write before its barrier.
-        (cons "postpublish" (list '(:record-attempted :log-fenced) 'fnn-store-indeterminate
+  ;; The record log's cuts: after the batch's barrier (the record durable)
+  ;; and at the batch's write before its barrier.
+  (list (cons "postpublish" (list :log-fenced 'fnn-store-indeterminate
                                   "indeterminate injected failure after final publication"))
-        (cons "frontierbarrier" (list :frontier-barrier 'fnn-os-error
-                                      "injected allocator directory barrier failure"))
-        (cons "recordbarrier" (list '(:record-barrier :log-written) 'fnn-os-error
+        (cons "recordbarrier" (list :log-written 'fnn-os-error
                                     "injected transaction directory barrier failure"))))
 
 (defparameter +fnn-post-model-cuts+
-  '(:frontier-created :frontier-written
-    :frontier-staged-durable :frontier-replaced :frontier-attempted
-    :frontier-durable :frontier-reserved
-    :record-created :record-written :record-staged-durable
-    :record-linked :record-attempted :record-durable :record-completing
-    :record-stage-unlinked :record-staging-cleaned
-    ;; fnn-mark-committed: fn-bs-marker-program (books/byte-store-marker-program),
-    ;; whose names are fn-hm-marker-cut-names.
-    :marker-created :marker-written :marker-staged-durable
-    :marker-replaced :marker-durable
-    :finish-consumed :finish-durable))
+  '(:frontier-reserved :record-completing :finish-consumed :finish-durable))
 
 ;; The log route's commit cuts (format 9; tests/campaign/native_cuts.py
-;; POST_LOG_CUTS), in a served batch's order: each member's finish (its
-;; in-memory completion, fnn-finish's two cuts), then P-BATCH's append and
-;; barrier (fnn-log-commit-open-batch).  A batch of one runs the append and
-;; the barrier before its finish.
+;; POST_LOG_CUTS), in a served batch's order: each member's place
+;; (fnn-log-publish's record-completing) and finish (its in-memory
+;; completion, fnn-finish's two cuts), then P-BATCH's append and barrier
+;; (fnn-log-commit-open-batch).  Inside a batch the first three precede the
+;; append: the record is absent at them (lane ack-before-barrier: the table
+;; named record-completing only as a batch of one's, present).  A batch of
+;; one runs the append and the barrier before its place and finish.
 (defparameter +fnn-post-log-model-cuts+
-  '(:finish-consumed :finish-durable :log-written :log-fenced))
+  '(:record-completing :finish-consumed :finish-durable :log-written :log-fenced))
 
 (defun fnn-post-test-fault ()
-  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.
-
-The frontier-attempted:stop and record-attempted:stop variants park the process
-for an isolated block fault test. They resume at the same cut and do not inject
-an ACL2 outcome.
+  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector, or
+record-prepublish:refuse (a known refusal before the record's first write).
 
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
 fnn-at boundaries.  SIGKILL cannot run unwind-protect, so the next command
@@ -4410,19 +3827,20 @@ observes a genuine new-process image."
         (let* ((label (subseq raw 0 colon))
                (point (intern (string-upcase label) :keyword))
                (action (subseq raw (1+ colon))))
+          ;; The one injection-only point: a known refusal before the
+          ;; record's first write (fnn-publish), never a kill.
+          (when (eq point :record-prepublish)
+            (unless (string= action "refuse")
+              (fnn-fault "FN_NATIVE_POST_FAULT record-prepublish takes only :refuse"))
+            (return-from fnn-post-test-fault
+              (list point 'fnn-store-error
+                    "developer-only known refusal before publication")))
           (unless (or (member point +fnn-post-model-cuts+)
-                      (member point +fnn-post-log-model-cuts+)
-                      ;; The committed-history marker's cuts are ACL2's
-                      ;; table (books/store-history-marker).
-                      (member (string-downcase label)
-                              (fnn-core 'fn-hm-marker-cut-names) :test #'string=))
+                      (member point +fnn-post-log-model-cuts+))
             (fnn-fault "unknown FN_NATIVE_POST_FAULT cut: ~a" label))
           (list point
                 (cond ((string= action "eio") 'fnn-os-error)
                       ((string= action "kill") :fnn-test-kill)
-                      ((and (string= action "stop")
-                            (member point '(:frontier-attempted
-                                            :record-attempted))) :fnn-test-stop)
                       (t (fnn-fault
                           "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
                 "developer-only native post fault"))))))
@@ -4510,7 +3928,6 @@ error for the same reason."
                      (unless (eq (fnn-bridge-known-abort) :aborted)
                        (fnn-indeterminate "ACL2 rejected known pre-publication abort")))
                    (error e))))
-             (fnn-mark-committed store sequence)
              (setf (fnn-store-fenced store) t)
              (fnn-finish store)
              (fnn-out "committed sequence=~d charge=~d" sequence charge)
@@ -4614,11 +4031,6 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
             (fnn-core 'fn-native-live-status-host-offline kind
                       (fnn-store-config store) (fnn-store-observation store)
                       (fnn-live-arena) *the-live-state*))
-           ;; The selected pack chain (books/checkpoint-pack-chain via
-           ;; host/native/checkpoint.lisp): ACL2 computes the links and the
-           ;; boundary; the offline report does not carry them yet.
-           (when (and (eq kind :status) *fnn-pack-status-callback*)
-             (fnn-out "~a" (funcall *fnn-pack-status-callback* store)))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -4721,8 +4133,7 @@ same size (fnn-probe-article), so the served reader can frame it."
                             (fnn-core-state 'fn-store-sn-pending-sequence))))
               (unless (eq (fnn-publish store pending (fnn-bridge-pending-record))
                           :durable)
-                (fnn-fault "probe publish refused"))
-              (fnn-mark-committed store pending))
+                (fnn-fault "probe publish refused")))
             (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
     (let ((commit-seconds (/ (- (get-internal-real-time) started)
                              (float internal-time-units-per-second 1d0))))
@@ -5372,6 +4783,7 @@ tree root), or stop the build."
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
+    "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
@@ -5402,7 +4814,7 @@ tree root), or stop the build."
     "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"
     "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
     "FN_PULL_TEST_KILL"
-    "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
+    "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
     "FN_NATIVE_LOG_FAULT"
     ;; The power-loss rig's handshake for `fn log append': after each RECOVERED
@@ -5435,8 +4847,41 @@ tree root), or stop the build."
              (string= (third argv) "post")
              "store post"))))
 
+(defun fnn-stack-exhaustion-report (next)
+  "FN_NATIVE_FAULT_BACKTRACE's report of a control-stack exhaustion, printed
+on the exhausted stack before any handler unwinds it, then NEXT (SBCL's own
+signal).  The frames as a run-length list of function names, innermost
+first: a recursion that takes one frame per line or per octet is one row
+with its depth, and the rows under it name the path that called it."
+  (ignore-errors
+   (let ((runs nil))
+     (sb-debug::map-backtrace
+      (lambda (frame)
+        (let ((name (ignore-errors
+                     (sb-di:debug-fun-name (sb-di:frame-debug-fun frame)))))
+          (if (and runs (equal (car (car runs)) name))
+              (incf (cdr (car runs)))
+              (push (cons name 1) runs))))
+      :count most-positive-fixnum)
+     (let ((*print-length* 3) (*print-level* 3))
+       (format *error-output* "~&fault backtrace (thread ~a): control stack exhausted~%"
+               (sb-thread:thread-name sb-thread:*current-thread*))
+       (dolist (run (reverse runs))
+         (format *error-output* "frames ~a x~a~%" (car run) (cdr run))))
+     (finish-output *error-output*)))
+  (funcall next))
+
 (defun fnn-developer-selector-gate (argv)
   "Refuse, before any store is opened, a production start that names a cut."
+  ;; A stack exhaustion is signalled inside fnn-core's handlers, which unwind
+  ;; it before fnn-owner-shared-action-locked's handler-bind sees it: the
+  ;; report is installed at SBCL's signal instead (developer image only).
+  (when (fnn-developer-selector "FN_NATIVE_FAULT_BACKTRACE")
+    (unless (sb-int:encapsulated-p 'sb-kernel::control-stack-exhausted-error
+                                   'fnn-stack-exhaustion-report)
+      (sb-int:encapsulate 'sb-kernel::control-stack-exhausted-error
+                          'fnn-stack-exhaustion-report
+                          #'fnn-stack-exhaustion-report)))
   (let ((found (fnn-developer-selector-refusal argv)))
     (when found
       (error 'fnn-usage-error
@@ -5509,7 +4954,15 @@ tree root), or stop the build."
   ;; SYNC-CV signalled when the syncer returns.
   (lock (sb-thread:make-mutex :name "fn log kernel"))
   (sealed 0) (sync-state :idle)
-  (sync-cv (sb-thread:make-waitqueue :name "fn log sync")))
+  (sync-cv (sb-thread:make-waitqueue :name "fn log sync"))
+  ;; The commit's extent reseat (lane arena-offheap-3, PRF-309): per record
+  ;; of the open batch, newest first, (HANDLE . OCTETS), HANDLE the arena
+  ;; handle the owner's buffer prepare staged for it or NIL; at the append,
+  ;; the staged ones with their places move to INFLIGHT, (H FILE PLACE
+  ;; OCTETS); the fence moves them to FENCED (under LOCK: the syncer's
+  ;; fence); the COMPLETE reseats FENCED (fnn-log-reseat-fenced).
+  ;; EXTENT-FILE the realizer's id of the active segment (EXTENT-PATH).
+  (members nil) (inflight nil) (fenced nil) (extent-file nil) (extent-path nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -5601,6 +5054,14 @@ segment shorter than the extent ACL2 asked within is a fault."
   (or (fnn-read-exact-fd fd count)
       (fnn-fault "log segment shorter than its extent")))
 
+(defvar *fnn-extent-file* nil
+  "The extent realizer's id of the segment being streamed, bound by the full
+replay (fnn-recover-log) when its records' places are wanted; NIL otherwise.")
+
+(defvar *fnn-log-record-place* nil
+  "While the stream hands a record to its sink under *fnn-extent-file*: the
+record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
+
 (defun fnn-log-stream-segment (fd extent unit max genesis sink)
   "The segment's decode from GENESIS as a stream of entries
 (books/store-log-stream.lisp): at the state's offset the header octets ACL2
@@ -5621,7 +5082,19 @@ fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
              (n (fnn-core 'fn-lgw-entry-len (fnn-octet-list h) st extent))
              (e (and n (fnn-octet-list (fnn-log-pread fd pos (fnn-nat n))))))
         (destructuring-bind (took records next) (fnn-call 'fn-lgw-step e st unit max extent)
-          (when took (dolist (record records) (funcall sink record)))
+          (when took
+            (if *fnn-extent-file*
+                ;; The full replay's extent seals (PRF-294): each record's
+                ;; PLACE in this entry, ACL2's (fn-arx-list-places over the
+                ;; entry's octets at POS), bound for the sink as
+                ;; *fnn-log-record-place* (FILE . PLACE), or NIL.
+                (let ((places (fnn-core 'fn-arx-list-places e pos (length records) unit
+                                        0 0 nil 0 0 nil)))
+                  (dolist (record records)
+                    (let ((*fnn-log-record-place*
+                            (and (consp places) (cons *fnn-extent-file* (pop places)))))
+                      (funcall sink record))))
+              (dolist (record records) (funcall sink record))))
           (setq st next))))
     (when (fnn-core 'fn-lgw-broken st)
       (error 'fnn-store-open-refusal
@@ -5662,15 +5135,65 @@ next txid (fn-lgc-t-prepare)."
 
 (defun fnn-log-append (log)
   "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
-and its chained entries are written at the frontier in one positioned write."
+and its chained entries are written at the frontier in one positioned write.
+The batch's staged members go in flight with their places (ACL2's
+fn-arx-list-places over the octets written)."
   (fnn-log-with-kernel (log)
-    (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
+    (let* ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log))
+           (frontier (fnn-core 'fn-lgc-frontier ks)))
       (unless (fnn-core 'fn-lgc-append-admitsp ks unit extent)
         (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
-      (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgc-frontier ks)
-                      (fnn-core 'fn-lgc-append-octets ks unit))
-      (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-append ks unit extent))))
+      (let ((octets (fnn-core 'fn-lgc-append-octets ks unit)))
+        (fnn-log-pwrite (fnn-log-fd log) frontier octets)
+        (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-append ks unit extent))
+        (fnn-log-members-in-flight log octets frontier unit))))
   (fnn-log-at :log-written))
+
+(defun fnn-log-members-in-flight (log octets frontier unit)
+  "The open batch's staged members, with their places, go in flight (under
+the kernel lock): ACL2 reads the places from OCTETS, the entries the append
+wrote at FRONTIER (fn-arx-list-places: a batch's records share chunk
+entries).  Nothing is placed when ACL2 answers none."
+  (let ((members (reverse (fnn-log-members log))))
+    (setf (fnn-log-members log) nil)
+    (when (some #'car members)
+      (let ((places (fnn-core 'fn-arx-list-places octets frontier (length members) unit
+                              0 0 nil 0 0 nil)))
+        (when (and (consp places) (= (length places) (length members)))
+          (unless (equal (fnn-log-extent-path log) (fnn-log-path log))
+            (setf (fnn-log-extent-file log) (fnn-extent-register (fnn-log-path log))
+                  (fnn-log-extent-path log) (fnn-log-path log)))
+          (loop for m in members for place in places
+                when (car m)
+                  do (push (list (car m) (fnn-log-extent-file log) place (cdr m))
+                           (fnn-log-inflight log))))))))
+
+(defvar *fnn-release-pending* nil
+  "Reseated handles whose staged pages wait for their release.")
+
+(defvar *fnn-arena-off-mutex-readers* (list 0)
+  "The count of threads reading the live arena outside the owner's mutex (a
+checkpoint publication, host/native/owner.lisp fnn-owner-publish-captured);
+a staged page is released only while it is 0.")
+
+(defun fnn-log-reseat-fenced (log)
+  "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
+re-pointed at the log extent that now durably holds its payload, as ACL2
+decides it (fn-arx-commit-reseats: KEYSTONE fn-arx-commit-reseats-keep-the-
+arena); the staged pages are then released (fn-arena-release) unless a
+reader outside the owner's mutex (a checkpoint publication) is running, in
+which case they wait for the next COMPLETE."
+  (let ((fenced (fnn-log-with-kernel (log)
+                  (prog1 (reverse (fnn-log-fenced log)) (setf (fnn-log-fenced log) nil)))))
+    (when fenced
+      (let ((arena (fnn-live-arena)))
+        (fnn-call 'fn-arx-commit-reseats fenced arena)
+        (setq *fnn-release-pending* (nconc (mapcar #'first fenced) *fnn-release-pending*))))
+    (when (and *fnn-release-pending* (zerop (car *fnn-arena-off-mutex-readers*)))
+      (let ((arena (fnn-live-arena)))
+        (dolist (h *fnn-release-pending*) (fnn-call 'fn-arena-release h arena))
+        (setq *fnn-release-pending* nil)))))
+
 
 (defun fnn-log-fence (log)
   "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's
@@ -5681,13 +5204,22 @@ it: fn-lgc-take changes only the open batch and the txid, fn-lgc-fence
 only moves the batch in flight to the committed count); the kernel's fence
 reads the kernel as it is when the barrier returned, one step of the
 serialized run fn-lgc-run-refines-the-kernel speaks of."
-  (handler-case (fnn-log-fdatasync (fnn-log-fd log))
+  (handler-case (progn
+                  ;; A developer image's test observer of the record barrier
+                  ;; (host/native/bp-obligation.lisp's release cut): an EIO
+                  ;; here is the barrier's failure.
+                  (when *fnn-record-barrier-fault-observer*
+                    (funcall *fnn-record-barrier-fault-observer* (fnn-log-path log)))
+                  (fnn-log-fdatasync (fnn-log-fd log)))
     (fnn-os-error (e)
       (fnn-log-with-kernel (log)
-        (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
+        (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))
+              (fnn-log-inflight log) nil))
       (fnn-indeterminate "log barrier failed: ~a" e)))
   (fnn-log-with-kernel (log)
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence (fnn-log-kernel log) (fnn-log-unit log))))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence (fnn-log-kernel log) (fnn-log-unit log))
+          (fnn-log-fenced log) (append (fnn-log-inflight log) (fnn-log-fenced log))
+          (fnn-log-inflight log) nil))
   (fnn-log-at :log-fenced))
 
 (defun fnn-log-finish (log count)
@@ -5807,17 +5339,27 @@ chunks close where ACL2 says (fn-srs-chunk-fullp before a record is added, one
 record always taken first), as fnn-recover-record-chunks closes them; any
 chunking opens the same Store (PRF-261
 fn-srs-steps-are-one-step-of-the-concatenation)."
-  (list (fnn-bridge-recover-begin) nil 0 0))
+  (list (fnn-bridge-recover-begin) nil 0 0 nil))
 
 (defun fnn-recover-log-stream-flush (replay)
+  "The open chunk decoded and interned.  With places (the stream's, FIFTH),
+the chunk goes to `fn-arx-intern-step' (books/payload-extent.lisp): a record
+whose place holds its payload is sealed as an EXTENT, no octets on the heap
+(PRF-294; KEYSTONE fn-arx-steps-are-one-step-of-the-concatenation: over any
+chunking, the rows and arena of one resident step over the history, each
+placed record faithful at its place)."
   (when (second replay)
-    (let ((decoded (fnn-core 'fn-store-decode-records (nreverse (second replay)))))
+    (let* ((chunk (nreverse (second replay)))
+           (places (nreverse (fifth replay)))
+           (decoded (fnn-core 'fn-store-decode-records chunk)))
       (when (consp decoded)
         (setf (fourth replay)
               (fnn-core 'fn-store-log-next-txid-of-events decoded (fourth replay))))
-      (unless (fnn-bridge-recover-step (first replay) decoded)
+      (unless (if (some #'identity places)
+                  (fnn-bridge-recover-step-extents (first replay) decoded chunk places)
+                (fnn-bridge-recover-step (first replay) decoded))
         (fnn-fault "ACL2 replay rejected committed transaction history")))
-    (setf (second replay) nil (third replay) 0)))
+    (setf (second replay) nil (third replay) 0 (fifth replay) nil)))
 
 (defun fnn-recover-log-stream-take (replay record)
   "RECORD (ACL2's octet list) into the open chunk; a full chunk is decoded
@@ -5825,6 +5367,7 @@ and interned first."
   (when (and (second replay) (fnn-core 'fn-srs-chunk-fullp (third replay)))
     (fnn-recover-log-stream-flush replay))
   (push record (second replay))
+  (push *fnn-log-record-place* (fifth replay))
   (incf (third replay) (length record)))
 
 (defun fnn-recover-log-stream-end (store replay config-records)
@@ -6015,7 +5558,7 @@ the next open completes); it is a known failure of the checkpoint."
   (let ((plan (fnn-core 'fn-lgs-open-plan (fnn-log-segment-names store) first)))
     (if (eq (first plan) :scan) (third plan) nil)))
 
-(defun fnn-log-scan-segments (store scan genesis sink)
+(defun fnn-log-scan-segments (store scan genesis sink &optional places)
   "Scan the segments SCAN (indices, the last the active one) from GENESIS,
 the chain carried from each segment's kernel to the next (fn-lgc-last), each
 record handed to SINK in order as it is read (fnn-log-stream-segment: one
@@ -6023,23 +5566,29 @@ entry's octets at a time).  The closed segments are read only (the fold's step,
 books/store-log-segments.lisp fn-lgs-open-chain-records / -last over one
 segment, T8's subject: its records and last are the recovered kernel's, which
 the stream's are by fn-lgw-run-is-the-open); the active one is recovered (a
-writable open: P-LOG-RECOVER) or read.  Returns the active segment's log."
+writable open: P-LOG-RECOVER) or read.  Returns the active segment's log.
+With PLACES (the full replay), each segment gets an extent realizer id
+(host/native/extent.lisp fnn-extent-register: a read-only descriptor held for
+the process's life) and the stream binds each record's place for SINK
+(*fnn-log-record-place*)."
   (let ((unit (fnn-store-log-unit))
         (max (fnn-store-log-max store)))
     (loop for (k . more) on scan do
       (let ((path (fnn-segment-path-at store k)))
         (if more
             (let* ((extent (fnn-log-observed-extent path))
-                   (fd (fnn-log-open-segment path extent unit t)))
+                   (fd (fnn-log-open-segment path extent unit t))
+                   (*fnn-extent-file* (and places (fnn-extent-register path))))
               (unwind-protect
                    (setq genesis (fnn-core 'fn-lgc-last
                                            (fnn-log-stream-segment fd extent unit max genesis sink)))
                 (fnn-close fd)))
           (progn
             (fnn-log-complete-rotation store path)
-            (let ((log (if (fnn-store-writable store)
-                           (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis sink)
-                         (fnn-log-open-read-only path unit max genesis sink))))
+            (let* ((*fnn-extent-file* (and places (fnn-extent-register path)))
+                   (log (if (fnn-store-writable store)
+                            (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis sink)
+                          (fnn-log-open-read-only path unit max genesis sink))))
               (setf (fnn-log-index log) k
                     (fnn-log-genesis log) genesis)
               (return-from fnn-log-scan-segments log))))))
@@ -6058,6 +5607,13 @@ genesis."
     (unwind-protect
          (fnn-core 'fn-lgc-last (fnn-log-stream-segment fd extent unit max genesis sink))
       (fnn-close fd))))
+
+(defun fnn-log-committed-count (store)
+  "The active segment's committed record count (the log kernel's, read under
+its lock): fnn-history-last-record's test that nothing was committed since
+the open noted its newest record."
+  (let ((log (fnn-store-log store)))
+    (fnn-core 'fn-lgc-count (fnn-log-with-kernel (log) (fnn-log-kernel log)))))
 
 (defun fnn-log-read-active-segment (store sink)
   "The active segment's COMMITTED records again, one entry at a time, each to
@@ -6157,23 +5713,28 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                   (fnn-fault "ACL2 returned a malformed checkpoint selection"))
                                 (and (eq (first choice) :full-replay) choice))))
                    (config-records (fnn-config-records store))
-                   (acc 0) (kept nil) (scanned 0)
+                   (acc 0) (kept nil) (scanned 0) (newest nil)
                    (replay (and full (fnn-recover-log-stream-begin)))
                    (log (fnn-log-scan-segments
                          store (second plan) genesis
                          (lambda (record)
                            (incf scanned)
+                           (setq newest record)
                            (if replay
                                (fnn-recover-log-stream-take replay record)
                              (progn
                                (setq acc (fnn-core 'fn-store-log-next-txid-step record acc))
-                               (push (fnn-octets record) kept)))))))
+                               (push (fnn-octets record) kept))))
+                         ;; the full replay seals extents: each record's place
+                         replay)))
               ;; The streamed replay folded the txids from its decoded chunks
               ;; (the last chunk decoded here, before the frontier is derived).
               (when replay
                 (fnn-recover-log-stream-flush replay)
                 (setq acc (fourth replay)))
               (fnn-log-batch-reset log)
+              (setf (fnn-store-log-last store)
+                    (and newest (list (fnn-core 'fn-lgc-count (fnn-log-kernel log)) newest)))
               ;; The frontier: the fold, at least the checkpoint's frontier at S
               ;; (the dropped segments' txids) and the log kernel's next, and
               ;; the log kernel caught up to it.
@@ -6290,6 +5851,8 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
         (case verdict
           (:taken (incf (fnn-log-count log))
                   (incf (fnn-log-octets log) entry)
+                  (push (cons *fnn-staged-handle* octets) (fnn-log-members log))
+                  (setq *fnn-staged-handle* nil)
                   (return-from fnn-log-take :taken))
           (:full
            ;; The open batch is at the operator's bound.  Behind a batch in
@@ -6424,10 +5987,12 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
     (setf (fnn-log-pending log) (max 0 (- (fnn-log-pending log) count)))))
 
 (defun fnn-log-batch-finish (store)
-  "After the batch's barrier: every fenced member of the batch acknowledged."
+  "After the batch's barrier: every fenced member of the batch acknowledged,
+and the fenced staged payloads reseated as their log extents."
   (let ((log (fnn-store-log store)))
     (fnn-log-with-kernel (log)
-      (fnn-log-ack log (fnn-log-pending log)))))
+      (fnn-log-ack log (fnn-log-pending log)))
+    (fnn-log-reseat-fenced log)))
 
 ;;; The pipelined commit (lane log-2; books/owner-commit-pipeline.lisp).
 ;;; SEAL under the owner (the START's end, or the COMPLETE's for the next
@@ -6486,6 +6051,16 @@ observation (the COMPLETE re-signals it under the owner)."
           (fnn-log-fence log)
           (fnn-at store :log-fenced))
       (fnn-store-indeterminate (e)
+        (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+        (setq word :failed))
+      ;; An OS error at the barrier's cut, after fnn-log-fence returned (a
+      ;; developer image's FN_NATIVE_POST_FAULT=log-fenced:eio): uncertain
+      ;; for every member, as fnn-log-commit-open-batch classifies the same
+      ;; error on the inline commit -- never the fault boundary's exit 4
+      ;; (lane ack-before-barrier; the wire probe's log-fenced eio row).
+      (fnn-os-error (e)
+        (fnn-log-with-kernel (log)
+          (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
         (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
         (setq word :failed))
       (serious-condition (e)

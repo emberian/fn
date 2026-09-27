@@ -4,8 +4,10 @@
 (include-book "must-fail-checked")
 
 (defconst *bp-groups* '("fn.letters"))
-; Since the acceptance flip the node holds a payload HANDLE (a natp into the
-; arena), never octets: fn-accept-prepare refuses an octet-list payload.
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).
+; This trace's one article (octets (72 105 13 10) before the flip) is handle 0.
 (defconst *bp-payload* 0)
 (defconst *bp-node-empty* (fn-node-initial-state *bp-groups* 16))
 (defconst *bp-node-prepared*

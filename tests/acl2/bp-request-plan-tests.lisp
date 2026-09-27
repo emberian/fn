@@ -5,10 +5,11 @@
 (include-book "../../books/bp-request-plan")
 (include-book "../../books/bp-ion-workflow")
 (include-book "must-fail-checked")
-(include-book "arena-lift")
+; The workflow entries read the payload arena (the records flip): each call
+; runs over an arena holding *bpo-payloads* (tests/acl2/arena-lift.lisp).
+(bpr-lift fn-bprq-plan 3)
 (bpr-lift fn-bpiw-apply 3)
 (bpr-lift fn-bpiw-replay-journal 2)
-(bpr-lift fn-bprq-plan 3)
 
 (defconst *bprq-s* (fn-bp-journal-nth 1 *bpo-enqueued*))
 (defconst *bprq-plan* (in-arena-fn-bprq-plan *bpo-payloads* *bprq-s* "work:out" "attempt:out"))
@@ -35,6 +36,32 @@
          (fn-bpa-result-message
           (fn-bpa-decode-exact (fn-bprq-plan-adu *bprq-plan*))))
         *bpo-article*))
+; The keystone's article conjuncts (PKT-RT-1): the article in the plan's ADU
+; is the arena's payload under the node article's handle, a sealed handle
+; (handle 0 of the one-payload arena), never the handle.
+(defun bprq-ks-article (s w a fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((plan (fn-bprq-plan s w a fn-arena))
+         (s2 (fn-bprq-published-state s (fn-bprq-plan-retry plan)
+                                      (fn-bprq-plan-attempt plan)
+                                      (fn-bprq-plan-outcome plan)))
+         (work (fn-bp-find-work w (fn-bp-state-works s2)))
+         (article (fn-find-article
+                   (fn-bp-work-msgid work)
+                   (fn-state-articles (fn-node-acceptance (fn-bp-state-node s2)))))
+         (h (fn-article-payload article)))
+    (and plan
+         (natp h) (< h (fn-arena-count fn-arena))
+         (equal (fn-bpa-request-article
+                 (fn-bpa-result-message
+                  (fn-bpa-decode-exact (fn-bprq-plan-adu plan))))
+                (fn-arena-payload h fn-arena)))))
+(bpr-lift bprq-ks-article 3)
+(assert-event (in-arena-bprq-ks-article *bpo-payloads* *bprq-s* "work:out" "attempt:out"))
+; Without a sealed handle (an empty arena) the hypothesis fails -- no plan --
+; and so do the article conjuncts.
+(assert-event (null (in-arena-fn-bprq-plan nil *bprq-s* "work:out" "attempt:out")))
+(assert-event (not (in-arena-bprq-ks-article nil *bprq-s* "work:out" "attempt:out")))
 ; The image the plan names is the one the host reaches by publishing the two
 ; records through fn-bpiw-apply (host/workflow-host.lisp fn-workflow-apply-record).
 (defconst *bprq-live-1*
@@ -105,7 +132,8 @@
         *bpo-attempt-record* '(:outcome 11 0 :ordinary :durable)))
 (assert-event (car (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* *bprq-history*)))
 (assert-event
- (car (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node*
+ (car (in-arena-fn-bpiw-replay-journal *bpo-payloads*
+       *bpo-node*
        (append *bprq-history*
                (list (fn-bprq-plan-retry *bprq-plan-2*)
                      (fn-bprq-plan-attempt *bprq-plan-2*)
@@ -115,7 +143,8 @@
 (assert-event
  (fn-bprq-attempt-record *bprq-restarted* 12 0 "work:out" "attempt:two"))
 (assert-event
- (not (car (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node*
+ (not (car (in-arena-fn-bpiw-replay-journal *bpo-payloads*
+            *bpo-node*
             (append *bprq-history*
                     (list (fn-bprq-plan-attempt *bprq-plan-2*)
                           (fn-bprq-plan-outcome *bprq-plan-2*)))))))

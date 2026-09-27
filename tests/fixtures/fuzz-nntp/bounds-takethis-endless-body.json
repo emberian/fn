@@ -1,0 +1,12 @@
+{
+ "campaign": "bounds",
+ "class": "unbounded",
+ "filler_hex": "626f6479206c696e650d0a",
+ "max_growth_kib": 65536,
+ "note": "A source-address peer streams a TAKETHIS article with no end: the owner neither refuses nor closes, and its RSS grows about 15 octets per octet received (236 MiB to 3.94 GiB over 256 MiB; 2.13 GiB over 128 MiB, campaign bounds 2026-09-27). POST is refused 441 (the configured size) within the first send buffer. Replay bound: 64 MiB of growth over 64 MiB sent.",
+ "packet": "F2 (TAKETHIS unbounded)",
+ "prefix_hex": "4d4f44452053545245414d0d0a54414b4554484953203c656e646c6573732d74744066757a7a2e696e76616c69643e0d0a506174683a20780d0a46726f6d3a206140622e696e76616c69640d0a4e65777367726f7570733a20666e2e746573740d0a5375626a6563743a20730d0a4d6573736167652d49443a203c656e646c6573732d74744066757a7a2e696e76616c69643e0d0a446174653a204d6f6e2c2032312053657020323032362031323a30303a3030202b303030300d0a0d0a",
+ "source": "127.0.0.1",
+ "status": "open",
+ "total": 67108864
+}

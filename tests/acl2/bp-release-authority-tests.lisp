@@ -10,10 +10,14 @@
 ; -----------------------------------------------------------------------------
 ; The held obligation: an outstanding, pinned, delivered work-1.
 (defconst *bra-groups* '("fn.letters"))
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).
+; The one article (octets (72 105 13 10) before the flip) is handle 0.
 (defconst *bra-node*
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *bra-groups* 16) 9
-                    "<bra@example.invalid>" 0 *bra-groups* ; payload handle 0 (octets are refused since the flip)
+                    "<bra@example.invalid>" 0 *bra-groups*
                     "archive-bra" "subject-bra" "operator-release" 4 841000000)
    0 9 :durable))
 (defconst *bra-config*

@@ -23,6 +23,7 @@
 (assert-event
  (and (eq (symbol-class 'fn-hf-split-index (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-hf-crlf-count (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hf-crlf-count-onto (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-hf-body-lines-of (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-held-facts-of (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-held-context-of (w state)) :common-lisp-compliant)
@@ -96,6 +97,35 @@
    (equal (equal (car (fn-nntp-crlf-lines *crt-body-bad*)) :ok)
           (if (fn-hf-crlf-count *crt-body-bad* nil) t nil))
    :rule-classes nil))
+
+; `fn-hf-crlf-count-onto-is-crlf-count' (lane line-stack, D27): the loop
+; the host runs is the count, on every argument (no hypothesis, so no
+; hypothesis-removal witness).  Reachable positive witnesses: the two-line
+; body (the count), a body with a bare CR (nil) and an unterminated tail
+; (nil), each by the loop and by the definition.
+(defthm crt-w-lines-loop
+  (and (equal (fn-hf-crlf-count-onto *crt-body* nil 0)
+              (fn-hf-crlf-count *crt-body* nil))
+       (equal (fn-hf-crlf-count-onto *crt-body* nil 0) 2)
+       (equal (fn-hf-crlf-count-onto '(120 13 120 13 10) nil 0)
+              (fn-hf-crlf-count '(120 13 120 13 10) nil))
+       (equal (fn-hf-crlf-count-onto '(120 13 120 13 10) nil 0) nil)
+       (equal (fn-hf-crlf-count-onto '(120 13 10 120) nil 0)
+              (fn-hf-crlf-count '(120 13 10 120) nil))
+       (equal (fn-hf-crlf-count-onto '(120 13 10 120) nil 0) nil))
+  :rule-classes nil)
+
+; Served size, executed (the committer's intern computes this column for
+; every POST): 5,000,000 lines, more than the certifying image's 64 MiB
+; control stack held one frame each of the recursion the loop replaced.
+(defun crt-lines-onto (n acc)
+  (declare (xargs :guard (natp n)))
+  (if (zp n) acc (crt-lines-onto (1- n) (list* 120 13 10 acc))))
+(assert-event
+ (equal (fn-hf-body-lines-of
+         (append (fn-record-string-octets "Subject: a") '(13 10 13 10)
+                 (crt-lines-onto 5000000 nil)))
+        5000000))
 
 ; The column is fn-nov-body-line-count's expression.
 (defthm crt-w-body-lines

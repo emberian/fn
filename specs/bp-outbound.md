@@ -7,7 +7,7 @@ does not perform BP transport, filesystem publication, cryptography or policy.
 ## Request path
 
 `fn-bpo-request-adu` takes a recovered `fn-bp` state plus work, attempt and
-attempt-generation identity, and the payload arena (`fn-arena`). Success requires a ready, unfenced workflow; an
+attempt-generation identity. Success requires a ready, unfenced workflow; an
 outstanding durable work entry; the exact current `:intent` attempt; the
 work-to-node archive binding; and the committed article named by the work's
 Message-ID. It constructs the request with:
@@ -15,11 +15,7 @@ Message-ID. It constructs the request with:
 1. work ID and immutable subject from durable work;
 2. source EID from local configuration and destination EID from work;
 3. policy, source incarnation, authorization context and terms from work; and
-4. the exact committed node article's bytes: since the acceptance flip the
-   article holds a handle into the payload arena, and the request carries the
-   bytes that handle denotes (`fn-bpo-article-octets`); a handle outside the
-   arena denotes nothing and the request is refused, never sent with an empty
-   article.
+4. the exact committed node article payload.
 
 Because no transport observation returns an attempt to `:intent`
 (`fn-bp-observe-transport-never-returns-to-intent` in

@@ -63,8 +63,13 @@
     (error () nil)))
 
 ;; Linux cgroup v2: /proc/self/cgroup's `0::PATH' line names the process's
-;; group; memory.max there and in each ancestor bounds it.  Each file's
-;; octets go to ACL2 (`fn-heap-limit-of-octets'), which reads the number.
+;; group; memory.max there and in each ancestor bounds it, up to and
+;; including the mount's root: inside a cgroup namespace (a container, an LXC
+;; guest) that root IS a limited group, and its memory.max is the container's
+;; limit (friend-path 2026-09-27: a 6 GiB container observed as the host's
+;; 126 GB).  On a host the true root has no memory.max, and a missing file is
+;; no observation.  Each file's octets go to ACL2 (`fn-heap-limit-of-octets'),
+;; which reads the number.
 #+linux
 (defun fnn-heap-cgroup-observations ()
   (let* ((octets (fnn-heap-read-small "/proc/self/cgroup"))
@@ -80,6 +85,9 @@
                  (push (fnn-core 'fn-heap-limit-of-octets octets) found)))
              (let ((slash (position #\/ path :from-end t)))
                (setq path (and slash (plusp slash) (subseq path 0 slash)))))
+    (let ((octets (and text (fnn-heap-read-small "/sys/fs/cgroup/memory.max"))))
+      (when octets
+        (push (fnn-core 'fn-heap-limit-of-octets octets) found)))
     found))
 
 (defun fnn-heap-observations ()
@@ -116,32 +124,20 @@ that)."
              (progn (fnn-load-config store) (fnn-store-config store))))
     (error () nil)))
 
-(defun fnn-heap-decision (profile &optional observed)
-  ;; heap-figure's figure for the store, then the room the served connections'
-  ;; heap parts need beside it (books/connection-budget.lisp
-  ;; fn-cbud-launch-decide; PKT-605): the connections this machine holds
-  ;; beside the store, the fixed threads and their stacks, at most 1,024.
-  (let ((observations (fnn-heap-observations))
-        (core (fnn-heap-core-octets)))
-    (fnn-core 'fn-cbud-launch-decide
-              ;; The run's figure over the store on disk (reservation-after-flip).
-              (fnn-core 'fn-heap-operation-decide :run profile (fnn-heap-image-observation)
-                        +fnn-gc-nursery-octets+ observations observed)
-              profile core
-              (fnn-mux-thread-count nil) (fnn-mux-thread-stack-octets)
-              observations)))
-
-(defun fnn-heap-report-line (profile &optional observed)
-  (fnn-core 'fn-heap-report-line (fnn-heap-decision profile observed)))
-
 (defun fnn-heap-print-store-line (root)
-  "The `heap=' line `status' and `health' print after their report: the next
-run's figure over the store as it is on disk."
+  "The `heap=' line `status' and `health' print after their report: the
+reservation the launcher's probe makes for the store's next `run' over the
+store as it is on disk (books/heap-reservation.lisp fn-heap-status-decide,
+fn-heap-status-decide-is-the-launchers-run-reservation): one figure."
   (when (stringp root)
     (let ((profile (fnn-heap-store-profile root)))
-      (fnn-out "~a" (fnn-heap-report-line
-                     profile
-                     (and profile (fnn-heap-history-observation root profile)))))))
+      (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
+                              (fnn-core 'fn-heap-status-decide profile
+                                        (fnn-heap-image-observation)
+                                        +fnn-gc-nursery-octets+
+                                        (fnn-heap-observations)
+                                        (and profile
+                                             (fnn-heap-history-observation root profile))))))))
 
 (defun fnn-heap-env-octets (name)
   "NAME's value in the environment as octets for ACL2 to read (at most 32
@@ -187,32 +183,12 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                      (return nil))
                    (incf sum (sb-posix:stat-size entry)))))))))
 
-(defun fnn-heap-directory-count (path limit)
-  "The regular files in PATH (0 when it does not exist), or NIL."
-  (let ((st (fnn-lstat path)))
-    (cond ((null st) 0)
-          ((not (fnn-directory-p st)) nil)
-          (t (let ((count 0))
-               (dolist (name (fnn-list-directory-bounded path limit "history observation")
-                             count)
-                 (let ((entry (fnn-lstat (fnn-join path name))))
-                   (unless (and entry (fnn-regular-p entry))
-                     (return nil))
-                   (incf count))))))))
-
-;; (OCTETS . RECORDS): the history files' octets (below) and the transaction
-;; files' count, one record a file, which is what a full replay reads
-;; (books/heap-figure.lisp: the open's per-record term, lane
-;; reservation-after-flip); OCTETS alone when the count is not observed.
 (defun fnn-heap-history-observation (root profile)
   (let ((octets (fnn-heap-history-octets root profile))
         (records (handler-case
                      (let ((store (make-fnn-store root)))
-                       (if (fnn-lstat (fnn-journal-dir store))
-                           (fnn-heap-log-records store profile)
-                         (fnn-heap-directory-count
-                          (fnn-transactions store)
-                          (fnn-heap-listing-bound profile))))
+                       (and (fnn-lstat (fnn-journal-dir store))
+                            (fnn-heap-log-records store profile)))
                    (error () nil))))
     (if (and (integerp octets) (integerp records))
         (cons octets records)
@@ -239,10 +215,8 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
       (let* ((store (make-fnn-store root))
              (limit (fnn-core 'fn-heap-history-listing-bound profile))
              (state (fnn-lstat (fnn-state-checkpoint-path store)))
-             (parts (list (fnn-heap-directory-octets (fnn-transactions store) limit)
-                          ;; Format 9: the record log's segments.
+             (parts (list ;; The record log's segments.
                           (fnn-heap-directory-octets (fnn-journal-dir store) limit)
-                          (fnn-heap-directory-octets (fnn-join root "packs") limit)
                           (fnn-heap-directory-octets (fnn-join root "checkpoints") limit)
                           (cond ((null state) 0)
                                 ((fnn-regular-p state) (sb-posix:stat-size state))
