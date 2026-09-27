@@ -2769,6 +2769,28 @@ them across processes, copies, checkpoint and full replay, and boxes."
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
+(defun fnn-command-store-journal (root)
+  "`store ROOT journal' (lane time-model-2, HST-028): read the decision
+journal STORE/journal/decisions.fnj back and print ACL2's one-line replay
+(books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
+whole/torn/malformed, and agrees or the first gap, divergence or malformed
+entry).  It opens no store (a running owner keeps its journal open for
+append; a torn last line is one the writer had not finished).  Exit 0 when
+the replay agrees, 1 otherwise."
+  (let ((path (fnn-join (fnn-join root "journal") "decisions.fnj")))
+    (unless (probe-file path)
+      (fnn-refuse "no decision journal at ~a" path))
+    (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))
+                     (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
+                       (read-sequence v in)
+                       (coerce v 'list))))
+           (report (fnn-core 'fn-otm-journal-report octets)))
+      (fnn-write-report report)
+      (let ((exit (fnn-core 'fn-otm-journal-exit octets)))
+        (unless (member exit '(0 1))
+          (fnn-fault "ACL2 returned a malformed journal verdict"))
+        exit))))
+
 (defun fnn-command-state-checkpoint (root)
   "`store checkpoint': open the store as `recover' does (the exclusive writer
 lock, so a running owner refuses this) and publish its exact-state checkpoint
@@ -6220,6 +6242,7 @@ observation (the COMPLETE re-signals it under the owner)."
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
                  ((string= command "digest") (fnn-command-store-digest root))
+                 ((string= command "journal") (fnn-command-store-journal root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))

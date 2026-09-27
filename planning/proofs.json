@@ -11156,8 +11156,8 @@
     },
     {
       "id": "PRF-311",
-      "title": "A batch barrier is a request with a deadline and the disk's mode is ACL2's over recorded time: reads and status never wait on a pending barrier, a deadline never tells a member anything, and a POST arriving while the disk is slow is refused try-later with the reason exactly when health says so",
-      "statement": "Subjects: fn-otm-next, fn-otm-observe, fn-otm-commit-event, fn-otm-committer-wake (host/native/owner.lisp fnn-owner-gate-pick, fnn-owner-gate-leave, fnn-owner-commit-event, fnn-owner-commit-wake), fn-otm-disk-event (fnn-owner-disk-event: the committer's :issue at the syncer's start, :clock at each expiry of its timed wait, :return at the completion it observes; :clock on demand before a POST admission and a health/status render), fn-otm-wait-ms (fnn-owner-disk-wait-ms), fn-otm-admit-post (fnn-owner-disk-admit, in the served read quantum that queued a POST), fn-otm-disk-lines / fn-otm-health-lines (host/native-live-status-host.lisp). KEYSTONE fn-otm-barrier-reader-bound (books/owner-time-model.lisp): for S with the pipeline's phase :staged (the barrier pending) and every sequence WS of pick observations (W EVENT) with a reader waiting at every pick and the commit class waiting only when the committer's wake is :start-next (fn-otm-barrier-walk-okp), the quanta picked before the first :reader pick (fn-otm-barrier-walk) contain no control, poster or transit quantum, at most one :commit whose event is :next-started, and at most one more :inspect than :commit; EVENT is unconstrained and the device's latency is not a quantity of the walk. KEYSTONE fn-otm-disk-event-keeps-the-pipeline: every disk event leaves the pipeline's value unchanged (so fn-ocs-members-told-only-after-the-barrier and fn-ocp-complete-only-after-the-barrier hold of every run with deadlines: a deadline never tells a member anything). fn-otm-next-is-ocp-next, fn-otm-commit-event-is-ocp-commit-event, fn-otm-observe-keeps-the-disk: the pipeline's keystones (PRF-248, PRF-267, PRF-272, PRF-288) hold of the host's calls. fn-otm-recorded-time-is-monotone (the recorded time is the max of the readings; a lower reading increments the regression count and moves nothing); fn-otm-shed-only-past-the-deadline and fn-otm-past-the-deadline-sheds (a POST is shed exactly while a barrier is pending D or more at the recorded time); fn-otm-shed-iff-slow (shed iff the health/status disk line says disk slow); fn-otm-return-recovers, fn-otm-clock-event-never-issues (the completion is the recovery; no clock event re-enters slow without a new barrier); fn-otm-return-records-the-latency; fn-otm-wait-reaches-the-deadline (a clock event WAIT-MS after the recorded time finds the barrier past its deadline and enters :slow once); fn-otm-issue-only-when-none-pending, fn-otm-issue-is-pending-and-admits. Hypotheses of the wall-clock reading (stated, not proved): the store commits through the record log (format 9); the quanta admitted during a barrier contain no I/O wait (true of :inspect, :reader and START-NEXT; the inline barrier of :control/:poster/:transit quanta is not admitted in flight, PKT-825 (c)); the served read's octets are in memory; the committer thread is scheduled (its clock events can be late, never early).",
+      "title": "A batch barrier is a request with a deadline and the disk's mode is ACL2's over recorded time: reads and status never wait on a pending barrier, a deadline never tells a member anything, and a POST arriving while the disk is slow is refused try-later with the reason exactly when health says so; past the stall deadline H every poster of the batch in flight is told uncertain, never accepted or refused, within H plus one committer wake (F4-W)",
+      "statement": "Subjects: fn-otm-next, fn-otm-observe, fn-otm-commit-event, fn-otm-committer-wake (host/native/owner.lisp fnn-owner-gate-pick, fnn-owner-gate-leave, fnn-owner-commit-event, fnn-owner-commit-wake), fn-otm-disk-event (fnn-owner-disk-event: the committer's :issue at the syncer's start, :clock at each expiry of its timed wait, :return at the completion it observes; :clock on demand before a POST admission and a health/status render), fn-otm-wait-ms (fnn-owner-disk-wait-ms), fn-otm-admit-post (fnn-owner-disk-admit, in the served read quantum that queued a POST), fn-otm-disk-lines / fn-otm-health-lines (host/native-live-status-host.lisp). KEYSTONE fn-otm-barrier-reader-bound (books/owner-time-model.lisp): for S with the pipeline's phase :staged (the barrier pending) and every sequence WS of pick observations (W EVENT) with a reader waiting at every pick and the commit class waiting only when the committer's wake is :start-next (fn-otm-barrier-walk-okp), the quanta picked before the first :reader pick (fn-otm-barrier-walk) contain no control, poster or transit quantum, at most one :commit whose event is :next-started, and at most one more :inspect than :commit; EVENT is unconstrained and the device's latency is not a quantity of the walk. KEYSTONE fn-otm-disk-event-keeps-the-pipeline: every disk event leaves the pipeline's value unchanged (so fn-ocs-members-told-only-after-the-barrier and fn-ocp-complete-only-after-the-barrier hold of every run with deadlines: a deadline never tells a member anything). fn-otm-next-is-ocp-next, fn-otm-commit-event-is-ocp-commit-event, fn-otm-observe-keeps-the-disk: the pipeline's keystones (PRF-248, PRF-267, PRF-272, PRF-288) hold of the host's calls. fn-otm-recorded-time-is-monotone (the recorded time is the max of the readings; a lower reading increments the regression count and moves nothing); fn-otm-shed-only-past-the-deadline and fn-otm-past-the-deadline-sheds (a POST is shed exactly while a barrier is pending D or more at the recorded time); fn-otm-shed-iff-slow (shed iff the health/status disk line says disk slow); fn-otm-return-recovers, fn-otm-clock-event-never-issues (the completion is the recovery; no clock event re-enters slow without a new barrier); fn-otm-return-records-the-latency; fn-otm-wait-reaches-the-deadline (a clock event WAIT-MS after the recorded time finds the barrier past its deadline and enters :slow once); fn-otm-issue-only-when-none-pending, fn-otm-issue-is-pending-and-admits. Hypotheses of the wall-clock reading (stated, not proved): the store commits through the record log (format 9); the quanta admitted during a barrier contain no I/O wait (true of :inspect, :reader and START-NEXT; the inline barrier of :control/:poster/:transit quanta is not admitted in flight, PKT-825 (c)); the served read's octets are in memory; the committer thread is scheduled (its clock events can be late, never early). Slice 2 (lane time-model-2): the limits (D H C) are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (host/owner-host.lisp fn-owner-barrier-limits; fn-otm-limits: defaults 5,000 / 30,000 / 1,000 ms, H read as at least D), carried by the barrier's :issue. fn-otm-disk-mode is :stalled past H; fn-otm-admit-is-the-mode (shed exactly in :slow and :stalled). KEYSTONE fn-otm-stall-tells-no-member-its-outcome: fn-otm-stall-releases (host/native/owner.lisp fnn-owner-stall-release, called by the committer once per barrier when fnn-owner-disk-stalled-p) releases every member :own-uncertain, :uncertain-reply or :close, never :rendered, one per member; with fn-otm-disk-event-keeps-the-pipeline a member is told its own outcome only in a COMPLETE after a fenced barrier, and a member told at the stall is dropped from the COMPLETE's releases (fnn-owner-unreleased). KEYSTONE fn-otm-f4w-stall-within-h: from a pending barrier not past H (since at most the recorded time), committer clock events each at most its wait (fn-otm-wait-ms) plus LATE after the recorded time (fn-otm-clock-run-okp) enter :stalled at a reading at most since + H + LATE, and until one does every reading is before since + H; fn-otm-wait-stays-within-the-stall (the wait never reaches past H). fn-otm-return-after-a-stall-is-named (the completion after a stall answers :recovered-from-stall). Hypotheses stated, not proved: the committer is not blocked on the device (the syncer is); LATE bounds the scheduler's lateness of one timed wait; the committer appends a clock event at every wake while a barrier is pending (host). Not claimed: that the since-at-most-now hypothesis is needed (no counterexample found; the weakened statement is not yet proved).",
       "milestone": "M5",
       "requirements": [
         "HST-026"
@@ -11177,9 +11177,12 @@
         "host/native-live-status-host.lisp",
         "tests/test_native_slow_disk.py",
         "planning/design-time-model-2026-09-27.md",
-        "planning/evidence/time-model-2026-09-27.md"
+        "planning/evidence/time-model-2026-09-27.md",
+        "books/owner-time-journal.lisp",
+        "host/native/control.lisp",
+        "planning/evidence/time-model-2-2026-09-27.md"
       ],
-      "progress_note": "Lane time-model (Opus 5.5, 2026-09-27): slice 1 of planning/design-time-model-2026-09-27.md. REPL-admitted on hbox (book and test book; ACL2 time 3.1 s with its includes). Teeth: tests/acl2/owner-time-model-tests.lisp (prefix otmt-): a reached run (START, issue at 1,000 ms, clock events, a 30 s stall, the completion), each keystone's complete antecedent and conclusion, and one removal witness per hypothesis of fn-otm-barrier-reader-bound (the barrier not pending: a mutating control quantum runs; a reader not waiting: three :inspect quanta with no :commit; the commit waiting past its wake: a second START-NEXT) and of fn-otm-wait-reaches-the-deadline.",
+      "progress_note": "Lane time-model (Opus 5.5, 2026-09-27): slice 1 of planning/design-time-model-2026-09-27.md. REPL-admitted on hbox (book and test book; ACL2 time 3.1 s with its includes). Teeth: tests/acl2/owner-time-model-tests.lisp (prefix otmt-): a reached run (START, issue at 1,000 ms, clock events, a 30 s stall, the completion), each keystone's complete antecedent and conclusion, and one removal witness per hypothesis of fn-otm-barrier-reader-bound (the barrier not pending: a mutating control quantum runs; a reader not waiting: three :inspect quanta with no :commit; the commit waiting past its wake: a second START-NEXT) and of fn-otm-wait-reaches-the-deadline. Lane time-model-2 (2026-09-27): slice 2 (H, the stall release, F4-W, the cadence as a profile field); REPL-admitted on hbox (the book 4.4 s ACL2 time from source); teeth in tests/acl2/owner-time-model-tests.lisp (prefix t2-); native SCN-182 extended; record planning/evidence/time-model-2-2026-09-27.md.",
       "events": [
         "fn-otm-barrier-reader-bound",
         "fn-otm-disk-event-keeps-the-pipeline",
@@ -11195,7 +11198,73 @@
         "fn-otm-return-records-the-latency",
         "fn-otm-wait-reaches-the-deadline",
         "fn-otm-issue-only-when-none-pending",
-        "fn-otm-issue-is-pending-and-admits"
+        "fn-otm-issue-is-pending-and-admits",
+        "fn-otm-admit-is-the-mode",
+        "fn-otm-return-after-a-stall-is-named",
+        "fn-otm-stall-tells-no-member-its-outcome",
+        "fn-otm-wait-stays-within-the-stall",
+        "fn-otm-f4w-stall-within-h"
+      ]
+    },
+    {
+      "id": "PRF-314",
+      "title": "The decision journal: every event the scheduler's disk-and-clock value takes is one journal entry, the journal reads back whole and replays to agreement from the run's start, and every decision the host asks of the value reads only what the journal determines",
+      "statement": "Subjects: fn-otm-disk-step (host/native/owner.lisp fnn-owner-disk-event: every disk and clock event, the served read's :served reading included, fnn-owner-advance-clock), fn-otm-note-step (fnn-owner-journal-note: the stall's release, members told and queued POSTs shed), fn-otm-start-line (fnn-owner-journal-open), each rendering the entry (SEQ OP READING A B C WORD) with fn-otm-jline; the host offers it to the service-log writer thread (host/native/io.lisp fnn-journal-line), which appends it to STORE/journal/decisions.fnj, never on the owner and never waited on, bounded by ACL2's sink (books/log-sink.lisp). fn-otm-disk-step-unfolds: the step's word and value are fn-otm-disk-event's. fn-otm-journal-read-of-jlines: a list of entries (naturals) rendered and read back is itself, the reader's status :whole. KEYSTONE fn-otm-journal-determines-the-decisions: for every run STEPS of the host's calls (fn-otm-run: disk events of the four kinds, notes, and the gate's fn-otm-next, fn-otm-observe and fn-otm-commit-event interleaved in any order; hypothesis fn-otm-run-okp: the host appends only :clock, :served, :issue and :return events), the journal it writes reads back :whole and fn-otm-replay from the run's start answers :agrees (every recomputed word equals the journaled one, no gap) at the run's disk and clock. fn-otm-decisions-read-only-the-journal-state: admission, mode, wait, the 441 and 440 reply lines, health's disk lines and the log lines read only the disk and the clock. fn-otm-wall-reading-shape (books/clock-wall-reading.lisp, N3 of lane proto-determinism): the wall reading's validity is ACL2's (host/native/io.lisp fnn-owner-wall-milliseconds). fn-otm-journal-report-of-a-run: the operator's replay (host/native/io.lisp `store ROOT journal' calls fn-otm-journal-report and fn-otm-journal-exit) of the journal of any such run from fn-otm-init reports status=whole replay=agrees. Not claimed: that the file on disk holds every entry (the sink drops by name under its bound: a gap replay reports as (:gap SEQ)); anything about the record log's fold (lane proto-determinism: deterministic); the served machine's own replay from the :served readings (the readings are journaled; the served transcript replay is not built).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-028"
+      ],
+      "depends_on": [
+        "PRF-311"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-journal.lisp",
+        "books/clock-wall-reading.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-model-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox (the book 4.6 s ACL2 time from source). Teeth (tests/acl2/owner-time-model-tests.lisp, prefix t2-): a reached run of nine interleaved host calls whose six entries are exact, read back whole and replayed to agreement; a tampered word (:diverged 3); a dropped entry (:gap 3); a run with an event kind the host never appends (:malformed 1, fn-otm-run-okp removed); two values with equal disk and clock decide alike and a different clock does not.",
+      "events": [
+        "fn-otm-journal-determines-the-decisions",
+        "fn-otm-decisions-read-only-the-journal-state",
+        "fn-otm-journal-read-of-jlines",
+        "fn-otm-disk-step-unfolds",
+        "fn-otm-wall-reading-shape",
+        "fn-otm-journal-report-of-a-run"
+      ]
+    },
+    {
+      "id": "PRF-315",
+      "title": "While the disk sheds a served read runs with posting not permitted, so a POST command is answered 440 before its article, and the node's configuration is never changed by it",
+      "statement": "Subject: fn-otm-read-span (books/owner-time-admission.lisp), which host/owner-host.lisp fn-owner-chunk-span-at calls with ADMIT, the disk's admission at the read's recorded time (host/native/owner.lisp fnn-owner-handle-chunk-read: fnn-owner-advance-clock's :served event, then fnn-owner-disk-admission). fn-otm-read-span-when-admitted-unfolds: admitted, it is fn-orr-read-span (every reader-read theorem, PRF-288/PRF-296, holds of the host's call). KEYSTONE fn-otm-read-span-while-shedding: while shedding, connection ID's read is fn-orr-read-span over the owner with that connection's injection configuration's posting bit off (the served step reads the connection's snapshot, books/owner.lisp fn-own-served-conn; its effects are that read's), and afterwards the connection, when its record has the owner's shape, has the posting bit it had before; the owner's own configuration is never touched. fn-otm-closed-posting-never-awaits-an-article: under a configuration that does not permit posting, fn-scr-post-step from a session not awaiting an article leaves it not awaiting one (the POST is answered 440, RFC 3977 section 6.3.1, and no article is read). Mutating control (host/native/control.lisp: an operator post, a live configuration change, a moderation decision) is answered BUSY while fn-otm-admit-post sheds, at a clock event appended before it waits for the gate. Not claimed: the chain from fn-orr-read-span to fn-scr-post-step (the served machine calls it with the connection's injection configuration; stated, not proved here); IHAVE/CHECK during slow (PKT-858).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-311",
+        "PRF-288"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-admission.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-model-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs).",
+      "events": [
+        "fn-otm-read-span-while-shedding",
+        "fn-otm-closed-posting-never-awaits-an-article"
       ]
     }
   ]

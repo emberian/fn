@@ -30,10 +30,31 @@
   (declare (xargs :guard t))
   (if (consp cfg) (cons allow (cdr cfg)) (list allow)))
 
-(defun fn-otm-owner-with-allow (oc allow)
+; The served step reads the CONNECTION's injection configuration
+; (books/owner.lisp fn-own-served-conn: fn-own-conn-config, the snapshot the
+; connection holds), so the bit is set on connection ID's record; the owner
+; and every other connection are as they were.
+(defun fn-otm-conn-with-allow (c allow)
   (declare (xargs :guard t))
-  (let ((o (fn-ocfg-owner oc)))
-    (fn-ocfg-with-owner oc (fn-own-configure o (fn-otm-cfg-with-allow (fn-own-config o) allow)))))
+  (if (and (true-listp c) (< 6 (len c)))
+      (update-nth 6 (fn-otm-cfg-with-allow (fn-own-conn-config c) allow) c)
+    c))
+
+(defun fn-otm-owner-with-allow (oc id allow)
+  (declare (xargs :guard t))
+  (let* ((o (fn-ocfg-owner oc))
+         (c (fn-own-find-conn id (fn-own-conns o))))
+    (if c
+        (fn-ocfg-with-owner
+         oc (fn-own-set-conns o (fn-own-replace-conn (fn-otm-conn-with-allow c allow)
+                                                     (fn-own-conns o))))
+      oc)))
+
+; The posting bit connection ID's read runs with.
+(defun fn-otm-conn-allow (oc id)
+  (declare (xargs :guard t))
+  (fn-inj-config-allow
+   (fn-own-conn-config (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
 
 ; The served read, admitted or not.  ADMIT is fn-otm-admit-post's word.
 (defun fn-otm-read-span (oc views id i end admit fn-octets fn-arena fn-cat)
@@ -42,13 +63,13 @@
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (if (eq admit :shed)
-      (let ((result (fn-orr-read-span (fn-otm-owner-with-allow oc nil) views id i end
+      (let ((result (fn-orr-read-span (fn-otm-owner-with-allow oc id nil) views id i end
                                       fn-octets fn-arena fn-cat)))
         (fn-own-tls-make-result
          (fn-own-tls-result-consumed result)
          (fn-own-tls-result-effects result)
-         (fn-otm-owner-with-allow (fn-own-tls-result-owner result)
-                                  (fn-inj-config-allow (fn-own-config (fn-ocfg-owner oc))))
+         (fn-otm-owner-with-allow (fn-own-tls-result-owner result) id
+                                  (fn-otm-conn-allow oc id))
          (fn-own-tls-result-repinned result)))
     (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))
 
@@ -64,38 +85,64 @@
   :hints (("Goal" :in-theory (enable fn-inj-config-allow fn-inj-nth fn-inj-car))))
 
 (local
- (defthm fn-otm-own-config-of-configure
-   (equal (fn-own-config (fn-own-configure o config)) config)
-   :hints (("Goal" :in-theory (enable fn-own-config fn-own-configure fn-own-make)))))
-
-(local
  (defthm fn-otm-ocfg-owner-of-with-owner
    (equal (fn-ocfg-owner (fn-ocfg-with-owner oc o)) o)
    :hints (("Goal" :in-theory (enable fn-ocfg-owner fn-ocfg-with-owner fn-ocfg-make)))))
 
-(defthm fn-otm-owner-with-allow-allow
-  (equal (fn-inj-config-allow (fn-own-config (fn-ocfg-owner (fn-otm-owner-with-allow oc allow))))
-         allow)
-  :hints (("Goal" :in-theory (disable fn-otm-cfg-with-allow))))
+(local
+ (defthm fn-otm-conns-of-set-conns
+   (equal (fn-own-conns (fn-own-set-conns o conns)) conns)
+   :hints (("Goal" :in-theory (enable fn-own-conns fn-own-set-conns fn-own-make)))))
 
-;; KEYSTONE (PRF-315, slice 2: 440 at the command).  While the disk sheds,
-;; the served read runs with posting not permitted, and the owner it leaves
-;; has the posting bit it had before: the slow disk changes what this read
-;; answers, never the node's configuration.
+(local
+ (defthm fn-otm-conn-with-allow-id-and-config
+   (and (equal (fn-own-conn-id (fn-otm-conn-with-allow c allow)) (fn-own-conn-id c))
+        (implies (and (true-listp c) (< 6 (len c)))
+                 (equal (fn-own-conn-config (fn-otm-conn-with-allow c allow))
+                        (fn-otm-cfg-with-allow (fn-own-conn-config c) allow))))
+   :hints (("Goal" :in-theory (enable fn-own-conn-id fn-own-conn-config update-nth)))))
+
+(local
+ (defthm fn-otm-find-conn-of-replace-same
+   (implies (and (fn-own-find-conn id conns) (equal (fn-own-conn-id c) id))
+            (equal (fn-own-find-conn id (fn-own-replace-conn c conns)) c))
+   :hints (("Goal" :in-theory (enable fn-own-find-conn fn-own-replace-conn)))))
+
+(local
+ (defthm fn-otm-find-conn-id
+   (implies (fn-own-find-conn id conns)
+            (equal (fn-own-conn-id (fn-own-find-conn id conns)) id))
+   :hints (("Goal" :in-theory (enable fn-own-find-conn)))))
+
+;; KEYSTONE (PRF-315, slice 2: 440 at the command).  Connection ID's read
+;; while the disk sheds runs with posting not permitted (when its record has
+;; the shape the owner makes, fn-own-conn-shapep); its effects are that
+;; read's; and afterwards the connection, if still open, has the posting bit
+;; it had before.  The slow disk changes what this read answers, never the
+;; node's or the connection's configuration.
 (defthm fn-otm-read-span-while-shedding
   (implies (eq admit :shed)
-           (let ((r (fn-otm-read-span oc views id i end admit fn-octets fn-arena fn-cat)))
-             (and (not (fn-inj-config-allow
-                        (fn-own-config (fn-ocfg-owner (fn-otm-owner-with-allow oc nil)))))
-                  (equal (fn-inj-config-allow
-                          (fn-own-config (fn-ocfg-owner (fn-own-tls-result-owner r))))
-                         (fn-inj-config-allow (fn-own-config (fn-ocfg-owner oc))))
+           (let ((r (fn-otm-read-span oc views id i end admit fn-octets fn-arena fn-cat))
+                 (c (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+             (and (implies (and c (fn-own-conn-shapep c))
+                           (not (fn-otm-conn-allow (fn-otm-owner-with-allow oc id nil) id)))
+                  (implies (fn-own-conn-shapep
+                            (fn-own-find-conn id (fn-own-conns
+                                                  (fn-ocfg-owner
+                                                   (fn-own-tls-result-owner
+                                                    (fn-orr-read-span
+                                                     (fn-otm-owner-with-allow oc id nil) views id i end
+                                                     fn-octets fn-arena fn-cat))))))
+                           (equal (fn-otm-conn-allow (fn-own-tls-result-owner r) id)
+                                  (fn-otm-conn-allow oc id)))
                   (equal (fn-own-tls-result-effects r)
                          (fn-own-tls-result-effects
-                          (fn-orr-read-span (fn-otm-owner-with-allow oc nil) views id i end
+                          (fn-orr-read-span (fn-otm-owner-with-allow oc id nil) views id i end
                                             fn-octets fn-arena fn-cat))))))
-  :hints (("Goal" :in-theory (disable fn-otm-owner-with-allow fn-otm-cfg-with-allow
-                                      fn-orr-read-span))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-read-span fn-otm-owner-with-allow fn-otm-conn-allow
+                                   fn-own-conn-shapep)
+                                  (fn-otm-cfg-with-allow fn-orr-read-span fn-own-find-conn
+                                   fn-own-replace-conn fn-otm-conn-with-allow)))))
 
 ;; The command step under a configuration that does not permit posting:
 ;; a POST is never offered -- the session never awaits an article -- so no
@@ -115,4 +162,4 @@
                                 fn-post-session-awaiting-of-fn-post-make-session)
                               (theory 'minimal-theory)))))
 
-(in-theory (disable fn-otm-read-span fn-otm-owner-with-allow))
+(in-theory (disable fn-otm-read-span fn-otm-owner-with-allow fn-otm-conn-allow))

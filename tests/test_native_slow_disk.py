@@ -481,6 +481,13 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertIn([5, 2, 1], [[e[1], e[3], e[4]] for e in segment])
         self.assertTrue(any(e[1] == 4 and e[6] == 4 for e in segment), "no :recovered-from-stall")
         print("journal: %d entries in this run's segment, %d bytes in the file" % (len(segment), len(journal)))
+        # The operator's replay (`store ROOT journal', ACL2's fn-otm-replay).
+        replay = subprocess.run([str(DEVELOPER), "--fn", "store", str(self.store), "journal"],
+                                cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=120, check=False)
+        print("store journal: rc=%d %r" % (replay.returncode, replay.stdout))
+        self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))
+        self.assertIn(b" replay=agrees", replay.stdout)
 
 
 if __name__ == "__main__":

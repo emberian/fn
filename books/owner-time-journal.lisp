@@ -731,5 +731,69 @@
                                 fn-otm-regressions)
                               (theory 'minimal-theory)))))
 
+;; -----------------------------------------------------------------------------
+;; The operator's replay (host/native/io.lisp `store ROOT journal'): the
+;; file read back and replayed from fn-otm-init, one line.
+(defun fn-otm-journal-starts (entries)
+  (declare (xargs :guard t))
+  (if (consp entries)
+      (+ (if (and (consp (car entries)) (consp (cdar entries)) (equal (cadar entries) 0)) 1 0)
+         (fn-otm-journal-starts (cdr entries)))
+    0))
+
+(defun fn-otm-verdict-text (verdict)
+  (declare (xargs :guard t))
+  (if (eq verdict :agrees)
+      (fn-osch-text "agrees")
+    (append (fn-osch-text (cond ((and (consp verdict) (eq (car verdict) :gap)) "gap-at-")
+                                ((and (consp verdict) (eq (car verdict) :diverged)) "diverged-at-")
+                                (t "malformed-at-")))
+            (fn-osch-decimal (if (and (consp verdict) (consp (cdr verdict))) (cadr verdict) 0)))))
+
+(defun fn-otm-journal-report (octets)
+  (declare (xargs :guard t))
+  (let ((entries (fn-otm-journal-read octets)))
+    (mv-let (status ignore) (fn-otm-jparse octets nil nil nil)
+      (declare (ignore ignore))
+      (mv-let (verdict s) (fn-otm-replay (fn-otm-init) entries)
+        (declare (ignore s))
+        (append (fn-osch-text "journal:")
+                (fn-osch-kv "entries" (len entries))
+                (fn-osch-kv "segments" (fn-otm-journal-starts entries))
+                (fn-osch-text (cond ((eq status :whole) " status=whole")
+                                    ((eq status :torn) " status=torn")
+                                    (t " status=malformed")))
+                (fn-osch-text " replay=")
+                (fn-otm-verdict-text verdict)
+                (list 10))))))
+
+;; The verb's exit: 0 when the replay agrees, 1 otherwise.
+(defun fn-otm-journal-exit (octets)
+  (declare (xargs :guard t))
+  (mv-let (verdict s) (fn-otm-replay (fn-otm-init) (fn-otm-journal-read octets))
+    (declare (ignore s))
+    (if (eq verdict :agrees) 0 1)))
+
+;; What the operator reads of a journal the host wrote: whole, and agreeing
+;; (the keystone at the report's surface, over a run from fn-otm-init).
+(defthm fn-otm-journal-report-of-a-run
+  (implies (fn-otm-run-okp steps)
+           (equal (fn-otm-journal-report
+                   (fn-otm-jlines (mv-nth 0 (fn-otm-run (fn-otm-init) steps))))
+                  (append (fn-osch-text "journal:")
+                          (fn-osch-kv "entries" (len (mv-nth 0 (fn-otm-run (fn-otm-init) steps))))
+                          (fn-osch-kv "segments"
+                                      (fn-otm-journal-starts (mv-nth 0 (fn-otm-run (fn-otm-init) steps))))
+                          (fn-osch-text " status=whole")
+                          (fn-osch-text " replay=")
+                          (fn-osch-text "agrees")
+                          (list 10))))
+  :hints (("Goal" :use ((:instance fn-otm-journal-determines-the-decisions (s (fn-otm-init)))
+                        (:instance fn-otm-run-entries-shape (s (fn-otm-init))))
+           :in-theory (e/d (fn-otm-journal-report fn-otm-verdict-text)
+                           (fn-otm-journal-determines-the-decisions fn-otm-run-entries-shape
+                            fn-otm-run fn-otm-replay fn-otm-jlines fn-otm-journal-read
+                            fn-osch-text fn-osch-kv fn-osch-decimal)))))
+
 (in-theory (disable fn-otm-disk-step fn-otm-note-step fn-otm-start-line fn-otm-replay
-                    fn-otm-journal-read fn-otm-run))
+                    fn-otm-journal-read fn-otm-run fn-otm-journal-report))
