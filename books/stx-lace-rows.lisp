@@ -125,6 +125,42 @@
                                fn-stx-index-lookup fn-stx-index-equivocatorp
                                (:d fn-lace-equivocatorp)))))
 
+;
+; THE SERVED QUERIES (S3-3's subject gap, PRF-023).  The host's
+; fn-store-sn-statement and fn-store-sn-equivocator (host/store-node-host.lisp)
+; call fn-sn-statement-lookup and fn-sn-equivocatorp, which read the carried
+; index and nothing else.  Under the carried index invariant fn-sn-indexedp
+; (the index is fn-sn-index-of-rows of the indexed rows) and the context
+; invariant of those rows, each answers exactly as the lace of the retained
+; store; by (1) that is the wire lace of the rows' articles read through the
+; arena.  Restated here over rows (records-flip): the pre-flip statement
+; equated them with fn-stx-lace of the node, which reads no statement from a
+; node whose articles carry handles.
+(defthm fn-sn-statement-lookup-is-the-lace-lookup
+  (implies (and (fn-sn-indexedp s)
+                (fn-rows-contexts-okp (fn-sn-indexed-rows s) keyring generation fn-arena))
+           (equal (fn-sn-statement-lookup s id)
+                  (fn-lace-lookup (fn-sn-lace-of-rows (fn-sn-indexed-rows s)) id)))
+  :hints (("Goal" :use ((:instance fn-sn-index-of-rows-agrees-with-lace
+                         (rows (fn-sn-indexed-rows s)) (p nil) (i nil)))
+           :in-theory (e/d (fn-sn-indexedp fn-sn-statement-lookup)
+                           (fn-sn-statep fn-sn-index-of-rows fn-sn-indexed-rows
+                            fn-sn-lace-of-rows fn-rows-contexts-okp
+                            fn-stx-index-lookup fn-lace-lookup)))))
+
+(defthm fn-sn-equivocatorp-is-the-lace-equivocator
+  (implies (and (fn-sn-indexedp s)
+                (fn-rows-contexts-okp (fn-sn-indexed-rows s) keyring generation fn-arena))
+           (iff (fn-sn-equivocatorp s creator incarnation)
+                (fn-lace-equivocatorp (fn-sn-lace-of-rows (fn-sn-indexed-rows s))
+                                      creator incarnation)))
+  :hints (("Goal" :use ((:instance fn-sn-index-of-rows-agrees-with-lace
+                         (rows (fn-sn-indexed-rows s)) (p creator) (i incarnation)))
+           :in-theory (e/d (fn-sn-indexedp fn-sn-equivocatorp)
+                           (fn-sn-statep fn-sn-index-of-rows fn-sn-indexed-rows
+                            fn-sn-lace-of-rows fn-rows-contexts-okp
+                            fn-stx-index-equivocatorp (:d fn-lace-equivocatorp))))))
+
 ; -----------------------------------------------------------------------------
 ; (3) The transit bridge over rows.  A row whose context is the context of
 ; its bytes contributes a delta that is nil or one statement.

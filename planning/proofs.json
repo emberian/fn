@@ -1150,6 +1150,7 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-node-invariants.lisp",
+        "books/stx-lace-rows.lisp",
         "tests/acl2/store-node-composite-index-tests.lisp",
         "planning/evidence/store-composite-index-t4-2026-09-23.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
@@ -7841,7 +7842,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/records-freeze-2026-09-26.md",
         "books/payload-arena.lisp",
@@ -8050,7 +8051,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
