@@ -448,6 +448,8 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertIn(b"BP journal generation selected generation=1", rotated)
         self.assertIn(b"BP journal generation retired name=lifecycle", rotated)
         self.assertEqual(held, half)
+        self.assertEqual([self.generation_number(path)
+                          for path in self.generation_directories()], [1])
         second, port = self.start_receiver(once=False)
         second_out = self.drain(second)
         self.send_many(port, order[half:-1], paths)
@@ -469,8 +471,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
               flush=True)
         self.assertEqual(third.returncode, 0, (out[-4000:], err[-4000:]))
         # The third open found the second half's records: the journal
-        # rotated again, with all but the last fragment held.
-        self.assertIn(b"BP journal generation selected generation=2", out)
+        # rotated again, with all but the last fragment held.  (Its open's
+        # lines precede the listening announcement, which start_receiver
+        # consumes; the durable state says it: generation 2 is the only
+        # generation directory left.)
+        self.assertEqual([self.generation_number(path)
+                          for path in self.generation_directories()], [2])
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
@@ -570,6 +576,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         process.stderr.close()
         self.assertIn(marker, seen, seen)
         return seen
+
+    @staticmethod
+    def generation_number(path):
+        """The generation a directory name carries: `lifecycle' is 0, and
+        `lifecycle-gNNNN' (books/bp-node-rotation-codec.lisp
+        fn-bpnr-generation-directory) is NNNN."""
+        name = path.name
+        return 0 if name == "lifecycle" else int(name[len("lifecycle-g"):])
 
     def generation_directories(self):
         return sorted(path for path in self.journal.iterdir()
