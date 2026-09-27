@@ -791,6 +791,7 @@ the run's (exit 1), named on stderr and in the service log."
             (lambda ()
               (fnn-owner-core 'fn-owner-connection-budget
                               (fnn-heap-machine-octets)
+                              (sb-ext:dynamic-space-size)
                               (fnn-heap-core-octets)
                               (fnn-mux-thread-count service)
                               (fnn-mux-thread-stack-octets)

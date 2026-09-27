@@ -636,18 +636,20 @@
           (value :refused))
       (fn-owner-reconfigure-deltas-admitted id deltas state))))
 
-(defun fn-owner-connection-budget (machine core threads stack nursery profile tlsp
-                                           state)
+(defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
+                                           tlsp state)
   ; Once per run, after recovery and before listen (host/native/mux.lisp
-  ; fnn-mux-budget-install, from fnn-owner-run).  MACHINE, CORE, THREADS and
-  ; STACK are the host's observations; NURSERY its collection trigger;
+  ; fnn-mux-budget-install, from fnn-owner-run).  MACHINE, DYNAMIC (the
+  ; dynamic space this process has), CORE, THREADS and STACK are the host's
+  ; observations; NURSERY its collection trigger;
   ; PROFILE the store's; TLSP whether a TLS context is loaded.  The capacity
   ; is the live configuration's.
   (declare (xargs :stobjs state :mode :program))
   (let* ((capacity (fn-exp-connections-capacity (fn-cfg-value (fn-owner-config state))))
          (article (fn-bs-profile-max-article-octets profile))
          (hneed (fn-heap-figure-octets profile core nursery))
-         (d (fn-cbud-run-decide capacity machine hneed core threads stack article tlsp))
+         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack
+                                 article tlsp))
          (state (f-put-global 'fn-owner-connection-bound
                               (and (equal (car d) :hold) (fn-cbud-held-bound d))
                               state))
