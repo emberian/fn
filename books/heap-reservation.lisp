@@ -263,8 +263,8 @@
          1))
 
 ; -----------------------------------------------------------------------------
-; What `init' writes (PKT-582, in the shape of gpt-6's wave-5 review s.8:
-; planning/review-2026-09-26-gpt6-wave5.md).  The default preset's history
+; What `init' writes (PKT-582, in the shape of gpt-6's review of wave 5 of
+; 2026-09-26, section 8).  The default preset's history
 ; bound is the codec's 1 TiB, whose list-representation heap is
 ; 16 x 2 x 2^40 octets (`heap=73402949 MB', refused on every machine); a
 ; request that names no capacity field (a bare `init', and every mission:

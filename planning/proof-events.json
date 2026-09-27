@@ -6972,14 +6972,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-init-request-on-a-small-machine-is-small"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-init-request-keeps-the-operators-request"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-machine-octets-is-at-most-each-observation"
         },
         {

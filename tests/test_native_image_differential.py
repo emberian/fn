@@ -431,6 +431,9 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         made = subprocess.run([OPENSSL, "genpkey", "-algorithm", "ML-DSA-65", "-out",
                                str(ml_private)], capture_output=True, timeout=60)
         if made.returncode != 0:
+            # waiver-ok: capability -- FN_TEST_OPENSSL is the test tool OpenSSL
+            # (3.5+ makes ML-DSA-65 keys); an older one is a tool this tree has
+            # not built, and the signature case needs an independent key.
             self.skipTest("no ML-DSA-65 in FN_TEST_OPENSSL: " + made.stderr.decode()[-200:])
         subprocess.run([OPENSSL, "pkey", "-in", str(ml_private), "-pubout", "-out",
                         str(ml_public)], check=True, timeout=60)

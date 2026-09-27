@@ -137,6 +137,25 @@ class ProductionTests(unittest.TestCase):
         self.assertIsNone(doc["stack_floor_kib"], doc)
 
 
+def cgroup_limit():
+    """The least memory.max from this process's cgroup up, or None."""
+    try:
+        line = next(l for l in Path("/proc/self/cgroup").read_text().splitlines()
+                    if l.startswith("0::"))
+    except (OSError, StopIteration):
+        return None
+    path, found = line[3:], []
+    while path and path != "/":
+        try:
+            text = (Path("/sys/fs/cgroup" + path) / "memory.max").read_text().strip()
+            if text.isdigit():
+                found.append(int(text))
+        except OSError:
+            pass
+        path = path.rsplit("/", 1)[0]
+    return min(found) if found else None
+
+
 def free_port():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -205,9 +224,6 @@ class DeepInputStackTests(unittest.TestCase):
                    environment())
         self.assertEqual(made.returncode, 0, made.stderr)
         probe = run(IMAGE, ["heap", "--", "operator", str(cfg), "run"], environment())
-        if probe.returncode == 1:
-            self.skipTest("this machine cannot hold the store's reservation (run it "
-                          "without a small memory limit): " + probe.stderr.decode()[-160:])
         self.assertEqual(probe.returncode, 0, probe.stderr)
         stack = int(re.search(rb"stack=(\d+) KB", probe.stdout).group(1))
         return cfg, port, stack
@@ -229,6 +245,10 @@ class DeepInputStackTests(unittest.TestCase):
         """A = 1 MiB (the default mission's article bound): 524,288 lines
         admitted; posted, served, reopened and served at the probe's stack
         (21,032 KiB), and a third of it does not serve it."""
+        limit = cgroup_limit()
+        if limit is not None and limit < 8 * 1024 ** 3:
+            self.skipTest("A = 1 MiB reserves 60 stacks of 21 MB: run without a memory "
+                          "limit under 8 GiB (this one is %d MiB)" % (limit >> 20))
         cfg, port, stack = self.store("big", ["--profile", "development",
                                               "--max-article-octets", "1048576",
                                               "--max-groups-per-article", "8"])
