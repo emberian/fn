@@ -48,6 +48,9 @@
 (include-book "books/owner-commit-steps")
 ;; Lane log-2: the pipelined commit (fn-ocp-*), over fn-ocs-*.
 (include-book "books/owner-commit-pipeline")
+;; PKT-828: readers during a barrier at the reader view (host/owner-host.lisp
+;; fn-owner-at-reader-view, fn-owner-reader-views-capture).
+(include-book "books/owner-reader-view")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
