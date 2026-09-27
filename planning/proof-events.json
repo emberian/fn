@@ -10582,11 +10582,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scj-conn-pinp-of-view-pinned",
-          "note": "KEYSTONE. A connection pinned at the view is pinned over the catalog exactly when the view is live over it. Teeth: tests/acl2/served-catalog-join-frame-conns-tests.lisp."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-scjs-invp-of-store-frame",
           "note": "KEYSTONE. Every store step that completes no article keeps fn-scj-invp (books/served-catalog-join-frame-store.lisp). Teeth: tests/acl2/served-catalog-join-frame-store-tests.lisp."
         },
