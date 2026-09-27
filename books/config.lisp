@@ -781,7 +781,7 @@
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
     :add-peer-rows :remove-peer-rows :set-group-description
-    :set-group-status :set-group-moderation))
+    :set-group-status :account-access :set-group-moderation))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -806,6 +806,7 @@
         ((equal kind :remove-peer-rows) 19)
         ((equal kind :set-group-description) 20)
         ((equal kind :set-group-status) 21)
+        ((equal kind :account-access) 22)
         ((equal kind :set-group-moderation) 23)
         (t 0)))
 
@@ -832,6 +833,7 @@
         ((equal code 19) :remove-peer-rows)
         ((equal code 20) :set-group-description)
         ((equal code 21) :set-group-status)
+        ((equal code 22) :account-access)
         ((equal code 23) :set-group-moderation)
         (t nil)))
 
@@ -1214,6 +1216,78 @@
           ((not (equal (fn-cfg-delta-rows d) (fn-cfg-binding-rows login hex)))
            :binding-row)
           (t nil))))
+
+;; Group access (PRF-222, NNT-046; specs/nntp.md "Group access").  The same
+;; slot holds one access rule per login: a row (LOGIN READ POST 3), mark 3
+;; beside the account rows' 0 and 1 and the binding rows' 2, written only by
+;;
+;;   (:account-access LOGIN READ 0 ((LOGIN READ POST 3)))           code 22
+;;
+;; which replaces every mark-3 row whose login spells the same octets and
+;; leaves every other row where it was.  READ and POST are RFC 3977 section
+;; 4.2 wildmats over newsgroup names: the groups the login's connections
+;; see, and the groups they may post to.  LOGIN "" is the rule of a
+;; connection that has not authenticated.  A login with no row, and a row of
+;; "*", restricts nothing (the default, so every account keeps its view).
+;; The delta is admitted on the representation (a label, graphic ASCII);
+;; the wildmat grammar is the verb's to check (books/native-admin.lisp), and
+;; a pattern that does not parse admits nothing when it is applied
+;; (books/group-access.lisp `fn-gac-readablep': fail closed).
+(defun fn-cfg-access-patternp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (fn-cfg-graphic-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-access-rows (login read post)
+  (declare (xargs :guard t))
+  (list (fn-cfg-row-make login read post 3)))
+
+(defun fn-cfg-account-access (login read post)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :account-access login read 0
+                     (fn-cfg-access-rows login read post)))
+
+(defun fn-cfg-access-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 3))
+
+(defun fn-cfg-rows-without-access (rows login)
+  ; ROWS less every access row whose login spells LOGIN's octets.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-access-rowp (car rows))
+               (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                      (fn-record-string-octets login)))
+          (fn-cfg-rows-without-access (cdr rows) login)
+        (cons (car rows) (fn-cfg-rows-without-access (cdr rows) login)))
+    nil))
+
+(defun fn-cfg-account-access-reason (d)
+  (declare (xargs :guard t))
+  (let ((login (fn-cfg-delta-a d)) (read (fn-cfg-delta-b d))
+        (rows (fn-cfg-delta-rows d)))
+    (cond ((not (or (equal login "") (fn-cfg-account-loginp login)))
+           :access-login)
+          ((not (fn-cfg-access-patternp read)) :access-pattern)
+          ((not (and (consp rows) (null (fn-cfg-ag-cdr rows))))
+           :access-row)
+          ((not (fn-cfg-access-patternp (fn-cfg-row-c (fn-cfg-ag-car rows))))
+           :access-pattern)
+          ((not (equal rows (fn-cfg-access-rows
+                             login read (fn-cfg-row-c (fn-cfg-ag-car rows)))))
+           :access-row)
+          (t nil))))
+
+; The access rows of the slot, in slot order.
+(defun fn-cfg-access-table (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (fn-cfg-access-rowp (car rows))
+          (cons (car rows) (fn-cfg-access-table (cdr rows)))
+        (fn-cfg-access-table (cdr rows)))
+    nil))
 
 ; The row a code's digest keys, or nil.
 (defun fn-cfg-account-row (rows digest)
@@ -1741,6 +1815,17 @@
                                   (fn-cfg-accounts v) a)
                                  rows)
                          (fn-cfg-descriptions v)))
+     ; An access rule replaces that login's access row (PRF-222).
+     ((equal kind :account-access)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-access
+                                  (fn-cfg-accounts v) a)
+                                 rows)
+                         (fn-cfg-descriptions v)))
      ; A moderation replaces the group's moderation and moderator rows
      ; (PRF-228).
      ((equal kind :set-group-moderation)
@@ -1918,6 +2003,7 @@
                :account-login-taken)
               (t nil))))
      ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
+     ((equal kind :account-access) (fn-cfg-account-access-reason d))
      ((equal kind :set-group-description)
       (fn-cfg-set-group-description-reason v gen d))
      ((equal kind :set-group-moderation)

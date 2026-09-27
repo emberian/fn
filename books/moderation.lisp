@@ -595,6 +595,36 @@
           (fn-mod-queue-hiddenp g (cdr closed) login))
     nil))
 
+; The queues hidden from LOGIN, in entry order: `fn-mod-queue-hiddenp' as a
+; list, which the reader's view appends to its READ rule
+; (books/nntp-auth.lisp `fn-auth-access-text').
+(defun fn-mod-hidden-queues (closed login)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (enable fn-nntp-moderated-entryp)))))
+  (if (consp closed)
+      (if (and (fn-nntp-moderated-entryp (car closed))
+               (equal (car (car closed)) :moderated)
+               (not (and login
+                         (member-equal login (true-list-fix
+                                              (fn-mod-entry-moderators
+                                               (car closed)))))))
+          (cons (fn-mod-entry-queue (car closed))
+                (fn-mod-hidden-queues (cdr closed) login))
+        (fn-mod-hidden-queues (cdr closed) login))
+    nil))
+
+(defthm fn-mod-hidden-queues-is-hiddenp
+  (iff (member-equal g (fn-mod-hidden-queues closed login))
+       (fn-mod-queue-hiddenp g closed login)))
+
+; A connection's own view of the entries hides the same queues: the entries
+; it turns into :approver entries are exactly those naming LOGIN.
+(defthm fn-mod-hidden-queues-of-session-entries
+  (equal (fn-mod-hidden-queues (fn-mod-session-entries closed login) login)
+         (fn-mod-hidden-queues closed login))
+  :hints (("Goal" :in-theory (enable fn-nntp-moderated-entryp))))
+
 (defthm fn-mod-names-a-queuep-member
   (implies (and (member-equal g groups) (fn-mod-queuep g closed))
            (fn-mod-names-a-queuep groups closed)))
@@ -634,5 +664,6 @@
     (:d fn-mod-facts-approvedp) (:d fn-mod-envelope-msgid)
     (:d fn-mod-forwarded-source) (:d fn-mod-concat) (:d fn-mod-envelope-source)
     (:d fn-mod-forward) (:d fn-mod-gate) (:d fn-mod-queuep)
-    (:d fn-mod-names-a-queuep) (:d fn-mod-queue-hiddenp)))
+    (:d fn-mod-names-a-queuep) (:d fn-mod-queue-hiddenp)
+    (:d fn-mod-hidden-queues)))
 (in-theory (disable fn-mod-vocabulary))

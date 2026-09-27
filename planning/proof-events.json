@@ -6810,12 +6810,113 @@
         {
           "kind": "theorem",
           "name": "fn-cat-relation-of-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-of-nil"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-load-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-non-article-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-is-prefix-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-growth"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-wire-list-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-wire-list-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-prefix-relation-of-redecide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-at-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-at-init"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-article-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-before-article-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-other-finish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-withdraw"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-ocl-relation-of-redecide"
         }
       ]
     },
     {
       "id": "PRF-202",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-view-apply-is-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crf-apply-article-plain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-commit-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-commit-advanced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-articles-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-view-below-of-withdraw-advanced"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-withdraw-then-commit-view"
+        }
+      ]
     },
     {
       "id": "PRF-203",
@@ -7422,6 +7523,142 @@
         {
           "kind": "theorem",
           "name": "fn-auth-moderation-config-closed"
+        }
+      ]
+    },
+    {
+      "id": "PRF-219",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-establishes-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-apply-record-keeps-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-node-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-payload-of-is-the-article-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-feed-article-is-own-feed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-foundp-is-article-found"
+        }
+      ]
+    },
+    {
+      "id": "PRF-218",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-stuff-lines-iter-is-stuff-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-body-octets-iter-is-body-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-list-length-onto-is-list-length"
+        }
+      ]
+    },
+    {
+      "id": "PRF-220",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-node-record-committed-carriedp-is-committedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-sn-statep-carries-node-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-store-record-accepted-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-ocl-relation-carries-sn-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-ocl-store-record-accepted-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+        }
+      ]
+    },
+    {
+      "id": "PRF-222",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-state-is-a-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-index-corresponds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-state-groups-are-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-articles-memberships-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-index-withdrawn-are-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restricted-article-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-absent-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-deselected-consistent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-consistent-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-when-unrestricted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-consistent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-consistent-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-trie-corresponds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-delegate-pinned-preserves-consistentp"
         }
       ]
     }

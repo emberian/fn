@@ -93,7 +93,10 @@
   (declare (xargs :guard t))
   (list (fn-oag-descs (fn-cnode-served-of cfg) (fn-cfg-value cfg))
         (fn-cfg-motd-lines (fn-cfg-value cfg))
-        (fn-oag-agent cfg)))
+        (fn-oag-agent cfg)
+        ;; PRF-222: the access rules (books/group-access.lisp
+        ;; `fn-gac-listing-table'), the accounts slot's mark-3 rows.
+        (fn-cfg-access-table (fn-cfg-accounts (fn-cfg-value cfg)))))
 
 ;; P3 (moderated groups, PRF-228): one status entry per live moderated
 ;; group, (:moderated G-OCTETS QUEUE-OCTETS (LOGIN-OCTETS ...)), from the
@@ -339,9 +342,13 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                     (fn-auth-step-pinned as archive index verdicts config
                                          observation injection wire-event)))
            :use ((:instance fn-auth-pinned-submission-is-the-delegated-submission)
+                 ;; PRF-222: the delegate serves the session's view, whose
+                 ;; posting configuration keeps the agent (fn-auth-view-config-keeps).
                  (:instance fn-oag-peer-step-pinned-submission-names-the-configured-agent
-                            (ps (fn-auth-session-base as))
-                            (config (fn-auth-moderation-config as config)))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))))))
 
 (local
  (defthm fn-oag-auth-effects-carry-no-submission

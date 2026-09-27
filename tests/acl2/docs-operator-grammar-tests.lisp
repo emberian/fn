@@ -107,7 +107,12 @@
     ("docs/operator.md#moderate-a-group" 1 "group" "create" "fn.announce.moderation")
     ("docs/operator.md#moderate-a-group" 2 "group" "moderate" "fn.announce" "--moderators" "alice,bob")
     ("docs/operator.md#moderate-a-group" 3 "group" "moderate" "fn.announce" "--off")
-    ("docs/operator.md#accounts-for-friends-invitation-codes" 2 "account" "list")))
+    ("docs/operator.md#moderate-a-group" 4 "moderation" "list" "fn.announce")
+    ("docs/operator.md#accounts-for-friends-invitation-codes" 2 "account" "list")
+    ("docs/operator.md#private-groups-which-login-sees-which-group" 1 "account" "access" "bob" "--read" "fn.*,!fn.private.*" "--post" "fn.*,!fn.private.*")
+    ("docs/operator.md#private-groups-which-login-sees-which-group" 2 "account" "access" "alice" "--read" "*" "--post" "*")
+    ("docs/operator.md#private-groups-which-login-sees-which-group" 3 "account" "access" "--anonymous" "--read" "fn.public.*" "--post" "*,!*")
+    ("docs/operator.md#private-groups-which-login-sees-which-group" 4 "account" "access" "show")))
 
 (assert-event (null (fn-docs-operator-rejected *fn-docs-operator-argv*))
               :msg (msg "The grammar refuses these documented invocations: ~x0"

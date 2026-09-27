@@ -412,3 +412,75 @@
 (assert-event (equal (fn-peer-reason-text :unapproved-moderated)
                      "no Approved header field for a moderated newsgroup"))
 (assert-event (member-equal :unapproved-moderated *fn-peer-reasons*))
+
+; ---------------------------------------------------------------------------
+; 7. PKT-658: the queue is readable only by its group's moderators
+; (books/nntp-auth.lisp fn-auth-view-hides-the-queue-from-a-non-moderator).
+
+(defun mdt-payload (id)
+  (append (mdt-o "Message-ID: ") (mdt-o id)
+          '(13 10) (mdt-o "Subject: mdt") '(13 10 13 10 88 13 10)))
+(defconst *mdt-env*
+  (fn-make-article "<fn-moderate.h@example.invalid>"
+                   (mdt-payload "<fn-moderate.h@example.invalid>")
+                   '("fn.queue") (list (cons "fn.queue" 1)) t 841000000))
+(defconst *mdt-pub*
+  (fn-make-article "<p@example.invalid>" (mdt-payload "<p@example.invalid>")
+                   '("fn.test") (list (cons "fn.test" 1)) t 841000000))
+(defconst *mdt-state*
+  (fn-make-state '("fn.test" "fn.mod" "fn.queue")
+                 (list (cons "fn.test" 2) (cons "fn.mod" 1) (cons "fn.queue" 2))
+                 (list *mdt-env* *mdt-pub*) 3 nil nil))
+(defconst *mdt-acfg* (fn-auth-make-config t nil t nil))
+(defconst *mdt-as-anon* (fn-auth-open-session *mdt-state* nil nil nil *mdt-acfg* nil))
+(defun mdt-logged-in (name)
+  (fn-auth-make-session (fn-auth-session-base *mdt-as-anon*) *mdt-acfg*
+                        (mdt-o name) (make-list 32 :initial-element 7) nil nil))
+(defconst *mdt-as-carol* (mdt-logged-in "carol"))
+(defconst *mdt-as-alice* (mdt-logged-in "alice"))
+(defun mdt-view-groups (as)
+  (fn-state-groups (fn-auth-view-archive as *mdt-cfg* *mdt-state*)))
+(defun mdt-view-arts (as)
+  (fn-state-articles (fn-auth-view-archive as *mdt-cfg* *mdt-state*)))
+; Reachable positive witness (carol, a login that moderates nothing): every
+; hypothesis holds, and the view holds neither the queue nor its envelope,
+; while it keeps fn.test and its article.
+(assert-event (fn-mod-queue-hiddenp (fn-gac-text-octets "fn.queue")
+                                    (fn-inj-config-closed *mdt-cfg*)
+                                    (fn-auth-access-login *mdt-as-carol*)))
+(assert-event (null (fn-auth-session-peer *mdt-as-carol*)))
+(assert-event (fn-nntp-session-projected (fn-auth-reader-session *mdt-as-carol*)))
+(assert-event (not (member-equal "fn.queue" (mdt-view-groups *mdt-as-carol*))))
+(assert-event (not (fn-auth-arts-name-groupp "fn.queue" (mdt-view-arts *mdt-as-carol*))))
+(assert-event (member-equal "fn.test" (mdt-view-groups *mdt-as-carol*)))
+(assert-event (equal (mdt-view-arts *mdt-as-carol*) (list *mdt-pub*)))
+; Before AUTHINFO the queue is hidden too.
+(assert-event (not (member-equal "fn.queue" (mdt-view-groups *mdt-as-anon*))))
+; Hypothesis removal (the hiddenp literal): alice moderates fn.mod, the other
+; literals hold, and both conclusions fail: she reads the queue.
+(assert-event (not (fn-mod-queue-hiddenp (fn-gac-text-octets "fn.queue")
+                                         (fn-inj-config-closed *mdt-cfg*)
+                                         (fn-auth-access-login *mdt-as-alice*))))
+(assert-event (null (fn-auth-session-peer *mdt-as-alice*)))
+(assert-event (fn-nntp-session-projected (fn-auth-reader-session *mdt-as-alice*)))
+(assert-event (member-equal "fn.queue" (mdt-view-groups *mdt-as-alice*)))
+(assert-event (fn-auth-arts-name-groupp "fn.queue" (mdt-view-arts *mdt-as-alice*)))
+; With no moderated group, no one is restricted by the queue rule.
+(assert-event (null (fn-auth-access-text *mdt-as-carol*
+                                         (fn-inj-make-config-closed
+                                          t *mdt-agent* *mdt-groups* 32768 nil)
+                                         1)))
+; The feed half (books/owner.lisp): the queue is a queue, fn.mod is not.
+(assert-event (fn-mod-names-a-queuep (list (mdt-o "fn.queue")) (list *mdt-entry*)))
+(assert-event (not (fn-mod-names-a-queuep (list (mdt-o "fn.mod") (mdt-o "fn.test"))
+                                          (list *mdt-entry*))))
+; Hypothesis removal (projection): carol's session with no projection
+; (*mdt-carol-session*) keeps the other literals; its view is the archive,
+; so the queue is there (the reader machine answers 503 to every archive
+; command on such a session, books/nntp-auth.lisp fn-auth-access-read).
+(assert-event (fn-mod-queue-hiddenp (fn-gac-text-octets "fn.queue")
+                                    (fn-inj-config-closed *mdt-cfg*)
+                                    (fn-auth-access-login *mdt-carol-session*)))
+(assert-event (null (fn-auth-session-peer *mdt-carol-session*)))
+(assert-event (not (fn-nntp-session-projected (fn-auth-reader-session *mdt-carol-session*))))
+(assert-event (member-equal "fn.queue" (mdt-view-groups *mdt-carol-session*)))

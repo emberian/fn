@@ -309,6 +309,10 @@
 (local (defthm fn-cfg-rows-without-binding-is-row-listp
   (implies (fn-cfg-row-listp rows)
            (fn-cfg-row-listp (fn-cfg-rows-without-binding rows a)))))
+; PRF-222: the access rule likewise.
+(local (defthm fn-cfg-rows-without-access-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-without-access rows a)))))
 ; P3: the moderation arm rebuilds the accounts slot the same way.
 (local (defthm fn-cfg-rows-without-moderation-is-row-listp
   (implies (fn-cfg-row-listp rows)

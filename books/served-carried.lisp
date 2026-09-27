@@ -131,11 +131,15 @@
 (defun fn-scar-auth-delegate-pinned
     (as live trie arts archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t))
-  ;; P3 (PRF-228): the connection's moderation view, as
-  ;; books/nntp-auth.lisp `fn-auth-delegate-pinned'.
+  ;; PRF-222: the session's group-access view, as fn-auth-delegate-pinned
+  ;; (books/nntp-auth.lisp); every view input is its argument for an
+  ;; unrestricted session.
   (let ((r (fn-scar-peer-step-pinned
-            (fn-auth-session-base as) live trie arts archive index verdicts
-            (fn-auth-moderation-config as config)
+            (fn-auth-view-session as config) live trie arts
+            (fn-auth-view-archive as config archive)
+            (fn-auth-view-index as config archive index)
+            verdicts
+            (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)

@@ -4331,6 +4331,107 @@
         "planning/evidence/moderated-groups-2026-09-27/native-m3-test_native_moderation.log",
         "planning/evidence/moderated-groups-2026-09-27.md"
       ]
+    },
+    {
+      "id": "SCN-147",
+      "title": "Power is cut to the block device under a committing node (dm-log-writes, ext4) at 1,281 write boundaries across POST commits, checkpoint capture, compaction, reclaim, a near-full store and a recovery cut again; every acknowledged POST is served byte-identical afterwards, no refusal becomes acceptance, no binding or number moves",
+      "milestone": "M2",
+      "status": "implemented",
+      "implementation": {
+        "test": "tools/power_loss.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/power-loss-2026-09-26/main2.log",
+        "record": "planning/evidence/power-loss-2026-09-26.md"
+      },
+      "requirements": [
+        "STO-003",
+        "STO-005"
+      ],
+      "steps": [
+        "On hbox (Linux 6.11): a data and a log loop device under dm-log-writes, ext4 on the mapped device; the developer image's node on it (scale profile, small open suffix): init, POSTs with a mark in the log after every 240 and every known 441 refusal, two store compactions, retention set released-by-all-holders, store reclaim; references read from the uncut store to /dev/shm.",
+        "For each cut (an entry of the log and a mode: flush, prefix, subset of unflushed writes, or 4096-octet tears), rebuild the device, mount, e2fsck, recover, store inspect the lost-reply POSTs, start the owner, ARTICLE and OVER everything, re-POST the newest acknowledged Message-ID and a fresh one, status; rerun compact or reclaim for their cuts; for a fifth of the cuts, cut the recovery again under a second log.",
+        "Control cuts judge a POST whose writes all follow the cut as acknowledged; each must be caught. A barrier=0 run shows the fsync assumption is load-bearing."
+      ],
+      "evidence": [
+        "planning/evidence/power-loss-2026-09-26.md",
+        "planning/evidence/power-loss-2026-09-26/summary.md",
+        "tools/power_loss.py"
+      ],
+      "expected": "No acknowledged POST missing or changed, no refused POST served, lost-reply POSTs whole or absent, recover/owner/status without fault, bindings and numbers stable, reclaim accounting whole, every control caught; on barrier=0 acknowledged POSTs are lost (the assumption broken, not fn)."
+    },
+    {
+      "id": "SCN-149",
+      "title": "Articles of 2,000,000 lines and of one 4 MiB line are posted, served (ARTICLE, BODY), reopened and served again byte-identical at 1 MiB of control stack per thread and at the image's own 64 MiB, on the production and developer images",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 8388608; start the owner with SBCL_USER_ARGS=--control-stack-size 1MB; POST an article of 2,000,000 body lines (every sixteenth a lone dot), ARTICLE and BODY it; POST an article whose body is one line of 4,194,304 octets and ARTICLE it; SIGTERM.",
+        "start the owner at the image's own stack on the same store (the reopen); ARTICLE both again; POST a second 2,000,000-line article and ARTICLE it; SIGTERM.",
+        "start the owner at 1 MiB again (a second reopen); ARTICLE the second article; SIGTERM."
+      ],
+      "expected": [
+        "Every POST is 240; every reply is the status line, the stored article exactly dot-stuffed (RFC 3977 section 3.1.1) and the terminator, ending with the posted body; BODY has 2,000,002 CRLFs; the owner exits 0 each time. Before this lane the 2,000,000-line POST exhausted the stack in fn-post-body-octets and the 4 MiB line in fn-wire-list-length (Control stack exhausted in fn-owner-chunk-span).",
+        "The replies at 64 MiB are byte-identical to those at 1 MiB; the second article is served.",
+        "The reply at 1 MiB after the reopen is byte-identical to the one at 64 MiB."
+      ],
+      "evidence": [
+        "tests/test_native_served_line_stack.py",
+        "tests/acl2/served-line-iterative-tests.lisp",
+        "planning/evidence/served-line-iterative-2026-09-26.md",
+        "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_served_line_stack",
+        "cases": [
+          "test_production_serves_two_million_lines_at_one_mib_of_stack",
+          "test_developer_serves_two_million_lines_at_one_mib_of_stack"
+        ],
+        "native": true,
+        "record": "planning/evidence/served-line-iterative-2026-09-26.md",
+        "log": "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      }
+    },
+    {
+      "id": "SCN-152",
+      "title": "Two accounts, one private group: the restricted login cannot list, select, read by number or Message-ID, or post to it; the other can; after a restart too; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.public`, `group create fn.private.x`; start the owner (implicit TLS, protected_only).",
+        "Invite and redeem alice and bob (XREDEEM); alice posts <secret> to fn.private.x, <pub> to fn.public, <cross> to both.",
+        "Live `account access bob --read 'fn.[' --post '*'` (refused), then `account access bob --read 'fn.*,!fn.private.*' --post fn.public`; `account access show`.",
+        "bob on a new connection: LIST ACTIVE, LIST NEWSGROUPS, LIST COUNTS; GROUP fn.absent, GROUP fn.private.x, LISTGROUP fn.private.x; STAT <nothere>, STAT <secret>, ARTICLE <secret>, STAT <cross>; GROUP fn.public; OVER <cross>; POST to fn.private.x and to fn.absent; POST to fn.public.",
+        "alice on a new connection: LIST ACTIVE, GROUP fn.private.x, ARTICLE <secret>, POST to fn.private.x.",
+        "Restart the owner and repeat the two connections."
+      ],
+      "expected": [
+        "The refused pattern exits non-zero; the rule exits 0; `show` prints `access bob read fn.*,!fn.private.* post fn.public`.",
+        "bob's LIST variants omit fn.private.x and list fn.public; GROUP fn.private.x answers the same line as GROUP fn.absent (411); LISTGROUP 411; STAT <secret> answers the same line as STAT <nothere> (430); ARTICLE <secret> 430; STAT <cross> 223; GROUP fn.public 211; OVER <cross> 224 without fn.private.x; the POST to fn.private.x answers the 441 a POST to fn.absent answers; the POST to fn.public 240.",
+        "alice lists fn.private.x, GROUP 211, ARTICLE 220, POST 240.",
+        "After the restart, the same."
+      ],
+      "implementation": {
+        "test": "tests.test_native_group_access",
+        "cases": [
+          "NativeGroupAccessTests.test_two_accounts_one_private_group"
+        ],
+        "native": true,
+        "record": "planning/evidence/group-access-2026-09-27.md",
+        "log": "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      },
+      "evidence": [
+        "tests/test_native_group_access.py",
+        "planning/evidence/group-access-2026-09-27.md",
+        "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      ]
     }
   ]
 }
