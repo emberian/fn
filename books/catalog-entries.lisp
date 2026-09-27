@@ -36,24 +36,32 @@
 ; THE ENTRIES (each theorem names the host function that reaches it; the
 ; line is found by tools/current_view.py, never written here):
 ;
+;   Every entry installs the owner from the store's ROWS (the open interns
+;   the decoded journal: books/store-intern.lisp fn-intern-events) and loads
+;   the catalog from those rows (host/owner-host.lisp fn-owner-install-
+;   extended -> books/served-catalog-owner.lisp fn-sca-load-held-rows, which
+;   reads no byte and seals nothing).
 ;   E1 init.  host/native/io.lisp fnn-command-init writes an empty store; the
-;      first open is E2 with no records: fn-cat-ocl-relation-at-recover with
-;      prefix = suffix = nil, the catalog the creators (fn-cat-load of nil is
-;      the identity: fn-cat-load-of-nil).
-;   E2 full replay.  host/owner-host.lisp fn-owner-recover (from host/native/
-;      io.lisp fnn-recover-full-replay): fn-ock-recover-extended over
-;      (fn-sco-extend (fn-sco-capture configs nil) configs records).
-;      fn-cat-ocl-relation-at-recover with prefix = nil: the catalog loaded
-;      by fn-cat-load from the SAME decoded records (one fn-store-decode-records,
-;      two consumers) is in R with the installed owner, no hypothesis beyond
-;      the host's own :fault check.
+;      first open is E2 with no records (fn-sca-ocl-relation-at-full-open
+;      with ws = nil: the catalog cleared).
+;   E2 full replay.  fn-owner-recover-from-store-open (the native owner) and
+;      fn-owner-recover-rows (the bridge): fn-ock-recover-extended over
+;      (fn-rii-sco-extend (fn-sco-capture configs nil) configs rows),
+;      fn-rii-sco-extend-is-sco-extend.  KEYSTONE
+;      fn-sca-ocl-relation-at-full-open: over the rows the open interned from
+;      the decoded journal WS into the cleared arena, the installed store's
+;      history is WS through that arena and the catalog the host loads is in
+;      R with the installed owner; no hypothesis beyond the host's :bad and
+;      :fault checks (and WS a true list, as every decoder answers).
 ;   E3 checkpoint.  fn-owner-recover-from-checkpoint and
 ;      fn-owner-recover-from-store-open (fnn-recover-from-state-checkpoint):
-;      the verified checkpoint is the capture of a prefix, extended over the
-;      suffix.  fn-cat-ocl-relation-at-recover with that prefix; and
-;      fn-cat-load-of-append: loading the checkpoint's records then the
-;      suffix is loading the history, so the checkpoint's E rows (lane
-;      checkpoint-pipeline's tables) may be loaded first and the suffix after.
+;      the verified checkpoint is the capture of a prefix of rows, extended
+;      over the suffix rows interned on top of the loaded arena.  KEYSTONE
+;      fn-sca-ocl-relation-at-recover: for ANY prefix and suffix whose rows
+;      are store events with their handles in the arena and materialize to
+;      wire events (what the intern establishes, fn-intern-events-are-store-
+;      events / -handles-in / -materializes, and what the checkpoint load
+;      must establish of its rows), the catalog the host loads is in R.
 ;   E4 import.  host/native/io.lisp fnn-command-store-import writes the plan's
 ;      files as init writes them and runs the ORDINARY open (fnn-recover): E2
 ;      over the imported records (books/store-export.lisp,
@@ -294,91 +302,79 @@
 ; -----------------------------------------------------------------------------
 ; R against the configured owner the host holds (fn-owner-core /
 ; fn-owner-ocfg, host/owner-host.lisp): the equality at idle phases, the
-; prefix otherwise, and the owner's own live relation.
+; prefix otherwise, and the owner's own live relation.  The history is the
+; ARTICLES of the store's ROWS read through the arena (fn-cat-history-articles
+; below): after the records flip `fn-sf-records' holds interned rows whose
+; article payload is a HANDLE, and no held row is fn-record-p, so R over the
+; raw rows would read no article at all (the vacuity catalog-columns
+; removed, 2026-09-27); and a signed article is a composite row whose held
+; row carries it, which ALPHA by wire (fn-rows-wire-of) reads as the wire
+; composite, no article (signed-post's red).
+
+; ALPHA for the catalog: each row of the store's history read as the ARTICLE
+; it serves, through the arena.  A held row (a plain article) and the held
+; row inside a composite row (a signed article: the atomic acceptance whose
+; article the intern made a held row, books/store-intern.lisp
+; fn-intern-event) are both read by their handle (fn-row-wire-of of the held
+; row); any other row is its wire event, which is no article.  (For a
+; composite, fn-rows-wire-of reads the wire composite, which
+; fn-sf-article-records skips: a relation over it had no signed articles --
+; the red signed-post found, catalog-columns 2026-09-27.)
+(defun fn-cat-history-article (row fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (fn-hstxa-p row)
+      (fn-row-wire-of (fn-hstxa-held row) fn-arena)
+    (fn-row-wire-of row fn-arena)))
+
+(defun fn-cat-history-articles (rows fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (atom rows)
+      nil
+    (cons (fn-cat-history-article (car rows) fn-arena)
+          (fn-cat-history-articles (cdr rows) fn-arena))))
 
 (defun-nx fn-cat-ocl-relation (oc fn-arena fn-cat)
-  (let ((s (fn-own-store (fn-ocfg-owner oc))))
+  (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+         (history (fn-cat-history-articles (fn-sf-records (fn-sn-files s)) fn-arena)))
     (and (fn-ocl-relation oc)
          (if (fn-own-store-idlep s)
-             (fn-cat-history-relation (fn-sf-records (fn-sn-files s)) fn-arena fn-cat)
-           (fn-cat-history-prefix-relation (fn-sf-records (fn-sn-files s)) fn-arena fn-cat)))))
+             (fn-cat-history-relation history fn-arena fn-cat)
+           (fn-cat-history-prefix-relation history fn-arena fn-cat)))))
 
 ; -----------------------------------------------------------------------------
 ; E1, E2, E3 (and E4, E5 through them): the owner fn-owner-recover-extended
-; installs, on either path, and the catalog loaded from the same records.
+; installs, on either path.  The keystones over the catalog the host loads
+; there (fn-sca-load-held-rows over the store's rows) are in
+; books/served-catalog-owner.lisp: fn-sca-ocl-relation-at-recover,
+; fn-sca-ocl-relation-at-full-open.  These two facts about the installed
+; store are what they read.
 
 ; The store of the owner the full open installs is the opened Store, and the
 ; open was :ok.
-(local
- (defthm fn-cbo-recover-full-store
-   (implies (not (equal (fn-ock-recover-full configs frontier events max-conns) :fault))
-            (and (equal (fn-own-store
-                         (fn-ocfg-owner (fn-ock-recover-full configs frontier events max-conns)))
-                        (fn-sn-open-state (fn-cpo-open-observed configs frontier events)))
-                 (equal (fn-sn-open-kind (fn-cpo-open-observed configs frontier events)) :ok)))
-   :hints (("Goal" :in-theory (union-theories
-                               (theory 'minimal-theory)
-                               '(fn-ock-recover-full fn-ock-install fn-ocfg-owner-of-fn-ocfg-make
-                                 fn-own-configure fn-own-start fn-own-store-of-fn-own-make
-                                 fn-own-refresh-keeps-fields))))))
+(defthm fn-cbo-recover-full-store
+  (implies (not (equal (fn-ock-recover-full configs frontier events max-conns) :fault))
+           (and (equal (fn-own-store
+                        (fn-ocfg-owner (fn-ock-recover-full configs frontier events max-conns)))
+                       (fn-sn-open-state (fn-cpo-open-observed configs frontier events)))
+                (equal (fn-sn-open-kind (fn-cpo-open-observed configs frontier events)) :ok)))
+  :hints (("Goal" :in-theory (union-theories
+                              (theory 'minimal-theory)
+                              '(fn-ock-recover-full fn-ock-install fn-ocfg-owner-of-fn-ocfg-make
+                                fn-own-configure fn-own-start fn-own-store-of-fn-own-make
+                                fn-own-refresh-keeps-fields)))))
 
 ; The opened Store's records are the events and its phase is idle.
-(local
- (defthm fn-cbo-open-ok-records-and-phase
-   (implies (equal (fn-sn-open-kind (fn-cpo-open-observed configs frontier events)) :ok)
-            (and (equal (fn-sf-records
-                         (fn-sn-files (fn-sn-open-state (fn-cpo-open-observed configs frontier events))))
-                        events)
-                 (fn-own-store-idlep
-                  (fn-sn-open-state (fn-cpo-open-observed configs frontier events)))))
-   :hints (("Goal" :use (fn-orec-open-kind-ok-is-okp fn-cpo-open-success-exact-image)
-            :in-theory (union-theories (theory 'minimal-theory)
-                                       '(fn-own-store-idlep fn-snt-idle-phasep
-                                         (:executable-counterpart member-equal)))))))
-
-; KEYSTONE (the entries).  The owner the host installs from the capture of any
-; prefix extended over any suffix (fn-owner-recover: prefix nil;
-; fn-owner-recover-from-checkpoint and -from-store-open: the verified
-; checkpoint's prefix), when it is not :fault, is in R with the catalog the
-; load fold builds from the creators over the same history, under any keyring
-; and generation.  No other hypothesis.
-(defthm fn-cat-ocl-relation-at-recover
-  (let ((oc (fn-ock-recover-extended
-             (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
-             configs frontier max-conns)))
-    (implies (and (not (equal oc :fault))
-                  (natp generation))
-             (fn-cat-ocl-relation
-              oc
-              (mv-nth 0 (fn-cat-load (append prefix suffix) keyring generation
-                                     (create-fn-arena) (create-fn-cat)))
-              (mv-nth 1 (fn-cat-load (append prefix suffix) keyring generation
-                                     (create-fn-arena) (create-fn-cat))))))
-  :hints (("Goal" :use (fn-ock-recover-installs-ocl-relation
-                        fn-owner-recover-from-checkpoint-equals-full-recover
-                        (:instance fn-cbo-recover-full-store (events (append prefix suffix)))
-                        (:instance fn-cbo-open-ok-records-and-phase (events (append prefix suffix)))
-                        (:instance fn-cat-load-from-empty
-                                   (records (append prefix suffix))))
+(defthm fn-cbo-open-ok-records-and-phase
+  (implies (equal (fn-sn-open-kind (fn-cpo-open-observed configs frontier events)) :ok)
+           (and (equal (fn-sf-records
+                        (fn-sn-files (fn-sn-open-state (fn-cpo-open-observed configs frontier events))))
+                       events)
+                (fn-own-store-idlep
+                 (fn-sn-open-state (fn-cpo-open-observed configs frontier events)))))
+  :hints (("Goal" :use (fn-orec-open-kind-ok-is-okp fn-cpo-open-success-exact-image)
            :in-theory (union-theories (theory 'minimal-theory)
-                                      '(fn-cat-ocl-relation)))))
-
-; E1: the empty history (init, the first open) leaves the catalog the
-; creators.
-(defthm fn-cat-ocl-relation-at-init
-  (let ((oc (fn-ock-recover-extended
-             (fn-sco-extend (fn-sco-capture configs nil) configs nil)
-             configs frontier max-conns)))
-    (implies (not (equal oc :fault))
-             (fn-cat-ocl-relation oc (create-fn-arena) (create-fn-cat))))
-  :hints (("Goal" :use ((:instance fn-cat-ocl-relation-at-recover
-                                   (prefix nil) (suffix nil) (generation 0) (keyring nil)))
-           :in-theory (union-theories (theory 'minimal-theory)
-                                      '(fn-cat-load-of-nil append mv-nth
-                                        (:executable-counterpart natp)
-                                        (:executable-counterpart consp)
-                                        (:executable-counterpart zp)
-                                        car-cons cdr-cons)))))
+                                      '(fn-own-store-idlep fn-snt-idle-phasep
+                                        (:executable-counterpart member-equal))))))
 
 ; -----------------------------------------------------------------------------
 ; T2: the article completion at the host's finish.  The host installs
@@ -425,7 +421,8 @@
                 (fn-cat-history-relation records0 fn-arena fn-cat)
                 (fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc)))
                 (equal (fn-sf-article-records
-                        (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                        (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                         fn-arena))
                        (append (fn-sf-article-records records0) (list w)))
                 (fn-pc-p pending)
                 (equal token (fn-pc-token pending))
@@ -441,8 +438,43 @@
                         (:instance fn-cat-relation-of-complete (records records0))
                         (:instance fn-cat-history-relation-reads-the-articles
                                    (a (append records0 (list w)))
-                                   (b (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                                   (b (fn-cat-history-articles
+                                       (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                       fn-arena))
                                    (fn-cat (mv-nth 2 (fn-cat-complete token pending fn-cat))))
+                        (:instance fn-snt-finish-keeps-records (s (fn-own-store (fn-ocfg-owner oc))))
+                        (:instance fn-cbo-finish-is-idle (s (fn-own-store (fn-ocfg-owner oc))))
+                        (:instance fn-cbo-complete-store (o (fn-ocfg-owner oc))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-cat-ocl-relation fn-cbo-finish-owner-is-complete
+                                        fn-cbo-ocfg-owner-of-with-owner
+                                        fn-sf-article-records-of-append fn-sf-article-records
+                                        car-cons cdr-cons
+                                        (:executable-counterpart consp))))))
+
+; T2 in the form the host's finish needs: whatever catalog step restores R
+; over the history's articles (the article completion, or the host's
+; T4-then-T2 books/served-catalog-owner.lisp fn-sca-finish), the owner the
+; finish installs is in R with it, at the idle store the finish leaves.
+(defthm fn-cat-ocl-relation-of-article-finish-by
+  (implies (and (fn-ocl-relation oc)
+                (fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc)))
+                (equal (fn-sf-article-records
+                        (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                         fn-arena))
+                       (append (fn-sf-article-records records0) (list w)))
+                (fn-record-p w)
+                (fn-cat-history-relation (append records0 (list w)) fn-arena fn-cat2))
+           (fn-cat-ocl-relation
+            (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))
+            fn-arena fn-cat2))
+  :hints (("Goal" :use (fn-ocmt-post-commit-preserves-ocl-relation
+                        (:instance fn-cat-history-relation-reads-the-articles
+                                   (a (append records0 (list w)))
+                                   (b (fn-cat-history-articles
+                                       (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                       fn-arena))
+                                   (fn-cat fn-cat2))
                         (:instance fn-snt-finish-keeps-records (s (fn-own-store (fn-ocfg-owner oc))))
                         (:instance fn-cbo-finish-is-idle (s (fn-own-store (fn-ocfg-owner oc))))
                         (:instance fn-cbo-complete-store (o (fn-ocfg-owner oc))))
@@ -463,10 +495,12 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-cat-history-relation records0 fn-arena fn-cat)
                 (equal (fn-sf-article-records
-                        (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                        (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                         fn-arena))
                        (append (fn-sf-article-records records0) (list w))))
            (fn-cat-history-prefix-relation
-            (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena fn-cat))
+            (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)
+            fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-relation fn-cat-history-prefix-relation)
                                   (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
                                    fn-cat-handles-inp fn-cat-wire-list fn-sf-article-records))
@@ -480,7 +514,8 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc)))
                 (fn-cat-history-relation
-                 (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena fn-cat))
+                 (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)
+                 fn-arena fn-cat))
            (fn-cat-ocl-relation
             (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))
             fn-arena fn-cat))
