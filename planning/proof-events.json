@@ -10869,6 +10869,93 @@
           "name": "fn-ofa-publication-is-well-formed"
         }
       ]
+    },
+    {
+      "id": "PRF-294",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-seal-extent{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-extent-of-denotes-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-intern-step-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-of-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-steps-are-one-step-of-the-concatenation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-295",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-frame-digest-buffer-is-the-frame-digest"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-buffer-is-the-frame-check"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-buffer-of-durable"
+        }
+      ]
+    },
+    {
+      "id": "PRF-309",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-extent-keeps-a-faithful-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-reseat-extent{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-release{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-extent-denotes-the-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-reseat-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-reseats-keep-the-arena"
+        }
+      ]
     }
   ]
 }
