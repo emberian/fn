@@ -473,6 +473,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-forward-plan-tests \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
+	books/bp-receipt-alpha \
+	tests/acl2/bp-receipt-alpha-tests \
 	books/post-identity-index \
 	tests/acl2/post-identity-index-tests \
 	books/replay-identity-index \

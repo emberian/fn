@@ -470,6 +470,8 @@
     "tests/acl2/bp-node-forward-plan-tests",
     "books/bp-signed-binding",
     "tests/acl2/bp-signed-binding-tests",
+    "books/bp-receipt-alpha",
+    "tests/acl2/bp-receipt-alpha-tests",
     "books/post-identity-index",
     "tests/acl2/post-identity-index-tests",
     "books/replay-identity-index",
@@ -1141,8 +1143,8 @@
   ],
   "totals": {
     "books": 1178,
-    "books_in_root_closure": 1165,
-    "roots": 1136,
+    "books_in_root_closure": 1167,
+    "roots": 1138,
     "theorems": 17354,
     "functions": 12031,
     "assert_events": 17293,
@@ -4886,8 +4888,8 @@
     },
     {
       "book": "books/bp-receipt-alpha.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 8,
       "functions": 0,
       "guards": {
@@ -22770,8 +22772,8 @@
     },
     {
       "book": "tests/acl2/bp-receipt-alpha-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 1,
       "guards": {
