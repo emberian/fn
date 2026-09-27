@@ -714,3 +714,114 @@
                   (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                   (<= (nfix ou) (fn-heap-open-octets-bound profile observed)))
+
+; -----------------------------------------------------------------------------
+; books/heap-store-figure's keystones directly.  fn-heap-with-nursery-holds-
+; the-trigger: witness at the small store's base (the trigger a sixteenth of
+; the space), and without D at least the figure: one megabyte less than the
+; base itself.  fn-heap-store-figure-holds-every-store: witness at the figure
+; itself with the store full and a full replay of it; each hypothesis's
+; counterexample (the others holding) and must-fail.
+
+(defconst *hft-base* (fn-heap-store-base-octets *fn-heap-small-profile* *hft-prod-core* nil))
+(defconst *hft-fig* (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core*
+                                                 *hft-nursery* nil))
+(assert! (<= (+ *hft-base* (* 2 (fn-heap-nursery-trigger *hft-fig* *hft-nursery*))) *hft-fig*))
+(assert! (< *hft-fig* (+ *hft-base* (* 2 (fn-heap-nursery-trigger *hft-fig* *hft-nursery*))
+                         (* 1 *fn-heap-mib*))))
+(assert! (not (<= (+ *hft-base* (* 2 (fn-heap-nursery-trigger (- *hft-base* *fn-heap-mib*)
+                                                              *hft-nursery*)))
+                  (- *hft-base* *fn-heap-mib*))))
+(must-fail
+ (defthm hft-with-nursery-without-the-figure
+   (implies (and (natp d) (natp base))
+            (<= (+ base (* 2 (fn-heap-nursery-trigger d nursery))) d))
+   :rule-classes nil))
+
+(defun hft-sf-hyps (d observed used n ou on)
+  (declare (xargs :mode :program))
+  (list (natp d)
+        (<= (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core*
+                                         *hft-nursery* observed)
+            d)
+        (<= (nfix used) *hft-h*) (<= (nfix n) *hft-t*)
+        (<= (nfix ou) (fn-heap-open-octets-bound *fn-heap-small-profile* observed))
+        (<= (nfix on) (fn-heap-open-records-bound *fn-heap-small-profile* observed))))
+
+(defun hft-sf-conclusion (d observed used n ou on)
+  (declare (xargs :mode :program))
+  (declare (ignore observed))
+  (<= (fn-heap-store-need *fn-heap-small-profile* *hft-prod-core* used n ou on
+                          (fn-heap-nursery-trigger d *hft-nursery*))
+      d))
+
+(assert! (equal (hft-sf-hyps *hft-fig* nil *hft-h* *hft-t* *hft-h* *hft-t*) '(t t t t t t)))
+(assert! (hft-sf-conclusion *hft-fig* nil *hft-h* *hft-t* *hft-h* *hft-t*))
+; D a fraction: the figure plus one half.
+(assert! (equal (hft-sf-hyps (+ *hft-fig* 1/2) nil 0 0 0 0) '(nil t t t t t)))
+; D under the figure: a megabyte less, the store full.
+(assert! (equal (hft-sf-hyps (- *hft-fig* *fn-heap-mib*) nil *hft-h* *hft-t* *hft-h* *hft-t*)
+                '(t nil t t t t)))
+(assert! (not (hft-sf-conclusion (- *hft-fig* *fn-heap-mib*) nil *hft-h* *hft-t* *hft-h* *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil (* 100 *hft-h*) *hft-t* *hft-h* *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil *hft-h* (* 10 *hft-t*) *hft-h* *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil *hft-h* *hft-t* (* 10 *hft-h*) *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig* nil *hft-h* *hft-t* *hft-h* (* 10 *hft-t*))))
+; An observed empty store: its figure holds no replay of H.
+(defconst *hft-fig0* (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core*
+                                                  *hft-nursery* '(0 . 0)))
+(assert! (equal (hft-sf-hyps *hft-fig0* '(0 . 0) *hft-h* *hft-t* *hft-h* 0) '(t t t t nil t)))
+(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-h* *hft-t* *hft-h* 0)))
+(assert! (equal (hft-sf-hyps *hft-fig0* '(0 . 0) *hft-h* *hft-t* 0 *hft-t*) '(t t t t t nil)))
+(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-h* *hft-t* 0 *hft-t*)))
+
+(defmacro hft-sf-must-fail (name &rest hyps)
+  `(must-fail
+    (defthm ,name
+      (implies (and ,@hyps)
+               (<= (fn-heap-store-need profile core used n ou on
+                                       (fn-heap-nursery-trigger d nursery))
+                   d))
+      :hints (("Goal" :in-theory (union-theories
+                                  '(fn-heap-store-figure-octets fn-heap-store-base-octets-natp
+                                    fn-heap-nfix-of-nursery-trigger)
+                                  (theory 'minimal-theory))
+               :use ((:instance fn-heap-with-nursery-holds-the-trigger
+                                (base (fn-heap-store-base-octets profile core observed)))))))))
+
+(hft-sf-must-fail hft-sf-without-natp-d
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-the-figure
+                  (natp d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-used
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-records
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-open-octets
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+(hft-sf-must-fail hft-sf-without-open-records
+                  (natp d)
+                  (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                  (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
+                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed)))
