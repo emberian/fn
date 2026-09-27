@@ -1036,6 +1036,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-columns-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
+	books/snapshot-segments \
+	tests/acl2/snapshot-segments-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
 	books/consumer-event-index-store-invariants \
