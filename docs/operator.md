@@ -577,7 +577,7 @@ built with the base `cc`, clang); TLS is the base system's LibreSSL. It
 needs no package: no Lisp, no Python, no OpenSSL. It is built against 7.9's
 libc and LibreSSL majors, so it runs on 7.9.
 
-Three OpenBSD rules decide where it lives and how it starts:
+Four OpenBSD rules decide where it lives, how it starts and what keeps its store:
 
 - **W^X.** The SBCL runtime is linked `wxneeded`; OpenBSD runs it only from a
   file system mounted `wxallowed`. The default install mounts `/usr/local`
@@ -593,6 +593,18 @@ Three OpenBSD rules decide where it lives and how it starts:
   `getcwd: Permission denied`. The rc.d script starts the node in `/var/fn`
   itself (`daemon_execdir=/var/fn` in `packaging/fn.rc.in`); only a start by
   hand needs the `cd`.
+- **Store file system and disk.** fn's durable reply rests on fsync(2), and
+  on OpenBSD 7.9 two defaults break it across a power loss
+  (planning/evidence/power-loss-openbsd-2026-09-26.md). On FFS2, the
+  installer's format for every partition, a file created and fsynced (with
+  its directory fsynced) is removed by the boot-time `fsck` when its inode
+  lies past the cylinder group's initialized inode blocks: the store's
+  newest transactions and its allocation frontier go, and the node refuses
+  to open. And fsync(2) never asks the disk to flush its write cache, so a
+  disk (or a hypervisor's virtual disk) with a volatile cache can lose what
+  fsync reported written. Put `/var/fn` on its own partition made with
+  `newfs -O 1` (FFS1), on a disk without a volatile write cache; `softdep`
+  changes nothing (7.9 ignores it).
 
 As root, with the tarball and its sum in `/tmp`:
 
