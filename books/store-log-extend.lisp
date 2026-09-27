@@ -3,7 +3,7 @@
 ;;
 ;; When the open batch does not fit the segment, host/native/io.lisp
 ;; `fnn-log-ensure-extent' grows the segment to ACL2's next extent
-;; (books/store-log-route.lisp fn-olr-next-extent) and fences it, before the
+;; (fn-olr-extension-target below) and fences it, before the
 ;; batch's append (fnn-log-commit-open-batch).  Its program, over the same
 ;; byte model as P-BATCH (fn-bs-write, fn-bs-fsync-file):
 ;;
@@ -35,7 +35,7 @@
 ;;       spare unit past every append: fn-olr-extension-needed-p).
 ;; At log-extent-fenced nothing is pending and R holds (the first keystone).
 (in-package "ACL2")
-(include-book "store-log-route")
+(include-book "store-log-kernel")
 
 ; The host's rule: extend when the open batch, and one spare unit after it,
 ; do not fit the extent (OCTETS: the open batch's entry octets).  The spare
@@ -45,9 +45,14 @@
   (declare (xargs :guard t))
   (< (nfix extent) (+ (nfix frontier) (nfix octets) (nfix unit))))
 
+; The target: at least twice the extent (so extensions are logarithmic in
+; the log's size) and at least the batch and the spare unit, rounded up to
+; the unit (books/store-log-route.lisp fn-olr-next-extent's rule).
 (defun fn-olr-extension-target (frontier octets extent unit)
   (declare (xargs :guard t))
-  (fn-olr-next-extent extent (+ (nfix frontier) (nfix octets) (nfix unit)) unit))
+  (let* ((unit (if (posp unit) unit 1))
+         (need (+ (nfix frontier) (nfix octets) unit)))
+    (max (max (* 2 (nfix extent)) (* unit (ceiling need unit))) unit)))
 
 (defun fn-lg-extend-program (next)
   (declare (xargs :guard t))
@@ -559,7 +564,12 @@
                 (and (natp r) (equal (mod r unit) 0) (<= need r)))))
    (defthm fn-lgx-twice-units
      (implies (and (natp e) (posp unit) (equal (mod e unit) 0))
-              (equal (mod (* 2 e) unit) 0)))))
+              (equal (mod (* 2 e) unit) 0)))
+   (defthm fn-lgx-rounded-past-a-small-extent
+     (implies (and (natp e) (posp unit) (natp need)
+                   (<= (* 2 e) (* unit (ceiling need unit))))
+              (< e (max (* unit (ceiling need unit)) unit)))
+     :rule-classes nil)))
 
 (defthm fn-olr-extension-target-is-an-extent
   (implies (and (posp unit) (equal (mod extent unit) 0))
@@ -569,7 +579,9 @@
                   (< (nfix extent) next)
                   (<= (+ (nfix frontier) (nfix octets) unit) next))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-olr-extension-target fn-olr-next-extent)
+           :in-theory (e/d (fn-olr-extension-target)
                            (mod ceiling fn-lgx-rounded-up fn-lgx-twice-units))
            :use ((:instance fn-lgx-rounded-up (need (+ (nfix frontier) (nfix octets) unit)))
-                 (:instance fn-lgx-twice-units (e (nfix extent)))))))
+                 (:instance fn-lgx-twice-units (e (nfix extent)))
+                 (:instance fn-lgx-rounded-past-a-small-extent (e (nfix extent))
+                            (need (+ (nfix frontier) (nfix octets) unit)))))))
