@@ -33,19 +33,23 @@
 ; What is proved (the host calls `fn-cu-session-step-pair',
 ; `fn-cu-session-begin-pair', `fn-cu-session-close', `fn-cu-cursor-envelope',
 ; `fn-cu-journal-scan' and `fn-cu-records-replay'):
-;   fn-cu-step-offers-only-verified-batches      no record reaches the local
-;       node from a batch whose chain differs from the peer's claim
-;   fn-cu-step-installs-only-through-the-verdict every octet sent to the local
-;       node is an IHAVE line, or the body of the offered record after the
-;       local node answered 335
-;   fn-cu-step-digest-mismatch-is-refused         a mismatch ends the round
-;       :failed with the refusal :digest-mismatch, the cursor unmoved
-;   fn-cu-step-journals-only-answered-batches    a journaled cursor is the
-;       verified end of a batch every record of which the local node answered
-;   fn-cu-records-replay-is-the-last-cursor       the open recovers the last
+;   fn-cu-step-keeps-offers-verified   while a round offers a batch, the batch
+;       chains from the committed chain to the peer's claim (the invariant
+;       `fn-cu-verifiedp', established by `fn-cu-begin'): no record reaches
+;       the local node from a batch whose recomputed chain differs
+;   fn-cu-on-end-refuses-a-digest-mismatch   a mismatch ends the round
+;       :failed with the refusal :digest-mismatch, only (:close) sent, the
+;       cursor unmoved
+;   fn-cu-step-installs-only-through-the-verdict   every octet sent to the
+;       local node is the IHAVE of the record the round then waits on, or
+;       that record's body right after the local node answered 335; every
+;       journal record is the round's committed cursor with nothing of its
+;       batch left to offer
+;   fn-cu-records-replay-is-the-last-cursor   the open recovers the last
 ;       journaled cursor (a torn tail is truncated to it)
-;   fn-cu-resume-asks-from-the-journaled-cursor  a round begun from the
+;   fn-cu-resume-asks-from-the-journaled-cursor   a round begun from the
 ;       recovered cursor asks the peer from exactly that position and chain
+;   fn-cu-decode-of-encode   an FNCU record round-trips
 (in-package "ACL2")
 (include-book "peer-pull-session")
 (include-book "peer-catchup-serve")
@@ -417,9 +421,26 @@
               (t (mv (fn-cu-with r :cur (list (car header) (cdr header) nil))
                      nil t))))))))
 
+(defthm fn-cu-split-line-true-listp
+  (true-listp (mv-nth 1 (fn-cu-split buf))))
+
+(in-theory (disable fn-cu-split))
+
+(defthm fn-cu-on-end-effects-true-listp
+  (true-listp (mv-nth 1 (fn-cu-on-end r)))
+  :hints (("Goal" :in-theory (disable fn-cu-records-chain fn-cu-request
+                                      fn-cu-ihave fn-cu-quit))))
+
+(defthm fn-cu-on-line-effects-true-listp
+  (true-listp (mv-nth 1 (fn-cu-on-line r line)))
+  :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-parse-status
+                                      fn-cu-parse-header fn-pull-code fn-cu-unstuff
+                                      fn-cu-list fn-pull-at revappend-removal))))
+
 ; Frame and handle every complete line in the buffer, at most FUEL of them.
 (defun fn-cu-drain (r fuel)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel)
+                  :guard-hints (("Goal" :in-theory (disable fn-cu-on-line)))))
   (if (or (zp fuel) (not (equal (fn-cu-r-phase r) :reply)))
       (mv r nil)
     (mv-let (status line rest) (fn-cu-split (fn-cu-r-buf r))
@@ -937,8 +958,9 @@
            (equal (fn-cu-records-replay c cursors)
                   (fn-cu-last-cursor c cursors))))
 
-(defthm fn-cu-cursor-peer-of-begin
-  (equal (fn-cu-r-peer (fn-cu-begin cursor wildmat)) (fn-cu-cursor-peer cursor)))
+(local
+ (defthm fn-cu-cursor-peer-of-begin
+   (equal (fn-cu-r-peer (fn-cu-begin cursor wildmat)) (fn-cu-cursor-peer cursor))))
 
 ; KEYSTONE (resumable).  A round begun from the recovered cursor asks the
 ; peer, as soon as its preamble is ready, from exactly that cursor's
@@ -1016,7 +1038,9 @@
                         (fn-cu-r-todo r))
                  (equal (mv-nth 1 (fn-cu-on-line r line)) nil)))
    :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code)))))
+                                       fn-cu-parse-header fn-pull-code fn-cu-unstuff
+                                       fn-cu-list fn-pull-at revappend-removal
+                                       fn-cu-records-chain fn-cu-suffixp)))))
 
 (local
  (defthm fn-cu-verifiedp-of-on-line
@@ -1024,7 +1048,9 @@
                  (not (consp (fn-cu-r-todo r))))
             (fn-cu-verifiedp (car (fn-cu-on-line r line))))
    :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code)))))
+                                       fn-cu-parse-header fn-pull-code fn-cu-unstuff
+                                       fn-cu-list fn-pull-at revappend-removal
+                                       fn-cu-records-chain fn-cu-suffixp)))))
 
 (local
  (defthm fn-cu-verifiedp-of-drain
@@ -1066,7 +1092,8 @@
              (and (equal (fn-cu-r-phase (mv-nth 0 out)) :failed)
                   (equal (mv-nth 1 out) (list (list :close)))
                   (equal (fn-cu-round-cursor (mv-nth 0 out)) (fn-cu-round-cursor r)))))
-  :hints (("Goal" :in-theory (disable fn-cu-records-chain fn-cu-next))))
+  :hints (("Goal" :in-theory (disable fn-cu-records-chain fn-cu-next fn-cu-list
+                                      revappend-removal fn-pull-at))))
 
 ; -----------------------------------------------------------------------------
 ; What a step sends: offers only through the local verdict, journals only a
@@ -1115,14 +1142,18 @@
  (defthm fn-cu-out-okp-of-on-line
    (fn-cu-out-okp (mv-nth 1 (fn-cu-on-line r line)) (car (fn-cu-on-line r line)))
    :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code fn-cu-out-okp)))))
+                                       fn-cu-parse-header fn-pull-code fn-cu-out-okp
+                                       fn-cu-unstuff fn-cu-list fn-pull-at
+                                       revappend-removal)))))
 
 (local
  (defthm fn-cu-on-line-continuing-sends-nothing
    (implies (mv-nth 2 (fn-cu-on-line r line))
             (equal (mv-nth 1 (fn-cu-on-line r line)) nil))
    :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code)))))
+                                       fn-cu-parse-header fn-pull-code fn-cu-unstuff
+                                       fn-cu-list fn-pull-at revappend-removal
+                                       fn-cu-records-chain fn-cu-suffixp)))))
 
 (local
  (defthm fn-cu-out-okp-of-drain

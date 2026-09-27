@@ -4706,6 +4706,28 @@
         "planning/evidence/time-model-2026-09-27.md"
       ],
       "implementation_note": "Slice 1 of planning/design-time-model-2026-09-27.md. The committer's wait for the syncer is timed by ACL2 and appends clock events; the barrier's deadline is the live configuration's barrier-deadline-ms limit (default 5,000 ms; the admin verb to set it is slice 2). A POST shed while slow gets fn-own-outcome's :refused outcome with ACL2's reason line (441; RFC 3977 section 6.3.1). Not yet: the stall deadline H and the in-flight members' uncertain answer, 440 at the POST command, IHAVE 436 during slow, mutating control try-later, the inline barrier and configuration publication as requests."
+    },
+    {
+      "id": "NNT-053",
+      "title": "A node catches up from a peer by a batched stream of the peer's articles, each batch verified against the peer's digest chain before any record is offered, every record entering through the node's own IHAVE verdict, and a cut resuming at the last journaled batch",
+      "specification": "specs/peering.md#129-catching-up-from-a-peer",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-325"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-catchup-serve.lisp",
+        "books/peer-catchup.lisp",
+        "tests/acl2/peer-catchup-tests.lisp",
+        "tests/test_native_peer_catchup.py",
+        "planning/evidence/peer-catchup-2026-09-27.md"
+      ],
+      "implementation_note": "fn guarantee and local policy, not an RFC requirement: XFNCATCHUP is a private extension (RFC 3977 section 3.3.1); its reply is one RFC 3977 section 3.1.1 multi-line response; the local acceptance is RFC 3977 section 6.3.2 IHAVE on the peer's logical transit connection. The 1 MiB serve quantum, the 256 KiB request quantum and the 1 MiB line budget are local policy. `fn operator CONFIG peer catch-up NAME SECONDS` sets the interval row."
     }
   ]
 }

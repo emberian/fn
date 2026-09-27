@@ -150,11 +150,12 @@
                                   (fn-wildmat-parse fn-cu-unhex fn-cu-u64-value
                                    fn-cu-decimal-value fn-octet-listp)))))
 
-(defthm fn-cu-len-chain-over
-  (implies (and (true-listp chain) (equal (len chain) 32))
-           (equal (len (fn-cu-chain-over chain articles fn-arena)) 32))
-  :hints (("Goal" :in-theory (e/d (fn-cu-chain-step fn-cu-list)
-                                  (fn-sha256-stobj fn-nntp-article-bytes)))))
+(local
+ (defthm fn-cu-len-chain-over
+   (implies (and (true-listp chain) (equal (len chain) 32))
+            (equal (len (fn-cu-chain-over chain articles fn-arena)) 32))
+   :hints (("Goal" :in-theory (e/d (fn-cu-chain-step fn-cu-list)
+                                   (fn-sha256-stobj fn-nntp-article-bytes))))))
 
 ; KEYSTONE (PRF-325; books/nntp-pinned-effects.lisp cites it for the
 ; XFNCATCHUP arm of `fn-nntp-command-pinned').

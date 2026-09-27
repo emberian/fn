@@ -133,7 +133,9 @@
     ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 2 "peer" "add" "friend" "friend.example.net" "198.51.100.9" "119" "local.*" "local.*" "principal" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a" "/var/lib/fn/friend.fnauth" "false" "true" "starttls" "198.51.100.9" "/var/lib/fn/friend-cert.pem")
     ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 3 "peer" "pull" "friend" "20")
     ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 4 "help" "peer")
-    ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 5 "peer" "add" "friend" "friend.example.net" "news.friend.example" "563" "local.*" "local.*" "principal" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a" "/var/lib/fn/friend.fnauth" "false" "true" "implicit" "-" "-")))
+    ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 5 "peer" "add" "friend" "friend.example.net" "news.friend.example" "563" "local.*" "local.*" "principal" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a" "/var/lib/fn/friend.fnauth" "false" "true" "implicit" "-" "-")
+    ("docs/peering-with-a-friend.md#catching-up" 1 "peer" "catch-up" "friend" "3600")
+    ("docs/peering-with-a-friend.md#catching-up" 2 "peer" "catch-up" "friend" "0")))
 
 (assert-event (null (fn-docs-operator-rejected *fn-docs-operator-argv*))
               :msg (msg "The grammar refuses these documented invocations: ~x0"

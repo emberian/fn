@@ -10952,6 +10952,51 @@
           "name": "fn-peer-transfer-unreceived-effects-well-formed"
         }
       ]
+    },
+    {
+      "id": "PRF-325",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-serves-only-retrievable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-makes-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-stays-within-the-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-serve-reply-effects-well-formed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-step-keeps-offers-verified"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-on-end-refuses-a-digest-mismatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-step-installs-only-through-the-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-records-replay-is-the-last-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-resume-asks-from-the-journaled-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-decode-of-encode"
+        }
+      ]
     }
   ]
 }

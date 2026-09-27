@@ -740,6 +740,10 @@ posts still fit on its `capacity articles-left=N` line.
 - `fn operator CONFIG help VERB`: explains any command.
 - `peer pull NAME SECONDS [ROUNDS]`: fetch from a peer every SECONDS
   (0 stops).
+- `peer catch-up NAME SECONDS`: every SECONDS (0 stops), copy the peer's articles
+  in batches (XFNCATCHUP), each batch checked against the peer's digest before
+  any article is offered to this node's own verdict; the round resumes after a
+  restart ([catching up](peering-with-a-friend.md#catching-up); spec peering 1.2.9).
 - `capacity N`: the room reserved for held articles.
 - `pins`, `obligations`: what the store is holding, and why.
 - `run`: what the service runs.

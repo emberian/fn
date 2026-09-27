@@ -151,6 +151,50 @@ on where they were. Nothing is skipped or repeated. An article dated more
 than a day ahead of your node's clock is refused as "dated in the future".
 If you see that, check both clocks.
 
+## Catching up
+
+A new node starts empty, and a node that was switched off for a while has
+missed what its friend received. The feed from step 3 only carries new
+articles. To copy everything your friend's node already holds, turn on
+catching up:
+
+```sh
+fn operator /var/lib/fn/fn.toml peer catch-up friend 3600
+```
+
+The number is how often, in seconds, your node checks again. Your node then
+asks your friend's node for its articles in large batches. It checks each
+batch with a digest before using any of it, and then takes each article as
+if your friend had just sent it: your node's own rules decide, articles it
+already has are skipped, and the article numbers are your node's own. It
+uses the same connection settings as `peer add` (address, encryption,
+login). It reads only what your login on your friend's node may read, and only
+the groups you take from your friend (`peer add`'s groups). An article in a
+group your node does not have is refused and counted as `refused`: create
+the group first.
+
+Each round writes one line to `log/fn.log`:
+
+```
+catch-up peer=friend round=done position=1000 end=1000 imported=998 duplicate=2 refused=0 digest=... transport=tls
+```
+
+`position` is how far into your friend's articles your node has come, and
+`end` is how many your friend's node has. When they are equal, you have
+caught up. After that, each round only fetches what is new. If your node is
+stopped in the middle, it carries on from the last batch it finished.
+
+If it goes wrong:
+
+- `reason=digest-mismatch`: a batch arrived damaged. Nothing from it was
+  used. The next round asks for it again.
+- `reason=peer-lacks-catch-up`: your friend's node is older and does not
+  know how to send batches. Use `peer pull` instead.
+- `reason=local-deferred`: your own node asked to try an article later.
+  The next round tries again.
+
+To stop: `fn operator /var/lib/fn/fn.toml peer catch-up friend 0`.
+
 ## Accounts, cancels and keys
 
 - **An account for your friend** on your node, to read and post as
