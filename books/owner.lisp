@@ -1616,8 +1616,6 @@
                                                    (fn-own-conn-frontier conn) nil)
                             (fn-own-view-live (fn-own-view o))))
 
-; The read's pin, taken back from the served connection: what it was, or the
-; view's when GROUP or LISTGROUP advanced it (fn-served-step-pin-is-old-or-live).
 ; The login a served connection's session has authenticated as: the name
 ; AUTHINFO USER cached once AUTHINFO PASS set the subject (RFC 4643 section
 ; 2.3), nil before; and the account, the subject itself (the principal id
@@ -1632,6 +1630,8 @@
   (fn-auth-session-subject as))
 
 
+; The read's pin, taken back from the served connection: what it was, or the
+; view's when GROUP or LISTGROUP advanced it (fn-served-step-pin-is-old-or-live).
 ; The submission's login is the one its :submit effect carries
 ; (books/served.lisp fn-served-login, read by fn-served-submission-login):
 ; the login of the session at the event that decided the article, so an
