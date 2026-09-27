@@ -412,7 +412,7 @@
                  (fn-nntp-keywordp keyword "STAT"))
              (consp args) (null (cdr args))
              (fn-nntp-message-id-tokenp (car args)))
-        (fn-nntp-msgid-retrieval-indexed
+        (,msgid-retrieval
          session archive (fn-gidx-pin-trie index)
          (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
                ((fn-nntp-keywordp keyword "HEAD") :head)
