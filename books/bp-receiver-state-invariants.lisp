@@ -85,7 +85,7 @@
         (fn-bpa-metadatap incarnation)
         (fn-bpa-metadatap auth-context)
         (fn-bpa-metadatap terms)
-        (fn-bpa-requestp request)))
+        (fn-bpaj-request-refp request)))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpr-contextp)
@@ -104,7 +104,7 @@
     (fn-bpa-request-incarnation request)
     (fn-bpa-request-auth-context request)
     (fn-bpa-request-terms-id request)
-    request))
+    (fn-bpaj-request-ref request)))
   :hints (("Goal"
            :in-theory
            (union-theories '(fn-bpr-context-from-request)
@@ -137,8 +137,10 @@
                              (fn-bpa-request-incarnation request))
                             (auth-context
                              (fn-bpa-request-auth-context request))
-                            (terms (fn-bpa-request-terms-id request)))
-                 (:instance fn-bpr-context-from-request-is-constructor))
+                            (terms (fn-bpa-request-terms-id request))
+                            (request (fn-bpaj-request-ref request)))
+                 (:instance fn-bpr-context-from-request-is-constructor)
+                 (:instance fn-bpaj-request-ref-is-a-reference))
            :in-theory (theory 'minimal-theory))))
 
 (defthm fn-bpr-context-from-typed-inputs
@@ -201,31 +203,50 @@
            (union-theories
             (theory 'minimal-theory)
             '(fn-bpr-accept-request fn-bpr-bind-request-context
+              fn-bpr-bind-context
               fn-bpa-nth fn-bpa-car fn-bpa-cdr
               fn-bpr-context-listp fn-bpr-statep-of-constructor
               fn-bpr-result-state fn-bpr-context-list-cons)))))
 
+(defthm fn-bpr-context-from-ref-contextp
+  (implies
+   (and (fn-bpr-configp config)
+        (fn-record-p record)
+        (fn-bpaj-request-refp ref)
+        (equal (fn-bpa-request-policy-id (fn-bpaj-ref-metadata ref))
+               (fn-bpr-config-policy-id config)))
+   (fn-bpr-contextp config (fn-bpr-context-from-ref record ref)))
+  :hints (("Goal"
+           :use ((:instance fn-bpaj-ref-metadata-is-metadata)
+                 (:instance fn-bpr-record-context-components))
+           :in-theory
+           (e/d (fn-bpr-context-from-ref)
+                (fn-bpaj-ref-metadata-is-metadata
+                 fn-bpr-record-context-components
+                 fn-bpr-contextp fn-bpr-configp fn-record-p
+                 fn-bpa-metadatap fn-bpaj-ref-metadata)))))
+
 (defthm fn-bpr-projected-acceptable-contextp
   (implies
-   (fn-bpr-projected-request-acceptablep
-    store config record request stored-octets policy-authorizedp)
-   (fn-bpr-contextp
-    config (fn-bpr-context-from-request record request)))
+   (fn-bpr-projected-ref-acceptablep
+    store config record ref stored-length stored-digest policy-authorizedp)
+   (fn-bpr-contextp config (fn-bpr-context-from-ref record ref)))
   :hints (("Goal"
-           :use ((:instance fn-bpr-context-from-typed-inputs))
+           :use ((:instance fn-bpr-context-from-ref-contextp))
            :in-theory
-           (e/d (fn-bpr-projected-request-acceptablep)
-                (fn-bpr-store-record-acceptedp
-                 fn-bpr-contextp fn-bpr-context-from-request
-                 fn-bpr-configp fn-record-p fn-bpa-requestp)))))
+           (e/d (fn-bpr-projected-ref-acceptablep)
+                (fn-bpr-context-from-ref-contextp
+                 fn-bpr-store-record-acceptedp
+                 fn-bpr-contextp fn-bpr-context-from-ref
+                 fn-bpr-configp fn-record-p fn-bpaj-ref-metadata)))))
 
-(defthm fn-bpr-accept-projected-request-preserves-statep
+(defthm fn-bpr-accept-projected-ref-preserves-statep
   (implies
    (fn-bpr-statep st)
    (fn-bpr-statep
     (fn-bpa-nth
-     1 (fn-bpr-accept-projected-request
-        st store record request stored-octets policy-authorizedp))))
+     1 (fn-bpr-accept-projected-ref
+        st store record ref stored-length stored-digest policy-authorizedp))))
   :hints (("Goal"
            :use ((:instance fn-bpr-statep-components)
                  (:instance fn-bpr-projected-acceptable-contextp
@@ -233,8 +254,8 @@
            :in-theory
            (union-theories
             (theory 'minimal-theory)
-            '(fn-bpr-accept-projected-request
-              fn-bpr-bind-request-context
+            '(fn-bpr-accept-projected-ref
+              fn-bpr-bind-context
               fn-bpa-nth fn-bpa-car fn-bpa-cdr
               fn-bpr-context-listp fn-bpr-statep-of-constructor
               fn-bpr-result-state fn-bpr-context-list-cons)))))

@@ -727,7 +727,8 @@
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 ; The fast/checked equalities over the live Store: the Store record check,
-; the two Message-ID lookups and the dispatcher they compose into are the
+; the transit Message-ID lookup (the direct one went with the local kinds,
+; PKT-646, D34) and the dispatcher they compose into are the
 ; checked walks over the history.
 (defthm fn-osi-live-store-record-accepted-fast-is-checked
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
@@ -737,18 +738,6 @@
   :hints (("Goal"
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-store-record-accepted-fast-is-checked
-                            (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
-
-(defthm fn-osi-live-record-lookup-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
-    (implies (fn-sn-statep store)
-             (equal (fn-bpaj-record-lookup-fast store request)
-                    (fn-bpaj-record-lookup store request))))
-  :hints (("Goal"
-           :use (fn-osi-live-owner-store-is-indexed
-                 (:instance fn-bpaj-record-lookup-fast-is-checked
                             (store (fn-osi-live-store configs prefix suffix
                                                       frontier max-conns evs))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))

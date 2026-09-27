@@ -7421,12 +7421,12 @@
       ]
     },
     {
-      "id": "PRF-244",
+      "id": "PRF-249",
       "events": [
         {
           "kind": "theorem",
           "name": "fn-bpaj-ref-request-resolves-exactly",
-          "note": "KEYSTONE. Subject fn-bpaj-ref-request (the resolution fn-bpaj-context-request applies at every read). Teeth: tests/acl2/bp-request-reference-tests.lisp."
+          "note": "KEYSTONE. Subject fn-bpaj-ref-request (books/bp-request-ref.lisp), the resolution the receiver invariants apply (fn-bpr-context-resolve). Teeth: tests/acl2/bp-request-reference-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -7434,16 +7434,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpaj-context-read-resolves-exactly",
-          "note": "KEYSTONE at the read: fn-bpaj-apply-record(-fast) via fn-bprj-install / fn-bprj-preflight / fn-bprj-apply (host/bp-receipt-journal-host.lisp)."
+          "name": "fn-bpaj-transit-context-binds-the-live-request",
+          "note": "KEYSTONE at every read: fn-bpaj-apply-record(-fast) via fn-bprj-install / fn-bprj-preflight / fn-bprj-apply (host/bp-receipt-journal-host.lisp); builder fn-bpaj-transit-context-record via fn-bprj-request-transit-context-record. Teeth: tests/acl2/bp-request-reference-tests.lisp."
         },
         {
           "kind": "theorem",
-          "name": "fn-bpaj-context-request-is-the-referenced-article"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-intent-names-its-request"
+          "name": "fn-bpaj-transit-intent-pins-its-request-and-projection",
+          "note": "KEYSTONE. Subject fn-bpaj-transit-intent-from-plan, called by host/bp-native-app-host.lisp fn-owner-app-plan-install. Teeth: tests/acl2/bp-request-reference-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -7451,16 +7448,24 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bpaj-transit-context-receiver-is-existing-transition"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bpaj-context-record-fast-is-checked"
         },
         {
           "kind": "theorem",
-          "name": "fn-bpaj-context-v2-receiver-is-existing-transition"
+          "name": "fn-bpr-context-from-ref-of-request-ref"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-context-resolve-of-derived-context"
         }
       ]
     },
     {
-      "id": "PRF-245",
+      "id": "PRF-250",
       "events": [
         {
           "kind": "theorem",

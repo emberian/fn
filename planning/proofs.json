@@ -7938,9 +7938,9 @@
       "progress_note": "Lane bp-fragments-10mib (2026-09-27): farm r2 run-20260927T020859Z-118b passed 189/189 (manifest planning/evidence/manifests/certify-20260927T021005Z-134473.json; bp-primary 9.5 s at 2 jobs). SCN-077 reassembly and handoff 280.3 s -> 117.2 s (native v2)."
     },
     {
-      "id": "PRF-244",
-      "title": "The receipt journal holds a local BP request by reference, and every read resolves the reference to exactly the request",
-      "statement": "books/bp-request-reference.lisp over books/bp-native-app.lisp and books/bp-native-app-fast.lisp (PKT-646, D27). The FNRJ local intent and context the host publishes (host/bp-receipt-journal-host.lisp fn-bprj-request-intent-record and fn-bprj-request-context-v2-record, called by host/native/bp-app.lisp fnn-bpapp-request-intent and fnn-bpapp-bind-context) are built by fn-bpaj-intent-record and fn-bpaj-context-v2-record and carry the request's reference (HEAD LENGTH DIGEST), fn-bpaj-request-ref, never the request ADU or the Store record. KEYSTONE fn-bpaj-ref-request-resolves-exactly: (implies (fn-bpa-requestp request) (equal (fn-bpaj-ref-request HEAD LENGTH DIGEST (fn-bpa-request-article request)) request)) for (HEAD LENGTH DIGEST) = (fn-bpaj-request-ref request); fn-bpaj-ref-request-resolves-to-the-bytes: its encoding is the request's octets. KEYSTONE fn-bpaj-context-read-resolves-exactly: for ctx = (fn-bpaj-context-v2-record inbound octets store-record g txid rg result), whenever (fn-bpaj-context-record store ctx) is a record whose payload is the request's article, fn-bpaj-context-request of ctx over it is exactly (fn-bpaj-request octets) and encodes to octets; the read is fn-bpaj-apply-record (fn-bpaj-context-v2-receiver-is-existing-transition) and its fast twin (fn-bpaj-apply-record-fast-is-checked, fn-bpaj-context-record-fast-is-checked) at fn-bprj-install (every journal open, recovery included), fn-bprj-preflight and fn-bprj-apply. fn-bpaj-context-request-is-the-referenced-article: any successful resolution's article IS the Store record's payload, of the recorded length and digest. fn-bpaj-intent-names-its-request; fn-bpaj-one-reference-is-one-request-or-a-digest-collision: two requests with one reference are equal or their articles differ with one length and one fn-frame-digest (A-CRYPTO, books/frame-octets; for n distinct articles the SHA-256 collision probability is at most n(n-1)/2^257). unreachable-in-composition (found by this lane's native run, 2026-09-27): every NEW BP request is planned by fn-bpaj-transit-plan and journals the TRANSIT kinds (host/bp-native-app-host.lisp fn-owner-app-plan-install sets fn-owner-app-transitp; host/native/bp-app.lisp fnn-bpapp-request-intent then publishes fn-bprj-request-transit-intent-record); the local kinds are reached only through fn-owner-app-plan-install-legacy for a journal that already holds a local intent, which D34's fresh deploys never have. The reference design is proved here; moving it onto the transit kinds (whose receiver context needs the request, not only the Store's projection) is PKT-646's open remainder. What it does not say: that the Store keeps the record the context names (the Store's retention; the replay refuses a context whose record is gone, as it did before); the transit kinds and the legacy :request-context still carry the request (PKT-646's remainder).",
+      "id": "PRF-249",
+      "title": "The BP application join and the receiver hold a request by reference, and every read binds exactly the live request's context",
+      "statement": "books/bp-request-ref.lisp, books/bp-request-reference.lisp over books/bp-receipt.lisp, books/bp-native-app.lisp, books/bp-native-app-fast.lisp and books/bp-transit-join.lisp (PKT-646, D27, D34). The FNRJ transit intent and context the host publishes (host/bp-receipt-journal-host.lisp fn-bprj-request-transit-intent-record and fn-bprj-request-transit-context-record, called by host/native/bp-app.lisp fnn-bpapp-request-intent and fnn-bpapp-bind-context) are built by fn-bpaj-transit-intent-from-plan (host/bp-native-app-host.lisp fn-owner-app-plan-install) and fn-bpaj-transit-context-record: the intent carries the request's reference (HEAD LENGTH DIGEST, fn-bpaj-request-ref), the relay projection's LENGTH and DIGEST and the pinned Path identities; the context carries the reference and the Store record's identity (Message-ID, txid, generation); neither carries the request ADU, the projection or the Store record. The receiver's context (books/bp-receipt.lisp fn-bpr-context-request-ref, slot 9) holds the reference, and fn-bpr-receipt-adu and the conflict rule compare references. KEYSTONE fn-bpaj-ref-request-resolves-exactly: (implies (fn-bpa-requestp request) (equal (fn-bpaj-ref-request HEAD LENGTH DIGEST (fn-bpa-request-article request)) request)); -to-the-bytes: its encoding is the request's octets. KEYSTONE fn-bpaj-transit-context-binds-the-live-request: for ctx = (fn-bpaj-transit-context-record inbound octets store-record g txid rg result), the receiver context every read binds over any record, (fn-bpr-context-from-ref record (fn-bpaj-context-ref ctx)), is (fn-bpr-context-from-request record (fn-bpaj-request octets)) and its reference is the request's; the read is fn-bpaj-apply-record (fn-bpaj-transit-context-receiver-is-existing-transition: the receiver is fn-bpr-accept-projected-ref over fn-bpaj-context-record, the Store record resolved by identity) and its fast twin (fn-bpaj-apply-record-fast-is-checked, fn-bpaj-context-record-fast-is-checked) at fn-bprj-install (every journal open, recovery included), fn-bprj-preflight and fn-bprj-apply. KEYSTONE fn-bpaj-transit-intent-pins-its-request-and-projection: an intent the builder answers names the request (fn-bpaj-intent-names-requestp) and pins the length and digest of (fn-pu-relay-article article local peer) under its own Path identities, which is the plan's stored projection. The receiver invariants (bp-receiver-store, -retention, -evolving-history) ground a context by resolving its reference over the grounding record's payload (fn-bpr-context-resolve; fn-bpr-context-resolve-of-derived-context from the keystone); their receipt conclusions now say the live request's reference is the context's. fn-bpaj-one-reference-is-one-request-or-a-digest-collision: two requests with one reference are equal or their articles differ with one length and one fn-frame-digest (A-CRYPTO, books/frame-octets; for n distinct articles the SHA-256 collision probability is at most n(n-1)/2^257). D34: the local :request-intent and :request-context-v2 kinds, their builders, the direct Store lookup and fn-owner-app-plan-install-legacy are deleted. What it does not say: that the Store keeps the record a context names (the replay refuses a context whose record is gone); that a Store record's payload IS the projection (length and digest, the collision scope above); the legacy version-1 :request-context kind still carries a request ADU (the receiver-journal model's, reached only before a journal's first intent).",
       "milestone": "M4",
       "requirements": [
         "STO-015"
@@ -7951,33 +7951,29 @@
       "events": [
         "fn-bpaj-ref-request-resolves-exactly",
         "fn-bpaj-ref-request-resolves-to-the-bytes",
-        "fn-bpaj-context-read-resolves-exactly",
-        "fn-bpaj-context-request-is-the-referenced-article",
-        "fn-bpaj-intent-names-its-request",
+        "fn-bpaj-transit-context-binds-the-live-request",
+        "fn-bpaj-transit-intent-pins-its-request-and-projection",
         "fn-bpaj-one-reference-is-one-request-or-a-digest-collision",
+        "fn-bpaj-transit-context-receiver-is-existing-transition",
         "fn-bpaj-context-record-fast-is-checked",
-        "fn-bpaj-context-v2-receiver-is-existing-transition"
+        "fn-bpr-context-from-ref-of-request-ref",
+        "fn-bpr-context-resolve-of-derived-context"
       ],
       "evidence": [
+        "books/bp-request-ref.lisp",
         "books/bp-request-reference.lisp",
+        "books/bp-receipt.lisp",
         "books/bp-native-app.lisp",
         "books/bp-native-app-fast.lisp",
-        "books/frame-journal.lisp",
-        "books/frame.lisp",
+        "books/bp-transit-join.lisp",
         "tests/acl2/bp-request-reference-tests.lisp",
-        "tests/acl2/bp-native-app-tests.lisp",
-        "tests/acl2/bp-native-app-fast-tests.lisp",
-        "tests/acl2/frame-tests.lisp",
-        "host/bp-receipt-journal-host.lisp",
-        "host/native/bp-app.lisp",
-        "tests/test_bp_fragment_node_native.py",
-        "specs/bp-node-machine.md",
+        "tests/acl2/bp-receiver-teeth-tests.lisp",
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
-      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): farm r4 run-20260927T040009Z-cf57 (hbox, 2 jobs) passed 474, manifest planning/evidence/manifests/certify-20260927T040127Z-613440.json (bp-native-app and bp-native-app-fast installed from the cache r3 populated at these bytes). unreachable-in-composition: the live path journals the transit kinds (see statement)."
+      "progress_note": "Lane bp-fragments-10mib-3 (2026-09-27): moved onto the transit arm (the composed node's), receiver context by reference, local kinds deleted; certified with certify_books.py --incremental on hbox."
     },
     {
-      "id": "PRF-245",
+      "id": "PRF-250",
       "title": "BP fragment reassembly as a resumable step bounded in octets: any schedule of bounded steps reaches the one RFC 9171 reassembly",
       "statement": "books/bp-fragment-resume.lisp over books/bp-fragment-sweep.lisp. fn-bpfr-step runs the executed reassembler's sweep (fn-bpfw-sweep-acc) for at most QUANTUM positions and returns its state (active suffixes, queue, position, positions left, cells). KEYSTONE fn-bpfr-step-resumes (hypothesis-free): resuming the sweep from the state one step leaves equals the sweep from the state before it. KEYSTONE fn-bpfr-run-is-reassemble: for (posp quantum), steps of QUANTUM run to completion from fn-bpfr-start leave no position, and fn-bpfr-finish of the result is fn-bpfw-reassemble and fn-bpfw-spec (the uncapped reference), for every fragment list and total: complete, missing, conflicting and invalid families alike. fn-bpfr-step-is-bounded: a step consumes and emits exactly min(QUANTUM, left) positions and cells. What it does not say: that the node calls it -- the family plan (bp-node-fragment-family) still reassembles in one foundation step; carrying the state across steps, and assembling into the Store's arena by extents (PKT-585) instead of an octet list, are the integration boundary.",
       "milestone": "M4",

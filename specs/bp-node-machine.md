@@ -1857,55 +1857,63 @@ oversize, the kind 7 of that refusal became durable, and the node printed
   (`fn-bpnp-publication-fault-effect`), which reports `:uncertain`; that
   pass-through is not a theorem here.
 
-#### 4.9.4 The receipt journal holds a local request by reference (2026-09-27, lane bp-fragments-10mib-2, PKT-646, PRF-244)
+#### 4.9.4 The receipt journal and the receiver hold a request by reference (2026-09-27, lanes bp-fragments-10mib-2 and -3, PKT-646, PRF-249)
 
-FNRJ's local request intent and context carried a copy of the request ADU
-(and the context a copy of the Store record) in 131,072-octet blobs, so
-every BP request past 128 KiB was refused "ACL2 refused application journal
+FNRJ's request intent and context carried a copy of the request ADU (and
+the relay projection or the Store record) in 131,072-octet blobs, so every
+BP request past 128 KiB was refused "ACL2 refused application journal
 record" before the Store (PKT-646; a data cap, D27). Decided by the
-coordinator (2026-09-27): the record carries a REFERENCE to bytes the
-delivery already made durable, plus a digest, never the bytes; one format,
-fresh deploys (D34).
+coordinator (2026-09-27): a record carries a REFERENCE to bytes the delivery
+already made durable, plus a digest, never the bytes; one format, fresh
+deploys (D34).
 
 - The reference of a request is `(HEAD LENGTH DIGEST)`
-  (`fn-bpaj-request-ref`, books/bp-native-app.lisp): HEAD its eight metadata
-  items encoded as the ADU encodes them (at most 8 x 259 octets by the ADU
-  grammar), LENGTH and DIGEST the article's length and `fn-frame-digest`.
-  The intent is `(:request-intent INBOUND HEAD GENERATION TXID RESULT LENGTH
-  DIGEST)`; the context is `(:request-context-v2 INBOUND HEAD MSGID
-  GENERATION TXID STORE-GENERATION t RESULT LENGTH DIGEST)`, naming the Store
-  record by Message-ID, txid and generation. The article's bytes are the
+  (`fn-bpaj-request-ref`, books/bp-request-ref.lisp): HEAD its eight
+  metadata items encoded as the ADU encodes them (at most 8 x 259 octets by
+  the ADU grammar), LENGTH and DIGEST the article's length and
+  `fn-frame-digest`.
+- The transit intent is `(:request-transit-intent INBOUND HEAD GENERATION
+  TXID RESULT PEER LOCAL-PATH PEER-PATH A-LENGTH A-DIGEST P-LENGTH
+  P-DIGEST)`: the request's reference and the relay projection's length and
+  digest (`fn-pu-relay-article` of the article under the pinned Path
+  identities, checked once by the builder `fn-bpaj-transit-intent-from-plan`
+  while the bytes are live). The transit context is
+  `(:request-transit-context INBOUND HEAD MSGID GENERATION TXID
+  STORE-GENERATION RESULT A-LENGTH A-DIGEST)`, naming the Store record by
+  Message-ID, txid and generation (`fn-bpaj-transit-context-record`).
+  Digests are FNRJ blobs of exactly 32 octets. The request's bytes are the
   delivered bundle's (INBOUND, in the BP node's held journal) while the
-  delivery is held, and the Store record's payload once the Store committed
-  it.
-- Every read of a context resolves the reference over the Store record it
-  names (`fn-bpaj-context-record`, through the Message-ID index in the fast
-  twin) and binds that request (`fn-bpaj-context-request`): at
-  `fn-bprj-install` (recovery, every journal open) and at publication
-  (`fn-bprj-preflight`, `fn-bprj-apply`). A read whose record's payload has
-  another length or digest resolves to nothing and the replay refuses it.
+  delivery is held; the Store holds the projection.
+- The receiver's context holds the request's reference, not the request
+  (books/bp-receipt.lisp `fn-bpr-context-request-ref`): the receipt
+  (`fn-bpr-receipt-adu`) and the conflict rule compare references. A context
+  bound at a read is built from the reference (`fn-bpr-context-from-ref`),
+  which is the context the live request defines
+  (`fn-bpr-context-from-ref-of-request-ref`).
+- Every read of a transit context (`fn-bprj-install` at every journal open,
+  recovery included; `fn-bprj-preflight`, `fn-bprj-apply`) resolves the
+  Store record by identity (`fn-bpaj-context-record`, through the
+  Message-ID index in the fast twin), checks its payload against the
+  intent's projection length and digest, and binds the reference
+  (`fn-bpr-accept-projected-ref`). No read touches the request's bytes.
 - A live request is compared with an intent through its reference
-  (`fn-bpaj-intent-names-requestp`): the same metadata and an article of the
-  same length and digest. Two different articles of one length and digest
-  (a SHA-256 collision; for n distinct articles at most n(n-1)/2^257) would
-  be taken for one request: the scope of the comparison, named by
+  (`fn-bpaj-intent-names-requestp`), and a Store record with an intent
+  through the projection's length and digest. Two different byte strings of
+  one length and digest (a SHA-256 collision; for n distinct articles at
+  most n(n-1)/2^257) would be taken for one: the scope, named by
   `fn-bpaj-one-reference-is-one-request-or-a-digest-collision`.
-- KEYSTONES (books/bp-request-reference.lisp): `fn-bpaj-ref-request-resolves-exactly`
-  and `-to-the-bytes` (a request's reference over its own article resolves
-  to it, and encodes to its octets); `fn-bpaj-context-read-resolves-exactly`
-  (a context the host published for request octets R resolves, at any read
-  whose Store names a record with R's article, to exactly R).
-- Scope, unreachable-in-composition: every NEW request is planned by
-  `fn-bpaj-transit-plan` and journals the TRANSIT kinds
-  (`:request-transit-intent`, `:request-transit-context`), which still carry
-  the request ADU and the stored projection or Store record; the local kinds
-  above are reached only for a journal already holding a local intent, which
-  fresh deploys (D34) never hold. Every BP request past 128 KiB is therefore
-  still refused at FNRJ, `kind=request-transit-intent` (SCN-077 on hbox,
-  2026-09-27). Moving the reference onto the transit kinds needs the
-  receiver's context to hold the request by reference too (its article is
-  not in the Store: the Store holds the relay projection): PKT-646's open
-  remainder.
+- KEYSTONES: `fn-bpaj-ref-request-resolves-exactly` and `-to-the-bytes`;
+  `fn-bpaj-transit-context-binds-the-live-request` (every read of a context
+  the host published for request octets R binds exactly the receiver context
+  R defines, whose reference is R's); and
+  `fn-bpaj-transit-intent-pins-its-request-and-projection`
+  (books/bp-request-reference.lisp).
+- D34: the local `:request-intent` and `:request-context-v2` kinds, their
+  builders, the direct Store lookup and the host's legacy plan are deleted;
+  every request the composed node plans is a transit request. Only the
+  version-1 `:request-context` kind (the receiver-journal model's,
+  context-first, reached before a journal's first intent) still carries a
+  request ADU.
 
 ## 5. The theorems
 
@@ -2691,8 +2699,8 @@ first:
                 (equal generation (fn-bpaj-request-generation joined request-octets)))))
 ```
 
-`fn-bpaj-record-matches-requestp` takes three arguments, `(store record
-request)` (`bp-native-app.lisp:347`), and the store is substantive: it is
+The direct lookup's matcher (deleted with the local kinds, PKT-646, D34)
+took three arguments, `(store record request)`, and the store is substantive: it is
 what establishes that the record is an accepted record of that Store
 (`fn-bpr-store-record-acceptedp`). The first revision's two-argument call
 was an arity error. `fn-bpaj-principal-admitted-under-path-p cfg ingress

@@ -495,6 +495,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-held-projection-tests \
 	books/bp-handoff-report \
 	tests/acl2/bp-handoff-report-tests \
+	books/bp-request-ref \
 	books/bp-request-reference \
 	tests/acl2/bp-request-reference-tests \
 	books/bp-held-payload \

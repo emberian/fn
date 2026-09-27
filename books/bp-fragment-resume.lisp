@@ -1,4 +1,4 @@
-; PRF-245: fragment reassembly as a RESUMABLE step bounded in octets per
+; PRF-250: fragment reassembly as a RESUMABLE step bounded in octets per
 ; step (RFC 9171 section 5.9; D27: bound work per scheduling step, never
 ; data).
 ;

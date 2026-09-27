@@ -11,15 +11,30 @@
 (defconst *bpaj-request-octets* (fn-bpa-encode *bpaj-request*))
 (defconst *bpaj-config* *bprr-config-record*)
 ; PKT-646: the records carry the request's reference, never its bytes.
-(make-event `(defconst *bpaj-intent* ',(fn-bpaj-intent-record "bundle-original" *bpaj-request-octets* 7
-                         (fn-record-txid *bpr-record*) :duplicate)))
-(make-event `(defconst *bpaj-context* ',(fn-bpaj-context-v2-record "bundle-original" *bpaj-request-octets*
+; Every intent is a transit intent (D34): a test intent pins the Store
+; record's payload as its projection (its length and digest) under two
+; Path identities; the builder over a live plan is bp-transit-join-tests'.
+(defun bpaj-test-intent (inbound octets generation txid result stored)
+  (let ((ref (fn-bpaj-request-ref (fn-bpaj-request octets))))
+    (list :request-transit-intent inbound (car ref) generation txid result
+          "peer-b" "fn.lab" "peer.lab" (cadr ref) (caddr ref)
+          (len stored) (fn-frame-digest stored))))
+(make-event `(defconst *bpaj-intent* ',(bpaj-test-intent "bundle-original" *bpaj-request-octets* 7
+                         (fn-record-txid *bpr-record*) :duplicate
+                         (fn-record-payload *bpr-record*))))
+(make-event `(defconst *bpaj-context* ',(fn-bpaj-transit-context-record "bundle-original" *bpaj-request-octets*
                              (fn-record-encode-impl *bpr-record*) 7
                              (fn-record-txid *bpr-record*)
                              (fn-record-generation *bpr-record*) :duplicate)))
 
-(assert-event (fn-bpaj-intentp *bpaj-intent*))
-(assert-event (fn-bpaj-context-v2p *bpaj-context*))
+(assert-event (fn-bpaj-transit-intentp *bpaj-intent*))
+(assert-event (fn-bpaj-transit-contextp *bpaj-context*))
+; Neither holds the request's or the Store record's bytes.
+(assert-event
+ (and (not (member-equal *bpaj-request-octets* *bpaj-intent*))
+      (not (member-equal (fn-record-payload *bpr-record*) *bpaj-intent*))
+      (not (member-equal *bpaj-request-octets* *bpaj-context*))
+      (not (member-equal (fn-record-encode-impl *bpr-record*) *bpaj-context*))))
 
 ; Intent alone is not acceptance and produces no receipt.
 (make-event `(defconst *bpaj-intent-replay* ',(fn-bpaj-replay *bpr-store* (list *bpaj-config* *bpaj-intent*))))
@@ -65,13 +80,14 @@
  (not (car (fn-bpaj-replay
             *bpr-store*
             (list *bpaj-config* *bpaj-intent*
-                  (update-nth 8 :accepted *bpaj-context*))))))
+                  (update-nth 7 :accepted *bpaj-context*))))))
 
 ; Reachable examples for the dispatcher projections: a matching current intent
 ; over an absent Store submits, while a stale generation or committed context
 ; does not.
 (defconst *bpaj-fresh-store* (fn-sn-initial *bpr-groups* 20))
-(make-event `(defconst *bpaj-accept-intent* ',(fn-bpaj-intent-record "bundle-new" *bpaj-request-octets* 9 0 :accepted)))
+(make-event `(defconst *bpaj-accept-intent* ',(bpaj-test-intent "bundle-new" *bpaj-request-octets* 9 0 :accepted
+                         (fn-record-payload *bpr-record*))))
 (make-event `(defconst *bpaj-accept-replay* ',(fn-bpaj-replay *bpaj-fresh-store*
                    (list *bpaj-config* *bpaj-accept-intent*))))
 (assert-event (car *bpaj-accept-replay*))

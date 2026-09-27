@@ -22,21 +22,19 @@
 ; -----------------------------------------------------------------------------
 ; A second, unrelated article: Message-ID <receipt-2@example>.
 
-(defconst *bpre-adu2* (update-nth 21 50 *bpr-adu*))
+(make-event `(defconst *bpre-adu2* ',(update-nth 21 50 *bpr-adu*)))
 (assert-event (equal (nth 21 *bpr-adu*) 49))
 (assert-event (not (equal *bpre-adu2* *bpr-adu*)))
-(defconst *bpre-context2*
-  (fn-bpi-make-context "dtn://fn.lab/inbox" "dtn://other.lab" "local-bid-2" 300 (fn-clock-observation 1 841000000000 0 t)))
+(make-event `(defconst *bpre-context2* ',(fn-bpi-make-context "dtn://fn.lab/inbox" "dtn://other.lab" "local-bid-2" 300 (fn-clock-observation 1 841000000000 0 t))))
 ; A distinct archive obligation and subject: retention admits one obligation
 ; per identity, so the second article carries its own.
-(defconst *bpre-policy2*
-  (fn-bpi-make-policy "dtn://fn.lab/inbox" "dtn://fn.lab/inbox" *bpr-map*
+(make-event `(defconst *bpre-policy2* ',(fn-bpi-make-policy "dtn://fn.lab/inbox" "dtn://fn.lab/inbox" *bpr-map*
                       "archive:receiver-2" "subject:receiver-2"
                       "unsigned-ingress-v0" 1 "receiver-policy" "terms-1"
-                      "dtn://fn.lab/issuer"))
+                      "dtn://fn.lab/issuer")))
 (make-event `(defconst *bpre-prepared2* ',(fn-bpi-ingress-prepare (bpr-reserve *bpr-store*) *bpre-policy2* *bpre-context2* *bpre-adu2*)))
 (assert-event (equal (fn-bpi-result-kind *bpre-prepared2*) :prepared))
-(defconst *bpre-record2* (fn-bpi-result-record *bpre-prepared2*))
+(make-event `(defconst *bpre-record2* ',(fn-bpi-result-record *bpre-prepared2*)))
 (assert-event (fn-record-p *bpre-record2*))
 (assert-event (not (equal (fn-record-msgid *bpre-record2*) (fn-record-msgid *bpr-record*))))
 
@@ -44,8 +42,7 @@
 ; The live trace.  The receiver opens fresh (config record only) against the
 ; ready Store holding the first article.
 
-(defconst *bpre-live0*
-  (list *bpr-store* (fn-bpr-initial-state *bpr-config*) (list *bprr-config-record*)))
+(make-event `(defconst *bpre-live0* ',(list *bpr-store* (fn-bpr-initial-state *bpr-config*) (list *bprr-config-record*))))
 (assert-event (fn-snt-relation *bpr-store*))
 (assert-event (equal (fn-bprv-phase *bpr-store*) :ready))
 (assert-event (equal (fn-bprr-replay *bpr-store* (list *bprr-config-record*))
@@ -110,9 +107,9 @@
 
 ; The final live state: both records durable, the receipt held, the journal
 ; exactly the four records fn-bprj-apply accepted.
-(defconst *bpre-final-store* (car *bpre-final*))
-(defconst *bpre-final-state* (cadr *bpre-final*))
-(defconst *bpre-journal* (caddr *bpre-final*))
+(make-event `(defconst *bpre-final-store* ',(car *bpre-final*)))
+(make-event `(defconst *bpre-final-state* ',(cadr *bpre-final*)))
+(make-event `(defconst *bpre-journal* ',(caddr *bpre-final*)))
 (assert-event (equal *bpre-journal*
                      (list *bprr-config-record* *bprr-request-record*
                            *bprr-intent-record* *bprr-decision-record*)))
@@ -124,8 +121,8 @@
 (assert-event (equal (fn-bprr-replay *bpre-final-store* *bpre-journal*) (list t *bpre-final-state*)))
 
 ; The mid-ingress states, named for the teeth below.
-(defconst *bpre-staged* (nth 6 *bpre-lives*))
-(defconst *bpre-completing* (nth 10 *bpre-lives*))
+(make-event `(defconst *bpre-staged* ',(nth 6 *bpre-lives*)))
+(make-event `(defconst *bpre-completing* ',(nth 10 *bpre-lives*)))
 (assert-event (equal (fn-bprv-phase (car *bpre-staged*)) :record-staged))
 (assert-event (equal (fn-bprv-phase (car *bpre-completing*)) :completing))
 (assert-event (fn-bprv-evolving-invariantp (car *bpre-staged*) (cadr *bpre-staged*) (caddr *bpre-staged*)))
@@ -137,8 +134,8 @@
 ; -----------------------------------------------------------------------------
 ; Crash, reopen through the host's entry, recovery barriers, fn-bprj-install.
 
-(defconst *bpre-frontier* (fn-sf-frontier (fn-sn-files *bpre-final-store*)))
-(defconst *bpre-records* (fn-sf-records (fn-sn-files *bpre-final-store*)))
+(make-event `(defconst *bpre-frontier* ',(fn-sf-frontier (fn-sn-files *bpre-final-store*))))
+(make-event `(defconst *bpre-records* ',(fn-sf-records (fn-sn-files *bpre-final-store*))))
 (assert-event (fn-sf-crash-imagep (fn-sn-files *bpre-final-store*) *bpre-frontier* *bpre-records*))
 ; The reopen theorems' identity hypothesis (commit 4857c648) holds of this
 ; image, so the restart below is a live instance of all three.
@@ -161,19 +158,18 @@
 
 ; The same restart inside the kernel's own crash constructor: the receiver
 ; state is retained through :replaying (empty node) and recovery.
-(defconst *bpre-crash-events*
-  (append *bpre-events*
+(make-event `(defconst *bpre-crash-events* ',(append *bpre-events*
           (list '(:store (:crash :old :present)) '(:store (:recover))
                 '(:store (:io :recovery-barrier :ok)) '(:store (:io :recovery-barrier :ok))
                 '(:store (:io :recovery-barrier :ok)) '(:store (:io :recovery-barrier :ok))
-                '(:store (:io :recovery-barrier :ok)))))
+                '(:store (:io :recovery-barrier :ok))))))
 (make-event `(defconst *bpre-crash-lives* ',(bpre-run-prefixes *bpre-live0* *bpre-crash-events*)))
 (assert-event (bpre-all-system-invariant *bpre-crash-lives*))
-(defconst *bpre-replaying* (nth 13 *bpre-crash-lives*))
+(make-event `(defconst *bpre-replaying* ',(nth 13 *bpre-crash-lives*)))
 (assert-event (equal (fn-bprv-phase (car *bpre-replaying*)) :replaying))
 (assert-event (equal (fn-sn-node (car *bpre-replaying*))
                      (fn-node-initial-state *bpr-groups* 20)))
-(defconst *bpre-recovered* (car (last *bpre-crash-lives*)))
+(make-event `(defconst *bpre-recovered* ',(car (last *bpre-crash-lives*))))
 (assert-event (equal (fn-bprv-phase (car *bpre-recovered*)) :ready))
 (assert-event (equal (fn-bpr-receipt-adu (cadr *bpre-recovered*) *bpr-request*) *bpr-receipt-adu*))
 (assert-event (equal (fn-bprr-replay (car *bpre-recovered*) (caddr *bpre-recovered*))
@@ -205,8 +201,7 @@
 
 ; fn-bprv-system-step-preserves-invariant: a receiver record outside the
 ; journal breaks fn-bprv-entries-decidedp.
-(defconst *bpre-intent-journal*
-  (list *bprr-config-record* *bprr-request-record* *bprr-intent-record*))
+(make-event `(defconst *bpre-intent-journal* ',(list *bprr-config-record* *bprr-request-record* *bprr-intent-record*)))
 (make-event `(defconst *bpre-intent-state* ',(cadr (fn-bprr-replay *bpr-store* *bpre-intent-journal*))))
 (assert-event (fn-bprv-system-invariantp *bpr-store* *bpre-intent-state* *bpre-intent-journal*))
 (assert-event (not (member-equal *bprr-decision-record* *bpre-intent-journal*)))
@@ -228,10 +223,9 @@
                   (member-equal *bpre-record2* (fn-bprv-history (car *bpre-completing*))))
              (fn-bpi-node-record-committedp (fn-sn-node (car *bpre-completing*)) *bpre-record2*)))))
 ; Without the live-history relation: the ready files with an empty node.
-(defconst *bpre-forged-store*
-  (fn-sn-make *bpr-groups* 20 (fn-sn-files *bpre-final-store*)
+(make-event `(defconst *bpre-forged-store* ',(fn-sn-make *bpr-groups* 20 (fn-sn-files *bpre-final-store*)
               (fn-node-initial-state *bpr-groups* 20)
-              nil (fn-stx-index-empty)))
+              nil (fn-stx-index-empty))))
 (assert-event (fn-sn-statep *bpre-forged-store*))
 (assert-event (equal (fn-bprv-phase *bpre-forged-store*) :ready))
 (assert-event (not (fn-snt-relation *bpre-forged-store*)))
@@ -290,12 +284,10 @@
 ; fn-bprv-evolving-output-is-node-grounded-when-idle: the phase tolerance the
 ; design is for.  In :replaying with the post-crash empty node the history
 ; conclusion (L18) holds while the node conclusion (L20) is false.
-(defconst *bpre-replaying-context*
-  (fn-bpr-find-context (fn-bpa-request-work-id *bpr-request*)
-                       (fn-bpr-state-contexts (cadr *bpre-replaying*))))
-(defconst *bpre-replaying-record*
-  (fn-bprv-find-grounding-record *bpr-config* *bpre-replaying-context*
-                                 (fn-bprv-history (car *bpre-replaying*))))
+(make-event `(defconst *bpre-replaying-context* ',(fn-bpr-find-context (fn-bpa-request-work-id *bpr-request*)
+                       (fn-bpr-state-contexts (cadr *bpre-replaying*)))))
+(make-event `(defconst *bpre-replaying-record* ',(fn-bprv-find-grounding-record *bpr-config* *bpre-replaying-context*
+                                 (fn-bprv-history (car *bpre-replaying*)))))
 (assert-event (fn-bprv-evolving-invariantp (car *bpre-replaying*) (cadr *bpre-replaying*)
                                            (caddr *bpre-replaying*)))
 (assert-event (fn-snt-relation (car *bpre-replaying*)))
@@ -317,7 +309,7 @@
 ; fn-bpr-live-state-is-replay-of-journal, four hypotheses.
 ; Without a ready probe: the reopened Store before its barriers refuses the
 ; request context and replay stops.
-(defconst *bpre-recovering-probe* (fn-sn-open-state *bpre-opened*))
+(make-event `(defconst *bpre-recovering-probe* ',(fn-sn-open-state *bpre-opened*)))
 (assert-event (fn-snt-relation *bpre-recovering-probe*))
 (assert-event (fn-bprv-extendsp *bpre-final-store* *bpre-recovering-probe*))
 (assert-event (not (equal (fn-bprv-phase *bpre-recovering-probe*) :ready)))
@@ -350,8 +342,7 @@
                                     (caddr (fn-bpr-live-run *bpre-live0* *bpre-events*)))
                     (list t (cadr (fn-bpr-live-run *bpre-live0* *bpre-events*))))))))
 ; Without the base agreement: a live state ahead of its journal stays ahead.
-(defconst *bpre-ahead-live0*
-  (list *bpr-store* *bpr-context-state* (list *bprr-config-record*)))
+(make-event `(defconst *bpre-ahead-live0* ',(list *bpr-store* *bpr-context-state* (list *bprr-config-record*))))
 (assert-event (not (equal (fn-bprr-replay *bpre-probe* (caddr *bpre-ahead-live0*))
                           (list t (cadr *bpre-ahead-live0*)))))
 (local
@@ -370,9 +361,8 @@
 ; extends), so the hypothesis is refuted where it does work, in
 ; fn-bpr-live-step-extends-history: an untyped Store with an improper record
 ; list is a no-op for every transition and is not its own prefix.
-(defconst *bpre-untyped-store*
-  (fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-record* 7) nil nil nil 5)
-              (fn-sn-node *bpr-store*) nil (fn-stx-index-empty)))
+(make-event `(defconst *bpre-untyped-store* ',(fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-record* 7) nil nil nil 5)
+              (fn-sn-node *bpr-store*) nil (fn-stx-index-empty))))
 (assert-event (not (fn-sn-statep *bpre-untyped-store*)))
 ; fn-snrt-step carries (fn-sn-statep s) now (store, 2026-09-19); this witness is a
 ; non-state on purpose, so it is evaluated on the :logic body.

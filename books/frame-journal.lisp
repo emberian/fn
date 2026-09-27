@@ -41,11 +41,10 @@
 ; its-payload', `fn-frame-receipt-table-within-its-payload' below), so neither
 ; refuses a record its own encoder builds.  Every FNWF field is node-built
 ; (names, reasons, counters, enumerations).  The FNRJ blobs are `:blob' fields
-; at 131 072 octets.  A local request's intent and context carry its
-; reference, not its bytes (PKT-646); the legacy context and the two transit
-; kinds still carry the request ADU and the Store record or projection: that
-; width is a data cap for TRANSIT requests, open
-; (planning/evidence/bounds-blob-2026-09-25.md, deferrals; PKT-646's record).
+; at 131 072 octets.  The transit intent and context carry the
+; request's reference and the Store record's identity, not their bytes
+; (PKT-646); only the legacy context-first kind (`:request-context', the
+; version-1 vocabulary) still carries a request ADU and a Store record.
 (defconst *fn-frame-max-workflow-payload* 16342)
 (defconst *fn-frame-max-receipt-payload* 269958)
 ; The BP inbound journal's physical ceiling, the u32 LENGTH width; the
@@ -87,11 +86,11 @@
    (cons :ion-observed '(:text :text :nat :text :text :text :nat :nat))))
 
 (defconst *fn-frame-receipt-kinds*
-  ; Append-only: the first four codes are the deployed version-1 FNRJ
-  ; vocabulary.  Native application ingress adds intent/context-v2 without
-  ; changing any legacy code or byte string.
+  ; The first four codes are the version-1 FNRJ vocabulary.  Native
+  ; application ingress adds the two transit kinds.  D34 (one format, fresh
+  ; deploys): the local intent/context-v2 kinds are deleted (PKT-646); every
+  ; request the composed node plans is a transit request.
   '(:config :request-context :receipt-intent :receipt-decision
-    :request-intent :request-context-v2
     :request-transit-intent :request-transit-context))
 
 (defconst *fn-frame-receipt-specs*
@@ -99,29 +98,24 @@
    (cons :config '(:text :text :text))
    (cons :request-context
          (list :text :blob :blob (cons :enum *fn-frame-authorized*)))
-   ; PKT-646 (D27, D34: one format, fresh deploys): a local intent and
-   ; context carry the request's REFERENCE -- its metadata HEAD (at most
-   ; 8 x 259 octets by the BP ADU grammar), the article's LENGTH and
-   ; DIGEST -- and the context names the Store record by Message-ID, txid
-   ; and generation; neither carries the request ADU or the Store record
-   ; (books/bp-native-app.lisp `fn-bpaj-request-ref',
-   ; books/bp-request-reference.lisp).
-   (cons :request-intent
-         (list :text :blob :nat :nat
-               (cons :enum *fn-frame-application-results*)
-               :nat :blob))
-   (cons :request-context-v2
-         (list :text :blob :text :nat :nat :nat
-               (cons :enum *fn-frame-authorized*)
-               (cons :enum *fn-frame-application-results*)
-               :nat :blob))
+   ; PKT-646 (D27, D34: one format, fresh deploys): the transit intent
+   ; and context carry the request's REFERENCE -- its metadata HEAD (at
+   ; most 8 x 259 octets by the BP ADU grammar), the article's LENGTH and
+   ; DIGEST -- the intent the relay projection's LENGTH and DIGEST, and the
+   ; context names the Store record by Message-ID, txid and generation;
+   ; neither carries the request ADU, the projection or the Store record
+   ; (books/bp-request-ref.lisp, books/bp-native-app.lisp).  A digest is a
+   ; blob of exactly its width (`fn-frame-digest', 32 octets).
    (cons :request-transit-intent
          (list :text :blob :nat :nat
                (cons :enum *fn-frame-application-results*)
-               :text :text :text :blob))
+               :text :text :text
+               :nat (cons :blob *fn-frame-trailer-octets*)
+               :nat (cons :blob *fn-frame-trailer-octets*)))
    (cons :request-transit-context
-         (list :text :blob :blob :nat :nat :nat
-               (cons :enum *fn-frame-application-results*)))
+         (list :text :blob :text :nat :nat :nat
+               (cons :enum *fn-frame-application-results*)
+               :nat (cons :blob *fn-frame-trailer-octets*)))
    (cons :receipt-intent
          (list :text :text :blob (cons :enum *fn-frame-authorized*)))
    (cons :receipt-decision

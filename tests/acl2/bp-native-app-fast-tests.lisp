@@ -22,8 +22,10 @@
          (fn-bpaj-nth 1 *bpaj-intent-replay*)
          *bpr-store* *bpaj-request-octets* 7)))
 (assert-event
- (equal (fn-bpaj-record-lookup-fast *bpr-store* *bpaj-request*)
-        (fn-bpaj-record-lookup *bpr-store* *bpaj-request*)))
+ (equal (fn-bpaj-transit-record-lookup-fast *bpr-store* *bpaj-request*
+                                            *bpaj-intent*)
+        (fn-bpaj-transit-record-lookup *bpr-store* *bpaj-request*
+                                       *bpaj-intent*)))
 (assert-event
  (equal (fn-bpaj-config-status-fast
          (fn-bpaj-nth 1 *bpaj-context-replay*)
@@ -66,12 +68,11 @@
                         "old-subject" "old-issuer" "dtn://old.lab"
                         "old-policy" "old-incarnation" "old-auth"
                         "old-terms")))
-; PKT-646: a local intent carries the request's reference.  This one's HEAD
-; names the live request's work id, but its LENGTH and DIGEST are no
-; article's (a two-octet digest), so it is no intent.
+; PKT-646: an intent carries the request's reference.  This one's HEAD
+; names the live request's work id, but its article DIGEST is no digest (two
+; octets), so it is no intent.
 (defconst *bpaj-semantically-invalid-old-intent*
-  (list :request-intent "bundle-old" (fn-bpaj-head-octets *bpaj-request*)
-        3 4 :accepted 99 '(1 2)))
+  (update-nth 10 '(1 2) (update-nth 1 "bundle-old" *bpaj-intent*)))
 (defconst *bpaj-fast-hypothesis-counterexample*
   (fn-bpaj-make-state
    (fn-bpaj-receiver (fn-bpaj-nth 1 *bpaj-intent-replay*))
@@ -84,7 +85,7 @@
       (fn-bpr-statep
        (fn-bpaj-receiver *bpaj-fast-hypothesis-counterexample*))
       (consp (fn-bpaj-intents *bpaj-fast-hypothesis-counterexample*))
-      (not (fn-bpaj-intentp *bpaj-semantically-invalid-old-intent*))))
+      (not (fn-bpaj-transit-intentp *bpaj-semantically-invalid-old-intent*))))
 (assert-event (not (fn-bpaj-statep *bpaj-fast-hypothesis-counterexample*)))
 (assert-event
  (equal (fn-bpaj-request-status
