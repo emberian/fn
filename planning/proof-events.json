@@ -7449,11 +7449,6 @@
         {
           "kind": "theorem",
           "name": "fn-ores-take-idle-is-a-result"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ores-submission-intent-publication-unfolds",
-          "note": "host/owner-host.lisp fn-owner-submission-intent calls fn-icar-submission-intent then fn-ores-intent-publication; this names that composition as the keystone subject."
         }
       ]
     }
