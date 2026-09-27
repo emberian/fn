@@ -42,17 +42,16 @@
 (defconst *ss-session* (fn-nntp-make-session t "fn.letters" nil t))
 (defun ss-tok (text) (fn-nntp-string-octets text))
 (defmacro ss-step (session text)
-  `(fn-nntp-step-pinned ,session *ss-archive* nil nil *ss-env*
-                        (list :command (ss-tok ,text))))
+  `(in-arena-fn-nntp-step-pinned *sr-arena* ,session *ss-archive* nil nil *ss-env* (list :command (ss-tok ,text))))
 (assert-event (fn-nntp-projectionp *ss-archive*))
 (defun ss-parsed (text)
   (declare (xargs :verify-guards nil))
   (fn-wildmat-result-value (fn-wildmat-parse-text (ss-tok text))))
-(defun ss-hits (field pattern group low high articles)
-  (declare (xargs :verify-guards nil))
+(defun ss-hits (field pattern group low high articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-nss-hits (ss-tok field) (ss-parsed pattern) group
                (fn-nntp-group-range-numbers group low high articles)
-               articles))
+               articles fn-arena))
 (defun ss-lines (texts)
   (if (consp texts)
       (append (fn-nntp-string-octets (car texts)) '(13 10) (ss-lines (cdr texts)))
@@ -65,30 +64,38 @@
 ; fn-nss-hits-are-the-scope (no hypothesis; both directions).
 (defconst *ss-articles* (fn-state-articles *ss-archive*))
 ; In scope, served and matching: 1 and 2 are hits, in number order.
-(assert-event (equal (ss-hits "Subject" "*alpha*" "fn.letters" 1 9 *ss-articles*)
+(include-book "arena-lift")
+;; The arena: handles 0, 1, 2 = the payloads of *ss-archive*'s articles a, b, c.
+(defconst *sr-arena*
+  (list (ss-payload "<a@x.invalid>" "search alpha" nil)
+        (ss-payload "<b@x.invalid>" "Re: search alpha" "<a@x.invalid>")
+        (ss-payload "<c@x.invalid>" "search elsewhere" nil)))
+(bpr-lift fn-nntp-hdr-content 2)
+(bpr-lift ss-hits 6)
+(bpr-lift fn-nntp-step-pinned 6)
+(assert-event (equal (in-arena-ss-hits *sr-arena* "Subject" "*alpha*" "fn.letters" 1 9 *ss-articles*)
                      '(1 2)))
 (assert-event (let ((a (fn-nntp-available-article "fn.letters" 1 *ss-articles*)))
                 (and (consp a)
-                     (fn-nntp-hdr-okp (fn-nntp-hdr-content (ss-tok "Subject") a))
+                     (fn-nntp-hdr-okp (in-arena-fn-nntp-hdr-content *sr-arena* (ss-tok "Subject") a))
                      (fn-nntp-xpat-matchesp
                       (ss-parsed "*alpha*")
-                      (fn-nntp-hdr-octets (fn-nntp-hdr-content (ss-tok "Subject") a))))))
+                      (fn-nntp-hdr-octets (in-arena-fn-nntp-hdr-content *sr-arena* (ss-tok "Subject") a))))))
 ; Outside the stated range: 1 matches and is served, but the range is 2-9.
-(assert-event (equal (ss-hits "Subject" "*alpha*" "fn.letters" 2 9 *ss-articles*)
+(assert-event (equal (in-arena-ss-hits *sr-arena* "Subject" "*alpha*" "fn.letters" 2 9 *ss-articles*)
                      '(2)))
 ; Served in another group only: "search elsewhere" is fn.other 1, and
 ; fn.letters has nothing at 3; the group is the scope.
-(assert-event (equal (ss-hits "Subject" "*elsewhere*" "fn.letters" 1 9 *ss-articles*)
+(assert-event (equal (in-arena-ss-hits *sr-arena* "Subject" "*elsewhere*" "fn.letters" 1 9 *ss-articles*)
                      nil))
-(assert-event (equal (ss-hits "Subject" "*elsewhere*" "fn.other" 1 9 *ss-articles*)
+(assert-event (equal (in-arena-ss-hits *sr-arena* "Subject" "*elsewhere*" "fn.other" 1 9 *ss-articles*)
                      '(1)))
 ; Not matching: the node's matcher is case-sensitive.
-(assert-event (equal (ss-hits "Subject" "*Alpha*" "fn.letters" 1 9 *ss-articles*)
+(assert-event (equal (in-arena-ss-hits *sr-arena* "Subject" "*Alpha*" "fn.letters" 1 9 *ss-articles*)
                      nil))
 ; The thread query the reader sends: which articles in the scope carry
 ; <a@x.invalid> in References.
-(assert-event (equal (ss-hits "References" "*<a@x.invalid>*" "fn.letters" 1 9
-                              *ss-articles*)
+(assert-event (equal (in-arena-ss-hits *sr-arena* "References" "*<a@x.invalid>*" "fn.letters" 1 9 *ss-articles*)
                      '(2)))
 
 ; -----------------------------------------------------------------------------
@@ -106,8 +113,7 @@
 ; of the pattern that selects everything; O at 2 is.
 (assert-event (fn-nntp-number-withdrawn-p *ss-w-session* *ss-w-archive* *ss-w-index*
                                           (ss-tok "1")))
-(assert-event (equal (ss-hits ":bytes" "*" "fn.mod.a" 1 3
-                              (fn-state-articles *ss-w-archive*))
+(assert-event (equal (in-arena-ss-hits *sr-arena* ":bytes" "*" "fn.mod.a" 1 3 (fn-state-articles *ss-w-archive*))
                      '(2)))
 ; Hypothesis removed: over the raw list, T is held at 1, the arm does not
 ; fire, and 1 is a hit.
@@ -117,8 +123,7 @@
                  *csv-raw* 5 nil nil))
 (assert-event (not (fn-nntp-number-withdrawn-p *ss-w-session* *ss-raw-archive*
                                                *ss-w-index* (ss-tok "1"))))
-(assert-event (member-equal 1 (ss-hits ":bytes" "*" "fn.mod.a" 1 3
-                                       (fn-state-articles *ss-raw-archive*))))
+(assert-event (member-equal 1 (in-arena-ss-hits *sr-arena* ":bytes" "*" "fn.mod.a" 1 3 (fn-state-articles *ss-raw-archive*))))
 
 ; -----------------------------------------------------------------------------
 ; fn-nntp-step-pinned-xpat-range-is-the-scope: the ten hypotheses as a
@@ -139,8 +144,8 @@
                 (fn-wildmat-parse-text (fn-nntp-xpat-join (cdr (cdr args)))))
                t)
           (and (fn-nntp-session-group session) t))))
-(defun ss-conclusion (session line)
-  (declare (xargs :verify-guards nil))
+(defun ss-conclusion (session line fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((args (cdr (fn-nntp-tokenize line)))
          (field (car args))
          (range (fn-nntp-parse-range (car (cdr args))))
@@ -148,7 +153,7 @@
          (group (fn-nntp-session-group session))
          (articles (fn-state-articles *ss-archive*)))
     (equal (fn-nntp-step-pinned session *ss-archive* nil nil *ss-env*
-                                (list :command line))
+                                (list :command line) fn-arena)
            (fn-nntp-multi
             session (fn-nntp-hdr-initial t)
             (fn-nntp-hdr-lines-for-numbers
@@ -157,18 +162,19 @@
                           (fn-nntp-group-range-numbers
                            group (fn-nntp-range-low range)
                            (fn-nntp-range-high range) articles)
-                          articles)
-             articles)))))
+                          articles fn-arena)
+             articles fn-arena)))))
+(bpr-lift ss-conclusion 2)
 (defun ss-all-but (i n)
   (if (zp n) nil
     (cons (not (equal i 0)) (ss-all-but (1- i) (1- n)))))
 (defmacro ss-without (i session text)
   `(and (equal (ss-hyps ,session ,text) (ss-all-but ,i 10))
-        (not (ss-conclusion ,session ,text))))
+        (not (in-arena-ss-conclusion *sr-arena* ,session ,text))))
 (defconst *ss-line* (ss-tok "XPAT Subject 1-9 *alpha*"))
 ; Witness: every hypothesis, the conclusion, and the block the node sends.
 (assert-event (equal (ss-hyps *ss-session* *ss-line*) (ss-all-but -1 10)))
-(assert-event (ss-conclusion *ss-session* *ss-line*))
+(assert-event (in-arena-ss-conclusion *sr-arena* *ss-session* *ss-line*))
 (assert-event (equal (fn-nntp-result-effects (ss-step *ss-session* "XPAT Subject 1-9 *alpha*"))
                      (ss-block "221 header follows"
                                (list "1 search alpha" "2 Re: search alpha"))))

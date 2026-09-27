@@ -35,7 +35,7 @@
   (fn-ocfg-with-owner oc (fn-rcon-own-store-io (fn-ocfg-owner oc) operation result)))
 (defthm fn-rcon-ocfg-io-is-ocfg-step
   (equal (fn-rcon-ocfg-io oc operation result)
-         (fn-ocfg-step oc (list :store (list :io operation result))))
+         (fn-ocfg-step oc (list :store (list :io operation result)) fn-arena))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-rcon-ocfg-io fn-rcon-own-store-io fn-ocfg-step fn-ocfg-pass
                                 fn-own-step fn-own-store-step fn-snrt-step fn-snt-step

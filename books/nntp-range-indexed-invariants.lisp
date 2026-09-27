@@ -29,9 +29,9 @@
            (equal (fn-nov-lines-for-numbers-indexed
                    group numbers
                    (fn-gidx-bucket group (fn-gidx-build articles))
-                   (fn-midx-build articles))
-                  (fn-nov-lines-for-numbers group numbers articles)))
-  :hints (("Goal" :induct (fn-nov-lines-for-numbers group numbers articles)
+                   (fn-midx-build articles) fn-arena)
+                  (fn-nov-lines-for-numbers group numbers articles fn-arena)))
+  :hints (("Goal" :induct (fn-nov-lines-for-numbers group numbers articles fn-arena)
            :in-theory (e/d (fn-nov-lines-for-numbers-indexed
                             fn-nov-lines-for-numbers)
                            (fn-gidx-entry-number-article fn-nntp-available-article
@@ -75,10 +75,10 @@
            (equal (fn-nntp-over-range-indexed
                    session (fn-gidx-build (fn-state-articles archive))
                    (fn-midx-build (fn-state-articles archive))
-                   token legacyp)
+                   token legacyp fn-arena)
                   (if legacyp
-                      (fn-nntp-xover-range session archive token)
-                    (fn-nntp-over-range session archive token))))
+                      (fn-nntp-xover-range session archive token fn-arena)
+                    (fn-nntp-over-range session archive token fn-arena))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-xri-archive-range-nonstring
                             (configured (fn-state-groups archive))
@@ -101,10 +101,10 @@
            (equal (fn-nntp-over-range-indexed
                    session (fn-gidx-build (fn-state-articles archive))
                    (fn-midx-build (fn-state-articles archive))
-                   token legacyp)
+                   token legacyp fn-arena)
                   (if legacyp
-                      (fn-nntp-xover-range session archive token)
-                    (fn-nntp-over-range session archive token))))
+                      (fn-nntp-xover-range session archive token fn-arena)
+                    (fn-nntp-over-range session archive token fn-arena))))
   :hints (("Goal" :do-not-induct t
            :cases ((stringp (fn-nntp-session-group session)))
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds)
@@ -149,9 +149,9 @@
              session archive
              (fn-gidx-pin (fn-midx-build (fn-state-articles archive))
                           (fn-gidx-build (fn-state-articles archive)))
-             verdicts env keyword (list token))
+             verdicts env keyword (list token) fn-arena)
             (fn-nntp-archive-command
-             session archive env keyword (list token))))
+             session archive env keyword (list token) fn-arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-over-range-indexed-equals-fold
                             (legacyp (fn-nntp-keywordp keyword "XOVER"))))
@@ -172,9 +172,9 @@
                 (or (fn-nntp-keywordp keyword "OVER")
                     (fn-nntp-keywordp keyword "XOVER")))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword (list token))
+                   session archive index verdicts env keyword (list token) fn-arena)
                   (fn-nntp-archive-command
-                   session archive env keyword (list token))))
+                   session archive env keyword (list token) fn-arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-over-range-indexed-equals-fold
                             (legacyp (fn-nntp-keywordp keyword "XOVER"))))

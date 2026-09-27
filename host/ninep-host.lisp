@@ -44,11 +44,12 @@
 ; /by-id lists exactly the articles ARTICLE can serve by Message-ID: the
 ; per-article guards are fn-nntp-article-idp and fn-nntp-article-framedp, the
 ; same two fn-nntp-article-response applies before it emits a block.
-(defun fn9p-servable-articles (articles)
+(defun fn9p-servable-articles (articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp articles)
-      (if (fn-nntp-projection-articlep (car articles))
-          (cons (car articles) (fn9p-servable-articles (cdr articles)))
-        (fn9p-servable-articles (cdr articles)))
+      (if (fn-nntp-projection-articlep (car articles) fn-arena)
+          (cons (car articles) (fn9p-servable-articles (cdr articles) fn-arena))
+        (fn9p-servable-articles (cdr articles) fn-arena))
     nil))
 
 (defun fn9p-id-names (articles)
@@ -113,8 +114,8 @@
 ; fn-nntp-article-framedp holds.  That is the same guard fn-nntp-article-response
 ; requires before ARTICLE emits its block, and the block's dot-unstuffed content
 ; is exactly this payload.
-(defun fn9p-article (group-index number-index state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn9p-article (group-index number-index fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((archive (fn9p-archive state))
          (group (fn9p-nth group-index (fn-state-groups archive)))
          (number (fn9p-nth number-index (fn9p-group-numbers group archive)))
@@ -122,26 +123,26 @@
                                              (fn-state-articles archive))))
     (if (and (consp article)
              (fn-nntp-article-idp article)
-             (fn-nntp-article-framedp article))
+             (fn-nntp-article-framedp article fn-arena))
         (let ((state (fn9p-emit (fn-article-payload article) state)))
           (value t))
       (let ((state (fn9p-emit nil state)))
         (value nil)))))
 
-(defun fn9p-ids (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn9p-ids (fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((archive (fn9p-archive state))
          (state (fn9p-emit
                  (fn9p-join (fn9p-id-names
-                             (fn9p-servable-articles (fn-state-articles archive))))
+                             (fn9p-servable-articles (fn-state-articles archive) fn-arena)))
                  state)))
     (value t)))
 
-(defun fn9p-id-article (index state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn9p-id-article (index fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((archive (fn9p-archive state))
          (article (fn9p-nth index (fn9p-servable-articles
-                                   (fn-state-articles archive)))))
+                                   (fn-state-articles archive) fn-arena))))
     (if (consp article)
         (let ((state (fn9p-emit (fn-article-payload article) state)))
           (value t))

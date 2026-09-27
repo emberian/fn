@@ -594,10 +594,13 @@ a verb that needs their octets reads them after the open under its lock
 (`fnn-history-records`). On a format-9 store (what `init` writes) the open is
 `fnn-recover-log`, which answers the count the same way (a state-checkpoint
 open answers S plus the suffix's count, without re-encoding the covered
-prefix), and `fnn-history-records` reads the record log: the committed
-records of the log kernel the open recovered (`fnn-log-history-records`,
-`fn-lgk-committed`); the per-file layout is read only on a format-8 store
-(a developer image's `FN_NATIVE_STORE_FORMAT=8`). A store with no configuration record is refused, and the served
+prefix), and `fnn-history-records` reads the record log: the
+history as the open read it (`fnn-log-history-records`: a checkpoint's
+covered prefix when segments were dropped, the closed segments scanned again
+from disk, then the log kernel's committed records, `fn-lgk-committed`); a
+rotation in the process since the open is a fault, never a shorter history.
+The per-file reads are unreachable since the open refuses a format-8 profile
+by name (`:store-format`). A store with no configuration record is refused, and the served
 group names, their codes and the generation come back from the core
 (`fn-store-cfg-served/-domain/-generation`); the image holds no compiled
 group table and `init` asks `fn-cfg-host-initial-octets` for generation 1.

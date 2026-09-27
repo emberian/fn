@@ -40,7 +40,7 @@
                   (fn-octet-listp (cadr args))
                   (consp (fn-midx-lookup msgid (fn-gidx-pin-trie index))))
              (equal (fn-nntp-archive-command-pinned
-                     session archive index verdicts env keyword args)
+                     session archive index verdicts env keyword args fn-arena)
                     (fn-nntp-multi
                      session (fn-nntp-hdr-initial nil)
                      (list (fn-nntp-hdr-line
@@ -85,7 +85,7 @@
                   (fn-octet-listp (caddr tokens))
                   (fn-own-conn-group-index conn)
                   (consp (fn-midx-lookup msgid (fn-own-conn-index conn))))
-             (equal (car (fn-own-read o id (append prefix (list byte))))
+             (equal (car (fn-own-read o id (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-multi
                       ns (fn-nntp-hdr-initial nil)
@@ -170,7 +170,7 @@
 (defthm fn-own-reader-opened-after-completion-pins-the-finished-keyring
   (implies (and (fn-sn-completion-enabledp (fn-own-store o))
                 (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o))))
-           (let* ((o2 (cdr (fn-own-open (fn-own-step o '(:complete)) acfg)))
+           (let* ((o2 (cdr (fn-own-open (fn-own-step o '(:complete) fn-arena) acfg)))
                   (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
              (and conn
                   (fn-enr-pin-has-keyring-p (fn-own-conn-control conn))

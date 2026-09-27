@@ -136,8 +136,17 @@ class Acl2Owner(Acl2Store):
     def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
         config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
-        form = "(fn-owner-recover '{} {} '{} {} fn-arena state)".format(
-            literal, frontier, config, self.max_conns)
+        # Decode, intern, open (host/owner-host.lisp fn-owner-recover-rows): the
+        # arena is emptied and the rows made by the guard-verified
+        # fn-intern-events at top level, so no :program entry updates the
+        # arena (invariant-risk), as run_store.Store.recover does.
+        form = ("(let ((records (fn-store-decode-records '" + literal + ")))"
+                " (if (eq records :bad) (mv nil :fault fn-arena state)"
+                " (let ((fn-arena (fn-arena-clear fn-arena)))"
+                " (mv-let (rows fn-arena) (fn-intern-events records nil 0 fn-arena)"
+                " (mv-let (erp val state) (fn-owner-recover-rows rows " + str(frontier)
+                + " '" + config + " " + str(self.max_conns) + " state)"
+                " (mv erp val fn-arena state))))))")
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
         return self._symbol(form, timeout=timeout)
@@ -181,10 +190,10 @@ class Acl2Owner(Acl2Store):
         return acl2_octets(self.call("(fn-owner-pending-octets fn-arena state)"))
 
     def known_abort(self):
-        return self._symbol("(fn-owner-known-abort state)")
+        return self._symbol("(fn-owner-known-abort fn-arena state)")
 
     def refuse_reservation(self):
-        return self._symbol("(fn-owner-refuse-reservation state)")
+        return self._symbol("(fn-owner-refuse-reservation fn-arena state)")
 
     def finish(self):
         return self._symbol("(fn-owner-finish state)")
@@ -214,7 +223,7 @@ class Acl2Owner(Acl2Store):
         # The wrapper returns a ConfigResult (books/owner-results.lisp); this
         # test bridge keeps it in its own REPL variable and reads its fields.
         status = self._result_word(
-            "(fn-owner-reconfigure {} {} '{} state)".format(int(cid), kind, literal),
+            "(fn-owner-reconfigure {} {} '{} fn-arena state)".format(int(cid), kind, literal),
             CONFIG_RESULT, "fn-ores-config-word")
         if status == "staged":
             record = bytes(acl2_octet_list(self.call(
@@ -261,7 +270,7 @@ class Acl2Owner(Acl2Store):
         path.  The fourth is the consumed count.
         """
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
-        outcome = self._symbol("(fn-owner-chunk {} '{} state)".format(cid, literal))
+        outcome = self._symbol("(fn-owner-chunk {} '{} fn-arena state)".format(cid, literal))
         if outcome != "ok":
             raise StoreError("owner does not know connection {}".format(cid))
         # PRF-192: fn-owner-chunk installs no reply list (the native host
@@ -314,21 +323,21 @@ class Acl2Owner(Acl2Store):
         A wire event, not octets: no client input can produce it, and
         `fn-auth-step` is the only reader.  It is what sets `tlsp`.
         """
-        outcome = self._symbol("(fn-owner-tls-established {} state)".format(cid))
+        outcome = self._symbol("(fn-owner-tls-established {} fn-arena state)".format(cid))
         if outcome != "ok":
             raise StoreError("owner does not know connection {}".format(cid))
         return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
 
     def take(self):
         """The writer step: `taken', `taken-control', `taken-transit' or `idle'."""
-        return self._result_word("(fn-owner-take state)", SUBMISSION_TAKEN,
+        return self._result_word("(fn-owner-take fn-arena state)", SUBMISSION_TAKEN,
                                  "fn-ores-taken-word")
 
     def control_submit(self, msgid, groups, payload):
         """One ACL2 control-submission event over exact authored octets."""
         group_literal = "(" + " ".join(
             "(" + " ".join(str(byte) for byte in group) + ")" for group in groups) + ")"
-        form = "(fn-owner-control-submit '{} '{} '{} state)".format(
+        form = "(fn-owner-control-submit '{} '{} '{} fn-arena state)".format(
             self.literal(msgid), group_literal, self.literal(payload))
         return self._symbol_any(form)
 
@@ -437,7 +446,7 @@ class Acl2Owner(Acl2Store):
 
     def feed_configure(self):
         """Rebuild the feed table from the live configuration; the peers."""
-        return self._name_list("(fn-owner-feed-configure state)")
+        return self._name_list("(fn-owner-feed-configure fn-arena state)")
 
     def feed_peers(self):
         return self._name_list("(fn-owner-feed-peers state)")
@@ -509,7 +518,7 @@ class Acl2Owner(Acl2Store):
     def feed_connect(self, peer, conn, form=None):
         """FORM is ACL2's connection form word (:ihave after a 500/501 to
         MODE STREAM, else nil); this harness path never runs MODE STREAM."""
-        return self._symbol_any("(fn-owner-feed-connect '{} {} {} state)".format(
+        return self._symbol_any("(fn-owner-feed-connect '{} {} {} fn-arena state)".format(
             self.literal(peer.encode("utf-8")),
             "nil" if conn is None else str(conn),
             ":ihave" if form == "ihave" else "nil"))
@@ -596,7 +605,7 @@ class Acl2Owner(Acl2Store):
         self.call("(f-put-global 'fn-owner-feed-safe-offset 0 state)")
 
     def feed_journal_scan(self, peer, prefix, frame):
-        return self._symbol_any("(fn-owner-feed-journal-scan '{} '{} '{} state)".format(
+        return self._symbol_any("(fn-owner-feed-journal-scan '{} '{} '{} fn-arena state)".format(
             self.literal(peer), self.literal(prefix), self.literal(frame)))
 
     def feed_journal_offset(self):
@@ -643,7 +652,7 @@ class Acl2Owner(Acl2Store):
         return self._feed_step("(fn-owner-feed-reconcile-next state)")
 
     def feed_reconcile_apply(self):
-        return self._symbol_any("(fn-owner-feed-reconcile-apply state)")
+        return self._symbol_any("(fn-owner-feed-reconcile-apply fn-arena state)")
 
     def feed_journal_peer_valid(self, peer):
         return acl2_boolean(self.call(
@@ -663,16 +672,16 @@ class Acl2Owner(Acl2Store):
 
     def control_outcome(self, word):
         """The ACL2 projection of accepted/refused/uncertain/duplicate."""
-        return self._symbol_any("(fn-owner-control-outcome :{} state)".format(word))
+        return self._symbol_any("(fn-owner-control-outcome :{} fn-arena state)".format(word))
 
     def close_connection(self, cid):
-        return self._symbol("(fn-owner-close {} state)".format(cid))
+        return self._symbol("(fn-owner-close {} fn-arena state)".format(cid))
 
     def advance(self, cid):
-        return acl2_symbol_or_nat(self.call("(fn-owner-advance {} state)".format(cid)))
+        return acl2_symbol_or_nat(self.call("(fn-owner-advance {} fn-arena state)".format(cid)))
 
     def begin(self, cid):
-        return self._symbol("(fn-owner-begin {} state)".format(cid))
+        return self._symbol("(fn-owner-begin {} fn-arena state)".format(cid))
 
     def version(self):
         return self._nat("(fn-owner-version state)")
@@ -686,7 +695,7 @@ class Acl2Owner(Acl2Store):
             monotonic_ms, wall_ms, error_ms, "t" if has_wall else "nil"))
 
     def declare_group(self, name):
-        return self._symbol("(fn-owner-declare-group '" + self.literal(name) + " state)")
+        return self._symbol("(fn-owner-declare-group '" + self.literal(name) + " fn-arena state)")
 
     def group_facts(self):
         return self.call("(fn-owner-group-facts state)")

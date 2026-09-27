@@ -13,12 +13,14 @@
 (defconst *otp-config*
   (fn-config-replay 0 (fn-cnode-line-ceiling)
                     (list *fn-cfg-default-record*)))
-(defconst *otp-tls-b* (fn-ocfg-read-tls-prefix
-                       (fn-ocfg-make *ov-reader-b* *otp-config* nil nil)
-                       2 *ov-hdr*))
-(defconst *otp-full-b* (fn-ocfg-read
-                        (fn-ocfg-make *ov-reader-b* *otp-config* nil nil)
-                        2 *ov-hdr*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read 3)
+(bpr-lift fn-ocfg-read-tls-prefix 3)
+(bpr-lift fn-served-step 2)
+(defconst *otp-tls-b* (in-arena-fn-ocfg-read-tls-prefix *sr-arena* (fn-ocfg-make *ov-reader-b* *otp-config* nil nil) 2 *ov-hdr*))
+(defconst *otp-full-b* (in-arena-fn-ocfg-read *sr-arena* (fn-ocfg-make *ov-reader-b* *otp-config* nil nil) 2 *ov-hdr*))
 (assert-event (equal (fn-own-tls-result-effects *otp-tls-b*)
                      (car *otp-full-b*)))
 (assert-event (equal (fn-own-tls-result-owner *otp-tls-b*)
@@ -42,10 +44,10 @@
    (fn-own-clock *ov-reader-b*)))
 (assert-event
  (not (equal (fn-served-result-effects
-              (fn-served-step *otp-unpinned* *ov-hdr*))
+              (in-arena-fn-served-step *sr-arena* *otp-unpinned* *ov-hdr*))
              (fn-own-tls-result-effects *otp-tls-b*))))
 (must-fail
  (defthm otp-dropping-verdict-pin-is-equivalent
    (equal (fn-served-result-effects
-           (fn-served-step *otp-unpinned* *ov-hdr*))
+           (fn-served-step *otp-unpinned* *ov-hdr* fn-arena))
           (fn-own-tls-result-effects *otp-tls-b*))))

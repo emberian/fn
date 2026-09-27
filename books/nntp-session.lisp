@@ -5,12 +5,88 @@
 
 (in-package "ACL2")
 (include-book "nntp-syntax")
+(include-book "payload-arena")
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
 ; that single file, so it re-enables exactly them, locally: within the
 ; chain the theory is the one the original file had at this point.
 (local (in-theory (enable fn-nntp-syntax-vocabulary)))
+;; -----------------------------------------------------------------------------
+;; The article's bytes (records flip, 2026-09-27: F2, lane served-readers).
+;;
+;; A stored article's payload is a HANDLE into the payload arena
+;; (books/acceptance.lisp, books/payload-arena.lisp): the served readers
+;; read the octets it denotes through the arena, and the served machine
+;; carries the arena stobj for that.  A payload that is not a handle is the
+;; octet-list model's (a derived article the readers build and answer from:
+;; fn-rcompat-served-article's served octets, the catalog view's rows); it
+;; reads as itself.  A handle outside the arena reads as no octets, as
+;; books/store-intern.lisp fn-handle-bytes.  This is the one place a served
+;; reader reaches the bytes of an article.
+(defun fn-nntp-payload-bytes (p fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (natp p)
+      (if (< p (fn-arena-count fn-arena))
+          (fn-arena-payload p fn-arena)
+        nil)
+    p))
+
+(defun fn-nntp-article-bytes (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-nntp-payload-bytes (fn-article-payload article) fn-arena))
+
+;; ALPHA of one article: its handle replaced by the octets it denotes (the
+;; octet-list model's article; store-intern's fn-articles-wire-of per element).
+(defun fn-nntp-article-alpha (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-make-article (fn-article-msgid article)
+                   (fn-nntp-article-bytes article fn-arena)
+                   (fn-article-groups article) (fn-article-memberships article)
+                   (fn-article-pin article) (fn-article-stamp article)))
+
+;; KEYSTONE (the representation boundary of every served reader): the bytes
+;; a reader sees of an article are the bytes of its alpha, over ANY arena:
+;; the octet-list model's article needs no arena, so a reader over a stored
+;; article and the arena answers as the same reader over the model article.
+(local
+ (defthm fn-nntp-payload-list-element-not-natp
+   (implies (and (fn-arn-payload-listp xs) (natp h) (< h (len xs)))
+            (not (natp (nth h xs))))))
+
+(defthm fn-nntp-article-bytes-of-alpha
+  (implies (fn-arena-p fn-arena)
+           (equal (fn-nntp-article-bytes (fn-nntp-article-alpha article fn-arena) any-arena)
+                  (fn-nntp-article-bytes article fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-arena-p-is-payload-listp fn-nntp-article-alpha))))
+
+;; The handle case, through the arena's logical view: a handle below the
+;; count reads the payload sealed at it.
+(defthm fn-nntp-article-bytes-of-handle
+  (implies (and (natp (fn-article-payload article))
+                (< (fn-article-payload article) (len fn-arena)))
+           (equal (fn-nntp-article-bytes article fn-arena)
+                  (nth (fn-article-payload article) fn-arena))))
+
+;; Alpha keeps everything but the payload.
+(defthm fn-nntp-article-alpha-fields
+  (let ((b (fn-nntp-article-alpha article fn-arena)))
+    (and (equal (fn-article-msgid b) (fn-article-msgid article))
+         (equal (fn-article-groups b) (fn-article-groups article))
+         (equal (fn-article-memberships b) (fn-article-memberships article))
+         (equal (fn-article-pin b) (fn-article-pin article))
+         (equal (fn-article-stamp b) (fn-article-stamp article))
+         (equal (fn-article-payload b) (fn-nntp-article-bytes article fn-arena)))))
+
+; A payload that is not a handle reads as itself (a model article's octets,
+; or NIL: a payload a reader erased, fn-nntp-newnews-without-payload's).
+(defthm fn-nntp-payload-bytes-of-non-handle
+  (implies (not (natp p))
+           (equal (fn-nntp-payload-bytes p fn-arena) p)))
+
+; Readers treat the bytes as opaque, as they treated the payload field.
+(in-theory (disable fn-nntp-article-alpha fn-nntp-payload-bytes))
+
 ; -----------------------------------------------------------------------------
 ; Session, effects, and exact article projection
 
@@ -250,8 +326,9 @@
   (mbe :logic (car (cdr (cdr x)))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
 
-(defun fn-nntp-article-section (article kind)
-  (let ((payload (fn-article-payload article)))
+(defun fn-nntp-article-section (article kind fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((payload (fn-nntp-article-bytes article fn-arena)))
     (if (equal kind :article)
         (fn-nntp-crlf-lines payload)
       (let ((split (fn-nntp-split-article payload)))
@@ -306,14 +383,16 @@
          (fn-nntp-message-id-tokenp (fn-nntp-string-octets text)))))
 ; Per-article: the stored bytes.  Only ARTICLE, HEAD, and BODY need this, and
 ; they pay for the one article they name.
-(defun fn-nntp-article-framedp (article)
-  (let ((payload (fn-article-payload article)))
+(defun fn-nntp-article-framedp (article fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((payload (fn-nntp-article-bytes article fn-arena)))
     (and (equal (car (fn-nntp-crlf-lines payload)) :ok)
          (fn-nntp-split-okp (fn-nntp-split-article payload)))))
 
-(defun fn-nntp-projection-articlep (article)
+(defun fn-nntp-projection-articlep (article fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (fn-nntp-article-idp article)
-       (fn-nntp-article-framedp article)))
+       (fn-nntp-article-framedp article fn-arena)))
 ; Configuration-level projection.  This is the whole-archive recognizer.  It
 ; says nothing about the contents of individual articles: a committed article
 ; whose stored bytes cannot be projected no longer denies the service.

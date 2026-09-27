@@ -105,14 +105,14 @@
              (and (member-equal
                    (fn-auth-starttls-effect)
                    (fn-served-result-effects
-                    (fn-served-dispatch c0 *fn-sit-starttls-event*)))
+                    (fn-served-dispatch c0 *fn-sit-starttls-event* fn-arena)))
                   (equal (fn-served-result-conn
-                          (fn-served-dispatch c0 *fn-sit-established-event*))
+                          (fn-served-dispatch c0 *fn-sit-established-event* fn-arena))
                          (fn-served-result-conn
                           (fn-served-dispatch
                            (fn-served-result-conn
-                            (fn-served-dispatch c0 *fn-sit-starttls-event*))
-                           *fn-sit-established-event*))))))
+                            (fn-served-dispatch c0 *fn-sit-starttls-event* fn-arena))
+                           *fn-sit-established-event* fn-arena))))))
   :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch fn-served-dispatch-core
                                      fn-served-open-group-indexed
                                      fn-served-open-indexed
@@ -134,7 +134,7 @@
   (let ((r (fn-served-dispatch
             (fn-sit-opened archive index buckets verdicts line-limit body-limit
                            config observation injection acfg)
-            *fn-sit-established-event*)))
+            *fn-sit-established-event* fn-arena)))
     (and (null (fn-served-result-effects r))
          (fn-auth-session-tlsp (fn-served-conn-session (fn-served-result-conn r)))
          (not (fn-auth-session-handshakingp

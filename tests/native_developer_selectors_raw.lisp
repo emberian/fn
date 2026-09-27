@@ -117,10 +117,12 @@
               +fnn-developer-selectors+ fnn-developer-selector
               fnn-store-post-fault-argument fnn-developer-selector-refusal
               fnn-developer-selector-gate
-              +fnn-init-model-cuts+ +fnn-init-test-controls+ fnn-init-test-fault
+              +fnn-init-model-cuts+ +fnn-init-publication-cuts+ +fnn-init-test-controls+
+              fnn-init-test-fault
               +fnn-recovery-model-cuts+ fnn-recovery-test-fault
               +fnn-state-checkpoint-model-cuts+ fnn-state-checkpoint-test-fault
-              +fnn-cli-faults+ +fnn-post-model-cuts+ fnn-post-test-fault
+              +fnn-cli-faults+ +fnn-post-model-cuts+ +fnn-post-log-model-cuts+
+              fnn-post-test-fault
               fnn-post-entry-fault fnn-command-post fnn-main))
 
 (defun setenv (name value) (sb-posix:setenv name value 1))
@@ -326,7 +328,9 @@
   (let* ((store (make-fnn-store :fault-point :finish-durable :fault-class :fnn-test-kill
                                 :fault-message "m"))
          (armed (fnn-owner-control-arm-fault store)))
-    (check (eq (fnn-store-fault-point store) :record-attempted)
+    ;; postpublish arms one point per commit route (+fnn-cli-faults+: the
+    ;; per-file route's record-attempted, the record log's log-fenced).
+    (check (equal (fnn-store-fault-point store) '(:record-attempted :log-fenced))
            "the control fault is armed for its submission")
     (fnn-owner-control-disarm-fault store armed)
     (check (and (eq (fnn-store-fault-point store) :finish-durable)

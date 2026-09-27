@@ -98,13 +98,13 @@
 
 (defthm fn-oix-read-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (cdr (fn-own-read o a b))))
+           (fn-scar-view-indexedp (cdr (fn-own-read o a b fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-read fn-own-finish-read fn-own-set-conns fn-own-enqueue)
                                   (fn-midx-correspondencep fn-own-refresh fn-served-step)))))
 
 (defthm fn-oix-read-step-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (cdr (fn-own-read-step o a b))))
+           (fn-scar-view-indexedp (cdr (fn-own-read-step o a b fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-read-step fn-own-finish-read fn-own-set-conns fn-own-enqueue)
                                   (fn-midx-correspondencep fn-own-refresh fn-served-dispatch)))))
 
@@ -113,7 +113,7 @@
 ; fn-own-read and fn-own-read-step are that result's projections.
 (defthm fn-oix-read-full-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (car (cdr (fn-own-read-full o a b)))))
+           (fn-scar-view-indexedp (car (cdr (fn-own-read-full o a b fn-arena)))))
   :hints (("Goal" :use fn-oix-read-keeps-view-indexed
            :in-theory (e/d (fn-own-read)
                            (fn-oix-read-keeps-view-indexed fn-own-read-full
@@ -121,7 +121,7 @@
 
 (defthm fn-oix-read-step-full-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (car (cdr (fn-own-read-step-full o a b)))))
+           (fn-scar-view-indexedp (car (cdr (fn-own-read-step-full o a b fn-arena)))))
   :hints (("Goal" :use fn-oix-read-step-keeps-view-indexed
            :in-theory (e/d (fn-own-read-step)
                            (fn-oix-read-step-keeps-view-indexed fn-own-read-step-full
@@ -273,14 +273,14 @@
 
 (defthm fn-oix-own-step-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (fn-own-step o ev)))
+           (fn-scar-view-indexedp (fn-own-step o ev fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-own-step)
                                   (fn-scar-view-indexedp fn-own-advance fn-own-advance-result fn-own-begin fn-own-bp-transit-outcome fn-own-bp-transit-submit fn-own-close fn-own-complete fn-own-configure fn-own-control-outcome fn-own-control-submit fn-own-declare-group fn-own-fault fn-own-feed-connect fn-own-feed-lost fn-own-feed-recover fn-own-feed-reply fn-own-feeds-reconfigure fn-own-observe fn-own-open fn-own-open-peer fn-own-operator-submit fn-own-outcome fn-own-read fn-own-read-step fn-own-read-full fn-own-read-step-full fn-own-reader-context fn-own-reopen fn-own-store-step fn-own-take-submission fn-own-tick fn-own-tick-peer fn-own-transit-outcome)))))
 
 ; PRESERVATION over every event the host drives through fn-owner-step.
 (defthm fn-oix-ocfg-step-keeps-view-indexed
   (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
-           (fn-scar-view-indexedp (fn-ocfg-owner (fn-ocfg-step oc event))))
+           (fn-scar-view-indexedp (fn-ocfg-owner (fn-ocfg-step oc event fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step fn-ocfg-open fn-ocfg-advance
                                    fn-ocfg-close fn-ocfg-read fn-ocfg-read-step
                                    fn-ocfg-open-peer fn-ocfg-fault
@@ -300,7 +300,7 @@
 (defthm fn-oix-scar-read-keeps-view
   (equal (fn-own-view
           (fn-ocfg-owner
-           (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc id octets))))
+           (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena))))
          (fn-own-view (fn-ocfg-owner oc)))
   :hints (("Goal" :in-theory (e/d (fn-scar-ocfg-read-tls-prefix
                                    fn-scar-own-read-tls-prefix
@@ -315,7 +315,7 @@
   (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
            (fn-scar-view-indexedp
             (fn-ocfg-owner
-             (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc id octets)))))
+             (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp)
                                   (fn-scar-ocfg-read-tls-prefix
                                    fn-midx-correspondencep)))))
@@ -343,7 +343,7 @@
 
 (defthm fn-oix-ocfg-read-step-keeps-view-indexed
   (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
-           (fn-scar-view-indexedp (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event)))))
+           (fn-scar-view-indexedp (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-read-step fn-ocfg-with-read-owner)
                                   (fn-scar-view-indexedp fn-own-read-step
                                    fn-own-read-step-full)))))

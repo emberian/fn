@@ -20,6 +20,12 @@ tests/acl2/store-profile-open-tests.lisp:
   fn-store-experiment-7).  Pinned: `(equal (spot-format-7-frame)
   *spot-format-7-octets*)`; the open answers (:refused :store-format)
   (fn-spo-config-open-store-format-is-exactly-a-foreign-frame).
+* FORMAT_8_CONFIG: a format-8 store's config.json (the per-file layout,
+  word fn-store-8, the development preset: what `init --profile
+  development' wrote before the record log; sha256 61802dbb...).  Pinned:
+  `(equal (fn-bs-config-encode (spot-as-format-8 *fn-bs-profile-development*))
+  *spot-format-8-octets*)'; the open answers (:refused :store-format) on
+  every image (fn-spo-open-of-a-format-8-profile-refuses-by-name).
 
 The rest of the store is this release's, so the only reason the open can
 give is the profile frame's.
@@ -42,14 +48,24 @@ FORMAT_7_CONFIG = bytes.fromhex(
     "80001e666e2d73746f72652d616c6c6f636174696f6e2d66726f6e746965722d"
     "32ece77fc0992cb848ad3c313ab9bd7c45c08613cae3af56903723e6ec5d762e"
     "ad")
-FRAMES = {"older-release": OLDER_RELEASE_CONFIG, "format-7": FORMAT_7_CONFIG}
+FORMAT_8_CONFIG = bytes.fromhex(
+    "464e534d0101000000ac000a666e2d73746f72652d38001e666e2d73746f7265"
+    "2d616c6c6f636174696f6e2d66726f6e746965722d3200000000000000800000"
+    "00000180000000000000010583360000000000008000000000000000ffff0000"
+    "0000000001000000000000000080000000000010000000000000001000000000"
+    "0000001000000000000000100000000000000010000000000000000000000000"
+    "000000000040000000000000010000000000000040006fafea5557022366ed01"
+    "717e509d54dbf4a18b95c0e648856e8eda5bb0282d64")
+FRAMES = {"older-release": OLDER_RELEASE_CONFIG, "format-7": FORMAT_7_CONFIG,
+          "format-8": FORMAT_8_CONFIG}
 
 # The lines ACL2 renders for the two refusals (fn-spo-refusal-text).
 OLDER_RELEASE_LINE = ("open refused reason=older-release: store made by an older release "
                       "(profile layout 13 fields, this release expects 16): export it with "
                       "the release that made it, then import it here")
 FORMAT_7_LINE = "open refused reason=store-format: reinstall from the release and import"
-LINES = {"older-release": OLDER_RELEASE_LINE, "format-7": FORMAT_7_LINE}
+LINES = {"older-release": OLDER_RELEASE_LINE, "format-7": FORMAT_7_LINE,
+         "format-8": FORMAT_7_LINE}
 
 
 def write_config(root, store, name="fn"):

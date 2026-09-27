@@ -47,7 +47,7 @@
                 (fn-nntp-keyword-tokenp (car args))
                 (fn-nntp-keywordp (car args) "NEWSGROUPS"))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
+                   session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-list-newsgroups-described
                    session archive
                    (fn-nntp-listing-descs (fn-nntp-env-listing env))
@@ -73,7 +73,7 @@
                 (fn-nntp-keyword-tokenp (car args))
                 (fn-nntp-keywordp (car args) "MOTD"))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
+                   session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-list-motd session env (cdr args))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-pinned
@@ -171,7 +171,7 @@
                   (fn-nntp-keyword-tokenp (cadr tokens))
                   (fn-nntp-keywordp (cadr tokens) "NEWSGROUPS"))
              (and (equal (fn-served-result-effects
-                          (fn-served-dispatch conn (list :command line)))
+                          (fn-served-dispatch conn (list :command line) fn-arena))
                          (fn-nntp-result-effects
                           (fn-nntp-list-newsgroups-described
                            ns (fn-served-conn-archive conn)
@@ -180,7 +180,7 @@
                            (cddr tokens))))
                   (equal (fn-served-conn-wire
                           (fn-served-result-conn
-                           (fn-served-dispatch conn (list :command line))))
+                           (fn-served-dispatch conn (list :command line) fn-arena)))
                          (fn-served-conn-wire conn)))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
@@ -239,7 +239,7 @@
                   (fn-nntp-keyword-tokenp (cadr tokens))
                   (fn-nntp-keywordp (cadr tokens) "MOTD"))
              (and (equal (fn-served-result-effects
-                          (fn-served-dispatch conn (list :command line)))
+                          (fn-served-dispatch conn (list :command line) fn-arena))
                          (fn-nntp-result-effects
                           (fn-nntp-list-motd
                            ns (fn-nntp-env-listed
@@ -249,7 +249,7 @@
                            (cddr tokens))))
                   (equal (fn-served-conn-wire
                           (fn-served-result-conn
-                           (fn-served-dispatch conn (list :command line))))
+                           (fn-served-dispatch conn (list :command line) fn-arena)))
                          (fn-served-conn-wire conn)))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
@@ -319,7 +319,7 @@
                   (fn-nntp-keyword-tokenp (cadr tokens))
                   (fn-nntp-keywordp (cadr tokens) "NEWSGROUPS"))
              (equal (fn-served-result-effects
-                     (fn-served-step conn (append prefix (list byte))))
+                     (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-list-newsgroups-described
                       ns (fn-served-conn-archive conn)
@@ -388,7 +388,7 @@
                   (fn-nntp-keyword-tokenp (cadr tokens))
                   (fn-nntp-keywordp (cadr tokens) "MOTD"))
              (equal (fn-served-result-effects
-                     (fn-served-step conn (append prefix (list byte))))
+                     (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-list-motd
                       ns (fn-nntp-env-listed

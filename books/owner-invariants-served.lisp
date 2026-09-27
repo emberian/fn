@@ -177,7 +177,7 @@
                 (fn-own-find-conn id (fn-own-conns o)))
            (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
                   (s (fn-own-store o)))
-             (equal (car (fn-own-read o id octets))
+             (equal (car (fn-own-read o id octets fn-arena))
                     (fn-served-result-effects
                      (fn-served-step
                       (fn-served-make-conn-live
@@ -199,7 +199,7 @@
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)
                        (fn-own-view-live (fn-own-view o)))
-                      octets)))))
+                      octets fn-arena)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
                  fn-own-relation-conns-and-ledger
@@ -214,11 +214,11 @@
 
 (defthm fn-own-read-is-served-step-on-pinned-prefix-after-any-trace
   (implies (and (fn-own-relation o)
-                (fn-own-find-conn id (fn-own-conns (fn-own-run o events))))
-           (let* ((final (fn-own-run o events))
+                (fn-own-find-conn id (fn-own-conns (fn-own-run o events fn-arena))))
+           (let* ((final (fn-own-run o events fn-arena))
                   (conn (fn-own-find-conn id (fn-own-conns final)))
                   (s (fn-own-store final)))
-             (equal (car (fn-own-read final id octets))
+             (equal (car (fn-own-read final id octets fn-arena))
                     (fn-served-result-effects
                      (fn-served-step
                       (fn-served-make-conn-live
@@ -240,10 +240,10 @@
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)
                        (fn-own-view-live (fn-own-view final)))
-                      octets)))))
+                      octets fn-arena)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-read-is-served-step-on-pinned-prefix
-                                   (o (fn-own-run o events))))
+                                   (o (fn-own-run o events fn-arena))))
            :in-theory (disable fn-own-run fn-own-read fn-own-relation
                                fn-own-run-preserves-relation
                                fn-own-read-is-served-step-on-pinned-prefix))))
@@ -262,7 +262,7 @@
                 (fn-own-find-conn id (fn-own-conns o)))
            (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
                   (s (fn-own-store o)))
-             (equal (car (fn-own-read-step o id event))
+             (equal (car (fn-own-read-step o id event fn-arena))
                     (fn-served-result-effects
                      (fn-served-dispatch
                       (fn-served-make-conn-live
@@ -284,7 +284,7 @@
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)
                        (fn-own-view-live (fn-own-view o)))
-                      event)))))
+                      event fn-arena)))))
   :hints (("Goal"
            :use (fn-own-conn-serves-a-projection
                  fn-own-relation-conns-and-ledger
@@ -299,11 +299,11 @@
 
 (defthm fn-own-reader-sees-pinned-prefix-replay-after-any-trace
   (implies (and (fn-own-relation o)
-                (fn-own-find-conn id (fn-own-conns (fn-own-run o events))))
-           (let* ((final (fn-own-run o events))
+                (fn-own-find-conn id (fn-own-conns (fn-own-run o events fn-arena))))
+           (let* ((final (fn-own-run o events fn-arena))
                   (conn (fn-own-find-conn id (fn-own-conns final)))
                   (s (fn-own-store final)))
-             (equal (car (fn-own-read-step final id event))
+             (equal (car (fn-own-read-step final id event fn-arena))
                     (fn-served-result-effects
                      (fn-served-dispatch
                       (fn-served-make-conn-live
@@ -325,10 +325,10 @@
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)
                        (fn-own-view-live (fn-own-view final)))
-                      event)))))
+                      event fn-arena)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-reader-sees-pinned-prefix-replay
-                                   (o (fn-own-run o events))))
+                                   (o (fn-own-run o events fn-arena))))
            :in-theory (disable fn-own-run fn-own-read-step fn-own-relation
                                fn-own-run-preserves-relation
                                fn-own-reader-sees-pinned-prefix-replay))))
@@ -400,12 +400,12 @@
   (and (equal (fn-own-store (cdr (fn-own-open o acfg))) (fn-own-store o))
        (equal (fn-own-max-conns (cdr (fn-own-open o acfg))) (fn-own-max-conns o))
        (equal (fn-own-ledger (cdr (fn-own-open o acfg))) (fn-own-ledger o))
-       (equal (fn-own-store (cdr (fn-own-read o id octets))) (fn-own-store o))
-       (equal (fn-own-max-conns (cdr (fn-own-read o id octets))) (fn-own-max-conns o))
-       (equal (fn-own-ledger (cdr (fn-own-read o id octets))) (fn-own-ledger o))
-       (equal (fn-own-store (cdr (fn-own-read-step o id event))) (fn-own-store o))
-       (equal (fn-own-max-conns (cdr (fn-own-read-step o id event))) (fn-own-max-conns o))
-       (equal (fn-own-ledger (cdr (fn-own-read-step o id event))) (fn-own-ledger o))
+       (equal (fn-own-store (cdr (fn-own-read o id octets fn-arena))) (fn-own-store o))
+       (equal (fn-own-max-conns (cdr (fn-own-read o id octets fn-arena))) (fn-own-max-conns o))
+       (equal (fn-own-ledger (cdr (fn-own-read o id octets fn-arena))) (fn-own-ledger o))
+       (equal (fn-own-store (cdr (fn-own-read-step o id event fn-arena))) (fn-own-store o))
+       (equal (fn-own-max-conns (cdr (fn-own-read-step o id event fn-arena))) (fn-own-max-conns o))
+       (equal (fn-own-ledger (cdr (fn-own-read-step o id event fn-arena))) (fn-own-ledger o))
        (equal (fn-own-store (fn-own-advance o id)) (fn-own-store o))
        (equal (fn-own-max-conns (fn-own-advance o id)) (fn-own-max-conns o))
        (equal (fn-own-ledger (fn-own-advance o id)) (fn-own-ledger o))
@@ -445,7 +445,7 @@
 (local
  (defthm fn-own-step-store-of-other-events
    (implies (not (member-equal (car event) '(:store :complete :reopen)))
-            (equal (fn-own-store (fn-own-step o event)) (fn-own-store o)))
+            (equal (fn-own-store (fn-own-step o event fn-arena)) (fn-own-store o)))
    :hints (("Goal" :in-theory (e/d (fn-own-step)
                                    (fn-served-step fn-served-dispatch
                                     fn-served-post-outcome fn-served-open
@@ -465,18 +465,18 @@
 (local
  (defthm fn-own-step-of-store-changing-events
    (and (implies (equal (car event) :store)
-                 (equal (fn-own-step o event) (fn-own-store-step o (cadr event))))
+                 (equal (fn-own-step o event fn-arena) (fn-own-store-step o (cadr event))))
         (implies (equal (car event) :complete)
-                 (equal (fn-own-step o event) (fn-own-complete o)))
+                 (equal (fn-own-step o event fn-arena) (fn-own-complete o)))
         (implies (equal (car event) :reopen)
-                 (equal (fn-own-step o event)
+                 (equal (fn-own-step o event fn-arena)
                         (fn-own-reopen o (cadr event) (caddr event)))))
    :hints (("Goal" :in-theory '(fn-own-step)))))
 
 (defthm fn-own-step-records-prefix
   (implies (fn-own-relation o)
            (fn-sf-prefixp (fn-sf-records (fn-sn-files (fn-own-store o)))
-                          (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event))))))
+                          (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event fn-arena))))))
   :hints (("Goal"
            :cases ((equal (car event) :store) (equal (car event) :complete)
                    (equal (car event) :reopen))
@@ -523,8 +523,8 @@
 (defthm fn-own-run-records-prefix
   (implies (fn-own-relation o)
            (fn-sf-prefixp (fn-sf-records (fn-sn-files (fn-own-store o)))
-                          (fn-sf-records (fn-sn-files (fn-own-store (fn-own-run o events))))))
-  :hints (("Goal" :induct (fn-own-run o events)
+                          (fn-sf-records (fn-sn-files (fn-own-store (fn-own-run o events fn-arena))))))
+  :hints (("Goal" :induct (fn-own-run o events fn-arena)
            :in-theory (e/d (fn-sf-prefixp-reflexive) (fn-own-step fn-own-relation)))
           ("Subgoal *1/1"
            :use (fn-own-step-preserves-relation
@@ -533,17 +533,17 @@
                  (:instance fn-sf-prefixp-transitive
                             (xs (fn-sf-records (fn-sn-files (fn-own-store o))))
                             (ys (fn-sf-records (fn-sn-files (fn-own-store
-                                                             (fn-own-step o (car events))))))
+                                                             (fn-own-step o (car events) fn-arena)))))
                             (zs (fn-sf-records (fn-sn-files (fn-own-store
-                                                             (fn-own-run (fn-own-step o (car events))
-                                                                         (cdr events)))))))))))
+                                                             (fn-own-run (fn-own-step o (car events) fn-arena)
+                                                                         (cdr events) fn-arena))))))))))
 
 (defthm fn-own-pinned-prefix-survives-any-trace
   (implies (and (fn-own-relation o)
                 (fn-own-find-conn id (fn-own-conns o)))
            (let ((version (fn-own-conn-version (fn-own-find-conn id (fn-own-conns o)))))
              (equal (fn-own-take version
-                                 (fn-sf-records (fn-sn-files (fn-own-store (fn-own-run o events)))))
+                                 (fn-sf-records (fn-sn-files (fn-own-store (fn-own-run o events fn-arena)))))
                     (fn-own-take version
                                  (fn-sf-records (fn-sn-files (fn-own-store o)))))))
   :hints (("Goal"
@@ -596,7 +596,7 @@
            :in-theory (disable fn-own-conn-boundedp))))
 
 (defthm fn-own-step-keeps-max-conns
-  (equal (fn-own-max-conns (fn-own-step o event)) (fn-own-max-conns o))
+  (equal (fn-own-max-conns (fn-own-step o event fn-arena)) (fn-own-max-conns o))
   :hints (("Goal" :in-theory (disable fn-own-refresh fn-own-conn-boundedp
                                       fn-own-open fn-own-read fn-own-read-step
                                       fn-own-advance fn-own-close fn-own-begin
@@ -605,13 +605,13 @@
                                       fn-own-outcome))))
 
 (defthm fn-own-run-keeps-max-conns
-  (equal (fn-own-max-conns (fn-own-run o events)) (fn-own-max-conns o))
-  :hints (("Goal" :induct (fn-own-run o events)
+  (equal (fn-own-max-conns (fn-own-run o events fn-arena)) (fn-own-max-conns o))
+  :hints (("Goal" :induct (fn-own-run o events fn-arena)
            :in-theory (disable fn-own-step))))
 
 (defthm fn-own-connections-bounded-after-any-trace
   (implies (fn-own-relation o)
-           (let ((final (fn-own-run o events)))
+           (let ((final (fn-own-run o events fn-arena)))
              (and (<= (len (fn-own-conns final)) (fn-own-max-conns o))
                   (fn-own-conns-boundedp (fn-own-conns final)
                                          (fn-sn-groups (fn-own-store final))))))
@@ -628,7 +628,7 @@
 
 (defthm fn-own-step-ledger-grows
   (implies (member-equal pair (fn-own-ledger o))
-           (member-equal pair (fn-own-ledger (fn-own-step o event))))
+           (member-equal pair (fn-own-ledger (fn-own-step o event fn-arena))))
   :hints (("Goal" :in-theory (disable fn-own-refresh fn-own-conn-boundedp
                                       fn-own-open fn-own-read fn-own-read-step
                                       fn-own-advance fn-own-close fn-own-begin
@@ -638,20 +638,20 @@
 
 (defthm fn-own-run-ledger-grows
   (implies (member-equal pair (fn-own-ledger o))
-           (member-equal pair (fn-own-ledger (fn-own-run o events))))
-  :hints (("Goal" :induct (fn-own-run o events)
+           (member-equal pair (fn-own-ledger (fn-own-run o events fn-arena))))
+  :hints (("Goal" :induct (fn-own-run o events fn-arena)
            :in-theory (disable fn-own-step))))
 
 (defthm fn-own-completed-post-survives-close-and-any-trace
   (implies (and (fn-own-relation o)
                 (member-equal pair (fn-own-ledger o)))
            (fn-sf-record-has-pairp
-            pair (fn-sf-records (fn-sn-files (fn-own-store (fn-own-run o events))))))
+            pair (fn-sf-records (fn-sn-files (fn-own-store (fn-own-run o events fn-arena))))))
   :hints (("Goal" :use (fn-own-run-preserves-relation fn-own-run-ledger-grows
                         (:instance fn-own-ledger-durablep-member
-                                   (ledger (fn-own-ledger (fn-own-run o events)))
+                                   (ledger (fn-own-ledger (fn-own-run o events fn-arena)))
                                    (records (fn-sf-records
-                                             (fn-sn-files (fn-own-store (fn-own-run o events)))))))
+                                             (fn-sn-files (fn-own-store (fn-own-run o events fn-arena)))))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-run fn-own-run-preserves-relation
                             fn-own-run-ledger-grows fn-own-ledger-durablep-member

@@ -246,9 +246,9 @@
 ; injected Path does, so the stored octets (an authored article's signed
 ; source among them, D01: Path and Xref are the node's mutable projections)
 ; stay a suffix of what ARTICLE serves (batch AR; the lane appended it last).
-(defun fn-rcompat-served-payload (server article)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((payload (fn-article-payload article))
+(defun fn-rcompat-served-payload (server article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let* ((payload (fn-nntp-article-bytes article fn-arena))
          (split (fn-nntp-split-article payload)))
     (if (and (consp (fn-xref-pairs article))
              (not (fn-rcl-tombstonep payload))
@@ -269,10 +269,10 @@
   :hints (("Goal" :in-theory (enable fn-nntp-split-article)
            :use ((:instance fn-rcompat-split-aux-head-true-listp (rev nil))))))
 
-(defun fn-rcompat-served-article (server article)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-rcompat-served-article (server article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (fn-make-article (fn-article-msgid article)
-                   (fn-rcompat-served-payload server article)
+                   (fn-rcompat-served-payload server article fn-arena)
                    (fn-article-groups article)
                    (fn-article-memberships article)
                    (fn-article-pin article)
@@ -299,26 +299,26 @@
 ; stored octets a suffix, nothing else changed.  Where it is not, the served
 ; octets are the stored ones.
 (defthm fn-rcompat-served-payload-inserts-one-line
-  (let ((split (fn-nntp-split-article (fn-article-payload article))))
+  (let ((split (fn-nntp-split-article (fn-nntp-article-bytes article fn-arena))))
     (if (and (consp (fn-xref-pairs article))
-             (not (fn-rcl-tombstonep (fn-article-payload article)))
+             (not (fn-nntp-article-tombstonep article fn-arena))
              (fn-nntp-split-okp split))
-        (and (equal (fn-article-payload article)
+        (and (equal (fn-nntp-article-bytes article fn-arena)
                     (append (fn-nntp-split-head split) (list 13 10)
                             (fn-nntp-split-body split)))
-             (equal (fn-rcompat-served-payload server article)
+             (equal (fn-rcompat-served-payload server article fn-arena)
                     (append (fn-xref-field server (fn-xref-pairs article))
                             (list 13 10)
                             (fn-nntp-split-head split)
                             (list 13 10)
                             (fn-nntp-split-body split))))
-      (equal (fn-rcompat-served-payload server article)
-             (fn-article-payload article))))
+      (equal (fn-rcompat-served-payload server article fn-arena)
+             (fn-nntp-article-bytes article fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-split-article)
                                   (fn-xref-field fn-xref-pairs
                                    fn-rcl-tombstonep))
            :use ((:instance fn-rcompat-split-aux-reassembles
-                            (bytes (fn-article-payload article)) (rev nil))))))
+                            (bytes (fn-nntp-article-bytes article fn-arena)) (rev nil))))))
 
 (defun fn-rcompat-retrieval-kind (keyword)
   (declare (xargs :guard t))
@@ -330,13 +330,13 @@
 ; stored ones do; where they would not, the stored octets are served, so the
 ; cursor never depends on the Xref line.
 (defun fn-rcompat-article-reply (session article number kind updatep group
-                                         server)
-  (declare (xargs :guard t :verify-guards nil))
+                                         server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((stored (fn-nntp-article-response session article number kind
-                                          updatep group))
+                                          updatep group fn-arena))
         (served (fn-nntp-article-response
-                 session (fn-rcompat-served-article server article)
-                 number kind updatep group)))
+                 session (fn-rcompat-served-article server article fn-arena)
+                 number kind updatep group fn-arena)))
     (if (equal (fn-nntp-result-session served)
                (fn-nntp-result-session stored))
         served
@@ -345,18 +345,18 @@
 (defthm fn-rcompat-article-reply-session
   (equal (fn-nntp-result-session
           (fn-rcompat-article-reply session article number kind updatep
-                                    group server))
+                                    group server fn-arena))
          (fn-nntp-result-session
           (fn-nntp-article-response session article number kind updatep
-                                    group))))
+                                    group fn-arena))))
 
 ; ARTICLE/HEAD with no argument, a number or a Message-ID: the article the
 ; generic arms find (the scan for the current article and a number, as
 ; `fn-nntp-current-retrieval' and `fn-nntp-number-retrieval'; the pinned
 ; trie for a Message-ID, as `fn-nntp-msgid-retrieval-indexed'), answered
 ; over its served representation.
-(defun fn-rcompat-retrieval (session archive trie kind args server)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-rcompat-retrieval (session archive trie kind args server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (null args)
       (let ((group (fn-nntp-session-group session))
             (current (fn-nntp-session-current session)))
@@ -368,7 +368,7 @@
                             group current (fn-state-articles archive))))
               (if (consp article)
                   (fn-rcompat-article-reply session article current kind t
-                                            group server)
+                                            group server fn-arena)
                 (fn-nntp-single session "420 no current article"))))))
     (let ((token (and (consp args) (car args))))
       (if (fn-nntp-number-tokenp token)
@@ -380,7 +380,7 @@
                               group number (fn-state-articles archive))))
                 (if (consp article)
                     (fn-rcompat-article-reply session article number kind t
-                                              group server)
+                                              group server fn-arena)
                   (fn-nntp-single session "423 no article with that number")))))
         (if (not (and (fn-nntp-message-id-tokenp token) (fn-octet-listp token)))
             (fn-nntp-single session "501 syntax error")
@@ -388,7 +388,7 @@
             (if (consp article)
                 (fn-rcompat-article-reply
                  session article (fn-nntp-msgid-local-number session article)
-                 kind nil nil server)
+                 kind nil nil server fn-arena)
               (fn-nntp-single session
                               "430 no article with that message-id"))))))))
 
@@ -408,9 +408,9 @@
 (defthm fn-rcompat-retrieval-session-is-the-generic-session
   (implies (or (null args) (and (consp args) (null (cdr args))))
            (equal (fn-nntp-result-session
-                   (fn-rcompat-retrieval session archive trie kind args server))
+                   (fn-rcompat-retrieval session archive trie kind args server fn-arena))
                   (fn-nntp-result-session
-                   (fn-nntp-retrieval session archive kind args))))
+                   (fn-nntp-retrieval session archive kind args fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-retrieval fn-nntp-current-retrieval
                                    fn-nntp-number-retrieval)
                                   (fn-nntp-article-response
@@ -420,29 +420,29 @@
            :use ((:instance fn-nntp-msgid-preserves-session (token (car args)))))))
 
 ; HDR/XHDR Xref: the value for each article, the generic HDR shape.
-(defun fn-rcompat-xref-content (server article)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-rcompat-xref-content (server article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (and (consp article)
-           (not (fn-rcl-tombstonep (fn-article-payload article))))
+           (not (fn-nntp-article-tombstonep article fn-arena)))
       (list :ok (fn-rcompat-xref-value server article))
     (list :error)))
 
-(defun fn-rcompat-hdr-lines (group numbers articles server)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-rcompat-hdr-lines (group numbers articles server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp numbers)
       (let ((content (fn-rcompat-xref-content
                       server (fn-nntp-available-article group (car numbers)
-                                                        articles))))
+                                                        articles) fn-arena)))
         (if (fn-nntp-hdr-okp content)
             (cons (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
                                     (fn-nntp-hdr-octets content))
-                  (fn-rcompat-hdr-lines group (cdr numbers) articles server))
-          (fn-rcompat-hdr-lines group (cdr numbers) articles server)))
+                  (fn-rcompat-hdr-lines group (cdr numbers) articles server fn-arena))
+          (fn-rcompat-hdr-lines group (cdr numbers) articles server fn-arena)))
     nil))
 
-(defun fn-rcompat-hdr (session archive trie args legacyp server)
+(defun fn-rcompat-hdr (session archive trie args legacyp server fn-arena)
   ; ARGS is (FIELD) or (FIELD RANGE-OR-MESSAGE-ID); FIELD is Xref.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((rest (and (consp args) (cdr args))))
     (if (null rest)
         (let ((group (fn-nntp-session-group session))
@@ -455,7 +455,7 @@
                               group current (fn-state-articles archive))))
                 (if (not (consp article))
                     (fn-nntp-single session "420 no current article")
-                  (let ((content (fn-rcompat-xref-content server article)))
+                  (let ((content (fn-rcompat-xref-content server article fn-arena)))
                     (if (fn-nntp-hdr-okp content)
                         (fn-nntp-multi
                          session (fn-nntp-hdr-initial legacyp)
@@ -477,7 +477,7 @@
                                  group (fn-nntp-range-low range)
                                  (fn-nntp-range-high range)
                                  (fn-state-articles archive))
-                                (fn-state-articles archive) server)))
+                                (fn-state-articles archive) server fn-arena)))
                     (if (consp lines)
                         (fn-nntp-multi session (fn-nntp-hdr-initial legacyp)
                                        lines)
@@ -488,7 +488,7 @@
                           (fn-octet-listp token)))
                 (fn-nntp-single session "501 syntax error")
               (let* ((article (fn-midx-lookup (fn-nntp-token-string token) trie))
-                     (content (fn-rcompat-xref-content server article)))
+                     (content (fn-rcompat-xref-content server article fn-arena)))
                 (if (not (consp article))
                     (fn-nntp-single session "430 no article with that message-id")
                   (if (fn-nntp-hdr-okp content)
@@ -509,8 +509,8 @@
        (fn-nntp-keyword-tokenp (car args))
        (fn-nntp-keywordp (car args) keyword)))
 
-(defun fn-rcompat-reply (session archive index env keyword args)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-rcompat-reply (session archive index env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((server (fn-nntp-xref-server env)))
     (cond
      ((not server) nil)
@@ -527,19 +527,19 @@
            (fn-gidx-pinp index)
            (or (null args) (and (consp args) (null (cdr args)))))
       (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index)
-                            (fn-rcompat-retrieval-kind keyword) args server))
+                            (fn-rcompat-retrieval-kind keyword) args server fn-arena))
      ((and (or (fn-nntp-keywordp keyword "HDR")
                (fn-nntp-keywordp keyword "XHDR"))
            (fn-gidx-pinp index)
            (consp args)
            (fn-nntp-keywordp (car args) "XREF"))
       (fn-rcompat-hdr session archive (fn-gidx-pin-trie index) args
-                      (fn-nntp-keywordp keyword "XHDR") server))
+                      (fn-nntp-keywordp keyword "XHDR") server fn-arena))
      (t nil))))
 
 (defthm fn-rcompat-reply-without-a-server
   (implies (not (fn-nntp-xref-server env))
-           (not (fn-rcompat-reply session archive index env keyword args))))
+           (not (fn-rcompat-reply session archive index env keyword args fn-arena))))
 
 (defthm fn-rcompat-reply-only-for-its-commands
   (implies (and (not (fn-nntp-keywordp keyword "NEWGROUPS"))
@@ -548,7 +548,7 @@
                 (not (fn-nntp-keywordp keyword "HEAD"))
                 (not (fn-nntp-keywordp keyword "HDR"))
                 (not (fn-nntp-keywordp keyword "XHDR")))
-           (not (fn-rcompat-reply session archive index env keyword args)))
+           (not (fn-rcompat-reply session archive index env keyword args fn-arena)))
   :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server))))
 
 ; HDR and XHDR reach it only for the Xref field.
@@ -558,7 +558,7 @@
                 (not (fn-nntp-keywordp keyword "ARTICLE"))
                 (not (fn-nntp-keywordp keyword "HEAD"))
                 (not (and (consp args) (fn-nntp-keywordp (car args) "XREF"))))
-           (not (fn-rcompat-reply session archive index env keyword args)))
+           (not (fn-rcompat-reply session archive index env keyword args fn-arena)))
   :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server))))
 
 (defthm fn-rcompat-reply-list-only-for-its-variants
@@ -570,16 +570,16 @@
                 (not (fn-nntp-keywordp keyword "HEAD"))
                 (not (fn-nntp-keywordp keyword "HDR"))
                 (not (fn-nntp-keywordp keyword "XHDR")))
-           (not (fn-rcompat-reply session archive index env keyword args)))
+           (not (fn-rcompat-reply session archive index env keyword args fn-arena)))
   :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server
                                       fn-rcompat-list-keywordp))))
 
 ; The session every arm leaves: the command's own for ARTICLE and HEAD (the
 ; generic retrieval's), and the given session for every other arm.
 (defthmd fn-rcompat-reply-session
-  (implies (fn-rcompat-reply session archive index env keyword args)
+  (implies (fn-rcompat-reply session archive index env keyword args fn-arena)
            (equal (fn-nntp-result-session
-                   (fn-rcompat-reply session archive index env keyword args))
+                   (fn-rcompat-reply session archive index env keyword args fn-arena))
                   (if (and (not (fn-nntp-keywordp keyword "NEWGROUPS"))
                            (not (and (fn-nntp-keywordp keyword "LIST")
                                      (fn-rcompat-list-keywordp
@@ -595,7 +595,7 @@
                       (fn-nntp-result-session
                        (fn-nntp-retrieval session archive
                                           (fn-rcompat-retrieval-kind keyword)
-                                          args))
+                                          args fn-arena))
                     session)))
   :hints (("Goal" :in-theory (e/d (fn-rcompat-newgroups fn-rcompat-active-times
                                    fn-rcompat-subscriptions fn-rcompat-hdr
@@ -608,7 +608,7 @@
 
 (defthm fn-rcompat-reply-effects-true-listp
   (true-listp (fn-nntp-result-effects
-               (fn-rcompat-reply session archive index env keyword args)))
+               (fn-rcompat-reply session archive index env keyword args fn-arena)))
   :hints (("Goal" :in-theory (enable fn-rcompat-newgroups fn-rcompat-active-times
                                      fn-rcompat-subscriptions fn-rcompat-retrieval
                                      fn-rcompat-article-reply fn-rcompat-hdr

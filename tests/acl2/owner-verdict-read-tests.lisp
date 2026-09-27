@@ -10,12 +10,18 @@
 
 ; The Store one step before the owner's (:complete): the kind-4 composite is
 ; the pending completion record.
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-read 3)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
 (make-event
  `(defconst *ovr-completing*
-    ',(fn-own-store (fn-own-run *ov-begun* (butlast *ov-post-events* 1)))))
+    ',(fn-own-store (in-arena-fn-own-run *sr-arena* *ov-begun* (butlast *ov-post-events* 1)))))
 (make-event
  `(defconst *ovr-linked*
-    ',(fn-own-store (fn-own-run *ov-begun* (butlast *ov-post-events* 2)))))
+    ',(fn-own-store (in-arena-fn-own-run *sr-arena* *ov-begun* (butlast *ov-post-events* 2)))))
 
 ; ---------------------------------------------------------------------------
 ; Keystone 1: fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict.
@@ -67,8 +73,7 @@
 ; rotation trace of owner-verdict-tests).  It records no verdict.
 (make-event
  `(defconst *ovr-rotating*
-    ',(fn-own-store (fn-own-run (fn-own-step *ov-reader-b* '(:begin 1))
-                                (butlast *ov-rotation-events* 1)))))
+    ',(fn-own-store (in-arena-fn-own-run *sr-arena* (in-arena-fn-own-step *sr-arena* *ov-reader-b* '(:begin 1)) (butlast *ov-rotation-events* 1)))))
 (assert-event (fn-sn-completion-enabledp *ovr-rotating*))
 (assert-event (not (fn-hstxa-p (fn-sn-completion-record *ovr-rotating*))))
 (assert-event (fn-stxk-p (fn-sn-completion-record *ovr-rotating*)))
@@ -97,13 +102,13 @@
 ; completion and its pin is not the finished verdict list.
 (make-event
  `(defconst *ovr-owner-completing*
-    ',(fn-own-run *ov-begun* (butlast *ov-post-events* 1))))
+    ',(in-arena-fn-own-run *sr-arena* *ov-begun* (butlast *ov-post-events* 1))))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *ovr-owner-completing*)))
 (assert-event (< (len (fn-own-conns *ovr-owner-completing*))
                  (nfix (fn-own-max-conns *ovr-owner-completing*))))
 (make-event
  `(defconst *ovr-reader-after*
-    ',(cdr (fn-own-open (fn-own-step *ovr-owner-completing* '(:complete)) nil))))
+    ',(cdr (fn-own-open (in-arena-fn-own-step *sr-arena* *ovr-owner-completing* '(:complete)) nil))))
 (assert-event
  (equal (fn-own-conn-verdicts
          (fn-own-find-conn (fn-own-next-id *ovr-owner-completing*)
@@ -200,8 +205,7 @@
 ; reply is the verified item, which is not the "absent no-record" item.
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 2 *ovr-prefix* *ovr-lf*)
                      (fn-ovrt-all-but 27)))
-(assert-event (equal (car (fn-own-read *ov-reader-b* 2
-                                       (append *ovr-prefix* (list *ovr-lf*))))
+(assert-event (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 (append *ovr-prefix* (list *ovr-lf*))))
                      (fn-ovrt-rhs *ov-reader-b* 2 *ovr-prefix* *ovr-lf*)))
 (assert-event (equal (fn-served-reply-octets
                       (fn-ovrt-rhs *ov-reader-b* 2 *ovr-prefix* *ovr-lf*))
@@ -220,10 +224,10 @@
 ; before the publication answers 430, not a verdict line.
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 0 *ovr-prefix* *ovr-lf*)
                      (fn-ovrt-only-false 26 27)))
-(assert-event (not (equal (car (fn-own-read *ov-reader-b* 0 *ov-hdr*))
+(assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 0 *ov-hdr*))
                           (fn-ovrt-rhs *ov-reader-b* 0 *ovr-prefix* *ovr-lf*))))
 (must-fail
- (thm (equal (car (fn-own-read *ov-reader-b* 0 (append *ovr-prefix* (list *ovr-lf*))))
+ (thm (equal (car (fn-own-read *ov-reader-b* 0 (append *ovr-prefix* (list *ovr-lf*)) fn-arena))
              (fn-ovrt-rhs *ov-reader-b* 0 *ovr-prefix* *ovr-lf*))))
 
 ; Without the framing premise (5): the read stops before its LF, so its last
@@ -233,12 +237,11 @@
 (assert-event (equal (take 4 (fn-ovrt-hyps *ov-reader-b* 2 *ovr-cut* *ovr-cr*))
                      (fn-ovrt-all-but 4)))
 (assert-event (not (nth 4 (fn-ovrt-hyps *ov-reader-b* 2 *ovr-cut* *ovr-cr*))))
-(assert-event (null (car (fn-own-read *ov-reader-b* 2 *ovr-prefix*))))
-(assert-event (not (equal (car (fn-own-read *ov-reader-b* 2 *ovr-prefix*))
+(assert-event (null (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ovr-prefix*))))
+(assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ovr-prefix*))
                           (fn-ovrt-rhs *ov-reader-b* 2 *ovr-cut* *ovr-cr*))))
 (must-fail
- (thm (equal (car (fn-own-read *ov-reader-b* 2
-                               (append *ovr-cut* (list *ovr-cr*))))
+ (thm (equal (car (fn-own-read *ov-reader-b* 2 (append *ovr-cut* (list *ovr-cr*)) fn-arena))
              (fn-ovrt-rhs *ov-reader-b* 2 *ovr-cut* *ovr-cr*))))
 
 ; Without the :fn-verified item (premise 23): HDR Subject for the same
@@ -249,10 +252,9 @@
 (defconst *ovr-subject-prefix* (butlast *ovr-subject* 1))
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 2 *ovr-subject-prefix* *ovr-lf*)
                      (fn-ovrt-only-false 22 27)))
-(assert-event (not (equal (car (fn-own-read *ov-reader-b* 2 *ovr-subject*))
+(assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ovr-subject*))
                           (fn-ovrt-rhs *ov-reader-b* 2 *ovr-subject-prefix*
                                        *ovr-lf*))))
 (must-fail
- (thm (equal (car (fn-own-read *ov-reader-b* 2
-                               (append *ovr-subject-prefix* (list *ovr-lf*))))
+ (thm (equal (car (fn-own-read *ov-reader-b* 2 (append *ovr-subject-prefix* (list *ovr-lf*)) fn-arena))
              (fn-ovrt-rhs *ov-reader-b* 2 *ovr-subject-prefix* *ovr-lf*))))

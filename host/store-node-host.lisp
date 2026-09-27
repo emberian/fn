@@ -29,6 +29,12 @@
 ; P3: open from an exact-state checkpoint.
 (include-book "../books/store-checkpoint-open")
 (include-book "../books/store-checkpoint-tables-reader")
+; The state checkpoint under the records flip (lane checkpoint-arena): the
+; arena run A before the four tables; its load (fn-scka-open-run, the
+; host's fn-scka-seal-n calls, fn-scka-finish) and its writer
+; (fn-scka-write-setup, fn-scka-write-step, fn-scka-canon-rows).
+(include-book "../books/store-checkpoint-arena-load")
+(include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
@@ -439,6 +445,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sco-clear (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
+         (state (f-put-global 'fn-store-sco-load nil state))
          (state (f-put-global 'fn-store-sco-open nil state)))
     (value :cleared)))
 
@@ -451,41 +458,89 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; reference against the P table; no list of the file is built.  The answer
 ; is (:ok S) or (:refused REASON), REASON :layout, :header, :sequence,
 ; :segment, :truncated, :f-row, :close, :ref, :tree or :trailing.
-; THE STATE CHECKPOINT UNDER THE RECORDS FLIP (OPEN, PKT in the flip-L6
-; record): schema 3's P table holds `fn-sct-payload-of' each event, which is
-; NIL for a retained row (its payload position is an arena handle), so the
-; tables of a capture over rows would carry handles into an arena the load
-; does not rebuild.  Until the tables carry the arena's bytes, a capture
-; holding any retained article row is refused here by name (:arena) and the
-; open replays the journal in full, which is authoritative; the publication
-; defers by the same name (fn-store-sco-publish-setup).  A capture with no
-; article row references no handle and opens as before.
+
+; Whether ROWS hold an arena handle: host/checkpoint-host.lisp refuses a
+; protected-prefix capture that does (:arena; the generation frames do not
+; carry the arena).  The state checkpoint below carries it.
 (defun fn-store-rows-hold-handles-p (rows)
   (declare (xargs :mode :program))
   (and (consp rows)
        (or (fn-held-p (car rows)) (fn-hstxa-p (car rows))
            (fn-store-rows-hold-handles-p (cdr rows)))))
 
+; THE STATE CHECKPOINT UNDER THE RECORDS FLIP (lane checkpoint-arena,
+; books/store-checkpoint-arena*.lisp): the file opens with the ARENA run A
+; (the tag, the payload count, then the canonical payloads in batches),
+; then the four tables of the capture of the CANONICAL rows (each row's
+; payload position is its handle in that arena).  A file without the run
+; (a tables-only file written before the flip) is refused by name (:arena)
+; and the journal replays in full, which is authoritative.
+;
+; The load is three calls from host/native/io.lisp fnn-state-checkpoint-load,
+; so that no :program entry updates the arena (an entry that did would carry
+; ACL2's invariant-risk: run through its *1* body, every callee re-checking
+; its guard, and a warning on standard output; flip-L6-2):
+;   `fn-store-sco-decode' opens and verifies the A run (fn-scka-open-run:
+;     the chain from the genesis, the tag, the count; the buffer is only
+;     read) and answers (:arena START END COUNT), keeping the rest of the
+;     plan and S in the global `fn-store-sco-load';
+;   the host empties the arena and calls the guard-verified fn-scka-seal-n
+;     over [START, END) a bounded number of payloads per call, each sealed
+;     straight from its buffer range (fn-scka-seal-n-compose: the calls are
+;     one loop);
+;   `fn-store-sco-decode-finish' reads the four tables after the run
+;     (fn-scka-finish: the run ended exactly at END, fn-sct-load, the F
+;     row's S is the run's) and answers (:ok S) or (:refused REASON).
+; The three calls are `fn-scka-load' (books/store-checkpoint-arena-load.lisp),
+; whose KEYSTONE fn-scka-load-of-written-file says the file the writer
+; produced loads to its tables with the arena exactly the canonical payloads.
 (defun fn-store-sco-decode (plan fn-octets state)
   (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (let* ((loaded0 (fn-sct-load plan fn-octets))
-         (loaded (if (and (consp loaded0) (eq (car loaded0) :ok) (consp (cdr loaded0))
-                          (fn-store-rows-hold-handles-p
-                           (fn-sco-records (fn-sct-capture-of-tables (cadr loaded0)))))
-                     (list :refused :arena)
-                   loaded0)))
+  (let* ((o (fn-scka-open-run plan fn-octets))
+         (state (f-put-global 'fn-store-sco-checkpoint nil state)))
+    (if (and (consp o) (eq (car o) :ok))
+        (let ((state (f-put-global 'fn-store-sco-load (list (nth 4 o) (nth 5 o)) state)))
+          (mv nil (list :arena (nth 1 o) (nth 2 o) (nth 3 o)) state fn-octets))
+      (let ((state (f-put-global 'fn-store-sco-load nil state)))
+        (mv nil
+            (list :refused (if (and (consp o) (consp (cdr o))) (cadr o) :malformed))
+            state fn-octets)))))
+
+(defun fn-store-sco-decode-finish (i end fn-octets state)
+  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (let* ((load (and (boundp-global 'fn-store-sco-load state)
+                    (f-get-global 'fn-store-sco-load state)))
+         (state (f-put-global 'fn-store-sco-load nil state))
+         (loaded (if (and (consp load) (consp (cdr load)))
+                     (fn-scka-finish (car load) (cadr load) i end fn-octets)
+                   (list :refused :arena))))
     (if (and (consp loaded) (eq (car loaded) :ok) (consp (cdr loaded)))
         ; The tables mean the capture (fn-sct-capture-of-tables-of-capture):
         ; the 7-tuple the open extends, its event index rebuilt from E.
         (let* ((checkpoint (fn-sct-capture-of-tables (cadr loaded)))
-               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state)))
+               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state))
+               ; The F row's log position and frontier (a format-9 store's
+               ; open starts its scan there: books/store-log-segments.lisp).
+               (state (f-put-global 'fn-store-sco-log-position
+                                    (list (fn-sct-tables-log (cadr loaded))
+                                          (fn-sco-at 2 (fn-sct-tables-f (cadr loaded))))
+                                    state)))
           (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
-      (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
+      (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
+             (state (f-put-global 'fn-store-sco-log-position nil state)))
         (mv nil
             (list :refused (if (and (consp loaded) (consp (cdr loaded)))
                                (cadr loaded)
                              :malformed))
             state fn-octets)))))
+
+; The loaded checkpoint's F row: (LOG FRONTIER), LOG its log position
+; (fn-sct-log-positionp: NIL or (K GENESIS)) and FRONTIER the txid frontier at
+; its S; NIL when no checkpoint is loaded.
+(defun fn-store-sco-log-position (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (and (boundp-global 'fn-store-sco-log-position state)
+              (f-get-global 'fn-store-sco-log-position state))))
 
 ; The checkpoint's file name: the rename target of the byte program
 ; fn-bs-scp-program (step 6, (:rename :staging STAGE :root NAME)).
@@ -535,9 +590,12 @@ reopen predicate, writer-lock observation and observed final namespace."
       (nfix lower))))
 
 ; The open's choice (fn-sco-select) under the profile's K.
+; A file without the arena run is refused by name (:arena ->
+; reason=checkpoint-arena: books/store-checkpoint-arena-load.lisp
+; fn-scka-select-named), never reported as corrupt.
 (defun fn-store-sco-select (status sequence count profile)
   (declare (xargs :mode :program))
-  (fn-sco-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
+  (fn-scka-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
 
 ; How many of the ACL2-bound transaction sequences (ascending, from
 ; fn-store-txn-observation-selected) lie below S: the host drops exactly
@@ -549,37 +607,33 @@ reopen predicate, writer-lock observation and observed final namespace."
       (+ 1 (fn-store-sco-covered-count (cdr sequences) s))
     0))
 
-; The open from the decoded checkpoint and the suffix's octets.  It mirrors
-; the full recover (fn-store-sn-recover-records, the intern,
-; fn-store-sn-recover-rows); the keystone
+; The open from the loaded checkpoint and the suffix's ROWS.  It mirrors the
+; full recover (fn-store-sn-recover-records, the intern,
+; fn-store-sn-recover-rows): the host decodes the suffix with
+; fn-store-sn-recover-records, interns it ON TOP of the arena the load left
+; (fn-intern-events records nil 0: the canonical handles continue from the
+; checkpoint's payload count; the arena is not emptied) and calls this entry
+; over the rows (host/native/io.lisp fnn-recover-from-state-checkpoint).  The
+; entry reads no arena.  The three calls are books/store-checkpoint-arena.lisp
+; `fn-scka-recover-rows' over the host's extension (fn-rii-sco-extend, EQUAL
+; to fn-sco-extend: fn-rii-sco-extend-is-sco-extend), whose KEYSTONE
+; fn-scka-recover-from-checkpoint-is-full-recover says they are the full
+; recover's extension and arena; the keystone
 ; fn-sn-recover-from-checkpoint-equals-full-recover is about the fn-sco-open
-; call below.
-; The suffix is interned on top of the arena the checkpoint's load left
-; (fn-store-sco-decode); the answer is (mv nil KEYWORD fn-arena state).
-(defun fn-store-sn-recover-from-checkpoint (octet-records frontier config-octet-records
-                                                          fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+; of that extension.  The answer is (mv nil KEYWORD state).
+(defun fn-store-sn-recover-from-checkpoint (rows frontier config-octet-records state)
+  (declare (xargs :stobjs state :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
-        (records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (null checkpoint) (equal records :bad) (equal config-records :bad)
+    (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad)
             (null config-records))
-        (mv nil :fault fn-arena state)
-      ; The checkpoint's rows reference no handle (fn-store-sco-decode refuses
-      ; a capture that does), so the arena starts empty under the suffix.
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-        (fn-store-intern-records records fn-arena)
-        (if (equal rows :bad)
-            (mv nil :fault fn-arena state)
-          ; The suffix is replayed once: E is fn-sco-open's extension, and the
-          ; open and the configuration are read off it (fn-sco-open is
-          ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
-          (mv-let (erp val state)
-            (fn-store-sn-open-extended
-             (fn-rii-sco-extend checkpoint config-records rows)
-             config-records frontier state)
-            (mv erp val fn-arena state))))))))
+        (value :fault)
+      ; The suffix is replayed once: E is fn-sco-open's extension, and the
+      ; open and the configuration are read off it (fn-sco-open is
+      ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
+      (fn-store-sn-open-extended
+       (fn-rii-sco-extend checkpoint config-records rows)
+       config-records frontier state))))
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
 ; payload read through the arena), encoded.
@@ -599,32 +653,60 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-store-sco-encode-records (fn-sco-records (fn-store-sco-current state))
                                       fn-arena)))
 
-; The verb's pipeline setup from the recovered Store: NEXT is the open's
-; extended checkpoint E (fn-store-sn-open-extended), which is the capture of
-; the recovered history, else the capture of the whole history; then
-; `fn-ockp-setup' (books/owner-checkpoint-pipeline.lisp) decides by name
-; before anything is allocated.  The answer is (SETUP S): SETUP's first
-; element is :unencodable, (:deferred REASON ESTIMATE BOUND) or
-; (:plan ESTIMATE); host/native/io.lisp fnn-command-state-checkpoint then
-; loops on fn-ockp-step (the same steps the owner's thread runs).
-(defun fn-store-sco-publish-setup (segment-octets budget free revision state)
-  (declare (xargs :stobjs state :mode :program))
+; The covered prefix's LAST record's octets, or NIL: the owner reads its
+; pending key statement off the history's last record, which after a log
+; checkpoint open with an empty suffix is the prefix's (host/native/io.lisp
+; fnn-history-last-record).
+(defun fn-store-sco-last-record-octets (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((records (fn-sco-records (fn-store-sco-current state))))
+    (value (and (consp records)
+                (fn-rcon-store-event-encode (fn-row-wire-of (car (last records)) fn-arena))))))
+
+; The verb's pipeline setup from the recovered Store.  Under the records
+; flip the file is the arena run of the live rows' CANONICAL payloads and
+; the tables of the capture of their CANONICAL rows
+; (books/store-checkpoint-arena.lisp fn-scka-canon-rows: alpha of each row,
+; the payload read through the arena one row at a time, interned at the
+; canonical handle; fn-scka-canon-rows-is-intern-at-of-alpha).  NEXT is the
+; open's extended checkpoint E (fn-store-sn-open-extended) when its records
+; are those canonical rows (the open interns at the canonical handles, so a
+; store no POST changed since its open has E), else their capture.  Then
+; `fn-scka-publication-setup' (books/store-checkpoint-arena-writer.lisp: the
+; table pipeline's fn-ockp-setup with the decision by name over the whole
+; file's octets, the arena run's included) before anything is allocated.
+; The entry READS the arena only.  The answer is (SETUP S ARUN): SETUP's
+; first element is :unencodable, (:deferred REASON ESTIMATE BOUND) or
+; (:plan ESTIMATE); ARUN is (N COUNT STATE0), the arena run's payload count,
+; segment count and first step state (fn-scka-initial-state over the live
+; rows and the batches of fn-scka-write-setup); host/native/io.lisp
+; fnn-command-state-checkpoint then loops on fn-scka-write-step (the arena
+; run, first) and fn-ockp-step (the four tables) into the same staged file.
+; KEYSTONES: fn-scka-write-run-is-run-segments (the run's octets) and the
+; pipeline's fn-ockp-run-writes-the-file (the tables').  LOG: the record
+; log's position at S (a format-9 store rotated at this capture; NIL
+; otherwise), the F row's (fn-sct-log-positionp).
+(defun fn-store-sco-publish-setup (segment-octets budget free revision log fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((st (f-get-global 'fn-store-sn state))
          (records (fn-sf-records (fn-sn-files st)))
          (configs (fn-sn-config-history st))
          (opened (and (boundp-global 'fn-store-sco-open state)
                       (f-get-global 'fn-store-sco-open state)))
          (e (car opened))
-         (next (if (and opened (equal (fn-sco-records e) records))
-                   e
-                 (fn-sco-capture configs records)))
-         (setup (if (fn-store-rows-hold-handles-p records)
-                    ; Deferred by name until the tables carry the arena's
-                    ; bytes (fn-store-sco-decode's note).
-                    (list (list :deferred :arena 0 0))
-                  (fn-ockp-setup next (fn-sf-frontier (fn-sn-files st)) revision
-                                 segment-octets budget free))))
-    (value (list setup (fn-sco-sequence next)))))
+         (canon (fn-scka-canon-rows records fn-arena 0)))
+    (if (equal canon :bad)
+        (value (list (list :unencodable nil nil nil nil 0 0) 0 nil))
+      (let* ((next (if (and opened (equal (fn-sco-records e) canon))
+                       e
+                     (fn-sco-capture configs canon)))
+             (ws (fn-scka-write-setup records segment-octets fn-arena))
+             (setup (fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))
+                                               revision log segment-octets budget free
+                                               (nth 3 ws))))
+        (value (list setup (fn-sco-sequence next)
+                     (list (nth 0 ws) (nth 2 ws)
+                           (fn-scka-initial-state records (nth 1 ws) 0))))))))
 
 (defun fn-store-sn-domain (state)
   ; The allocation domain the live node carries: every name ever created.

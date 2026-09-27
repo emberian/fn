@@ -211,16 +211,16 @@
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        (fn-auth-single as "500 command not recognized"))
                 (null (fn-post-result-submission
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line))))
+                                            (list :command line) fn-arena)))
                 (equal (fn-post-result-session
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        as)))
   :hints (("Goal"
            :do-not-induct t

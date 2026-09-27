@@ -6,6 +6,7 @@ processes; they do not turn the older Python/native differential finding into
 a claim about this source revision.
 """
 
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -174,23 +175,13 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertEqual(result.returncode, run_store.EXIT_OK, result.stderr)
         return store
 
-    def initialized_per_file(self, name):
-        """A store of the per-file layout (format 8: transactions/ and the
-        allocation frontier), for a case that writes that layout's files by
-        hand (lane commit-onto-log: `init' writes format 9, the record log;
-        a developer image writes format 8 under FN_NATIVE_STORE_FORMAT=8, and
-        every image opens it)."""
-        if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
-            self.skipTest("build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is "
-                          "required: FN_NATIVE_STORE_FORMAT is a developer-image selector")
-        store = self.base / name
-        env = dict(os.environ, FN_NATIVE_STORE_FORMAT="8")
+    def store_words(self, store, *words):
+        env = dict(os.environ)
         env.pop("FN_NATIVE_INIT_FAULT", None)
-        result = subprocess.run([str(DEVELOPER), "--fn", "store", str(store), "init"],
-                                cwd=ROOT, env=env, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, check=False)
-        self.assertEqual(result.returncode, run_store.EXIT_OK, result.stderr)
-        return store
+        env.pop("FN_NATIVE_RECOVERY_FAULT", None)
+        return subprocess.run(
+            [str(IMAGE), "--fn", "store", str(store), *map(str, words)], cwd=ROOT,
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
 
     def test_missing_staging_is_a_current_native_fault(self):
         store = self.initialized("missing-staging")
@@ -296,23 +287,40 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertIn(b"staging-orphans=0", restarted.stdout)
 
     def test_atomic_hybrid_article_without_enrollment_faults_and_retains_bytes(self):
-        """ACL2 emits kind-4 history whose missing kind-3 predecessor is fatal."""
-        store = self.initialized_per_file("missing-hybrid-enrollment")
-        transaction, frontier = missing_enrollment_fixture()
-        transaction_path = store / "transactions" / "00000000000000000000.txn"
-        frontier_path = store / "allocation-frontier.json"
-        transaction_path.write_bytes(transaction)
-        frontier_path.write_bytes(frontier)
-        before_transaction = transaction_path.read_bytes()
-        before_frontier = frontier_path.read_bytes()
+        """ACL2 emits kind-4 history whose missing kind-3 predecessor is fatal.
 
-        reopened = self.invoke(store, "status")
-        self.assertEqual(reopened.returncode, run_store.EXIT_FAULT, reopened.stderr)
+        Format 9 (the record log): a history reaches the log only through a
+        commit, which ACL2 checks, or `store import', whose ordinary open
+        replays the archive before anything is published at the store's
+        path.  An archive whose history is that kind-4 record without its
+        kind-3 enrollment is refused at that replay by the host's fault
+        (exit 4, the same line as a per-file store's open gave): no store is
+        published and the archive's bytes are kept."""
+        source = self.initialized("hybrid-source")
+        archive = self.base / "hybrid-archive"
+        exported = self.store_words(source, "export", archive)
+        self.assertEqual(exported.returncode, run_store.EXIT_OK, exported.stderr)
+        self.assertEqual(list((archive / "records").iterdir()), [])
+        transaction, _frontier = missing_enrollment_fixture()
+        record = frame_bridge.session().store_unframe(transaction)
+        name = "records/00000000000000000000.txn"
+        (archive / name).write_bytes(record)
+        # The archive's MANIFEST line for the record (sha256sum's format, the
+        # lines fn-sxp-manifest renders), after the configuration lines.
+        with open(archive / "MANIFEST", "ab") as manifest:
+            manifest.write(hashlib.sha256(record).hexdigest().encode("ascii")
+                           + b"  " + name.encode("ascii") + b"\n")
+        before = {p.relative_to(archive): p.read_bytes()
+                  for p in archive.rglob("*") if p.is_file()}
+
+        store = self.base / "missing-hybrid-enrollment"
+        imported = self.store_words(store, "import", archive)
+        self.assertEqual(imported.returncode, run_store.EXIT_FAULT, imported.stderr)
         self.assertIn(b"ACL2 replay rejected committed transaction history",
-                      reopened.stderr)
-        self.assertEqual(transaction_path.read_bytes(), before_transaction)
-        self.assertEqual(frontier_path.read_bytes(), before_frontier)
-
+                      imported.stderr)
+        self.assertFalse(store.exists())
+        self.assertEqual({p.relative_to(archive): p.read_bytes()
+                          for p in archive.rglob("*") if p.is_file()}, before)
 
 if __name__ == "__main__":
     unittest.main()

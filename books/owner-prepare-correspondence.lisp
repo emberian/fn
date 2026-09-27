@@ -70,7 +70,7 @@
 (defthm fn-opc-prepare-equals-owner-event-under-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
            (equal (fn-opc-prepare oc record)
-                  (fn-ocfg-step oc (list :store (list :prepare record)))))
+                  (fn-ocfg-step oc (list :store (list :prepare record)) fn-arena)))
   :hints (("Goal"
            :use ((:instance
                   fn-opc-owner-prepare-equals-owner-store-step-under-relation
@@ -239,7 +239,7 @@
 
 (defthm fn-opc-configured-step-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
-           (fn-own-relation (fn-ocfg-owner (fn-ocfg-step oc event))))
+           (fn-own-relation (fn-ocfg-owner (fn-ocfg-step oc event fn-arena))))
   :hints
   (("Goal"
     :use ((:instance fn-own-open-preserves-relation
@@ -296,8 +296,8 @@
 
 (defthm fn-opc-configured-run-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
-           (fn-own-relation (fn-ocfg-owner (fn-ocfg-run oc events))))
-  :hints (("Goal" :induct (fn-ocfg-run oc events)
+           (fn-own-relation (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))))
+  :hints (("Goal" :induct (fn-ocfg-run oc events fn-arena)
            :in-theory
            (e/d (fn-ocfg-run)
                 (fn-ocfg-step fn-own-relation)))))
@@ -312,9 +312,9 @@
         (fn-own-relation
          (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
         (fn-own-relation
-         (fn-ocfg-owner (cdr (fn-ocfg-read oc id octets))))
+         (fn-ocfg-owner (cdr (fn-ocfg-read oc id octets fn-arena))))
         (fn-own-relation
-         (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event))))
+         (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event fn-arena))))
         (fn-own-relation
          (fn-ocfg-owner (cdr (fn-ocfg-fault oc id))))))
   :hints
@@ -370,7 +370,7 @@
            (equal (fn-opc-pending-octets (fn-opc-prepare oc record))
                   (fn-opc-pending-octets
                    (fn-ocfg-step oc
-                                 (list :store (list :prepare record))))))
+                                 (list :store (list :prepare record)) fn-arena))))
   :hints (("Goal"
            :use fn-opc-prepare-equals-owner-event-under-relation
            :in-theory

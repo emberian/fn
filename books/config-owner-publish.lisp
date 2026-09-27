@@ -128,7 +128,7 @@
                         (fn-auth-reader-session (fn-own-conn-session conn)))
                        name))
            (equal (fn-ocfg-step oc (list :reconfigure id
-                                         (fn-ocl-request-deltas kind name)))
+                                         (fn-ocl-request-deltas kind name)) fn-arena)
                   oc))
   :hints (("Goal"
            :use ((:instance fn-ocl-request-over-a-reader-is-untyped-or-pinned
@@ -178,7 +178,7 @@
 ; hypothesis: the refusal that used to be a host line (nothing staged, or a
 ; different generation) is `fn-ocl-publish''s first arm.
 (defthm fn-ocl-no-reader-observes-a-half-change
-  (let* ((staged (fn-ocfg-step oc (list :reconfigure other deltas)))
+  (let* ((staged (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena))
          (record (fn-ocfg-staged staged))
          (result (fn-ocl-publish staged generation max-octets))
          (verdict (mv-nth 0 result))
@@ -208,11 +208,11 @@
            (equal published staged))))
   :hints (("Goal"
            :use ((:instance fn-ocl-success-appends-exact-config-history
-                            (oc (fn-ocfg-step oc (list :reconfigure other deltas))))
+                            (oc (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena)))
                  (:instance fn-ocl-staged-complete-keeps-connections
-                            (oc (fn-ocfg-step oc (list :reconfigure other deltas))))
+                            (oc (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena)))
                  (:instance fn-ocl-complete-success-publishes-the-store-configuration
-                            (oc (fn-ocfg-step oc (list :reconfigure other deltas)))))
+                            (oc (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena))))
            :in-theory (e/d (fn-ocl-publish fn-ocfg-step fn-ocfg-reconfigure
                             fn-ocfg-with-owner
                             fn-own-configure fn-ocfg-served fn-ocfg-conn-config)
@@ -331,7 +331,7 @@
 (defthm fn-ocl-publish-agrees-with-ocfg-complete-on-readers
   (implies (equal (mv-nth 0 (fn-ocl-publish oc generation max-octets)) :durable)
            (let ((published (mv-nth 1 (fn-ocl-publish oc generation max-octets)))
-                 (model (fn-ocfg-step oc (list :complete))))
+                 (model (fn-ocfg-step oc (list :complete) fn-arena)))
              (and (equal (fn-ocfg-pins published) (fn-ocfg-pins model))
                   (equal (fn-ocfg-served published id) (fn-ocfg-served model id))
                   (equal (fn-own-conns (fn-ocfg-owner published))

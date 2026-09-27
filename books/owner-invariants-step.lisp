@@ -213,7 +213,7 @@
 
 (defthm fn-own-read-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (cdr (fn-own-read o id octets))))
+           (fn-own-relation (cdr (fn-own-read o id octets fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
@@ -240,7 +240,7 @@
                                       o (fn-own-find-conn id (fn-own-conns o))
                                       (fn-own-conn-live-session
                                        o (fn-own-find-conn id (fn-own-conns o))))
-                                     octets)))
+                                     octets fn-arena)))
                             (wire (fn-served-conn-wire
                                    (fn-served-result-conn
                                     (fn-served-step
@@ -248,7 +248,7 @@
                                       o (fn-own-find-conn id (fn-own-conns o))
                                       (fn-own-conn-live-session
                                        o (fn-own-find-conn id (fn-own-conns o))))
-                                     octets))))
+                                     octets fn-arena))))
                             (session2 (fn-served-conn-session
                                        (fn-served-result-conn
                                         (fn-served-step
@@ -256,7 +256,7 @@
                                           o (fn-own-find-conn id (fn-own-conns o))
                                           (fn-own-conn-live-session
                                            o (fn-own-find-conn id (fn-own-conns o))))
-                                         octets))))
+                                         octets fn-arena))))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
@@ -268,7 +268,7 @@
 
 (defthm fn-own-read-step-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (cdr (fn-own-read-step o id event))))
+           (fn-own-relation (cdr (fn-own-read-step o id event fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
@@ -290,21 +290,21 @@
                                      (fn-own-served-conn
                                       o (fn-own-find-conn id (fn-own-conns o))
                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
-                                     event)))
+                                     event fn-arena)))
                             (wire (fn-served-conn-wire
                                    (fn-served-result-conn
                                     (fn-served-dispatch
                                      (fn-own-served-conn
                                       o (fn-own-find-conn id (fn-own-conns o))
                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
-                                     event))))
+                                     event fn-arena))))
                             (session2 (fn-served-conn-session
                                        (fn-served-result-conn
                                         (fn-served-dispatch
                                          (fn-own-served-conn
                                           o (fn-own-find-conn id (fn-own-conns o))
                                           (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
-                                         event))))
+                                         event fn-arena))))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
@@ -798,7 +798,7 @@
 
 (defthm fn-own-step-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (fn-own-step o event)))
+           (fn-own-relation (fn-own-step o event fn-arena)))
   :hints (("Goal" :in-theory (disable fn-own-relation fn-own-open
                                       fn-own-open-peer fn-own-read
                                       fn-own-read-step fn-own-advance fn-own-close
@@ -814,13 +814,13 @@
 
 (defthm fn-own-run-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (fn-own-run o events)))
-  :hints (("Goal" :induct (fn-own-run o events)
+           (fn-own-relation (fn-own-run o events fn-arena)))
+  :hints (("Goal" :induct (fn-own-run o events fn-arena)
            :in-theory (disable fn-own-step))))
 
 (defthm fn-own-run-preserves-store-relation
   (implies (fn-own-relation o)
-           (fn-snt-relation (fn-own-store (fn-own-run o events))))
+           (fn-snt-relation (fn-own-store (fn-own-run o events fn-arena))))
   :hints (("Goal" :use fn-own-run-preserves-relation
            :in-theory (e/d (fn-own-relation)
                            (fn-own-run fn-own-run-preserves-relation)))))

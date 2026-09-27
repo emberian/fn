@@ -220,11 +220,7 @@ Answers :accepted once the record is durable and the owner installed it, or
          (observation (fnn-config-record-observation store))
          (config-records (fnn-config-records-from-observation observation))
          (authorization
-           ;; The history the open reads (format 9: the log kernel's
-           ;; committed records; format 8: the selected pack's and the
-           ;; suffix files), not the transaction files alone, which a
-           ;; format-9 store does not have.
-           (fnn-admin-authorize store (fnn-history-records store)
+           (fnn-admin-authorize store (fnn-durable-records store)
                                 config-records record
                                 (mapcar #'car observation))))
     (multiple-value-bind (published ignored-name)

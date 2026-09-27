@@ -150,12 +150,12 @@
   (implies
    (and (fn-own-find-conn id (fn-own-conns o))
         (fn-own-find-conn
-         id (fn-own-conns (cdr (fn-own-read o id octets)))))
+         id (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))))
    (equal
-    (fn-own-conns (cdr (fn-own-read o id octets)))
+    (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))
     (fn-own-replace-conn
      (fn-own-find-conn
-      id (fn-own-conns (cdr (fn-own-read o id octets))))
+      id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
      (fn-own-conns o))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-id
@@ -168,8 +168,8 @@
   (implies
    (and (fn-own-find-conn id (fn-own-conns o))
         (not (fn-own-find-conn
-              id (fn-own-conns (cdr (fn-own-read o id octets))))))
-   (equal (fn-own-conns (cdr (fn-own-read o id octets)))
+              id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))))
+   (equal (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))
           (fn-own-remove-conn id (fn-own-conns o))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-id
@@ -181,7 +181,7 @@
                            (fn-served-step fn-own-conn-boundedp)))))
 
 (defthm fn-ocl-own-read-keeps-store
-  (equal (fn-own-store (cdr (fn-own-read o id octets)))
+  (equal (fn-own-store (cdr (fn-own-read o id octets fn-arena)))
          (fn-own-store o))
   :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-finish-read
                                     fn-own-set-conns fn-own-enqueue)
@@ -218,13 +218,13 @@
 
 (defthm fn-ocl-own-read-preserves-owner-shape
   (implies (fn-own-shapep o)
-           (fn-own-shapep (cdr (fn-own-read o id octets))))
+           (fn-own-shapep (cdr (fn-own-read o id octets fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-read-full)
                                   (fn-own-finish-read fn-own-shapep
                                    fn-served-step fn-own-conn-boundedp)))))
 
 (defthm fn-ocl-own-read-keeps-owner-control
-  (let ((next (cdr (fn-own-read o id octets))))
+  (let ((next (cdr (fn-own-read o id octets fn-arena))))
     (and (equal (fn-own-view next) (fn-own-view o))
          (equal (fn-own-next-id next) (fn-own-next-id o))
          (equal (fn-own-max-conns next) (fn-own-max-conns o))
@@ -238,7 +238,7 @@
                                    fn-served-step fn-own-conn-boundedp)))))
 
 (defthm fn-ocl-own-read-does-not-increase-connections
-  (<= (len (fn-own-conns (cdr (fn-own-read o id octets))))
+  (<= (len (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
       (len (fn-own-conns o)))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-id
@@ -266,11 +266,11 @@
 (defthm fn-ocl-observe-preserves-historical-relation
   (implies (fn-ocl-relation oc)
            (fn-ocl-relation
-            (fn-ocfg-pass oc (list :observe observation))))
+            (fn-ocfg-pass oc (list :observe observation) fn-arena)))
   :hints (("Goal"
            :use ((:instance fn-ocl-conns-historyp-under-same-store-and-pins
                             (next (fn-ocfg-pass oc
-                                                (list :observe observation)))
+                                                (list :observe observation) fn-arena))
                             (conns (fn-own-conns (fn-ocfg-owner oc)))))
            :in-theory (e/d (fn-ocl-relation fn-ocfg-pass
                             fn-ocfg-with-owner fn-own-step
@@ -283,7 +283,7 @@
 (defthm fn-ocl-own-read-survivor-had-original
   (implies
    (fn-own-find-conn id
-                     (fn-own-conns (cdr (fn-own-read o id octets))))
+                     (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
    (fn-own-find-conn id (fn-own-conns o)))
   :hints (("Goal" :in-theory (enable fn-own-read))))
 
@@ -308,7 +308,7 @@
    (and (fn-ocl-relation oc)
         (not (fn-own-find-conn
               id (fn-own-conns (fn-ocfg-owner oc)))))
-   (equal (cdr (fn-ocfg-read oc id octets)) oc))
+   (equal (cdr (fn-ocfg-read oc id octets fn-arena)) oc))
   :hints (("Goal"
            :use (fn-ocl-missing-connection-pin-remove-is-unchanged
                  fn-ocl-config-shape-reconstructs
@@ -343,12 +343,12 @@
 ; The configured read in the owner's vocabulary: the owner read, the flag,
 ; and the pin table moved with it.
 (defthm fn-ocl-ocfg-read-unfolds
-  (and (equal (car (fn-ocfg-read oc id octets))
-              (car (fn-own-read (fn-ocfg-owner oc) id octets)))
-       (equal (cdr (fn-ocfg-read oc id octets))
+  (and (equal (car (fn-ocfg-read oc id octets fn-arena))
+              (car (fn-own-read (fn-ocfg-owner oc) id octets fn-arena)))
+       (equal (cdr (fn-ocfg-read oc id octets fn-arena))
               (fn-ocfg-with-read-owner oc id
-                                       (cdr (fn-own-read (fn-ocfg-owner oc) id octets))
-                                       (fn-own-read-repinned (fn-ocfg-owner oc) id octets))))
+                                       (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))
+                                       (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-read fn-own-read fn-own-read-repinned)
                                   (fn-own-read-full fn-ocfg-with-read-owner)))))
 
@@ -553,12 +553,12 @@
         (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))
         (fn-own-find-conn
          id (fn-own-conns
-             (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))))
+             (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena)))))
    (fn-ocl-conn-historyp
-    (cdr (fn-ocfg-read oc id octets))
+    (cdr (fn-ocfg-read oc id octets fn-arena))
     (fn-own-find-conn
      id (fn-own-conns
-         (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))))
+         (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))))
   :hints (("Goal"
            :use ((:instance fn-ocl-relation-read-input-facts)
                  (:instance fn-ocl-related-found-connection-has-history)
@@ -572,8 +572,8 @@
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-ocfg-read-unfolds)
                  (:instance fn-ocl-with-read-owner-fields
-                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))
-                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
+                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena)))
+                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena)))
                  (:instance fn-ocl-own-read-keeps-store (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-own-read-keeps-owner-control (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-view-archive-has-current-domain)
@@ -583,19 +583,19 @@
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-ocl-conn-historyp-under-same-store-and-pin
-                            (next (cdr (fn-ocfg-read oc id octets)))
+                            (next (cdr (fn-ocfg-read oc id octets fn-arena)))
                             (conn (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-ocl-unchanged-view-new-pin-is-historical
-                            (next (cdr (fn-ocfg-read oc id octets)))
+                            (next (cdr (fn-ocfg-read oc id octets fn-arena)))
                             (conn (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets)))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena)))))))
            :in-theory (theory 'minimal-theory))))
 
 (defthm fn-ocl-replace-cannot-create-other-found-id
@@ -660,7 +660,7 @@
   (implies
    (fn-ocl-relation oc)
    (<= (len (fn-own-conns
-             (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
+             (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
        (fn-own-max-conns (fn-ocfg-owner oc))))
   :hints (("Goal"
            :use (fn-ocl-relation-read-input-facts
@@ -675,11 +675,11 @@
   (implies (and (fn-ocl-relation oc)
                 (not (fn-own-find-conn
                     id (fn-own-conns (fn-ocfg-owner oc)))))
-           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets))))
+           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-ocl-relation-under-same-control-and-valid-connections
-                            (next (cdr (fn-ocfg-read oc id octets))))
+                            (next (cdr (fn-ocfg-read oc id octets fn-arena))))
                  fn-ocl-relation-read-input-facts
                  fn-ocl-read-preserves-capacity-bound
                  fn-ocl-missing-read-keeps-configured-owner
@@ -693,8 +693,8 @@
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-ocfg-read-unfolds)
                  (:instance fn-ocl-with-read-owner-fields
-                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))
-                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
+                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena)))
+                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena)))
                  (:instance fn-own-find-conn-id
                             (conns (fn-own-conns (fn-ocfg-owner oc))))
                  (:instance fn-own-find-conn-id-below-next
@@ -746,12 +746,12 @@
                     id (fn-own-conns (fn-ocfg-owner oc)))
                 (not (fn-own-find-conn
                     id (fn-own-conns
-                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))))
-           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets))))
+                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))))
+           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-ocl-relation-under-same-control-and-valid-connections
-                            (next (cdr (fn-ocfg-read oc id octets))))
+                            (next (cdr (fn-ocfg-read oc id octets fn-arena))))
                  fn-ocl-relation-read-input-facts
                  fn-ocl-read-preserves-capacity-bound
                  fn-ocl-read-removal-preserves-historical-connections
@@ -767,8 +767,8 @@
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-ocfg-read-unfolds)
                  (:instance fn-ocl-with-read-owner-fields
-                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))
-                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
+                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena)))
+                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena)))
                  (:instance fn-own-find-conn-id
                             (conns (fn-own-conns (fn-ocfg-owner oc))))
                  (:instance fn-own-find-conn-id-below-next
@@ -831,13 +831,13 @@
                     id (fn-own-conns (fn-ocfg-owner oc)))
                 (fn-own-find-conn
                     id (fn-own-conns
-                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
-                (not (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
-           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets))))
+                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
+                (not (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena)))
+           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-ocl-relation-under-same-control-and-valid-connections
-                            (next (cdr (fn-ocfg-read oc id octets))))
+                            (next (cdr (fn-ocfg-read oc id octets fn-arena))))
                  fn-ocl-relation-read-input-facts
                  fn-ocl-read-preserves-capacity-bound
                  (:instance fn-ocl-own-read-keeps-store
@@ -853,8 +853,8 @@
                  fn-ocl-own-read-survivor-has-history
                  (:instance fn-ocl-ocfg-read-unfolds)
                  (:instance fn-ocl-with-read-owner-fields
-                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))
-                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
+                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena)))
+                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena)))
                  (:instance fn-ocl-own-read-survivor-had-original
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-replace-connection-preserves-histories
@@ -862,21 +862,21 @@
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-ocl-replace-preserves-conns-pinned
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (pins (fn-ocfg-pins oc))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-ocl-replace-preserves-pins-point-to-conns
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (pins (fn-ocfg-pins oc))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-own-find-conn-id
                             (conns (fn-own-conns (fn-ocfg-owner oc))))
                  (:instance fn-own-read-survivor-keeps-historical-fields
@@ -889,14 +889,14 @@
                             (conn (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets)))))
+                                             (fn-ocfg-owner oc) id octets fn-arena)))))
                             (n (fn-own-next-id (fn-ocfg-owner oc))))
                  (:instance fn-own-replace-conn-len
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (conn (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets)))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena)))))))
            :in-theory (e/d (fn-ocfg-with-read-owner
                             fn-own-set-conns fn-own-enqueue
                             ; the read wrapper opens to the owner read and
@@ -944,13 +944,13 @@
                     id (fn-own-conns (fn-ocfg-owner oc)))
                 (fn-own-find-conn
                     id (fn-own-conns
-                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
-                (fn-own-read-repinned (fn-ocfg-owner oc) id octets))
-           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets))))
+                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
+                (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena))
+           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-ocl-relation-under-same-control-and-valid-connections
-                            (next (cdr (fn-ocfg-read oc id octets))))
+                            (next (cdr (fn-ocfg-read oc id octets fn-arena))))
                  fn-ocl-relation-read-input-facts
                  fn-ocl-read-preserves-capacity-bound
                  (:instance fn-ocl-own-read-keeps-store
@@ -966,27 +966,27 @@
                  fn-ocl-own-read-survivor-has-history
                  (:instance fn-ocl-ocfg-read-unfolds)
                  (:instance fn-ocl-with-read-owner-fields
-                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))
-                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
+                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena)))
+                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena)))
                  (:instance fn-ocl-replace-connection-preserves-histories-under-pin-set
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
-                            (next-oc (cdr (fn-ocfg-read oc id octets)))
+                            (next-oc (cdr (fn-ocfg-read oc id octets fn-arena)))
                             (cfg (fn-ocfg-config oc))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
-                                       (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))))
+                                       (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-ocl-pin-set-keeps-conns-pinned
                             (conns (fn-own-replace-conn
                                     (fn-own-find-conn
                                      id (fn-own-conns
-                                         (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
+                                         (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
                                     (fn-own-conns (fn-ocfg-owner oc))))
                             (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
                  (:instance fn-ocl-pin-set-keeps-pins-pin-conns-only
                             (conns (fn-own-replace-conn
                                     (fn-own-find-conn
                                      id (fn-own-conns
-                                         (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
+                                         (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
                                     (fn-own-conns (fn-ocfg-owner oc))))
                             (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
                  (:instance fn-ocl-pin-set-keeps-pins-okp
@@ -998,21 +998,21 @@
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-ocl-replace-preserves-conns-pinned
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (pins (fn-ocfg-pins oc))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-ocl-replace-preserves-pins-point-to-conns
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (pins (fn-ocfg-pins oc))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena))))))
                  (:instance fn-own-find-conn-id
                             (conns (fn-own-conns (fn-ocfg-owner oc))))
                  (:instance fn-own-read-survivor-keeps-historical-fields
@@ -1025,14 +1025,14 @@
                             (conn (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets)))))
+                                             (fn-ocfg-owner oc) id octets fn-arena)))))
                             (n (fn-own-next-id (fn-ocfg-owner oc))))
                  (:instance fn-own-replace-conn-len
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (conn (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read
-                                             (fn-ocfg-owner oc) id octets)))))))
+                                             (fn-ocfg-owner oc) id octets fn-arena)))))))
            :in-theory (e/d (fn-ocfg-with-read-owner
                             fn-own-set-conns fn-own-enqueue
                             ; the read wrapper opens to the owner read and
@@ -1074,15 +1074,15 @@
 
 (defthm fn-ocl-read-preserves-historical-relation
   (implies (fn-ocl-relation oc)
-           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets))))
+           (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
   :rule-classes nil
   :hints (("Goal"
            :cases ((fn-own-find-conn
                     id (fn-own-conns (fn-ocfg-owner oc)))
                    (fn-own-find-conn
                     id (fn-own-conns
-                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))
-                   (fn-own-read-repinned (fn-ocfg-owner oc) id octets))
+                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
+                   (fn-own-read-repinned (fn-ocfg-owner oc) id octets fn-arena))
            :use (fn-ocl-read-preserves-historical-relation-missing
                  fn-ocl-read-preserves-historical-relation-removed
                  fn-ocl-read-preserves-historical-relation-kept

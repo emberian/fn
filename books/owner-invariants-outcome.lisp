@@ -155,14 +155,14 @@
 (defthm fn-own-read-survivor-is-archive-bounded
   (implies
    (fn-own-find-conn
-    id (fn-own-conns (cdr (fn-own-read o id octets))))
+    id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
    (fn-own-conn-boundedp
     (fn-own-find-conn
-     id (fn-own-conns (cdr (fn-own-read o id octets))))
+     id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
     (fn-state-groups
      (fn-own-conn-archive
       (fn-own-find-conn
-       id (fn-own-conns (cdr (fn-own-read o id octets))))))))
+       id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-id
                             (conns (fn-own-conns o))))
@@ -209,7 +209,7 @@
 (local
  (defthm fn-own-read-of-unknown-keeps-owner
    (implies (not (fn-own-find-conn id (fn-own-conns o)))
-            (equal (cdr (fn-own-read o id octets)) o))
+            (equal (cdr (fn-own-read o id octets fn-arena)) o))
    :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-read-full)
                                    (fn-served-step fn-own-finish-read fn-own-served-conn))))))
 
@@ -217,13 +217,13 @@
 (local
  (defthm fn-own-read-repinned-is-the-served-flag
    (implies (fn-own-find-conn id (fn-own-conns o))
-            (equal (fn-own-read-repinned o id octets)
+            (equal (fn-own-read-repinned o id octets fn-arena)
                    (fn-own-result-repinned
                     (fn-served-step
                      (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
                                          (fn-own-conn-live-session
                                           o (fn-own-find-conn id (fn-own-conns o))))
-                     octets))))
+                     octets fn-arena))))
    :hints (("Goal" :in-theory (e/d (fn-own-read-repinned fn-own-read-full)
                                    (fn-served-step fn-own-finish-read fn-own-served-conn
                                     fn-own-result-repinned fn-own-conn-live-session))))))
@@ -231,13 +231,13 @@
 (local
  (defthm fn-own-read-survivor-is-next
    (implies
-    (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets))))
-    (equal (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets))))
+    (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
+    (equal (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
            (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
                   (sconn (fn-served-result-conn
                           (fn-served-step
                            (fn-own-served-conn o conn (fn-own-conn-live-session o conn))
-                           octets)))
+                           octets fn-arena)))
                   (pinned (fn-served-conn-pinned sconn)))
              (fn-own-conn-make-group-indexed
               id (fn-served-pinned-version pinned) (fn-served-pinned-frontier pinned)
@@ -261,16 +261,16 @@
 (defthm fn-own-read-survivor-keeps-historical-fields
   (implies
    (fn-own-find-conn
-    id (fn-own-conns (cdr (fn-own-read o id octets))))
+    id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
    (let ((old (fn-own-find-conn id (fn-own-conns o)))
          (next (fn-own-find-conn
-                id (fn-own-conns (cdr (fn-own-read o id octets)))))
+                id (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))))
          (view (fn-own-view o)))
      (and (fn-own-conn-shapep next)
           (equal (fn-own-conn-id next) (fn-own-conn-id old))
           (equal (fn-own-conn-config next) (fn-own-conn-config old))
           (equal (fn-own-conn-observation next) (fn-own-conn-observation old))
-          (if (fn-own-read-repinned o id octets)
+          (if (fn-own-read-repinned o id octets fn-arena)
               (and (equal (fn-own-conn-version next) (fn-own-view-version view))
                    (equal (fn-own-conn-frontier next) (fn-own-view-frontier view))
                    (equal (fn-own-conn-archive next) (fn-own-view-archive view))
@@ -305,7 +305,7 @@
                                       o (fn-own-find-conn id (fn-own-conns o))
                                       (fn-own-conn-live-session
                                        o (fn-own-find-conn id (fn-own-conns o))))
-                                     octets))))
+                                     octets fn-arena))))
                  (:instance fn-served-pin-old-or-live-p-cases
                             (c0 (fn-own-served-conn
                                  o (fn-own-find-conn id (fn-own-conns o))
@@ -317,7 +317,7 @@
                                   o (fn-own-find-conn id (fn-own-conns o))
                                   (fn-own-conn-live-session
                                    o (fn-own-find-conn id (fn-own-conns o))))
-                                 octets)))))
+                                 octets fn-arena)))))
            :in-theory (e/d (fn-own-result-repinned
                             fn-own-read-survivor-is-next
                             fn-own-read-repinned-is-the-served-flag)
@@ -346,14 +346,14 @@
 (defthm fn-own-read-survivor-wire-is-the-steps
   (implies
    (fn-own-find-conn
-    id (fn-own-conns (cdr (fn-own-read o id octets))))
+    id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
    (let ((old (fn-own-find-conn id (fn-own-conns o))))
      (equal (fn-own-conn-wire
-             (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets)))))
+             (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))))
             (fn-served-conn-wire
              (fn-served-result-conn
               (fn-served-step (fn-own-served-conn o old (fn-own-conn-live-session o old))
-                              octets))))))
+                              octets fn-arena))))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-id (conns (fn-own-conns o))))
            :in-theory (e/d (fn-own-read fn-own-read-full fn-own-finish-read
@@ -376,7 +376,7 @@
 
 (defthm fn-own-read-touches-only-its-connection
   (implies (not (equal id other))
-           (equal (fn-own-find-conn other (fn-own-conns (cdr (fn-own-read o id octets))))
+           (equal (fn-own-find-conn other (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))
                   (fn-own-find-conn other (fn-own-conns o))))
   :hints (("Goal" :in-theory (disable fn-served-step fn-own-conn-boundedp
                                       fn-own-conn-make-group-indexed))))

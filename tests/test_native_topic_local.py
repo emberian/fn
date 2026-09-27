@@ -12,6 +12,7 @@ import tempfile
 import unittest
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests import native_log_observation
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST",
@@ -101,8 +102,9 @@ class NativeTopicLocalTest(unittest.TestCase):
         return result
 
     def transactions(self):
-        return tuple(sorted((path.name, hashlib.sha256(path.read_bytes()).hexdigest())
-                            for path in (self.store / "transactions").glob("*.txn")))
+        # The committed history (format 9: the record log), read by the image.
+        return native_log_observation.committed_history(self.image, self.store,
+                                                        env=self.env, cwd=ROOT)
 
     def author(self, source, name):
         signed = self.invoke("hybrid-sign", self.principal, self.ed_public,
