@@ -5,7 +5,7 @@
 //
 // BASE_URL reaches Caddy in front of clients/bin/fn-reader in the rehearsal
 // container (an ssh -L tunnel to hbox; Caddy's own local CA, so HTTPS errors
-// are ignored). SECRETS_JSON holds the invitation code, the password the
+// are ignored; FN_DRIVE_RESOLVE below). SECRETS_JSON holds the invitation code, the password the
 // friend chooses, and the subject of the welcome post the operator made;
 // the password is never written to OUT_DIR. Every check records what the
 // page showed; the node decided it.
@@ -29,7 +29,11 @@ async function shot(page, name) {
   await page.screenshot({ path: path.join(out, name + ".png"), fullPage: true });
 }
 
-const browser = await chromium.launch();
+// FN_DRIVE_RESOLVE=NAME:ADDRESS maps the web name to the tunnel's end, so the
+// browser sends the name Caddy serves (Host and Origin) while dialing the tunnel.
+const resolve = process.env.FN_DRIVE_RESOLVE;
+const browser = await chromium.launch(resolve ? {
+  args: ["--host-resolver-rules=MAP " + resolve.split(":")[0] + " " + resolve.split(":")[1]] } : {});
 const bodies = [];
 function watch(page) {
   page.on("response", async (response) => {
