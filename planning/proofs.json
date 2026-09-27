@@ -10366,6 +10366,34 @@
         "fn-oclc-live-authorizep-is-durable-completion",
         "fn-oclc-authorized-record-reopens"
       ]
+    },
+    {
+      "id": "PRF-288",
+      "title": "The owner's identity prepare stages the row the intern makes of a signed composite, and seals its article's payload only when the Store took it",
+      "statement": "books/owner-identity-intern.lisp fn-oii-ocfg-prepare-identity (host/owner-host.lisp fn-owner-prepare-identity, called by host/native/owner.lisp fnn-owner-identity-commit for every signed POST's, signed NNTP transit's and signed BP application's kind-4 composite and every keyring snapshot). Since the records flip the identity prepare's gate (fn-ccar-sn-prepare-identity) admits the retained kinds only (fn-stxe-p, fn-stxk-p, fn-hstxa-p); the owner's composite (fn-pa-authorized-event) is a wire fn-stxa-p, so it was refused and every signed POST answered 441. The entry stages fn-oii-identity-row, the row fn-intern-event makes, at the arena's count under the Store's keyring and generation. fn-oii-identity-row-is-the-intern: at h = (fn-arena-count fn-arena) the row is (mv-nth 0 (fn-intern-event w k g fn-arena)); fn-oii-seal-is-the-intern-arena: the intern's arena is the arena with fn-oii-identity-payload sealed when fn-oii-identity-sealsp holds, else unchanged (the host seals exactly that, and only when the Store changed); fn-oii-composite-row-is-held: a composite whose article decodes interns to an fn-hstxa-p row carrying the composite unchanged (D25: the relayed octets, which the test book shows are the poster's post-injection octets). KEYSTONE fn-oii-ocfg-prepare-identity-is-intern-then-step (hypothesis fn-own-relation of the owner): the entry at the arena's count is (fn-ocfg-step oc (list :store (list :prepare-identity ROW)) fn-arena) for ROW the intern's row, by PRF-144's fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-004",
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-144"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-identity-intern.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/owner-identity-intern-tests.lisp"
+      ],
+      "progress_note": "Lane signed-post (Opus 5.5, 2026-09-27). The regression: records-flip c5808cd72 (fn-sn-prepare-identity's gate to fn-hstxa-p) and flip-L3 d689ec388 (the same in fn-ccar-sn-prepare-identity) changed the gate; the host entry kept passing the wire composite, and owner-signed-post-tests hand-built its row (ospt-row), so no test crossed the host line. The test book's witness is the reachable served-POST trace of owner-signed-post-tests over a flipped owner: the wire composite is refused by the gate, the interned row is staged, and the completion records the signed verdict.",
+      "events": [
+        "fn-oii-identity-row-is-the-intern",
+        "fn-oii-seal-is-the-intern-arena",
+        "fn-oii-composite-row-is-held",
+        "fn-oii-ocfg-prepare-identity-is-intern-then-step"
+      ]
     }
   ]
 }
