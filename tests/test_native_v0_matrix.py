@@ -189,10 +189,10 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
                     "auth=source-address:127.0.0.1")
         if name.endswith("recover the init scratch store"):
             return ("recovered transactions=1 articles=1 staging-orphans=0 "
-                    "anchor=none checkpoint=none")
+                    "anchor=none")
         if name.endswith("recover after the second init"):
             return ("recovered transactions=1 articles=1 staging-orphans=0 "
-                    "anchor=none checkpoint=none")
+                    "anchor=none")
         if name.endswith("configured store"):
             return "/srv/fn/a-store"
         if name.endswith("profile agent refusal"):
