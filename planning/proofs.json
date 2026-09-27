@@ -7762,7 +7762,25 @@
         "fn-nntp-archive-command-pinned-over-range-served",
         "fn-served-dispatch-over-range-served",
         "fn-served-step-over-range-carries-the-xref",
-        "fn-oag-listing-server-is-the-path-identity"
+        "fn-oag-listing-server-is-the-path-identity",
+        "fn-ipp-injected-octets-carry-the-parameters",
+        "fn-ipp-with-params-of-an-injection",
+        "fn-ipp-with-params-keeps-the-source",
+        "fn-ipp-params-of-a-login",
+        "fn-ipp-params-without-a-login",
+        "fn-ipp-params-are-a-parameter-run",
+        "fn-ipp-injected-octets-without-parameters",
+        "fn-ipp-addr-spec-has-no-quote-or-line-break",
+        "fn-pa-account-value-is-hex",
+        "fn-pa-account-value-depends-only-on-the-mac",
+        "fn-pa-account-value-determines-the-mac",
+        "fn-ipp-injected-octets-keep-the-d25-subject",
+        "fn-ipp-a-same-source-retry-is-the-same-article",
+        "fn-oii-stored-octets-keep-the-d25-subject",
+        "fn-ipp-an-injection-does-not-open-with-c",
+        "fn-ipp-same-articlep-of-two-injections",
+        "fn-ipp-path-agent-of-the-injected-octets",
+        "fn-ipp-an-injection-opens-with-p-or-i"
       ]
     },
     {
