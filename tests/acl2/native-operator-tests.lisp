@@ -1443,3 +1443,18 @@
               (member-equal "control.cancel" (cadr (nth 4 result)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+
+; public-node-2: `account delete LOGIN' is an administration plan, and a
+; malformed login is a usage error (exit 2) rather than a refusal.
+(defconst *fn-nop-account-delete*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("account" "delete" "probe"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-account-delete*) :accepted))
+(assert-event (equal (fn-native-operator-result-command *fn-nop-account-delete*) "account"))
+(assert-event (equal (fn-native-admin-result-kind
+                      (car (fn-native-operator-result-arguments *fn-nop-account-delete*)))
+                     :account-delete))
+(assert-event (not (equal (fn-native-operator-result-status
+                           (fn-native-operator-run *fn-nop-minimal-config*
+                                                   (fn-nop-test-argv '("account" "delete"))))
+                          :accepted)))

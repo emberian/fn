@@ -1394,6 +1394,11 @@
           "kind": "theorem",
           "name": "fn-scar-auth-step-pinned-is-auth-step-pinned",
           "note": "The AUTHINFO/STARTTLS step the carried served fold runs (fn-scar-auth-step-pinned, reached from fn-owner-chunk through fn-scar-dispatch) equals fn-auth-step-pinned whenever the node it is given satisfies fn-node-statep, so every PRF-031 theorem over fn-auth-step-pinned holds of the host's call on owner-reachable states. Teeth: tests/acl2/owner-served-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection",
+          "note": "KEYSTONE (public-node D1). Subject fn-auth-access-capability-lines, rendered by the CAPABILITIES arm the served dispatch calls. Teeth: tests/acl2/nntp-auth-teeth-tests.lisp; transcript tests/acl2/served-implicit-tls-tests.lisp; native tests.test_native_friends_accounts."
         }
       ]
     },
@@ -5655,11 +5660,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-acct-redeemed-row-stays"
+          "name": "fn-acct-bound-row-succeeds",
+          "note": "KEYSTONE (restated by account delete). A bound row is kept, or tombstoned by an account delete, by every admitted delta list. Teeth: tests/acl2/accounts-tests.lisp."
         },
         {
           "kind": "theorem",
-          "name": "fn-acct-redeemed-row-stays-across-replay"
+          "name": "fn-acct-bound-row-succeeds-across-replay",
+          "note": "KEYSTONE (restated by account delete). The same across the owner's replay fold fn-config-replay-loop. Teeth: tests/acl2/accounts-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -5728,6 +5735,21 @@
         {
           "kind": "theorem",
           "name": "fn-acct-redeem-bounded-plan-after-its-redeem-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-delete-is-admitted-exactly-when-held-and-unobligated",
+          "note": "KEYSTONE. account delete LOGIN (config delta code 27): admitted exactly when the login is held and no signing binding, moderator role or consumer binding names it. Host host/native-admin-host.lisp. Teeth: tests/acl2/accounts-tests.lisp, native-admin-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-delete-keeps-the-login-taken",
+          "note": "KEYSTONE. After a delete the login stays taken: no later redeem binds it. Teeth: tests/acl2/accounts-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential",
+          "note": "KEYSTONE. Every later credential snapshot offers only auth.toml's credential under the deleted login. Teeth: tests/acl2/accounts-snapshot-tests.lisp."
         }
       ]
     },
@@ -7855,6 +7877,11 @@
         {
           "kind": "theorem",
           "name": "fn-redeem-done-only-on-281-after-the-password"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-redeem-lost-is-fenced-and-server-answers-are-not",
+          "note": "KEYSTONE. Subjects fn-redeem-lost and fn-redeem-outcome-class; host host/native/io.lisp fnn-command-redeem (the lost connection, the exit code). Teeth: tests/acl2/peer-host-tests.lisp; native tests.test_native_friends_accounts."
         }
       ]
     },

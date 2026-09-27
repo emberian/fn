@@ -321,6 +321,26 @@ fn operator CONFIG account list
 
 `account list` shows accounts and unused codes, never passwords or codes.
 
+To end an account, for example a test login:
+
+```
+fn operator CONFIG account delete probe
+```
+
+- From then on nobody can log in as `probe` (the password is refused). A
+  session that is already logged in keeps going until it disconnects.
+- Nothing is withdrawn: the posts `probe` made stay.
+- The name `probe` is never given out again, so a later friend cannot post
+  under the same `posting-account` value. `account list` shows it as
+  `deleted probe`.
+- It is refused while something still depends on the login: a signing
+  binding (`principal unbind LOGIN`), a moderator role (`group moderate`
+  without it) or a consumer bound to it (`consumer unbind NAME`). Remove
+  those first. Its group access rule does not block it.
+- It works on a running node, and on a stopped one.
+- It removes accounts made with invitation codes. A login in `auth.toml`
+  is removed by editing that file.
+
 ### Private groups
 
 By default every login sees every group. To limit a login, give it a rule:

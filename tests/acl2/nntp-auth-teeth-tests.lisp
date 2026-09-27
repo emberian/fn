@@ -931,6 +931,87 @@
                               fn-auth-config-creds
                               fn-cfg-peer-inbound)))))))
 
+;; fn-auth-authinfo-is-advertised-exactly-when-a-login-is-offered-on-any-connection
+;; (public-node-2, D1).  An iff with no hypothesis: the witnesses are one
+;; per side and one per conjunct, and each must-fail is the statement with a
+;; conjunct dropped or replaced by the pre-D1 rule.
+;;
+;; The public node's configuration before its first redeem: anonymous none
+;; (required), protected-only, a certificate, NO credential.
+(defconst *aut-invite-only* (fn-auth-make-config t t t nil))
+(assert-event (fn-auth-configp *aut-invite-only*))
+(assert-event (not (consp (fn-auth-config-creds *aut-invite-only*))))
+;; Both sides true, on a peer record and on a reader: after TLS, no subject.
+(assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                            (fn-auth-capability-lines-for-peer
+                             *aut-invite-only* nil t nil nil)))
+(assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                            (fn-auth-capability-lines-for-peer
+                             *aut-invite-only* nil t nil *aut-peer-record*)))
+;; Each conjunct false, the others true, the label absent:
+;; authenticated,
+(assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                                 (fn-auth-capability-lines-for-peer
+                                  *aut-invite-only* *aut-principal* t nil nil))))
+;; the channel protected-only refuses,
+(assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                                 (fn-auth-capability-lines-for-peer
+                                  *aut-invite-only* nil nil nil nil))))
+;; no login to offer: requires nothing and holds no credential.
+(defconst *aut-open-tls* (fn-auth-make-config nil t t nil))
+(assert-event (fn-auth-configp *aut-open-tls*))
+(assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                                 (fn-auth-capability-lines-for-peer
+                                  *aut-open-tls* nil t t nil))))
+;; A credential alone offers it where nothing is required.
+(assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                            (fn-auth-capability-lines-for-peer
+                             (fn-auth-make-config nil t t (list *aut-cred*))
+                             nil t t nil)))
+
+(defmacro aut-authinfo-exactly-without (rhs)
+  `(defthm aut-authinfo-exactly-weakened
+     (iff (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                        (fn-auth-capability-lines-for-peer
+                         acfg subject tlsp postingp record))
+          ,rhs)
+     :hints (("Goal"
+              :do-not-induct t
+              :in-theory (e/d (fn-auth-capability-lines-for-peer
+                               fn-auth-access-capability-lines
+                               fn-peer-capability-lines
+                               fn-nntp-capability-lines)
+                              (fn-auth-config-tls-availablep
+                               fn-auth-config-protected-onlyp
+                               fn-auth-config-requiredp
+                               fn-auth-config-creds
+                               fn-cfg-peer-inbound))))))
+
+;; The pre-D1 rule (a credential, never the requirement): refuted by
+;; *aut-invite-only* after TLS above.
+(local (must-fail-checked
+        (aut-authinfo-exactly-without
+         (and (not subject)
+              (consp (fn-auth-config-creds acfg))
+              (or tlsp (not (fn-auth-config-protected-onlyp acfg)))))))
+;; Without the login-to-offer conjunct: refuted by *aut-open-tls*.
+(local (must-fail-checked
+        (aut-authinfo-exactly-without
+         (and (not subject)
+              (or tlsp (not (fn-auth-config-protected-onlyp acfg)))))))
+;; Without the channel conjunct: refuted by *aut-invite-only* in clear.
+(local (must-fail-checked
+        (aut-authinfo-exactly-without
+         (and (not subject)
+              (or (consp (fn-auth-config-creds acfg))
+                  (fn-auth-config-requiredp acfg))))))
+;; Without the subject conjunct: refuted by the authenticated witness.
+(local (must-fail-checked
+        (aut-authinfo-exactly-without
+         (and (or (consp (fn-auth-config-creds acfg))
+                  (fn-auth-config-requiredp acfg))
+              (or tlsp (not (fn-auth-config-protected-onlyp acfg)))))))
+
 ; The unfold that makes the three claims above claims about what a client
 ; sees: on a CAPABILITIES command the step's whole effect list is the 101
 ; block over exactly that list.  Witnessed on the required policy, where the

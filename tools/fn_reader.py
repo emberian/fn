@@ -425,8 +425,11 @@ class Node:
                 return UNCERTAIN, "fn redeem could not start: %s" % exc
         said = (done.stdout + done.stderr).decode("utf-8", "replace").strip().splitlines()
         said = said[-1] if said else ""
-        # fn's exit codes: 0 redeemed (only on the node's 281), 1 refused by
-        # name, anything else a fault or a usage error of this reader's.
+        # fn's exit codes (ACL2's fn-redeem-outcome-class): 0 redeemed (only
+        # on the node's 281), 1 refused by the node by name, 3 the node could
+        # not be reached or the connection ended (fn-redeem-lost: nothing
+        # redeemed before the password, not sure after it), anything else a
+        # fault or a usage error of this reader's.  Only 1 is a refusal.
         if done.returncode == 0:
             return fn_client.DONE, said
         if done.returncode == 1:
@@ -1053,9 +1056,14 @@ class Handler(BaseHTTPRequestHandler):
                              "expired, or the name may be taken. The server said: %s" % said,
                              code_text, user, 403)
             return
-        self.redeem_page("We can't reach the server right now. Please try again in a "
-                         "minute. (If it keeps happening, the code may already be used: "
-                         "try signing in.)", code_text, user, 503)
+        # Not a refusal, and not counted as one (the OpenBSD rehearsal's
+        # finding 8): the node was not reached, or the connection ended.
+        # fn redeem's own line says which, and whether the account may be
+        # ready.
+        self.redeem_page("We could not reach the server, or it stopped answering, so "
+                         "nothing was decided and this try does not count against you. "
+                         "Please try again in a minute. fn redeem said: %s" % said,
+                         code_text, user, 503)
 
     def signout(self, account, fields):
         self.server.drop(self.cookies().get("fnr_session", ""))

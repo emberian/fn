@@ -667,7 +667,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "consumer")
          "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
-         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; spec nntp Invitation-code accounts, Group access)")
+         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show | delete LOGIN} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; delete ends LOGIN's account: new logins as LOGIN are refused, its posts stay, and the login is never given out again; refused while a signing binding, a moderator role or a consumer binding names LOGIN; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "tls")
@@ -800,6 +800,9 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ;; PRF-222: `account access show' and `account access LOGIN|--anonymous
         ;; --read WILDMAT --post WILDMAT' (books/native-admin.lisp).
         ((equal (fn-ncfg-first words) "access")
+         (fn-nop-parse-administration "account" argv config))
+        ;; public-node-2: `account delete LOGIN' (books/native-admin.lisp).
+        ((equal (fn-ncfg-first words) "delete")
          (fn-nop-parse-administration "account" argv config))
         ;; PKT-597: `account hash LOGIN' prints the posting-account value an
         ;; article posted under LOGIN carries (books/injection-info-policy.lisp
