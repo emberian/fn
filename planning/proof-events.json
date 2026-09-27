@@ -9871,6 +9871,43 @@
           "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/store-log-reclaim-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-272",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arp-add-page-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arp-write-octet-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arp-seal-list-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-payload{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-clear{correspondence}"
+        }
+      ]
     }
   ]
 }

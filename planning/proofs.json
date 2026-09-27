@@ -9865,6 +9865,42 @@
       "events": [
         "fn-lgr-decide-checkpoints-the-rewrite"
       ]
+    },
+    {
+      "id": "PRF-272",
+      "title": "The paged payload arena: fixed pages, no doubling; the node's arena attachment corresponds to the generic's list of sealed payloads",
+      "statement": "books/payload-arena-paged.lisp: fn-arena-paged is an abstract stobj over the concrete fn-arena$p (a resizable table of page stobjs, each a byte array of *fn-arp-page* = 262,144 octets: above SBCL's large-object size, 131,072, so the collector never copies a page allocated when the page is added; an offset and a size per handle; the count, the fill and the page count). Its logical side is fn-arena-bytes's, verbatim (fn-arena$ap, create-fn-arena$a, the eight fn-arena$a-*), so books/payload-arena-attach.lisp's (attach-stobj fn-arena fn-arena-paged) makes the generic fn-arena (PRF-221) execute over pages while every certificate above the generic stays the generic's. The abstraction fn-arena$pcorr is fn-arena$corr's (PRF-118) with the pages' byte lists concatenated (fn-arp-flat over the first npages pages, each full: fn-arp-fullp) in place of the byte array, and the fill within the pages' capacity. The page arithmetic is proved once: fn-arp-nth-flat and fn-arp-flat-of-page-write (page K's octet J is the flat view's position J + 262144 K; a write there is the flat view's update-nth), fn-arp-nth-flat-at / fn-arp-flat-of-write-at (the same at floor and mod of a position), fn-arp-flat-snoc and fn-arp-flat-of-resize-list (adding a page appends its octets; doubling the table of POINTERS keeps the view). Steps: fn-arp-put-step (a page write is the flat view's update), fn-arp-add-page-step (one more page; every octet below the old capacity kept), fn-arp-write-octet-step, fn-arp-write-appends, fn-arp-seal-list-step; reads fn-arp-byte-is-nth and fn-arp-list-pages-is-list-from (the payload reader walks pages). Every {correspondence}, {preserved} and {guard-thm} obligation is proved before the defabsstobj (fn-arena-paged-get{correspondence} ... fn-arena-paged-clear{preserved}); every executable function is guard-verified. What it changes: a sealed octet never moves and a seal never copies an older payload; growth allocates one 256 KiB page and, when the table has no spare slot, doubles the table's pointers (8 octets per page); the arena's footprint is its payload octets plus under one page plus the handle arrays, and no two copies are live (recover-memory-2's packet P1: the byte array's last doubling kept 256 and 512 MiB live together). The clear releases the page table. Host subject: every host call of an fn-arena export (host/native/io.lisp fnn-arena-seal-*, host/store-node-host.lisp fn-store-sn-lookup through fn-handle-bytes, host/owner-host.lisp's clears) runs over this attachment; the host names only the generic.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-118",
+        "PRF-221"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "events": [
+        "fn-arp-add-page-step",
+        "fn-arp-write-octet-step",
+        "fn-arp-seal-list-step",
+        "fn-arena-paged-get{correspondence}",
+        "fn-arena-paged-payload{correspondence}",
+        "fn-arena-paged-seal-buffer{correspondence}",
+        "fn-arena-paged-seal-range{correspondence}",
+        "fn-arena-paged-clear{correspondence}"
+      ],
+      "evidence": [
+        "books/payload-arena-paged.lisp",
+        "tests/acl2/payload-arena-paged-tests.lisp",
+        "books/payload-arena-attach.lisp",
+        "planning/evidence/arena-offheap-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T122543Z-3171271.json"
+      ],
+      "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic."
     }
   ]
 }
