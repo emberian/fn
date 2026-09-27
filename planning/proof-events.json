@@ -7035,9 +7035,37 @@
         {
           "kind": "theorem",
           "name": "fn-nntp-archive-command-cat-is-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scr-ocfg-read-span-is-reference-under-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-relation-of-complete-hidden"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-load-history-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-finish-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-finish-keeps-pinned-views"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-finish-hides-the-hidden-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-finish-hides-the-targets-from-fresh-views"
         }
       ],
-      "pending_subject": "fn-view-apply-is-refresh as registered is deferred to 7b/8 (the delta equation needs the arms over the catalog); the proved events are the version semantics over the host-called served path and, since catalog-slice-6, the Message-ID and number retrieval arms over the catalog equal to the pinned arms (not yet host-called: the lift and the host switch are 7b rest and 8)."
+      "pending_subject": "fn-view-apply-is-refresh as registered is deferred (the delta equation over the owner's refresh); since catalog-slice-8 the served path the host calls reads the catalog (host/owner-host.lisp fn-owner-chunk-span -> books/served-catalog-chain.lisp fn-scr-ocfg-read-span, equal to the carried read under fn-scr-owner-catalogp); the JOIN (fn-sca-join: the catalog's view at a pin's version holds the pinned archive's articles) is the open hypothesis the chain carries."
     },
     {
       "id": "PRF-203",

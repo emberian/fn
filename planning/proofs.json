@@ -1167,8 +1167,8 @@
         "fn-stx-index-invariant-preserved-by-accept",
         "fn-stx-durable-completion-is-an-acceptance",
         "fn-sn-finish-preserves-indexedp",
-        "fn-sn-statement-lookup-is-the-lace-lookup",
-        "fn-sn-equivocatorp-is-the-lace-equivocator"
+        "fn-store-statement-lookup-is-the-lace-lookup",
+        "fn-store-equivocatorp-is-the-lace-equivocator"
       ],
       "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the two served-query keystones are RESTATED over alpha in books/store-intern.lisp: fn-store-statement-lookup-is-the-lace-lookup and fn-store-equivocatorp-is-the-lace-equivocator (hypotheses: fn-sn-indexedp s and fn-rows-contexts-okp of fn-sn-indexed-rows s under the store's keyring): fn-sn-statement-lookup / fn-sn-equivocatorp (the functions host/store-node-host.lisp fn-store-sn-statement / fn-store-sn-equivocator call) answer as the lace of fn-rows-articles-newest-first of the indexed rows, their bytes read through the arena. They replace fn-sn-statement-lookup-is-the-lace-lookup and fn-sn-equivocatorp-is-the-lace-equivocator, stated over the node's article bytes, which carry handles after the flip. The index is the fold of the retained rows' contexts (fn-sn-indexedp over fn-sn-index-of-rows, preserved by every transition in books/store-node-invariants.lisp) and that fold is the wire index of the rows' bytes (fn-rows-index-is-the-wire-index, under fn-rows-contexts-okp, which fn-intern-events-contexts-okp establishes at the intern). OPEN: teeth for the two restated keystones need a reachable composite store over an arena (the fixture of tests/acl2/store-node-composite-index-tests.lisp rebuilt through fn-store-prepare-interned); that the keyring installation keeps fn-rows-contexts-okp (fn-store-set-keyring recontexts through fn-contexts-of-rows) is stated there, not yet as a theorem over fn-sn-indexed-rows."
     },
@@ -3894,11 +3894,11 @@
         "fn-evc-field-by-shape-is-store-event-sequence",
         "fn-evc-field-by-shape-is-store-event-txid",
         "fn-evc-field-by-shape-is-store-event-generation",
-        "fn-evc-class-by-shape-is-fn-record-p",
+        "fn-evc-class-by-shape-is-fn-held-p",
         "fn-evc-class-by-shape-is-fn-store-retention-event-p",
         "fn-evc-class-by-shape-is-fn-stxe-p",
         "fn-evc-class-by-shape-is-fn-stxk-p",
-        "fn-evc-class-by-shape-is-fn-stxa-p",
+        "fn-evc-class-by-shape-is-fn-hstxa-p",
         "fn-evc-class-by-shape-is-fn-cpe-eventp",
         "fn-evc-class-by-shape-is-fn-th-topic-eventp",
         "fn-ccar-ocfg-complete-is-ocfg-step-complete",
@@ -6826,7 +6826,10 @@
         "fn-scf-debt-advance-is-the-suffix-fold",
         "fn-scf-debt-carried-is-the-record-debt",
         "fn-scf-tally-advance-is-the-suffix-fold",
-        "fn-scf-usage-carried-is-the-projection"
+        "fn-scf-usage-carried-is-the-projection",
+        "fn-sbud-record-octets-is-the-stored-octets",
+        "fn-intern-events-extents-okp",
+        "fn-intern-events-budget-octets-are-the-stored-octets"
       ],
       "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the record octets count a retained row by what it STORES (fn-sbud-row-octets, books/store-budget.lisp): a held article row its facts' octets, a composite row its wire composite's encoding, any other row its encoding (fn-sbud-row-octets-of-wire-row). Before this the wire encoder alone counted every held row as 0 octets against the history bound. books/store-budget-stored.lisp: under fn-sbud-rows-extents-okp (each held row's facts octets are its handle's extent in the arena) fn-sbud-record-octets is fn-sbud-stored-octets, the sum of the stored payloads' lengths (fn-sbud-record-octets-is-the-stored-octets); the open's intern establishes the relation (fn-intern-events-extents-okp) and the composed statement is fn-intern-events-budget-octets-are-the-stored-octets. Teeth: tests/acl2/store-budget-stored-tests.lisp (reachable open of two records: 8 octets where the pre-flip count was 0; a corrupted held row whose facts claim 7 for an extent of 3). OPEN: that the POST's prepare (fn-store-prepare-interned) keeps fn-sbud-rows-extents-okp over the growing history is not yet a theorem. The history bound H now bounds stored payload octets for held rows, not their wire record length (the record's metadata is not counted)."
     },
@@ -7322,10 +7325,15 @@
         "books/catalog-number-index.lisp",
         "tests/acl2/served-catalog-tests.lisp",
         "planning/evidence/manifests/certify-20260927T044349Z-763688.json",
-        "planning/evidence/manifests/certify-20260927T053413Z-938097.json"
+        "planning/evidence/manifests/certify-20260927T053413Z-938097.json",
+        "books/served-catalog-chain.lisp",
+        "books/served-catalog-owner.lisp",
+        "tests/acl2/served-catalog-chain-tests.lisp",
+        "tests/acl2/served-catalog-owner-tests.lisp",
+        "books/catalog-relation.lisp"
       ],
       "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
-      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8). catalog-slice-7 (2026-09-27): 7b rest -- OVER/XOVER of a range, LISTGROUP, GROUP, LIST COUNTS, HDR/XHDR and XPAT over the catalog (index-stobjs' fn-cnx-view-range and the number table, never a walk of the view's articles), KEYSTONE N fn-scat-range-numbers-is-group-range-numbers and KEYSTONE P fn-scat-available-article-is-available, one -is-archive theorem per arm, and fn-nntp-archive-command-cat-is-pinned over the whole pinned case split (hypotheses added: fn-nntp-projectionp and fn-gidx-pin-correspondencep of the archive); crossing witnesses in tests/acl2/served-catalog-tests.lisp (append, cancel after and before its target, redecision, reclamation).",
+      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8). catalog-slice-7 (2026-09-27): 7b rest -- OVER/XOVER of a range, LISTGROUP, GROUP, LIST COUNTS, HDR/XHDR and XPAT over the catalog (index-stobjs' fn-cnx-view-range and the number table, never a walk of the view's articles), KEYSTONE N fn-scat-range-numbers-is-group-range-numbers and KEYSTONE P fn-scat-available-article-is-available, one -is-archive theorem per arm, and fn-nntp-archive-command-cat-is-pinned over the whole pinned case split (hypotheses added: fn-nntp-projectionp and fn-gidx-pin-correspondencep of the archive); crossing witnesses in tests/acl2/served-catalog-tests.lisp (append, cancel after and before its target, redecision, reclamation). catalog-slice-8 (2026-09-27): step 8, the host switch -- fn-owner-chunk-span reads through books/served-catalog-chain.lisp fn-scr-ocfg-read-span over the live arena and catalog (fn-scr-ocfg-read-span-is-reference-under-ocl-relation, under fn-scr-owner-catalogp); the catalog is maintained at the owner's entries (books/served-catalog-owner.lisp): E fn-sca-load-history at recovery, T4-then-T2 fn-sca-finish at fn-owner-finish-submission (fn-sca-finish-keeps-the-relation, -keeps-pinned-views, -hides-the-hidden-row (R1), -hides-the-targets-from-fresh-views), the prepare fn-cat-prepare at fn-owner-prepare-buffer. The join fn-sca-join is the open R-side target.",
       "pending_subject": "fn-view-apply-is-refresh as registered is deferred to 7b/8 (the delta equation needs the arms over the catalog); the proved events are the version semantics over the host-called served path and, since catalog-slice-6, the Message-ID and number retrieval arms and (catalog-slice-7) the range arms over the catalog equal to the pinned arms (not yet host-called: the lift and the host switch are 7b rest and 8).",
       "events": [
         "fn-served-repin-preserves-connp",
@@ -7357,7 +7365,14 @@
         "fn-scat-number-article-is-find-group-number",
         "fn-nntp-msgid-retrieval-cat-is-scan",
         "fn-nntp-number-retrieval-cat-is-walk",
-        "fn-nntp-archive-command-cat-is-pinned"
+        "fn-nntp-archive-command-cat-is-pinned",
+        "fn-scr-ocfg-read-span-is-reference-under-ocl-relation",
+        "fn-cat-relation-of-complete-hidden",
+        "fn-sca-load-history-establishes-relation",
+        "fn-sca-finish-keeps-the-relation",
+        "fn-sca-finish-keeps-pinned-views",
+        "fn-sca-finish-hides-the-hidden-row",
+        "fn-sca-finish-hides-the-targets-from-fresh-views"
       ]
     },
     {
@@ -7555,10 +7570,18 @@
         "fn-heap-decide-admits-every-store-the-profile-admits",
         "fn-heap-decide-refuses-exactly-past-the-machine",
         "fn-heap-small-profile-fits-a-small-machine",
-        "fn-heap-init-request-on-a-small-machine-is-small",
-        "fn-heap-init-request-keeps-the-operators-request",
         "fn-heap-machine-octets-is-at-most-each-observation",
-        "fn-heap-decision-exit-code-of-a-refusal"
+        "fn-heap-decision-exit-code-of-a-refusal",
+        "fn-heap-reserve-decide-holds-every-thread-the-node-runs",
+        "fn-heap-reserve-decide-refuses-exactly-past-the-machine",
+        "fn-heap-reserve-decide-keeps-heap-figures-refusals",
+        "fn-heap-reserve-thread-refusal-exits-1",
+        "fn-heap-init-decide-fits-the-budget-and-the-machine",
+        "fn-heap-init-decide-honors-the-operators-request",
+        "fn-heap-init-decide-sized-init-is-held",
+        "fn-heap-init-decide-conservative-is-development-or-small",
+        "fn-heap-init-decide-largest-takes-scale-when-it-fits",
+        "fn-heap-figure-octets-grows-with-history-and-record"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8716,7 +8739,10 @@
         "fn-own-feed-durable-never-enqueues-a-queue",
         "fn-auth-view-hides-the-queue-from-a-non-moderator",
         "fn-mod-hidden-queues-is-hiddenp",
-        "fn-auth-access-text-of-moderation-config"
+        "fn-auth-access-text-of-moderation-config",
+        "fn-mvb-approve-commits-the-held-article-approved",
+        "fn-mvb-only-a-moderator-approves-or-rejects",
+        "fn-mvb-reject-withdraws-the-held-envelope"
       ]
     },
     {
