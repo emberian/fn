@@ -2759,7 +2759,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-201",
-        "PRF-221"
+        "PRF-221",
+        "PRF-219"
       ],
       "verification": [
         "proof",
@@ -2768,7 +2769,8 @@
       ],
       "evidence": [
         "planning/evidence/rep-wave-d-2-2026-09-26.md",
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "planning/evidence/acceptance-payload-arena-2026-09-26.md"
       ],
       "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator. Partial (catalog-slice, 2026-09-26): the held record fn-held-p carries a natp handle with the byte facts and the context (books/catalog-record.lisp), alpha (fn-held-wire-of) and the two interns are proved (fn-cat-intern-list-materializes); the acceptance state's payloads and the transition over the held record are PKT-585.",
       "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."

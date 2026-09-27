@@ -758,6 +758,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-delta-tests \
 	tests/acl2/catalog-relation-tests \
 	tests/acl2/catalog-view-tests \
+	books/acceptance-payload-ref \
+	tests/acl2/acceptance-payload-ref-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \

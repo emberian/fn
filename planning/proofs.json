@@ -7836,6 +7836,37 @@
         "fn-arena-seal-buffer{correspondence}",
         "fn-arena-bytes-seal-buffer{correspondence}"
       ]
+    },
+    {
+      "id": "PRF-219",
+      "title": "The acceptance state's payload field is a reference to the record's bytes: every replayed article's payload is its article record's, and the host's readers read the record through the event index",
+      "statement": "books/acceptance-payload-ref.lisp. The relation fn-apr-refsp (every article names an article record of the history, fn-cei-article-records-for, and its payload is the payload of the last one) with fn-apr-recordedp (every article record of the history names an accepted article) is established by the replay: fn-apr-replay-establishes-refs, over fn-replay (the fold over fn-replay-apply-record; the one hypothesis is that the replay succeeded), from fn-apr-apply-record-keeps-refs (one event, every arm: fn-apr-other-arms-keep-articles and fn-apr-other-arms-carry-no-article for the retention, verdict, keyring, configuration and topic events; fn-apr-article-arm-installs-the-record-payload for a record or a signed composite). fn-apr-replay-node-refs carries it to fn-sf-replay-node, which is the Store's node at every idle phase (fn-snt-relation) and so at every entry: the journal open, the checkpoint open (equal to the full open, fn-ock-finalize-of-extended-capture) and the live Store after each completed transaction. KEYSTONE fn-apr-payload-of-is-the-article-payload: under fn-apr-store-at-restp (fn-snt-relation at an idle phase and fn-ceis-indexedp) and a string Message-ID, fn-apr-payload-of (the payload of the last article record the Store's event index lists for the Message-ID) equals fn-apr-field-payload (the acceptance article's payload, or NIL). Host subjects: fn-apr-feed-article (host/owner-host.lisp, the feed reply's byte source, replacing fn-own-feed-article; fn-apr-feed-article-is-own-feed-article) and fn-apr-payload-of / fn-apr-foundp (host/store-node-host.lisp fn-store-sn-lookup and fn-store-sn-lookup-foundp; fn-apr-foundp-is-article-found). NOT in this target: the acceptance field's own representation (it holds the record's list by pointer; measured, zero exclusive bytes at N = 1,000 and 10,000 x 2 KiB), which becomes the record's handle together with the record's (records-freeze, PKT-635); the served retrieval arms' reads of fn-article-payload (catalog-slice-5).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-011"
+      ],
+      "depends_on": [
+        "PRF-144"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "events": [
+        "fn-apr-replay-establishes-refs",
+        "fn-apr-apply-record-keeps-refs",
+        "fn-apr-replay-node-refs",
+        "fn-apr-payload-of-is-the-article-payload",
+        "fn-apr-feed-article-is-own-feed-article",
+        "fn-apr-foundp-is-article-found"
+      ],
+      "evidence": [
+        "books/acceptance-payload-ref.lisp",
+        "tests/acl2/acceptance-payload-ref-tests.lisp",
+        "planning/evidence/acceptance-payload-arena-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260927T002614Z-565053.json"
+      ],
+      "progress_note": "Lane acceptance-payload-arena (2026-09-26): certified on persvati, run-20260927T001950Z-505f (certify-20260927T002614Z-565053: passed 2, failed 0, no book over 10 s at two jobs); every event REPL-admitted first."
     }
   ]
 }

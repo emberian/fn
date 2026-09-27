@@ -7373,6 +7373,35 @@
           "name": "fn-arena-bytes-seal-buffer{correspondence}"
         }
       ]
+    },
+    {
+      "id": "PRF-219",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-establishes-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-apply-record-keeps-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-node-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-payload-of-is-the-article-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-feed-article-is-own-feed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-foundp-is-article-found"
+        }
+      ]
     }
   ]
 }
