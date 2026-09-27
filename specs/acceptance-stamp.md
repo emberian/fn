@@ -443,7 +443,7 @@ Teeth (composite arm): the witness is the kind-4 composite from
 ### 2.5 Replay reproduces it, over a mixed journal
 
 Subject: `fn-replay-apply-record` and `fn-replay`, which `fn-sn-recover`
-reaches through `fn-sf-replay-node` at every open (`fn-store-sn-recover`,
+reaches through `fn-sf-replay-node` at every open (`fn-store-sn-recover-rows`,
 `host/store-node-host.lisp:133`).
 
 ```
