@@ -165,10 +165,10 @@ def q2(a):
     res = d / "q2.jsonl"
     base = NVME if a.fs == "nvme" else ZFS
     for kind in ("random", "append"):
-        for fs_ in (1, 2):
+        for fs_ in ((1,) if a.inline else (1, 2)):
             store = str(base / f"q2-{kind}-{fs_}")
             shutil.rmtree(store, ignore_errors=True)
-            rc, recs, raw = run(["init", store, str(a.n)])
+            rc, recs, raw = run(["init", store, str(a.n)] + (["inline"] if a.inline else []))
             if rc != 0:
                 print(raw[-3000:]); return 1
             for count in [int(x) for x in a.counts.split(",")]:
@@ -177,7 +177,7 @@ def q2(a):
                     rc, recs, raw = run(["mutate", store, "main", kind, str(count), str(fs_)],
                                         strace=st)
                     c = ev(recs, "commit")
-                    rec = {"fs": a.fs, "kind": kind, "fsyncs": fs_, "count": count, "run": i,
+                    rec = {"fs": a.fs, "layout": "inline" if a.inline else "root-file", "kind": kind, "fsyncs": fs_, "count": count, "run": i,
                            "rc": rc, "commit": c[0]["commit"] if c else None}
                     if st and Path(st).exists():
                         rec["strace"] = Path(st).read_text()
@@ -250,7 +250,7 @@ def q3(a):
     rng = random.Random(a.seed)
     store = str(NVME / "q3")
     shutil.rmtree(store, ignore_errors=True)
-    rc, recs, raw = run(["init", store, str(a.n)])
+    rc, recs, raw = run(["init", store, str(a.n)] + (["inline"] if a.inline else []))
     if rc != 0:
         print(raw[-3000:]); return 1
     rc, recs, raw = run(["digest", store, "main"])
@@ -266,7 +266,7 @@ def q3(a):
         name = cuts[i % len(cuts)]
         kind = rng.choice(["random", "append"])
         count = rng.choice([1, 2, 5, 17, 40]) if kind == "random" else rng.choice([1, 3, 8])
-        fs_ = 2 if name == "pages-synced" else rng.choice([1, 2])
+        fs_ = 2 if name == "pages-synced" else (1 if a.inline else rng.choice([1, 2]))
         k = 1
         if name == "page-written":
             k = rng.randint(1, 3)
@@ -407,35 +407,37 @@ def summarize(a):
         if not q2f.exists():
             break
         rows = [json.loads(l) for l in q2f.read_text().splitlines()]
-        rows = [r for r in rows if r.get("fs") == fsn and r.get("commit")]
-        if not rows:
+        allrows = [r for r in rows if r.get("fs") == fsn and r.get("commit")]
+        for layout in ("root-file", "inline"):
+          rows = [r for r in allrows if r.get("layout", "root-file") == layout]
+          if not rows:
             continue
-        lines += [f"## Q2 snapshot on {fsn} (ms, median)", "",
+          lines += [f"## Q2 snapshot on {fsn}, {layout} layout (ms, median)", "",
                   "| kind | dirty pages | barriers | plan+digest | page writes | table | sync 1 | record | sync 2 | total | fdatasync calls | write calls | MB written | table pages |",
                   "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
-        for kind in ("append", "random"):
-            for fs_ in (1, 2):
-                for cnt in sorted({r["count"] for r in rows}):
-                    rs = [r["commit"] for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
-                          and r["count"] == cnt]
-                    if not rs:
-                        continue
-                    g = lambda f: med([c[f] for c in rs])
-                    st = [r.get("strace", "") for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
-                          and r["count"] == cnt and r.get("strace")]
-                    calls = "-"
-                    if st:
-                        import re
-                        got = {m.group(2): int(m.group(1))
-                               for m in re.finditer(r"^\s*[\d.]+\s+[\d.]+\s+\d+\s+(\d+)\s+(?:\d+\s+)?(f?d?a?t?a?sync)\s*$", st[0], re.M)}
-                        calls = f"{rs[0]['syncs']} (strace: {got or 'none'})"
-                    else:
-                        calls = str(rs[0]['syncs'])
-                    lines.append(f"| {kind} | {cnt:,} | {fs_} | {g('ms-plan')} | {g('ms-pages')} | "
-                                 f"{g('ms-table')} | {g('ms-sync1')} | {g('ms-record')} | {g('ms-sync2')} | "
-                                 f"{g('ms-total')} | {calls} | {rs[0]['runs']} | "
-                                 f"{rs[0]['bytes'] / 1e6:.2f} | {rs[0]['table-pages']} |")
-        lines.append("")
+          for kind in ("append", "random"):
+              for fs_ in (1, 2):
+                  for cnt in sorted({r["count"] for r in rows}):
+                      rs = [r["commit"] for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
+                            and r["count"] == cnt]
+                      if not rs:
+                          continue
+                      g = lambda f: med([c[f] for c in rs])
+                      st = [r.get("strace", "") for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
+                            and r["count"] == cnt and r.get("strace")]
+                      calls = "-"
+                      if st:
+                          import re
+                          got = {m.group(2): int(m.group(1))
+                                 for m in re.finditer(r"^\s*[\d.]+\s+[\d.]+\s+\d+\s+(\d+)\s+(?:\d+\s+)?(f?d?a?t?a?sync)\s*$", st[0], re.M)}
+                          calls = f"{rs[0]['syncs']} (strace: {got or 'none'})"
+                      else:
+                          calls = str(rs[0]['syncs'])
+                      lines.append(f"| {kind} | {cnt:,} | {fs_} | {g('ms-plan')} | {g('ms-pages')} | "
+                                   f"{g('ms-table')} | {g('ms-sync1')} | {g('ms-record')} | {g('ms-sync2')} | "
+                                   f"{g('ms-total')} | {calls} | {rs[0]['runs']} | "
+                                   f"{rs[0]['bytes'] / 1e6:.2f} | {rs[0]['table-pages']} |")
+          lines.append("")
     out = d / "summary.md"
     out.write_text("\n".join(lines) + "\n")
     print(out.read_text())
@@ -461,6 +463,8 @@ def main(argv=None):
         p.add_argument("--damage", type=int, default=12)
         p.add_argument("--seed", type=int, default=931)
         p.add_argument("--keep", action="store_true")
+        p.add_argument("--inline", action="store_true",
+                       help="root main's slots in page 0 of the page file (one-barrier commits)")
     a = ap.parse_args(argv)
     return a.fn(a) or 0
 

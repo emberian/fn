@@ -38,116 +38,9 @@
 
 (in-package "ACL2")
 
-;; ---------------------------------------------------------------------------
-;; The syscalls.
-
-(define-condition fnps-io-error (error)
-  ((call :initarg :call :reader fnps-io-error-call)
-   (errno :initarg :errno :reader fnps-io-error-errno)
-   (detail :initarg :detail :reader fnps-io-error-detail))
-  (:report (lambda (c s)
-             (format s "fnps-io-error: ~a errno ~a (~a)"
-                     (fnps-io-error-call c) (fnps-io-error-errno c)
-                     (fnps-io-error-detail c)))))
-
-(sb-alien:define-alien-routine ("pread" fnps-%pread) sb-alien:long
-  (fd sb-alien:int) (buf sb-sys:system-area-pointer)
-  (n sb-alien:unsigned-long) (off sb-alien:long))
-(sb-alien:define-alien-routine ("pwrite" fnps-%pwrite) sb-alien:long
-  (fd sb-alien:int) (buf sb-sys:system-area-pointer)
-  (n sb-alien:unsigned-long) (off sb-alien:long))
-(sb-alien:define-alien-routine ("fdatasync" fnps-%fdatasync) sb-alien:int
-  (fd sb-alien:int))
-(sb-alien:define-alien-routine ("fsync" fnps-%fsync) sb-alien:int
-  (fd sb-alien:int))
-
-(defconstant +fnps-eintr+ 4)
-
-(defun fnps-elt-bytes (vec)
-  (etypecase vec
-    ((simple-array (unsigned-byte 8) (*)) 1)
-    ((simple-array (unsigned-byte 64) (*)) 8)))
-
-(defun fnps-transfer (write-p fd byte-offset vec start count)
-  (let* ((eb (fnps-elt-bytes vec))
-         (total (* count eb))
-         (done 0))
-    (unless (and (integerp start) (integerp count) (<= 0 start) (<= 0 count)
-                 (<= (+ start count) (length vec)) (integerp byte-offset)
-                 (<= 0 byte-offset))
-      (error 'fnps-io-error :call (if write-p "pwrite" "pread") :errno 0
-             :detail (format nil "range ~a+~a outside vector of ~a" start count
-                             (length vec))))
-    (sb-sys:with-pinned-objects (vec)
-      (let ((base (sb-sys:sap+ (sb-sys:vector-sap vec) (* start eb))))
-        (loop while (< done total) do
-          (let ((r (if write-p
-                       (fnps-%pwrite fd (sb-sys:sap+ base done) (- total done)
-                                     (+ byte-offset done))
-                     (fnps-%pread fd (sb-sys:sap+ base done) (- total done)
-                                  (+ byte-offset done)))))
-            (cond ((> r 0) (incf done r))
-                  ((and (= r 0) (not write-p))
-                   (error 'fnps-io-error :call "pread" :errno 0
-                          :detail (format nil "end of file at byte ~a"
-                                          (+ byte-offset done))))
-                  ((= r 0)
-                   (error 'fnps-io-error :call "pwrite" :errno 0
-                          :detail "wrote nothing"))
-                  (t (let ((e (sb-alien:get-errno)))
-                       (unless (= e +fnps-eintr+)
-                         (error 'fnps-io-error :call (if write-p "pwrite" "pread")
-                                :errno e
-                                :detail (format nil "at byte ~a"
-                                                (+ byte-offset done)))))))))))
-    count))
-
-(defun fnps-fill-from-file (fd byte-offset vec start count)
-  "Primitive 1 (read): VEC[START, START+COUNT) := the file's octets at BYTE-OFFSET."
-  (fnps-transfer nil fd byte-offset vec start count))
-
-(defun fnps-write-to-file (fd byte-offset vec start count)
-  "Primitive 2 (write): the file's octets at BYTE-OFFSET := VEC[START, START+COUNT)."
-  (fnps-transfer t fd byte-offset vec start count))
-
-;; A-PGS-LE, checked at load: a u64 written through primitive 2 reads back
-;; through primitive 1 as its little-endian octets.
-(let* ((path (format nil "/tmp/fnps-le-check-~a" (sb-unix:unix-getpid)))
-       (fd (sb-unix:unix-open path (logior sb-unix:o_rdwr sb-unix:o_creat sb-unix:o_trunc) #o600))
-       (w (make-array 1 :element-type '(unsigned-byte 64)
-                        :initial-element #x0807060504030201))
-       (b (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)))
-  (unwind-protect
-       (progn (fnps-write-to-file fd 0 w 0 1)
-              (fnps-fill-from-file fd 0 b 0 8)
-              (unless (equalp b #(1 2 3 4 5 6 7 8))
-                (error "A-PGS-LE fails: this host does not store u64 little-endian ~a" b)))
-    (sb-unix:unix-close fd)
-    (sb-unix:unix-unlink path)))
-
-(defvar *fnps-syncs* 0)
-
-(defun fnps-datasync (fd)
-  (incf *fnps-syncs*)
-  (unless (zerop (fnps-%fdatasync fd))
-    (error 'fnps-io-error :call "fdatasync" :errno (sb-alien:get-errno) :detail "")))
-
-(defun fnps-fullsync (fd)
-  (incf *fnps-syncs*)
-  (unless (zerop (fnps-%fsync fd))
-    (error 'fnps-io-error :call "fsync" :errno (sb-alien:get-errno) :detail "")))
-
-(defun fnps-open-file (path &key create)
-  (multiple-value-bind (fd err)
-      (sb-unix:unix-open path (if create (logior sb-unix:o_rdwr sb-unix:o_creat) sb-unix:o_rdwr) #o644)
-    (unless fd
-      (error 'fnps-io-error :call "open" :errno err :detail path))
-    fd))
-
-(defun fnps-sync-dir (dir)
-  (let ((fd (sb-unix:unix-open dir sb-unix:o_rdonly 0)))
-    (unless fd (error 'fnps-io-error :call "open" :errno 0 :detail dir))
-    (unwind-protect (fnps-fullsync fd) (sb-unix:unix-close fd))))
+;; The two primitives, the little-endian check and the barrier wrappers
+;; live in proto-pagestore-io.lisp (plain SBCL, testable alone).
+(load (merge-pathnames "proto-pagestore-io.lisp" (or *load-truename* *default-pathname-defaults*)))
 
 ;; ---------------------------------------------------------------------------
 ;; The live stobjs and their arrays.
@@ -277,7 +170,22 @@
 
 (defun fnps-close (s)
   (when (fnps-pages-fd s) (sb-unix:unix-close (fnps-pages-fd s)))
-  (when (fnps-root-fd s) (sb-unix:unix-close (fnps-root-fd s))))
+  (when (and (fnps-root-fd s) (not (eql (fnps-root-fd s) (fnps-pages-fd s))))
+    (sb-unix:unix-close (fnps-root-fd s))))
+
+;; The INLINE layout (DIR/inline exists): root "main"'s two slots live in the
+;; page file itself, at bytes 0 and 4096 of reserved page 0, so a commit is
+;; pages + table + record in ONE file and one fdatasync makes it durable.
+;; Page 0 is kept from allocation by a pseudo record whose table run is page
+;; 0 (`pgs-rec-keeps' of (:pgs-commit 0 0 0 0 0) is (0)), passed to
+;; `pgs-x-plan' with the real pairs.  Forks still get root files.
+(defun fnps-inline-p (dir) (probe-file (concatenate 'string dir "/inline")))
+(defparameter *fnps-reserved-pair* (cons (list :pgs-commit 0 0 0 0 0) nil))
+
+(defun fnps-open-root (dir root pages-fd)
+  (if (and (string= root "main") (fnps-inline-p dir))
+      pages-fd
+    (fnps-open-file (fnps-root-path dir root))))
 
 (defun fnps-read-slots (root-fd)
   ;; Both slots into pgs-m[0, 1024); returns (r0 v0 r1 v1).
@@ -322,7 +230,7 @@
   ;; Read the commit, the table, bulk-read the resident image, verify.
   ;; Returns the handle, or nil when no commit opens (refusals emitted).
   (let* ((pages-fd (fnps-open-file (fnps-pages-path dir)))
-         (root-fd (fnps-open-file (fnps-root-path dir root)))
+         (root-fd (fnps-open-root dir root pages-fd))
          (t-commit 0) (t-table 0) (t-bulk 0) (t-verify 0) (t-other 0) (calls 0)
          (lazy (eq mode :lazy))
          slots refusals landed ptab rec)
@@ -347,7 +255,8 @@
        (when emit
          (fnps-emit :event :open :mode mode :landed nil
                     :refusals (mapcar #'fnps-refusal-string refusals)))
-       (sb-unix:unix-close pages-fd) (sb-unix:unix-close root-fd)
+       (sb-unix:unix-close pages-fd)
+       (unless (eql root-fd pages-fd) (sb-unix:unix-close root-fd))
        nil)
       (t
        (let ((sv (vector nil nil))
@@ -393,6 +302,13 @@
                          (declare (ignore tv))
                          (push (cons (car rv) pt) pairs)))))
               (sb-unix:unix-close fd))))))
+    (when (fnps-inline-p (fnps-dir s))
+      (push *fnps-reserved-pair* pairs)
+      (unless (string= (fnps-root s) "main")
+        (destructuring-bind (r0 v0 r1 v1) (fnps-read-slots (fnps-pages-fd s))
+          (dolist (rv (list (cons r0 v0) (cons r1 v1)))
+            (when (cdr rv)
+              (push (cons (car rv) (fnps-read-table (fnps-pages-fd s) (car rv))) pairs))))))
     ;; fnps-read-slots/read-table clobbered pgs-m: restore our slots' words
     ;; is not needed (commit rewrites its target slot) but the table region
     ;; is reloaded by the caller when needed.
@@ -455,7 +371,8 @@
                 (fnps-write-to-file (fnps-root-fd s) (* k2 4096) (fnps-m) base 20)))
             (fnps-at :record-written)
             (fnps-timed t-sync2
-              (when (= fsyncs 1) (fnps-datasync pfd))
+              (when (and (= fsyncs 1) (not (eql pfd (fnps-root-fd s))))
+                (fnps-datasync pfd))
               (fnps-datasync (fnps-root-fd s)))
             (fnps-at :record-synced)
             (pgs-x-clear-dirty dirty (fnps-mem))
@@ -536,11 +453,25 @@
     (fnps-fullsync fd)
     fd))
 
-(defun fnps-init (dir n)
+(defun fnps-init (dir n &optional inline)
   (ensure-directories-exist (concatenate 'string dir "/"))
+  (when inline
+    (with-open-file (o (concatenate 'string dir "/inline") :direction :output
+                       :if-exists :supersede)
+      (write-line "root main: slots in page 0 of the page file" o))
+    ;; The marker decides the layout at open: it is durable before any page.
+    (let ((fd (fnps-open-file (concatenate 'string dir "/inline"))))
+      (fnps-fullsync fd)
+      (sb-unix:unix-close fd)))
   (let* ((t-syn 0)
          (pfd (fnps-open-file (fnps-pages-path dir) :create t))
-         (rfd (fnps-write-zero-root (fnps-root-path dir "main")))
+         (rfd (if inline
+                  (let ((z (make-array +fnps-page-bytes+ :element-type '(unsigned-byte 8)
+                                                         :initial-element 0)))
+                    (fnps-write-to-file pfd 0 z 0 +fnps-page-bytes+)
+                    (fnps-datasync pfd)
+                    pfd)
+                (fnps-write-zero-root (fnps-root-path dir "main"))))
          (npages (fnps-timed t-syn (fnps-synthesize n (fnps-rand #xffffffff))))
          (s (make-fnps :dir dir :root "main" :pages-fd pfd :root-fd rfd :k nil
                        :slots (vector nil nil)
@@ -666,7 +597,7 @@
   ;; Flip one octet of LPAGE's page under ROOT's newest valid record
   ;; (run twice to restore); prints the page's phys and writer txid.
   (let* ((pfd (fnps-open-file (fnps-pages-path dir)))
-         (rfd (fnps-open-file (fnps-root-path dir root))))
+         (rfd (fnps-open-root dir root pfd)))
     (destructuring-bind (r0 v0 r1 v1) (fnps-read-slots rfd)
       (let* ((k (car (pgs-open-order r0 v0 r1 v1)))
              (rec (if (= k 0) r0 r1))
@@ -679,7 +610,8 @@
         (fnps-datasync pfd)
         (fnps-emit :event :damage :lpage lpage :phys (first e) :entry-txid (second e)
                    :record-txid (pgs-rec-txid rec))))
-    (sb-unix:unix-close pfd) (sb-unix:unix-close rfd)))
+    (sb-unix:unix-close pfd)
+    (unless (eql rfd pfd) (sb-unix:unix-close rfd))))
 
 (defun fnps-cmd-cut-names ()
   (fnps-emit :event :cut-names :cuts (fnps-cut-names)))
@@ -692,7 +624,8 @@
   (let ((cmd (first args)) (a (rest args)))
     (handler-case
         (cond
-          ((string= cmd "init") (fnps-close (fnps-init (first a) (parse-integer (second a)))))
+          ((string= cmd "init") (fnps-close (fnps-init (first a) (parse-integer (second a))
+                                                       (equal (third a) "inline"))))
           ((string= cmd "open")
            (fnps-cmd-open (first a) (second a) (intern (string-upcase (third a)) "KEYWORD")
                           :touch (and (fourth a) (parse-integer (fourth a)))))
