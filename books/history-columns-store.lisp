@@ -1,5 +1,5 @@
 ; fn: the history stobj kept equal to the store's history across the owner
-; (lane history-columns, stage 2a, 2026-09-27; PRF-295).
+; (lane history-columns, stage 2a, 2026-09-27; PRF-301).
 ;
 ; books/history-columns.lisp is the stobj; this book is the relation the
 ; host maintains between it and the owner it holds:
