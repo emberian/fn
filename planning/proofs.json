@@ -533,12 +533,11 @@
         "tests/test_native_checkpoint.py",
         "books/byte-store-compaction-correspondence.lisp",
         "tests/acl2/byte-store-compaction-correspondence-tests.lisp",
-        "tests/test_native_compaction_crash_map.py",
         "planning/evidence/compaction-plan-guards-2026-09-21.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T092212Z-1110255.json"
       ],
-      "progress_note": "The implemented physical tranche retains exact canonical event bytes in one immutable selected pack, validates every surviving covered record, accepts only missing files within the covered prefix, requires a contiguous uncovered suffix, and resumes exact prefix unlink under the writer lease. fn-cc-partial-deletion-preserves-exact-history covers arbitrary missing subsets of that prefix under summary, suffix and exact-observation hypotheses; its test has a non-degenerate middle deletion and one must-fail event per hypothesis. The aggregate parser refuses above 4 MiB before header parsing and its focused test round-trips a valid pack larger than the generic 65538-octet CBOR input cap. Selected namespace and exact-overlap helper guards are verified; guard closure of the actual framed coverage/observation caller remains open on the shared unverified Store-event decoder chain. The definition-unfolding prefix-plus-suffix equality is deliberately not a registry event. One pack is limited to 4096 events and 4 MiB, so this exact-history representation cannot compact arbitrarily large stores. Open: a general crash correspondence theorem, active-reader coordination, protected article-object closure, filesystem qualification, and integrated native-image execution. The byte crash correspondence now transcribes the actual native reclaim plan as repeated transaction-directory unlinks with a post-unlink cut and a closing directory fence with a post-barrier cut. Executable witnesses show arbitrary covered-name survival before the fence, no restoration after it, exact suffix retention, and conflict refusal. The native caller now invokes the logical plan subject directly; recovery continues through fn-store-checkpoint-compaction-observe. Source mapping and model witnesses are not integrated native-image evidence; source-matched process-death execution and filesystem qualification remain open. The actual reclaim planner now uses total nested-pair accessors and has explicit guard events, with source-LD evidence and malformed-input witnesses. The modeled crash examples execute the actual planner through a test helper; no hand-written substitute program supplies their run. These source checks do not certify the complete dependency closure or establish general suffix preservation under all physical crashes. No event yet; T12d (009 stays v1). The scoped ACL2 pack-retirement book proves the selected generation survives every modeled issued-unlink cut under plan-prefix and selected-membership premises, and that a valid gap-aware next generation exceeds the selected name when not exhausted. Its test book supplies a multi-generation deletion witness and counterexamples to the keystone premises. The native caller uses the proved plan under the exclusive Store lock, with one cut after each unlink and one after the packs-directory barrier; an empty plan returns without a cut. The follow-up count theorems state that surviving unlinks reduce bounded pack namespace occupancy, without authorizing retained-history or article-object deletion. Native image execution and syscall/power-loss correspondence remain open."
+      "progress_note": "The implemented physical tranche retains exact canonical event bytes in one immutable selected pack, validates every surviving covered record, accepts only missing files within the covered prefix, requires a contiguous uncovered suffix, and resumes exact prefix unlink under the writer lease. fn-cc-partial-deletion-preserves-exact-history covers arbitrary missing subsets of that prefix under summary, suffix and exact-observation hypotheses; its test has a non-degenerate middle deletion and one must-fail event per hypothesis. The aggregate parser refuses above 4 MiB before header parsing and its focused test round-trips a valid pack larger than the generic 65538-octet CBOR input cap. Selected namespace and exact-overlap helper guards are verified; guard closure of the actual framed coverage/observation caller remains open on the shared unverified Store-event decoder chain. The definition-unfolding prefix-plus-suffix equality is deliberately not a registry event. One pack is limited to 4096 events and 4 MiB, so this exact-history representation cannot compact arbitrarily large stores. Open: a general crash correspondence theorem, active-reader coordination, protected article-object closure, filesystem qualification, and integrated native-image execution. The byte crash correspondence now transcribes the actual native reclaim plan as repeated transaction-directory unlinks with a post-unlink cut and a closing directory fence with a post-barrier cut. Executable witnesses show arbitrary covered-name survival before the fence, no restoration after it, exact suffix retention, and conflict refusal. The native caller now invokes the logical plan subject directly; recovery continues through fn-store-checkpoint-compaction-observe. Source mapping and model witnesses are not integrated native-image evidence; source-matched process-death execution and filesystem qualification remain open. The actual reclaim planner now uses total nested-pair accessors and has explicit guard events, with source-LD evidence and malformed-input witnesses. The modeled crash examples execute the actual planner through a test helper; no hand-written substitute program supplies their run. These source checks do not certify the complete dependency closure or establish general suffix preservation under all physical crashes. No event yet; T12d (009 stays v1). The scoped ACL2 pack-retirement book proves the selected generation survives every modeled issued-unlink cut under plan-prefix and selected-membership premises, and that a valid gap-aware next generation exceeds the selected name when not exhausted. Its test book supplies a multi-generation deletion witness and counterexamples to the keystone premises. The native caller uses the proved plan under the exclusive Store lock, with one cut after each unlink and one after the packs-directory barrier; an empty plan returns without a cut. The follow-up count theorems state that surviving unlinks reduce bounded pack namespace occupancy, without authorizing retained-history or article-object deletion. Native image execution and syscall/power-loss correspondence remain open. Lane log-recovery-2 (2026-09-27, PKT-838): tests/test_native_compaction_crash_map.py (the pack chain's cut map) was deleted with the packs; the log's compaction cuts are verify_log_segment_cut_map and tests.test_native_log_compaction."
     },
     {
       "id": "PRF-010",
@@ -3093,7 +3092,6 @@
         "tests/acl2/nntp-post-tests.lisp",
         "host/native/owner.lisp",
         "host/native/io.lisp",
-        "tests/campaign/native_nntp_post_probe.py",
         "planning/evidence/p2-wire-2026-09-24.md",
         "books/poster-bytes.lisp",
         "books/poster-bytes-invariants.lisp",
@@ -3116,7 +3114,8 @@
         "fn-own-consumed-completion-is-240-or-uncertain",
         "fn-post-outcome-store-refusal-kinds-are-distinct",
         "fn-post-outcome-store-refusal-is-not-uncertain"
-      ]
+      ],
+      "progress_note": "Lane log-recovery-2 (2026-09-27, PKT-838): tests/campaign/native_nntp_post_probe.py (the per-file POST cuts at the wire) was deleted with the per-file layout; tests.test_native_commit_log's test_every_post_log_cut_is_old_or_new_and_the_node_goes_on checks each served log cut at the wire."
     },
     {
       "id": "PRF-071",
@@ -3374,7 +3373,7 @@
       "assumptions": [
         "A-DURABILITY"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "host/native/io.lisp",
         "host/native/owner.lisp",
@@ -3384,8 +3383,7 @@
         "planning/evidence/marker-required-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Retired 2026-09-27 (lane log-recovery-2, PKT-838; design 2026-09-27 storage-log section 9 row 3): its subject was deleted with the per-file layout. A format-9 store has no committed-history marker (M := D: the log's last complete entry is the committed history, design section 3.4); fnn-mark-committed, fnn-check-history-marker, books/store-history-marker.lisp and books/store-history-required.lisp and their tests are gone, and every image refuses a format-8 store at the profile's open (books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name). What covers the property now: the log's scan and recovery (P-LOG-RECOVER, books/store-log-segments.lisp, PRF-270) -- a lost acknowledged record cannot exist because the acknowledgement follows the batch's barrier. Before: Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s; at 72d40647, run-20260924T232158Z-fa11, manifest certify-20260924T232218Z-1792716, book 2.6 s, tests 2.3 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
-      "events": []
+      "progress_note": "Retired 2026-09-27 (lane log-recovery-2, PKT-838; design 2026-09-27 storage-log section 9 row 3): its subject was deleted with the per-file layout. A format-9 store has no committed-history marker (M := D: the log's last complete entry is the committed history, design section 3.4); fnn-mark-committed, fnn-check-history-marker, books/store-history-marker.lisp and books/store-history-required.lisp and their tests are gone, and every image refuses a format-8 store at the profile's open (books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name). What covers the property now: the log's scan and recovery (P-LOG-RECOVER, books/store-log-segments.lisp, PRF-270) -- a lost acknowledged record cannot exist because the acknowledgement follows the batch's barrier. Before: Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s; at 72d40647, run-20260924T232158Z-fa11, manifest certify-20260924T232218Z-1792716, book 2.6 s, tests 2.3 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered."
     },
     {
       "id": "PRF-077",
@@ -6327,14 +6325,13 @@
       "assumptions": [
         "A-DURABILITY"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "planning/evidence/publish-program-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T102932Z-378295.json",
         "planning/evidence/manifests/certify-20260926T103516Z-444060.json"
       ],
-      "progress_note": "Retired 2026-09-27 (lane log-recovery-2, PKT-838; design section 9 row 3): the marker programs it compared (books/byte-store-marker-candidates.lisp, books/byte-store-marker-program.lisp, books/store-history-required.lisp) were deleted with the per-file layout; a format-9 store has no marker (M := D). Before: Lane publish-program (2026-09-26, dev 17ff24aa). Certified on persvati (ACL2 8.7 w25 acl2-literal, 2 jobs, 300 s): run-20260926T102908Z-0df7, manifest certify-20260926T102932Z-378295, the book passed and the test book failed on a wrong witness (one garble selector for an eleven-unit write: the fixture's unit is 4 octets); run-20260926T103449Z-fa4d, manifest certify-20260926T103516Z-444060, the repaired test book passed; no book over 10 s. Teeth: a reachable history (open, one acknowledged commit, the deferred commit) asserting every hypothesis and conclusion of the three theorems, beside the served step at the same point (invariant kept, the open refused); the live hypothesis removed (a state that is not live: the identity step, the invariant kept, K not below A, a marker behind the history caught up); the invariant removed as corrupted-state witnesses (a marker above the history: the deferred step lands on the invariant and the open at K refuses; a marker behind: caught up). The byte refutations are ground images on the K5 fixture (byte-store-k0-marker-tests' pair): admissible choices, the observation neither old nor new, the open's refusal by name, and the served program's image at the same cut for contrast. Not claimed: a general theorem over the unfenced program's crash images (the ground counterexample refutes the universal claims); any program of the served path changed; the sound sharing (PKT-441).",
-      "events": []
+      "progress_note": "Retired 2026-09-27 (lane log-recovery-2, PKT-838; design section 9 row 3): the marker programs it compared (books/byte-store-marker-candidates.lisp, books/byte-store-marker-program.lisp, books/store-history-required.lisp) were deleted with the per-file layout; a format-9 store has no marker (M := D). Before: Lane publish-program (2026-09-26, dev 17ff24aa). Certified on persvati (ACL2 8.7 w25 acl2-literal, 2 jobs, 300 s): run-20260926T102908Z-0df7, manifest certify-20260926T102932Z-378295, the book passed and the test book failed on a wrong witness (one garble selector for an eleven-unit write: the fixture's unit is 4 octets); run-20260926T103449Z-fa4d, manifest certify-20260926T103516Z-444060, the repaired test book passed; no book over 10 s. Teeth: a reachable history (open, one acknowledged commit, the deferred commit) asserting every hypothesis and conclusion of the three theorems, beside the served step at the same point (invariant kept, the open refused); the live hypothesis removed (a state that is not live: the identity step, the invariant kept, K not below A, a marker behind the history caught up); the invariant removed as corrupted-state witnesses (a marker above the history: the deferred step lands on the invariant and the open at K refuses; a marker behind: caught up). The byte refutations are ground images on the K5 fixture (byte-store-k0-marker-tests' pair): admissible choices, the observation neither old nor new, the open's refusal by name, and the served program's image at the same cut for contrast. Not claimed: a general theorem over the unfenced program's crash images (the ground counterexample refutes the universal claims); any program of the served path changed; the sound sharing (PKT-441)."
     },
     {
       "id": "PRF-172",
@@ -9929,7 +9926,12 @@
         "fn-lg-reserve-program-keeps-the-relation",
         "fn-lg-order-program-keeps-the-relation",
         "fn-lg-open-suffix-keeps-the-relation",
-        "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        "fn-lg-open-program-is-recover-then-the-suffix-by-definition",
+        "fn-lgob-duplicate-segment-fence-is-identity",
+        "fn-lgob-recovered-segment-fence-is-identity",
+        "fn-lgob-file-fence-keeps-entry-operations",
+        "fn-lgob-one-barrier-loses-a-rotated-segment",
+        "fn-lgob-journal-fence-keeps-the-rotated-segment"
       ]
     },
     {

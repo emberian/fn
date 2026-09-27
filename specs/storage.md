@@ -741,8 +741,7 @@ committed history, and an open that scans the segments
 every acknowledged record or refuses by name (`log-chain-broken`,
 `history-short-of-checkpoint`, `checkpoint-damaged`). There is no separate
 marker object, no marker program and no catch-up: the per-file layout's
-`committed-history.json`, `fnn-mark-committed`, `fnn-check-history-marker`,
-the marker books (`store-history-marker`, `store-history-required`,
+`committed-history.json`, its host writer and its open check, the marker books (`store-history-marker`, `store-history-required`,
 `byte-store-marker-program`, `byte-store-marker-candidates`, `byte-store-k0-marker`)
 and PRF-076 and PRF-169 were deleted with the per-file layout (lane
 log-recovery-2, PKT-838). A burned reservation leaves no entry, so it never
