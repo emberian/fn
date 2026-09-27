@@ -112,7 +112,7 @@
               fnn-usage-error fnn-refuse fnn-fault fnn-indeterminate fnn-exit-code-for
               *fnn-image-profile* *fnn-sigterm-owner-active* *fnn-sigterm-requested*
               *fnn-sigterm-wakeup-fd* *fnn-sighup-count* +fnn-gc-nursery-octets+
-              +fnn-gc-nursery-least-octets+ fnn-gc-nursery-octets
+              fnn-gc-nursery-octets
               fnn-developer-image-p fnn-dash-nil
               +fnn-developer-selectors+ fnn-developer-selector
               fnn-store-post-fault-argument fnn-developer-selector-refusal

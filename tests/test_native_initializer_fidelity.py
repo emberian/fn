@@ -216,13 +216,21 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # erase the staging evidence before the restart.
         self.assert_incomplete_then_completed_by_init(store)
 
-    def test_sigkill_after_frontier_publication_is_completed_by_init(self):
-        # Format 9: the per-file part of init is published, the segment is
-        # not yet created: incomplete until init runs again.
-        store = self.base / "killed-frontier"
-        killed = self.invoke(store, "init", "init-final-frontier-file-fenced:kill")
+    def test_sigkill_at_segment_created_is_completed_by_the_open(self):
+        # Format 9 has no allocator file (init-final-frontier-file-fenced is
+        # the per-file layout's cut).  A death just after the segment's
+        # create (before its extent of zeros and its fence) leaves an empty
+        # segment: the writable open completes it as it completes an
+        # interrupted rotation (fnn-log-complete-rotation) and recovers the
+        # store empty.
+        store = self.base / "killed-segment-created"
+        killed = self.invoke(store, "init", "init-segment-created:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
-        self.assert_incomplete_then_completed_by_init(store)
+        self.assertEqual((store / "journal" / "000001.log").stat().st_size, 0)
+        reopened = self.invoke(store, "recover")
+        self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
+        self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
+        self.assertGreater((store / "journal" / "000001.log").stat().st_size, 0)
 
     def test_sigkill_after_the_segment_recovers_in_a_new_process(self):
         # Lane log-2: init's last cut is the fenced segment; the store is

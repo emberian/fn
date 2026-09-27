@@ -3986,14 +3986,24 @@ presence of the two names is classified by fn-bs-imp-classify."
         (fnn-staged-publication
          "import" stage root-path
          ;; fn-sxp-import-plan's files, in its order.  The plan's profile is
-         ;; format 9 (fn-sxp-log-profile): the records go into the log
-         ;; below, not into transaction files.
-         (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values))
-                       (cons (fnn-frontier-path stage) frontier))
-                 (mapcar (lambda (config)
-                           (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
-                         configs)
-                 (unless logp
+         ;; format 9 (fn-sxp-log-profile): as a format-9 init stages its
+         ;; files (books/store-init-log-publication.lisp fn-bs-init-log-files:
+         ;; the profile, the configuration records, the segment's ACL2 extent
+         ;; of zeros; no allocator file, no transactions/), and the records go
+         ;; into the log below, not into transaction files.
+         (if logp
+             (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values)))
+                     (mapcar (lambda (config)
+                               (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
+                             configs)
+                     (list (cons (fnn-segment-path stage)
+                                 (fnn-make-octets
+                                  (fnn-nat (fnn-core 'fn-store-log-initial-extent))))))
+           (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values))
+                         (cons (fnn-frontier-path stage) frontier))
+                   (mapcar (lambda (config)
+                             (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
+                           configs)
                    (mapcar (lambda (record)
                              (cons (fnn-join (fnn-transactions stage)
                                              (fnn-transaction-name (car record)))
@@ -4003,13 +4013,16 @@ presence of the two names is classified by fn-bs-imp-classify."
          ;; The imported store is a new store on the filesystem ROOT is on
          ;; (its stage is ROOT's sibling): its record, under the import's
          ;; policy (fn-smid-init-policy: 1), before the ordinary open.  On
-         ;; format 9 the stage's segment is then written from the genesis
-         ;; (fnn-log-write-history) before that open admits it.
+         ;; format 9 the stage's segment (staged above) then receives the
+         ;; history from the genesis (fnn-log-write-history) before that open
+         ;; admits it.
          (lambda (stage)
            (fnn-record-filesystem-at-init stage request policy)
            (when logp
-             (fnn-log-init-segment stage)
-             (fnn-log-write-history stage values records))))
+             (fnn-log-write-history stage values records)))
+         (if logp
+             (fnn-core 'fn-bs-init-log-subdir-names)
+           '("transactions" "staging" "config")))
         (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
         +fnn-exit-ok+))))
 
@@ -5714,6 +5727,11 @@ an interrupted drop."
                                  (first log-position))))
             (unless (and (consp plan) (member (first plan) '(:scan :refused)))
               (fnn-fault "ACL2 returned a malformed log open plan"))
+            ;; No segment and no checkpoint: an init that did not finish
+            ;; (the segment is its last step); init again completes it.
+            (when (equal plan '(:refused :no-segment))
+              (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
+                         (fnn-journal-dir store)))
             (when (eq (first plan) :refused)
               (error 'fnn-store-open-refusal
                      :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"

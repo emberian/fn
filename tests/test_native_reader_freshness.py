@@ -38,7 +38,7 @@ import sys
 import tempfile
 import unittest
 
-from tests.native_process import stop_and_diagnostics, wait_for_announcement
+from tests.native_process import native_peer_add, stop_and_diagnostics, wait_for_announcement
 from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -206,13 +206,9 @@ class ReaderFreshnessProbe(unittest.TestCase):
         self.probe("another connection's POST", port, post, message_id)
 
     def test_a_peers_ihave(self):
-        configured = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(self.store),
-             "peer", "add", "source", "--path-identity", "source.invalid",
-             "--nntp", "127.0.0.1:9", "--inbound-groups", "fn.*",
-             "--source-address", "127.0.0.1"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
+        configured = native_peer_add(
+            IMAGE, self.store, ["source", "source.invalid", "127.0.0.1", "9", "fn.*", "-",
+                                "127.0.0.1", "true"], environment(), ROOT)
         self.assertEqual(configured.returncode, 0, configured.stderr.decode())
         port = self.start_owner()
         message_id = "<r1-ihave@example.invalid>"

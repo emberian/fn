@@ -134,7 +134,10 @@
 ;   (:scan SCAN DROP)  scan the indices SCAN in order (the last is the active
 ;                      segment) and unlink the covered indices DROP;
 ;   (:refused :history-short-of-checkpoint)  a segment from FIRST (or 1) to
-;                      the active one is missing, or none is present;
+;                      the active one is missing, or none is present while a
+;                      checkpoint names one;
+;   (:refused :no-segment)  none is present and no checkpoint names one: an
+;                      init that did not finish (the host faults naming it);
 ;   (:refused :checkpoint-damaged)  no checkpoint names a first segment and
 ;                      segment 1 is gone: the history below the remaining
 ;                      segments is only in a checkpoint the open cannot use.
@@ -145,7 +148,13 @@
                                                             fn-lgs-max-index)))))
   (let* ((present (fn-lgs-indices names))
          (top (fn-lgs-max-index present 0)))
-    (cond ((atom present) (list :refused :history-short-of-checkpoint))
+    (cond ((atom present)
+           ; No segment at all: an init that did not finish (the segment is
+           ; init's last step) when no checkpoint names one, else history
+           ; short of the checkpoint.
+           (if (posp first)
+               (list :refused :history-short-of-checkpoint)
+             (list :refused :no-segment)))
           ((posp first)
            (if (and (<= first top) (fn-lgs-all-present (fn-lgs-range first top) present))
                (list :scan (fn-lgs-range first top) (fn-lgs-below present first))
