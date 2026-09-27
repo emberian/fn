@@ -38,6 +38,9 @@
 ; (fn-pcar-spc-prepare, fn-ccar-sn-finish): neither walks the history.
 (include-book "../books/owner-commit-carried")
 (include-book "../books/owner-prepare-carried")
+; fn-store-sn-prepare stages the interned row through the carried prepare
+; (fn-store-prepare-interned-carried-is-prepare-interned under fn-snt-relation).
+(include-book "../books/store-prepare-carried")
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
@@ -339,30 +342,45 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; -are-store-events, -keep-coordinates, -contexts-okp).  The open runs over the
 ; rows; alpha of the opened history is the decoded journal
 ; (fn-intern-events-materializes), which is what the byte-store relation
-; compares (books/byte-store-k0-recovery: fn-bs-recovered-rowsp).  The answer
-; is (mv nil KEYWORD fn-arena state).
-(defun fn-store-sn-recover (octet-records frontier config-octet-records fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+; compares (books/byte-store-k0-recovery: fn-bs-recovered-rowsp).  The
+; open's answer (fn-store-sn-recover-rows) is (mv nil KEYWORD state).
+; tools/run_store.py recover makes three calls: fn-store-sn-recover-records
+; decodes; the host clears the arena and calls the guard-verified
+; fn-intern-events itself (records nil 0: the open's keyring and generation);
+; fn-store-sn-recover-rows opens over the rows.  The native host
+; (host/native/io.lisp fnn-bridge-recover) sends the history in CHUNKS
+; (PKT-823; books/store-recover-stream.lisp): it clears the arena, then per
+; chunk calls fn-store-decode-records (fn-srs-decode) and the guard-verified
+; fn-srs-intern-step (the rows accumulated newest first), then fn-srs-rows and
+; fn-store-sn-recover-rows.  KEYSTONE fn-srs-steps-are-one-step-of-the-
+; concatenation: any chunking gives the rows and arena of one step over the
+; whole history, which fn-srs-one-step-is-the-intern-of-the-decode says is
+; the intern of the decoded history.  Neither :program entry calls an arena updater: one that
+; did would carry ACL2's invariant-risk, run through its *1* body (every
+; guard-verified callee re-checking its guard) and print a warning on
+; standard output (flip-L6-2 LANEDUMP).
+(defun fn-store-sn-recover-records (octet-records config-octet-records)
+  (declare (xargs :mode :program))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad)
             (null config-records))
-        (mv nil :fault fn-arena state)
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-          (fn-store-intern-records records fn-arena)
-          (if (equal rows :bad)
-              (mv nil :fault fn-arena state)
-            ; The full open is the empty capture extended over the whole
-            ; history, opened once (fn-store-sn-open-extended below).  It is
-            ; the full open fn-cpo-open-observed and the full replay
-            ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
-            ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
-            (mv-let (erp val state)
-              (fn-store-sn-open-extended
-               (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-               config-records frontier state)
-              (mv erp val fn-arena state))))))))
+        :bad
+      records)))
+
+(defun fn-store-sn-recover-rows (rows frontier config-octet-records state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal config-records :bad) (null config-records))
+        (value :fault)
+      ; The full open is the empty capture extended over the whole
+      ; history, opened once (fn-store-sn-open-extended below).  It is
+      ; the full open fn-cpo-open-observed and the full replay
+      ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
+      ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
+      (fn-store-sn-open-extended
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+       config-records frontier state))))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
@@ -490,7 +508,8 @@ reopen predicate, writer-lock observation and observed final namespace."
     0))
 
 ; The open from the decoded checkpoint and the suffix's octets.  It mirrors
-; fn-store-sn-recover line for line; the keystone
+; the full recover (fn-store-sn-recover-records, the intern,
+; fn-store-sn-recover-rows); the keystone
 ; fn-sn-recover-from-checkpoint-equals-full-recover is about the fn-sco-open
 ; call below.
 ; The suffix is interned on top of the arena the checkpoint's load left
@@ -897,6 +916,8 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; bytes through the arena (books/store-intern.lisp fn-store-existing-action,
 ; KEYSTONE fn-store-existing-action-is-the-verdict-over-alpha: D25's verdict
 ; over alpha of the acceptance articles), and the prepare is
+; fn-store-prepare-carried-next then the host's seal, which is
+; fn-store-prepare-interned-carried, which on a related store is
 ; fn-store-prepare-interned (KEYSTONES -is-intern-then-prepare,
 ; -refusal-keeps-the-arena, -acceptance-seals-one-payload): the row is
 ; interned at the arena's count and the payload sealed only when the store
@@ -930,21 +951,26 @@ reopen predicate, writer-lock observation and observed final namespace."
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
                           charge)))
-            ; Before the flip this called the carried prepare
-            ; fn-pcar-spc-prepare (books/owner-prepare-carried.lisp, equal to
-            ; fn-spc-prepare), whose record test is still the WIRE record's:
-            ; it refuses every row.  Until it is restated over rows the entry
-            ; calls fn-sn-prepare itself (through fn-store-prepare-interned),
-            ; whose fn-sf-next-lower folds the history per POST (the cost
-            ; bounds-p5 measured; named in the flip-L6 record).
+            ; The carried prepare (books/store-prepare-carried.lisp): the
+            ; row interned at the arena's count, staged by fn-pcar-spc-prepare;
+            ; no replay of the history.  The entry READS the arena only, so it
+            ; carries no invariant-risk and runs compiled; the answer
+            ; (:seal OCTETS) names the payload the host then seals with one
+            ; call of fn-arena-seal-list (host/native/io.lisp
+            ; fnn-bridge-prepare, tools/run_store.py prepare).  KEYSTONES
+            ; fn-store-prepare-interned-carried-is-next-then-seal (the two
+            ; calls are the carried entry) and
+            ; fn-store-prepare-interned-carried-is-prepare-interned (under
+            ; fn-snt-relation, books/store-intern.lisp's entry).
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
-              (mv-let (next fn-arena)
-                (fn-store-prepare-interned s record fn-arena)
+              (let ((next (fn-store-prepare-carried-next
+                           s record (fn-arena-count fn-arena))))
                 (if (equal next s)
                     (mv nil :refused fn-arena state)
                   (let ((state (f-put-global 'fn-store-sn next state)))
-                    (mv nil :prepared fn-arena state))))))))))))
+                    (mv nil (list :seal (fn-record-payload record))
+                        fn-arena state))))))))))))
 
 ; A semantic refusal consumes the already durable allocator reservation using
 ; the proved composition transition, which advances the same live node to the

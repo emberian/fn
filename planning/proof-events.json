@@ -2982,10 +2982,6 @@
           "kind": "theorem",
           "name": "fn-ncl-status-nonaccepted-reply-roundtrip",
           "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ncl-cli-after-retries-only-a-refused-register"
         }
       ]
     },
@@ -3658,6 +3654,22 @@
         {
           "kind": "theorem",
           "name": "fn-pbb-existing-action-is-pb-existing-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-append-back{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-get-word{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-append-word{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-word-octets-of-word-at"
         }
       ]
     },
@@ -9104,6 +9116,14 @@
         {
           "kind": "theorem",
           "name": "fn-cwait-step-over-is-step-unless-a-held-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-over-answers-the-poll-at-its-return-point"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-over-sleeps-only-over-empty-pages"
         }
       ]
     },
@@ -9576,6 +9596,14 @@
         {
           "kind": "theorem",
           "name": "fn-lz-run-extends-out"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-lits-words-is-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-match-bulk-is-copy-match"
         }
       ]
     },
@@ -9605,6 +9633,105 @@
         {
           "kind": "theorem",
           "name": "fn-spo-layout-fields-of-a-layout-frame"
+        }
+      ]
+    },
+    {
+      "id": "PRF-261",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-srs-steps-are-one-step-of-the-concatenation",
+          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-bridge-recover makes fn-srs-step's two calls per chunk (fn-store-decode-records = fn-srs-decode, then fn-srs-intern-step). Teeth: tests/acl2/store-recover-stream-tests.lisp (four chunkings of real records; a corrupted record; the dotted-chunk hypothesis removal)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-one-step-is-the-intern-of-the-decode",
+          "note": "The one step is the open's intern of the decoded history (fn-srs-rows, same arena)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-decode-of-append",
+          "note": "Supporting."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-intern-events-of-append",
+          "note": "Supporting."
+        }
+      ]
+    },
+    {
+      "id": "PRF-263",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-printed-reason-is-the-decisions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-request-decode-is-the-plain-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-framep-of-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-cli-after-retries-only-an-unbootstrapped-register"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-bind-refusal-refuses-exactly-an-unregistered-bind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-json-object-is-ascii"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-withdrawal-roundtrip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-withdrawal-report-fits-the-poll-reply"
+        }
+      ]
+    },
+    {
+      "id": "PRF-262",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-never-serves-withdrawn-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-delivers-a-withdrawing-cause"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-withdrawal-advances"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-of-a-withdrawal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-without-withdrawals-is-the-answer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-of-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
         }
       ]
     }

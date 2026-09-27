@@ -1054,7 +1054,7 @@ differences are deliberate:
   `fn-cnode-record-acceptablep` replay applies, against the live node's
   reservation total) and make it durable, with refused (1), uncertain (3)
   and accepted (0) distinct; `config` prints the generation, served table
-  and domain. At open, `fn-store-sn-recover` replays the configuration
+  and domain. At open, `fn-store-sn-recover-rows` replays the configuration
   history through `fn-cnode-config-replay` and the article history into a
   node whose domain and capacity come from the configured node; codes are
   positions in the domain, stable across retirement and revival.
