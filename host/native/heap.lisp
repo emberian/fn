@@ -18,8 +18,8 @@
 ;;;                     `--dynamic-space-size MB --control-stack-size KBKB'.
 ;;;
 ;;; `operator CONFIG status' and `health' print the same line after their
-;;; report; `operator CONFIG init' with a bare request resolves ACL2's
-;;; `fn-heap-reserve-init-request' against the observed machine.
+;;; report; `operator CONFIG init' asks ACL2's `fn-heap-init-decide' what to
+;;; write (fnn-heap-init-decision) and prints its line.
 
 (in-package "ACL2")
 
@@ -119,12 +119,29 @@ that)."
   (when (stringp root)
     (fnn-out "~a" (fnn-heap-report-line (fnn-heap-store-profile root)))))
 
+(defun fnn-heap-env-octets (name)
+  "NAME's value in the environment as octets for ACL2 to read (at most 32
+of them: a longer value is refused there as malformed), or NIL when unset."
+  (let ((value (sb-posix:getenv name)))
+    (and value
+         (map 'list (lambda (c) (min 255 (char-code c)))
+              (subseq value 0 (min 33 (length value)))))))
+
+(defun fnn-heap-init-decision (request)
+  "ACL2's decision for what `init' writes (books/heap-reservation.lisp
+fn-heap-init-decide, PKT-582 in gpt-6's wave-5 shape): the request, or for
+a capacity-free one the preset the budget holds (conservative unless
+FN_INIT_SIZING=largest), within the budget of the physical memory less the
+OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
+  (let ((observations (fnn-heap-observations)))
+    (fnn-core 'fn-heap-init-decide request (fnn-heap-core-octets)
+              +fnn-gc-nursery-octets+ (first observations) (rest observations)
+              (fnn-heap-env-octets "FN_INIT_BUDGET_MB")
+              (fnn-heap-env-octets "FN_INIT_SIZING"))))
+
 (defun fnn-heap-init-request (request)
-  "The request `init' resolves: for a bare request, ACL2's largest preset
-whose whole reservation this machine holds (books/heap-reservation.lisp
-fn-heap-reserve-init-request, PKT-582); any other request unchanged."
-  (fnn-core 'fn-heap-reserve-init-request request (fnn-heap-core-octets)
-            +fnn-gc-nursery-octets+ (fnn-heap-observations)))
+  "The request `init' writes, or NIL when ACL2 refuses it."
+  (fnn-core 'fn-heap-init-decision-request (fnn-heap-init-decision request)))
 
 ;; The profile the command ARGV will run under: the store its operator
 ;; configuration names (the init request's target for `init'), the store a

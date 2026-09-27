@@ -71,7 +71,7 @@ if [ "${FN_FREEZE_VARIANTS+x}" = x ]; then
   set -f
   for name in $FN_FREEZE_VARIANTS; do
     case $name in
-      fn-host|fn-host-developer|fn-host-dtn|fn-host-dtn-developer) ;;
+      fn-host|fn-host-developer|fn-host-dtn|fn-host-dtn-developer|fn-host-reference) ;;
       *) echo "freeze-native-image: unknown variant: $name" >&2; exit 2 ;;
     esac
     case " $variants " in
@@ -88,6 +88,10 @@ else
   if [ -e "$build/fn-host-dtn-developer" ] || [ -e "$build/fn-host-dtn-developer.core" ]; then
     variants="$variants fn-host-dtn-developer"
   fi
+  # The release's unstripped reference twin, when the build made it.
+  if [ -e "$build/fn-host-reference" ] || [ -e "$build/fn-host-reference.core" ]; then
+    variants="$variants fn-host-reference"
+  fi
 fi
 for name in $variants; do
   src=$build/$name
@@ -98,6 +102,8 @@ for name in $variants; do
   [ "$(sed -n '/^exec "/p' "$src" | wc -l | tr -d ' ')" = 1 ] || {
     echo "freeze-native-image: launcher invocation not unique: $name" >&2; exit 4; }
   cp -p "$src.core" "$out/$name.core"
+  # A stripped image's build-derived dependency set travels with it.
+  if [ -s "$src.world-deps" ]; then cp -p "$src.world-deps" "$out/$name.world-deps"; fi
   {
     echo '#!/bin/sh'
     echo '# fn frozen image launcher v2'

@@ -7004,11 +7004,19 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-reserve-init-request-is-accepted-where-small-is"
+          "name": "fn-heap-init-decide-fits-the-budget-and-the-machine"
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-reserve-init-request-takes-scale-when-it-fits"
+          "name": "fn-heap-init-decide-honors-the-operators-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-is-development-or-small"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-largest-takes-scale-when-it-fits"
         },
         {
           "kind": "theorem",

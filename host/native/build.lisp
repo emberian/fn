@@ -353,12 +353,17 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
-; The saved world: what execution reads, at its current value, and nothing the
-; prover, the undo stack or the history commands read (HST-017,
-; host/native/strip-world.lisp).  After the last event, before the save.
+; The saved world (HST-017, host/native/strip-world.lisp).  FN_NATIVE_WORLD
+; (tools/build_native_host.sh sets it: `stripped' for the production release,
+; `full' for the developer image and the production reference image, gpt-6's
+; wave-5 review s.4) selects it.  Stripped: what execution reads, at its
+; current value, and nothing the prover, the undo stack or the history
+; commands read, with the build-derived dependency set written beside the
+; image (IMAGE.world-deps).  Full: the certified session's world as loaded.
+; After the last event, before the save.
 (load "host/native/strip-world.lisp")
-(format t "~&FN_NATIVE_WORLD_STRIPPED triples=~d residue=~s~%"
-        (fnn-strip-world) (fnn-strip-build-residue))
+(fnn-save-world-flavor (sb-ext:posix-getenv "FN_NATIVE_WORLD")
+                       (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host"))
 (save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host")
            "fn native host"
            :return-from-lp '(fn-native-entry state)

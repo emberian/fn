@@ -57,7 +57,9 @@ path with ACL2_SYSTEM_BOOKS set.")
 
 (defun fnn-strip-world ()
   "Replace the installed world by its current kept triples (fnn-world-keep-p),
-over a new bottom that keeps the event and command indices valid for event 0."
+over a new bottom that keeps the event and command indices valid for event 0.
+Returns the new world's length, the kept (symbol . property) pairs and the
+omitted ones (a current value the rule dropped)."
   (let* ((state *the-live-state*)
          (key *current-acl2-world-key*)
          (pair (get 'current-acl2-world 'acl2-world-pair))
@@ -65,7 +67,7 @@ over a new bottom that keeps the event and command indices valid for event 0."
          (seen (make-hash-table :test 'eq))
          (syms nil)
          (event0 nil) (command0 nil) (project nil)
-         (triples nil))
+         (triples nil) (kept-keys nil) (omitted-keys nil))
     (unless (and pair (eq (car pair) wrld) (eq (cdr pair) key))
       (error "fnn-strip-world: the current world is not the installed one"))
     (dolist (trip wrld)
@@ -89,9 +91,14 @@ over a new bottom that keeps the event and command indices valid for event 0."
       (let ((kept nil))
         (dolist (entry (get s key))
           (let ((stack (cdr entry)))
+            (when (and (not (fnn-world-keep-p s (car entry)))
+                       (consp stack)
+                       (not (eq (car stack) *acl2-property-unbound*)))
+              (push (cons s (car entry)) omitted-keys))
             (when (and (fnn-world-keep-p s (car entry))
                        (consp stack)
                        (not (eq (car stack) *acl2-property-unbound*)))
+              (push (cons s (car entry)) kept-keys)
               ;; The value stack keeps its current value only: no retraction.
               (let ((doublet (list (car entry) (car stack))))
                 (push doublet kept)
@@ -132,7 +139,7 @@ over a new bottom that keeps the event and command indices valid for event 0."
     (f-put-global 'saved-output-reversed nil state)
     (setq *bad-wrld* nil)
     (sb-ext:gc :full t)
-    (length (w state))))
+    (values (length (w state)) kept-keys omitted-keys)))
 
 (defun fnn-strip-build-residue ()
   "What the build session leaves that no node reads (lane image-anatomy's
@@ -172,3 +179,65 @@ Returns the counts it printed."
         (setq *2max-memoize-fns* n)
         (sync-memoize-call-array)))
     (list channels discriminators)))
+
+;;; ---------------------------------------------------------------------------
+;;; The dependency set (gpt-6's wave-5 review s.4).  The stripped image keeps
+;;; exactly the (symbol . property) pairs the rule above selects from the
+;;; certified session's world; the build writes that set beside the image,
+;;; versioned, with the pairs the rule omitted, so that a qualification run
+;;; (host/native/world-deps-check.lisp) can trap a world read outside the set
+;;; and tell a property the full image never had (the default answer is the
+;;; full image's too) from one this strip removed (the answers differ).
+;;;
+;;;   fn-world-deps 1
+;;;   rule-properties P ...          *fnn-world-execution-properties*
+;;;   rule-pairs (S . P) ...         *fnn-world-read-pairs*
+;;;   kept N
+;;;   omitted M
+;;;   K S P                          N lines, sorted
+;;;   O S P                          M lines, sorted
+
+(defconstant +fnn-world-deps-version+ 1)
+
+(defmacro fnn-with-world-key-printing (&body body)
+  `(let ((*package* (find-package "ACL2")) (*print-pretty* nil)
+         (*print-readably* nil) (*print-case* :upcase) (*print-escape* t)
+         (*print-base* 10) (*print-radix* nil))
+     ,@body))
+
+(defun fnn-world-key-string (sym prop)
+  "The one printed form of a (symbol . property) pair the build writes and
+the check compares."
+  (fnn-with-world-key-printing (format nil "~s ~s" sym prop)))
+
+(defun fnn-write-world-deps (path kept omitted)
+  (let ((k (sort (mapcar (lambda (c) (fnn-world-key-string (car c) (cdr c))) kept)
+                 #'string<))
+        (o (sort (mapcar (lambda (c) (fnn-world-key-string (car c) (cdr c))) omitted)
+                 #'string<)))
+    (with-open-file (s path :direction :output :if-exists :supersede
+                            :external-format :utf-8)
+      (fnn-with-world-key-printing
+       (format s "fn-world-deps ~d~%" +fnn-world-deps-version+)
+       (format s "rule-properties~{ ~s~}~%" *fnn-world-execution-properties*)
+       (format s "rule-pairs~{ ~s~}~%" *fnn-world-read-pairs*)
+       (format s "kept ~d~%omitted ~d~%" (length k) (length o))
+       (dolist (line k) (format s "K ~a~%" line))
+       (dolist (line o) (format s "O ~a~%" line))))
+    (list (length k) (length o))))
+
+(defun fnn-save-world-flavor (flavor image)
+  "The world build.lisp saves: FLAVOR `full' keeps the certified session's
+world untouched (the developer and reference images); `stripped' (or unset)
+strips it and writes IMAGE.world-deps.  The marker line names which, and
+tools/build_native_host.sh checks it against the flavor it asked for."
+  (cond ((equal flavor "full")
+         (format t "~&FN_NATIVE_WORLD_FULL triples=~d~%" (length (w *the-live-state*))))
+        ((or (null flavor) (equal flavor "stripped"))
+         (multiple-value-bind (n kept omitted) (fnn-strip-world)
+           (let ((counts (fnn-write-world-deps (concatenate 'string image ".world-deps")
+                                               kept omitted))
+                 (residue (fnn-strip-build-residue)))
+             (format t "~&FN_NATIVE_WORLD_STRIPPED triples=~d residue=~s deps=~d kept ~d omitted~%"
+                     n residue (first counts) (second counts)))))
+        (t (error "FN_NATIVE_WORLD must be full or stripped: ~s" flavor))))

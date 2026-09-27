@@ -27,6 +27,28 @@ if [ "$BUILD" = host/native/build-dtn.lisp ]; then
       developer) DEFAULT_IMAGE=build/fn-host-dtn-developer ;;
     esac
 fi
+# The saved world (HST-017; gpt-6's wave-5 review s.4): the production
+# release is stripped (host/native/strip-world.lisp, with IMAGE.world-deps
+# beside it); the developer image is full.  FN_NATIVE_WORLD=full with the
+# production profile is the reference image (build/fn-host-reference), the
+# unstripped twin of the release that qualification compares it against;
+# FN_NATIVE_WORLD=stripped with the developer profile is its developer twin
+# (build/fn-host-developer-stripped), for the developer-only witnesses.
+case "$PROFILE" in
+  production) DEFAULT_WORLD=stripped ;;
+  developer) DEFAULT_WORLD=full ;;
+esac
+WORLD="${FN_NATIVE_WORLD:-$DEFAULT_WORLD}"
+case "$WORLD" in
+  stripped|full) ;;
+  *) echo "build_native_host: FN_NATIVE_WORLD must be stripped or full" >&2; exit 2 ;;
+esac
+if [ "$WORLD" != "$DEFAULT_WORLD" ] && [ "$BUILD" = host/native/build.lisp ]; then
+    case "$PROFILE" in
+      production) DEFAULT_IMAGE=build/fn-host-reference ;;
+      developer) DEFAULT_IMAGE=build/fn-host-developer-stripped ;;
+    esac
+fi
 IMAGE="${FN_NATIVE_IMAGE:-$DEFAULT_IMAGE}"
 # TLS is the system's libssl (OpenSSL 3.0+ or LibreSSL 3+; tls.lisp checks
 # every function it calls at build and at start).  FN_OPENSSL_PREFIX is
@@ -55,8 +77,8 @@ openssl_hint() {
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
-rm -f "$IMAGE" "$IMAGE.core"
-if ! FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" \
+rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps"
+if ! FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" FN_NATIVE_WORLD="$WORLD" \
      ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
      "$ACL2" < "$BUILD" > "$LOG" 2>&1; then
     echo "build_native_host: acl2 exited with status $?; see $LOG" >&2
@@ -73,13 +95,22 @@ if ! grep -q 'FN_NATIVE_BUILD_LOADED' "$LOG"; then
     echo "build_native_host: ready marker missing from $LOG" >&2
     exit 1
 fi
-# The saved world is the execution world (host/native/strip-world.lisp).
-if ! grep -q 'FN_NATIVE_WORLD_STRIPPED' "$LOG"; then
-    echo "build_native_host: world-strip marker missing from $LOG" >&2
+# The saved world is the one asked for (host/native/strip-world.lisp).
+if [ "$WORLD" = stripped ]; then
+    if ! grep -q 'FN_NATIVE_WORLD_STRIPPED' "$LOG"; then
+        echo "build_native_host: world-strip marker missing from $LOG" >&2
+        exit 1
+    fi
+    if ! head -1 "$IMAGE.world-deps" 2>/dev/null | grep -q '^fn-world-deps 1$'; then
+        echo "build_native_host: the stripped image has no dependency set $IMAGE.world-deps" >&2
+        exit 1
+    fi
+elif ! grep -q 'FN_NATIVE_WORLD_FULL' "$LOG"; then
+    echo "build_native_host: full-world marker missing from $LOG" >&2
     exit 1
 fi
 if [ ! -x "$IMAGE" ] || [ ! -s "$IMAGE.core" ]; then
     echo "build_native_host: save-exec produced no image; see $LOG" >&2
     exit 1
 fi
-echo "built $IMAGE profile=$PROFILE ($(du -h "$IMAGE.core" | cut -f1) core)"
+echo "built $IMAGE profile=$PROFILE world=$WORLD ($(du -h "$IMAGE.core" | cut -f1) core)"

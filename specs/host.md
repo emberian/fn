@@ -401,17 +401,28 @@ before anything runs (`refused machine-cannot-hold-threads reservation=MB MB
 machine=M MB`, exit 1), and the launcher passes `--control-stack-size KBKB`
 with the heap figure. The probe prints `heap=MB MB profile=WORD machine=M MB
 stack=KB KB threads=N`.
-`init` with a request that names no capacity field (a bare `init`, and every
-mission: they set only the article bound and groups per article over the
-default preset) writes the first of scale, development and the small preset
-(R raised to the article record the request needs), each with the request's
-own fields over it, whose whole reservation at the configuration's default
-max-connections this machine holds; else the small one, refused by name at
-start (`fn-heap-reserve-init-request`, PKT-582). Before, such a request kept
-the default preset's history bound, the codec's 1 TiB, whose list heap is
-73,402,949 MB: every machine refused the store `init` had made. Under 2 GiB
-the default mission (1 MiB articles) is still refused, by its thread stacks
-(60 x 21 MB), until the served path stops recursing per line.
+`init` sizes within an explicit process budget and prints its decision
+(`fn-heap-init-decide`, PKT-582; gpt-6's wave-5 review s.8): the budget is
+the least of the physical memory less the OS's share (a quarter, at least 512
+MiB: detected memory is not all the service's), each limit the process runs
+under (RLIMIT_DATA, RLIMIT_AS, every cgroup memory.max: systemd's MemoryMax,
+OpenBSD's login class) and the operator's `FN_INIT_BUDGET_MB`. A request that
+names no capacity field (a bare `init`, and every mission: they set only the
+article bound and groups per article) takes a conservative preset: development
+when the budget holds its whole reservation at the configuration's default
+max-connections, else the small preset (R raised to the article record the
+request needs); never scale. `FN_INIT_SIZING=largest` takes the first of
+scale, development and small the budget holds. The request's own fields are
+laid over the preset and never lowered. A request that names a capacity
+field or a preset (`--profile development|scale`) is written as named when
+the budget holds it. Otherwise init refuses by name and creates nothing:
+`refused init-budget-cannot-hold-profile profile=WORD sizing=MODE
+reservation=MB MB budget=MB MB`, exit 1. On acceptance it prints `init:
+profile=WORD sizing=conservative|largest|requested reservation=MB MB
+budget=MB MB`; the reservation is within the budget and so within the
+machine the run judges (`fn-heap-init-decide-fits-the-budget-and-the-machine`).
+Under 2 GiB the default mission (1 MiB articles) is refused by its thread
+stacks (60 x 21 MB) until the served path stops recursing per line.
 
 ### The served reader path
 

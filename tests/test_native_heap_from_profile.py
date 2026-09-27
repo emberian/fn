@@ -15,15 +15,21 @@ MemoryMax=2G`), which the host reads as the machine (the cgroup's
 memory.max).  It needs FN_NATIVE_HOST (the production image) and skips, by
 name, outside a limit of at most 2 GiB.
 
-* A fresh node: `init` with no profile word on a machine under 4 GiB writes
-  the small preset (`fn-heap-init-request'); `status' prints
-  `heap=N MB profile=small machine=2048 MB'.  The node starts under that
-  figure, takes 100 POSTs of 2 KiB, serves them (ARTICLE, OVER), publishes
-  one automatic checkpoint (K = 128: at 64), stops, reopens from the
-  checkpoint and serves them again.  Each run's VmHWM is printed.
-* The refusal: the development profile (figure 2,671 MB on the 69046a76
-  core) is refused by name at `init' and, for a store made without the
-  launcher, at `run' and `status'.
+* A fresh node: `init' with no profile word takes a conservative preset
+  within the budget and prints it (books/heap-reservation.lisp
+  fn-heap-init-decide): under 2 GiB `init: profile=small sizing=conservative
+  reservation=N MB budget=2048 MB'; `status' prints `heap=N MB profile=small
+  machine=2048 MB'.  The node starts under that figure, takes 100 POSTs of
+  2 KiB, serves them (ARTICLE, OVER), publishes one automatic checkpoint
+  (K = 128: at 64), stops, reopens from the checkpoint and serves them
+  again.  Each run's VmHWM is printed.
+* The refusal: `init --profile development' is refused by name at init
+  (`refused init-budget-cannot-hold-profile profile=development
+  sizing=requested ...'), nothing created; the same store made by the
+  developer image's own `store ROOT init' is refused at `run' and `status'.
+* FreshInitTests (also without a small limit): conservative sizing,
+  FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB, and the default mission
+  honored (runs) or refused by name (under 2 GiB).
 """
 import os
 import re
@@ -38,10 +44,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = os.environ.get("FN_NATIVE_HOST")
+DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 EXIT_OK, EXIT_REFUSED = 0, 1
 HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB$", re.M)
 REFUSED = re.compile(
     r"refused machine-cannot-hold-profile heap=(\d+) MB machine=(\d+) MB")
+# What `init' prints (books/heap-reservation.lisp fn-heap-init-report-line).
+INIT_LINE = re.compile(r"^init: profile=([a-z]+) sizing=([a-z]+) "
+                       r"reservation=(\d+) MB budget=(\d+) MB$", re.M)
+INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-z]+) "
+                          r"sizing=([a-z]+) reservation=(\d+) MB budget=(\d+) MB")
 
 
 def cgroup_limit():
@@ -105,16 +117,18 @@ class Harness:
                         'port = {}\n'.format(store, port), encoding="ascii")
         return path, port
 
-    def env(self):
+    def env(self, **extra):
         env = dict(os.environ)
         for name in list(env):
-            if name.startswith(("FN_NATIVE_", "FN_RUN_", "FN_TEST_", "SBCL_")):
+            if name.startswith(("FN_NATIVE_", "FN_RUN_", "FN_TEST_", "FN_INIT_",
+                                "SBCL_")):
                 env.pop(name)
+        env.update(extra)
         return env
 
-    def run_fn(self, *words, command=None):
+    def run_fn(self, *words, command=None, env=None):
         result = subprocess.run([*(command or [self.fn]), *map(str, words)],
-                                env=self.env(), stdout=subprocess.PIPE,
+                                env=self.env(**(env or {})), stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, timeout=600, check=False)
         print("NATIVE-HEAP", " ".join(map(str, words[1:3])), "->", result.returncode,
               text(result).strip().replace("\n", " | ")[-300:])
@@ -211,43 +225,87 @@ class Harness:
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to the production image")
 class FreshInitTests(Harness, unittest.TestCase):
-    """PKT-582: a bare `init' on this machine, whatever its memory, writes a
-    profile the launcher then runs (books/heap-reservation.lisp
-    fn-heap-reserve-init-request): run it under --mem 2G and under a limit
-    above the machine."""
+    """PKT-582 in gpt-6's wave-5 shape (books/heap-reservation.lisp
+    fn-heap-init-decide): a bare `init' takes a conservative preset within
+    the budget (the least of the physical memory less a quarter, at least
+    512 MiB, and every limit the process runs under) and prints it; the
+    launcher then runs that store.  Run under --mem 2G (small) and without a
+    small limit (development; never scale unless asked)."""
 
-    def test_a_bare_init_runs_on_this_machine(self):
+    def init_line(self, made):
+        found = INIT_LINE.search(made.stdout.decode())
+        self.assertIsNotNone(found, text(made))
+        word, sizing, reservation, budget = (found.group(1), found.group(2),
+                                             int(found.group(3)), int(found.group(4)))
+        self.assertLessEqual(reservation, budget)
+        if LIMIT:
+            self.assertLessEqual(budget, LIMIT // (1024 * 1024))
+        print("NATIVE-HEAP init profile={} sizing={} reservation={} MB budget={} MB"
+              .format(word, sizing, reservation, budget))
+        return word, sizing, reservation, budget
+
+    def test_a_bare_init_is_conservative_printed_and_runs(self):
         config, port = self.config("fresh")
         made = self.run_fn("operator", config, "init", "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
+        word, sizing, _, _ = self.init_line(made)
+        self.assertEqual(sizing, "conservative")
+        self.assertEqual(word, "small" if SMALL else "development")
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         heap = HEAP_LINE.search(status.stdout.decode())
         self.assertIsNotNone(heap, text(status))
-        self.assertIn(heap.group(2), ("small", "development", "scale"))
-        print("NATIVE-HEAP fresh-init profile={} figure={} MB machine={} MB".format(
-            heap.group(2), heap.group(1), heap.group(3)))
+        self.assertEqual(heap.group(2), word)
         ids = ["<fresh-{}@example.invalid>".format(n) for n in range(3)]
         self.start(config, port, self.tmp / "fresh.log")
         self.post(port, ids)
         self.stop()
 
-    def test_the_default_mission_inits_and_runs(self):
+    def test_largest_within_the_budget_on_request(self):
+        """FN_INIT_SIZING=largest takes the first of scale, development and
+        small the budget holds; an operator budget below the machine
+        (FN_INIT_BUDGET_MB=1500) takes small."""
+        config, _ = self.config("largest")
+        made = self.run_fn("operator", config, "init", "local.test",
+                           env={"FN_INIT_SIZING": "largest"})
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        word, sizing, _, budget = self.init_line(made)
+        self.assertEqual(sizing, "largest")
+        self.assertIn(word, ("small", "development", "scale"))
+        if SMALL:
+            self.assertEqual(word, "small")
+        config, _ = self.config("budget")
+        made = self.run_fn("operator", config, "init", "local.test",
+                           env={"FN_INIT_BUDGET_MB": "1500"})
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        word, _, _, budget = self.init_line(made)
+        self.assertEqual((word, budget), ("small", 1500))
+        config, _ = self.config("badbudget")
+        refused = self.run_fn("operator", config, "init", "local.test",
+                              env={"FN_INIT_BUDGET_MB": "lots"})
+        self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
+        self.assertIn("refused invalid-init-budget", text(refused))
+        self.assertFalse((self.tmp / "badbudget").exists())
+
+    def test_the_default_mission_is_honored_or_refused_by_name(self):
         """`[ops] mission = "small-community"' (1 MiB articles, 8 groups per
-        article over the default preset, whose H is the codec's 1 TiB) used
-        to resolve to a 73 TB figure and be refused everywhere.  Now its
-        capacity comes from the machine.  Under 2 GiB its thread stacks (60 x
-        21 MB for 1 MiB articles of empty lines, the served path's per-line
-        recursion) do not fit, and init is refused by name, exit 1."""
+        article) keeps its fields: without a small limit it inits (development
+        capacity) and runs; under 2 GiB its thread stacks (60 x 21 MB for 1
+        MiB articles of empty lines, the served path's per-line recursion)
+        do not fit, and init is refused by name, exit 1, with no store made."""
         config, port = self.config("mission")
         with open(config, "a", encoding="ascii") as f:
             f.write('[ops]\nmission = "small-community"\n')
         made = self.run_fn("operator", config, "init")
         if SMALL:
             self.assertEqual(made.returncode, EXIT_REFUSED, text(made))
-            self.assertIn("refused machine-cannot-hold-threads", text(made))
+            found = INIT_REFUSED.search(text(made))
+            self.assertIsNotNone(found, text(made))
+            self.assertGreater(int(found.group(3)), int(found.group(4)))
+            self.assertFalse((self.tmp / "mission").exists())
             return
         self.assertEqual(made.returncode, EXIT_OK, text(made))
+        self.init_line(made)
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         self.assertIn("max-article-octets=1048576", status.stdout.decode())
@@ -303,11 +361,17 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
         self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
-        self.assertRegex(text(refused), REFUSED)
+        found = INIT_REFUSED.search(text(refused))
+        self.assertIsNotNone(found, text(refused))
+        self.assertEqual(found.group(1, 2), ("development", "requested"))
         self.assertFalse((self.tmp / "development").exists())
-        # The same store made without the launcher (the image's own figure).
-        made = self.run_fn("operator", config, "init", "--profile", "development",
-                           "local.test", command=[IMAGE, "--fn"])
+        if not DEVELOPER:
+            self.skipTest("the run's refusal needs a store made without the budget: "
+                          "set FN_NATIVE_DEVELOPER_HOST")
+        # The same store made by the developer image's own init (no budget),
+        # as a store brought from a larger machine would be.
+        made = self.run_fn("store", self.tmp / "development", "init", "--profile",
+                           "development", "local.test", command=[DEVELOPER, "--fn"])
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         for verb in ("run", "status"):
             result = self.run_fn("operator", config, verb)

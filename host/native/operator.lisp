@@ -298,15 +298,22 @@ observation into the outcome and this function only carries it out."
                              result))))
               (unless (consp groups)
                 (fnn-fault "ACL2 accepted an init plan that names no group"))
-              ;; PKT-016: a bare request on a machine under 4 GiB is the small
-              ;; preset (books/heap-figure.lisp fn-heap-init-request).
-              (let* ((profile (fnn-heap-init-request
-                               (fnn-core
-                                'fn-native-operator-host-result-init-profile result)))
-                     (code (progn
-                             (unless (consp profile)
-                               (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                             (fnn-command-init root groups profile))))
+              ;; PKT-582: ACL2 decides what init writes within the budget and
+              ;; says so (books/heap-reservation.lisp fn-heap-init-decide);
+              ;; a refusal is printed by name and nothing is created.
+              (let* ((request (fnn-core
+                               'fn-native-operator-host-result-init-profile result))
+                     (decision (progn
+                                 (unless (consp request)
+                                   (fnn-fault "ACL2 accepted an init plan with no store profile"))
+                                 (fnn-heap-init-decision request)))
+                     (line (fnn-core 'fn-heap-init-report-line decision))
+                     (profile (fnn-core 'fn-heap-init-decision-request decision))
+                     (code (if (consp profile)
+                               (progn (fnn-out "~a" line)
+                                      (fnn-command-init root groups profile))
+                             (progn (fnn-err "fn: ~a" line)
+                                    (fnn-core 'fn-heap-init-exit-code decision)))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
                 code))))
