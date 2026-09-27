@@ -11425,7 +11425,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -11434,12 +11434,16 @@
         "host/native/mux.lisp",
         "host/native/owner.lisp",
         "host/owner-host.lisp",
+        "planning/evidence/log-leftovers-slow-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T213339Z-2663116.json",
+        "planning/evidence/manifests/certify-20260927T214735Z-2004671.json",
+        "planning/evidence/manifests/certify-20260927T221224Z-2278506.json",
         "planning/evidence/time-model-2-2026-09-27.md",
         "tests/acl2/owner-time-model-tests.lisp",
         "tests/acl2/peer-inbound-tests.lisp",
         "tests/test_native_slow_disk.py"
       ],
-      "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs). Lane log-leftovers (2026-09-27): REPL-admitted on hbox (books/owner-time-admission, tests/acl2/owner-time-model-tests, books/peer-inbound-invariants, tests/acl2/peer-inbound-tests); certification: see the lane's manifests.",
+      "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs). Lane log-leftovers (2026-09-27): REPL-admitted on hbox (books/owner-time-admission, tests/acl2/owner-time-model-tests, books/peer-inbound-invariants, tests/acl2/peer-inbound-tests); certified: hbox certify-20260927T213339Z-2663116, persvati certify-20260927T214735Z-2004671 and certify-20260927T221224Z-2278506; native slow_disk and peering OK at 265431a95 (planning/evidence/log-leftovers-slow-2026-09-27.md).",
       "events": [
         "fn-otm-read-span-while-shedding",
         "fn-otm-closed-posting-never-awaits-an-article",
