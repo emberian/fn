@@ -479,7 +479,25 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         --recorded' exactly as the store did: the same report and the same
         folded state.  Teeth: without the record `--recorded' is refused by
         name and rewrites nothing."""
-        base = self.copy(self.store, "rc-base")
+        # Its own small store: the mixed store's registered consumer lags the
+        # frontier, and a lagging consumer holds every article
+        # (books/store-reclaim-holders.lisp, the conservative reading).
+        base = self.base / "rc" / "store"
+        base.parent.mkdir(exist_ok=True)
+        config, port, _ = self.node_config(base, "rc-base")
+        self.run_native("operator", config, "init", "fn.test")
+        owner = self.start_owner(config)
+        try:
+            client = Nntp(port)
+            try:
+                for i in range(4):
+                    reply = client.post(article("<det-rc-{}@example.invalid>".format(i), "fn.test",
+                                                "rc {}".format(i), b"reclaimable\r\n" * (4 + i)))
+                    self.assertTrue(reply.startswith(b"240"), reply)
+            finally:
+                client.close()
+        finally:
+            self.stop_owner(owner)
         self.operator(base, "rc-base", "retention", "set", "released-by-all-holders")
         a, b, c = (self.copy(base, "rc-" + x) for x in "abc")
         before = set(os.listdir(b / "config"))

@@ -43,7 +43,10 @@ ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-durable",
 
 
 def segments(store: Path):
-    return sorted(p.name for p in (store / "journal").iterdir())
+    """The log's segments in journal/ (NNNNNN.log).  journal/ also holds the
+    owner's decision journal decisions.fnj (lane time-model-2, HST-028),
+    which is not a segment."""
+    return sorted(p.name for p in (store / "journal").iterdir() if p.name.endswith(".log"))
 
 
 
