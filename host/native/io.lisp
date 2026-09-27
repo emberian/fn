@@ -1093,7 +1093,7 @@ saved profile stays a fault."
   (fnn-nat (fnn-core 'fn-store-record-sequence (fnn-octet-list record))))
 (defun fnn-bridge-record-txid (record)
   (fnn-nat (fnn-core 'fn-store-record-txid (fnn-octet-list record))))
-(defun fnn-bridge-recover (records frontier config-records)
+(defun fnn-bridge-recover (records frontier config-records &optional positions)
   "Replay the configuration history and then the article history.
 
 The core replays `config-records' with the article records through
@@ -1112,19 +1112,32 @@ arena is cleared first and updated only by those direct calls, so no :program
 entry updates it (invariant-risk: flip-L6-2).  KEYSTONE
 fn-srs-steps-are-one-step-of-the-concatenation: every chunking gives the rows
 and arena one step over the whole history gives.  The host supplies octets,
-passes ACL2's values back unread, and decides nothing about them."
+passes ACL2's values back unread, and decides nothing about them.
+
+With POSITIONS (a format-9 log's full replay: per record, (FILE START N
+TRAILER) of its log entry, fnn-log-scan-segments), each chunk goes to
+`fn-arx-intern-step' (books/payload-extent.lisp) with its octets and
+positions: a record whose entry holds its payload is sealed as an EXTENT, no
+octets on the heap (PRF-281; KEYSTONE fn-arx-intern-step-refines: the same
+rows and arena as fn-srs-intern-step when each record's octets are its
+entry's durable octets, A-DURABLE-EXTENT)."
   (let ((configs (mapcar #'fnn-octet-list config-records))
         (arena (fnn-live-arena))
         (acc nil))
     (fnn-call 'fn-arena-clear arena)
     (loop while records do
-      (let ((chunk nil) (octets 0))
+      (let ((chunk nil) (places nil) (octets 0))
         (loop while (and records (not (fnn-core 'fn-srs-chunk-fullp octets))) do
           (let ((record (pop records)))
             (incf octets (length record))
+            (push (pop positions) places)
             (push (fnn-octet-list record) chunk)))
-        (let ((decoded (fnn-core 'fn-store-decode-records (nreverse chunk))))
-          (setq acc (first (fnn-call 'fn-srs-intern-step acc decoded arena))))
+        (let* ((chunk (nreverse chunk))
+               (decoded (fnn-core 'fn-store-decode-records chunk)))
+          (setq acc (first (if (some #'identity places)
+                               (fnn-call 'fn-arx-intern-step acc decoded chunk (nreverse places)
+                                         arena)
+                             (fnn-call 'fn-srs-intern-step acc decoded arena)))))
         (when (eq acc :bad)
           (return-from fnn-bridge-recover :fault))))
     (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
@@ -5403,10 +5416,11 @@ positive extent is kept: a re-run init completes, never truncates."
 (defun fnn-log-batch-reset (log)
   (setf (fnn-log-count log) 0 (fnn-log-octets log) 0))
 
-(defun fnn-recover-log-replay (store records config-records)
+(defun fnn-recover-log-replay (store records config-records &optional positions)
   "The replay the per-file open runs (fnn-recover-full-replay), over the
-log's records."
-  (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records)))
+log's records; POSITIONS (the scan's entry positions) seal extents."
+  (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records
+                                    positions)))
     (when (eq action :refused)
       (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
         (unless (stringp text)
@@ -5559,11 +5573,15 @@ the next open completes); it is a known failure of the checkpoint."
   "Scan the segments SCAN (indices, the last the active one) from GENESIS,
 the chain carried from each segment's kernel to the next (fn-lgk-last).
 The closed segments are read only; the active one is recovered (a writable
-open: P-LOG-RECOVER) or read.  Returns (values RECORDS LOG): every scanned
-record in order, and the active segment's log."
+open: P-LOG-RECOVER) or read.  Returns (values RECORDS LOG POSITIONS): every
+scanned record in order, the active segment's log, and per record its
+entry's (FILE START N TRAILER): FILE the extent realizer's id of the segment
+(host/native/extent.lisp: a read-only descriptor held for the process's
+life), the rest ACL2's (fn-arx-positions over the octets the scan read)."
   (let ((unit (fnn-store-log-unit))
         (max (fnn-store-log-max store))
-        (records nil))
+        (records nil)
+        (positions nil))
     (loop for (k . more) on scan do
       (let ((path (fnn-segment-path-at store k)))
         (if more
@@ -5577,9 +5595,11 @@ record in order, and the active segment's log."
                      (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
                        (error 'fnn-store-open-refusal
                               :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-                     (push (mapcar #'fnn-octets
-                                   (fnn-core 'fn-lgs-open-chain-records (list text) genesis unit max))
-                           records)
+                     (let ((these (mapcar #'fnn-octets
+                                          (fnn-core 'fn-lgs-open-chain-records (list text) genesis
+                                                    unit max))))
+                       (push these records)
+                       (push (fnn-extent-positions path text unit (length these)) positions))
                      (setq genesis (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)))
                 (fnn-close fd)))
           (progn
@@ -5588,10 +5608,15 @@ record in order, and the active segment's log."
                            (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis)
                          (fnn-log-open-read-only path unit max genesis))))
               (setf (fnn-log-index log) k)
-              (push (mapcar #'fnn-octets (fnn-core 'fn-lgk-committed (fnn-log-kernel log)))
-                    records)
+              (let ((these (mapcar #'fnn-octets (fnn-core 'fn-lgk-committed (fnn-log-kernel log)))))
+                (push these records)
+                (push (fnn-extent-positions path
+                                            (fnn-log-read-string (fnn-log-fd log) (fnn-log-extent log))
+                                            unit (length these))
+                      positions))
               (return-from fnn-log-scan-segments
-                (values (apply #'append (nreverse records)) log)))))))
+                (values (apply #'append (nreverse records)) log
+                        (apply #'append (nreverse positions)))))))))
     (fnn-fault "the log's open plan named no segment")))
 
 (defun fnn-recover-log-from-log-checkpoint (store config-records suffix)
@@ -5645,7 +5670,7 @@ an interrupted drop."
                      :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
                                       (second plan) (first log-position))))
             (setq drop (third plan))
-            (multiple-value-bind (scanned log)
+            (multiple-value-bind (scanned log positions)
                 (fnn-log-scan-segments store (second plan)
                                        (if log-position (second log-position) *fn-lg-genesis*))
               (fnn-log-batch-reset log)
@@ -5665,7 +5690,7 @@ an interrupted drop."
                       (if log-position
                           (fnn-recover-log-from-log-checkpoint store config-records scanned)
                         (or (fnn-recover-log-from-state-checkpoint store config-records scanned)
-                            (fnn-recover-log-replay store scanned config-records)))))))
+                            (fnn-recover-log-replay store scanned config-records positions)))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))

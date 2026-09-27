@@ -307,6 +307,8 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
+        (load "host/native/extent.lisp")
         ; Build-time entry profile.  tools/build_native_host.sh always supplies
         ; one of these two values.  It is serialized into the image: the
         ; restarted process cannot expose diagnostics by changing its

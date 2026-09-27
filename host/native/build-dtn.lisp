@@ -245,6 +245,8 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
+        (load "host/native/extent.lisp")
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)

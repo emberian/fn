@@ -460,26 +460,51 @@
 ; theorem of the arena's consumers through it; fn-arx-entry-ok-of-durable
 ; (books/payload-extent.lisp: a faithful read passes the trailer check).
 (encapsulate
-  (((fn-durable-octets * * *) => *)
+  (((fn-durable-octet * *) => *)
+   ((fn-durable-octets * * *) => *)
    ((fn-durable-realize-octet * * * * * * *) => *))
 
-  (local (defun fn-durable-zeros (n)
-           (if (zp n) nil (cons 0 (fn-durable-zeros (1- n))))))
+  (local (defun fn-durable-octet (file pos)
+           (declare (ignore file pos))
+           0))
 
   (local (defun fn-durable-octets (file off len)
-           (declare (ignore file off))
-           (fn-durable-zeros len)))
+           (if (zp len)
+               nil
+             (cons (fn-durable-octet file off)
+                   (fn-durable-octets file (+ 1 (nfix off)) (1- len))))))
 
   (local (defun fn-durable-realize-octet (file eoff elen poff plen trailer i)
            (declare (ignore eoff elen trailer))
            (nth i (fn-durable-octets file poff plen))))
 
-  (defthm fn-durable-octets-are-octets
-    (fn-cbor-octet-listp (fn-durable-octets file off len)))
+  (defthm fn-durable-octet-is-octet
+    (fn-cbor-octetp (fn-durable-octet file pos)))
 
-  (defthm fn-durable-octets-len
-    (equal (len (fn-durable-octets file off len)) (nfix len)))
+  ; The extent's octets are the file's octets at its positions, one by one:
+  ; two extents that overlap agree where they overlap.
+  (defthm fn-durable-octets-unfold
+    (equal (fn-durable-octets file off len)
+           (if (zp len)
+               nil
+             (cons (fn-durable-octet file off)
+                   (fn-durable-octets file (+ 1 (nfix off)) (1- len)))))
+    :rule-classes ((:definition :controller-alist ((fn-durable-octets nil nil t)))))
 
   (defthm fn-durable-realize-octet-is-durable
     (equal (fn-durable-realize-octet file eoff elen poff plen trailer i)
            (nth i (fn-durable-octets file poff plen)))))
+
+(local
+ (defun fn-durable-ind (off len)
+   (if (zp len) (list off) (fn-durable-ind (+ 1 (nfix off)) (1- len)))))
+
+(defthm fn-durable-octets-are-octets
+  (fn-cbor-octet-listp (fn-durable-octets file off len))
+  :hints (("Goal" :induct (fn-durable-ind off len))))
+
+(defthm fn-durable-octets-len
+  (equal (len (fn-durable-octets file off len)) (nfix len))
+  :hints (("Goal" :induct (fn-durable-ind off len))))
+
+(in-theory (disable fn-durable-octets-unfold))
