@@ -49,6 +49,11 @@
 ;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
 ;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
 (include-book "books/store-reclaim-buffer")
+;; The records flip: host/store-host.lisp includes books/store-intern (the
+;; intern at the entries), which names the payload arena `fn-arena'; the
+;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
+;; first include that introduces the generic, so it comes here.
+(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)

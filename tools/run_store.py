@@ -298,11 +298,24 @@ def read_prompt(proc, timeout=ACL2_CALL_BASE_SECONDS):
     raise StoreError("ACL2 prompt timeout")
 
 
+ARENA_RESULT_PREFIX = b"(NIL "
+ARENA_RESULT_SUFFIX = b" <fn-arena> <state>)"
+
+
 def acl2_result(output):
+    """The printed value of one bridge call.  An entry that seals into the
+    payload arena (the records flip: `fn-store-sn-recover`, `-prepare`,
+    `-recover-from-checkpoint`) returns (mv nil VALUE fn-arena state), which
+    ACL2 prints as `(NIL VALUE <fn-arena> <state>)`; its VALUE is the answer.
+    A non-nil error flag there is not unwrapped, so its parser refuses it."""
     data = output.strip()
     if not data.endswith(PROMPT):
         raise StoreError("unexpected ACL2 bridge result")
-    return data[:-len(PROMPT)].strip()
+    body = data[:-len(PROMPT)].strip()
+    if (body.upper().startswith(ARENA_RESULT_PREFIX)
+            and body.lower().endswith(ARENA_RESULT_SUFFIX)):
+        body = body[len(ARENA_RESULT_PREFIX):-len(ARENA_RESULT_SUFFIX)].strip()
+    return body
 
 
 def decimal_list(body):
@@ -531,7 +544,7 @@ class Acl2Store:
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
         config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
         form = ("(fn-store-sn-recover '" + literal + " " + str(frontier)
-                + " '" + config + " state)")
+                + " '" + config + " fn-arena state)")
         # Replay cost grows with the recovered history, so the bound does too.
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
@@ -634,17 +647,17 @@ class Acl2Store:
         form = "(fn-store-sn-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
-        form += " {} (fn-clock-observation {} {} 1000 {}) state)".format(
+        form += " {} (fn-clock-observation {} {} 1000 {}) fn-arena state)".format(
             charge, monotonic_ms, wall_ms, "t" if has_wall else "nil")
         return acl2_symbol(self.call(form))
 
     def existing_action(self, msgid, payload, group_codes):
         form = "(fn-store-sn-existing-action '" + self.literal(msgid)
-        form += " '" + self.literal(payload) + " '" + self.numeric_list(group_codes) + " state)"
+        form += " '" + self.literal(payload) + " '" + self.numeric_list(group_codes) + " fn-arena state)"
         return acl2_symbol(self.call(form))
 
     def pending_record(self):
-        return acl2_octets(self.call("(fn-store-sn-pending-octets state)"))
+        return acl2_octets(self.call("(fn-store-sn-pending-octets fn-arena state)"))
 
     def known_abort(self):
         return acl2_symbol(self.call("(fn-store-sn-known-abort state)"))
@@ -820,7 +833,7 @@ class Acl2Store:
         return acl2_nat(self.call("(fn-store-sn-reserved state)"))
 
     def lookup(self, msgid):
-        return acl2_octets(self.call("(fn-store-sn-lookup '" + self.literal(msgid) + " state)"))
+        return acl2_octets(self.call("(fn-store-sn-lookup '" + self.literal(msgid) + " fn-arena state)"))
 
     def lookup_found(self, msgid):
         return acl2_boolean(self.call("(fn-store-sn-lookup-foundp '" + self.literal(msgid) + " state)"))
