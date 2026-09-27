@@ -9446,18 +9446,18 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lg-segment-drop-preserves-the-open",
-          "note": "KEYSTONE T8. Host: host/native/io.lisp fnn-log-scan-segments calls fn-lgs-open-chain-records and fn-lgs-open-chain-last per closed segment; fnn-recover-log-from-log-checkpoint replays the checkpoint then that suffix. Teeth: tests/acl2/store-log-segments-tests.lisp."
+          "name": "fn-lgw-segment-drop-preserves-the-open",
+          "note": "KEYSTONE T8 over the streamed open. Host: host/native/io.lisp fnn-log-scan-segments streams each closed segment (fnn-log-stream-segment: fn-lgw-start GENESIS 1, fn-lgw-step per entry) and carries fn-lgc-last of its kernel to the next; fn-lgw-open-chain-records is that fold. fnn-recover-log-from-log-checkpoint replays the checkpoint then that suffix. Teeth: tests/acl2/store-log-segments-tests.lisp."
         },
         {
           "kind": "theorem",
-          "name": "fn-lgs-open-chain-records-of-append",
-          "note": "The host fold splits at any segment boundary."
+          "name": "fn-lgw-open-chain-is-the-chain",
+          "note": "The host's streamed fold is the model chain over the segments' octets."
         },
         {
           "kind": "theorem",
-          "name": "fn-lgs-open-chain-is-the-chain",
-          "note": "The host fold (fn-lg-open-kernel per segment string) is the model chain over the segments octets."
+          "name": "fn-lgw-segment-is-the-scan",
+          "note": "One segment's stream is the model's scan (by fn-lgw-run-is-the-open)."
         },
         {
           "kind": "theorem",

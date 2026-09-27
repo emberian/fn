@@ -49,7 +49,8 @@
 (defun fnn-command-compact (root)
   "`store compact'.  Format 9 (the record log): compaction is the
 checkpoint's rotation and the drop of the segments it covers (design
-2026-09-27 storage-log section 6; T8 fn-lg-segment-drop-preserves-the-open):
+2026-09-27 storage-log section 6; T8 books/store-log-stream.lisp
+fn-lgw-segment-drop-preserves-the-open):
 a state checkpoint is published at the history's end with the log rotated,
 then the covered segments are unlinked.  The open answers the history's
 count and keeps no records (PKT-823); the checkpoint is written from the

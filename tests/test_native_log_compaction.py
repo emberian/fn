@@ -1,6 +1,6 @@
 """Compaction over the record log, on the native images (lane log-recovery;
 planning/design-2026-09-27-storage-log.md sections 4 and 6; books/store-log-
-segments.lisp, T8 fn-lg-segment-drop-preserves-the-open).
+stream.lisp, T8 fn-lgw-segment-drop-preserves-the-open).
 
 A format-9 store's `store compact` publishes a state checkpoint with the log
 ROTATED (the active segment closed, the next created and fenced before the

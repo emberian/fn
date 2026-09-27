@@ -5785,9 +5785,9 @@ the next open completes); it is a known failure of the checkpoint."
 the chain carried from each segment's kernel to the next (fn-lgc-last), each
 record handed to SINK in order as it is read (fnn-log-stream-segment: one
 entry's octets at a time).  The closed segments are read only (the fold's step,
-books/store-log-segments.lisp fn-lgs-open-chain-records / -last over one
-segment, T8's subject: its records and last are the recovered kernel's, which
-the stream's are by fn-lgw-run-is-the-open); the active one is recovered (a
+books/store-log-stream.lisp fn-lgw-open-chain-records / -last over one
+segment, T8's subject, fn-lgw-segment-drop-preserves-the-open); the active one
+is recovered (a
 writable open: P-LOG-RECOVER) or read.  Returns the active segment's log.
 With PLACES (the full replay), each segment gets an extent realizer id
 (host/native/extent.lisp fnn-extent-register: a read-only descriptor held for
@@ -5819,9 +5819,9 @@ the process's life) and the stream binds each record's place for SINK
 
 (defun fnn-log-read-closed-segment (store k genesis unit max sink)
   "A closed segment K read only, one entry at a time (fnn-log-stream-segment;
-the fold's step of books/store-log-segments.lisp fn-lgs-open-chain-records /
--last over the one segment, T8's subject, which the stream's records and last
-are by fn-lgw-run-is-the-open), each record to SINK as ACL2's octet list, the
+the fold's step of books/store-log-stream.lisp fn-lgw-open-chain-records /
+-last over the one segment, T8's subject), each record to SINK as ACL2's octet
+list, the
 splice refused by name.  Answers the chain's last trailer, the next segment's
 genesis."
   (let* ((path (fnn-segment-path-at store k))
