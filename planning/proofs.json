@@ -958,7 +958,7 @@
         "fn-wm-match-codepoints-work-value",
         "fn-wm-match-codepoints-work-cost-bound",
         "fn-article-parse-work-value",
-        "fn-article-parse-work-input-bound",
+        "fn-article-parse-under-work-input-bound",
         "fn-article-parse-work-profile-bound",
         "fn-served-feed-steps-bounded-by-chunk-length",
         "fn-served-step-nntp-steps-is-bounded"
@@ -3669,7 +3669,11 @@
         "fn-cei-build-append",
         "fn-scc-decode-segments-of-segments",
         "fn-bs-scp-program-crash-is-old-or-new",
-        "fn-bs-read-ranges-concatenate"
+        "fn-bs-read-ranges-concatenate",
+        "fn-ock-one-publication-in-flight",
+        "fn-ock-publication-next-decides-by-the-rule",
+        "fn-ock-finish-binds-the-captured-prefix",
+        "fn-ock-fast-path-within-k-by-definition"
       ]
     },
     {
@@ -5343,7 +5347,7 @@
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
         "fn-arena-seal-new-handle",
-        "fn-arena-seal-buffer{correspondence}",
+        "fn-arena-bytes-seal-buffer{correspondence}",
         "fn-arn-store-corr-of-commit",
         "fn-arn-store-corr-of-open"
       ],
@@ -7670,7 +7674,12 @@
         "fn-sct-run-decode-of-run-segments",
         "fn-sct-decode-file-of-file-segments",
         "fn-ockp-run-writes-the-file",
-        "fn-ockp-run-is-the-remaining"
+        "fn-ockp-run-is-the-remaining",
+        "fn-ockp-encode-batch-ok-is-encodable",
+        "fn-ockp-step-preserves-statep",
+        "fn-ockp-step-preserves-encodable",
+        "fn-ockp-run-of-encodable-never-refuses-a-row",
+        "fn-ockp-setup-not-unencodable-never-refuses-a-row"
       ],
       "evidence": [
         "books/store-checkpoint-tables.lisp",
@@ -7766,7 +7775,25 @@
         "fn-nntp-archive-command-pinned-over-range-served",
         "fn-served-dispatch-over-range-served",
         "fn-served-step-over-range-carries-the-xref",
-        "fn-oag-listing-server-is-the-path-identity"
+        "fn-oag-listing-server-is-the-path-identity",
+        "fn-ipp-injected-octets-carry-the-parameters",
+        "fn-ipp-with-params-of-an-injection",
+        "fn-ipp-with-params-keeps-the-source",
+        "fn-ipp-params-of-a-login",
+        "fn-ipp-params-without-a-login",
+        "fn-ipp-params-are-a-parameter-run",
+        "fn-ipp-injected-octets-without-parameters",
+        "fn-ipp-addr-spec-has-no-quote-or-line-break",
+        "fn-pa-account-value-is-hex",
+        "fn-pa-account-value-depends-only-on-the-mac",
+        "fn-pa-account-value-determines-the-mac",
+        "fn-ipp-injected-octets-keep-the-d25-subject",
+        "fn-ipp-a-same-source-retry-is-the-same-article",
+        "fn-oii-stored-octets-keep-the-d25-subject",
+        "fn-ipp-an-injection-does-not-open-with-c",
+        "fn-ipp-same-articlep-of-two-injections",
+        "fn-ipp-path-agent-of-the-injected-octets",
+        "fn-ipp-an-injection-opens-with-p-or-i"
       ]
     },
     {
