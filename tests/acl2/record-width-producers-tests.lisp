@@ -7,6 +7,20 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *rwpt-obs* (fn-clock-observation 1 841000000000 0 t))
+; The POST entry the keystones name (records-flip): books/store-intern
+; fn-store-prepare-interned, the producer's wire record interned at the
+; arena's count and prepared, sealed only on acceptance; here over a fresh
+; arena.
+(defun rwpt-prepare-in (s w fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-store-prepare-interned s w fn-arena))
+(defun rwpt-prepare (s w)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (s2 fn-arena)
+      (rwpt-prepare-in s w fn-arena)
+      s2)))
+
 (defun rwpt-article (s charge)
   (fn-sn-article-record s *rwpt-obs* "<sn@example>" '(65 66) *sn-groups*
                         "sn-pin" "sn-content" "sn-release" charge))
@@ -20,7 +34,7 @@
  (let ((r (rwpt-article *sn-reserved* 2)))
    (and (fn-sn-statep *sn-reserved*)
         (fn-record-uint32p 2)
-        (not (equal (fn-sn-prepare *sn-reserved* r) *sn-reserved*))
+        (not (equal (rwpt-prepare *sn-reserved* r) *sn-reserved*))
         (not (fn-record-widep r))
         (equal (fn-record-sequence r) 0)
         (equal (fn-record-txid r) 0)
@@ -36,40 +50,41 @@
 (defconst *rwpt-big* (fn-sn-test-reserve (fn-sn-initial *sn-groups* (expt 2 65))))
 (assert-event
  (let ((r (rwpt-article *rwpt-big* 4294967295)))
-   (and (not (equal (fn-sn-prepare *rwpt-big* r) *rwpt-big*))
+   (and (not (equal (rwpt-prepare *rwpt-big* r) *rwpt-big*))
         (not (fn-record-widep r))
         (equal (fn-record-schema-octet r) 1))))
 (assert-event
  (let ((r (rwpt-article *rwpt-big* 4294967296)))
-   (and (not (equal (fn-sn-prepare *rwpt-big* r) *rwpt-big*))
+   (and (not (equal (rwpt-prepare *rwpt-big* r) *rwpt-big*))
         (not (fn-record-uint32p 4294967296))
         (fn-record-widep r)
         (equal (fn-record-schema-octet r) 2))))
 (assert-event
  (let ((r (rwpt-article *rwpt-big* 18446744073709551615)))
-   (and (not (equal (fn-sn-prepare *rwpt-big* r) *rwpt-big*))
+   (and (not (equal (rwpt-prepare *rwpt-big* r) *rwpt-big*))
         (fn-record-widep r))))
 (assert-event
  (let ((r (rwpt-article *rwpt-big* 18446744073709551616)))
    (and (not (fn-record-p r))
-        (equal (fn-sn-prepare *rwpt-big* r) *rwpt-big*))))
+        (equal (rwpt-prepare *rwpt-big* r) *rwpt-big*))))
 (must-fail
  (defthm rwpt-narrow-without-the-charge-hypothesis
-   (implies (not (equal (fn-sn-prepare
+   (implies (not (equal (mv-nth 0 (fn-store-prepare-interned
                          s (fn-sn-article-record s obs msgid payload groups
                                                  obligation-id subject
-                                                 evidence charge))
+                                                 evidence charge)
+                         fn-arena))
                         s))
             (not (fn-record-widep
                   (fn-sn-article-record s obs msgid payload groups
                                         obligation-id subject evidence
                                         charge))))
    :rule-classes nil
-   :hints (("Goal" :use ((:instance fn-sn-prepare-stages-u32-coordinates
-                                    (record (fn-sn-article-record
-                                             s obs msgid payload groups
-                                             obligation-id subject evidence
-                                             charge))))))))
+   :hints (("Goal" :use ((:instance fn-store-prepare-interned-stages-u32-coordinates
+                                    (w (fn-sn-article-record
+                                        s obs msgid payload groups
+                                        obligation-id subject evidence
+                                        charge))))))))
 ; Corrupted-state witness for the prepare hypothesis (not reachable: the
 ; allocator never counts 2^32 records): the reserved store with its identity
 ; counter set to 2^32.  The producer builds a wide record (sequence 2^32) at
@@ -83,7 +98,7 @@
         (fn-record-p r)
         (fn-record-widep r)
         (equal (fn-record-sequence r) 4294967296)
-        (equal (fn-sn-prepare *rwpt-corrupt* r) *rwpt-corrupt*))))
+        (equal (rwpt-prepare *rwpt-corrupt* r) *rwpt-corrupt*))))
 (must-fail
  (defthm rwpt-narrow-without-the-prepare-hypothesis
    (implies (fn-record-uint32p charge)
@@ -121,7 +136,7 @@
         (equal (fn-sbud-post-boundary *rwpt-scale* *rwpt-msgid-octets*
                                       (len '(65 66)) (len *sn-groups*) 2)
                :ok)
-        (not (equal (fn-sn-prepare *sn-reserved* r) *sn-reserved*))
+        (not (equal (rwpt-prepare *sn-reserved* r) *sn-reserved*))
         (equal (fn-bs-profile-max-record-octets *rwpt-scale*) 17138486)
         (<= (len (fn-record-encode r)) 17138486))))
 ; The boundary hypothesis: under a value that is not a profile the boundary
@@ -131,7 +146,7 @@
    (and (not (equal (fn-sbud-post-boundary '(1 2 3) *rwpt-msgid-octets*
                                             2 2 2)
                     :ok))
-        (not (equal (fn-sn-prepare *sn-reserved* r) *sn-reserved*))
+        (not (equal (rwpt-prepare *sn-reserved* r) *sn-reserved*))
         (< (fn-bs-profile-max-record-octets '(1 2 3))
            (len (fn-record-encode r))))))
 
@@ -161,7 +176,7 @@
 (assert-event
  (let ((r (rwpt-bpi-record *rwpt-bpi-store* 3)))
    (and (fn-bpi-policy-p (rwpt-bpi-policy 3))
-        (not (equal (fn-sn-prepare *rwpt-bpi-store* r) *rwpt-bpi-store*))
+        (not (equal (rwpt-prepare *rwpt-bpi-store* r) *rwpt-bpi-store*))
         (not (fn-record-widep r))
         (equal (fn-record-charge r) 3))))
 ; The policy hypothesis: a policy charging 2^32 is not `fn-bpi-policy-p',
@@ -169,7 +184,7 @@
 (assert-event
  (let ((r (rwpt-bpi-record *rwpt-bpi-store* 4294967296)))
    (and (not (fn-bpi-policy-p (rwpt-bpi-policy 4294967296)))
-        (not (equal (fn-sn-prepare *rwpt-bpi-store* r) *rwpt-bpi-store*))
+        (not (equal (rwpt-prepare *rwpt-bpi-store* r) *rwpt-bpi-store*))
         (fn-record-widep r))))
 ; The prepare hypothesis: the corrupted store (identity counter 2^32) builds
 ; a wide record under the admitted policy and the prepare refuses it.
@@ -177,7 +192,7 @@
 (assert-event
  (let ((r (rwpt-bpi-record *rwpt-bpi-corrupt* 3)))
    (and (fn-bpi-policy-p (rwpt-bpi-policy 3))
-        (equal (fn-sn-prepare *rwpt-bpi-corrupt* r) *rwpt-bpi-corrupt*)
+        (equal (rwpt-prepare *rwpt-bpi-corrupt* r) *rwpt-bpi-corrupt*)
         (fn-record-widep r))))
 
 ; ===========================================================================
@@ -240,13 +255,13 @@
 (assert-event
  (let ((r (rwpt-article *sn-reserved* 2)))
    (and (fn-record-uint32p 2)
-        (not (equal (fn-sn-prepare *sn-reserved* r) *sn-reserved*))
+        (not (equal (rwpt-prepare *sn-reserved* r) *sn-reserved*))
         (<= (len (fn-record-encode r))
             (fn-record-encoded-octets-ceiling 2 (len *sn-groups*))))))
 (assert-event
  (let ((r (rwpt-article *rwpt-big* 18446744073709551615)))
    (and (not (fn-record-uint32p 18446744073709551615))
-        (not (equal (fn-sn-prepare *rwpt-big* r) *rwpt-big*)))))
+        (not (equal (rwpt-prepare *rwpt-big* r) *rwpt-big*)))))
 (must-fail
  (defthm rwpt-within-ceiling-without-the-prepare-hypothesis
    (implies (fn-record-uint32p charge)
@@ -278,7 +293,7 @@
 (assert-event
  (let ((r (rwpt-bpi-record *rwpt-bpi-store* 3)))
    (and (fn-bpi-policy-p (rwpt-bpi-policy 3))
-        (not (equal (fn-sn-prepare *rwpt-bpi-store* r) *rwpt-bpi-store*))
+        (not (equal (rwpt-prepare *rwpt-bpi-store* r) *rwpt-bpi-store*))
         (<= (len (fn-record-encode r))
             (fn-record-encoded-octets-ceiling (len (fn-record-payload r))
                                               (len (fn-record-groups r)))))))

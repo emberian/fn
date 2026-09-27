@@ -43,7 +43,10 @@
 (assert-event (and (fn-held-p *cdt-h0*) (fn-held-p *cdt-h1*) (fn-held-p *cdt-cancel*)
                    (fn-delta-p (list :policy 1 0 2))
                    (fn-delta-p (list :withdraw 0 2))
-                   (fn-delta-p (list :redecide 1 (fn-hc-make :verified nil 3)))
+                   ; by specification: the flip types the context's verdict
+                   ; (fn-hc-verdictp): the verdict value, token :verified.
+                   (fn-delta-p (list :redecide 1 (fn-hc-make (fn-stx-make-verdict :verified nil 3)
+                                                             nil 3)))
                    (fn-delta-p (list :withdraw-pending "<z@x>" 5))
                    (fn-delta-p (fn-delta-of-row 0 *cdt-h0*))
                    (not (fn-delta-p (list :policy 1 2 0)))
