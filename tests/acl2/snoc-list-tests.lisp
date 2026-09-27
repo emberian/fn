@@ -85,3 +85,15 @@
                                              nil nil (fn-sf-successes-field *sf-noncanon*) 5)
                           (fn-sf-make :ready 0 nil (fn-sf-records *sf-noncanon*)
                                       nil nil (fn-sf-successes *sf-noncanon*) 5))))
+
+; fn-sl-nth-is-nth is unconditional (audit packet G3-7, lane audit-fixes):
+; the (natp i) hypothesis was dropped by proving the weakened theorem.  The
+; non-natural indices it used to exclude, evaluated on both forms.
+; fn-sl-nth's guard asks natp, so the ground facts are stated as a theorem
+; the prover evaluates (no guard checking in proofs).
+(defthm sl-t-nth-at-non-naturals
+  (and (equal (fn-sl-nth 1/2 '(:snoc 3 c b a)) (nth 1/2 (fn-sl-list '(:snoc 3 c b a))))
+       (equal (fn-sl-nth -1 '(:snoc 3 c b a)) (nth -1 (fn-sl-list '(:snoc 3 c b a))))
+       (equal (fn-sl-nth 'x '(:snoc 3 c b a)) 'a)
+       (equal (fn-sl-nth -1 '(a b c)) (nth -1 '(a b c))))
+  :rule-classes nil)
