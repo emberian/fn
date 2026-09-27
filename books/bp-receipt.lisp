@@ -310,12 +310,131 @@
             (fn-bpr-article-records (cdr events)))
     nil))
 
+;;; The retained row a WIRE record names (records-flip).  The receiver is
+;;; handed the wire record -- the request journal persists it through the
+;;; record codec (books/bp-receipt-records.lisp fn-bprr-decode-value), and a
+;;; handle is no durable identity -- while the Store history retains held
+;;; rows whose payload is an arena handle.  A row stands for RECORD when its
+;;; wire form through the arena (`fn-row-wire-of') is RECORD.  Executed
+;;; without reading a non-matching row's bytes: the row's other fields are
+;;; compared with RECORD's first (RECORD's own payload in the payload
+;;; position), and only a row that matches them has its bytes read.
+(defun fn-bpr-row-stands-for (row record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe :logic (equal (fn-row-wire-of row fn-arena) record)
+       :exec (cond ((fn-held-p row)
+                    (and (equal (fn-held-wire row (fn-record-payload record)) record)
+                         (equal (fn-row-bytes row fn-arena) (fn-record-payload record))))
+                   ((fn-hstxa-p row) (equal (fn-hstxa-stxa row) record))
+                   (t (equal row record)))))
+
+(local (defthm fn-bpr-payload-of-held-wire
+  (equal (fn-record-payload (fn-held-wire h payload)) payload)
+  :hints (("Goal" :in-theory (enable fn-held-wire)))))
+
+(verify-guards fn-bpr-row-stands-for
+  :hints (("Goal" :in-theory (e/d (fn-row-wire-of) (fn-held-wire fn-row-bytes fn-held-p fn-record-payload)))))
+
+; Some row of ROWS stands for RECORD.
+(defun fn-bpr-rows-stand-for (record rows fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp rows)
+      (or (fn-bpr-row-stands-for (car rows) record fn-arena)
+          (fn-bpr-rows-stand-for record (cdr rows) fn-arena))
+    nil))
+
+; Its boundary theorem: membership in ALPHA of the rows.
+(defthm fn-bpr-rows-stand-for-is-member-of-alpha
+  (iff (fn-bpr-rows-stand-for record rows fn-arena)
+       (member-equal record (fn-rows-wire-of rows fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-rows-wire-of) (fn-row-wire-of)))))
+; Cited, not left to rewrite: the receiver books reason with the search.
+(in-theory (disable fn-bpr-rows-stand-for-is-member-of-alpha))
+
+;; The row standing for RECORD (the first), and the facts the receiver books
+;; reason with: a member row that stands for RECORD witnesses the search, the
+;; search survives a larger row list, and a held row's committed node article
+;; is RECORD's through the arena.
+(defun fn-bpr-row-standing-for (record rows fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp rows)
+      (if (fn-bpr-row-stands-for (car rows) record fn-arena)
+          (car rows)
+        (fn-bpr-row-standing-for record (cdr rows) fn-arena))
+    nil))
+
+(defthm fn-bpr-row-standing-for-witnesses
+  (implies (fn-bpr-rows-stand-for record rows fn-arena)
+           (and (member-equal (fn-bpr-row-standing-for record rows fn-arena) rows)
+                (fn-bpr-row-stands-for (fn-bpr-row-standing-for record rows fn-arena)
+                                       record fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-bpr-row-stands-for))))
+
+(defthm fn-bpr-rows-stand-for-of-member
+  (implies (and (member-equal row rows)
+                (fn-bpr-row-stands-for row record fn-arena))
+           (fn-bpr-rows-stand-for record rows fn-arena))
+  :hints (("Goal" :in-theory (disable fn-bpr-row-stands-for))))
+
+(defthm fn-bpr-rows-stand-for-of-subset
+  (implies (and (fn-bpr-rows-stand-for record rows1 fn-arena)
+                (subsetp-equal rows1 rows2))
+           (fn-bpr-rows-stand-for record rows2 fn-arena))
+  :hints (("Goal" :in-theory (disable fn-bpr-row-stands-for))))
+
+(local (defthm fn-bpr-payload-of-held-wire-2
+  (equal (fn-record-payload (fn-held-wire h payload)) payload)
+  :hints (("Goal" :in-theory (enable fn-held-wire)))))
+
+(defthm fn-bpr-accessors-of-held-wire
+  (and (equal (fn-record-msgid (fn-held-wire h payload)) (fn-record-msgid h))
+       (equal (fn-record-groups (fn-held-wire h payload)) (fn-record-groups h))
+       (equal (fn-record-content-subject (fn-held-wire h payload)) (fn-record-content-subject h))
+       (equal (fn-record-obligation-id (fn-held-wire h payload)) (fn-record-obligation-id h))
+       (equal (fn-record-txid (fn-held-wire h payload)) (fn-record-txid h)))
+  :hints (("Goal" :in-theory (enable fn-held-wire))))
+
+; A held row the node committed (its article's payload is the row's handle)
+; is committed as its wire form through the arena.
+(defthm fn-bpr-node-committed-row-is-wire-committed
+  (implies (and (fn-held-p row)
+                (fn-bpi-node-record-committedp node row))
+           (fn-bpi-node-wire-committedp node (fn-row-wire-of row fn-arena) fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-bpi-node-record-committedp fn-bpi-node-wire-committedp
+                                   fn-row-wire-of fn-row-bytes fn-handle-bytes)
+                                  (fn-held-p fn-find-article fn-node-find-binding fn-node-statep
+                                   fn-held-wire fn-record-msgid fn-record-groups fn-record-payload
+                                   fn-record-content-subject fn-record-obligation-id)))))
+
+(defthm fn-bpr-row-stands-for-held-accessors
+  (implies (and (fn-held-p row) (fn-bpr-row-stands-for row record fn-arena))
+           (and (equal (fn-record-msgid record) (fn-record-msgid row))
+                (equal (fn-record-groups record) (fn-record-groups row))
+                (equal (fn-record-content-subject record) (fn-record-content-subject row))
+                (equal (fn-record-obligation-id record) (fn-record-obligation-id row))
+                (equal (fn-record-txid record) (fn-record-txid row))
+                (equal (fn-record-payload record) (fn-row-bytes row fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-row-wire-of)
+                                  (fn-held-p fn-row-bytes fn-held-wire fn-record-msgid
+                                   fn-record-groups fn-record-payload fn-record-content-subject
+                                   fn-record-obligation-id fn-record-txid)))))
+
 ; The explicit A-POLICY value is trusted laboratory input.  Request wire fields
 ; are checked for exact contextual agreement but never authorize acceptance.
 ; A signed article is committed as a kind-4 composite, not as a plain record;
 ; its article record is a member of the history's article records, so the
 ; receiver binds it as it binds a plain one (PKT-247).
-(defun fn-bpr-store-record-acceptedp (store record)
+;
+; RECORD is a WIRE record; the history's article records are retained rows
+; and the node's article payloads are handles, so both are read through the
+; arena: a row of the history's article records stands for RECORD
+; (`fn-bpr-rows-stand-for'), and the node's article, its bytes read through
+; the arena, agrees with RECORD (`fn-bpi-node-wire-committedp').  The
+; receipt keystone fn-bpr-store-record-acceptedp-is-acceptance-over-alpha
+; (books/bp-receipt-alpha.lisp) says this is the pre-flip predicate over
+; ALPHA of the Store.
+(defun fn-bpr-store-record-acceptedp (store record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   ; Store file completion history is deliberately transient: recovery rebuilds
   ; the durable node from its published namespace and bindings.  Receiver
   ; context replay therefore grounds acceptance in that recovered durable
@@ -324,13 +443,14 @@
   ; issue a receiver receipt, even if its node still has a matching article.
   (and (fn-sn-statep store) (fn-record-p record)
        (equal (fn-sf-phase (fn-sn-files store)) :ready)
-       (member-equal record
-                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
-       (fn-bpi-node-record-committedp (fn-sn-node store) record)))
-(defun fn-bpr-request-acceptablep (store config record request policy-authorizedp)
+       (fn-bpr-rows-stand-for
+        record (fn-bpr-article-records (fn-sf-records (fn-sn-files store))) fn-arena)
+       (fn-bpi-node-wire-committedp (fn-sn-node store) record fn-arena)))
+(defun fn-bpr-request-acceptablep (store config record request policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (equal policy-authorizedp t) (fn-bpr-configp config)
        (fn-bpa-requestp request) (fn-record-p record)
-       (fn-bpr-store-record-acceptedp store record)
+       (fn-bpr-store-record-acceptedp store record fn-arena)
        (equal (fn-bpa-request-destination-eid request)
               (fn-bpr-config-destination config))
        (equal (fn-bpa-request-policy-id request)
@@ -360,18 +480,20 @@
 
 ; Result tags: :accepted, :duplicate, :conflict, :refused.  The context is
 ; retained only after actual Store durable acceptance and a local A-POLICY.
-(defun fn-bpr-accept-request (st store record request policy-authorizedp)
+(defun fn-bpr-accept-request (st store record request policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (and (fn-bpr-statep st) (not (consp (fn-bpr-state-pending st)))
                 (fn-bpr-request-acceptablep store (fn-bpr-state-config st)
-                                             record request policy-authorizedp)))
+                                             record request policy-authorizedp fn-arena)))
       (list :refused st)
     (fn-bpr-bind-request-context st record request)))
 
 (defun fn-bpr-projected-request-acceptablep
-    (store config record request stored-octets policy-authorizedp)
+    (store config record request stored-octets policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (equal policy-authorizedp t) (fn-bpr-configp config)
        (fn-bpa-requestp request) (fn-record-p record)
-       (fn-bpr-store-record-acceptedp store record)
+       (fn-bpr-store-record-acceptedp store record fn-arena)
        (equal (fn-bpa-request-destination-eid request)
               (fn-bpr-config-destination config))
        (equal (fn-bpa-request-policy-id request)
@@ -379,11 +501,12 @@
        (equal stored-octets (fn-record-payload record))))
 
 (defun fn-bpr-accept-projected-request
-    (st store record request stored-octets policy-authorizedp)
+    (st store record request stored-octets policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (and (fn-bpr-statep st) (not (consp (fn-bpr-state-pending st)))
                 (fn-bpr-projected-request-acceptablep
                  store (fn-bpr-state-config st) record request
-                 stored-octets policy-authorizedp)))
+                 stored-octets policy-authorizedp fn-arena)))
       (list :refused st)
     (fn-bpr-bind-request-context st record request)))
 
