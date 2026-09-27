@@ -691,7 +691,13 @@
                                fn-wire-begin-article-with-line-limit
                                fn-wire-article-line-limit
                                fn-scr-auth-step fn-post-offeredp
-                               fn-wire-begin-article-with-line-limit-preserves-fast-statep)
+                               fn-wire-begin-article-with-line-limit-preserves-fast-statep
+                               ;; the -is- equations open fn-scr-catalogp on
+                               ;; every auth arm (4.6 s -> 0.1 s without them)
+                               fn-scr-auth-step-is-scar-auth-step-pinned fn-scr-catalogp
+                               fn-gidx-pin-correspondencep fn-scat-article-idp-is-msgid-idp
+                               fn-nntp-article-idp-is-consp fn-nntp-index-msgid-okp-stringp
+                               fn-cp-id-length-bound)
            :use ((:instance fn-wire-begin-article-with-line-limit-preserves-fast-statep
                             (wire-state (fn-served-conn-wire conn))
                             (article-line-limit
@@ -726,13 +732,23 @@
                             (events (fn-wire-result-events
                                      (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))))))
 
+; The span's two inductions run in the definition and these two field
+; equations alone (served-catalog's enabled theory cost 6.9 s and 5.2 s).
+(local (defthm fn-scr-consumed-of-counted-make
+   (equal (fn-served-counted-consumed (fn-served-counted-make n r)) n)
+   :hints (("Goal" :in-theory (enable fn-served-counted-make fn-served-counted-consumed)))))
+
+(local (defthm fn-scr-result-of-counted-make
+   (equal (fn-served-counted-result (fn-served-counted-make n r)) r)
+   :hints (("Goal" :in-theory (enable fn-served-counted-make fn-served-counted-result)))))
+
 (defthm fn-scr-feed-span-consumed-is-natural
   (natp (fn-served-counted-consumed
          (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)))
   :rule-classes (:rewrite :type-prescription)
   :hints (("Goal" :induct (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)
-           :in-theory (e/d (fn-served-counted-make fn-served-counted-consumed)
-                           (fn-scr-feed-byte fn-wire-fast-statep)))))
+           :in-theory (union-theories '(fn-scr-feed-span fn-scr-consumed-of-counted-make natp)
+                                      (theory 'minimal-theory)))))
 
 (local
  (defthm fn-scr-span-feed-preserves-fast-statep
@@ -743,8 +759,10 @@
                (fn-served-counted-result
                 (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat))))))
    :hints (("Goal" :induct (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)
-            :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
-                            (fn-scr-feed-byte fn-wire-fast-statep))))))
+            :in-theory (union-theories '(fn-scr-feed-span fn-scr-result-of-counted-make
+                                         fn-served-result-conn-of-fn-served-make-result
+                                         fn-scr-feed-byte-preserves-fast-statep)
+                                       (theory 'minimal-theory))))))
 
 (verify-guards fn-scr-feed-span
   :hints (("Goal"

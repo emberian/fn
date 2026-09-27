@@ -144,14 +144,31 @@
         (make-list 16 :initial-element :common-lisp-compliant)))
 
 ;; (4) The keystone needs each hypothesis (as tests/acl2/served-span-tests.lisp
-;; states them for the carried read).
+;; states them for the carried read).  Each attempt runs in the keystone and
+;; the minimal theory, where the complete statement proves (the control
+;; below): what fails is the keystone's use without the hypothesis.
+(defthm scct-read-span-control
+  (implies (and (fn-ocl-relation oc)
+                (fn-scar-view-indexedp (fn-ocfg-owner oc))
+                (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                (natp i) (natp end))
+           (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+                  (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                      (theory 'minimal-theory)))))
+
 (must-fail
  (defthm scct-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp i) (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                       (theory 'minimal-theory))))))
 
 (must-fail
  (defthm scct-read-span-needs-view-indexedp
@@ -159,7 +176,10 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp i) (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                       (theory 'minimal-theory))))))
 
 (must-fail
  (defthm scct-read-span-needs-the-catalog-relation
@@ -167,7 +187,10 @@
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (natp i) (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                       (theory 'minimal-theory))))))
 
 (must-fail
  (defthm scct-read-span-needs-natp-start
@@ -176,7 +199,10 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp end))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                       (theory 'minimal-theory))))))
 
 (must-fail
  (defthm scct-read-span-needs-natp-end
@@ -185,4 +211,7 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp i))
             (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+                                       (theory 'minimal-theory))))))
