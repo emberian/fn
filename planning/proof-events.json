@@ -9431,6 +9431,18 @@
         {
           "kind": "theorem",
           "name": "fn-ocs-in-flight-until-completed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-first-when-not-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waiting-picks-someone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-other-pick-clears-lasti"
         }
       ]
     }

@@ -142,3 +142,26 @@
 (assert-event (equal (fn-ocs-inspect-delay (fn-ocs-init) *ocst-ws-late*) 3))
 (must-fail
  (assert-event (<= (fn-ocs-inspect-delay (fn-ocs-init) *ocst-ws-late*) 1)))
+
+; --- the keystone's per-pick subjects -------------------------------------------
+; fn-ocs-inspect-first-when-not-last: witness (an inspect waits, LASTI clear)
+; and its two hypotheses removed: LASTI set with a reader waiting picks the
+; reader; no inspect waiting picks the reader.
+(assert-event (and (fn-ocs-inspect-waits-p *ocst-readers-inspect*)
+                   (not (fn-ocs-lasti *ocst-s-done*))
+                   (equal (ocst-class *ocst-s-done* *ocst-readers-inspect*) :inspect)))
+(assert-event (and (fn-ocs-lasti *ocst-s-idle-lasti*)
+                   (not (equal (ocst-class *ocst-s-idle-lasti* *ocst-readers-inspect*) :inspect))))
+(assert-event (and (not (fn-ocs-inspect-waits-p *ocst-readers*))
+                   (not (equal (ocst-class *ocst-s-done* *ocst-readers*) :inspect))))
+; fn-ocs-inspect-waiting-picks-someone: witness in a batch with LASTI set and
+; no commit waiting (the inspect runs again); removed: nobody waits for
+; the owner in a batch but readers -- nobody is picked.
+(assert-event (and (fn-ocs-inspect-waits-p *ocst-inspect-only*)
+                   (equal (ocst-class *ocst-s-flight-lasti* *ocst-inspect-only*) :inspect)))
+(assert-event (null (ocst-class *ocst-s-flight-lasti* *ocst-readers*)))
+; fn-ocs-other-pick-clears-lasti: the commit's pick in a batch clears it; an
+; inspect pick sets it (the hypothesis "not :inspect" removed).
+(assert-event (and (equal (ocst-class *ocst-s-flight-lasti* *ocst-commit-inspect*) :commit)
+                   (not (fn-ocs-lasti (ocst-pick *ocst-s-flight-lasti* *ocst-commit-inspect*)))))
+(assert-event (fn-ocs-lasti (ocst-pick *ocst-s-flight* *ocst-inspect-only*)))

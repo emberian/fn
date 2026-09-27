@@ -330,27 +330,28 @@
                        (cdr ws))))))
     0))
 
-(local
- (defthm fn-ocs-inspect-first-when-not-last
+; The keystone's per-pick subjects, each about the function the gate calls
+; (fn-ocs-next): a waiting :inspect is picked unless the pick before was an
+; :inspect; with an :inspect waiting somebody is picked; any other pick
+; clears LASTI; and a commit event keeps it.
+(defthm fn-ocs-inspect-first-when-not-last
    (implies (and (fn-ocs-inspect-waits-p w) (not (fn-ocs-lasti s)))
             (equal (mv-nth 0 (fn-ocs-next s w)) :inspect))
    :hints (("Goal" :in-theory (disable fn-ocm-next fn-ocs-w4 fn-ocs-phase
-                                       fn-ocs-commit-waits-p)))))
+                                       fn-ocs-commit-waits-p))))
 
-(local
- (defthm fn-ocs-inspect-waiting-picks-someone
+(defthm fn-ocs-inspect-waiting-picks-someone
    (implies (fn-ocs-inspect-waits-p w)
             (mv-nth 0 (fn-ocs-next s w)))
    :hints (("Goal" :in-theory (disable fn-ocm-next fn-ocs-w4 fn-ocs-phase
-                                       fn-ocs-commit-waits-p)))))
+                                       fn-ocs-commit-waits-p))))
 
-(local
- (defthm fn-ocs-other-pick-clears-lasti
+(defthm fn-ocs-other-pick-clears-lasti
    (implies (and (mv-nth 0 (fn-ocs-next s w))
                  (not (equal (mv-nth 0 (fn-ocs-next s w)) :inspect)))
             (not (fn-ocs-lasti (mv-nth 1 (fn-ocs-next s w)))))
    :hints (("Goal" :in-theory (disable fn-ocm-next fn-ocs-w4 fn-ocs-phase
-                                       fn-ocs-inspect-waits-p fn-ocs-commit-waits-p)))))
+                                       fn-ocs-inspect-waits-p fn-ocs-commit-waits-p))))
 
 (local
  (defthm fn-ocs-after-keeps-lasti
