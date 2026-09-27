@@ -1674,6 +1674,18 @@
   :hints (("Goal" :in-theory (enable pgs-rec-valid)))
   :rule-classes :forward-chaining)
 
+(defthm pgs-open-two-slots
+  ; A root whose slots hold a record CUR that opens and a record SV that is
+  ; invalid or newer opens on SV when SV opens, else on CUR.
+  (implies (and (pgs-rec-valid cur) (equal (car (pgs-try cur p mode)) :ok)
+                (or (not (pgs-rec-valid sv)) (< (pgs-rec-txid cur) (pgs-rec-txid sv)))
+                (or (equal slots2 (cons cur sv)) (equal slots2 (cons sv cur))))
+           (equal (pgs-view (pgs-open-slots slots2 p mode))
+                  (if (and (pgs-rec-valid sv) (equal (car (pgs-try sv p mode)) :ok))
+                      (list (cadr (pgs-try sv p mode)) (caddr (pgs-try sv p mode)))
+                    (list (cadr (pgs-try cur p mode)) (caddr (pgs-try cur p mode))))))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-rec-valid pgs-rec-shape-p))))
+
 (defthm pgs-step-open-complete
   (let ((rec (pgs-srec cur pages dirty fresh tfresh rs txid))
         (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))
@@ -1681,11 +1693,13 @@
                   (or (equal slots2 (cons cur rec)) (equal slots2 (cons rec cur))))
              (equal (pgs-view (pgs-open-slots slots2 p1 mode))
                     (list txid (pgs-apply-dirty (pgs-contents (pgs-sp cur pages) pages) dirty)))))
-  :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-rec-shape-p pgs-step-try-cur-crash)
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
                   :use ((:instance pgs-s-facts)
                         (:instance pgs-s-rec-facts)
                         (:instance pgs-step-try-new)
-                        (:instance pgs-step-try-cur-crash (keep nil))))))
+                        (:instance pgs-step-try-cur-crash (keep nil))
+                        (:instance pgs-open-two-slots (sv (pgs-srec cur pages dirty fresh tfresh rs txid))
+                                   (p (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))))))
 
 (defthm pgs-step-open-crash
   (let ((rec (pgs-srec cur pages dirty fresh tfresh rs txid))
@@ -1697,16 +1711,13 @@
              (member-equal (pgs-view (pgs-open-slots slots2 p2 mode))
                            (list (list txid (pgs-apply-dirty (pgs-contents (pgs-sp cur pages) pages) dirty))
                                  (list (pgs-rec-txid cur) (pgs-contents (pgs-sp cur pages) pages))))))
-  :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-rec-shape-p pgs-step-try-cur-crash
-                                      pgs-step-try-crash)
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons member-equal) (theory 'minimal-theory))
                   :use ((:instance pgs-s-facts)
                         (:instance pgs-s-rec-facts)
                         (:instance pgs-step-try-crash)
-                        (:instance pgs-step-try-cur-crash))
-                  :cases ((equal (car (pgs-try sv (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid)
-                                                                   keep pages)
-                                               mode))
-                                 :ok)))))
+                        (:instance pgs-step-try-cur-crash)
+                        (:instance pgs-open-two-slots
+                                   (p (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))))))
 
 (defthm pgs-step-open-torn
   (let ((p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
@@ -1715,9 +1726,11 @@
                   (or (equal slots2 (cons cur sv)) (equal slots2 (cons sv cur))))
              (equal (pgs-view (pgs-open-slots slots2 p2 mode))
                     (list (pgs-rec-txid cur) (pgs-contents (pgs-sp cur pages) pages)))))
-  :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-rec-shape-p pgs-step-try-cur-crash)
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
                   :use ((:instance pgs-s-facts)
-                        (:instance pgs-step-try-cur-crash)))))
+                        (:instance pgs-step-try-cur-crash)
+                        (:instance pgs-open-two-slots
+                                   (p (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))))))
 
 ; -----------------------------------------------------------------------------
 ; Allocation is complete and fresh (milestone: `pgs-alloc' never refuses).
@@ -2084,12 +2097,12 @@
                         (pgs-c-rec disk r mode dirty alloc)
                         (list (third (pgs-c-al disk r mode dirty alloc))
                               (fourth (pgs-c-al disk r mode dirty alloc))))))
-  :hints (("Goal" :in-theory (e/d (pgs-swr pgs-srec pgs-sd2 pgs-std pgs-sp2 pgs-sd pgs-sp
-                                   pgs-step-ptab2 pgs-step-tdirty pgs-step-dir2 pgs-step-writes pgs-step-tl)
-                                  (pgs-open pgs-alloc pgs-plan-ptab pgs-make-rec pgs-touched
-                                   pgs-page-writes pgs-next-txid pgs-slot pgs-root-slots pgs-chunk
-                                   pgs-flatten pgs-contents pgs-lpages-ok pgs-grown-len pgs-table-dirty
-                                   pgs-dirty-digests pgs-dirty-lpages pgs-lookup)))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-plan-commit pgs-c-writes pgs-c-rec pgs-c-al pgs-c-fresh
+                                               pgs-c-tfresh pgs-c-rs pgs-c-cur pgs-c-k0 pgs-c-txid
+                                               pgs-c-lpages-ok pgs-swr pgs-srec pgs-sd2 pgs-std pgs-sp2
+                                               pgs-sd pgs-sp pgs-step-ptab2 pgs-step-tdirty pgs-step-dir2
+                                               pgs-step-writes pgs-step-tl car-cons cdr-cons default-car)
+                                             (theory 'minimal-theory)))))
 
 (defthm pgs-plan-commit-refuses-without-open
   (implies (not (equal (car (pgs-open disk r mode)) :ok))
@@ -2381,6 +2394,85 @@
                                    (pages (pgs-pages disk))
                                    (w (pgs-write-addrs (pgs-c-writes disk r mode dirty alloc))))))))
 
+(defmacro pgs-k2-hyps ()
+  '(and (equal (car (pgs-open disk r mode)) :ok)
+        (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (fourth (pgs-open disk r mode))) 0)
+        (pgs-alloc-inv alloc disk)))
+
+(defmacro pgs-k2-image ()
+  '(pgs-crash disk r (pgs-c-writes disk r mode dirty alloc) keep
+              (if (equal (pgs-c-k0 disk r mode) 1) 0 1) sv))
+
+(defthm pgs-crash-old-slot
+  ; The record never written: the crash image opens as before.
+  (implies (and (pgs-k2-hyps)
+                (equal sv (pgs-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1) (pgs-root-slots r disk))))
+           (equal (pgs-open (pgs-k2-image) r mode) (pgs-open disk r mode)))
+  :hints (("Goal" :in-theory (union-theories '(pgs-open-of-crash pgs-c-lpages-ok-is) (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-open-is-open-slots)
+                        (:instance pgs-c-slots-avoid (r2 r))
+                        (:instance pgs-open-slots-of-apply-pages
+                                   (slots (pgs-root-slots r disk)) (pages (pgs-pages disk))
+                                   (writes (pgs-c-writes disk r mode dirty alloc)))
+                        (:instance pgs-open-slots-of-set-same
+                                   (k (if (equal (pgs-c-k0 disk r mode) 1) 0 1))
+                                   (slots (pgs-root-slots r disk))
+                                   (pages (pgs-apply-pages (pgs-c-writes disk r mode dirty alloc)
+                                                           keep (pgs-pages disk))))))
+          (and stable-under-simplificationp '(:in-theory (enable member-equal)))))
+
+(defthm pgs-crash-torn-slot
+  ; A torn record: the crash image opens on the previous state.
+  (implies (and (pgs-k2-hyps) (not (pgs-rec-valid sv)))
+           (equal (pgs-view (pgs-open (pgs-k2-image) r mode)) (pgs-view (pgs-open disk r mode))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-open-of-crash pgs-c-lpages-ok-is pgs-c-cur
+                                               pgs-c-writes pgs-c-txid pgs-view-of-ok car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-c-view-facts)
+                        (:instance pgs-view-of-ok (o (pgs-open disk r mode)))
+                        (:instance pgs-c-step-hyps)
+                        (:instance pgs-set-other-slot (k0 (pgs-c-k0 disk r mode)) (v sv)
+                                   (slots (pgs-root-slots r disk)))
+                        (:instance pgs-step-open-torn
+                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
+                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
+                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
+                                   (rs (pgs-c-rs disk r mode dirty alloc))
+                                   (txid (pgs-c-txid disk r))
+                                   (slots2 (pgs-set-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
+                                                         sv (pgs-root-slots r disk))))))))
+
+(defthm pgs-crash-new-slot
+  ; The new record landed: the crash image opens on the committed state or
+  ; on the previous one (when some page write did not land).
+  (implies (and (pgs-k2-hyps)
+                (pgs-writes-faithful (pgs-c-writes disk r mode dirty alloc) (pgs-pages disk))
+                (equal sv (pgs-c-rec disk r mode dirty alloc)))
+           (member-equal (pgs-view (pgs-open (pgs-k2-image) r mode))
+                         (list (list (pgs-next-txid (pgs-root-slots r disk))
+                                     (pgs-apply-dirty (fourth (pgs-open disk r mode)) dirty))
+                               (pgs-view (pgs-open disk r mode)))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-open-of-crash pgs-c-lpages-ok-is pgs-c-cur pgs-c-txid
+                                               pgs-c-writes pgs-c-rec
+                                               pgs-view-of-ok car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-c-view-facts)
+                        (:instance pgs-view-of-ok (o (pgs-open disk r mode)))
+                        (:instance pgs-c-step-hyps)
+                        (:instance pgs-set-other-slot (k0 (pgs-c-k0 disk r mode)) (v sv)
+                                   (slots (pgs-root-slots r disk)))
+                        (:instance pgs-step-open-crash
+                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
+                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
+                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
+                                   (rs (pgs-c-rs disk r mode dirty alloc))
+                                   (txid (pgs-c-txid disk r))
+                                   (slots2 (pgs-set-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
+                                                         sv (pgs-root-slots r disk))))))))
+
 ; A crash anywhere in the commit opens on the committed state or on the
 ; previous one; on the previous one unless the new record landed whole.
 (defthm pgs-open-after-crash
@@ -2399,53 +2491,27 @@
                                       (pgs-view o)))
                   (implies (not (equal sv (fourth p)))
                            (equal (pgs-view (pgs-open image r mode)) (pgs-view o))))))
-  :hints (("Goal" :in-theory (union-theories '(pgs-c-writes pgs-c-rec pgs-c-cur pgs-c-txid
-                                               pgs-c-lpages-ok-is pgs-open-of-crash
-                                               pgs-view-of-ok member-equal car-cons cdr-cons)
+  :hints (("Goal" :in-theory (union-theories '(pgs-c-lpages-ok-is member-equal car-cons cdr-cons)
                                              (theory 'minimal-theory))
                   :use ((:instance pgs-c-open-facts)
-                        (:instance pgs-c-view-facts)
                         (:instance pgs-plan-commit-unfold)
-                        (:instance pgs-c-step-hyps)
                         (:instance pgs-open-after-commit)
-                        (:instance pgs-view-of-ok (o (pgs-open disk r mode)))
-                        (:instance pgs-open-is-open-slots)
-                        (:instance pgs-c-slots-avoid (r2 r))
-                        (:instance pgs-open-slots-of-apply-pages
-                                   (slots (pgs-root-slots r disk)) (pages (pgs-pages disk))
-                                   (writes (pgs-c-writes disk r mode dirty alloc)))
-                        (:instance pgs-open-slots-of-set-same
-                                   (k (if (equal (pgs-c-k0 disk r mode) 1) 0 1))
-                                   (slots (pgs-root-slots r disk))
-                                   (pages (pgs-apply-pages (pgs-c-writes disk r mode dirty alloc)
-                                                           keep (pgs-pages disk))))
-                        (:instance pgs-set-other-slot (k0 (pgs-c-k0 disk r mode)) (v sv)
-                                   (slots (pgs-root-slots r disk)))
-                        (:instance pgs-step-open-crash
-                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
-                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
-                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
-                                   (rs (pgs-c-rs disk r mode dirty alloc))
-                                   (txid (pgs-c-txid disk r))
-                                   (slots2 (pgs-set-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
-                                                         sv (pgs-root-slots r disk))))
-                        (:instance pgs-step-open-torn
-                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
-                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
-                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
-                                   (rs (pgs-c-rs disk r mode dirty alloc))
-                                   (txid (pgs-c-txid disk r))
-                                   (slots2 (pgs-set-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
-                                                         sv (pgs-root-slots r disk))))))))
+                        (:instance pgs-crash-old-slot)
+                        (:instance pgs-crash-torn-slot)
+                        (:instance pgs-crash-new-slot)))))
 
 ; Fork isolation: a commit on R, complete or crashed anywhere, leaves every
 ; other root's open exactly as it was (refusals included).
 (defthm pgs-refused-plan-writes-nothing
   (implies (not (equal (car (pgs-plan-commit disk r mode dirty alloc)) :plan))
            (equal (pgs-write-addrs (second (pgs-plan-commit disk r mode dirty alloc))) nil))
-  :hints (("Goal" :in-theory (disable pgs-open pgs-alloc pgs-plan-ptab pgs-make-rec
-                                      pgs-page-writes pgs-next-txid pgs-slot pgs-root-slots
-                                      pgs-touched pgs-chunk pgs-flatten pgs-contents pgs-lpages-ok))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-write-addrs car-cons cdr-cons pgs-c-open-facts)
+                                             (theory 'minimal-theory))
+                  :cases ((not (equal (car (pgs-open disk r mode)) :ok))
+                          (not (pgs-c-lpages-ok disk r mode dirty)))
+                  :use ((:instance pgs-plan-commit-refuses-without-open)
+                        (:instance pgs-plan-commit-refuses-out-of-order)
+                        (:instance pgs-plan-commit-unfold)))))
 
 (defthm pgs-crash-isolates-other-roots
   (let ((p (pgs-plan-commit disk r mode dirty alloc)))
