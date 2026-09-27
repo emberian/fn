@@ -1,7 +1,8 @@
-# Release v6.7.0: the cut checklist
+# Release v6.6.0: the cut checklist
 
-**Status: NOT CUT. v6.7.0 is blocked on the fundamentals below.** ember
-(relayed by the coordinator, 2026-09-27 ~02:30 UTC): "no v6.7.0 for friends
+**Status: NOT CUT. v6.6.0 is blocked on the fundamentals below.** ember
+(relayed by the coordinator, 2026-09-27 ~02:30 UTC, of the release then
+numbered 6.7.0): "no v6.7.0 for friends
 yet; the fundamentals come first." The release machinery is in the tree:
 the version file, `fn --version`, the tarball names, this checklist,
 `tools/cut_release.sh` and `tools/changelog.py`. A cut is when every
@@ -14,30 +15,50 @@ cut writes that record (section 4).
 
 ## 1. The version
 
-- Every release of fn is **6.7.N** (ember: "all versions of fn will be
-  v6.7.xyz"). N starts at 0 and rises by one per cut. There is no other
-  component and no suffix.
+- **Release order is a sequence, never a number (D37).** ember,
+  2026-09-27 ~22:10 UTC: "i'd like to make our first version v6.6.0 ....
+  and then we'll work our way up to a v6.6.5 release, then we'll have a
+  v6.7.x series, and then the final release (whenever that is) of the
+  software would be v6.6.6. and then each new release would add another
+  .6. that's my intention." So: 6.6.0, 6.6.1, ..., 6.6.5; then 6.7.0,
+  6.7.1, ... (open-ended); then 6.6.6, the final release; then 6.6.6.6,
+  6.6.6.6.6, ... (one more `.6` per release). The list and its rules are
+  planning/release-sequence.json; `tools/release_sequence.py` (`position`,
+  `next`, `is_next`, `cut-check`) is the only thing that decides order,
+  and no tool compares version numbers. This supersedes the earlier rule
+  here ("every release is 6.7.N, N rises by one").
+- **The first cut is 6.6.0.** This checklist was release-v6.7.0.md; it
+  was renamed when D37 made 6.6.0 the first release, and its fundamentals
+  and gates are unchanged.
+- **The live node's `fn 6.7.0`.** The public fsn1 node prints
+  `fn 6.7.0 (18a7137a3)`: it runs a rehearsal build from before D37, when
+  `VERSION` read 6.7.0. That is not a cut and no `v6.7.0` tag exists; the
+  first cut is 6.6.0, and under D37 6.7.0 comes after 6.6.5.
 - The version lives in ONE place: the file `VERSION` at the root of the
-  tree, one line (`6.7.0`).
+  tree, one line (`6.6.0`).
   - The image build reads it: host/native/build.lisp, build-dtn.lisp and
     build-store-test.lisp call `fnn-select-release-version`
     (host/native/io.lisp), which serializes it into the saved image and
     stops the build on a missing or malformed file.
   - The packaging reads it: packaging/release-tarball.sh names the tarball
-    `fn-6.7.N-PLATFORM.tar.gz` from the `VERSION` in the `git archive` of
+    `fn-VERSION-PLATFORM.tar.gz` (`fn-6.6.0-linux-x86_64.tar.gz`) from the `VERSION` in the `git archive` of
     REV. It refuses unless the staged `bin/fn --version` prints exactly
-    `fn 6.7.N (REV12)`. The `--frozen` form (tests, friends harness) names
-    its package `fn-6.7.N+REV12-PLATFORM.tar.gz`, which is not a release.
-- `fn --version` prints `fn 6.7.N (REV12)`: the version built into the image
+    `fn VERSION (REV12)`. The `--frozen` form (tests, friends harness) names
+    its package `fn-VERSION+REV12-PLATFORM.tar.gz`, which is not a release.
+- `fn --version` prints `fn VERSION (REV12)`: the version built into the image
   and the first twelve digits of the source revision recorded beside the
   core (`libexec/fn/source-revision`). An image that records no revision
   refuses, exit 1, as before (PKT-403).
-- The cut commit is tagged **`v6.7.N`** by the coordinator at the cut, never
+- The cut commit is tagged **`vVERSION`** by the coordinator at the cut, never
   by a lane. Gate 01 refuses a VERSION whose tag exists on another commit or
-  that is not above every earlier `v6.7.*` tag. After a cut, the next change
-  to `VERSION` (6.7.N+1) is the first commit of the next release.
+  that is not the sequence's next entry after the newest `v*` tag. After a
+  cut, the next change to `VERSION` (`python3 tools/release_sequence.py next
+  VERSION`; in the 6.7.x series, `--final` names 6.6.6 instead) is the first
+  commit of the next release.
 - `CHANGELOG.md` is generated (`python3 tools/changelog.py --write`). It has
-  one line per merged lane since the Fable mandate, grouped by capability,
+  one line per merged lane since the previous release's tag (the newest `v*`
+  tag before VERSION in the sequence; for 6.6.0, which has none, since the
+  Fable mandate), grouped by capability,
   and lists reverted merges apart. Its range ends at the last lane merge, so
   the cut commit regenerates it byte for byte (gate 04). Never edit it by
   hand.
@@ -99,7 +120,7 @@ the common conditions in planning/evidence/fundamentals-2026-09-27/README.md):
 ## 3. The gates, in order
 
 `tools/cut_release.sh` runs gates 01 to 16 in this order and stops at the
-first red. It writes `build/cut/v6.7.N-REV12/verdict.txt`, whose last line
+first red. It writes `build/cut/vVERSION-REV12/verdict.txt`, whose last line
 is `VERDICT GREEN ...` or `VERDICT RED at NN NAME`, and one log per gate.
 Run it from a clean checkout at REV (a `git worktree add --detach`), never
 from the shared ~/dev/fn. `--dry-run` runs the read-only local gates and
@@ -107,7 +128,7 @@ prints every other gate's commands. `--from N` resumes at gate N.
 
 | # | gate | green when | where |
 | --- | --- | --- | --- |
-| 01 | version | `VERSION` at REV is 6.7.N; the tag `v6.7.N` is free or already at REV; N is above every earlier `v6.7.*` tag; this checklist exists as planning/release-v6.7.N.md | local |
+| 01 | version | `VERSION` at REV is the next entry of the release sequence (D37) after the newest `v*` tag by sequence position, or 6.6.0 when there is none (`tools/release_sequence.py cut-check`; no numeric comparison); the tag `vVERSION` is free or already at REV; this checklist exists as planning/release-vVERSION.md | local |
 | 02 | tree | HEAD is REV with no tracked change | local |
 | 03 | fundamentals | every row of section 2 is MET with its evidence at REV | local |
 | 04 | changelog | `CHANGELOG.md` at REV is what `tools/changelog.py --rev REV` writes | local |
@@ -118,11 +139,11 @@ prints every other gate's commands. `--from N` resumes at gate N.
 | 09 | the four images; every native module | `tools/hbox_native.sh --images developer,production,dtn,dtn-developer REV` builds fn-host, fn-host-developer, fn-host-dtn and fn-host-dtn-developer from `git archive REV`, then runs every `tests/test_*native*.py` and `tests/test_bp_*.py` module except the `exclude` lines of planning/release-native-gate.txt, with its `env` opt-ins; status 0: no module FAILED, none wholly SKIPPED | hbox |
 | 10 | the throughput gate, quiet | `tools/throughput_gate.py run` on REV's developer image with `--wait-quiet 1800` (never `--under-load`: a cut is measured on a quiet box), then `check` within planning/throughput-baseline.json | hbox |
 | 11 | the hostile campaign | `tools/hostile_campaign.py` on REV's developer image, every family (malformed, header, body, connection, pipelining, transit, tls, bp); exit 0 = no defect | hbox |
-| 12 | the Linux tarball (glibc floor) | packaging/release-tarball.sh `--runtime-from` the glibc-floor runtime builds `fn-6.7.N-linux-x86_64.tar.gz` from the archive (its own green_check, acquire, validate, production image, runpath `--tree`, `--version` check); `runpath_check.py --tarball`; installed fresh from the tarball and SHA256SUMS with `install.sh --no-service`; tests.test_release_tarball `OK` with no skip (the format-7 fixture given); `fn --version` in a bare `debian:12` container with only libssl3 prints `fn 6.7.N (REV12)` | hbox + docker |
-| 13 | the OpenBSD tarball | the same build in the OpenBSD 7.9 build VM (planning/evidence/release-openbsd-2026-09-26.md section 2): `fn-6.7.N-openbsd-amd64.tar.gz`, runpath `--tarball`, installed fresh, tests.test_release_tarball `OK`. Needs `--openbsd-host` and `--openbsd-root`; without them the gate is red, not skipped | the VM |
+| 12 | the Linux tarball (glibc floor) | packaging/release-tarball.sh `--runtime-from` the glibc-floor runtime builds `fn-VERSION-linux-x86_64.tar.gz` from the archive (its own green_check, acquire, validate, production image, runpath `--tree`, `--version` check); `runpath_check.py --tarball`; installed fresh from the tarball and SHA256SUMS with `install.sh --no-service`; tests.test_release_tarball `OK` with no skip (the format-7 fixture given); `fn --version` in a bare `debian:12` container with only libssl3 prints `fn VERSION (REV12)` | hbox + docker |
+| 13 | the OpenBSD tarball | the same build in the OpenBSD 7.9 build VM (planning/evidence/release-openbsd-2026-09-26.md section 2): `fn-VERSION-openbsd-amd64.tar.gz`, runpath `--tarball`, installed fresh, tests.test_release_tarball `OK`. Needs `--openbsd-host` and `--openbsd-root`; without them the gate is red, not skipped | the VM |
 | 14 | the power-loss cut list on the release image | tools/power_loss.py's reproduction (planning/evidence/power-loss-2026-09-26.md section 7): rig, workload of 600 POSTs, index, the cut plan `init=8,post=150,checkpoint=60,compact=60,reclaim=50,control=8` with recovery cut at 0.2, on the INSTALLED tarball's launcher; the summary's `all` row: 0 violations, controls caught > 0, 0 harness errors | hbox (sudo -n for the block layer) |
 | 15 | the friends session from the tarball | tests.test_native_friends_feed with `FN_FRIEND_FN` the fresh install's `bin/fn` (the friend) and the developer image as the author: `OK` with no skip | hbox |
-| 16 | the tag | prints `git tag -a v6.7.N -m 'fn 6.7.N' REV` for the coordinator; the script creates no tag | local |
+| 16 | the tag | prints `git tag -a vVERSION -m 'fn VERSION' REV` for the coordinator; the script creates no tag | local |
 
 What the gates do not decide (the cut's qualification record, section 4):
 
@@ -150,16 +171,16 @@ What the gates do not decide (the cut's qualification record, section 4):
 1. Every fundamental MET on dev (section 2), each with its record.
 2. `python3 tools/changelog.py --write`; commit CHANGELOG.md (and VERSION if
    it changes) on dev. That commit is REV.
-3. `git worktree add --detach build/cut-6.7.N REV`; there, `tools/cut_release.sh
+3. `git worktree add --detach build/cut-VERSION REV`; there, `tools/cut_release.sh
    --dry-run --rev REV`, then `tools/cut_release.sh --rev REV
    --openbsd-host H --openbsd-root DIR` (start it in the background; gates 09
    to 15 take hours).
-4. On `VERDICT GREEN`: write planning/evidence/qual-v6.7.N-DATE.md from the
+4. On `VERDICT GREEN`: write planning/evidence/qual-vVERSION-DATE.md from the
    verdict, the logs and the module table (the shape of
    qual-69046a76-2026-09-26.md). Commit the throughput JSON gate 10 wrote
    under planning/evidence/throughput/, the verdict and the tarballs'
    SHA256SUMS.
-5. Tag `v6.7.N` at REV (gate 16's line); push the tag.
+5. Tag `vVERSION` at REV (gate 16's line); push the tag.
 6. The release notes (section 7), final, beside the tarballs. ember's go
    before any friend is sent a link.
 
@@ -167,7 +188,7 @@ What the gates do not decide (the cut's qualification record, section 4):
 
 A deploy is a reinstall from the release: stop, `store export`, remove,
 install, `init` or `store import`, start. No upgrade path exists (D34).
-For a node installed from v6.7.0:
+For a node installed from v6.6.0:
 
 1. **The node secret.** Before the first start, `fn store ROOT node-secret
    create`: the node-written Cancel-Lock keys come from it (lane
@@ -264,7 +285,7 @@ Operation:
 
 ## 7. Release notes (DRAFT; not for friends until the cut)
 
-> **fn 6.7.0** (draft)
+> **fn 6.6.0** (draft)
 >
 > fn is a news server. You and your friends read and post with an ordinary
 > newsreader (tin, slrn, Thunderbird) over TLS, and your node trades
@@ -272,8 +293,8 @@ Operation:
 > article, a login, a peer or its store is taken by code that is proved
 > correct in ACL2 and ships inside the program.
 >
-> **What you get.** One file for your machine, `fn-6.7.0-linux-x86_64.tar.gz`
-> (Debian 12, Ubuntu 24.04 or newer) or `fn-6.7.0-openbsd-amd64.tar.gz`
+> **What you get.** One file for your machine, `fn-6.6.0-linux-x86_64.tar.gz`
+> (Debian 12, Ubuntu 24.04 or newer) or `fn-6.6.0-openbsd-amd64.tar.gz`
 > (OpenBSD 7.9), with its own runtime inside. Nothing else to install but
 > your system's TLS library. `sh fn/install.sh` puts it in `/opt/fn`
 > (`/usr/local/fn`) and sets up the service; docs/install.md walks you from
@@ -299,4 +320,4 @@ Operation:
 > per stored byte today). Section 6 of the release checklist lists
 > everything else we know is missing.
 >
-> `fn --version` prints `fn 6.7.0 (REV)`; the source is tagged `v6.7.0`.
+> `fn --version` prints `fn 6.6.0 (REV)`; the source is tagged `v6.6.0`.

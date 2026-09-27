@@ -255,7 +255,7 @@
         ; Select once during construction, before any diagnostic module loads.
         ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
         (fnn-select-image-profile)
-        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; The release version (VERSION at the tree root, D37), serialized
         ; into the image for `fn --version'; a missing or malformed file
         ; stops the build.
         (fnn-select-release-version)

@@ -5,7 +5,7 @@ tools/runpath_check.py's GLIBC_FLOOR (the release runs on Debian 12).
 
 Needs a release built by packaging/release-tarball.sh on this platform:
 
-    FN_RELEASE_TARBALL=/abs/out/fn-6.7.N-linux-x86_64.tar.gz \\
+    FN_RELEASE_TARBALL=/abs/out/fn-6.6.0-linux-x86_64.tar.gz \\
         python3 -m unittest -v tests.test_release_tarball
 
 (OUT_DIR/SHA256SUMS beside it).  The install refuses a node whose store
@@ -31,6 +31,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import runpath_check  # noqa: E402
+import release_sequence  # noqa: E402
 sys.path.insert(0, str(ROOT))
 from tests import older_release_store as older  # noqa: E402
 
@@ -106,13 +107,15 @@ class ReleaseTarballTests(unittest.TestCase):
         out = subprocess.run([str(self.top / "bin/fn"), "--version"], env=CLEAN_ENV,
                              capture_output=True, text=True, timeout=120)
         self.assertEqual(out.returncode, 0, out.stderr)
-        # `fn 6.7.N (REV12)': VERSION's release version, built into the image.
-        printed = re.fullmatch(r"fn (6\.7\.(?:0|[1-9][0-9]*)) \(([0-9a-f]{12})\)\n", out.stdout)
+        # `fn VERSION (REV12)': VERSION's release version, built into the
+        # image, an entry of D37's release sequence.
+        printed = re.fullmatch(r"fn ([0-9.]+) \(([0-9a-f]{12})\)\n", out.stdout)
         self.assertIsNotNone(printed, out.stdout)
         version, short = printed.groups()
+        release_sequence.position(version)
         self.assertEqual(short, rev[:12])
-        # A gated release is fn-6.7.N-PLATFORM.tar.gz; a --frozen package
-        # (not a release) is fn-6.7.N+REV12-PLATFORM.tar.gz.
+        # A gated release is fn-VERSION-PLATFORM.tar.gz; a --frozen package
+        # (not a release) is fn-VERSION+REV12-PLATFORM.tar.gz.
         self.assertRegex(self.tarball.name,
                          "^fn-" + re.escape(version) + "(\\+" + short + ")?"
                          + "-(linux-x86_64|openbsd-amd64)\\.tar\\.gz$")

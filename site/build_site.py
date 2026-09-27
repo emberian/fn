@@ -506,7 +506,7 @@ def card(r: Renderer, item: str, cls: str = "card") -> str:
     return '<div class="%s"><h3>%s</h3><p>%s</p></div>\n' % (cls, r.inline(head), r.inline(body))
 
 
-def build_landing(doc: Doc, revision: str, version: str, released: bool) -> str:
+def build_landing(doc: Doc, revision: str, version: str, latest: str | None) -> str:
     r = Renderer(doc)
     h1, intro, sections = split_sections((ROOT / doc.source).read_text(encoding="utf-8"))
     if h1 != TITLE:
@@ -537,8 +537,15 @@ def build_landing(doc: Doc, revision: str, version: str, released: bool) -> str:
                          f'<div class="cards odd">{cards}</div>'
                          f'<div class="caveat">{r.blocks(after.split(chr(10)))}</div></section>\n')
         elif title == "Where things stand":
-            chip = (f"Release {html.escape(version)}" if released
-                    else f"Next release: {html.escape(version)} &middot; not cut yet")
+            # LATEST is the newest v* tag in D37's release sequence (never
+            # a numeric comparison); VERSION is the tree's next release.
+            if latest == version:
+                chip = f"Release {html.escape(version)}"
+            elif latest:
+                chip = (f"Release {html.escape(latest)} &middot; next: "
+                        f"{html.escape(version)}, not cut yet")
+            else:
+                chip = f"Next release: {html.escape(version)} &middot; not cut yet"
             parts.append(f'<section id="{slug}" class="status"><h2>{r.inline(title)}</h2>'
                          f'<p class="chips"><span class="chip warn">Experiment</span>'
                          f'<span class="chip">{chip}</span></p>{r.blocks(body.split(chr(10)))}</section>\n')
@@ -574,10 +581,26 @@ def paths_section(landing: Doc) -> str:
 
 # ---------------------------------------------------------------------------
 
+def newest_release() -> str | None:
+    """The newest v* tag by position in the release sequence (D37,
+    tools/release_sequence.py); a v* tag outside the sequence is ignored."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import release_sequence
+    tags = [t[1:] for t in git("tag", "-l", "v*").split() if t.startswith("v")]
+    members = []
+    for t in tags:
+        try:
+            release_sequence.position(t)
+        except ValueError:
+            continue
+        members.append(t)
+    return release_sequence.newest(members)
+
+
 def build(out_dir: Path, base_path: str) -> list[str]:
     revision = git("rev-parse", "HEAD")
     version = (ROOT / "VERSION").read_text().strip() if (ROOT / "VERSION").exists() else "?"
-    released = bool(git("tag", "-l", f"v{version}", version))
+    latest = newest_release()
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
@@ -590,7 +613,7 @@ def build(out_dir: Path, base_path: str) -> list[str]:
         doc = Doc(source=source, out=out)
         docs[source] = doc
         if source == "README.md":
-            page = build_landing(doc, revision, version, released)
+            page = build_landing(doc, revision, version, latest)
         else:
             text = (ROOT / source).read_text(encoding="utf-8")
             r = Renderer(doc)

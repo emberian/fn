@@ -8,7 +8,8 @@
 # on (the image is built here, and the installer executes it).  REV is the
 # full 40-digit commit.  OUT_DIR (absolute) receives
 #   fn-VERSION-PLATFORM.tar.gz one top directory fn/ (below); VERSION is the
-#                              release version 6.7.N, read from the file
+#                              release version (D37's sequence: 6.6.0 first),
+#                              read from the file
 #                              VERSION at the root of REV's tree (the one
 #                              place it is written; the image build reads
 #                              the same file, host/native/io.lisp
@@ -90,16 +91,14 @@ case $rev in *[!0-9a-f]*|'') echo 'release-tarball: REV must be a lowercase hex 
 [ "${#rev}" -eq 40 ] || { echo 'release-tarball: REV must be the full 40-digit commit' >&2; exit 2; }
 case $out in /*) ;; *) echo 'release-tarball: OUT_DIR must be absolute' >&2; exit 2;; esac
 short=$(printf '%s' "$rev" | cut -c1-12)
-# The release version: 6.7.N, N a numeral without a leading zero.
+# The release version: an entry of the release sequence (D37,
+# planning/release-sequence.json; tools/release_sequence.py decides it, any
+# number of dotted components, never compared as numbers).
 release_version() {
   [ -r "$1" ] || { echo "release-tarball: no $1" >&2; exit 4; }
   v=$(sed -n 1p "$1")
-  case $v in
-    6.7.0) ;;
-    6.7.[1-9]*) case ${v#6.7.} in *[!0-9]*) v= ;; esac ;;
-    *) v= ;;
-  esac
-  [ -n "$v" ] || { echo "release-tarball: $1 does not hold a release version 6.7.N" >&2; exit 4; }
+  "${PYTHON:-python3}" tools/release_sequence.py position "$v" >/dev/null || {
+    echo "release-tarball: $1 holds '$v', not an entry of the release sequence" >&2; exit 4; }
   printf '%s\n' "$v"
 }
 if [ "$system" = Linux ]; then sums=sha256sum; else sums=sha256; fi

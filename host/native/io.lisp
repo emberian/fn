@@ -4749,21 +4749,32 @@ serialized profile when the saved image later starts."
 (defun fnn-developer-image-p ()
   (eq *fnn-image-profile* :developer))
 
-;;; The release version (VERSION at the tree root: 6.7.N, one line).  Read
+;;; The release version (VERSION at the tree root, one line).  Read
 ;;; once while constructing the saved image, as the profile above is, and
 ;;; serialized into it; the packaging reads the same file for the tarball's
 ;;; name (packaging/release-tarball.sh).  `fn --version' prints it with the
-;;; source revision recorded beside the core.
+;;; source revision recorded beside the core.  The build checks only its
+;;; shape; which versions are releases, and their order, is D37's sequence
+;;; (planning/release-sequence.json), decided by tools/release_sequence.py
+;;; at the cut (tools/cut_release.sh gate 01) and by the packaging.
 (defvar *fnn-release-version* nil)
 
 (defun fnn-release-version-word-p (text)
-  "TEXT is 6.7.N with N a decimal numeral without a leading zero."
+  "TEXT is dotted decimal numerals without leading zeros, any number of
+components (6.6.0, 6.7.12, 6.6.6.6)."
   (and (stringp text)
-       (> (length text) 4)
-       (string= "6.7." text :end2 4)
-       (let ((n (subseq text 4)))
-         (and (every (lambda (c) (find c "0123456789")) n)
-              (or (string= n "0") (char/= (char n 0) #\0))))))
+       (plusp (length text))
+       (let ((start 0))
+         (loop
+           (let* ((dot (position #\. text :start start))
+                  (n (subseq text start (or dot (length text)))))
+             (unless (and (plusp (length n))
+                          (every (lambda (c) (find c "0123456789")) n)
+                          (or (string= n "0") (char/= (char n 0) #\0)))
+               (return nil))
+             (if dot
+                 (setq start (1+ dot))
+                 (return t)))))))
 
 (defun fnn-select-release-version (&optional (path "VERSION"))
   "Build-time: take the release version from PATH (the build runs at the
@@ -4772,7 +4783,7 @@ tree root), or stop the build."
                                        :external-format :latin-1)
                 (and in (read-line in nil nil)))))
     (unless (fnn-release-version-word-p line)
-      (error "~a does not hold a release version 6.7.N (read ~s)" path line))
+      (error "~a does not hold a release version (dotted numerals, read ~s)" path line))
     (setq *fnn-release-version* line)))
 
 (defun fnn-release-version ()
@@ -6175,7 +6186,7 @@ observation (the COMPLETE re-signals it under the owner)."
       (return-from fnn-dispatch (fnn-dispatch (list "operator" "-" "help"))))
     (when (and (null (rest args))
                (member (first args) '("--version" "version") :test #'string=))
-      ;; `fn 6.7.N (REV12)': the release version built into the image and
+      ;; `fn VERSION (REV12)': the release version built into the image and
       ;; the first twelve digits of the recorded source revision.
       (let ((revision (fnn-source-revision)))
         (fnn-out "fn ~a (~a)" (fnn-release-version) (subseq revision 0 12)))

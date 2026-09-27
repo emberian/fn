@@ -24,7 +24,7 @@ AGENTS.md keeps four coordinates apart; none implies another.
   store ([node record](evidence/node-hbox-bbf52159-2026-09-25.md)). dev
   refuses that store by name (below), so the next deployment is a fresh
   install and an import (D34). There is no release for friends yet:
-  [release-v6.7.0](release-v6.7.0.md) is NOT CUT until its fundamentals are
+  [release-v6.6.0](release-v6.6.0.md) is NOT CUT until its fundamentals are
   met.
 
 ## What changed on 2026-09-27
@@ -80,7 +80,7 @@ reader sees:
 
 ## Open, as of this page
 
-- **The release's fundamentals** F1 to F8 ([release-v6.7.0](release-v6.7.0.md)
+- **The release's fundamentals** F1 to F8 ([release-v6.6.0](release-v6.6.0.md)
   section 2): each is OPEN there until one image carries its evidence; lane
   fundamentals-scoreboard is gathering it.
 - **No qualified format-9 image** (above), and the live node cannot be
@@ -103,5 +103,5 @@ not tracked). How lanes work: [how we work](how-we-work.md).
 
 [The current view](current.md), [decisions](decisions.md),
 [requirements](requirements.json), [proofs](proofs.json),
-[the release checklist](release-v6.7.0.md), and the docs index
+[the release checklist](release-v6.6.0.md), and the docs index
 [docs/README.md](../docs/README.md).
