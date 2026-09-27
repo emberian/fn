@@ -73,7 +73,9 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-core 'fn-owner-sco-prepare base base-payloads configs records", publish)
         self.assertIn("(fnn-live-octets-pub) arun)", publish)
         prepare = native_cuts.host_function(owner_host, "fn-owner-sco-prepare")
-        self.assertIn("(fn-scka-next-checkpoint base h0 configs records fn-arena)", prepare)
+        # (the base is kept stripped of its event index and restored here:
+        # fn-scka-restore-base-of-strip-of-capture, PKT-PRS-2)
+        self.assertIn("(fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records", prepare)
         self.assertIn("(fn-scka-publication-setup next frontier revision log seg budget free", prepare)
         # checkpoint-arena-3: the arena run's setup from the host's bounded
         # walk (fn-scka-srcs-n: lengths and sources in one pass, no alpha

@@ -3487,6 +3487,10 @@
         {
           "kind": "theorem",
           "name": "fn-scka-srcs-n-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-restore-base-of-strip-of-capture"
         }
       ]
     },

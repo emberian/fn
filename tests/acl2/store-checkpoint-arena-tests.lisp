@@ -532,6 +532,28 @@
         (not (nth 3 r)) (nth 4 r)
         (not (equal (car r) (cadr r))))))
 
+; fn-scka-restore-base-of-strip-of-capture (reachable positive witness): the
+; owner's base at the open (the capture of the prefix's canonical rows),
+; stripped as the owner keeps it, has no event index, and restored is the
+; capture again, whose index is not empty.
+(defun sckat-kept-base ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (mv-let (rows fn-arena)
+        (sckat-live-in fn-arena)
+        (mv (fn-sco-capture *sckat-configs* (fn-scka-canon-rows (take 3 rows) fn-arena 0))
+            fn-arena))
+      out)))
+
+(assert-event
+ (let* ((base (sckat-kept-base)) (kept (fn-scka-strip-base base)))
+   (and (equal (len (fn-sco-records base)) 3)
+        (fn-sco-event-index base)
+        (null (fn-sco-event-index kept))
+        (equal (fn-sco-records kept) (fn-sco-records base))
+        (equal (fn-scka-restore-base kept) base))))
+
 ; -----------------------------------------------------------------------------
 ; 5. fn-scka-recover-from-checkpoint-is-full-recover without "the whole
 ; history interns": a prefix the intern refuses, a suffix it takes.  The

@@ -239,6 +239,18 @@ array's size); it decides nothing ACL2 decides."
     (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
     st))
 
+(defun fnn-octets-pub-release ()
+  "Empty the publication buffer and give its array back after a checkpoint's
+publication (the verb's or the owner's thread): the array grew to the
+largest step the publication wrote and nothing needs it until the next
+publication, which regrows it (per-record-state PKT-PRS-2: 8.4 MB kept at
+10,000 records).  A bound on retained memory only; the logical value, the
+empty list, is unchanged, and it decides nothing ACL2 decides."
+  (let ((st (fnn-live-octets-pub)))
+    (setf (svref st 1) 0)
+    (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
+    st))
+
 (defun fnn-octets-reserve (n)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
   (fn-octets$c-reserve n (fnn-live-octets)))
@@ -2942,11 +2954,13 @@ it covers are dropped (fnn-log-drop; T8)."
                      (second verdict) (third verdict) (fourth verdict)))
         ((and (consp verdict) (eq (first verdict) :plan) (integerp (second verdict)))
          (let ((st (fnn-live-octets-pub)) (steps 0) (dropped 0))
-           (fnn-state-checkpoint-write
-            store
-            (lambda (fd)
-              (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                      profile st arun))))
+           (unwind-protect
+                (fnn-state-checkpoint-write
+                 store
+                 (lambda (fd)
+                   (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
+                                                           profile st arun))))
+             (fnn-octets-pub-release))
            (when position
              (handler-case
                  (setq dropped (fnn-log-drop store (fnn-log-covered-indices store (first position))))

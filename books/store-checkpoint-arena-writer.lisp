@@ -838,3 +838,48 @@
                             fn-scka-intern-at fn-scka-payloads fn-rows-wire-of
                             fn-sco-extend fn-sco-capture fn-scka-canon-rows
                             fn-scka-canon-payloads)))))
+
+; -----------------------------------------------------------------------------
+; 6. The base the owner KEEPS between publications (lane checkpoint-arena-3;
+; per-record-state PKT-PRS-2: a kept base's own event index was 0.68 KB per
+; record, a second trie beside the store node's).  The owner keeps the base
+; STRIPPED of its event index (`fn-scka-strip-base') and rebuilds it from the
+; base's records when it publishes (`fn-scka-restore-base', the index
+; fn-sco-capture builds), so between publications only the records and the
+; four projections are retained.  host/owner-host.lisp: the base is stored
+; stripped (fn-owner-install-extended, fn-owner-sco-publication-done) and
+; restored in fn-owner-sco-prepare before fn-scka-next-checkpoint.
+
+(defun fn-scka-strip-base (c)
+  (declare (xargs :guard t))
+  (fn-sco-make (fn-sco-records c) (fn-sco-cpr c) (fn-sco-identity c)
+               (fn-sco-consumer c) (fn-sco-topic c) nil))
+
+(defun fn-scka-restore-base (c)
+  (declare (xargs :guard t))
+  (fn-sco-make (fn-sco-records c) (fn-sco-cpr c) (fn-sco-identity c)
+               (fn-sco-consumer c) (fn-sco-topic c)
+               (fn-cei-build-aux (true-list-fix (fn-sco-records c)) 0 nil)))
+
+(local
+ (defthm fn-scka-true-list-fix-true-list-fix
+   (equal (true-list-fix (true-list-fix x)) (true-list-fix x))))
+
+; KEYSTONE (the kept base): restoring the stripped capture is the capture,
+; so fn-scka-next-checkpoint-is-capture's BASE hypothesis holds of what the
+; owner restores exactly when it held of what it stripped.
+(defthm fn-scka-restore-base-of-strip-of-capture
+  (equal (fn-scka-restore-base (fn-scka-strip-base (fn-sco-capture configs records)))
+         (fn-sco-capture configs records))
+  :hints (("Goal" :in-theory (e/d (fn-sco-capture fn-sco-make fn-sco-records fn-sco-cpr
+                                   fn-sco-identity fn-sco-consumer fn-sco-topic
+                                   fn-sco-event-index fn-sco-at)
+                                  (fn-sco-cpr-prefix fn-replay-identity-loop
+                                   fn-cpe-projection-replay fn-th-prefix-loop
+                                   fn-cei-build-aux)))))
+
+; The stripped base keeps what the owner reads of it between publications:
+; its records (the covered count).
+(defthm fn-scka-strip-base-keeps-the-records
+  (equal (fn-sco-records (fn-scka-strip-base c)) (fn-sco-records c))
+  :hints (("Goal" :in-theory (enable fn-sco-make fn-sco-records fn-sco-at))))

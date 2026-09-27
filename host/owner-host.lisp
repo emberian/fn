@@ -277,7 +277,9 @@
              ; The owner's checkpoint state: the capture it extends at its
              ; next publication, the newest durable checkpoint's S (set by
              ; fn-owner-sco-note-durable), and the count of the last attempt.
-             (state (f-put-global 'fn-owner-sco-base extended state))
+             ; (kept stripped of its event index, rebuilt at the next
+             ; publication: fn-scka-restore-base-of-strip-of-capture)
+             (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base extended) state))
              ; The base's canonical payload count (the arena's count at the
              ; open: fn-owner-sco-note-base-payloads), nil until noted.
              (state (f-put-global 'fn-owner-sco-base-payloads nil state))
@@ -574,7 +576,8 @@
                                   walked fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
-                     (fn-scka-next-checkpoint base h0 configs records fn-arena)))
+                     (fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records
+                                              fn-arena)))
          (next (if (or (null next0) (equal next0 :bad))
                    (let ((canon (fn-scka-canon-rows records fn-arena 0)))
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
@@ -603,7 +606,7 @@
 ; :none.
 (defun fn-owner-sco-publication-done (next payloads durablep verdict state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-sco-base next state))
+  (let* ((state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base next) state))
          ; NEXT's canonical payload count, the next publication's H0
          (state (f-put-global 'fn-owner-sco-base-payloads (and (natp payloads) payloads)
                               state))
