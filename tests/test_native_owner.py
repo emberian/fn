@@ -53,34 +53,39 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
     def test_condition_handlers_and_cleanup_enclose_the_served_body(self):
         # Balanced source alone missed a live failure: handler clauses became
         # cleanup calls, and (e) invoked an undefined function on every EOF.
-        # This checks macro structure; the saved-image tests below establish
-        # actual connection/fault behavior rather than treating this as proof.
+        # The served connection lives in host/native/mux.lisp (lane
+        # connection-multiplexing): every event runs inside fnn-mux-guarded,
+        # whose handlers are the per-connection worker's, and each ends in
+        # fnn-mux-finish, the worker's unwind.  This checks macro structure;
+        # the saved-image tests establish behavior.
         sys.path.insert(0, str(ROOT / "tools"))
         from ledger import head, read_forms
-        forms = read_forms((ROOT / "host/native/owner.lisp").read_text())
-        function = next(form for form in forms if head(form) == "defun"
-                        and str(form[1]) == "fnn-owner-serve-client")
-        body = function[3]
-        self.assertEqual(head(body), "let")
-        self.assertEqual(len(body[2:]), 1)
-        protected = body[2]
-        self.assertEqual(head(protected), "unwind-protect")
+        forms = read_forms((ROOT / "host/native/mux.lisp").read_text())
+        guarded = next(form for form in forms if head(form) == "defmacro"
+                       and str(form[1]) == "fnn-mux-guarded")
+        text = (ROOT / "host/native/mux.lisp").read_text()
+        start = text.index("(defmacro fnn-mux-guarded")
+        body = text[start:text.index("(defun fnn-mux-arm-idle", start)]
+        order = ["(fnn-store-indeterminate (e)", "(fnn-store-fault (e)",
+                 "(fnn-owner-connection-fault (e)",
+                 "((or fnn-store-error fnn-os-error sb-bsd-sockets:socket-error) (e)",
+                 "(fnn-tls-error (e)", "(serious-condition (e)"]
+        at = [body.index(clause) for clause in order]
+        self.assertEqual(at, sorted(at))
+        self.assertEqual(body.count("(fnn-mux-finish ,l ,c)"), 6)
+        self.assertTrue(guarded)
+        finish = next(form for form in forms if head(form) == "defun"
+                      and str(form[1]) == "fnn-mux-finish")
+        start = text.index("(defun fnn-mux-finish")
+        cleanup = text[start:text.index("(defmacro fnn-mux-guarded", start)]
         # Cleanup: the owner close (CID), the exposure release (the id
         # fn-exp-open registered, kept even when a fault path cleared CID;
         # PRF-161), the TLS channel, then the socket.
-        self.assertEqual([head(form) for form in protected[1:]],
-                         ["handler-case", "when", "when", "when", "fnn-socket-shut"])
-        handler = protected[1]
-        self.assertEqual(head(handler[1]), "progn")
-        clauses = handler[2:]
-        self.assertEqual(len(clauses), 6)
-        self.assertEqual([head(clause) for clause in clauses],
-                         ["fnn-store-indeterminate", "fnn-store-fault",
-                          "fnn-owner-connection-fault", None,
-                          "fnn-tls-error", "serious-condition"])
-        self.assertEqual(head(clauses[3][0]), "or")
-        for clause in clauses:
-            self.assertEqual([str(symbol) for symbol in clause[1]], ["e"])
+        steps = ["'fn-owner-close", "'fn-owner-exposure-release",
+                 "(fnn-tls-close-channel", "(fnn-socket-shut"]
+        at = [cleanup.index(step) for step in steps]
+        self.assertEqual(at, sorted(at))
+        self.assertTrue(finish)
 
     def test_no_os_error_after_publication_is_classified_as_a_refusal(self):
         # Campaign W2, 2026-09-24: an EIO at a finish cut escaped fnn-finish
@@ -125,7 +130,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
 
     def test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step(self):
         # tests/native_owner_chunk_loop_raw.lisp evaluates the deployed
-        # fnn-owner-serve-client, fnn-owner-handle-chunk and
+        # connection life (host/native/mux.lisp), fnn-owner-handle-chunk and
         # fnn-owner-advance-clock against recording stubs, so the two 915
         # defects have a check that needs no image.
         runtime = runtime_sbcl(IMAGE)

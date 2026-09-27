@@ -3991,6 +3991,34 @@
         "tests/acl2/heap-reservation-tests.lisp"
       ],
       "implementation_note": "Before save-exec the build keeps, at their current value, the twelve execution properties on every symbol and the other world pairs a node was recorded reading (lane image-anatomy), over a bottom of command 0, event 0 and project-dir-alist; it drops the build residue (channel symbols, documentation, defconst discriminators, the build-sized hons space and memoize array). A re-save of the stripped core was measured worse and is not taken. Core dynamic content 271.4 -> 105.6 MiB (hbox), 265.9 -> 106.2 (OpenBSD). The owner collects every 64 MiB during recovery and a publication (a sixteenth of a reservation under 1 GiB), once fully after recovery, and every 8 MiB while serving. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packets. The thread stacks: books/heap-reservation.lisp fn-heap-reserve-decide (PRF-198's extension) adds the core once more and THREADS x (STACK + 4 MiB) to heap-figure's heap, STACK a constant 1,024 KiB (seven times the 142 KiB the node needs whatever the article since lane served-line-iterative made the served path's per-line recursions loops; before, a per-line term, 1,192 KiB for the 32 KiB-article presets; the image's launcher passed 64 MiB), and refuses a total past the machine by name; the installed launcher passes --control-stack-size."
+    },
+    {
+      "id": "HST-024",
+      "title": "The node serves reader and transit connections from a fixed set of I/O loop threads, and a connection capacity the machine cannot hold beside the store is refused by name at start and at a live change",
+      "specification": "specs/host.md#served-connections",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-223"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/connection-budget.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "host/native/mux.lisp",
+        "host/native/owner.lisp",
+        "host/native/tls.lisp",
+        "host/owner-host.lisp",
+        "host/native/heap.lisp",
+        "tests/test_native_mux.py",
+        "tools/mux_measure.py",
+        "specs/host.md",
+        "planning/evidence/connection-multiplexing-2026-09-26.md"
+      ],
+      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images."
     }
   ]
 }

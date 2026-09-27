@@ -1,9 +1,14 @@
 ;;; The deployed owner chunk loop, driven without an image.
 ;;;
-;;; `fnn-owner-serve-client', `fnn-owner-handle-chunk' and
-;;; `fnn-owner-advance-clock' are read out of host/native/owner.lisp; the
-;;; shared wall-clock helper is read out of host/native/io.lisp.  This
-;;; exercises the shipped functions and not copies of them.  Everything they
+;;; The served connection's life (host/native/mux.lisp: fnn-mux-begin,
+;;; fnn-mux-readable, fnn-mux-work, fnn-mux-step, fnn-mux-queue, fnn-mux-flush,
+;;; fnn-mux-after, fnn-mux-finish and the handlers of fnn-mux-guarded; lane
+;;; connection-multiplexing, 2026-09-26) and `fnn-owner-handle-chunk' and
+;;; `fnn-owner-advance-clock' (host/native/owner.lisp) are read out of the
+;;; files that ship them; the shared wall-clock helper out of
+;;; host/native/io.lisp.  This exercises the shipped functions and not copies
+;;; of them; the driver below plays the loop's poll, handing the connection
+;;; each readiness it waits for.  Everything they
 ;;; call that touches a socket, the owner mutex or ACL2 is stubbed, and the
 ;;; stubs record what the loop did and what the owner was handed.
 ;;;
@@ -85,10 +90,17 @@
 (defun fnn-socket-fd (socket) (declare (ignore socket)) 7)
 (defun fnn-socket-shut (socket) (declare (ignore socket)) nil)
 (defun fnn-tls-close-channel (channel) (declare (ignore channel)) nil)
-(defun fnn-graceful-close (fd) (declare (ignore fd)) (incf *graceful*))
+(defun fnn-now () (get-internal-real-time))
+(defconstant +fnn-shut-wr+ 1)
+;; The graceful close's shutdown(2) of the output side.
+(defun fnn-%shutdown (fd how) (declare (ignore fd how)) (incf *graceful*) 0)
+(defstruct fnn-owner-service (lock (sb-thread:make-mutex)) clients)
+(defmacro fnn-with-owner ((service) &body body)
+  `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
 (defun fnn-owner-service-stopping (service) (declare (ignore service)) nil)
 (defun fnn-owner-service-tls-context (service) (declare (ignore service)) nil)
-(defun fnn-owner-stop-service-locked (service code) (declare (ignore service code)) nil)
+(defun fnn-owner-stop-service-locked (service code &optional answering)
+  (declare (ignore service code answering)) nil)
 (defun fnn-owner-serialized (service cid thunk)
   (declare (ignore service cid)) (funcall thunk))
 (defun fnn-owner-connection-call (service operation thunk)
@@ -105,16 +117,21 @@
   (declare (ignore service cid condition)) nil)
 (defun fnn-tls-consume-plaintext (fd expected seconds)
   (declare (ignore fd seconds)) expected)
-(defun fnn-tls-accept (context fd seconds)
-  (declare (ignore context fd seconds)) :channel)
 (defun fnn-owner-send (fd channel octets seconds)
   (declare (ignore fd channel seconds))
   (push (fnn-text octets) *sent*))
 
-(defun fnn-owner-receive (service fd channel seconds)
-  (declare (ignore service fd channel seconds))
+;; The transport, one attempt each (fnn-mux-receive-now, fnn-mux-write-now):
+;; a read takes the next scripted chunk (empty when the script ends: the
+;; peer closed); a write takes the whole reply.
+(defun fnn-mux-receive-now (service conn)
+  (declare (ignore service conn))
   (incf *read-count*)
   (if *reads* (pop *reads*) (fnn-make-octets 0)))
+(defun fnn-mux-write-now (conn)
+  (let ((data (fnn-mux-conn-out conn)) (at (fnn-mux-conn-out-at conn)))
+    (push (fnn-text (subseq data at)) *sent*)
+    (- (length data) at)))
 
 (defun fnn-owner-core (name &rest args)
   (declare (ignore args))
@@ -186,25 +203,56 @@
             +fnn-owner-wall-error-ms+ +fnn-owner-unix-dtn-offset-seconds+
             fnn-owner-wall-milliseconds)
            ("host/native/owner.lisp"
-            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-serve-client
-            fnn-owner-exposure-wait fnn-owner-exposure-idle)))
+            fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-exposure-idle)
+           ("host/native/mux.lisp"
+            +fnn-mux-send-seconds+ +fnn-mux-idle-seconds+ +fnn-mux-drain-seconds+
+            +fnn-mux-handshakes-per-loop+ +fnn-mux-handshake-seconds+ +fnn-mux-queued-per-loop+
+            fnn-mux-loop fnn-mux-conn fnn-mux-ticks fnn-mux-service fnn-mux-guarded
+            fnn-mux-tls-log fnn-mux-finish fnn-mux-arm-idle fnn-mux-queue
+            fnn-mux-flush fnn-mux-begin-drain fnn-mux-after fnn-mux-charge
+            fnn-mux-step fnn-mux-work fnn-mux-readable fnn-mux-idle
+            fnn-mux-slot-free-p fnn-mux-start-waiting-handshake fnn-mux-begin
+            fnn-mux-admit)))
   (destructuring-bind (source . wanted) source-and-names
     (let ((found nil))
       (with-open-file (stream source)
         (loop for form = (read stream nil :eof)
               until (eq form :eof)
-              when (and (consp form) (member (car form) '(defun defconstant))
-                        (member (cadr form) wanted))
-                do (eval form) (push (cadr form) found)))
+              when (and (consp form)
+                        (member (car form) '(defun defconstant defmacro defstruct))
+                        (member (if (consp (cadr form)) (car (cadr form)) (cadr form))
+                                wanted))
+                do (eval form)
+                   (push (if (consp (cadr form)) (car (cadr form)) (cadr form)) found)))
       (let ((missing (set-difference wanted found)))
         (when missing
           (error "~a does not define ~{~a~^, ~}" source missing))))))
+
+;;; The loop's part: hand the connection each readiness it waits for until it
+;;; is done (a draining connection then reads the peer's end of input).
+(defun drive (loop conn)
+  (loop repeat 1000
+        until (eq (fnn-mux-conn-phase conn) :done)
+        do (fnn-mux-guarded (loop conn)
+             (case (fnn-mux-conn-phase conn)
+               (:draining (fnn-mux-finish loop conn))
+               (:serving (if (fnn-mux-conn-out conn)
+                             (fnn-mux-flush loop conn)
+                           (fnn-mux-readable loop conn)))
+               (t (error "the connection is in phase ~s" (fnn-mux-conn-phase conn))))))
+  (unless (eq (fnn-mux-conn-phase conn) :done)
+    (error "the connection did not end")))
 
 (defun run-scenario (reads plans)
   (setq *reads* (mapcar #'fnn-ascii reads)
         *read-count* 0 *chunks* nil *plans* plans *step* nil *output* nil
         *sent* nil *faults* nil *graceful* 0 *observations* nil)
-  (fnn-owner-serve-client :service :socket)
+  (let* ((service (make-fnn-owner-service))
+         (loop (%make-fnn-mux-loop :service service))
+         (conn (%make-fnn-mux-conn :socket :socket)))
+    (push conn (fnn-mux-loop-conns loop))
+    (fnn-mux-guarded (loop conn) (fnn-mux-begin loop conn))
+    (drive loop conn))
   (setq *chunks* (reverse *chunks*) *sent* (reverse *sent*)
         *observations* (reverse *observations*)))
 

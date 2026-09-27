@@ -99,6 +99,9 @@
 (include-book "../books/public-exposure")
 ; fn-exp-observe-effects: the observation without building the reply.
 (include-book "../books/public-exposure-reply")
+; PKT-605 (PRF-223): the connection budget the run installs and every live
+; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
+(include-book "../books/connection-budget")
 ; PRF-192: the served reply as a range of the octet buffer (fn-owner-reply-buffer).
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
@@ -601,7 +604,7 @@
 ; exact record that the host persists.  Python carries only the kind/name
 ; request and the resulting octets.
 
-(defun fn-owner-reconfigure-deltas (id deltas state)
+(defun fn-owner-reconfigure-deltas-admitted (id deltas state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((oc (fn-owner-ocfg state))
          (reason (fn-ocfg-reconfig-refusal oc id deltas))
@@ -614,6 +617,55 @@
           (value :staged))
       (let ((state (f-put-global 'fn-owner-config-reason reason state)))
         (value :refused)))))
+
+;; PKT-605 (PRF-223): the bound the run installed (fn-owner-connection-budget)
+;; is kept by every live reconfiguration: a delta list whose configuration
+;; holds more connections than the machine does is refused by name,
+;; :connections-exceed-memory, before the owner stages anything
+;; (books/connection-budget.lisp fn-cbud-deltas-refusal-keeps-the-capacity-held).
+;; Every live path reaches this function (native-admin, peer-invite, auth).
+(defun fn-owner-connection-bound (state)
+  (declare (xargs :stobjs state :mode :program))
+  (and (boundp-global 'fn-owner-connection-bound state)
+       (f-get-global 'fn-owner-connection-bound state)))
+
+(defun fn-owner-reconfigure-deltas (id deltas state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((oc (fn-owner-ocfg state))
+         (memory (fn-cbud-deltas-refusal
+                  (fn-cfg-value (fn-ocfg-config oc))
+                  (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
+                  (fn-own-clock (fn-ocfg-owner oc))
+                  deltas (fn-owner-connection-bound state))))
+    (if memory
+        (let ((state (f-put-global 'fn-owner-config-reason memory state)))
+          (value :refused))
+      (fn-owner-reconfigure-deltas-admitted id deltas state))))
+
+(defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
+                                           tlsp state)
+  ; Once per run, after recovery and before listen (host/native/mux.lisp
+  ; fnn-mux-budget-install, from fnn-owner-run).  MACHINE, DYNAMIC (the
+  ; dynamic space this process has), CORE, THREADS and STACK are the host's
+  ; observations; NURSERY its collection trigger;
+  ; PROFILE the store's; TLSP whether a TLS context is loaded.  The capacity
+  ; is the live configuration's.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((capacity (fn-exp-connections-capacity (fn-cfg-value (fn-owner-config state))))
+         (article (fn-bs-profile-max-article-octets profile))
+         (hneed (fn-heap-figure-octets profile core nursery))
+         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack
+                                 article tlsp))
+         (state (f-put-global 'fn-owner-connection-bound
+                              (and (equal (car d) :hold) (fn-cbud-held-bound d))
+                              state))
+         (state (f-put-global 'fn-owner-connection-budget-line
+                              (fn-record-string-octets
+                               (if (equal (car d) :hold)
+                                   (fn-cbud-hold-line d article tlsp)
+                                 (fn-cbud-refusal-line d article tlsp machine)))
+                              state)))
+    (value (car d))))
 
 (defun fn-owner-reconfigure (id kind name-octets state)
   ; :staged leaves exactly one encoded configuration record in the output

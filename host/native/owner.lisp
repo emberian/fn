@@ -44,6 +44,9 @@
   (workers nil) (clients nil) tls-context
   ;; The checkpoint publication's thread while one runs (fnn-owner-maybe-publish).
   (publisher nil)
+  ;; The I/O loops that serve every reader and transit connection
+  ;; (host/native/mux.lisp), and the round-robin cursor over them.
+  (mux nil) (mux-next 0)
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
@@ -546,7 +549,7 @@ checkpoint's S, or NIL."
                 (fnn-fault "owner did not complete recovery barriers")))
             ;; The first reading, against a clock-less owner.  Every later
             ;; reading is taken at the event that decides under it, in
-            ;; fnn-owner-serve-client and fnn-owner-handle-chunk: this one is
+            ;; fnn-mux-begin and fnn-owner-handle-chunk: this one is
             ;; not an anchor the run is dated against.
             (unless (eq (fnn-owner-advance-clock) :observed)
               (fnn-fault "owner refused its first clock observation"))
@@ -1905,296 +1908,15 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
     (values (if (= (length address) 4) :inet :inet6)
             (coerce address 'list))))
 
-(defun fnn-owner-serve-client (service socket &optional implicit-tls)
-  ;; RETAINED is the part of the last socket read the served machine has not
-  ;; consumed yet.  It is this connection's, never the service's, and the
-  ;; socket is read only when it is empty, so it holds at most one
-  ;; +fnn-max-read+ read minus one octet (host/native/io.lisp fnn-recv) and
-  ;; cannot grow while a client keeps sending.
-  (let ((fd (fnn-socket-fd socket)) (cid nil) (channel nil) (retained nil)
-        ;; PRF-161: the id the exposure state registered, released in the
-        ;; unwind whatever path cleared CID.
-        (opened-cid nil))
-    (unwind-protect
-         (handler-case
-             (progn
-               ;; PRF-162: an implicit-TLS connection completes SSL_accept
-               ;; before the owner opens anything, so a failed handshake
-               ;; costs no connection slot and sends no greeting.
-               (when implicit-tls
-                 (setq channel
-                       (fnn-tls-accept (fnn-owner-service-tls-context service)
-                                       fd 10)))
-               (multiple-value-bind (family address)
-                   (fnn-owner-socket-address service socket)
-                 (multiple-value-bind (opened greeting)
-                   (fnn-owner-serialized
-                    service nil
-                    (lambda ()
-                      ;; fn-own-open pins this reading into the connection as
-                      ;; its READER environment (DATE, NEWGROUPS).  Taking it
-                      ;; here is what makes DATE answer when the connection
-                      ;; was accepted rather than when the process started.
-                      (fnn-owner-advance-clock)
-                      (let ((peer
-                              (fnn-owner-core
-                               'fn-owner-peer-for-socket-address
-                               family address)))
-                        (unless (or (null peer) (fnn-octet-list-p peer))
-                          (fnn-fault "owner returned a malformed peer identity"))
-                        ;; PRF-161: ACL2 admits or refuses the connection
-                        ;; under the limits in force (books/public-exposure.lisp
-                        ;; fn-exp-open) and opens it in the same call.  A
-                        ;; refusal leaves the 400 in fn-owner-output.
-                        (let ((opened (fnn-owner-core 'fn-owner-exposure-open
-                                                      family address peer)))
-                          (when opened (fnn-owner-log))
-                          (values opened
-                                  (fnn-owner-octets-global 'fn-owner-output))))))
-                   (unless (and opened (integerp opened))
-                     ;; RFC 3977 5.1.1 note [2]: after a 400 greeting the
-                     ;; server immediately closes the connection.
-                     (when (> (length greeting) 0)
-                       (fnn-owner-connection-call
-                        service :send-greeting
-                        (lambda ()
-                          (fnn-owner-send fd channel greeting 10)
-                          (fnn-graceful-close fd))))
-                     (return-from fnn-owner-serve-client nil))
-                   (setq cid opened opened-cid opened)
-                   ;; The event a STARTTLS connection gets after its
-                   ;; handshake, and nothing else: the connection is then
-                   ;; the STARTTLS session after 382
-                   ;; (fn-served-implicit-tls-is-the-starttls-session).
-                   (when implicit-tls
-                     (fnn-owner-serialized
-                      service cid
-                      (lambda ()
-                        (unless (eq (fnn-owner-action
-                                     'fn-owner-tls-established cid)
-                                    :ok)
-                          (fnn-fault "owner rejected established TLS")))))
-                   (when (> (length greeting) 0)
-                     (fnn-owner-connection-call
-                      service :send-greeting
-                      (lambda () (fnn-owner-send fd channel greeting 10))))))
-               (loop
-                 ;; ONCE serves this client on the accept thread itself.  It
-                 ;; must consume the signal flag here too, or an idle/partial
-                 ;; command prevents that thread from reaching service stop.
-                 (when (or *fnn-sigterm-requested*
-                           (fnn-owner-service-stopping service))
-                   (return))
-                 (let ((incoming
-                         (or retained
-                             (fnn-owner-connection-call
-                              service :receive
-                              (lambda ()
-                                (let ((value (fnn-owner-receive service fd channel 1)))
-                                  (unless (or (eq value :timeout)
-                                              (typep value 'fnn-octets))
-                                    (error "malformed connection receive result"))
-                                  value))))))
-                   ;; Whatever this step does not consume is set again below;
-                   ;; nothing carried here is ever read from the socket twice.
-                   (setq retained nil)
-                   (cond ((eq incoming :timeout)
-                          ;; RFC 3977 3.1's autologout, decided by ACL2
-                          ;; (fn-exp-idle): the close sends nothing.
-                          (when (eq (fnn-owner-exposure-idle service cid) :close)
-                            (fnn-owner-connection-call
-                             service :graceful-close
-                             (lambda ()
-                               (when channel
-                                 (fnn-tls-close-channel channel)
-                                 (setq channel nil))
-                               (fnn-graceful-close fd)))
-                            (return)))
-                         ((zerop (length incoming)) (return))
-                         (t (fnn-owner-exposure-wait service cid)
-                            (multiple-value-bind (reply closing starttls consumed
-                                                  redeemed submitted)
-                                (fnn-owner-handle-chunk service cid incoming socket)
-                              (cond
-                                (channel
-                                 ;; Once protected, no transport suffix may be
-                                 ;; reclassified as a second TLS handshake.
-                                 ;; A step that closes the wire (an article
-                                 ;; over fn-own-body-limit: fn-wire-close
-                                 ;; ... :body-overlimit, books/wire.lisp)
-                                 ;; stops at the octet that closed it, as on
-                                 ;; the plaintext path below: its reply (the
-                                 ;; 441 naming the size) is sent and the
-                                 ;; connection ends with the rest unread.
-                                 ;; Stopping the process there turned one
-                                 ;; client's refusal into every client's
-                                 ;; closed socket (large-article, 2026-09-25).
-                                 ;; PRF-164: an XREDEEM PASS stops the fold at
-                                 ;; its line; what the client sent after it is
-                                 ;; the next step's input, already decrypted.
-                                 ;; PKT-600 (PRF-213): so does an article's
-                                 ;; submission: the next article or command
-                                 ;; in this record is the next step's input.
-                                 (cond ((or closing (= consumed (length incoming))))
-                                       ((or redeemed submitted)
-                                        (setq retained (subseq incoming consumed)))
-                                       (t (fnn-fault "protected owner read left a TLS suffix"))))
-                                ((fnn-owner-service-tls-context service)
-                                 ;; The worker is the sole socket reader.  A
-                                 ;; failed/short consume closes this connection;
-                                 ;; the ACL2 transition is never replayed.
-                                 (fnn-tls-consume-plaintext
-                                  fd (subseq incoming 0 consumed) 10))
-                                ((/= consumed (length incoming))
-                                 ;; The suffix is the next step's input, and
-                                 ;; it is already in hand.  The served machine
-                                 ;; stops after the octet that completed a
-                                 ;; submission (PKT-600, PRF-213: two
-                                 ;; pipelined TAKETHIS or POST articles in one
-                                 ;; read are two steps, each committed and
-                                 ;; answered before the next is framed), and
-                                 ;; at the octet that closed the wire:
-                                 ;; an article over fn-own-body-limit
-                                 ;; (books/owner.lisp, the record codec's
-                                 ;; *fn-record-max-payload* = 32768) makes fn-wire-after-line answer
-                                 ;; (fn-wire-close ... :body-overlimit)
-                                 ;; (books/wire.lisp), and
-                                 ;; fn-served-feed-counted
-                                 ;; (books/served-tls-prefix.lisp) consumes no
-                                 ;; further octet, which
-                                 ;; fn-served-tls-prefix-suffix-accounting
-                                 ;; states as the partition this line honours.
-                                 ;; A client that sends a long article breaks
-                                 ;; no invariant: the 441 below and the close
-                                 ;; that follows it are the answer, and this
-                                 ;; used to stop the whole process instead.
-                                 ;;
-                                 ;; A step that consumes nothing and neither
-                                 ;; closes nor hands the transport over IS a
-                                 ;; broken invariant: the same octets fed
-                                 ;; again cannot make progress.
-                                 (when (and (zerop consumed)
-                                            (not closing) (not starttls))
-                                   (fnn-fault
-                                    "owner consumed no octets and left the connection open"))
-                                 (setq retained (subseq incoming consumed))))
-                              (when (> (length reply) 0)
-                                (fnn-owner-connection-call
-                                 service :send-reply
-                                 (lambda ()
-                                   (fnn-owner-send fd channel reply 10))))
-                              (when starttls
-                                (when channel
-                                  (fnn-fault "owner requested STARTTLS on a protected channel"))
-                                (unless (fnn-owner-service-tls-context service)
-                                  (fnn-fault "owner requested STARTTLS without a TLS context"))
-                                ;; Only successful SSL_accept makes the ACL2
-                                ;; session protected.  Pipelined ClientHello
-                                ;; bytes remained unread after exact consume.
-                                (setq channel
-                                      (fnn-tls-accept
-                                       (fnn-owner-service-tls-context service)
-                                       fd 10))
-                                (fnn-owner-serialized
-                                 service cid
-                                 (lambda ()
-                                   (unless (eq (fnn-owner-action
-                                                'fn-owner-tls-established cid)
-                                               :ok)
-                                     (fnn-fault "owner rejected established TLS")))))
-                              (when closing
-                                ;; The final reply must reach the client
-                                ;; before the close: a peer still sending
-                                ;; (an oversize article) would otherwise
-                                ;; take a reset that discards the 441 in its
-                                ;; receive queue.  On a protected channel the
-                                ;; TLS close_notify goes first, then the same
-                                ;; bounded drain as plaintext.
-                                (fnn-owner-connection-call
-                                 service :graceful-close
-                                 (lambda ()
-                                   (when channel
-                                     (fnn-tls-close-channel channel)
-                                     (setq channel nil))
-                                   (fnn-graceful-close fd)))
-                                (return))))))))
-           (fnn-store-indeterminate (e)
-             ;; The shared boundary has already stopped mutation; prevent the
-             ;; unwind cleanup from attempting a later close transition.
-             (setq cid nil)
-             (fnn-owner-fence-service service)
-             (fnn-err "owner uncertain; recovery required: ~a" e))
-           (fnn-store-fault (e)
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (fnn-owner-fault-service service faulted-cid e)))
-           (fnn-owner-connection-fault (e)
-             ;; Clear CID before any secondary send failure.  Exactly one ACL2
-             ;; fault transition owns semantic cleanup for this connection.
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (handler-case
-                   (let ((reply (and faulted-cid
-                                     (fnn-owner-abandon-connection
-                                      service faulted-cid e))))
-                     (when (and reply (> (length reply) 0))
-                       (ignore-errors (fnn-owner-send fd channel reply 10))))
-                 ;; A failure of the core fault transition is shared.  Its
-                 ;; serialized boundary already fenced before unlocking; this
-                 ;; nested handler keeps the worker available to join cleanly.
-                 (fnn-store-indeterminate (nested)
-                   (fnn-owner-fence-service service)
-                   (fnn-err "owner uncertain while abandoning connection: ~a"
-                            nested))
-                 (serious-condition (nested)
-                   (fnn-owner-fault-service service nil nested)))))
-           ((or fnn-store-error fnn-os-error sb-bsd-sockets:socket-error) (e)
-             (fnn-err "owner connection: ~a" e))
-           (fnn-tls-error (e)
-             ;; Certificate/handshake/record failure is scoped to this peer.
-             ;; The owner connection is removed in the unwind cleanup and the
-             ;; listener and shared TLS context remain live.
-             (fnn-err "owner TLS connection: ~a" e))
-           (serious-condition (e)
-             (let ((faulted-cid cid))
-               (setq cid nil)
-               (fnn-owner-fault-service service faulted-cid e))))
-      (when cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
-      (when opened-cid
-        (ignore-errors
-          (fnn-owner-serialized
-           service nil
-           (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid)))))
-      (when channel (fnn-tls-close-channel channel))
-      (fnn-socket-shut socket))))
-
-(defun fnn-owner-client-done (service socket)
-  (fnn-with-owner (service)
-    (setf (fnn-owner-service-clients service)
-          (delete socket (fnn-owner-service-clients service) :test #'eq)
-          (fnn-owner-service-workers service)
-          (delete sb-thread:*current-thread*
-                  (fnn-owner-service-workers service) :test #'eq))))
-
+;;; A connection is served by one of the service's I/O loops
+;;; (host/native/mux.lisp fnn-mux-adopt), not a thread of its own: the
+;;; worker this file used to start per connection held a control stack and
+;;; runtime regions for the connection's whole life (PKT-605).  Everything
+;;; the worker did, in its order and under its handlers, is the loop's
+;;; connection record now.
 (defun fnn-owner-launch-client (service socket &optional implicit-tls)
-  "Register the socket and worker before either can enter the owner core."
-  (fnn-with-owner (service)
-    (if (fnn-owner-service-stopping service)
-        (progn (ignore-errors (fnn-socket-shut socket)) nil)
-      (progn
-        (push socket (fnn-owner-service-clients service))
-        (let ((worker
-                (sb-thread:make-thread
-                 (lambda ()
-                   (unwind-protect (fnn-owner-serve-client service socket
-                                                           implicit-tls)
-                     (fnn-owner-client-done service socket)))
-                 :name "fn owner client")))
-          (push worker (fnn-owner-service-workers service))
-          worker)))))
+  "Register the socket with a loop before it can enter the owner core."
+  (fnn-mux-adopt service socket implicit-tls))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
@@ -2438,7 +2160,7 @@ thread is a worker, so the stop joins it with the clients."
           (unless (eq socket :timeout)
             (if once
                 (progn
-                  (fnn-owner-serve-client service socket)
+                  (fnn-mux-serve-once service socket)
                   (return))
               (fnn-owner-launch-client service socket)))
           ;; Before the next accept: the owner's checkpoint publication,
@@ -2487,6 +2209,11 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)
+                  ;; PKT-605 (PRF-223): the live capacity against this
+                  ;; machine (books/connection-budget.lisp), refused by name
+                  ;; before anything listens; then the I/O loops.
+                  (fnn-mux-budget-install service tls-context)
+                  (fnn-mux-start service)
                   ;; PKT-283's native witness: the Store is recovered and
                   ;; its writer lock held, and no control socket listens
                   ;; yet (the startup hooks start it), so `health' must say

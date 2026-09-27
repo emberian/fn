@@ -108,8 +108,18 @@ that)."
     (error () nil)))
 
 (defun fnn-heap-decision (profile)
-  (fnn-core 'fn-heap-decide profile (fnn-heap-core-octets) +fnn-gc-nursery-octets+
-            (fnn-heap-observations)))
+  ;; heap-figure's figure for the store, then the room the served connections'
+  ;; heap parts need beside it (books/connection-budget.lisp
+  ;; fn-cbud-launch-decide; PKT-605): the connections this machine holds
+  ;; beside the store, the fixed threads and their stacks, at most 1,024.
+  (let ((observations (fnn-heap-observations))
+        (core (fnn-heap-core-octets)))
+    (fnn-core 'fn-cbud-launch-decide
+              (fnn-core 'fn-heap-decide profile core +fnn-gc-nursery-octets+
+                        observations)
+              profile core
+              (fnn-mux-thread-count nil) (fnn-mux-thread-stack-octets)
+              observations)))
 
 (defun fnn-heap-report-line (profile)
   (fnn-core 'fn-heap-report-line (fnn-heap-decision profile)))
