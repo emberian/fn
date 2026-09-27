@@ -166,12 +166,16 @@
 
 (defconst *rct-xref* "Xref: news.example.org fn.one:2 fn.two:7")
 (defconst *rct-served-payload*
-  (append (fn-nntp-string-octets "Message-ID: <rct-a@example.invalid>")
-          '(13 10) (fn-nntp-string-octets "Subject: A") '(13 10)
-          (fn-nntp-string-octets *rct-xref*) '(13 10 13 10 88 13 10)))
+  (append (fn-nntp-string-octets *rct-xref*) '(13 10)
+          (fn-nntp-string-octets "Message-ID: <rct-a@example.invalid>")
+          '(13 10) (fn-nntp-string-octets "Subject: A") '(13 10 13 10 88 13 10)))
+; The stored octets are a suffix of the served ones (D01).
+(assert-event
+ (equal (nthcdr (+ 2 (length *rct-xref*)) *rct-served-payload*)
+        (fn-article-payload *rct-a*)))
 (assert-event
  (equal (fn-rcompat-served-payload *rct-server* *rct-a*) *rct-served-payload*))
-; HEAD 7 in fn.two: the stored header lines, then the Xref line.
+; HEAD 7 in fn.two: the Xref line, then the stored header lines.
 (assert-event
  (equal (fn-rct-cmd (fn-rct-env nil) "HEAD" '("7"))
         (fn-nntp-article-response
@@ -215,10 +219,13 @@
    (and (consp (fn-xref-pairs *rct-a*))
         (not (fn-rcl-tombstonep (fn-article-payload *rct-a*)))
         (fn-nntp-split-okp split)
+        (equal (fn-article-payload *rct-a*)
+               (append (fn-nntp-split-head split) (list 13 10)
+                       (fn-nntp-split-body split)))
         (equal (fn-rcompat-served-payload *rct-server* *rct-a*)
-               (append (fn-nntp-split-head split)
-                       (fn-xref-field *rct-server* (fn-xref-pairs *rct-a*))
-                       (list 13 10) (list 13 10)
+               (append (fn-xref-field *rct-server* (fn-xref-pairs *rct-a*))
+                       (list 13 10)
+                       (fn-nntp-split-head split) (list 13 10)
                        (fn-nntp-split-body split))))))
 ; Its second branch: an article numbered nowhere is served as stored.
 (defconst *rct-unnumbered*

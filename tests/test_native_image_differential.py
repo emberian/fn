@@ -145,6 +145,10 @@ def normalize(data, *roots):
     # fn-heap-figure-octets): the full core is larger by design, an input.
     text = re.sub(r"\bheap=\d+ MB", "heap=<core-dependent> MB", text)
     text = re.sub(r"\breservation=\d+ MB", "reservation=<core-dependent> MB", text)
+    # The connections the run holds (books/connection-budget.lisp
+    # fn-cbud-limit, connection-multiplexing) are the machine's room beside
+    # that figure and the core's mappings: core-dependent the same way.
+    text = re.sub(r"\bholds=\d+", "holds=<core-dependent>", text)
     # Wall-clock readings: a file's modification time, an accept's time.
     text = re.sub(r"\bmodified=\d+", "modified=<clock>", text)
     text = re.sub(r"\btime=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "time=<clock>", text)

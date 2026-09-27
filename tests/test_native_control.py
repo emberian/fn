@@ -133,7 +133,11 @@ class NativeControlCutGateTests(unittest.TestCase):
                 "FN_CHECKPOINT_TEST_", "FN_APP_JOURNAL_TEST_")) or
                 name == "FN_IMMUTABLE_PUBLISH_TEST_FAIL"}
             self.assertEqual(
-                sorted(guarded - {"FN_NATIVE_PROFILE", "FN_NATIVE_IMAGE"}), [],
+                # Build-time selectors, read by host/native/build*.lisp while
+                # the image is saved, never by a running node: the profile,
+                # the image, and the saved world (HST-025, image-floor).
+                sorted(guarded - {"FN_NATIVE_PROFILE", "FN_NATIVE_IMAGE",
+                                  "FN_NATIVE_WORLD"}), [],
                 "{} reads a selector around the gate".format(path.name))
             for name in re.findall(r'\(fnn-developer-selector\s+"([A-Z_]+)"\)', source):
                 self.assertIn(name, SELECTORS, path.name)

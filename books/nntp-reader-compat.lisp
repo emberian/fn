@@ -239,10 +239,13 @@
          (append *fn-xref-name* (fn-rcompat-xref-value server article)))
   :hints (("Goal" :in-theory (enable fn-xref-field))))
 
-; The served payload: the stored octets with the Xref line appended to the
-; header block, when the article is numbered here, is not reclaimed (a
-; tombstone is answered 423/430 from its stored octets) and its octets split
-; into header and body; otherwise the stored octets.
+; The served payload: the Xref line, then the stored octets unchanged, when
+; the article is numbered here, is not reclaimed (a tombstone is answered
+; 423/430 from its stored octets) and its octets split into header and body;
+; otherwise the stored octets.  The line leads the header block, as the
+; injected Path does, so the stored octets (an authored article's signed
+; source among them, D01: Path and Xref are the node's mutable projections)
+; stay a suffix of what ARTICLE serves (batch AR; the lane appended it last).
 (defun fn-rcompat-served-payload (server article)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((payload (fn-article-payload article))
@@ -250,10 +253,9 @@
     (if (and (consp (fn-xref-pairs article))
              (not (fn-rcl-tombstonep payload))
              (fn-nntp-split-okp split))
-        (append (fn-nntp-split-head split)
-                (fn-xref-field server (fn-xref-pairs article))
-                (list 13 10 13 10)
-                (fn-nntp-split-body split))
+        (append (fn-xref-field server (fn-xref-pairs article))
+                (list 13 10)
+                payload)
       payload)))
 
 (local
@@ -292,9 +294,10 @@
                                fn-nntp-split-head fn-nntp-split-body)))))
 
 ; KEYSTONE.  Where the Xref line is added, the stored octets are HEAD, CRLF,
-; BODY and the served octets are HEAD, the Xref line with its CRLF, CRLF,
-; BODY: one line inserted at the end of the header block, nothing else
-; changed.  Where it is not, the served octets are the stored ones.
+; BODY and the served octets are the Xref line with its CRLF, then HEAD,
+; CRLF, BODY: one line inserted at the start of the header block, the
+; stored octets a suffix, nothing else changed.  Where it is not, the served
+; octets are the stored ones.
 (defthm fn-rcompat-served-payload-inserts-one-line
   (let ((split (fn-nntp-split-article (fn-article-payload article))))
     (if (and (consp (fn-xref-pairs article))
@@ -304,9 +307,9 @@
                     (append (fn-nntp-split-head split) (list 13 10)
                             (fn-nntp-split-body split)))
              (equal (fn-rcompat-served-payload server article)
-                    (append (fn-nntp-split-head split)
-                            (fn-xref-field server (fn-xref-pairs article))
+                    (append (fn-xref-field server (fn-xref-pairs article))
                             (list 13 10)
+                            (fn-nntp-split-head split)
                             (list 13 10)
                             (fn-nntp-split-body split))))
       (equal (fn-rcompat-served-payload server article)
