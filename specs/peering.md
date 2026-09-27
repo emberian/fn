@@ -1614,7 +1614,7 @@ withdraws its target from newly published reader views only for the
 target's author or an authority whose grant covers every group the target
 is served in, decided once under the configuration it committed under.
 
-**The node's own withdrawal (PKT-575, CT3; PRF-253).** A fourth basis
+**The node's own withdrawal (PKT-575, CT3; PRF-256).** A fourth basis
 beside author, authority and poster: `article withdraw ID --reason TEXT`
 (and `moderation reject`, specs/nntp.md) writes the configuration row
 (CAUSE ID REASON 1) in the authorities slot (delta code 26,
