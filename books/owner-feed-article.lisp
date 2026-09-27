@@ -58,6 +58,16 @@
    :hints (("Goal" :in-theory (e/d (fn-find-article fn-articles-wire-of)
                                    (fn-handle-bytes))))))
 
+(local
+ (defthm fn-ofa-article-payload-of-atom
+   (implies (not (consp a)) (equal (fn-article-payload a) nil))
+   :hints (("Goal" :in-theory (enable fn-article-payload)))))
+
+(local
+ (defthm fn-ofa-handle-bytes-of-nil
+   (equal (fn-handle-bytes nil fn-arena) nil)
+   :hints (("Goal" :in-theory (enable fn-handle-bytes)))))
+
 ; The octet-list model's feed article: `fn-own-feed-article' (books/owner.lisp)
 ; over ALPHA of the acceptance articles, the bytes it read before the flip.
 (defun-nx fn-ofa-wire-feed-article (o msgid fn-arena)
