@@ -16,8 +16,9 @@ and [the current view](current.md). Release scope is
    contract.
 2. **Iterate in a live session.** `tools/proof_repl.py start NAME BOOK
    --upto EVENT`, then `send`; 300 s bounds a discovery attempt, and a
-   timeout is a finding with the theorem named. An admitted form is not a
-   certificate.
+   timeout is a finding with the theorem named. Compare attempts by the
+   prover steps each answer reports, not by seconds. An admitted form is
+   not a certificate.
 3. **Certify incrementally.** `farm.py submit <box> --affected-by <book>` (or
    the changed books and tests as plain roots): cached books install, the
    rest certify. Never `--closure` for lane work. Wait with one background

@@ -114,16 +114,19 @@
                                        (take (fn-own-tls-result-consumed tls-result)
                                              octets))))))
   :hints (("Goal"
-           :in-theory (enable fn-ocfg-read-tls-prefix fn-own-read-repinned
-                              fn-own-read-tls-prefix
-                              fn-own-tls-make-result
-                              fn-own-tls-result-consumed
-                              fn-own-tls-result-effects
-                              fn-own-tls-result-owner
-                              fn-own-tls-result-repinned
-                              fn-ocfg-read
-                              fn-own-read fn-own-read-full
-                              fn-own-tls-served-conn)
+           ; both sides finish the same served result; nothing past it opens
+           :in-theory (e/d (fn-ocfg-read-tls-prefix fn-own-read-repinned
+                            fn-own-read-tls-prefix
+                            fn-own-tls-make-result
+                            fn-own-tls-result-consumed
+                            fn-own-tls-result-effects
+                            fn-own-tls-result-owner
+                            fn-own-tls-result-repinned
+                            fn-ocfg-read
+                            fn-own-read fn-own-read-full
+                            fn-own-tls-served-conn)
+                           (fn-own-finish-read fn-ocfg-with-read-owner
+                            fn-own-result-repinned))
            :use ((:instance fn-served-step-counted-fast-is-reference
                             (conn
                              (fn-own-tls-served-conn

@@ -1,6 +1,8 @@
 ; Witnesses and teeth for books/consumer-artifact-retry.lisp (PRF-137).
 ;
-; The subject is fn-rcl-existing-action, which host/native/hybrid-control.lisp
+; The subject is fn-store-existing-action (books/store-intern.lisp; crt-entry
+; runs it over the arena that interned the held carrier), which
+; host/native/hybrid-control.lisp
 ; fnn-hybrid-control-author asks (through host/owner-host.lisp
 ; fn-owner-existing-action) on the octets fn-hsig-injected-carrier-octets
 ; computes, before it commits.  The article is a dated source injected by
@@ -83,6 +85,18 @@
 (defconst *crt-s* (crt-store *crt-msgid* *crt-oa*))
 (defconst *crt-misfiled* (crt-store *crt-other-msgid* *crt-oa*))
 (defconst *crt-empty* *crt-misfiled*)   ; nothing under *crt-msgid*
+;; The entry the host calls, over the arena that interned the carrier
+;; PAYLOAD held under HELD-MSGID (handle 0): the held bytes read by handle.
+(defun crt-entry-in (held-msgid msgid payload groups s fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events (list (crt-wire held-msgid *crt-oa*)) nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-store-existing-action msgid payload groups s fn-arena) fn-arena)))
+(defun crt-entry (held-msgid msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena) (crt-entry-in held-msgid msgid payload groups s fn-arena) r)))
 
 ; fn-sr-a-re-signed-carrier-is-a-conflict, reachable positive witness: every
 ; hypothesis holds (both octets exist, the first is held, both plans name
@@ -99,7 +113,7 @@
         (equal (second *crt-msgids*) *crt-mo*)
         (not (equal *crt-s1* *crt-s2*))
         (not (equal *crt-oa* *crt-ob*))
-        (equal (fn-rcl-existing-action *crt-msgid* *crt-ob* *crt-groups* *crt-s*)
+        (equal (crt-entry *crt-msgid* *crt-msgid* *crt-ob* *crt-groups* *crt-s*)
                :conflict))))
 
 ; fn-cra-a-re-signed-carrier-is-other-octets, witness: both render, the
@@ -124,7 +138,7 @@
         (equal (fn-hrt-bytes (list (crt-wire *crt-msgid* *crt-oa*)) 0) *crt-oa*)
         (equal (first *crt-msgids*) *crt-mo*)
         (equal (third *crt-msgids*) *crt-mo*)
-        (equal (fn-rcl-existing-action *crt-msgid* *crt-ob-same* *crt-groups* *crt-s*)
+        (equal (crt-entry *crt-msgid* *crt-msgid* *crt-ob-same* *crt-groups* *crt-s*)
                :duplicate))))
 (must-fail
  (defthm crt-re-signed-without-different-signatures
@@ -133,12 +147,12 @@
          (pb (fn-hsig-injected-carrier-plan source principal keys s2 config b))
          (oa (fn-hsig-injected-carrier-octets source principal keys s1 config a))
          (ob (fn-hsig-injected-carrier-octets source principal keys s2 config b)))
-     (implies (and oa ob (equal (fn-article-payload held) oa)
+     (implies (and oa ob (equal (fn-handle-bytes (fn-article-payload held) fn-arena) oa)
                    (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid)))
-              (equal (fn-rcl-existing-action msgid ob groups s) :conflict)))
+              (equal (fn-store-existing-action msgid ob groups s fn-arena) :conflict)))
    :hints (("Goal" :in-theory (disable fn-hsig-injected-carrier-octets
-                                       fn-hsig-injected-carrier-plan fn-rcl-existing-action)))))
+                                       fn-hsig-injected-carrier-plan fn-store-existing-action)))))
 
 ; Hypothesis removed: the first carrier is held.  A Store holding it under
 ; another Message-ID holds nothing under this one; every other hypothesis
@@ -149,11 +163,13 @@
         ; by specification: the flip -- nothing is held, so no handle (the
         ; carrier's handle 0) is held under this Message-ID.
         (not (equal (fn-article-payload held) 0))
-        (not (equal (fn-article-payload held) *crt-oa*))
+        (not (equal (fn-hrt-bytes (list (crt-wire *crt-other-msgid* *crt-oa*))
+                                  (fn-article-payload held))
+                    *crt-oa*))
         (equal (first *crt-msgids*) *crt-mo*)
         (equal (second *crt-msgids*) *crt-mo*)
         (not (equal *crt-s1* *crt-s2*))
-        (not (equal (fn-rcl-existing-action *crt-msgid* *crt-ob* *crt-groups* *crt-empty*)
+        (not (equal (crt-entry *crt-other-msgid* *crt-msgid* *crt-ob* *crt-groups* *crt-empty*)
                     :conflict)))))
 (must-fail
  (defthm crt-re-signed-without-the-held-carrier
@@ -165,9 +181,9 @@
                    (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid))
                    (not (equal s1 s2)))
-              (equal (fn-rcl-existing-action msgid ob groups s) :conflict)))
+              (equal (fn-store-existing-action msgid ob groups s fn-arena) :conflict)))
    :hints (("Goal" :in-theory (disable fn-hsig-injected-carrier-octets
-                                       fn-hsig-injected-carrier-plan fn-rcl-existing-action)))))
+                                       fn-hsig-injected-carrier-plan fn-store-existing-action)))))
 
 ; The remaining hypotheses -- both octets exist and both plans name the
 ; asked Message-ID -- are the ones fn-sr-a-changed-source-is-a-conflict,
@@ -178,13 +194,13 @@
 ; are not claimed necessary, and the weakened theorem is not proved.
 (assert-event
  (and *crt-oa* (null *crt-ob-off*)
-      (equal (fn-rcl-existing-action *crt-msgid* *crt-ob-off* *crt-groups* *crt-s*)
+      (equal (crt-entry *crt-msgid* *crt-msgid* *crt-ob-off* *crt-groups* *crt-s*)
              :conflict)
       ; by specification: the flip -- the misfiled article holds handle 0,
       ; whose bytes are the first carrier.
       (equal (fn-article-payload (crt-held *crt-other-msgid* *crt-misfiled*)) 0)
       (equal (fn-hrt-bytes (list (crt-wire *crt-other-msgid* *crt-oa*)) 0) *crt-oa*)
-      (equal (fn-rcl-existing-action *crt-other-msgid* *crt-ob* *crt-groups*
+      (equal (crt-entry *crt-other-msgid* *crt-other-msgid* *crt-ob* *crt-groups*
                                      *crt-misfiled*)
              :conflict)))
 

@@ -591,9 +591,28 @@ label; it does not select a policy."
   (let ((result (fnn-%flock fd operation)))
     (when (< result 0) (fnn-os-fail (sb-alien:get-errno)))))
 
-(defvar *fnn-random-state* (sb-ext:seed-random-state t))
+;;; The state behind every staged name's random suffix, seeded from the OS's
+;;; entropy (`seed-random-state t': /dev/urandom) by the first draw of each
+;;; process.  A saved image must not carry it: a state seeded while the image
+;;; was built gave every process of that image the same sequence, so `init'
+;;; and `import', whose stage names carry no PID, staged under the same
+;;; ROOT.init-77b60431a1de in every run (PKT-819).  The save hook drops it
+;;; before `save-lisp-and-die'; a restarted image seeds its own.
+(defvar *fnn-random-state* nil)
+(defvar *fnn-random-state-lock* (sb-thread:make-mutex :name "fn native random state"))
+
+(defun fnn-random-state ()
+  (or *fnn-random-state*
+      (sb-thread:with-mutex (*fnn-random-state-lock*)
+        (or *fnn-random-state*
+            (setq *fnn-random-state* (sb-ext:seed-random-state t))))))
+
+(defun fnn-random-state-forget ()
+  (setq *fnn-random-state* nil))
+(pushnew 'fnn-random-state-forget sb-ext:*save-hooks*)
+
 (defun fnn-random-hex (octets)
-  (format nil "~(~v,'0x~)" (* 2 octets) (random (ash 1 (* 8 octets)) *fnn-random-state*)))
+  (format nil "~(~v,'0x~)" (* 2 octets) (random (ash 1 (* 8 octets)) (fnn-random-state))))
 
 ;;; Paths, as Python's pathlib joins and parents them.
 
@@ -5008,7 +5027,7 @@ acknowledges past the committed records)."
   (dotimes (i count)
     (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log)))))
 
-(defun fnn-log-line (what log size)
+(defun fnn-log-kernel-line (what log size)
   (let ((ks (fnn-log-kernel log)))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
              what (fnn-core 'fn-lgk-acked ks) (fnn-core 'fn-lgk-frontier ks)
@@ -5043,7 +5062,7 @@ acknowledges past the committed records)."
       ((string= command "scan")
        (let ((fd (fnn-log-open-segment path extent unit t)))
          (unwind-protect
-              (fnn-log-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
+              (fnn-log-kernel-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
                                                   :extent extent
                                                   :kernel (fnn-log-open-kernel fd extent unit max))
                             size)
@@ -5052,7 +5071,7 @@ acknowledges past the committed records)."
        (let ((log (fnn-log-recover path extent unit max)))
          (unwind-protect
               (progn
-                (fnn-log-line "RECOVERED" log size)
+                (fnn-log-kernel-line "RECOVERED" log size)
                 (when (string= command "append")
                   (let ((batches (fnn-log-nat-arg (sixth argv) "BATCHES"))
                         (per (fnn-log-nat-arg (seventh argv) "PER")))
@@ -5064,7 +5083,7 @@ acknowledges past the committed records)."
                       (fnn-log-append log)
                       (fnn-log-fence log)
                       (fnn-log-finish log per)
-                      (fnn-log-line (format nil "ACK batch=~d" (1+ b)) log size)))))
+                      (fnn-log-kernel-line (format nil "ACK batch=~d" (1+ b)) log size)))))
            (fnn-close (fnn-log-fd log)))))))
   +fnn-exit-ok+)
 

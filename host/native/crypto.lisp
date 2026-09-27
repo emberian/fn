@@ -34,17 +34,20 @@
   (sb-thread:make-mutex :name "fn native crypto initialization"))
 
 (defun fnn-crypto-library-candidates ()
-  (cond
-    ((member :darwin *features*)
-     '("/opt/homebrew/opt/libsodium/lib/libsodium.dylib"
-       "/usr/local/opt/libsodium/lib/libsodium.dylib"
-       "libsodium.dylib"))
-    ((member :linux *features*) '("libsodium.so.23" "libsodium.so"))
-    ;; The libsodium package; ld.so resolves the unversioned name to the
-    ;; installed major (HST-016), searching LD_LIBRARY_PATH (a release's
-    ;; libexec/fn/lib) before /usr/local/lib.
-    ((member :openbsd *features*) '("libsodium.so"))
-    (t nil)))
+  ;; Read-time conditionals, not a run-time `cond' over *features*: the saved
+  ;; core then carries only its own platform's names, and
+  ;; tools/runpath_check.py reads every lib*.so string in the core as a name
+  ;; it may dlopen (PKT-723: an OpenBSD core held Linux's libsodium.so.23).
+  #+darwin
+  '("/opt/homebrew/opt/libsodium/lib/libsodium.dylib"
+    "/usr/local/opt/libsodium/lib/libsodium.dylib"
+    "libsodium.dylib")
+  #+linux '("libsodium.so.23" "libsodium.so")
+  ;; The libsodium package; ld.so resolves the unversioned name to the
+  ;; installed major (HST-016), searching LD_LIBRARY_PATH (a release's
+  ;; libexec/fn/lib) before /usr/local/lib.
+  #+openbsd '("libsodium.so")
+  #-(or darwin linux openbsd) nil)
 
 (sb-alien:define-alien-routine ("sodium_init" fnn-%sodium-init)
     sb-alien:int)

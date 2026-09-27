@@ -48,6 +48,8 @@
 (include-book "node-invariants")
 (include-book "identity")
 (include-book "records")
+; records-flip: the acceptance payload is a handle into the payload arena.
+(include-book "payload-arena")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; The core, identity, record and frame clusters withdraw their vocabularies at
@@ -319,32 +321,44 @@
 
 ; The exact composition.  `completion` is the host's storage observation for
 ; this transaction, as it is for `fn-node-complete`.
+;
+; records-flip (PKT-635): the acceptance payload is an arena handle.  The
+; article is prepared under the handle the arena's next seal returns (its
+; count, books/payload-arena.lisp fn-arena-seal-new-handle) and its octets
+; are sealed only when the node staged it, as the Store's prepare entry does
+; (books/store-intern.lisp fn-store-prepare-interned): a refused or invalid
+; article leaves the arena as it was.
 (defun fn-ct-publish-article (s a digest articles digests store profile
                                 generation groups evidence obligation-digest
-                                completion stamp)
-  (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
-                              (true-listp store))))
+                                completion stamp fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-node-statep s) (fn-ct-profilep profile)
+                              (true-listp store))
+                  :guard-hints (("Goal" :in-theory (enable fn-ct-article-validp
+                                                           fn-ct-article-shapep)))))
   (if (not (fn-ct-article-validp a digest articles digests store profile
                                  (len articles)))
-      (list :invalid s nil)
+      (mv (list :invalid s nil) fn-arena)
     (if (not (fn-id-digestp obligation-digest))
-        (list :invalid s nil)
+        (mv (list :invalid s nil) fn-arena)
       (let* ((msgid (fn-ct-article-msgid a))
              (subject (fn-ct-subject-string a))
              (obligation-id (fn-ct-obligation-string obligation-digest))
              (txid (fn-state-next-txid (fn-node-acceptance s)))
              (prepared (fn-node-prepare s generation msgid
-                                        (fn-ct-article-octets a) groups
+                                        (fn-arena-count fn-arena) groups
                                         obligation-id subject evidence
                                         (fn-ct-charge a) stamp)))
         (if (equal prepared s)
-            (list :refused s nil)
-          (let ((done (fn-node-complete prepared txid generation completion)))
-            (if (equal completion :durable)
-                (list :accepted done
-                      (list :accepted msgid (fn-ct-article-content-id a)
-                            obligation-id))
-              (list :not-durable done nil))))))))
+            (mv (list :refused s nil) fn-arena)
+          (let* ((done (fn-node-complete prepared txid generation completion))
+                 (fn-arena (fn-arena-seal-list (fn-ct-article-octets a) fn-arena)))
+            (mv (if (equal completion :durable)
+                    (list :accepted done
+                          (list :accepted msgid (fn-ct-article-content-id a)
+                                obligation-id))
+                  (list :not-durable done nil))
+                fn-arena)))))))
 
 ; The node invariant the fold carries (docs/proof-style.md §4): publication of
 ; one article answers with a node state whenever it was given one, so
@@ -353,9 +367,10 @@
   (implies (fn-node-statep s)
            (fn-node-statep
             (fn-ct-result-state
-             (fn-ct-publish-article s a digest articles digests store profile
-                                    generation groups evidence
-                                    obligation-digest completion stamp))))
+             (mv-nth 0 (fn-ct-publish-article s a digest articles digests store profile
+                                              generation groups evidence
+                                              obligation-digest completion stamp
+                                              fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-state
                                    fn-frame-item)
                                   (fn-ct-article-validp fn-node-prepare
@@ -368,49 +383,57 @@
 ; Result: (state outcomes) with one (msgid status receipt) per article.
 (defun fn-ct-publish-list (s candidates digests obligation-digests completions
                              articles all-digests store profile generation
-                             groups evidence stamp)
+                             groups evidence stamp fn-arena)
   ; The measure is named: ACL2's first guess is over the node state, and
   ; refuting it opens the acceptance and retention kernels inside the
   ; termination proof.
-  (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-node-statep s) (fn-ct-profilep profile)
                               (true-listp store))
                   :measure (acl2-count candidates)))
   (if (consp candidates)
-      (let* ((one (fn-ct-publish-article
-                   s (car candidates)
-                   (if (consp digests) (car digests) nil)
-                   articles all-digests store profile generation groups
-                   evidence
-                   (if (consp obligation-digests) (car obligation-digests) nil)
-                   (if (consp completions) (car completions) nil) stamp))
-             (rest (fn-ct-publish-list
-                    (fn-ct-result-state one) (cdr candidates)
-                    (if (consp digests) (cdr digests) nil)
-                    (if (consp obligation-digests) (cdr obligation-digests) nil)
-                    (if (consp completions) (cdr completions) nil)
-                    articles all-digests store profile generation groups
-                    evidence stamp)))
-        (list (fn-frame-item 0 rest)
-              (cons (list (fn-ct-article-msgid (car candidates))
-                          (fn-ct-result-status one)
-                          (fn-ct-result-receipt one))
-                    (fn-frame-item 1 rest))))
-    (list s nil)))
+      (mv-let (one fn-arena)
+        (fn-ct-publish-article
+         s (car candidates)
+         (if (consp digests) (car digests) nil)
+         articles all-digests store profile generation groups
+         evidence
+         (if (consp obligation-digests) (car obligation-digests) nil)
+         (if (consp completions) (car completions) nil) stamp fn-arena)
+        (mv-let (rest fn-arena)
+          (fn-ct-publish-list
+           (fn-ct-result-state one) (cdr candidates)
+           (if (consp digests) (cdr digests) nil)
+           (if (consp obligation-digests) (cdr obligation-digests) nil)
+           (if (consp completions) (cdr completions) nil)
+           articles all-digests store profile generation groups
+           evidence stamp fn-arena)
+          (mv (list (fn-frame-item 0 rest)
+                    (cons (list (fn-ct-article-msgid (car candidates))
+                                (fn-ct-result-status one)
+                                (fn-ct-result-receipt one))
+                          (fn-frame-item 1 rest)))
+              fn-arena)))
+    (mv (list s nil) fn-arena)))
 
 ; The container entry point.  Result: (:refused reason) for a container
 ; outside the profile, else (:ok state outcomes conflicts).
 (defun fn-ct-publish-container (s c digests obligation-digests completions
-                                  store profile generation groups evidence stamp)
-  (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
+                                  store profile generation groups evidence stamp
+                                  fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-node-statep s) (fn-ct-profilep profile)
                               (true-listp store))))
   (if (not (fn-ct-containerp c profile))
-      (list :refused :container)
-    (let ((run (fn-ct-publish-list s (fn-ct-articles c) digests
-                                   obligation-digests completions
-                                   (fn-ct-articles c) digests store profile
-                                   generation groups evidence stamp)))
-      (list :ok (fn-frame-item 0 run) (fn-frame-item 1 run)
-            (fn-ct-conflict-evidence (fn-ct-articles c) (fn-ct-articles c))))))
+      (mv (list :refused :container) fn-arena)
+    (mv-let (run fn-arena)
+      (fn-ct-publish-list s (fn-ct-articles c) digests
+                          obligation-digests completions
+                          (fn-ct-articles c) digests store profile
+                          generation groups evidence stamp fn-arena)
+      (mv (list :ok (fn-frame-item 0 run) (fn-frame-item 1 run)
+                (fn-ct-conflict-evidence (fn-ct-articles c) (fn-ct-articles c)))
+          fn-arena))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md §2).  What leaves this book enabled: the

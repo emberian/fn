@@ -2,10 +2,12 @@
 ; one identity through the served POST, the operator post and the
 ; hybrid-author routes (all fn-inj-decide), before and after reclamation.
 ;
-; The subject is fn-rcl-existing-action, which the host calls at
-; host/owner-host.lisp fn-owner-existing-action and fn-owner-prepare, and
-; through fn-rclb-existing-action (fn-rclb-existing-action-is-rcl-existing-
-; action) at fn-owner-existing-action-buffer.  The articles are the corpus
+; The subject is fn-store-existing-action (books/store-intern.lisp), which
+; the host calls at host/owner-host.lisp fn-owner-existing-action and
+; fn-owner-prepare, and through fn-pidx-existing-action
+; (fn-pidx-existing-action-is-store-existing-action) at
+; fn-owner-existing-action-buffer; it reads the held bytes through the arena
+; (srt-action below runs it over the arena of SPEC).  The articles are the corpus
 ; shapes (tests/fixtures/source-corpus): a supplied Date, a generated Date,
 ; a client-supplied Path (D32, recipe v3), unknown headers and an 8-bit MIME
 ; body, injected by the real fn-inj-decide at two clock readings 37 s apart
@@ -134,16 +136,22 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (as fn-arena) (srt-alpha-in spec articles fn-arena) as)))
-; by specification: the flip -- the stored payload is a handle, so the
-; verdict the host asks is D25's over alpha of the acceptance articles
-; (books/store-intern.lisp fn-store-existing-action, keystone
-; fn-store-existing-action-is-the-verdict-over-alpha); fn-rcl-existing-action
-; on the alpha state is that verdict.  With nothing sealed it is
-; held-rows-tests' fn-hrt-existing-action (asserted below).
+; by specification: the flip -- the stored payload is a handle; the verdict
+; the host asks is fn-store-existing-action over the arena of SPEC (D25's
+; over alpha of the acceptance articles by its keystone
+; fn-store-existing-action-is-the-verdict-over-alpha).  With nothing sealed
+; it is held-rows-tests' fn-hrt-existing-action (asserted below).
+(defun srt-action-in (spec msgid payload groups s fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events (car spec) nil 0 fn-arena)
+    (declare (ignore rows))
+    (let ((fn-arena (srt-seal-all (cdr spec) fn-arena)))
+      (mv (fn-store-existing-action msgid payload groups s fn-arena) fn-arena))))
 (defun srt-action (spec msgid payload groups s)
   (declare (xargs :verify-guards nil))
-  (fn-rcl-action-over msgid payload groups
-                      (srt-alpha spec (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena) (srt-action-in spec msgid payload groups s fn-arena) r)))
 
 (defun srt-index-of (x xs i)
   (declare (xargs :guard (natp i) :verify-guards nil))
@@ -292,32 +300,32 @@
                    (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                    (equal groups (fn-article-groups held)))
-              (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+              (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                      :duplicate)))
-   :hints (("Goal" :in-theory (disable fn-inj-decide fn-rcl-existing-action))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide fn-store-existing-action))))
  )
 (must-fail
  (defthm srt-retry-without-the-groups
    (let ((held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
          (da (fn-inj-decide source config a)) (db (fn-inj-decide source config b)))
-     (implies (and (equal (fn-article-payload held) (fn-inj-decision-octets da))
+     (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena) (fn-inj-decision-octets da))
                    (fn-inj-injectedp da) (fn-inj-injectedp db)
                    (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid)))
-              (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+              (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                      :duplicate)))
-   :hints (("Goal" :in-theory (disable fn-inj-decide fn-rcl-existing-action)))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide fn-store-existing-action)))))
 (must-fail
  (defthm srt-retry-without-the-first-message-id
    (let ((held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
          (da (fn-inj-decide source config a)) (db (fn-inj-decide source config b)))
-     (implies (and (equal (fn-article-payload held) (fn-inj-decision-octets da))
+     (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena) (fn-inj-decision-octets da))
                    (fn-inj-injectedp da) (fn-inj-injectedp db)
                    (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                    (equal groups (fn-article-groups held)))
-              (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+              (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                      :duplicate)))
-   :hints (("Goal" :in-theory (disable fn-inj-decide fn-rcl-existing-action)))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide fn-store-existing-action)))))
 
 ; -----------------------------------------------------------------------------
 ; fn-sr-a-changed-source-is-a-conflict: one changed body byte, a changed
@@ -337,13 +345,13 @@
  (defthm srt-conflict-without-distinct-sources
    (let ((da (fn-inj-decide source1 config a)) (db (fn-inj-decide source2 config b))
          (held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
-     (implies (and (equal (fn-article-payload held) (fn-inj-decision-octets da))
+     (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena) (fn-inj-decision-octets da))
                    (fn-inj-injectedp da) (fn-inj-injectedp db)
                    (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid)))
-              (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+              (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                      :conflict)))
-   :hints (("Goal" :in-theory (disable fn-inj-decide fn-rcl-existing-action)))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide fn-store-existing-action)))))
 
 ; -----------------------------------------------------------------------------
 ; fn-sr-the-tombstone-keeps-the-source (unreachable-in-composition until a
@@ -384,16 +392,16 @@
  (defthm srt-conflict-after-reclaim-without-distinct-sources
    (let ((da (fn-inj-decide source1 config a)) (db (fn-inj-decide source2 config b))
          (held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
-     (implies (and (equal (fn-article-payload held)
+     (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
                           (fn-rcl-tombstone-of (fn-inj-decision-octets da)
                                                (fn-record-string-octets msgid)))
                    (fn-inj-injectedp da) (fn-inj-injectedp db)
                    (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid)))
-              (or (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+              (or (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                          :conflict)
                   (fn-rcl-collisionp source2 source1))))
-   :hints (("Goal" :in-theory (disable fn-inj-decide fn-rcl-existing-action)))))
+   :hints (("Goal" :in-theory (disable fn-inj-decide fn-store-existing-action)))))
 
 ; -----------------------------------------------------------------------------
 ; fn-sr-a-signed-retry-is-already-stored (PKT-166): the hybrid-author route's
@@ -459,9 +467,9 @@
                    (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid))
                    (equal groups (fn-article-groups held)))
-              (equal (fn-rcl-existing-action msgid ob groups s) :duplicate)))
+              (equal (fn-store-existing-action msgid ob groups s fn-arena) :duplicate)))
    :hints (("Goal" :in-theory (disable fn-hsig-injected-carrier-octets
-                                       fn-hsig-injected-carrier-plan fn-rcl-existing-action)))))
+                                       fn-hsig-injected-carrier-plan fn-store-existing-action)))))
 (must-fail
  (defthm srt-signed-retry-without-the-groups
    (let ((pa (fn-hsig-injected-carrier-plan source principal keys signatures config a))
@@ -469,9 +477,9 @@
          (oa (fn-hsig-injected-carrier-octets source principal keys signatures config a))
          (ob (fn-hsig-injected-carrier-octets source principal keys signatures config b))
          (held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
-     (implies (and oa ob (equal (fn-article-payload held) oa)
+     (implies (and oa ob (equal (fn-handle-bytes (fn-article-payload held) fn-arena) oa)
                    (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
                    (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid)))
-              (equal (fn-rcl-existing-action msgid ob groups s) :duplicate)))
+              (equal (fn-store-existing-action msgid ob groups s fn-arena) :duplicate)))
    :hints (("Goal" :in-theory (disable fn-hsig-injected-carrier-octets
-                                       fn-hsig-injected-carrier-plan fn-rcl-existing-action)))))
+                                       fn-hsig-injected-carrier-plan fn-store-existing-action)))))

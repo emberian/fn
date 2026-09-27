@@ -17,13 +17,18 @@
 ; The subject is what the host calls.  host/native/owner.lisp
 ; `fnn-owner-attempt' asks host/owner-host.lisp
 ; `fn-owner-existing-action-buffer', whose decision is
-; `fn-rclb-existing-action' (books/store-reclaim-buffer), and returns
-; `:duplicate' / `:conflict' as its word before `fnn-advance-frontier' or
-; `fn-owner-prepare-buffer' run, so no transaction number and no article
-; number is allocated.  The carried-signature ingress
-; (`fnn-owner-attempt-transit') asks `fn-owner-existing-action', whose
-; decision is `fn-rcl-existing-action' (books/store-reclaim).  Both are
-; stated.  The word goes to `fn-own-outcome' (host/owner-host.lisp
+; `fn-pidx-existing-action', which is `fn-store-existing-action'
+; (books/store-intern.lisp) over the buffer's value
+; (`fn-pidx-existing-action-is-store-existing-action',
+; books/post-identity-index.lisp), and returns `:duplicate' / `:conflict' as
+; its word before `fnn-advance-frontier' or `fn-owner-prepare-buffer' run,
+; so no transaction number and no article number is allocated.  The
+; carried-signature ingress (`fnn-owner-attempt-transit') asks
+; `fn-owner-existing-action', whose decision is `fn-store-existing-action'.
+; Since the records flip the held payload is an arena handle and the
+; verdict reads the bytes under it through the arena; whether a Message-ID
+; is answered does not depend on the arena, so the keystones hold for every
+; arena.  The word goes to `fn-own-outcome' (host/owner-host.lisp
 ; `fn-owner-outcome'), whose reply is `fn-pb-served-reply'
 ; (books/poster-bytes-invariants).
 ;
@@ -41,15 +46,18 @@
 ;   fn-vj-a-completion-keeps-a-held-message-id-answered
 ;   fn-vj-reclamation-keeps-a-held-message-id-answered
 ;   fn-vj-a-held-message-id-is-answered-441
-; The exact :duplicate for the same source across reclamation is
-; `fn-rcl-existing-action-after-reclaim' (books/store-reclaim), whose
-; collision disjuncts stand.
+; The exact :duplicate for the same source across reclamation, over the
+; entry the host calls, is `fn-sr-a-retry-after-reclaim-is-already-stored'
+; (books/source-routes); `fn-rcl-existing-action-after-reclaim'
+; (books/store-reclaim) states it over the wire view, whose collision
+; disjuncts stand.
 ;
 ; Prefix `fn-vj-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "store-reclaim-buffer")
 (include-book "store-node-retention")
 (include-book "poster-bytes-invariants")
+(include-book "store-intern")
 
 ; The Store's article list.
 (defun fn-vj-articles (s)
@@ -79,15 +87,15 @@
             (fn-find-article msgid xs))
    :hints (("Goal" :in-theory (enable fn-acceptedp fn-find-article)))))
 
-; The decision, both entries, answers from the Store whenever the Message-ID
-; is held.  (By the definitions: the lookup is by Message-ID.)
+; The decision the host calls answers from the Store whenever the
+; Message-ID is held.  (By the definition: the lookup is by Message-ID.)
 (defthm fn-vj-a-held-message-id-is-answered-by-definition
   (implies (and (stringp msgid) (fn-acceptedp msgid (fn-vj-articles s)))
-           (and (member-equal (fn-rclb-existing-action msgid fn-octets groups s)
-                              '(:duplicate :conflict))
-                (member-equal (fn-rcl-existing-action msgid payload groups s)
-                              '(:duplicate :conflict))))
-  :hints (("Goal" :in-theory (enable fn-rclb-existing-action fn-rcl-existing-action)
+           (member-equal (fn-store-existing-action msgid payload groups s fn-arena)
+                         '(:duplicate :conflict)))
+  :hints (("Goal" :in-theory (e/d (fn-store-existing-action)
+                                  (fn-store-existing-action-is-the-verdict-over-alpha
+                                   fn-handle-bytes))
                   :use ((:instance fn-vj-accepted-string-is-found
                                    (xs (fn-vj-articles s)))))))
 
@@ -98,16 +106,13 @@
 ; a resend under it is never prepared as a fresh acceptance.
 (defthm fn-vj-a-completion-keeps-a-held-message-id-answered
   (implies (and (stringp msgid) (fn-acceptedp msgid (fn-vj-articles s)))
-           (and (member-equal (fn-rclb-existing-action msgid fn-octets groups
-                                                       (fn-sn-finish s))
-                              '(:duplicate :conflict))
-                (member-equal (fn-rcl-existing-action msgid payload groups
-                                                      (fn-sn-finish s))
-                              '(:duplicate :conflict))))
+           (member-equal (fn-store-existing-action msgid payload groups
+                                                   (fn-sn-finish s) fn-arena)
+                         '(:duplicate :conflict)))
   :hints (("Goal"
            :in-theory (disable fn-sn-finish fn-acceptedp fn-find-article
-                               fn-rclb-existing-action fn-rcl-existing-action
-                               fn-rcl-existing-action-is-action-over-by-definition
+                               fn-store-existing-action
+                               fn-store-existing-action-is-the-verdict-over-alpha
                                fn-sn-finish-keeps-accepted-articles
                                fn-vj-find-of-accepted-is-a-member
                                fn-vj-a-member-is-accepted
@@ -135,32 +140,29 @@
  (defthm fn-vj-a-held-list-is-answered
    (implies (and (stringp msgid) (fn-acceptedp msgid arts)
                  (equal (fn-vj-articles s) arts))
-            (and (member-equal (fn-rclb-existing-action msgid fn-octets groups s)
-                               '(:duplicate :conflict))
-                 (member-equal (fn-rcl-existing-action msgid payload groups s)
-                               '(:duplicate :conflict))))
+            (member-equal (fn-store-existing-action msgid payload groups s fn-arena)
+                          '(:duplicate :conflict)))
    :hints (("Goal" :use (fn-vj-a-held-message-id-is-answered-by-definition)
                    :in-theory (disable fn-vj-a-held-message-id-is-answered-by-definition
-                                       fn-rclb-existing-action fn-rcl-existing-action
-                                       fn-rcl-existing-action-is-action-over-by-definition
+                                       fn-store-existing-action
+                                       fn-store-existing-action-is-the-verdict-over-alpha
                                        fn-acceptedp fn-vj-articles)))))
 
 ;  KEYSTONE (reclamation).  Reclaiming any article R of an acceptance state
 ; ACC keeps every held Message-ID answered: for any Store S2 whose article
-; list is the reclaimed one, both entries answer from the Store.
+; list is the reclaimed one, the decision answers from the Store.  (The
+; tombstone is sealed under a new handle; the lookup is by Message-ID.)
 (defthm fn-vj-reclamation-keeps-a-held-message-id-answered
   (implies (and (stringp msgid)
                 (fn-acceptedp msgid (fn-state-articles acc))
                 (equal (fn-vj-articles s2)
                        (fn-state-articles (fn-rcl-reclaim-state acc r tomb))))
-           (and (member-equal (fn-rclb-existing-action msgid fn-octets groups s2)
-                              '(:duplicate :conflict))
-                (member-equal (fn-rcl-existing-action msgid payload groups s2)
-                              '(:duplicate :conflict))))
+           (member-equal (fn-store-existing-action msgid payload groups s2 fn-arena)
+                         '(:duplicate :conflict)))
   :hints (("Goal"
            :in-theory (disable fn-vj-articles fn-rcl-reclaim-state fn-acceptedp
-                               fn-rclb-existing-action fn-rcl-existing-action
-                               fn-rcl-existing-action-is-action-over-by-definition
+                               fn-store-existing-action
+                               fn-store-existing-action-is-the-verdict-over-alpha
                                fn-vj-a-held-list-is-answered
                                fn-vj-reclaim-state-keeps-accepted)
            :use ((:instance fn-vj-reclaim-state-keeps-accepted)
@@ -204,18 +206,19 @@
                 (stringp msgid)
                 (fn-acceptedp msgid (fn-vj-articles s)))
            (member-equal (car (fn-own-outcome
-                               o id (fn-rclb-existing-action msgid fn-octets groups s)))
+                               o id (fn-store-existing-action msgid payload groups s
+                                                              fn-arena)))
                          (list (fn-pb-served-reply o id :duplicate)
                                (fn-pb-served-reply o id :conflict))))
   :hints (("Goal"
            :use ((:instance fn-vj-a-held-message-id-is-answered-by-definition)
                  (:instance fn-vj-a-store-word-is-answered-441
-                            (word (fn-rclb-existing-action msgid fn-octets groups s))))
+                            (word (fn-store-existing-action msgid payload groups s
+                                                            fn-arena))))
            :in-theory (disable fn-vj-a-store-word-is-answered-441
                                fn-vj-a-held-message-id-is-answered-by-definition
                                fn-own-outcome fn-pb-served-reply
-                               fn-rclb-existing-action fn-rcl-existing-action
-                               fn-rcl-existing-action-is-action-over-by-definition
-                               fn-rclb-existing-action-is-rcl-existing-action
+                               fn-store-existing-action
+                               fn-store-existing-action-is-the-verdict-over-alpha
                                fn-acceptedp fn-vj-articles)))
   :rule-classes nil)
