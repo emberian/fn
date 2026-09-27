@@ -10136,7 +10136,8 @@
         "tests/test_native_log.py",
         "tests/test_native_commit_log.py",
         "planning/evidence/per-record-state-2026-09-27.md",
-        "tests/test_native_bounds_join.py"
+        "tests/test_native_bounds_join.py",
+        "planning/evidence/kernel-concrete-2-2026-09-27.md"
       ],
       "events": [
         "fn-lgc-run-refines-the-kernel",
