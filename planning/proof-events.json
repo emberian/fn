@@ -10539,6 +10539,71 @@
           "kind": "theorem",
           "name": "fn-scj-identity-finish-owner-is-article-finish-owner",
           "note": "fn-rix-ocfg-complete is the article finish's owner with no staged record and the event index carried. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-ocfg-read-span-is-reference-under-invp",
+          "note": "KEYSTONE. The served chain over the catalog is the reference read under fn-scj-invp (fn-scr-owner-catalogp replaced by the carried invariant). Subject fn-scr-ocfg-read-span, called through fn-otm-read-span / fn-orr-read-span by host/owner-host.lisp fn-owner-chunk-span."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-recover",
+          "note": "KEYSTONE (E). The owner fn-owner-install-extended installs and the catalog it loads satisfy fn-scj-invp. Teeth: tests/acl2/served-catalog-join-inv-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-full-open",
+          "note": "KEYSTONE (E). The same at the full open over the interned journal."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-otm-read-span",
+          "note": "KEYSTONE. The host's read entry fn-otm-read-span keeps fn-scj-invp (a captured reader view live over the catalog)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-orr-read-span",
+          "note": "KEYSTONE. The reader read (with or without a captured view) keeps fn-scj-invp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-refresh",
+          "note": "KEYSTONE. The idle refresh keeps fn-scj-invp with the catalog untouched: under VV it takes fn-ctl-refresh-visible's first arm (no verdict-only divergence). Teeth: tests/acl2/served-catalog-join-inv-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-identity-finish-keeps-verdicts",
+          "note": "A keyring snapshot or standalone verdict completion adds no verdict pair."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-of-ocfg-step-conn-event",
+          "note": "KEYSTONE. fn-ocfg-step's connection events keep fn-scj-invp (books/served-catalog-join-frame-conns.lisp). Teeth: tests/acl2/served-catalog-join-frame-conns-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-conn-pinp-of-view-pinned",
+          "note": "KEYSTONE. A connection pinned at the view is pinned over the catalog exactly when the view is live over it. Teeth: tests/acl2/served-catalog-join-frame-conns-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scjs-invp-of-store-frame",
+          "note": "KEYSTONE. Every store step that completes no article keeps fn-scj-invp (books/served-catalog-join-frame-store.lisp). Teeth: tests/acl2/served-catalog-join-frame-store-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-owner-catalogp-at-host-finish",
+          "note": "KEYSTONE. Pinned connections and the live view stay over the catalog across the host's finish (rows sorted by sequence). Teeth: tests/acl2/served-catalog-join-pinned-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-host-article-finish-carried",
+          "note": "KEYSTONE. The host's article finish keeps fn-scj-invp; PRF-202's two equations derived; named hypotheses listed in planning/evidence/sca-join-2026-09-27.md. Teeth: the hypotheses on the T2 owner in tests/acl2/served-catalog-join-pinned-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-invp-at-identity-finish",
+          "note": "KEYSTONE. The same at the identity finish (fn-rix-ocfg-complete); the composite's equations named."
         }
       ]
     },
