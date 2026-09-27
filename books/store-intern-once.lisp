@@ -11,7 +11,8 @@
 ; samples (planning/evidence/snapshot-open-3-2026-09-27.md, M2).
 ;
 ; Here the held row's facts and context come from ONE fn-article-parse
-; (fn-ipo-facts-context: the three readers over that one result).  KEYSTONE
+; (fn-ipo-facts-context: the three readers over that one result, and the
+; overview column fn-hnov-of-parsed over it, lane served-columns).  KEYSTONE
 ; fn-ipo-facts-context-is-facts-and-context: its two values ARE
 ; fn-held-facts-of and fn-held-context-of, no hypothesis.  The executable
 ; row builder of the extent intern (books/payload-extent.lisp
@@ -34,7 +35,9 @@
     (mv (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)
                     (list (fn-ctl-article-target fields)
                           (fn-ctl-cancel-keys fields)
-                          (fn-ctl-cancel-locks fields)))
+                          (fn-ctl-cancel-locks fields))
+                    ;; The overview column from the same parse (lane served-columns).
+                    (fn-hnov-of-parsed bytes r))
         (fn-hc-make (if a
                         (fn-stx-verdict a keyring generation)
                       (fn-stx-make-verdict :unverified :malformed generation))
@@ -48,10 +51,10 @@
   (equal (fn-ipo-facts-context bytes keyring generation)
          (list (fn-held-facts-of bytes)
                (fn-held-context-of bytes keyring generation)))
-  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-held-context-of fn-ctl-control-of
+  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-held-context-of fn-ctl-control-of fn-hnov-of
                                    fn-ctl-received-fields fn-stx-verdict-of-octets
                                    fn-stx-delta fn-stx-parse)
-                                  (fn-article-parse fn-stx-verdict fn-hc-make fn-hf-make
+                                  (fn-article-parse fn-hnov-of-parsed fn-stx-verdict fn-hc-make fn-hf-make
                                    fn-stx-make-verdict fn-stx-verifiedp fn-stx-statement-of
                                    fn-ctl-article-target fn-ctl-cancel-keys
                                    fn-ctl-cancel-locks fn-hf-split-index

@@ -193,7 +193,7 @@
 
 (defun cct-held (seq txid msgid)
   (fn-held-make seq txid 0 msgid seq '("fn.test") "o" "s" "e" 1 5
-                (fn-hf-make 100 14 2 nil)
+                (fn-hf-make 100 14 2 nil nil)
                 ; by specification: the flip types the held context's verdict
                 ; (fn-hc-verdictp): the verdict value, token :unverified.
                 (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0) nil nil))

@@ -45,6 +45,8 @@
 (include-book "stx-lace")
 (include-book "nntp-session")
 (include-book "control-authority")   ; fn-ctl-control-of: the control fact
+(include-book "nov-fields")          ; fn-nov-header-content: the overview column
+(include-book "reclaim-tombstone")   ; fn-rcl-tombstonep: the column's tombstone flag
 
 ; -----------------------------------------------------------------------------
 ; The byte facts.
@@ -139,14 +141,81 @@
           (if n n 0))
       0)))
 
+; The overview COLUMN (lane served-columns): from ONE parse result PARSED of
+; BYTES, the five RFC 3977 section 8.3.2 fields exactly as the served OVER
+; renders them (books/nov-fields.lisp fn-nov-header-content of the parsed
+; view), each kept as a string (one character per octet: a column holds no
+; octet list, D27), whether the parse succeeded under the same test
+; fn-nov-overview makes, and whether the bytes are a reclaim tombstone.  A
+; caller that already parsed passes its parse (store-intern-once, the POST's
+; carried parse); fn-hnov-of parses.
+(defun fn-hnov-field (view name)
+  (declare (xargs :guard (fn-article-syntax-p view)))
+  (fn-record-octets-string (fn-nov-header-content view name)))
+
+(defun fn-hnov-parsed-okp (parsed)
+  (declare (xargs :guard t))
+  (and (true-listp parsed)
+       (fn-article-result-okp parsed)
+       (fn-article-syntax-p (fn-article-result-article parsed))))
+
+(defun fn-hnov-of-parsed (bytes parsed)
+  (declare (xargs :guard t))
+  (let ((tomb (fn-rcl-tombstonep bytes)))
+    (if (fn-hnov-parsed-okp parsed)
+        (let ((view (fn-article-result-article parsed)))
+          (fn-hnov-make tomb t
+                        (fn-hnov-field view *fn-nov-subject-name*)
+                        (fn-hnov-field view *fn-nov-from-name*)
+                        (fn-hnov-field view *fn-nov-date-name*)
+                        (fn-hnov-field view *fn-nov-message-id-name*)
+                        (fn-hnov-field view *fn-nov-references-name*)))
+      (fn-hnov-make tomb nil "" "" "" "" ""))))
+
+(defun fn-hnov-of (bytes)
+  (declare (xargs :guard t))
+  (fn-hnov-of-parsed bytes (fn-article-parse bytes)))
+
+(defthm fn-hnov-field-stringp
+  (stringp (fn-hnov-field view name))
+  :rule-classes :type-prescription)
+
+(defthm fn-hnov-tombstonep-booleanp
+  (booleanp (fn-rcl-tombstonep bytes))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-rcl-tombstonep))))
+
+(defthm fn-hnov-p-of-hnov-of-parsed
+  (fn-hnov-p (fn-hnov-of-parsed bytes parsed))
+  :hints (("Goal" :in-theory (e/d (fn-hnov-p fn-hnov-internals fn-hnov-flagp)
+                                  (fn-hnov-field fn-rcl-tombstonep fn-hnov-parsed-okp)))))
+
+(defthm fn-hnov-p-of-hnov-of
+  (fn-hnov-p (fn-hnov-of bytes))
+  :hints (("Goal" :use ((:instance fn-hnov-p-of-hnov-of-parsed (parsed (fn-article-parse bytes))))
+           :in-theory (e/d (fn-hnov-of) (fn-hnov-of-parsed fn-article-parse fn-hnov-p)))))
+
+; Closed from here on: a proof that opens a row's facts sees the column as
+; one term, never the parse (fn-held-p-of-intern-list and the intern's
+; materialization opened it into the article grammar: 17 million steps).
+(in-theory (disable fn-hnov-of fn-hnov-of-parsed fn-hnov-field fn-hnov-parsed-okp))
+
 (defun fn-held-facts-of (bytes)
   (declare (xargs :guard (true-listp bytes)))
   (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)
-              (fn-ctl-control-of bytes)))
+              (fn-ctl-control-of bytes) (fn-hnov-of bytes)))
 
 (defthm fn-hf-p-of-held-facts-of
   (fn-hf-p (fn-held-facts-of bytes))
-  :hints (("Goal" :in-theory (enable fn-hf-p fn-hf-internals fn-hf-startp))))
+  :hints (("Goal" :in-theory (e/d (fn-held-facts-of fn-hf-p fn-hf-internals fn-hf-startp
+                                   fn-hf-novp)
+                                  (fn-hnov-of fn-ctl-control-of fn-hnov-p)))))
+
+; The column of a row's bytes is fn-hnov-of of them.
+(defthm fn-hf-nov-of-held-facts-of
+  (equal (fn-hf-nov (fn-held-facts-of bytes))
+         (fn-hnov-of bytes))
+  :hints (("Goal" :in-theory (e/d (fn-hf-internals) (fn-hnov-of)))))
 
 ; The control fact of a row's bytes is what the control vocabulary reads
 ; from them (books/control-authority.lisp fn-ctl-control-of-fields): the
@@ -342,7 +411,7 @@
            (fn-held-p (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-held-p fn-record-internals
                                      fn-held-internals fn-hf-p fn-hc-p
-                                     fn-hf-startp fn-hc-verdictp))))
+                                     fn-hf-startp fn-hf-novp fn-hc-verdictp))))
 
 (defthm fn-intern-list-handle
   (equal (fn-record-payload (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena)))

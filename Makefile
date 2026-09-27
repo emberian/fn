@@ -751,6 +751,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-syntax \
 	books/nntp-session \
 	books/nntp-projection \
+	books/nov-fields \
 	books/nntp-responses \
 	books/nntp-article-block \
 	books/nntp-reader-compat \
@@ -847,6 +848,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/served-columns \
+	tests/acl2/served-columns-tests \
 	books/served-catalog \
 	books/served-catalog-chain \
 	books/served-catalog-owner \

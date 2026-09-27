@@ -47,12 +47,42 @@
 ; Cancel-Lock entries.  Decided once at intern like the others, so the owner's
 ; refresh, which holds no arena, reads a cancel's target and a target's locks
 ; from the rows (flip-L8-2, 2026-09-27).
+;
+; NOV is the overview COLUMN (lane served-columns, 2026-09-27): what the
+; served OVER/XOVER, HDR/XHDR and XPAT read of an article instead of its
+; octets, decided at the same intern from the same parse
+; (books/catalog-record.lisp fn-hnov-of; books/served-columns.lisp says the
+; served replies built from it are the replies built from the bytes).  Nil
+; means "not decided" (fn-held-plain, a row made by an entry that reads no
+; bytes): a served reader then reads the bytes, as before.
+(defun fn-hnov-flagp (x)
+  (declare (xargs :guard t))
+  (booleanp x))
+
+(fn-defrecord fn-hnov
+  :constructor (fn-hnov-make tomb ok subject from date msgid references)
+  :fields ((fn-hnov-tomb fn-hnov-flagp)
+           (fn-hnov-ok fn-hnov-flagp)
+           (fn-hnov-subject stringp)
+           (fn-hnov-from stringp)
+           (fn-hnov-date stringp)
+           (fn-hnov-msgid stringp)
+           (fn-hnov-references stringp))
+  :recognizer fn-hnov-p
+  :car-fn fn-cbor-ag-car
+  :cdr-fn fn-cbor-ag-cdr)
+
+(defun fn-hf-novp (x)
+  (declare (xargs :guard t))
+  (or (null x) (fn-hnov-p x)))
+
 (fn-defrecord fn-hf
-  :constructor (fn-hf-make octets body-start body-lines control)
+  :constructor (fn-hf-make octets body-start body-lines control nov)
   :fields ((fn-hf-octets natp)
            (fn-hf-body-start fn-hf-startp)
            (fn-hf-body-lines natp)
-           (fn-hf-control true-listp))
+           (fn-hf-control true-listp)
+           (fn-hf-nov fn-hf-novp))
   :recognizer fn-hf-p
   :car-fn fn-cbor-ag-car
   :cdr-fn fn-cbor-ag-cdr)
@@ -278,7 +308,7 @@
                 (fn-record-obligation-id w) (fn-record-content-subject w)
                 (fn-record-release-evidence w) (fn-record-charge w)
                 (fn-record-stamp w)
-                (fn-hf-make (len (fn-record-payload w)) nil 0 nil)
+                (fn-hf-make (len (fn-record-payload w)) nil 0 nil nil)
                 (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0)
                 nil nil))
 
@@ -286,7 +316,7 @@
   (implies (and (fn-record-p w) (natp handle))
            (fn-held-p (fn-held-plain w handle)))
   :hints (("Goal" :in-theory (enable fn-held-p fn-record-p fn-record-internals fn-held-internals
-                                     fn-hf-p fn-hc-p fn-hf-startp fn-hc-verdictp
+                                     fn-hf-p fn-hc-p fn-hf-startp fn-hf-novp fn-hc-verdictp
                                      fn-held-numbersp fn-held-withdrawnp
                                      fn-stx-make-verdict fn-stx-verdict-token
                                      fn-stx-verdict-generation))))

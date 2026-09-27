@@ -127,7 +127,10 @@
        (fn-gidx-pin-correspondencep index archive)
        (fn-midx-correspondencep (fn-gidx-pin-trie index)
                                 (fn-state-articles archive))
-       (fn-cnx-freshp fn-cat)))
+       (fn-cnx-freshp fn-cat)
+       ;; The overview column (lane served-columns): every decided row's
+       ;; facts are its bytes' (books/served-columns.lisp F).
+       (fn-scol-okp fn-arena fn-cat)))
 
 ; The same over a connection's fields, and over the live view a re-pin
 ; takes them from.

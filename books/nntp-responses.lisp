@@ -8,6 +8,7 @@
 (include-book "clock")
 ; D13: a reclaimed article's payload is a tombstone (STO-014).
 (include-book "reclaim-tombstone")
+(include-book "nov-fields")
 ; Closed here and for every book above: its recognizer walks 89 conses,
 ; and opened inside every proof about a retrieval it multiplied
 ; nntp-responses' own proof time thirty-fold (1.7 s to 56.6 s at 2 jobs,
@@ -1135,46 +1136,10 @@
 ; space.  The resulting field therefore carries none of TAB, CR, LF or NUL, so
 ; it can neither split a line nor invent a ninth field.
 
-(defconst *fn-nov-subject-name* '(115 117 98 106 101 99 116))
-(defconst *fn-nov-from-name* '(102 114 111 109))
-(defconst *fn-nov-date-name* '(100 97 116 101))
-(defconst *fn-nov-message-id-name* '(109 101 115 115 97 103 101 45 105 100))
-(defconst *fn-nov-references-name* '(114 101 102 101 114 101 110 99 101 115))
-
-(defun fn-nov-scrub-byte (byte)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (integerp byte) (<= 1 byte) (<= byte 255)
-           (not (equal byte 9)) (not (equal byte 13)) (not (equal byte 10)))
-      byte
-    32))
-
-(defun fn-nov-scrub (bytes)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count bytes)))
-  (if (consp bytes)
-      (if (and (equal (fn-ag-car bytes) 13)
-               (consp (fn-ag-cdr bytes))
-               (equal (fn-ag-car (fn-ag-cdr bytes)) 10))
-          (fn-nov-scrub (fn-ag-cdr (fn-ag-cdr bytes)))
-        (cons (fn-nov-scrub-byte (fn-ag-car bytes))
-              (fn-nov-scrub (fn-ag-cdr bytes))))
-    nil))
-
-; RFC 3977 section 8.3.2: the field is the header content, that is, the header
-; name and its following colon and space removed.  The parsed view's unfolded
-; value begins immediately after the colon.
-(defun fn-nov-value-content (value)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (consp value) (equal (fn-ag-car value) 32))
-      (fn-ag-cdr value)
-    value))
-
-(defun fn-nov-header-content (view name)
-  (declare (xargs :guard (fn-article-syntax-p view) :verify-guards nil))
-  (let ((fields (fn-article-get-headers view name)))
-    (if (consp fields)
-        (fn-nov-scrub (fn-nov-value-content
-                       (fn-article-field-unfolded-value (car fields))))
-      nil)))
+; The five header names and the section 8.3.2 transformation (fn-nov-scrub,
+; fn-nov-value-content, fn-nov-header-content) are books/nov-fields.lisp, so
+; the intern (books/catalog-record.lisp) decides the overview columns with
+; the SAME functions this book serves them with (lane served-columns).
 
 ; The :lines metadata item counts the body lines of the exact retained octets;
 ; :bytes counts those octets themselves.  Neither is stored beside the article
@@ -1578,19 +1543,6 @@
 (verify-guards fn-nntp-fact-names)
 
 (verify-guards fn-nntp-newgroups-response)
-
-(verify-guards fn-nov-scrub-byte)
-
-(verify-guards fn-nov-scrub)
-
-(verify-guards fn-nov-value-content)
-
-; The article accessors stay closed here so that
-; fn-nov-get-headers-car-is-a-field (local, above) is what discharges
-; the field obligation; opening fn-article-get-headers buries it.
-(verify-guards fn-nov-header-content
-  :hints (("Goal" :in-theory (disable fn-article-get-headers
-                                      fn-article-syntax-p))))
 
 (verify-guards fn-nov-body-line-count
   :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines)

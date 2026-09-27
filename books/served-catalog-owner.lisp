@@ -1180,3 +1180,88 @@
   (equal (fn-state-articles (fn-own-view-archive (fn-own-view o)))
          (fn-cat-view-articles (fn-scr-view-of (fn-own-view-version (fn-own-view o)) fn-cat)
                                fn-arena fn-cat)))
+
+; -----------------------------------------------------------------------------
+; The overview column at the owner's catalog entries (lane served-columns,
+; PRF-332): F (books/served-columns.lisp fn-scol-okp, a conjunct of
+; fn-scr-catalogp) at E, T1, T2 and T4.  E commits the store's rows as they
+; are, so it establishes F exactly when those rows are faithful to the arena
+; (fn-scol-history-okp: every article row, and every composite's held row,
+; carries the facts of its handle's octets or no column); T1's row is the
+; store's intern at the sealed handle (fn-intern-row-at: faithful when the
+; handle denotes the record's payload, which the one seal of the POST's
+; buffer makes true: fn-cat-prepare-sealed-names-the-sealed-handle); T2
+; commits that row; T4 only withdraws.  That the store's history rows stay
+; faithful across the owner's steps and the opens is the same obligation as
+; the join's establishment (books/served-catalog-join.lisp), still OPEN.
+
+(defun fn-scol-history-okp (rows fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (consp rows)
+      (and (or (not (fn-cat-rowp (car rows)))
+               (fn-scol-row-okp (car rows) fn-arena))
+           (or (not (fn-sca-composite-shapep (car rows)))
+               (fn-scol-row-okp (fn-hstxa-held (car rows)) fn-arena))
+           (fn-scol-history-okp (cdr rows) fn-arena))
+    t))
+
+(local (defthm fn-scol-okp-of-load-held-row
+   (implies (and (fn-scol-okp fn-arena fn-cat)
+                 (or (not (fn-cat-rowp r)) (fn-scol-row-okp r fn-arena))
+                 (or (not (fn-sca-composite-shapep r))
+                     (fn-scol-row-okp (fn-hstxa-held r) fn-arena)))
+            (fn-scol-okp fn-arena (fn-sca-load-held-row r view-index fn-cat)))
+   :hints (("Goal" :in-theory (e/d (fn-sca-load-held-row)
+                                   (fn-sca-composite-shapep fn-cat-rowp fn-held-with-withdrawn
+                                    fn-cat-commit-is-append fn-midx-lookup fn-scol-okp))))))
+
+(defthm fn-scol-okp-of-load-held-rows-from
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scol-history-okp rows fn-arena))
+           (fn-scol-okp fn-arena (fn-sca-load-held-rows-from rows view-index fn-cat)))
+  :hints (("Goal" :induct (fn-sca-load-held-rows-from rows view-index fn-cat)
+           :in-theory (e/d (fn-sca-load-held-rows-from)
+                           (fn-sca-load-held-row fn-sca-composite-shapep fn-cat-rowp)))))
+
+; E.
+(defthm fn-scol-okp-of-load-held-rows
+  (implies (and (fn-arena-p fn-arena)
+                (fn-scol-history-okp rows fn-arena))
+           (fn-scol-okp fn-arena (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-sca-load-held-rows)
+                                  (fn-sca-load-held-rows-from fn-scol-okp-of-load-held-rows-from))
+           :use ((:instance fn-scol-okp-of-load-held-rows-from (fn-cat nil))
+                 (:instance fn-scol-okp-of-clear)))))
+
+; T1: the store's intern at a handle denoting the record's payload.
+(defthm fn-scol-row-okp-of-intern-row-at
+  (implies (equal (fn-nntp-payload-bytes h fn-arena) (fn-record-payload w))
+           (fn-scol-row-okp (fn-intern-row-at w keyring generation h) fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-scol-row-okp fn-intern-row-at)
+                                  (fn-held-facts-of fn-held-context-of)))))
+
+; T2.
+(defthm fn-scol-okp-of-sca-complete
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scol-row-okp (fn-pc-held pending) fn-arena))
+           (fn-scol-okp fn-arena (mv-nth 2 (fn-sca-complete token pending view-index fn-cat))))
+  :hints (("Goal" :in-theory (e/d (fn-sca-complete fn-cat-complete fn-cat-complete-hidden)
+                                  (fn-held-with-withdrawn fn-cat-commit-is-append
+                                   fn-midx-lookup fn-scol-okp)))))
+
+; T4.
+(defthm fn-scol-okp-of-sca-withdraw-targets
+  (implies (and (fn-scol-okp fn-arena fn-cat) (natp by))
+           (fn-scol-okp fn-arena (fn-sca-withdraw-targets targets view-index by fn-cat)))
+  :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by fn-cat)
+           :in-theory (e/d (fn-sca-withdraw-targets)
+                           (fn-cat-view-last-visible fn-cat-withdraw-is-mark fn-midx-lookup
+                            fn-scol-okp)))))
+
+; The host's finish (T4 then T2).
+(defthm fn-scol-okp-of-sca-finish
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-scol-row-okp (fn-pc-held pending) fn-arena)
+                (or (null pending) (natp (fn-pc-expected pending))))
+           (fn-scol-okp fn-arena (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat))))
+  :hints (("Goal" :in-theory (e/d (fn-sca-finish) (fn-sca-complete fn-sca-withdraw-targets)))))
