@@ -3,6 +3,7 @@
 ; and observed, explicitly configured local transport provenance.
 (in-package "ACL2")
 (include-book "../books/bp-ingress")
+(include-book "../books/bp-ingress-carried")
 (include-book "../books/article-header-census")
 (include-book "../books/bp-primary")
 (include-book "../books/clock")
@@ -115,11 +116,19 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-store-sn-reset state))
 
-; The records flip (flip-L4's entry): the ADU is staged as the ROW interned at
-; the arena's count and sealed into the arena exactly when the Store staged it
-; (books/bp-ingress.lisp fn-bpi-ingress-prepare-interned, KEYSTONE
+; The records flip: the ADU is staged as the ROW interned at the arena's
+; count, and sealed into the arena exactly when the Store staged it.  This
+; entry READS the arena only (its count): an entry that updates the arena
+; carries ACL2's invariant-risk, so it would run through its *1* body (every
+; guard-verified callee checking its guard).  It answers (:seal ADU) and the
+; host seals the ADU with one call of the guard-verified fn-arena-seal-list
+; (tools/run_bp_ingress.py ingress_prepare -> run_store seal_named).  The
+; prepare is the carried one (books/bp-ingress-carried.lisp KEYSTONE
+; fn-bpi-ingress-prepare-carried-is-prepare, under fn-snt-relation: no replay
+; of the durable history per ADU); with the seal it is the book's entry
+; (books/bp-ingress.lisp fn-bpi-ingress-prepare-interned-unfolds; KEYSTONE
 ; fn-bpi-ingress-prepare-interned-row-is-the-received-adu).  The answer is
-; (mv nil KEYWORD fn-arena state).
+; (mv nil VALUE fn-arena state).
 (defun fn-bpi-host-prepare (destination source-eid bundle-id lifetime
                                          archive-id subject evidence charge adu
                                          monotonic-ns wall-ns wall-error-ms has-wall
@@ -128,19 +137,19 @@
   (if (not (fn-bpi-host-inputsp destination source-eid bundle-id lifetime
                                  archive-id subject evidence charge))
       (mv nil :invalid fn-arena state)
-    (mv-let (result fn-arena)
-      (fn-bpi-ingress-prepare-interned
-                   (f-get-global 'fn-store-sn state)
-                   (fn-bpi-host-policy (fn-store-octets->string archive-id)
-                                       (fn-store-octets->string subject)
-                                       (fn-store-octets->string evidence) charge)
-                   (fn-bpi-host-context destination source-eid bundle-id lifetime
-                                        monotonic-ns wall-ns wall-error-ms has-wall)
-                   adu fn-arena)
+    (let ((result
+           (fn-bpi-ingress-prepare-carried
+            (f-get-global 'fn-store-sn state)
+            (fn-bpi-host-policy (fn-store-octets->string archive-id)
+                                (fn-store-octets->string subject)
+                                (fn-store-octets->string evidence) charge)
+            (fn-bpi-host-context destination source-eid bundle-id lifetime
+                                 monotonic-ns wall-ns wall-error-ms has-wall)
+            adu (fn-arena-count fn-arena))))
       (if (equal (fn-bpi-result-kind result) :prepared)
           (let ((state (f-put-global 'fn-store-sn
                                      (fn-bpi-result-store result) state)))
-            (mv nil :prepared fn-arena state))
+            (mv nil (list :seal adu) fn-arena state))
         (mv nil (if (equal (fn-bpi-result-store result) :clock-unusable)
                     :clock-unusable
                   :rejected)
