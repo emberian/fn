@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "../../books/cancel-lock")
 (include-book "../../books/control-visible")
+(include-book "../../books/catalog-record")   ; fn-held-facts-of: the rows' facts
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun clt-octets (s) (fn-record-string-octets s))
@@ -112,8 +113,9 @@
       (fn-ctl-withdrawalp *clt-w-alice*)
       (equal (fn-ctl-w-principal *clt-w-alice*)
              (cons :cancel-key (fn-ctl-keys-octets *clt-c-alice-stored*)))
-      (equal (fn-ctl-withdrawal-effect *clt-w-alice* (list "local.general") nil
-                                       *clt-t-stored*)
+      (equal (fn-ctl-withdrawal-effect
+              (fn-ctl-w-with-tlocks *clt-w-alice* (fn-ctl-locks-octets *clt-t-stored*))
+              (list "local.general") nil nil)
              :poster)))
 
 ; Removal of "the key opens a lock": bob's cancel (another login on the same
@@ -125,16 +127,18 @@
  (and (fn-ctl-withdrawalp *clt-w-bob*)
       (not (fn-ctl-some-key-opens-p (fn-ctl-keys-octets *clt-c-bob-stored*)
                                     (fn-ctl-locks-octets *clt-t-stored*)))
-      (equal (fn-ctl-withdrawal-effect *clt-w-bob* (list "local.general") nil
-                                       *clt-t-stored*)
+      (equal (fn-ctl-withdrawal-effect
+              (fn-ctl-w-with-tlocks *clt-w-bob* (fn-ctl-locks-octets *clt-t-stored*))
+              (list "local.general") nil nil)
              (list :decline :no-lock-match))))
 
 ; Removal of the lock: the same key against the article as injected, with no
 ; lock (a post made before SEC-006, or unauthenticated).
 (assert-event
  (and (null (fn-ctl-locks-octets *clt-t*))
-      (equal (fn-ctl-withdrawal-effect *clt-w-alice* (list "local.general") nil
-                                       *clt-t*)
+      (equal (fn-ctl-withdrawal-effect
+              (fn-ctl-w-with-tlocks *clt-w-alice* (fn-ctl-locks-octets *clt-t*))
+              (list "local.general") nil nil)
              (list :decline :no-lock-match))))
 
 ; Removal of the key: an unsigned cancel carrying none declines :unsigned,
@@ -206,19 +210,31 @@
 ; ---------------------------------------------------------------------------
 ; The visible view (fn-ctl-visible-articles, the owner refresh's definition):
 ; alice's cancel withdraws her post; bob's does not.
-(defun clt-art (msgid groups payload)
-  (fn-make-article msgid payload groups nil t nil))
-(defconst *clt-a-t* (clt-art *clt-t-id* (list "local.general") *clt-t-stored*))
-(defconst *clt-a-ca* (clt-art "<c1@fn.test>" (list "control.cancel") *clt-c-alice-stored*))
-(defconst *clt-a-cb* (clt-art "<c2@fn.test>" (list "control.cancel") *clt-c-bob-stored*))
+; After the records flip an archive article holds a HANDLE; the control
+; facts are its row's in the Store's history (flip-L8-2).  A row of stored
+; BYTES at sequence (and handle) SEQ.
+(defun clt-art (msgid groups handle)
+  (fn-make-article msgid handle groups nil t nil))
+(defun clt-row (seq msgid groups bytes)
+  (fn-held-make seq seq 1 msgid seq groups "a" "s" "e" 2 :legacy
+                (fn-held-facts-of bytes)
+                (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0) nil nil))
+(defconst *clt-a-t* (clt-art *clt-t-id* (list "local.general") 0))
+(defconst *clt-a-ca* (clt-art "<c1@fn.test>" (list "control.cancel") 1))
+(defconst *clt-a-cb* (clt-art "<c2@fn.test>" (list "control.cancel") 2))
+(defconst *clt-hist*
+  (list (clt-row 0 *clt-t-id* (list "local.general") *clt-t-stored*)
+        (clt-row 1 "<c1@fn.test>" (list "control.cancel") *clt-c-alice-stored*)
+        (clt-row 2 "<c2@fn.test>" (list "control.cancel") *clt-c-bob-stored*)))
 (assert-event
  (let* ((arts (list *clt-a-ca* *clt-a-t*))
-        (ws (fn-ctl-articles-withdrawals arts nil nil nil)))
-   (and (equal ws (list *clt-w-alice*))
+        (ws (fn-ctl-articles-withdrawals arts nil *clt-hist* nil)))
+   (and (equal ws (list (fn-ctl-w-with-tlocks *clt-w-alice*
+                                              (fn-ctl-locks-octets *clt-t-stored*))))
         (equal (fn-ctl-visible-articles arts ws nil) (list *clt-a-ca*)))))
 (assert-event
  (let* ((arts (list *clt-a-cb* *clt-a-t*))
-        (ws (fn-ctl-articles-withdrawals arts nil nil nil)))
+        (ws (fn-ctl-articles-withdrawals arts nil *clt-hist* nil)))
    (and (equal (len ws) 1)
         (equal (fn-ctl-visible-articles arts ws nil) arts))))
 

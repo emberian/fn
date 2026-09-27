@@ -202,11 +202,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-intern-tests \
 	books/store-existing-alpha \
 	tests/acl2/store-existing-alpha-tests \
+	books/store-recover-stream \
+	tests/acl2/store-recover-stream-tests \
 	books/store-node-traces-prepare \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \
 	books/store-prepare-correspondence \
 	tests/acl2/store-prepare-correspondence-tests \
+	tests/acl2/store-prepare-carried-tests \
 	books/store-node-retention \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
@@ -812,6 +815,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-events-carried \
 	books/owner-commit-carried \
 	books/owner-prepare-carried \
+	books/store-prepare-carried \
 	books/records-concrete \
 	books/records-concrete-owner \
 	books/records-attach-concrete \
@@ -839,6 +843,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
+	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
@@ -979,6 +984,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-wait-codec-tests \
 	books/consumer-wait \
 	tests/acl2/consumer-wait-tests \
+	books/consumer-reason \
+	tests/acl2/consumer-reason-tests \
+	books/consumer-withdrawal \
+	tests/acl2/consumer-withdrawal-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
@@ -1047,6 +1056,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cancel-lock \
 	tests/acl2/cancel-lock-tests \
 	tests/acl2/owner-cancel-lock-tests \
+	tests/acl2/owner-cancel-refresh-tests \
 	books/cancel-lock-d25 \
 	tests/acl2/cancel-lock-d25-tests \
 	books/control-served \
@@ -1177,61 +1187,70 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
+# `make check` runs every step even when one fails, then prints a table of
+# them (step, exit, seconds, first finding) and fails if any step failed:
+# make stops a recipe at its first red line, and one sibling's red step used
+# to hide every check after it (tools/check_steps.py).
+CHECK_STEPS_DIR ?= build/check-steps
+CHECK_STEP = $(PYTHON) tools/check_steps.py run $(CHECK_STEPS_DIR) --
+
 check:
-	$(PYTHON) tools/check_scaffold.py
+	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
 # Every command the docs name exists with the grammar the docs give (NNT-032):
 # operator invocations are judged by ACL2's grammar in the generated book
 # tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
-	$(PYTHON) tools/docs_check.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 # Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
 # SBCL's compile-file and the Python tests read them with different default
 # encodings; the files that still carry a section sign are listed debt
 # (tools/ascii_debt.json, PKT-496) that may only shrink.
-	$(PYTHON) tools/ascii_check.py --strict
+	@$(CHECK_STEP) $(PYTHON) tools/ascii_check.py --strict
 # A certified registry row must name existing ACL2 events whose defining
 # books have source- and include-closure-compatible manifest evidence, and
 # must itself cite an archived manifest that certified each event book at its
 # current digest. Any warning fails; --explain PRF-xxx names the manifest.
-	$(PYTHON) tools/certified_claims.py
+	@$(CHECK_STEP) $(PYTHON) tools/certified_claims.py
 # planning/current.md, the per-capability current view, is generated from
 # planning/current-view.json and the tree (host call lines, keystones, the
 # archived manifests, the tested and deployed images' source digests); this
 # fails when it is stale or names something absent.
-	$(PYTHON) tools/current_view.py --check
-# Newest measured attempts at each current book/include closure, grouped by
-# host and toolchain. The ten-second rule is a ratchet over
-# planning/proof-cost-baseline.json: a new slow book, or one 25% over its
-# baseline, fails. Installed pairs have no proof time.
-	$(PYTHON) tools/proof_cost.py
+	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
+# The fastest passed attempt at each current book/include closure, grouped by
+# host and toolchain. The ten-second rule (D26) over
+# planning/proof-cost-baseline.json: a new book conclusively (quietly) over
+# 11 s, or a baseline book whose prover steps rose over 10%, fails; a loaded
+# figure is UNQUIET, a failed attempt FAILED. Installed pairs have no proof time.
+	@$(CHECK_STEP) $(PYTHON) tools/proof_cost.py
 # The throughput gate (PKT-407): the newest hbox run under
 # planning/evidence/throughput/ for HEAD or its nearest measured ancestor,
 # against planning/throughput-baseline.json per operation (25% or the
 # metric's floor); a regression fails unless planning/throughput-causes.json
 # names the run's revision with a reason.  No run: NOT MEASURED, passes.
-	$(PYTHON) tools/throughput_gate.py check
+	@$(CHECK_STEP) $(PYTHON) tools/throughput_gate.py check
 # Every host file loaded alone in its own ACL2: the dynamic half of the
 # host-names lint.  Needs FN_ACL2 and installed certificates; without
 # FN_ACL2 it prints that it did not run and exits 0.
-	$(PYTHON) tools/host_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
 # specs/crash-model-v2.md section 2.3's check, in both directions: every cut
 # the campaign kills at is a :cut of the model program that transcribes its
 # host function, and every :cut of a model program is a host faults.at site.
 # It is mechanical and needs no ACL2, so it belongs in `check`.  It fails on a
 # fidelity defect; missing host cuts and syscall drift are reported and do not
 # fail (--strict fails on those too).
-	$(PYTHON) tools/transcribe_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/transcribe_check.py
 # The same transcription check for the native host, which transcribe_check
 # does not read: for each program tests/campaign/native_cuts.py names, the
 # host function's success-path syscalls, file-kernel observations and fnn-at
 # cuts in source order equal the program's steps (kind and directory), and
 # every error-arm observation is one of the program's error constants.  A
 # source check; it states what it cannot decide.  Mechanical, no ACL2.
-	$(PYTHON) tools/native_program_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/native_program_check.py
 # No Python on the path a deployed node executes (D35): the process sites in
 # host/, the libraries the image loads, the shipped launcher and service files.
-	$(PYTHON) tools/runpath_check.py --quiet
+	@$(CHECK_STEP) $(PYTHON) tools/runpath_check.py --quiet
 # The served command chain is four session records deep and every base
 # accessor is `car', so a call that stops one level short is answered with a
 # plausible value rather than an error: four such misses shipped on
@@ -1239,7 +1258,7 @@ check:
 # every formal's session level from the books and fails on a wrong depth.  A
 # walk spelled by hand instead of through a named projection is drift and is
 # counted, not failed (--strict fails on those too).  Mechanical, no ACL2.
-	$(PYTHON) tools/session_depth.py
+	@$(CHECK_STEP) $(PYTHON) tools/session_depth.py
 # Every certification claim in this tree cites a run directory under
 # `build/`, which `.gitignore:6` excludes: the directory exists only on the
 # box that ran it, and a worktree removal, a farm root or a gate reaper
@@ -1251,7 +1270,7 @@ check:
 # `--strict` fails on those too, once their owners re-run or retract them.
 # Mechanical, no ACL2.  `tools/cite_check.py` is the same family for
 # repository paths and deliberately does not read `build/`.
-	$(PYTHON) tools/evidence_manifests.py check
+	@$(CHECK_STEP) $(PYTHON) tools/evidence_manifests.py check
 # The teeth audit's static half: assertions that exercise ACL2 rather than fn,
 # recognisers that no test ever makes TRUE, keystones with no witness in any
 # test book, and citations of theorems the tree no longer defines.  It needs
@@ -1261,7 +1280,7 @@ check:
 # `--report` adds the evaluated half from build/teeth/values.json, which
 # `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
 # of one ACL2.
-	$(PYTHON) tools/teeth_check.py --summary
+	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --summary
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -1273,7 +1292,7 @@ check:
 # `waivers` fails on a
 # skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
 # are static, need no ACL2 and take about a second.
-	$(PYTHON) tools/harness_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
@@ -1283,7 +1302,7 @@ check:
 # gets the wrong one, or where conditional arms disagree.  Static, no ACL2,
 # about two seconds; forms it does not model are counted as undecidable.
 # `make check-host-translate' is the dynamic check, when an ACL2 is local.
-	$(PYTHON) tools/host_shape_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/host_shape_check.py
 # Every host file build.lisp `ld`s is `ld`ed by build-dtn.lisp or listed, with
 # its reason, as DTN-omitted; and no name an omitted file defines is spelled
 # as a counterpart in a raw module the DTN image loads.  At 6c0626c5 the DTN
@@ -1291,12 +1310,12 @@ check:
 # And every book a DTN-loaded host file calls is included before its `ld`:
 # at 32842f50 build-dtn.lisp lacked books/octets-stobj and the image failed.
 # Static, under a second, with its teeth test.
-	$(PYTHON) tools/build_lists_check.py
-	$(PYTHON) tools/host_defun_check.py
-	$(PYTHON) -m unittest -q tests.test_build_lists_check
+	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
-	$(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
 # specs/identity.md "The signed bytes" is what an independent verifier is
 # written from.  On 2026-09-24 tools/fn_verify.py had to read the books for
 # the preimage layout, the dropped fields and the ML-DSA context, because the
@@ -1304,7 +1323,7 @@ check:
 # section names is no longer defined in books/, or when the section, the book
 # constants and the verifier state different tag bytes, widths or dropped
 # fields.  Static, no ACL2, no crypto library, under a second.
-	$(PYTHON) -m unittest -q tests.test_fn_verify.SpecBookTieTests
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_fn_verify.SpecBookTieTests
 # Every repository path this tree cites and no file answers.  On 2026-09-21
 # `books/stx-lace.lisp` was found citing a book and a test book that have
 # never existed, for the observation four keystones hypothesise.  The counts
@@ -1315,14 +1334,14 @@ check:
 # new one fails `make check` until the file exists, the path is corrected, or
 # the comment says the file does not exist and what rests on it.  Mechanical,
 # no ACL2; triage in planning/lanes/HANDOFF-w11-phantom-cites.md.
-	$(PYTHON) tools/cite_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/cite_check.py --summary --strict
 # Every Lisp name a spec or doc cites in backquotes is defined by a book, a
 # test book or a host file (PKT-312: a spec cited a retired theorem whose
 # statement was false at the new widths).  Templates, one-segment prefixes and
 # -vN tags pass by visible rule; tools/spec_cite_exemptions.json names each
 # exemption with its reason and each known-stale citation under its packet
 # (PKT-446), and --strict fails on a new one or an entry no longer cited.
-	$(PYTHON) tools/spec_cite_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict
 # Every theorem the registry cites whose subject no host line can reach.
 # AGENTS.md's first assurance rule -- "the theorem subject is the function
 # the host calls" -- was prose with nothing behind it, and the defect it
@@ -1336,7 +1355,7 @@ check:
 # `--strict' fails on any orphan NOT listed there, so the number can shrink
 # and cannot grow silently.  Deliberately generous about what counts as a
 # subject, so every orphan it reports is real and it misses some.
-	$(PYTHON) tools/reach_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
 # held BP fragments or the queued BP jobs.  tools/hot_path_check.py follows the
@@ -1346,7 +1365,7 @@ check:
 # packet, and `--strict' fails on an unexpected find not listed there or a
 # listed find that no longer occurs.  Its silence is not a proof: it is
 # path-insensitive and prints the cuts it was told to take.
-	$(PYTHON) tools/hot_path_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/hot_path_check.py --summary --strict
 # Whether each book is certified AT THE SOURCE DIGEST IT CARRIES NOW.  On
 # 2026-09-21 `dev` had been red for a day in books/stx-evidence-records,
 # books/checkpoint-compaction, books/hybrid-store and books/feed-connection,
@@ -1363,9 +1382,10 @@ check:
 # `--table` is the whole list; deliberately generates nothing committed, since
 # every archived manifest and every edited book would stale it.  Mechanical,
 # no ACL2, about three seconds.
-	$(PYTHON) tools/green_check.py --summary
-	$(PYTHON) tools/theory_check.py --summary
-	$(PYTHON) tools/theory_check.py --strict --books $(THEORY_STRICT_BOOKS)
+	@$(CHECK_STEP) $(PYTHON) tools/green_check.py --summary
+	@$(CHECK_STEP) $(PYTHON) tools/theory_check.py --summary
+	@$(CHECK_STEP) $(PYTHON) tools/theory_check.py --strict --books $(THEORY_STRICT_BOOKS)
+	@$(PYTHON) tools/check_steps.py summary $(CHECK_STEPS_DIR)
 
 # The integration labs.  Deliberately NOT part of `check`: the quick tier is
 # about two and a half minutes and the box tier is hours, while `check` is
@@ -1423,7 +1443,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
 	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_check_steps tests.test_cert_cache_sync
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

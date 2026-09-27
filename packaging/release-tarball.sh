@@ -184,7 +184,7 @@ install -m 0644 "$gate" "$top/share/fn/release-gate.txt"
 printed=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
 [ "$printed" = "fn $version ($short)" ] || {
   echo "release-tarball: bin/fn --version printed '$printed', not 'fn $version ($short)'" >&2; exit 4; }
-"${PYTHON:-python3}" tools/runpath_check.py --tree "$top" > "$stage/runpath-check.txt" 2>&1 || {
+"${PYTHON:-python3}" tools/runpath_check.py --tree "$top" --platform "${platform%%-*}" > "$stage/runpath-check.txt" 2>&1 || {
   cat "$stage/runpath-check.txt" >&2
   echo 'release-tarball: the runpath check failed (Python on the deployed path, or a bundled object above the glibc floor: --runtime-from)' >&2; exit 4; }
 install -m 0644 "$stage/runpath-check.txt" "$top/share/fn/runpath-check.txt"

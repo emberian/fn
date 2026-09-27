@@ -10,7 +10,7 @@ Subjects, in the order the live arm meets them:
 * A reader connection opened before the change keeps its archived domain and
   config pin; a new connection sees the live Store domain without a restart
   (`fn-ocl-complete-preserves-pinned-connection-histories`,
-  books/config-owner-live.lisp).
+  books/config-owner-live-complete.lisp).
 * The second of two live reconfigurations is published: the one the old
   `fn-ocfg-complete` could not publish after a live group creation.
 * The durable history is what a restart reads: `peer list` after the owner
@@ -106,7 +106,7 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(defthm fn-native-admin-live-group-delta-is-a-typed-delta", self.admin)
 
     def test_completion_publishes_what_recovery_replays(self):
-        live = (ROOT / "books" / "config-owner-live.lisp").read_text(encoding="ascii")
+        live = (ROOT / "books" / "config-owner-live-complete.lisp").read_text(encoding="ascii")
         start = live.index("(defun fn-ocl-complete (oc)")
         end = live.index("(defthm", start)
         body = live[start:end]
@@ -121,7 +121,7 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
     def test_actual_native_open_and_completion_call_the_physical_history_model(self):
         owner = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         store = (ROOT / "host" / "store-node-host.lisp").read_text(encoding="ascii")
-        live = (ROOT / "books" / "config-owner-live.lisp").read_text(encoding="ascii")
+        live = (ROOT / "books" / "config-owner-live-complete.lisp").read_text(encoding="ascii")
         # Both Store opens extend a checkpoint once and open from it
         # (fn-sco-store-open-of-extended-capture: the full open
         # fn-cpo-open-observed); the owner installs from that open.

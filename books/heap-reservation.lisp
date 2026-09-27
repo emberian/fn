@@ -217,6 +217,121 @@
                             (octets (fn-heap-stack-octets profile)))
                  (:instance fn-heap-decide-heap-shape)))))
 
+;; -----------------------------------------------------------------------------
+;; The operation's reservation (lane openbsd-release-fixes, PKT-686): the
+;; launcher's probe reserves for the command it will run.  The compaction
+;; verbs (`store compact', `store reclaim') get heap-figure's operation figure
+;; (`fn-heap-operation-decide', six list copies of the history, measured);
+;; every other command gets `fn-heap-reserve-decide' unchanged.  The host:
+;; host/native/heap.lisp `fnn-heap-reservation', from `fnn-command-heap' (the
+;; `heap -- ARGV' probe packaging/fn runs), with ACL2's native action for ARGV.
+
+; The reservation beside a heap decision D (heap-figure's shape).
+(defthm fn-heap-operation-decide-true-listp
+  (true-listp (fn-heap-operation-decide action profile core nursery observations))
+  :rule-classes :type-prescription)
+
+(defun fn-heap-reserve-of (d profile core observations connections)
+  (declare (xargs :guard (true-listp d)
+                  :guard-hints (("Goal" :in-theory (disable fn-bs-profile-admittedp
+                                                            fn-heap-stack-kib
+                                                            fn-heap-thread-count
+                                                            fn-heap-reservation-octets
+                                                            fn-heap-machine-octets)))))
+  (cond ((not (equal (car d) :heap)) d)
+        ((not (fn-bs-profile-admittedp profile))
+         (list :heap (fn-heap-decision-mb d) (nth 2 d) (nth 3 d)
+               *fn-heap-default-stack-kib* 1))
+        (t
+         (let* ((stack (fn-heap-stack-kib profile))
+                (threads (fn-heap-thread-count connections))
+                (total (fn-heap-reservation-octets (fn-heap-decision-mb d)
+                                                   core stack threads))
+                (machine (fn-heap-machine-octets observations)))
+           (if (<= total machine)
+               (list :heap (fn-heap-decision-mb d) (nth 2 d) (nth 3 d)
+                     stack threads)
+             (list :refused :machine-cannot-hold-threads
+                   (fn-heap-mb-of total) (nth 3 d)))))))
+
+(defthm fn-heap-reserve-decide-is-reserve-of-heap-decide
+  (equal (fn-heap-reserve-decide profile core nursery observations connections)
+         (fn-heap-reserve-of (fn-heap-decide profile core nursery observations)
+                             profile core observations connections))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-reserve-decide)
+                                  (fn-heap-decide
+                                   fn-heap-decide-refuses-exactly-past-the-machine)))))
+
+(defun fn-heap-reserve-operation-decide (action profile core nursery observations
+                                                connections)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-heap-operation-decide
+                                                            fn-heap-reserve-decide
+                                                            fn-heap-reserve-of)))))
+  (if (member-equal action '(:compact :reclaim))
+      (fn-heap-reserve-of (fn-heap-operation-decide action profile core nursery
+                                                    observations)
+                          profile core observations connections)
+    (fn-heap-reserve-decide profile core nursery observations connections)))
+
+; Every command but the compaction verbs reserves exactly as before.
+(defthm fn-heap-reserve-operation-decide-of-a-serve-action-by-definition
+  (implies (not (member-equal action '(:compact :reclaim)))
+           (equal (fn-heap-reserve-operation-decide action profile core nursery
+                                                    observations connections)
+                  (fn-heap-reserve-decide profile core nursery observations
+                                          connections))))
+
+; An accepted reservation beside a heap decision D is D's heap, and heap,
+; core and the threads' stacks fit the machine.
+(defthm fn-heap-reserve-of-holds-the-decision
+  (let ((r (fn-heap-reserve-of d profile core observations connections)))
+    (implies (and (fn-bs-profile-admittedp profile)
+                  (equal (car r) :heap))
+             (and (equal (car d) :heap)
+                  (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
+                  (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
+                         (nfix core)
+                         (* (fn-heap-reserve-threads r)
+                            (+ (* 1024 (fn-heap-reserve-stack-kib r))
+                               *fn-heap-thread-runtime-octets*)))
+                      (fn-heap-machine-octets observations)))))
+  :hints (("Goal" :in-theory (e/d (fn-heap-reservation-octets fn-heap-reserve-threads
+                                   fn-heap-reserve-stack-kib)
+                                  (fn-bs-profile-admittedp fn-heap-machine-octets
+                                   fn-native-control-max-active-clients
+                                   fn-heap-mb-of fn-heap-stack-kib fn-heap-thread-count)))))
+
+; KEYSTONE (PKT-686).  An accepted reservation for an admitted profile is the
+; operation's accepted heap figure (so `fn-heap-operation-decide-holds-the-
+; operation' holds in it: the command's measured working set on every store
+; the profile admits), and the heap, the image and the threads' stacks fit
+; the machine.
+(defthm fn-heap-reserve-operation-decide-holds-the-operation
+  (let ((r (fn-heap-reserve-operation-decide action profile core nursery
+                                             observations connections))
+        (d (fn-heap-operation-decide action profile core nursery observations)))
+    (implies (and (fn-bs-profile-admittedp profile)
+                  (equal (car r) :heap))
+             (and (equal (car d) :heap)
+                  (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
+                  (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
+                         (nfix core)
+                         (* (fn-heap-reserve-threads r)
+                            (+ (* 1024 (fn-heap-reserve-stack-kib r))
+                               *fn-heap-thread-runtime-octets*)))
+                      (fn-heap-machine-octets observations)))))
+  :hints (("Goal" :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide)
+                        (:instance fn-heap-reserve-of-holds-the-decision
+                                   (d (fn-heap-operation-decide action profile core nursery
+                                                                observations)))
+                        (:instance fn-heap-reserve-of-holds-the-decision
+                                   (d (fn-heap-decide profile core nursery observations)))
+                        (:instance fn-heap-operation-decide-of-a-serve-action-is-heap-decide))
+           :in-theory (union-theories '(fn-heap-reserve-operation-decide)
+                                      (theory 'minimal-theory)))))
+
 ; -----------------------------------------------------------------------------
 ; The report the probe prints: heap-figure's line, then on acceptance
 ;   stack=KB KB threads=N

@@ -304,7 +304,7 @@ ARENA_RESULT_SUFFIX = b" <fn-arena> <state>)"
 
 def acl2_result(output):
     """The printed value of one bridge call.  An entry that seals into the
-    payload arena (the records flip: `fn-store-sn-recover`, `-prepare`,
+    payload arena (the records flip: the recover form, `-prepare`,
     `-recover-from-checkpoint`) returns (mv nil VALUE fn-arena state), which
     ACL2 prints as `(NIL VALUE <fn-arena> <state>)`; its VALUE is the answer.
     A non-nil error flag there is not unwrapped, so its parser refuses it."""
@@ -429,6 +429,16 @@ class Acl2Store:
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                          stderr=subprocess.STDOUT, env=env)
             read_prompt(self.proc, ACL2_START_TIMEOUT_SECONDS)
+            # Invariant-risk mode T (ACL2 :doc set-check-invariant-risk) in the
+            # Python bridge only: the same guard checks as the default, without
+            # the warning text the bridge would read as ACL2's answer.  The
+            # configuration publication (fn-store-cfg-publication) interns into
+            # a local arena, an admin path, and printed "ACL2 Warning
+            # [Invariant-risk] ... UPDATE-FN-ARENA$C-COUNT" before its form
+            # (batch AV).  The native image keeps ACL2's default, so a hot-path
+            # invariant risk there stays a loud fault (flip-L6-2 removed the
+            # per-POST one).  Never NIL (unsafe).
+            self.call("(set-check-invariant-risk t)")
             if not self.preloaded:
                 for form in forms:
                     self.call(form)
@@ -547,8 +557,16 @@ class Acl2Store:
     def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
         config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
-        form = ("(fn-store-sn-recover '" + literal + " " + str(frontier)
-                + " '" + config + " fn-arena state)")
+        # Decode, intern, open (host/store-node-host.lisp): the arena is
+        # emptied and the rows made by the guard-verified fn-intern-events at
+        # top level, so no :program entry updates the arena (invariant-risk).
+        form = ("(let ((records (fn-store-sn-recover-records '" + literal + " '" + config + ")))"
+                " (if (eq records :bad) (mv nil :fault fn-arena state)"
+                " (let ((fn-arena (fn-arena-clear fn-arena)))"
+                " (mv-let (rows fn-arena) (fn-intern-events records nil 0 fn-arena)"
+                " (mv-let (erp val state) (fn-store-sn-recover-rows rows " + str(frontier)
+                + " '" + config + " state)"
+                " (mv erp val fn-arena state))))))")
         # Replay cost grows with the recovered history, so the bound does too.
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
@@ -653,7 +671,23 @@ class Acl2Store:
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
         form += " {} (fn-clock-observation {} {} 1000 {}) fn-arena state)".format(
             charge, monotonic_ms, wall_ms, "t" if has_wall else "nil")
-        return acl2_symbol(self.call(form))
+        output = self.call(form)
+        body = acl2_result(output)
+        # An accepted prepare answers (:SEAL OCTETS): ACL2 staged the row and
+        # names the payload; the bridge seals exactly those octets with one
+        # call of the guard-verified fn-arena-seal-list (the entry only reads
+        # the arena, books/store-prepare-carried.lisp
+        # fn-store-prepare-interned-carried-is-next-then-seal).
+        if body.upper().startswith(b"(:SEAL ") and body.endswith(b")"):
+            inner = body[len(b"(:SEAL "):-1].strip()
+            octets = [] if inner.upper() == b"NIL" else decimal_list(inner)
+            if octets is None or any(value > 255 for value in octets):
+                raise StoreError("ACL2 returned a malformed seal")
+            sealed = self.call("(fn-arena-seal-list '" + self.numeric_list(octets) + " fn-arena)")
+            if acl2_result(sealed).lower() != b"<fn-arena>":
+                raise StoreError("the arena seal returned no arena")
+            return "prepared"
+        return acl2_symbol(output)
 
     def existing_action(self, msgid, payload, group_codes):
         form = "(fn-store-sn-existing-action '" + self.literal(msgid)

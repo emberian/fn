@@ -214,6 +214,8 @@ case "${FAKE_EDIT_AFTER:-}" in
   "$book:"*) printf '; edited mid-run\n' >> "${FAKE_EDIT_AFTER#*:}.lisp" ;;
 esac
 printf 'end %s%s\n' "$book" "${wave:+ $wave}" >> "$FAKE_EVENTS"
+printf 'Summary\nForm:  ( DEFTHM FAKE-HOLDS ...)\nTime:  0.10 seconds\nProver steps counted:  40\n\n'
+printf 'Summary\nForm:  (CERTIFY-BOOK "%s" ...)\nTime:  0.20 seconds\nProver steps counted:  123\n\n' "$book"
 echo "ACL2 !>$marker"
 exit 0
 """
@@ -436,6 +438,18 @@ class ParallelScheduleTests(unittest.TestCase):
             for book in self.ORDER:
                 self.assertGreater(manifest["book_wall_seconds"][book], 0)
             self.assertGreater(manifest["certify_wall_seconds"], 0)
+            # The load beside each wall figure, and ACL2's own step count
+            # (tools/proof_cost.py ratchets steps; seconds need the load).
+            self.assertEqual(manifest["book_prover_steps"],
+                             {book: 123 for book in self.ORDER})
+            self.assertEqual(manifest["book_costliest_event"]["books/base"],
+                             {"form": "( DEFTHM FAKE-HOLDS ...)", "steps": 40,
+                              "seconds": 0.1})
+            self.assertCountEqual(manifest["book_load_average"], self.ORDER)
+            for pair in manifest["book_load_average"].values():
+                self.assertEqual(len(pair), 2)
+                self.assertTrue(all(isinstance(value, float) for value in pair))
+            self.assertEqual(manifest["cpu_count"], os.cpu_count())
             run_dir = next((repository.root / "build").glob("acl2-*/certify-*"))
             activity = json.loads((run_dir / "books--base.active.json").read_text())
             self.assertEqual((activity["book"], activity["wave"], activity["status"]),

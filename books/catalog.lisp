@@ -70,6 +70,91 @@
 ; books/held-record.lisp (moved down for the store machine, records-flip).
 
 ; -----------------------------------------------------------------------------
+; The catalog's row SHAPE: a held record whose context's delta is not
+; examined (flip-L8-2, 2026-09-27).  The records flip made the held
+; recognizer `fn-held-p' check the context's delta with `fn-lace-p', which
+; checks each statement's content address (books/statement.lisp fn-stmt-p ->
+; fn-stmt-payload-ref -> fn-digest).  A stobj recognizer and its
+; correspondence may not have a supporter that is attached (ACL2 :doc
+; stobj-attachment-restrictions), and books/crypto-attach attaches fn-digest:
+; so with fn-held-listp as the catalog's recognizer no book could include
+; both the catalog and crypto-attach.  The catalog reads a row's numbers,
+; withdrawal, octets and keys, never the delta; its recognizer and
+; correspondence are over this digest-free shape (`fn-cat-rowsp'), a held
+; row is one (`fn-held-p-implies-cat-rowp'), and a book that needs the full
+; held recognizer of the catalog's rows carries fn-held-listp beside
+; fn-cat-p (commit, withdraw and redecide preserve it: fn-cat-commit-keeps-
+; held-listp, fn-cat-withdraw-keeps-held-listp, fn-cat-redecide-keeps-held-
+; listp).
+(defun fn-cat-ctxp (x)
+  (declare (xargs :guard t))
+  (and (fn-hc-shapep x)
+       (fn-hc-verdictp (fn-hc-verdict x))
+       (natp (fn-hc-generation x))
+       t))
+
+(defun fn-cat-rowp (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-held-shapep x)
+       (fn-record-uint64p (fn-held-sequence x))
+       (fn-record-uint64p (fn-held-txid x))
+       (fn-record-uint64p (fn-held-generation x))
+       (fn-record-msgidp (fn-held-msgid x))
+       (natp (fn-held-payload x))
+       (fn-record-groups-validp (fn-held-groups x))
+       (fn-record-metadata-bytes-p (fn-held-obligation-id x))
+       (fn-record-metadata-bytes-p (fn-held-content-subject x))
+       (fn-record-metadata-bytes-p (fn-held-release-evidence x))
+       (fn-record-uint64p (fn-held-charge x))
+       (fn-record-stampp (fn-held-stamp x))
+       (fn-hf-p (fn-held-facts x))
+       (fn-cat-ctxp (fn-held-context x))
+       (fn-held-numbersp (fn-held-numbers x))
+       (fn-held-withdrawnp (fn-held-withdrawn x))))
+
+(verify-guards fn-cat-rowp)
+
+(defun fn-cat-rowsp (xs)
+  (declare (xargs :guard t))
+  (if (atom xs)
+      (null xs)
+    (and (fn-cat-rowp (car xs)) (fn-cat-rowsp (cdr xs)))))
+
+(defthm fn-held-p-implies-cat-rowp
+  (implies (fn-held-p x) (fn-cat-rowp x))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-hc-p))))
+
+(defthm fn-cat-rowp-fields
+  (implies (fn-cat-rowp h)
+           (and (natp (fn-record-payload h))
+                (fn-hf-p (fn-held-facts h))
+                (fn-held-numbersp (fn-held-numbers h))
+                (fn-held-withdrawnp (fn-held-withdrawn h))))
+  :hints (("Goal" :in-theory (enable fn-held-accessors-are-the-wire-accessors))))
+
+(in-theory (disable fn-cat-rowp fn-cat-ctxp))
+
+(defthm fn-held-listp-implies-cat-rowsp
+  (implies (fn-held-listp xs) (fn-cat-rowsp xs)))
+
+(defthm fn-cat-rowsp-forward-true-listp
+  (implies (fn-cat-rowsp xs) (true-listp xs))
+  :rule-classes :forward-chaining)
+
+(defthm fn-cat-rowp-of-nth-of-rowsp
+  (implies (and (fn-cat-rowsp xs) (natp i) (< i (len xs)))
+           (fn-cat-rowp (nth i xs))))
+
+(defthm fn-cat-rowsp-of-update-nth
+  (implies (and (fn-cat-rowsp xs) (fn-cat-rowp h) (natp i) (< i (len xs)))
+           (fn-cat-rowsp (update-nth i h xs))))
+
+(defthm fn-cat-rowsp-of-append-one
+  (implies (and (fn-cat-rowsp xs) (fn-cat-rowp h))
+           (fn-cat-rowsp (append xs (list h)))))
+
+
+; -----------------------------------------------------------------------------
 ; The logical model: the columns as functions of the list.
 
 ; The sequences of the rows carrying MSGID, ascending, the first row being I.
@@ -149,13 +234,13 @@
    :hints (("Goal" :in-theory (enable fn-held-withdrawnp)))))
 
 (defun fn-cat-visiblep (seq v c)
-  (declare (xargs :guard (and (natp seq) (natp v) (fn-held-listp c) (< seq (len c)))))
+  (declare (xargs :guard (and (natp seq) (natp v) (fn-cat-rowsp c) (< seq (len c)))))
   (and (< seq v)
        (let ((w (fn-held-withdrawn (nth seq c))))
          (or (null w) (<= v (car w))))))
 
 (defun fn-cat-mark-withdrawn (target v by c)
-  (declare (xargs :guard (and (natp target) (natp v) (natp by) (fn-held-listp c))))
+  (declare (xargs :guard (and (natp target) (natp v) (natp by) (fn-cat-rowsp c))))
   (if (and (< target (len c))
            (null (fn-held-withdrawn (nth target c))))
       (update-nth target (fn-held-with-withdrawn (nth target c) (cons v by)) c)
@@ -166,7 +251,7 @@
 
 (defun fn-cat$ap (x)
   (declare (xargs :guard t))
-  (fn-held-listp x))
+  (fn-cat-rowsp x))
 
 (defun create-fn-cat$a ()
   (declare (xargs :guard t))
@@ -580,7 +665,7 @@
 ; the stobj's logical fields (defun-nx: nothing executes it).
 (defun-nx fn-cat$corr (fn-cat$c fn-cat$a)
   (and (fn-cat$cp fn-cat$c)
-       (fn-held-listp fn-cat$a)
+       (fn-cat-rowsp fn-cat$a)
        (equal (nth 1 fn-cat$c) (len fn-cat$a))
        (<= (nth 1 fn-cat$c) (len (nth 0 fn-cat$c)))
        (fn-cat-rows-corr (len fn-cat$a) fn-cat$a (nth 0 fn-cat$c))
@@ -658,13 +743,13 @@
 ; A number above the group's high names no row.
 (local
  (defthm fn-ctg-number-seq-above-high
-   (implies (and (fn-held-listp c) (rationalp n) (< (fn-cat-group-high g c) n))
+   (implies (and (fn-cat-rowsp c) (rationalp n) (< (fn-cat-group-high g c) n))
             (equal (fn-cat-number-seq g n c i) nil))))
 
 ; A bound number is at most the high.
 (local
  (defthm fn-ctg-number-seq-below-high
-   (implies (and (fn-held-listp c) (fn-cat-number-seq g n c i) (rationalp n))
+   (implies (and (fn-cat-rowsp c) (fn-cat-number-seq g n c i) (rationalp n))
             (<= n (fn-cat-group-high g c)))
    :rule-classes :linear))
 
@@ -1027,22 +1112,36 @@
    (fn-held-numbersp (fn-cat-assign-numbers groups c))
    :hints (("Goal" :in-theory (enable fn-held-numbersp)))))
 
-(local
- (defthm fn-ctg-held-p-of-assign
-   (implies (fn-held-p h) (fn-held-p (fn-cat-assign h c)))
-   :hints (("Goal" :in-theory (enable fn-held-p fn-cat-assign fn-held-with-numbers)))))
+(defthm fn-cat-held-p-of-assign
+  (implies (fn-held-p h) (fn-held-p (fn-cat-assign h c)))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-cat-assign fn-held-with-numbers))))
+
+(defthm fn-cat-held-p-of-with-withdrawn
+  (implies (and (fn-held-p h) (fn-held-withdrawnp w))
+           (fn-held-p (fn-held-with-withdrawn h w)))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-with-withdrawn))))
+
+(defthm fn-cat-held-p-of-with-context
+  (implies (and (fn-held-p h) (fn-hc-p ctx))
+           (fn-held-p (fn-held-with-context h ctx)))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-with-context))))
 
 (local
- (defthm fn-ctg-held-p-of-with-withdrawn
-   (implies (and (fn-held-p h) (fn-held-withdrawnp w))
-            (fn-held-p (fn-held-with-withdrawn h w)))
-   :hints (("Goal" :in-theory (enable fn-held-p fn-held-with-withdrawn)))))
+ (defthm fn-ctg-rowp-of-assign
+   (implies (fn-cat-rowp h) (fn-cat-rowp (fn-cat-assign h c)))
+   :hints (("Goal" :in-theory (enable fn-cat-rowp fn-cat-assign fn-held-with-numbers)))))
 
 (local
- (defthm fn-ctg-held-p-of-with-context
-   (implies (and (fn-held-p h) (fn-hc-p ctx))
-            (fn-held-p (fn-held-with-context h ctx)))
-   :hints (("Goal" :in-theory (enable fn-held-p fn-held-with-context)))))
+ (defthm fn-ctg-rowp-of-with-withdrawn
+   (implies (and (fn-cat-rowp h) (fn-held-withdrawnp w))
+            (fn-cat-rowp (fn-held-with-withdrawn h w)))
+   :hints (("Goal" :in-theory (enable fn-cat-rowp fn-held-with-withdrawn)))))
+
+(local
+ (defthm fn-ctg-rowp-of-with-context
+   (implies (and (fn-cat-rowp h) (fn-hc-p ctx))
+            (fn-cat-rowp (fn-held-with-context h ctx)))
+   :hints (("Goal" :in-theory (enable fn-cat-rowp fn-cat-ctxp fn-hc-p fn-held-with-context)))))
 
 (local
  (defthm fn-ctg-member-of-assign-numbers
@@ -1059,7 +1158,7 @@
 ; the group's high, and the assignment is one past it.
 (local
  (defthm fn-ctg-named-key-not-assigned
-   (implies (and (fn-held-listp c)
+   (implies (and (fn-cat-rowsp c)
                  (fn-cat-number-seq (car k) (cdr k) c 0)
                  (rationalp (cdr k)))
             (not (member-equal k (fn-cat-assign-numbers groups c))))))
@@ -1067,7 +1166,7 @@
 ; A number that names a row of a held list is a positive integer.
 (local
  (defthm fn-ctg-number-seq-posp
-   (implies (and (fn-held-listp c) (fn-cat-number-seq g n c i))
+   (implies (and (fn-cat-rowsp c) (fn-cat-number-seq g n c i))
             (posp n))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-held-number-in)))))
@@ -1076,7 +1175,7 @@
 ; assignment; its column is unchanged by the new row.
 (local
  (defthm fn-ctg-numbers-okp-old-keys
-   (implies (and (fn-cat-numbers-okp keys tab c) (fn-held-listp c)
+   (implies (and (fn-cat-numbers-okp keys tab c) (fn-cat-rowsp c)
                  (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
                  (fn-cat-groups-coverp c (nth 4 fn-cat$c)))
             (fn-cat-numbers-okp keys
@@ -1209,14 +1308,14 @@
 ; for it is the new row.
 (local
  (defthm fn-ctg-number-seq-of-fresh
-   (implies (and (fn-held-listp c) (member-equal g (fn-record-groups h))
+   (implies (and (fn-cat-rowsp c) (member-equal g (fn-record-groups h))
                  (equal n (+ 1 (fn-cat-group-high g c))))
             (equal (fn-cat-number-seq g n (append c (list (fn-cat-assign h c))) 0)
                    (len c)))))
 
 (local
  (defthm fn-ctg-commit-numbers-new-keys
-   (implies (and (fn-held-listp c)
+   (implies (and (fn-cat-rowsp c)
                  (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
                  (fn-cat-groups-coverp c (nth 4 fn-cat$c))
                  (subsetp-equal groups (fn-record-groups h))
@@ -1321,7 +1420,7 @@
 ; exactly when the group is the new row's.
 (local
  (defthm fn-ctg-commit-groups-okp-keys
-   (implies (and (fn-held-listp c)
+   (implies (and (fn-cat-rowsp c)
                  (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
                  (fn-cat-groups-coverp c (nth 4 fn-cat$c))
                  (fn-cat-groups-okp keys (nth 4 fn-cat$c) c))
@@ -1332,7 +1431,7 @@
 
 (local
  (defthm fn-ctg-commit-groups-okp-new-keys
-   (implies (and (fn-held-listp c)
+   (implies (and (fn-cat-rowsp c)
                  (subsetp-equal groups (fn-record-groups h))
                  (fn-cat-groups-okp (nth 4 fn-cat$c) (nth 4 fn-cat$c) c)
                  (fn-cat-groups-coverp c (nth 4 fn-cat$c))
@@ -1401,8 +1500,8 @@
 ; (fn-cat-assign and fn-held-with-numbers opened): still a held row.
 (local
  (defthm fn-ctg-held-p-of-renumbered-make
-   (implies (and (fn-held-p h) (fn-held-numbersp ns))
-            (fn-held-p (fn-held-make (fn-record-sequence h) (fn-record-txid h)
+   (implies (and (fn-cat-rowp h) (fn-held-numbersp ns))
+            (fn-cat-rowp (fn-held-make (fn-record-sequence h) (fn-record-txid h)
                                      (fn-record-generation h) (fn-record-msgid h)
                                      (fn-record-payload h) (fn-record-groups h)
                                      (fn-record-obligation-id h)
@@ -1411,7 +1510,7 @@
                                      (fn-record-charge h) (fn-record-stamp h)
                                      (fn-held-facts h) (fn-held-context h)
                                      ns (fn-held-withdrawn h))))
-   :hints (("Goal" :in-theory (enable fn-held-p fn-record-internals fn-held-internals)))))
+   :hints (("Goal" :in-theory (enable fn-cat-rowp fn-record-internals fn-held-internals)))))
 
 (defthm fn-cat-commit{correspondence}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))
@@ -1629,14 +1728,18 @@
             (fn-cat-withdraw :logic fn-cat$a-withdraw :exec fn-cat$c-withdraw :protect t)
             (fn-cat-redecide :logic fn-cat$a-redecide :exec fn-cat$c-redecide :protect t)
             (fn-cat-clear :logic fn-cat$a-clear :exec fn-cat$c-clear :protect t))
+  :corr-fn-exists t
   :attachable t)
 
 ; -----------------------------------------------------------------------------
 ; The logical view, opened: a theorem over `fn-cat' is a theorem over the
 ; list of held records.
 
-(defthm fn-cat-p-is-held-listp
-  (equal (fn-cat-p x) (fn-held-listp x)))
+(defthm fn-cat-p-is-rowsp
+  (equal (fn-cat-p x) (fn-cat-rowsp x)))
+
+(defthm fn-cat-p-when-held-listp
+  (implies (fn-held-listp x) (fn-cat-p x)))
 
 (defthm fn-cat-count-is-len
   (equal (fn-cat-count fn-cat) (len fn-cat)))
@@ -1680,7 +1783,7 @@
                     fn-cat-group-number fn-cat-group-next fn-cat-group-count
                     fn-cat-total-octets fn-cat-visible-at fn-cat-commit
                     fn-cat-withdraw fn-cat-redecide fn-cat-clear
-                    fn-cat-p-is-held-listp fn-cat-assign fn-cat-visiblep
+                    fn-cat-p-is-rowsp fn-cat-assign fn-cat-visiblep
                     fn-cat-mark-withdrawn fn-held-with-numbers
                     fn-held-with-withdrawn fn-held-with-context))
 
@@ -1709,7 +1812,7 @@
   (implies (and (fn-cat-p fn-cat) (member-equal g (fn-record-groups h)))
            (equal (fn-cat-group-number g (fn-cat-group-next g fn-cat) (fn-cat-commit h fn-cat))
                   (fn-cat-count fn-cat)))
-  :hints (("Goal" :in-theory (enable fn-cat-p-is-held-listp fn-ctg-number-seq-of-fresh))))
+  :hints (("Goal" :in-theory (enable fn-cat-p-is-rowsp fn-ctg-number-seq-of-fresh))))
 
 (defthm fn-cat-visible-at-withdrawn
   (implies (and (natp seq) (natp v) (< seq (fn-cat-count fn-cat))
@@ -1717,3 +1820,25 @@
            (equal (fn-cat-visible-at seq v fn-cat)
                   (and (< seq v) (<= v (car (fn-held-withdrawn (fn-cat-at seq fn-cat)))))))
   :hints (("Goal" :in-theory (enable fn-cat-visiblep))))
+
+; The full held recognizer of the rows, for a book that needs it beside
+; fn-cat-p (the recognizer is the digest-free shape, fn-cat-rowsp): every
+; export that changes the rows preserves it.
+(defthm fn-cat-commit-keeps-held-listp
+  (implies (and (fn-held-listp fn-cat) (fn-held-p h))
+           (fn-held-listp (fn-cat-commit h fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-cat-commit-is-append))))
+
+(defthm fn-cat-withdraw-keeps-held-listp
+  (implies (and (fn-held-listp fn-cat) (natp target) (natp by))
+           (fn-held-listp (fn-cat-withdraw target by fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-cat-withdraw-is-mark fn-cat-mark-withdrawn)
+           :use ((:instance fn-cat-held-p-of-with-withdrawn
+                            (h (nth target fn-cat)) (w (cons (len fn-cat) by)))
+                 (:instance fn-held-withdrawnp (x (cons (len fn-cat) by)))))))
+
+(defthm fn-cat-redecide-keeps-held-listp
+  (implies (and (fn-held-listp fn-cat) (fn-hc-p context) (natp seq)
+                (< seq (len fn-cat)))
+           (fn-held-listp (fn-cat-redecide seq context fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-cat-redecide-is-update-nth))))

@@ -12,7 +12,7 @@
 ; row visited).  The walk and the column agree only when a number is bound
 ; by at most one row.  The catalog's commit assigns each group's next
 ; number (one past the group's high), so no number is ever bound twice,
-; but the generic's recognizer (`fn-cat-p' = `fn-held-listp') does not say
+; but the generic's recognizer (`fn-cat-p' = `fn-cat-rowsp') does not say
 ; so.  This book states it as an invariant over the logical list,
 ; `fn-cnx-freshp' (every row's number in a group exceeds every earlier
 ; row's number there), proves it established by the creator and preserved
@@ -328,7 +328,7 @@
 
 (defun fn-cnx-view-seq (group n v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len
                                                             fn-cat-at-is-nth fn-cat-group-number-is-number-seq)))))
   (let ((s (fn-cat-group-number group n fn-cat)))
     (if (and (natp s) (< s (fn-cat-count fn-cat)) (fn-cat-visible-at s v fn-cat))

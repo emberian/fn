@@ -591,9 +591,28 @@ label; it does not select a policy."
   (let ((result (fnn-%flock fd operation)))
     (when (< result 0) (fnn-os-fail (sb-alien:get-errno)))))
 
-(defvar *fnn-random-state* (sb-ext:seed-random-state t))
+;;; The state behind every staged name's random suffix, seeded from the OS's
+;;; entropy (`seed-random-state t': /dev/urandom) by the first draw of each
+;;; process.  A saved image must not carry it: a state seeded while the image
+;;; was built gave every process of that image the same sequence, so `init'
+;;; and `import', whose stage names carry no PID, staged under the same
+;;; ROOT.init-77b60431a1de in every run (PKT-819).  The save hook drops it
+;;; before `save-lisp-and-die'; a restarted image seeds its own.
+(defvar *fnn-random-state* nil)
+(defvar *fnn-random-state-lock* (sb-thread:make-mutex :name "fn native random state"))
+
+(defun fnn-random-state ()
+  (or *fnn-random-state*
+      (sb-thread:with-mutex (*fnn-random-state-lock*)
+        (or *fnn-random-state*
+            (setq *fnn-random-state* (sb-ext:seed-random-state t))))))
+
+(defun fnn-random-state-forget ()
+  (setq *fnn-random-state* nil))
+(pushnew 'fnn-random-state-forget sb-ext:*save-hooks*)
+
 (defun fnn-random-hex (octets)
-  (format nil "~(~v,'0x~)" (* 2 octets) (random (ash 1 (* 8 octets)) *fnn-random-state*)))
+  (format nil "~(~v,'0x~)" (* 2 octets) (random (ash 1 (* 8 octets)) (fnn-random-state))))
 
 ;;; Paths, as Python's pathlib joins and parents them.
 
@@ -1048,14 +1067,39 @@ saved profile stays a fault."
 (defun fnn-bridge-recover (records frontier config-records)
   "Replay the configuration history and then the article history.
 
-The core (host/store-node-host.lisp `fn-store-sn-recover') replays
-`config-records' with the article records through `fn-cpr-replay', takes the
-allocation domain and the capacity from the configured node, and opens the
-observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
-here.  The host supplies octets and decides nothing about them."
-  (fnn-action (fnn-core-arena-state 'fn-store-sn-recover
-                                    (mapcar #'fnn-octet-list records) frontier
-                                    (mapcar #'fnn-octet-list config-records))))
+The core replays `config-records' with the article records through
+`fn-cpr-replay', takes the allocation domain and the capacity from the
+configured node, and opens the observed store through `fn-cpo-open-observed'
+(host/store-node-host.lisp `fn-store-sn-recover-rows'); a store with no
+configuration record never reaches here.
+
+The history goes over in CHUNKS (PKT-823; books/store-recover-stream.lisp): a
+chunk closes where ACL2 says (`fn-srs-chunk-fullp', a work quantum: one record
+is always taken first, so no record is refused or split for its size), and
+only that chunk is ever an octet list.  Per chunk, ACL2 decodes it
+(`fn-store-decode-records', which is `fn-srs-decode') and the guard-verified
+`fn-srs-intern-step' interns it into the arena, accumulating the rows; the
+arena is cleared first and updated only by those direct calls, so no :program
+entry updates it (invariant-risk: flip-L6-2).  KEYSTONE
+fn-srs-steps-are-one-step-of-the-concatenation: every chunking gives the rows
+and arena one step over the whole history gives.  The host supplies octets,
+passes ACL2's values back unread, and decides nothing about them."
+  (let ((configs (mapcar #'fnn-octet-list config-records))
+        (arena (fnn-live-arena))
+        (acc nil))
+    (fnn-call 'fn-arena-clear arena)
+    (loop while records do
+      (let ((chunk nil) (octets 0))
+        (loop while (and records (not (fnn-core 'fn-srs-chunk-fullp octets))) do
+          (let ((record (pop records)))
+            (incf octets (length record))
+            (push (fnn-octet-list record) chunk)))
+        (let ((decoded (fnn-core 'fn-store-decode-records (nreverse chunk))))
+          (setq acc (first (fnn-call 'fn-srs-intern-step acc decoded arena))))
+        (when (eq acc :bad)
+          (return-from fnn-bridge-recover :fault))))
+    (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
+                                (fnn-core 'fn-srs-rows acc) frontier configs))))
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."
@@ -1175,12 +1219,40 @@ round policy."
                      internal-time-units-per-second)
               wall +fnn-owner-wall-error-ms+ has-wall)))
 
+(defun fnn-seal-octets (octets)
+  "The arena update a prepare names: seal OCTETS (the octet list the core
+answered with) through the guard-verified `fn-arena-seal-list'
+(books/payload-arena.lisp).  The core entries only READ the arena: an entry
+that also sealed would carry ACL2's invariant-risk and run through its *1*
+body, checking every callee's guard (the whole history, per POST)."
+  (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
+  t)
+
+(defun fnn-seal-live-buffer ()
+  "The arena update the owner's buffer prepare names (:seal-buffer): seal the
+octet buffer's payload through the guard-verified `fn-arena-seal-buffer'
+(books/payload-arena.lisp); see FNN-SEAL-OCTETS."
+  (fnn-call 'fn-arena-seal-buffer (fnn-live-octets) (fnn-live-arena))
+  t)
+
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
-  (fnn-action (fnn-core-arena-state 'fn-store-sn-prepare (fnn-octet-list msgid)
-                                    (fnn-octet-list payload)
-                                    codes (fnn-octet-list obligation) (fnn-octet-list subject)
-                                    (fnn-octet-list evidence) charge
-                                    (fnn-store-prepare-observation))))
+  "The standalone POST's prepare: ACL2 decides (fn-store-sn-prepare) and names
+the payload to seal as (:seal OCTETS); the host seals exactly those octets
+(books/store-prepare-carried.lisp
+`fn-store-prepare-interned-carried-is-next-then-seal')."
+  (let ((value (fnn-core-arena-state 'fn-store-sn-prepare (fnn-octet-list msgid)
+                                     (fnn-octet-list payload)
+                                     codes (fnn-octet-list obligation) (fnn-octet-list subject)
+                                     (fnn-octet-list evidence) charge
+                                     (fnn-store-prepare-observation))))
+    (if (and (consp value) (eq (first value) :seal))
+        (progn
+          (unless (and (consp (rest value)) (null (cddr value))
+                       (fnn-octet-list-p (second value)))
+            (fnn-fault "ACL2 returned a malformed seal"))
+          (fnn-seal-octets (second value))
+          :prepared)
+      (fnn-action value))))
 (defun fnn-bridge-existing-action (msgid payload codes)
   (fnn-action (fnn-core-arena-state 'fn-store-sn-existing-action (fnn-octet-list msgid)
                                     (fnn-octet-list payload) codes)))
@@ -5053,7 +5125,10 @@ acknowledges past the committed records)."
   (dotimes (i count)
     (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log)))))
 
-(defun fnn-log-verb-line (what log size)
+(defun fnn-log-rig-line (what log size)
+  ;; Not `fnn-log-line': that is the service log's one-argument writer
+  ;; (above), which this rig's definition used to replace in the image, so
+  ;; every owner start faulted in fn-lgk-acked (friend-blockers-2, 09:10Z).
   (let ((ks (fnn-log-kernel log)))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
              what (fnn-core 'fn-lgk-acked ks) (fnn-core 'fn-lgk-frontier ks)
@@ -5395,7 +5470,7 @@ fenced (fn-lgk-fence-failed) and the store with it."
       ((string= command "scan")
        (let ((fd (fnn-log-open-segment path extent unit t)))
          (unwind-protect
-              (fnn-log-verb-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
+              (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
                                                   :extent extent
                                                   :kernel (fnn-log-open-kernel fd extent unit max))
                             size)
@@ -5404,7 +5479,7 @@ fenced (fn-lgk-fence-failed) and the store with it."
        (let ((log (fnn-log-recover path extent unit max)))
          (unwind-protect
               (progn
-                (fnn-log-verb-line "RECOVERED" log size)
+                (fnn-log-rig-line "RECOVERED" log size)
                 (when (string= command "append")
                   (let ((batches (fnn-log-nat-arg (sixth argv) "BATCHES"))
                         (per (fnn-log-nat-arg (seventh argv) "PER")))
@@ -5416,7 +5491,7 @@ fenced (fn-lgk-fence-failed) and the store with it."
                       (fnn-log-append log)
                       (fnn-log-fence log)
                       (fnn-log-finish log per)
-                      (fnn-log-verb-line (format nil "ACK batch=~d" (1+ b)) log size)))))
+                      (fnn-log-rig-line (format nil "ACK batch=~d" (1+ b)) log size)))))
            (fnn-close (fnn-log-fd log)))))))
   +fnn-exit-ok+)
 

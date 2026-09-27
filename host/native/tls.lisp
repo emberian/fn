@@ -95,20 +95,19 @@ FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
   (let ((configured (fnn-tls-configured-library-pair)))
     (if configured
         (list configured)
-      (cond
-              ((member :darwin *features*)
-               '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
-        "/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib")
-       ("/usr/local/opt/openssl@3/lib/libcrypto.3.dylib"
-        "/usr/local/opt/openssl@3/lib/libssl.3.dylib")
-       ("libcrypto.3.dylib" "libssl.3.dylib")))
-              ((member :linux *features*)
-               '(("libcrypto.so.3" "libssl.so.3")))
-              ;; LibreSSL in the base system; ld.so resolves an unversioned
-              ;; name to the installed major.
-              ((member :openbsd *features*)
-               '(("libcrypto.so" "libssl.so")))
-        (t nil)))))
+      ;; Read-time, as fnn-crypto-library-candidates: the core carries only
+      ;; its platform's names (PKT-723).
+      #+darwin
+      '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
+         "/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib")
+        ("/usr/local/opt/openssl@3/lib/libcrypto.3.dylib"
+         "/usr/local/opt/openssl@3/lib/libssl.3.dylib")
+        ("libcrypto.3.dylib" "libssl.3.dylib"))
+      #+linux '(("libcrypto.so.3" "libssl.so.3"))
+      ;; LibreSSL in the base system; ld.so resolves an unversioned
+      ;; name to the installed major.
+      #+openbsd '(("libcrypto.so" "libssl.so"))
+      #-(or darwin linux openbsd) nil)))
 
 ;;; Every libssl/libcrypto function this file calls.  OpenSSL 3.0 to 3.5 and
 ;;; LibreSSL 3+ export all of them; SSL_CTX_set_min_proto_version and

@@ -16,8 +16,9 @@ and [the current view](current.md). Release scope is
    contract.
 2. **Iterate in a live session.** `tools/proof_repl.py start NAME BOOK
    --upto EVENT`, then `send`; 300 s bounds a discovery attempt, and a
-   timeout is a finding with the theorem named. An admitted form is not a
-   certificate.
+   timeout is a finding with the theorem named. Compare attempts by the
+   prover steps each answer reports, not by seconds. An admitted form is
+   not a certificate.
 3. **Certify incrementally.** `farm.py submit <box> --affected-by <book>` (or
    the changed books and tests as plain roots): cached books install, the
    rest certify. Never `--closure` for lane work. Wait with one background
@@ -52,9 +53,15 @@ to the proof owner rather than searching for it.
 
 ## Proof cost
 
-- A book over ten seconds at two jobs is a defect (D26). `proof_cost` fails
-  on a book not in the baseline above 11 s, or on a baseline book 25 % over
-  its figure; 10 to 11 s prints `NEAR`. The baseline only shrinks, by proof
+- A book over ten seconds at two jobs is a defect (D26). The seconds are the
+  book's fastest passed 2-job measurement of its current bytes, and over the
+  line they count only when quiet (1-minute load at most a quarter of the
+  box's CPUs, recorded per book) or above 30 s; otherwise `UNQUIET`, a
+  warning to re-measure quietly. Compare attempts, and ratchet baseline
+  books, by ACL2's prover steps, which no load moves: `proof_cost` fails on
+  a book not in the baseline conclusively above 11 s, or on a baseline book
+  whose steps rose more than 10 %; 10 to 11 s prints `NEAR`; a failed
+  certification is `FAILED`, never `IMPROVED` (docs/proofs.md). The baseline only shrinks, by proof
   work: read the certify log's per-event times and `Rules:`, one
   instrumented session at most, never raise a timeout or weaken a statement.
 - The band and the threshold are operating rules, not proof that an

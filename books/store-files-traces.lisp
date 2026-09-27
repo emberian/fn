@@ -47,9 +47,12 @@
     ((equal (car event) :refuse-reservation)
      (and (equal (len event) 2)
           (fn-record-uint32p (car (cdr event)))))
+    ; records-flip: the kernel stages the RETAINED article, a held row
+    ; (books/held-record.lisp; fn-store-event-p's article disjunct), never
+    ; the wire record the entry interns (books/store-intern.lisp).
     ((equal (car event) :prepare-record)
      (and (equal (len event) 2)
-          (fn-record-p (car (cdr event)))))
+          (fn-held-p (car (cdr event)))))
     ((equal (car event) :record-file)
      (and (equal (len event) 2)
           (member-equal (car (cdr event)) '(:ok :known-fail))))
@@ -180,7 +183,7 @@
  (in-theory
   (disable fn-sf-statep fn-sf-phase-shapep fn-sf-record-listp
            fn-sf-success-listp fn-sf-candidatep
-           fn-sf-history-recoverablep fn-sf-replay-node fn-record-p
+           fn-sf-history-recoverablep fn-sf-replay-node fn-record-p fn-held-p
               fn-sf-prefixp)))
 
 ; These footprint lemmas keep the trace proofs at the storage API boundary.

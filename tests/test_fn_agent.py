@@ -35,5 +35,30 @@ class ArticleFieldsTests(unittest.TestCase):
             fn_agent.main(["/nonexistent.json", "next", "--timeout", "3601"])
 
 
+class WithdrawalTests(unittest.TestCase):
+    """PKT-710: a withdrawal report (the native decoder's
+    `fn-consumer-withdrawn-v1 MSGID-HEX`) is presented as its Message-ID,
+    never as an article."""
+
+    def agent(self, line, code=0):
+        import subprocess
+        agent = fn_agent.Agent.__new__(fn_agent.Agent)
+        agent.native = lambda *words, **kw: subprocess.CompletedProcess(
+            words, code, stdout=line, stderr=b"")
+        return agent
+
+    def test_withdrawn_report_is_its_message_id(self):
+        record = self.agent(b"fn-consumer-withdrawn-v1 " + b"<q@x.invalid>".hex().encode()
+                            + b"\n").project(None, "report")
+        self.assertEqual(record, {"kind": "withdrawn", "message_id": "<q@x.invalid>"})
+
+    def test_article_line_is_still_an_article(self):
+        article = b"Message-ID: <q@x.invalid>\r\n\r\nhello\r\n"
+        record = self.agent(b"fn-consumer-article-v1 " + b"<q@x.invalid>".hex().encode()
+                            + b" " + article.hex().encode() + b"\n").project(None, "report")
+        self.assertEqual(record["kind"], "article")
+        self.assertEqual(record["body"], "hello\n")
+
+
 if __name__ == "__main__":
     unittest.main()

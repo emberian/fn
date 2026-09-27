@@ -97,6 +97,8 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/consumer-bound")
 (include-book "../books/consumer-wait")
+;; PKT-710: the page and the wait step over it.
+(include-book "../books/consumer-withdrawal")
 (include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -916,8 +918,11 @@
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
                 (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
-              (let ((fn-arena (fn-arena-seal-list payload fn-arena)))
-                (mv nil :prepared fn-arena state)))))))))))))
+              ; The entry reads the arena only (no invariant-risk: it runs
+              ; compiled, no callee re-checks its guard); it names the payload
+              ; and the host seals it with one fn-arena-seal-list call
+              ; (tools/run_owner.py prepare), exactly when the Store changed.
+              (mv nil (list :seal payload) fn-arena state))))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -1011,8 +1016,12 @@
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
                 (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
-              (let ((fn-arena (fn-arena-seal-buffer fn-octets fn-arena)))
-                (mv nil :prepared fn-arena state)))))))))))))
+              ; Reads the arena and the buffer only (no invariant-risk; see
+              ; fn-owner-prepare): :seal-buffer tells the host to seal the
+              ; buffer's payload with one fn-arena-seal-buffer call
+              ; (host/native/owner.lisp fnn-owner-attempt), exactly when the
+              ; Store changed.
+              (mv nil :seal-buffer fn-arena state))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
@@ -1124,8 +1133,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-status (fn-owner-core state) consumer)))
 
-(defun fn-owner-consumer-local-poll (consumer state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-consumer-local-poll (consumer fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   ;; PKT-254: ACL2 encodes the selected event and refuses a report the
   ;; poll reply cannot carry by name (books/consumer-owner-local.lisp
   ;; fn-col-poll-report; fn-col-poll-report-fits-or-refuses-by-name,
@@ -1135,7 +1144,15 @@
   ;; PRF-234: fn-cbind-plain-poll is fn-col-poll-report for an unbound
   ;; consumer and refuses (:bound) a bound one (books/consumer-bound.lisp
   ;; fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll).
-  (value (fn-cbind-plain-poll (fn-owner-ocfg state) consumer)))
+  ;; The records flip: a selected article is a held row, whose report reads
+  ;; its bytes through the live arena (fn-cbind-plain-poll-over,
+  ;; fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll).
+  ;; PKT-710: the page is that answer with the view's withdrawals in it
+  ;; (books/consumer-withdrawal.lisp fn-cwd-page; the answer itself while
+  ;; nothing is withdrawn, fn-cwd-page-without-withdrawals-is-the-answer).
+  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                      (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer
+                                                fn-arena))))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1368,19 +1385,25 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-mvb-plan op login id reason (fn-owner-ocfg state))))
 
-(defun fn-owner-operator-submit (msgid-octets group-octets payload state)
-  (declare (xargs :stobjs state :mode :program))
+; After the records flip the node holds the stored article's HANDLE; the
+; retry arm reads the octets under it through the arena
+; (books/owner-served-invariants.lisp fn-own-operator-stored-octets,
+; keystone fn-own-operator-retry-at-the-entry-is-the-stored-injection), and
+; the submit, its refusal line and the event carry them (flip-L8-2).
+(defun fn-owner-operator-submit (msgid-octets group-octets payload fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((owner (fn-owner-core state))
+         (stored (fn-own-operator-stored-octets owner msgid-octets fn-arena))
          (result (fn-own-operator-submit-result owner msgid-octets
-                                                 group-octets payload))
+                                                 group-octets payload stored))
          ; The refusal's service-log line, NIL unless RESULT is :refused
          ; (fn-olog-control-refusal-line-says-refused-iff-submit-refused).
          (state (f-put-global 'fn-owner-log-line
                               (fn-olog-control-refusal-line
-                               owner msgid-octets group-octets payload)
+                               owner msgid-octets group-octets payload stored)
                               state))
          (state (fn-owner-step (list :operator-submit msgid-octets
-                                     group-octets payload)
+                                     group-octets payload stored)
                                state)))
     (value result)))
 
@@ -1390,11 +1413,12 @@
 ; The native control path maps it to the control word
 ; (`fn-native-control-refusal-status'), so an article past the profile's A
 ; reaches the operator as `article-exceeds-profile-bound', not a bare refusal.
-(defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((decision (fn-own-operator-decision-of (fn-owner-core state)
-                                               msgid-octets group-octets
-                                               payload)))
+(defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((decision (fn-own-operator-decision-of
+                   (fn-owner-core state) msgid-octets group-octets payload
+                   (fn-own-operator-stored-octets (fn-owner-core state) msgid-octets
+                                                  fn-arena))))
     (value (if (fn-inj-injectedp decision)
                nil
              (fn-inj-decision-reason decision)))))
@@ -1451,10 +1475,15 @@
 ; fn-cbind-ack-is-the-consumer-ack-or-a-refusal).  The host carries the
 ; decoded consumer id or cursor and the password octets; it compares
 ; nothing.
-(defun fn-owner-consumer-local-bound-poll (consumer secret state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)
-                        consumer secret)))
+(defun fn-owner-consumer-local-bound-poll (consumer secret fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  ;; Over the live arena (records flip): fn-cbind-poll-over-delivers-only-
+  ;; readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal.
+  ;; PKT-710: with the withdrawals in it (a refusal of the gate is served
+  ;; unchanged, fn-cwd-page-of-a-refusal).
+  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                      (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                          consumer secret fn-arena))))
 
 ;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
 ;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
@@ -1462,10 +1491,13 @@
 ;; when that is an empty page before the deadline.  The admission of one
 ;; more waiter.  host/native/owner.lisp fnn-owner-consumer-local-wait calls
 ;; both under the owner mutex.
-(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cwait-step (fn-owner-ocfg state) (fn-owner-auth state)
-                        consumer secret elapsed seconds)))
+(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  ;; Over the live arena (records flip), and PKT-710: a wait answers the
+  ;; page (fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page),
+  ;; so a withdrawal wakes it as an article does.
+  (value (fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                consumer secret elapsed seconds fn-arena)))
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :mode :program))
