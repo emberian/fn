@@ -4163,7 +4163,7 @@
     },
     {
       "id": "SCN-166",
-      "title": "Power is cut (qemu SIGKILL) under an OpenBSD 7.9 node while a client outside the VM posts, compacts, captures checkpoints, reclaims, initializes and recovers; after reboot, fsck, recover and the owner, every acknowledged article answers exactly as first read, a refused one stays refused, local numbers are never reassigned",
+      "title": "Power is cut (qemu SIGKILL) under an OpenBSD 7.9 node while a client outside the VM posts, compacts, captures checkpoints, reclaims, initializes, imports and recovers; after reboot, fsck, recover and the owner, every acknowledged article answers exactly as first read, a refused one stays refused, local numbers are never reassigned",
       "milestone": "M6",
       "status": "specified",
       "requirements": [
@@ -4171,15 +4171,16 @@
         "NNT-005"
       ],
       "steps": [
-        "Clone the release-openbsd VM (fn-a04213276edf installed); give it a store disk (raw: completed writes survive the cut; qcow2 writeback: unflushed allocations are lost) with FFS1 or FFS2; the node listens on the guest loopback behind a pf redirect.",
-        "Per epoch: `operator init` cut at a random point, then cycles of: boot, `fsck -y`, mount, `operator recover`, the owner, the oracle (ARTICLE of every attempted Message-ID, OVER), `status`, then the phase's work and a SIGKILL of qemu: posting on two connections (every seventh POST names an uncarried group), posting across the automatic checkpoint capture, `store compact` with the owner stopped, an interrupted `recover`, and `retention set released-by-all-holders` then `store reclaim`.",
+        "Clone the release-openbsd VM and install the release under test (tools/power_loss_openbsd.py install NAME TARBALL; first run fn-a04213276edf, the continuation fn-c5d7b5b3fd9f); give it a store disk (raw: completed writes survive the cut; qcow2 writeback: unflushed allocations are lost) with FFS1 or FFS2; the node listens on the guest loopback behind a pf redirect.",
+        "Per epoch: `operator init` cut at a random point, then cycles of: boot, `fsck -y`, mount, `operator recover`, the owner, the oracle (ARTICLE of every attempted Message-ID, OVER), `status`, then the phase's work and a SIGKILL of qemu: posting on two connections (every seventh POST names an uncarried group), posting across the automatic checkpoint capture, `store compact` with the owner stopped, an interrupted `recover`, `store export` (owner stopped) then `store import` of that archive into a second store ROOT2, cut, and `retention set released-by-all-holders` then `store reclaim`.",
         "tools/power_loss_openbsd.py campaign NAME / initcuts NAME; the client's record (oracle.jsonl) and the cut record (cuts.jsonl) stay on hbox."
       ],
       "expected": [
         "recover exits 0, the owner reaches LISTENING, status exits 0 after every cut.",
         "Every 240 answers 220 with the posted body and headers, byte-identical at every later cut until a reclaim starts; every 441 answers 430; an attempt with no reply answers 220 (then pinned) or 430.",
         "A local number once observed keeps its Message-ID; a newly listed article takes a number above every number observed before.",
-        "A rerun of an interrupted compact or reclaim succeeds; after a completed reclaim every article answers 430."
+        "A rerun of an interrupted compact or reclaim succeeds; after a completed reclaim every article answers 430.",
+  "After an init cut the store is absent (at most one ROOT.init-*, which the next init names as interrupted-init, and init succeeds once it is removed) or the complete empty store (status 0, transactions=0); after an import cut ROOT2 is absent (at most one ROOT2.import-*, named by the next import, which then succeeds) or the complete imported store (the exported transaction count, sampled `store inspect` answers equal the source's)."
       ],
       "implementation": {
         "tool": "tools/power_loss_openbsd.py",

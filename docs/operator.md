@@ -593,18 +593,34 @@ Four OpenBSD rules decide where it lives, how it starts and what keeps its store
   `getcwd: Permission denied`. The rc.d script starts the node in `/var/fn`
   itself (`daemon_execdir=/var/fn` in `packaging/fn.rc.in`); only a start by
   hand needs the `cd`.
-- **Store file system and disk.** fn's durable reply rests on fsync(2), and
-  on OpenBSD 7.9 two defaults break it across a power loss
-  (planning/evidence/power-loss-openbsd-2026-09-26.md). On FFS2, the
-  installer's format for every partition, a file created and fsynced (with
-  its directory fsynced) is removed by the boot-time `fsck` when its inode
-  lies past the cylinder group's initialized inode blocks: the store's
-  newest transactions and its allocation frontier go, and the node refuses
-  to open. And fsync(2) never asks the disk to flush its write cache, so a
-  disk (or a hypervisor's virtual disk) with a volatile cache can lose what
-  fsync reported written. Put `/var/fn` on its own partition made with
-  `newfs -O 1` (FFS1), on a disk without a volatile write cache; `softdep`
-  changes nothing (7.9 ignores it).
+- **What a power loss keeps (durability is not guaranteed by default).**
+  fn's durable reply (a `240`, an `init` or `import` that exited 0) rests on
+  fsync(2), and on OpenBSD 7.9 fsync does not always mean that. What an
+  operator gets, measured under power cuts
+  (planning/evidence/power-loss-openbsd-2026-09-26.md):
+  - *The store on FFS1 (`newfs -O 1`) on a disk without a volatile write
+    cache*: durable. No acknowledged article lost or changed, no store left
+    unopenable, in every cut the campaign made.
+  - *The store on FFS2*, the installer's format for every partition: NOT
+    durable. After a crash the boot-time `fsck` can remove files that were
+    created and fsynced in the last half minute or so (their inodes lie
+    past the cylinder group's initialized inode blocks, a count the kernel
+    writes back later); the store's newest transactions and its allocation
+    frontier go, and the node refuses to open (`fault ... invalid durable
+    allocation frontier`) until restored from a backup or an export.
+  - *A disk, or a hypervisor's virtual disk, with a volatile write cache*:
+    NOT durable, on either format. OpenBSD's fsync never asks the disk to
+    flush its cache (sd(4) enables the cache at attach), so a power loss can
+    drop what fsync reported written. A VM's disk qualifies only when the
+    host writes through (qemu `cache=none` or `writethrough` on a host that
+    honours flushes; note OpenBSD's virtio disk still reports a write cache,
+    so it is the host's setting that decides).
+  `softdep` changes nothing (7.9 ignores it). fn does not detect the
+  format: `statfs(2)` names both `ffs`. As root, `dumpfs /dev/rsd0X | head
+  -1` prints `magic 11954 (FFS1)` or `magic 19540119 (FFS2)`. For a durable
+  node, give `/var/fn` its own partition made with `newfs -O 1` before
+  `init`; a store already on FFS2 moves with `store export`, a new FFS1
+  partition, and `store import`.
 
 As root, with the tarball and its sum in `/tmp`:
 

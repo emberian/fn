@@ -102,7 +102,8 @@ class VM:
     def qemu_argv(self, serial):
         c = self.cfg
         d = "/pl/" + c["name"]
-        argv = ["qemu-system-x86_64", "-enable-kvm", "-cpu", "host", "-smp", "1", "-m", "2048",
+        argv = ["qemu-system-x86_64", "-enable-kvm", "-cpu", "host", "-smp", str(c.get("smp", 1)),
+                "-m", str(c.get("mem", 2048)),
                 "-drive", "file=%s/root.img,if=virtio,format=raw,cache=writeback" % d,
                 "-drive", "file=%s/%s,if=virtio,format=%s,cache=%s" % (d, store_file(c), c.get("format", "qcow2"), c["cache"]),
                 "-netdev", "user,id=n0,hostfwd=tcp:127.0.0.1:%d-:22,hostfwd=tcp:127.0.0.1:%d-:11600"
@@ -118,13 +119,13 @@ class VM:
         code, so, _ = run(["docker", "inspect", "-f", "{{.State.Running}}", self.name], timeout=60)
         return code == 0 and so.strip() == "true"
 
-    def start(self, timeout=420):
+    def start(self, timeout=900):
         self.gone()
         self.boots += 1
         serial = "serial-%d.log" % self.boots
         argv = ["docker", "run", "-d", "--rm", "--name", self.name, "--user", "1000:1000",
                 "--group-add", KVM_GID, "--device", "/dev/kvm", "--network", "host",
-                "--memory", "3g", "-v", "%s:/pl" % self.base, IMAGE] + self.qemu_argv(serial)
+                "--memory", "%dm" % (self.cfg.get("mem", 2048) + 1024), "-v", "%s:/pl" % self.base, IMAGE] + self.qemu_argv(serial)
         t0 = time.time()
         code, so, se = run(argv, timeout=120)
         if code:
@@ -467,7 +468,7 @@ fdisk -iy sd1
 printf '/pl 100M-* 100%%\n' > /tmp/pl.tmpl
 disklabel -w -A -T /tmp/pl.tmpl sd1
 disklabel sd1 | tail -4
-newfs sd1a
+newfs NEWFS_FLAGS sd1a
 dumpfs sd1a | head -3
 mkdir -p /pl /var/pl
 dmesg | grep -E 'vioblk|sd[01]'
@@ -499,7 +500,7 @@ class Campaign:
         self.cuts = self.dir / "cuts.jsonl"
         self.oracle = Oracle(self.dir / "oracle.jsonl")
         self.rng = random.Random(a.seed)
-        self.est = {"compact": 5.0, "reclaim": 5.0, "recover": 5.0, "init": 5.0}
+        self.est = {"compact": 5.0, "reclaim": 5.0, "recover": 5.0, "init": 5.0, "import": 20.0}
         self.cycle = 0
         if self.cuts.exists():
             rows = [json.loads(l) for l in self.cuts.read_text().splitlines()]
@@ -631,10 +632,11 @@ class Campaign:
         if phase == "init":
             # the configuration is on the root disk (write-through); sync(2)
             # writes it out of the guest's buffer cache before the cut
-            self.g("rm -rf /pl/%s; printf %s > /var/pl/%s.toml; sync" % (ep, shlex.quote(cfg_text(ep)), ep))
+            self.g("rm -rf /pl/%s /pl/%s.init-*; printf %s > /var/pl/%s.toml; sync" % (ep, ep, shlex.quote(cfg_text(ep)), ep))
             p = self.vm.popen("cd /var/pl && %s operator /var/pl/%s.toml init %s %s"
                               % (FN, ep, a.init_flags, GROUP), subprocess.DEVNULL, subprocess.DEVNULL)
-            d = self.rng.uniform(0, self.est["init"] * 1.1)
+            lo, hi = a.init_window
+            d = self.rng.uniform(self.est["init"] * lo, self.est["init"] * hi)
             t0 = time.time()
             done = None
             while time.time() - t0 < d:
@@ -651,35 +653,14 @@ class Campaign:
             rec["boot2_wall"] = self.vm.start()
             if not self.mount(rec):
                 violations.append("mount-failed")
-            # after an init cut: either the store opens (init completed) or a
-            # second init makes it; never a half store that neither opens nor
-            # can be initialised
-            code, so, se = self.fnv(ep, "status")
-            rec["status_after_init_cut"] = [code, (so + se)[-300:]]
-            rec["store_after_init_cut"] = self.g("ls -laR /pl/%s | head -60" % ep)[1]
-            findings = []
-            if done == 0 and code != 0:
-                # init reported success (exit 0 reached the client), and the
-                # store it reported is not there after the cut
-                findings.append("init-acknowledged-then-lost:%s" % (so + se).strip()[-120:])
-            if code != 0 and done != 0:
-                # what an operator has after an interrupted init: recover,
-                # then init again
-                rc, so2, se2 = self.fnv(ep, "recover")
-                rec["recover_after_init_cut"] = [rc, (so2 + se2)[-300:]]
-            if code != 0:
-                code, so, se = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
-                rec["reinit"] = [code, (so + se)[-400:]]
-                if code != 0:
-                    findings.append("init-cut-left-a-store-neither-open-nor-init:%s" % rec["reinit"][1][-160:])
-                    self.g("rm -rf /pl/%s" % ep)
-                    code, so, se = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
-                    rec["reinit_after_rm"] = [code, (so + se)[-300:]]
-                    if code:
-                        violations.append("init-impossible-after-cut")
-            if findings:
-                rec["findings"] = findings
-                self.finding(rec)
+            # after an init cut (PKT-647's published init,
+            # fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store):
+            # ROOT is absent (at most one ROOT.init-*, which the next init
+            # names as interrupted-init and after whose removal init
+            # succeeds) or the complete empty store (status 0,
+            # transactions=0).  With --legacy-init (a release before PKT-647)
+            # a half store is a finding, not a violation.
+            self.check_init(ep, done, rec, violations)
         if phase == "recovery-interrupted":
             p = self.vm.popen("cd /var/pl && exec %s operator /var/pl/%s.toml recover" % (FN, ep),
                               subprocess.DEVNULL, subprocess.DEVNULL)
@@ -773,6 +754,41 @@ class Campaign:
                     time.sleep(0.02)
                 rec["ckpt_window"] = "no-capture-line-in-60s"
             self.post_until(ep, rec, rule)
+        elif phase_work == "import":
+            # the owner stops; the store is exported (not cut); the import of
+            # that archive into a new ROOT2 is cut
+            self.post_until_stop(ep, rec, p)
+            archive = "/pl/%s.archive" % ep
+            self.g("rm -rf %s /pl/%si /pl/%si.import-*" % (archive, ep, ep))
+            code, so, se = self.fnv(ep, "store", "export", archive, timeout=1800)
+            rec["export"] = [code, (so + se)[-300:]]
+            c1, so1, _ = self.fnv(ep, "status")
+            n1 = re.search(r"(?m)^transactions=(\d+) articles=", so1)
+            rec["export_transactions"] = n1.group(1) if n1 else None
+            self.g("sync")
+            if code:
+                rec["violations"] = ["export-exit-%d" % code]
+                rec["cut_t"] = self.vm.kill()
+                self.violation(rec, rec["violations"])
+                append(self.cuts, **rec)
+                return rec
+            self.import_cfg(ep)
+            pr = self.vm.popen("cd /var/pl && exec %s operator /var/pl/%si.toml store import %s" % (FN, ep, archive),
+                               open(self.dir / ("%s-import.out" % tag), "wb"), subprocess.STDOUT)
+            d = self.rng.uniform(0, self.est["import"] * 1.1)
+            t0 = time.time()
+            done = None
+            while time.time() - t0 < d:
+                if pr.poll() is not None:
+                    done = pr.returncode
+                    break
+                time.sleep(0.02)
+            rec["import_completed_before_cut"] = done
+            self.learn("import", done, d, t0, rec)
+            rec["cut_t"] = self.vm.kill()
+            rec["cut_after_s"] = round(time.time() - t0, 3)
+            pr.wait()
+            rec["pending_rerun"] = "import"
         elif phase_work in ("compact", "reclaim"):
             self.post_until_stop(ep, rec, p)
             if phase_work == "reclaim":
@@ -801,6 +817,138 @@ class Campaign:
         append(self.cuts, **rec)
         return rec
 
+    def stages(self, root, kind):
+        so = self.g("ls -d %s.%s-* 2>/dev/null" % (root, kind))[1]
+        return [l for l in so.split() if l]
+
+    def check_init(self, ep, done, rec, violations):
+        a = self.a
+        root = "/pl/%s" % ep
+        present = self.g("test -d %s && echo present" % root)[1].strip() == "present"
+        stages = self.stages(root, "init")
+        code, so, se = self.fnv(ep, "status")
+        rec["init_cut"] = {"store": "present" if present else "absent", "stages": stages,
+                           "status": [code, (so + se)[-300:]],
+                           "listing": self.g("ls -la /pl | head -40")[1]}
+        findings = []
+        if done == 0 and code != 0:
+            # init's exit 0 reached the client and its store is not there
+            violations.append("init-acknowledged-then-lost:%s" % (so + se).strip()[-120:])
+        if present:
+            if code != 0 or not re.search(r"(?m)^transactions=0 articles=0", so):
+                if a.legacy_init:
+                    findings.append("init-cut-left-a-partial-store:%s" % (so + se).strip()[-160:])
+                    self.g("rm -rf %s" % root)
+                    present = False
+                else:
+                    violations.append("init-partial-store:status-%d:%s" % (code, (so + se).strip()[-160:]))
+                    return
+            elif stages:
+                # the rename landed and the stage's removal did not: the next
+                # init must refuse (publication-uncertain), recover must open
+                rc, so2, se2 = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
+                rec["init_cut"]["reinit"] = [rc, (so2 + se2)[-300:]]
+                if rc != 1 or "publication-uncertain" not in so2 + se2:
+                    violations.append("init-uncertain-not-named:init-%d" % rc)
+                self.g("rm -rf %s" % " ".join(stages))
+            if present:
+                if findings:
+                    rec["findings"] = findings
+                    self.finding(rec)
+                return
+        if len(stages) > 1:
+            violations.append("init-stages-%d" % len(stages))
+            return
+        rc, so2, se2 = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
+        rec["init_cut"]["reinit"] = [rc, (so2 + se2)[-300:]]
+        if stages and not a.legacy_init:
+            want = "reason=interrupted-init stage=%s" % stages[0]
+            if rc != 1 or want not in so2 + se2:
+                violations.append("init-leftover-not-named:init-%d:%s" % (rc, (so2 + se2).strip()[-160:]))
+                return
+            self.g("rm -rf %s" % stages[0])
+            rc, so2, se2 = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
+            rec["init_cut"]["init_after_removal"] = [rc, (so2 + se2)[-300:]]
+        if rc != 0:
+            if a.legacy_init:
+                findings.append("init-cut-left-a-store-neither-open-nor-init:%s" % (so2 + se2)[-160:])
+                self.g("rm -rf %s %s.init-*" % (root, root))
+                rc, so2, se2 = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
+                rec["init_cut"]["reinit_after_rm"] = [rc, (so2 + se2)[-300:]]
+            if rc != 0:
+                violations.append("init-stuck:init-%d:%s" % (rc, (so2 + se2).strip()[-160:]))
+        if findings:
+            rec["findings"] = findings
+            self.finding(rec)
+
+    def import_cfg(self, ep):
+        """The import target: a second configuration naming ROOT2 = /pl/EPi."""
+        self.g("printf %s > /var/pl/%si.toml; sync" % (shlex.quote(cfg_text(ep + "i")), ep))
+        return "/var/pl/%si.toml" % ep
+
+    def fni(self, ep, *verb, timeout=900):
+        return self.g("cd /var/pl && %s operator /var/pl/%si.toml %s" % (FN, ep, " ".join(shlex.quote(v) for v in verb)),
+                      timeout=timeout)
+
+    def check_import(self, ep, rec, violations):
+        """After a cut during `store import` onto ROOT2 (fn-bs-imp-program):
+        ROOT2 absent (at most one ROOT2.import-*, named by the next import,
+        which succeeds once it is removed) or the complete imported store:
+        status 0 with the source's transactions=N and sampled Message-IDs'
+        `store inspect` equal.  The source store is judged by the oracle."""
+        root2 = "/pl/%si" % ep
+        archive = "/pl/%s.archive" % ep
+        present = self.g("test -d %s && echo present" % root2)[1].strip() == "present"
+        stages = self.stages(root2, "import")
+        r = {"store2": "present" if present else "absent", "stages": stages}
+        rec["import_check"] = r
+        if not present:
+            if len(stages) > 1:
+                violations.append("import-stages-%d" % len(stages))
+                return
+            code, so, se = self.fni(ep, "store", "import", archive, timeout=1800)
+            r["reimport"] = [code, (so + se)[-300:]]
+            if stages:
+                want = "reason=interrupted-import stage=%s" % stages[0]
+                if code != 1 or want not in so + se:
+                    violations.append("import-leftover-not-named:import-%d:%s" % (code, (so + se).strip()[-160:]))
+                    return
+                self.g("rm -rf %s" % stages[0])
+                code, so, se = self.fni(ep, "store", "import", archive, timeout=1800)
+                r["import_after_removal"] = [code, (so + se)[-300:]]
+            if code:
+                violations.append("import-stuck:import-%d:%s" % (code, (so + se).strip()[-160:]))
+                return
+        elif stages:
+            code, so, se = self.fni(ep, "store", "import", archive, timeout=1800)
+            r["reimport_over_present"] = [code, (so + se)[-300:]]
+            if code != 1:
+                violations.append("import-over-present-root2:import-%d" % code)
+            self.g("rm -rf %s" % " ".join(stages))
+        c1, so1, se1 = self.fnv(ep, "status")
+        c2, so2, se2 = self.fni(ep, "status")
+        n1 = re.search(r"(?m)^transactions=(\d+) articles=", so1)
+        n2 = re.search(r"(?m)^transactions=(\d+) articles=", so2)
+        r["status2"] = [c2, (so2 + se2)[-300:]]
+        # the archive was taken with the owner stopped: the source's count at
+        # export is the imported store's; the source may have grown since
+        # (the posting cut after this phase has not happened yet), so compare
+        # with the count the export recorded
+        want = rec.get("export_transactions") or (n1.group(1) if n1 else None)
+        if c2 or not n2 or n2.group(1) != str(want):
+            violations.append("import-incomplete:status-%d:transactions=%s want %s"
+                              % (c2, n2.group(1) if n2 else None, want))
+            return
+        e = self.oracle.epoch(ep)
+        sample = sorted(m for m in e["pin"])[:: max(1, len(e["pin"]) // 6)][:6]
+        for mid in sample:
+            a_ = self.fnv(ep, "store", "inspect", mid)
+            b_ = self.fni(ep, "store", "inspect", mid)
+            if a_[:2] != b_[:2]:
+                violations.append("import-inspect-differs:%s" % mid)
+                break
+        r["inspected"] = len(sample)
+
     def post_until_stop(self, ep, rec, owner):
         """Post for a while, then stop the owner in order (the offline verbs
         need the store lock)."""
@@ -828,6 +976,10 @@ class Campaign:
         verb = prev.get("pending_rerun")
         if not verb:
             return
+        if verb == "import":
+            rec["export_transactions"] = prev.get("export_transactions")
+            self.check_import(ep, rec, violations)
+            return
         code, so, se = self.fnv(ep, "store", verb)
         rec["rerun"] = [verb, code, (so + se).strip()[-300:]]
         rec["rerun_head"] = (so + se).strip()[:1500]
@@ -843,7 +995,7 @@ def plan_epoch(k):
     compactions, an interrupted recovery, and the reclaim that ends it."""
     return (["init"] + ["post"] * 4 + ["checkpoint"] * 2 + ["compact"] + ["post"] * 4
             + ["recovery-interrupted"] + ["checkpoint"] * 2 + ["post"] * 3 + ["compact"]
-            + ["post"] * 2 + ["reclaim", "after-reclaim"])
+            + ["post"] * 2 + ["import", "post", "reclaim", "after-reclaim"])
 
 
 def campaign(a):
@@ -898,7 +1050,7 @@ def prepare(a):
     d = base / a.name
     d.mkdir(parents=True, exist_ok=True)
     cfg = {"name": a.name, "cache": a.cache, "softdep": a.softdep, "ssh": a.ssh, "nntp": a.nntp,
-           "trace": a.trace, "format": a.format}
+           "trace": a.trace, "format": a.format, "ffs": a.ffs, "smp": a.smp, "mem": a.mem}
     (d / "cfg.json").write_text(json.dumps(cfg, indent=1))
     for f in ("root.qcow2", "root.img", "store.qcow2", "store.img"):
         if (d / f).exists():
@@ -906,15 +1058,43 @@ def prepare(a):
     # a raw root: every write the guest completed is in the host file (a
     # qcow2 overlay would lose cluster allocations qemu had not flushed, and
     # the guest never flushes)
-    print(qemu_img(base, "convert", "-O", "raw", "-S", "4k", "/pl/vm/root-base.qcow2", "/pl/%s/root.img" % a.name))
+    if a.root_from:
+        # another configuration's root (e.g. one with a newer release
+        # installed), copied sparse
+        print(run(["cp", "--sparse=always", str(base / a.root_from / "root.img"), str(d / "root.img")], timeout=5400))
+    else:
+        print(qemu_img(base, "convert", "-O", "raw", "-S", "4k", "/pl/vm/root-base.qcow2", "/pl/%s/root.img" % a.name))
     print(qemu_img(base, "create", "-f", a.format, "/pl/%s/%s" % (a.name, store_file(cfg)), a.store_size))
     vm = VM(base, cfg)
     print("boot", vm.start())
-    code, so, se = vm.ssh("sh -s <<'EOF'\n" + GUEST_PREP + PFRDR + "\nEOF\n", timeout=900)
+    code, so, se = vm.ssh("sh -s <<'EOF'\n" + GUEST_PREP.replace("NEWFS_FLAGS", "-O %d" % a.ffs) + PFRDR + "\nEOF\n", timeout=900)
     (d / "prepare.log").write_text(so + se)
     print(so[-3000:], se[-2000:])
     vm.shutdown()
     return 0
+
+
+def install(a):
+    """Install a release tarball in a configuration's root disk, under
+    /usr/local/fn-REV12 (a wxallowed file system), and check its version."""
+    base = Path(a.base)
+    cfg = json.loads((base / a.name / "cfg.json").read_text())
+    vm = VM(base, cfg)
+    vm.boots = 800
+    print("boot", vm.start())
+    tb = Path(a.tarball)
+    m = re.match(r"fn-([0-9a-f]{12})-openbsd-amd64\.tar\.gz$", tb.name)
+    if not m:
+        raise SystemExit("not an OpenBSD release tarball name: %s" % tb.name)
+    dest = "/usr/local/fn-%s" % m.group(1)
+    code, so, se = run(["scp", "-q", "-P", str(cfg["ssh"]), "-i", str(vm.key), "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=/dev/null", "-o", "LogLevel=ERROR", str(tb), "root@127.0.0.1:/tmp/"])
+    print("scp", code, se)
+    code, so, se = vm.ssh("rm -rf %s && mkdir -p %s && tar -xzf /tmp/%s -C %s && rm /tmp/%s && cd %s/fn && sha256 -c SHA256SUMS | grep -vc ': OK$'; "
+                          "%s/fn/bin/fn --version; sync" % (dest, dest, tb.name, dest, tb.name, dest, dest))
+    print(code, so, se)
+    vm.shutdown()
+    return 0 if ("fn " + m.group(1)) in so else 1
 
 
 def flushprobe(a):
@@ -1018,8 +1198,10 @@ def summary(a):
 
 
 def main(argv=None):
+    global FN
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--base", default="/tank/fn/scratch/power-loss-openbsd")
+    ap.add_argument("--fn", default=FN, help="the guest's installed bin/fn (the release under test)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("prepare")
     p.add_argument("name")
@@ -1030,28 +1212,49 @@ def main(argv=None):
     p.add_argument("--store-size", default="4G")
     p.add_argument("--format", choices=("raw", "qcow2"), default="qcow2")
     p.add_argument("--trace", action="store_true")
+    p.add_argument("--ffs", type=int, choices=(1, 2), default=1,
+                   help="the store file system: FFS1 (newfs -O 1, the docs' rule) or FFS2 (the installer's)")
+    p.add_argument("--smp", type=int, default=1)
+    p.add_argument("--mem", type=int, default=2048, help="guest memory in MiB")
+    p.add_argument("--root-from", help="copy this configuration's root disk instead of the clone")
+    p = sub.add_parser("install")
+    p.add_argument("name")
+    p.add_argument("tarball")
     p = sub.add_parser("flushprobe")
     p.add_argument("name")
     p = sub.add_parser("campaign")
     p.add_argument("name")
+    p.add_argument("--init-window", type=lambda v: tuple(float(x) for x in v.split(",")), default=(0.0, 1.1),
+                   help="the init cut falls uniformly in [LO, HI] x the last completed init's wall "
+                        "(most of an init's wall is the process start and heap probe, before any write)")
+    p.add_argument("--legacy-init", action="store_true",
+                   help="a release before PKT-647: a half store after an init cut is a finding")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--epochs", type=int, default=1)
     p.add_argument("--max-cycles", type=int, default=10 ** 6)
     p.add_argument("--max-post-s", type=float, default=6.0)
     p.add_argument("--refuse-every", type=int, default=7)
     p.add_argument("--keep-disk", action="store_true")
-    p.add_argument("--init-flags", default="--profile scale --max-transactions 1048576 --max-article-octets 8192 --max-open-suffix 16")
+    # the small preset's fields (a 2 GB guest: the installed launcher refuses
+    # scale, heap 54,751 MB) with a small open suffix so captures run often
+    p.add_argument("--init-flags", default="--max-transactions 16384 --max-history-octets 8388608 --max-record-octets 196608 --max-article-octets 8192 --max-groups-per-article 16 --max-open-suffix 16")
     p = sub.add_parser("initcuts")
     p.add_argument("name")
+    p.add_argument("--init-window", type=lambda v: tuple(float(x) for x in v.split(",")), default=(0.0, 1.1),
+                   help="the init cut falls uniformly in [LO, HI] x the last completed init's wall "
+                        "(most of an init's wall is the process start and heap probe, before any write)")
+    p.add_argument("--legacy-init", action="store_true",
+                   help="a release before PKT-647: a half store after an init cut is a finding")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--epochs", type=int, default=10)
     p.add_argument("--max-post-s", type=float, default=4.0)
     p.add_argument("--refuse-every", type=int, default=7)
     p.add_argument("--keep-disk", action="store_true")
-    p.add_argument("--init-flags", default="--profile scale --max-transactions 1048576 --max-article-octets 8192 --max-open-suffix 16")
+    p.add_argument("--init-flags", default="--max-transactions 16384 --max-history-octets 8388608 --max-record-octets 196608 --max-article-octets 8192 --max-groups-per-article 16 --max-open-suffix 16")
     p = sub.add_parser("summary")
     a = ap.parse_args(argv)
-    return {"prepare": prepare, "flushprobe": flushprobe, "campaign": campaign, "initcuts": initcuts, "summary": summary}[a.cmd](a)
+    FN = a.fn
+    return {"prepare": prepare, "install": install, "flushprobe": flushprobe, "campaign": campaign, "initcuts": initcuts, "summary": summary}[a.cmd](a)
 
 
 if __name__ == "__main__":
