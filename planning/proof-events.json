@@ -161,6 +161,14 @@
         {
           "kind": "theorem",
           "name": "fn-own-raw-local-number-is-never-reassigned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-other-post-keeps-a-non-selecting-read-step"
         }
       ]
     },
