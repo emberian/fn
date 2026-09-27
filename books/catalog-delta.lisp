@@ -128,7 +128,7 @@
   :hints (("Goal" :induct (fn-cat-recontext-range i to keyring generation fn-arena fn-cat)
            :in-theory (e/d (fn-cat-recontext)
                            (fn-cat-redecide-is-update-nth fn-cat-count-is-len fn-cat-at-is-nth
-                            fn-cat-p-is-held-listp)))))
+                            fn-cat-p-is-rowsp)))))
 
 (defthm fn-cat-recontext-range-keeps-handles
   (implies (<= to (fn-cat-count fn-cat))
@@ -139,10 +139,10 @@
   :hints (("Goal" :induct (fn-cat-recontext-range i to keyring generation fn-arena fn-cat)
            :in-theory (e/d (fn-cat-recontext)
                            (fn-cat-redecide-is-update-nth fn-cat-count-is-len fn-cat-at-is-nth
-                            fn-cat-p-is-held-listp)))))
+                            fn-cat-p-is-rowsp)))))
 
 (verify-guards fn-cat-recontext-range
-  :hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth
+  :hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth
                                       fn-cat-redecide-is-update-nth)
            :use ((:instance fn-cat-handles-inp-at (n to) (seq i))))))
 
@@ -154,7 +154,7 @@
                   :guard (and (fn-delta-p d) (fn-prin-keyringp keyring)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :guard-hints (("Goal" :in-theory (e/d (fn-delta-p)
-                                                        (fn-cat-p-is-held-listp fn-cat-count-is-len
+                                                        (fn-cat-p-is-rowsp fn-cat-count-is-len
                                                          fn-cat-at-is-nth))))))
   (case (car d)
     (:withdraw (if (< (nth 1 d) (fn-cat-count fn-cat))
@@ -179,7 +179,7 @@
                               (fn-prin-keyringp keyring)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :guard-hints (("Goal" :in-theory (e/d (fn-delta-p)
-                                                        (fn-cat-p-is-held-listp fn-cat-count-is-len
+                                                        (fn-cat-p-is-rowsp fn-cat-count-is-len
                                                          fn-cat-at-is-nth))))))
   (if (eq (car d) :policy)
       (let* ((to (min (nfix (nth 3 d)) (fn-cat-count fn-cat)))
@@ -200,7 +200,7 @@
            cursor))
   :hints (("Goal" :in-theory (e/d (fn-cat-apply-delta-step)
                                   (fn-cat-recontext-range fn-cat-apply-delta
-                                   fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp)))))
+                                   fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp)))))
 
 (defthm fn-cat-apply-delta-step-done
   (equal (mv-nth 1 (fn-cat-apply-delta-step d cursor quantum keyring fn-arena fn-cat))
@@ -211,7 +211,7 @@
            t))
   :hints (("Goal" :in-theory (e/d (fn-cat-apply-delta-step)
                                   (fn-cat-recontext-range fn-cat-apply-delta
-                                   fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp)))))
+                                   fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp)))))
 
 (defthm fn-cat-apply-delta-step-catalog
   (equal (mv-nth 2 (fn-cat-apply-delta-step d cursor quantum keyring fn-arena fn-cat))
@@ -223,7 +223,7 @@
            (fn-cat-apply-delta d keyring fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-cat-apply-delta-step)
                                   (fn-cat-recontext-range fn-cat-apply-delta
-                                   fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp)))))
+                                   fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp)))))
 
 (in-theory (disable fn-cat-apply-delta-step))
 
@@ -236,7 +236,7 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :measure (nfix (- (+ 1 (nfix (nth 3 d))) (nfix cursor)))
                   :hints (("Goal" :in-theory (disable fn-cat-count-is-len fn-cat-at-is-nth
-                                                      fn-cat-p-is-held-listp)))
+                                                      fn-cat-p-is-rowsp)))
                   :verify-guards nil))
   (let ((q (if (and (consp quanta) (posp (car quanta))) (car quanta) 1)))
     (mv-let (cursor2 done fn-cat)

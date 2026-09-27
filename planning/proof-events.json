@@ -2651,6 +2651,11 @@
           "kind": "theorem",
           "name": "fn-inj-injected-article-is-a-reinjection-of-its-source",
           "note": "The keystone the three above rest on, over fn-inj-decide. One hypothesis with a must-fail (tests/acl2/injection-tests.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-operator-retry-at-the-entry-is-the-stored-injection",
+          "note": "flip-L8-2: at the host's entry (host/owner-host.lisp fn-owner-operator-submit calls fn-own-operator-stored-octets through the arena), ALPHA of the held article under its handle being the first injection makes the decision that stored injection. Witness on a Date-less article whose fresh re-injection differs, the regression over the handle, and the alpha separation (tests/acl2/owner-operator-tests.lisp)."
         }
       ]
     },
@@ -8558,10 +8563,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ctl-withdrawal-plan-record-is-bound"
         },
         {
@@ -8615,6 +8616,11 @@
         {
           "kind": "theorem",
           "name": "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-control-of-fields",
+          "note": "flip-L8-2: the control fact decided at intern (books/catalog-record.lisp fn-held-facts-of, fn-hf-control-of-held-facts-of) is the target, Cancel-Key and Cancel-Lock readers over the row's bytes, so the TLOCKS a record carries are the target's locks (tests/acl2/control-visible-tests, owner-cancel-refresh-tests)."
         }
       ]
     },

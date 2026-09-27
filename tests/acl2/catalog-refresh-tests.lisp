@@ -32,6 +32,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/catalog-refresh")
+(include-book "held-rows-tests")   ; fn-hrt-row-at: the interned row the store takes
 (include-book "../../books/crypto-attach")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -46,7 +47,7 @@
 
 (defconst *crt-groups* '("fn.letters" "fn.test"))
 
-(defun crt-record (sequence txid msgid)
+(defun crt-record-wire (sequence txid msgid)
   (fn-record-make sequence txid txid msgid
                   (list 77 101 115 115 97 103 101 45 73 68 58 32 60 120 62 13 10 13 10
                         72 105 13 10)
@@ -55,6 +56,12 @@
                   (concatenate 'string "own-content:" msgid)
                   (concatenate 'string "own-release:" msgid)
                   2 841000000))
+
+; The store retains held rows (records flip): the owner's (:store (:prepare
+; r)) takes the row the entry interns (owner-tests' convention: handle =
+; journal sequence, tests/acl2/held-rows-tests fn-hrt-row-at).
+(defun crt-record (sequence txid msgid)
+  (fn-hrt-row-at (crt-record-wire sequence txid msgid) sequence))
 
 (defun crt-post-events (record)
   (list '(:store (:io :start-frontier nil))

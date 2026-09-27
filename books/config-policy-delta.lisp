@@ -73,7 +73,7 @@
   :hints (("Goal" :induct (fn-cat-apply-in-quanta d cursor quanta keyring fn-arena fn-cat)
            :in-theory (e/d (fn-cat-apply-in-quanta)
                            (min max fn-cat-recontext-range fn-cat-count-is-len
-                            fn-cat-at-is-nth fn-cat-p-is-held-listp)))
+                            fn-cat-at-is-nth fn-cat-p-is-rowsp)))
           ("Subgoal *1/1"
            :use ((:instance fn-cfgp-recontext-range-split
                             (i (max cursor (nth 2 d)))
@@ -98,12 +98,12 @@
            :cases ((equal (car d) :policy))
            :in-theory (e/d (fn-delta-p)
                            (fn-cat-recontext-range fn-cat-count-is-len
-                            fn-cat-at-is-nth fn-cat-p-is-held-listp
+                            fn-cat-at-is-nth fn-cat-p-is-rowsp
                             fn-cat-apply-delta-step fn-cat-withdraw
                             fn-cat-redecide fn-dart-p)))
           ("Subgoal 2" :expand ((fn-cat-apply-in-quanta d cursor quanta keyring
                                                         fn-arena fn-cat)))
           ("Subgoal 1" :in-theory (e/d (fn-delta-p fn-cat-apply-delta)
                                        (fn-cat-recontext-range fn-cat-count-is-len
-                                        fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                        fn-cat-at-is-nth fn-cat-p-is-rowsp
                                         fn-cat-apply-in-quanta min max)))))

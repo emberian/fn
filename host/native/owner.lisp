@@ -2217,7 +2217,7 @@ refused, not injected under a stale time (D10-a)."
                            service
                            (lambda ()
                              (let ((submitted
-                                     (fnn-owner-action 'fn-owner-operator-submit
+                                     (fnn-owner-arena-action 'fn-owner-operator-submit
                                                        (fnn-octet-list msgid)
                                                        (mapcar #'fnn-octet-list groups)
                                                        (fnn-octet-list payload))))
@@ -2240,7 +2240,7 @@ refused, not injected under a stale time (D10-a)."
                     ;; reason.lisp fn-nctrl-reason-word), a plain one the
                     ;; status alone.
                     (if (eq status :refused)
-                        (let ((reason (fnn-owner-core 'fn-owner-operator-refusal-reason
+                        (let ((reason (fnn-core-arena-state 'fn-owner-operator-refusal-reason
                                                       (fnn-octet-list msgid)
                                                       (mapcar #'fnn-octet-list groups)
                                                       (fnn-octet-list payload))))

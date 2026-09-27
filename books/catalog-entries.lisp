@@ -128,7 +128,7 @@
   :hints (("Goal" :induct (fn-cat-load a keyring generation fn-arena fn-cat)
            :in-theory (e/d (fn-cat-load)
                            (fn-cat-load-row fn-cat-count-is-len fn-cat-at-is-nth
-                            fn-cat-p-is-held-listp)))))
+                            fn-cat-p-is-rowsp)))))
 
 ; -----------------------------------------------------------------------------
 ; The article sub-history of a prefix is a prefix of the article sub-history;
@@ -148,7 +148,7 @@
                   (fn-cat-history-relation b fn-arena fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cat-history-relation)
-                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
                                    fn-cat-handles-inp fn-cat-wire-list)))))
 
 ; An event that is not an article, appended to the history, changes what the
@@ -177,7 +177,7 @@
   (implies (fn-cat-history-relation records fn-arena fn-cat)
            (fn-cat-history-prefix-relation records fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-relation fn-cat-history-prefix-relation)
-                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
                                    fn-cat-handles-inp fn-cat-wire-list fn-sf-article-records))
            :use ((:instance fn-sf-prefixp-reflexive (xs (fn-sf-article-records records)))
                  (:instance fn-sf-article-records-true-listp (x records))))))
@@ -188,7 +188,7 @@
                 (fn-sf-prefixp records more))
            (fn-cat-history-prefix-relation more fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-prefix-relation)
-                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
                                    fn-cat-handles-inp fn-cat-wire-list))
            :use ((:instance fn-sf-prefixp-transitive
                             (xs (fn-cat-wire-list 0 fn-arena fn-cat))
@@ -225,13 +225,13 @@
             (equal (fn-held-wire-of (fn-cat-at k (fn-cat-withdraw target by fn-cat)) fn-arena)
                    (fn-held-wire-of (fn-cat-at k fn-cat) fn-arena)))
    :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn fn-held-wire-of)
-                                   (fn-cat-p-is-held-listp))))))
+                                   (fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-cbo-wire-of-at-redecide
    (implies (and (natp seq) (< seq (fn-cat-count fn-cat)) (natp k))
             (equal (fn-held-wire-of (fn-cat-at k (fn-cat-redecide seq ctx fn-cat)) fn-arena)
                    (fn-held-wire-of (fn-cat-at k fn-cat) fn-arena)))
-   :hints (("Goal" :in-theory (e/d (fn-held-wire-of) (fn-cat-p-is-held-listp))))))
+   :hints (("Goal" :in-theory (e/d (fn-held-wire-of) (fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-cbo-count-of-withdraw
    (implies (and (natp target) (< target (fn-cat-count fn-cat)))
@@ -244,7 +244,7 @@
                   (fn-cat-wire-list i fn-arena fn-cat)))
   :hints (("Goal" :induct (fn-cat-wire-list i fn-arena fn-cat)
            :in-theory (disable fn-cat-withdraw-is-mark fn-cat-count-is-len fn-cat-at-is-nth
-                               fn-cat-p-is-held-listp fn-held-wire-of))))
+                               fn-cat-p-is-rowsp fn-held-wire-of))))
 
 (defthm fn-cat-wire-list-of-redecide
   (implies (and (natp seq) (< seq (fn-cat-count fn-cat)) (natp i))
@@ -252,27 +252,27 @@
                   (fn-cat-wire-list i fn-arena fn-cat)))
   :hints (("Goal" :induct (fn-cat-wire-list i fn-arena fn-cat)
            :in-theory (disable fn-cat-redecide-is-update-nth fn-cat-count-is-len fn-cat-at-is-nth
-                               fn-cat-p-is-held-listp fn-held-wire-of))))
+                               fn-cat-p-is-rowsp fn-held-wire-of))))
 
 (local (defthm fn-cbo-handles-of-withdraw
    (implies (and (natp target) (< target (fn-cat-count fn-cat)))
             (equal (fn-cat-handles-inp n fn-arena (fn-cat-withdraw target by fn-cat))
                    (fn-cat-handles-inp n fn-arena fn-cat)))
-   :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn) (fn-cat-p-is-held-listp))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn) (fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-cbo-cat-p-of-withdraw
    (implies (and (fn-cat-p fn-cat) (natp target) (< target (fn-cat-count fn-cat)) (natp by))
             (fn-cat-p (fn-cat-withdraw target by fn-cat)))
    :hints (("Goal" :use ((:instance fn-cat-withdraw{preserved}))
             :in-theory (e/d (fn-cat-p fn-cat-withdraw fn-cat-count)
-                            (fn-cat-p-is-held-listp fn-cat-withdraw-is-mark fn-cat-count-is-len))))))
+                            (fn-cat-p-is-rowsp fn-cat-withdraw-is-mark fn-cat-count-is-len))))))
 
 (local (defthm fn-cbo-cat-p-of-redecide
    (implies (and (fn-cat-p fn-cat) (natp seq) (< seq (fn-cat-count fn-cat)) (fn-hc-p ctx))
             (fn-cat-p (fn-cat-redecide seq ctx fn-cat)))
    :hints (("Goal" :use ((:instance fn-cat-redecide{preserved} (context ctx)))
             :in-theory (e/d (fn-cat-p fn-cat-redecide fn-cat-count)
-                            (fn-cat-p-is-held-listp fn-cat-redecide-is-update-nth
+                            (fn-cat-p-is-rowsp fn-cat-redecide-is-update-nth
                              fn-cat-count-is-len))))))
 
 (defthm fn-cat-prefix-relation-of-withdraw
@@ -281,7 +281,7 @@
            (fn-cat-history-prefix-relation records fn-arena (fn-cat-withdraw target by fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-prefix-relation)
                                   (fn-cat-withdraw-is-mark fn-cat-count-is-len fn-cat-at-is-nth
-                                   fn-cat-p-is-held-listp fn-cat-handles-inp fn-cat-wire-list)))))
+                                   fn-cat-p-is-rowsp fn-cat-handles-inp fn-cat-wire-list)))))
 
 (defthm fn-cat-prefix-relation-of-redecide
   (implies (and (fn-cat-history-prefix-relation records fn-arena fn-cat)
@@ -289,7 +289,7 @@
            (fn-cat-history-prefix-relation records fn-arena (fn-cat-redecide seq ctx fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-prefix-relation)
                                   (fn-cat-redecide-is-update-nth fn-cat-count-is-len fn-cat-at-is-nth
-                                   fn-cat-p-is-held-listp fn-cat-handles-inp fn-cat-wire-list)))))
+                                   fn-cat-p-is-rowsp fn-cat-handles-inp fn-cat-wire-list)))))
 
 ; -----------------------------------------------------------------------------
 ; R against the configured owner the host holds (fn-owner-core /
@@ -468,7 +468,7 @@
            (fn-cat-history-prefix-relation
             (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-relation fn-cat-history-prefix-relation)
-                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                  (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
                                    fn-cat-handles-inp fn-cat-wire-list fn-sf-article-records))
            :use ((:instance fn-cbo-prefixp-of-append
                             (x (fn-sf-article-records records0)) (y (list w)))
