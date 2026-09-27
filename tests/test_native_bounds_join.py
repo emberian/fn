@@ -24,6 +24,17 @@ from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
 MIB4 = 4 * 1024 * 1024
+# The store these cases need, named: a capacity-free init sizes to the
+# process budget (PKT-582, image-floor), whose 8 MiB of history the 6 MiB of
+# large articles and the long-References POSTs exceed (the 805th POST was
+# refused `no capacity' on batch AR's image). 256 MiB of history, 16,384
+# transactions, the 4 MiB article and its record at 16 groups per article:
+# the launcher's figure for it is 18,311 MB, which --mem 40G holds.
+INIT_PROFILE = ("--profile", "development", "--max-transactions", "16384",
+                "--max-history-octets", str(256 << 20),
+                "--max-record-octets", "4199563",
+                "--max-article-octets", str(MIB4),
+                "--max-groups-per-article", "16")
 OVERSIZE = "441 posting failed; the article exceeds the configured size"
 
 
@@ -127,7 +138,7 @@ class JoinFixture(ProfileUpgradeFixture):
 
 class LargeArticleTests(JoinFixture):
     def test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it(self):
-        created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
+        created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         owner = self.start_owner(self.image)
         rows = self.post_and_reread([33792, 204800, 3145728, MIB4 + 1])
@@ -172,7 +183,7 @@ class LargeReplyTests(JoinFixture):
         return b"References: " + "\r\n ".join(ids).encode("ascii") + b"\r\n"
 
     def test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving(self):
-        created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
+        created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         owner = self.start_owner(self.image)
         rows = self.post_and_reread([1048576, 2097152, 3145728])
@@ -265,7 +276,7 @@ class SpanReferenceTests(JoinFixture):
             '[listener]\nhost = "127.0.0.1"\nport = {}\n'
             '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
             encoding="ascii")
-        created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
+        created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         owner = self.start_owner(image)
         rows = []
