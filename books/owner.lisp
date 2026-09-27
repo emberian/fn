@@ -2576,8 +2576,8 @@
     o))
 
 ; The Store refusal words the host may relay.  Each is the kind an ACL2
-; step decided: :duplicate and :conflict are fn-pb-existing-action's
-; (books/poster-bytes.lisp, the decision the host calls since D25),
+; step decided: :duplicate and :conflict are fn-store-existing-action's
+; (books/store-intern.lisp, the decision the host calls since D25),
 ; :malformed is fn-owner-prepare's :invalid, :unaffordable is the persisted
 ; profile's or the capacity's refusal, :storage-failed is a write that failed
 ; before publication whose reservation fn-owner-known-abort consumed, and
