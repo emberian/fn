@@ -1097,7 +1097,7 @@
     "books": 1125,
     "books_in_root_closure": 1114,
     "roots": 1090,
-    "theorems": 16271,
+    "theorems": 16273,
     "functions": 11332,
     "assert_events": 16637,
     "must_fails": 2013,
@@ -9667,7 +9667,7 @@
       "book": "books/group-access.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 71,
+      "theorems": 73,
       "functions": 30,
       "guards": {
         "verified": 0,
@@ -32775,7 +32775,7 @@
     {
       "theorem": "fn-auth-redeem-outcome-is-inert-unless-it-answers",
       "book": "books/nntp-auth.lisp",
-      "line": 1552,
+      "line": 1556,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-auth-redeem-outcome and the conclusion is that branch's value"
       ]
@@ -32783,7 +32783,7 @@
     {
       "theorem": "fn-auth-session-peer-folds",
       "book": "books/nntp-auth.lisp",
-      "line": 2755,
+      "line": 2759,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-auth-session-peer"
       ]
@@ -34577,7 +34577,7 @@
       {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 2238,
+        "line": 2242,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
