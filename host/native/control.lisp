@@ -751,7 +751,10 @@ octets, or NIL.  PLAIN-THUNK encodes the plain request, only for a resend."
                          (fnn-fault "ACL2 refused the plain control request"))
                        (fnn-control-exchange path plain))
                    (values (fnn-control-plain-status plain plain-stage) nil)))
-        (t (values (fnn-control-transport-outcome stage) nil))))))
+        ;; No reply: ACL2's outcome of the stage reached and its word
+        ;; (no-owner when the connect itself failed).
+        (t (values (fnn-control-transport-outcome stage)
+                   (fnn-core 'fn-native-control-host-transport-word stage)))))))
 
 (defun fnn-control-admin (path-octets argv)
   "Send one ACL2-bounded administrative vector to the live owner.
