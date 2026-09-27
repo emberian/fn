@@ -61,11 +61,11 @@
 (assert-event (equal (fn-aw-v (fn-aw-parse *fn-aw-test-max-folds*))
                      (fn-article-parse *fn-aw-test-max-folds*)))
 (assert-event (equal (fn-aw-v (fn-aw-parse
-  (append '(65 58 32 120 13 10) (fn-aw-test-folds 256) '(13 10)))) '(:error :limit)))
+  (append '(65 58 32 120 13 10) (fn-aw-test-folds 256) '(13 10)))) '(:error :header-lines-limit)))
 (assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse
   (append (fn-aw-test-fields 64) '(13 10))))))
 (assert-event (equal (fn-aw-v (fn-aw-parse
-  (append (fn-aw-test-fields 65) '(13 10)))) '(:error :limit)))
+  (append (fn-aw-test-fields 65) '(13 10)))) '(:error :header-fields-limit)))
 
 ; The measured charge and the envelope quoted in specs/article-work.md.
 (assert-event (equal (len *fn-aw-test-fold-sample*) 520))

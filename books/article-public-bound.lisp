@@ -73,16 +73,16 @@
            :in-theory (disable fn-aw-budget fn-aw-budget-polynomial
                                fn-aw-budget-monotone))))
 (defthm fn-aw-parse-lines-cost-natural
-  (natp (fn-aw-c (fn-aw-parse-lines octets lines-left header-bytes fields-rev current header-rev)))
-  :hints (("Goal" :induct (fn-aw-parse-lines octets lines-left header-bytes fields-rev current header-rev)
+  (natp (fn-aw-c (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)))
+  :hints (("Goal" :induct (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)
            :in-theory (enable fn-aw-parse-lines)))
   :rule-classes :type-prescription)
 (defthm fn-aw-parse-lines-cost-bound
   (implies (and (true-listp octets) (true-listp fields-rev) (true-listp header-rev))
-           (<= (fn-aw-c (fn-aw-parse-lines octets lines-left header-bytes fields-rev current header-rev))
+           (<= (fn-aw-c (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev))
                (fn-aw-budget lines-left (len octets)
                              (fn-aw-state-size fields-rev current header-rev))))
-  :hints (("Goal" :induct (fn-aw-parse-lines octets lines-left header-bytes fields-rev current header-rev)
+  :hints (("Goal" :induct (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)
             :in-theory (enable fn-aw-parse-lines fn-aw-state-size fn-aw-current-size))
           ("Subgoal *1/11" :use
             ((:instance fn-aw-budget-step (fuel lines-left) (n (len octets)) (s (fn-aw-state-size fields-rev current header-rev)) (n2 (len (fn-article-line-rest (fn-article-next-line octets)))) (s2 (fn-aw-state-size (if current (cons current fields-rev) fields-rev) (fn-article-line-value (fn-article-new-field (fn-article-line-value (fn-article-next-line octets)))) (fn-article-header-rev-add-line header-rev (fn-article-line-value (fn-article-next-line octets))))))
@@ -99,31 +99,54 @@
           ("Subgoal *1/1" :in-theory (enable fn-aw-budget))))
 
 ; Public preflight caps traversed input even for non-octet and improper objects.
-(defthm fn-aw-parse-cost-natural
-  (natp (fn-aw-c (fn-aw-parse octets)))
+(defthm fn-aw-parse-under-cost-natural
+  (natp (fn-aw-c (fn-aw-parse-under octets limits)))
   :hints (("Goal" :in-theory (disable fn-aw-at-most fn-aw-octets
                fn-aw-parse-lines fn-cbor-at-mostp fn-cbor-octet-listp)))
   :rule-classes :type-prescription)
 
-(defun fn-article-parse-work-budget (octets)
-  (let ((n (min (len octets) *fn-article-max-octets*)))
-    (+ 3 (* 2 n) (fn-aw-budget (1+ *fn-article-max-header-lines*) n 0))))
+(defthm fn-aw-parse-cost-natural
+  (natp (fn-aw-c (fn-aw-parse octets)))
+  :hints (("Goal" :in-theory (disable fn-aw-parse-under)))
+  :rule-classes :type-prescription)
 
-(defthm fn-article-parse-work-input-bound
-  (<= (fn-aw-c (fn-aw-parse octets)) (fn-article-parse-work-budget octets))
+; The work of the admission parser under any header LIMITS: linear in the
+; input times the line limit plus one, the same polynomial as before with
+; the operator's line limit in place of the constant (PRF-230).  Nothing in
+; it depends on the field or octet limits: raising them adds no work per
+; line.
+(defun fn-article-parse-under-work-budget (octets limits)
+  (let ((n (min (len octets) *fn-article-max-octets*)))
+    (+ 3 (* 2 n) (fn-aw-budget (1+ (fn-article-limit-lines limits)) n 0))))
+
+(defthm fn-article-parse-under-work-input-bound
+  (<= (fn-aw-c (fn-aw-parse-under octets limits))
+      (fn-article-parse-under-work-budget octets limits))
   :hints (("Goal"
     :use ((:instance fn-aw-at-most-cost-input-bound (xs octets) (bound *fn-article-max-octets*))
           (:instance fn-aw-at-most-cost-bound (xs octets) (bound *fn-article-max-octets*))
           (:instance fn-aw-octets-cost-bound (xs octets))
           (:instance fn-aw-parse-lines-cost-bound
-             (lines-left (1+ *fn-article-max-header-lines*)) (header-bytes 0)
+             (lines-left (1+ (fn-article-limit-lines limits))) (header-bytes 0) (nfields 0)
              (fields-rev nil) (current nil) (header-rev nil)))
-    :in-theory (e/d (fn-aw-parse fn-article-parse-work-budget
+    :in-theory (e/d (fn-aw-parse-under fn-article-parse-under-work-budget
                       fn-aw-state-size fn-aw-current-size)
                     (fn-aw-at-most fn-aw-octets fn-aw-parse-lines
                      fn-cbor-at-mostp fn-cbor-octet-listp
                      fn-aw-at-most-cost-input-bound fn-aw-at-most-cost-bound
                      fn-aw-octets-cost-bound fn-aw-parse-lines-cost-bound)))))
+
+(defun fn-article-parse-work-budget (octets)
+  (fn-article-parse-under-work-budget octets *fn-article-default-limits*))
+
+(defthm fn-article-parse-work-input-bound
+  (<= (fn-aw-c (fn-aw-parse octets)) (fn-article-parse-work-budget octets))
+  :hints (("Goal"
+    :use ((:instance fn-article-parse-under-work-input-bound
+                     (limits *fn-article-default-limits*)))
+    :in-theory (e/d (fn-aw-parse fn-article-parse-work-budget)
+                    (fn-aw-parse-under fn-article-parse-under-work-budget
+                     fn-article-parse-under-work-input-bound)))))
 
 (defthm fn-article-parse-work-profile-bound
   (<= (fn-aw-c (fn-aw-parse octets))
@@ -136,6 +159,7 @@
              (fuel (1+ *fn-article-max-header-lines*))
              (n (min (len octets) *fn-article-max-octets*)) (s 0)
              (n2 *fn-article-max-octets*) (s2 0)))
-    :in-theory (e/d (fn-article-parse-work-budget)
+    :in-theory (e/d (fn-article-parse-work-budget
+                     fn-article-parse-under-work-budget)
                     (fn-aw-parse fn-article-parse-work-input-bound
                      fn-aw-budget-monotone)))))
