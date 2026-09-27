@@ -374,3 +374,51 @@
  (and (fn-ocl-view-configp (fn-ocfg-with-view *lgt-finished* (orrt-view *orrt-bad-oc0*)))
       (fn-ocl-view-configp (fn-ocfg-with-view *lgt-oc0* (orrt-view *lgt-finished*)))
       (fn-ocl-view-configp (fn-ocfg-with-view *ocp-new* (orrt-view *ocp-closed*)))))
+
+; -----------------------------------------------------------------------------
+; Teeth for fn-ocl-view-configp-of-a-view-captured-before-appends (audit
+; packet G1-5, lane audit-fixes).  Each is a CORRUPTED state: an owner whose
+; configuration field is not its history's replay (no transition builds one).
+; The three configuration hypotheses are separated by giving one owner a
+; foreign configuration (*ocp-new*'s, which serves fn.live).
+(defun orrt-with-config (oc config)
+  (fn-ocfg-make (fn-ocfg-owner oc) config (fn-ocfg-pins oc) (fn-ocfg-staged oc)))
+(defun orrt-configp-hyps (oc0 oc)
+  (declare (xargs :verify-guards nil))
+  (list (fn-ocl-view-configp oc0)
+        (fn-ocl-view-historyp (fn-ocfg-owner oc0))
+        (equal (orrt-records oc)
+               (append (orrt-records oc0) (nthcdr (len (orrt-records oc0)) (orrt-records oc))))
+        (equal (orrt-history oc) (orrt-history oc0))
+        (equal (fn-ocfg-config oc) (fn-ocfg-config oc0))))
+(defun orrt-configp-concl (oc0 oc)
+  (declare (xargs :verify-guards nil))
+  (fn-ocl-view-configp (fn-ocfg-with-view oc (orrt-view oc0))))
+(defconst *orrt-foreign-config* (fn-ocfg-config *ocp-new*))
+(assert-event (not (equal *orrt-foreign-config* (fn-ocfg-config *lgt-oc0*))))
+; Reached pair (the positive witness above), as the list of hypotheses.
+(assert-event (and (equal (orrt-configp-hyps *lgt-oc0* *lgt-finished*) '(t t t t t))
+                   (orrt-configp-concl *lgt-oc0* *lgt-finished*)))
+; Without (equal (fn-ocfg-config oc) (fn-ocfg-config oc0)): the working
+; owner carries the foreign configuration.
+(assert-event
+ (and (equal (orrt-configp-hyps *lgt-oc0* (orrt-with-config *lgt-finished* *orrt-foreign-config*))
+             '(t t t t nil))
+      (not (orrt-configp-concl *lgt-oc0* (orrt-with-config *lgt-finished* *orrt-foreign-config*)))))
+; Without (fn-ocl-view-configp oc0): both owners carry the foreign
+; configuration (equal to each other, the replay of neither).
+(assert-event
+ (and (equal (orrt-configp-hyps (orrt-with-config *lgt-oc0* *orrt-foreign-config*)
+                                (orrt-with-config *lgt-finished* *orrt-foreign-config*))
+             '(nil t t t t))
+      (not (orrt-configp-concl (orrt-with-config *lgt-oc0* *orrt-foreign-config*)
+                               (orrt-with-config *lgt-finished* *orrt-foreign-config*)))))
+; Without the equal configuration histories: the publication pair with the
+; published owner's configuration field left at the pre-publication one.
+(assert-event
+ (and (equal (orrt-configp-hyps *ocp-closed* (orrt-with-config *ocp-new* (fn-ocfg-config *ocp-closed*)))
+             '(t t t nil t))
+      (not (orrt-configp-concl *ocp-closed* (orrt-with-config *ocp-new* (fn-ocfg-config *ocp-closed*))))))
+; No removal witness for fn-ocl-view-historyp or the records append: on the
+; reached and constructed pairs the view's prefix replays to the same
+; configuration (the swapped and relabelled pairs above).

@@ -117,3 +117,45 @@
       (equal (nth 1 *oiit-intern-k*)
              (fn-oii-identity-row *oiit-snapshot* nil 0 (nth 0 *oiit-intern-k*)))
       (equal (nth 2 *oiit-intern-k*) (nth 0 *oiit-intern-k*))))
+
+; -----------------------------------------------------------------------------
+; fn-oii-ocfg-prepare-identity-is-intern-then-step: no removal witness for
+; (fn-own-relation (fn-ocfg-owner oc)) (audit packet G2-P5, lane audit-fixes).
+; Two CORRUPTED owners were tried: a Store event index claiming 100 records
+; (the relation does not read that count, it still holds, and the equality
+; holds), and a node advanced past the frontier (the relation fails, and the
+; entry and the step both leave the Store unchanged: the equality holds).
+; The hypothesis is the bridge fn-ccar-ocfg-prepare-identity-is-ocfg-step-
+; under-relation's; no counterexample is known and the weakened theorem was
+; not attempted.
+(defun oiit-owner-with-store (o s)
+  (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+               (fn-own-node-secret o) (fn-own-refused o)))
+(defconst *oiit-bad-s*
+  (let ((index (fn-sn-event-index *oiit-s*)))
+    (fn-sn-with-event-index *oiit-s* (cons (car index) (cons (cadr index) 100)))))
+(defconst *oiit-bad-oc*
+  (fn-ocfg-make (oiit-owner-with-store *oiit-reserved* *oiit-bad-s*) *ospt-config* nil nil))
+(make-event `(defconst *oiit-bad-staged*
+  ',(with-guard-checking :none (fn-oii-ocfg-prepare-identity *oiit-bad-oc* *ospt-event* *oiit-h*))))
+(defconst *oiit-far-s*
+  (update-nth 3 (fn-replay-advance-txid (fn-sn-node *oiit-s*) 20) *oiit-s*))
+(defconst *oiit-far-oc*
+  (fn-ocfg-make (oiit-owner-with-store *oiit-reserved* *oiit-far-s*) *ospt-config* nil nil))
+(make-event `(defconst *oiit-far-staged*
+  ',(with-guard-checking :none (fn-oii-ocfg-prepare-identity *oiit-far-oc* *ospt-event* *oiit-h*))))
+(assert-event
+ (and (fn-own-relation (fn-ocfg-owner *oiit-bad-oc*))
+      (equal *oiit-bad-staged*
+             (with-guard-checking :none
+               (in-arena-fn-ocfg-step *sr-arena* *oiit-bad-oc*
+                                      (list :store (list :prepare-identity *oiit-row*)))))
+      (not (fn-own-relation (fn-ocfg-owner *oiit-far-oc*)))
+      (equal *oiit-far-staged*
+             (with-guard-checking :none
+               (in-arena-fn-ocfg-step *sr-arena* *oiit-far-oc*
+                                      (list :store (list :prepare-identity *oiit-row*)))))
+      (equal (fn-own-store (fn-ocfg-owner *oiit-far-staged*)) *oiit-far-s*)))

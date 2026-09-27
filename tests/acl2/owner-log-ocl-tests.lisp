@@ -339,3 +339,182 @@
 ; hypothesis: the authorized request asked at generation 4 is refused.
 (assert-event (not (equal (fn-cfg-record-generation (fn-ocfg-staged *ocp-closed*)) 4)))
 (assert-event (equal (car (mv-list 2 (fn-oclc-publish *ocp-closed* 4 *ocp-max*))) :refused))
+
+; =============================================================================
+; Audit packets G1-4 (PRF-286) and G5-7 (PRF-285), lane audit-fixes.
+; -----------------------------------------------------------------------------
+; G1-4, fn-lgoc-log-order-preserves-invariant's (fn-lgoc-article-stagedp ...).
+; The only non-article candidate the owner stages at a record phase is a
+; retention event (fn-sn-prepare-retention; a configuration record goes
+; through fn-oclc-complete, never the record files).  Staged on the reserved
+; owner and ordered, it keeps the invariant: at this reachable state the
+; hypothesis is not needed.  No counterexample is known; the weakened
+; theorem was not proved (it needs fn-lgoc-rcon-io-preserves-invariant
+; without its safe-set premise, below).
+(defun lgt-ret-event (oc kind charge)
+  (let* ((s (lgt-store oc))
+         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+    (fn-store-retention-event-make kind (fn-sn-identity-next s) txid txid "obl" "sub" "evi" charge)))
+(defconst *lgt-ret-staged*
+  (in-arena-acar-t-ocfg-run *sr-arena* *lgt-reserved*
+                            (list (list :store (list :prepare-retention (lgt-ret-event *lgt-reserved* :undertake 1))))))
+(defconst *lgt-ret-attempted*
+  (fn-rcon-ocfg-io (fn-rcon-ocfg-io *lgt-ret-staged* :record-file :ok) :record-link :ok))
+(assert-event
+ (and (equal (lgt-phase *lgt-ret-staged*) :record-staged)
+      (fn-lgoc-invariantp *lgt-ret-staged*)
+      (not (fn-lgoc-article-stagedp (lgt-store *lgt-ret-staged*)))
+      (equal (lgt-phase (fn-olr-ocfg-order *lgt-ret-staged*)) :completing)
+      (fn-lgoc-invariantp (fn-olr-ocfg-order *lgt-ret-staged*))))
+
+; G1-4, fn-lgoc-rcon-io-preserves-invariant's (fn-lgoc-io-safep ...).  Every
+; observation outside the safe set tried on reached owners keeps the
+; invariant: the excluded directory :ok at :record-attempted over the
+; retention candidate, an unknown operation, a directory observation at
+; :ready, a barrier and a :complete word at :record-staged.  No tooth exists
+; on these witnesses.  A thm of the weakened statement (the keystone's hints
+; plus the owner-with-store lemma) fails with a checkpoint over the
+; operations fn-sn-file-step does not name (the history prefix after an
+; unknown operation), so the hypothesis is neither shown needed nor
+; redundant.
+(assert-event
+ (and (fn-lgoc-invariantp *lgt-ret-attempted*)
+      (equal (lgt-phase *lgt-ret-attempted*) :record-attempted)
+      (not (fn-lgoc-io-safep (lgt-store *lgt-ret-attempted*) :record-directory :ok))
+      (fn-lgoc-invariantp (fn-rcon-ocfg-io *lgt-ret-attempted* :record-directory :ok))
+      (not (fn-lgoc-io-safep (lgt-store *lgt-reserved*) :foo :ok))
+      (equal (fn-rcon-ocfg-io *lgt-reserved* :foo :ok) *lgt-reserved*)
+      (fn-lgoc-invariantp (fn-rcon-ocfg-io *lgt-oc0* :record-directory :ok))
+      (fn-lgoc-invariantp (fn-rcon-ocfg-io *lgt-prepared* :recovery-barrier :ok))
+      (fn-lgoc-invariantp (fn-rcon-ocfg-io *lgt-prepared* :complete :ok))))
+
+; G1-4, fn-lgoc-pidx-sbud-prepare-preserves-invariant's two index premises.
+; CORRUPTED owner: the finished owner (it holds the article) reserved again,
+; its view's Message-ID trie replaced by the empty trie (it hides the held
+; article; fn-scar-view-indexedp fails, the invariant holds).  A record under
+; the held Message-ID is still refused (the owner is unchanged, so the
+; invariant holds after it), and a fake trie refuses a fresh record
+; (post-identity-index-tests).  A corrupted index turns the host's prepare
+; into a refusal, never into a staging the invariant rejects, on every
+; witness tried; the premises are those of the bridge fn-pidx = fn-sbud
+; (post-identity-index-tests' teeth), not of this invariant.  No tooth here.
+(defconst *lgt-f-reserved* (fn-olr-ocfg-reserve *lgt-finished*))
+(defun lgt-view-with-index (v index)
+  (fn-own-view-make-visible
+   (fn-own-view-version v) (fn-own-view-frontier v) (fn-own-view-archive v)
+   (fn-own-view-verdicts v) index (fn-own-view-group-index v) (fn-own-view-withdrawals v)
+   (fn-own-view-raw v) (fn-own-view-withdrawn v) (fn-own-view-keyring v)))
+(defun lgt-owner-with-view (o v)
+  (fn-own-make (fn-own-store o) v (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+               (fn-own-node-secret o) (fn-own-refused o)))
+(defconst *lgt-blind-reserved*
+  (fn-ocfg-with-owner *lgt-f-reserved*
+                      (lgt-owner-with-view (fn-ocfg-owner *lgt-f-reserved*)
+                                           (lgt-view-with-index (fn-own-view (fn-ocfg-owner *lgt-f-reserved*))
+                                                                (fn-midx-build nil)))))
+(make-event
+ `(defconst *lgt-blind-prepared*
+    ',(with-guard-checking :none
+        (fn-pidx-sbud-prepare *lgt-blind-reserved* (own-record 3 9 "<ocmt@example>") 1000000))))
+(assert-event
+ (and (fn-lgoc-invariantp *lgt-blind-reserved*)
+      (not (fn-scar-view-indexedp (fn-ocfg-owner *lgt-blind-reserved*)))
+      (equal (lgt-phase *lgt-blind-prepared*) :reserved)
+      (fn-lgoc-invariantp *lgt-blind-prepared*)))
+; fn-lgoc-ocl-relation-of-owner-with-store is a lemma of the step keystones
+; (their hints instantiate it); it is no longer a registry event of PRF-286.
+
+; -----------------------------------------------------------------------------
+; G5-7 (PRF-285): books/config-store-steps.lisp companions.
+; fn-cstp-finish-preserves-carriedp.  Positive: the ordered article's Store at
+; :completing.  Removal of carriedp (CORRUPTED: the topic counter at 99).
+; The :completing hypothesis: at :record-staged the finish changes nothing
+; and carriedp holds after it, so no tooth exists on this witness.
+(defconst *lgt-s-ordered* (lgt-store *lgt-ordered*))
+(defconst *lgt-s-bad-ordered* (lgt-store *lgt-bad-ordered*))
+(assert-event
+ (and (fn-cstp-carriedp *lgt-s-ordered*)
+      (equal (fn-sf-phase (fn-sn-files *lgt-s-ordered*)) :completing)
+      (fn-cstp-carriedp (fn-sn-finish *lgt-s-ordered*))))
+(assert-event
+ (and (not (fn-cstp-carriedp *lgt-s-bad-ordered*))
+      (equal (fn-sf-phase (fn-sn-files *lgt-s-bad-ordered*)) :completing)
+      (not (fn-cstp-carriedp (fn-sn-finish *lgt-s-bad-ordered*)))))
+(assert-event
+ (and (fn-cstp-carriedp *lgt-s-prepared*)
+      (not (equal (fn-sf-phase (fn-sn-files *lgt-s-prepared*)) :completing))
+      (fn-cstp-carriedp (fn-sn-finish *lgt-s-prepared*))))
+
+; fn-cstp-replay-append-event.  Every hypothesis and every conjunct of the
+; conclusion on the reserved Store's history and the article; removals: the
+; article at the wrong sequence (3), at the wrong transaction id (9), and
+; after a configuration that retires its group (not served).
+(defun lgt-rae-hyps (configs events txid event)
+  (let* ((base (fn-cst-replay-node configs events txid))
+         (applied (fn-replay-apply-record base event)))
+    (list (true-listp configs) (true-listp events)
+          (fn-cst-recoverablep configs events txid)
+          (fn-store-event-p event)
+          (equal (fn-store-event-sequence event) (len events))
+          (equal (fn-store-event-txid event) txid)
+          (fn-cpr-event-servedp (fn-cstp-fold configs events) event)
+          (fn-node-statep applied))))
+(defun lgt-rae-concl (configs events txid event)
+  (let* ((base (fn-cst-replay-node configs events txid))
+         (applied (fn-replay-apply-record base event)))
+    (and (equal (fn-replay-result-kind (fn-cpr-replay configs (append events (list event)))) :ok)
+         (equal (fn-cstp-fold configs (append events (list event)))
+                (fn-cnode-make applied (fn-cnode-config (fn-cstp-fold configs events))))
+         (equal (fn-cst-replay-node configs (append events (list event)) (+ 1 txid)) applied)
+         (fn-cst-recoverablep configs (append events (list event)) (+ 1 txid)))))
+(defconst *lgt-s-r-configs* (fn-sn-config-history *lgt-s-r-reserved*))
+(defconst *lgt-s-r-events* (fn-sf-records (fn-sn-files *lgt-s-r-reserved*)))
+(assert-event
+ (and (equal (lgt-rae-hyps *lgt-s-configs* *lgt-s-events* 8 *acar-t-record*) '(t t t t t t t t))
+      (lgt-rae-concl *lgt-s-configs* *lgt-s-events* 8 *acar-t-record*)))
+(assert-event
+ (and (equal (lgt-rae-hyps *lgt-s-configs* *lgt-s-events* 8 (own-record 3 8 "<ocmt@example>"))
+             '(t t t t nil t t t))
+      (not (lgt-rae-concl *lgt-s-configs* *lgt-s-events* 8 (own-record 3 8 "<ocmt@example>")))))
+(assert-event
+ (and (equal (lgt-rae-hyps *lgt-s-configs* *lgt-s-events* 8 (own-record 2 9 "<ocmt@example>"))
+             '(t t t t t nil t t))
+      (not (lgt-rae-concl *lgt-s-configs* *lgt-s-events* 8 (own-record 2 9 "<ocmt@example>")))))
+(assert-event
+ (and (equal (lgt-rae-hyps *lgt-s-r-configs* *lgt-s-r-events* 8 *acar-t-record*) '(t t t t t t nil t))
+      (not (lgt-rae-concl *lgt-s-r-configs* *lgt-s-r-events* 8 *acar-t-record*))))
+
+; fn-cstp-record-io-preserves-relation, removal of the :record-directory
+; exclusion (CORRUPTED: the topic counter at 99 at :record-attempted): the
+; relation holds, the operation is a record step, the excluded publishing
+; observation is taken, and the relation fails after it.
+(assert-event
+ (and (fn-cst-relation *lgt-s-bad-attempted*)
+      (equal (fn-sf-phase (fn-sn-files *lgt-s-bad-attempted*)) :record-attempted)
+      (not (fn-cst-relation (fn-sn-io *lgt-s-bad-attempted* :record-directory :ok)))))
+
+; fn-cstp-refuse-reservation-preserves.  Removal of carriedp (CORRUPTED: the
+; topic counter at 99 at :reserved): the relation holds, and the refused
+; reservation is not carried.  Removal of the relation (CORRUPTED: the node
+; advanced past the frontier): carried, not related, and not related after.
+(defconst *lgt-s-bad-reserved* (lgt-store *lgt-bad-reserved*))
+(defconst *lgt-s-far-reserved*
+  (update-nth 3 (fn-replay-advance-txid (fn-sn-node *lgt-s-reserved*) 20) *lgt-s-reserved*))
+(assert-event
+ (and (fn-cst-relation *lgt-s-bad-reserved*)
+      (not (fn-cstp-carriedp *lgt-s-bad-reserved*))
+      (not (fn-cstp-carriedp (fn-sn-refuse-reservation *lgt-s-bad-reserved* 8)))))
+(assert-event
+ (and (fn-cstp-carriedp *lgt-s-far-reserved*)
+      (not (fn-cst-relation *lgt-s-far-reserved*))
+      (not (fn-cst-relation (fn-sn-refuse-reservation *lgt-s-far-reserved* 8)))))
+
+; fn-cstp-open-establishes-carriedp, removal of the :ok kind: the same
+; history opened at frontier 0 answers :error, and its state is not carried.
+(assert-event
+ (and (not (equal (fn-sn-open-kind (fn-cpo-open-observed *lgt-rc-configs* 0 *lgt-rc-events*)) :ok))
+      (not (fn-cstp-carriedp
+            (fn-sn-open-state (fn-cpo-open-observed *lgt-rc-configs* 0 *lgt-rc-events*))))))
