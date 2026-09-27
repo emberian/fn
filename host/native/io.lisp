@@ -3437,23 +3437,30 @@ or refuses by name, saying what to run."
                        root-path))
           (t (fnn-fault "ACL2 returned a malformed init admission")))
     (let* ((stage-root (format nil "~a.init-~a" root-path (fnn-random-hex 6)))
-           (stage (make-fnn-store stage-root :writable t :fault (fnn-init-test-fault))))
+           (stage (make-fnn-store stage-root :writable t :fault (fnn-init-test-fault)))
+           (logp (fnn-core 'fn-store-profile-logp
+                           (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))
+           (record (fnn-bridge-config-initial (or groups +fnn-default-groups+))))
       (fnn-staged-publication
        "init" stage root-path
-       ;; fn-bs-init-pub-files, in its order.
-       (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
-             (cons (fnn-frontier-path stage) (fnn-metadata-frontier-frame 0))
-             (cons (fnn-config-record-path stage 1)
-                   (fnn-bridge-config-initial (or groups +fnn-default-groups+))))
+       (if logp
+           ;; books/store-init-log-publication.lisp fn-bs-init-log-files, in
+           ;; its order: the profile, the generation-1 configuration record,
+           ;; the segment's ACL2 extent of zeros.  No allocator file and no
+           ;; transactions/ (a format-9 store reads neither).
+           (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
+                 (cons (fnn-config-record-path stage 1) record)
+                 (cons (fnn-segment-path stage)
+                       (fnn-make-octets (fnn-nat (fnn-core 'fn-store-log-initial-extent)))))
+           ;; fn-bs-init-pub-files, in its order.
+           (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
+                 (cons (fnn-frontier-path stage) (fnn-metadata-frontier-frame 0))
+                 (cons (fnn-config-record-path stage 1) record)))
        0
-       (lambda (stage)
-         (fnn-record-filesystem-at-init stage profile policy)
-         ;; Format 9: the record log's segment is part of the published
-         ;; stage (PKT-COL-2: fn-bs-init-pub-program does not name it yet).
-         (when (fnn-core 'fn-store-profile-logp
-                         (fnn-metadata-config-decode
-                          (fnn-metadata-config-frame profile)))
-           (fnn-log-init-segment stage))))
+       (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
+       (if logp
+           (fnn-core 'fn-bs-init-log-subdir-names)
+           '("transactions" "staging" "config")))
       ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
       ;; once the store is published (outside fn-bs-init-pub-program: a
       ;; death between the two leaves the complete store without
@@ -3790,7 +3797,8 @@ presence of the two names is classified by fn-bs-imp-classify."
         +fnn-exit-ok+))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
-                               &optional record-filesystem)
+                               &optional record-filesystem
+                                 (subdirs '("transactions" "staging" "config")))
   "Build the store STAGE (at ROOT-PATH.KIND-XXXX) from FILES, a list of
 (PATH . OCTETS) in plan order, admit it through the ordinary open (it must
 replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
@@ -3800,7 +3808,9 @@ books/store-init-publication.lisp fn-bs-init-pub-program's (KIND \"init\":
 the same steps, init's cut names).  An OS error before the rename is a known
 failure (exit 1, the staged directory named); at or after it the outcome is
 uncertain (exit 3) and the observed presence of the two names is classified
-by fn-bs-imp-classify."
+by fn-bs-imp-classify.  SUBDIRS are the staged tree's subdirectories in
+the plan's order (a format-9 init's are ACL2's fn-bs-init-log-subdir-names:
+books/store-init-log-publication.lisp)."
   (let* ((stage-root (fnn-store-root stage))
          (parent (fnn-parent root-path))
          (lock nil)
@@ -3818,14 +3828,14 @@ by fn-bs-imp-classify."
                (setq created t)
                (fnn-pub-at stage kind "stage-created")
                ;; fn-bs-imp-subdir-steps
-               (dolist (sub '("transactions" "staging" "config"))
+               (dolist (sub subdirs)
                  (fnn-mkdir (fnn-join stage-root sub) #o700)
                  (fnn-pub-at stage kind "subdir-created"))
                ;; fn-bs-imp-files-steps
                (dolist (file files)
                  (fnn-import-write-file stage (car file) (cdr file) kind))
                ;; fn-bs-imp-fence-steps
-               (dolist (sub '("transactions" "staging" "config"))
+               (dolist (sub subdirs)
                  (fnn-fsync-dir (fnn-join stage-root sub))
                  (fnn-pub-at stage kind "subdir-durable"))
                ;; fn-bs-imp-seal-steps
