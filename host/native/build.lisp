@@ -123,6 +123,9 @@
 ;; fn-owner-prepare-identity, fn-owner-prepare-topic, fn-owner-reconfigure-unstage
 ;; call books/owner-prepare-served (fn-psrv-).
 (include-book "books/owner-prepare-served")
+;; Stage 2b (lane history-columns-2): host/owner-host.lisp loads and syncs the
+;; history stobj fn-hist and reads the carried budget folds from it.
+(include-book "books/history-columns-store")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).

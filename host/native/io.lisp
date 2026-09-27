@@ -277,6 +277,7 @@ return the index the bytes begin at."
 
 (defvar *fnn-arena* nil)
 (defvar *fnn-cat* nil)
+(defvar *fnn-hist* nil)
 
 (defun fnn-live-arena ()
   (or *fnn-arena*
@@ -284,13 +285,15 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-arena (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the payload arena stobj is not in this image")))))
 
-;;; The trailing stobjs of a state-returning entry: the live payload arena
-;;; and catalog (books/payload-arena.lisp fn-arena, books/catalog.lisp fn-cat)
-;;; when the entry's STOBJS-IN end in (fn-arena state) or (fn-arena fn-cat
-;;; state): the served readers read an article's bytes through the arena
-;;; (books/nntp-session.lisp fn-nntp-article-bytes; lane served-readers) and
-;;; the catalog's served chain and maintenance take both.  Read off the
-;;; entry's own STOBJS-IN (a property the image keeps: host/native/
+;;; The trailing stobjs of a state-returning entry: the live payload arena,
+;;; catalog and history columns (books/payload-arena.lisp fn-arena,
+;;; books/catalog.lisp fn-cat, books/history-columns.lisp fn-hist), in the
+;;; order the entry's STOBJS-IN names them just before state: the served
+;;; readers read an article's bytes through the arena (books/nntp-session.lisp
+;;; fn-nntp-article-bytes; lane served-readers), the catalog's served chain
+;;; and maintenance take both, and the owner's install and carried budget
+;;; readers take fn-hist (host/owner-host.lisp; lane history-columns-2).  Read
+;;; off the entry's own STOBJS-IN (a property the image keeps: host/native/
 ;;; strip-world.lisp), once per name, so a wrapper never carries a list that
 ;;; could go stale.
 (defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq))
@@ -301,34 +304,44 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-cat (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the catalog stobj is not in this image")))))
 
+(defun fnn-live-hist ()
+  (or *fnn-hist*
+      (setq *fnn-hist*
+            (or (cdr (assoc 'fn-hist (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the history stobj is not in this image")))))
+
 (defun fnn-trailing-kind (name)
+  "The names of NAME's live stobjs just before its trailing state, in order:
+the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
   (multiple-value-bind (known found) (gethash name *fnn-trailing-stobjs*)
     (if found
         known
       (setf (gethash name *fnn-trailing-stobjs*)
-            (let ((ins (stobjs-in name (w *the-live-state*))))
-              (cond ((and (>= (length ins) 3) (eq (car (last ins)) 'state)
-                          (eq (car (last ins 2)) 'fn-cat)
-                          (eq (car (last ins 3)) 'fn-arena))
-                     :arena-cat)
-                    ((and (>= (length ins) 2) (eq (car (last ins)) 'state)
-                          (eq (car (last ins 2)) 'fn-arena))
-                     :arena)
-                    (t nil)))))))
+            (let ((ins (reverse (stobjs-in name (w *the-live-state*))))
+                  (run nil))
+              (when (eq (car ins) 'state)
+                (loop for sym in (cdr ins)
+                      while (member sym '(fn-arena fn-cat fn-hist))
+                      do (push sym run)))
+              run)))))
+
+(defun fnn-live-stobj (sym)
+  (ecase sym
+    (fn-arena (fnn-live-arena))
+    (fn-cat (fnn-live-cat))
+    (fn-hist (fnn-live-hist))))
 
 (defun fnn-arena-then-state (name)
   "The trailing stobj arguments of the state-returning entry NAME."
-  (case (fnn-trailing-kind name)
-    (:arena-cat (list (fnn-live-arena) (fnn-live-cat) *the-live-state*))
-    (:arena (list (fnn-live-arena) *the-live-state*))
-    (t (list *the-live-state*))))
+  (append (mapcar #'fnn-live-stobj (fnn-trailing-kind name))
+          (list *the-live-state*)))
 
 (defun fnn-core-arena-state (name &rest args)
   "A wrapper over the arena and state, the live arena passed before state:
 its value.  An entry that seals returns (mv erp val fn-arena state) and a
 reader (mv erp val state); the arena is updated in place either way."
   (destructuring-bind (erp val &rest ignored)
-      (apply #'fnn-call name (append args (list (fnn-live-arena) *the-live-state*)))
+      (apply #'fnn-call name (append args (fnn-arena-then-state name)))
     (declare (ignore ignored))
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
@@ -338,8 +351,8 @@ reader (mv erp val state); the arena is updated in place either way."
 ARGS): its value.  The owner's POST entries read the payload from the buffer
 and seal it into the arena (host/owner-host.lisp fn-owner-prepare-buffer)."
   (destructuring-bind (erp val &rest ignored)
-      (apply #'fnn-call name (append args (list (fnn-live-octets) (fnn-live-arena)
-                                                *the-live-state*)))
+      (apply #'fnn-call name (append args (cons (fnn-live-octets)
+                                                (fnn-arena-then-state name))))
     (declare (ignore ignored))
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
