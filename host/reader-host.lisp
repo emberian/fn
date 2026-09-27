@@ -91,7 +91,8 @@
 
 (defun fn-reader-use-seed (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (let ((fn-arena (fn-arena-seal-list *fn-reader-payload* (fn-arena-clear fn-arena))))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arena-seal-list *fn-reader-payload* fn-arena)))
     (mv-let (erp val state)
       (fn-reader-install-selection (fn-rdc-selection *fn-reader-archive* nil) state)
       (mv erp val fn-arena state))))

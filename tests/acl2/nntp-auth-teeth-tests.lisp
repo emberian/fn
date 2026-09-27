@@ -144,7 +144,7 @@
 (include-book "arena-lift")
 ;; The payloads the arena holds at handles 0, 1, ...: *aut-archive*'s one
 ;; article is handle 0 (*aut-handle*), its payload *aut-payload*.
-(defconst *sr-arena* (list *aut-payload*))
+(defconst *aut-arena* (list *aut-payload*))
 (bpr-lift aut-step 2)
 (bpr-lift aut-step-pinned 3)
 (bpr-lift fn-auth-step 6)
@@ -154,12 +154,12 @@
        *aut-s-req* *aut-config*
        (car (fn-nntp-tokenize (fn-nntp-string-octets "AUTHINFO USER reader")))
        (cdr (fn-nntp-tokenize (fn-nntp-string-octets "AUTHINFO USER reader"))))
-      (equal (in-arena-aut-step-pinned *sr-arena* *aut-s-req* "AUTHINFO USER reader" nil)
-             (in-arena-aut-step *sr-arena* *aut-s-req* "AUTHINFO USER reader"))))
+      (equal (in-arena-aut-step-pinned *aut-arena* *aut-s-req* "AUTHINFO USER reader" nil)
+             (in-arena-aut-step *aut-arena* *aut-s-req* "AUTHINFO USER reader"))))
 (defconst *aut-stat-id-line* "STAT <teeth@example.invalid>")
 (assert-event
- (not (equal (in-arena-aut-step-pinned *sr-arena* *aut-s-open* *aut-stat-id-line* nil)
-             (in-arena-aut-step *sr-arena* *aut-s-open* *aut-stat-id-line*))))
+ (not (equal (in-arena-aut-step-pinned *aut-arena* *aut-s-open* *aut-stat-id-line* nil)
+             (in-arena-aut-step *aut-arena* *aut-s-open* *aut-stat-id-line*))))
 (must-fail
  (defthm fn-auth-false-all-commands-agree-with-stale-pin
    (equal (aut-step-pinned *aut-s-open* *aut-stat-id-line* nil fn-arena)
@@ -184,9 +184,9 @@
 ; fn-authsec-checkp, whose digest is an ATTACHMENT, and ACL2 will not call
 ; one while computing a `defconst'.  Inside an assert-event top-level
 ; evaluation applies and the real SHA-256 runs.
-(defconst *aut-after-user* (in-arena-aut-after *sr-arena* *aut-s-req* "AUTHINFO USER reader"))
+(defconst *aut-after-user* (in-arena-aut-after *aut-arena* *aut-s-req* "AUTHINFO USER reader"))
 (defmacro aut-authed ()
-  '(in-arena-aut-after *sr-arena* *aut-after-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-after *aut-arena* *aut-after-user* "AUTHINFO PASS correct-horse"))
 (assert-event (equal (fn-auth-session-subject (aut-authed)) *aut-principal*))
 (assert-event (fn-auth-sessionp (aut-authed)))
 
@@ -210,17 +210,17 @@
 ; done something, and the same command on the same connection once
 ; authenticated does do it.
 (assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "GROUP")))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-req* "GROUP fn.letters")
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-req* "GROUP fn.letters")
                      (aut-single *aut-480*)))
-(assert-event (equal (in-arena-aut-after *sr-arena* *aut-s-req* "GROUP fn.letters") *aut-s-req*))
-(assert-event (not (fn-post-offeredp (in-arena-aut-reply *sr-arena* *aut-s-req* "POST"))))
-(assert-event (null (fn-post-result-submission (in-arena-aut-step *sr-arena* *aut-s-req* "POST"))))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-req* "ARTICLE 1")
+(assert-event (equal (in-arena-aut-after *aut-arena* *aut-s-req* "GROUP fn.letters") *aut-s-req*))
+(assert-event (not (fn-post-offeredp (in-arena-aut-reply *aut-arena* *aut-s-req* "POST"))))
+(assert-event (null (fn-post-result-submission (in-arena-aut-step *aut-arena* *aut-s-req* "POST"))))
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-req* "ARTICLE 1")
                      (aut-single *aut-480*)))
 ; Non-degenerate: authenticated, the very same command selects the group.
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* (aut-authed) "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* (aut-authed) "GROUP fn.letters")
                           (aut-single *aut-480*))))
-(assert-event (not (equal (in-arena-aut-after *sr-arena* (aut-authed) "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-after *aut-arena* (aut-authed) "GROUP fn.letters")
                           (aut-authed))))
 
 ; H1 dropped.  A value of the session's shape whose base is not a peer
@@ -234,8 +234,8 @@
 (assert-event (fn-auth-config-requiredp (fn-auth-session-config *aut-forged*)))
 (assert-event (null (fn-auth-session-subject *aut-forged*)))
 (assert-event (not (fn-auth-session-handshakingp *aut-forged*)))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-forged* "GROUP fn.letters") nil))
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* *aut-forged* "GROUP fn.letters")
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-forged* "GROUP fn.letters") nil))
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-forged* "GROUP fn.letters")
                           (aut-single *aut-480*))))
 
 (local
@@ -264,13 +264,13 @@
 ; H2 dropped.  After a 382 the connection is HANDSHAKING: RFC 4642 section
 ; 2.2 says the octets behind the command line are handshake bytes, so the
 ; step answers nothing at all rather than 480.
-(defconst *aut-s-handshaking* (in-arena-aut-after *sr-arena* *aut-s-req* "STARTTLS"))
+(defconst *aut-s-handshaking* (in-arena-aut-after *aut-arena* *aut-s-req* "STARTTLS"))
 (assert-event (fn-auth-session-handshakingp *aut-s-handshaking*))
 (assert-event (fn-auth-sessionp *aut-s-handshaking*))
 (assert-event (fn-auth-config-requiredp
                (fn-auth-session-config *aut-s-handshaking*)))
 (assert-event (null (fn-auth-session-subject *aut-s-handshaking*)))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-handshaking* "GROUP fn.letters") nil))
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-handshaking* "GROUP fn.letters") nil))
 
 (local
  (must-fail
@@ -297,9 +297,9 @@
 
 ; H3 dropped.  With no policy requiring a login the same command runs and the
 ; group IS selected, which is what the gate is for.
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* *aut-s-open* "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-s-open* "GROUP fn.letters")
                           (aut-single *aut-480*))))
-(assert-event (not (equal (in-arena-aut-after *sr-arena* *aut-s-open* "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-after *aut-arena* *aut-s-open* "GROUP fn.letters")
                           *aut-s-open*)))
 
 (local
@@ -328,7 +328,7 @@
 ; H4 dropped.  Authenticated under the SAME required configuration, the
 ; command runs: the gate is the missing subject and not the policy alone.
 (assert-event (fn-auth-session-subject (aut-authed)))
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* (aut-authed) "ARTICLE 1")
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* (aut-authed) "ARTICLE 1")
                           (aut-single *aut-480*))))
 
 (local
@@ -372,7 +372,7 @@
 (assert-event (fn-auth-restricted-keywordp
                (car (fn-nntp-tokenize *aut-over-long-line*))))
 (assert-event (not (equal (fn-post-result-effects
-                           (in-arena-fn-auth-step *sr-arena* *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-over-long-line*)))
+                           (in-arena-fn-auth-step *aut-arena* *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-over-long-line*)))
                           (aut-single *aut-480*))))
 
 (local
@@ -413,7 +413,7 @@
                (car (fn-nntp-tokenize *aut-over-long-argument-line*))))
 (assert-event
  (not (equal (fn-post-result-effects
-              (in-arena-fn-auth-step *sr-arena* *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-over-long-argument-line*)))
+              (in-arena-fn-auth-step *aut-arena* *aut-s-req* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-over-long-argument-line*)))
              (aut-single *aut-480*))))
 
 (local
@@ -445,7 +445,7 @@
 ; block and not 480.
 (assert-event (not (fn-auth-restricted-keywordp
                     (fn-nntp-string-octets "HELP"))))
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* *aut-s-req* "HELP")
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-s-req* "HELP")
                           (aut-single *aut-480*))))
 
 (local
@@ -500,24 +500,24 @@
 ; secret below IS the enrolled one, so the 483 is a refusal of a login that
 ; would otherwise succeed, and the same exchange over TLS does succeed.
 
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-prot* "AUTHINFO USER reader")
                      (aut-single *aut-483*)))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-prot* "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-prot* "AUTHINFO PASS correct-horse")
                      (aut-single *aut-483*)))
-(assert-event (equal (in-arena-aut-after *sr-arena* *aut-s-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-after *aut-arena* *aut-s-prot* "AUTHINFO USER reader")
                      *aut-s-prot*))
 (assert-event (null (fn-post-result-submission
-                     (in-arena-aut-step *sr-arena* *aut-s-prot* "AUTHINFO USER reader"))))
+                     (in-arena-aut-step *aut-arena* *aut-s-prot* "AUTHINFO USER reader"))))
 ; Nothing was cached, so a PASS behind the refused USER is still 483 and not
 ; 481: the secret is never compared on this channel.
 (assert-event (null (fn-auth-session-pending
-                     (in-arena-aut-after *sr-arena* *aut-s-prot* "AUTHINFO USER reader"))))
+                     (in-arena-aut-after *aut-arena* *aut-s-prot* "AUTHINFO USER reader"))))
 ; Over TLS, the same policy and the same credential: 381 then 281.
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-prot-tls* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-prot-tls* "AUTHINFO USER reader")
                      (aut-single "381 password required")))
 (defconst *aut-prot-after-user*
-  (in-arena-aut-after *sr-arena* *aut-s-prot-tls* "AUTHINFO USER reader"))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-prot-after-user* "AUTHINFO PASS correct-horse")
+  (in-arena-aut-after *aut-arena* *aut-s-prot-tls* "AUTHINFO USER reader"))
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-prot-after-user* "AUTHINFO PASS correct-horse")
                      (aut-single "281 authentication accepted")))
 
 ; G1 dropped: the forged session again, now under the protected-only policy.
@@ -526,7 +526,7 @@
 (assert-event (not (fn-auth-sessionp *aut-forged-prot*)))
 (assert-event (fn-auth-config-protected-onlyp
                (fn-auth-session-config *aut-forged-prot*)))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-forged-prot* "AUTHINFO USER reader") nil))
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-forged-prot* "AUTHINFO USER reader") nil))
 
 (local
  (must-fail
@@ -555,9 +555,9 @@
                               fn-nntp-command-arguments-at-mostp)))))))
 
 ; G2 dropped: a handshaking connection answers nothing, not 483.
-(defconst *aut-s-prot-handshaking* (in-arena-aut-after *sr-arena* *aut-s-prot* "STARTTLS"))
+(defconst *aut-s-prot-handshaking* (in-arena-aut-after *aut-arena* *aut-s-prot* "STARTTLS"))
 (assert-event (fn-auth-session-handshakingp *aut-s-prot-handshaking*))
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-prot-handshaking* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-prot-handshaking* "AUTHINFO USER reader")
                      nil))
 
 (local
@@ -589,9 +589,9 @@
 ; G3 dropped: an authenticated connection is 502 (section 2.3.1 note [2]),
 ; never 483 and never 480.
 (defmacro aut-prot-authed ()
-  '(in-arena-aut-after *sr-arena* *aut-prot-after-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-after *aut-arena* *aut-prot-after-user* "AUTHINFO PASS correct-horse"))
 (assert-event (fn-auth-session-subject (aut-prot-authed)))
-(assert-event (equal (in-arena-aut-reply *sr-arena* (aut-prot-authed) "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-reply *aut-arena* (aut-prot-authed) "AUTHINFO USER reader")
                      (aut-single "502 already authenticated")))
 
 (local
@@ -622,7 +622,7 @@
 
 ; G4 dropped: the required-but-not-protected policy answers 381 on the same
 ; cleartext connection, which is the whole point of the protected-only bit.
-(assert-event (equal (in-arena-aut-reply *sr-arena* *aut-s-req* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-reply *aut-arena* *aut-s-req* "AUTHINFO USER reader")
                      (aut-single "381 password required")))
 
 (local
@@ -652,7 +652,7 @@
                               fn-nntp-command-arguments-at-mostp)))))))
 
 ; G5 dropped: with a TLS layer the same protected-only policy answers 381.
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* *aut-s-prot-tls* "AUTHINFO USER reader")
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-s-prot-tls* "AUTHINFO USER reader")
                           (aut-single *aut-483*))))
 
 (local
@@ -696,7 +696,7 @@
                "AUTHINFO"))
 (assert-event
  (not (equal (fn-post-result-effects
-              (in-arena-fn-auth-step *sr-arena* *aut-s-prot* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-authinfo-over-long-line*)))
+              (in-arena-fn-auth-step *aut-arena* *aut-s-prot* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-authinfo-over-long-line*)))
              (aut-single *aut-483*))))
 
 (local
@@ -741,7 +741,7 @@
                     (fn-nntp-tokenize *aut-authinfo-over-long-argument-line*))))
 (assert-event
  (not (equal (fn-post-result-effects
-              (in-arena-fn-auth-step *sr-arena* *aut-s-prot* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-authinfo-over-long-argument-line*)))
+              (in-arena-fn-auth-step *aut-arena* *aut-s-prot* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-authinfo-over-long-argument-line*)))
              (aut-single *aut-483*))))
 
 (local
@@ -773,9 +773,9 @@
 ; G8 dropped: STARTTLS is the command a client is SUPPOSED to send on this
 ; channel, and it is answered 382 and not 483.  So is CAPABILITIES, which is
 ; how the client learns that AUTHINFO is not on offer yet.
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* *aut-s-prot* "STARTTLS")
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-s-prot* "STARTTLS")
                           (aut-single *aut-483*))))
-(assert-event (not (equal (in-arena-aut-reply *sr-arena* *aut-s-prot* "CAPABILITIES")
+(assert-event (not (equal (in-arena-aut-reply *aut-arena* *aut-s-prot* "CAPABILITIES")
                           (aut-single *aut-483*))))
 
 (local
@@ -936,7 +936,7 @@
 ; block over exactly that list.  Witnessed on the required policy, where the
 ; block is not the ground reader list.
 (assert-event
- (equal (in-arena-aut-reply *sr-arena* *aut-s-req* "CAPABILITIES")
+ (equal (in-arena-aut-reply *aut-arena* *aut-s-req* "CAPABILITIES")
         (fn-nntp-result-effects
          (fn-nntp-multi (fn-auth-reader-session *aut-s-req*)
                         "101 capability list follows"
@@ -1079,7 +1079,7 @@
 ; peer-opened connection meets the same 480 gate a reader does.
 (assert-event
  (equal (fn-post-result-effects
-         (in-arena-fn-auth-step *sr-arena* (fn-served-conn-session
+         (in-arena-fn-auth-step *aut-arena* (fn-served-conn-session
            (fn-served-result-conn
             (fn-served-open-peer *aut-archive* 510 8192 *aut-config* *aut-obs*
                                  *aut-obs* "transit" *aut-peer-node*
@@ -1120,11 +1120,11 @@
 (assert-event (equal (fn-auth-session-config *aut-s-handshaking*)
                      *aut-required*))
 (assert-event (equal (fn-auth-session-config
-                      (in-arena-aut-after *sr-arena* (aut-authed) "GROUP fn.letters"))
+                      (in-arena-aut-after *aut-arena* (aut-authed) "GROUP fn.letters"))
                      *aut-required*))
 (assert-event (equal (fn-auth-session-config
                       (fn-post-result-session
-                       (in-arena-fn-auth-step *sr-arena* *aut-s-handshaking* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :tls-established))))
+                       (in-arena-fn-auth-step *aut-arena* *aut-s-handshaking* *aut-archive* *aut-config* *aut-obs* *aut-obs* (list :tls-established))))
                      *aut-required*))
 ; Non-degenerate the other way: the sessions above really are different
 ; values, so the equality is about a field and not about a fixed point.
@@ -1169,22 +1169,22 @@
 ; arrived on and no submission leaves.
 (assert-event (equal (fn-served-conn-wire
                       (fn-served-result-conn
-                       (in-arena-fn-served-dispatch *sr-arena* *aut-conn-req* *aut-post-event*)))
+                       (in-arena-fn-served-dispatch *aut-arena* *aut-conn-req* *aut-post-event*)))
                      (fn-served-conn-wire *aut-conn-req*)))
 (assert-event (equal (fn-served-conn-session
                       (fn-served-result-conn
-                       (in-arena-fn-served-dispatch *sr-arena* *aut-conn-req* *aut-post-event*)))
+                       (in-arena-fn-served-dispatch *aut-arena* *aut-conn-req* *aut-post-event*)))
                      (fn-served-conn-session *aut-conn-req*)))
 (assert-event (null (fn-served-submission
                      (fn-served-result-effects
-                      (in-arena-fn-served-dispatch *sr-arena* *aut-conn-req* *aut-post-event*)))))
+                      (in-arena-fn-served-dispatch *aut-arena* *aut-conn-req* *aut-post-event*)))))
 ; Non-degenerate, and it is K1c that separates: the same event on a
 ; connection whose policy permits posting DOES switch the wire into article
 ; mode, so the theorem is about the refusal and not about fn-served-dispatch
 ; never touching a wire.
 (assert-event (not (equal (fn-served-conn-wire
                            (fn-served-result-conn
-                            (in-arena-fn-served-dispatch *sr-arena* *aut-conn-open* *aut-post-event*)))
+                            (in-arena-fn-served-dispatch *aut-arena* *aut-conn-open* *aut-post-event*)))
                           (fn-served-conn-wire *aut-conn-open*))))
 
 (local
@@ -1224,7 +1224,7 @@
 (assert-event (not (fn-auth-postingp (fn-served-conn-session *aut-peer-conn*))))
 (assert-event (not (equal (fn-served-conn-wire
                            (fn-served-result-conn
-                            (in-arena-fn-served-dispatch *sr-arena* *aut-peer-conn* *aut-ihave-event*)))
+                            (in-arena-fn-served-dispatch *aut-arena* *aut-peer-conn* *aut-ihave-event*)))
                           (fn-served-conn-wire *aut-peer-conn*))))
 
 (local
@@ -1271,7 +1271,7 @@
                (fn-served-conn-session *aut-conn-handshaking*)))
 (assert-event (equal (fn-served-conn-wire
                       (fn-served-result-conn
-                       (in-arena-fn-served-dispatch *sr-arena* *aut-conn-handshaking* *aut-post-event*)))
+                       (in-arena-fn-served-dispatch *aut-arena* *aut-conn-handshaking* *aut-post-event*)))
                      (fn-served-conn-wire *aut-conn-handshaking*)))
 
 (defconst *aut-conn-forged*
@@ -1281,11 +1281,11 @@
 (assert-event (not (fn-served-connp *aut-conn-forged*)))
 (assert-event (equal (fn-served-conn-wire
                       (fn-served-result-conn
-                       (in-arena-fn-served-dispatch *sr-arena* *aut-conn-forged* *aut-post-event*)))
+                       (in-arena-fn-served-dispatch *aut-arena* *aut-conn-forged* *aut-post-event*)))
                      (fn-served-conn-wire *aut-conn-forged*)))
 (assert-event (null (fn-served-submission
                      (fn-served-result-effects
-                      (in-arena-fn-served-dispatch *sr-arena* *aut-conn-forged* *aut-post-event*)))))
+                      (in-arena-fn-served-dispatch *aut-arena* *aut-conn-forged* *aut-post-event*)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONES 8 to 11: the peer role a login binds (PRF-049)
@@ -1418,23 +1418,23 @@
 (assert-event (fn-auth-sessionp *aut-r-one*))
 (assert-event (fn-auth-session-consistentp *aut-r-one* *aut-node-archive*))
 (assert-event (null (fn-auth-session-peer *aut-r-one*)))
-(defconst *aut-r-one-user* (in-arena-aut-role-after *sr-arena* *aut-r-one* "AUTHINFO USER reader"))
-(defconst *aut-r-two-user* (in-arena-aut-role-after *sr-arena* *aut-r-two* "AUTHINFO USER reader"))
-(defconst *aut-r-none-user* (in-arena-aut-role-after *sr-arena* *aut-r-none* "AUTHINFO USER reader"))
-(defconst *aut-r-guest-user* (in-arena-aut-role-after *sr-arena* *aut-r-one* "AUTHINFO USER guest"))
+(defconst *aut-r-one-user* (in-arena-aut-role-after *aut-arena* *aut-r-one* "AUTHINFO USER reader"))
+(defconst *aut-r-two-user* (in-arena-aut-role-after *aut-arena* *aut-r-two* "AUTHINFO USER reader"))
+(defconst *aut-r-none-user* (in-arena-aut-role-after *aut-arena* *aut-r-none* "AUTHINFO USER reader"))
+(defconst *aut-r-guest-user* (in-arena-aut-role-after *aut-arena* *aut-r-one* "AUTHINFO USER guest"))
 (assert-event (null (fn-auth-session-peer *aut-r-one-user*)))
 (assert-event (equal (fn-auth-session-pending *aut-r-one-user*) *aut-name*))
 
 ; After PASS: macros, because the accepting branch runs the SHA-256
 ; attachment, which a `defconst' may not call.
 (defmacro aut-bound ()
-  '(in-arena-aut-role-after *sr-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *aut-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-dup-authed ()
-  '(in-arena-aut-role-after *sr-arena* *aut-r-two-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *aut-arena* *aut-r-two-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-none-authed ()
-  '(in-arena-aut-role-after *sr-arena* *aut-r-none-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *aut-arena* *aut-r-none-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-guest-authed ()
-  '(in-arena-aut-role-after *sr-arena* *aut-r-guest-user* "AUTHINFO PASS guest-pass"))
+  '(in-arena-aut-role-after *aut-arena* *aut-r-guest-user* "AUTHINFO PASS guest-pass"))
 
 ; The table the repair is for.  `fn-cfgp' asks only that the peers slot be a
 ; row list, and a (:set-peer name rows) delta is admitted when its rows are
@@ -1479,9 +1479,9 @@
         (fn-peer-make-session (fn-peer-session-base (fn-auth-session-base *aut-r-one*))
                               "shadow" nil 0 *aut-node* *aut-cfg-shadow* nil)))))
 (defconst *aut-r-shadow-user*
-  (in-arena-aut-role-after *sr-arena* (aut-reader *aut-cfg-shadow* *aut-role-policy* nil) "AUTHINFO USER reader"))
+  (in-arena-aut-role-after *aut-arena* (aut-reader *aut-cfg-shadow* *aut-role-policy* nil) "AUTHINFO USER reader"))
 (defmacro aut-shadow-authed ()
-  '(in-arena-aut-role-after *sr-arena* *aut-r-shadow-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *aut-arena* *aut-r-shadow-user* "AUTHINFO PASS correct-horse"))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 8: fn-auth-step-binds-a-peer-role-only-by-a-principal-login
@@ -1573,7 +1573,7 @@
 ; "principal-peer" -- the role the table gives this principal, derived from
 ; its (:principal ...) record, with the principal installed as the subject.
 (assert-event (null (fn-auth-session-peer *aut-r-one-user*)))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse")
                      (aut-single "281 authentication accepted")))
 (assert-event (equal (fn-auth-session-peer (aut-bound)) "principal-peer"))
 (assert-event (equal (fn-auth-session-subject (aut-bound)) *aut-principal*))
@@ -1595,9 +1595,9 @@
 ; Protected-only before TLS: the exchange is refused and no role can follow
 ; (fn-auth-step-protected-only-refuses-authinfo-before-tls, PRF-031).
 (defconst *aut-r-prot* (aut-reader *aut-cfg-one* *aut-role-protected* nil))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-prot* "AUTHINFO USER reader")
                      (aut-single *aut-483*)))
-(assert-event (equal (in-arena-aut-role-after *sr-arena* *aut-r-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-role-after *aut-arena* *aut-r-prot* "AUTHINFO USER reader")
                      *aut-r-prot*))
 
 ; B1 dropped.  A connection the owner resolved to a source-address peer
@@ -1605,7 +1605,7 @@
 ; peer and the event was not AUTHINFO at all.
 (defconst *aut-src* (aut-source-peer *aut-cfg-one* *aut-role-policy*))
 (assert-event (fn-auth-sessionp *aut-src*))
-(assert-event (equal (fn-auth-session-peer (in-arena-aut-role-after *sr-arena* *aut-src* "CAPABILITIES"))
+(assert-event (equal (fn-auth-session-peer (in-arena-aut-role-after *aut-arena* *aut-src* "CAPABILITIES"))
                      "transit"))
 (assert-event (not (fn-nntp-keywordp
                     (car (fn-nntp-tokenize (fn-nntp-string-octets "CAPABILITIES")))
@@ -1614,7 +1614,7 @@
 
 ; B2 dropped.  A reader that stays a reader: a GROUP on the unauthenticated
 ; connection is not an AUTHINFO line either.
-(assert-event (null (fn-auth-session-peer (in-arena-aut-role-after *sr-arena* *aut-r-one* "GROUP fn.letters"))))
+(assert-event (null (fn-auth-session-peer (in-arena-aut-role-after *aut-arena* *aut-r-one* "GROUP fn.letters"))))
 (assert-event (not (fn-nntp-keywordp
                     (car (fn-nntp-tokenize (fn-nntp-string-octets "GROUP fn.letters")))
                     "AUTHINFO")))
@@ -1691,9 +1691,9 @@
 ; The witnesses are the four logins above: on the one-peer table the role is
 ; the match, "principal-peer"; on the duplicate, mismatch and shadow tables
 ; the match is nil and so is the role -- the 281 identical in all four.
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-two-user* "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-two-user* "AUTHINFO PASS correct-horse")
                      (aut-single "281 authentication accepted")))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-none-user* "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-none-user* "AUTHINFO PASS correct-horse")
                      (aut-single "281 authentication accepted")))
 
 ; A session with chosen fields over a real base, for the values no command
@@ -1712,21 +1712,21 @@
   (aut-mk :not-a-peer-session *aut-role-policy* *aut-name* nil nil nil))
 (assert-event (not (fn-auth-sessionp *aut-forged-role*)))
 (assert-event (null (fn-auth-session-peer *aut-forged-role*)))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-forged-role* *aut-pass*) nil))
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-forged-role* *aut-pass*) nil))
 (local (must-fail (aut-k9 aut-k9-without-p1 (p2 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
 
 ; P2 dropped: handshaking, with a cached name.  Nothing is answered.
 (defconst *aut-hs-role* (aut-mk *aut-reader-base* *aut-role-policy* *aut-name* nil nil t))
 (assert-event (fn-auth-sessionp *aut-hs-role*))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-hs-role* *aut-pass*) nil))
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-hs-role* *aut-pass*) nil))
 (local (must-fail (aut-k9 aut-k9-without-p2 (p1 p3 p4 p5 p6 p7 p8 p9 p10 p11))))
 
 ; P3 dropped: a source-address peer with a cached name logs in; 281 and the
 ; subject, but the role is still "transit" and not the match.
 (defconst *aut-src-user* (aut-mk *aut-src-base* *aut-role-policy* *aut-name* nil nil nil))
 (assert-event (fn-auth-sessionp *aut-src-user*))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-src-user* *aut-pass*) *aut-281*))
-(assert-event (equal (fn-auth-session-peer (in-arena-aut-role-after *sr-arena* *aut-src-user* *aut-pass*))
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-src-user* *aut-pass*) *aut-281*))
+(assert-event (equal (fn-auth-session-peer (in-arena-aut-role-after *aut-arena* *aut-src-user* *aut-pass*))
                      "transit"))
 (assert-event (equal (fn-auth-principal-match *aut-principal* *aut-cfg-one*)
                      "principal-peer"))
@@ -1736,14 +1736,14 @@
 (defconst *aut-authed-user*
   (aut-mk *aut-reader-base* *aut-role-policy* *aut-name* *aut-principal* nil nil))
 (assert-event (fn-auth-sessionp *aut-authed-user*))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-authed-user* *aut-pass*)
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-authed-user* *aut-pass*)
                      (aut-single "502 already authenticated")))
 (local (must-fail (aut-k9 aut-k9-without-p4 (p1 p2 p3 p5 p6 p7 p8 p9 p10 p11))))
 
 ; P5 dropped: protected-only without TLS is 483, even with a cached name.
 (defconst *aut-prot-user* (aut-mk *aut-reader-base* *aut-role-protected* *aut-name* nil nil nil))
 (assert-event (fn-auth-sessionp *aut-prot-user*))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-prot-user* *aut-pass*) (aut-single *aut-483*)))
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-prot-user* *aut-pass*) (aut-single *aut-483*)))
 (local (must-fail (aut-k9 aut-k9-without-p5 (p1 p2 p3 p4 p6 p7 p8 p9 p10 p11))))
 
 ; P6 dropped: the same three tokens on a line past the 510-octet command
@@ -1755,33 +1755,33 @@
 (assert-event (equal (fn-nntp-tokenize *aut-long-pass*)
                      (fn-nntp-tokenize (fn-nntp-string-octets *aut-pass*))))
 (assert-event (not (equal (fn-post-result-effects
-                           (in-arena-fn-auth-step *sr-arena* *aut-r-one-user* *aut-node-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-long-pass*)))
+                           (in-arena-fn-auth-step *aut-arena* *aut-r-one-user* *aut-node-archive* *aut-config* *aut-obs* *aut-obs* (list :command *aut-long-pass*)))
                           *aut-281*)))
 (local (must-fail (aut-k9 aut-k9-without-p6 (p1 p2 p3 p4 p5 p7 p8 p9 p10 p11))))
 
 ; P7 dropped: another keyword with the same arguments is not a login.
-(assert-event (not (equal (in-arena-aut-role-reply *sr-arena* *aut-r-one-user* "XAUTHINFO PASS correct-horse")
+(assert-event (not (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "XAUTHINFO PASS correct-horse")
                           *aut-281*)))
 (local (must-fail (aut-k9 aut-k9-without-p7 (p1 p2 p3 p4 p5 p6 p8 p9 p10 p11))))
 
 ; P8 dropped: USER with the secret as its argument caches a name, 381.
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-one-user* "AUTHINFO USER correct-horse")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO USER correct-horse")
                      (aut-single "381 password required")))
 (local (must-fail (aut-k9 aut-k9-without-p8 (p1 p2 p3 p4 p5 p6 p7 p9 p10 p11))))
 
 ; P9 dropped: PASS with the secret and one more token is 501.
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse extra")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse extra")
                      (aut-single "501 syntax error")))
 (local (must-fail (aut-k9 aut-k9-without-p9 (p1 p2 p3 p4 p5 p6 p7 p8 p10 p11))))
 
 ; P10 dropped: PASS before USER is 482.
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-one* *aut-pass*)
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one* *aut-pass*)
                      (aut-single "482 authentication commands issued out of sequence")))
 (local (must-fail (aut-k9 aut-k9-without-p10 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p11))))
 
 ; P11 dropped: a secret that does not check is 481, under the real SHA-256.
 (assert-event (not (fn-auth-checkp *aut-cred* (fn-nntp-string-octets "wrong-horse"))))
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* *aut-r-one-user* "AUTHINFO PASS wrong-horse")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* *aut-r-one-user* "AUTHINFO PASS wrong-horse")
                      (aut-single "481 authentication failed")))
 (local (must-fail (aut-k9 aut-k9-without-p11 (p1 p2 p3 p4 p5 p6 p7 p8 p9 p10))))
 
@@ -1839,29 +1839,29 @@
 
 ; The witness: the bound connection sends STARTTLS.  382, handshaking, and
 ; the role, the subject and the cached name are gone.
-(assert-event (equal (in-arena-aut-role-reply *sr-arena* (aut-bound) "STARTTLS")
+(assert-event (equal (in-arena-aut-role-reply *aut-arena* (aut-bound) "STARTTLS")
                      (append (aut-single "382 continue with TLS negotiation")
                              (list (fn-auth-starttls-effect)))))
-(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *sr-arena* (aut-bound) "STARTTLS")))
-(assert-event (null (fn-auth-session-peer (in-arena-aut-role-after *sr-arena* (aut-bound) "STARTTLS"))))
-(assert-event (null (fn-auth-session-subject (in-arena-aut-role-after *sr-arena* (aut-bound) "STARTTLS"))))
-(assert-event (null (fn-auth-session-pending (in-arena-aut-role-after *sr-arena* (aut-bound) "STARTTLS"))))
+(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS")))
+(assert-event (null (fn-auth-session-peer (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS"))))
+(assert-event (null (fn-auth-session-subject (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS"))))
+(assert-event (null (fn-auth-session-pending (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS"))))
 ; Separating: a source-address peer keeps its role across the same command,
 ; so the theorem distinguishes the two origins and does not merely clear.
-(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *sr-arena* *aut-src* "STARTTLS")))
-(assert-event (equal (fn-auth-session-peer (in-arena-aut-role-after *sr-arena* *aut-src* "STARTTLS"))
+(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* *aut-src* "STARTTLS")))
+(assert-event (equal (fn-auth-session-peer (in-arena-aut-role-after *aut-arena* *aut-src* "STARTTLS"))
                      "transit"))
 (assert-event (not (fn-auth-principal-rolep *aut-src*)))
 ; And out the other side: the handshake re-entry leaves a TLS reader, which
 ; a fresh login over TLS binds again.
 (defmacro aut-after-tls ()
   '(fn-post-result-session
-    (in-arena-fn-auth-step *sr-arena* (in-arena-aut-role-after *sr-arena* (aut-bound) "STARTTLS") *aut-node-archive*
+    (in-arena-fn-auth-step *aut-arena* (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS") *aut-node-archive*
                   *aut-config* *aut-obs* *aut-obs* (list :tls-established))))
 (assert-event (equal (fn-auth-session-tlsp (aut-after-tls)) t))
 (assert-event (null (fn-auth-session-peer (aut-after-tls))))
 (assert-event (equal (fn-auth-session-peer
-                      (in-arena-aut-role-after *sr-arena* (in-arena-aut-role-after *sr-arena* (aut-after-tls) "AUTHINFO USER reader") *aut-pass*))
+                      (in-arena-aut-role-after *aut-arena* (in-arena-aut-role-after *aut-arena* (aut-after-tls) "AUTHINFO USER reader") *aut-pass*))
                      "principal-peer"))
 
 ; S1 dropped: a session already handshaking over a bound base.  The step
@@ -1870,14 +1870,14 @@
 (defmacro aut-hs-bound ()
   '(aut-mk (fn-auth-session-base (aut-bound)) *aut-role-policy* nil nil nil t))
 (assert-event (fn-auth-sessionp (aut-hs-bound)))
-(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *sr-arena* (aut-hs-bound) "CAPABILITIES")))
-(assert-event (fn-auth-principal-rolep (in-arena-aut-role-after *sr-arena* (aut-hs-bound) "CAPABILITIES")))
+(assert-event (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* (aut-hs-bound) "CAPABILITIES")))
+(assert-event (fn-auth-principal-rolep (in-arena-aut-role-after *aut-arena* (aut-hs-bound) "CAPABILITIES")))
 (local (must-fail (aut-k10 aut-k10-without-s1 (s2))))
 
 ; S2 dropped: any step that does not enter the handshake, here CAPABILITIES
 ; on the bound connection, keeps the principal-derived role.
-(assert-event (not (fn-auth-session-handshakingp (in-arena-aut-role-after *sr-arena* (aut-bound) "CAPABILITIES"))))
-(assert-event (fn-auth-principal-rolep (in-arena-aut-role-after *sr-arena* (aut-bound) "CAPABILITIES")))
+(assert-event (not (fn-auth-session-handshakingp (in-arena-aut-role-after *aut-arena* (aut-bound) "CAPABILITIES"))))
+(assert-event (fn-auth-principal-rolep (in-arena-aut-role-after *aut-arena* (aut-bound) "CAPABILITIES")))
 (local (must-fail (aut-k10 aut-k10-without-s2 (s1))))
 
 ; =============================================================================
@@ -1986,30 +1986,30 @@
 ; The witness: GROUP and ARTICLE on an unauthenticated connection under the
 ; required policy, and POST, which the archive's one group would accept
 ; once authenticated.  480, the session unchanged, no submission, no offer.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-req* "GROUP fn.letters")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-req* "GROUP fn.letters")
                      (aut-single *aut-480*)))
-(assert-event (equal (in-arena-aut-pinned-after *sr-arena* *aut-s-req* "GROUP fn.letters")
+(assert-event (equal (in-arena-aut-pinned-after *aut-arena* *aut-s-req* "GROUP fn.letters")
                      *aut-s-req*))
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-req* "ARTICLE 1")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-req* "ARTICLE 1")
                      (aut-single *aut-480*)))
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-req* "POST")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-req* "POST")
                      (aut-single *aut-480*)))
-(assert-event (null (fn-post-result-submission (in-arena-aut-pinned *sr-arena* *aut-s-req* "POST"))))
+(assert-event (null (fn-post-result-submission (in-arena-aut-pinned *aut-arena* *aut-s-req* "POST"))))
 ; Non-degenerate: authenticated, the same GROUP selects the group.
-(assert-event (not (equal (in-arena-aut-pinned-reply *sr-arena* (aut-authed) "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-pinned-reply *aut-arena* (aut-authed) "GROUP fn.letters")
                           (aut-single *aut-480*))))
-(assert-event (not (equal (in-arena-aut-pinned-after *sr-arena* (aut-authed) "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-pinned-after *aut-arena* (aut-authed) "GROUP fn.letters")
                           (aut-authed))))
 
 ; H1 dropped: the forged session is answered nothing.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-forged* "GROUP fn.letters") nil))
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-forged* "GROUP fn.letters") nil))
 (local (must-fail (aut-k11 aut-k11-without-h1 (h2 h3 h4 h5 h6 h7))))
 ; H2 dropped: a handshaking session is answered nothing.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-handshaking* "GROUP fn.letters")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-handshaking* "GROUP fn.letters")
                      nil))
 (local (must-fail (aut-k11 aut-k11-without-h2 (h1 h3 h4 h5 h6 h7))))
 ; H3 dropped: the open policy serves GROUP unauthenticated.
-(assert-event (not (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-open* "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-open* "GROUP fn.letters")
                           (aut-single *aut-480*))))
 (local (must-fail (aut-k11 aut-k11-without-h3 (h1 h2 h4 h5 h6 h7))))
 ; H4 dropped: the authenticated session (witness above).
@@ -2017,17 +2017,17 @@
 ; H5 dropped: the over-long GROUP line is delegated to the reader preflight.
 (assert-event
  (not (equal (fn-post-result-effects
-              (in-arena-aut-pinned-octets *sr-arena* *aut-s-req* *aut-over-long-line*))
+              (in-arena-aut-pinned-octets *aut-arena* *aut-s-req* *aut-over-long-line*))
              (aut-single *aut-480*))))
 (local (must-fail (aut-k11 aut-k11-without-h5 (h1 h2 h3 h4 h6 h7))))
 ; H6 dropped: the over-long GROUP argument is delegated too.
 (assert-event
  (not (equal (fn-post-result-effects
-              (in-arena-aut-pinned-octets *sr-arena* *aut-s-req* *aut-over-long-argument-line*))
+              (in-arena-aut-pinned-octets *aut-arena* *aut-s-req* *aut-over-long-argument-line*))
              (aut-single *aut-480*))))
 (local (must-fail (aut-k11 aut-k11-without-h6 (h1 h2 h3 h4 h5 h7))))
 ; H7 dropped: HELP is answered unauthenticated.
-(assert-event (not (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-req* "HELP")
+(assert-event (not (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-req* "HELP")
                           (aut-single *aut-480*))))
 (local (must-fail (aut-k11 aut-k11-without-h7 (h1 h2 h3 h4 h5 h6))))
 
@@ -2070,34 +2070,34 @@
 ; secret.  483, and the session is the one it arrived on: no name is
 ; cached, no subject is installed, and the reply is the same for USER, for
 ; the right PASS and for a wrong one, so the secret is never compared.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot* "AUTHINFO USER reader")
                      (aut-single *aut-483*)))
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-prot* "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot* "AUTHINFO PASS correct-horse")
                      (aut-single *aut-483*)))
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-prot* "AUTHINFO PASS wrong-horse")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot* "AUTHINFO PASS wrong-horse")
                      (aut-single *aut-483*)))
-(assert-event (equal (in-arena-aut-pinned-after *sr-arena* *aut-s-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-pinned-after *aut-arena* *aut-s-prot* "AUTHINFO USER reader")
                      *aut-s-prot*))
 (assert-event (null (fn-auth-session-pending
-                     (in-arena-aut-pinned-after *sr-arena* *aut-s-prot* "AUTHINFO USER reader"))))
+                     (in-arena-aut-pinned-after *aut-arena* *aut-s-prot* "AUTHINFO USER reader"))))
 ; Non-degenerate: over TLS the same policy caches the name (381).
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-prot-tls* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot-tls* "AUTHINFO USER reader")
                      (aut-single "381 password required")))
 
 ; G1 dropped: the forged protected session is answered nothing.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-forged-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-forged-prot* "AUTHINFO USER reader")
                      nil))
 (local (must-fail (aut-k12 aut-k12-without-g1 (g2 g3 g4 g5 g6 g7 g8))))
 ; G2 dropped: a handshaking session is answered nothing.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-prot-handshaking* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot-handshaking* "AUTHINFO USER reader")
                      nil))
 (local (must-fail (aut-k12 aut-k12-without-g2 (g1 g3 g4 g5 g6 g7 g8))))
 ; G3 dropped: an authenticated session is 502.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* (aut-prot-authed) "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* (aut-prot-authed) "AUTHINFO USER reader")
                      (aut-single "502 already authenticated")))
 (local (must-fail (aut-k12 aut-k12-without-g3 (g1 g2 g4 g5 g6 g7 g8))))
 ; G4 dropped: required but not protected-only answers 381 in the clear.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-req* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-req* "AUTHINFO USER reader")
                      (aut-single "381 password required")))
 (local (must-fail (aut-k12 aut-k12-without-g4 (g1 g2 g3 g5 g6 g7 g8))))
 ; G5 dropped: over TLS, 381 (witness above).
@@ -2105,17 +2105,17 @@
 ; G6 dropped: the over-long AUTHINFO line is delegated.
 (assert-event
  (not (equal (fn-post-result-effects
-              (in-arena-aut-pinned-octets *sr-arena* *aut-s-prot* *aut-authinfo-over-long-line*))
+              (in-arena-aut-pinned-octets *aut-arena* *aut-s-prot* *aut-authinfo-over-long-line*))
              (aut-single *aut-483*))))
 (local (must-fail (aut-k12 aut-k12-without-g6 (g1 g2 g3 g4 g5 g7 g8))))
 ; G7 dropped: the over-long AUTHINFO argument is delegated.
 (assert-event
  (not (equal (fn-post-result-effects
-              (in-arena-aut-pinned-octets *sr-arena* *aut-s-prot* *aut-authinfo-over-long-argument-line*))
+              (in-arena-aut-pinned-octets *aut-arena* *aut-s-prot* *aut-authinfo-over-long-argument-line*))
              (aut-single *aut-483*))))
 (local (must-fail (aut-k12 aut-k12-without-g7 (g1 g2 g3 g4 g5 g6 g8))))
 ; G8 dropped: STARTTLS on the same connection is 382.
-(assert-event (not (equal (in-arena-aut-pinned-reply *sr-arena* *aut-s-prot* "STARTTLS")
+(assert-event (not (equal (in-arena-aut-pinned-reply *aut-arena* *aut-s-prot* "STARTTLS")
                           (aut-single *aut-483*))))
 (local (must-fail (aut-k12 aut-k12-without-g8 (g1 g2 g3 g4 g5 g6 g7))))
 
@@ -2129,12 +2129,12 @@
                    *aut-protected*)))
 (assert-event (fn-served-connp *aut-conn-prot*))
 (defconst *aut-conn-req-hs*
-  (fn-served-result-conn (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "STARTTLS")))
+  (fn-served-result-conn (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "STARTTLS")))
 (defconst *aut-conn-prot-hs*
-  (fn-served-result-conn (in-arena-aut-dispatch *sr-arena* *aut-conn-prot* "STARTTLS")))
+  (fn-served-result-conn (in-arena-aut-dispatch *aut-arena* *aut-conn-prot* "STARTTLS")))
 (defconst *aut-conn-prot-tls*
   (fn-served-result-conn
-   (in-arena-fn-served-dispatch *sr-arena* *aut-conn-prot-hs* (list :tls-established))))
+   (in-arena-fn-served-dispatch *aut-arena* *aut-conn-prot-hs* (list :tls-established))))
 (assert-event (fn-served-connp *aut-conn-req-hs*))
 (assert-event (fn-auth-session-handshakingp
                (fn-served-conn-session *aut-conn-req-hs*)))
@@ -2152,13 +2152,13 @@
 ; attachment).
 (defmacro aut-conn-authed ()
   '(fn-served-result-conn
-    (in-arena-aut-dispatch *sr-arena* (fn-served-result-conn
-                   (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "AUTHINFO USER reader"))
+    (in-arena-aut-dispatch *aut-arena* (fn-served-result-conn
+                   (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "AUTHINFO USER reader"))
                   "AUTHINFO PASS correct-horse")))
 (defmacro aut-conn-prot-authed ()
   '(fn-served-result-conn
-    (in-arena-aut-dispatch *sr-arena* (fn-served-result-conn
-                   (in-arena-aut-dispatch *sr-arena* *aut-conn-prot-tls* "AUTHINFO USER reader"))
+    (in-arena-aut-dispatch *aut-arena* (fn-served-result-conn
+                   (in-arena-aut-dispatch *aut-arena* *aut-conn-prot-tls* "AUTHINFO USER reader"))
                   "AUTHINFO PASS correct-horse")))
 (assert-event (fn-served-connp (aut-conn-authed)))
 (assert-event (fn-auth-session-subject (fn-served-conn-session (aut-conn-authed))))
@@ -2192,54 +2192,54 @@
 ; The witness: POST, GROUP and ARTICLE on the served connection that
 ; requires authentication.  The connection after is the connection before,
 ; field for field, and the one effect is the 480 line.
-(assert-event (equal (fn-served-result-conn (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "POST"))
+(assert-event (equal (fn-served-result-conn (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "POST"))
                      *aut-conn-req*))
-(assert-event (equal (fn-served-result-effects (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "POST"))
+(assert-event (equal (fn-served-result-effects (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "POST"))
                      (aut-single *aut-480*)))
 (assert-event (equal (fn-served-result-conn
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "GROUP fn.letters"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "GROUP fn.letters"))
                      *aut-conn-req*))
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "ARTICLE 1"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "ARTICLE 1"))
                      (aut-single *aut-480*)))
 ; Non-degenerate: on the open policy the same POST switches the wire.
 (assert-event (not (equal (fn-served-result-conn
-                           (in-arena-aut-dispatch *sr-arena* *aut-conn-open* "POST"))
+                           (in-arena-aut-dispatch *aut-arena* *aut-conn-open* "POST"))
                           *aut-conn-open*)))
 
 ; C1 dropped: the forged connection answers nothing.
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-forged* "GROUP fn.letters"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-forged* "GROUP fn.letters"))
                      nil))
 (local (must-fail (aut-k13 aut-k13-without-c1 (c2 c3 c4 c5 c6 c7))))
 ; C2 dropped: a handshaking connection answers nothing.
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-req-hs* "GROUP fn.letters"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-req-hs* "GROUP fn.letters"))
                      nil))
 (local (must-fail (aut-k13 aut-k13-without-c2 (c1 c3 c4 c5 c6 c7))))
 ; C3 dropped: the open policy selects the group.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch *sr-arena* *aut-conn-open* "GROUP fn.letters"))
+                           (in-arena-aut-dispatch *aut-arena* *aut-conn-open* "GROUP fn.letters"))
                           (aut-single *aut-480*))))
 (local (must-fail (aut-k13 aut-k13-without-c3 (c1 c2 c4 c5 c6 c7))))
 ; C4 dropped: authenticated, the group is selected.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch *sr-arena* (aut-conn-authed) "GROUP fn.letters"))
+                           (in-arena-aut-dispatch *aut-arena* (aut-conn-authed) "GROUP fn.letters"))
                           (aut-single *aut-480*))))
 (local (must-fail (aut-k13 aut-k13-without-c4 (c1 c2 c3 c5 c6 c7))))
 ; C5 dropped: the over-long GROUP line.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch-octets *sr-arena* *aut-conn-req* *aut-over-long-line*))
+                           (in-arena-aut-dispatch-octets *aut-arena* *aut-conn-req* *aut-over-long-line*))
                           (aut-single *aut-480*))))
 (local (must-fail (aut-k13 aut-k13-without-c5 (c1 c2 c3 c4 c6 c7))))
 ; C6 dropped: the over-long GROUP argument.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch-octets *sr-arena* *aut-conn-req* *aut-over-long-argument-line*))
+                           (in-arena-aut-dispatch-octets *aut-arena* *aut-conn-req* *aut-over-long-argument-line*))
                           (aut-single *aut-480*))))
 (local (must-fail (aut-k13 aut-k13-without-c6 (c1 c2 c3 c4 c5 c7))))
 ; C7 dropped: HELP.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "HELP"))
+                           (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "HELP"))
                           (aut-single *aut-480*))))
 (local (must-fail (aut-k13 aut-k13-without-c7 (c1 c2 c3 c4 c5 c6))))
 
@@ -2272,53 +2272,53 @@
 ; The witness: the clear protected-only connection sends USER, then PASS
 ; with the right secret.  Each is 483 and leaves the connection as it was.
 (assert-event (equal (fn-served-result-conn
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-prot* "AUTHINFO USER reader"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-prot* "AUTHINFO USER reader"))
                      *aut-conn-prot*))
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-prot* "AUTHINFO USER reader"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-prot* "AUTHINFO USER reader"))
                      (aut-single *aut-483*)))
 (assert-event (equal (fn-served-result-conn
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-prot* "AUTHINFO PASS correct-horse"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-prot* "AUTHINFO PASS correct-horse"))
                      *aut-conn-prot*))
 
 ; E1 dropped: the forged protected connection answers nothing.
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-forged-prot* "AUTHINFO USER reader"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-forged-prot* "AUTHINFO USER reader"))
                      nil))
 (local (must-fail (aut-k14 aut-k14-without-e1 (e2 e3 e4 e5 e6 e7 e8))))
 ; E2 dropped: handshaking answers nothing.
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-prot-hs* "AUTHINFO USER reader"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-prot-hs* "AUTHINFO USER reader"))
                      nil))
 (local (must-fail (aut-k14 aut-k14-without-e2 (e1 e3 e4 e5 e6 e7 e8))))
 ; E3 dropped: authenticated (over TLS) is 502.
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* (aut-conn-prot-authed) "AUTHINFO USER reader"))
+                      (in-arena-aut-dispatch *aut-arena* (aut-conn-prot-authed) "AUTHINFO USER reader"))
                      (aut-single "502 already authenticated")))
 (local (must-fail (aut-k14 aut-k14-without-e3 (e1 e2 e4 e5 e6 e7 e8))))
 ; E4 dropped: the required policy in the clear caches the name.
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "AUTHINFO USER reader"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-req* "AUTHINFO USER reader"))
                      (aut-single "381 password required")))
 (local (must-fail (aut-k14 aut-k14-without-e4 (e1 e2 e3 e5 e6 e7 e8))))
 ; E5 dropped: over TLS, 381.
 (assert-event (equal (fn-served-result-effects
-                      (in-arena-aut-dispatch *sr-arena* *aut-conn-prot-tls* "AUTHINFO USER reader"))
+                      (in-arena-aut-dispatch *aut-arena* *aut-conn-prot-tls* "AUTHINFO USER reader"))
                      (aut-single "381 password required")))
 (local (must-fail (aut-k14 aut-k14-without-e5 (e1 e2 e3 e4 e6 e7 e8))))
 ; E6 dropped: the over-long AUTHINFO line.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch-octets *sr-arena* *aut-conn-prot* *aut-authinfo-over-long-line*))
+                           (in-arena-aut-dispatch-octets *aut-arena* *aut-conn-prot* *aut-authinfo-over-long-line*))
                           (aut-single *aut-483*))))
 (local (must-fail (aut-k14 aut-k14-without-e6 (e1 e2 e3 e4 e5 e7 e8))))
 ; E7 dropped: the over-long AUTHINFO argument.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch-octets *sr-arena* *aut-conn-prot* *aut-authinfo-over-long-argument-line*))
+                           (in-arena-aut-dispatch-octets *aut-arena* *aut-conn-prot* *aut-authinfo-over-long-argument-line*))
                           (aut-single *aut-483*))))
 (local (must-fail (aut-k14 aut-k14-without-e7 (e1 e2 e3 e4 e5 e6 e8))))
 ; E8 dropped: STARTTLS is 382 and moves the connection into the handshake.
 (assert-event (not (equal (fn-served-result-effects
-                           (in-arena-aut-dispatch *sr-arena* *aut-conn-prot* "STARTTLS"))
+                           (in-arena-aut-dispatch *aut-arena* *aut-conn-prot* "STARTTLS"))
                           (aut-single *aut-483*))))
 (local (must-fail (aut-k14 aut-k14-without-e8 (e1 e2 e3 e4 e5 e6 e7))))
 
@@ -2330,12 +2330,12 @@
 
 (defconst *aut-p-policy* *aut-role-policy*)
 (defconst *aut-p-s* (aut-session *aut-p-policy* nil))
-(defconst *aut-p-reader-user* (in-arena-aut-pinned-after *sr-arena* *aut-p-s* "AUTHINFO USER reader"))
-(defconst *aut-p-guest-user* (in-arena-aut-pinned-after *sr-arena* *aut-p-s* "AUTHINFO USER guest"))
+(defconst *aut-p-reader-user* (in-arena-aut-pinned-after *aut-arena* *aut-p-s* "AUTHINFO USER reader"))
+(defconst *aut-p-guest-user* (in-arena-aut-pinned-after *aut-arena* *aut-p-s* "AUTHINFO USER guest"))
 (defmacro aut-p-reader ()
-  '(in-arena-aut-pinned-after *sr-arena* *aut-p-reader-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-pinned-after *aut-arena* *aut-p-reader-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-p-guest ()
-  '(in-arena-aut-pinned-after *sr-arena* *aut-p-guest-user* "AUTHINFO PASS guest-pass"))
+  '(in-arena-aut-pinned-after *aut-arena* *aut-p-guest-user* "AUTHINFO PASS guest-pass"))
 (assert-event (fn-auth-sessionp *aut-p-s*))
 (assert-event (equal (fn-auth-session-subject (aut-p-reader)) *aut-principal*))
 (assert-event (equal (fn-auth-session-subject (aut-p-guest)) *aut-principal-guest*))
@@ -2377,9 +2377,9 @@
 
 ; L1 dropped: the mismatched session keeps its subject over HELP; its
 ; allowance is false while the credential under its cached name posts.
-(assert-event (equal (fn-auth-session-subject (in-arena-aut-pinned-after *sr-arena* *aut-p-mismatch* "HELP"))
+(assert-event (equal (fn-auth-session-subject (in-arena-aut-pinned-after *aut-arena* *aut-p-mismatch* "HELP"))
                      *aut-principal-guest*))
-(assert-event (not (fn-auth-postingp (in-arena-aut-pinned-after *sr-arena* *aut-p-mismatch* "HELP"))))
+(assert-event (not (fn-auth-postingp (in-arena-aut-pinned-after *aut-arena* *aut-p-mismatch* "HELP"))))
 (assert-event (fn-auth-cred-postingp
                (fn-auth-find-cred *aut-name* (list *aut-cred* *aut-cred-guest*))))
 (local (must-fail (aut-k15 aut-k15-without-l1 (l2))))
@@ -2387,8 +2387,8 @@
 ; under the required policy, so the allowance is false while the credential
 ; under the cached name posts.
 (assert-event (null (fn-auth-session-subject
-                     (in-arena-aut-pinned-after *sr-arena* *aut-p-reader-user* "HELP"))))
-(assert-event (not (fn-auth-postingp (in-arena-aut-pinned-after *sr-arena* *aut-p-reader-user* "HELP"))))
+                     (in-arena-aut-pinned-after *aut-arena* *aut-p-reader-user* "HELP"))))
+(assert-event (not (fn-auth-postingp (in-arena-aut-pinned-after *aut-arena* *aut-p-reader-user* "HELP"))))
 (local (must-fail (aut-k15 aut-k15-without-l2 (l1))))
 
 (defconst *aut-k16-hyps*
@@ -2426,11 +2426,11 @@
 
 (defconst *aut-440* "440 posting not permitted for this principal")
 ; The witness: the guest logs in and sends POST.  440, session unchanged.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* (aut-p-guest) "POST") (aut-single *aut-440*)))
-(assert-event (equal (in-arena-aut-pinned-after *sr-arena* (aut-p-guest) "POST") (aut-p-guest)))
-(assert-event (null (fn-post-result-submission (in-arena-aut-pinned *sr-arena* (aut-p-guest) "POST"))))
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* (aut-p-guest) "POST") (aut-single *aut-440*)))
+(assert-event (equal (in-arena-aut-pinned-after *aut-arena* (aut-p-guest) "POST") (aut-p-guest)))
+(assert-event (null (fn-post-result-submission (in-arena-aut-pinned *aut-arena* (aut-p-guest) "POST"))))
 ; Non-degenerate: the reader, same policy, is offered 340.
-(assert-event (fn-post-offeredp (in-arena-aut-pinned-reply *sr-arena* (aut-p-reader) "POST")))
+(assert-event (fn-post-offeredp (in-arena-aut-pinned-reply *aut-arena* (aut-p-reader) "POST")))
 
 ; P1 dropped: a value with the guest's fields over a non-session base.
 (defconst *aut-p-forged-guest*
@@ -2438,7 +2438,7 @@
                         (fn-nntp-string-octets "guest") *aut-principal-guest*
                         nil nil))
 (assert-event (not (fn-auth-sessionp *aut-p-forged-guest*)))
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-p-forged-guest* "POST") nil))
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-p-forged-guest* "POST") nil))
 (local (must-fail (aut-k16 aut-k16-without-p1 (p2 p3 p4 p5 p6 p7))))
 ; P2 dropped: the guest's fields, handshaking: answered nothing.
 (defconst *aut-p-hs-guest*
@@ -2446,10 +2446,10 @@
                         (fn-nntp-string-octets "guest") *aut-principal-guest*
                         nil t))
 (assert-event (fn-auth-sessionp *aut-p-hs-guest*))
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-p-hs-guest* "POST") nil))
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-p-hs-guest* "POST") nil))
 (local (must-fail (aut-k16 aut-k16-without-p2 (p1 p3 p4 p5 p6 p7))))
 ; P3 dropped: no subject and no cached name: the gate answers 480.
-(assert-event (equal (in-arena-aut-pinned-reply *sr-arena* *aut-p-s* "POST") (aut-single *aut-480*)))
+(assert-event (equal (in-arena-aut-pinned-reply *aut-arena* *aut-p-s* "POST") (aut-single *aut-480*)))
 (local (must-fail (aut-k16 aut-k16-without-p3 (p1 p2 p4 p5 p6 p7))))
 ; P4 dropped: the reader is offered 340 (witness above).
 (local (must-fail (aut-k16 aut-k16-without-p4 (p1 p2 p3 p5 p6 p7))))
@@ -2465,7 +2465,7 @@
 (assert-event (fn-nntp-keywordp (car (fn-nntp-tokenize *aut-post-over-long-line*))
                                 "POST"))
 (assert-event (not (equal (fn-post-result-effects
-                           (in-arena-aut-pinned-octets *sr-arena* (aut-p-guest) *aut-post-over-long-line*))
+                           (in-arena-aut-pinned-octets *aut-arena* (aut-p-guest) *aut-post-over-long-line*))
                           (aut-single *aut-440*))))
 (local (must-fail (aut-k16 aut-k16-without-p5 (p1 p2 p3 p4 p6 p7))))
 ; P6 dropped: an over-long POST argument.
@@ -2476,11 +2476,11 @@
 (assert-event (not (fn-nntp-command-arguments-at-mostp
                     (fn-nntp-tokenize *aut-post-over-long-argument-line*))))
 (assert-event (not (equal (fn-post-result-effects
-                           (in-arena-aut-pinned-octets *sr-arena* (aut-p-guest) *aut-post-over-long-argument-line*))
+                           (in-arena-aut-pinned-octets *aut-arena* (aut-p-guest) *aut-post-over-long-argument-line*))
                           (aut-single *aut-440*))))
 (local (must-fail (aut-k16 aut-k16-without-p6 (p1 p2 p3 p4 p5 p7))))
 ; P7 dropped: the guest may read.
-(assert-event (not (equal (in-arena-aut-pinned-reply *sr-arena* (aut-p-guest) "GROUP fn.letters")
+(assert-event (not (equal (in-arena-aut-pinned-reply *aut-arena* (aut-p-guest) "GROUP fn.letters")
                           (aut-single *aut-440*))))
 (local (must-fail (aut-k16 aut-k16-without-p7 (p1 p2 p3 p4 p5 p6))))
 
@@ -2511,10 +2511,10 @@
 
 ; The witness: the reader's POST is the delegated POST, and that is the 340
 ; offer (the pinned injection configuration allows posting).
-(assert-event (equal (in-arena-aut-pinned *sr-arena* (aut-p-reader) "POST")
-                     (in-arena-aut-delegated *sr-arena* (aut-p-reader) "POST")))
+(assert-event (equal (in-arena-aut-pinned *aut-arena* (aut-p-reader) "POST")
+                     (in-arena-aut-delegated *aut-arena* (aut-p-reader) "POST")))
 (assert-event (fn-post-offeredp
-               (fn-post-result-effects (in-arena-aut-delegated *sr-arena* (aut-p-reader) "POST"))))
+               (fn-post-result-effects (in-arena-aut-delegated *aut-arena* (aut-p-reader) "POST"))))
 
 ; D1 dropped: the reader's fields with a TLS flag that is not a boolean: not
 ; a session, answered nothing, while the delegation offers 340.
@@ -2522,27 +2522,27 @@
   '(fn-auth-make-session (fn-auth-session-base (aut-p-reader)) *aut-p-policy*
                          *aut-name* *aut-principal* :maybe nil))
 (assert-event (not (fn-auth-sessionp (aut-p-bad-tls-reader))))
-(assert-event (not (equal (in-arena-aut-pinned *sr-arena* (aut-p-bad-tls-reader) "POST")
-                          (in-arena-aut-delegated *sr-arena* (aut-p-bad-tls-reader) "POST"))))
+(assert-event (not (equal (in-arena-aut-pinned *aut-arena* (aut-p-bad-tls-reader) "POST")
+                          (in-arena-aut-delegated *aut-arena* (aut-p-bad-tls-reader) "POST"))))
 (local (must-fail (aut-k17 aut-k17-without-d1 (d2 d3 d4 d5))))
 ; D2 dropped: the reader's fields, handshaking.
 (defmacro aut-p-hs-reader ()
   '(fn-auth-make-session (fn-auth-session-base (aut-p-reader)) *aut-p-policy*
                          *aut-name* *aut-principal* nil t))
 (assert-event (fn-auth-sessionp (aut-p-hs-reader)))
-(assert-event (not (equal (in-arena-aut-pinned *sr-arena* (aut-p-hs-reader) "POST")
-                          (in-arena-aut-delegated *sr-arena* (aut-p-hs-reader) "POST"))))
+(assert-event (not (equal (in-arena-aut-pinned *aut-arena* (aut-p-hs-reader) "POST")
+                          (in-arena-aut-delegated *aut-arena* (aut-p-hs-reader) "POST"))))
 (local (must-fail (aut-k17 aut-k17-without-d2 (d1 d3 d4 d5))))
 ; D3 dropped: the guest is answered 440, not delegated.
-(assert-event (not (equal (in-arena-aut-pinned *sr-arena* (aut-p-guest) "POST")
-                          (in-arena-aut-delegated *sr-arena* (aut-p-guest) "POST"))))
+(assert-event (not (equal (in-arena-aut-pinned *aut-arena* (aut-p-guest) "POST")
+                          (in-arena-aut-delegated *aut-arena* (aut-p-guest) "POST"))))
 (local (must-fail (aut-k17 aut-k17-without-d3 (d1 d2 d4 d5))))
 ; D4 dropped: the reader's name is cached but nobody has logged in; the
 ; gate answers 480.
-(assert-event (not (equal (in-arena-aut-pinned *sr-arena* *aut-p-reader-user* "POST")
-                          (in-arena-aut-delegated *sr-arena* *aut-p-reader-user* "POST"))))
+(assert-event (not (equal (in-arena-aut-pinned *aut-arena* *aut-p-reader-user* "POST")
+                          (in-arena-aut-delegated *aut-arena* *aut-p-reader-user* "POST"))))
 (local (must-fail (aut-k17 aut-k17-without-d4 (d1 d2 d3 d5))))
 ; D5 dropped: AUTHINFO from the logged-in reader is 502, not delegated.
-(assert-event (not (equal (in-arena-aut-pinned *sr-arena* (aut-p-reader) "AUTHINFO USER reader")
-                          (in-arena-aut-delegated *sr-arena* (aut-p-reader) "AUTHINFO USER reader"))))
+(assert-event (not (equal (in-arena-aut-pinned *aut-arena* (aut-p-reader) "AUTHINFO USER reader")
+                          (in-arena-aut-delegated *aut-arena* (aut-p-reader) "AUTHINFO USER reader"))))
 (local (must-fail (aut-k17 aut-k17-without-d5 (d1 d2 d3 d4))))
