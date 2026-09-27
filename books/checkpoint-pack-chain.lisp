@@ -158,7 +158,7 @@
    (if (consp a)
        (fn-ccc-append-induct
         (cdr a) (+ 1 s)
-        (+ 1 (fn-store-event-txid
+        (+ 1 (fn-wire-event-txid
               (fn-cc-nth 1 (fn-store-event-decode-exact (car a))))))
      (list s lower))))
 
@@ -166,13 +166,13 @@
  (defthm fn-ccc-event-list-head-integer
    (implies (and (fn-cc-octet-event-listp records sequence lower frontier)
                  (consp records))
-            (integerp (fn-store-event-generation
+            (integerp (fn-wire-event-generation
                        (fn-cc-nth 1 (fn-store-event-decode-exact (car records))))))
    :rule-classes ((:forward-chaining
                    :trigger-terms ((fn-cc-octet-event-listp records sequence lower frontier))))
    :hints (("Goal" :in-theory (enable fn-cc-octet-event-listp)
-            :use ((:instance fn-replay-record-counters-are-natural
-                   (record (fn-cc-nth 1 (fn-store-event-decode-exact (car records))))))))))
+            :use ((:instance fn-cc-wire-counters-are-natural
+                   (e (fn-cc-nth 1 (fn-store-event-decode-exact (car records))))))))))
 
 (local
  (defthm fn-ccc-event-list-append
@@ -301,7 +301,7 @@
 
 (defun fn-ccc-event-txid (event-octets)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-store-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact event-octets))))
+  (fn-wire-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact event-octets))))
 
 ; RECORDS: the committed history the open reconstructed.  LOWER and
 ; LOWER-FRONTIER: the selected chain's boundary and frontier (0 and 0 without
@@ -396,14 +396,14 @@
 
 (defthm fn-ccc-event-list-last-at-least-lower
    (implies (and (fn-cc-octet-event-listp x s lo up) (consp x))
-            (<= lo (fn-store-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact (car (last x)))))))
+            (<= lo (fn-wire-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact (car (last x)))))))
    :rule-classes :linear
    :hints (("Goal" :induct (fn-ccc-append-induct x s lo)
             :in-theory (enable fn-cc-octet-event-listp))))
 
 (defthm fn-ccc-event-list-last-below-upper
    (implies (and (fn-cc-octet-event-listp x s lo up) (consp x))
-            (< (fn-store-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact (car (last x))))) up))
+            (< (fn-wire-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact (car (last x))))) up))
    :rule-classes :linear
    :hints (("Goal" :induct (fn-ccc-append-induct x s lo)
             :in-theory (enable fn-cc-octet-event-listp))))
@@ -427,11 +427,11 @@
 
 (defthm fn-ccc-event-list-last-integer
   (implies (and (fn-cc-octet-event-listp x s lo up) (consp x))
-           (integerp (fn-store-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact (car (last x)))))))
+           (integerp (fn-wire-event-txid (fn-cc-nth 1 (fn-store-event-decode-exact (car (last x)))))))
   :hints (("Goal" :induct (fn-ccc-append-induct x s lo)
            :in-theory (enable fn-cc-octet-event-listp))
-          ("Subgoal *1/1" :use ((:instance fn-replay-record-counters-are-natural
-                                 (record (fn-cc-nth 1 (fn-store-event-decode-exact (car x)))))))))
+          ("Subgoal *1/1" :use ((:instance fn-cc-wire-counters-are-natural
+                                 (e (fn-cc-nth 1 (fn-store-event-decode-exact (car x)))))))))
 
 (local
  (defthm fn-ccc-take-event-list-within
