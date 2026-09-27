@@ -3929,7 +3929,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/octets-stobj.lisp",
         "books/poster-bytes-buffer.lisp",
@@ -3937,7 +3937,10 @@
         "planning/evidence/rep-octets-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "tests/acl2/octets-bulk-tests.lisp",
-        "planning/evidence/octets-bulk-2026-09-27.md"
+        "planning/evidence/octets-bulk-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T083159Z-2421230.json",
+        "planning/evidence/manifests/certify-20260927T083453Z-1812536.json",
+        "planning/evidence/manifests/certify-20260927T084736Z-1904284.json"
       ],
       "progress_note": "Consumers on the buffer: the existing-article test and the prepare of the served POST (fn-pbb-existing-action-is-pb-existing-action, host/owner-host.lisp fn-owner-existing-action-buffer and fn-owner-prepare-buffer). Since 2026-09-25 (pbb-d32) the buffer twin reads a recipe v3 record (D32, a supplied Path): the source is a description (K A B) of buffer positions, st[K..A) then st[B..) with the AGENT! insertion cut out, found by the index Path scan (fn-pbb-path-scan-is-inj-path-scan, fn-pbb-unsplice-at-is-inj-unsplice, fn-pbb-source-index-is-inj-source-of) and compared in place (fn-pbb-range-match-is-equal-of-append, fn-pbb-desc-equalp-is-equal); the agent of a v3 record is read from its block (fn-pbb-block-agent-is-pb-block-agent, fn-pbb-path-agent-is-pb-path-agent). Open: the payload digest over the buffer needs a SHA-256 reader by index (books/sha256-stobj.lisp, a third message reader beside the string and list readers); the chunk read (fn-owner-chunk) and the accumulated body are the owner's logical state (wave C); the record encoder, the frame and the article parser over the buffer are boundaries 7 to 9 of planning/design-2026-09-25-representation.md.",
       "events": [
@@ -9466,12 +9469,13 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz.lisp",
         "tests/acl2/payload-lz-tests.lisp",
         "planning/evidence/codec-c1-2026-09-27.md",
-        "planning/evidence/octets-bulk-2026-09-27.md"
+        "planning/evidence/octets-bulk-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T084350Z-1875336.json"
       ],
       "progress_note": "Lane codec-c1 (Opus 5.5, 2026-09-27): a prototype book with no host wiring. Teeth: tests/acl2/payload-lz-tests.lisp (a held-out 1993 Usenet article from usenet-20news-19997 and its liblz4-HC 9 blocks with and without a dictionary seal as :lz and denote the article; a corrupted block and a block of other octets seal as :raw and still denote it; literal blocks of 5 and 300 octets; the refusals :truncated, :offset (0 and past dict ++ out), :overflow and :short; the article's block decoded in quanta of seven steps reaches the same octets as one budget; hypothesis removal by must-fail and a ground counterexample for the octet-list and true-list hypotheses). Measured on hbox (i9-12900, one P-core) over the 9,733 held-out articles: see the record.",
       "pending_subject": "No host line calls fn-lz-* yet: lane C2 (arena-compressed) makes the compressed arena attachment whose seal is fn-lz-seal-form and whose reader is fn-lz-decode-buf, after the records flip lands.",
