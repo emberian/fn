@@ -3328,6 +3328,7 @@
         "books/native-live-status.lisp",
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp"
       ],
@@ -3376,6 +3377,7 @@
       "evidence": [
         "books/store-checkpoint-tables.lisp",
         "books/store-checkpoint-tables-reader.lisp",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp",
         "tests/test_native_state_checkpoint.py",

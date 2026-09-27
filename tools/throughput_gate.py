@@ -418,7 +418,12 @@ def measure_signed_posts(author, carriers, proc, port, control, posts, history, 
     out["carrier_sign_median_s"] = round(signs[len(signs) // 2], 3)
 
 
-CHECKPOINT_LINE = re.compile(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+) ms=(\d+)")
+# The pipeline's line carries `steps=N' since checkpoint-pipeline (2026-09-26);
+# the earlier form without it is still matched (an older image).  Batch AM's
+# gate recorded checkpoint_publish_ms null because this pattern lacked the
+# field and never matched: the gate waited out its deadline.
+CHECKPOINT_LINE = re.compile(
+    rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+)(?: steps=(\d+))? ms=(\d+)")
 
 
 def measure_checkpoint(image, work, env, out, deadline=180.0):
@@ -460,7 +465,8 @@ def measure_checkpoint(image, work, env, out, deadline=180.0):
         return
     out["checkpoint_published"] = True
     out["checkpoint_sequence"], out["checkpoint_suffix"] = int(line.group(1)), int(line.group(2))
-    out["checkpoint_octets"], out["checkpoint_publish_ms"] = int(line.group(3)), int(line.group(4))
+    out["checkpoint_octets"], out["checkpoint_publish_ms"] = int(line.group(3)), int(line.group(5))
+    out["checkpoint_steps"] = int(line.group(4)) if line.group(4) is not None else None
     out["checkpoint_seen_after_load_s"] = round(seen - loaded, 3)
 
 

@@ -749,6 +749,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-reader \
 	books/store-checkpoint-tables \
 	books/store-checkpoint-tables-reader \
+	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
