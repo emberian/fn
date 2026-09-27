@@ -216,7 +216,9 @@
                   (len (fn-own-conns fo))
                   (fn-own-conn-version (car (fn-own-conns fo)))
                   (fn-own-conn-version (fn-own-find-conn id (fn-own-conns ao)))
-                  (fn-own-view-version (fn-own-view fo)))
+                  (fn-own-view-version (fn-own-view fo))
+                  (fn-scj-conns-versions-atmostp (fn-own-conns fo) (fn-own-view-version (fn-own-view fo)))
+                  (fn-scj-conns-versions-atmostp (fn-own-conns ao) (fn-own-view-version (fn-own-view ao))))
             fn-arena fn-cat)))))
 
 (defun scjfc-advance-exec (oc payloads)
@@ -230,4 +232,20 @@
       result)))
 
 (assert-event (equal (scjfc-advance-exec *cet-t2-oc* *cet-t2-payloads*)
-                     (list *scjfc-all* :advanced *scjfc-all* 2 2 3 3)))
+                     (list *scjfc-all* :advanced *scjfc-all* 2 2 3 3 t t)))
+
+; -----------------------------------------------------------------------------
+; 4. The pin bound (fn-scj-versions-atmost-of-ocfg-open and -of-ocfg-advance,
+; reachable): every record at or below the view's version before and after
+; the open (the new record at the view's version, 2); the advance's two
+; bounds are the last two values of 3 (before, with pins at 2 under the view
+; at 3, and after).
+(defconst *scjfc-opened* (fn-ocfg-owner (cdr (fn-ocfg-open *scjfc-oc* nil))))
+(assert-event (fn-scj-conns-versions-atmostp (fn-own-conns (fn-ocfg-owner *scjfc-oc*))
+                                             (fn-own-view-version (fn-own-view (fn-ocfg-owner *scjfc-oc*)))))
+(assert-event (fn-scj-conns-versions-atmostp (fn-own-conns *scjfc-opened*)
+                                             (fn-own-view-version (fn-own-view *scjfc-opened*))))
+(assert-event (equal (fn-own-conn-version (car (fn-own-conns *scjfc-opened*))) 2))
+; The bound is not vacuous: under a lower view version (1) the opened record
+; exceeds it.
+(assert-event (not (fn-scj-conns-versions-atmostp (fn-own-conns *scjfc-opened*) 1)))
