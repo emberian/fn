@@ -77,27 +77,17 @@
             (cons (fn-store-octets->string (car xs)) rest))))
     (if (null xs) nil :bad)))
 
-(defun fn-store-txn-observation (observed maximum)
-  (declare (xargs :mode :program))
-  (let ((names (fn-store-octet-lists->strings observed)))
-    (if (and (natp maximum) (true-listp observed)
-             (not (equal names :bad)) (<= (len names) maximum))
-        ;; The byte-store scan owns exact names and contiguous sequences.
-        (fn-bs-txn-observation-pairs names 0)
-      :invalid)))
-
 ; The bound and the grammar are `fn-profile-txn-observation'
-; (books/store-profile-facts.lisp); this wrapper converts octets.
+; (books/store-profile-facts.lisp); this wrapper converts octets.  The
+; per-file layout's namespace: its one caller left is the Python store's
+; bridge (host/store-node-host.lisp fn-store-txn-observation-octets, from
+; tools/frame_bridge.py txn_observation for tools/run_store.py).
 (defun fn-store-txn-observation-selected (observed maximum selected-lower)
   (declare (xargs :mode :program))
   (let ((names (fn-store-octet-lists->strings observed)))
     (if (and (true-listp observed) (not (equal names :bad)))
         (fn-profile-txn-observation names maximum selected-lower)
       :invalid)))
-
-; The transaction-prefix reclaim plan is `fn-bs-pack-reclaim-plan'
-; (books/byte-store-compaction-correspondence), whose namespace gate is
-; `fn-profile-txn-observation'; host/native/checkpoint.lisp calls it directly.
 
 ; The record wrappers recognise and dispatch through the concrete twins of
 ; books/records-concrete.lisp.  What the codec decodes is a WIRE event
@@ -449,10 +439,6 @@
         (fn-store-log-next-txid-loop (cdr records)
                                      (if (natp txid) (max acc (+ 1 txid)) acc)))
     acc))
-
-(defun fn-store-log-next-txid (records floor)
-  (declare (xargs :mode :program))
-  (fn-store-log-next-txid-loop records (nfix floor)))
 
 ;; The same fold one record at a time (the format-9 open streams its records,
 ;; host/native/io.lisp fnn-recover-log): (fn-store-log-next-txid-loop R ACC)

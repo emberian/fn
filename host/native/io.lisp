@@ -1116,8 +1116,6 @@ saved profile stays a fault."
 (defun fnn-bridge-reset () (fnn-action (fnn-core-state 'fn-store-sn-reset)))
 (defun fnn-bridge-record-sequence (record)
   (fnn-nat (fnn-core 'fn-store-record-sequence (fnn-octet-list record))))
-(defun fnn-bridge-record-txid (record)
-  (fnn-nat (fnn-core 'fn-store-record-txid (fnn-octet-list record))))
 (defun fnn-bridge-recover (next-chunk frontier config-records)
   "Replay the configuration history and then the article history.
 
@@ -2261,10 +2259,12 @@ handed to fnn-state-checkpoint-write."
         (fnn-write-range fd buffer a b)
         (fnn-write-range fd trailer 0 (length trailer))))))
 
-;; PKT-169: the compaction's temporary space is checked against the disk.
-;; The host observes the free octets of the store's filesystem (statvfs:
-;; f_bavail blocks of f_frsize octets, what an unprivileged writer may use)
-;; and ACL2 decides (books/store-compact-verb.lisp `fn-cverb-disk-admitsp').
+;; PKT-169: a state checkpoint's temporary space is checked against the
+;; disk.  The host observes the free octets of the store's filesystem
+;; (statvfs: f_bavail blocks of f_frsize octets, what an unprivileged writer
+;; may use) and ACL2 decides (host/store-node-host.lisp
+;; `fn-store-sco-publish-setup' for `store compact' and `store reclaim',
+;; host/owner-host.lisp `fn-owner-sco-due' for the owner's checkpoint).
 ;; NIL when the call fails or the platform's layout is not known here; ACL2
 ;; then refuses :temporary-space by name.  A developer image honours
 ;; FN_NATIVE_DISK_FREE=N, which caps the observation at N octets (a small
@@ -2976,8 +2976,10 @@ the records are read after the open by the verbs that need them
 (defparameter +fnn-init-test-controls+
   '("init-config-records-first-enumerate" "init-config-records-final-enumerate"))
 
-;; books/store-init-publication.lisp fn-bs-init-pub-program's cuts: the
-;; import's program with init's names, in program order.
+;; The init publication's cuts (books/store-init-publication.lisp
+;; *fn-bs-init-pub-cut-names*, which books/store-init-log-publication.lisp
+;; fn-bs-init-log-program applies): the import's program with init's names,
+;; in program order.
 (defparameter +fnn-init-publication-cuts+
   '("init-stage-created" "init-subdir-created" "init-file-created"
     "init-file-written" "init-file-durable" "init-subdir-durable"
@@ -3201,9 +3203,10 @@ current one)."
 (defun fnn-command-init-published (root groups profile &optional policy)
   "`operator CONFIG init' (PKT-647): build the empty store beside ROOT, in
 ROOT.init-XXXX, and publish it without replacing anything
-(books/store-init-publication.lisp fn-bs-init-pub-program, through
-fnn-staged-publication).  Its plan is ACL2's three frames: the profile, the
-allocation frontier 0 and the generation-1 configuration record.  Before
+(books/store-init-log-publication.lisp fn-bs-init-log-program: the import's
+steps with init's cut names, through fnn-staged-publication).  Its plan is
+ACL2's: the profile, the generation-1 configuration record and the log's
+first segment (fn-bs-init-log-files).  Before
 writing anything the host observes a leftover ROOT.init-* and ROOT, and
 ACL2's admission (fn-bs-init-pub-admission over fn-bs-imp-classify) proceeds
 or refuses by name, saying what to run."
@@ -5459,21 +5462,6 @@ parent."
           (lambda () (fnn-fsync-dir (fnn-transactions store))))
         (lambda () (fnn-fsync-dir (fnn-store-root store)))
         (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
-
-(defconstant +fnn-log-next-txid-chunk+ 1024
-  "Records per ACL2 call of the frontier's fold at an open (a work quantum per
-call, never a bound on the store).")
-
-(defun fnn-log-next-txid-streamed (records floor)
-  "ACL2's fn-store-log-next-txid over RECORDS (octet vectors) a chunk at a
-time, the fold's floor carried: the fold is a running maximum, so the chunks'
-answer is the whole list's; only one chunk is an octet list at a time."
-  (let ((next floor))
-    (loop while records do
-      (let ((chunk (loop repeat +fnn-log-next-txid-chunk+ while records
-                         collect (fnn-octet-list (pop records)))))
-        (setq next (fnn-nat (fnn-core 'fn-store-log-next-txid chunk next)))))
-    next))
 
 (defun fnn-log-segment-names (store)
   "journal/'s entries (bounded by the segment index's width)."

@@ -299,13 +299,13 @@ identifier, which made the logical peer lookup report an absent endpoint. It
 checks representation transport only; configured lookup, reconnection and
 two-node exchange still require the saved-image gate.
 
-The native transaction namespace observer bounds physical enumeration before
-allocation, then passes names to `fn-store-txn-observation`, which uses
-`fn-bs-txn-observation-pairs` and the byte-store filename codec. The returned
-sequence is compared to the decoded durable record before replay. Raw Lisp
-does not parse decimal transaction filenames or independently decide gaps.
-Configuration-history namespace recovery still has an assigned consolidation
-task; the transaction result does not cover that neighboring namespace.
+The per-file layout's transaction namespace observer: a format-9 store has
+no transactions/ directory, and the native open reads none; the record
+log's segments are named and ordered by ACL2 (`fn-lgs-open-plan`,
+books/store-log-segments.lisp). The one caller of the namespace decision
+left is the Python store (tools/run_store.py through tools/frame_bridge.py,
+`fn-store-txn-observation-octets` over `fn-store-txn-observation-selected`),
+which still reads the per-file layout.
 
 `build/fn-host` is one saved SBCL image: ACL2 8.7, the certified books the
 hosts drive, the `:program` wrappers in `host/*-host.lisp`, and the raw-Lisp

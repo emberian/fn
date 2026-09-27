@@ -34,15 +34,17 @@
 ;                 every other configuration record leaves the last
 ;                 generation to it (`fn-cvec-config-generations').
 ;   workspace     disk.  Compaction and reclamation write no Store record;
-;                 their pack is checked against the free octets the host
-;                 observes (`fn-cverb-pack-fits-the-disk',
-;                 `fn-rclp-pack-fits-the-disk').  That observation is not
-;                 ownership: ENVIRONMENTAL ASSUMPTION, no concurrent writer
-;                 takes the observed space before the pack is written.  When
-;                 it fails, the write fails before the selection (the pack
-;                 publication's EIO cuts: exit 3, the store reopens, the rerun
-;                 converges), so the promise is "refused or uncertain, never
-;                 torn", not "completes".
+;                 their state checkpoint is checked against the free octets
+;                 the host observes (books/owner-checkpoint-writer.lisp
+;                 `fn-ockp-decide', through books/store-checkpoint-arena-
+;                 writer.lisp `fn-scka-publication-setup').  That
+;                 observation is not ownership: ENVIRONMENTAL ASSUMPTION, no
+;                 concurrent writer takes the observed space before the
+;                 checkpoint is written.  The promise is "refused or
+;                 uncertain, never torn", not "completes"; a checkpoint
+;                 write that fails at EIO/ENOSPC over the log has no native
+;                 case yet (the pack publication's EIO cuts went with the
+;                 pack layer).
 ;
 ; The vector's reservation: the profile's gate admits DEBT + 1 release
 ; records after the committed state, one after another

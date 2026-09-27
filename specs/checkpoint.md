@@ -181,9 +181,7 @@ rejects every other entry.  Hosts call the ACL2-owned observation bound
 before retaining directory names: the opened profile's retained-generation
 capacity, max-transactions + 1 (`fn-cpp-generation-capacity`), plus the
 selection marker.  Generation allocation refuses exactly at that capacity
-(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`; for packs,
-whose numbers have gaps after retirement,
-`fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity`), and a
+(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`), and a
 generation number runs to the uint32 width of its name and selection codec
 (STO-023, PRF-171; until then a store had 4,096 publications in its
 lifetime).
@@ -295,50 +293,12 @@ partial prefix/suffix values.  Native and Python hosts now marshal entry
 octets and execute the returned plan; neither parses, formats or sorts the
 generation namespace.
 
-### Selected-pack reclaim crash cuts
+### Pack reclaim and pack retirement (retired)
 
-(This and the next section describe the per-file layout (format 8),
-which no image opens since 2026-09-27; on the record log `pack`,
-`pack-reclaim` and `pack-retire` refuse by name, `reason=record-log`, and
-compaction and reclamation are the log's rotation and drop,
-specs/storage.md STO-034 and STO-028.)
-
-`fnn-pack-prefix-reclaim` calls the logical
-`fn-bs-pack-reclaim-plan` on the bounded, sorted physical transaction
-namespace.  The plan returns only surviving names below the selected pack's
-coverage boundary.  Its byte program has one `pack-reclaim-unlink` cut after
-each issued unlink and one `pack-reclaim-directory` cut after the
-transaction-directory barrier.  Before that barrier, each pending
-`:del-entry` may apply or drop independently, so a process-death image may
-retain an arbitrary subset of covered names.  After the barrier, no crash
-choice restores a reclaimed name.  Neither transition permits a missing
-name in the uncovered suffix.
-
-Recovery calls `fn-store-checkpoint-compaction-observe` over the surviving
-sequence/raw-octet pairs.  `fn-cc-partial-deletion-preserves-exact-history`
-reconstructs the selected prefix plus exact suffix when every surviving
-covered byte string agrees with the pack; a conflicting surviving covered
-file returns `:conflict`.  The byte cut witnesses and source map are static
-model evidence until they run against a source-matched developer image.
-They do not qualify filesystem power-loss behavior.
-
-### Superseded pack retirement
-
-`checkpoint pack-retire ROOT` reopens the Store under its exclusive lock,
-validates the selected pack and its coverage, and asks
-`fn-cprt-retire-plan` for the strictly older generation names.  It unlinks
-those names only, with a `pack-retire-unlink` process-death cut after each
-unlink and a `pack-retire-directory` cut after the packs-directory barrier.
-An empty plan returns without a barrier or retirement cut.  An ambiguous
-unlink error may already have removed its attempted name and requires reopen.
-The ACL2 crash-survivor model permits any issued unlink to reappear before
-the barrier; the selected generation is never in the plan.  A reopened Store
-can therefore retry retirement after either cut without selecting a different
-authority or changing exact event history.  The separate pack allocator
-accepts gaps left by retirement but always advances beyond the highest
-remaining generation.  `fn-cprt-publication-initial` applies that same
-gap-aware namespace to actual immutable pack publication; ordinary node
-checkpoints retain their gap-free publication policy.  Retirement recovers
-space occupied by superseded
-packs, not by retained source events or protected article objects.  The
-bounded generation number still has a finite lifetime and does not wrap.
+The per-file layout's selected-pack reclaim and superseded-pack retirement
+(`checkpoint pack-reclaim`, `checkpoint pack-retire`, their byte programs
+and crash cuts) went with that layout: the native verbs in PKT-838, the
+books (checkpoint-pack-retire, checkpoint-compaction-preservation,
+byte-store-compaction-correspondence) and host wrappers in lane
+flip-cleanup (2026-09-27). On the record log compaction and reclamation are
+the log's rotation and drop (specs/storage.md STO-012, STO-017, STO-034).

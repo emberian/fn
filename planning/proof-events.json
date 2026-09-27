@@ -2889,48 +2889,7 @@
     },
     {
       "id": "PRF-073",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ccp-reclaim-keeps-namespace-observation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccp-covered-deletion-keeps-reconstruction"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccp-complete-observation-reconstructs-its-records"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccp-reclaim-preserves-reconstructed-history"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-selected-reclaim-crash-preserves-suffix-payload"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cverb-pack-fits-the-disk"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cverb-capture-within-pack-octets"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cverb-pack-decision-capture-succeeds"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-run-store-compact-is-the-compact-action"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-operator-run-compact-action-is-only-store-compact"
-        }
-      ]
+      "events": []
     },
     {
       "id": "PRF-074",
@@ -4693,14 +4652,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rclp-decide-publishes-the-rewrite"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rclp-keep-forever-writes-nothing"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-native-operator-run-store-reclaim-is-the-reclaim-action"
         },
         {
@@ -4759,14 +4710,6 @@
         {
           "kind": "theorem",
           "name": "fn-smr-admitted-profile-starts-reserved"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cverb-pack-fits-the-disk"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rclp-pack-fits-the-disk"
         }
       ]
     },
@@ -5446,56 +5389,7 @@
     },
     {
       "id": "PRF-085",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-links-okp-composes-a-prefix"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-capture-extends-the-chain"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-capture-link-succeeds"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-chain-reconstructs-the-history"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-reclaim-preserves-reconstructed-history"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-retire-plan-keeps-the-chain"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-publication-crash-walks-old-or-new-chain"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-links-count-within-boundary"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cverb-pack-decision-capture-succeeds"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rclp-reclaiming-pack-is-a-first-link"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-chain-link-cut-walks-the-extended-chain"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-chain-link-cut-reopens-to-the-history"
-        }
-      ]
+      "events": []
     },
     {
       "id": "PRF-163",
@@ -6131,10 +6025,6 @@
         {
           "kind": "theorem",
           "name": "fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity"
         },
         {
           "kind": "theorem",
@@ -7872,47 +7762,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-ccco-entry-step-is-entry-step"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-coverage-chain-is-coverage-chain"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-observe-chain-is-observe-chain"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-links-okp-of-decoded"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-remember-keeps-sound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-remember-all-keeps-sound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-framed-link-fast-is-framed-link"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-octet-event-listp-is-octet-event-listp"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-event-fields-of-wire-is-the-dispatchers"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-linkp-is-linkp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-decode-link-is-decode-link"
         },
         {
           "kind": "theorem",
@@ -7925,10 +7775,6 @@
         {
           "kind": "theorem",
           "name": "fn-obi-load-from-empty-establishes-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccco-coverage-headers-is-coverage-chain"
         }
       ]
     },
@@ -9595,6 +9441,14 @@
           "kind": "theorem",
           "name": "fn-lgs-chain-records-of-append",
           "note": "The model chain splits at any segment boundary."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-compact-is-the-compact-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-compact-action-is-only-store-compact"
         }
       ]
     },
@@ -9968,24 +9822,7 @@
     },
     {
       "id": "PRF-279",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-scw-window-count-is-fit"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cverb-decide-window-is-cverb-decide"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ccc-capture-link-window-is-capture-link"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rcls-decide-is-rclp-decide"
-        }
-      ]
+      "events": []
     },
     {
       "id": "PRF-280",

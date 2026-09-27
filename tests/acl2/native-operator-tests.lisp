@@ -406,7 +406,7 @@
 
 ;
 ; `store compact': an offline store action with no argument; what it does to
-; the store is `fn-cverb-decide' (books/store-compact-verb.lisp).
+; the store is host/native/checkpoint.lisp `fnn-command-compact''s.
 (defconst *fn-nop-compact*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv '("store" "compact"))))
@@ -472,7 +472,7 @@
                      5))
 
 ;; `store reclaim [--dry-run]' (STO-017): offline store actions; what they
-;; remove is `fn-rclp-decide' (books/store-reclaim-pack.lisp).
+;; remove is `fn-lgr-decide-stream' (books/store-log-reclaim.lisp).
 (defconst *fn-nop-reclaim*
   (fn-native-operator-run *fn-nop-minimal-config*
                           (fn-nop-test-argv '("store" "reclaim"))))

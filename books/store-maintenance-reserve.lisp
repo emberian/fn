@@ -18,14 +18,12 @@
 ;   the event codec's maximum); no constant of its own.  `status' prints it
 ;   (`fn-smr-report').
 ;
-;   The cleanup work.  Compaction and reclamation write no Store record: the
-;   pack they publish is read at open under the compaction unit
-;   (`*fn-cc-max-octets*'), not under H, and a reclaiming pack's records are
-;   shorter (`fn-rclp-freed-is-the-admission-count'), so they need no room
-;   in H.  Their demand is disk: the pack is checked against the free octets
-;   the host observes (books/store-compact-verb.lisp
-;   `fn-cverb-pack-fits-the-disk', books/store-reclaim-pack.lisp
-;   `fn-rclp-pack-fits-the-disk').
+;   The cleanup work.  Compaction and reclamation write no Store record: they
+;   publish a state checkpoint and drop log segments, and a reclaimed
+;   history's records are shorter (`fn-rclp-freed-is-the-admission-count'),
+;   so they need no room in H.  Their demand is disk: the checkpoint is
+;   checked against the free octets the host observes
+;   (books/owner-checkpoint-writer.lisp `fn-ockp-decide').
 ;
 ;   The release's configuration record (`retention set') lives in the
 ;   configuration namespace, bounded by the profile's max-config-generations
