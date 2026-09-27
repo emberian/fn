@@ -10831,11 +10831,7 @@
         "fn-orr-read-span-at-a-captured-view-restores-the-owner",
         "fn-ocvp-reader-view-is-at-the-current-generation",
         "fn-ocs-a-publication-waits-for-the-complete",
-        "fn-orr-span-read-is-historical-read",
-        "fn-orr-span-read-keeps-the-reader-relation-and-the-rest",
-        "fn-orr-restoring-the-working-view-keeps-the-reader-relation",
         "fn-orr-reader-relation-at-a-captured-view",
-        "fn-orr-relation-of-with-view",
         "fn-ocvp-step-preserves-inv"
       ]
     },

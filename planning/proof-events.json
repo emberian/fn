@@ -10936,23 +10936,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-orr-span-read-is-historical-read"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-orr-span-read-keeps-the-reader-relation-and-the-rest"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-orr-restoring-the-working-view-keeps-the-reader-relation"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-orr-reader-relation-at-a-captured-view"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-orr-relation-of-with-view"
         },
         {
           "kind": "theorem",
