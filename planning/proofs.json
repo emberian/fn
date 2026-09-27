@@ -11124,6 +11124,62 @@
         "fn-arx-commit-reseat-keeps-the-arena",
         "fn-arx-commit-reseats-keep-the-arena"
       ]
+    },
+    {
+      "id": "PRF-311",
+      "title": "The frame digest over a window of an octet buffer: SHA-256 of a prefix and buffer[a, a+wn) read in place, attached as fn-frame-digest-range, and the checkpoint reader's frame seal over it",
+      "statement": "books/sha256-range.lisp: fn-sha256-of-prefixed-range PREFIX A WN BUF reads the window by index with a base offset (KEYSTONE fn-sha256-of-prefixed-range-is-sha256: it is fn-sha256 of (append PREFIX (fn-shr-win A WN BUF)), no hypothesis; fn-shr-win-is-slice relates the window to fn-oct-slice-list inside the buffer). books/frame-digest-buffer.lisp: the constrained fn-frame-digest-range (KEYSTONE fn-frame-digest-range-is-the-frame-digest), attached together with fn-frame-digest and fn-frame-digest-buffer in one defattach (the obligation is fn-sha256-of-prefixed-range-any-is-sha256). books/store-checkpoint-reader.lisp: fn-sccr-open-frame's seal is an mbe whose exec fn-sccr-window-seal digests the frame's window in place, never slicing it (fn-sccr-window-seal-is-seal: equal to fn-scc-seal over the slice on a live buffer, an in-range window and an octet header). Host subject: host/native/io.lisp fnn-state-checkpoint-load-arena calls fn-store-sco-decode and fn-store-sco-decode-finish (host/store-node-host.lisp), whose reader is fn-sccr-join over fn-sccr-open-frame. NOT done: the log walk's entry check (fn-lgw-decide) still frames and digests the entry as a list.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-295"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/sha256-range.lisp",
+        "books/frame-digest-buffer.lisp",
+        "books/store-checkpoint-reader.lisp",
+        "tests/acl2/sha256-range-tests.lisp",
+        "planning/evidence/snapshot-open-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-2 (2026-09-27): the checkpoint open's list hashing.",
+      "events": [
+        "fn-sha256-of-prefixed-range-is-sha256",
+        "fn-frame-digest-range-is-the-frame-digest",
+        "fn-sccr-window-seal-is-seal"
+      ]
+    },
+    {
+      "id": "PRF-312",
+      "title": "The open finalizes a paused fold's drain without re-checking the configured node: one whole-node check where there were four",
+      "statement": "books/replay-identity-index.lisp section 7a: fn-rii-sco-finalize-configured is fn-rii-sco-finalize-from without fn-cnode-statep, without fn-replay-advance-okp's fn-node-statep (fn-rii-advance-idlep) and with fn-rii-sn-statep-carried in place of fn-rii-sn-statep (no node recognizer, no second history walk); fn-rii-sco-finalize-configured-is-finalize-from: EQUAL to the finalize whenever a successful result's node is configured. fn-rii-sco-store-open finalizes a paused fold's drain with it (fn-rii-sco-cpr-finish-ok-is-configured: the drain's successful node is configured, from fn-cpr-loop-ok-is-configured); the keystone fn-rii-sco-store-open-is-sco-store-open keeps its statement. Host subject: host/store-node-host.lisp fn-store-sn-open-extended calls fn-rii-classified-open. NOT done: the drain's own fn-cnode-statep and the resume's check of the decoded checkpoint node remain (two whole-node checks per open).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-242"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/replay-identity-index.lisp",
+        "tests/acl2/replay-identity-index-tests.lisp",
+        "planning/evidence/snapshot-open-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-2 (2026-09-27): whole-state rechecks at the open.",
+      "events": [
+        "fn-rii-sco-finalize-configured-is-finalize-from",
+        "fn-rii-sco-cpr-finish-ok-is-configured",
+        "fn-rii-sco-store-open-is-sco-store-open"
+      ]
     }
   ]
 }
