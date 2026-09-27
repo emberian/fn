@@ -1,0 +1,15 @@
+{
+ "articles": 12,
+ "campaign": "store",
+ "class": "served-missing",
+ "mutation": {
+  "at": 0,
+  "bit": 1,
+  "file": "journal/000001.log",
+  "kind": "flip",
+  "op": "flip"
+ },
+ "note": "One bit flipped at offset 0 of the record log of a 12-article store: status, recover and status all exit 0 with nothing on stderr, recover reports transactions=0 articles=0, and every committed article answers 430. Eleven valid frames follow the damaged one, so this is not a torn tail.",
+ "packet": "F3 (silent loss)",
+ "status": "open"
+}
