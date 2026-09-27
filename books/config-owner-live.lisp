@@ -1883,7 +1883,6 @@
                             fn-ocl-related-found-connection-has-history
                             fn-ocl-ocfg-read-unfolds fn-ocl-own-read-keeps-store
                             fn-ocl-own-read-keeps-owner-control
-                            fn-ocl-unchanged-view-new-pin-is-historical
                             fn-ocl-own-read-survivor-had-original
                             fn-own-find-conn fn-own-conn-boundedp-is-auth-session)))))
 

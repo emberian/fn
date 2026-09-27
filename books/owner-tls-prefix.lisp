@@ -11,7 +11,7 @@
 
 ; (:fn-own-tls-result consumed effects configured-owner repinned): REPINNED
 ; is whether the read moved the connection's pin (NNT-042; fn-own-result-repinned).
-(defun fn-own-tls-make-result (consumed effects owner &optional repinned)
+(defun fn-own-tls-make-result (consumed effects owner repinned)
   (declare (xargs :guard t))
   (list :fn-own-tls-result consumed effects owner repinned))
 
