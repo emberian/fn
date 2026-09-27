@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1282 |
-| Certification roots in the Makefile | 1235 |
-| Books inside the root closure | 1271 |
-| `defthm` and `defthmd` events | 18900 |
-| `defun` events | 13031 |
-| Functions with verified guards | 2487 |
-| Functions declared `:verify-guards nil` and never verified | 1550 |
-| Functions left at the default with an explicit guard | 7238 |
-| Functions left at the default with no guard | 1756 |
-| `assert-event` checks | 18846 |
-| `must-fail` checks | 2135 |
+| Books read | 1292 |
+| Certification roots in the Makefile | 1245 |
+| Books inside the root closure | 1281 |
+| `defthm` and `defthmd` events | 19105 |
+| `defun` events | 13101 |
+| Functions with verified guards | 2488 |
+| Functions declared `:verify-guards nil` and never verified | 1557 |
+| Functions left at the default with an explicit guard | 7283 |
+| Functions left at the default with no guard | 1773 |
+| `assert-event` checks | 18869 |
+| `must-fail` checks | 2153 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 94 |
-| Theorems flagged SUSPECT by shape | 220 |
-| Export-hygiene warnings | 228 |
+| `encapsulate` events | 96 |
+| Theorems flagged SUSPECT by shape | 221 |
+| Export-hygiene warnings | 229 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 229 |
-| Include-hygiene warnings | 1377 |
-| Host-names warnings | 1388 |
+| Include-hygiene warnings | 1386 |
+| Host-names warnings | 1404 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -112,7 +112,7 @@ that `make certify` requests.
 | `books/article-work-scanners.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/article-work.lisp` | root | 23 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `books/article.lisp` | root | 24 | 53 | 46/0/7/0 | 0 | 0 | 0 |
-| `books/assumptions.lisp` | root | 17 | 13 | 0/1/0/12 | 0 | 0 | 0 |
+| `books/assumptions.lisp` | root | 23 | 18 | 0/1/0/17 | 0 | 0 | 0 |
 | `books/auth-secret.lisp` | root | 18 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/bp-adu.lisp` | root | 22 | 41 | 7/0/34/0 | 0 | 0 | 0 |
 | `books/bp-app-handoff-time.lisp` | root | 4 | 5 | 5/0/0/0 | 0 | 0 | 0 |
@@ -395,6 +395,7 @@ that `make certify` requests.
 | `books/feed-port-replay.lisp` | root | 11 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/feed-totality.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/feed-wire-input.lisp` | root | 3 | 23 | 23/0/0/0 | 0 | 0 | 0 |
+| `books/frame-digest-buffer.lisp` | root | 3 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/frame-fields.lisp` | root | 25 | 42 | 13/0/29/0 | 0 | 0 | 0 |
 | `books/frame-invariants.lisp` | root | 85 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/frame-journal.lisp` | root | 8 | 15 | 11/0/4/0 | 0 | 0 | 0 |
@@ -579,8 +580,13 @@ that `make certify` requests.
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/payload-arena-attach.lisp` | root | 0 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `books/payload-arena-bytes.lisp` | root | 79 | 28 | 3/3/19/3 | 0 | 0 | 0 |
+| `books/payload-arena-extent-logic.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/payload-arena-extent.lisp` | root | 109 | 26 | 0/4/17/5 | 0 | 0 | 0 |
 | `books/payload-arena-paged.lisp` | root | 105 | 25 | 6/6/9/4 | 0 | 0 | 1 |
-| `books/payload-arena.lisp` | root | 49 | 13 | 0/1/9/3 | 0 | 0 | 0 |
+| `books/payload-arena.lisp` | root | 65 | 16 | 0/1/12/3 | 0 | 0 | 0 |
+| `books/payload-commit-extent.lisp` | root | 22 | 7 | 0/0/6/1 | 0 | 0 | 0 |
+| `books/payload-extent-read.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/payload-extent.lisp` | root | 30 | 17 | 1/2/11/3 | 0 | 0 | 1 |
 | `books/payload-lz.lisp` | root | 68 | 23 | 3/0/17/3 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 22 | 13 | 0/0/13/0 | 0 | 0 | 1 |
 | `books/peer-carriage-rows.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 0 |
@@ -1052,6 +1058,7 @@ that `make certify` requests.
 | `tests/acl2/feed-port-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/feed-totality-tests.lisp` | - | 0 | 1 | 0/0/1/0 | 13 | 3 | 0 |
 | `tests/acl2/feed-wire-input-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
+| `tests/acl2/frame-digest-buffer-tests.lisp` | root | 3 | 0 | 0/0/0/0 | 3 | 1 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 78 | 0 | 0 |
 | `tests/acl2/frame-trailer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/group-access-tests.lisp` | - | 0 | 13 | 0/5/0/8 | 70 | 7 | 0 |
@@ -1192,8 +1199,11 @@ that `make certify` requests.
 | `tests/acl2/owner-tls-pin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/owner-verdict-read-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 32 | 6 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
+| `tests/acl2/payload-arena-extent-tests.lisp` | root | 6 | 3 | 0/0/1/2 | 4 | 6 | 0 |
 | `tests/acl2/payload-arena-paged-tests.lisp` | root | 0 | 5 | 0/0/1/4 | 3 | 0 | 0 |
 | `tests/acl2/payload-arena-tests.lisp` | root | 22 | 13 | 0/0/1/12 | 7 | 10 | 0 |
+| `tests/acl2/payload-commit-extent-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 3 | 4 | 0 |
+| `tests/acl2/payload-extent-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 13 | 7 | 0 |
 | `tests/acl2/payload-lz-tests.lisp` | root | 7 | 4 | 0/2/2/0 | 9 | 3 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 15 | 0 |
 | `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 114 | 20 | 0 |
@@ -1384,6 +1394,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-apc-own-finish-is-own-finish` | `books/owner-parse-carried.lisp` | 944 | closed-theory-corollary: proved only by fn-apc-own-finish-is-ccar-own-finish, fn-ccar-own-finish-is-own-finish |
 | `fn-arp-okp-forward` | `books/payload-arena-paged.lisp` | 504 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-arp-okp |
 | `fn-article-parse-is-the-ceiling-limits-by-definition` | `books/article-header-limits.lisp` | 226 | definition-restated: the conclusion is the body of fn-article-parse; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-arx-composite-payload-octets` | `books/payload-extent.lisp` | 229 | instance-corollary: the statement is fn-arx-record-payload-octets instantiated, discharging nothing |
 | `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 564 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
 | `fn-auth-redeem-outcome-is-inert-unless-it-answers` | `books/nntp-auth.lisp` | 1556 | branch-of-definition: the hypothesis negates a branch test of fn-auth-redeem-outcome and the conclusion is that branch's value |
 | `fn-auth-session-peer-folds` | `books/nntp-auth.lisp` | 2759 | definition-restated: the conclusion is the body of fn-auth-session-peer |
