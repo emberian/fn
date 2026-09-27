@@ -2549,7 +2549,8 @@
         "fn-own-operator-decision-is-an-injection-of-the-payload",
         "fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing",
         "fn-own-operator-retry-resubmits-the-stored-injection",
-        "fn-inj-injected-article-is-a-reinjection-of-its-source"
+        "fn-inj-injected-article-is-a-reinjection-of-its-source",
+        "fn-own-operator-retry-at-the-entry-is-the-stored-injection"
       ]
     },
     {
@@ -8747,7 +8748,6 @@
       "events": [
         "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
         "fn-ctl-verified-cause-ignores-its-keys",
-        "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
         "fn-ctl-withdrawal-plan-record-is-bound",
         "fn-ctl-cancel-executes-only-for-author-or-authority",
         "fn-own-stored-octets-carry-the-account-lock",
@@ -8761,7 +8761,8 @@
         "fn-ns-cancel-lock-and-posting-account-inputs-differ",
         "fn-ns-file-parse-of-render",
         "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
-        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account",
+        "fn-ctl-control-of-fields"
       ]
     },
     {
