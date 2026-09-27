@@ -1054,11 +1054,20 @@
                                                         consumed subject
                                                         submitted))))
          (fn-exp-ids (fn-exp-conns xs)))
+  ;; The accessors, nfix and posp stay closed: opened, their if-intros split
+  ;; the step's bookkeeping (fails, posts, counters, the entry's fields) into
+  ;; about 2,900 cases, none of which the connection ids depend on
+  ;; (1,592,136 prover steps before; 36,471 with this theory, persvati
+  ;; 2026-09-27).  fn-exp-ids-of-replace then closes the goal.
   :hints (("Goal" :in-theory (e/d (fn-exp-observe)
                                   (fn-exp-put fn-exp-count-in fn-exp-find
                                    fn-exp-prune fn-exp-counters-bump
                                    fn-exp-481-count fn-exp-line fn-exp-replace
-                                   fn-exp-entry fn-exp-window)))))
+                                   fn-exp-entry fn-exp-window
+                                   fn-exp-entry-answered fn-exp-entry-last
+                                   fn-exp-entry-address fn-exp-entry-pending
+                                   fn-exp-lim-auth-failures fn-exp-nat
+                                   nfix posp fn-exp-at fn-exp-ids)))))
 
 (local (defthm fn-exp-register-keeps-members
   (implies (member-equal x (fn-exp-ids (fn-exp-conns xs)))

@@ -125,22 +125,56 @@ PRF-xxx` names, per event, the book, its current digest and the newest
 manifest that certified it, which is the citation to add. A row with no such
 manifest is not `certified`.
 
-`python3 tools/proof_cost.py` in `make check` holds the ten-second rule as a
-ratchet, measured at two jobs (decision D26). Only a run whose manifest
-records `jobs_effective` of 2 or fewer counts. A measurement at more jobs is
-printed as `RECORDED ... at N jobs` and never fails. A manifest without
-`jobs_effective` is unknown: its measurements are skipped with a warning that
-names the run. `planning/proof-cost-baseline.json` lists each book whose worst
-current measurement at two jobs or fewer, over every host and toolchain, was
-above ten seconds when the baseline was written, with that figure, its run,
-host and job count. The check fails
-on a book above ten seconds that the baseline does not list, or that runs more
-than 25 % over its listed figure; a listed book now under ten seconds is
-reported "improved; remove from baseline". Unmeasured books remain a warning
-with their count. `--write-baseline` drops improved books and lowers numbers
-but never adds a book or raises a figure; that needs `--allow-regression`,
-which is a decision to record in the commit that uses it. The baseline only
-shrinks.
+`python3 tools/proof_cost.py` in `make check` holds the ten-second rule
+(decision D26, as defined 2026-09-27) with two numbers that do different jobs.
+
+**The ratchet is prover steps.** ACL2 counts its own rewriting and proving
+work (`Prover steps counted:` in each event's summary; the `CERTIFY-BOOK`
+summary's count is the book's). For fixed bytes and toolchain the count is
+the same on any box at any load: books/byte-store-k0-authority-error counted
+1,488,179 steps at 6.4 s and at 14.9 s of wall on persvati. Each certify
+manifest records `book_prover_steps` and `book_costliest_event` (the
+non-wrapper event with the most steps); `proof_cost` falls back to the run's
+local certify log for older manifests. A baseline book fails when its steps
+are more than 10 % over its row's; within that band it is `KEPT` and the row
+is not raised; fewer steps lower the row.
+
+**D26's seconds: at two jobs, on a quiet box, the fastest attempt.** The
+wall seconds decide whether a book is over the line at all. Only runs whose
+manifest records `jobs_effective` of 2 or fewer count; wider runs print
+`RECORDED ... at N jobs`, and a manifest without `jobs_effective` is skipped
+with a warning naming the run. Load only ever adds wall time (on hbox's and
+persvati's hybrid CPUs a busy box moves a 2-job certification onto slower
+cores; ACL2's own `Time:` rises with it, so it is not a substitute), so a
+book's D26 figure is the **lowest** passed measurement of its current
+include-closure bytes over every run, host and toolchain. At or under ten
+seconds that settles it. Over ten seconds it is a verdict only when it is
+**quiet** (the box's one-minute load average, recorded per book at its ACL2
+process's start and end as `book_load_average` with `cpu_count`, stayed at
+or below a quarter of the CPUs) or when it exceeds three times the line
+(more than load has been measured to add, 2.6x). Anything else prints
+`UNQUIET` with the run, the load and the re-measure command, and never
+fails: re-measure it with `tools/farm.py submit <box> --jobs 2 --recertify
+<book> <book>` while the box is quiet. Steps are not converted to seconds:
+the rate varies more than twofold between books (250,000 to 565,000 steps
+per prove-second on persvati) and include-heavy books spend most of their
+wall outside the prover.
+
+`planning/proof-cost-baseline.json` lists each book conclusively over ten
+seconds, with its steps, its D26 seconds, and the run, host, jobs and load
+behind them. The check fails on a book not in the baseline that is
+conclusively over eleven seconds (10 to 11 s prints `NEAR`, D30), and on a
+baseline book whose steps rose past the band (a row without steps, written
+before 2026-09-27, is held by its seconds, 25 % over, under the same quiet
+rule, until a measurement supplies them). A listed book with a passed
+measurement under ten seconds is reported "improved; remove from baseline".
+A failed certification measures no cost: it prints `FAILED`, keeps its row,
+and is never `IMPROVED` (green_check owns the red). Unmeasured books remain
+a warning with their count. `--write-baseline` drops improved books and
+lowers steps and seconds but never adds a book or raises a figure; that
+needs `--allow-regression`, which is a decision to record in the commit that
+uses it and which adds only books conclusively over the line. The baseline
+only shrinks.
 
 ### Guard status
 

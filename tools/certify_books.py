@@ -65,6 +65,7 @@ from typing import Any
 # the dependency graph that schedules certification and the generated ledger
 # cannot disagree about what a book includes.  `tools/` is not a package.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import acl2_cost  # noqa: E402
 import acl2_slots  # noqa: E402
 import acl2_toolchain  # noqa: E402
 import certs  # noqa: E402
@@ -580,6 +581,14 @@ def acl2_version_driver() -> str:
     :ld-error-triples t)
 (quit)
 '''
+
+
+def load_average() -> float | None:
+    """The one-minute load average, or None where the platform has none."""
+    try:
+        return round(os.getloadavg()[0], 2)
+    except (AttributeError, OSError):
+        return None
 
 
 def run_acl2(
@@ -1190,12 +1199,31 @@ def main() -> int:
     outputs: dict[str, str] = {}
     exit_codes: dict[str, int | str] = {}
     book_wall_seconds: dict[str, float] = {}
+    # The box's one-minute load average when each book's ACL2 process started
+    # and when it ended, and ACL2's own prover step count for the book: the
+    # wall seconds are only comparable between runs with the load beside
+    # them, and the steps not at all dependent on it (tools/proof_cost.py).
+    book_load_average: dict[str, list[float | None]] = {}
+    book_prover_steps: dict[str, int] = {}
+    book_costliest_event: dict[str, dict[str, Any]] = {}
     start_order: list[str] = []
     record_lock = threading.Lock()
     # One publisher at a time: `certs.publish` reads and renames files in the
     # cache, and two books finishing together must not interleave there.
     publish_lock = threading.Lock()
     cache_events: list[dict[str, Any]] = []
+
+    def record_cost(book: str, output: str) -> None:
+        # Caller holds record_lock.  No CERTIFY-BOOK summary: no entry (the
+        # steps are unknown, never zero).
+        steps = acl2_cost.book_steps(output)
+        if steps is not None:
+            book_prover_steps[book] = steps
+        heaviest = acl2_cost.costliest_event(output)
+        if heaviest is not None:
+            book_costliest_event[book] = {
+                "form": heaviest.form[:200], "steps": heaviest.steps,
+                "seconds": heaviest.seconds}
 
     def certify(book: str) -> None:
         log_path = run_dir / (book.replace("/", "--") + ".certify.log")
@@ -1205,6 +1233,7 @@ def main() -> int:
                 # is not occupying one, and the schedule tests read this order.
                 start_order.append(book)
                 slot_wait_seconds[book] = held.seconds
+            load_started = load_average()
             started = time.monotonic()
             try:
                 result = run_acl2(acl2, drivers[book], args.timeout_seconds,
@@ -1215,11 +1244,14 @@ def main() -> int:
                 output = timeout_output(error).decode("utf-8", errors="replace")
                 code = f"timed out after {args.timeout_seconds} seconds"
             elapsed = time.monotonic() - started
+            load_ended = load_average()
         log_path.write_text(output, encoding="utf-8")
         with record_lock:
             outputs[book] = output
             exit_codes[book] = code
             book_wall_seconds[book] = round(elapsed, 3)
+            book_load_average[book] = [load_started, load_ended]
+            record_cost(book, output)
         if args.no_publish:
             return
         verdict, _ = book_result(book, output, code, nonce,
@@ -1254,6 +1286,7 @@ def main() -> int:
             with record_lock:
                 start_order.append(f"{book} {wave}")
                 slot_wait_seconds[f"{book} {wave}"] = held.seconds
+            load_started = load_average()
             started = time.monotonic()
             try:
                 result = run_acl2(acl2, drivers[f"{book}.pcert-{wave}"], budget,
@@ -1264,8 +1297,10 @@ def main() -> int:
                 output = timeout_output(error).decode("utf-8", errors="replace")
                 code = f"timed out after {budget} seconds"
             elapsed = time.monotonic() - started
+            load_ended = load_average()
         log_path.write_text(output, encoding="utf-8")
         with record_lock:
+            book_load_average[f"{book} {wave}"] = [load_started, load_ended]
             wave_outputs[book][wave] = output
             wave_codes[book][wave] = code
             wave_seconds[book][wave] = round(elapsed, 3)
@@ -1297,6 +1332,13 @@ def main() -> int:
         exit_codes[book] = 0 if bad is None else bad
         book_wall_seconds[book] = round(
             sum(wave_seconds[book].get(wave, 0.0) for wave in PCERT_ORDER), 3)
+        with record_lock:
+            waves = [book_load_average.get(f"{book} {wave}") for wave in PCERT_ORDER]
+            book_load_average[book] = [
+                max((pair[index] for pair in waves
+                     if pair and pair[index] is not None), default=None)
+                for index in (0, 1)]
+            record_cost(book, output)
         if args.no_publish:
             return
         verdict, _ = book_result(book, output, exit_codes[book], nonce,
@@ -1370,6 +1412,10 @@ def main() -> int:
             "book_results": book_results,
             "book_failures": book_failures,
             "book_wall_seconds": book_wall_seconds,
+            "book_load_average": book_load_average,
+            "book_prover_steps": book_prover_steps,
+            "book_costliest_event": book_costliest_event,
+            "cpu_count": os.cpu_count(),
             "certify_wall_seconds": certify_wall_seconds,
             "pcert_wall_seconds": pcert_wall_seconds,
             # The last provisional wave each book finished.  A book that

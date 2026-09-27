@@ -13,6 +13,19 @@
 ; most one session.
 (in-package "ACL2")
 (include-book "bp-node-progress-guards")
+
+; The fragment, report and wire-text recognizers the included books leave
+; enabled are never what a plan or dispatch goal is about, and rewriting
+; through them (true-listp backchains over every held row) was most of this
+; book's 5.9M prover steps.  Closed for the whole book; nothing here is
+; stated in their terms.
+(local (in-theory (disable fn-bpf-fragmentp fn-cp-idp fn-bpf-fragment-listp
+                           fn-bpn-report-bounded-append-suffix
+                           fn-cp-id-length-bound fn-cp-idp-true-listp
+                           fn-cbor-at-mostp fn-bpf-fragmentp-fields
+                           fn-bpf-fragment-listp-car-and-cdr
+                           fn-bpn-report-at-most-is-length fn-bpp-dtn-sspp
+                           fn-bpp-vchar-listp fn-cbor-octet-listp)))
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnp-forward-plan-rows (ordered table seen)

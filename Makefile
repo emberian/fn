@@ -1211,10 +1211,11 @@ check:
 # archived manifests, the tested and deployed images' source digests); this
 # fails when it is stale or names something absent.
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
-# Newest measured attempts at each current book/include closure, grouped by
-# host and toolchain. The ten-second rule is a ratchet over
-# planning/proof-cost-baseline.json: a new slow book, or one 25% over its
-# baseline, fails. Installed pairs have no proof time.
+# The fastest passed attempt at each current book/include closure, grouped by
+# host and toolchain. The ten-second rule (D26) over
+# planning/proof-cost-baseline.json: a new book conclusively (quietly) over
+# 11 s, or a baseline book whose prover steps rose over 10%, fails; a loaded
+# figure is UNQUIET, a failed attempt FAILED. Installed pairs have no proof time.
 	@$(CHECK_STEP) $(PYTHON) tools/proof_cost.py
 # The throughput gate (PKT-407): the newest hbox run under
 # planning/evidence/throughput/ for HEAD or its nearest measured ancestor,
