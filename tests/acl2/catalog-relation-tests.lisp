@@ -125,7 +125,7 @@
 ; materialize to the history's article): loading keeps it out.
 (defconst *crl-c-bad*
   (list (fn-cat-assign (fn-held-make 0 1 1 "<z@x>" 0 '("fn.test") "o" "s" "e" 1 5
-                                     (fn-hf-make 1 nil 0) (fn-hc-make nil nil 0) nil nil)
+                                     (fn-hf-make 1 nil 0 nil) (fn-hc-make nil nil 0) nil nil)
                        nil)
         (nth 1 *crl-c*)))
 (defthm crl-w-load-without-relation

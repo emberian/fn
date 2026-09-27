@@ -39,7 +39,7 @@
 
 (defun cat-held (seq msgid groups octets)
   (fn-held-make seq (+ 1 seq) 0 msgid seq groups "o" "s" "e" 1 5
-                (fn-hf-make octets 14 2) (fn-hc-make :unverified nil 0) nil nil))
+                (fn-hf-make octets 14 2 nil) (fn-hc-make :unverified nil 0) nil nil))
 
 (defconst *cat-h0* (cat-held 0 "<a@x>" '("fn.test") 100))
 (defconst *cat-h1* (cat-held 1 "<b@x>" '("fn.test") 200))

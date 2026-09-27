@@ -199,13 +199,20 @@
       (fn-record-octets-string (car (caddr classified)))
     nil))
 
-; (:withdrawal TARGET CAUSE PRINCIPAL SCOPE GENERATION)
+; (:withdrawal TARGET CAUSE PRINCIPAL SCOPE GENERATION TLOCKS)
+; TLOCKS is the target's sha256 Cancel-Lock entries as the Store's history
+; holds them (the CONTROL fact of the target's row, books/held-record.lisp),
+; the one thing a key record needs from its target.  The plan makes a record
+; with none; the refresh that holds the history resolves it
+; (`fn-ctl-w-with-tlocks'; books/control-visible.lisp).  After the records
+; flip the archive's article holds a HANDLE, not the octets, so the target's
+; locks can no longer be read from the article (flip-L8-2, 2026-09-27).
 (defun fn-ctl-withdrawal-make (target cause principal scope generation)
   (declare (xargs :guard t))
-  (list :withdrawal target cause principal scope generation))
+  (list :withdrawal target cause principal scope generation nil))
 (defun fn-ctl-withdrawalp (w)
   (declare (xargs :guard t))
-  (and (true-listp w) (equal (len w) 6) (eq (car w) :withdrawal)))
+  (and (true-listp w) (equal (len w) 7) (eq (car w) :withdrawal)))
 ;; A total positional accessor.
 (defun fn-ctl-at (n x)
   (declare (xargs :guard t :measure (nfix n)))
@@ -217,6 +224,29 @@
 (defun fn-ctl-w-principal (w) (declare (xargs :guard t)) (fn-ctl-at 3 w))
 (defun fn-ctl-w-scope (w) (declare (xargs :guard t)) (fn-ctl-at 4 w))
 (defun fn-ctl-w-generation (w) (declare (xargs :guard t)) (fn-ctl-at 5 w))
+(defun fn-ctl-w-tlocks (w) (declare (xargs :guard t)) (fn-ctl-at 6 w))
+
+; The record W with its target's locks resolved to TLOCKS; anything that is
+; not a record is left as it is.
+(defun fn-ctl-w-with-tlocks (w tlocks)
+  (declare (xargs :guard t))
+  (if (fn-ctl-withdrawalp w)
+      (list :withdrawal (fn-ctl-w-target w) (fn-ctl-w-cause w)
+            (fn-ctl-w-principal w) (fn-ctl-w-scope w) (fn-ctl-w-generation w)
+            tlocks)
+    w))
+
+(defthm fn-ctl-w-with-tlocks-fields
+  (and (equal (fn-ctl-withdrawalp (fn-ctl-w-with-tlocks w tlocks))
+              (fn-ctl-withdrawalp w))
+       (equal (fn-ctl-w-target (fn-ctl-w-with-tlocks w tlocks)) (fn-ctl-w-target w))
+       (equal (fn-ctl-w-cause (fn-ctl-w-with-tlocks w tlocks)) (fn-ctl-w-cause w))
+       (equal (fn-ctl-w-principal (fn-ctl-w-with-tlocks w tlocks)) (fn-ctl-w-principal w))
+       (equal (fn-ctl-w-scope (fn-ctl-w-with-tlocks w tlocks)) (fn-ctl-w-scope w))
+       (equal (fn-ctl-w-generation (fn-ctl-w-with-tlocks w tlocks))
+              (fn-ctl-w-generation w))
+       (equal (fn-ctl-w-tlocks (fn-ctl-w-with-tlocks w tlocks))
+              (if (fn-ctl-withdrawalp w) tlocks (fn-ctl-w-tlocks w)))))
 
 ; The decision made when a withdrawing article commits, under the
 ; configuration CFG it commits under (generation and authorities slot).  It
@@ -387,6 +417,40 @@
   (declare (xargs :guard t))
   (fn-ctl-cancel-locks (fn-ctl-received-fields received)))
 
+; The CONTROL fact of an article's octets, decided once at intern
+; (books/catalog-record.lisp fn-held-facts-of, the row's facts): its target,
+; its Cancel-Key entries and its Cancel-Lock entries, from ONE parse of its
+; header.  Each component is the reader above (`fn-ctl-control-of-fields').
+(defun fn-ctl-control-of (received)
+  (declare (xargs :guard t))
+  (let ((fields (fn-ctl-received-fields received)))
+    (list (fn-ctl-article-target fields)
+          (fn-ctl-cancel-keys fields)
+          (fn-ctl-cancel-locks fields))))
+
+(defun fn-ctl-control-target (c) (declare (xargs :guard t)) (fn-ctl-at 0 c))
+(defun fn-ctl-control-keys (c) (declare (xargs :guard t)) (fn-ctl-at 1 c))
+(defun fn-ctl-control-locks (c) (declare (xargs :guard t)) (fn-ctl-at 2 c))
+
+(defthm fn-ctl-article-target-of-nil
+  (equal (fn-ctl-article-target nil) nil)
+  :hints (("Goal" :in-theory (enable fn-ctl-article-target))))
+
+(defthm fn-ctl-control-of-fields
+  (and (equal (fn-ctl-control-target (fn-ctl-control-of received))
+              (fn-ctl-target-octets received))
+       (equal (fn-ctl-control-keys (fn-ctl-control-of received))
+              (fn-ctl-keys-octets received))
+       (equal (fn-ctl-control-locks (fn-ctl-control-of received))
+              (fn-ctl-locks-octets received)))
+  :hints (("Goal" :in-theory (disable fn-ctl-article-target fn-ctl-cancel-keys
+                                      fn-ctl-cancel-locks fn-article-parse))))
+
+(defthm fn-ctl-true-listp-of-control-of
+  (true-listp (fn-ctl-control-of received)))
+
+(in-theory (disable fn-ctl-control-of))
+
 ; The lock a key opens: c-lock-string = Base64(hash(Base64(K))) where the
 ; key entry IS Base64(K) (RFC 8315 sections 2.1 and 2.2), so the hash is over
 ; the key's octets as they appear in the field.
@@ -417,8 +481,12 @@
   (and (consp p) (eq (car p) :cancel-key)))
 
 ; The effect of a withdrawal record on its target, from the target's
-; accepted group bindings T-GROUPS, its stored verdict T-VERDICT and its
-; octets T-RECEIVED (read only for a key record).
+; accepted group bindings T-GROUPS and its stored verdict T-VERDICT; a key
+; record reads the target's locks it carries (`fn-ctl-w-tlocks').
+; T-RECEIVED is retired: it was the target's octets, and after the records
+; flip an article holds a handle, so no caller can supply them; the formal
+; stays until its callers (books/post-identity-index.lisp among them) drop
+; it (flip-L8-2's follow-up).
 ;   :author     the target's verdict names the canceller (verified or
 ;               carried; a forgery carrying P's name is P's to withdraw);
 ;   :poster     the record is a key record and one of its keys opens one of
@@ -430,7 +498,7 @@
 ;   (:decline REASON) otherwise.  A key record has no scope: it never
 ;   reaches the authority arm.
 (defun fn-ctl-withdrawal-effect (w t-groups t-verdict t-received)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t) (ignore t-received))
   (let ((named (fn-ctl-named-principal t-verdict))
         (scope (fn-ctl-w-scope w)))
     (cond ((not (fn-ctl-withdrawalp w)) (list :decline :no-record))
@@ -438,7 +506,7 @@
           ((and named (equal named (fn-ctl-w-principal w))) :author)
           ((fn-ctl-key-principalp (fn-ctl-w-principal w))
            (if (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))
-                                        (fn-ctl-locks-octets t-received))
+                                        (fn-ctl-w-tlocks w))
                :poster
              (list :decline :no-lock-match)))
           ((not (consp scope)) (list :decline :no-grant))
@@ -527,7 +595,9 @@
 ; verdict and target (`fn-ctl-article-target').  A record is decided under the configuration in force at
 ; its cancel's txid, never under today's.  An entry may carry a fifth
 ; element, the cause's Cancel-Key entries (`fn-ctl-keys-octets'; SEC-006);
-; a four-element entry has none.
+; a four-element entry has none; and a sixth, the target's Cancel-Lock
+; entries as the history holds them, which the record carries
+; (`fn-ctl-w-tlocks'; books/control-visible.lisp fn-ctl-archive-entries).
 
 (defun fn-ctl-configs-through (txid configs)
   (declare (xargs :guard t))
@@ -557,7 +627,9 @@
                     (fn-ctl-at 4 e)
                     (fn-ctl-config-at (fn-ctl-at 0 e) configs)))
              (rest (fn-ctl-journal-withdrawals (cdr entries) configs)))
-        (if (fn-ctl-withdrawalp plan) (cons plan rest) rest))
+        (if (fn-ctl-withdrawalp plan)
+            (cons (fn-ctl-w-with-tlocks plan (fn-ctl-at 5 e)) rest)
+          rest))
     nil))
 
 ; =============================================================================
@@ -798,6 +870,13 @@
   :hints (("Goal" :in-theory (enable fn-ctl-named-principal
                                      fn-ctl-principal-hex))))
 
+; No record reads the target's octets (T-RECEIVED is retired; a key record
+; reads the locks it carries).
+(defthm fn-ctl-withdrawal-effect-ignores-the-octets
+  (equal (fn-ctl-withdrawal-effect w t-groups t-verdict r1)
+         (fn-ctl-withdrawal-effect w t-groups t-verdict r2))
+  :rule-classes nil)
+
 ; A record that is not a key record never reads the target's octets.
 (defthm fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets
   (implies (not (fn-ctl-key-principalp (fn-ctl-w-principal w)))
@@ -815,7 +894,7 @@
   (implies (and (fn-ctl-withdrawalp w)
                 (fn-ctl-key-principalp (fn-ctl-w-principal w))
                 (not (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))
-                                              (fn-ctl-locks-octets t-received))))
+                                              (fn-ctl-w-tlocks w))))
            (equal (fn-ctl-withdrawal-effect w t-groups t-verdict t-received)
                   (list :decline :no-lock-match)))
   :hints (("Goal" :in-theory (disable fn-ctl-named-principal
@@ -837,7 +916,7 @@
                            (fn-ctl-w-principal w)))
                (and (fn-ctl-key-principalp (fn-ctl-w-principal w))
                     (fn-ctl-some-key-opens-p (cdr (fn-ctl-w-principal w))
-                                             (fn-ctl-locks-octets t-received)))
+                                             (fn-ctl-w-tlocks w)))
                (and (consp (fn-ctl-w-scope w))
                     (consp t-groups)
                     (fn-ctl-covers-every-p (fn-ctl-w-scope w) t-groups))))
@@ -854,15 +933,18 @@
 ; the target or holds cancel grants covering every group the target is
 ; served in (D29, unchanged), or this node verified no principal for the
 ; cause and one of its Cancel-Key entries opens one of the target's sha256
-; Cancel-Locks (RFC 8315).  On the node that injected both, the lock and the
+; Cancel-Locks (RFC 8315), TLOCKS: the locks of the target's row the record
+; carries (`fn-ctl-w-with-tlocks').  On the node that injected both, the lock and the
 ; key are keyed by the posting login (books/cancel-lock.lisp), so there the
-; second basis is the posting login.  Subject: `fn-ctl-withdrawal-plan' and
-; `fn-ctl-withdrawal-effect', composed as `fn-ctl-journal-withdrawals' and
-; `fn-ctl-withdrawn-by-p' compose them; the owner refresh
-; (`fn-ctl-refresh-withdrawals', books/control-visible.lisp) is the host's
-; call (books/owner.lisp fn-own-refresh).
+; second basis is the posting login.  Subject: `fn-ctl-withdrawal-plan',
+; resolved by `fn-ctl-w-with-tlocks', and `fn-ctl-withdrawal-effect',
+; composed as `fn-ctl-journal-withdrawals' and `fn-ctl-withdrawn-by-p'
+; compose them; the owner refresh (`fn-ctl-refresh-withdrawals',
+; books/control-visible.lisp) is the host's call (books/owner.lisp
+; fn-own-refresh).
 (defthm fn-ctl-withdrawal-authority-is-exactly-signer-or-poster
-  (let ((w (fn-ctl-withdrawal-plan cause verdict target keys cfg)))
+  (let ((w (fn-ctl-w-with-tlocks (fn-ctl-withdrawal-plan cause verdict target keys cfg)
+                                 tlocks)))
     (iff (and (fn-ctl-withdrawalp w)
               (fn-ctl-effect-withdrawsp
                (fn-ctl-withdrawal-effect w t-groups t-verdict t-received)))
@@ -878,8 +960,7 @@
                                     (fn-cfg-authorities (fn-cfg-value cfg)))))
                         (and (consp scope) (consp t-groups)
                              (fn-ctl-covers-every-p scope t-groups))))
-                (fn-ctl-some-key-opens-p keys
-                                         (fn-ctl-locks-octets t-received)))))))
+                (fn-ctl-some-key-opens-p keys tlocks))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-ctl-named-principal
                                       fn-ctl-covers-every-p

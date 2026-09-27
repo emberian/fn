@@ -30,7 +30,7 @@
 
 (defun cnxt-held (seq msgid groups)
   (fn-held-make seq (+ 1 seq) 0 msgid seq groups "o" "s" "e" 1 5
-                (fn-hf-make 100 14 2) (fn-hc-make :unverified nil 0) nil nil))
+                (fn-hf-make 100 14 2 nil) (fn-hc-make :unverified nil 0) nil nil))
 
 (defconst *cnxt-h0* (cnxt-held 0 "<a@x>" '("fn.test")))
 (defconst *cnxt-h1* (cnxt-held 1 "<b@x>" '("fn.test")))
