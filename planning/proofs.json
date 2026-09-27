@@ -8018,6 +8018,37 @@
         "fn-bpnjc-close-keeps-the-frontiers",
         "fn-bpnjc-ask-position-bounds"
       ]
+    },
+    {
+      "id": "PRF-227",
+      "milestone": "M5",
+      "title": "The reader opens every connection over the selection's recognised archive and Message-ID trie instead of rebuilding and re-recognising them per connection; a retention commit no longer re-runs the whole-node recogniser on the advanced node",
+      "statement": "(1) The reader open. KEYSTONE fn-rdc-reset-is-served-open (books/reader-open-carried.lisp; hypothesis (fn-rdc-readyp (fn-rdc-selection archive verdicts))): (fn-rdc-reset (fn-rdc-selection archive verdicts) ll bl config observation injection acfg) = (fn-served-pin-verdicts (fn-served-open archive ll bl config observation injection acfg) verdicts). host/reader-host.lisp fn-reader-reset (native host/native/io.lisp fnn-reader-reset, once per accepted connection in fnn-serve-client) calls fn-rdc-reset over the selection fn-reader-use-store / fn-reader-use-seed recorded once per process (fn-rdc-store-selection / fn-rdc-selection, through fnn-reader-select in fnn-reader-prepare). The relation carried: fn-rdc-selection-establishes (no hypothesis beyond readiness): a ready selection's archive satisfies fn-nntp-projectionp and fn-statep and its index is (fn-midx-build (fn-state-articles archive)); fn-rdc-selection-ready-iff-projectable. The reader's archive is immutable under its shared lock (it never commits), so the selection is the establishing entry and no transition needs preservation. Refinement: fn-rdc-served-open-is-served-open (hypotheses (fn-statep archive), index = the archive's trie) over PRF-188's fn-ocar-auth-open-reader-is-auth-open-session. A reset with no ready selection is unreachable in composition (both hosts refuse before any connection) and has no separate arm. (2) The retention commit. books/replay.lisp fn-replay-apply-retention-event's test (fn-node-statep advanced) is (mbt ...), discharged under its guard by fn-replay-advance-preserves-node-statep; its logical definition is unchanged, so every theorem about it stands. Host callers: host/owner-host.lisp fn-owner-finish-submission / fn-owner-finish (through fn-ccar-sn-finish-enabled), fn-owner-prepare-identity (fn-replay-apply-record), host/store-node-host.lisp fn-store-sn-finish, fn-store-sn-known-abort, and every replay at open.",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-001",
+        "PRF-188"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/reader-open-carried.lisp",
+        "tests/acl2/reader-open-carried-tests.lisp",
+        "books/replay.lisp",
+        "planning/evidence/hot-path-fixes-owner-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T010859Z-1095275.json"
+      ],
+      "progress_note": "Lane hot-path-fixes-owner (2026-09-27; PKT-448 (a), (f)). Teeth: tests/acl2/reader-open-carried-tests.lisp: a reachable one-article archive (the reader host's seed) whose selection is ready, the carried reset equal to the reference with the greeting written, the trie and verdicts pinned and the session projected; the Store selection over owner-advance-carried-tests' committed owner store; hypothesis removal for fn-rdc-served-open-is-served-open (a wrong index with fn-statep retained; a corrupted-state archive with the index hypothesis retained) and for fn-rdc-reset-is-served-open (a refused selection); the retention mbt's lemma on the committed store's node, and its failure on a non-node (corrupted-state). Measured at N = 10,000 in the record.",
+      "events": [
+        "fn-rdc-reset-is-served-open",
+        "fn-rdc-selection-establishes",
+        "fn-rdc-selection-ready-iff-projectable",
+        "fn-rdc-served-open-is-served-open",
+        "fn-rdc-projection-is-a-state",
+        "fn-replay-advance-preserves-node-statep"
+      ]
     }
   ]
 }

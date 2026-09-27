@@ -967,6 +967,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-reply-buffer-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	books/reader-open-carried \
+	tests/acl2/reader-open-carried-tests \
 	tests/acl2/group-number-index-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \

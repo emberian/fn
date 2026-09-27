@@ -32,6 +32,8 @@
 ;; host/owner-host.lisp fn-owner-reply-buffer calls fn-served-reply-to-buffer.
 (include-book "books/served-reply-buffer")
 (include-book "books/owner-open-carried")
+;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
+(include-book "books/reader-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
