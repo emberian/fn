@@ -37,13 +37,13 @@ class Acl2ReceiptBridge:
   store.call('(ld "host/bp-receipt-journal-host.lisp" :ld-error-action :return :ld-error-triples t)')
  def replay(self,records):
   if not records:self.initialized=False;return self
-  if acl2_symbol(self.store.call("(fn-bprj-install "+records_form(records)+" state)"))!="ready": raise JournalFault("ACL2 rejected receiver journal")
+  if acl2_symbol(self.store.call("(fn-bprj-install "+records_form(records)+" fn-arena state)"))!="ready": raise JournalFault("ACL2 rejected receiver journal")
   self.initialized=True;return self
  def valid_config(self,record): return acl2_boolean(
   self.store.call("(fn-bprj-valid-config "+record_form(record)+" state)"))
- def preflight(self,record): return acl2_symbol(self.store.call("(fn-bprj-preflight "+record_form(record)+" state)"))=="ready"
+ def preflight(self,record): return acl2_symbol(self.store.call("(fn-bprj-preflight "+record_form(record)+" fn-arena state)"))=="ready"
  def apply(self,record):
-  if acl2_symbol(self.store.call("(fn-bprj-apply "+record_form(record)+" state)"))!="ready": raise JournalFault("ACL2 rejected durable receiver record")
+  if acl2_symbol(self.store.call("(fn-bprj-apply "+record_form(record)+" fn-arena state)"))!="ready": raise JournalFault("ACL2 rejected durable receiver record")
  def preview_receipt(self,work_id,receipt_id):
   return acl2_octets(self.store.call("(fn-bprj-preview-receipt "+_string(work_id)+" "+_string(receipt_id)+" state)"))
  def receipt_adu(self,request_adu): return acl2_octets(self.store.call("(fn-bprj-receipt-adu "+_octets(request_adu)+" state)"))
