@@ -879,3 +879,12 @@
 (assert-event (fn-peer-moderated-namesp
                (fn-pending-groups (fn-state-pending (fn-node-acceptance (nth 0 *pt-mt3*))))
                (fn-cfg-value *pt-cfg-mod*) 2))
+
+; -----------------------------------------------------------------------------
+; PKT-711: fn-peer-full-store-is-a-retry-code, the witnesses (both commands;
+; the unconditional keystone has no hypothesis to remove).  Before, the full
+; store's :unaffordable was TAKETHIS's drop code 439.
+(assert-event (equal (fn-peer-transit-code :takethis '(:want nil) :unaffordable) 436))
+(assert-event (equal (fn-peer-transit-code :ihave '(:want nil) :unaffordable) 436))
+; Another Store refusal keeps the drop code: the retry class is capacity's.
+(assert-event (equal (fn-peer-transit-code :takethis '(:want nil) :conflict) 439))

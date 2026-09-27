@@ -168,10 +168,28 @@ profile's."
            (< 0 (fn-feed-inflight-count (fn-feed-queue f))))
        t))
 
+;; PKT-711: entries the peer deferred (431/436: a full Store, a busy or
+;; fenced peer) or that a lost connection returned: queued again with an
+;; attempt counted.  While any is there the peer is not taking this node's
+;; articles, even with a connection open.
+(defun fn-nh-deferred-count (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (+ (if (and (equal (fn-feed-entry-state (car xs)) :queued)
+                  (posp (fn-feed-entry-attempts (car xs))))
+             1 0)
+         (fn-nh-deferred-count (cdr xs)))
+    0))
+
+(defun fn-nh-feed-deferredp (f)
+  (declare (xargs :guard t))
+  (< 0 (fn-nh-deferred-count (fn-feed-queue f))))
+
 (defun fn-nh-feed-unavailablep (f)
   (declare (xargs :guard t))
-  (and (fn-nh-feed-pendingp f)
-       (not (natp (fn-feed-conn f)))))
+  (or (and (fn-nh-feed-pendingp f)
+           (not (natp (fn-feed-conn f))))
+      (fn-nh-feed-deferredp f)))
 
 (defun fn-nh-stranded-peers (tbl)
   (declare (xargs :guard t))
@@ -188,6 +206,13 @@ profile's."
   (if (consp tbl)
       (+ (fn-nh-dropped-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
          (fn-nh-stranded-count (cdr tbl)))
+    0))
+
+(defun fn-nh-deferred-total (tbl)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (+ (fn-nh-deferred-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
+         (fn-nh-deferred-total (cdr tbl)))
     0))
 
 (defun fn-nh-unavailable-peers (tbl)
@@ -348,7 +373,8 @@ profile's."
   (if (equal feeds :unobserved)
       *fn-nh-no-owner*
     (fn-nh-outcome (consp (fn-nh-unavailable-peers feeds))
-                   (append (fn-nls-text " peers:")
+                   (append (fn-nls-field "deferred" (fn-nh-deferred-total feeds))
+                           (fn-nls-text " peers:")
                            (fn-nh-name-list-words (fn-nh-unavailable-peers feeds))))))
 
 (defun fn-nh-o-debt (store)
@@ -637,6 +663,25 @@ and feed table, with the committed octets extended from the carried sum."
                                   (fn-nh-o-fenced fn-nh-o-exhausted fn-nh-o-unqualified
                                    fn-nh-o-pressure fn-nh-o-no-route fn-nh-o-stranded
                                    fn-nh-o-unavailable fn-nh-o-debt)))))
+
+;; KEYSTONE (PKT-711).  While a peer defers any of this node's articles (a
+;; full Store answers 436), `health' holds unavailable-peer: the node is
+;; never reported healthy while a peer is not taking its articles.  Host:
+;; host/native-live-status-host.lisp's live health report renders
+;; fn-nh-verdict over the owner's feed table.
+(local
+ (defthm fn-nh-unavailable-peers-of-a-deferring-member
+   (implies (and (member-equal e tbl)
+                 (fn-nh-feed-deferredp (fn-own-feed-entry-feed e)))
+            (consp (fn-nh-unavailable-peers tbl)))
+   :hints (("Goal" :in-theory (disable fn-nh-feed-deferredp)))))
+
+(defthm fn-nh-deferring-peer-is-held
+  (implies (and (member-equal e feeds)
+                (fn-nh-feed-deferredp (fn-own-feed-entry-feed e)))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+  :hints (("Goal" :in-theory (disable fn-nh-verdict fn-nh-feed-deferredp fn-nh-nth)
+           :use ((:instance fn-nh-verdict-states)))))
 
 (local
  (defthm fn-nh-first-held-index-bounds
