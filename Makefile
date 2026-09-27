@@ -362,6 +362,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-holders-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/store-reclaim-stream \
+	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \

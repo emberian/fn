@@ -896,10 +896,17 @@ kept, and a rerun continues from them."
                          (fnn-transactions store) (fnn-config-max-transactions store)
                          "transaction namespace")
                         #'string<))
-           (decision (fnn-core-state 'fn-store-reclaim-decide
+           (clock (fnn-store-prepare-observation))
+           ;; One record's octet list at a time (books/store-reclaim-stream.lisp,
+           ;; PKT-686): never the history's.
+           (ctx (fnn-core-state 'fn-store-reclaim-context clock))
+           (acc (let ((acc (fnn-core 'fn-store-reclaim-init)))
+                  (dolist (record records acc)
+                    (setq acc (fnn-core 'fn-store-reclaim-step acc
+                                        (fnn-octet-list record) ctx)))))
+           (decision (fnn-core-state 'fn-store-reclaim-decide-stream
                                      (fnn-store-config store)
-                                     (fnn-store-prepare-observation)
-                                     (mapcar #'fnn-octet-list records)
+                                     clock acc
                                      (fnn-store-frontier store)
                                      lower names retirable
                                      selected
