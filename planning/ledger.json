@@ -1223,7 +1223,7 @@
     "export_hygiene_warnings": 212,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 213,
-    "include_hygiene_warnings": 1334,
+    "include_hygiene_warnings": 1335,
     "host_names_warnings": 1375,
     "hand_written_record_warnings": 18
   },
@@ -31346,11 +31346,12 @@
       "assert_events": 3,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 7,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-refresh-indexed",
+        "arena-lift",
         "owner-cancel-refresh-tests"
       ],
       "system_includes": [],
@@ -48693,6 +48694,13 @@
         "line": 13,
         "include": "owner-cancel-refresh-tests",
         "included": "tests/acl2/owner-cancel-refresh-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-refresh-indexed-tests.lisp",
+        "line": 28,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
