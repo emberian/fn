@@ -306,11 +306,12 @@
         (load "host/native/bp-node.lisp")
         ; What this image leaves out of the owner and operator it loaded:
         ; the NNTP service (TLS, auth, the feed service, the listener), the
-        ; credential store and the control socket.  The operator refuses a
-        ; plan needing one as an unsupported entry (io.lisp
-        ; `*fnn-image-omitted-surfaces*'), and the developer-only raw `owner'
-        ; verb, whose only use is that NNTP service, is withdrawn.
-        (setq *fnn-image-omitted-surfaces* '(:nntp-service :credentials :control))
+        ; credential store and the control socket.  It does not load
+        ; host/native/operator-live.lisp, which registers those surfaces'
+        ; operator actions and the live-owner arms, so the operator refuses
+        ; a plan needing one by the surface's name (the usage exit) and
+        ; takes the offline arms; the developer-only raw `owner' verb,
+        ; whose only use is that NNTP service, is withdrawn.
         (fnn-unregister-verb "owner")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The

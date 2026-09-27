@@ -1893,7 +1893,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
    (lambda ()
      (let* ((entropy-id
               (and (eq operation :install)
-                   (fnn-octet-list (fnn-anchor-csprng-nonce 32))))
+                   (fnn-csprng-octets 32 "topic installed ID")))
             (proposal
               (fnn-owner-core 'fn-owner-topic-propose
                               operation source-sequence observed-uid

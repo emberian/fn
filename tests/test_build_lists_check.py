@@ -218,9 +218,19 @@ class BuildListsCheckTests(unittest.TestCase):
         reason, _ = omitted["host/native-control-host.lisp"]
         omitted["host/native-control-host.lisp"] = (reason, {})
         found = check.findings(omitted=omitted)
-        self.assertTrue(any("host/native/operator.lisp names "
-                            "'fn-native-control-host-status-exit-code"
+        self.assertTrue(any("host/native/owner.lisp names "
+                            "'fn-native-control-host-refusal-status"
                             in line for line in found), found)
+
+    def test_an_excuse_nothing_needs_is_stale(self):
+        omitted = dict(check.DTN_OMITTED)
+        reason, allowed = omitted["host/native-control-host.lisp"]
+        omitted["host/native-control-host.lisp"] = (
+            reason, {**allowed, "fn-native-control-host-liveness": "pretend"})
+        found = check.findings(omitted=omitted)
+        self.assertEqual(found, ["stale: DTN_OMITTED excuses fn-native-control-host-liveness "
+                                 "(host/native-control-host.lisp), which nothing "
+                                 "host/native/build-dtn.lisp loads names any more"])
 
     def test_unexplained_omission_is_found(self):
         omitted = dict(check.DTN_OMITTED)
@@ -251,13 +261,30 @@ class BuildListsCheckTests(unittest.TestCase):
                           "defined only in host/native/checkpoint.lisp", "\n".join(found))
 
     def test_unlisted_raw_reach_is_found(self):
-        reach = dict(check.DTN_RAW_REACH)
-        del reach[("host/native/operator.lisp", "fnn-native-auth-admin-execute")]
-        found = check.findings(reach=reach)
-        self.assertEqual(found, ["raw: host/native/operator.lisp calls "
-                                 "fnn-native-auth-admin-execute, defined only in "
-                                 "host/native/auth-admin.lisp, which "
-                                 "host/native/build-dtn.lisp does not load"])
+        # Batch AX: at 6f397c158 the DTN image's operator.lisp called the
+        # live surfaces (auth-admin, control, tls-reload, ...) behind a
+        # run-time flag.  Restore that operator.lisp.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(ROOT / "host", root / "host")
+            old = subprocess.run(["git", "show", "6f397c158:host/native/operator.lisp"],
+                                 cwd=ROOT, check=True, capture_output=True,
+                                 text=True).stdout
+            (root / "host/native/operator.lisp").write_text(old)
+            found = check.findings(root=root)
+        self.assertIn("raw: host/native/operator.lisp calls fnn-native-auth-admin-execute, "
+                      "defined only in host/native/auth-admin.lisp, which "
+                      "host/native/build-dtn.lisp does not load", found)
+        self.assertIn("raw: host/native/operator.lisp calls fnn-control-live-status, "
+                      "defined only in host/native/control.lisp, which "
+                      "host/native/build-dtn.lisp does not load", found)
+
+    def test_an_unused_raw_reach_excuse_is_stale(self):
+        found = check.findings(reach={("host/native/operator.lisp",
+                                       "fnn-native-auth-admin-execute"): "pretend"})
+        self.assertEqual(found, ["stale: DTN_RAW_REACH excuses host/native/operator.lisp "
+                                 "calling fnn-native-auth-admin-execute, which it no longer "
+                                 "does (or the DTN image now loads its definition)"])
 
     def test_missing_buffer_includes_are_found(self):
         # native-drift-2026-09-25 finding 3: at 32842f50 build-dtn.lisp did
