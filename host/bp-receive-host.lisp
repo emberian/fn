@@ -20,13 +20,15 @@
 ; checked Store predicate fn-bpr-store-record-acceptedp under
 ; fn-sn-statep and fn-ceis-indexedp); no history walk and no whole-Store
 ; recognizer per request (PRF-220, PKT-448 (a), (g)).
-(defun fn-bpreq-existing-record (adu fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-bpreq-existing-record (adu fn-arena fn-hist state)
+ (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
  (let* ((request (fn-bpreq-request adu))
-        (store (f-get-global 'fn-store-sn state))
-        (lookup (and request (fn-bpaj-record-lookup-fast store request fn-arena))))
-  (value (if (equal (car lookup) :found)
-             (fn-record-encode (cadr lookup)) nil))))
+        (store (f-get-global 'fn-store-sn state)))
+  (mv-let (fn-hist state) (fn-host-hist-sync store fn-hist state)
+   (let ((lookup (and request (fn-bpaj-record-lookup-fast store request fn-arena fn-hist))))
+    (mv nil (if (equal (car lookup) :found)
+                (fn-record-encode (cadr lookup)) nil)
+        fn-hist state)))))
 (defun fn-bpreq-request-status (adu state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((request (fn-bpreq-request adu))

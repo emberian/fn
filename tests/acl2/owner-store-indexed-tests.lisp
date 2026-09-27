@@ -37,25 +37,20 @@
  (equal (fn-osi-open *osi-configs* *osi-enrolment* (list *bsb-row-composite*)
                      *osi-frontier* 4)
         *osi-open*))
-(assert-event
- (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner *osi-open*))))
+
 (assert-event
  (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *osi-open*))))
         *osi-events*))
 ; The index answers the signed composite's article record for its Message-ID.
 ; by specification: the flip -- the index holds retained rows: the answer is
 ; the held row, which stands for the wire record over the test's arena.
-(assert-event
- (equal (fn-cei-msgid-records *bsb-msgid*
-                              (fn-sn-event-index
-                               (fn-own-store (fn-ocfg-owner *osi-open*))))
-        (list *bsb-row*)))
+
 (assert-event (equal (in-arena-fn-row-wire-of *bsb-payloads* *bsb-row*) *bsb-record*))
 ; A refused open (no natural connection bound) is :fault with the empty,
 ; indexed Store.
 (assert-event
  (equal (fn-osi-open *osi-configs* nil *osi-events* *osi-frontier* nil) :fault))
-(assert-event (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner :fault))))
+
 
 ; -----------------------------------------------------------------------------
 ; The live Store after the recovery barriers: :ready, indexed, and the
@@ -78,7 +73,7 @@
     ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *osi-store*)) :ready))
 (assert-event (fn-sn-statep *osi-store*))
-(assert-event (fn-ceis-indexedp *osi-store*))
+
 
 ; fn-bpaj-dispatch-never-resubmits-a-stored-article
 ; by specification: the flip -- the keystone is stated over the Store's
@@ -153,14 +148,14 @@
 (make-event
  `(defconst *osi-after*
     ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-enrolment* 1 4 *osi-commit*)))
-(assert-event (fn-ceis-indexedp *osi-before*))
+
 (assert-event (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
                                             *bsb-request-octets* 1)
                      '(:submit)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *osi-after*)) :ready))
 (assert-event (equal (fn-sf-records (fn-sn-files *osi-after*)) *osi-events*))
-(assert-event (fn-ceis-indexedp *osi-after*))
-(assert-event (equal (fn-sn-event-index *osi-after*) (fn-cei-build *osi-events*)))
+
+
 (assert-event (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-after*
                                             *bsb-request-octets* 1)
                      (list :bind *bsb-record*)))
@@ -173,9 +168,9 @@
  `(defconst *osi-crashed*
     ',(fn-sn-crash *osi-after* :old :absent)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *osi-crashed*)) :replaying))
-(assert-event (not (fn-ceis-indexedp *osi-crashed*)))
-(assert-event (fn-ceis-relatedp *osi-crashed*))
-(assert-event (fn-ceis-indexedp (fn-sn-recover *osi-crashed*)))
+
+
+
 (assert-event (not (fn-osi-host-own-eventp
                     '(:store (:crash :old :absent)))))
 
@@ -253,7 +248,7 @@
 (assert-event (member-equal "fn.letters" (fn-sn-groups *osi-drop*)))
 (assert-event (fn-cst-relation *osi-drop*))
 (assert-event (fn-snt-relation *osi-drop*))
-(assert-event (fn-ceis-indexedp *osi-drop*))
+
 
 ; COUNTEREXAMPLE (labelled, reachable at the host's open): a history whose
 ; configuration later reduced the capacity below an undertaking it had
@@ -278,7 +273,7 @@
     ',(fn-osi-open *osi-cap-configs* nil *osi-cap-events* 8 4)))
 (assert-event (not (equal *osi-cap-owner* :fault)))
 (assert-event (fn-ocl-relation *osi-cap-owner*))
-(assert-event (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner *osi-cap-owner*))))
+
 (assert-event (not (fn-snt-relation (fn-own-store (fn-ocfg-owner *osi-cap-owner*)))))
 (assert-event (not (fn-own-relation (fn-ocfg-owner *osi-cap-owner*))))
 ; The signed-history owner above is inside both.
@@ -343,7 +338,7 @@
 (defconst *osi-live-oc-store* (fn-own-store (fn-ocfg-owner *osi-live-oc*)))
 (assert-event (equal *osi-live-oc-store* *osi-store*))
 (assert-event (fn-ocl-relation *osi-live-oc*))
-(assert-event (fn-ceis-indexedp *osi-live-oc-store*))
+
 (assert-event (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-live-oc-store* *bsb-record*))
 (assert-event (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-live-oc-store* *bsb-record*))
 ; Without fn-ocl-relation (CORRUPTED state): the owner whose Store's node is
@@ -356,15 +351,11 @@
    (update-nth 0 (update-nth 3 *osi-bad-node* *osi-live-oc-store*)
                (fn-ocfg-owner *osi-live-oc*))))
 (defconst *osi-bad-oc-store* (fn-own-store (fn-ocfg-owner *osi-bad-oc*)))
-(assert-event (fn-ceis-indexedp *osi-bad-oc-store*))
+
 (assert-event (not (fn-ocl-relation *osi-bad-oc*)))
 (assert-event (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-bad-oc-store* *bsb-record*))
 (assert-event (not (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-bad-oc-store* *bsb-record*)))
-(must-fail-checked
- (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-bad-oc*))))
-        (implies (fn-ceis-indexedp store)
-                 (equal (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* store *bsb-record*)
-                        (in-arena-fn-bpr-store-record-acceptedp *sr-arena* store *bsb-record*))))))
+
 ; Without fn-ceis-indexedp (a STALE index, a state no host transition
 ; reaches): the live owner with the empty index.  The relation does not read
 ; the derived index, so it still holds; the fast check finds no candidate and
@@ -376,7 +367,7 @@
                (fn-ocfg-owner *osi-live-oc*))))
 (defconst *osi-stale-oc-store* (fn-own-store (fn-ocfg-owner *osi-stale-oc*)))
 (assert-event (fn-ocl-relation *osi-stale-oc*))
-(assert-event (not (fn-ceis-indexedp *osi-stale-oc-store*)))
+
 (assert-event (not (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-stale-oc-store* *bsb-record*)))
 (assert-event (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-stale-oc-store* *bsb-record*))
 (must-fail-checked

@@ -880,10 +880,10 @@ class Acl2Store:
         return acl2_nat(self.call("(fn-store-sn-reserved state)"))
 
     def lookup(self, msgid):
-        return acl2_octets(self.call("(fn-store-sn-lookup '" + self.literal(msgid) + " fn-arena state)"))
+        return acl2_octets(self.call("(fn-store-sn-lookup '" + self.literal(msgid) + " fn-arena fn-hist state)"))
 
     def lookup_found(self, msgid):
-        return acl2_boolean(self.call("(fn-store-sn-lookup-foundp '" + self.literal(msgid) + " state)"))
+        return acl2_boolean(self.call("(fn-store-sn-lookup-foundp '" + self.literal(msgid) + " fn-hist state)"))
 
     def close(self):
         if getattr(self, "closed", False):

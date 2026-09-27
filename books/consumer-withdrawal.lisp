@@ -233,8 +233,8 @@
 ; (:withdrawal CURSOR-OCTETS TARGET), (:scan EVENT) with the event the
 ; poll's scan selected (nil for none), or the poll's refusal.
 
-(defun fn-cwd-poll (o consumer)
-  (declare (xargs :guard t
+(defun fn-cwd-poll (o consumer fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-cwd-scan)))))
   (let* ((store (fn-own-store o))
          (s (fn-sn-consumer store))
@@ -246,7 +246,7 @@
              (frontier (fn-cp-nth 3 s))
              (scan (fn-cwd-scan
                     (fn-col-poll-index-window
-                     (fn-sn-event-index store) position frontier
+                     fn-hist position frontier
                      *fn-col-poll-max-scan*)
                     (fn-cp-nth 3 entry) position frontier
                     *fn-col-poll-max-scan*
@@ -269,11 +269,11 @@
   (let ((report (fn-ncr-withdrawal-report (fn-record-string-octets msgid))))
     (if report (list :poll cursor report) (list :refused :report))))
 
-(defun fn-cwd-page (o consumer answer)
-  (declare (xargs :guard t))
+(defun fn-cwd-page (o consumer answer fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t))
   (if (not (and (consp answer) (eq (car answer) :poll)))
       answer
-    (let ((w (fn-cwd-poll o consumer)))
+    (let ((w (fn-cwd-poll o consumer fn-hist)))
       (cond ((eq (car w) :withdrawal)
              (fn-cwd-withdrawal-page (cadr w) (caddr w)))
             ((and (eq (car w) :scan)
@@ -305,7 +305,7 @@
 
 (defthm fn-cwd-poll-of-no-withdrawn
   (implies (null (fn-cwd-withdrawn o))
-           (not (equal (car (fn-cwd-poll o consumer)) :withdrawal)))
+           (not (equal (car (fn-cwd-poll o consumer fn-hist)) :withdrawal)))
   :hints (("Goal" :use ((:instance fn-cwd-scope-entry-is-a-scope-or-a-refusal
                                    (s (fn-sn-consumer (fn-own-store o)))))
            :in-theory (e/d (fn-cwd-poll)
@@ -322,15 +322,15 @@
 ; answer, whatever the answer is.
 (defthm fn-cwd-page-without-withdrawals-is-the-answer
   (implies (null (fn-cwd-withdrawn o))
-           (equal (fn-cwd-page o consumer answer) answer))
+           (equal (fn-cwd-page o consumer answer fn-hist) answer))
   :hints (("Goal" :in-theory (e/d (fn-cwd-page)
                                   (fn-cwd-poll fn-cwd-withdrawn
                                    fn-cwd-event-withdrawn-msgid)))))
 
 ; The event fn-cwd-poll's :scan names is the poll's selected event.
 (defthm fn-cwd-poll-scan-is-the-poll
-  (let ((w (fn-cwd-poll o consumer))
-        (d (fn-col-poll o consumer)))
+  (let ((w (fn-cwd-poll o consumer fn-hist))
+        (d (fn-col-poll o consumer fn-hist)))
     (implies (and (equal (car w) :scan) (equal (car d) :poll))
              (equal (cadr w) (caddr d))))
   :hints (("Goal" :in-theory (e/d (fn-cwd-poll fn-col-poll)
@@ -340,7 +340,7 @@
                                    fn-col-poll-scan fn-cwd-scan))
            :use ((:instance fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal
                             (events (fn-col-poll-index-window
-                                     (fn-sn-event-index (fn-own-store o))
+                                     fn-hist
                                      (fn-cp-nth 7 (fn-cp-nth 1 (fn-col-scope-entry
                                                                 (fn-sn-consumer (fn-own-store o))
                                                                 consumer)))
@@ -370,9 +370,9 @@
 ; When the poll answers a page, the scan with withdrawals stops at a
 ; withdrawal or selects as the poll did.
 (defthm fn-cwd-poll-of-a-page
-  (implies (equal (car (fn-col-poll o consumer)) :poll)
-           (or (equal (car (fn-cwd-poll o consumer)) :withdrawal)
-               (equal (car (fn-cwd-poll o consumer)) :scan)))
+  (implies (equal (car (fn-col-poll o consumer fn-hist)) :poll)
+           (or (equal (car (fn-cwd-poll o consumer fn-hist)) :withdrawal)
+               (equal (car (fn-cwd-poll o consumer fn-hist)) :scan)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cwd-poll fn-col-poll)
                                   (fn-cwd-withdrawn fn-cwd-records
@@ -381,7 +381,7 @@
                                    fn-col-poll-scan fn-cwd-scan))
            :use ((:instance fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal
                             (events (fn-col-poll-index-window
-                                     (fn-sn-event-index (fn-own-store o))
+                                     fn-hist
                                      (fn-cp-nth 7 (fn-cp-nth 1 (fn-col-scope-entry
                                                                 (fn-sn-consumer (fn-own-store o))
                                                                 consumer)))
@@ -401,7 +401,7 @@
                             (s (fn-sn-consumer (fn-own-store o))))
                  (:instance fn-cwd-col-scan-is-a-scan-or-a-refusal
                             (events (fn-col-poll-index-window
-                                     (fn-sn-event-index (fn-own-store o))
+                                     fn-hist
                                      (fn-cp-nth 7 (fn-cp-nth 1 (fn-col-scope-entry
                                                                 (fn-sn-consumer (fn-own-store o))
                                                                 consumer)))
@@ -435,8 +435,8 @@
 ; report `fn-ncr-withdrawal-decode' reads as (:withdrawn MSGID), which holds
 ; the Message-ID and nothing of the article.
 (defthm fn-cwd-page-never-serves-withdrawn-content
-  (let ((r (fn-cwd-page o consumer answer))
-        (d (fn-col-poll o consumer)))
+  (let ((r (fn-cwd-page o consumer answer fn-hist))
+        (d (fn-col-poll o consumer fn-hist)))
     (implies (and (equal (car answer) :poll) (caddr answer)
                   (equal (car d) :poll) (caddr d)
                   (fn-cwd-event-withdrawn-msgid (caddr d) (fn-cwd-withdrawn o)))
@@ -447,12 +447,12 @@
            :use ((:instance fn-cwd-poll-scan-is-the-poll)
                  (:instance fn-cwd-poll-of-a-page)
                  (:instance fn-cwd-withdrawal-page-is-a-withdrawal-or-a-refusal
-                            (cursor (cadr (fn-cwd-poll o consumer)))
-                            (msgid (caddr (fn-cwd-poll o consumer))))
+                            (cursor (cadr (fn-cwd-poll o consumer fn-hist)))
+                            (msgid (caddr (fn-cwd-poll o consumer fn-hist))))
                  (:instance fn-cwd-withdrawal-page-is-a-withdrawal-or-a-refusal
                             (cursor (cadr answer))
                             (msgid (fn-cwd-event-withdrawn-msgid
-                                    (cadr (fn-cwd-poll o consumer))
+                                    (cadr (fn-cwd-poll o consumer fn-hist))
                                     (fn-cwd-withdrawn o)))))
            :in-theory (union-theories '(fn-cwd-page) (theory 'minimal-theory)))))
 
@@ -462,17 +462,17 @@
 ; built from the scan's NEXT (or, for a Message-ID no report can carry, the
 ; refusal by name, never the article).
 (defthm fn-cwd-page-of-a-withdrawal
-  (let ((w (fn-cwd-poll o consumer)))
+  (let ((w (fn-cwd-poll o consumer fn-hist)))
     (implies (and (equal (car answer) :poll)
                   (equal (car w) :withdrawal))
-             (equal (fn-cwd-page o consumer answer)
+             (equal (fn-cwd-page o consumer answer fn-hist)
                     (fn-cwd-withdrawal-page (cadr w) (caddr w)))))
   :hints (("Goal" :in-theory (e/d (fn-cwd-page) (fn-cwd-poll)))))
 
 ; A refusal (the bound gate's, the scope's) is served unchanged.
 (defthm fn-cwd-page-of-a-refusal
   (implies (not (equal (car answer) :poll))
-           (equal (fn-cwd-page o consumer answer) answer))
+           (equal (fn-cwd-page o consumer answer fn-hist) answer))
   :hints (("Goal" :in-theory (enable fn-cwd-page))))
 
 ; -----------------------------------------------------------------------------
@@ -481,14 +481,14 @@
 ; host's wait runs, over the live payload arena (books/consumer-wait.lisp
 ; fn-cwait-poll-over, the records flip).
 
-(defun fn-cwd-wait-page-over (oc acfg consumer secret fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+(defun fn-cwd-wait-page-over (oc acfg consumer secret fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
   (fn-cwd-page (fn-ocfg-owner oc) consumer
-               (fn-cwait-poll-over oc acfg consumer secret fn-arena)))
+               (fn-cwait-poll-over oc acfg consumer secret fn-arena fn-hist) fn-hist))
 
-(defun fn-cwd-wait-step-over (oc acfg consumer secret elapsed seconds fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-cwait-decide (fn-cwd-wait-page-over oc acfg consumer secret fn-arena)
+(defun fn-cwd-wait-step-over (oc acfg consumer secret elapsed seconds fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
+  (fn-cwait-decide (fn-cwd-wait-page-over oc acfg consumer secret fn-arena fn-hist)
                    elapsed seconds))
 
 (local
@@ -499,8 +499,8 @@
 ; exactly the page, or sleeps, only on an empty page before the deadline, as
 ; fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page for the poll.
 (defthm fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page
-  (let ((r (fn-cwd-wait-step-over oc acfg consumer secret elapsed seconds fn-arena))
-        (p (fn-cwd-wait-page-over oc acfg consumer secret fn-arena)))
+  (let ((r (fn-cwd-wait-step-over oc acfg consumer secret elapsed seconds fn-arena fn-hist))
+        (p (fn-cwd-wait-page-over oc acfg consumer secret fn-arena fn-hist)))
     (and (or (equal r (list :answer p))
              (and (equal (car r) :sleep)
                   (fn-cwait-empty-pagep p)

@@ -41,9 +41,9 @@
 ; -----------------------------------------------------------------------------
 ; The bytes.
 
-(defun fn-ofa-feed-article (o msgid fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (fn-handle-bytes (fn-apr-feed-article o msgid) fn-arena))
+(defun fn-ofa-feed-article (o msgid fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :guard t))
+  (fn-handle-bytes (fn-apr-feed-article o msgid fn-hist) fn-arena))
 
 (local
  (defthm fn-ofa-find-article-of-articles-wire-of
@@ -84,8 +84,9 @@
 ; relation; books/acceptance-payload-ref.lisp) it is the octet-list model's
 ; article bytes over the live arena.
 (defthm fn-ofa-feed-article-is-the-feed-article-over-alpha
-  (implies (fn-apr-store-at-restp (fn-own-store o))
-           (equal (fn-ofa-feed-article o msgid fn-arena)
+  (implies (and (fn-apr-store-at-restp (fn-own-store o))
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-ofa-feed-article o msgid fn-arena fn-hist)
                   (fn-ofa-wire-feed-article o msgid fn-arena)))
   :hints (("Goal" :use ((:instance fn-apr-feed-article-is-own-feed-article))
            :in-theory (e/d (fn-own-feed-article)
@@ -97,7 +98,7 @@
 ; octet list whenever the arena is one (fn-arena-p).
 (defthm fn-ofa-feed-article-is-an-octet-list
   (implies (fn-arena-p fn-arena)
-           (fn-cbor-octet-listp (fn-ofa-feed-article o msgid fn-arena)))
+           (fn-cbor-octet-listp (fn-ofa-feed-article o msgid fn-arena fn-hist)))
   :hints (("Goal" :in-theory (e/d (fn-arena-p-is-payload-listp fn-arena-count-is-len
                                    fn-arena-payload-is-nth)
                                   (fn-apr-feed-article)))))

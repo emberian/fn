@@ -49,23 +49,27 @@
                                (fn-bpaj-receiver joined) state)))
     (value :ready)))))
 
-(defun fn-bprj-preflight (record fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
- (value (if (car (fn-bpaj-apply-record-fast
-                  (f-get-global 'fn-bpaj-state state)
-                  (fn-bprj-store state) record fn-arena)) :ready :fault)))
+(defun fn-bprj-preflight (record fn-arena fn-hist state)
+ (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+ ; The history stobj synced to the Store read (R, books/history-columns-relation.lisp).
+ (mv-let (fn-hist state) (fn-host-hist-sync (fn-bprj-store state) fn-hist state)
+  (mv nil (if (car (fn-bpaj-apply-record-fast
+                    (f-get-global 'fn-bpaj-state state)
+                    (fn-bprj-store state) record fn-arena fn-hist)) :ready :fault)
+      fn-hist state)))
 
-(defun fn-bprj-apply (record fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
- (let ((answer (fn-bpaj-apply-record-fast
-                (f-get-global 'fn-bpaj-state state)
-                (fn-bprj-store state) record fn-arena)))
-  (if (not (car answer)) (value :fault)
-   (let* ((joined (fn-bprr-nth 1 answer))
-          (state (f-put-global 'fn-bpaj-state joined state))
-          (state (f-put-global 'fn-bprj-state
-                               (fn-bpaj-receiver joined) state)))
-    (value :ready)))))
+(defun fn-bprj-apply (record fn-arena fn-hist state)
+ (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+ (mv-let (fn-hist state) (fn-host-hist-sync (fn-bprj-store state) fn-hist state)
+  (let ((answer (fn-bpaj-apply-record-fast
+                 (f-get-global 'fn-bpaj-state state)
+                 (fn-bprj-store state) record fn-arena fn-hist)))
+   (if (not (car answer)) (mv nil :fault fn-hist state)
+    (let* ((joined (fn-bprr-nth 1 answer))
+           (state (f-put-global 'fn-bpaj-state joined state))
+           (state (f-put-global 'fn-bprj-state
+                                (fn-bpaj-receiver joined) state)))
+     (mv nil :ready fn-hist state))))))
 
 (defun fn-bprj-preview-receipt (work-id receipt-id state)
  (declare (xargs :stobjs state :mode :program))
@@ -91,11 +95,13 @@
  (value (fn-bpaj-request-status-fast
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
-(defun fn-bprj-request-action (request-octets generation fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
- (value (fn-bpaj-dispatch-fast
-         (f-get-global 'fn-bpaj-state state)
-         (fn-bprj-store state) request-octets generation fn-arena)))
+(defun fn-bprj-request-action (request-octets generation fn-arena fn-hist state)
+ (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+ (mv-let (fn-hist state) (fn-host-hist-sync (fn-bprj-store state) fn-hist state)
+  (mv nil (fn-bpaj-dispatch-fast
+           (f-get-global 'fn-bpaj-state state)
+           (fn-bprj-store state) request-octets generation fn-arena fn-hist)
+      fn-hist state)))
 
 (defun fn-bprj-config-status (destination policy issuer state)
  (declare (xargs :stobjs state :mode :program))

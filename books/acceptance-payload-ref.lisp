@@ -30,7 +30,8 @@
 ; the record's payload becomes an arena handle (records-freeze), the
 ; resolver is the one place that changes.
 (in-package "ACL2")
-(include-book "consumer-event-index-store-invariants")
+(include-book "store-files-traces")
+(include-book "history-columns-relation")
 (include-book "store-node-traces-prepare")
 (include-book "owner")
 
@@ -380,9 +381,9 @@
 ; A Message-ID's payload: the record's, found through the Store's event
 ; index (the record's identity; the catalog's rows replace the index), or
 ; NIL when the history holds no article record for it.
-(defun fn-apr-payload-of (msgid s)
-  (declare (xargs :guard t))
-  (let ((records (fn-cei-msgid-records msgid (fn-sn-event-index s))))
+(defun fn-apr-payload-of (msgid s fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t) (ignorable s))
+  (let ((records (and (stringp msgid) (fn-hist-msgid-records msgid fn-hist))))
     (if (consp records) (fn-record-payload (fn-apr-last records)) nil)))
 
 ; The value a reader of the acceptance field returned: the stored article's
@@ -393,14 +394,13 @@
     (if (consp article) (fn-article-payload article) nil)))
 
 ; The Store's relation at an idle phase, the reference half: the node is the
-; replay of the history (`fn-snt-relation'), and the event index is the
-; history's (`fn-ceis-indexedp', established at every open and preserved by
-; every transition, books/consumer-event-index-store-invariants.lisp).
+; replay of the history (`fn-snt-relation').  The other half is R, the
+; history stobj's relation to the Store (`fn-hist-of-storep',
+; books/history-columns-relation.lisp): each keystone below takes it.
 (defun fn-apr-store-at-restp (s)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-snt-relation s)
-       (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files s)))
-       (fn-ceis-indexedp s)))
+       (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files s)))))
 
 ; At rest the node is the replay of the history, and the index is its fold.
 (defthm fn-apr-at-rest-unfolds
@@ -411,22 +411,21 @@
                                           (fn-sf-frontier (fn-sn-files s))))
                 (consp (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                           (fn-sf-records (fn-sn-files s))
-                                          (fn-sf-frontier (fn-sn-files s))))
-                (fn-cei-correspondencep (fn-sn-event-index s)
-                                        (fn-sf-records (fn-sn-files s)))))
+                                          (fn-sf-frontier (fn-sn-files s))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-apr-store-at-restp fn-snt-relation
-                                fn-sf-history-recoverablep fn-ceis-indexedp)
+                                fn-sf-history-recoverablep)
                               (theory 'minimal-theory)))))
 
 ; The two halves of the relation on a Store at rest, for one Message-ID.
 (local
  (defthm fn-apr-at-rest-lookup
-   (implies (and (fn-apr-store-at-restp s) (stringp msgid))
+   (implies (and (fn-apr-store-at-restp s) (fn-hist-of-storep fn-hist s)
+                 (stringp msgid))
             (let ((articles (fn-stx-store (fn-sn-node s)))
                   (events (fn-sf-records (fn-sn-files s))))
-              (and (equal (fn-cei-msgid-records msgid (fn-sn-event-index s))
+              (and (equal (fn-hist-msgid-records msgid fn-hist)
                           (fn-cei-article-records-for msgid events))
                    (implies (fn-find-article msgid articles)
                             (and (consp (fn-cei-article-records-for msgid events))
@@ -448,9 +447,8 @@
                   (:instance fn-apr-records-for-nonempty-is-accepted
                              (events (fn-sf-records (fn-sn-files s)))
                              (articles (fn-stx-store (fn-sn-node s))))
-                  (:instance fn-cei-msgid-records-of-correspondence
-                             (index (fn-sn-event-index s))
-                             (events (fn-sf-records (fn-sn-files s)))))
+                  (:instance fn-hist-of-storep-msgid-records
+                             (s s)))
             :in-theory (union-theories
                         '(fn-apr-accepted-string-is-found)
                         (theory 'minimal-theory))))))
@@ -458,8 +456,9 @@
 ; KEYSTONE (the boundary).  At rest, the record's payload found through the
 ; index IS what the acceptance field held, for every Message-ID string.
 (defthm fn-apr-payload-of-is-the-article-payload
-  (implies (and (fn-apr-store-at-restp s) (stringp msgid))
-           (equal (fn-apr-payload-of msgid s)
+  (implies (and (fn-apr-store-at-restp s) (fn-hist-of-storep fn-hist s)
+                (stringp msgid))
+           (equal (fn-apr-payload-of msgid s fn-hist)
                   (fn-apr-field-payload msgid s)))
   :hints (("Goal" :do-not-induct t
            :use fn-apr-at-rest-lookup
@@ -474,15 +473,16 @@
 
 ; The feed's byte source (host/owner-host.lisp, the feed service's article
 ; fetch), through the reference: the record's payload by Message-ID.
-(defun fn-apr-feed-article (o msgid)
-  (declare (xargs :guard t))
-  (fn-apr-payload-of (fn-record-octets-string msgid) (fn-own-store o)))
+(defun fn-apr-feed-article (o msgid fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t))
+  (fn-apr-payload-of (fn-record-octets-string msgid) (fn-own-store o) fn-hist))
 
 ; The boundary for the feed: at rest it is what `fn-own-feed-article' read
 ; off the acceptance state's article.
 (defthm fn-apr-feed-article-is-own-feed-article
-  (implies (fn-apr-store-at-restp (fn-own-store o))
-           (equal (fn-apr-feed-article o msgid)
+  (implies (and (fn-apr-store-at-restp (fn-own-store o))
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-apr-feed-article o msgid fn-hist)
                   (fn-own-feed-article o msgid)))
   :hints (("Goal" :use ((:instance fn-apr-payload-of-is-the-article-payload
                                    (s (fn-own-store o))
@@ -493,13 +493,14 @@
 
 ; Whether the history holds an article record for MSGID (the bridge's
 ; lookup-found, host/store-node-host.lisp `fn-store-sn-lookup-foundp').
-(defun fn-apr-foundp (msgid s)
-  (declare (xargs :guard t))
-  (consp (fn-cei-msgid-records msgid (fn-sn-event-index s))))
+(defun fn-apr-foundp (msgid s fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t) (ignorable s))
+  (and (stringp msgid) (consp (fn-hist-msgid-records msgid fn-hist))))
 
 (defthm fn-apr-foundp-is-article-found
-  (implies (and (fn-apr-store-at-restp s) (stringp msgid))
-           (equal (fn-apr-foundp msgid s)
+  (implies (and (fn-apr-store-at-restp s) (fn-hist-of-storep fn-hist s)
+                (stringp msgid))
+           (equal (fn-apr-foundp msgid s fn-hist)
                   (if (fn-find-article msgid (fn-stx-store (fn-sn-node s))) t nil)))
   :hints (("Goal" :do-not-induct t
            :use fn-apr-at-rest-lookup

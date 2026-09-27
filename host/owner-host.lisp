@@ -1490,8 +1490,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-status (fn-owner-core state) consumer)))
 
-(defun fn-owner-consumer-local-poll (consumer fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-consumer-local-poll (consumer fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   ;; PKT-254: ACL2 encodes the selected event and refuses a report the
   ;; poll reply cannot carry by name (books/consumer-owner-local.lisp
   ;; fn-col-poll-report; fn-col-poll-report-fits-or-refuses-by-name,
@@ -1507,9 +1507,12 @@
   ;; PKT-710: the page is that answer with the view's withdrawals in it
   ;; (books/consumer-withdrawal.lisp fn-cwd-page; the answer itself while
   ;; nothing is withdrawn, fn-cwd-page-without-withdrawals-is-the-answer).
-  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
-                      (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer
-                                                fn-arena))))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                         (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer
+                                                   fn-arena fn-hist)
+                         fn-hist)
+        fn-hist state)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1575,12 +1578,12 @@
 ;; fn-sn-finish searched the whole history and re-recognized the record for
 ;; every field it read.  The signed POST's composite, keyring snapshots,
 ;; retention, consumer and topic events complete here.
-(defun fn-owner-finish (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-finish-synced (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
          (state (fn-owner-install-ocfg
-                 (fn-rix-ocfg-complete (fn-owner-ocfg state)) state))
+                 (fn-rix-ocfg-complete (fn-owner-ocfg state) fn-hist) state))
          (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
@@ -1589,6 +1592,16 @@
                     (1+ (fn-own-ledger-count before))))
         (value :durable)
       (value :fault))))
+
+; The completion over the history stobj refreshed against the owner's Store
+; (R at the read: fn-hist-refresh-is-the-history; the finish keeps the
+; history, fn-ceis-finish-keeps-records), so fn-rix-ocfg-complete is
+; fn-ccar-ocfg-complete (fn-rix-ocfg-complete-is-ccar-ocfg-complete).
+(defun fn-owner-finish (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv-let (erp val state) (fn-owner-finish-synced fn-hist state)
+      (mv erp val fn-hist state))))
 
 ; The article completion of the submission in flight (served POST, control
 ; post): the word is fn-own-finish's (books/owner-served-invariants.lisp),
@@ -1621,8 +1634,8 @@
 ; named through ALPHA of the completing row, read through the arena
 ; (fn-ccar-own-finish takes it); then T4-then-T2 over the catalog
 ; (books/served-catalog-owner.lisp fn-sca-finish).
-(defun fn-owner-finish-submission (fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+(defun fn-owner-finish-submission-synced (fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (mv nil :fault fn-cat state)
@@ -1637,7 +1650,7 @@
              ; read from the take's parse and the completion's refresh over the
              ; Store's event index (post-alloc-2).
              (result (fn-apc-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)
-                                        fn-arena (fn-owner-parse-carry state)))
+                                        fn-arena fn-hist (fn-owner-parse-carry state)))
              (state (fn-owner-replace-core (cdr result) state))
              (pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal (car result) :durable) pending (consp completion)))
@@ -1661,6 +1674,16 @@
                     (mv nil :fault fn-cat state)
                   (mv nil (car result) fn-cat state))))))))))
 
+; The POST's completion over the history stobj refreshed against the owner's
+; Store (R at the read), so fn-apc-own-finish is fn-own-finish
+; (fn-apc-own-finish-is-own-finish).
+(defun fn-owner-finish-submission (fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv-let (erp val fn-cat state)
+      (fn-owner-finish-submission-synced fn-arena fn-cat fn-hist state)
+      (mv erp val fn-cat fn-hist state))))
+
 ;; The completion of an identity event that carried an article (a signed
 ;; composite: signed-post), with the catalog's T4 then T2 over the pending
 ;; row fn-owner-cat-prepare-sealed prepared after the host's seal, exactly as
@@ -1669,16 +1692,16 @@
 ;; the article the history's rows serve, fn-cat-history-articles, which
 ;; reads a composite row's held article).  Without a pending row it is
 ;; fn-owner-finish.  (mv nil WORD fn-cat state).
-(defun fn-owner-finish-identity (fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program)
+(defun fn-owner-finish-identity (fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program)
            (ignorable fn-arena))
   (let ((completion (fn-sf-completion (fn-sn-files (fn-owner-store state)))))
-    (mv-let (erp word state)
-      (fn-owner-finish state)
+    (mv-let (erp word fn-hist state)
+      (fn-owner-finish fn-hist state)
       (declare (ignore erp))
       (let ((pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal word :durable) pending (consp completion)))
-            (mv nil word fn-cat state)
+            (mv nil word fn-cat fn-hist state)
           (let ((view (fn-own-view (fn-owner-core state))))
             (mv-let (cword pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
@@ -1688,8 +1711,8 @@
                              fn-cat)
               (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
                 (if (or (equal (car cword) :stale-token) (equal (car cword) :expected-mismatch))
-                    (mv nil :fault fn-cat state)
-                  (mv nil word fn-cat state))))))))))
+                    (mv nil :fault fn-cat fn-hist state)
+                  (mv nil word fn-cat fn-hist state))))))))))
 
 ; fn-pout-begin (books/owner-prepare-outcome.lisp): :begun exactly when the
 ; begin's gate fn-pout-begin-admitsp holds (KEYSTONE
@@ -1916,15 +1939,18 @@
 ; fn-cbind-ack-is-the-consumer-ack-or-a-refusal).  The host carries the
 ; decoded consumer id or cursor and the password octets; it compares
 ; nothing.
-(defun fn-owner-consumer-local-bound-poll (consumer secret fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-consumer-local-bound-poll (consumer secret fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   ;; Over the live arena (records flip): fn-cbind-poll-over-delivers-only-
   ;; readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal.
   ;; PKT-710: with the withdrawals in it (a refusal of the gate is served
   ;; unchanged, fn-cwd-page-of-a-refusal).
-  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
-                      (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
-                                          consumer secret fn-arena))))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                         (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                             consumer secret fn-arena fn-hist)
+                         fn-hist)
+        fn-hist state)))
 
 ;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
 ;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
@@ -1932,13 +1958,15 @@
 ;; when that is an empty page before the deadline.  The admission of one
 ;; more waiter.  host/native/owner.lisp fnn-owner-consumer-local-wait calls
 ;; both under the owner mutex.
-(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   ;; Over the live arena (records flip), and PKT-710: a wait answers the
   ;; page (fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page),
   ;; so a withdrawal wakes it as an article does.
-  (value (fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
-                                consumer secret elapsed seconds fn-arena)))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil (fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                   consumer secret elapsed seconds fn-arena fn-hist)
+        fn-hist state)))
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :mode :program))
@@ -3555,8 +3583,8 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
 ; One reply line from one peer.  The article of a 335/238 is the row's bytes
 ; read through the arena (books/owner-feed-article.lisp fn-ofa-feed-article,
 ; fn-ofa-feed-article-is-the-feed-article-over-alpha), never its handle.
-(defun fn-owner-feed-octets (peer-octets line monotonic fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-feed-octets (peer-octets line monotonic fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value (fn-owner-feed-word-publication nil nil nil))
@@ -3571,14 +3599,15 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
           (let ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
                          ; The record's bytes by Message-ID: its handle
-                         ; through the Store's event index
+                         ; through the history stobj (R holds: the entry
+                         ; fn-owner-feed-reply-chunk refreshed it)
                          ; (fn-apr-feed-article-is-own-feed-article,
                          ; books/acceptance-payload-ref.lisp) read through
                          ; the arena (fn-ofa-feed-article-is-the-feed-
                          ; article-over-alpha).  Since the records flip the
                          ; row holds a handle; handing it to the port sent
                          ; an empty command (lane feed-fault).
-                         (fn-ofa-feed-article owner msgid fn-arena) obs)))
+                         (fn-ofa-feed-article owner msgid fn-arena fn-hist) obs)))
             ; The sender's one line for this reply (nil for a 335/238),
             ; books/owner-log.lisp fn-olog-feed-reply-line, is the
             ; publication's log line.
@@ -3603,12 +3632,12 @@ it is :CONNECTION-REFUSED and the raw adapter must close this peer without
 flushing the previous peer's pending projection."
   (if (equal (fn-fc-kind step) :refused) :connection-refused (fn-fc-kind step)))
 
-(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena state)
+(defun fn-owner-feed-reply-chunk-synced (peer-octets octets monotonic fn-arena fn-hist state)
   "Consume one ACL2 connection/reply event; nil drains retained input.
 
 Greeting and MODE replies stay inside fn-fc.  A normal feed reply reaches the
 existing port only after fn-fc has made this connection ready."
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
         (value (fn-owner-feed-word-publication :invalid nil nil))
@@ -3669,12 +3698,22 @@ existing port only after fn-fc has made this connection ready."
                                                                 (and (equal word :ok) fallback-line))))))
                   (:reply
                    (fn-owner-feed-octets peer-octets (fn-fc-line step)
-                                         monotonic fn-arena state))
+                                         monotonic fn-arena fn-hist state))
                   (:streaming-refused
                    (value (fn-owner-feed-word-publication :streaming-refused nil stop-line)))
                   ((:need-input :connection-refused :closed :invalid)
                    (value (fn-owner-feed-word-publication kind nil nil)))
                   (otherwise (value (fn-owner-feed-word-publication :fault nil nil))))))))))
+
+; The feed reply entry: the history stobj refreshed against the owner's Store
+; first (host/store-node-host.lisp fn-host-hist-sync; R by
+; fn-hist-refresh-is-the-history), then the reply read through it.
+(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena fn-hist state)
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv-let (erp val state)
+      (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic fn-arena fn-hist state)
+      (mv erp val fn-hist state))))
 
 
 ; The connection to ONE peer is gone.  The host reports the event and the

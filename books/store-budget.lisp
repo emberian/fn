@@ -31,7 +31,7 @@
 (include-book "byte-store-frame")
 (include-book "store-events")
 (include-book "store-node")
-(include-book "consumer-event-index-store-invariants")
+(include-book "store-files-traces")
 
 ; -----------------------------------------------------------------------------
 ; The count, the budget and the verdict
@@ -299,7 +299,7 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 ; model and stay so.  What the host calls instead reads the Store's derived
 ; event index (books/consumer-event-index.lisp), which every host-called open
 ; builds from the history it read and `fn-sn-io''s record-directory append
-; extends by the appended event -- the maintained relation `fn-ceis-indexedp',
+; extends by the appended event -- the maintained relation `',
 ; proved of every owner the host reaches with no hypothesis
 ; (books/owner-store-indexed.lisp `fn-osi-live-owner-store-is-indexed'):
 ;
@@ -318,36 +318,33 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 ;
 ; Why a named function and not `mbe' inside `fn-sbud-used': an `:exec' that
 ; reads the index is equal to the `len' only under the relation, so the guard
-; would have to carry `fn-ceis-indexedp', and a guard is evaluated when the
+; would have to carry `', and a guard is evaluated when the
 ; :program host calls the function -- a full rebuild of the index per call.
 ; So the host calls `fn-sbud-count' and the theorems below equate it with
 ; `fn-sbud-used' under the relation, the pattern of books/owner-prepare-carried.
 
 (defun fn-sbud-count (s)
-  "Committed transactions of the Store state S, read from its derived event
-index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
+  "Committed transactions of the Store state S: the snoc-list's carried
+count (O(1)), `fn-sbud-used' with no hypothesis."
   (declare (xargs :guard t))
-  (fn-cei-count (fn-sn-event-index s)))
+  (fn-sf-records-count (fn-sn-files s)))
 
-; KEYSTONE (the count).  Under the maintained relation the carried count is
-; the committed record count.
+; KEYSTONE (the count): the carried count is the committed record count.
 (defthm fn-sbud-count-is-used
-  (implies (fn-ceis-indexedp s)
-           (equal (fn-sbud-count s) (fn-sbud-used s)))
-  :hints (("Goal" :in-theory (e/d (fn-sbud-count fn-sbud-used fn-ceis-indexedp)
-                                  (fn-cei-correspondencep)))))
+  (equal (fn-sbud-count s) (fn-sbud-used s))
+  :hints (("Goal" :in-theory (enable fn-sbud-count fn-sbud-used fn-sf-records-count))))
 
 ; The committed octets of the records at sequences K .. COUNT-1 of INDEX,
 ; added to SUM: one index lookup and one row's stored octets per step.
-(defun fn-sbud-octets-advance (k count sum index)
+(defun fn-sbud-octets-advance (k count sum files)
   (declare (xargs :guard (and (natp k) (natp count) (acl2-numberp sum))
                   :measure (nfix (- (nfix count) (nfix k)))
                   :verify-guards nil))
   (if (and (natp k) (natp count) (< k count))
       (fn-sbud-octets-advance
        (1+ k) count
-       (+ sum (fn-sbud-row-octets (fn-cei-get k index)))
-       index)
+       (+ sum (fn-sbud-row-octets (fn-sf-records-nth k files)))
+       files)
     sum))
 
 ; The committed record octets of S from the carried CACHE = (K . SUM): the
@@ -359,10 +356,9 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
   (declare (xargs :guard t :verify-guards nil))
   (let ((count (fn-sbud-count s)))
     (if (and (consp cache) (natp (car cache)) (natp (cdr cache))
-             (<= (car cache) count)
-             (<= count (1+ *fn-cbor-max-uint*)))
+             (<= (car cache) count))
         (fn-sbud-octets-advance (car cache) count (cdr cache)
-                                (fn-sn-event-index s))
+                                (fn-sn-files s))
       (fn-sbud-bytes-used s))))
 
 ;; The lookup without a true-list premise: the index is built from the
@@ -406,31 +402,29 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
 
 ; The advance over a corresponding index is the fold over the suffix.
 (defthm fn-sbud-octets-advance-is-the-suffix-fold
-  (implies (and (fn-cei-correspondencep index events)
-                (<= (len events) (1+ *fn-cbor-max-uint*))
+  (implies (and (equal events (fn-sf-records files))
                 (natp k) (<= k (len events)) (acl2-numberp sum))
-           (equal (fn-sbud-octets-advance k (len events) sum index)
+           (equal (fn-sbud-octets-advance k (len events) sum files)
                   (+ sum (fn-sbud-record-octets (nthcdr k events)))))
-  :hints (("Goal" :induct (fn-sbud-octets-advance k (len events) sum index)
-           :in-theory (e/d (fn-sbud-octets-advance fn-cp-uintp)
-                           (fn-store-event-encode fn-cei-correspondencep
-                            fn-cei-get fn-sbud-record-octets)))))
+  :hints (("Goal" :induct (fn-sbud-octets-advance k (len events) sum files)
+           :in-theory (e/d (fn-sf-records-nth fn-sbud-octets-advance )
+                           (fn-store-event-encode 
+                            fn-sbud-record-octets)))))
 
 ; KEYSTONE (the carried octets).  Under the maintained relation, from a
 ; cache that is the record octets of a prefix of the committed records, the
 ; carried figure is the fold `fn-sbud-bytes-used'.
 (defthm fn-sbud-bytes-carried-is-the-fold
-  (implies (and (fn-ceis-indexedp s)
-                (fn-sbud-octets-cache-validp cache (fn-sf-records (fn-sn-files s))))
+  (implies (and (fn-sbud-octets-cache-validp cache (fn-sf-records (fn-sn-files s))))
            (equal (fn-sbud-bytes-carried cache s)
                   (fn-sbud-bytes-used s)))
   :hints (("Goal" :use ((:instance fn-sbud-octets-advance-is-the-suffix-fold
-                                   (index (fn-sn-event-index s))
+                                   (files (fn-sn-files s))
                                    (events (fn-sf-records (fn-sn-files s)))
                                    (k (car cache)) (sum (cdr cache)))
                         (:instance fn-sbud-bytes-used-is-kernel-sum))
            :in-theory (e/d (fn-sbud-bytes-carried fn-sbud-octets-cache-validp
-                            fn-sbud-bytes-extend fn-ceis-indexedp fn-sbud-used)
+                            fn-sbud-bytes-extend fn-sbud-used)
                            (fn-sbud-octets-advance fn-sbud-record-octets
                             fn-sbud-count fn-cei-correspondencep
                             fn-sbud-octets-advance-is-the-suffix-fold
@@ -469,9 +463,8 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
         (fn-retain-capacity (fn-node-retention (fn-sn-node s)))))
 
 (defthm fn-sbud-headroom-carried-is-headroom-at
-  (implies (fn-ceis-indexedp s)
-           (equal (fn-sbud-headroom-carried profile s bytes-used)
-                  (fn-sbud-headroom-at profile s bytes-used)))
+  (equal (fn-sbud-headroom-carried profile s bytes-used)
+         (fn-sbud-headroom-at profile s bytes-used))
   :hints (("Goal" :in-theory (e/d (fn-sbud-headroom-carried fn-sbud-headroom-at)
                                   (fn-sbud-count fn-sbud-used)))))
 

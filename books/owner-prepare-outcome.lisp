@@ -449,8 +449,7 @@
   (implies (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
                 (fn-prc-carryp carry)
                 (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (fn-ceis-indexedp (fn-sbud-oc-store oc)))
+                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
            (equal (mv-nth 1 (fn-pout-prepare-article oc record budget carry))
                   (fn-sbud-prepare oc record budget)))
   :hints (("Goal" :use (fn-pout-prepare-article-answers-the-store-change

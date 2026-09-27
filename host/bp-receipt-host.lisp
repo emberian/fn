@@ -36,19 +36,20 @@
 ; recognizer and no history walk runs per request (PRF-220, PKT-448 (a), (g)).
 ;; The records flip (flip-L4): the receiver reads the Store's rows through the
 ;; live arena, read-only; the lookup's (:found R) is the wire form of the row.
-(defun fn-bpr-host-accept (adu policy-authorizedp fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-bpr-host-accept (adu policy-authorizedp fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let* ((request (fn-bpr-host-request adu))
-         (store (f-get-global 'fn-store-sn state))
-         (lookup (and request (fn-bpaj-record-lookup-fast store request fn-arena)))
-         (record (and (equal (car lookup) :found) (cadr lookup)))
-         (old (f-get-global 'fn-bpr-state state))
-         (answer (if (and request record)
-                     (fn-bpaj-bpr-accept-request-fast
-                      old store record request policy-authorizedp fn-arena)
-                   (list :refused old))))
-    (let ((state (f-put-global 'fn-bpr-state (car (cdr answer)) state)))
-      (value (car answer)))))
+         (store (f-get-global 'fn-store-sn state)))
+   (mv-let (fn-hist state) (fn-host-hist-sync store fn-hist state)
+    (let* ((lookup (and request (fn-bpaj-record-lookup-fast store request fn-arena fn-hist)))
+           (record (and (equal (car lookup) :found) (cadr lookup)))
+           (old (f-get-global 'fn-bpr-state state))
+           (answer (if (and request record)
+                       (fn-bpaj-bpr-accept-request-fast
+                        old store record request policy-authorizedp fn-arena fn-hist)
+                     (list :refused old))))
+      (let ((state (f-put-global 'fn-bpr-state (car (cdr answer)) state)))
+        (mv nil (car answer) fn-hist state))))))
 
 (defun fn-bpr-host-prepare-receipt (work-id receipt-id policy-authorizedp state)
   (declare (xargs :stobjs state :mode :program))

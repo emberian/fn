@@ -2,7 +2,8 @@
 ; The list formulation is proof-only and is not called on a served path.
 (in-package "ACL2")
 (include-book "consumer-owner-local")
-(include-book "consumer-event-index-store-invariants")
+(include-book "history-columns-relation")
+(include-book "store-files-traces")
 (include-book "store-node-traces")
 
 (defun fn-col-poll-list-reference (o consumer)
@@ -59,18 +60,14 @@
 
 (defthm fn-col-poll-agrees-with-committed-list-under-index-relation
   (let ((store (fn-own-store o)))
-    (implies (and (fn-ceis-relatedp store)
-                  (not (member-eq (fn-sf-phase (fn-sn-files store))
-                                  '(:replaying :fault)))
-                  (fn-sf-statep (fn-sn-files store)))
-             (equal (fn-col-poll o consumer)
+    (implies (fn-hist-of-storep fn-hist store)
+             (equal (fn-col-poll o consumer fn-hist)
                     (fn-col-poll-list-reference o consumer))))
   :hints (("Goal"
            :cases ((eq (car (fn-col-scope-entry
                              (fn-sn-consumer (fn-own-store o)) consumer))
                        :scope))
            :use ((:instance fn-col-poll-index-window-is-committed-prefix
-                            (index (fn-sn-event-index (fn-own-store o)))
                             (events (fn-sf-records
                                      (fn-sn-files (fn-own-store o))))
                             (position (fn-cp-nth 7
@@ -81,12 +78,10 @@
                             (frontier (fn-cp-nth 3
                                        (fn-sn-consumer (fn-own-store o))))
                             (budget *fn-col-poll-max-scan*)))
-           :in-theory (e/d (fn-col-poll fn-col-poll-list-reference
-                            fn-ceis-relatedp)
+           :in-theory (e/d (fn-col-poll fn-col-poll-list-reference)
                            (fn-col-poll-index-window-is-committed-prefix
                             fn-col-poll-index-window fn-col-poll-list-window
-                            fn-col-poll-scan fn-cp-cursor-encode
-                            fn-cei-correspondencep fn-cei-build)))))
+                            fn-col-poll-scan fn-cp-cursor-encode)))))
 
 ; The host's maintained Store relation supplies the file-state/uint32 bound
 ; to the actual caller theorem.  It is a composition discharge, not a second
@@ -105,14 +100,12 @@
 (defthm fn-col-poll-agrees-under-maintained-store-relations
   (let ((store (fn-own-store o)))
     (implies (and (fn-snt-relation store)
-                  (fn-ceis-relatedp store)
-                  (not (member-eq (fn-sf-phase (fn-sn-files store))
-                                  '(:replaying :fault))))
-             (equal (fn-col-poll o consumer)
+                  (fn-hist-of-storep fn-hist store))
+             (equal (fn-col-poll o consumer fn-hist)
                     (fn-col-poll-list-reference o consumer))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-col-poll-file-state-follows-from-store-relation)
                  (:instance fn-col-poll-agrees-with-committed-list-under-index-relation))
-           :in-theory (disable fn-snt-relation fn-ceis-relatedp
+           :in-theory (disable fn-snt-relation
                                fn-col-poll fn-col-poll-list-reference))))

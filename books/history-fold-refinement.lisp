@@ -284,9 +284,9 @@
 ; (`fn-row-wire-of').  Host: host/owner-host.lisp fn-owner-consumer-local-poll
 ; with the live arena (flip-L3 REQUEST to the host lane: today it calls
 ; fn-col-poll-report, which refuses a held row :report).
-(defun fn-col-poll-report-over (o consumer fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((decision (fn-col-poll o consumer)))
+(defun fn-col-poll-report-over (o consumer fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
+  (let ((decision (fn-col-poll o consumer fn-hist)))
     (if (and (eq (car decision) :poll) (caddr decision))
         (let ((report (fn-col-poll-report-octets
                        (fn-row-wire-of (caddr decision) fn-arena))))
@@ -316,9 +316,9 @@
                  (:instance fn-hstxa-is-no-wire-event (x (fn-hstxa-stxa e)))))))
 
 (defthm fn-col-poll-report-over-is-the-report-unless-a-held-row
-  (implies (not (fn-held-p (caddr (fn-col-poll o consumer))))
-           (equal (fn-col-poll-report-over o consumer fn-arena)
-                  (fn-col-poll-report o consumer)))
+  (implies (not (fn-held-p (caddr (fn-col-poll o consumer fn-hist))))
+           (equal (fn-col-poll-report-over o consumer fn-arena fn-hist)
+                  (fn-col-poll-report o consumer fn-hist)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-col-poll-report-over fn-col-poll-report
                                 fn-hfr-report-octets-of-alpha-unless-held)
@@ -327,9 +327,9 @@
 ; A held article row's report encodes its wire form: the row's positions
 ; with the payload its handle names in the arena.
 (defthm fn-col-poll-report-over-of-a-held-row-unfolds
-  (implies (fn-held-p (caddr (fn-col-poll o consumer)))
-           (equal (fn-col-poll-report-over o consumer fn-arena)
-                  (let* ((decision (fn-col-poll o consumer))
+  (implies (fn-held-p (caddr (fn-col-poll o consumer fn-hist)))
+           (equal (fn-col-poll-report-over o consumer fn-arena fn-hist)
+                  (let* ((decision (fn-col-poll o consumer fn-hist))
                          (h (caddr decision))
                          (report (fn-col-poll-report-octets
                                   (fn-held-wire h (fn-row-bytes h fn-arena)))))
@@ -352,8 +352,8 @@
 ; exact encoding of the selected row's WIRE form when the kind-6 reply can
 ; carry it; the named refusal :oversize above the ceiling.
 (defthm fn-col-poll-report-over-fits-or-refuses-by-name
-  (let ((r (fn-col-poll-report-over o consumer fn-arena))
-        (d (fn-col-poll o consumer)))
+  (let ((r (fn-col-poll-report-over o consumer fn-arena fn-hist))
+        (d (fn-col-poll o consumer fn-hist)))
     (and (implies (not (equal (car d) :poll)) (equal r d))
          (implies (and (equal (car d) :poll) (not (caddr d))) (equal r d))
          (implies (and (equal (car d) :poll) (caddr d)
@@ -384,7 +384,7 @@
 ; whose selected row's wire encoding is a payload the publication gate admits
 ; is served as that page, never :oversize.
 (defthm fn-col-poll-report-over-of-an-admitted-payload-fits
-  (let* ((d (fn-col-poll o consumer))
+  (let* ((d (fn-col-poll o consumer fn-hist))
          (octets (fn-col-poll-report-octets (fn-row-wire-of (caddr d) fn-arena))))
     (implies (and (equal (car d) :poll)
                   (caddr d)
@@ -392,7 +392,7 @@
                   (fn-cbor-octet-listp octets)
                   (fn-bs-publication-admissiblep profile committed-count
                                                  (len octets)))
-             (equal (fn-col-poll-report-over o consumer fn-arena)
+             (equal (fn-col-poll-report-over o consumer fn-arena fn-hist)
                     (list :poll (cadr d) octets))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-col-poll-report-over-fits-or-refuses-by-name)
@@ -400,7 +400,7 @@
                                    (values profile)
                                    (octets (len (fn-col-poll-report-octets
                                                  (fn-row-wire-of
-                                                  (caddr (fn-col-poll o consumer))
+                                                  (caddr (fn-col-poll o consumer fn-hist))
                                                   fn-arena))))))
            :in-theory (union-theories '(fn-ncl-poll-event-bytesp)
                                       (theory 'minimal-theory)))))

@@ -12,7 +12,7 @@
 ;
 ; KEYSTONE fn-own-refresh-ix-is-own-refresh: under the two facts the owner's
 ; Store carries, `fn-sn-statep' (every history is Store events: the rows'
-; agreement, fn-ctl-rows-okp-of-sf-state) and `fn-ceis-indexedp' (the index
+; agreement, fn-ctl-rows-okp-of-sf-state) and `' (the index
 ; is the index of the history; established at the host's open and preserved
 ; by every installed owner transition, books/owner-store-indexed.lisp
 ; fn-osi-live-owner-store-is-indexed), the twin is the reference.
@@ -27,8 +27,9 @@
 ; (fn-sn-finish-preserves-state, fn-ceis-finish-preserves-indexed).
 (in-package "ACL2")
 (include-book "owner")
-(include-book "consumer-event-index-store-invariants")
+(include-book "store-files-traces")
 (include-book "control-visible-indexed")
+(include-book "history-columns-relation")
 (include-book "store-node-invariants-base")
 
 ; The same readers over the kernel state FILES instead of its history list:
@@ -37,16 +38,19 @@
 ; (fn-sf-records files) (its logic, by definition), and executes that read
 ; only on the arms that walk the history (a Message-ID the index does not
 ; answer, the recovery arm).  The POST's refresh reads none.
-(defun fn-ctl-row-event-fx (m files index)
-  (declare (xargs :guard t
+(defun fn-ctl-row-event-fx (m files fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t
                   :guard-hints (("Goal" :in-theory (e/d (fn-ctl-row-event-ix)
                                                         (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
-  (mbe :logic (fn-ctl-row-event-ix m (fn-sf-records files) index)
+  (mbe :logic (fn-ctl-row-event-ix m (fn-sf-records files) fn-hist)
        :exec (if (stringp m)
-                 (let ((rs (fn-cei-msgid-records m index)))
+                 (let ((rs (fn-hist-msgid-records m fn-hist)))
                    (if (consp rs)
                        (let* ((r (car rs))
-                              (e (fn-cei-get (fn-record-sequence r) index)))
+                              (k (fn-record-sequence r))
+                              (e (if (and (natp k) (< k (fn-hist-count fn-hist)))
+                                     (fn-hist-at k fn-hist)
+                                   nil)))
                          (if (and e
                                   (equal (fn-ctl-event-row e) r)
                                   (not (member-equal r (cdr rs))))
@@ -55,22 +59,22 @@
                      nil))
                (fn-ctl-row-event m (fn-sf-records files)))))
 
-(defun fn-ctl-row-control-fx (msgid files index)
-  (declare (xargs :guard t
+(defun fn-ctl-row-control-fx (msgid files fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t
                   :guard-hints (("Goal" :in-theory (e/d (fn-ctl-row-control-ix)
                                                         (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
-  (mbe :logic (fn-ctl-row-control-ix msgid (fn-sf-records files) index)
-       :exec (let ((e (fn-ctl-row-event-fx msgid files index)))
+  (mbe :logic (fn-ctl-row-control-ix msgid (fn-sf-records files) fn-hist)
+       :exec (let ((e (fn-ctl-row-event-fx msgid files fn-hist)))
                (if e (fn-hf-control (fn-held-facts (fn-ctl-event-row e))) nil))))
 
-(defun fn-ctl-article-plan-fx (a verdicts files index configs)
-  (declare (xargs :guard t
+(defun fn-ctl-article-plan-fx (a verdicts files fn-hist configs)
+  (declare (xargs :stobjs fn-hist :guard t
                   :guard-hints (("Goal" :in-theory (e/d (fn-ctl-article-plan-ix)
                                                         (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
-  (mbe :logic (fn-ctl-article-plan-ix a verdicts (fn-sf-records files) index configs)
+  (mbe :logic (fn-ctl-article-plan-ix a verdicts (fn-sf-records files) fn-hist configs)
        :exec (if (consp a)
                  (let* ((m (fn-article-msgid a))
-                        (e (fn-ctl-row-event-fx m files index))
+                        (e (fn-ctl-row-event-fx m files fn-hist))
                         (control (if e (fn-hf-control (fn-held-facts (fn-ctl-event-row e))) nil))
                         (target (fn-ctl-control-target control)))
                    (if target
@@ -79,34 +83,34 @@
                          m (fn-ctl-lookup-verdict m verdicts) target
                          (fn-ctl-control-keys control)
                          (fn-ctl-config-at (fn-store-event-txid e) configs))
-                        (fn-ctl-control-locks (fn-ctl-row-control-fx target files index)))
+                        (fn-ctl-control-locks (fn-ctl-row-control-fx target files fn-hist)))
                      nil))
                nil)))
 
-(defun fn-ctl-refresh-withdrawals-fx (new old ws verdicts files index configs)
-  (declare (xargs :guard t
+(defun fn-ctl-refresh-withdrawals-fx (new old ws verdicts files fn-hist configs)
+  (declare (xargs :stobjs fn-hist :guard t
                   :guard-hints (("Goal" :in-theory (e/d (fn-ctl-refresh-withdrawals-ix fn-ctl-article-withdrawals-ix fn-ctl-resolve-tlocks-ix)
                                                         (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
   (mbe :logic (fn-ctl-refresh-withdrawals-ix new old ws verdicts (fn-sf-records files)
-                                             index configs)
+                                             fn-hist configs)
        :exec (cond ((equal new old) ws)
                    ((and (consp new) (equal (cdr new) old))
                     (fn-ctl-prepend
                      (let ((plan (fn-ctl-article-plan-fx (car new) verdicts files
-                                                         index configs)))
+                                                         fn-hist configs)))
                        (if (fn-ctl-withdrawalp plan) (list plan) nil))
                      (if (consp (car new))
                          (let ((m (fn-article-msgid (car new))))
                            (if (fn-ctl-targets-p ws m)
                                (fn-ctl-set-tlocks ws m (fn-ctl-control-locks
-                                                        (fn-ctl-row-control-fx m files index)))
+                                                        (fn-ctl-row-control-fx m files fn-hist)))
                              ws))
                        ws)))
                    (t (fn-ctl-articles-withdrawals new verdicts (fn-sf-records files)
                                                    configs)))))
 
-(defun fn-own-refresh-ix (o)
-  (declare (xargs :guard t))
+(defun fn-own-refresh-ix (o fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t))
   (let ((s (fn-own-store o)))
     (if (fn-own-store-idlep s)
         (let* ((old-view (fn-own-view o))
@@ -117,7 +121,7 @@
                (withdrawals (fn-ctl-refresh-withdrawals-fx
                              raw old-raw (fn-own-view-withdrawals old-view)
                              verdicts (fn-sn-files s)
-                             (fn-sn-event-index s)
+                             fn-hist
                              (fn-sn-config-history s)))
                (old-visible (fn-state-articles (fn-own-view-archive old-view)))
                (visible (fn-ctl-refresh-visible
@@ -131,7 +135,7 @@
                        (fn-own-view-index old-view) old-visible visible)))
           (fn-own-make s
                      (fn-own-view-make-visible
-                      (fn-cei-count (fn-sn-event-index s))
+                      (fn-sf-records-count (fn-sn-files s))
                       (fn-sf-frontier (fn-sn-files s))
                       archive verdicts index
                       (fn-gidx-refresh (fn-own-view-group-index old-view)
@@ -150,30 +154,22 @@
            (fn-ctl-rows-okp (fn-sf-records (fn-sn-files s))))
   :hints (("Goal" :in-theory (disable fn-sn-statep fn-sf-statep fn-ctl-rows-okp))))
 
-(defthm fn-orix-store-index-corresponds
-  (implies (fn-ceis-indexedp s)
-           (fn-cei-correspondencep (fn-sn-event-index s)
-                                   (fn-sf-records (fn-sn-files s))))
-  :hints (("Goal" :in-theory (enable fn-ceis-indexedp))))
-
-; KEYSTONE: the owner's refresh over the index is the owner's refresh.
-; Subject: fn-own-refresh-ix, for the completions of
-; books/owner-commit-carried.lisp (see the header).
+; KEYSTONE: the owner's refresh over the history stobj is the owner's
+; refresh.  Subject: fn-own-refresh-ix, for the completions of
+; books/owner-commit-carried.lisp (see the header).  R (the stobj IS the
+; Store's history, books/history-columns-relation.lisp) replaces the retired
+; event index's ; the view's count is the snoc-list's
+; carried count (fn-sf-records-count, no hypothesis).
 (defthm fn-own-refresh-ix-is-own-refresh
   (implies (and (fn-sn-statep (fn-own-store o))
-                (fn-ceis-indexedp (fn-own-store o)))
-           (equal (fn-own-refresh-ix o) (fn-own-refresh o)))
-  :hints (("Goal" :use ((:instance fn-orix-store-rows-agree (s (fn-own-store o)))
-                        (:instance fn-orix-store-index-corresponds (s (fn-own-store o)))
-                        (:instance fn-cei-count-of-correspondence
-                                   (index (fn-sn-event-index (fn-own-store o)))
-                                   (events (fn-sf-records (fn-sn-files (fn-own-store o))))))
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-own-refresh-ix o fn-hist) (fn-own-refresh o)))
+  :hints (("Goal" :use ((:instance fn-orix-store-rows-agree (s (fn-own-store o))))
            :in-theory (e/d (fn-own-refresh-ix fn-own-refresh
-                            fn-ctl-refresh-withdrawals-fx)
-                           (fn-sn-statep fn-ceis-indexedp fn-cei-correspondencep
-                            fn-ctl-rows-okp fn-cei-count
-                            fn-orix-store-rows-agree fn-orix-store-index-corresponds
-                            fn-cei-count-of-correspondence
+                            fn-ctl-refresh-withdrawals-fx fn-sf-records-count)
+                           (fn-sn-statep
+                            fn-ctl-rows-okp
+                            fn-orix-store-rows-agree
                             fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawals-ix
                             fn-ctl-refresh-visible fn-ctl-visible-state-of
                             fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
@@ -181,18 +177,17 @@
 
 ;; For the completions (books/owner-commit-carried.lisp
 ;; fn-ccar-own-complete-enabled refreshes the owner over the finished Store):
-;; the finish keeps both premises (fn-sn-finish-preserves-state,
-;; fn-ceis-finish-preserves-indexed), so over a Store that has them the
-;; completion's refresh may read the index.  Under a completion gate
-;; fn-sn-statep is already forward (fn-ccar-completion-enabled-implies-statep);
-;; fn-ceis-indexedp is what the owner's relation adds
-;; (books/owner-store-indexed.lisp fn-osi-live-owner-store-is-indexed).
+;; the finish keeps fn-sn-statep (fn-sn-finish-preserves-state) and the
+;; history (fn-snt-finish-keeps-records), so R of the Store is R of the
+;; finished Store, and the host's refresh of the stobj before the call is the
+;; refresh the completion reads.
 (defthm fn-own-refresh-ix-of-finished-store-is-own-refresh
-  (implies (and (fn-sn-statep s) (fn-ceis-indexedp s))
+  (implies (and (fn-sn-statep s) (fn-hist-of-storep fn-hist s))
            (equal (fn-own-refresh-ix
                    (fn-own-make (fn-sn-finish s) view conns next-id max-conns pending
                                 ledger clock facts config queue inflight feeds
-                                node-secret refused))
+                                node-secret refused)
+                   fn-hist)
                   (fn-own-refresh
                    (fn-own-make (fn-sn-finish s) view conns next-id max-conns pending
                                 ledger clock facts config queue inflight feeds
@@ -203,11 +198,11 @@
                                                    config queue inflight feeds
                                                    node-secret refused)))
                         fn-sn-finish-preserves-state
-                        fn-ceis-finish-preserves-indexed)
+                        fn-snt-finish-keeps-records)
            :in-theory (e/d (fn-own-store-of-fn-own-make)
                            (fn-own-refresh-ix-is-own-refresh fn-sn-finish-preserves-state
-                            fn-ceis-finish-preserves-indexed fn-own-refresh-ix
-                            fn-own-refresh fn-sn-finish fn-sn-statep fn-ceis-indexedp
+                            fn-snt-finish-keeps-records fn-own-refresh-ix
+                            fn-own-refresh fn-sn-finish fn-sn-statep
                             fn-own-make)))))
 
 (in-theory (disable fn-own-refresh-ix))
@@ -218,12 +213,12 @@
 ; replaced by fn-own-refresh-ix: the finished Store's new article's row and
 ; the view's count come from the event index, and the history (a snoc-list,
 ; books/store-files.lisp) is not consed back.  Equal to the reference under
-; fn-ceis-indexedp of the owner's Store, which every owner the host holds
+; of the owner's Store, which every owner the host holds
 ; carries (books/owner-store-indexed.lisp fn-osi-live-owner-store-is-indexed).
 (include-book "owner-commit-carried")
 
-(defun fn-rix-own-complete-enabled (o)
-  (declare (xargs :guard (and (fn-sn-statep (fn-own-store o))
+(defun fn-rix-own-complete-enabled (o fn-hist)
+  (declare (xargs :stobjs fn-hist :guard (and (fn-sn-statep (fn-own-store o))
                               (fn-ccar-completion-enabledp (fn-own-store o)))))
   (let ((s (fn-own-store o)))
     (fn-own-refresh-ix
@@ -232,12 +227,12 @@
                   (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files s)))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                  (fn-own-node-secret o) (fn-own-refused o)))))
+                  (fn-own-node-secret o) (fn-own-refused o)) fn-hist)))
 
 (defthm fn-rix-own-complete-enabled-is-ccar
   (implies (and (fn-ccar-completion-enabledp (fn-own-store o))
-                (fn-ceis-indexedp (fn-own-store o)))
-           (equal (fn-rix-own-complete-enabled o)
+                (fn-hist-of-storep fn-hist (fn-own-store o)))
+           (equal (fn-rix-own-complete-enabled o fn-hist)
                   (fn-ccar-own-complete-enabled o)))
   :hints (("Goal" :use ((:instance fn-ccar-sn-finish-is-sn-finish (s (fn-own-store o)))
                         (:instance fn-own-refresh-ix-of-finished-store-is-own-refresh
@@ -257,7 +252,7 @@
                            (fn-ccar-sn-finish-is-sn-finish
                             fn-own-refresh-ix-of-finished-store-is-own-refresh
                             fn-own-refresh fn-own-refresh-ix fn-sn-finish fn-sn-statep
-                            fn-ceis-indexedp fn-own-make fn-ccar-sn-finish-enabled
+                            fn-own-make fn-ccar-sn-finish-enabled
                             fn-sn-completion-enabledp)))))
 
 ;; PRF-283: the commit appends the ledger in O(1).  The ledger is held as a
@@ -266,12 +261,12 @@
 ;; with fn-sl-snoc -- one cons on a snoc form -- and the ledger it represents
 ;; is the old one with the pair appended, for every owner.
 (defthm fn-own-refresh-ix-keeps-ledger-field
-  (equal (fn-own-ledger-field (fn-own-refresh-ix o)) (fn-own-ledger-field o))
+  (equal (fn-own-ledger-field (fn-own-refresh-ix o fn-hist)) (fn-own-ledger-field o))
   :hints (("Goal" :in-theory (enable fn-own-refresh-ix))))
 
 ; KEYSTONE (representation): the executed field is the snoc of the old one.
 (defthm fn-rix-own-complete-enabled-ledger-field
-  (equal (fn-own-ledger-field (fn-rix-own-complete-enabled o))
+  (equal (fn-own-ledger-field (fn-rix-own-complete-enabled o fn-hist))
          (fn-sl-snoc (fn-own-ledger-field o)
                      (fn-sf-completion (fn-sn-files (fn-own-store o)))))
   :hints (("Goal" :in-theory (e/d (fn-rix-own-complete-enabled)
@@ -279,57 +274,57 @@
 
 ; KEYSTONE (model): the ledger it represents is the append.
 (defthm fn-rix-own-complete-enabled-ledger
-  (equal (fn-own-ledger (fn-rix-own-complete-enabled o))
+  (equal (fn-own-ledger (fn-rix-own-complete-enabled o fn-hist))
          (append (fn-own-ledger o)
                  (list (fn-sf-completion (fn-sn-files (fn-own-store o))))))
-  :hints (("Goal" :expand ((fn-own-ledger (fn-rix-own-complete-enabled o)))
+  :hints (("Goal" :expand ((fn-own-ledger (fn-rix-own-complete-enabled o fn-hist)))
            :in-theory (disable fn-rix-own-complete-enabled))))
 
 (in-theory (disable fn-rix-own-complete-enabled))
 
 ; host/owner-host.lisp fn-owner-finish-submission calls this.
-(defun fn-rix-own-finish (o cfg fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o))))
+(defun fn-rix-own-finish (o cfg fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :guard (fn-sn-statep (fn-own-store o))))
   (if (fn-ccar-completion-enabledp (fn-own-store o))
       (cons (if (fn-ccar-completion-names-submission-p o cfg fn-arena) :durable :fault)
-            (fn-rix-own-complete-enabled o))
+            (fn-rix-own-complete-enabled o fn-hist))
     (cons :fault o)))
 
 ; KEYSTONE (host line): the indexed finish is the carried finish, hence
 ; fn-own-finish (fn-ccar-own-finish-is-own-finish), on every owner whose Store
 ; carries its event index.
 (defthm fn-rix-own-finish-is-ccar-own-finish
-  (implies (fn-ceis-indexedp (fn-own-store o))
-           (equal (fn-rix-own-finish o cfg fn-arena)
+  (implies (fn-hist-of-storep fn-hist (fn-own-store o))
+           (equal (fn-rix-own-finish o cfg fn-arena fn-hist)
                   (fn-ccar-own-finish o cfg fn-arena)))
   :hints (("Goal" :in-theory '(fn-rix-own-finish fn-ccar-own-finish
                                fn-rix-own-complete-enabled-is-ccar))))
 
 (in-theory (disable fn-rix-own-finish))
 
-(defun fn-rix-own-complete (o)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
+(defun fn-rix-own-complete (o fn-hist)
+  (declare (xargs :stobjs fn-hist :guard (fn-sn-statep (fn-own-store o))))
   (if (fn-ccar-completion-enabledp (fn-own-store o))
-      (fn-rix-own-complete-enabled o)
+      (fn-rix-own-complete-enabled o fn-hist)
     o))
 
 ; host/owner-host.lisp fn-owner-finish calls this.
-(defun fn-rix-ocfg-complete (oc)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+(defun fn-rix-ocfg-complete (oc fn-hist)
+  (declare (xargs :stobjs fn-hist :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
   (let ((record (fn-ocfg-staged oc)))
     (if record
         (fn-ocfg-make
          (fn-ocfg-owner oc)
          (fn-ocfg-published-config (fn-ocfg-config oc) record)
          (fn-ocfg-pins oc) nil)
-      (fn-ocfg-make (fn-rix-own-complete (fn-ocfg-owner oc))
+      (fn-ocfg-make (fn-rix-own-complete (fn-ocfg-owner oc) fn-hist)
                     (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))))
 
 ; KEYSTONE (host line): the indexed configured completion is the carried one,
 ; hence fn-ocfg-step of (:complete) (fn-ccar-ocfg-complete-is-ocfg-step-complete).
 (defthm fn-rix-ocfg-complete-is-ccar-ocfg-complete
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (equal (fn-rix-ocfg-complete oc) (fn-ccar-ocfg-complete oc)))
+  (implies (fn-hist-of-storep fn-hist (fn-own-store (fn-ocfg-owner oc)))
+           (equal (fn-rix-ocfg-complete oc fn-hist) (fn-ccar-ocfg-complete oc)))
   :hints (("Goal" :in-theory '(fn-rix-ocfg-complete fn-ccar-ocfg-complete
                                fn-rix-own-complete fn-ccar-own-complete
                                fn-rix-own-complete-enabled-is-ccar))))
