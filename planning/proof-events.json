@@ -7317,6 +7317,76 @@
           "name": "fn-lg-scan-of-log-then-torn-entry"
         }
       ]
+    },
+    {
+      "id": "PRF-244",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-tear-write-is-pieces"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-of-aligned-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-tear-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-crash-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-no-forgery-under-a-crypto-trailer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-245",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-complete-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-last-of-complete-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-append-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-fence-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-fence-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-prepare-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-finish-one-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-known-abort-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-crash-of-related-state-is-a-prefix"
+        }
+      ]
     }
   ]
 }

@@ -7813,6 +7813,75 @@
         "fn-lg-scan-of-torn-entry",
         "fn-lg-scan-of-log-then-torn-entry"
       ]
+    },
+    {
+      "id": "PRF-244",
+      "title": "A crash of a batch's one aligned append scans to the committed records and a prefix of the batch, or a forgery the crypto-trailer assumption excludes (T2)",
+      "statement": "books/store-log-crash.lisp (design 2026-09-27-storage-log section 5.1 T2). fn-lg-tear-write-is-pieces: fn-bs-tear-write of (:write ino (* k unit) w) at unit index i equals the per-unit piece list fn-lg-pieces at offset k*unit + i*unit over (nthcdr (* i unit) w). fn-bs-crash-of-aligned-append (the shift lemma): for (posp (fn-bs-unit s)), a true-list d with (len d) = k*unit, durable content of ino = (append d z) and the pending list exactly ((:write ino (len d) w)), every crash image's content of ino is (append d (fn-lg-apply-to z (fn-lg-pieces ino 0 w sels unit))) with sels the image's selectors. fn-lg-batch-tear-is-a-prefix: for (fn-frame-digestp prev), (fn-lg-recordsp batch max), a zero region z (fn-lg-zerosp: the preallocated extent) at least as long as (fn-lg-log batch prev unit), the scan of any tear of that log over z is a prefix P of batch with consumed count (len (fn-lg-log P prev unit)) (fn-lg-prefix-verdictp), or fn-lg-forgery-in: the first damaged entry's slice validates as a chained frame that is not the written one. fn-lg-batch-crash-is-a-prefix: over the store, when the durable prefix d scans completely to COMMITTED ending on LAST, every crash image scans to COMMITTED ++ a prefix of the batch with the frontier past exactly that prefix's log (fn-lg-crash-verdictp), or the forgery. fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer: with fn-lg-platform-tears-p (each entry's observed slice is fn-assume-crash-tearp of its frame, A-CRYPTO-TRAILER) the forgery disjunct goes (fn-lg-no-forgery-under-a-crypto-trailer, from fn-assume-crash-tear-never-validates-unless-exact). The pessimistic figure is SHA-256's collision figure, about 2^-128 per chosen pair. Scope: the store's pending list is the log's one write (other inodes' pending operations are not in the hypothesis; PKT-682).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-005",
+        "STO-022"
+      ],
+      "depends_on": [
+        "PRF-216"
+      ],
+      "assumptions": [
+        "A-CRYPTO-TRAILER"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-crash.lisp",
+        "planning/evidence/w6-log-core-2026-09-27.md",
+        "planning/design-2026-09-27-storage-log.md"
+      ],
+      "progress_note": "Lane w6-log-core (Opus 5.5, 2026-09-27): REPL-admitted on hbox, certified on persvati (the record names the manifest). Teeth are the prototype's ground tears (tests/acl2/store-log-tests.lisp, PRF-216); the batch-level ground witnesses and the must-fail per hypothesis are open (PKT-682).",
+      "pending_subject": "No host line calls fn-lg-* or fn-lgk-* yet: fnn-log-append/-fence/-recover are PKT-682's.",
+      "events": [
+        "fn-lg-tear-write-is-pieces",
+        "fn-bs-crash-of-aligned-append",
+        "fn-lg-batch-tear-is-a-prefix",
+        "fn-lg-batch-crash-is-a-prefix",
+        "fn-lg-no-forgery-under-a-crypto-trailer",
+        "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer"
+      ]
+    },
+    {
+      "id": "PRF-245",
+      "title": "The log kernel's relation R to the segment is preserved by P-BATCH's steps, and every crash image of a related state scans to the committed records and a prefix of the batch in flight",
+      "statement": "books/store-log-kernel.lisp (design section 4). R = fn-lgk-relp: posp unit; ino in the inode table; fn-lgk-content-okp of the durable content c: c a true list and a whole number of units; the frontier f unit-aligned and within c; (fn-lg-scan (fn-bs-take f c) genesis unit max) = (committed . f) and its fn-lg-scan-last is LAST, a digest; (nthcdr f c) all zeros; the batch and the batch in flight are record lists; f plus the in-flight log's length within c; committed a true list; acked <= (len committed); and the pending list is exactly ((:write ino f (fn-lg-log inflight last unit))) when a batch is in flight, else empty. fn-lgk-append-preserves-relation: from R with nothing in flight, not faulted, the batch fitting the extent, the state after (fn-bs-write bs ino f (fn-lgk-append-octets ks unit) :ok) is related to (fn-lgk-append ks unit extent). fn-lgk-fence-preserves-relation: the state after (fn-bs-fsync-file bs ino :ok) is related to (fn-lgk-fence ks unit) (the batch committed, LAST its last trailer, the frontier past its log). fn-lgk-prepare-/finish-one-/known-abort-preserves-relation: the byte store unchanged. fn-lgk-crash-of-related-state-is-a-prefix: T2 (PRF-244) lifted to R. Establishment by P-LOG-RECOVER (T3) is open (PKT-682).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-005",
+        "STO-022"
+      ],
+      "depends_on": [
+        "PRF-244",
+        "PRF-216"
+      ],
+      "assumptions": [
+        "A-CRYPTO-TRAILER"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-kernel.lisp",
+        "planning/evidence/w6-log-core-2026-09-27.md"
+      ],
+      "progress_note": "Lane w6-log-core (Opus 5.5, 2026-09-27). The kernel is pipelined (the batch accumulates while the in-flight barrier runs). Establishment (T3) and the teeth are open (PKT-682).",
+      "pending_subject": "No host line calls fn-lgk-* yet (lane w6-log-owner).",
+      "events": [
+        "fn-lg-scan-of-complete-append",
+        "fn-lg-scan-last-of-complete-append",
+        "fn-lgk-append-preserves-relation",
+        "fn-lgk-fence-content",
+        "fn-lgk-fence-preserves-relation",
+        "fn-lgk-prepare-preserves-relation",
+        "fn-lgk-finish-one-preserves-relation",
+        "fn-lgk-known-abort-preserves-relation",
+        "fn-lgk-crash-of-related-state-is-a-prefix"
+      ]
     }
   ]
 }

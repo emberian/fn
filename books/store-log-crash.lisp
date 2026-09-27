@@ -46,97 +46,96 @@
 ; -----------------------------------------------------------------------------
 ; List vocabulary (local copies: the prototype's are local to it).
 
-(local
- (defthm fn-lgc-len-nthcdr
+(defthm fn-lgc-len-nthcdr
    (equal (len (nthcdr k x)) (nfix (- (len x) (nfix k))))
-   :hints (("Goal" :induct (nthcdr k x)))))
+   :hints (("Goal" :induct (nthcdr k x))))
 
-(local
- (defthm fn-lgc-nthcdr-shorter
+(defthm fn-lgc-nthcdr-shorter
    (implies (and (posp k) (consp x))
             (< (len (nthcdr k x)) (len x)))
-   :rule-classes :linear))
+   :rule-classes :linear)
 
-(local
- (defthm fn-lgc-take-len
-   (equal (len (fn-bs-take n x)) (nfix n))))
+(defthm fn-lgc-take-len
+   (equal (len (fn-bs-take n x)) (nfix n)))
 
-(local
- (defthm fn-lgc-len-append
-   (equal (len (append a b)) (+ (len a) (len b)))))
+(defthm fn-lgc-len-append
+   (equal (len (append a b)) (+ (len a) (len b))))
 
-(local
- (defthm fn-lgc-append-assoc
-   (equal (append (append a b) c) (append a (append b c)))))
+(defthm fn-lgc-append-assoc
+   (equal (append (append a b) c) (append a (append b c))))
 
-(local
- (defthm fn-lgc-take-of-append-exact
+(defthm fn-lgc-take-of-append-exact
    (implies (and (true-listp a) (equal n (len a)))
-            (equal (fn-bs-take n (append a b)) a))))
+            (equal (fn-bs-take n (append a b)) a)))
 
-(local
- (defthm fn-lgc-take-of-append-shorter
+(defthm fn-lgc-take-of-append-shorter
    (implies (and (natp n) (<= n (len a)))
-            (equal (fn-bs-take n (append a b)) (fn-bs-take n a)))))
+            (equal (fn-bs-take n (append a b)) (fn-bs-take n a))))
 
-(local
- (defthm fn-lgc-take-of-append-longer
+(defthm fn-lgc-take-of-append-longer
    (implies (and (true-listp a) (natp n) (<= (len a) n))
             (equal (fn-bs-take n (append a b))
                    (append a (fn-bs-take (- n (len a)) b))))
-   :hints (("Goal" :induct (fn-bs-take n a)))))
+   :hints (("Goal" :induct (fn-bs-take n a))))
 
-(local
- (defthm fn-lgc-nthcdr-of-append-exact
+(defthm fn-lgc-nthcdr-of-append-exact
    (implies (equal n (len a))
-            (equal (nthcdr n (append a b)) b))))
+            (equal (nthcdr n (append a b)) b)))
 
-(local
- (defthm fn-lgc-nthcdr-of-append-shorter
+(defthm fn-lgc-nthcdr-of-append-shorter
    (implies (and (natp n) (<= n (len a)))
             (equal (nthcdr n (append a b)) (append (nthcdr n a) b)))
-   :hints (("Goal" :induct (nthcdr n a)))))
+   :hints (("Goal" :induct (nthcdr n a))))
 
-(local
- (defthm fn-lgc-nthcdr-of-append-longer
+(defthm fn-lgc-nthcdr-of-append-longer
    (implies (and (true-listp a) (natp n) (<= (len a) n))
             (equal (nthcdr n (append a b)) (nthcdr (- n (len a)) b)))
-   :hints (("Goal" :induct (nthcdr n a)))))
+   :hints (("Goal" :induct (nthcdr n a))))
 
-(local
- (defthm fn-lgc-nthcdr-nthcdr
+(defthm fn-lgc-nthcdr-nthcdr
    (implies (and (natp a) (natp b))
-            (equal (nthcdr a (nthcdr b x)) (nthcdr (+ a b) x)))))
+            (equal (nthcdr a (nthcdr b x)) (nthcdr (+ a b) x))))
 
-(local
- (defthm fn-lgc-true-listp-append
-   (implies (true-listp b) (true-listp (append a b)))))
+(defthm fn-lgc-true-listp-append
+   (implies (true-listp b) (true-listp (append a b))))
 
-(local
- (defthm fn-lgc-append-nil
-   (implies (true-listp x) (equal (append x nil) x))))
+(defthm fn-lgc-append-nil
+   (implies (true-listp x) (equal (append x nil) x)))
 
-(local
- (defthm fn-lgc-take-then-nthcdr
+(defthm fn-lgc-take-then-nthcdr
    (implies (and (true-listp x) (natp n) (<= n (len x)))
             (equal (append (fn-bs-take n x) (nthcdr n x)) x))
-   :hints (("Goal" :induct (nthcdr n x)))))
+   :hints (("Goal" :induct (nthcdr n x))))
 
-(local
- (defthm fn-lgc-true-listp-nthcdr
-   (implies (true-listp x) (true-listp (nthcdr n x)))))
+(defthm fn-lgc-true-listp-nthcdr
+   (implies (true-listp x) (true-listp (nthcdr n x))))
 
-(local
- (defthm fn-lgc-take-of-take
+(defthm fn-lgc-take-of-take
    (implies (and (natp m) (natp n) (<= m n))
             (equal (fn-bs-take m (fn-bs-take n x)) (fn-bs-take m x)))
-   :hints (("Goal" :induct (list (fn-bs-take m x) (fn-bs-take n x))))))
+   :hints (("Goal" :induct (list (fn-bs-take m x) (fn-bs-take n x)))))
 
-(local
- (defthm fn-lgc-take-of-nthcdr-of-take
+(defthm fn-lgc-take-of-nthcdr-of-take
    (implies (and (natp k) (natp m) (natp n) (<= (+ k m) n))
             (equal (fn-bs-take m (nthcdr k (fn-bs-take n x)))
-                   (fn-bs-take m (nthcdr k x))))))
+                   (fn-bs-take m (nthcdr k x)))))
+
+
+(defthm fn-lgc-take-all
+  (implies (and (true-listp a) (equal n (len a)))
+           (equal (fn-bs-take n a) a)))
+
+(defthm fn-lgc-len-nthcdr-of-atom
+  (implies (atom x) (equal (len (nthcdr k x)) 0)))
+
+(defthm fn-lgc-octets-true-listp
+  (implies (fn-cbor-octet-listp x) (true-listp x)))
+
+(defthm fn-lgc-nthcdr-past-end-is-atom
+  (implies (<= (len x) (nfix k)) (atom (nthcdr k x))))
+
+(defthm fn-lgc-scan-of-atom
+  (implies (atom x) (equal (fn-lg-scan x prev unit max) (cons nil 0))))
 
 ; -----------------------------------------------------------------------------
 ; Zero regions.
@@ -155,10 +154,9 @@
 (defthm fn-lg-zerosp-of-zeros
   (fn-lg-zerosp (fn-bs-zeros n)))
 
-(local
- (defthm fn-lgc-take-of-zerosp
+(defthm fn-lgc-take-of-zerosp
    (implies (and (fn-lg-zerosp x) (posp n))
-            (equal (car (fn-bs-take n x)) 0))))
+            (equal (car (fn-bs-take n x)) 0)))
 
 ; A zero region is no entry: its front is not the log's magic, so the scan
 ; stops there and reads nothing.
@@ -201,29 +199,26 @@
    (defthm fn-lgc-times-plus-one
      (equal (* (+ 1 a) unit) (+ unit (* a unit))))))
 
-(local
- (defthm fn-lgc-floor-aligned
+(defthm fn-lgc-floor-aligned
    (implies (and (natp k) (posp unit))
             (equal (floor (* k unit) unit) k))
    :hints (("Goal" :in-theory (disable floor fn-lgc-floor-shift)
-            :use ((:instance fn-lgc-floor-shift (x 0)))))))
+            :use ((:instance fn-lgc-floor-shift (x 0))))))
 
-(local
- (defthm fn-lgc-unit-count-aligned
+(defthm fn-lgc-unit-count-aligned
    (implies (and (natp k) (posp unit) (natp len) (natp i))
             (equal (< i (fn-bs-unit-count (* k unit) len unit))
                    (< (* i unit) len)))
    :hints (("Goal" :in-theory (e/d (fn-bs-unit-count) (floor fn-lgc-floor-shift fn-lgc-le-floor))
             :use ((:instance fn-lgc-floor-shift (x (+ -1 len)))
                   (:instance fn-lgc-floor-shift (x 0))
-                  (:instance fn-lgc-le-floor (y (+ -1 len))))))))
+                  (:instance fn-lgc-le-floor (y (+ -1 len)))))))
 
 (local (in-theory (disable fn-bs-unit-count)))
 
-(local
- (defthm fn-lgc-consp-nthcdr
+(defthm fn-lgc-consp-nthcdr
    (iff (consp (nthcdr n x)) (< (nfix n) (len x)))
-   :hints (("Goal" :induct (nthcdr n x)))))
+   :hints (("Goal" :induct (nthcdr n x))))
 
 (defthm fn-lg-tear-write-is-pieces
   (implies (and (natp k) (posp unit) (natp i) (true-listp w))
@@ -264,14 +259,12 @@
            :in-theory (disable fn-bs-splice))))
 
 ; The splice arithmetic.
-(local
- (defthm fn-lgc-splice-len
+(defthm fn-lgc-splice-len
    (equal (len (fn-bs-splice old offset octets))
-          (max (len old) (+ (nfix offset) (len octets))))))
+          (max (len old) (+ (nfix offset) (len octets)))))
 
-(local
- (defthm fn-lgc-splice-true-listp
-   (implies (true-listp old) (true-listp (fn-bs-splice old offset octets)))))
+(defthm fn-lgc-splice-true-listp
+   (implies (true-listp old) (true-listp (fn-bs-splice old offset octets))))
 
 ; A write at F + s over D ++ Z with len D = F is D followed by the write at
 ; s over Z: fn-bs-splice past a prefix is a splice of the rest.
@@ -291,23 +284,19 @@
            (fn-lg-writes-between (cdr ops) low bound))
     t))
 
-(local
- (defthm fn-lgc-zeros-len
-   (equal (len (fn-bs-zeros n)) (nfix n))))
+(defthm fn-lgc-zeros-len
+   (equal (len (fn-bs-zeros n)) (nfix n)))
 
-(local
- (defthm fn-lgc-zeros-true-listp
-   (true-listp (fn-bs-zeros n))))
+(defthm fn-lgc-zeros-true-listp
+   (true-listp (fn-bs-zeros n)))
 
-(local
- (defthm fn-lgc-writes-between-weaken
+(defthm fn-lgc-writes-between-weaken
    (implies (and (fn-lg-writes-between ops low bound)
                  (<= low2 low) (<= bound bound2))
-            (fn-lg-writes-between ops low2 bound2))))
+            (fn-lg-writes-between ops low2 bound2)))
 
-(local
- (defthm fn-lgc-pieces-of-short
-   (implies (<= (len w) 0) (equal (fn-lg-pieces ino start w sels unit) nil))))
+(defthm fn-lgc-pieces-of-short
+   (implies (<= (len w) 0) (equal (fn-lg-pieces ino start w sels unit) nil)))
 
 (defthm fn-lg-pieces-between
   (implies (and (natp start) (posp unit))
@@ -364,11 +353,10 @@
            :use ((:instance fn-lg-pieces-shift (d (len d)))))))
 
 ; Writes that end at or before B leave the octets from B on unchanged.
-(local
- (defthm fn-lgc-nthcdr-of-splice-below
+(defthm fn-lgc-nthcdr-of-splice-below
    (implies (and (natp off) (natp b) (true-listp o) (<= (+ off (len o)) b) (<= b (len c)))
             (equal (nthcdr b (fn-bs-splice c off o)) (nthcdr b c)))
-   :hints (("Goal" :in-theory (enable fn-bs-splice) :do-not-induct t))))
+   :hints (("Goal" :in-theory (enable fn-bs-splice) :do-not-induct t)))
 
 (defthm fn-lg-nthcdr-of-apply-to-below
   (implies (and (fn-lg-writes-between ops low b) (natp b) (<= b (len c)))
@@ -384,18 +372,15 @@
   (if (or (zp m) (atom sels) (zp unit)) (list a sels start)
     (fn-lgc-split-ind (nthcdr unit a) (1- m) (cdr sels) unit (+ start unit))))
 
-(local
- (defthm fn-lgc-consp-append
-   (equal (consp (append a b)) (or (consp a) (consp b)))))
+(defthm fn-lgc-consp-append
+   (equal (consp (append a b)) (or (consp a) (consp b))))
 
-(local
- (defthm fn-lgc-unit-le-multiple
+(defthm fn-lgc-unit-le-multiple
    (implies (and (posp m) (posp unit)) (<= unit (* m unit)))
-   :rule-classes :linear))
+   :rule-classes :linear)
 
-(local
- (defthm fn-lgc-multiple-minus-unit
-   (equal (+ (- unit) (* m unit)) (* (+ -1 m) unit))))
+(defthm fn-lgc-multiple-minus-unit
+   (equal (+ (- unit) (* m unit)) (* (+ -1 m) unit)))
 
 (defthm fn-lg-pieces-of-append
   (implies (and (natp m) (posp unit) (natp start)
@@ -457,29 +442,25 @@
       (let ((step (+ (len slice) (fn-lg-pad-len (len slice) unit))))
         (fn-lg-scan-last (nthcdr step octets) (fn-lg-trailer slice) unit max)))))
 
-(local
- (defthm fn-lgc-declared-len-of-append
+(defthm fn-lgc-declared-len-of-append
    (implies (<= *fn-frame-header-octets* (len d))
             (equal (fn-lg-declared-len (append d x)) (fn-lg-declared-len d)))
-   :hints (("Goal" :in-theory (e/d (fn-lg-declared-len) (fn-cbor-u32-from))))))
+   :hints (("Goal" :in-theory (e/d (fn-lg-declared-len) (fn-cbor-u32-from)))))
 
-(local
- (defthm fn-lgc-slice-of-append
+(defthm fn-lgc-slice-of-append
    (implies (consp (fn-lg-slice d))
             (equal (fn-lg-slice (append d x)) (fn-lg-slice d)))
    :hints (("Goal" :in-theory (e/d (fn-lg-slice) (fn-lg-declared-len))
-            :use ((:instance fn-lg-slice-len (octets d)))))))
+            :use ((:instance fn-lg-slice-len (octets d))))))
 
-(local
- (defthm fn-lgc-scan-consumed-bound
+(defthm fn-lgc-scan-consumed-bound
    (<= (cdr (fn-lg-scan octets prev unit max))
        (+ (len octets) (cdr (fn-lg-scan octets prev unit max))))
-   :rule-classes nil))
+   :rule-classes nil)
 
-(local
- (defthm fn-lgc-true-list-len-0
+(defthm fn-lgc-true-list-len-0
    (implies (and (true-listp d) (not (consp d))) (equal d nil))
-   :rule-classes :forward-chaining))
+   :rule-classes :forward-chaining)
 
 ; The scan of D ++ X, when the scan of D consumes all of D.
 (defthm fn-lg-scan-of-complete-append
@@ -529,8 +510,7 @@
 ; -----------------------------------------------------------------------------
 ; The batch over a zero region.
 
-(local
- (defthm fn-lgc-scan-when-slice-is-frame
+(defthm fn-lgc-scan-when-slice-is-frame
    (implies (and (fn-frame-digestp prev) (fn-lg-recordp record max)
                  (equal (fn-lg-slice x) (fn-lg-frame prev record)))
             (equal (fn-lg-scan x prev unit max)
@@ -543,15 +523,14 @@
             :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-slice fn-lg-entry-okp
                                 fn-lg-slice-record fn-lg-trailer fn-lg-pad-len
                                 fn-lg-recordp)
-            :use (fn-lg-entry-len fn-lg-entry-okp-of-frame fn-lg-slice-record-of-frame)))))
+            :use (fn-lg-entry-len fn-lg-entry-okp-of-frame fn-lg-slice-record-of-frame))))
 
-(local
- (defthm fn-lgc-scan-when-slice-is-not-frame
+(defthm fn-lgc-scan-when-slice-is-not-frame
    (implies (and (not (equal (fn-lg-slice x) fr))
                  (not (fn-lg-forgeryp x prev max fr)))
             (equal (fn-lg-scan x prev unit max) (cons nil 0)))
    :hints (("Goal" :expand ((fn-lg-scan x prev unit max))
-            :in-theory (disable fn-lg-slice fn-lg-entry-okp)))))
+            :in-theory (disable fn-lg-slice fn-lg-entry-okp))))
 
 (defun fn-lgc-batch-ind (z batch prev sels unit)
   (declare (xargs :guard t :verify-guards nil :measure (len batch)))
@@ -563,12 +542,11 @@
      (nthcdr (fn-lg-entry-units prev (car batch) unit) sels)
      unit)))
 
-(local
- (defthm fn-lgc-log-len-of-cons
+(defthm fn-lgc-log-len-of-cons
    (equal (len (fn-lg-log (cons r rs) prev unit))
           (+ (len (fn-lg-entry prev r unit))
              (len (fn-lg-log rs (fn-lg-trailer (fn-lg-frame prev r)) unit))))
-   :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer)))))
+   :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer))))
 
 (defthm fn-lg-log-true-listp
   (implies (and (fn-frame-digestp prev) (fn-lg-recordsp records max))
@@ -576,10 +554,9 @@
   :hints (("Goal" :induct (fn-lg-log records prev unit)
            :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer))))
 
-(local
- (defthm fn-lgc-apply-to-of-append
+(defthm fn-lgc-apply-to-of-append
    (equal (fn-lg-apply-to c (append p q))
-          (fn-lg-apply-to (fn-lg-apply-to c p) q))))
+          (fn-lg-apply-to (fn-lg-apply-to c p) q)))
 
 ; The tear of A ++ B over Z, read from A's end, is the tear of B over Z's
 ; octets from A's end: the batch's entries split per unit.
@@ -608,9 +585,8 @@
                  (:instance fn-lg-nthcdr-of-apply-to-below
                             (c z) (ops (fn-lg-pieces ino 0 a sels unit)) (low 0) (b (len a)))))))
 
-(local
- (defthm fn-lgc-apply-to-of-nil
-   (equal (fn-lg-apply-to c nil) c)))
+(defthm fn-lgc-apply-to-of-nil
+   (equal (fn-lg-apply-to c nil) c))
 
 ; The tear of the batch's log W over a zero region Z at least as long.
 (defthm fn-lg-batch-tear-is-a-prefix
@@ -679,12 +655,11 @@
 ; -----------------------------------------------------------------------------
 ; T2 over the store.
 
-(local
- (defthm fn-lgc-scan-records-true-listp
+(defthm fn-lgc-scan-records-true-listp
    (true-listp (car (fn-lg-scan octets prev unit max)))
    :hints (("Goal" :induct (fn-lg-scan octets prev unit max)
             :in-theory (disable fn-lg-slice fn-lg-entry-okp fn-lg-slice-record
-                                fn-lg-declared-len fn-lg-trailer fn-lg-pad-len)))))
+                                fn-lg-declared-len fn-lg-trailer fn-lg-pad-len))))
 
 ; The verdict of a crash image's scan: the committed records followed by a
 ; prefix P of the batch, with the frontier past exactly P's log.
@@ -695,13 +670,11 @@
          (equal (car scan) (append committed p))
          (equal (cdr scan) (+ frontier (len (fn-lg-log p last unit)))))))
 
-(local
- (defthm fn-lgc-nthcdr-len-append
+(defthm fn-lgc-nthcdr-len-append
    (implies (true-listp a)
-            (equal (nthcdr (len a) (append a b)) b))))
+            (equal (nthcdr (len a) (append a b)) b)))
 
-(local
- (defthm fn-lgc-tail-verdict
+(defthm fn-lgc-tail-verdict
    (implies (and (posp unit) (true-listp d)
                  (equal (fn-lg-scan d genesis unit max) (cons committed (len d)))
                  (fn-frame-digestp last) (fn-lg-recordsp batch max)
@@ -721,7 +694,7 @@
                              (prev genesis)
                              (x (fn-lg-apply-to z (fn-lg-pieces ino 0 (fn-lg-log batch last unit)
                                                                 sels unit))))
-                  (:instance fn-lgc-scan-records-true-listp (octets d) (prev genesis)))))))
+                  (:instance fn-lgc-scan-records-true-listp (octets d) (prev genesis))))))
 
 (defthm fn-lg-batch-crash-is-a-prefix
   (implies (and (posp (fn-bs-unit s)) (natp k) ino (true-listp d)
