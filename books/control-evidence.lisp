@@ -211,17 +211,24 @@
 
 (defconst *fn-cev-envelope-prefix* "<fn-moderate.")
 
+; What follows prefix P in O, or :no when O does not begin with P.
+(defun fn-cev-after-prefix (p o)
+  (declare (xargs :guard t))
+  (if (consp p)
+      (if (and (consp o) (equal (car p) (car o)))
+          (fn-cev-after-prefix (cdr p) (cdr o))
+        :no)
+    o))
+
 ; The post's Message-ID an envelope Message-ID ID names, or nil.
 (defun fn-cev-envelope-original (id)
   (declare (xargs :guard t))
-  (if (stringp id)
-      (let ((cs (coerce id 'list))
-            (prefix (coerce *fn-cev-envelope-prefix* 'list)))
-        (if (and (< (len prefix) (len cs))
-                 (equal (take (len prefix) cs) prefix))
-            (coerce (cons #\< (nthcdr (len prefix) cs)) 'string)
-          nil))
-    nil))
+  (let ((rest (fn-cev-after-prefix
+               (fn-record-string-octets *fn-cev-envelope-prefix*)
+               (fn-record-string-octets id))))
+    (if (and (consp rest) (fn-cbor-octet-listp rest))
+        (fn-record-octets-string (cons 60 rest))
+      nil)))
 
 (defun fn-cev-withdrawn-by-some (msgid ws groups verdict)
   (declare (xargs :guard t))
@@ -519,7 +526,14 @@
            (and (fn-cbor-octet-listp (fn-record-string-octets x))
                 (<= (len (fn-record-string-octets x)) *fn-cevg-max-msgid-octets*)
                 (equal (fn-record-octets-string (fn-record-string-octets x)) x)))
-  :hints (("Goal" :in-theory (enable fn-cevg-msgidp fn-record-string-octets fn-record-octets-string)))))
+  :hints (("Goal" :in-theory (enable fn-cevg-msgidp fn-record-string-octets fn-record-octets-string))))
+; PKT-657: the group argument of `moderation list' likewise.
+(defthm fn-cev-group-octets
+  (implies (fn-cevg-groupp x)
+           (and (fn-cbor-octet-listp (fn-record-string-octets x))
+                (<= (len (fn-record-string-octets x)) *fn-cevg-max-msgid-octets*)
+                (equal (fn-record-octets-string (fn-record-string-octets x)) x)))
+  :hints (("Goal" :in-theory (enable fn-cevg-groupp fn-record-string-octets fn-record-octets-string)))))
 
 (encapsulate ()
 (local (defthm fn-cev-octets-of-append
@@ -531,9 +545,11 @@
   (implies (fn-cevg-kindp kind)
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
                 (<= (len (fn-cev-kind-argument kind)) *fn-cevg-max-msgid-octets*)))
-  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
+                        (:instance fn-cev-group-octets (x (cdr kind))))
            :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
-                           (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
+                           (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
+                            fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))
 (defthm fn-cev-request-payload-fits
   (implies (fn-cevg-kindp kind)
@@ -590,9 +606,11 @@
   (implies (fn-cevg-kindp kind)
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
                 (<= (len (fn-cev-kind-argument kind)) *fn-record-max-octets*)))
-  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
+                        (:instance fn-cev-group-octets (x (cdr kind))))
            :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
-                           (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
+                           (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
+                            fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))
 (local (defthm fn-cev-kind-code-uint
   (fn-record-uint32p (fn-cev-kind-code kind))

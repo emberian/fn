@@ -691,6 +691,69 @@
            (equal (fn-native-admin-plan-deltas-over plan peers)
                   (fn-native-admin-plan-deltas plan))))
 
+; The sub-plans, closed (D26): none plans a group creation or retirement,
+; so the plan theorems below need not open them (merged with group-access's
+; access plan, opening all five cost 15 s of native-admin's 23 s at 2 jobs).
+(local (defthm fn-native-admin-sub-plans-neither-create-nor-retire
+  (and
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-control-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-control-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-control-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-moderate-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-moderate-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-moderate-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-describe-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-describe-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-describe-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-motd-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-motd-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-motd-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-access-plan words argv))
+                   :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-access-plan words argv))
+                   :remove-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-access-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-control-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-moderate-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-describe-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-motd-plan words argv))
+                   :set-bp-boundary))
+       (not (equal (caddr (fn-native-admin-access-plan words argv))
+                   :set-bp-boundary)))
+  :hints (("Goal" :in-theory (enable fn-native-admin-result-kind
+                                     fn-native-admin-result)))))
+
 (encapsulate ()
 (local (defthm kind-of-result
   (equal (fn-native-admin-result-kind (fn-native-admin-result s r k n c p v)) k)))
@@ -749,7 +812,12 @@
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-bp-boundary-split
                                    fn-native-admin-bp-boundary-rows
-                                   fn-native-admin-bp-boundary-plan))
+                                   fn-native-admin-bp-boundary-plan
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv)))
                  (:instance accepted-bp-boundary-plan-is-a-boundary
@@ -862,7 +930,12 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-record-group-namep fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
-                                   fn-native-admin-words))
+                                   fn-native-admin-words
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv))))))))
 (local (defthm delta-rows-of-set-bp-boundary
@@ -1172,6 +1245,11 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-native-admin-words fn-native-admin-argvp
                                    fn-native-admin-peer-plan
                                    fn-native-admin-bp-boundary-plan
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
                                    fn-native-admin-decimal-value))
@@ -1200,6 +1278,11 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-native-admin-words fn-native-admin-argvp
                                    fn-native-admin-peer-plan
                                    fn-native-admin-bp-boundary-plan
+                                   fn-native-admin-control-plan
+                                   fn-native-admin-moderate-plan
+                                   fn-native-admin-describe-plan
+                                   fn-native-admin-motd-plan
+                                   fn-native-admin-access-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
                                    fn-native-admin-decimal-value
