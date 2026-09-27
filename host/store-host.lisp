@@ -31,6 +31,9 @@
 (include-book "../books/article-fields")
 (include-book "../books/post-fields")
 (include-book "../books/store-log-route")
+;; The log kernel the host holds (lane per-record-state; host/native/io.lisp
+;; fnn-log-*): the committed records' count in place of their list.
+(include-book "../books/store-log-kernel-concrete")
 (include-book "../books/store-log-segments")
 (include-book "../books/store-log-extend")
 (include-book "../books/store-init-log-publication")
