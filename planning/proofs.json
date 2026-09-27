@@ -9791,6 +9791,131 @@
       "events": [
         "fn-ocm-commit-waits-at-most-the-bound"
       ]
+    },
+    {
+      "id": "PRF-272",
+      "title": "The Store kernel holds its history and its success history as snoc-lists: a commit and a success append in O(1), and the prepare, the finish and the refresh read the length, the last and the newest records in O(1)",
+      "statement": "books/snoc-list.lisp and books/store-files.lisp (post-alloc-2). The kernel state's RECORDS and SUCCESSES fields hold (:snoc N . REV) (the length-N list whose reverse is the first N of REV); fn-sf-records / fn-sf-successes read the lists back and every accessor lemma of fn-sf-make is unchanged; fn-sf-shapep requires each field to be the representation of its list. KEYSTONES: fn-sl-list-of-fn-sl-of (every value round-trips), fn-sl-list-of-fn-sl-snoc and fn-sl-snoc-of-fn-sl-of (the O(1) snoc is the append, for every value / list), fn-sl-count-is-len, fn-sl-last-is-last, fn-sl-nth-is-nth (no hypothesis); fn-sf-make-fields-is-make, fn-sf-make-fields-snoc-records-is-make, fn-sf-make-fields-snoc-successes-is-make (under fn-sf-shapep: what every transition's mbe executes). The logic of every store-files transition is unchanged (the mbe :logic is the former body). Host subjects: the commit host/owner-host.lisp fn-owner-io -> books/records-concrete.lisp fn-rcon-sf-record-dir-result (O(1) append); the prepare fn-owner-prepare-buffer -> books/owner-prepare-carried.lisp fn-pcar-stage-record over fn-pcar-files-candidatep (fn-pcar-files-candidatep-is-candidatep, no hypothesis) and fn-pcar-sbud-prepare over fn-sf-records-count (fn-pcar-records-count-is-sbud-used); the finish fn-owner-finish-submission -> books/owner-commit-carried.lisp fn-ccar-completion-record over fn-ccar-seek-at (fn-ccar-seek-at-is-seek, no hypothesis); books/owner.lisp fn-own-refresh reads the count in O(1) and keeps its withdrawals without reading the history when the acceptance is unchanged (mbe; logic unchanged). Local policy (D27: bound work, not data); no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180",
+        "PRF-193"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/snoc-list.lisp",
+        "books/store-files.lisp",
+        "books/records-concrete.lisp",
+        "books/owner-prepare-carried.lisp",
+        "books/owner-commit-carried.lisp",
+        "tests/acl2/snoc-list-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 2026-09-27: owner POST bytes/POST flat in N (hbox, see planning/evidence post-alloc-2 measurements in the lane record). Farm persvati run-20260927T114842Z-7d85 (manifest certify-20260927T115018Z-460522).",
+      "events": [
+        "fn-sl-list-of-fn-sl-of",
+        "fn-sl-list-of-fn-sl-snoc",
+        "fn-sl-snoc-of-fn-sl-of",
+        "fn-sl-count-is-len",
+        "fn-sl-last-is-last",
+        "fn-sl-nth-is-nth",
+        "fn-sf-make-fields-is-make",
+        "fn-sf-make-fields-snoc-records-is-make",
+        "fn-sf-make-fields-snoc-successes-is-make",
+        "fn-pcar-files-candidatep-is-candidatep",
+        "fn-pcar-records-count-is-sbud-used",
+        "fn-ccar-seek-at-is-seek"
+      ]
+    },
+    {
+      "id": "PRF-273",
+      "title": "An owner POST's article is parsed once, at take, and every owner-side reader is its reference over the carried parse",
+      "statement": "books/owner-parse-carried.lisp (post-alloc-2). The carry (fn-apc-p: each entry's parse is fn-article-parse of its octets; it mentions no owner state) is written only by host/owner-host.lisp fn-owner-take (fn-apc-take, fn-apc-p-of-take). KEYSTONE fn-apc-parse-is-article-parse; each host call is its reference under fn-apc-p: fn-apc-take-is-take-result (fn-owner-take), fn-apc-submission-intent-is-reference and fn-apc-submission-resolution-publication-is-reference (fn-owner-submission-intent / -resolution, with fn-icar-carryp), fn-apc-filing-plan-is-reference (fn-owner-control-filing), fn-apc-carrier-form-is-reference, fn-apc-current-plan-is-reference (fn-owner-peer-carrier-form / -plan), fn-apc-transit-verdict and refusal detail (fn-owner-transit-verdict), fn-apc-intern-row-at-is-reference with fn-apc-held-facts-of-is-reference (fn-owner-prepare-buffer, fn-owner-prepare), fn-apc-own-finish-is-own-finish (fn-owner-finish-submission, with fn-ceis-indexedp of the owner Store, fn-osi-live-owner-store-is-indexed), fn-apc-own-outcome-is-acar-own-outcome (fn-owner-outcome, with fn-icar-carryp). A stale carry costs a parse, never a wrong value. Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-parse-carried.lisp",
+        "tests/acl2/owner-parse-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-parse) 2026-09-27: 13 owner-side parses of the stored octets per POST -> 1 (the two served-phase parses in books/nntp-post.lisp are served-readers': request in the lane record).",
+      "events": [
+        "fn-apc-parse-is-article-parse",
+        "fn-apc-take-is-take-result",
+        "fn-apc-intern-row-at-is-reference",
+        "fn-apc-held-facts-of-is-reference",
+        "fn-apc-own-finish-is-ccar-own-finish",
+        "fn-apc-own-outcome-is-acar-own-outcome",
+        "fn-apc-submission-intent-is-reference",
+        "fn-apc-carrier-form-is-reference",
+        "fn-apc-current-plan-is-reference",
+        "fn-apc-filing-plan-is-reference"
+      ]
+    },
+    {
+      "id": "PRF-274",
+      "title": "A POST's retention admission reads a carried obligation-id trie",
+      "statement": "books/post-retain-carried.lisp (post-alloc-2). The carry pairs a retention ledger with its id trie; fn-prc-carryp: the trie is fn-rii-kbuild of the ledger it names (no owner state, so no owner step falsifies it). KEYSTONES fn-prc-sbud-prepare-is-pidx-sbud-prepare (under fn-prc-carryp, the prepare host/owner-host.lisp fn-owner-prepare-buffer installs is PRF-191's fn-pidx-sbud-prepare), fn-prc-carryp-of-refresh (the host's one writer, fn-prc-refresh, keeps the recognizer), fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare (the composition). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-retain-carried.lisp",
+        "tests/acl2/post-retain-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-retain) 2026-09-27: the per-POST pin walk (fn-retain-pin-id-scanp, ~12% of POST CPU at N=10,000) replaced by one trie lookup; cost: the trie (~2 KB per pin) and a rebuild after a release (open item).",
+      "events": [
+        "fn-prc-sbud-prepare-is-pidx-sbud-prepare",
+        "fn-prc-carryp-of-refresh",
+        "fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare"
+      ]
+    },
+    {
+      "id": "PRF-275",
+      "title": "The cancel refresh's row lookup and the view's record count read the Store's event index",
+      "statement": "books/control-visible-indexed.lisp and books/owner-refresh-indexed.lisp (post-alloc-2). KEYSTONES fn-ctl-row-event-ix-is-row-event and fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals (under fn-cei-correspondencep of the index and fn-ctl-rows-okp, which every Store history satisfies: fn-ctl-rows-okp-of-sf-state); fn-own-refresh-ix-is-own-refresh (under fn-sn-statep and fn-ceis-indexedp); the completions the host calls: fn-rix-own-finish-is-ccar-own-finish (through fn-apc-own-finish, host/owner-host.lisp fn-owner-finish-submission) and fn-rix-ocfg-complete-is-ccar-ocfg-complete (fn-owner-finish), under fn-ceis-indexedp of the owner Store (fn-osi-live-owner-store-is-indexed). The oldest event carrying the Message-ID is kept (flip-L8-2's semantics). books/control-visible.lisp fn-ctl-event-row: a standalone kind-2 verdict event is no longer read as a row (the held shape is required). Local policy; RFC 5537 s5.3 cancel semantics unchanged.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-180",
+        "PRF-210"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-visible-indexed.lisp",
+        "books/owner-refresh-indexed.lisp",
+        "tests/acl2/control-visible-indexed-tests.lisp",
+        "tests/acl2/owner-refresh-indexed-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-refresh) 2026-09-27: the per-POST head-first walk of the history for the new article's row -> one Message-ID trie walk and one sequence read.",
+      "events": [
+        "fn-ctl-row-event-ix-is-row-event",
+        "fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals",
+        "fn-own-refresh-ix-is-own-refresh",
+        "fn-rix-own-finish-is-ccar-own-finish",
+        "fn-rix-ocfg-complete-is-ccar-ocfg-complete"
+      ]
     }
   ]
 }
