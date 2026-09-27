@@ -1,5 +1,5 @@
 ; Witnesses and teeth for PRF-180: the committed count read from the derived
-; event index (books/store-budget.lisp fn-sbud-count-is-used), the committed
+; event index (books/store-budget.lisp fn-sbud-count-is-used-by-definition), the committed
 ; record octets advanced through it (fn-sbud-bytes-carried-is-the-fold,
 ; fn-sbud-headroom-carried-is-headroom-at) and the owner's two other caches
 ; (books/store-carried-folds.lisp fn-scf-debt-carried-is-the-record-debt,
@@ -29,7 +29,7 @@
                      (append *scft-before-records* (list *bsb-row-composite*))))
 
 ; -----------------------------------------------------------------------------
-; fn-sbud-count-is-used: antecedent and conclusion, before and after.
+; fn-sbud-count-is-used-by-definition: antecedent and conclusion, before and after.
 (assert-event (equal (fn-sbud-count *osi-before*) (fn-sbud-used *osi-before*)))
 (assert-event (equal (fn-sbud-count *osi-before*) 1))
 (assert-event (equal (fn-sbud-count *osi-after*) (fn-sbud-used *osi-after*)))

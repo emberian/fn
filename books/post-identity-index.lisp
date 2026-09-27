@@ -461,7 +461,7 @@
 ; The function host/owner-host.lisp fn-owner-prepare-buffer installs.  The
 ; budget test reads the committed count the Store's event index carries
 ; (fn-sbud-count, books/store-budget.lisp), not fn-sbud-used's LEN of the
-; history (PRF-242): equal under fn-ceis-indexedp (fn-sbud-count-is-used),
+; history (PRF-242): equal under fn-ceis-indexedp (fn-sbud-count-is-used-by-definition),
 ; which every owner the host reaches carries (PRF-144,
 ; fn-osi-live-owner-store-is-indexed).
 (defun fn-pidx-sbud-prepare (oc record budget)
@@ -489,6 +489,6 @@
                                    fn-midx-correspondencep
                                    fn-sbud-oc-store
                                    fn-pcar-sbud-prepare-is-sbud-prepare))
-           :use ((:instance fn-sbud-count-is-used (s (fn-sbud-oc-store oc)))))))
+           :use ((:instance fn-sbud-count-is-used-by-definition (s (fn-sbud-oc-store oc)))))))
 
 (in-theory (disable fn-pidx-sbud-prepare))
