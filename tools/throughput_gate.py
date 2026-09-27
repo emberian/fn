@@ -20,6 +20,11 @@ is taken on tmpfs (/dev/shm), in one unit, on a box checked quiet.
               alloc  the same probe in-process in the image's core, bracketed
                      by SBCL's get-bytes-consed (commit loop and reopen), a
                      second fresh store; bytes per commit.
+              client every connection reads its replies through a buffer
+                     (msgid_measure.Conn(buffered=True), lane gate-regress
+                     2026-09-27): the unbuffered stream is one recv per
+                     octet, 4-5 ms of Python per 2 KiB ARTICLE on hbox, which
+                     was most of every ARTICLE figure before it.
               post   100 NNTP POSTs of 2,048 octets on one connection to
                      `operator run` (median, p95; owner CPU per POST), then
               article 100 ARTICLEs of those identifiers on a fresh connection,
@@ -330,7 +335,7 @@ def measure_served(image, work, env, posts, octets, out):
                                     "--max-article-octets", "4096", "fn.letters", "fn.test"])
     proc, _, err = r.start_owner(Path(image), config, env, work / "owner.stderr")
     try:
-        c = m.Conn(port)
+        c = m.Conn(port, buffered=True)
         c0, t0 = owner_cpu(proc.pid), time.perf_counter()
         times = [r.post(c, i, octets) for i in range(posts)]
         out["post_load_s"] = round(time.perf_counter() - t0, 3)
@@ -339,7 +344,7 @@ def measure_served(image, work, env, posts, octets, out):
         s = m.summary(times)
         out["post_n"], out["post_octets"] = posts, len(r.article(0, octets))
         out["post_median_ms"], out["post_p95_ms"] = round(s["median_ms"], 3), round(s["p95_ms"], 3)
-        c = m.Conn(port)
+        c = m.Conn(port, buffered=True)
         reads = []
         for i in range(posts):
             dt, reply, _ = r.timed_multiline(c, "ARTICLE %s" % m.msgid(i))
@@ -354,7 +359,7 @@ def measure_served(image, work, env, posts, octets, out):
         r.stop_owner(proc, err)
     proc, open_s, err = r.start_owner(Path(image), config, env, work / "owner-reopen.stderr")
     try:
-        c = m.Conn(port)
+        c = m.Conn(port, buffered=True)
         _, reply = c.timed("STAT %s" % m.msgid(posts - 1))
         c.close()
     finally:
@@ -396,7 +401,7 @@ def measure_signed_posts(author, carriers, proc, port, control, posts, history, 
     import signed_carriers as sc
     at, probes = carriers
     author.enroll(control)
-    c = m.Conn(port)
+    c = m.Conn(port, buffered=True)
     t0 = time.perf_counter()
     for i in range(posts, history):
         if i in at:
@@ -441,7 +446,7 @@ def measure_checkpoint(image, work, env, out, deadline=180.0):
     proc, _, err = r.start_owner(Path(image), config, env, stderr_path)
     line, posted = None, 0
     try:
-        c = m.Conn(port)
+        c = m.Conn(port, buffered=True)
         started = time.perf_counter()
         for i in range(64):
             r.post(c, i, octets)
@@ -453,7 +458,7 @@ def measure_checkpoint(image, work, env, out, deadline=180.0):
         loaded = time.perf_counter()
         # The owner publishes between accepts: open connections until it does.
         while line is None and time.perf_counter() - started < deadline:
-            m.Conn(port).close()
+            m.Conn(port, buffered=True).close()
             time.sleep(0.25)
             line = CHECKPOINT_LINE.search(stderr_path.read_bytes())
         seen = time.perf_counter()

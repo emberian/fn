@@ -65,6 +65,8 @@
 (include-book "../books/owner-intent-carried")
 ; The POST's article parsed once at take (fn-apc-; fn-owner-parse-carry).
 (include-book "../books/owner-parse-carried")
+(include-book "../books/owner-identity-intern")
+(include-book "../books/owner-identity-served")
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
@@ -180,6 +182,32 @@
 (defun fn-owner-core (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-ocfg-owner (f-get-global 'fn-owner state)))
+
+;; A live owner's administrative publication on a format-9 store (lane
+;; log-recovery; AW's live-site fix): the authorization over the history the
+;; owner carries -- its store's rows and frontier (fn-own-store) -- in place
+;; of a re-read of the durable history from disk (the per-file layout's
+;; fnn-durable-records; a format-9 store's history is the checkpoint and the
+;; log, and a live owner never reloads a checkpoint into its arena).  The
+;; decision is the one fn-store-cfg-native-admin-authorize makes over the
+;; interned history (fn-cvec-native-admin-authorize over rows); under
+;; control-quanta-2's fn-lgoc-invariantp the carried rows are the durable
+;; history's (PRF-285, PRF-286), and fn-owner-reconfigure-authorizedp
+;; (PRF-287) has already answered for the staged record.
+(defun fn-owner-cfg-native-admin-authorize
+    (config-octet-records record-octets lock-owned observed-name-octets profile state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (fn-own-store (fn-owner-core state)))
+         (config-records (fn-store-cfg-decode-records config-octet-records))
+         (parsed (fn-cfg-decode-exact record-octets))
+         (names (fn-store-octet-lists->strings observed-name-octets)))
+    (value
+     (if (or (equal config-records :bad) (null config-records)
+             (equal names :bad) (not (fn-record-parse-okp parsed)))
+         (fn-native-admin-publication-result :refused :decode nil nil nil)
+       (fn-cvec-native-admin-authorize
+        (fn-sf-records (fn-sn-files st)) (fn-sf-frontier (fn-sn-files st))
+        config-records (fn-record-parse-value parsed) lock-owned names profile)))))
 
 (defun fn-owner-clock-observation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -1277,28 +1305,42 @@
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict
 ; fields that host code could recombine differently.
-(defun fn-owner-prepare-identity (event state)
-  (declare (xargs :stobjs state :mode :program))
+;; The owner's identity entry (lane signed-post, PRF-289).  Since the records
+;; flip the Store retains a composite as a ROW (fn-hstxa-p); the event ACL2
+;; built is the wire composite, so the entry stages the row the intern would
+;; make at the arena's count (books/owner-identity-intern.lisp
+;; fn-oii-ocfg-prepare-identity, KEYSTONE
+;; fn-oii-ocfg-prepare-identity-is-intern-then-step) and, when the Store took
+;; it and the intern seals (fn-oii-identity-sealsp), answers (:seal PAYLOAD):
+;; the host seals exactly those octets (fn-oii-seal-is-the-intern-arena), so
+;; a refused composite's bytes are never retained.  A keyring snapshot
+;; (fn-stxk-p) interns to itself and seals nothing.
+;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
+;; fn-ocfg-step of this event on every owner fn-own-relation admits
+;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
+;; it stages without replaying the appended history, whose replay the
+;; maintained store relation carries, and its candidate test reads the
+;; history's last record, not every record (PRF-193,
+;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
+;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
+;; carries.
+(defun fn-owner-prepare-identity (event fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((s (fn-owner-store state)))
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
-;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
-      ;; fn-ocfg-step of this event on every owner fn-own-relation admits
-      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
-      ;; it stages without replaying the appended history, whose replay the
-      ;; maintained store relation carries, and its candidate test reads the
-      ;; history's last record, not every record (PRF-193,
-      ;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
-      ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
-      ;; carries.
-      ;; fn-psrv-prepare-identity (lane prepare-served) is this prepare
-      ;; when the signed composite's article groups are served, and the
-      ;; owner unchanged otherwise (KEYSTONE
-      ;; fn-psrv-prepare-identity-preserves-invariant).
+      ;; books/owner-identity-served.lisp fn-oiis-prepare-identity: the
+      ;; wire composite interned into the arena's row (signed-post), then
+      ;; prepare-served's served test over that row; KEYSTONE
+      ;; fn-oiis-prepare-identity-preserves-invariant.
       (let ((state (fn-owner-install-ocfg
-                    (fn-psrv-prepare-identity (fn-owner-ocfg state) event)
+                    (fn-oiis-prepare-identity (fn-owner-ocfg state) event
+                                              (fn-arena-count fn-arena))
                     state)))
-        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+        (value (cond ((equal (fn-owner-store state) s) :refused)
+                     ((fn-oii-identity-sealsp event)
+                      (list :seal (fn-oii-identity-payload event)))
+                     (t :prepared)))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.

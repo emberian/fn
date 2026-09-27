@@ -89,6 +89,12 @@ CHECKPOINT_BUFFER_INCLUDES = (
 # owner's four log-route names are findings in any loader.
 LOG_ROUTE_NAMES = ("fn-olr-bounds", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve")
 BUFFER_FINDINGS = [
+    # batch AW: the identity prepare the host calls is
+    # books/owner-identity-served's (signed-post's intern, then
+    # prepare-served's test over the row).
+    "included: host/owner-host.lisp uses fn-oiis-prepare-identity, defined in "
+    "books/owner-identity-served.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/owner-host.lisp"] + [
     f"included: host/owner-host.lisp uses {name}, defined in "
     "books/owner-log-route.lisp, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"
@@ -102,7 +108,6 @@ BUFFER_FINDINGS = [
         # prepare-served: fn-psrv-prepare replaced the call of
         # fn-prc-sbud-prepare; its book is dropped with the rest.
         ("fn-psrv-prepare", "books/owner-prepare-served.lisp"),
-        ("fn-psrv-prepare-identity", "books/owner-prepare-served.lisp"),
         ("fn-psrv-prepare-topic", "books/owner-prepare-served.lisp"),
         ("fn-psrv-refusal-kind", "books/owner-prepare-served.lisp"),
         ("fn-psrv-unstage", "books/owner-prepare-served.lisp"))]
@@ -148,6 +153,12 @@ OWNER_HOST_PIDX_INCLUDE = ('(include-book "../books/post-identity-index")\n'
 OWNER_HOST_LOG_ROUTE_INCLUDE = ('(include-book "../books/owner-log-route")\n')
 
 
+# batch AW (signed-post x prepare-served): books/owner-identity-served's
+# closure holds owner-prepare-served-ocl and with it the log route, so the
+# bare copy drops it too.
+OWNER_HOST_IDENTITY_SERVED_INCLUDE = '(include-book "../books/owner-identity-served")\n'
+
+
 @contextlib.contextmanager
 def bare_owner_host():
     """A copy of books/ and host/ whose owner-host.lisp does not include the
@@ -163,9 +174,11 @@ def bare_owner_host():
         assert OWNER_HOST_SELF_INCLUDES in text
         assert OWNER_HOST_PIDX_INCLUDE in text
         assert OWNER_HOST_LOG_ROUTE_INCLUDE in text
+        assert OWNER_HOST_IDENTITY_SERVED_INCLUDE in text
         owner.write_text(text.replace(OWNER_HOST_SELF_INCLUDES, "")
                          .replace(OWNER_HOST_PIDX_INCLUDE, "")
-                         .replace(OWNER_HOST_LOG_ROUTE_INCLUDE, ""))
+                         .replace(OWNER_HOST_LOG_ROUTE_INCLUDE, "")
+                         .replace(OWNER_HOST_IDENTITY_SERVED_INCLUDE, ""))
         yield root
 
 
@@ -282,7 +295,8 @@ class BuildListsCheckTests(unittest.TestCase):
         self.assertEqual(found, [
             f"included: host/owner-host.lisp uses {name}, defined in {book}, "
             f"which {loader} has not included when it loads host/owner-host.lisp"
-            for name, book in tuple((n, "books/owner-log-route.lisp") for n in LOG_ROUTE_NAMES) + (
+            for name, book in (("fn-oiis-prepare-identity", "books/owner-identity-served.lisp"),)
+            + tuple((n, "books/owner-log-route.lisp") for n in LOG_ROUTE_NAMES) + (
                 # rep-wave-d-2: books/octets-stobj is in STORE_FORMS now (the
                 # store-node host takes the buffer), so fn-octets is served.
                 # post-identity-index: the served POST calls the two below
@@ -292,7 +306,6 @@ class BuildListsCheckTests(unittest.TestCase):
                 ("fn-prc-refresh", "books/post-retain-carried.lisp"),
                 # prepare-served: the prepares' served decision.
                 ("fn-psrv-prepare", "books/owner-prepare-served.lisp"),
-                ("fn-psrv-prepare-identity", "books/owner-prepare-served.lisp"),
                 ("fn-psrv-prepare-topic", "books/owner-prepare-served.lisp"),
                 ("fn-psrv-refusal-kind", "books/owner-prepare-served.lisp"),
                 ("fn-psrv-unstage", "books/owner-prepare-served.lisp"),

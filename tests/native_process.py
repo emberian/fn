@@ -180,3 +180,18 @@ def next_log_number(case):
     """1, 2, ... per test case: one stderr file per process a test starts."""
     case.native_log_count = getattr(case, "native_log_count", 0) + 1
     return case.native_log_count
+
+
+def native_peer_add(image, store, words, env, cwd):
+    """`operator CONFIG peer add WORDS...` on STORE with no owner running (the
+    offline configuration record, books/native-operator.lisp's grammar: NAME
+    PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE-ADDRESS STREAMING).  The
+    format-9 store is read by the image, not by tools/run_store.py (which
+    reads only the per-file layout).  CONFIG is a scratch fn.toml beside
+    STORE naming only it.  Returns the CompletedProcess."""
+    from pathlib import Path
+    config = Path(store).parent / (Path(store).name + "-peer.toml")
+    config.write_text('[store]\npath = "{}"\n'.format(store), encoding="ascii")
+    return subprocess.run([str(image), "--fn", "operator", str(config), "peer", "add", *words],
+                          cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          env=env, timeout=180, check=False)
