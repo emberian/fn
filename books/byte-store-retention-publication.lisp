@@ -39,6 +39,16 @@
             :in-theory (union-theories (theory 'minimal-theory)
                                        '(natp))))))
 
+;; Alpha is the identity on a retention event: it is neither a held row nor
+;; a held acceptance, so the retained row is its own wire event.
+(defthm fn-bsrp-row-wire-of-a-retention-event
+  (implies (fn-store-retention-event-p e)
+           (equal (fn-bs-row-wire e arena) e))
+  :hints (("Goal" :use ((:instance fn-bs-held-is-no-wire-event (x e))
+                        (:instance fn-bs-hstxa-is-no-wire-event (x e)))
+           :in-theory (e/d (fn-bs-row-wire)
+                           (fn-held-p fn-hstxa-p fn-store-retention-event-p
+                            fn-bs-held-is-no-wire-event fn-bs-hstxa-is-no-wire-event)))))
 (defthm fn-bsrp-retention-host-arguments-are-typed-record-input
   (implies (and (fn-store-retention-event-p event)
                 (equal (fn-sf-phase ks) :record-staged)
@@ -55,6 +65,7 @@
   :hints (("Goal" :do-not-induct t
            :use (fn-bsrp-retention-payload-fits-frame
                  fn-bsrp-retention-is-a-store-event
+                 (:instance fn-bsrp-row-wire-of-a-retention-event (e event))
                  fn-srci-store-retention-event-round-trip
                  (:instance fn-bs-k0-host-frame-is-octets
                   (payload (fn-store-event-encode event)))

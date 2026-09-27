@@ -530,7 +530,7 @@
                 (equal (fn-bs-frontier-decode (fn-bs-durable-content b6 ino))
                        (fn-sf-frontier-candidate k))
                 (equal (fn-bs-durable-frontier b6) (fn-sf-frontier k))
-                (equal (fn-bs-durable-records b6) (fn-sf-records k)))
+                (equal (fn-bs-durable-records b6) (fn-bs-rows-wire (fn-sf-records k) arena)))
            (fn-bs-store-relation
             (fn-bs-make (fn-bs-unit b6) (fn-bs-inodes b6) (fn-bs-dirs b6)
                         (append (fn-bs-pending b6)

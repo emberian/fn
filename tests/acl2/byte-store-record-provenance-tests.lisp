@@ -1014,9 +1014,10 @@
                (1+ (fn-sf-frontier (cdr entry))))
         (equal (fn-bs-durable-records file)
                (fn-bs-durable-records (car entry)))
-        (fn-sf-crash-imagep (cdr pair)
-                            (fn-bs-durable-frontier file)
-                            (fn-bs-durable-records file)))))
+        (fn-bs-alpha-crash-imagep (cdr pair)
+                                  (fn-bs-durable-frontier file)
+                                  (fn-bs-durable-records file)
+                                  *bsk5-arena*))))
 
 ; The full byte/kernel relation is regained before the frontier-directory
 ; callback, after the first article is durable in the retained prefix.

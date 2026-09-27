@@ -414,7 +414,7 @@
                   (not (fn-sf-record-present-visiblep k))
                   (equal (fn-bs-frontier-decode (fn-bs-durable-content b ino)) (fn-sf-frontier-candidate k))
                   (equal (fn-bs-durable-frontier b) (fn-sf-frontier k))
-                  (equal (fn-bs-durable-records b) (fn-sf-records k)))
+                  (equal (fn-bs-durable-records b) (fn-bs-rows-wire (fn-sf-records k) arena)))
              (fn-bs-store-relation (mv-nth 1 (fn-bs-rename b :staging stage :root *fn-bs-frontier-name* outcome)) k arena)))
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0s-relation-facts
@@ -561,8 +561,8 @@
                 (consp (assoc-equal ino (fn-bs-inodes b)))
                 (equal name (fn-bs-txn-name (len (fn-bs-durable-names b :transactions))))
                 (fn-sf-record-present-visiblep k)
-                (equal (fn-bs-durable-records b) (fn-sf-records k))
-                (equal (fn-bs-record-of (fn-bs-durable b) ino) (fn-sf-record-candidate k)))
+                (equal (fn-bs-durable-records b) (fn-bs-rows-wire (fn-sf-records k) arena))
+                (equal (fn-bs-record-of (fn-bs-durable b) ino) (fn-bs-row-wire (fn-sf-record-candidate k) arena)))
            (fn-bs-store-relation
             (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
                         (append (fn-bs-pending b) (list (list :set-entry :transactions name ino)))
@@ -593,8 +593,8 @@
                   (consp (assoc-equal ino (fn-bs-inodes b)))
                   (equal name (fn-bs-txn-name (len (fn-bs-durable-names b :transactions))))
                   (fn-sf-record-present-visiblep k)
-                  (equal (fn-bs-durable-records b) (fn-sf-records k))
-                  (equal (fn-bs-record-of (fn-bs-durable b) ino) (fn-sf-record-candidate k)))
+                  (equal (fn-bs-durable-records b) (fn-bs-rows-wire (fn-sf-records k) arena))
+                  (equal (fn-bs-record-of (fn-bs-durable b) ino) (fn-bs-row-wire (fn-sf-record-candidate k) arena)))
              (fn-bs-store-relation (mv-nth 1 (fn-bs-link b :staging stage :transactions name outcome)) k arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0s-add-pending-transaction-link-preserves-relation
