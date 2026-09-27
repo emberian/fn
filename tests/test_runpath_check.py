@@ -159,7 +159,8 @@ class RunpathCheckTests(unittest.TestCase):
 
     def test_glibc_floor_is_one_constant_and_the_docs_cite_it(self):
         floor = ".".join(map(str, runpath_check.GLIBC_FLOOR))
-        self.assertIn(f"glibc {floor} or later", (ROOT / "docs/install.md").read_text())
+        self.assertIn(f"glibc {floor} or later",
+                      (ROOT / "docs/articles/fn-faq-3.txt").read_text())
         self.assertIn(f"**Requirements (Linux): glibc {floor} or later**",
                       (ROOT / "docs/operator-internals.md").read_text())
         self.assertEqual(runpath_check.glibc_version("GLIBC_2.3.4"), (2, 3, 4))

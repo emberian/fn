@@ -1,618 +1,367 @@
 #!/usr/bin/env python3
-"""Build fn's static website from the plain docs (Python 3.10+, stdlib only).
+"""Build fn's website: a static newsreader over docs/articles (stdlib only).
 
-The site renders the repository's own markdown -- README.md, the guides under
-docs/, CONTRIBUTING.md, the swarmguide -- with one shared layout.  Nothing is
-copied: edit the doc and the page follows.  The landing page takes its copy
-from README.md's sections; site/pages/ holds the few pages that exist only on
-the site, and site/landing-paths.md the audience cards on the landing page.
+The guides are Usenet articles (docs/articles/*.txt, read and checked by
+tools/docs_articles.py), and the same files are posted to fn.announce and
+fn.docs on a node (tools/post_docs.py).  This renders them the way a
+newsreader shows a spool:
+
+    index.html               the welcome article in fn.announce (front page)
+    groups.html              the group list, with counts
+    GROUP/index.html         the thread index (Subject, From, Date, Lines)
+    GROUP/STEM.html          one article: headers, body, follow-ups, nav
+
+An article's body is shown verbatim at 72 columns: prose lines, bullets and
+indented command blocks keep their line breaks; on a narrow screen prose
+reflows and only command blocks scroll.  A repository path in a body links
+to that file on GitHub (and must exist), "part N" to that FAQ part, a
+Message-ID to its article, a URL to itself.
 
     python3 site/build_site.py                 # build into build/site/
-    python3 site/build_site.py --check         # build, then check every link
+    python3 site/build_site.py --check         # build, check the articles and every link
     python3 site/build_site.py --out DIR --base-path /
-
-A link to a rendered doc points at its page (anchors included); a link to any
-other file in the repository points at that file on GitHub; a link to a path
-that does not exist fails the build by name.  --check also opens every
-generated page and confirms each internal href/src resolves to a file and,
-when it carries a #fragment, to an id on that page.
 """
 
 from __future__ import annotations
 
 import argparse
 import html
-import os
-import posixpath
 import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlsplit, unquote
+from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
+sys.path.insert(0, str(ROOT / "tools"))
+import docs_articles  # noqa: E402
+
 REPO_URL = "https://github.com/emberian/fn"
 BRANCH = "dev"
 TITLE = "fuckin' news / formal news /᠁"
+NODE = "fn.fg-goose.online"
+READER = f"tin -T -r -A -p 563 -g {NODE}"
+FRONT = "fn-welcome"
 
-# Source (repo-relative) -> output path (site-relative).  Order is the order of
-# the "all pages" list in the footer.
-PAGES: dict[str, str] = {
-    "README.md": "index.html",
-    "docs/README.md": "docs/index.html",
-    "docs/install.md": "docs/install.html",
-    "docs/operator.md": "docs/operator.html",
-    "docs/peering-with-a-friend.md": "docs/peering-with-a-friend.html",
-    "docs/web.md": "docs/web.html",
-    "docs/human-web-client.md": "docs/human-web-client.html",
-    "docs/agents.md": "docs/agents.html",
-    "docs/glossary.md": "docs/glossary.html",
-    "site/pages/proofs.md": "proofs.html",
-    "docs/proofs.md": "docs/proofs.html",
-    "docs/architecture.md": "docs/architecture.html",
-    "site/pages/how-its-built.md": "how-its-built.html",
-    "swarmguide/README.md": "swarmguide/index.html",
-    "swarmguide/case-notes.md": "swarmguide/case-notes.html",
-    "CONTRIBUTING.md": "contributing.html",
+# LIST NEWSGROUPS, as a node would answer it.
+DESCRIPTIONS = {
+    "fn.announce": "Announcements about fn. Moderated in spirit.",
+    "fn.docs": "The fn FAQ: how to read, run, peer and prove.",
 }
 
-# The header navigation: (label, output path).
-NAV = [
-    ("Guides", "docs/index.html"),
-    ("Run a node", "docs/install.html"),
-    ("Peer", "docs/peering-with-a-friend.html"),
-    ("Read & post", "docs/web.html"),
-    ("Agents", "docs/agents.html"),
-    ("Proofs", "proofs.html"),
-    ("How it's built", "how-its-built.html"),
-]
+PATH_RE = re.compile(
+    r"(?<![\w./-])((?:docs|tools|books|planning|specs|swarmguide|site|packaging|host|tests)"
+    r"/[\w./-]*[\w/]|AGENTS\.md|CONTRIBUTING\.md|README\.md|LICENSE)")
+URL_RE = re.compile(r"https?://[^\s<>\"]+[^\s<>\".,;:)]")
+PART_RE = re.compile(r"\b(parts? )(\d+)\b")
+MSGID_RE = re.compile(r"&lt;([\w.-]+@" + re.escape(docs_articles.DOMAIN) + r")&gt;")
+LABEL_RE = re.compile(r"^(\*[^*]+\*)")
 
 
 class BuildError(Exception):
     pass
 
 
-# ---------------------------------------------------------------------------
-# Markdown (the subset the docs use: ATX headings, paragraphs, nested lists,
-# fenced code, tables, block quotes, rules, inline code/links/emphasis).
-
-def slugify(text: str) -> str:
-    """GitHub's heading anchor: lowercase, punctuation dropped, spaces to -."""
-    return re.sub(r"[^\w\- ]", "", text.lower()).replace(" ", "-")
-
-
-def plain(markdown: str) -> str:
-    """Inline markdown reduced to its visible text."""
-    text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", markdown)
-    text = re.sub(r"`+([^`]*)`+", r"\1", text)
-    return re.sub(r"(\*\*|__|\*|_)(.+?)\1", r"\2", text)
-
-
-@dataclass
-class Doc:
-    source: str                 # repo-relative source path
-    out: str                    # site-relative output path
-    ids: set[str] = field(default_factory=set)
-    headings: list[tuple[int, str, str]] = field(default_factory=list)
-    errors: list[str] = field(default_factory=list)
-
-
-class Renderer:
-    def __init__(self, doc: Doc):
-        self.doc = doc
-
-    # -- links ---------------------------------------------------------------
-    def href(self, target: str) -> str:
-        return resolve_link(target, self.doc, self.doc.errors)
-
-    # -- inline --------------------------------------------------------------
-    def inline(self, text: str) -> str:
-        stash: list[str] = []
-
-        def keep(fragment: str) -> str:
-            stash.append(fragment)
-            return f"\x00{len(stash) - 1}\x00"
-
-        def code(m: re.Match) -> str:
-            body = m.group(2).replace("\n", " ")
-            return keep("<code>%s</code>" % html.escape(body.strip(" ") or body, quote=False))
-
-        text = re.sub(r"(`+)([\s\S]+?)\1", code, text)
-        text = re.sub(r"\\([\\`*_{}\[\]()#+\-.!|<>])", lambda m: keep(html.escape(m.group(1))), text)
-        text = re.sub(r"<(https?://[^>\s]+)>",
-                      lambda m: keep('<a href="%s">%s</a>' % (html.escape(m.group(1)),
-                                                              html.escape(m.group(1)))), text)
-        text = html.escape(text, quote=False)
-
-        def image(m: re.Match) -> str:
-            return keep('<img src="%s" alt="%s">' % (html.escape(self.href(html.unescape(m.group(2)))),
-                                                     m.group(1)))
-
-        def link(m: re.Match) -> str:
-            label, target = m.group(1), html.unescape(m.group(2)).strip()
-            url = self.href(target)
-            external = url.startswith(("http://", "https://"))
-            attrs = ' class="ext"' if external and REPO_URL not in url else ""
-            return keep('<a href="%s"%s>%s</a>' % (html.escape(url), attrs, self.emphasis(label)))
-
-        text = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", image, text)
-        text = re.sub(r"\[((?:[^\[\]]|\[[^\]]*\])+)\]\(([^)\s]+)(?:\s+&quot;[^)]*&quot;)?\)", link, text)
-        text = self.emphasis(text)
-        text = re.sub(r"(?: {2,}|\\)\n", "<br>\n", text)
-        text = text.replace(" -- ", " – ")
-        while "\x00" in text:
-            text = re.sub(r"\x00(\d+)\x00", lambda m: stash[int(m.group(1))], text)
-        return text
-
-    @staticmethod
-    def emphasis(text: str) -> str:
-        text = re.sub(r"\*\*(?=\S)([\s\S]+?)(?<=\S)\*\*", r"<strong>\1</strong>", text)
-        text = re.sub(r"(?<![\w_])__(?=\S)([\s\S]+?)(?<=\S)__(?![\w_])", r"<strong>\1</strong>", text)
-        text = re.sub(r"(?<![\w*])\*(?=[^\s*])([\s\S]+?)(?<=[^\s*])\*(?![\w*])", r"<em>\1</em>", text)
-        text = re.sub(r"(?<![\w_])_(?=[^\s_])([\s\S]+?)(?<=[^\s_])_(?![\w_])", r"<em>\1</em>", text)
-        return text
-
-    # -- blocks --------------------------------------------------------------
-    LIST_RE = re.compile(r"^( {0,3})([-*+]|\d{1,9}[.)])( +|$)(.*)$")
-    FENCE_RE = re.compile(r"^( {0,3})(`{3,}|~{3,})\s*([^`\s]*)")
-    HEADING_RE = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$")
-    RULE_RE = re.compile(r"^ {0,3}([-*_])(\s*\1){2,}\s*$")
-
-    def heading(self, level: int, raw: str) -> str:
-        slug = base = slugify(plain(raw))
-        n = 0
-        while slug in self.doc.ids:
-            n += 1
-            slug = f"{base}-{n}"
-        self.doc.ids.add(slug)
-        self.doc.headings.append((level, slug, plain(raw)))
-        anchor = '' if level == 1 else ' <a class="anchor" href="#%s" aria-label="Link to this section">#</a>' % slug
-        return '<h%d id="%s">%s%s</h%d>\n' % (level, slug, self.inline(raw), anchor, level)
-
-    def starts_block(self, line: str) -> bool:
-        return bool(self.FENCE_RE.match(line) or self.HEADING_RE.match(line)
-                    or line.lstrip().startswith(">") or self.RULE_RE.match(line)
-                    or re.match(r"^ {0,3}([-*+]|1[.)]) +\S", line))
-
-    def blocks(self, lines: list[str], tight: bool = False) -> str:
-        out: list[str] = []
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            if not line.strip():
-                i += 1
-                continue
-            m = self.FENCE_RE.match(line)
-            if m:
-                indent, fence, lang = len(m.group(1)), m.group(2), m.group(3)
-                body: list[str] = []
-                i += 1
-                while i < len(lines) and not re.match(r"^ {0,3}%s%s*\s*$" % (re.escape(fence[0]) * len(fence), re.escape(fence[0])), lines[i]):
-                    body.append(lines[i][indent:] if lines[i][:indent].strip() == "" else lines[i])
-                    i += 1
-                i += 1
-                body = [re.sub(r"\s*# docs-check:.*$", "", b) for b in body]
-                cls = ' class="language-%s"' % html.escape(lang) if lang else ""
-                out.append("<pre><code%s>%s</code></pre>\n" % (cls, html.escape("\n".join(body), quote=False)))
-                continue
-            m = self.HEADING_RE.match(line)
-            if m:
-                out.append(self.heading(len(m.group(1)), m.group(2)))
-                i += 1
-                continue
-            if self.RULE_RE.match(line):
-                out.append("<hr>\n")
-                i += 1
-                continue
-            if line.lstrip().startswith(">"):
-                quoted: list[str] = []
-                while i < len(lines) and lines[i].strip() and (lines[i].lstrip().startswith(">") or quoted):
-                    quoted.append(re.sub(r"^ {0,3}> ?", "", lines[i]))
-                    i += 1
-                out.append("<blockquote>\n%s</blockquote>\n" % self.blocks(quoted))
-                continue
-            if line.lstrip().startswith("|") and i + 1 < len(lines) and re.match(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$", lines[i + 1]):
-                rows = []
-                while i < len(lines) and lines[i].strip().startswith("|"):
-                    rows.append(lines[i])
-                    i += 1
-                out.append(self.table(rows))
-                continue
-            m = self.LIST_RE.match(line)
-            if m:
-                i = self.list_block(lines, i, out)
-                continue
-            para = [line.strip()]
-            i += 1
-            while i < len(lines) and lines[i].strip() and not self.starts_block(lines[i]) \
-                    and not (lines[i].lstrip().startswith("|") and False):
-                para.append(lines[i].strip() if not lines[i].endswith("  ") else lines[i].lstrip())
-                i += 1
-            body = self.inline("\n".join(para))
-            out.append(body + "\n" if tight else "<p>%s</p>\n" % body)
-        return "".join(out)
-
-    def table(self, rows: list[str]) -> str:
-        def cells(row: str) -> list[str]:
-            row = row.strip()
-            if row.startswith("|"):
-                row = row[1:]
-            if row.endswith("|") and not row.endswith("\\|"):
-                row = row[:-1]
-            parts, cur, code = [], "", False
-            for ch_i, ch in enumerate(row):
-                if ch == "`":
-                    code = not code
-                if ch == "|" and not code and (ch_i == 0 or row[ch_i - 1] != "\\"):
-                    parts.append(cur)
-                    cur = ""
-                else:
-                    cur += ch
-            parts.append(cur)
-            return [p.strip().replace("\\|", "|") for p in parts]
-
-        aligns = []
-        for spec in cells(rows[1]):
-            aligns.append("right" if spec.endswith(":") and not spec.startswith(":")
-                          else "center" if spec.startswith(":") and spec.endswith(":") else "")
-        def row_html(row: str, tag: str) -> str:
-            tds = []
-            for n, cell in enumerate(cells(row)):
-                style = ' style="text-align:%s"' % aligns[n] if n < len(aligns) and aligns[n] else ""
-                tds.append("<%s%s>%s</%s>" % (tag, style, self.inline(cell), tag))
-            return "<tr>%s</tr>\n" % "".join(tds)
-        head = row_html(rows[0], "th")
-        body = "".join(row_html(r, "td") for r in rows[2:])
-        return ('<div class="table-wrap"><table>\n<thead>%s</thead>\n<tbody>\n%s</tbody>\n</table></div>\n'
-                % (head, body))
-
-    def list_block(self, lines: list[str], i: int, out: list[str]) -> int:
-        first = self.LIST_RE.match(lines[i])
-        ordered = first.group(2)[0].isdigit()
-        items: list[list[str]] = []
-        loose = False
-        start = int(first.group(2)[:-1]) if ordered else 1
-        while i < len(lines):
-            m = self.LIST_RE.match(lines[i])
-            if not m or m.group(2)[0].isdigit() != ordered:
-                break
-            content_indent = len(m.group(1)) + len(m.group(2)) + (len(m.group(3)) if m.group(4) else 1)
-            if len(m.group(3)) > 4:
-                content_indent = len(m.group(1)) + len(m.group(2)) + 1
-            item = [" " * 0 + lines[i][content_indent:] if m.group(4) else ""]
-            i += 1
-            while i < len(lines):
-                cur = lines[i]
-                if not cur.strip():
-                    # a blank line: the item continues only if something indented follows
-                    j = i
-                    while j < len(lines) and not lines[j].strip():
-                        j += 1
-                    if j < len(lines) and (len(lines[j]) - len(lines[j].lstrip())) >= content_indent:
-                        item.extend([""] * (j - i))
-                        i = j
-                        continue
-                    break
-                indent = len(cur) - len(cur.lstrip())
-                if indent >= content_indent:
-                    item.append(cur[content_indent:])
-                elif self.LIST_RE.match(cur) or self.starts_block(cur):
-                    break
-                elif item and item[-1].strip():
-                    item.append(cur.strip())          # lazy continuation
-                else:
-                    break
-                i += 1
-            items.append(item)
-            # a blank line before the next item makes the list loose
-            j = i
-            while j < len(lines) and not lines[j].strip():
-                j += 1
-            nxt = self.LIST_RE.match(lines[j]) if j < len(lines) else None
-            if nxt and nxt.group(2)[0].isdigit() == ordered and len(nxt.group(1)) < content_indent:
-                if j > i:
-                    loose = True
-                i = j
-            else:
-                break
-        for item in items:
-            text = "\n".join(item).strip("\n")
-            if "\n\n" in text and not re.search(r"^\s*```", text, re.M):
-                loose = True
-        tag = "ol" if ordered else "ul"
-        attr = ' start="%d"' % start if ordered and start != 1 else ""
-        out.append("<%s%s>\n" % (tag, attr))
-        for item in items:
-            out.append("<li>%s</li>\n" % self.blocks(item, tight=not loose).rstrip("\n"))
-        out.append("</%s>\n" % tag)
-        return i
-
-    def render(self, text: str) -> str:
-        text = re.sub(r"(?s)<!--.*?-->\n?", "", text)
-        return self.blocks(text.expandtabs(4).split("\n"))
-
-
-# ---------------------------------------------------------------------------
-# Links
-
-def rel_url(from_out: str, to_out: str) -> str:
-    """A relative URL from one output page to another (index.html kept
-    explicit so the site also works from a file:// checkout)."""
-    return posixpath.relpath(to_out, posixpath.dirname(from_out) or ".")
-
-
-def resolve_link(target: str, doc: Doc, errors: list[str]) -> str:
-    parts = urlsplit(target)
-    if parts.scheme or target.startswith("//") or target.startswith("mailto:"):
-        return target
-    if not parts.path:                      # "#section" on this page
-        return target
-    src_dir = posixpath.dirname(doc.source)
-    repo_path = posixpath.normpath(posixpath.join(src_dir, unquote(parts.path)))
-    if repo_path.startswith("../") or repo_path == "..":
-        errors.append(f"{doc.source}: link leaves the repository: {target}")
-        return target
-    fragment = "#" + parts.fragment if parts.fragment else ""
-    if repo_path in PAGES:
-        return rel_url(doc.out, PAGES[repo_path]) + fragment
-    full = ROOT / repo_path
-    if not full.exists():
-        errors.append(f"{doc.source}: link to a missing file: {target}")
-        return target
-    kind = "tree" if full.is_dir() else "blob"
-    return f"{REPO_URL}/{kind}/{BRANCH}/{repo_path}{fragment}"
-
-
-# ---------------------------------------------------------------------------
-# Layout
-
 def git(*args: str) -> str:
     try:
-        return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True,
-                              text=True, check=True).stdout.strip()
+        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True,
+                              check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return ""
 
 
-def layout(doc: Doc, title: str, body: str, *, description: str, landing: bool = False,
-           toc: str = "", revision: str = "", base: str = "") -> str:
-    root = rel_url(doc.out, "index.html")
-    asset = lambda name: rel_url(doc.out, name)
-    nav = "".join('<a href="%s"%s>%s</a>' % (
-        html.escape(rel_url(doc.out, out)),
-        ' aria-current="page"' if out == doc.out else "", html.escape(label)) for label, out in NAV)
-    source_link = f"{REPO_URL}/blob/{BRANCH}/{doc.source}"
-    footer_source = 'This page is <a href="%s">%s</a>%s, rendered.' % (
-        html.escape(source_link), html.escape(doc.source),
-        (" at " + html.escape(revision[:9])) if revision else "")
-    page_title = TITLE if landing else f"{title} · fn"
-    main_class = "landing" if landing else ("doc has-toc" if toc else "doc")
-    return f"""<!doctype html>
+class Site:
+    def __init__(self, articles: list[docs_articles.Article]):
+        self.articles = articles
+        self.by_id = {a.message_id: a for a in articles}
+        self.groups: dict[str, list[docs_articles.Article]] = {g: [] for g in docs_articles.GROUPS}
+        for a in articles:
+            self.groups.setdefault(a.group, []).append(a)
+        self.number = {a.message_id: n for g in self.groups.values() for n, a in enumerate(g, 1)}
+        self.parts = {}
+        for a in articles:
+            m = re.fullmatch(r"fn-faq/part(\d+)", a.get("Archive-name"))
+            if m:
+                self.parts[int(m.group(1))] = a
+        self.errors: list[str] = []
+
+    # --- where things live ------------------------------------------------
+    def out(self, a: docs_articles.Article) -> str:
+        return "index.html" if a.stem == FRONT else f"{a.group}/{a.stem}.html"
+
+    def href(self, from_out: str, to_out: str) -> str:
+        depth = from_out.count("/")
+        return "../" * depth + to_out
+
+    def children(self, a) -> list:
+        return [c for c in self.articles if c.references and c.references[-1] == a.message_id]
+
+    def threads(self, group: str) -> list[tuple[int, docs_articles.Article]]:
+        """(depth, article) in thread order: roots by number, each followed
+        by its follow-ups, depth-first (tin's thread view)."""
+        members = self.groups[group]
+        roots = [a for a in members if not any(r in self.by_id and self.by_id[r].group == group
+                                               for r in a.references)]
+        order: list[tuple[int, docs_articles.Article]] = []
+
+        def walk(a, depth):
+            order.append((depth, a))
+            for child in self.children(a):
+                if child.group == group:
+                    walk(child, depth + 1)
+        for root in roots:
+            walk(root, 0)
+        return order
+
+    # --- the body ---------------------------------------------------------
+    def inline(self, text: str, from_out: str, rel: str) -> str:
+        """Escape TEXT and link what a reader would want followed."""
+        out, last = [], 0
+        spans = []
+        for m in URL_RE.finditer(text):
+            spans.append((m.start(), m.end(), f'<a href="{html.escape(m.group(0))}">'
+                          f"{html.escape(m.group(0))}</a>"))
+        for m in PATH_RE.finditer(text):
+            if any(s <= m.start() < e for s, e, _ in spans):
+                continue
+            path = m.group(1)
+            if re.search(r"(?:^|/)[A-Z][A-Z-]+[A-Z](?:\.|/|$)", path) and not (ROOT / path).exists():
+                continue                # a placeholder, like books/THE-BOOK.lisp
+            if not (ROOT / path.rstrip("/")).exists():
+                self.errors.append(f"{rel}: names {path}, which is not in the repository")
+                continue
+            kind = "tree" if (ROOT / path).is_dir() else "blob"
+            spans.append((m.start(), m.end(), f'<a href="{REPO_URL}/{kind}/{BRANCH}/'
+                          f'{path.rstrip("/")}">{html.escape(path)}</a>'))
+        for m in PART_RE.finditer(text):
+            n = int(m.group(2))
+            if any(s <= m.start() < e for s, e, _ in spans) or n not in self.parts:
+                if n not in self.parts:
+                    self.errors.append(f"{rel}: names part {n}, which no article is")
+                continue
+            target = self.href(from_out, self.out(self.parts[n]))
+            spans.append((m.start(2), m.end(2), f'<a href="{target}">{n}</a>'))
+        for start, end, markup in sorted(spans):
+            if start < last:
+                continue
+            out.append(self.msgids(html.escape(text[last:start]), from_out))
+            out.append(markup)
+            last = end
+        out.append(self.msgids(html.escape(text[last:]), from_out))
+        return "".join(out)
+
+    def msgids(self, escaped: str, from_out: str) -> str:
+        def link(m):
+            mid = f"<{m.group(1)}>"
+            if mid in self.by_id:
+                return f'<a href="{self.href(from_out, self.out(self.by_id[mid]))}">{m.group(0)}</a>'
+            return m.group(0)
+        return MSGID_RE.sub(link, escaped)
+
+    def body(self, a, from_out: str) -> str:
+        """Blocks: command/art lines (4+ spaces) as <pre>, bullets and
+        paragraphs as line-preserving text that reflows on a phone."""
+        rel = a.path.relative_to(ROOT).as_posix()
+        lines = a.body.rstrip("\n").split("\n")
+        blocks: list[tuple[str, list[str]]] = []
+        for line in lines:
+            if not line.strip():
+                blocks.append(("gap", []))
+            elif line.startswith("    "):
+                if blocks and blocks[-1][0] == "pre":
+                    blocks[-1][1].append(line)
+                else:
+                    blocks.append(("pre", [line]))
+            elif line.startswith("- "):
+                blocks.append(("li", [line]))
+            elif line.startswith("  ") and blocks and blocks[-1][0] == "li":
+                blocks[-1][1].append(line)
+            elif blocks and blocks[-1][0] == "p":
+                blocks[-1][1].append(line)
+            else:
+                blocks.append(("p", [line]))
+        out = []
+        for kind, block in blocks:
+            if kind == "gap":
+                continue
+            if kind == "pre":
+                text = "\n".join(line[4:] for line in block)
+                out.append(f'<pre class="cmd">{self.inline(text, from_out, rel)}</pre>')
+                continue
+            rendered = []
+            for line in block:
+                text = line.strip() if kind == "li" else line
+                label = LABEL_RE.match(text)
+                if label:
+                    rest = text[label.end():]
+                    rendered.append(f"<b>{html.escape(label.group(1))}</b>"
+                                    + self.inline(rest, from_out, rel))
+                else:
+                    rendered.append(self.inline(text, from_out, rel))
+            joined = "\n".join(rendered)
+            if kind == "li":
+                joined = joined[len("- "):] if joined.startswith("- ") else joined
+                out.append(f'<p class="li">{joined}</p>')
+            else:
+                out.append(f'<p class="para">{joined}</p>')
+        return "\n".join(out)
+
+    # --- pages ------------------------------------------------------------
+    def layout(self, out: str, title: str, main: str, *, status: str, description: str,
+               base: str = "") -> str:
+        up = self.href(out, "")
+        css = self.href(out, "style.css")
+        icon = self.href(out, "favicon.svg")
+        base_tag = f'<base href="{html.escape(base)}">\n' if base else ""
+        groups = " ".join(
+            f'<a href="{self.href(out, g + "/index.html")}">{g}</a>'
+            f"({len(self.groups[g])})" for g in self.groups)
+        return f"""<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">{('<base href="%s">' % html.escape(base)) if base else ""}
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(page_title)}</title>
+{base_tag}<title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(description)}">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">
-<link rel="stylesheet" href="{asset('style.css')}">
+<link rel="stylesheet" href="{css}">
+<link rel="icon" href="{icon}" type="image/svg+xml">
 </head>
 <body>
-<a class="skip" href="#content">Skip to the text</a>
-<header class="site-header">
-  <div class="bar">
-    <a class="brand" href="{root}" aria-label="fn home"><span class="brand-mark">fn</span><span class="brand-dots" aria-hidden="true">/&#x1801;</span></a>
-    <nav aria-label="Site">{nav}<a class="gh" href="{REPO_URL}">GitHub</a></nav>
-  </div>
+<div class="screen">
+<header class="top">
+<p class="bar"><a href="{up}index.html">{html.escape(TITLE)}</a> <span>{NODE}</span></p>
+<nav class="menu">[<a href="{up}groups.html">groups</a>] {groups}</nav>
 </header>
-<main id="content" class="{main_class}">
-{toc}{body}
+<hr>
+<main>
+{main}
 </main>
-<footer class="site-footer">
-  <div class="bar">
-    <p>fn is free software under the <a href="{REPO_URL}/blob/{BRANCH}/LICENSE">AGPL-3.0</a>. {footer_source}
-    No cookies, no trackers, no scripts.</p>
-    <p><a href="{root}">Home</a> &middot; <a href="{rel_url(doc.out, 'docs/index.html')}">All guides</a> &middot; <a href="{rel_url(doc.out, 'contributing.html')}">Contributing</a> &middot; <a href="{html.escape(source_link)}">Source of this page</a> &middot; <a href="{REPO_URL}/issues">Issues</a></p>
-  </div>
+<hr>
+<footer>
+<p class="status">{status}</p>
+<p>Read this group in your newsreader: <code>{html.escape(READER)}</code> (port 563 TLS)</p>
+<p><a href="{REPO_URL}">source</a> . <a href="{REPO_URL}/tree/{BRANCH}/docs/articles">the articles as files</a> . no scripts, no trackers</p>
 </footer>
+</div>
 </body>
 </html>
 """
 
+    def article_page(self, a) -> str:
+        out = self.out(a)
+        group = self.groups[a.group]
+        n = self.number[a.message_id]
+        heads = "\n".join(
+            f'<span class="hk">{html.escape(k)}:</span> {self.msgids(html.escape(v), out)}'
+            for k, v in a.headers)
+        follow = self.children(a)
+        followups = ""
+        if follow:
+            items = "\n".join(
+                f'<li><a href="{self.href(out, self.out(c))}">{html.escape(c.get("Subject"))}</a>'
+                f' <span class="dim">({html.escape(c.get("Summary"))})</span></li>' for c in follow)
+            followups = f'<section class="followups"><p><b>Follow-ups:</b></p><ul>{items}</ul></section>'
+        nav = []
+        if n > 1:
+            nav.append(f'<a href="{self.href(out, self.out(group[n - 2]))}" rel="prev">p)rev</a>')
+        if n < len(group):
+            nav.append(f'<a href="{self.href(out, self.out(group[n]))}" rel="next">n)ext</a>')
+        if a.references and a.references[0] in self.by_id:
+            root = self.by_id[a.references[0]]
+            nav.append(f'<a href="{self.href(out, self.out(root))}">t)hread</a>')
+        nav.append(f'<a href="{self.href(out, a.group + "/index.html")}">u)p to {a.group}</a>')
+        main = f"""<article>
+<pre class="headers">{heads}</pre>
+<div class="body">
+{self.body(a, out)}
+</div>
+</article>
+{followups}
+<nav class="keys">{" ".join("[" + x + "]" for x in nav)}</nav>"""
+        status = (f"{html.escape(a.group)}  article {n} of {len(group)}  "
+                  f"{a.lines} lines")
+        return self.layout(out, f"{a.get('Subject')} ({a.group})", main,
+                           status=status, description=a.get("Summary"))
 
-def toc_html(doc: Doc) -> str:
-    items = [(slug, text) for level, slug, text in doc.headings if level == 2]
-    if len(items) < 3:
-        return ""
-    links = "".join('<li><a href="#%s">%s</a></li>' % (slug, html.escape(text)) for slug, text in items)
-    return '<ol>%s</ol>' % links
+    def index_page(self, group: str) -> str:
+        out = f"{group}/index.html"
+        rows = []
+        for depth, a in self.threads(group):
+            subject = html.escape(a.get("Subject"))
+            tree = ('<span class="tree">' + "&nbsp;" * (2 * depth - 2) + "`-&gt; </span>"
+                    if depth else "")
+            name = html.escape(a.get("From").split("<")[0].strip() or a.get("From"))
+            rows.append(
+                f'<tr><td class="num">{self.number[a.message_id]}</td>'
+                f'<td class="subj">{tree}<a href="{self.href(out, self.out(a))}">{subject}</a></td>'
+                f'<td class="from">{name}</td>'
+                f'<td class="date">{a.date().strftime("%d %b %Y")}</td>'
+                f'<td class="num">{a.lines}</td></tr>')
+        main = f"""<h1>{group}</h1>
+<p class="dim">{html.escape(DESCRIPTIONS.get(group, ""))}</p>
+<table class="index">
+<thead><tr><th class="num">#</th><th>Subject</th><th class="from">From</th><th class="date">Date</th><th class="num">Lines</th></tr></thead>
+<tbody>
+{chr(10).join(rows)}
+</tbody>
+</table>"""
+        return self.layout(out, f"{group}: thread index", main,
+                           status=f"{group}  {len(self.groups[group])} articles  "
+                                  f"{len(self.threads(group)) - sum(1 for d, _ in self.threads(group) if d)} threads",
+                           description=DESCRIPTIONS.get(group, group))
 
+    def groups_page(self) -> str:
+        out = "groups.html"
+        rows = []
+        for g, members in self.groups.items():
+            rows.append(f'<tr><td class="num">{len(members)}</td>'
+                        f'<td class="subj"><a href="{self.href(out, g + "/index.html")}">{g}</a></td>'
+                        f'<td>{html.escape(DESCRIPTIONS.get(g, ""))}</td></tr>')
+        main = f"""<h1>Groups on {NODE}</h1>
+<p class="dim">The groups this site mirrors. The node carries more; log in to see them.</p>
+<table class="index">
+<thead><tr><th class="num">Arts</th><th>Group</th><th>Description</th></tr></thead>
+<tbody>
+{chr(10).join(rows)}
+</tbody>
+</table>"""
+        total = sum(len(m) for m in self.groups.values())
+        return self.layout(out, "fn: groups", main,
+                           status=f"{len(self.groups)} groups  {total} articles",
+                           description="The newsgroups of fn's documentation.")
 
-def with_toc(body: str, toc: str) -> tuple[str, str]:
-    """The sidebar contents (wide screens) and the body with a folded copy
-    after its title (narrow screens; CSS shows one or the other)."""
-    if not toc:
-        return "", body
-    side = '<aside class="toc" aria-label="On this page"><p class="toc-title">On this page</p>%s</aside>\n' % toc
-    inline = '<details class="toc-inline"><summary>On this page</summary>%s</details>\n' % toc
-    body = re.sub(r"(</h1>\n)", lambda m: m.group(1) + inline, body, count=1)
-    return side, body
-
-
-def first_paragraph_text(markdown: str) -> str:
-    for block in re.split(r"\n\s*\n", re.sub(r"(?ms)^```.*?^```", "", markdown)):
-        block = block.strip()
-        if block and not block.startswith(("#", "|", "-", "*", ">", "<!--")):
-            return re.sub(r"\s+", " ", plain(block))[:200]
-    return ""
-
-
-# ---------------------------------------------------------------------------
-# Landing page: README.md's own sections, laid out.
-
-def split_sections(markdown: str) -> tuple[str, str, list[tuple[str, str]]]:
-    """(H1 text, text before the first H2, [(H2 title, body)])."""
-    text = re.sub(r"(?s)<!--.*?-->\n?", "", markdown)
-    m = re.match(r"\s*# (.+)\n", text)
-    if not m:
-        raise BuildError("README.md: no H1 title on the first line")
-    h1, rest = m.group(1).strip(), text[m.end():]
-    chunks = re.split(r"(?m)^## (.+)$", rest)
-    intro, sections = chunks[0], []
-    for n in range(1, len(chunks), 2):
-        sections.append((chunks[n].strip(), chunks[n + 1]))
-    return h1, intro, sections
-
-
-def list_items(markdown: str) -> tuple[list[str], str, str]:
-    """A section's top-level bullet items (joined lines), the text before
-    them and the text after them."""
-    lines = markdown.strip("\n").split("\n")
-    before, items, after = [], [], []
-    state = "before"
-    for line in lines:
-        if state in ("before", "items") and re.match(r"^- ", line):
-            state = "items"
-            items.append(line[2:].strip())
-        elif state == "items" and line.startswith("  ") and line.strip():
-            items[-1] += " " + line.strip()
-        elif state == "items" and not line.strip():
-            continue
-        elif state == "items":
-            state = "after"
-            after.append(line)
-        else:
-            (before if state == "before" else after).append(line)
-    return items, "\n".join(before), "\n".join(after)
-
-
-def card(r: Renderer, item: str, cls: str = "card") -> str:
-    """A bullet as a card.  "**Label:** text" or "**A sentence.** text" makes
-    the bold words the title; "**Words**, more text" keeps the item whole as
-    the text under a title of the bold words."""
-    m = re.match(r"\*\*(.+?)\*\*\s*(.*)$", item, re.S)
-    if not m:
-        return '<div class="%s"><p>%s</p></div>\n' % (cls, r.inline(item))
-    head, body = m.group(1), m.group(2)
-    if head.endswith((":", ".")):
-        head = head[:-1]
-    else:
-        body = head + body
-    return '<div class="%s"><h3>%s</h3><p>%s</p></div>\n' % (cls, r.inline(head), r.inline(body))
-
-
-def build_landing(doc: Doc, revision: str, version: str, released: bool) -> str:
-    r = Renderer(doc)
-    h1, intro, sections = split_sections((ROOT / doc.source).read_text(encoding="utf-8"))
-    if h1 != TITLE:
-        raise BuildError(f"README.md's title changed to {h1!r}; update TITLE in site/build_site.py deliberately")
-    doc.ids.update({"top", "what-makes-it-odd", "where-things-stand", "where-to-start", "paths", "helping"})
-    paras = [p.strip() for p in re.split(r"\n\s*\n", intro.strip()) if p.strip()]
-    lead = r.inline(paras[0]) if paras else ""
-    more = "".join("<p>%s</p>" % r.inline(p) for p in paras[1:])
-    link = lambda path: html.escape(rel_url(doc.out, PAGES[path]))
-    parts = [f"""<section class="hero" id="top">
-  <h1>{html.escape(h1)}</h1>
-  <p class="lead">{lead}</p>
-  <div class="hero-more">{more}</div>
-  <p class="cta">
-    <a class="button primary" href="{link('docs/install.md')}">Run a node</a>
-    <a class="button" href="{link('docs/peering-with-a-friend.md')}">Peer with a friend</a>
-    <a class="button" href="{link('docs/README.md')}">All the guides</a>
-  </p>
-</section>
-"""]
-    for title, body in sections:
-        slug = slugify(title)
-        doc.ids.add(slug)
-        if title == "What makes it odd":
-            items, before, after = list_items(body)
-            cards = "".join(card(r, it) for it in items)
-            parts.append(f'<section id="{slug}"><h2>{r.inline(title)}</h2>{r.blocks(before.split(chr(10)))}'
-                         f'<div class="cards odd">{cards}</div>'
-                         f'<div class="caveat">{r.blocks(after.split(chr(10)))}</div></section>\n')
-        elif title == "Where things stand":
-            chip = (f"Release {html.escape(version)}" if released
-                    else f"Next release: {html.escape(version)} &middot; not cut yet")
-            parts.append(f'<section id="{slug}" class="status"><h2>{r.inline(title)}</h2>'
-                         f'<p class="chips"><span class="chip warn">Experiment</span>'
-                         f'<span class="chip">{chip}</span></p>{r.blocks(body.split(chr(10)))}</section>\n')
-        elif title == "Where to start":
-            items, before, after = list_items(body)
-            cards = "".join(card(r, it, "card start") for it in items)
-            parts.append(f'<section id="{slug}"><h2>{r.inline(title)}</h2>{r.blocks(before.split(chr(10)))}'
-                         f'<div class="cards">{cards}</div>{r.blocks(after.split(chr(10)))}</section>\n')
-            parts.append(paths_section(doc))
-        else:
-            parts.append(f'<section id="{slug}"><h2>{r.inline(title)}</h2>'
-                         f'{r.blocks(body.split(chr(10)))}</section>\n')
-    doc.errors.extend(r.doc.errors)
-    description = re.sub(r"\s+", " ", plain(paras[0])) if paras else "fn, a news server"
-    return layout(doc, h1, "".join(parts), description=description, landing=True, revision=revision)
-
-
-def paths_section(landing: Doc) -> str:
-    """site/landing-paths.md: one card per audience (its links are relative
-    to site/, like any markdown file there)."""
-    src = "site/landing-paths.md"
-    pdoc = Doc(source=src, out=landing.out)
-    r = Renderer(pdoc)
-    text = re.sub(r"(?s)<!--.*?-->\n?", "", (ROOT / src).read_text(encoding="utf-8"))
-    title_m = re.search(r"(?m)^# (.+)$", text)
-    items, before, _ = list_items(text[title_m.end():] if title_m else text)
-    cards = "".join(card(r, it, "card path") for it in items)
-    landing.errors.extend(pdoc.errors)
-    title = r.inline(title_m.group(1)) if title_m else "Paths"
-    return (f'<section id="paths"><h2>{title}</h2>{r.blocks(before.split(chr(10)))}'
-            f'<div class="cards paths">{cards}</div></section>\n')
-
-
-# ---------------------------------------------------------------------------
 
 def build(out_dir: Path, base_path: str) -> list[str]:
-    revision = git("rev-parse", "HEAD")
-    version = (ROOT / "VERSION").read_text().strip() if (ROOT / "VERSION").exists() else "?"
-    released = bool(git("tag", "-l", f"v{version}", version))
+    articles = docs_articles.load()
+    errors = docs_articles.check(articles)
+    site = Site(articles)
+    if FRONT not in {a.stem for a in articles}:
+        errors.append(f"no front page: docs/articles/{FRONT}.txt is missing")
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
-    errors: list[str] = []
-    docs: dict[str, Doc] = {}
-    for source, out in PAGES.items():
-        if not (ROOT / source).exists():
-            errors.append(f"site/build_site.py: page source missing: {source}")
-            continue
-        doc = Doc(source=source, out=out)
-        docs[source] = doc
-        if source == "README.md":
-            page = build_landing(doc, revision, version, released)
-        else:
-            text = (ROOT / source).read_text(encoding="utf-8")
-            r = Renderer(doc)
-            body = r.render(text)
-            title = next((t for level, _, t in doc.headings if level == 1), source)
-            toc, body = with_toc(body, toc_html(doc))
-            page = layout(doc, title, '<article class="prose">\n%s</article>' % body,
-                          description=first_paragraph_text(text) or title, toc=toc, revision=revision)
-        errors.extend(doc.errors)
-        target = out_dir / out
+
+    def write(rel: str, text: str):
+        target = out_dir / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(page, encoding="utf-8")
+        target.write_text(text, encoding="utf-8")
+
+    for a in articles:
+        write(site.out(a), site.article_page(a))
+    for g in site.groups:
+        write(f"{g}/index.html", site.index_page(g))
+    write("groups.html", site.groups_page())
+    write("404.html", site.layout(
+        "404.html", "430 no such article", '<h1>430 no such article</h1>'
+        '<p>Try <a href="groups.html">the group list</a>.</p>',
+        status="430 no such article", description="Not found", base=base_path))
     for asset in ("style.css", "favicon.svg"):
         shutil.copyfile(SITE / asset, out_dir / asset)
-    # GitHub Pages serves 404.html for a missing path at any depth, so its
-    # relative links go through <base> (the site's own path on the host).
-    (out_dir / "404.html").write_text(
-        layout(Doc(source="site/build_site.py", out="404.html"), "Not found",
-               '<article class="prose"><h1>Not here</h1><p>That page does not exist. '
-               'Try <a href="index.html">the front page</a> or <a href="docs/index.html">the guides</a>.</p></article>',
-               description="Not found", revision=revision, base=base_path), encoding="utf-8")
-    return errors
+    return errors + site.errors
 
 
 class LinkCollector(HTMLParser):
@@ -620,10 +369,13 @@ class LinkCollector(HTMLParser):
         super().__init__()
         self.links: list[str] = []
         self.ids: set[str] = set()
+        self.scripts = 0
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
-        if "id" in a and a["id"]:
+        if tag == "script":
+            self.scripts += 1
+        if a.get("id"):
             self.ids.add(a["id"])
         for key in ("href", "src"):
             if a.get(key):
@@ -631,15 +383,19 @@ class LinkCollector(HTMLParser):
 
 
 def check(out_dir: Path) -> list[str]:
-    """Every internal href/src in every generated page resolves."""
+    """Every internal href/src in every generated page resolves; no page
+    carries a script."""
     pages: dict[Path, LinkCollector] = {}
     for path in sorted(out_dir.rglob("*.html")):
         parser = LinkCollector()
         parser.feed(path.read_text(encoding="utf-8"))
         pages[path.resolve()] = parser
     errors = []
+    root = out_dir.resolve()
     for path, parser in pages.items():
-        rel = path.relative_to(out_dir.resolve())
+        rel = path.relative_to(root)
+        if parser.scripts:
+            errors.append(f"{rel}: has a script")
         if rel.name == "404.html":
             continue
         for link in parser.links:
@@ -653,33 +409,28 @@ def check(out_dir: Path) -> list[str]:
             if target.is_dir():
                 target = target / "index.html"
             try:
-                target.relative_to(out_dir.resolve())
+                target.relative_to(root)
             except ValueError:
                 errors.append(f"{rel}: link leaves the site: {link}")
                 continue
             if not target.exists():
                 errors.append(f"{rel}: broken link: {link}")
-                continue
-            if parts.fragment and target.suffix == ".html":
-                ids = pages[target].ids
-                if unquote(parts.fragment) not in ids:
-                    errors.append(f"{rel}: no #{parts.fragment} on {target.relative_to(out_dir.resolve())}: {link}")
+            elif parts.fragment and unquote(parts.fragment) not in pages[target].ids:
+                errors.append(f"{rel}: no #{parts.fragment} on {target.relative_to(root)}")
     return errors
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--out", default=str(ROOT / "build" / "site"), help="output directory (default build/site)")
-    ap.add_argument("--check", action="store_true", help="after building, check every internal link")
+    ap.add_argument("--out", default=str(ROOT / "build" / "site"),
+                    help="output directory (default build/site)")
+    ap.add_argument("--check", action="store_true",
+                    help="after building, check every internal link")
     ap.add_argument("--base-path", default="/fn/",
-                    help="the site's path on its host, used only by 404.html (default /fn/, a GitHub project page)")
+                    help="the site's path on its host, used only by 404.html (default /fn/)")
     args = ap.parse_args(argv)
     out_dir = Path(args.out)
-    try:
-        errors = build(out_dir, args.base_path)
-    except BuildError as exc:
-        print(f"site: {exc}", file=sys.stderr)
-        return 1
+    errors = build(out_dir, args.base_path)
     if args.check:
         errors += check(out_dir)
     for e in errors:
@@ -688,7 +439,8 @@ def main(argv: list[str] | None = None) -> int:
     if errors:
         print(f"site: {len(errors)} problem(s); {count} pages in {out_dir}", file=sys.stderr)
         return 1
-    print(f"site: {count} pages in {out_dir}" + (", every internal link resolves" if args.check else ""))
+    print(f"site: {count} pages in {out_dir}"
+          + (", every article well-formed and every internal link resolves" if args.check else ""))
     return 0
 
 

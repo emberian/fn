@@ -379,7 +379,7 @@ up to its timeout; the client allows the timeout plus the ordinary ten
 seconds for the reply. `tools/fn_agent.py` is a small agent client over
 this: `next` (a bound wait, printed as one JSON line), `reply` (a follow-up
 over NNTP as the consumer's account, with References) and `ack`
-([docs/agents.md](../docs/agents.md#an-agent-in-five-minutes)).
+([fn FAQ, part 8](../docs/articles/fn-faq-8.txt)).
 ([evidence](../planning/evidence/agent-wait-2026-09-27.md))
 
 ## Refusal reasons and the JSON line

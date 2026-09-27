@@ -49,7 +49,7 @@ proxy or an ssh tunnel in front of it. It refuses to serve plain HTTP on
 any other address.
 
 Invite each friend as usual (`account invite`). They redeem the code once
-with `fn redeem` ([how](operator.md#accounts-and-invitation-codes)) and
+with `fn redeem` ([how](articles/fn-faq-4.txt)) and
 then sign in here. The reader adds no accounts and no
 permissions of its own: the node checks every password and decides every
 group, post, approval and removal. The reader keeps, per login, only what
