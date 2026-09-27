@@ -88,11 +88,15 @@
   (fn-nntp-list-active-times
    session (fn-rcompat-held-env env (fn-state-groups archive)) args))
 
-; The names NEWGROUPS lists for THRESHOLD, and when a name is among them.
-(defun fn-rcompat-newgroups-names (threshold groups facts)
+; The names NEWGROUPS lists for THRESHOLD: those of the facts the served
+; environment `fn-rcompat-held-env' carries that date the group at or after
+; it (what `fn-nntp-newgroups-response' renders, `fn-nntp-active-lines' of
+; them).
+(defun fn-rcompat-newgroups-names (threshold groups env)
   (declare (xargs :guard t :verify-guards nil))
   (fn-nntp-fact-names
-   (fn-nntp-facts-since threshold (fn-rcompat-facts-held groups facts))))
+   (fn-nntp-facts-since threshold
+                        (fn-nntp-env-facts (fn-rcompat-held-env env groups)))))
 
 (defun fn-rcompat-created-since-p (name threshold facts)
   (declare (xargs :guard t :verify-guards nil))
@@ -120,10 +124,16 @@
    :hints (("Goal" :induct (fn-rcompat-facts-held groups facts)
             :in-theory (enable fn-nntp-fact-name fn-nntp-group-factp)))))
 
+(defthm fn-rcompat-held-env-facts
+  (equal (fn-nntp-env-facts (fn-rcompat-held-env env groups))
+         (fn-rcompat-facts-held groups (fn-nntp-env-facts env)))
+  :hints (("Goal" :in-theory (enable fn-nntp-env-full fn-nntp-env-facts))))
+
 (defthm fn-rcompat-newgroups-names-member
-  (iff (member-equal name (fn-rcompat-newgroups-names threshold groups facts))
+  (iff (member-equal name (fn-rcompat-newgroups-names threshold groups env))
        (and (member-equal name (true-list-fix groups))
-            (fn-rcompat-created-since-p name threshold facts))))
+            (fn-rcompat-created-since-p name threshold
+                                        (fn-nntp-env-facts env)))))
 
 ; The served NEWGROUPS reply is the generic reply's multi-line form over
 ; exactly those names (RFC 3977 section 7.3.2: LIST ACTIVE's format).
@@ -132,11 +142,6 @@
          (fn-nntp-newgroups-response
           session archive (fn-rcompat-held-env env (fn-state-groups archive))
           args)))
-
-(defthm fn-rcompat-held-env-facts
-  (equal (fn-nntp-env-facts (fn-rcompat-held-env env groups))
-         (fn-rcompat-facts-held groups (fn-nntp-env-facts env)))
-  :hints (("Goal" :in-theory (enable fn-nntp-env-full fn-nntp-env-facts))))
 
 (defthm fn-rcompat-held-env-observation
   (equal (fn-nntp-env-observation (fn-rcompat-held-env env groups))

@@ -4360,7 +4360,7 @@
       "id": "SCN-164",
       "title": "slrn and pan against a scratch native owner over TLS: NEWGROUPS lists a group created live, slrn --create subscribes from LIST SUBSCRIPTIONS, slrn reads with XOVER and marks a cross-post read in its other group, on the production and developer images",
       "milestone": "M6",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-052"
       ],
@@ -4372,7 +4372,19 @@
       ],
       "evidence": [
         "tests/test_native_reader_clients.py"
-      ]
+      ],
+      "implementation": {
+        "test": "tests.test_native_reader_clients",
+        "cases": [
+          "test_newgroups_lists_the_groups_created_since_the_instant",
+          "test_slrn_create_subscribes_from_list_subscriptions",
+          "test_slrn_reads_overview_with_xover",
+          "test_slrn_marks_a_cross_post_read_in_the_other_group"
+        ],
+        "native": true,
+        "record": "planning/evidence/reader-compat-2026-09-27.md",
+        "log": "planning/evidence/reader-compat-2026-09-27/module.log"
+      }
     }
   ]
 }

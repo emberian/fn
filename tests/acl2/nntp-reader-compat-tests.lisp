@@ -100,14 +100,14 @@
 (defconst *rct-threshold* 841017600000)
 (assert-event
  (and (member-equal "fn.two" (fn-rcompat-newgroups-names
-                              *rct-threshold* *rct-groups* *rct-facts*))
+                              *rct-threshold* *rct-groups* (fn-rct-env nil)))
       (member-equal "fn.two" *rct-groups*)
       (fn-rcompat-created-since-p "fn.two" *rct-threshold* *rct-facts*)
       (not (member-equal "fn.one" (fn-rcompat-newgroups-names
-                                   *rct-threshold* *rct-groups* *rct-facts*)))
+                                   *rct-threshold* *rct-groups* (fn-rct-env nil))))
       (not (fn-rcompat-created-since-p "fn.one" *rct-threshold* *rct-facts*))
       (not (member-equal "fn.gone" (fn-rcompat-newgroups-names
-                                    0 *rct-groups* *rct-facts*)))
+                                    0 *rct-groups* (fn-rct-env nil))))
       (fn-rcompat-created-since-p "fn.gone" 0 *rct-facts*)
       (not (member-equal "fn.gone" *rct-groups*))))
 ; The keystone has no hypothesis (a first draft required a rational
