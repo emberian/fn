@@ -167,6 +167,9 @@
 (include-book "books/post-identity-index")
 ;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
 (include-book "books/post-retain-carried")
+;; PRF-278: host/owner-host.lisp calls fn-pvc-make and the carried budget,
+;; verdict and POST boundary (fn-pvc-*-carried).
+(include-book "books/store-profile-carried")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
