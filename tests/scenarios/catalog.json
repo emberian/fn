@@ -4332,7 +4332,8 @@
           "test_transit_hygiene_refused_offer_memory_and_relay_checks"
         ],
         "native": true,
-        "record": "planning/evidence/transit-hygiene-2026-09-27.md"
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md",
+        "log": "planning/evidence/transit-hygiene-2026-09-27/native-peering.log"
       },
       "requirements": [
         "NNT-049"
@@ -4361,7 +4362,8 @@
           "test_transit_hygiene_refused_offer_memory_and_relay_checks"
         ],
         "native": true,
-        "record": "planning/evidence/transit-hygiene-2026-09-27.md"
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md",
+        "log": "planning/evidence/transit-hygiene-2026-09-27/native-peering.log"
       },
       "requirements": [
         "NNT-050"

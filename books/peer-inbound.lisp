@@ -376,11 +376,20 @@
 
 ; RFC 5537 section 3.6 step 2 over the article: its instant is more than the
 ; operator's margin after the clock reading.  No usable reading, no decision
-; here (fn-peer-transfer then defers :no-clock).
+; here (fn-peer-transfer then defers :no-clock).  The reading is DTN time
+; (books/clock.lisp: seconds since 2000-01-01, the record stamp); the date
+; reader answers seconds since 1970, so the stamp is moved by the 10957 days
+; between the two epochs.  (The first native run, which compared them
+; unconverted, refused every article dated within 30 years.)
+(defun fn-peer-clock-unix-seconds (clock)
+  (declare (xargs :guard t))
+  (let ((stamp (fn-record-stamp-of-observation clock)))
+    (if (natp stamp) (+ stamp *fn-rck-dtn-epoch-unix-seconds*) nil)))
+
 (defun fn-peer-date-futurep (article cfg clock)
   (declare (xargs :guard (fn-article-syntax-p article)))
   (fn-rck-date-futurep (fn-rck-article-instant article)
-                       (fn-record-stamp-of-observation clock)
+                       (fn-peer-clock-unix-seconds clock)
                        (fn-rck-skew cfg)))
 
 ; -----------------------------------------------------------------------------
@@ -1671,7 +1680,7 @@
     (:d fn-peer-intrinsic-refusal-of) (:d fn-peer-intrinsic-refusal)
     (:d fn-peer-article-of) (:d fn-peer-remembered-reason)
     (:d fn-peer-refused-record) (:d fn-peer-date-futurep)
-    (:d fn-peer-path-missingp)
+    (:d fn-peer-path-missingp) (:d fn-peer-clock-unix-seconds)
     (:d fn-peer-transfer) (:d fn-peer-submissionp) (:d fn-peer-transferp)
     (:d fn-peer-sessionp) (:d fn-peer-session-consistentp)
     (:d fn-peer-open-session) (:d fn-peer-with-base) (:d fn-peer-with-transfer)

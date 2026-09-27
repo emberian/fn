@@ -338,6 +338,9 @@
 (defconst *fn-rck-capacity-slot* "refused-offer-capacity")
 (defconst *fn-rck-require-path-slot* "relay-require-path")
 (defconst *fn-rck-rfc-skew* 86400)
+; 2000-01-01T00:00:00Z in seconds since 1970 (10957 days): the DTN epoch of
+; books/clock.lisp's wall reading.
+(defconst *fn-rck-dtn-epoch-unix-seconds* 946684800)
 (defconst *fn-rck-default-capacity* 4096)
 
 (defun fn-rck-limit-row (cfg slot)

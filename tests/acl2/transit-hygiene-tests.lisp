@@ -91,7 +91,9 @@
 (assert-event (not (fn-rck-require-pathp *th-cfg*)))
 
 (defconst *th-node* (fn-node-initial-state '("fn.letters" "fn.test") 1048576))
-(defconst *th-clock* (fn-clock-observation 1000000 (* 1000 *th-now*) 500 t))
+; The wall reading is DTN milliseconds (since 2000-01-01, books/clock.lisp).
+(defconst *th-clock* (fn-clock-observation 1000000 (* 1000 (- *th-now* 946684800)) 500 t))
+(assert-event (equal (fn-peer-clock-unix-seconds *th-clock*) *th-now*))
 
 (defun th-article (id path date)
   ; PATH and DATE nil omit the field.
