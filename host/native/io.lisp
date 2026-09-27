@@ -89,6 +89,21 @@
 ;; store of another format; the line names the reinstall and import.
 (define-condition fnn-store-profile-refusal (fnn-store-open-refusal) ())
 
+;; The record log's damage verdicts (books/store-log-damage.lisp; used by
+;; fnn-log-stream-segment and `store recover').
+(defvar *fnn-log-repair* nil
+  "The operator's confirmed repair of a damaged record log: the SEGMENT:OFFSET
+string `store recover --repair truncate SEGMENT:OFFSET' names, which ACL2
+admits only for the damage it finds at exactly that place in the active
+segment of a writable open (books/store-log-damage.lisp
+fn-lgdm-repair-admitsp).  NIL: no repair.")
+
+(defvar *fnn-log-open-reports* nil
+  "The lines the open's log verdicts produced (ACL2's fn-lgdm-report-text and
+fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
+`store recover' prints them.")
+
+
 ;; One POSIX failure, reported the way Python's OSError prints itself.
 (define-condition fnn-os-error (error)
   ((errno :initarg :errno :reader fnn-os-errno)
@@ -3952,8 +3967,21 @@ this reads only whether there is one."
               +fnn-exit-uncertain+)
       (values "anchor=none" +fnn-exit-ok+)))
 
-(defun fnn-command-recover (root)
-  (multiple-value-bind (store count) (fnn-open-live-store root t (fnn-recovery-test-fault))
+(defun fnn-recover-repair-option (rest)
+  "`store ROOT recover' takes nothing, or `--repair truncate SEGMENT:OFFSET':
+the operator's confirmation of the one repair a log-damaged refusal names
+(books/store-log-damage.lisp; ACL2 admits it only for that damage)."
+  (cond ((null rest) nil)
+        ((and (= (length rest) 3) (string= (first rest) "--repair")
+              (string= (second rest) "truncate"))
+         (third rest))
+        (t (error 'fnn-usage-error
+                  :message "recover takes nothing, or --repair truncate SEGMENT:OFFSET (the at= of a log-damaged refusal)"))))
+
+(defun fnn-command-recover (root &optional rest)
+  (multiple-value-bind (store count)
+      (let ((*fnn-log-repair* (fnn-recover-repair-option rest)))
+        (fnn-open-live-store root t (fnn-recovery-test-fault)))
     (unwind-protect
          (multiple-value-bind (report code) (fnn-anchor-report store)
            (fnn-out "recovered transactions=~d articles=~d ~a ~a ~a"
@@ -3961,6 +3989,7 @@ this reads only whether there is one."
                     (fnn-orphan-report store) report
                     (fnn-checkpoint-report store))
            (fnn-out "~a" (fnn-open-report store))
+           (dolist (line (reverse *fnn-log-open-reports*)) (fnn-out "~a" line))
            (if (and (= code +fnn-exit-ok+)
                     (eq (first (fnn-store-checkpoint-outcome store)) :corrupt))
                +fnn-exit-fault+
@@ -5062,7 +5091,23 @@ replay (fnn-recover-log) when its records' places are wanted; NIL otherwise.")
   "While the stream hands a record to its sink under *fnn-extent-file*: the
 record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
 
-(defun fnn-log-stream-segment (fd extent unit max genesis sink)
+(defun fnn-log-probe-tail (fd extent unit max st)
+  "After the stream's stop ST: ACL2's probe of the rest of the segment
+(books/store-log-damage.lisp).  At each offset ACL2 names (fn-lgdm-q), the
+header window it names (fn-lgdm-header-len), the entry length it answers from
+that window (fn-lgdm-entry-len; NIL: none starts there) and that entry's
+octets, then ACL2's step (fn-lgdm-step).  One unit's header, or one entry, per
+step.  Returns the probe's final state."
+  (let ((ps (fnn-core 'fn-lgdm-start st)))
+    (loop until (fnn-core 'fn-lgdm-done-p ps extent) do
+      (let* ((q (fnn-nat (fnn-core 'fn-lgdm-q ps)))
+             (h (fnn-octet-list (fnn-log-pread fd q (fnn-nat (fnn-core 'fn-lgdm-header-len ps extent)))))
+             (n (fnn-core 'fn-lgdm-entry-len h ps extent))
+             (e (and n (fnn-octet-list (fnn-log-pread fd q (fnn-nat n))))))
+        (setq ps (fnn-core 'fn-lgdm-step h e ps unit max))))
+    ps))
+
+(defun fnn-log-stream-segment (fd extent unit max genesis sink &optional label writable)
   "The segment's decode from GENESIS as a stream of entries
 (books/store-log-stream.lisp): at the state's offset the header octets ACL2
 names (fn-lgw-header-len), the entry's length from them (fn-lgw-entry-len),
@@ -5071,10 +5116,17 @@ the step takes (one, or a batch entry's several) goes to SINK as ACL2's octet
 list and is not kept here.  One entry's
 octets at a time, never the segment (KEYSTONE fn-lgw-run-is-the-open: the
 records are the recovered kernel's committed records and the kernel is its
-fn-lgc-of).  An entry at the stop validating under another predecessor is a
-splice or a stale segment, refused by name (fn-lgw-broken, which is
-fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
-(fn-lgw-kernel)."
+fn-lgc-of).  At the stop, ACL2's probe of the rest of the segment
+(fnn-log-probe-tail) and its verdict (fn-lgdm-verdict; KEYSTONES
+fn-lgdm-open-verdict-is-the-classification, fn-lgdm-no-silent-prefix): an
+entry at the stop validating under another predecessor (a splice or a stale
+segment) or a valid entry anywhere after the stop (DAMAGE, not a torn tail)
+is refused by name (fn-lgdm-refusal-text: log-chain-broken, log-damaged),
+never read as a torn tail -- unless the operator's repair *fnn-log-repair*
+names exactly this damage and ACL2 admits it (fn-lgdm-effective: LABEL the
+segment's file name, WRITABLE the active segment of a writable open).
+Returns (values KERNEL VERDICT): the kernel (fn-lgw-kernel) and the verdict
+the open proceeds on (:complete, :torn or :repaired)."
   (let ((st (fnn-core 'fn-lgw-start genesis 1)))
     (loop until (fnn-core 'fn-lgw-stop st) do
       (let* ((pos (fnn-nat (fnn-core 'fn-lgw-pos st)))
@@ -5096,10 +5148,42 @@ fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
                       (funcall sink record))))
               (dolist (record records) (funcall sink record))))
           (setq st next))))
-    (when (fnn-core 'fn-lgw-broken st)
-      (error 'fnn-store-open-refusal
-             :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-    (fnn-core 'fn-lgw-kernel st)))
+    (let* ((label (or label "segment"))
+           (verdict (fnn-core 'fn-lgdm-effective
+                              (fnn-core 'fn-lgdm-verdict st (fnn-log-probe-tail fd extent unit max st)
+                                        extent)
+                              label *fnn-log-repair* (and writable t))))
+      (when (fnn-core 'fn-lgdm-refused-p verdict)
+        (error 'fnn-store-open-refusal
+               :message (or (fnn-core 'fn-lgdm-refusal-text verdict label)
+                            (fnn-fault "ACL2 refused a log segment without a line"))))
+      (let ((line (or (fnn-core 'fn-lgdm-report-text verdict label)
+                      (fnn-core 'fn-lgdm-repair-text verdict label))))
+        (when (stringp line) (push line *fnn-log-open-reports*)))
+      (values (fnn-core 'fn-lgw-kernel st) verdict))))
+
+(defun fnn-log-quarantine (path fd extent name)
+  "Keep the segment's octets [0, EXTENT) as quarantine/NAME beside journal/
+(created O_EXCL, fenced with its directory) before a confirmed repair
+truncates the segment: the dropped entries stay available to the operator."
+  (let* ((journal (fnn-log-parent path))
+         (dir (fnn-join (fnn-log-parent journal) "quarantine"))
+         (target (fnn-join dir name)))
+    (unless (fnn-lstat dir)
+      (fnn-posix () (sb-posix:mkdir dir #o700))
+      (fnn-fsync-dir (fnn-log-parent journal)))
+    (let ((out (fnn-open target (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                        +fnn-o-nofollow+))))
+      (unwind-protect
+           (let ((at 0))
+             (loop while (< at extent) do
+               (let ((chunk (fnn-log-pread fd at (min 1048576 (- extent at)))))
+                 (fnn-write-range out chunk 0 (length chunk))
+                 (incf at (length chunk))))
+             (fnn-fsync-file out))
+        (fnn-close out)))
+    (fnn-fsync-dir dir)
+    target))
 
 (defun fnn-log-open-kernel (fd extent unit max &optional (genesis *fn-lg-genesis*))
   "(values RECORDS KERNEL) of the segment (fnn-log-stream-segment collecting
@@ -5116,7 +5200,15 @@ segment), then the tail [F, EXTENT) zeroed by one write and fenced.  The
 kernel is R-related to the segment at log-recovered
 (fn-lg-recover-program-establishes-the-relation)."
   (let* ((fd (fnn-log-open-segment path extent unit))
-         (ks (handler-case (fnn-log-stream-segment fd extent unit max genesis sink)
+         (ks (handler-case
+                 (multiple-value-bind (ks verdict)
+                     (fnn-log-stream-segment fd extent unit max genesis sink
+                                             (file-namestring path) t)
+                   ;; A confirmed repair (fn-lgdm-effective :repaired): the
+                   ;; segment's octets are kept before the tail is zeroed.
+                   (let ((name (fnn-core 'fn-lgdm-quarantine-name verdict (file-namestring path))))
+                     (when (stringp name) (fnn-log-quarantine path fd extent name)))
+                   ks)
                (error (e) (fnn-close fd) (error e)))))
     ;; fn-lg-recover-tail-of-abstraction: the range read from the
     ;; concrete kernel is the logical kernel's.
@@ -5324,7 +5416,8 @@ init completes, never truncates): the retry branch, not the program."
 (defun fnn-log-open-read-only (path unit max &optional (genesis *fn-lg-genesis*) (sink #'identity))
   (let* ((extent (fnn-log-observed-extent path))
          (fd (fnn-log-open-segment path extent unit t))
-         (ks (handler-case (fnn-log-stream-segment fd extent unit max genesis sink)
+         (ks (handler-case (fnn-log-stream-segment fd extent unit max genesis sink
+                                                   (file-namestring path))
                (error (e) (fnn-close fd) (error e)))))
     (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent :kernel ks)))
 
@@ -5581,7 +5674,8 @@ the process's life) and the stream binds each record's place for SINK
                    (*fnn-extent-file* (and places (fnn-extent-register path))))
               (unwind-protect
                    (setq genesis (fnn-core 'fn-lgc-last
-                                           (fnn-log-stream-segment fd extent unit max genesis sink)))
+                                           (fnn-log-stream-segment fd extent unit max genesis sink
+                                                                   (file-namestring path))))
                 (fnn-close fd)))
           (progn
             (fnn-log-complete-rotation store path)
@@ -5605,7 +5699,8 @@ genesis."
          (extent (fnn-log-observed-extent path))
          (fd (fnn-log-open-segment path extent unit t)))
     (unwind-protect
-         (fnn-core 'fn-lgc-last (fnn-log-stream-segment fd extent unit max genesis sink))
+         (fnn-core 'fn-lgc-last (fnn-log-stream-segment fd extent unit max genesis sink
+                                                        (file-namestring path)))
       (fnn-close fd))))
 
 (defun fnn-log-committed-count (store)
@@ -6172,7 +6267,7 @@ observation (the COMPLETE re-signals it under the owner)."
          (need 3)
          (let ((root (second args)) (command (third args)) (rest (cdddr args)))
            (cond ((string= command "init") (fnn-command-developer-init root rest))
-                 ((string= command "recover") (fnn-command-recover root))
+                 ((string= command "recover") (fnn-command-recover root rest))
                  ((string= command "node-secret") (need 4) (fnn-command-node-secret root rest))
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))

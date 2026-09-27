@@ -40,6 +40,8 @@
 ;; fnn-log-*): the committed records' count in place of their list.
 (include-book "../books/store-log-kernel-concrete")
 (include-book "../books/store-log-stream")
+;; The open tells a torn tail from damage (lane log-corruption).
+(include-book "../books/store-log-damage")
 (include-book "../books/store-log-segments")
 (include-book "../books/store-log-extend")
 (include-book "../books/store-init-log-publication")

@@ -389,6 +389,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-kernel-concrete-tests \
 	books/store-log-stream \
 	tests/acl2/store-log-stream-tests \
+	books/store-log-damage \
+	tests/acl2/store-log-damage-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
