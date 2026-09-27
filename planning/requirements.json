@@ -4339,6 +4339,42 @@
         "tools/run_owner.py"
       ],
       "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
+    },
+    {
+      "id": "CNS-007",
+      "title": "A consumer wait sleeps until an event its consumer can read is committed or its timeout passes, and answers exactly what a poll answers at that moment; waiters are bounded and refused by name past the bound",
+      "specification": "specs/consumer-progress.md#waiting",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-252"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-wait.lisp",
+        "books/consumer-wait-codec.lisp",
+        "host/owner-host.lisp",
+        "host/native-control-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_agent.py",
+        "tests/acl2/consumer-wait-tests.lisp",
+        "tests/acl2/consumer-wait-codec-tests.lisp",
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "tests/test_fn_agent.py",
+        "planning/evidence/manifests/certify-20260927T062924Z-487302.json",
+        "planning/evidence/manifests/certify-20260927T063806Z-601723.json",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log",
+        "planning/evidence/manifests/certify-20260927T064948Z-753286.json"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement. No store record, no configuration delta, no store format change; local-control request codes 9 (wait) and 10 (bound-wait), answered on the poll reply kind 6. The waiter capacity is 12, derived from the fixed local-control worker ceiling (16) that the heap reservation already counts; making it an operator profile value is PKT-700.",
+      "note": "Wake is a broadcast: every waiter polls once per commit (at most 12 polls per commit). fn_agent.py is an external client (Python), not part of the node."
     }
   ]
 }

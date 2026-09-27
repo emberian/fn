@@ -4912,6 +4912,44 @@
         "native": true,
         "record": "planning/evidence/adapter-retirement-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-172",
+      "title": "Two agents bound to two accounts wait at once: a post wakes exactly the right one within a bound; a timeout answers the empty page; twelve waiters and the thirteenth refused; a restart keeps both cursors; fn_agent reads, replies and acks without NNTP in the agent; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-007"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.alice`, `group create fn.bob`; start the owner (implicit TLS and STARTTLS, protected_only); invite and redeem alice and bob; `account access LOGIN --read fn.LOGIN --post 'fn.*'` for each; bootstrap; register alice-inbox (fn.alice) and bob-inbox (fn.bob); bind each to its account.",
+        "alice-inbox and bob-inbox each `bound-wait --timeout 60`; after 4 s alice posts to fn.bob; 2 s after bob's wait returns, bob posts to fn.alice; bob acks.",
+        "bob-inbox `bound-wait --timeout 3`; bob-inbox with alice's password.",
+        "Twelve bob-inbox waits; a thirteenth; a post to fn.bob; ack.",
+        "Restart the owner; bob-inbox wait 3 s; alice-inbox wait.",
+        "fn_agent: alice next/ack; alice posts `question` to fn.bob; bob next, reply --group fn.alice, ack; alice next, ack; bob next --timeout 1."
+      ],
+      "expected": [
+        "bob's wait exits 0 with for-bob within 5 s of the 240 while alice's still sleeps; alice's then exits 0 with for-alice within 5 s.",
+        "The 3 s wait exits 0 with an empty report after at least 3 s; the wrong password exits 1 at once.",
+        "The thirteenth exits 1 at once; the post wakes all twelve with for-all.",
+        "After the restart bob's wait times out empty (his ack kept); alice's answers for-alice again (not acked: at-least-once).",
+        "bob's next prints the question as JSON (Message-ID, groups, From, Subject, body); the reply is accepted; alice's next prints it with the question's Message-ID in References; bob's last next prints {\"kind\": \"empty\"}."
+      ],
+      "implementation": {
+        "test": "tests.test_native_agent_wait",
+        "cases": [
+          "NativeAgentWaitTests.test_two_agents_wait_for_their_own_news"
+        ],
+        "native": true,
+        "record": "planning/evidence/agent-wait-2026-09-27.md",
+        "log": "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      },
+      "evidence": [
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      ]
     }
   ]
 }

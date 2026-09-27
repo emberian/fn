@@ -47,6 +47,10 @@
 
 (defconst *fn-docs-operator-argv*
   '(
+    ("docs/agents.md#an-agent-in-five-minutes" 1 "group" "create" "fn.bob")
+    ("docs/agents.md#an-agent-in-five-minutes" 2 "account" "invite" "--expires" "3600")
+    ("docs/agents.md#an-agent-in-five-minutes" 3 "account" "access" "bob" "--read" "fn.bob" "--post" "fn.*")
+    ("docs/agents.md#an-agent-in-five-minutes" 4 "consumer" "bind" "bob-inbox" "--account" "bob")
     ("docs/install.md#2-the-first-node" 1 "mission" "small-community" "--host" "203.0.113.7" "--port" "119")
     ("docs/install.md#2-the-first-node" 2 "policy" "set" "path-identity" "news.example.org")
     ("docs/install.md#2-the-first-node" 3 "principal" "set-password" "alice" "--posting")
