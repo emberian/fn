@@ -205,6 +205,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-traces-tests \
 	books/store-prepare-correspondence \
 	tests/acl2/store-prepare-correspondence-tests \
+	tests/acl2/store-prepare-carried-tests \
 	books/store-node-retention \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
@@ -882,7 +883,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
 	tests/acl2/owner-prepare-carried-tests \
-	tests/acl2/store-prepare-carried-tests \
 	tests/acl2/records-concrete-tests \
 	tests/acl2/msgid-index-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \
