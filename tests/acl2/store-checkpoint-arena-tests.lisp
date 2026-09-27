@@ -31,7 +31,16 @@
       (eq (symbol-class 'fn-scka-initial-state (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-scka-write-donep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-scka-canon-rows (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-intern-events (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-intern-events (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-sshr-share (w state)) :common-lisp-compliant)))
+
+; fn-sshr-share-is-identity (no hypothesis): repeated contents, a dotted
+; tail, a string tail, nested lists, atoms.  (That the answer holds one
+; object per content is measured, not stated: the heap census by content,
+; planning/evidence/checkpoint-arena-3-2026-09-27.md.)
+(assert-event
+ (let ((x (list "a" (cons "a" "b") (list* 1 2 "c") "c" nil 7 (list (list "a" "")) "")))
+   (equal (fn-sshr-share x) x)))
 
 ; -----------------------------------------------------------------------------
 ; The history: three articles and a retention event (a wire event that seals
