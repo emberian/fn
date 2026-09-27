@@ -429,13 +429,6 @@ class Acl2Store:
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                          stderr=subprocess.STDOUT, env=env)
             read_prompt(self.proc, ACL2_START_TIMEOUT_SECONDS)
-            # Invariant-risk mode T (ACL2 :doc set-check-invariant-risk): the
-            # default's guard checks on a :program-mode wrapper that updates
-            # the arena stobj (fn-store-sn-recover, -prepare), without the
-            # warning text, which the bridge would read as ACL2's answer
-            # ("unexpected ACL2 action: ACL2 WARNING [INVARIANT-RISK]").
-            # Never NIL (unsafe).  Set per process: an image or a fresh boot.
-            self.call("(set-check-invariant-risk t)")
             if not self.preloaded:
                 for form in forms:
                     self.call(form)
