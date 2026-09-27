@@ -68,15 +68,14 @@ BOOK = "books/byte-store-programs.lisp"
 NODE = "books/store-node.lisp"
 TRACES = "books/store-files-traces.lisp"
 
-# Which host function performs which program (the book's own comments and
-# tests/campaign/native_cuts.py name the same pairs).
+# Which host function performs which program of books/byte-store-programs.lisp.
+# The per-file programs (P-FRONTIER, P-RECORD, P-RECOVER, P-MARKER) went with
+# format 8 (lane log-recovery-2, PKT-838); the log route's programs
+# (books/store-log-route-programs.lisp, the table's other programs) are
+# checked by tests/campaign/native_cuts.py verify_log_route_arms below.
 PROGRAM_HOSTS = {
-    "fn-bs-frontier-program": "fnn-advance-frontier",
-    "fn-bs-record-program": "fnn-publish",
     "fn-bs-finish-program": "fnn-finish",
-    "fn-bs-recover-program": "fnn-recover",
     "fn-bs-recover-stage-cleanup-program": "fnn-sweep-staging",
-    "fn-bs-marker-program": "fnn-mark-committed",
 }
 
 # Opaque ACL2 calls: the check trusts that the callee performs the named
@@ -96,9 +95,6 @@ OPAQUE_CALLS = {
 # after every step of the calling program.
 SEQUELS = {
     "fnn-sweep-staging": "fn-bs-recover-stage-cleanup-program",
-    # D31: fnn-recover's marker catch-up after the sweep is the marker
-    # program (books/store-history-required.lisp, fn-hmr-catch-up's frame).
-    "fnn-mark-committed": "fn-bs-marker-program",
 }
 
 # Model directory ids for host directory expressions.
@@ -849,7 +845,7 @@ def programs_named() -> list[str]:
     out = []
     for c in ALL_CUTS:
         for p in (c.program, c.follows):
-            if p and p not in out:
+            if p and p not in out and p in PROGRAM_HOSTS:
                 out.append(p)
     return out
 

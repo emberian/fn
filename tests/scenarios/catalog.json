@@ -1324,23 +1324,20 @@
         "Packing removes transaction files only; no class is removed by a capability its row does not name."
       ],
       "evidence": [
-        "books/store-history-marker.lisp",
-        "tests/acl2/store-history-marker-tests.lisp",
-        "tests/test_native_history_marker.py",
         "specs/storage.md",
-        "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+        "planning/evidence/m5-history-lifetimes-2026-09-24.md",
+        "tests/test_native_log.py"
       ],
-      "execution_scope": "Partial: the first three steps run natively on a developer image (tests/test_native_history_marker.py). The fourth is a contract check: packing's preservation is PRF-073, and history compaction and content reclamation are not implemented.",
+      "execution_scope": "Re-pointed by lane log-recovery-2 (PKT-838): the per-file marker, transaction files and their native module (tests/test_native_history_marker.py) went with format 8. On format 9 the committed history is the record log itself (M := D, design 2026-09-27 storage-log section 3.4): a torn or lost tail is zeroed back to the last fenced entry and every log cut recovers to a prefix holding every acknowledged record (tests.test_native_log). The steps and expected lines above are the per-file layout's; their restatement with STO-009 is the registry's.",
       "implementation": {
-        "test": "tests.test_native_history_marker",
+        "test": "tests.test_native_log",
         "cases": [
-          "test_a_burned_reservation_is_not_a_lost_record",
-          "test_a_lost_newest_transaction_file_is_refused_with_the_reason",
-          "test_every_marker_cut_recovers_and_keeps_detecting"
+          "test_a_torn_tail_is_zeroed_and_the_history_kept",
+          "test_every_log_cut_recovers_to_a_prefix"
         ],
         "native": true,
-        "log": "planning/evidence/m5-history-lifetimes/native-marker.log",
-        "record": "planning/evidence/m5-history-lifetimes-2026-09-24.md"
+        "log": "planning/evidence/w6-log-core-power-loss/native-test_native_log.log",
+        "record": "planning/evidence/w6-log-core-2026-09-27.md"
       }
     },
     {
@@ -1493,19 +1490,19 @@
         "Each interrupted migration reopens unmarked or required, and required only over the covering marker; after migration status prints history-marker=required, a deleted marker is marker-missing (exit 4), a lost newest file is history-short-of-marker, a downgrade is refused by name, and init refuses required."
       ],
       "evidence": [
-        "tests/test_native_history_required.py",
-        "tests/acl2/store-history-required-tests.lisp",
-        "planning/evidence/marker-required-2026-09-25.md"
+        "planning/evidence/marker-required-2026-09-25.md",
+        "tests/test_native_log.py"
       ],
       "implementation": {
-        "test": "tests.test_native_history_required",
+        "test": "tests.test_native_log",
         "cases": [
-          "RetryResolutionTests"
+          "test_every_log_cut_recovers_to_a_prefix"
         ],
         "native": true,
-        "log": "planning/evidence/marker-required/native-required.log",
-        "record": "planning/evidence/marker-required-2026-09-25.md"
-      }
+        "log": "planning/evidence/w6-log-core-power-loss/native-test_native_log.log",
+        "record": "planning/evidence/w6-log-core-2026-09-27.md"
+      },
+      "execution_scope": "Re-pointed by lane log-recovery-2 (PKT-838): the per-file marker, transaction files and their native module (tests/test_native_history_required.py) went with format 8. On format 9 the committed history is the record log itself (M := D, design 2026-09-27 storage-log section 3.4): a torn or lost tail is zeroed back to the last fenced entry and every log cut recovers to a prefix holding every acknowledged record (tests.test_native_log). The steps and expected lines above are the per-file layout's; their restatement with STO-009 is the registry's."
     },
     {
       "id": "SCN-049",

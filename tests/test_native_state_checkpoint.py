@@ -73,7 +73,9 @@ class StateCheckpointSourceTests(unittest.TestCase):
             extended[:400])
         rii = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
         self.assertIn("(defthm fn-rii-classified-open-is-classified-open", rii)
-        opened = native_cuts.host_function(io, "fnn-recover-from-state-checkpoint")
+        # The per-file open went with format 8 (lane log-recovery-2,
+        # PKT-838): the log's open over a checkpoint without a log position.
+        opened = native_cuts.host_function(io, "fnn-recover-log-from-state-checkpoint")
         self.assertIn("'fn-store-sco-select", opened)
         self.assertIn("(fnn-recover-suffix-rows store suffix config-records)", opened)
         suffix_rows = native_cuts.host_function(io, "fnn-recover-suffix-rows")
@@ -81,7 +83,6 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena))", suffix_rows)
         self.assertIn("'fn-store-sn-recover-from-checkpoint", suffix_rows)
         self.assertNotIn("fn-arena-clear", suffix_rows)
-        self.assertIn("'fn-store-sco-covered-count", opened)
         # rep-wave-d-3: the file is read into the octet buffer as the
         # writer's plan shape, each segment admitted by ACL2 against the
         # profile's bounds before it is read; checkpoint-pipeline (schema 3):

@@ -30,7 +30,6 @@ import run_store  # noqa: E402
 
 MODEL_CUTS = {
     "init-root-mkdir", "init-root-parent-fenced", "init-lock-created",
-    "init-transactions-mkdir", "init-transactions-parent-fenced",
     "init-staging-mkdir", "init-staging-parent-fenced",
     "init-config-dir-mkdir", "init-config-dir-parent-fenced",
     "init-config-created", "init-config-written", "init-config-file-fenced",
@@ -38,10 +37,7 @@ MODEL_CUTS = {
     "init-history-created", "init-history-written", "init-history-file-fenced",
     "init-history-linked", "init-history-link-eexist", "init-history-root-fenced", "init-history-stage-unlinked",
     "init-config-history-fenced",
-    "init-frontier-created", "init-frontier-written", "init-frontier-file-fenced",
-    "init-frontier-linked", "init-frontier-link-eexist", "init-frontier-root-fenced", "init-frontier-stage-unlinked",
     "init-final-config-file-fenced", "init-final-config-record-file-fenced",
-    "init-final-frontier-file-fenced", "init-transactions-fenced",
     "init-root-fenced", "init-parent-fenced",
     # books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 9).
     "init-journal-mkdir", "init-journal-parent-fenced",
@@ -64,7 +60,7 @@ class NativeInitializerSourceMapTests(unittest.TestCase):
                        "(fnn-init-cut store \"init-lock-created\")",
                        "(fnn-publish-initial-file store (fnn-config-path store) config \"init-config-\")",
                        "(fnn-publish-initial-file store (fnn-config-record-path store 1)",
-                       "(fnn-publish-initial-file store (fnn-frontier-path store)",
+                       "(fnn-log-init-segment store)",
                        '(fnn-init-cut store (fnn-concat initializer-prefix "link-eexist"))',
                        "(fnn-init-cut store \"init-parent-fenced\")"):
             self.assertIn(anchor, source)
