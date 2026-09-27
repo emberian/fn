@@ -4360,7 +4360,7 @@
     {
       "id": "REP-015",
       "title": "The BP application handoff is reported durable only when the application committed the delivered ADU (the Store holds the article, or the receipt's release is durable); a durable kind 7 recording a refusal is reported refused, naming the disposition, never durable",
-      "specification": "specs/bp-node-machine.md#493-the-handoff-reports-the-applications-disposition-2026-09-27-lane-bp-fragments-10mib-prf-224",
+      "specification": "specs/bp-node-machine.md#494-the-handoff-reports-the-applications-disposition-2026-09-27-lane-bp-fragments-10mib-prf-224",
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
