@@ -377,7 +377,7 @@ g_tarball_openbsd() {
   # it fresh.  The release-openbsd / openbsd-release-fixes recipe
   # (planning/evidence/openbsd-release-fixes-2026-09-27.md section 1).
   guest="set -e
-mount | grep -q ' /bw ' || mount -o wxallowed /dev/sd1a /bw
+mount | grep -q ' /bw '
 ulimit -d \$(ulimit -H -d)
 L=/usr/local/fn-work/acl2-lit-4g-tls64k
 printf '%s\\n' '#!/bin/sh' 'export SBCL_HOME=/usr/local/lib/sbcl/' 'exec /usr/local/bin/sbcl --tls-limit 65536 --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core /usr/local/fn-work/acl2-8.7/saved_acl2.core --end-runtime-options --no-userinit --eval \"(acl2::sbcl-restart)\" \"\$@\"' > \$L
@@ -408,7 +408,7 @@ PORT=\$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"ssh\"]
 vm() { ssh -p \$PORT -i $B/vm/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ServerAliveInterval=30 root@127.0.0.1 \"\$@\"; }
 python3 $R/src/tools/power_loss_openbsd.py --base $B start $OB_VM || exit 4
 trap 'python3 $R/src/tools/power_loss_openbsd.py --base $B stop $OB_VM' EXIT
-vm 'mount | grep -q \" /bw \" || mount -o wxallowed /dev/sd1a /bw; rm -rf $W; mkdir -p $W' || exit 4
+vm 'mount | grep -q \" /bw \" || { rm -rf /bw; mkdir -p /bw && mount -o wxallowed /dev/sd1a /bw; }; mount | grep -q \" /bw \" && rm -rf $W && mkdir -p $W' || { echo 'the build space /bw (sd1a) did not mount'; exit 4; }
 vm 'cat > $W/source.tar' < $S/source.tar || exit 4
 vm 'cat > $W/gate.sh' < $S/openbsd-guest.sh || exit 4
 vm 'ksh $W/gate.sh'; rc=\$?
