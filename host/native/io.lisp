@@ -5129,7 +5129,11 @@ tree root), or stop the build."
     "FN_PULL_TEST_KILL"
     "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
-    "FN_NATIVE_LOG_FAULT"))
+    "FN_NATIVE_LOG_FAULT"
+    ;; The power-loss rig's handshake for `fn log append': after each RECOVERED
+    ;; and ACK line, wait for the client's line, so its device mark precedes
+    ;; the next batch's writes; tools/power_loss.py log_run.
+    "FN_NATIVE_LOG_RIG_HANDSHAKE"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -5415,6 +5419,16 @@ acknowledges past the committed records' count)."
              (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
              (if (fnn-core 'fn-lg-workload-prefixp records 1 size)
                  "t" "nil"))))
+
+(defun fnn-log-rig-handshake ()
+  "With FN_NATIVE_LOG_RIG_HANDSHAKE (developer image), the line just printed
+is flushed and the verb waits for one line from the client before it writes
+again: the power-loss rig marks the device between the two, so its windows
+are exact (a client reading behind the process let two batches land inside
+one ack window, kernel-concrete-2's first rig run)."
+  (when (fnn-developer-selector "FN_NATIVE_LOG_RIG_HANDSHAKE")
+    (finish-output *standard-output*)
+    (read-line *standard-input* nil nil)))
 
 (defun fnn-log-nat-arg (text what)
   (let ((n (and text (every #'digit-char-p text) (plusp (length text))
@@ -6098,6 +6112,7 @@ observation (the COMPLETE re-signals it under the owner)."
               (progn
                 (fnn-log-rig-line "RECOVERED" log size)
                 (when (string= command "append")
+                  (fnn-log-rig-handshake)
                   (let ((batches (fnn-log-nat-arg (sixth argv) "BATCHES"))
                         (per (fnn-log-nat-arg (seventh argv) "PER")))
                     (dotimes (b batches)
@@ -6108,7 +6123,8 @@ observation (the COMPLETE re-signals it under the owner)."
                       (fnn-log-append log)
                       (fnn-log-fence log)
                       (fnn-log-finish log per)
-                      (fnn-log-rig-line (format nil "ACK batch=~d" (1+ b)) log size)))))
+                      (fnn-log-rig-line (format nil "ACK batch=~d" (1+ b)) log size)
+                      (fnn-log-rig-handshake)))))
            (fnn-close (fnn-log-fd log)))))))
   +fnn-exit-ok+)
 
