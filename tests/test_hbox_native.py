@@ -23,7 +23,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertEqual(answer.returncode, 0, answer.stderr)
         lines = image_lines(answer.stdout)
         self.assertEqual(len(lines), 1)
-        self.assertIn("FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build.lisp "
+        self.assertIn("FN_NATIVE_PROFILE=developer FN_NATIVE_WORLD=full FN_NATIVE_BUILD=host/native/build.lisp "
                       "FN_NATIVE_IMAGE=build/fn-host-developer", lines[0])
         self.assertNotIn("--profile dtn", answer.stdout)
         self.assertNotIn("FN_NATIVE_BP_HOST", answer.stdout)
@@ -35,10 +35,10 @@ class HboxNativeDryRunTests(unittest.TestCase):
         text = "\n".join(image_lines(answer.stdout))
         # tools/runbooks/hbox-image-build.sh's four build lines.
         for triple in (
-                "FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host ",
-                "FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host-developer ",
-                "FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn ",
-                "FN_NATIVE_PROFILE=developer FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn-developer "):
+                "FN_NATIVE_PROFILE=production FN_NATIVE_WORLD=stripped FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host ",
+                "FN_NATIVE_PROFILE=developer FN_NATIVE_WORLD=full FN_NATIVE_BUILD=host/native/build.lisp FN_NATIVE_IMAGE=build/fn-host-developer ",
+                "FN_NATIVE_PROFILE=production FN_NATIVE_WORLD=stripped FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn ",
+                "FN_NATIVE_PROFILE=developer FN_NATIVE_WORLD=full FN_NATIVE_BUILD=host/native/build-dtn.lisp FN_NATIVE_IMAGE=build/fn-host-dtn-developer "):
             self.assertIn(triple, text)
         # Both DTN images: the tests keep their own default.
         self.assertNotIn("FN_NATIVE_BP_HOST", answer.stdout)
@@ -141,6 +141,18 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertEqual(unclassified, [])
         # FN_NATIVE_HOST is only ever the production image (operator-daily-2).
         self.assertEqual(native_env.IMAGES["FN_NATIVE_HOST"], ("production",))
+
+    def test_a_test_tool_reaches_a_module_that_runs_a_helpers_tests(self):
+        # operator_verdicts subclasses control_filing's tests, whose signed
+        # withdrawal makes ML-DSA-65 keys with FN_TEST_OPENSSL; without it
+        # the system openssl (3.3.1, no ML-DSA) failed it (dev-health).
+        answer = dry("--images", "developer,production", "HEAD",
+                     "tests.test_native_operator_verdicts")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        line = next(line for line in answer.stdout.splitlines()
+                    if line.startswith("tstep test-tests.test_native_operator_verdicts "))
+        self.assertIn("FN_TEST_OPENSSL=$FN_TEST_OPENSSL_BIN ", line)
+        self.assertNotIn("FN_RUN_HYBRID_E2E", line)
 
 
 if __name__ == "__main__":

@@ -67,9 +67,9 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         self.assertIn("(fnn-post-entry-fault", function_body(self.owner, "fnn-command-owner"))
         self.assertIn("(fnn-owner-install root max-connections fault)",
                       function_body(self.owner, "fnn-owner-run"))
-        # (the fourth argument NIL: the owner does not take the history's
-        # octets; checkpoint-arena-2)
-        self.assertIn("(fnn-open-live-store root t fault nil)",
+        # (three arguments since PKT-823: the open answers the history's
+        # count, never its octets; rm2-format9)
+        self.assertIn("(fnn-open-live-store root t fault)",
                       function_body(self.owner, "fnn-owner-install"))
         entry = function_body(self.io, "fnn-post-entry-fault")
         for reader in ("(fnn-post-test-fault)", "(fnn-recovery-test-fault)",
@@ -116,8 +116,11 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
     # (books/store-log-route-programs.lisp; tools/native_program_check.py's
     # log route arms read them step by step).
     def test_reservation_observation_and_cut_follow_the_kernel(self):
+        # The host holds the concrete kernel (per-record-state c76097b3b):
+        # fn-lgc-consume-to, whose refinement to the log kernel's consume is
+        # books/store-log-kernel-concrete.lisp fn-lgc-consume-to-refines.
         self.assert_ordered(function_body(self.io, "fnn-log-reserve"), [
-            "(fnn-core 'fn-olr-consume-to ",
+            "(fnn-core 'fn-lgc-consume-to ",
             "(fnn-observe store :log-reserve)",
             "(fnn-at store :frontier-reserved)",
         ])

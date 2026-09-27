@@ -73,6 +73,19 @@ def header(article, name):
     return None
 
 
+def unserved(article):
+    """ARTICLE as stored: without the Xref line the serving node puts first.
+
+    Since reader-compat (PRF-243) ARTICLE carries the serving node's own Xref
+    (RFC 5536 section 3.2.14: a serving agent's field, naming its own
+    numbers), so A and B serve the same stored record under different Xref
+    lines; `store inspect' shows the record without it.
+    """
+    if article is not None and article.startswith(b"Xref: "):
+        return article.split(b"\r\n", 1)[1]
+    return article
+
+
 def changed(source):
     """One authored byte changed: the last body octet before the final CRLF."""
     return source[:-3] + bytes([source[-3] ^ 1]) + source[-2:]
@@ -457,7 +470,9 @@ class NativeSourceCorpusTests(unittest.TestCase):
         # Transit: B stores A's octets with B's identity spliced into Path; the
         # re-offer is refused by Message-ID.
         for name in carried:
-            a_octets, b_octets = facts[name]["stored"], facts[name]["b"]
+            self.assertTrue(header(facts[name]["stored"], b"Xref").startswith("a.corpus.invalid "), name)
+            self.assertTrue(header(facts[name]["b"], b"Xref").startswith("b.corpus.invalid "), name)
+            a_octets, b_octets = unserved(facts[name]["stored"]), unserved(facts[name]["b"])
             # RFC 5537 s3.2.1: B prepends its identity and "!", then an empty
             # path-diagnostic and "!" because A's identity matched the peer
             # record ("!!", the verified hop; fn-pu-edit-path).
@@ -466,8 +481,8 @@ class NativeSourceCorpusTests(unittest.TestCase):
             self.assertTrue(facts[name]["b-ihave"].startswith("435"), facts[name])
             self.assertEqual(facts[name]["reopened"], (facts[name]["number"],
                                                        facts[name]["stored"]), name)
-            self.assertEqual(facts[name]["inspect-a"], facts[name]["stored"], name)
-            self.assertEqual(facts[name]["inspect-b"], facts[name]["b"], name)
+            self.assertEqual(facts[name]["inspect-a"], a_octets, name)
+            self.assertEqual(facts[name]["inspect-b"], b_octets, name)
         for name in ("supplied-date", "generated-date", "client-path", "mime"):
             self.assertEqual(facts[name]["retry-after-reopen"].encode(), ALREADY, name)
 
@@ -505,7 +520,9 @@ class NativeSourceCorpusTests(unittest.TestCase):
         # The same source signed afresh is another carrier (hedged ML-DSA-65):
         # a changed authored source under the held Message-ID, the conflict.
         self.assertEqual(resigned, 1, resigned_detail)
-        self.assertIn("REFUSED", resigned_detail[2], resigned_detail)
+        # (the refusal's line since PKT-147 names the author route and its
+        # word: "refused hybrid-author CONFLICT")
+        self.assertIn("refused hybrid-author CONFLICT", resigned_detail[2], resigned_detail)
         # A changed signed source under the held Message-ID is the conflict:
         # a refusal (exit 1), not an acceptance, with its word printed.
         self.start(a)
@@ -516,7 +533,7 @@ class NativeSourceCorpusTests(unittest.TestCase):
         print("SOURCE-CORPUS-SIGNED-CONFLICT " + json.dumps(
             {"other": other_detail, "after": sorted(after_other)}, sort_keys=True))
         self.assertEqual(other, 1, other_detail)
-        self.assertIn("REFUSED", other_detail[2], other_detail)
+        self.assertIn("refused hybrid-author CONFLICT", other_detail[2], other_detail)
         self.assertEqual(sorted(after_other), sorted(before))
 
     # -- cancel order, pinned reader, Supersedes, replay ------------------------
