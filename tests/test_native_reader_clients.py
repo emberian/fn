@@ -158,8 +158,14 @@ class ReaderClientRows(unittest.TestCase):
                                                     "newnews_future")})
                     self.assertTrue(new.get("newnews_all", {}).get("status", "")
                                     .startswith("230"))
-                    self.assertIn(seed, new["newnews_all"]["lines"])
-                    self.assertIn(seed, new["newnews_group"]["lines"])
+                    # The client's cancel runs before this probe; since batch
+                    # AS (newsreader-cancel) it withdraws the seed pan
+                    # cancels, and a withdrawn article is not new.
+                    withdrawn = (entry.get("check", {}).get("seed", {})
+                                 .get("status", "").startswith("430"))
+                    listed = self.assertNotIn if withdrawn else self.assertIn
+                    listed(seed, new["newnews_all"]["lines"])
+                    listed(seed, new["newnews_group"]["lines"])
                     self.assertEqual(new["newnews_future"]["lines"], [])
                     self.assertTrue(new["newnews_future"]["status"].startswith("230"))
 
