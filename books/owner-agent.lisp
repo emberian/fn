@@ -138,7 +138,8 @@
                 (fn-nntp-safe-group-namep (fn-cfg-group-name e)))
            (member-equal (fn-nntp-group-fact
                           (fn-cfg-group-name e)
-                          (* 1000 (fn-clock-wall (fn-cfg-group-created-stamp e)))
+                          (* 1000 (nfix (fn-clock-wall
+                                         (fn-cfg-group-created-stamp e))))
                           (fn-oag-stamp-observation
                            (fn-cfg-group-created-stamp e)))
                          (fn-oag-group-facts es gen)))
@@ -150,14 +151,22 @@
 ; Every projected fact is a well-formed creation fact (the shape
 ; books/nntp-responses.lisp `fn-nntp-envp' requires of the served
 ; environment's facts).
+(local
+ (defthm fn-oag-group-fact-of-is-a-fact
+   (implies (member-equal f (fn-oag-group-fact-of e))
+            (fn-nntp-group-factp f))
+   :hints (("Goal" :in-theory (enable fn-nntp-group-factp fn-nntp-group-fact
+                                      fn-nntp-fact-name fn-nntp-fact-created
+                                      fn-nntp-fact-observation
+                                      fn-oag-stamp-observation fn-cfg-stampp
+                                      fn-clock-observationp fn-record-uint32p)))))
+
 (defthm fn-oag-group-facts-are-group-facts
   (implies (member-equal f (fn-oag-group-facts es gen))
            (fn-nntp-group-factp f))
-  :hints (("Goal" :in-theory (enable fn-nntp-group-factp fn-nntp-group-fact
-                                     fn-nntp-fact-name fn-nntp-fact-created
-                                     fn-nntp-fact-observation
-                                     fn-oag-stamp-observation fn-cfg-stampp
-                                     fn-clock-observationp))))
+  :hints (("Goal" :induct (fn-oag-group-facts es gen)
+           :in-theory (disable fn-oag-group-fact-of fn-nntp-group-factp
+                               fn-cfg-entry-livep))))
 
 ;; The listing's elements: 1 the descriptions, 2 the node's message, 3 the
 ;; path-identity (below), 4 the access table (lane group-access; nil
