@@ -7579,9 +7579,11 @@
         "tests/acl2/heap-reservation-tests.lisp",
         "tests/test_native_image_floor.py",
         "planning/evidence/image-floor-2026-09-26.md",
-        "planning/evidence/openbsd-release-fixes-2026-09-27.md"
+        "planning/evidence/openbsd-release-fixes-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T081222Z-2154140.json",
+        "planning/evidence/manifests/certify-20260927T081801Z-2227997.json"
       ],
-      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md)."
+      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md). Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing)."
     },
     {
       "id": "PRF-196",
@@ -8250,9 +8252,10 @@
         "tests/acl2/catalog-load-index-tests.lisp",
         "books/catalog-entries.lisp",
         "planning/evidence/manifests/certify-20260927T020711Z-1880439.json",
-        "planning/evidence/openbsd-release-fixes-2026-09-27.md"
+        "planning/evidence/openbsd-release-fixes-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T081222Z-2154140.json"
       ],
-      "progress_note": "Lane open-by-index (2026-09-26/27): certified by persvati farm run run-20260927T020711Z (certify-20260927T020711Z-1880439: the two books and their test books); hbox run-20260927T003414Z-f8e9 certified the chain book before its comment was renumbered.",
+      "progress_note": "Lane open-by-index (2026-09-26/27): certified by persvati farm run run-20260927T020711Z (certify-20260927T020711Z-1880439: the two books and their test books); hbox run-20260927T003414Z-f8e9 certified the chain book before its comment was renumbered. Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing).",
       "events": [
         "fn-ccco-entry-step-is-entry-step",
         "fn-ccco-coverage-chain-is-coverage-chain",
