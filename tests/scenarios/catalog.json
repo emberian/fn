@@ -4360,7 +4360,7 @@
       "id": "SCN-163",
       "title": "The mixed hour before and after the scheduler gate and the render plans on the same box: control p99, POST p99, the greeting under 40 readers, and the owner's hold-time distribution",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-023"
       ],
@@ -4381,7 +4381,11 @@
         "tests/test_native_owner_scheduler.py"
       ],
       "implementation": {
-        "test": "tests/test_native_owner_scheduler.py",
+        "test": "tests.test_native_owner_scheduler",
+        "cases": [
+          "SchedulerSourceTests",
+          "SchedulerNativeTests"
+        ],
         "native": true,
         "record": "planning/evidence/owner-scheduler-2026-09-26.md"
       }
