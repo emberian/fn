@@ -729,7 +729,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-attach-concrete \
 	books/msgid-index-concrete \
 	books/octets-stobj \
+	books/payload-arena-bytes \
 	books/payload-arena \
+	books/payload-arena-attach \
+	books/records-freeze \
 	books/catalog-record \
 	books/catalog \
 	books/catalog-commit \
@@ -744,6 +747,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
+	tests/acl2/records-freeze-tests \
 	books/proto-catalog \
 	books/proto-catalog-fold \
 	books/proto-catalog-arena \

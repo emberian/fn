@@ -4,9 +4,11 @@ consolidation-design, 2026-09-26; the design's section 3).
 books/proto-catalog.lisp introduces `fn-pcat', an ATTACHABLE abstract stobj
 whose logical side is the arena's (books/payload-arena.lisp) and whose own
 foundation is a one-field list; books/proto-catalog-arena.lisp evaluates
-`(attach-stobj fn-pcat fn-arena)' before including it, so in an image that
-includes the arena book `fn-pcat' executes with the arena's byte array as
-its foundation while every theorem about it (books/proto-catalog-fold.lisp,
+`(attach-stobj fn-pcat fn-arena-bytes)' before including it (since the
+records freeze the byte array is books/payload-arena-bytes.lisp and
+`fn-arena' is itself the attachable generic), so in an image that includes
+the arena books `fn-pcat' executes with the arena's byte array as its
+foundation while every theorem about it (books/proto-catalog-fold.lisp,
 certified once against the generic) is unchanged.
 
 The witness: the developer verb `proto-catalog` (host/native/proto-catalog.lisp)
@@ -37,8 +39,8 @@ class ProtoCatalogSourceTests(unittest.TestCase):
     def test_the_image_attaches_the_arena_before_introducing_the_generic(self):
         arena = (ROOT / "books" / "proto-catalog-arena.lisp").read_text(encoding="ascii")
         # The events at column 0, not the comment's mention of them.
-        attach = arena.index("\n(attach-stobj fn-pcat fn-arena)")
-        self.assertLess(arena.index('\n(include-book "payload-arena")'), attach)
+        attach = arena.index("\n(attach-stobj fn-pcat fn-arena-bytes)")
+        self.assertLess(arena.index('\n(include-book "payload-arena-bytes")'), attach)
         self.assertLess(attach, arena.index('\n(include-book "proto-catalog")'))
         generic = (ROOT / "books" / "proto-catalog.lisp").read_text(encoding="ascii")
         self.assertIn(":attachable t", generic)

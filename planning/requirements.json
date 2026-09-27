@@ -2758,7 +2758,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-201"
+        "PRF-201",
+        "PRF-221"
       ],
       "verification": [
         "proof",
@@ -3477,7 +3478,8 @@
         "PRF-201",
         "PRF-202",
         "PRF-203",
-        "PRF-204"
+        "PRF-204",
+        "PRF-221"
       ],
       "verification": [
         "proof",
@@ -3873,6 +3875,30 @@
         "planning/evidence/tls-reload-2026-09-26.md"
       ],
       "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
+    },
+    {
+      "id": "REP-014",
+      "title": "The payload arena is an attachable generic whose logical value is the list of sealed payloads; the byte array is an implementation attached in the image; a handle has identity, extent and lifetime; replay over the retained view equals replay over the wire view; a pinned reader's payload survives reclamation",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-221",
+        "PRF-118"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/records-freeze-2026-09-26.md",
+        "books/payload-arena.lisp",
+        "books/payload-arena-bytes.lisp",
+        "books/payload-arena-attach.lisp",
+        "books/records-freeze.lisp"
+      ],
+      "implementation_note": "Lane records-freeze (2026-09-26/27, PKT-293): the generic, its byte-array attachment, the intern's coordinates, the replay theorems and the reclamation identity are certified (PRF-221); the image attaches the byte array (host/native/build.lisp includes books/payload-arena-attach before any book naming fn-arena). Not yet served: no host line seals into the arena or loads the catalog (catalog-slice-5 step 8; acceptance-payload-arena PKT-635), so the retained bytes per stored octet are still sixteen on the running node until that join; the measurement belongs to it."
     }
   ]
 }

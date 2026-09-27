@@ -42,6 +42,11 @@
 ; The executable path on a live local arena and a live local buffer: three
 ; seals (a list, the octet buffer's contents, the empty payload), the reads,
 ; then a clear.  The buffer's seal is the host's entry: no list is built.
+; Run twice: on the GENERIC `fn-arena' (books/payload-arena.lisp, whose own
+; foundation is the list-backed reference) and on the byte-array
+; implementation `fn-arena-bytes' (books/payload-arena-bytes.lisp) directly,
+; so both foundations answer the same values (the image attaches the second
+; to the first: books/payload-arena-attach.lisp).
 
 (defun pat-exec-run (fn-arena)
   (declare (xargs :stobjs fn-arena))
@@ -111,6 +116,63 @@
 (assert-event (and (fn-cbor-octet-listp *pat-big*) (equal (len *pat-big*) 3000)
                    (equal (pat-exec-big)
                           (list 3 t t t t 3000 (nth 2999 *pat-big*)))))
+
+; The same two runs on the byte-array implementation, directly.
+(defun pat-bytes-run (fn-arena-bytes)
+  (declare (xargs :stobjs fn-arena-bytes))
+  (let* ((fn-arena-bytes (fn-arena-bytes-clear fn-arena-bytes))
+         (fn-arena-bytes (fn-arena-bytes-seal-list '(1 2 3) fn-arena-bytes))
+         (fn-arena-bytes (with-local-stobj fn-octets
+                           (mv-let (fn-arena-bytes fn-octets)
+                             (let* ((fn-octets (fn-octets-from-list '(4 5) fn-octets))
+                                    (fn-arena-bytes (fn-arena-bytes-seal-buffer fn-octets fn-arena-bytes)))
+                               (mv fn-arena-bytes fn-octets))
+                             fn-arena-bytes)))
+         (fn-arena-bytes (fn-arena-bytes-seal-list nil fn-arena-bytes))
+         (result (list (fn-arena-bytes-count fn-arena-bytes)
+                       (fn-arena-bytes-payload-len 0 fn-arena-bytes)
+                       (fn-arena-bytes-get 0 2 fn-arena-bytes)
+                       (fn-arena-bytes-payload 0 fn-arena-bytes)
+                       (fn-arena-bytes-payload-len 1 fn-arena-bytes)
+                       (fn-arena-bytes-get 1 0 fn-arena-bytes)
+                       (fn-arena-bytes-payload 1 fn-arena-bytes)
+                       (fn-arena-bytes-payload-len 2 fn-arena-bytes)
+                       (fn-arena-bytes-payload 2 fn-arena-bytes)))
+         (fn-arena-bytes (fn-arena-bytes-clear fn-arena-bytes)))
+    (mv (list result (fn-arena-bytes-count fn-arena-bytes)) fn-arena-bytes)))
+
+(defun pat-bytes-exec ()
+  (with-local-stobj fn-arena-bytes
+    (mv-let (result fn-arena-bytes) (pat-bytes-run fn-arena-bytes) result)))
+
+(assert-event (equal (pat-bytes-exec) (pat-exec)))
+
+(defun pat-bytes-big-run (fn-arena-bytes)
+  (declare (xargs :stobjs fn-arena-bytes))
+  (let* ((fn-arena-bytes (fn-arena-bytes-clear fn-arena-bytes))
+         (fn-arena-bytes (fn-arena-bytes-seal-list *pat-big* fn-arena-bytes))
+         (before (fn-arena-bytes-payload 0 fn-arena-bytes))
+         (fn-arena-bytes (with-local-stobj fn-octets
+                           (mv-let (fn-arena-bytes fn-octets)
+                             (let* ((fn-octets (fn-octets-from-list *pat-big* fn-octets))
+                                    (fn-arena-bytes (fn-arena-bytes-seal-buffer fn-octets fn-arena-bytes)))
+                               (mv fn-arena-bytes fn-octets))
+                             fn-arena-bytes)))
+         (fn-arena-bytes (fn-arena-bytes-seal-list *pat-big* fn-arena-bytes)))
+    (mv (list (fn-arena-bytes-count fn-arena-bytes)
+              (equal before *pat-big*)
+              (equal (fn-arena-bytes-payload 0 fn-arena-bytes) *pat-big*)
+              (equal (fn-arena-bytes-payload 1 fn-arena-bytes) *pat-big*)
+              (equal (fn-arena-bytes-payload 2 fn-arena-bytes) *pat-big*)
+              (fn-arena-bytes-payload-len 1 fn-arena-bytes)
+              (fn-arena-bytes-get 2 2999 fn-arena-bytes))
+        fn-arena-bytes)))
+
+(defun pat-bytes-big ()
+  (with-local-stobj fn-arena-bytes
+    (mv-let (result fn-arena-bytes) (pat-bytes-big-run fn-arena-bytes) result)))
+
+(assert-event (equal (pat-bytes-big) (pat-exec-big)))
 
 ; -----------------------------------------------------------------------------
 ; The obligations on ground values.  *pat-c* is a concrete arena holding
@@ -218,7 +280,7 @@
                             (i (car (nth 1 fn-arena$c)))
                             (n (+ (car (nth 1 fn-arena$c)) (car (nth 2 fn-arena$c))))
                             (k i) (buf (nth 0 fn-arena$c)))))
-          ("Subgoal 1" :use ((:instance fn-arena-get{correspondence})))))
+          ("Subgoal 1" :use ((:instance fn-arena-bytes-get{correspondence})))))
 
 ; seal-list: the positive witness on the ground arena.
 (defthm pat-w-seal-list

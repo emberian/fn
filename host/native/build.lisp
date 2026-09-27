@@ -203,9 +203,18 @@
 ;; books/owner-checkpoint-pipeline itself).
 (include-book "books/store-checkpoint-tables")
 (include-book "books/store-checkpoint-tables-reader")
+;; The records freeze (PKT-293; planning/evidence/records-freeze-2026-09-26.md):
+;; the payload arena `fn-arena' (books/payload-arena.lisp) is an attachable
+;; generic whose logical value is the list of sealed payloads; this book
+;; attaches its byte-array implementation `fn-arena-bytes' (books/payload-arena-
+;; bytes.lisp) BEFORE the generic is introduced, so every book above the
+;; arena (the held record, the catalog) runs over one byte per payload octet
+;; from the certificates it was certified with.  It must precede every
+;; include that names fn-arena.
+(include-book "books/payload-arena-attach")
 ;; Wave 5's attach-stobj prototype (planning/design-2026-09-26-consolidation.md
 ;; section 3): the attachable generic fn-pcat (books/proto-catalog.lisp) with
-;; the arena attached before it is introduced; host/native/proto-catalog.lisp
+;; the arena's byte array attached before it is introduced; host/native/proto-catalog.lisp
 ;; registers the developer verb `proto-catalog' that calls fn-pcat-smoke.
 (include-book "books/proto-catalog-arena")
 (ld "host/store-node-host.lisp" :ld-error-action :error)

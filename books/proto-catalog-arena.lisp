@@ -2,9 +2,13 @@
 ; consolidation-design, 2026-09-26).
 ;
 ; Three events, in this order, are the whole mechanism:
-;   1. the implementation is introduced (`fn-arena', books/payload-arena.lisp:
-;      the byte array with an offset and a size per handle);
-;   2. `(attach-stobj fn-pcat fn-arena)' names it as the attachment of a
+;   1. the implementation is introduced (`fn-arena-bytes',
+;      books/payload-arena-bytes.lisp: the byte array with an offset and a
+;      size per handle; since the records freeze `fn-arena' itself is the
+;      attachable generic of the same logical side, books/payload-arena.lisp,
+;      and books/payload-arena-attach.lisp attaches the same implementation
+;      to it: this prototype attaches the implementation, not the generic);
+;   2. `(attach-stobj fn-pcat fn-arena-bytes)' names it as the attachment of a
 ;      stobj not yet introduced;
 ;   3. the generic is introduced (`fn-pcat', books/proto-catalog.lisp,
 ;      `:attachable t'), and BECAUSE the attachment precedes it, its
@@ -21,8 +25,8 @@
 ; arena's concrete stobj, five fields; the list-backed one has one.
 
 (in-package "ACL2")
-(include-book "payload-arena")
-(attach-stobj fn-pcat fn-arena)
+(include-book "payload-arena-bytes")
+(attach-stobj fn-pcat fn-arena-bytes)
 (include-book "proto-catalog")
 (include-book "proto-catalog-fold")
 
