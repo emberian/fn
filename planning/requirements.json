@@ -3484,7 +3484,8 @@
         "PRF-201",
         "PRF-202",
         "PRF-203",
-        "PRF-204"
+        "PRF-204",
+        "PRF-229"
       ],
       "verification": [
         "proof",
@@ -3494,11 +3495,13 @@
       "evidence": [
         "books/catalog-commit.lisp",
         "books/catalog-delta.lisp",
+        "books/catalog-number-index.lisp",
         "books/catalog-record.lisp",
         "books/catalog.lisp",
         "planning/evidence/catalog-slice-2026-09-26.md",
         "tests/acl2/catalog-commit-tests.lisp",
-        "tests/acl2/catalog-delta-tests.lisp"
+        "tests/acl2/catalog-delta-tests.lisp",
+        "tests/acl2/catalog-number-index-tests.lisp"
       ],
       "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement).",
       "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."

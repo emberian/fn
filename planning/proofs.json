@@ -7950,6 +7950,36 @@
         "planning/evidence/manifests/certify-20260927T002614Z-565053.json"
       ],
       "progress_note": "Lane acceptance-payload-arena (2026-09-26): certified on persvati, run-20260927T001950Z-505f (certify-20260927T002614Z-565053: passed 2, failed 0, no book over 10 s at two jobs); every event REPL-admitted first."
+    },
+    {
+      "id": "PRF-229",
+      "title": "The catalog's number lookup at a version and its clamped range are the walks of the visible rows, under the no-number-bound-twice invariant every catalog export preserves",
+      "statement": "books/catalog-number-index.lisp, over the generic fn-cat. fn-cnx-freshp (every later row's number in a group this row is numbered in is absent or larger) holds of the creator and of clear and is preserved by commit, by withdraw and redecide under their guards (fn-cnx-freshp-of-commit, -of-withdraw, -of-redecide, -of-create-and-clear, stated over fn-cat$a-* with no stobj; fn-cnx-freshp-of-cat-writers over the exports). Under it a number is bound by at most one row (fn-cnx-number-seq-unique), and KEYSTONE fn-cnx-view-seq-is-walk: fn-cnx-view-seq group n v (one probe of the (group . number) table, one row read, one visibility test) equals fn-cat-view-number-find group n count v (books/catalog-view.lisp: the walk of the rows visible at version v, newest first) for every non-nil n; KEYSTONE fn-cnx-view-range-is-walk: fn-cnx-view-range group low high v (the numbers low .. min(high, next - 1) ascending, one probe each) equals fn-cnx-walk-range group low high v, the walk per number over low .. high unclamped (a number past the group's high names no row). Hypothesis-free but for the invariant (and n non-nil for the lookup).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/catalog-number-index.lisp",
+        "tests/acl2/catalog-number-index-tests.lisp",
+        "planning/evidence/index-stobjs-2026-09-26.md"
+      ],
+      "planning_note": "Lane index-stobjs (wave 5, 2026-09-26). The subjects are not host-called: the served machine still reads the lists (fn-gidx number trie, fn-midx trie, the archive walk for ARTICLE by number) until catalog-slice's step 7b threads fn-cat through the retrieval arms; these are the lookups 7b is asked to call (LANEDUMP request). This closes the 'number column form' PRF-204's progress note lists as not proved (fn-cat-view-bound-find's walk equals the table's row when visible, given numbers are functional).",
+      "events": [
+        "fn-cnx-view-seq-is-walk",
+        "fn-cnx-view-range-is-walk",
+        "fn-cnx-number-seq-unique",
+        "fn-cnx-freshp-of-commit",
+        "fn-cnx-freshp-of-withdraw",
+        "fn-cnx-freshp-of-redecide",
+        "fn-cnx-freshp-of-create-and-clear",
+        "fn-cnx-freshp-of-cat-writers"
+      ]
     }
   ]
 }
