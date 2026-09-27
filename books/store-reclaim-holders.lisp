@@ -299,7 +299,8 @@
            :in-theory (e/d (fn-rcl-summary fn-rcl-summary-in fn-rcl-articles-alpha
                             fn-rcl-payload-len fn-rcl-payload-tomb-length
                             fn-rcl-article-alpha-accessors)
-                           (fn-rcl-verdict fn-rcl-verdict-in fn-rcl-tombstonep
+                           (fn-rcl-verdict fn-rcl-verdict-in fn-rcl-standing-verdict
+                            fn-rcl-tombstonep
                             fn-rcl-tomb-length fn-rcl-payload-bytes fn-rcl-article-alpha)))))
 
 (defthm fn-rcl-held-count-in-is-held-count-of-alpha
@@ -307,8 +308,8 @@
          (fn-rcl-held-count rule now h verdicts (fn-rcl-articles-alpha articles fn-arena)))
   :hints (("Goal" :induct (fn-rcl-held-count-in rule now h verdicts articles fn-arena)
            :in-theory (e/d (fn-rcl-held-count fn-rcl-held-count-in fn-rcl-articles-alpha)
-                           (fn-rcl-verdict fn-rcl-verdict-in fn-rcl-heldp
-                            fn-rcl-article-alpha)))))
+                           (fn-rcl-verdict fn-rcl-verdict-in fn-rcl-standing-verdict
+                            fn-rcl-heldp fn-rcl-article-alpha)))))
 
 ; KEYSTONE.  The counts the host calls (status's reclaim line,
 ; books/native-live-status.lisp fn-nls-reclaim-words; the reclaim verbs'
