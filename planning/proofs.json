@@ -3028,7 +3028,7 @@
     {
       "id": "PRF-068",
       "title": "Local consumer status reports the scoped committed journal distance",
-      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. For the exact host-called kind-9 FNCT codec, decoding an encoded accepted reply returns its ACK, frontier and gap when ACK and frontier are uint32 values, ACK is no greater than frontier, and gap equals frontier minus ACK; decoding an encoded refused, uncertain or fault reply returns that status with empty fields under the constrained frame-digest shape. This target remains in progress because the subsequent topic/index composition requires its own native qualification. The codec theorem does not prove concrete hash security, native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-709: fn-ncl-cli-plan answers (:help) for `help` (the host prints fn-ncl-usage-text for help, no words and every usage refusal); the register retry moved to books/consumer-reason.lisp fn-ncr-cli-after (PRF-261, lane friend-blockers-2: only an unbootstrapped or unnamed refusal retries).",
+      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. For the exact host-called kind-9 FNCT codec, decoding an encoded accepted reply returns its ACK, frontier and gap when ACK and frontier are uint32 values, ACK is no greater than frontier, and gap equals frontier minus ACK; decoding an encoded refused, uncertain or fault reply returns that status with empty fields under the constrained frame-digest shape. This target remains in progress because the subsequent topic/index composition requires its own native qualification. The codec theorem does not prove concrete hash security, native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-709: fn-ncl-cli-plan answers (:help) for `help` (the host prints fn-ncl-usage-text for help, no words and every usage refusal); the register retry moved to books/consumer-reason.lisp fn-ncr-cli-after (PRF-263, lane friend-blockers-2: only an unbootstrapped or unnamed refusal retries).",
       "milestone": "M4",
       "requirements": [
         "CNS-001"
@@ -9479,7 +9479,7 @@
       ]
     },
     {
-      "id": "PRF-261",
+      "id": "PRF-263",
       "title": "A local consumer command's refusal names the owner's reason on the wire, a bind of an unregistered consumer is refused by name, and the command's JSON line is ACL2's, all printable ASCII",
       "statement": "books/consumer-reason.lisp and books/consumer-owner-local.lisp. Subjects: fn-ncr-request-encode / -decode / fn-ncr-framep (host/native-control-host.lisp fn-native-control-host-consumer-reasoned-request-encode / -decode and fn-native-control-host-reasoned-framep, called by host/native/control.lisp fnn-control-consumer-local (client) and fnn-control-handle-client (owner)); fn-ncr-client-read (fn-native-control-host-consumer-client-read, fnn-control-consumer-local); fn-ncr-cli-after (fn-native-control-host-consumer-cli-after, host/native/consumer-local.lisp fnn-command-consumer-local); fn-ncr-cli-plan, fn-ncr-json-line, fn-ncr-report-summary, fn-ncr-article-json (host/native/consumer-local.lisp); fn-col-bind-refusal (host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure live and fn-native-admin-host-apply offline). KEYSTONES: fn-ncr-printed-reason-is-the-decisions (for every status, the client's read of the reasoned reply the owner seals is that status and the reason's word, and a refusal that named a reason prints exactly that word); fn-ncr-request-decode-is-the-plain-decode (the kind-22 frame is decided as the kind-4 request with the same payload); fn-ncr-cli-after-retries-only-an-unbootstrapped-register; fn-col-bind-refusal-refuses-exactly-an-unregistered-bind; fn-ncr-json-object-is-ascii; fn-ncr-withdrawal-roundtrip and fn-ncr-withdrawal-report-fits-the-poll-reply (the withdrawal report's byte form, PRF-262's). fn-ncr-cli-plan-without-the-flag-by-definition: without --json the plan is the wait codec's. Local policy; no RFC requirement. The reasoned consumer request is FNCT kind 22; an old owner's plain refusal of it is resent once as kind 4 (PKT-453's pattern).",
       "milestone": "M4",
@@ -9523,7 +9523,7 @@
         "PRF-116",
         "PRF-234",
         "PRF-252",
-        "PRF-261"
+        "PRF-263"
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",

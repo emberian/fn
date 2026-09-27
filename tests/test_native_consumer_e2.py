@@ -217,7 +217,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.stop_owner(reopened)
 
     def test_refusals_name_their_reason_json_lines_and_bind_of_an_unknown_name(self):
-        """PKT-709 (CNS-009, PRF-261): a refusal names the owner's reason
+        """PKT-709 (CNS-009, PRF-263): a refusal names the owner's reason
         (the reasoned consumer request, FNCT kind 22, answered with the
         reasoned reply); `--json` prints ACL2's one JSON line; `consumer
         bind` of a name no registration declared is refused by name."""
