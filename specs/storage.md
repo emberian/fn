@@ -77,6 +77,16 @@ rises. Open: the group-name bound (field 7) is not yet read on the served
 path and the name width is 256, below the NNTP wire's 460 (PKT-451); a
 peer's configuration rows are now data (STO-023).
 
+STO-030: the header limits of one article are profile fields, and admission refuses exactly past them by name.
+Fields 15 `max-header-fields`, 16 `max-header-lines` and 17
+`max-header-octets` (defaults 64, 256 and 16,384, the parser's constants
+before D27) bound one article's header; `init` and `store import` take
+them as `--max-header-fields N` and so on. The relation is 1 <= fields <=
+lines <= octets <= the article codec's ceiling, each failure refused by
+name. The served POST refuses a header past them with a 441 naming the
+field (books/injection.lisp `fn-inj-decide`, PRF-230); readers parse
+under the ceiling, so raising a limit never changes an admitted article.
+
 STO-023: stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant.
 Two constants that capped data are gone (D27;
 planning/evidence/caps-to-profile-2026-09-26.md). A peer's row group grows

@@ -12,15 +12,16 @@
 (defconst *spot-window*
   (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
         4096 4294967295 4294967295 32768 65535 256 4096
-        1048576 1048576 1048576 1048576 1048576 0))
+        1048576 1048576 1048576 1048576 1048576 0
+        64 256 16384))
 
 ; Its config.json, octet for octet: the FNSM frame the format-8 encoder wrote
 ; under the relation before PKT-467 (magic, version 1, kind 1, the u32
-; payload length 148, the two texts, thirteen u64 fields, the SHA-256
+; payload length 172, the two texts, sixteen u64 fields, the SHA-256
 ; trailer).  tests/test_native_control_reply_fit.py writes the same octets.
 (defconst *spot-window-octets*
   '(
-    70 78 83 77 1 1 0 0 0 148 0 10 102 110 45 115
+    70 78 83 77 1 1 0 0 0 172 0 10 102 110 45 115
     116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
     45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
     116 105 101 114 45 50 0 0 0 0 0 0 16 0 0 0
@@ -29,11 +30,13 @@
     0 0 0 0 1 0 0 0 0 0 0 0 16 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
     0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
-    0 0 0 16 0 0 0 0 0 0 0 0 0 0 48 240
-    243 102 208 195 151 137 84 88 154 142 3 226 22 4 80 206
-    44 194 4 53 39 56 56 72 73 34 203 142 157 18))
+    0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0
+    0 0 0 0 0 64 0 0 0 0 0 0 1 0 0 0
+    0 0 0 0 64 0 121 139 102 61 92 206 2 20 187 88
+    114 29 128 147 96 135 218 253 203 152 133 61 46 249 28 121
+    15 221 14 210 22 11))
 
-(assert-event (equal (len *spot-window-octets*) 190))
+(assert-event (equal (len *spot-window-octets*) 214))
 (assert-event (equal (fn-spo-saved-frame *spot-window*) *spot-window-octets*))
 
 ; -----------------------------------------------------------------------------

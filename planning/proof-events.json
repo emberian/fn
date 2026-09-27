@@ -7734,6 +7734,55 @@
           "name": "fn-lg-scan-of-log-then-torn-entry"
         }
       ]
+    },
+    {
+      "id": "PRF-230",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-admits-exactly-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-within-its-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-raised-limits-agree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-census-refusal-is-the-parse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-work-input-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-under-admits-exactly-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-under-wants-only-what-transfer-wants"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-bp-transit-submits-only-within-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-bp-transit-refuses-past-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-control-decision-injects-only-within-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-control-decision-refuses-past-the-limits-by-name"
+        }
+      ]
     }
   ]
 }

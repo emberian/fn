@@ -3961,6 +3961,27 @@
         "tests/test_native_init_publication.py"
       ],
       "implementation_note": "gpt-6 review 2026-09-26 section 7. The staged ROOT.import-XXXX is completed and fenced, admitted by the ordinary open, published by renameat2(RENAME_NOREPLACE) and the parent fenced; a leftover staged directory is classified by ACL2 (interrupted-import, publication-uncertain) and refused by name. Operator init (PKT-647) runs the same program with init's plan in ROOT.init-XXXX (fnn-command-init-published); a leftover is refused interrupted-init or publication-uncertain, an existing ROOT store-path-exists. OpenBSD: exclusive flock on ROOT.lock, ROOT re-checked before rename(2)."
+    },
+    {
+      "id": "STO-030",
+      "title": "The header limits of one article (fields, physical lines, octets) are store profile fields, and admission refuses exactly past them by name",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-230"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/byte-store-frame.lisp",
+        "books/article-header-limits.lisp",
+        "books/injection.lisp",
+        "planning/evidence/header-limits-profile-2026-09-27.md"
+      ],
+      "implementation_note": "Fields 15 to 17 (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
     }
   ]
 }

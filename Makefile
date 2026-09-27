@@ -32,6 +32,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article \
 	books/article-invariants \
 	books/article-properties \
+	books/article-header-census \
+	books/article-header-limits \
+	tests/acl2/article-header-limits-tests \
 	tests/acl2/article-tests \
 	tests/acl2/article-teeth-tests \
 	books/article-work-primitives \
@@ -865,6 +868,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \
+	books/transit-header-limits \
+	tests/acl2/transit-header-limits-tests \
 	tests/acl2/owner-feed-form-tests \
 	books/owner-invariants \
 	books/owner-fault \

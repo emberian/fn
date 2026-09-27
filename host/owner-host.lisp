@@ -365,10 +365,18 @@
     (value (list (nfix (fn-sbud-payload-bound profile))
                  (nfix (fn-sbud-group-bound profile))))))
 
+; The served posting bound: the profile's article octets and its header
+; limits (fields 15 to 17, PRF-230), read from the opened profile; the host
+; computes nothing (ACL2's `fn-inj-post-bound', read back by
+; `fn-inj-make-config-full').  A store with no admitted profile keeps the
+; codec ceiling and the default header limits, as before.
 (defun fn-owner-served-post-bound (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
-    (if (posp bound) bound *fn-record-max-payload*)))
+  (let* ((profile (fn-owner-store-profile state))
+         (bound (fn-sbud-payload-bound profile)))
+    (if (and (posp bound) (fn-bs-profile-admittedp profile))
+        (fn-inj-post-bound bound (fn-bs-profile-header-limits profile))
+      (if (posp bound) bound *fn-record-max-payload*))))
 
 
 ;; The owner's publication (books/owner-checkpoint-open.lisp).  These read
@@ -1147,6 +1155,17 @@
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-submit-result owner msgid-octets
                                                 group-octets payload))
+         ; A refused submission keeps the decision's reason (a header
+         ; limit's name, PRF-230) for the delivery's refusal line.
+         (state (if (equal result :refused)
+                    (f-put-global
+                     'fn-owner-app-refusal-reason
+                     (fn-inj-decision-reason
+                      (fn-own-control-decision (fn-own-config owner)
+                                               msgid-octets group-octets
+                                               payload))
+                     state)
+                  state))
          (state (fn-owner-step (list :control-submit msgid-octets
                                      group-octets payload)
                                state)))
@@ -1165,9 +1184,10 @@
                     (f-put-global
                      'fn-owner-app-refusal-reason
                      (fn-peer-decision-reason
-                      (fn-peer-decide-transfer
+                      (fn-peer-decide-transfer-under
                        (fn-sn-node (fn-own-store owner)) cfg peer msgid-octets
-                       payload (fn-own-clock owner) id subject))
+                       payload (fn-own-clock owner) id subject
+                       (fn-own-config-header-limits (fn-own-config owner))))
                      state)
                   state))
          (state (fn-owner-step
@@ -1379,8 +1399,11 @@
              (subject (fn-store-octets->string subject-octets)))
         (if (or (equal id :bad) (equal subject :bad))
             (value :not-transit)
-          (let* ((d (fn-peer-decide-transfer node cfg peer msgid octets
-                                             (fn-own-clock owner) id subject))
+          ; PRF-230/PKT-660: under the opened profile's header limits, the
+          ; owner's injection configuration's, exactly as a POST.
+          (let* ((d (fn-peer-decide-transfer-under
+                     node cfg peer msgid octets (fn-own-clock owner) id subject
+                     (fn-own-config-header-limits (fn-own-config owner))))
                  (args (fn-peer-injection-arguments node cfg peer msgid octets
                                                     0 id subject
                                                     (fn-own-clock owner)))

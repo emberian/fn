@@ -4398,6 +4398,40 @@
         "An existing unrelated ROOT is never replaced (reason=store-exists).",
         "init: before the rename ROOT is absent and the next init refuses reason=interrupted-init naming the staged directory, after whose removal init succeeds; at and after the rename a present ROOT is the empty store (status transactions=0) and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
       ]
+    },
+    {
+      "id": "SCN-156",
+      "title": "a store whose profile raises max-header-fields to 1,000 accepts a 900-field POST and refuses 1,001 by name; the default profile refuses the 65th field and a 258-line header by name; a peer's IHAVE/TAKETHIS of the 65th field is refused 437 by name / 439 (PKT-660)",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-030"
+      ],
+      "steps": [
+        "`store ROOT init --max-header-fields 1000 --max-header-lines 2000 --max-header-octets 1048576 fn.test`; run the owner; POST a 900-field article; ARTICLE it; POST 1,000 and 1,001 fields.",
+        "`store ROOT init fn.test`; POST 64, 65 and 900 fields and a 258-physical-line header.",
+        "`store ROOT init fn.test`; `operator CONFIG peer add src ... 127.0.0.1 true`; from 127.0.0.1 IHAVE a 64-field and a 65-field relayed article, TAKETHIS a 65-field one."
+      ],
+      "expected": [
+        "240 for 900 and 1,000 fields, ARTICLE serves the 896 X- fields back; 441 naming max-header-fields for 1,001.",
+        "240 for 64 fields; 441 naming max-header-fields for 65 and 900; 441 naming max-header-lines for the 258-line header.",
+        "235 for 64 fields; `437 transfer rejected; the header has more fields than the profile's max-header-fields` for IHAVE of 65; `439 <id>` for TAKETHIS of 65."
+      ],
+      "evidence": [
+        "planning/evidence/header-limits-profile-2026-09-27.md",
+        "planning/evidence/header-limits-profile/native-header-limits.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_header_limits",
+        "cases": [
+          "test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name",
+          "test_the_default_profile_is_unchanged",
+          "test_peer_transit_is_refused_past_the_profile_limits_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/header-limits-profile-2026-09-27.md",
+        "log": "planning/evidence/header-limits-profile/native-header-limits.log"
+      }
     }
   ]
 }
