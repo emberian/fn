@@ -251,6 +251,10 @@
                 (append (fn-cfg-rows-without-moderation (fn-cfg-accounts v)
                                                         (fn-cfg-delta-a d))
                         (fn-cfg-delta-rows d)))
+               ((equal (fn-cfg-delta-kind d) :consumer-bind)
+                (append (fn-cfg-rows-without-consumer-bind (fn-cfg-accounts v)
+                                                           (fn-cfg-delta-a d))
+                        (fn-cfg-delta-rows d)))
                (t (fn-cfg-accounts v))))
   :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-groups))))
 
@@ -293,6 +297,20 @@
   :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
                                      fn-cfg-rows-without-moderation)))))
 
+; The slot's fifth writer is the consumer binding (PRF-234,
+; books/consumer-bound.lisp): it removes only consumer binding rows (mark 6).
+(local (defthm fn-acct-rows-with-key-of-rows-without-consumer-bind
+  (implies (and (consp (fn-cfg-rows-with-key rows k))
+                (not (fn-cfg-consumer-bind-rowp
+                      (car (fn-cfg-rows-with-key rows k)))))
+           (and (consp (fn-cfg-rows-with-key
+                        (fn-cfg-rows-without-consumer-bind rows l) k))
+                (equal (car (fn-cfg-rows-with-key
+                             (fn-cfg-rows-without-consumer-bind rows l) k))
+                       (car (fn-cfg-rows-with-key rows k)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
+                                     fn-cfg-rows-without-consumer-bind)))))
+
 ; -----------------------------------------------------------------------------
 ; Once only
 
@@ -313,6 +331,7 @@
                                      fn-cfg-access-rowp
                                      fn-cfg-moderation-rowp
                                      fn-cfg-moderator-rowp
+                                     fn-cfg-consumer-bind-rowp
                                      fn-cfg-ag-car)
            :cases ((equal (fn-cfg-delta-a d) digest)))))
 

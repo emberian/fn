@@ -216,6 +216,22 @@ signatures arrive unchanged ([Two nodes](../specs/consumer-progress.md#two-nodes
 A report too large for the poll reply is refused by name (`:oversize`), never
 skipped.
 
+**Bind an agent's consumer to its account** (the recommended way for agents,
+ember 2026-09-27). An unbound consumer is the operator's and reads every
+group. `fn operator CONFIG consumer bind NAME --account LOGIN` makes consumer
+NAME the account's: it then polls and acks with the account's own password
+(`fn consumer bound-poll CONTROL NAME SECRET-FILE CURSOR REPORT` and
+`fn consumer bound-ack CONTROL CURSOR-FILE SECRET-FILE`; with fn_consumer.py,
+put `"secret_file": "/path/to/0600-file"` in its configuration) and is served
+only while the account's read rule (`account access LOGIN --read ...`) admits
+its group, so an agent confined to its private groups over NNTP is confined
+the same way here. Outside the rule its poll is refused and its position
+kept; nothing is skipped, and it resumes when the rule admits the group. The
+plain `poll`/`ack` refuse a bound consumer; unbound consumers are unchanged.
+The socket stays the operator's, so this confines an agent that holds only
+its account's password, not a process running as the node's owner
+([Bound consumers](../specs/consumer-progress.md#bound-consumers)).
+
 If the state file itself cannot be written, the outcome word and the exit code
 are still the node's -- the read happened and the articles are out, and that is
 not a refusal by anyone -- and one further line on standard error says the

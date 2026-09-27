@@ -1319,15 +1319,30 @@ client, which can issue POSITION after reconnecting."
                  (fnn-owner-core 'fn-owner-consumer-local-status first))
                 (:poll
                  (fnn-owner-core 'fn-owner-consumer-local-poll first))
+                ;; PRF-234: a consumer bound to an account; SECOND is the
+                ;; account's password, which only ACL2 compares.
+                (:bound-poll
+                 (fnn-owner-core 'fn-owner-consumer-local-bound-poll
+                                 first second))
+                (:bound-ack
+                 (fnn-owner-core 'fn-owner-consumer-local-bound-ack
+                                 first second))
                 (:unregister
                  (fnn-owner-core 'fn-owner-consumer-local-unregister first))
                 (otherwise '(:refused :operation))))
             (kind (and (consp proposal) (first proposal))))
        (case kind
          (:refused
-          (if (eq operation :status)
-              (list :consumer-status-reply :refused nil nil nil)
-            (list :consumer-reply :refused nil)))
+          (case operation
+            (:status (list :consumer-status-reply :refused nil nil nil))
+            ;; A refused poll answers on the poll reply kind
+            ;; (fn-ncl-poll-reply-encode :refused), as the non-owner refusal
+            ;; does.  PRF-234: before, a refused plain poll answered a kind-5
+            ;; frame that the poll client cannot decode, so every refused
+            ;; poll (an unknown consumer included) printed `uncertain' (exit
+            ;; 3); a refusal is now `refused' (exit 1).
+            ((:poll :bound-poll) (list :consumer-poll-reply :refused nil nil))
+            (otherwise (list :consumer-reply :refused nil))))
          (:position
           (let ((token (second proposal)))
             (unless (fnn-octet-list-p token)
@@ -1366,7 +1381,7 @@ client, which can issue POSITION after reconnecting."
                                     (eq (first position) :position))
                          (fnn-fault "durable registration has no position"))
                        (second position)))
-                    (:ack first)
+                    ((:ack :bound-ack) first)
                     (:bootstrap nil)
                     (:unregister nil)
                     (otherwise

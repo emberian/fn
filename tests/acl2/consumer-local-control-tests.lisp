@@ -210,3 +210,58 @@
         '(:run :poll (47 116 109 112 47 99) (99)
                (47 116 109 112 47 99 117)
                (47 116 109 112 47 114))))
+
+; --- PRF-234: the bound consumer's two requests ------------------------------
+; bound-poll (code 7) carries the consumer id and the account's password;
+; bound-ack (code 8) the password, then the cursor.  Both round-trip.
+(defconst *ncl-secret* '(99 111 114 114 101 99 116)) ; correct
+(assert-event
+ (equal (fn-ncl-request-decode
+         (fn-ncl-request-encode :bound-poll *ncl-id* *ncl-secret*))
+        (list :consumer :bound-poll *ncl-id* *ncl-secret*)))
+(assert-event
+ (equal (fn-ncl-request-decode
+         (fn-ncl-request-encode :bound-ack *ncl-token* *ncl-secret*))
+        (list :consumer :bound-ack *ncl-token* *ncl-secret*)))
+; The longest password (496 octets) round-trips; one more is not encoded.
+(defconst *ncl-long-secret* (make-list 496 :initial-element 120))
+(assert-event
+ (equal (fn-ncl-request-decode
+         (fn-ncl-request-encode :bound-ack *ncl-token* *ncl-long-secret*))
+        (list :consumer :bound-ack *ncl-token* *ncl-long-secret*)))
+(assert-event
+ (equal (fn-ncl-request-encode :bound-poll *ncl-id*
+                               (make-list 497 :initial-element 120))
+        :bad))
+; No password, no request.
+(assert-event (equal (fn-ncl-request-encode :bound-poll *ncl-id* nil) :bad))
+; A password field longer than its payload is refused by name.
+(assert-event
+ (equal (fn-ncl-request-decode
+         (fn-nctrl-seal *fn-ncl-request-kind* '(7 1 7 0 9 99)))
+        '(:refused :secret)))
+; The plain kinds keep their 513-octet payload bound: a 514-octet poll
+; payload is refused :size, exactly as before this change.
+(assert-event
+ (equal (fn-ncl-request-decode
+         (fn-nctrl-seal *fn-ncl-request-kind*
+                        (cons 5 (make-list 513 :initial-element 1))))
+        '(:refused :size)))
+; The CLI: bound-poll CONTROL NAME SECRET-FILE CURSOR REPORT and
+; bound-ack CONTROL CURSOR-FILE SECRET-FILE.
+(assert-event
+ (equal (fn-ncl-cli-plan '(98 111 117 110 100 45 112 111 108 108)
+                         (list '(47 99) *ncl-cli-id* '(47 115) '(47 107) '(47 114)))
+        (list :run :bound-poll '(47 99) *ncl-cli-id* '(47 107) '(47 114) '(47 115))))
+(assert-event
+ (equal (fn-ncl-cli-plan '(98 111 117 110 100 45 97 99 107)
+                         (list '(47 99) '(47 107) '(47 115)))
+        (list :run :bound-ack '(47 99) '(47 107) nil nil '(47 115))))
+(assert-event
+ (equal (fn-ncl-cli-plan '(98 111 117 110 100 45 112 111 108 108)
+                         (list '(47 99) *ncl-cli-id* '(47 115) '(47 115) '(47 114)))
+        '(:usage :bound-poll)))
+; A secret file's one final line end is not part of the password.
+(assert-event (equal (fn-ncl-secret-of-file '(112 119 10)) '(112 119)))
+(assert-event (equal (fn-ncl-secret-of-file '(112 119 13 10)) '(112 119)))
+(assert-event (equal (fn-ncl-secret-of-file '(112 119)) '(112 119)))

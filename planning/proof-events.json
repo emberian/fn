@@ -8072,6 +8072,31 @@
           "name": "fn-auth-access-text-of-moderation-config"
         }
       ]
+    },
+    {
+      "id": "PRF-234",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-poll-delivers-only-readable-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-poll-is-the-consumer-poll-or-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-ack-is-the-consumer-ack-or-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
+        }
+      ]
     }
   ]
 }

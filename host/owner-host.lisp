@@ -89,6 +89,7 @@
 (include-book "../books/peer-pull")
 (include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
+(include-book "../books/consumer-bound")
 (include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -972,9 +973,13 @@
                            (fn-owner-store-profile state))
                           consumer group)))
 
+; PRF-234: the plain ack is today's for an unbound consumer and refused
+; (:bound) for a consumer the configuration binds to an account
+; (books/consumer-bound.lisp fn-cbind-plain-ack-of-an-unbound-consumer-is-
+; the-consumer-ack).
 (defun fn-owner-consumer-local-ack (cursor-octets state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-col-ack (fn-owner-core state) cursor-octets)))
+  (value (fn-cbind-plain-ack (fn-owner-ocfg state) cursor-octets)))
 
 (defun fn-owner-consumer-local-position (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -992,7 +997,10 @@
   ;; books/consumer-owner-local-progress.lisp).  The legacy record's encoder
   ;; is fn-rcon-record-encode-impl (fn-rcon-record-encode-impl-is-record-
   ;; encode-impl, books/records-codec-concrete, no hypothesis).
-  (value (fn-col-poll-report (fn-owner-core state) consumer)))
+  ;; PRF-234: fn-cbind-plain-poll is fn-col-poll-report for an unbound
+  ;; consumer and refuses (:bound) a bound one (books/consumer-bound.lisp
+  ;; fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll).
+  (value (fn-cbind-plain-poll (fn-owner-ocfg state) consumer)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1290,6 +1298,25 @@
   (if (boundp-global 'fn-owner-auth state)
       (f-get-global 'fn-owner-auth state)
     (fn-auth-open-config)))
+
+; PRF-234 (CNS-006): a consumer bound to an account.  ACL2 decides the
+; binding, the credential (the account's own, against the credential table
+; AUTHINFO reads), the account's read rule and the answer, from the latest
+; configuration (books/consumer-bound.lisp fn-cbind-poll / fn-cbind-ack;
+; keystones fn-cbind-poll-delivers-only-readable-events,
+; fn-cbind-poll-is-the-consumer-poll-or-a-refusal,
+; fn-cbind-ack-is-the-consumer-ack-or-a-refusal).  The host carries the
+; decoded consumer id or cursor and the password octets; it compares
+; nothing.
+(defun fn-owner-consumer-local-bound-poll (consumer secret state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)
+                        consumer secret)))
+
+(defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cbind-ack (fn-owner-ocfg state) (fn-owner-auth state)
+                       cursor-octets secret)))
 
 ; Install a complete ACL2-built authentication configuration.  The native
 ; auth profile parser calls this after owner recovery and before the listener

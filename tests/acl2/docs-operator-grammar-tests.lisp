@@ -113,7 +113,10 @@
     ("docs/operator.md#private-groups-which-login-sees-which-group" 1 "account" "access" "bob" "--read" "fn.*,!fn.private.*" "--post" "fn.*,!fn.private.*")
     ("docs/operator.md#private-groups-which-login-sees-which-group" 2 "account" "access" "alice" "--read" "*" "--post" "*")
     ("docs/operator.md#private-groups-which-login-sees-which-group" 3 "account" "access" "--anonymous" "--read" "fn.public.*" "--post" "*,!*")
-    ("docs/operator.md#private-groups-which-login-sees-which-group" 4 "account" "access" "show")))
+    ("docs/operator.md#private-groups-which-login-sees-which-group" 4 "account" "access" "show")
+    ("docs/operator.md#agents-consumers-bind-each-to-its-account" 1 "consumer" "bind" "agent-bob" "--account" "bob")
+    ("docs/operator.md#agents-consumers-bind-each-to-its-account" 2 "consumer" "unbind" "agent-bob")
+    ("docs/operator.md#agents-consumers-bind-each-to-its-account" 3 "consumer" "show")))
 
 (assert-event (null (fn-docs-operator-rejected *fn-docs-operator-argv*))
               :msg (msg "The grammar refuses these documented invocations: ~x0"

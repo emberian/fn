@@ -391,6 +391,35 @@
                   0 (fn-native-admin-arg 2 argv) (fn-native-admin-arg 4 argv)))))
     (fn-native-admin-result :refused :syntax nil nil nil nil nil)))
 
+;; PRF-234 (CNS-006): `consumer bind NAME --account LOGIN' and `consumer
+;; unbind NAME'.  NAME is a local consumer id as `fn consumer register'
+;; spells it; LOGIN is the account grammar of books/config.lisp.  One
+;; :consumer-bind record (code 24), offline or live; the unbind is the
+;; record with LOGIN "" and no row.
+(defun fn-native-admin-consumer-plan (words argv)
+  (declare (xargs :guard t))
+  ;; WORDS and ARGV start at the verb: (bind NAME --account LOGIN),
+  ;; (unbind NAME), (show).
+  (cond ((and (equal (len words) 2)
+              (equal (fn-native-admin-arg 0 words) "unbind"))
+         (if (fn-cfg-consumer-namep (fn-native-admin-arg 1 words))
+             (fn-native-admin-result :accepted nil :consumer-bind
+                                     (fn-native-admin-arg 1 argv) 0 nil nil)
+           (fn-native-admin-result :refused :consumer-name nil nil 0 nil nil)))
+        ((and (equal (len words) 4)
+              (equal (fn-native-admin-arg 0 words) "bind")
+              (equal (fn-native-admin-arg 2 words) "--account"))
+         (cond ((not (fn-cfg-consumer-namep (fn-native-admin-arg 1 words)))
+                (fn-native-admin-result :refused :consumer-name nil nil 0 nil nil))
+               ((not (fn-cfg-account-loginp (fn-native-admin-arg 3 words)))
+                (fn-native-admin-result :refused :consumer-login nil nil 0 nil nil))
+               (t (fn-native-admin-result :accepted nil :consumer-bind
+                                          (fn-native-admin-arg 1 argv) 0 nil
+                                          (fn-native-admin-arg 3 argv)))))
+        ((equal words '("show"))
+         (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+        (t (fn-native-admin-result :refused :consumer nil nil 0 nil nil))))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
@@ -564,6 +593,11 @@
         (fn-native-admin-access-plan (cddr words) (cddr argv)))
        ((and (consp words) (equal (car words) "account"))
         (fn-native-admin-result :refused :account nil nil 0 nil nil))
+       ; PRF-234: consumer bindings (books/consumer-bound.lisp).  `consumer
+       ; show' is the `account list' report, whose consumer lines are the
+       ; bindings.
+       ((and (consp words) (equal (car words) "consumer"))
+        (fn-native-admin-consumer-plan (cdr words) (cdr argv)))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
        ((and (<= 3 (len words))
@@ -626,6 +660,10 @@
                  nil))))
             ((equal kind :set-exposure)
              (list (fn-cfg-set-limit name (fn-native-admin-result-capacity plan))))
+            ((equal kind :consumer-bind)
+             (list (fn-cfg-consumer-bind
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :account-access)
              (list (fn-cfg-account-access
                     name

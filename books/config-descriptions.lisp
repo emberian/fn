@@ -124,7 +124,8 @@
                                    fn-cfg-rows-without-members
                                    fn-cfg-rows-without-pair
                                    fn-cfg-rows-without-binding
-                                   fn-cfg-rows-without-access)))))
+                                   fn-cfg-rows-without-access
+                                   fn-cfg-rows-without-consumer-bind)))))
 
 ; Admission, by definition: a delta for a name that is neither the node's "" nor
 ; a live group is refused :no-such-group, whatever its rows.

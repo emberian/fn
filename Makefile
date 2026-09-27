@@ -900,6 +900,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-owner-local-tests \
 	books/consumer-owner-local-progress \
 	tests/acl2/consumer-owner-local-progress-tests \
+	books/consumer-bound \
+	tests/acl2/consumer-bound-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \

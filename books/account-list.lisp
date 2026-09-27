@@ -17,6 +17,7 @@
 ;                                       printed "(anonymous)")
 ;   moderator LOGIN GROUP           (P3: LOGIN moderates GROUP)
 ;   moderation GROUP QUEUE [ADDRESS]
+;   consumer NAME account LOGIN     (PRF-234, mark 6)
 ;   unknown                         (a mark no writer makes)
 ;
 ; Never a digest or a verifier.
@@ -33,6 +34,7 @@
           ;; P3 (PRF-228): a moderator role and a group's moderation.
           ((equal mark 4) :moderator)
           ((equal mark 5) :moderation)
+          ((equal mark 6) :consumer)
           (t :unknown))))
 
 (defun fn-acct-kind-word (kind)
@@ -43,6 +45,7 @@
         ((equal kind :access) "access ")
         ((equal kind :moderator) "moderator ")
         ((equal kind :moderation) "moderation ")
+        ((equal kind :consumer) "consumer ")
         (t "unknown")))
 
 (defun fn-acct-list-text (x)
@@ -79,6 +82,9 @@
                       (if (equal (fn-cfg-row-c row) "") ""
                         (concatenate 'string " "
                                      (fn-acct-list-text (fn-cfg-row-c row))))))
+        ((equal kind :consumer)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row))
+                      " account " (fn-acct-list-text (fn-cfg-row-b row))))
         (t "")))
 
 (defun fn-acct-list-line (row)

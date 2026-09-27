@@ -8415,6 +8415,39 @@
         "fn-mod-hidden-queues-is-hiddenp",
         "fn-auth-access-text-of-moderation-config"
       ]
+    },
+    {
+      "id": "PRF-234",
+      "title": "A local consumer bound to an account is served only events of a group the account reads, only with the account's credential, and otherwise exactly as the consumer poll and ack; an unbound consumer is unchanged",
+      "statement": "books/consumer-bound.lisp. Subjects: fn-cbind-poll and fn-cbind-ack (host/owner-host.lisp fn-owner-consumer-local-bound-poll / -bound-ack, reached from host/native/owner.lisp fnn-owner-consumer-local-serialized for local-control codes 7 and 8), fn-cbind-plain-poll and fn-cbind-plain-ack (fn-owner-consumer-local-poll / -ack, codes 5 and 1). The binding is the accounts slot's mark-6 row (books/config.lisp fn-cfg-consumer-bind, delta code 24) of the latest configuration; the credential check is fn-auth-checkp over fn-auth-config-with-accounts (the table AUTHINFO reads); the rule is group-access's read pattern (fn-gac-pattern / fn-gac-readablep). KEYSTONES: fn-cbind-poll-delivers-only-readable-events (a bound poll that answers a page: the consumer is bound, the password checks, the answer is fn-col-poll-report's, and the selected event's article has a group readable under the account's rule); fn-cbind-poll-is-the-consumer-poll-or-a-refusal and fn-cbind-ack-is-the-consumer-ack-or-a-refusal (every bound answer is the unbound consumer's own or a refusal, which writes nothing, so PRF-116's page-is-a-read, forward-ack-in-scope and repeated-ack-no-op guarantees hold over the delivered subsequence; an ack that is not refused had the binding, the credential and a readable query); fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll and fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack (an unbound consumer's plain answer is today's; a bound consumer's is (:refused :bound)). Local policy; no RFC requirement.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-006"
+      ],
+      "depends_on": [
+        "PRF-116",
+        "PRF-222"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/consumer-bound.lisp",
+        "books/config.lisp",
+        "books/consumer-local-control.lisp",
+        "tests/acl2/consumer-bound-tests.lisp",
+        "tests/acl2/consumer-local-control-tests.lisp",
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T021857Z-190087.json",
+        "planning/evidence/manifests/certify-20260927T022825Z-256887.json"
+      ],
+      "events": [
+        "fn-cbind-poll-delivers-only-readable-events",
+        "fn-cbind-poll-is-the-consumer-poll-or-a-refusal",
+        "fn-cbind-ack-is-the-consumer-ack-or-a-refusal",
+        "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll",
+        "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
+      ]
     }
   ]
 }

@@ -4104,6 +4104,42 @@
         "host/native-admin-host.lisp"
       ],
       "implementation_note": "RFC 5537 section 3.5 item 7 and 3.5.1 (forward, never post; method 1, application/news-transmission; usage=moderate), section 7 (verify the approver by transport authentication), sections 3.6 item 6 and 3.7 item 5 (relay/serving refusal); RFC 6048 section 2.1.1 (m). fn has no mail path: the forward is an envelope article into the group's queue group (an ordinary Store article: no new persistence domain). The moderator is an account with a role (accounts slot, marks 4 and 5; delta code 23). The 441 texts naming the reason are a stronger fn guarantee. A control message is not gated. The queue group is never offered to a peer and is served only to the moderators of the groups it queues for (PKT-658; group-access's restricted view with the queue hidden). `moderation list GROUP` reports the queue (FNLS kind 3 code 10). Not done: `moderation approve/reject` (PKT-657; reject needs PKT-575's operator withdrawal), a PGPMoose-style signed approval."
+    },
+    {
+      "id": "CNS-006",
+      "title": "A local consumer bound to an account is served only while the account's read rule admits its group, only with the account's password, keeps its position when refused, and an unbound consumer is unchanged",
+      "specification": "specs/consumer-progress.md#bound-consumers",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-234"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/consumer-bound.lisp",
+        "books/consumer-local-control.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_consumer.py",
+        "tests/acl2/consumer-bound-tests.lisp",
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T021857Z-190087.json",
+        "planning/evidence/manifests/certify-20260927T022825Z-256887.json",
+        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement; the rule is NNT-046's (local policy after INN readers.conf). The binding is a durable configuration record (:consumer-bind, delta code 24), offline or live; no store record, no store format change. The credential is the account's own (AUTHINFO's verifier; no consumer-specific secret). Decided by ember 2026-09-27 (PKT-642).",
+      "note": "The local socket stays the owner's (0600): a process with the owner's uid can still use unbound consumers; carrying bound requests to a non-owner peer is PKT-673."
     }
   ]
 }
