@@ -4706,6 +4706,30 @@
         "planning/evidence/time-model-2026-09-27.md"
       ],
       "implementation_note": "Slice 1 of planning/design-time-model-2026-09-27.md. The committer's wait for the syncer is timed by ACL2 and appends clock events; the barrier's deadline is the live configuration's barrier-deadline-ms limit (default 5,000 ms; the admin verb to set it is slice 2). A POST shed while slow gets fn-own-outcome's :refused outcome with ACL2's reason line (441; RFC 3977 section 6.3.1). Not yet: the stall deadline H and the in-flight members' uncertain answer, 440 at the POST command, IHAVE 436 during slow, mutating control try-later, the inline barrier and configuration publication as requests."
+    },
+    {
+      "id": "STO-035",
+      "title": "The owner's snapshot as a copy-on-write page store: commits write only dirty pages, a crash opens on the committed or the previous state, forks are isolated, allocation is fresh and reclamation never frees a live page",
+      "specification": "specs/storage.md#the-snapshot-page-store-sto-035",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-314"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/pagestore.lisp",
+        "books/pagestore-keystones.lisp",
+        "books/pagestore-reclaim.lisp",
+        "books/pagestore-exec.lisp",
+        "books/pagestore-gc.lisp",
+        "tests/acl2/pagestore-tests.lisp",
+        "planning/evidence/arena-store-2026-09-27.md"
+      ],
+      "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the host driver host/native/proto-pagestore.lisp runs them on hbox (process death and power loss, 0 violations); the owner does not use it yet (fn-hist on pages is the next step)."
     }
   ]
 }

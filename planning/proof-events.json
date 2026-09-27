@@ -10952,6 +10952,67 @@
           "name": "fn-peer-transfer-unreceived-effects-well-formed"
         }
       ]
+    },
+    {
+      "id": "PRF-314",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "pgs-open-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-open-after-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-crash-isolates-other-roots"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-fork-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-alloc-fresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-plan-commit-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-tables-after-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-keeps-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-alloc-inv-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-cycle-inv-after-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-reclaim-never-frees-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-commit-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-g-reclaim-sound"
+        },
+        {
+          "kind": "theorem",
+          "name": "pgs-x-words-digest-is-sha256"
+        }
+      ]
     }
   ]
 }
