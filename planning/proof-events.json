@@ -10700,6 +10700,31 @@
           "name": "fn-psrv-known-abort-preserves-invariant"
         }
       ]
+    },
+    {
+      "id": "PRF-293",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-textp-is-a-record-metadata-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-textp-is-exactly-the-record-metadata-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-identity-text-is-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-post-evidence-is-admitted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfld-group-name-requestp-is-bounded-by-the-codec"
+        }
+      ]
     }
   ]
 }
