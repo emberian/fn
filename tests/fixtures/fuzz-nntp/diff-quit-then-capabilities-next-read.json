@@ -5,8 +5,9 @@
   "515549540d0a",
   "4341504142494c49544945530d0a"
  ],
- "note": "The model (fn-served-run) answers CAPABILITIES after QUIT's 205 because QUIT closes the session, not the wire, and the auth wrapper answers without the session; the host stops reading after the read that carried the close, so the cut is visible: model 205+101 block, served 205 then EOF. Found by campaign diff seed 100016 and 56.",
+ "note": "Fixed by lane wire-bounds (F1): books/served.lisp fn-served-feed stops on fn-served-quitp, so the model serves 205 only at every cut (fn-served-step-stops-at-quit), as the host does.",
  "packet": "F1 (after-QUIT)",
- "status": "open",
- "store": "-"
+ "status": "fixed",
+ "store": "-",
+ "was": "The model (fn-served-run) answers CAPABILITIES after QUIT's 205 because QUIT closes the session, not the wire, and the auth wrapper answers without the session; the host stops reading after the read that carried the close, so the cut is visible: model 205+101 block, served 205 then EOF. Found by campaign diff seed 100016 and 56."
 }
