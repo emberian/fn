@@ -180,6 +180,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node \
 	books/store-node-existing-invariants \
 	books/poster-bytes \
+	books/store-node-invariants-base \
 	books/store-node-invariants \
 	books/acceptance-stamp-invariants \
 	tests/acl2/acceptance-stamp-tests \
@@ -197,6 +198,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
 	tests/acl2/store-budget-tests \
+	books/store-budget-stored \
+	tests/acl2/store-budget-stored-tests \
 	books/store-carried-folds \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
@@ -1048,7 +1051,8 @@ ACL2_BOOKS ?= books/defrecord \
 # its books; when the list is every book, `--strict` runs without `--books`.
 THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-files books/store-files-invariants books/store-files-traces \
-	books/store-node books/store-node-invariants books/store-node-traces-prepare \
+	books/store-node books/store-node-invariants-base books/store-node-invariants \
+	books/store-node-traces-prepare \
 	books/store-node-traces \
 	books/store-node-resolution books/store-observed books/store-observed-traces \
 	books/store-prepare-correspondence books/config-records books/node-config \

@@ -56,12 +56,36 @@ ceiling cannot hold KIND's worst-case encoded record."
   (declare (xargs :guard t))
   (and (natp budget) (natp used) (< used budget)))
 
-; The committed record octets: the sum of the encoded lengths of the file
+; The stored octets of one retained row (records-flip, 2026-09-27).  A held
+; article row keeps its payload in the arena: its octets are the extent of
+; its handle, which the intern decided once as the facts' octets
+; (books/records-freeze.lisp `fn-rfz-intern-extent'; stated over the arena
+; in books/store-budget-stored.lisp).  A composite row keeps its wire
+; composite whole, so it is that composite's encoding.  Every other row is a
+; wire event and is its encoding.  Before the flip this was the wire encoder
+; alone, which is nil on a held row: every retained article counted 0
+; octets against the history bound.
+(defun fn-sbud-row-octets (row)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((fn-held-p row) (nfix (fn-hf-octets (fn-held-facts row))))
+        ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
+        (t (len (fn-store-event-encode row)))))
+
+; On a wire event (neither held nor composite) the row's octets are its
+; encoding, the count before the flip.
+(defthm fn-sbud-row-octets-of-wire-row
+  (implies (and (not (fn-held-p row)) (not (fn-hstxa-p row)))
+           (equal (fn-sbud-row-octets row)
+                  (len (fn-store-event-encode row)))))
+
+(in-theory (disable fn-sbud-row-octets))
+
+; The committed record octets: the sum of the stored octets of the file
 ; kernel's records, counted exactly as `fn-sbud-used' counts the records.
 (defun fn-sbud-record-octets (records)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
-      (+ (len (fn-store-event-encode (car records)))
+      (+ (fn-sbud-row-octets (car records))
          (fn-sbud-record-octets (cdr records)))
     0))
 
@@ -314,7 +338,7 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
                                   (fn-cei-correspondencep)))))
 
 ; The committed octets of the records at sequences K .. COUNT-1 of INDEX,
-; added to SUM: one index lookup and one record's encoded length per step.
+; added to SUM: one index lookup and one row's stored octets per step.
 (defun fn-sbud-octets-advance (k count sum index)
   (declare (xargs :guard (and (natp k) (natp count) (acl2-numberp sum))
                   :measure (nfix (- (nfix count) (nfix k)))
@@ -322,7 +346,7 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
   (if (and (natp k) (natp count) (< k count))
       (fn-sbud-octets-advance
        (1+ k) count
-       (+ sum (len (fn-store-event-encode (fn-cei-get k index))))
+       (+ sum (fn-sbud-row-octets (fn-cei-get k index)))
        index)
     sum))
 
@@ -366,7 +390,7 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
  (defthm fn-sbud-record-octets-of-nthcdr-step
    (implies (and (natp k) (< k (len records)))
             (equal (fn-sbud-record-octets (nthcdr k records))
-                   (+ (len (fn-store-event-encode (nth k records)))
+                   (+ (fn-sbud-row-octets (nth k records))
                       (fn-sbud-record-octets (nthcdr (1+ k) records)))))
    :hints (("Goal" :induct (nthcdr k records)
             :in-theory (e/d (fn-sbud-record-octets nthcdr nth)
@@ -465,6 +489,7 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
 (verify-guards fn-store-event-kind-code)
 (verify-guards fn-store-retention-event-encode)
 (verify-guards fn-store-event-encode)
+(verify-guards fn-sbud-row-octets)
 (verify-guards fn-sbud-record-octets)
 (verify-guards fn-sbud-bytes-used)
 (verify-guards fn-sbud-verdict)

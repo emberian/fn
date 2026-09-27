@@ -866,6 +866,56 @@
                          (articles (fn-rows-articles-newest-first rows fn-arena))))
            :in-theory '(fn-sn-index-of-rows))))
 
+; KEYSTONES (PRF-023, the served queries, restated over alpha after the
+; flip).  The store's statement lookup and equivocator question read the
+; carried index and nothing else (fn-sn-statement-lookup, fn-sn-equivocatorp,
+; books/store-node.lisp; host/store-node-host.lisp fn-store-sn-statement and
+; fn-store-sn-equivocator call them on the 'fn-store-sn global).  Under the
+; carried-index invariant (fn-sn-indexedp) and the context invariant of the
+; indexed rows, each answers exactly as the linear lace of the indexed rows'
+; articles, their bytes read through the arena.  Before the flip these were
+; stated over fn-stx-lace of the node, whose articles now carry handles.
+(defthm fn-store-statement-lookup-is-the-lace-lookup
+  (implies (and (fn-sn-indexedp s)
+                (fn-rows-contexts-okp (fn-sn-indexed-rows s) (fn-sn-keyring s)
+                                      generation fn-arena))
+           (equal (fn-sn-statement-lookup s id)
+                  (fn-lace-lookup
+                   (fn-stx-lace-of-store
+                    (fn-rows-articles-newest-first (fn-sn-indexed-rows s) fn-arena)
+                    (fn-sn-keyring s))
+                   id)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-rows-index-is-the-wire-index
+                                   (rows (fn-sn-indexed-rows s))
+                                   (keyring (fn-sn-keyring s)))
+                        (:instance fn-stx-index-bindings-agree
+                                   (articles (fn-rows-articles-newest-first
+                                              (fn-sn-indexed-rows s) fn-arena))
+                                   (keyring (fn-sn-keyring s))))
+           :in-theory '(fn-sn-indexedp fn-sn-statement-lookup))))
+
+(defthm fn-store-equivocatorp-is-the-lace-equivocator
+  (implies (and (fn-sn-indexedp s)
+                (fn-rows-contexts-okp (fn-sn-indexed-rows s) (fn-sn-keyring s)
+                                      generation fn-arena))
+           (iff (fn-sn-equivocatorp s creator incarnation)
+                (fn-lace-equivocatorp
+                 (fn-stx-lace-of-store
+                  (fn-rows-articles-newest-first (fn-sn-indexed-rows s) fn-arena)
+                  (fn-sn-keyring s))
+                 creator incarnation)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-rows-index-is-the-wire-index
+                                   (rows (fn-sn-indexed-rows s))
+                                   (keyring (fn-sn-keyring s)))
+                        (:instance fn-stx-index-equivocators-agree
+                                   (articles (fn-rows-articles-newest-first
+                                              (fn-sn-indexed-rows s) fn-arena))
+                                   (keyring (fn-sn-keyring s))
+                                   (p creator) (i incarnation)))
+           :in-theory '(fn-sn-indexedp fn-sn-equivocatorp))))
+
 ; -----------------------------------------------------------------------------
 ; 5. THE PREPARE ENTRY (POST, transit): stage the row the intern WOULD make,
 ; and seal its bytes only when the store took it.  The row's handle is the
