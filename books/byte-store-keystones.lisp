@@ -33,23 +33,39 @@
 ; :replaying -- which is the phase host/store-node-host.lisp:39 builds.
 ; fn-sf-recovery-crash-realizes-every-admissible-image is the work and
 ; covers all four arms (D14-b, D14-c); K3 is that theorem at K2's image.
+;; The records flip: the scan reads WIRE events and the kernel holds RETAINED
+;; rows, so the kernel image K3 and K4 speak about is the witness K2 names
+;; (byte-store-scan fn-bs-store-crash-image-is-alpha-of-a-kernel-admissible-
+;; image): the kernel's own rows whose alpha through the arena is the scan.
+;; What the host reopens on is the intern of the scan (store-intern
+;; fn-intern-events), rows with the same alpha; that the reopen reads a row
+;; only through its alpha and its context is the recover entry's theorem
+;; (flip-L2 LANEDUMP, REQUEST to L1/L6), not this book's.
+(defun fn-bs-scanned-rows (ks image arena)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bs-kernel-image-records ks (fn-bs-scan-records (fn-bs-scan-store image))
+                              arena))
+(in-theory (disable fn-bs-scanned-rows))
+
 (defthm fn-bs-store-recovery-is-a-kernel-crash
   (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-crash-imagep bs image))
            (let* ((scan (fn-bs-scan-store image))
-                  (crashed (fn-sf-image-crash ks (fn-bs-scan-frontier scan)
-                                              (fn-bs-scan-records scan))))
+                  (rows (fn-bs-scanned-rows ks image arena))
+                  (crashed (fn-sf-image-crash ks (fn-bs-scan-frontier scan) rows)))
              (and (equal (fn-sf-frontier crashed) (fn-bs-scan-frontier scan))
-                  (equal (fn-sf-records crashed) (fn-bs-scan-records scan))
+                  (equal (fn-sf-records crashed) rows)
+                  (equal (fn-bs-rows-wire (fn-sf-records crashed) arena)
+                         (fn-bs-scan-records scan))
                   (equal (fn-sf-phase crashed) :replaying))))
   :hints (("Goal"
-           :use (fn-bs-store-crash-image-is-kernel-admissible
+           :use (fn-bs-store-crash-image-is-alpha-of-a-kernel-admissible-image
                  (:instance fn-sf-recovery-crash-realizes-every-admissible-image
                             (s ks)
                             (frontier (fn-bs-scan-frontier
                                        (fn-bs-scan-store image)))
-                            (records (fn-bs-scan-records
-                                      (fn-bs-scan-store image)))))
-           :in-theory (theory 'minimal-theory))))
+                            (records (fn-bs-scanned-rows ks image arena))))
+           :in-theory (union-theories '(fn-bs-scanned-rows)
+                                      (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; K4, first half, and the one with no vacuous instance: the host's reopen
@@ -79,40 +95,39 @@
                 (fn-bs-store-relation bs (fn-sn-files s) arena)
                 (fn-bs-crash-imagep bs image))
            (fn-sn-observed-consumer-okp
-            (fn-bs-scan-records (fn-bs-scan-store image))))
+            (fn-bs-scanned-rows (fn-sn-files s) image arena)))
   :hints (("Goal"
-           :use ((:instance fn-bs-store-crash-image-is-kernel-admissible
+           :use ((:instance fn-bs-store-crash-image-is-alpha-of-a-kernel-admissible-image
                             (ks (fn-sn-files s)))
                  (:instance fn-csi-recovery-crash-image-strict-replay
                             (frontier (fn-bs-scan-frontier
                                        (fn-bs-scan-store image)))
-                            (records (fn-bs-scan-records
-                                      (fn-bs-scan-store image)))))
-           :in-theory (theory 'minimal-theory))))
+                            (records (fn-bs-scanned-rows (fn-sn-files s) image arena))))
+           :in-theory (union-theories '(fn-bs-scanned-rows)
+                                      (theory 'minimal-theory)))))
 
 (defthm fn-bs-crash-image-reopens
   (implies (and (fn-csi-full-relationp s)
                 (fn-bs-store-relation bs (fn-sn-files s) arena)
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
-                 (fn-bs-scan-records (fn-bs-scan-store image)))
+                 (fn-bs-scanned-rows (fn-sn-files s) image arena))
                 (fn-sn-observed-topic-okp
-                 (fn-bs-scan-records (fn-bs-scan-store image))))
+                 (fn-bs-scanned-rows (fn-sn-files s) image arena)))
            (fn-sn-open-okp
             (fn-sn-open-observed
              (fn-sn-groups s) (fn-sn-capacity s)
              (fn-bs-scan-frontier (fn-bs-scan-store image))
-             (fn-bs-scan-records (fn-bs-scan-store image)))))
+             (fn-bs-scanned-rows (fn-sn-files s) image arena))))
   :hints (("Goal"
            :use (fn-bs-crash-image-consumer-replay-ok
-                 (:instance fn-bs-store-crash-image-is-kernel-admissible
+                 (:instance fn-bs-store-crash-image-is-alpha-of-a-kernel-admissible-image
                             (ks (fn-sn-files s)))
                  (:instance fn-sn-recovery-admissible-image-reopens
                             (frontier (fn-bs-scan-frontier
                                        (fn-bs-scan-store image)))
-                            (records (fn-bs-scan-records
-                                      (fn-bs-scan-store image)))))
-           :in-theory (union-theories '(fn-csi-full-relationp)
+                            (records (fn-bs-scanned-rows (fn-sn-files s) image arena))))
+           :in-theory (union-theories '(fn-csi-full-relationp fn-bs-scanned-rows)
                                       (theory 'minimal-theory)))))
 
 ; K4.  Acknowledged retention across a BYTE crash: an outcome this store
@@ -139,34 +154,32 @@
                 (fn-bs-store-relation bs (fn-sn-files s) arena)
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
-                 (fn-bs-scan-records (fn-bs-scan-store image)))
+                 (fn-bs-scanned-rows (fn-sn-files s) image arena))
                 (fn-sn-observed-topic-okp
-                 (fn-bs-scan-records (fn-bs-scan-store image)))
+                 (fn-bs-scanned-rows (fn-sn-files s) image arena))
                 (member-equal pair (fn-sf-successes (fn-sn-files s))))
            (let ((opened (fn-sn-open-observed
                           (fn-sn-groups s) (fn-sn-capacity s)
                           (fn-bs-scan-frontier (fn-bs-scan-store image))
-                          (fn-bs-scan-records (fn-bs-scan-store image)))))
+                          (fn-bs-scanned-rows (fn-sn-files s) image arena))))
              (and (fn-sn-open-okp opened)
                   (fn-sf-record-has-pairp
                    pair (fn-sf-records (fn-sn-files (fn-sn-open-state opened)))))))
   :hints (("Goal"
            :use (fn-bs-crash-image-reopens
-                 (:instance fn-bs-store-crash-image-is-kernel-admissible
+                 (:instance fn-bs-store-crash-image-is-alpha-of-a-kernel-admissible-image
                             (ks (fn-sn-files s)))
                  (:instance fn-sf-recovery-admissible-image-facts
                             (s (fn-sn-files s))
                             (frontier (fn-bs-scan-frontier
                                        (fn-bs-scan-store image)))
-                            (records (fn-bs-scan-records
-                                      (fn-bs-scan-store image))))
+                            (records (fn-bs-scanned-rows (fn-sn-files s) image arena)))
                  (:instance fn-sn-open-observed-success-exact-history
                             (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
                             (frontier (fn-bs-scan-frontier
                                        (fn-bs-scan-store image)))
-                            (records (fn-bs-scan-records
-                                      (fn-bs-scan-store image)))))
-           :in-theory (union-theories '(fn-csi-full-relationp)
+                            (records (fn-bs-scanned-rows (fn-sn-files s) image arena))))
+           :in-theory (union-theories '(fn-csi-full-relationp fn-bs-scanned-rows)
                                       (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
@@ -453,16 +466,16 @@
                                          outcomes groups capacity))
                 (fn-bs-crash-imagep (car pair) image)
                 (fn-sn-observed-identity-okp
-                 (fn-bs-scan-records (fn-bs-scan-store image)))
+                 (fn-bs-scanned-rows (fn-sn-files s) image arena))
                 (fn-sn-observed-topic-okp
-                 (fn-bs-scan-records (fn-bs-scan-store image))))
+                 (fn-bs-scanned-rows (fn-sn-files s) image arena)))
            (and (equal (cdr pair) (fn-sn-files s))
                 (equal (fn-bs-scan-store (car pair)) (fn-bs-scan-store bs))
                 (fn-sn-open-okp
                  (fn-sn-open-observed
                   (fn-sn-groups s) (fn-sn-capacity s)
                   (fn-bs-scan-frontier (fn-bs-scan-store image))
-                  (fn-bs-scan-records (fn-bs-scan-store image))))))
+                  (fn-bs-scanned-rows (fn-sn-files s) image arena)))))
   :hints (("Goal"
            :use ((:instance fn-bs-recover-sweep-keeps-relation-at-every-cut
                             (ks (fn-sn-files s))
