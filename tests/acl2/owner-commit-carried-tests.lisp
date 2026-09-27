@@ -11,29 +11,54 @@
 (defconst *ccar-t-o* *osi-completing*)
 (defconst *ccar-t-cfg* *osi-cfg*)
 (defconst *ccar-t-files* (fn-sn-files (fn-own-store *ccar-t-o*)))
+(defconst *ccar-t-prior* *osi-completing-prior*)
+
+; The carried and the reference finish and completion predicates, evaluated
+; over the arena of the entry that interned PRIOR (the store retains rows;
+; both read the completed row through the arena).
+(defun ccar-t-eval-in (o cfg prior fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (list (fn-ccar-own-finish o cfg fn-arena)
+              (fn-own-finish o cfg fn-arena)
+              (fn-ccar-completion-names-submission-p o cfg fn-arena)
+              (fn-own-completion-names-submission-p o cfg fn-arena))
+        fn-arena)))
+(defun ccar-t-eval (o cfg prior)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (ccar-t-eval-in o cfg prior fn-arena)
+      result)))
+(defun ccar-t-finish (o cfg prior) (nth 0 (ccar-t-eval o cfg prior)))
+(defun ccar-t-own-finish (o cfg prior) (nth 1 (ccar-t-eval o cfg prior)))
+(defun ccar-t-names (o cfg prior) (nth 2 (ccar-t-eval o cfg prior)))
+(defun ccar-t-own-names (o cfg prior) (nth 3 (ccar-t-eval o cfg prior)))
 (assert-event (fn-own-relation *ccar-t-o*))
 (assert-event (fn-sn-statep (fn-own-store *ccar-t-o*)))
 (assert-event (equal (len (fn-sf-records *ccar-t-files*)) 3))
 (assert-event (equal (car (fn-sf-completion *ccar-t-files*)) 2))
 ; The keystone on the witness, and it is not vacuous: the commit is the
 ; durable one, the record found is the article record, and the owner moves.
-(assert-event (equal (fn-ccar-own-finish *ccar-t-o* *ccar-t-cfg*)
-                     (fn-own-finish *ccar-t-o* *ccar-t-cfg*)))
-(assert-event (equal (car (fn-ccar-own-finish *ccar-t-o* *ccar-t-cfg*)) :durable))
-(assert-event (fn-record-p (fn-ccar-completion-record (fn-own-store *ccar-t-o*))))
+(assert-event (equal (ccar-t-finish *ccar-t-o* *ccar-t-cfg* *ccar-t-prior*)
+                     (ccar-t-own-finish *ccar-t-o* *ccar-t-cfg* *ccar-t-prior*)))
+(assert-event (equal (car (ccar-t-finish *ccar-t-o* *ccar-t-cfg* *ccar-t-prior*)) :durable))
+(assert-event (fn-held-p (fn-ccar-completion-record (fn-own-store *ccar-t-o*))))
 (assert-event (equal (fn-ccar-completion-record (fn-own-store *ccar-t-o*))
                      (car (last (fn-sf-records *ccar-t-files*)))))
-(assert-event (not (equal (cdr (fn-ccar-own-finish *ccar-t-o* *ccar-t-cfg*))
+(assert-event (not (equal (cdr (ccar-t-finish *ccar-t-o* *ccar-t-cfg* *ccar-t-prior*))
                           *ccar-t-o*)))
 ; Preservation on the witness: the relation and the premise hold after.
-(assert-event (fn-own-relation (cdr (fn-ccar-own-finish *ccar-t-o* *ccar-t-cfg*))))
+(assert-event (fn-own-relation (cdr (ccar-t-finish *ccar-t-o* *ccar-t-cfg* *ccar-t-prior*))))
 (assert-event (fn-sn-statep
-               (fn-own-store (cdr (fn-ccar-own-finish *ccar-t-o* *ccar-t-cfg*)))))
+               (fn-own-store (cdr (ccar-t-finish *ccar-t-o* *ccar-t-cfg* *ccar-t-prior*)))))
 ; The mismatch witness (another record completed for the submission) is
 ; still :fault through the carried commit.
-(assert-event (equal (fn-ccar-own-finish *osi-mismatch-completing* *ccar-t-cfg*)
-                     (fn-own-finish *osi-mismatch-completing* *ccar-t-cfg*)))
-(assert-event (equal (car (fn-ccar-own-finish *osi-mismatch-completing* *ccar-t-cfg*))
+(assert-event (equal (ccar-t-finish *osi-mismatch-completing* *ccar-t-cfg* *osi-mismatch-prior*)
+                     (ccar-t-own-finish *osi-mismatch-completing* *ccar-t-cfg* *osi-mismatch-prior*)))
+(assert-event (equal (car (ccar-t-finish *osi-mismatch-completing* *ccar-t-cfg* *osi-mismatch-prior*))
                      :fault))
 
 ; The host's call runs compiled code: every carried function is guard-verified.
@@ -97,11 +122,14 @@
 ; the reference finds connection 4's record, the seek finds none.
 (assert-event
  (with-guard-checking :none
-  (fn-own-completion-names-submission-p *ccar-t-bad-o* *ccar-t-cfg*)))
+  (ccar-t-own-names *ccar-t-bad-o* *ccar-t-cfg* *ccar-t-prior*)))
+(assert-event
+ (with-guard-checking :none
+  (not (ccar-t-names *ccar-t-bad-o* *ccar-t-cfg* *ccar-t-prior*))))
 (must-fail
  (defthm fn-ccar-t-names-submission-without-statep
-   (equal (fn-ccar-completion-names-submission-p *ccar-t-bad-o* *ccar-t-cfg*)
-          (fn-own-completion-names-submission-p *ccar-t-bad-o* *ccar-t-cfg*))))
+   (equal (fn-ccar-completion-names-submission-p *ccar-t-bad-o* *ccar-t-cfg* fn-arena)
+          (fn-own-completion-names-submission-p *ccar-t-bad-o* *ccar-t-cfg* fn-arena))))
 ; fn-ccar-own-finish-is-own-finish has no hypothesis, and holds here too:
 ; in the logic both gates conjoin fn-sn-statep and refuse.  The premise
 ; separates the executed code, which drops that conjunct: the reference's
@@ -110,9 +138,9 @@
 ; equates each raw function with its logic only where fn-sn-statep holds.
 (assert-event
  (with-guard-checking :none
-  (and (equal (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg*)
-              (fn-own-finish *ccar-t-bad-o* *ccar-t-cfg*))
-       (equal (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg*)
+  (and (equal (ccar-t-finish *ccar-t-bad-o* *ccar-t-cfg* *ccar-t-prior*)
+              (ccar-t-own-finish *ccar-t-bad-o* *ccar-t-cfg* *ccar-t-prior*))
+       (equal (ccar-t-finish *ccar-t-bad-o* *ccar-t-cfg* *ccar-t-prior*)
               (cons :fault *ccar-t-bad-o*)))))
 (assert-event (equal (guard 'fn-ccar-own-finish nil (w state))
                      (guard 'fn-own-finish nil (w state))))
@@ -120,7 +148,7 @@
 ; as it was, so neither the premise nor the relation holds after.
 (must-fail
  (defthm fn-ccar-t-preserves-statep-without-statep
-   (fn-sn-statep (fn-own-store (cdr (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg*))))))
+   (fn-sn-statep (fn-own-store (cdr (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg* fn-arena))))))
 (must-fail
  (defthm fn-ccar-t-preserves-relation-without-relation
-   (fn-own-relation (cdr (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg*)))))
+   (fn-own-relation (cdr (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg* fn-arena)))))

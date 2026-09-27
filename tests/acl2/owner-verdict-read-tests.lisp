@@ -29,7 +29,11 @@
 ; Reachable witness: both premises hold, the lookup was empty before, and the
 ; finished Store answers the kind-4 event's verdict for its Message-ID.
 (assert-event (fn-sn-completion-enabledp *ovr-completing*))
-(assert-event (fn-stxa-p (fn-sn-completion-record *ovr-completing*)))
+; by specification: the flip: the keystone's premise is the retained
+; composite row (fn-hstxa-p) that the history holds; its wire composite is
+; the kind-4 statement.
+(assert-event (fn-hstxa-p (fn-sn-completion-record *ovr-completing*)))
+(assert-event (fn-stxa-p (fn-hstxa-stxa (fn-sn-completion-record *ovr-completing*))))
 (assert-event (equal (fn-stxe-msgid *ovr-kind4*)
                      "<carried@example.invalid>"))
 (assert-event (null (fn-sn-verdict-lookup *ovr-completing*
@@ -44,7 +48,7 @@
 ; step faults, the gate is closed and finish is a no-op.
 (make-event
  `(defconst *ovr-off-sequence* ',(fn-sn-advance-identity-next *ovr-completing*)))
-(assert-event (fn-stxa-p (fn-sn-completion-record *ovr-off-sequence*)))
+(assert-event (fn-hstxa-p (fn-sn-completion-record *ovr-off-sequence*)))
 (assert-event (not (fn-sn-completion-enabledp *ovr-off-sequence*)))
 (assert-event (not (equal (fn-sn-verdict-lookup
                            (fn-sn-finish *ovr-off-sequence*)
@@ -59,14 +63,14 @@
               (fn-hls-kind4-verdict-event
                (fn-sn-completion-record *ovr-off-sequence*))))))
 
-; Without fn-stxa-p: a reachable enabled kind-3 keyring completion (the
+; Without fn-hstxa-p (by specification: the flip; was fn-stxa-p): a reachable enabled kind-3 keyring completion (the
 ; rotation trace of owner-verdict-tests).  It records no verdict.
 (make-event
  `(defconst *ovr-rotating*
     ',(fn-own-store (fn-own-run (fn-own-step *ov-reader-b* '(:begin 1))
                                 (butlast *ov-rotation-events* 1)))))
 (assert-event (fn-sn-completion-enabledp *ovr-rotating*))
-(assert-event (not (fn-stxa-p (fn-sn-completion-record *ovr-rotating*))))
+(assert-event (not (fn-hstxa-p (fn-sn-completion-record *ovr-rotating*))))
 (assert-event (fn-stxk-p (fn-sn-completion-record *ovr-rotating*)))
 (assert-event (equal (fn-sn-verdicts (fn-sn-finish *ovr-rotating*))
                      (fn-sn-verdicts *ovr-rotating*)))

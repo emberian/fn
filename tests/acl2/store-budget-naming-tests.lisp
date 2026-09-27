@@ -7,6 +7,7 @@
 (include-book "../../books/owner-store-budget")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 ; -----------------------------------------------------------------------------
 ; A reachable owner: one committed record, a second staged
@@ -22,14 +23,19 @@
    (list (fn-nntp-string-octets "fn.letters")
          (fn-nntp-string-octets "fn.test"))
    32768))
-(defconst *sbnt-first*
+(defconst *sbnt-first-wire*
   (fn-record-make 0 0 0 "<sbnt-first@example.invalid>" '(65 66)
                   *sbnt-groups* "sbnt-pin-1" "sbnt-subject-1"
                   "sbnt-release-1" 2 841000000))
-(defconst *sbnt-second*
+; The store retains held rows (records-flip): each record reaches the
+; store as the row the entry interns (store-intern fn-intern-row-at,
+; keyring nil at generation 0), its handle its place in the run's arena.
+(defconst *sbnt-first* (fn-hrt-row-at *sbnt-first-wire* 0))
+(defconst *sbnt-second-wire*
   (fn-record-make 1 1 1 "<sbnt-second@example.invalid>" '(67 68)
                   '("fn.test") "sbnt-pin-2" "sbnt-subject-2"
                   "sbnt-release-2" 1 841000000))
+(defconst *sbnt-second* (fn-hrt-row-at *sbnt-second-wire* 1))
 
 (defun sbnt-run (oc events)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
@@ -114,13 +120,16 @@
             (sbnt-name-conclusion s))))
 
 ; Hypothesis `fn-sf-statep': a record phase whose candidate is numbered 5 over
-; an empty record list.  Its name is the sixth file's, which the scan does not
+; an empty record list (the staged candidate is the held row the entry
+; interns, records-flip).  Its name is the sixth file's, which the scan does not
 ; accept after zero committed names.
 (defconst *sbnt-misnumbered*
   (list nil nil
         (list :store-files :record-staged 6 nil nil
-              (fn-record-make 5 5 5 "<sbnt-five@example.invalid>" '(69)
-                              '("fn.test") "p" "s" "r" 1 841000000)
+              (fn-hrt-row-at
+               (fn-record-make 5 5 5 "<sbnt-five@example.invalid>" '(69)
+                               '("fn.test") "p" "s" "r" 1 841000000)
+               0)
               nil nil 0)))
 (assert-event (fn-sf-record-phasep (fn-sf-phase (fn-sn-files *sbnt-misnumbered*))))
 (assert-event (not (fn-sf-statep (fn-sn-files *sbnt-misnumbered*))))

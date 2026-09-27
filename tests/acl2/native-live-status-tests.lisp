@@ -7,6 +7,7 @@
 (include-book "../../books/owner-store-budget")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defconst *nlst-groups* '("fn.letters" "fn.test"))
 (defconst *nlst-config*
@@ -18,10 +19,14 @@
    (list (fn-nntp-string-octets "fn.letters")
          (fn-nntp-string-octets "fn.test"))
    32768))
-(defconst *nlst-first*
+(defconst *nlst-first-wire*
   (fn-record-make 0 0 0 "<nlst-first@example.invalid>" '(65 66)
                   *nlst-groups* "nlst-pin-1" "nlst-subject-1"
                   "nlst-release-1" 2 841000000))
+; The store retains held rows (records-flip): each record reaches the
+; store as the row the entry interns (store-intern fn-intern-row-at,
+; keyring nil at generation 0), its handle its place in the run's arena.
+(defconst *nlst-first* (fn-hrt-row-at *nlst-first-wire* 0))
 (defun nlst-run (oc events)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))

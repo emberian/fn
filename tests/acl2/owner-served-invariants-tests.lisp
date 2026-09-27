@@ -12,8 +12,7 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (assert-event (equal (symbol-class 'fn-own-finish (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-own-finish nil (w state))
-                     '(fn-sn-statep (fn-own-store o))))
+(assert-event (equal (stobjs-in 'fn-own-finish (w state)) '(nil nil fn-arena)))
 
 ; -----------------------------------------------------------------------------
 ; P2: fn-own-240-follows-consumed-completion.
@@ -33,16 +32,34 @@
                            (fn-own-conn-observation conn) (fn-own-clock o))
       :durable))))
 
-(defun osi-p2-240p (o id)
-  (equal (car (fn-own-outcome (cdr (fn-own-finish o *osi-cfg*)) id
-                              (car (fn-own-finish o *osi-cfg*))))
-         (osi-240-reply (cdr (fn-own-finish o *osi-cfg*)) id)))
+; The finish over the arena of the entry that interned the journal PRIOR (the
+; wire records, in order; handle i = the i-th record's bytes), as the host's
+; arena holds it: fn-own-finish reads the completed row through it.
+(defun osi-finish-in (o cfg prior fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-own-finish o cfg fn-arena) fn-arena)))
 
-(defun osi-p2-conclusion (o id)
-  (let* ((o2 (cdr (fn-own-finish o *osi-cfg*)))
-         (word (car (fn-own-finish o *osi-cfg*)))
+(defun osi-finish (o cfg prior)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (osi-finish-in o cfg prior fn-arena)
+      result)))
+
+(defun osi-p2-240p (o id prior)
+  (equal (car (fn-own-outcome (cdr (osi-finish o *osi-cfg* prior)) id
+                              (car (osi-finish o *osi-cfg* prior))))
+         (osi-240-reply (cdr (osi-finish o *osi-cfg* prior)) id)))
+
+(defun osi-p2-conclusion (o id prior)
+  (let* ((o2 (cdr (osi-finish o *osi-cfg* prior)))
+         (word (car (osi-finish o *osi-cfg* prior)))
          (pair (fn-sf-completion (fn-sn-files (fn-own-store o))))
          (record (fn-sn-completion-record (fn-own-store o)))
+         (w (car (fn-hrt-wire-of prior (list record))))
          (sub (fn-own-inflight o)))
     (and (equal word :durable)
          sub
@@ -54,16 +71,16 @@
                         (list pair)))
          (equal (fn-own-ledger o2) (append (fn-own-ledger o) (list pair)))
          (equal (fn-own-inflight o2) sub)
-         (fn-record-p record)
-         (equal (fn-record-msgid record)
+         (fn-held-p record)
+         (equal (fn-record-msgid w)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-stored-octets *osi-cfg* sub))
+         (equal (fn-record-payload w) (fn-own-sub-stored-octets *osi-cfg* sub))
          (fn-sf-record-has-pairp pair (fn-sf-records (fn-sn-files (fn-own-store o2))))
          t)))
 
 ; The record the host should stage for the submission in flight: its
 ; Message-ID and octets, with the metadata own-record derives.
-(defun osi-record-of (sequence txid sub payload)
+(defun osi-record-of-wire (sequence txid sub payload)
   (let ((msgid (fn-record-octets-string (fn-own-sub-msgid sub))))
     (fn-record-make sequence txid txid msgid payload
                     '("fn.letters")
@@ -71,6 +88,25 @@
                     (concatenate 'string "own-content:" msgid)
                     (concatenate 'string "own-release:" msgid)
                     2 841000000)))
+; The store retains held rows (records-flip): the owner stages the row the
+; entry interns (owner-tests' convention: handle = journal sequence).
+(defun osi-record-of (sequence txid sub payload)
+  (fn-hrt-row-at (osi-record-of-wire sequence txid sub payload) sequence))
+; ALPHA of a completion row staged on *own-taken* (whose history is
+; owner-tests' "<one@example>" and "<two@example>" at handles 0 and 1): the
+; bytes under its handle in the arena that interned the journal in order,
+; the staged record WIRE last.
+(defun osi-completion-bytes (o wire)
+  (fn-hrt-bytes (list (own-record-wire 0 0 "<one@example>")
+                      (own-record-wire 1 1 "<two@example>")
+                      wire)
+                (fn-record-payload (fn-sn-completion-record (fn-own-store o)))))
+; The journal the entry interned for a completion staged on *own-taken*:
+; owner-tests' two records at handles 0 and 1, the staged record WIRE last.
+(defun osi-prior (wire)
+  (if wire
+      (list (own-record-wire 0 0 "<one@example>") (own-record-wire 1 1 "<two@example>") wire)
+    (list (own-record-wire 0 0 "<one@example>") (own-record-wire 1 1 "<two@example>"))))
 (defun osi-sub-record (sequence txid sub)
   (osi-record-of sequence txid sub (fn-own-sub-octets sub)))
 
@@ -84,17 +120,26 @@
 (defconst *osi-completing*
   (fn-own-run *own-taken*
               (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*)))))
+(defconst *osi-completing-prior*
+  (osi-prior (osi-record-of-wire 2 2 *osi-sub* (fn-own-sub-octets *osi-sub*))))
 (assert-event (fn-own-relation *osi-completing*))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *osi-completing*)))
-(assert-event (equal (car (fn-own-finish *osi-completing* *osi-cfg*)) :durable))
-(assert-event (osi-p2-240p *osi-completing* 4))
+(assert-event (equal (car (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*)) :durable))
+(assert-event (osi-p2-240p *osi-completing* 4 *osi-completing-prior*))
 (assert-event (equal (fn-served-reply-octets
-                      (car (fn-own-outcome (cdr (fn-own-finish *osi-completing* *osi-cfg*)) 4
-                                           (car (fn-own-finish *osi-completing* *osi-cfg*)))))
+                      (car (fn-own-outcome (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*)) 4
+                                           (car (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*)))))
                      (append (fn-nntp-string-octets "240 article received OK") '(13 10))))
-(assert-event (osi-p2-conclusion *osi-completing* 4))
+(assert-event (osi-p2-conclusion *osi-completing* 4 *osi-completing-prior*))
+; The flip regression (L5's finding): the completed row's payload is a
+; handle, so the comparison fn-own-completion-names-submission-p made before
+; it read through the arena is false on this durable completion, and every
+; served POST finish answered :fault (436/441 uncertain).
+(assert-event (natp (fn-record-payload (fn-sn-completion-record (fn-own-store *osi-completing*)))))
+(assert-event (not (equal (fn-record-payload (fn-sn-completion-record (fn-own-store *osi-completing*)))
+                          (fn-own-sub-stored-octets *osi-cfg* *osi-sub*))))
 ; The finish is the (:complete) event on the owner.
-(assert-event (equal (cdr (fn-own-finish *osi-completing* *osi-cfg*))
+(assert-event (equal (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))
                      (fn-own-step *osi-completing* '(:complete))))
 
 ; FINDING (P2).  With the host's word, 240 is rendered over a completion of
@@ -105,6 +150,7 @@
 (defconst *osi-mismatch-completing*
   (fn-own-run *own-taken*
               (osi-drop-last (own-post-events (own-record 2 2 "<three@example>")))))
+(defconst *osi-mismatch-prior* (osi-prior (own-record-wire 2 2 "<three@example>")))
 (assert-event (equal (fn-own-step *osi-mismatch-completing* '(:complete)) *own-p-done*))
 (assert-event (equal (fn-served-reply-octets (car *own-240*))
                      (append (fn-nntp-string-octets "240 article received OK") '(13 10))))
@@ -113,22 +159,24 @@
                      "<three@example>"))
 (assert-event (not (equal (fn-record-octets-string (fn-own-sub-msgid *osi-sub*))
                           "<three@example>")))
-(assert-event (not (equal (fn-record-payload (fn-sn-completion-record
-                                              (fn-own-store *osi-mismatch-completing*)))
+; by specification: the flip: the payload is a handle; the completed row's
+; bytes (alpha) are <three@example>'s, not the submission's octets.
+(assert-event (not (equal (osi-completion-bytes *osi-mismatch-completing*
+                                                (own-record-wire 2 2 "<three@example>"))
                           (fn-own-sub-octets *osi-sub*))))
-(assert-event (equal (car (fn-own-finish *osi-mismatch-completing* *osi-cfg*)) :fault))
+(assert-event (equal (car (osi-finish *osi-mismatch-completing* *osi-cfg* *osi-mismatch-prior*)) :fault))
 (assert-event (equal (fn-own-take 4 (fn-served-reply-octets
                                      (car (fn-own-outcome
-                                           (cdr (fn-own-finish *osi-mismatch-completing* *osi-cfg*)) 4
-                                           (car (fn-own-finish *osi-mismatch-completing* *osi-cfg*))))))
+                                           (cdr (osi-finish *osi-mismatch-completing* *osi-cfg* *osi-mismatch-prior*)) 4
+                                           (car (osi-finish *osi-mismatch-completing* *osi-cfg* *osi-mismatch-prior*))))))
                      (fn-nntp-string-octets "441 ")))
 
 ; Hypothesis 2 (the reply is 240).  *own-taken*: related, nothing staged,
 ; the finish is :fault and the reply the uncertain 441.
 (assert-event (fn-own-relation *own-taken*))
-(assert-event (not (osi-p2-240p *own-taken* 4)))
-(assert-event (not (osi-p2-conclusion *own-taken* 4)))
-(must-fail (assert-event (osi-p2-conclusion *own-taken* 4)))
+(assert-event (not (osi-p2-240p *own-taken* 4 (osi-prior nil))))
+(assert-event (not (osi-p2-conclusion *own-taken* 4 (osi-prior nil))))
+(must-fail (assert-event (osi-p2-conclusion *own-taken* 4 (osi-prior nil))))
 
 ; Hypothesis 1 (the relation).  Connection 4's session replaced by a
 ; malformed one: every completion renders the same 403, so the reply equals
@@ -148,9 +196,9 @@
   (fn-own-set-conns *own-taken*
                     (fn-own-replace-conn *osi-bad-conn* (fn-own-conns *own-taken*))))
 (assert-event (not (fn-own-relation *osi-unrelated*)))
-(assert-event (osi-p2-240p *osi-unrelated* 4))
-(assert-event (not (osi-p2-conclusion *osi-unrelated* 4)))
-(must-fail (assert-event (osi-p2-conclusion *osi-unrelated* 4)))
+(assert-event (osi-p2-240p *osi-unrelated* 4 (osi-prior nil)))
+(assert-event (not (osi-p2-conclusion *osi-unrelated* 4 (osi-prior nil))))
+(must-fail (assert-event (osi-p2-conclusion *osi-unrelated* 4 (osi-prior nil))))
 
 ; Transit (transit-436, the 6c0626c5 regression).  A transit submission from
 ; peer "p" in flight on connection 4 of the reachable *own-taken*, installed
@@ -184,36 +232,42 @@
 ; finish is :durable, the reply is the 240 expression, and the keystone's
 ; conclusion holds.
 (defconst *osi-transit-completing* (osi-transit-completing *osi-transit-stored*))
+(defconst *osi-transit-prior*
+  (osi-prior (osi-record-of-wire 2 2 *osi-transit-sub* *osi-transit-stored*)))
 (assert-event (fn-own-relation *osi-transit-completing*))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-completing*)))
-(assert-event (equal (car (fn-own-finish *osi-transit-completing* *osi-cfg*))
+(assert-event (equal (car (osi-finish *osi-transit-completing* *osi-cfg* *osi-transit-prior*))
                      :durable))
-(assert-event (osi-p2-240p *osi-transit-completing* 4))
-(assert-event (osi-p2-conclusion *osi-transit-completing* 4))
+(assert-event (osi-p2-240p *osi-transit-completing* 4 *osi-transit-prior*))
+(assert-event (osi-p2-conclusion *osi-transit-completing* 4 *osi-transit-prior*))
 ; The regression: 6c0626c5's fn-own-finish compared the completed record
 ; with the received octets (fn-own-sub-octets).  On this durable completion
 ; that comparison is false, so it answered :fault, which the host reported
 ; as `436 ... uncertain' and a recovery stop.
-(assert-event (not (equal (fn-record-payload
-                           (fn-sn-completion-record
-                            (fn-own-store *osi-transit-completing*)))
+; by specification: the flip: the completed row's payload is a handle; its
+; bytes (alpha over the journal's arena) are the staged octets, not the
+; received ones.
+(defconst *osi-transit-wire* (osi-record-of-wire 2 2 *osi-transit-sub* *osi-transit-stored*))
+(assert-event (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
+                     *osi-transit-stored*))
+(assert-event (not (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
                           *osi-transit-received*)))
 (must-fail
- (assert-event (equal (fn-record-payload
-                       (fn-sn-completion-record
-                        (fn-own-store *osi-transit-completing*)))
+ (assert-event (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
                       *osi-transit-received*)))
 
 ; Negative: the Store completes a record carrying the received octets, which
 ; is not what the owner staged.  The finish is :fault (uncertain), no 240 is
 ; rendered, and the conclusion fails.
 (defconst *osi-transit-unstaged* (osi-transit-completing *osi-transit-received*))
+(defconst *osi-unstaged-prior*
+  (osi-prior (osi-record-of-wire 2 2 *osi-transit-sub* *osi-transit-received*)))
 (assert-event (fn-own-relation *osi-transit-unstaged*))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-unstaged*)))
-(assert-event (equal (car (fn-own-finish *osi-transit-unstaged* *osi-cfg*))
+(assert-event (equal (car (osi-finish *osi-transit-unstaged* *osi-cfg* *osi-unstaged-prior*))
                      :fault))
-(assert-event (not (osi-p2-240p *osi-transit-unstaged* 4)))
-(must-fail (assert-event (osi-p2-conclusion *osi-transit-unstaged* 4)))
+(assert-event (not (osi-p2-240p *osi-transit-unstaged* 4 *osi-unstaged-prior*)))
+(must-fail (assert-event (osi-p2-conclusion *osi-transit-unstaged* 4 *osi-unstaged-prior*)))
 
 ; Negative: a completion for a different article.  The record carries the
 ; staged octets but another Message-ID; the finish still faults.
@@ -221,17 +275,26 @@
   (fn-own-run (own-with-inflight *own-taken* *osi-transit-sub*)
               (osi-drop-last
                (own-post-events
-                (fn-record-make 2 2 2 "<other@example.invalid>"
-                                *osi-transit-stored* '("fn.letters")
-                                "own-pin:<other@example.invalid>"
-                                "own-content:<other@example.invalid>"
-                                "own-release:<other@example.invalid>"
-                                2 841000000)))))
+                (fn-hrt-row-at
+                 (fn-record-make 2 2 2 "<other@example.invalid>"
+                                 *osi-transit-stored* '("fn.letters")
+                                 "own-pin:<other@example.invalid>"
+                                 "own-content:<other@example.invalid>"
+                                 "own-release:<other@example.invalid>"
+                                 2 841000000)
+                 2)))))
+(defconst *osi-other-prior*
+  (osi-prior (fn-record-make 2 2 2 "<other@example.invalid>"
+                             *osi-transit-stored* '("fn.letters")
+                             "own-pin:<other@example.invalid>"
+                             "own-content:<other@example.invalid>"
+                             "own-release:<other@example.invalid>"
+                             2 841000000)))
 (assert-event (fn-own-relation *osi-transit-other*))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-other*)))
-(assert-event (equal (car (fn-own-finish *osi-transit-other* *osi-cfg*)) :fault))
-(assert-event (not (osi-p2-240p *osi-transit-other* 4)))
-(must-fail (assert-event (osi-p2-conclusion *osi-transit-other* 4)))
+(assert-event (equal (car (osi-finish *osi-transit-other* *osi-cfg* *osi-other-prior*)) :fault))
+(assert-event (not (osi-p2-240p *osi-transit-other* 4 *osi-other-prior*)))
+(must-fail (assert-event (osi-p2-conclusion *osi-transit-other* 4 *osi-other-prior*)))
 
 ; The transit arm's Path shape on the witness (P7's
 ; fn-peer-relayed-octets-keep-the-received-path-tail, concretely): the staged

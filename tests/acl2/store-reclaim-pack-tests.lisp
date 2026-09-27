@@ -8,7 +8,7 @@
 ; The owner fixture's store after its article completed (as in
 ; store-reclaim-holders-tests), its committed history as octets, and the
 ; one article.
-(defconst *rpt-s* (fn-own-store (cdr (fn-own-finish *osi-completing* *osi-cfg*))))
+(defconst *rpt-s* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
 (defun rpt-encode-all (rs)
   (declare (xargs :mode :program))
   (if (consp rs) (cons (fn-store-event-encode (car rs)) (rpt-encode-all (cdr rs))) nil))

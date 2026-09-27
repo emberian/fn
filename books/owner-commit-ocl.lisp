@@ -5,7 +5,7 @@
 ; and the configuration completion keeps it
 ; (fn-ocl-complete-preserves-full-historical-relation), but nothing said the
 ; ordinary commit the host runs for every POST keeps it: host/owner-host.lisp
-; fn-owner-finish-submission installs (cdr (fn-ccar-own-finish o cfg)).  Nor did anything say its store conjunct,
+; fn-owner-finish-submission installs (cdr (fn-ccar-own-finish o cfg fn-arena)).  Nor did anything say its store conjunct,
 ; fn-cst-relation (books/config-store-traces.lisp), survives fn-sn-finish:
 ; that book proves only that open establishes it.
 ;
@@ -258,7 +258,7 @@
 (defthm fn-ocmt-post-commit-preserves-ocl-relation
   (implies (fn-ocl-relation oc)
            (fn-ocl-relation
-            (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)))))
+            (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
   :hints (("Goal" :use fn-ocmt-own-complete-preserves-ocl-relation
            :in-theory '(fn-ocfg-with-owner fn-ccar-own-finish-is-own-finish
                         fn-own-finish cdr-cons))))
