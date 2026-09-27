@@ -954,3 +954,138 @@ def verify_post_log_cut_map() -> None:
         raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
     for cut in POST_LOG_CUTS[2:]:
         cut_step_index(cut)
+
+
+# The record-log route's arms (lane log-2; books/store-log-route-programs.lisp).
+# Each per-file host function above has a format-9 arm, `(when (fnn-store-logp
+# store) ...)', that calls the log route instead; tools/native_program_check.py
+# reads the per-file route and checks each arm here: the arm's callee's
+# durable steps and process-death cuts, in source order, are its programs'
+# steps.  Host steps: fnn-log-pwrite is a :write-at, fnn-log-fdatasync and a
+# recovery barrier thunk are a :fence, `(fnn-at store :NAME)' and
+# `(fnn-log-at :NAME)' are the cut NAME (the log's own and the store's
+# injection at one point are one cut), the recovery barrier loop runs once per
+# thunk of fnn-store-recovery-barriers.  Calls into LOG_ROUTE_EXPAND are read
+# from the callee's own defun; any other call is not a step (fnn-log-take's
+# :full arm commits at the operator's bound, a runtime arm; fnn-log-ensure-
+# extent's growth is PKT-COL-4's).
+LOG_ROUTE_BOOK = "store-log-route-programs.lisp"
+LOG_ROUTE_ARMS = {
+    "fnn-advance-frontier": ("fnn-log-reserve", (("fn-lg-reserve-program", LOG_ROUTE_BOOK),)),
+    "fnn-publish": ("fnn-log-publish", (("fn-lg-append-program", LOG_BOOK),
+                                        ("fn-lg-fence-program", LOG_BOOK),
+                                        ("fn-lg-order-program", LOG_ROUTE_BOOK))),
+    "fnn-mark-committed": (None, ()),
+    "fnn-recover": ("fnn-recover-log", (("fn-lg-open-program", LOG_ROUTE_BOOK),)),
+}
+LOG_ROUTE_EXPAND = ("fnn-log-commit-open-batch", "fnn-log-append", "fnn-log-fence",
+                    "fnn-log-recover")
+_LOG_ROUTE_TOKEN = re.compile(
+    r"\((fnn-log-pwrite|fnn-log-fdatasync|fnn-log-commit-open-batch|fnn-log-append|"
+    r"fnn-log-fence|fnn-log-recover)[\s)]"
+    r"|\(fnn-at store :([a-z0-9-]+)\)|\(fnn-log-at :([a-z0-9-]+)\)"
+    r"|\(funcall barrier\)|RECOVER-BARRIER-")
+
+
+def _strip_lisp_text(body: str) -> str:
+    """BODY without comments and string literals (a docstring may name a call)."""
+    out, i, n = [], 0, len(body)
+    while i < n:
+        c = body[i]
+        if c == ";":
+            j = body.find("\n", i)
+            i = n if j < 0 else j
+        elif c == '"':
+            j = i + 1
+            while j < n and body[j] != '"':
+                j += 2 if body[j] == "\\" else 1
+            if body[i:j].startswith('"RECOVER-BARRIER-'):
+                out.append("RECOVER-BARRIER-")
+            i = j + 1
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+def _recovery_barrier_count(source: str) -> int:
+    body = _strip_lisp_text(host_function(source, "fnn-store-recovery-barriers"))
+    at = body.index("(list") + len("(list")
+    depth, count = 0, 0
+    for c in body[at:]:
+        if c == "(":
+            if depth == 0:
+                count += 1
+            depth += 1
+        elif c == ")":
+            if depth == 0:
+                break
+            depth -= 1
+    return count
+
+
+def log_route_host_steps(source: str, name: str) -> list:
+    body = _strip_lisp_text(host_function(source, name))
+    steps: list = []
+    barrier = None
+    for m in _LOG_ROUTE_TOKEN.finditer(body):
+        call, cut_store, cut_log = m.group(1), m.group(2), m.group(3)
+        text = m.group(0)
+        if call in LOG_ROUTE_EXPAND:
+            steps.extend(log_route_host_steps(source, call))
+        elif call == "fnn-log-pwrite":
+            steps.append(("write",))
+        elif call == "fnn-log-fdatasync":
+            steps.append(("fence",))
+        elif text == "(funcall barrier)":
+            barrier = len(steps)
+            steps.append(("fence",))
+        elif text == "RECOVER-BARRIER-":
+            steps.append(("cut", "recover-barrier"))
+            if barrier is not None:
+                loop = steps[barrier:]
+                steps.extend(loop * (_recovery_barrier_count(source) - 1))
+                barrier = None
+        else:
+            cut = ("cut", cut_store or cut_log)
+            if not (steps and steps[-1] == cut):
+                steps.append(cut)
+    return steps
+
+
+def verify_log_route_arms(source: str | None = None) -> list:
+    """Each format-9 arm's host steps equal its log programs' steps; returns
+    the mismatches (empty when every arm matches).  SOURCE: io.lisp's text
+    (a test's mutation), the file by default."""
+    if source is None:
+        source = (ROOT / "host/native/io.lisp").read_text()
+    problems = []
+    for host, (callee, programs) in LOG_ROUTE_ARMS.items():
+        body = host_function(source, host)
+        arm = re.search(r"\(when \(fnn-store-logp store\)\s*\(return-from {}\s*(\S*)".format(
+            re.escape(host)), body)
+        if not arm:
+            problems.append("{}: no format-9 arm".format(host))
+            continue
+        called = arm.group(1).strip("()")
+        if callee is None:
+            if called not in ("nil", ""):
+                problems.append("{}: the arm calls {}, expected nothing".format(host, called))
+            continue
+        if called != callee:
+            problems.append("{}: the arm calls {}, expected {}".format(host, called, callee))
+            continue
+        model = []
+        for program, book in programs:
+            for step in model_steps(program, book):
+                if step.kind == "write-at":
+                    model.append(("write",))
+                elif step.kind == "fence":
+                    model.append(("fence",))
+                elif step.kind == "cut":
+                    model.append(("cut", step.args[0]))
+        hosted = log_route_host_steps(source, callee)
+        if hosted != model:
+            problems.append("{} -> {}: host {} is not {} {}".format(
+                host, callee, hosted, [p for p, _ in programs], model))
+    return problems

@@ -165,3 +165,38 @@ class UnbalancedFormTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LogRouteArmTests(unittest.TestCase):
+    """Lane log-2: each format-9 arm against books/store-log-route-programs.lisp
+    and the log's own programs; every mutation below is a process-death cut
+    that no model program has, or a step out of the programs' order."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.host = (ROOT / npc.HOST).read_text()
+
+    def test_the_tree_passes(self):
+        self.assertEqual(native_cuts.verify_log_route_arms(self.host), [])
+
+    def test_an_unmodelled_cut_in_the_reservation_fails(self):
+        host = mutate(self.host, "(fnn-at store :frontier-reserved)",
+                      "(fnn-at store :frontier-reserved)\n    (fnn-at store :frontier-extra)",
+                      within="fnn-log-reserve")
+        problems = native_cuts.verify_log_route_arms(host)
+        self.assertTrue(any("fnn-log-reserve" in p for p in problems), problems)
+
+    def test_the_record_place_before_the_barrier_fails(self):
+        body = native_cuts.host_function(self.host, "fnn-log-publish")
+        moved = body.replace("  (unless *fnn-log-batch*\n    (fnn-log-commit-open-batch store))\n", "")
+        moved = moved.replace("(fnn-at store :record-completing)",
+                              "(fnn-at store :record-completing)\n  (unless *fnn-log-batch* (fnn-log-commit-open-batch store))")
+        self.assertNotEqual(moved, body)
+        problems = native_cuts.verify_log_route_arms(self.host.replace(body, moved))
+        self.assertTrue(any("fnn-log-publish" in p for p in problems), problems)
+
+    def test_a_missing_recovery_barrier_fails(self):
+        host = mutate(self.host, "        (lambda () (fnn-fsync-dir (fnn-store-root store)))\n", "",
+                      within="fnn-store-recovery-barriers")
+        problems = native_cuts.verify_log_route_arms(host)
+        self.assertTrue(any("fnn-recover-log" in p for p in problems), problems)

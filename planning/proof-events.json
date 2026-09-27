@@ -9777,6 +9777,27 @@
           "name": "fn-ocp-in-flight-admits-only-inspect-and-commit"
         }
       ]
+    },
+    {
+      "id": "PRF-270",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-reserve-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-order-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-suffix-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        }
+      ]
     }
   ]
 }

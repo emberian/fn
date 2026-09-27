@@ -3,6 +3,31 @@
   "description": "Broad proof targets with incremental certified component evidence. An in-progress target is not fully certified. Paths are repository-relative.",
   "proofs": [
     {
+      "id": "PRF-270",
+      "title": "Every process-death cut of the record-log route is a cut of a model program, at a related state",
+      "statement": "books/store-log-route-programs.lisp: the format-9 arms of host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-mark-committed and fnn-recover call fnn-log-reserve, fnn-log-publish, nothing, and fnn-recover-log, whose durable steps and process-death cuts in source order are exactly fn-lg-reserve-program (frontier-reserved), fn-lg-append-program ++ fn-lg-fence-program ++ fn-lg-order-program (log-written, log-fenced, record-completing; a batch of one), and fn-lg-open-program (P-LOG-RECOVER's log-truncated and log-recovered, then recover-replayed and the five recovery barriers each followed by recover-barrier): tools/native_program_check.py checks each arm (tests/campaign/native_cuts.py verify_log_route_arms, in make check; teeth in tests/test_native_program_check.py LogRouteArmTests). fn-lg-reserve-program-keeps-the-relation: from R, the state at frontier-reserved (the kernel caught up by fn-olr-consume-to) is R-related; fn-lg-order-program-keeps-the-relation: from R and a record, the state at record-completing (the record taken into the open batch, fn-olr-take) is related; fn-lg-open-suffix-keeps-the-relation: from R with nothing in flight (as fn-lg-recover-program-establishes-the-relation leaves it), every state after log-recovered is related. So a process death at any cut is a crash of an R-related state (fn-lgk-crash-of-related-state-is-a-prefix). Teeth: tests/acl2/store-log-route-programs-tests.lisp (reached states of store-log-kernel-tests; R removed; a batch in flight at the open's barrier).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-route-programs.lisp",
+        "tests/acl2/store-log-route-programs-tests.lisp",
+        "tests/campaign/native_cuts.py",
+        "tools/native_program_check.py",
+        "tests/test_native_program_check.py"
+      ],
+      "events": [
+        "fn-lg-reserve-program-keeps-the-relation",
+        "fn-lg-order-program-keeps-the-relation",
+        "fn-lg-open-suffix-keeps-the-relation",
+        "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+      ]
+    },
+    {
       "id": "PRF-266",
       "title": "The pipelined group commit: the next batch prepares behind the barrier, and no record is revealed or acknowledged before its own barrier",
       "statement": "Subjects fn-ocp-commit-event and fn-ocp-committer-wake (books/owner-commit-pipeline.lisp), which host/native/owner.lisp fnn-owner-commit-event and fnn-owner-commit-wake call from the committer (fnn-owner-commit-pipeline), and fn-ocp-next / fn-ocp-observe, which fnn-owner-gate-pick / fnn-owner-gate-leave call at every release of the owner. KEYSTONE fn-ocp-next-open-only-in-flight: after any commit event, a next batch is open only while the commit's ocs phase is in flight, so (fn-ocp-next-is-ocs-next, fn-ocs-in-flight-admits-only-inspect-and-commit, restated over the host's pick as fn-ocp-in-flight-admits-only-inspect-and-commit) no reader, poster, transit or mutating control quantum runs while a prepared record of the batch in flight or of the one behind it is not durable. fn-ocp-commit-event-completes-only-after-the-barrier: COMPLETE (the acknowledgements and the replies of the batch in flight) is named only for a staged batch whose syncer returned :fenced; the next batch's members become the staged batch only through COMPLETE's :sync (fn-ocp-sync-only-when-none-in-flight: a batch is handed to the syncer only from an idle owner after a START or by COMPLETE after the batch in flight was fenced), so appends are in the batches' order and at most one is in flight, as the kernel requires (fn-lgk-append refuses a second). fn-ocp-start-next-only-behind-a-sync: START-NEXT runs only while a batch is staged, its barrier not returned, no next batch open, a member queued. The crash half is PRF (commit-onto-log) fn-olr-crash-reads-a-prefix-of-the-history, whose link (committed ++ in flight ++ open batch) covers the batch prepared behind the barrier; the host's kernel updates are serialized by the log's lock (host/native/io.lisp fnn-log-with-kernel) and the syncer touches only the log struct. Teeth: tests/acl2/owner-commit-pipeline-tests.lisp (the pipeline reached step by step from fn-ocp-init; hypothesis removal for the keystone and the completion rule); native: tests/test_native_commit_log.py test_the_next_batch_prepares_behind_the_barrier (the operator's batch bound 2, the barrier held 700 ms, 16 POSTs from 8 posters: START-NEXT ran, every POST 240 and served after a restart).",
