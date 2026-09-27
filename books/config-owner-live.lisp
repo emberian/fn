@@ -1747,36 +1747,77 @@
 ; The committed view's archive has the current configuration's domain: the
 ; view is replayed under the whole configuration history (fn-ocl-view-historyp)
 ; and that replay's node carries the current configuration
-; (fn-ocl-view-configp); the mirror of fn-ocl-connection-archive-has-pinned-domain.
+; (fn-ocl-view-configp); the mirror of fn-ocl-connection-archive-has-pinned-domain,
+; in two steps because the view's archive is EQUAL to a visible state (the
+; connection's is a projection): first the replayed node's domain, then the
+; view archive's through the projection.
+(local
+ (defthm fn-ocl-view-node-has-current-domain
+   (implies (fn-ocl-relation oc)
+            (equal (fn-state-groups
+                    (fn-node-acceptance
+                     (fn-cst-replay-node
+                      (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc)))
+                      (fn-own-take (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
+                                   (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                      (fn-own-view-frontier (fn-own-view (fn-ocfg-owner oc))))))
+                   (fn-cnode-domain-of (fn-ocfg-config oc))))
+   :hints (("Goal"
+            :use ((:instance fn-cpr-replay-ok-is-configured
+                             (configs (fn-sn-config-history
+                                       (fn-own-store (fn-ocfg-owner oc))))
+                             (events (fn-own-take
+                                      (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
+                                      (fn-sf-records
+                                       (fn-sn-files
+                                        (fn-own-store (fn-ocfg-owner oc)))))))
+                  (:instance fn-ocl-replayed-view-has-successful-physical-prefix
+                             (configs (fn-sn-config-history
+                                       (fn-own-store (fn-ocfg-owner oc))))
+                             (events (fn-own-take
+                                      (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
+                                      (fn-sf-records
+                                       (fn-sn-files
+                                        (fn-own-store (fn-ocfg-owner oc))))))
+                             (frontier (fn-own-view-frontier (fn-own-view (fn-ocfg-owner oc))))))
+            :in-theory (e/d (fn-ocl-relation fn-ocl-view-historyp fn-ocl-view-configp
+                             fn-cst-replay-node fn-cnode-statep fn-cnode-domain)
+                            (fn-cpr-replay fn-own-take fn-ocl-conns-historyp
+                             fn-ocl-conn-historyp fn-ocl-config-historyp
+                             fn-cst-relation fn-ctl-visible-state))))))
+
 (defthm fn-ocl-view-archive-has-current-domain
   (implies (fn-ocl-relation oc)
            (equal (fn-state-groups (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
                   (fn-cnode-domain-of (fn-ocfg-config oc))))
   :hints (("Goal"
-           :use ((:instance fn-cpr-replay-ok-is-configured
-                            (configs (fn-sn-config-history
-                                      (fn-own-store (fn-ocfg-owner oc))))
-                            (events (fn-own-take
-                                     (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
-                                     (fn-sf-records
-                                      (fn-sn-files
-                                       (fn-own-store (fn-ocfg-owner oc)))))))
-                 (:instance fn-ocl-replayed-view-has-successful-physical-prefix
-                            (configs (fn-sn-config-history
-                                      (fn-own-store (fn-ocfg-owner oc))))
-                            (events (fn-own-take
-                                     (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
-                                     (fn-sf-records
-                                      (fn-sn-files
-                                       (fn-own-store (fn-ocfg-owner oc))))))
-                            (frontier (fn-own-view-frontier (fn-own-view (fn-ocfg-owner oc))))))
-           :in-theory (e/d (fn-ocl-projectionp-of-a-visible-state
-                            fn-ocl-projection-keeps-state-fields
-                            fn-ocl-relation fn-ocl-view-historyp fn-ocl-view-configp
-                            fn-cst-replay-node fn-cnode-statep fn-cnode-domain)
-                           (fn-cpr-replay fn-own-take fn-ocl-conns-historyp
-                            fn-ocl-conn-historyp fn-ocl-config-historyp
-                            fn-cst-relation)))))
+           :use ((:instance fn-ocl-view-node-has-current-domain)
+                 (:instance fn-ocl-projectionp-of-a-visible-state
+                            (a (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
+                            (p (fn-node-acceptance
+                                (fn-cst-replay-node
+                                 (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc)))
+                                 (fn-own-take (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
+                                              (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                                 (fn-own-view-frontier (fn-own-view (fn-ocfg-owner oc))))))
+                            (ws (fn-own-view-withdrawals (fn-own-view (fn-ocfg-owner oc))))
+                            (verdicts (fn-own-view-verdicts (fn-own-view (fn-ocfg-owner oc)))))
+                 (:instance fn-ocl-projection-keeps-state-fields
+                            (a (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
+                            (p (fn-node-acceptance
+                                (fn-cst-replay-node
+                                 (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc)))
+                                 (fn-own-take (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))
+                                              (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+                                 (fn-own-view-frontier (fn-own-view (fn-ocfg-owner oc))))))))
+           :in-theory (e/d (fn-ocl-relation fn-ocl-view-historyp)
+                           (fn-cst-replay-node fn-cpr-replay fn-own-take
+                            fn-ocl-conns-historyp fn-ocl-conn-historyp
+                            fn-ocl-config-historyp fn-ocl-view-configp fn-cst-relation
+                            fn-ctl-visible-state fn-ctl-projectionp fn-node-statep
+                            fn-ocl-view-node-has-current-domain
+                            fn-ocl-projectionp-of-a-visible-state
+                            fn-ocl-projection-keeps-state-fields)))))
 
 ; NNT-042: the surviving connection has a history in the configured owner
 ; AFTER the read: with its old pin and fields when the read moved nothing

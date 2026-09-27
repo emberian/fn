@@ -832,9 +832,8 @@
    (equal (fn-auth-fold-post-awaiting (fn-served-repin-session as archive))
           (fn-auth-fold-post-awaiting as))
    :hints (("Goal" :in-theory (e/d (fn-served-repin-session fn-auth-fold-post-awaiting
-                                    fn-auth-with-base fn-peer-with-base
-                                    fn-post-make-session)
-                                   (fn-served-reselect))))))
+                                    fn-auth-with-base fn-peer-with-base)
+                                   (fn-served-reselect fn-post-make-session))))))
 
 (local
  (defthm fn-auth-fold-repin-preserves-safe-connp
