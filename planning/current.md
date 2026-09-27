@@ -30,7 +30,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | yes: `certify-20260927T132029Z-3476691` | no: source changed since 69046a76 | no: profile not deployed |
 | [M5](#m5) maintenance: operator compaction | `fn-cverb-pack-fits-the-disk` | yes | yes: `certify-20260927T123916Z-899190` | no: source changed since 69046a76 | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | yes: `certify-20260927T132029Z-3476691` | no: source changed since 69046a76 | no: dev source not on the node |
-| [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | cache only: `certify-20260927T132029Z-3476691` | no: source changed since 69046a76 | no: dev source not on the node |
+| [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | cache only: `certify-20260927T125019Z-3295997` | no: source changed since 69046a76 | no: dev source not on the node |
 
 ## Records
 
@@ -207,7 +207,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **the Message-ID index on the served path.** A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.
 
 - Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:2756, equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:97).
-- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:35; PRF-067 (uncertified-at-current-digest)); no archived manifest records it passed at the current source and closure; `certify-20260927T132029Z-3476691` installed a cached pair for them, made by a run not archived.
+- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:35; PRF-067 (uncertified-at-current-digest)); no archived manifest records it passed at the current source and closure; `certify-20260927T125019Z-3295997` installed a cached pair for them, made by a run not archived.
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native reader and peering modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/nntp-pinned-msgid.lisp`, `books/owner-tls-prefix.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `bbf52159`; changed since it: `books/nntp-pinned-msgid.lisp`, `books/owner-tls-prefix.lisp`, `host/owner-host.lisp`.
 - Latest positive result: reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
