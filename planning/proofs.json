@@ -324,7 +324,7 @@
         "fn-wire-feed-proper-of-rendered-block-lines",
         "fn-wire-drive-of-successful-render-block-preserves-source",
         "fn-wire-drive-of-host-rendered-article-preserves-source",
-        "fn-ocfg-read-tls-prefix-is-full-read"
+        "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -958,7 +958,7 @@
         "fn-wm-match-codepoints-work-value",
         "fn-wm-match-codepoints-work-cost-bound",
         "fn-article-parse-work-value",
-        "fn-article-parse-work-input-bound",
+        "fn-article-parse-under-work-input-bound",
         "fn-article-parse-work-profile-bound",
         "fn-served-feed-steps-bounded-by-chunk-length",
         "fn-served-step-nntp-steps-is-bounded"
@@ -3669,7 +3669,11 @@
         "fn-cei-build-append",
         "fn-scc-decode-segments-of-segments",
         "fn-bs-scp-program-crash-is-old-or-new",
-        "fn-bs-read-ranges-concatenate"
+        "fn-bs-read-ranges-concatenate",
+        "fn-ock-one-publication-in-flight",
+        "fn-ock-publication-next-decides-by-the-rule",
+        "fn-ock-finish-binds-the-captured-prefix",
+        "fn-ock-fast-path-within-k-by-definition"
       ]
     },
     {
@@ -5343,7 +5347,7 @@
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
         "fn-arena-seal-new-handle",
-        "fn-arena-seal-buffer{correspondence}",
+        "fn-arena-bytes-seal-buffer{correspondence}",
         "fn-arn-store-corr-of-commit",
         "fn-arn-store-corr-of-open"
       ],
@@ -7243,7 +7247,23 @@
         "fn-cat-load-from-empty",
         "fn-cat-relation-of-withdraw",
         "fn-cat-relation-of-redecide",
-        "fn-cat-relation-of-complete"
+        "fn-cat-relation-of-complete",
+        "fn-cat-load-of-nil",
+        "fn-cat-load-of-append",
+        "fn-cat-relation-of-non-article-append",
+        "fn-cat-relation-is-prefix-relation",
+        "fn-cat-prefix-relation-of-growth",
+        "fn-cat-wire-list-of-withdraw",
+        "fn-cat-wire-list-of-redecide",
+        "fn-cat-prefix-relation-of-withdraw",
+        "fn-cat-prefix-relation-of-redecide",
+        "fn-cat-ocl-relation-at-recover",
+        "fn-cat-ocl-relation-at-init",
+        "fn-cat-ocl-relation-of-article-finish",
+        "fn-cat-ocl-relation-before-article-finish",
+        "fn-cat-ocl-relation-of-other-finish",
+        "fn-cat-ocl-relation-of-withdraw",
+        "fn-cat-ocl-relation-of-redecide"
       ],
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
@@ -7284,7 +7304,18 @@
         "planning/evidence/catalog-slice-2026-09-26.md",
         "planning/evidence/manifests/certify-20260927T001344Z-408497.json"
       ],
-      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over."
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
+      "events": [
+        "fn-view-apply-is-refresh",
+        "fn-crf-apply-article-plain",
+        "fn-cat-view-below-of-commit",
+        "fn-cat-view-articles-of-commit-pinned",
+        "fn-cat-view-articles-of-commit-advanced",
+        "fn-cat-view-below-of-withdraw-pinned",
+        "fn-cat-view-articles-of-withdraw-pinned",
+        "fn-cat-view-below-of-withdraw-advanced",
+        "fn-cat-withdraw-then-commit-view"
+      ]
     },
     {
       "id": "PRF-203",
@@ -7630,7 +7661,12 @@
         "fn-sct-run-decode-of-run-segments",
         "fn-sct-decode-file-of-file-segments",
         "fn-ockp-run-writes-the-file",
-        "fn-ockp-run-is-the-remaining"
+        "fn-ockp-run-is-the-remaining",
+        "fn-ockp-encode-batch-ok-is-encodable",
+        "fn-ockp-step-preserves-statep",
+        "fn-ockp-step-preserves-encodable",
+        "fn-ockp-run-of-encodable-never-refuses-a-row",
+        "fn-ockp-setup-not-unencodable-never-refuses-a-row"
       ],
       "evidence": [
         "books/store-checkpoint-tables.lisp",
@@ -7726,7 +7762,25 @@
         "fn-nntp-archive-command-pinned-over-range-served",
         "fn-served-dispatch-over-range-served",
         "fn-served-step-over-range-carries-the-xref",
-        "fn-oag-listing-server-is-the-path-identity"
+        "fn-oag-listing-server-is-the-path-identity",
+        "fn-ipp-injected-octets-carry-the-parameters",
+        "fn-ipp-with-params-of-an-injection",
+        "fn-ipp-with-params-keeps-the-source",
+        "fn-ipp-params-of-a-login",
+        "fn-ipp-params-without-a-login",
+        "fn-ipp-params-are-a-parameter-run",
+        "fn-ipp-injected-octets-without-parameters",
+        "fn-ipp-addr-spec-has-no-quote-or-line-break",
+        "fn-pa-account-value-is-hex",
+        "fn-pa-account-value-depends-only-on-the-mac",
+        "fn-pa-account-value-determines-the-mac",
+        "fn-ipp-injected-octets-keep-the-d25-subject",
+        "fn-ipp-a-same-source-retry-is-the-same-article",
+        "fn-oii-stored-octets-keep-the-d25-subject",
+        "fn-ipp-an-injection-does-not-open-with-c",
+        "fn-ipp-same-articlep-of-two-injections",
+        "fn-ipp-path-agent-of-the-injected-octets",
+        "fn-ipp-an-injection-opens-with-p-or-i"
       ]
     },
     {
@@ -7836,11 +7890,9 @@
       ],
       "progress_note": "Lane bp-checkpoint-open (2026-09-26): the three books certified on hbox with certify_books.py (--incremental, 2 jobs); READY FOR BATCH, the deputy's batch certification is the cited manifest.",
       "events": [
-        "fn-lg-scan-of-log-append",
-        "fn-lg-scan-of-log",
-        "fn-lg-torn-variant-len",
-        "fn-lg-scan-of-torn-entry",
-        "fn-lg-scan-of-log-then-torn-entry"
+        "fn-bpnrb-checkpoint-decode-is-decode",
+        "fn-bpnrb-selection-plan-is-selection-plan",
+        "fn-bpnrb-dec-is-dec"
       ]
     },
     {

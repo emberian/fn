@@ -375,7 +375,6 @@
         "PRF-007",
         "PRF-044",
         "PRF-050",
-        "PRF-216",
         "PRF-244",
         "PRF-245",
         "PRF-246"
@@ -478,7 +477,6 @@
         "PRF-080",
         "PRF-083",
         "PRF-110",
-        "PRF-216",
         "PRF-244",
         "PRF-245",
         "PRF-246"
@@ -3183,7 +3181,6 @@
       "status": "specified",
       "proof_targets": [
         "PRF-169",
-        "PRF-216",
         "PRF-244",
         "PRF-245",
         "PRF-246"
