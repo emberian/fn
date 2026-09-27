@@ -858,6 +858,8 @@
     "books/served-catalog-join-refresh",
     "books/served-catalog-join-step",
     "books/served-catalog-join",
+    "books/served-catalog-join-number",
+    "books/served-catalog-join-open",
     "books/poster-bytes-buffer",
     "books/store-checkpoint-buffer",
     "books/store-checkpoint-reader",
@@ -891,6 +893,7 @@
     "tests/acl2/served-catalog-scan-tests",
     "tests/acl2/served-catalog-owner-tests",
     "tests/acl2/served-catalog-join-tests",
+    "tests/acl2/served-catalog-join-open-tests",
     "books/acceptance-payload-ref",
     "tests/acl2/acceptance-payload-ref-tests",
     "books/payload-kinds",
@@ -1284,12 +1287,12 @@
     "tests/acl2/proto-adt-tests"
   ],
   "totals": {
-    "books": 1318,
-    "books_in_root_closure": 1314,
-    "roots": 1280,
+    "books": 1319,
+    "books_in_root_closure": 1317,
+    "roots": 1283,
     "theorems": 19705,
-    "functions": 13587,
-    "assert_events": 19363,
+    "functions": 13591,
+    "assert_events": 19373,
     "must_fails": 2193,
     "prover_refusals": 0,
     "encapsulates": 101,
@@ -1297,13 +1300,13 @@
       "verified": 2497,
       "declared-off": 1642,
       "default-guarded": 7582,
-      "default-unguarded": 1866
+      "default-unguarded": 1870
     },
     "suspect_theorems": 1027,
     "export_hygiene_warnings": 246,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 231,
-    "include_hygiene_warnings": 1793,
+    "include_hygiene_warnings": 1795,
     "host_names_warnings": 1419,
     "hand_written_record_warnings": 18
   },
@@ -18028,8 +18031,8 @@
     },
     {
       "book": "books/served-catalog-join-number.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 23,
       "functions": 7,
       "guards": {
@@ -18059,8 +18062,8 @@
     },
     {
       "book": "books/served-catalog-join-open.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 38,
       "functions": 2,
       "guards": {
@@ -35310,6 +35313,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-catalog-join-open-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-catalog-join-open",
+        "owner-cancel-refresh-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-catalog-join-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -44429,7 +44459,7 @@
     {
       "theorem": "fn-scj-fields-of-with-numbers",
       "book": "books/served-catalog-join-number.lisp",
-      "line": 76,
+      "line": 78,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -44437,7 +44467,7 @@
     {
       "theorem": "fn-scj-fields-of-with-withdrawn",
       "book": "books/served-catalog-join-number.lisp",
-      "line": 207,
+      "line": 209,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -44461,7 +44491,7 @@
     {
       "theorem": "fn-scj-numbers-of-assign",
       "book": "books/served-catalog-join-number.lisp",
-      "line": 184,
+      "line": 186,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -44469,7 +44499,7 @@
     {
       "theorem": "fn-scj-row-art-of-assign",
       "book": "books/served-catalog-join-number.lisp",
-      "line": 174,
+      "line": 176,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61615,6 +61645,20 @@
         "line": 230,
         "include": "served-scan-tests",
         "included": "tests/acl2/served-scan-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-catalog-join-open-tests.lisp",
+        "line": 32,
+        "include": "owner-cancel-refresh-tests",
+        "included": "tests/acl2/owner-cancel-refresh-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-catalog-join-open-tests.lisp",
+        "line": 33,
+        "include": "../../books/served-catalog-join-open",
+        "included": "books/served-catalog-join-open.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

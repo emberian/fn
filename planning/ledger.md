@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1318 |
-| Certification roots in the Makefile | 1280 |
-| Books inside the root closure | 1314 |
+| Books read | 1319 |
+| Certification roots in the Makefile | 1283 |
+| Books inside the root closure | 1317 |
 | `defthm` and `defthmd` events | 19705 |
-| `defun` events | 13587 |
+| `defun` events | 13591 |
 | Functions with verified guards | 2497 |
 | Functions declared `:verify-guards nil` and never verified | 1642 |
 | Functions left at the default with an explicit guard | 7582 |
-| Functions left at the default with no guard | 1866 |
-| `assert-event` checks | 19363 |
+| Functions left at the default with no guard | 1870 |
+| `assert-event` checks | 19373 |
 | `must-fail` checks | 2193 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 101 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 246 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 231 |
-| Include-hygiene warnings | 1793 |
+| Include-hygiene warnings | 1795 |
 | Host-names warnings | 1419 |
 | Hand-written-record warnings | 18 |
 
@@ -664,8 +664,8 @@ that `make certify` requests.
 | `books/scheduler.lisp` | root | 64 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/served-carried.lisp` | root | 18 | 13 | 1/0/12/0 | 0 | 0 | 0 |
 | `books/served-catalog-chain.lisp` | root | 49 | 27 | 14/1/6/6 | 0 | 0 | 10 |
-| `books/served-catalog-join-number.lisp` | - | 23 | 7 | 0/3/3/1 | 0 | 0 | 4 |
-| `books/served-catalog-join-open.lisp` | - | 38 | 2 | 0/1/0/1 | 0 | 0 | 2 |
+| `books/served-catalog-join-number.lisp` | root | 23 | 7 | 0/3/3/1 | 0 | 0 | 4 |
+| `books/served-catalog-join-open.lisp` | root | 38 | 2 | 0/1/0/1 | 0 | 0 | 2 |
 | `books/served-catalog-join-refresh.lisp` | root | 20 | 1 | 0/1/0/0 | 0 | 0 | 1 |
 | `books/served-catalog-join-step.lisp` | root | 32 | 2 | 0/1/0/1 | 0 | 0 | 1 |
 | `books/served-catalog-join.lisp` | root | 23 | 2 | 0/1/0/1 | 0 | 0 | 3 |
@@ -1266,6 +1266,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-catalog-chain-tests.lisp` | root | 5 | 5 | 0/2/0/3 | 4 | 5 | 0 |
+| `tests/acl2/served-catalog-join-open-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 10 | 0 | 0 |
 | `tests/acl2/served-catalog-join-tests.lisp` | root | 7 | 6 | 0/3/0/3 | 22 | 0 | 1 |
 | `tests/acl2/served-catalog-owner-tests.lisp` | root | 0 | 21 | 0/5/0/16 | 42 | 2 | 0 |
 | `tests/acl2/served-catalog-scan-tests.lisp` | root | 0 | 10 | 0/6/0/4 | 9 | 0 | 0 |
@@ -2056,12 +2057,12 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sched-mark-expired-keeps-the-fields` | `books/scheduler-invariants.lisp` | 167 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scj-acc-rowsp-is-fields` | `books/served-catalog-join-open.lisp` | 145 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scj-articles-of-visible-state-of` | `books/served-catalog-join.lisp` | 197 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scj-fields-of-with-numbers` | `books/served-catalog-join-number.lisp` | 76 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scj-fields-of-with-withdrawn` | `books/served-catalog-join-number.lisp` | 207 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scj-fields-of-with-numbers` | `books/served-catalog-join-number.lisp` | 78 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scj-fields-of-with-withdrawn` | `books/served-catalog-join-number.lisp` | 209 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scj-node-with-retention-keeps-acceptance` | `books/served-catalog-join-open.lisp` | 77 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scj-number-in-of-with-withdrawn` | `books/served-catalog-join.lisp` | 147 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scj-numbers-of-assign` | `books/served-catalog-join-number.lisp` | 184 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scj-row-art-of-assign` | `books/served-catalog-join-number.lisp` | 174 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scj-numbers-of-assign` | `books/served-catalog-join-number.lisp` | 186 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scj-row-art-of-assign` | `books/served-catalog-join-number.lisp` | 176 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scj-sequence-of-assign` | `books/served-catalog-join.lisp` | 109 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scj-with-withdrawn-fields` | `books/served-catalog-join-refresh.lisp` | 169 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scj-withdrawn-of-assign` | `books/served-catalog-join-step.lisp` | 225 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
