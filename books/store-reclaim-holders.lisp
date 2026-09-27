@@ -26,6 +26,7 @@
 (in-package "ACL2")
 (include-book "store-reclaim")
 (include-book "store-node")
+(include-book "payload-arena")
 
 ; A registered consumer whose acknowledgement is below FRONTIER.
 (defun fn-rcl-lagging-consumerp (entries frontier)
@@ -107,13 +108,232 @@
          (fn-rcl-held-count rule now h verdicts (cdr articles)))
     0))
 
-(defun fn-rcl-store-counts (rule now s)
-  (declare (xargs :guard t :verify-guards nil))
+; -----------------------------------------------------------------------------
+; The counts over the arena (audit-fixes, 2026-09-27).  Since the acceptance
+; flip an article's payload is a HANDLE into the arena
+; (books/payload-arena.lisp).  `fn-rcl-summary' is the octet-list model: it
+; reads the payload as octets, so over handles its two octet figures were 0
+; for every article and it never saw a tombstone (an already-reclaimed
+; article was counted again by its holders).  ALPHA of an article replaces its
+; handle by the octets the arena holds there (an octet payload is its own);
+; the counts the host calls read each length and the tombstone's fixed head
+; through the arena, never copying an article's bytes, and are the model's
+; counts over ALPHA (KEYSTONE fn-rcl-store-counts-is-the-model-over-alpha).
+(fn-payload-kind fn-rcl-payload-bytes :handle "reads the arena at the handle")
+(defun fn-rcl-payload-bytes (p fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (natp p)
+      (if (< p (fn-arena-count fn-arena)) (fn-arena-payload p fn-arena) nil)
+    p))
+(defun fn-rcl-article-alpha (a fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-make-article (fn-article-msgid a)
+                   (fn-rcl-payload-bytes (fn-article-payload a) fn-arena)
+                   (fn-article-groups a) (fn-article-memberships a)
+                   (fn-article-pin a) (fn-article-stamp a)))
+(defun fn-rcl-articles-alpha (articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp articles)
+      (cons (fn-rcl-article-alpha (car articles) fn-arena)
+            (fn-rcl-articles-alpha (cdr articles) fn-arena))
+    nil))
+(defun fn-rcl-arena-prefixp (prefix h i fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (true-listp prefix) (natp h) (natp i)
+                              (< h (fn-arena-count fn-arena)))
+                  :measure (len prefix)))
+  (if (consp prefix)
+      (and (< i (fn-arena-payload-len h fn-arena))
+           (equal (car prefix) (fn-arena-get h i fn-arena))
+           (fn-rcl-arena-prefixp (cdr prefix) h (+ 1 i) fn-arena))
+    t))
+(encapsulate ()
+  (local (defthm fn-rcl-car-nthcdr (equal (car (nthcdr i xs)) (nth i xs))))
+  (local (defthm fn-rcl-cdr-nthcdr
+           (implies (natp i) (equal (cdr (nthcdr i xs)) (nthcdr (+ 1 i) xs)))))
+  (local (defthm fn-rcl-nthcdr-of-nil (equal (nthcdr i nil) nil)))
+  (local (defthm fn-rcl-consp-nthcdr
+           (implies (natp i) (iff (consp (nthcdr i xs)) (< i (len xs))))))
+  (local (in-theory (disable nthcdr nth)))
+  (defthm fn-rcl-arena-prefixp-is-rcl-prefixp
+    (implies (natp i)
+             (equal (fn-rcl-arena-prefixp prefix h i fn-arena)
+                    (fn-rcl-prefixp prefix (nthcdr i (nth h fn-arena)))))
+    :hints (("Goal" :induct (fn-rcl-arena-prefixp prefix h i fn-arena)
+             :in-theory (enable fn-rcl-prefixp fn-arena-get-is-nth
+                                fn-arena-payload-len-is-len-nth)))))
+(defthm fn-rcl-arena-prefixp-at-0
+  (equal (fn-rcl-arena-prefixp prefix h 0 fn-arena)
+         (fn-rcl-prefixp prefix (nth h fn-arena)))
+  :hints (("Goal" :use ((:instance fn-rcl-arena-prefixp-is-rcl-prefixp (i 0)))
+           :in-theory (enable nthcdr))))
+(local
+ (defthm fn-rcl-at-leastp-is-len
+   (implies (natp n)
+            (equal (fn-rcl-at-leastp n xs) (<= n (len xs))))
+   :hints (("Goal" :in-theory (enable fn-rcl-at-leastp)))))
+(local
+ (defthm fn-rcl-tombstonep-unfolds
+   (equal (fn-rcl-tombstonep payload)
+          (and (<= *fn-rcl-tombstone-fixed* (len payload))
+               (fn-rcl-prefixp *fn-rcl-magic* payload)))
+   :hints (("Goal" :in-theory '(fn-rcl-tombstonep fn-rcl-at-leastp-is-len
+                                 (:e natp))))))
+(fn-payload-kind fn-rcl-payload-len :handle "reads the arena at the handle")
+(defun fn-rcl-payload-len (p fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :in-theory '(fn-rcl-payload-bytes
+                                                     fn-arena-payload-is-nth
+                                                     fn-arena-count-is-len
+                                                     fn-arena-payload-len-is-len-nth)))))
+  (mbe :logic (len (fn-rcl-payload-bytes p fn-arena))
+       :exec (if (and (natp p) (< p (fn-arena-count fn-arena)))
+                 (fn-arena-payload-len p fn-arena)
+               (len (fn-rcl-payload-bytes p fn-arena)))))
+(fn-payload-kind fn-rcl-payload-tombstonep :handle "reads the arena at the handle")
+(defun fn-rcl-payload-tombstonep (p fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :in-theory '(fn-rcl-tombstonep-unfolds
+                                                     fn-rcl-payload-bytes
+                                                     fn-arena-payload-is-nth
+                                                     fn-arena-count-is-len
+                                                     fn-arena-payload-len-is-len-nth
+                                                     fn-rcl-arena-prefixp-at-0)))))
+  (mbe :logic (fn-rcl-tombstonep (fn-rcl-payload-bytes p fn-arena))
+       :exec (if (and (natp p) (< p (fn-arena-count fn-arena)))
+                 (and (<= *fn-rcl-tombstone-fixed* (fn-arena-payload-len p fn-arena))
+                      (fn-rcl-arena-prefixp *fn-rcl-magic* p 0 fn-arena))
+               (fn-rcl-tombstonep (fn-rcl-payload-bytes p fn-arena)))))
+; A tombstone is small (its fixed 89 octets and the Path agent), so its
+; length field is read from its bytes.
+(fn-payload-kind fn-rcl-payload-tomb-length :handle "reads the arena at the handle")
+(defun fn-rcl-payload-tomb-length (p fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-rcl-tomb-length (fn-rcl-payload-bytes p fn-arena)))
+
+(defun fn-rcl-verdict-in (rule now h verdicts a fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (fn-rcl-payload-tombstonep (fn-article-payload a) fn-arena)
+      :already-reclaimed
+    (fn-rcl-standing-verdict rule now h verdicts a)))
+
+(defun fn-rcl-summary-in (rule now h verdicts articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp articles)
+      (let* ((rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena))
+             (a (car articles))
+             (p (fn-article-payload a))
+             (verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
+        (cond ((equal verdict :reclaimable)
+               (list (+ 1 (nfix (nth 0 rest)))
+                     (+ (fn-rcl-payload-len p fn-arena) (nfix (nth 1 rest)))
+                     (nfix (nth 2 rest)) (nfix (nth 3 rest))))
+              ((equal verdict :already-reclaimed)
+               (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                     (+ 1 (nfix (nth 2 rest)))
+                     (+ (nfix (- (fn-rcl-payload-tomb-length p fn-arena)
+                                 (fn-rcl-payload-len p fn-arena)))
+                        (nfix (nth 3 rest)))))
+              (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                       (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
+    (list 0 0 0 0)))
+
+(defun fn-rcl-held-count-in (rule now h verdicts articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp articles)
+      (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena)) 1 0)
+         (fn-rcl-held-count-in rule now h verdicts (cdr articles) fn-arena))
+    0))
+
+; (reclaimable reclaimable-octets reclaimed reclaimed-octets-freed held):
+; what `status' prints and the reclaim verbs report.
+(defun fn-rcl-store-counts (rule now s fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((h (fn-rcl-store-holders s))
         (verdicts (fn-sn-verdicts s))
         (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
-    (append (fn-rcl-summary rule now h verdicts articles)
-            (list (fn-rcl-held-count rule now h verdicts articles)))))
+    (append (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+            (list (fn-rcl-held-count-in rule now h verdicts articles fn-arena)))))
+
+(local
+ (defthm fn-rcl-article-alpha-accessors
+   (and (equal (fn-article-msgid (fn-rcl-article-alpha a fn-arena)) (fn-article-msgid a))
+        (equal (fn-article-memberships (fn-rcl-article-alpha a fn-arena))
+               (fn-article-memberships a))
+        (equal (fn-article-stamp (fn-rcl-article-alpha a fn-arena)) (fn-article-stamp a))
+        (equal (fn-article-payload (fn-rcl-article-alpha a fn-arena))
+               (fn-rcl-payload-bytes (fn-article-payload a) fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-rcl-article-alpha) (fn-rcl-payload-bytes))))))
+
+(local
+ (defthm fn-rcl-tombstonep-of-an-atom
+   (implies (not (consp p)) (not (fn-rcl-tombstonep p)))
+   :hints (("Goal" :in-theory (enable fn-rcl-tombstonep fn-rcl-at-leastp)))))
+
+; The verdict reads the payload only for the tombstone test, so the verdict
+; of ALPHA is the tombstone test of the bytes, else the standing verdict of
+; the article itself (which reads no payload).
+(local
+ (defthm fn-rcl-verdict-of-alpha
+   (equal (fn-rcl-verdict rule now h verdicts (fn-rcl-article-alpha a fn-arena))
+          (if (fn-rcl-tombstonep (fn-rcl-payload-bytes (fn-article-payload a) fn-arena))
+              :already-reclaimed
+            (fn-rcl-standing-verdict rule now h verdicts a)))
+   :hints (("Goal" :in-theory (e/d (fn-rcl-verdict fn-rcl-standing-verdict
+                                    fn-rcl-article-alpha-accessors)
+                                   (fn-rcl-tombstonep fn-rcl-rulep fn-rcl-rule-permits
+                                    fn-rcl-verdict-heldp fn-rcl-pinned-p
+                                    fn-rcl-unacknowledged-p fn-rcl-undelivered-p
+                                    fn-rcl-article-alpha fn-rcl-payload-bytes))))))
+
+(defthm fn-rcl-verdict-in-is-verdict-of-alpha
+  (equal (fn-rcl-verdict-in rule now h verdicts a fn-arena)
+         (fn-rcl-verdict rule now h verdicts (fn-rcl-article-alpha a fn-arena)))
+  :hints (("Goal" :in-theory '(fn-rcl-verdict-in fn-rcl-payload-tombstonep
+                               fn-rcl-verdict-of-alpha))))
+
+(defthm fn-rcl-summary-in-is-summary-of-alpha
+  (equal (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+         (fn-rcl-summary rule now h verdicts (fn-rcl-articles-alpha articles fn-arena)))
+  :hints (("Goal" :induct (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+           :in-theory (e/d (fn-rcl-summary fn-rcl-summary-in fn-rcl-articles-alpha
+                            fn-rcl-payload-len fn-rcl-payload-tomb-length
+                            fn-rcl-article-alpha-accessors)
+                           (fn-rcl-verdict fn-rcl-verdict-in fn-rcl-standing-verdict
+                            fn-rcl-tombstonep
+                            fn-rcl-tomb-length fn-rcl-payload-bytes fn-rcl-article-alpha)))))
+
+(defthm fn-rcl-held-count-in-is-held-count-of-alpha
+  (equal (fn-rcl-held-count-in rule now h verdicts articles fn-arena)
+         (fn-rcl-held-count rule now h verdicts (fn-rcl-articles-alpha articles fn-arena)))
+  :hints (("Goal" :induct (fn-rcl-held-count-in rule now h verdicts articles fn-arena)
+           :in-theory (e/d (fn-rcl-held-count fn-rcl-held-count-in fn-rcl-articles-alpha)
+                           (fn-rcl-verdict fn-rcl-verdict-in fn-rcl-standing-verdict
+                            fn-rcl-heldp fn-rcl-article-alpha)))))
+
+; KEYSTONE.  The counts the host calls (status's reclaim line,
+; books/native-live-status.lisp fn-nls-reclaim-words; the reclaim verb's
+; decision, books/store-log-reclaim.lisp fn-lgr-decide(-stream)) are the
+; octet-list model's summary and held count
+; over ALPHA of the Store's articles: each reclaimable article counts its
+; stored octets, each tombstone its freed octets.
+(defthm fn-rcl-store-counts-is-the-model-over-alpha
+  (let ((h (fn-rcl-store-holders s))
+        (verdicts (fn-sn-verdicts s))
+        (alpha (fn-rcl-articles-alpha
+                (fn-state-articles (fn-node-acceptance (fn-sn-node s))) fn-arena)))
+    (equal (fn-rcl-store-counts rule now s fn-arena)
+           (append (fn-rcl-summary rule now h verdicts alpha)
+                   (list (fn-rcl-held-count rule now h verdicts alpha)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-rcl-store-counts fn-rcl-summary-in-is-summary-of-alpha
+                               fn-rcl-held-count-in-is-held-count-of-alpha))))
+
+; The books above reason about the counts as they did before the flip: the
+; equalities stay off unless a proof names them.
+(in-theory (disable fn-rcl-verdict-in-is-verdict-of-alpha
+                    fn-rcl-summary-in-is-summary-of-alpha
+                    fn-rcl-held-count-in-is-held-count-of-alpha))
 
 ; -----------------------------------------------------------------------------
 ; Why an :absent verdict holds nothing (`fn-rcl-verdict-heldp',
@@ -135,3 +355,195 @@
                                      (:d fn-stx-delta) (:d fn-stx-verifiedp)
                                      (:d fn-stx-statement-of) fn-prin-verifiedp
                                      fn-stx-make-verdict fn-stx-verdict-token))))
+
+; -----------------------------------------------------------------------------
+; The retention classes (PKT-844, lane bp-retention-leftovers).  `status'
+; printed articles=N beside reclaimable, held and reclaimed, and an article
+; that an authorship verdict keeps (a signed article: every kind-4 composite,
+; a served key statement among them) or that the rule keeps (keep-forever,
+; too recent, an unusable rule) was in none of them: 24 statement
+; composites were missing from the accounting in ack-before-barrier's
+; power-loss campaign.  ACL2 decides each article's class:
+;
+;   :reclaimed    its payload is a tombstone;
+;   :signed       an accepted authorship verdict other than :absent names it
+;                 (STO-008): its payload is retained with the identity state
+;                 that verdict belongs to, under EVERY rule, clock and holder
+;                 set -- article retention never expires it
+;                 (`fn-rcl-signed-article-is-never-reclaimable');
+;   :reclaimable  the rule releases it now;
+;   :held         a holder keeps it (reader pin, consumer, feed, BP);
+;   :kept         the rule keeps it (keep-forever, too recent, a rule the
+;                 store cannot apply).
+;
+; A signed article is :signed whatever the rule says: its reason to stay is
+; the verdict, which no rule overrides.  The classes partition the articles
+; (`fn-rcl-store-classes-partition-the-articles').
+(defun fn-rcl-class-in (rule now h verdicts a fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let ((verdict (fn-rcl-verdict-in rule now h verdicts a fn-arena)))
+    (cond ((equal verdict :already-reclaimed) :reclaimed)
+          ((fn-rcl-verdict-heldp (fn-article-msgid a) verdicts) :signed)
+          ((equal verdict :reclaimable) :reclaimable)
+          ((fn-rcl-heldp verdict) :held)
+          (t :kept))))
+
+(defun fn-rcl-class-count-in (class rule now h verdicts articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (consp articles)
+      (+ (if (equal (fn-rcl-class-in rule now h verdicts (car articles) fn-arena)
+                    class)
+             1 0)
+         (fn-rcl-class-count-in class rule now h verdicts (cdr articles) fn-arena))
+    0))
+
+; (signed kept): the two classes `status' prints beside the reclaim counts.
+(defun fn-rcl-store-classes (rule now s fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let ((h (fn-rcl-store-holders s))
+        (verdicts (fn-sn-verdicts s))
+        (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+    (list (fn-rcl-class-count-in :signed rule now h verdicts articles fn-arena)
+          (fn-rcl-class-count-in :kept rule now h verdicts articles fn-arena))))
+
+; A signed article is never released by article retention: whatever the
+; rule, the instant and the holders, its verdict is not :reclaimable (the
+; verdict test precedes the holder tests and the release, books/store-
+; reclaim `fn-rcl-verdict').
+(defthm fn-rcl-signed-article-is-never-reclaimable
+  (implies (fn-rcl-verdict-heldp (fn-article-msgid article) verdicts)
+           (not (fn-rcl-reclaimable rule now h verdicts article)))
+  :hints (("Goal" :in-theory '(fn-rcl-reclaimable fn-rcl-standing-verdict))))
+
+(local
+ (defthm fn-rcl-class-count-in-of-cons
+   (implies (consp articles)
+            (equal (fn-rcl-class-count-in class rule now h verdicts articles fn-arena)
+                   (+ (if (equal (fn-rcl-class-in rule now h verdicts (car articles)
+                                                  fn-arena)
+                                 class)
+                          1 0)
+                      (fn-rcl-class-count-in class rule now h verdicts (cdr articles)
+                                             fn-arena))))
+   :hints (("Goal" :in-theory '(fn-rcl-class-count-in)))))
+
+(local
+ (defthm fn-rcl-summary-in-shape
+   (and (true-listp (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+        (equal (len (fn-rcl-summary-in rule now h verdicts articles fn-arena)) 4)
+        (natp (nth 0 (fn-rcl-summary-in rule now h verdicts articles fn-arena)))
+        (natp (nth 2 (fn-rcl-summary-in rule now h verdicts articles fn-arena))))
+   :hints (("Goal" :induct (fn-rcl-summary-in rule now h verdicts articles fn-arena)
+            :in-theory (e/d (fn-rcl-summary-in) (fn-rcl-verdict-in
+                                                 fn-rcl-payload-len
+                                                 fn-rcl-payload-tomb-length))))))
+
+; A signed article's verdict is never a holder's and never :reclaimable.
+(local
+ (defthm fn-rcl-signed-verdict-in
+   (implies (fn-rcl-verdict-heldp (fn-article-msgid a) verdicts)
+            (and (not (equal (fn-rcl-verdict-in rule now h verdicts a fn-arena)
+                             :reclaimable))
+                 (not (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts a
+                                                       fn-arena)))))
+   :hints (("Goal" :in-theory '(fn-rcl-verdict-in fn-rcl-standing-verdict
+                                fn-rcl-heldp
+                                (:e member-equal) member-equal
+                                (:e fn-rcl-heldp))))))
+
+(local
+ (defthm fn-rcl-summary-in-counts-of-cons
+   (implies (consp articles)
+            (let ((v (fn-rcl-verdict-in rule now h verdicts (car articles) fn-arena))
+                  (rest (fn-rcl-summary-in rule now h verdicts (cdr articles) fn-arena)))
+              (and (equal (nth 0 (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+                          (+ (if (equal v :reclaimable) 1 0) (nth 0 rest)))
+                   (equal (nth 2 (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+                          (+ (if (equal v :already-reclaimed) 1 0) (nth 2 rest))))))
+   :hints (("Goal" :expand ((fn-rcl-summary-in rule now h verdicts articles fn-arena))
+            :use ((:instance fn-rcl-summary-in-shape (articles (cdr articles))))
+            :in-theory (e/d () (fn-rcl-summary-in fn-rcl-verdict-in
+                                fn-rcl-payload-len fn-rcl-payload-tomb-length
+                                fn-rcl-summary-in-shape))))))
+
+(local
+ (defthm fn-rcl-held-count-in-of-cons
+   (implies (consp articles)
+            (equal (fn-rcl-held-count-in rule now h verdicts articles fn-arena)
+                   (+ (if (fn-rcl-heldp (fn-rcl-verdict-in rule now h verdicts
+                                                           (car articles) fn-arena))
+                          1 0)
+                      (fn-rcl-held-count-in rule now h verdicts (cdr articles)
+                                            fn-arena))))
+   :hints (("Goal" :in-theory '(fn-rcl-held-count-in)))))
+
+; One article is in exactly one class.
+(local
+ (defthm fn-rcl-one-article-one-class
+   (let ((v (fn-rcl-verdict-in rule now h verdicts a fn-arena))
+         (c (fn-rcl-class-in rule now h verdicts a fn-arena)))
+     (equal (+ (if (equal v :reclaimable) 1 0)
+               (if (equal v :already-reclaimed) 1 0)
+               (if (fn-rcl-heldp v) 1 0)
+               (if (equal c :signed) 1 0)
+               (if (equal c :kept) 1 0))
+            1))
+   :hints (("Goal" :use ((:instance fn-rcl-signed-verdict-in))
+            :in-theory '(fn-rcl-class-in fn-rcl-heldp (:e member-equal)
+                         member-equal (:e fn-rcl-heldp))))))
+
+(local
+ (defthm fn-rcl-classes-partition-in
+   (equal (+ (nth 0 (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+             (nth 2 (fn-rcl-summary-in rule now h verdicts articles fn-arena))
+             (fn-rcl-held-count-in rule now h verdicts articles fn-arena)
+             (fn-rcl-class-count-in :signed rule now h verdicts articles fn-arena)
+             (fn-rcl-class-count-in :kept rule now h verdicts articles fn-arena))
+          (len articles))
+   :hints (("Goal" :induct (len articles)
+            :in-theory (e/d (len)
+                            (fn-rcl-summary-in fn-rcl-held-count-in
+                             fn-rcl-class-count-in fn-rcl-class-in
+                             fn-rcl-verdict-in fn-rcl-heldp fn-rcl-verdict-heldp
+                             fn-rcl-payload-len fn-rcl-payload-tomb-length)))
+           ("Subgoal *1/2" :expand ((fn-rcl-summary-in rule now h verdicts articles fn-arena)
+                                    (fn-rcl-held-count-in rule now h verdicts articles fn-arena)
+                                    (fn-rcl-class-count-in :signed rule now h verdicts articles
+                                                           fn-arena)
+                                    (fn-rcl-class-count-in :kept rule now h verdicts articles
+                                                           fn-arena)))
+           ("Subgoal *1/1" :use ((:instance fn-rcl-one-article-one-class
+                                             (a (car articles))))))))
+
+(local
+ (defthm fn-rcl-nth-of-four-and-one
+   (implies (and (true-listp l) (equal (len l) 4))
+            (and (equal (nth 0 (append l (list x))) (nth 0 l))
+                 (equal (nth 2 (append l (list x))) (nth 2 l))
+                 (equal (nth 4 (append l (list x))) x)))
+   :hints (("Goal" :expand ((len l) (len (cdr l)) (len (cddr l)) (len (cdddr l))
+                            (len (cddddr l)) (true-listp l) (true-listp (cdr l))
+                            (true-listp (cddr l)) (true-listp (cdddr l))
+                            (true-listp (cddddr l)))))))
+
+;  KEYSTONE (PKT-844: every article is in exactly one class).  The counts
+; `status' prints (books/native-live-status.lisp fn-nls-reclaim-words:
+; reclaimable, reclaimed and held from `fn-rcl-store-counts', signed and kept
+; from `fn-rcl-store-classes') sum to the Store's article count, the
+; articles=N of the same report.
+(defthm fn-rcl-store-classes-partition-the-articles
+  (let ((counts (fn-rcl-store-counts rule now s fn-arena))
+        (classes (fn-rcl-store-classes rule now s fn-arena)))
+    (equal (+ (nth 0 counts) (nth 2 counts) (nth 4 counts)
+              (nth 0 classes) (nth 1 classes))
+           (len (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-rcl-classes-partition-in
+                                   (h (fn-rcl-store-holders s))
+                                   (verdicts (fn-sn-verdicts s))
+                                   (articles (fn-state-articles
+                                              (fn-node-acceptance (fn-sn-node s))))))
+           :in-theory '(fn-rcl-store-counts fn-rcl-store-classes
+                        fn-rcl-summary-in-shape fn-rcl-nth-of-four-and-one
+                        nth-0-cons nth-add1 car-cons cdr-cons (:e nth)
+                        (:e zp) (:e binary-+) (:e unary--)))))

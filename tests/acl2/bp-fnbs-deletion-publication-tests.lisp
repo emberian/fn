@@ -2,7 +2,7 @@
 (include-book "../../books/bp-fnbs-deletion-publication")
 (include-book "bp-node-report-step-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpdp-operation ()
   (declare (xargs :guard t :verify-guards nil))
@@ -32,7 +32,7 @@
                                            :lifetime-expired)
               t t))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnf-delete-publication-operationp
    (fn-bpnf-delete-publication-authorize

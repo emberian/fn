@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-replay-invariants")
 (include-book "bp-fnbs-codec-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnfr-second*
   (fn-bpnf-stored-record
@@ -50,7 +50,7 @@
         :fault))
 (assert-event
  (equal (car (fn-bpnf-replay-rows (bpnfr-rows) 1 1048576)) :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-replay-rows
           (list (list "9-0.fnb" (cadr (bpnfr-first-row)))) 4 1048576)

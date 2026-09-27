@@ -37,6 +37,10 @@
 #      module runs through tools/test_budget.py --one, and its line in
 #      run.log is OK (N ran, K skipped), FAILED, or SKIPPED (N of N) with
 #      every skip's reason; a SKIPPED module makes the status 4;
+#      When the tree holds the production image (or the one --env
+#      FN_NATIVE_HOST names), tools/native_env.py identity exports its four
+#      identity variables (launcher, core and runtime SHA-256, and the source:
+#      the commit, or HEAD+dirty for `.`) for every module;
 #   5. writes every log to logs/ and SHA256SUMS (images and logs), then
 #      `status` holding the first failing step's exit code, 0 if none.
 #
@@ -60,7 +64,22 @@
 # Replaces the hand-rolled rsync + image.sh + OpenSSL exports 145 lanes wrote
 # (friction review 2026-09-26 section 5).  Never touches /tank/fn/node.
 set -eu
-HERE=$(cd "$(dirname "$0")/.." && pwd)
+# Copy-then-run (lane tooling-leftovers, 2026-09-27): sh reads a script as it
+# runs it, and a run waits here for an hour or more, so a merge or an edit
+# of this file in the worktree mid-run changed the commands the running
+# instance read next.  The first thing it does is copy itself and
+# tools/wait_for.sh into a private directory and exec the copy; nothing
+# after this block reads the worktree's copy of either.
+if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
+    FN_HBOX_NATIVE_HERE=$(cd "$(dirname "$0")/.." && pwd)
+    FN_HBOX_NATIVE_COPY=$(mktemp -d "${TMPDIR:-/tmp}/hbox_native.XXXXXX") || exit 3
+    cp "$FN_HBOX_NATIVE_HERE/tools/hbox_native.sh" "$FN_HBOX_NATIVE_HERE/tools/wait_for.sh" \
+        "$FN_HBOX_NATIVE_COPY/" || exit 3
+    export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
+    exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
+fi
+trap 'rm -rf "$FN_HBOX_NATIVE_COPY"' EXIT
+HERE=$FN_HBOX_NATIVE_HERE
 HOST=${FN_HBOX:-hbox}
 NAME=$(basename "$HERE")
 LABEL=
@@ -143,10 +162,14 @@ ENVARGS=
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
 PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS "$@") || exit 2
 if [ "$REV" = . ]; then
-    SOURCE="worktree $(git -C "$HERE" rev-parse --short=12 HEAD)$(git -C "$HERE" diff --quiet HEAD -- 2>/dev/null || echo '+dirty')"
+    # The image's declared source: HEAD, marked +dirty for uncommitted edits
+    # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
+    SOURCE_ID=$(git -C "$HERE" rev-parse HEAD)$(git -C "$HERE" diff --quiet HEAD -- 2>/dev/null || echo '+dirty')
+    SOURCE="worktree $SOURCE_ID"
     [ -n "$LABEL" ] || LABEL=wt-$(date -u +%Y%m%dT%H%M%SZ)
 else
     FULL=$(git -C "$HERE" rev-parse --verify "$REV^{commit}") || { echo "hbox_native: no commit $REV" >&2; exit 2; }
+    SOURCE_ID=$FULL
     SOURCE="commit $FULL"
     [ -n "$LABEL" ] || LABEL=$(echo "$FULL" | cut -c1-12)
 fi
@@ -257,6 +280,20 @@ step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile F
 BOX
         done
     fi
+    # The production image's identity (tests/test_native_peering and
+    # test_native_admin check the running process against it), computed by
+    # tools/native_env.py identity from the image FN_NATIVE_HOST names by
+    # --env, else build/fn-host, when the tree holds it; an --env below
+    # still wins.
+    identity_image=build/fn-host
+    for assignment in $ENVS; do
+        case $assignment in FN_NATIVE_HOST=*) identity_image=${assignment#FN_NATIVE_HOST=} ;; esac
+    done
+    cat <<BOX
+if [ -x "$identity_image" ]; then
+    eval "\$(python3 tools/native_env.py identity --image "$identity_image" --source $SOURCE_ID --export)"
+fi
+BOX
     for assignment in $ENVS; do
         echo "export $assignment"
     done
@@ -300,7 +337,7 @@ if [ $DETACH -eq 1 ]; then
     exit 0
 fi
 set +e
-"$HERE/tools/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
+sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
 waited=$?
 set -e
 ssh -n "$HOST" "cat $S/run.log; echo '== SHA256SUMS'; cat $S/SHA256SUMS 2>/dev/null"

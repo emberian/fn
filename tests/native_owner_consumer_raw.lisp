@@ -45,16 +45,31 @@
         ((consp tree) (append (keyword-leaves (car tree)) (keyword-leaves (cdr tree))))
         (t nil)))
 
-;; ACL2's verdict words.  The host's verdict call is fn-cvec-verdict-at's (the
-;; capacity vector over fn-sbud-verdict-at, PRF-138), which answers
+;; ACL2's verdict words.  The host's verdict call is fn-pvc-verdict-carried
+;; (books/store-profile-carried.lisp, the profile's carried constants; PRF-284),
+;; which KEYSTONE fn-pvc-verdict-carried-is-cvec-verdict-at equates with
+;; fn-cvec-verdict-at (the capacity vector over fn-sbud-verdict-at, PRF-138):
 ;; :admissible when the record fits with the release's room kept and one other
 ;; word otherwise; that word is the one the owner hands the host at capacity.
 ;; Its body also names the kind :release, which is no verdict word.
+(defun read-acl2-defthm (path name)
+  "The form (defthm NAME ...) of the ACL2 file PATH, read, never evaluated."
+  (with-open-file (stream path)
+    (loop for form = (read stream nil :eof)
+          until (eq form :eof)
+          when (and (consp form) (eq (car form) 'defthm) (eq (cadr form) name))
+            do (return form)
+          finally (error "~a has no defthm ~a" path name))))
 (defparameter *verdict-words*
   (let ((host (read-acl2-defun "host/owner-host.lisp" 'fn-owner-publication-verdict))
+        (bridge (read-acl2-defthm "books/store-profile-carried.lisp"
+                                  'fn-pvc-verdict-carried-is-cvec-verdict-at))
         (book (read-acl2-defun "books/store-capacity-vector.lisp" 'fn-cvec-verdict-at)))
-    (unless (tree-mentions (cdddr host) 'fn-cvec-verdict-at)
-      (error "fn-owner-publication-verdict no longer answers fn-cvec-verdict-at's word"))
+    (unless (tree-mentions (cdddr host) 'fn-pvc-verdict-carried)
+      (error "fn-owner-publication-verdict no longer answers fn-pvc-verdict-carried's word"))
+    (unless (and (tree-mentions bridge 'fn-pvc-verdict-carried)
+                 (tree-mentions bridge 'fn-cvec-verdict-at))
+      (error "fn-pvc-verdict-carried-is-cvec-verdict-at no longer equates the two"))
     (let ((words (remove :release
                          (remove :guard (remove-duplicates (keyword-leaves (car (last book))))))))
       (unless (and (= (length words) 2) (member :admissible words))

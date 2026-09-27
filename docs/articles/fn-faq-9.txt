@@ -1,0 +1,31 @@
+From: fn <docs@fn.fg-goose.online>
+Newsgroups: fn.docs
+Subject: fn FAQ, part 9: the proofs
+Date: Sun, 27 Sep 2026 12:02:00 +0000
+Message-ID: <fn-faq-9-20260927@fn.fg-goose.online>
+Archive-name: fn-faq/part9
+Posting-Frequency: when fn changes
+Last-modified: 2026-09-27
+Summary: What is proved, about what, and what a proof cannot promise.
+
+fn's rules are ACL2 functions. The theorems are about them.
+
+*Why it matters:* The usual method proves a sketch and hopes the code
+agrees. fn counts a theorem only about the function the server
+calls, or with a theorem equating the two.
+
+*The details:*
+- ACL2 decides. The host reads bytes, asks, and obeys.
+- A post is confirmed only after it is saved. A refusal changes
+  nothing. A settings change applies all at once.
+- Each promise has an exact statement in books/.
+
+*The catch:* No proof covers your disk, a hash or a peer's honesty.
+Those are named assumptions (books/assumptions.lisp). Power-cut
+tests on real machines measure them.
+
+*Four claims, kept apart:* implemented (the server calls it), proved
+(against exactly this code), qualified (the image passed its tests),
+deployed (a live node runs it).
+
+*Go deeper:* docs/proofs.md, docs/architecture.md.

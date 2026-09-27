@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-advance-carried")
 (include-book "../../books/owner-commit-ocl")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 (include-book "owner-served-carried-tests")
 
@@ -128,24 +128,24 @@
 (assert-event (not (fn-nntp-projectionp *acar-t-bad-archive*)))
 (assert-event (equal (car (fn-acar-own-advance-result *acar-t-bad-view-o* 1)) :advanced))
 ; fn-acar-nntp-projectionp-is-nntp-projectionp without (fn-statep archive).
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-projection-without-statep
    (equal (fn-acar-nntp-projectionp *acar-t-bad-archive*)
           (fn-nntp-projectionp *acar-t-bad-archive*))))
 ; fn-acar-open-session-is-open-session without (fn-statep archive).
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-open-session-without-statep
    (equal (fn-acar-open-session *acar-t-bad-archive*)
           (fn-nntp-open-session *acar-t-bad-archive*))))
 ; fn-acar-own-advance-result-is-own-advance-result without fn-acar-view-statep
 ; (its other hypothesis holds on this owner).
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-advance-without-view-statep
    (equal (fn-acar-own-advance-result *acar-t-bad-view-o* 1)
           (fn-own-advance-result *acar-t-bad-view-o* 1))))
 ; fn-acar-view-historyp-carries-view-statep and
 ; fn-acar-ocl-relation-carries-view-statep without their hypotheses.
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-view-statep-without-history
    (fn-acar-view-statep (fn-ocfg-owner *acar-t-bad-view-oc*))))
 ; The outcome keystone without the relation, the connections intact: a
@@ -159,7 +159,7 @@
                  (fn-own-sub-make 1 (fn-own-conn-version *acar-t-conn*) 0 nil)
                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (assert-event (fn-acar-conn-sessionp *acar-t-bad-view-inflight-o* 1))
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-outcome-without-view-statep
    (equal (fn-acar-own-outcome *acar-t-bad-view-inflight-o* 1 :durable)
           (fn-own-outcome *acar-t-bad-view-inflight-o* 1 :durable))))
@@ -187,12 +187,12 @@
 (assert-event (equal (car (fn-own-advance-result *acar-t-bad-o* 1)) :refused))
 ; fn-acar-own-advance-result-is-own-advance-result without fn-acar-conn-sessionp
 ; (the view is unchanged, so fn-acar-view-statep holds).
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-advance-without-session
    (equal (fn-acar-own-advance-result *acar-t-bad-o* 1)
           (fn-own-advance-result *acar-t-bad-o* 1))))
 ; fn-acar-scar-auth-sessionp-of-rebuilt-session without (fn-auth-sessionp as).
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-rebuilt-session-without-session
    (equal (fn-scar-auth-sessionp
            (fn-auth-with-base
@@ -208,7 +208,7 @@
                                (fn-peer-session-base
                                 (fn-auth-session-base *acar-t-bad-session*))))))))
 ; fn-acar-ocl-relation-carries-conn-sessionp without the relation.
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-conn-sessionp-without-relation
    (fn-acar-conn-sessionp (fn-ocfg-owner *acar-t-bad-oc*) 1)))
 ; The outcome keystones without the relation.  A submission of connection 1
@@ -225,7 +225,7 @@
   (fn-ocfg-make *acar-t-bad-inflight-o* (fn-ocfg-config *acar-t-committed*)
                 (fn-ocfg-pins *acar-t-committed*) (fn-ocfg-staged *acar-t-committed*)))
 (assert-event (not (fn-ocl-relation *acar-t-bad-inflight-oc*)))
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-outcome-without-relation
    (equal (fn-acar-own-outcome (fn-ocfg-owner *acar-t-bad-inflight-oc*) 1 :durable)
           (fn-own-outcome (fn-ocfg-owner *acar-t-bad-inflight-oc*) 1 :durable))))
@@ -251,7 +251,7 @@
 ; fails) and the store stays unrelated.
 (defconst *acar-t-bad-st* (update-nth 3 *scar-t-bad-node* *acar-t-st*))
 (assert-event (not (fn-cst-relation *acar-t-bad-st*)))
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-finish-cst-without-relation
    (fn-cst-relation (fn-sn-finish *acar-t-bad-st*))))
 ; fn-ocmt-post-commit-preserves-ocl-relation without fn-ocl-relation.
@@ -266,7 +266,7 @@
      (fn-ocfg-config *acar-t-completing*) (fn-ocfg-pins *acar-t-completing*)
      (fn-ocfg-staged *acar-t-completing*))))
 (assert-event (not (fn-ocl-relation *acar-t-bad-completing*)))
-(must-fail
+(must-fail-checked
  (defthm fn-acar-t-commit-ocl-without-relation
    (fn-ocl-relation
     (fn-ocfg-with-owner *acar-t-bad-completing*

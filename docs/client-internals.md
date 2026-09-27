@@ -695,7 +695,7 @@ recorded in [m6-web-2026-09-24](../planning/evidence/m6-web-2026-09-24.md).
 
 `tools/fn_web.py` is a separate client for a running fn NNTP node. What a
 person sees and how to run it against the hbox node is in
-[the web reader](web.md); this page is the submission-record mechanics. It serves a small group, recent-thread, article and compose view at
+[the one-person web reader](web.md#a-reader-on-your-own-computer); this page is the submission-record mechanics. It serves a small group, recent-thread, article and compose view at
 `127.0.0.1` using standard-library Python. It does not open the Store or run
 inside the fn server. Its only write path is NNTP `POST`, through the same
 `fn_client.py` connection and outcome rules used by the command-line client.
@@ -823,7 +823,7 @@ body at 16 KiB. Article text and header values are escaped, rendered as text
 without remote images or scripts, and served with a restrictive content
 security policy. It has no search index or independent verified authorship
 display; unread state is the client's own local read marks
-([the web reader](web.md)), never a node record. A `FN-Statement` and an
+([the one-person web reader](web.md#a-reader-on-your-own-computer)), never a node record. A `FN-Statement` and an
 `FN-Authorship` carrier are shown as separate recorded presences, never as a
 verified identity. The node's raw status stays in the result page's details.
 

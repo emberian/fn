@@ -292,6 +292,18 @@ whose item 1 says otherwise is refused as `:carrier`
 (`fn-hc-received-plan`). A verifier may equally dispatch on item 1 and then
 require the source length to be in that version's range; the two agree.
 
+**The local author request.** `hybrid-author` (control kind 5,
+`books/native-hybrid-control.lisp`) carries a source of either version: its
+source field is as wide as the frame's u32 payload leaves beside the other
+four fields (`*fn-nhctrl-max-source*`, 4,294,963,388 octets, wider than any
+article a Store can hold). Before 2026-09-27 it carried only a v1 source, so
+a v2 source was accepted over the served POST and refused here
+(Mini/DREGG's PKT-codex-003). The owner reads a control connection under
+`fn-nhctrl-read-bound-for A G`, which admits every author request whose
+source is at most the profile's A
+(`fn-native-hybrid-control-author-request-within-read-bound`); a carrier
+past A is refused as `ARTICLE-EXCEEDS-PROFILE-BOUND`.
+
 **Authored source** (`fn-hc-authored-source`, over the article
 `fn-hc-received-plan` parsed). These are the article's octets, not the NNTP
 dot-stuffed wire form.

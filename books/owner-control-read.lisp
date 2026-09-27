@@ -468,7 +468,7 @@
 (local
  (defthm fn-octl-control-hdr-response-effects-true-listp
    (true-listp (fn-nntp-result-effects
-                (fn-nntp-control-hdr-response session archive index verdicts args)))
+                (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-control-hdr-response fn-nntp-single
                                     fn-nntp-multi fn-nntp-make-result)
@@ -614,7 +614,7 @@
                            (fn-wire-result-state
                             (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))
                            byte))))))
-           :in-theory (e/d (fn-served-closed-wirep fn-served-tls-handshakingp)
+           :in-theory (e/d (fn-served-closed-wirep fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)
                            (fn-served-step-of-one-framed-event
                             fn-octl-dispatch-archive-command fn-octl-reply
                             fn-served-step fn-served-dispatch

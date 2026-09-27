@@ -56,6 +56,77 @@ BUILD_TIMEOUT_SECONDS = 600.0
 
 LD = ' :ld-error-action :return :ld-error-triples t)'
 
+# The time a boot form that LOADS a file (`ld', `include-book') may take.
+# Such a form is a few dozen octets but loads a whole file, so the bridge's
+# per-call budget (20 s + 0.004 s/KiB of the form's text, run_store) says
+# nothing about it: `ld host/checkpoint-host.lisp' took 25.4 s on a busy hbox
+# (load ~40) and 6 s on a quiet one (dev-health packet 5).  So each load form
+# is timed and the time recorded per machine (`LOAD_TIMES`, keyed by the form
+# text, which names the file); the next boot allows 3x the last measured
+# time, scaled up by how much busier the machine is now than then (the
+# 1-minute load average per CPU), never less than LOAD_FLOOR_SECONDS.  A form
+# never measured here gets LOAD_FIRST_SECONDS: a refutation bound for a
+# wedged ACL2, as BUILD_TIMEOUT_SECONDS is for the whole build.  A served
+# call's timeout is unchanged.
+LOAD_TIMES = Path(os.environ.get("FN_BRIDGE_LOAD_TIMES") or (
+    Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    / "fn" / "bridge-load-times.json"))
+LOAD_FACTOR = 3.0
+LOAD_FLOOR_SECONDS = 20.0
+LOAD_FIRST_SECONDS = 300.0
+_LOAD_FORM = re.compile(r'^\(\s*(ld|include-book)\s+"', re.IGNORECASE)
+
+
+def is_load_form(form: str) -> bool:
+    return _LOAD_FORM.match(form) is not None
+
+
+def _load_per_cpu() -> float:
+    try:
+        return os.getloadavg()[0] / max(1, os.cpu_count() or 1)
+    except OSError:
+        return 0.0
+
+
+def _read_load_times(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def load_budget(form: str, path: Path | None = None) -> float:
+    """Seconds boot form FORM may take (a load form; see LOAD_TIMES)."""
+    entry = _read_load_times(path or LOAD_TIMES).get(form)
+    try:
+        seconds = float(entry["seconds"])
+        then = float(entry.get("load_per_cpu", 0.0))
+    except (TypeError, KeyError, ValueError):
+        return LOAD_FIRST_SECONDS
+    busier = max(1.0, _load_per_cpu() / max(then, 1.0))
+    return max(LOAD_FLOOR_SECONDS, LOAD_FACTOR * seconds * busier)
+
+
+def record_load(form: str, seconds: float, path: Path | None = None) -> None:
+    """Record FORM's measured load time (best effort: a read-only cache
+    directory costs the next boot its measured budget, never the boot)."""
+    path = path or LOAD_TIMES
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path.with_suffix(".lock"), "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            data = _read_load_times(path)
+            data[form] = {"seconds": round(seconds, 3),
+                          "load_per_cpu": round(_load_per_cpu(), 3),
+                          "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+            staging = path.with_name(path.name + ".%d.tmp" % os.getpid())
+            staging.write_text(json.dumps(data, sort_keys=True, indent=1) + "\n",
+                               encoding="utf-8")
+            os.replace(staging, path)
+    except OSError:
+        pass
+
 # The store bridge's boot, in order.  `run_store.Acl2Store` sends exactly
 # these when no image is used; the image is these forms, saved.
 STORE_FORMS = (

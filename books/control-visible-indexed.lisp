@@ -13,7 +13,7 @@
 ; a pair of tries (sequence -> event, Message-ID -> the article records the
 ; history commits under it, oldest first), maintained as the index of the
 ; committed history (`fn-cei-correspondencep'; PRF-144/PRF-180,
-; books/consumer-event-index-store-invariants.lisp fn-ceis-indexedp).
+; books/history-columns-relation.lisp (the retired index's invariants were deleted) fn-ceis-indexedp).
 ;
 ;   fn-ctl-row-event-ix  the Message-ID trie's first record R for M (the
 ;                        oldest), then the event at R's sequence in the
@@ -46,6 +46,7 @@
 (in-package "ACL2")
 (include-book "control-visible")
 (include-book "consumer-event-index")
+(include-book "history-columns")
 (include-book "store-files")
 
 ; -----------------------------------------------------------------------------
@@ -176,13 +177,16 @@
 ; -----------------------------------------------------------------------------
 ; 2. The lookup.
 
-(defun fn-ctl-row-event-ix (m records index)
-  (declare (xargs :guard t))
+(defun fn-ctl-row-event-ix (m records fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t))
   (if (stringp m)
-      (let ((rs (fn-cei-msgid-records m index)))
+      (let ((rs (fn-hist-msgid-records m fn-hist)))
         (if (consp rs)
             (let* ((r (car rs))
-                   (e (fn-cei-get (fn-record-sequence r) index)))
+                   (k (fn-record-sequence r))
+                   (e (if (and (natp k) (< k (fn-hist-count fn-hist)))
+                          (fn-hist-at k fn-hist)
+                        nil)))
               (if (and e
                        (equal (fn-ctl-event-row e) r)
                        (not (member-equal r (cdr rs))))
@@ -191,7 +195,12 @@
           nil))
     (fn-ctl-row-event m records)))
 
-; The sequence trie only ever answers an event it was given.
+; The history stobj's event at K is a member of the history.
+(local
+ (defthm fn-ctl-nth-is-member
+   (implies (nth k events) (member-equal (nth k events) events))
+   :hints (("Goal" :in-theory (enable nth)))))
+
 (local
  (defthm fn-ctl-cei-get-of-put-non-uint
    (implies (not (fn-cp-uintp sequence))
@@ -315,48 +324,47 @@
                                 fn-held-p fn-ctl-event-row fn-cei-event-article
                                 fn-ctl-rows-okp fn-cei-article-records-for fn-ctl-row-event)))))
 
-; KEYSTONE: the index lookup is the walk.  Subject: fn-ctl-row-event-ix,
+; KEYSTONE: the fn-hist lookup is the walk.  Subject: fn-ctl-row-event-ix,
 ; reached from books/owner-refresh-indexed.lisp fn-own-refresh-ix with
-; INDEX = the Store's event index and RECORDS = its history.
+; INDEX = the Store's event fn-hist and RECORDS = its history.
 (defthm fn-ctl-row-event-ix-is-row-event
-  (implies (and (fn-cei-correspondencep index records)
+  (implies (and (equal fn-hist records)
                 (fn-ctl-rows-okp records))
-           (equal (fn-ctl-row-event-ix m records index)
+           (equal (fn-ctl-row-event-ix m records fn-hist)
                   (fn-ctl-row-event m records)))
   :hints (("Goal" :cases ((stringp m))
            :in-theory (e/d (fn-ctl-row-event-ix)
-                           (fn-ctl-row-event fn-ctl-rows-okp fn-cei-msgid-records
-                            fn-cei-get fn-ctl-event-row fn-held-p
-                            fn-cei-correspondencep fn-cei-article-records-for
+                           (fn-ctl-row-event fn-ctl-rows-okp
+                            fn-ctl-event-row fn-held-p nth
+                            fn-cei-article-records-for
                             fn-ctl-row-event-of-unrepeated-first
-                            fn-ctl-cei-get-of-correspondence-is-member)))
+                            fn-ctl-nth-is-member)))
           ("Subgoal 1"
-           :use ((:instance fn-cei-msgid-records-of-correspondence
-                            (msgid m) (events records))
-                 (:instance fn-ctl-car-of-article-records-for (events records))
-                 (:instance fn-ctl-cei-get-of-correspondence-is-member
-                            (k (fn-record-sequence (car (fn-cei-msgid-records m index))))
+           :use ((:instance fn-ctl-car-of-article-records-for (events records))
+                 (:instance fn-ctl-nth-is-member
+                            (k (fn-record-sequence
+                                (car (fn-cei-article-records-for m records))))
                             (events records))
                  (:instance fn-ctl-row-event-of-unrepeated-first
-                            (e (fn-cei-get (fn-record-sequence
-                                            (car (fn-cei-msgid-records m index)))
-                                           index)))))))
+                            (e (nth (fn-record-sequence
+                                     (car (fn-cei-article-records-for m records)))
+                                    records)))))))
 
 ; -----------------------------------------------------------------------------
-; 3. The refresh over the index: each definition is its reference in
+; 3. The refresh over the fn-hist: each definition is its reference in
 ; books/control-visible.lisp with fn-ctl-row-event replaced by
 ; fn-ctl-row-event-ix.
 
-(defun fn-ctl-row-control-ix (msgid records index)
-  (declare (xargs :guard t))
-  (let ((e (fn-ctl-row-event-ix msgid records index)))
+(defun fn-ctl-row-control-ix (msgid records fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t))
+  (let ((e (fn-ctl-row-event-ix msgid records fn-hist)))
     (if e (fn-hf-control (fn-held-facts (fn-ctl-event-row e))) nil)))
 
-(defun fn-ctl-article-plan-ix (a verdicts records index configs)
-  (declare (xargs :guard t))
+(defun fn-ctl-article-plan-ix (a verdicts records fn-hist configs)
+  (declare (xargs :stobjs fn-hist :guard t))
   (if (consp a)
       (let* ((m (fn-article-msgid a))
-             (e (fn-ctl-row-event-ix m records index))
+             (e (fn-ctl-row-event-ix m records fn-hist))
              (control (if e (fn-hf-control (fn-held-facts (fn-ctl-event-row e))) nil))
              (target (fn-ctl-control-target control)))
         (if target
@@ -365,48 +373,48 @@
               m (fn-ctl-lookup-verdict m verdicts) target
               (fn-ctl-control-keys control)
               (fn-ctl-config-at (fn-store-event-txid e) configs))
-             (fn-ctl-control-locks (fn-ctl-row-control-ix target records index)))
+             (fn-ctl-control-locks (fn-ctl-row-control-ix target records fn-hist)))
           nil))
     nil))
 
-(defun fn-ctl-article-withdrawals-ix (a verdicts records index configs)
-  (declare (xargs :guard t))
-  (let ((plan (fn-ctl-article-plan-ix a verdicts records index configs)))
+(defun fn-ctl-article-withdrawals-ix (a verdicts records fn-hist configs)
+  (declare (xargs :stobjs fn-hist :guard t))
+  (let ((plan (fn-ctl-article-plan-ix a verdicts records fn-hist configs)))
     (if (fn-ctl-withdrawalp plan) (list plan) nil)))
 
-(defun fn-ctl-resolve-tlocks-ix (ws m records index)
-  (declare (xargs :guard t))
+(defun fn-ctl-resolve-tlocks-ix (ws m records fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t))
   (if (fn-ctl-targets-p ws m)
       (fn-ctl-set-tlocks ws m (fn-ctl-control-locks
-                               (fn-ctl-row-control-ix m records index)))
+                               (fn-ctl-row-control-ix m records fn-hist)))
     ws))
 
 ; The discontinuity arm is the reference's (recovery's one-table pass).
-(defun fn-ctl-refresh-withdrawals-ix (new old ws verdicts records index configs)
-  (declare (xargs :guard t))
+(defun fn-ctl-refresh-withdrawals-ix (new old ws verdicts records fn-hist configs)
+  (declare (xargs :stobjs fn-hist :guard t))
   (cond ((equal new old) ws)
         ((and (consp new) (equal (cdr new) old))
          (fn-ctl-prepend (fn-ctl-article-withdrawals-ix (car new) verdicts records
-                                                        index configs)
+                                                        fn-hist configs)
                          (if (consp (car new))
                              (fn-ctl-resolve-tlocks-ix ws (fn-article-msgid (car new))
-                                                       records index)
+                                                       records fn-hist)
                            ws)))
         (t (fn-ctl-articles-withdrawals new verdicts records configs))))
 
 (defthm fn-ctl-row-control-ix-is-row-control
-  (implies (and (fn-cei-correspondencep index records)
+  (implies (and (equal fn-hist records)
                 (fn-ctl-rows-okp records))
-           (equal (fn-ctl-row-control-ix m records index)
+           (equal (fn-ctl-row-control-ix m records fn-hist)
                   (fn-ctl-row-control m records)))
   :hints (("Goal" :in-theory (e/d (fn-ctl-row-control-ix fn-ctl-row-control)
                                   (fn-ctl-row-event-ix fn-ctl-row-event
                                    fn-ctl-rows-okp fn-cei-correspondencep)))))
 
 (defthm fn-ctl-article-withdrawals-ix-is-article-withdrawals
-  (implies (and (fn-cei-correspondencep index records)
+  (implies (and (equal fn-hist records)
                 (fn-ctl-rows-okp records))
-           (equal (fn-ctl-article-withdrawals-ix a verdicts records index configs)
+           (equal (fn-ctl-article-withdrawals-ix a verdicts records fn-hist configs)
                   (fn-ctl-article-withdrawals a verdicts records configs)))
   :hints (("Goal" :in-theory (e/d (fn-ctl-article-withdrawals-ix fn-ctl-article-withdrawals
                                    fn-ctl-article-plan-ix fn-ctl-article-plan)
@@ -418,24 +426,24 @@
                                    fn-ctl-rows-okp fn-cei-correspondencep)))))
 
 (defthm fn-ctl-resolve-tlocks-ix-is-resolve-tlocks
-  (implies (and (fn-cei-correspondencep index records)
+  (implies (and (equal fn-hist records)
                 (fn-ctl-rows-okp records))
-           (equal (fn-ctl-resolve-tlocks-ix ws m records index)
+           (equal (fn-ctl-resolve-tlocks-ix ws m records fn-hist)
                   (fn-ctl-resolve-tlocks ws m records)))
   :hints (("Goal" :in-theory (e/d (fn-ctl-resolve-tlocks-ix fn-ctl-resolve-tlocks)
                                   (fn-ctl-row-control-ix fn-ctl-row-control
                                    fn-ctl-set-tlocks fn-ctl-targets-p
                                    fn-ctl-rows-okp fn-cei-correspondencep)))))
 
-; KEYSTONE: the refresh over the index is the reference refresh.  Subject:
+; KEYSTONE: the refresh over the fn-hist is the reference refresh.  Subject:
 ; fn-ctl-refresh-withdrawals-ix, called by books/owner-refresh-indexed.lisp
 ; fn-own-refresh-ix.  With it, flip-L8-2's keystones over the reference
 ; (fn-ctl-refresh-withdrawals-is-the-journal, fn-ctl-refresh-visible-is-visible)
 ; hold of the twin.
 (defthm fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals
-  (implies (and (fn-cei-correspondencep index records)
+  (implies (and (equal fn-hist records)
                 (fn-ctl-rows-okp records))
-           (equal (fn-ctl-refresh-withdrawals-ix new old ws verdicts records index configs)
+           (equal (fn-ctl-refresh-withdrawals-ix new old ws verdicts records fn-hist configs)
                   (fn-ctl-refresh-withdrawals new old ws verdicts records configs)))
   :hints (("Goal" :in-theory (e/d (fn-ctl-refresh-withdrawals-ix fn-ctl-refresh-withdrawals)
                                   (fn-ctl-article-withdrawals-ix fn-ctl-article-withdrawals

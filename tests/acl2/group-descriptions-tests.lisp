@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-descriptions-read")
 (include-book "../../books/native-admin")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defmacro gdt-o (text) `(fn-nntp-string-octets ,text))
 
@@ -72,7 +72,7 @@
               (fn-cfg-apply-delta *gdt-v1* 2 *fn-cfg-default-stamp* *gdt-desc*)
               "fn.test")
              (fn-cfg-description-octets *gdt-v1* "fn.test"))))
-(must-fail
+(must-fail-checked
  (defthm gdt-another-name-without-its-hypothesis
    (equal (fn-cfg-description-octets
            (fn-cfg-apply-delta v gen stamp

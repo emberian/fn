@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-intern")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cvt-p*
   (fn-bs-profile-set-fields *fn-bs-profile-defaults*
@@ -17,7 +17,8 @@
                    (equal (fn-bs-profile-max-history-octets *cvt-p*) *cvt-h*)
                    (equal (fn-smr-reserve-octets) *cvt-r*)))
 
-;  An article record: 1 000 octets in one group (figure 2 344), and a wide
+;  An article record: 1 000 octets in one group (figure 2 664: 2 344 and
+; its membership's 320 since lane membership-budget), and a wide
 ; record past its figure (store-budget-article-tests' shape).
 (defconst *cvt-record*
   (fn-record-make 1 1 1 "<cvt@example.invalid>"
@@ -231,16 +232,29 @@
       (equal (fn-cvec-article-budget-for *cvt-p* 1 (+ *cvt-a* *cvt-r*)
                                          *cvt-record* 1)
              0)))
-(must-fail
+(must-fail-checked
  (defthm cvt-article-without-the-verdict
    (fn-cvec-roomp *cvt-p* 2 (+ *cvt-a* *cvt-r* *cvt-len*) 1)
    :rule-classes nil))
-; Tooth, narrowness: the wide record past the figure at the witness state.
+; Tooth, narrowness: a wide record past its figure at the witness state.
+; A record in one group no longer serves (its membership's 320 octets cover
+; the widening, lane membership-budget): the record in no group with every
+; integer field at 2^32 encodes to 66 622 octets against its figure 66 619.
+(defconst *cvt-tight*
+  (fn-record-make 4294967296 4294967296 4294967296
+                  (coerce (make-list 250 :initial-element #\a) 'string)
+                  (make-list 65536 :initial-element 65) nil
+                  (coerce (make-list 256 :initial-element #\m) 'string)
+                  (coerce (make-list 256 :initial-element #\m) 'string)
+                  (coerce (make-list 256 :initial-element #\m) 'string)
+                  4294967296 4294967296))
 (assert-event
- (let ((r (cvt-full-record 4294967296))
-       (b (- (- *cvt-h* 196608) (* 2 *cvt-r*))))
+ (let ((r *cvt-tight*)
+       (b (- (- *cvt-h* 66619) (* 2 *cvt-r*))))
    (and (fn-record-widep r)
-        (equal (fn-cvec-article-verdict-at *cvt-p* 1 b 195264 1 1) :admissible)
+        (equal (fn-sbud-article-figure 65536 0) 66619)
+        (equal (len (fn-record-encode-impl r)) 66622)
+        (equal (fn-cvec-article-verdict-at *cvt-p* 1 b 65536 0 1) :admissible)
         (not (fn-cvec-roomp *cvt-p* 2 (+ b (len (fn-record-encode-impl r))) 1)))))
 ; Tooth, the counts: a narrow record with more payload than the verdict was
 ; asked for (195 264 octets against 1 000) is past the figure it charged.
@@ -307,15 +321,16 @@
       (equal (fn-cvec-row-payload-length *cvt-row*)
              (len (fn-record-payload *cvt-record*)))
       (equal (fn-cvec-row-payload-length *cvt-row*) 1000)
-      (equal (fn-sbud-row-octets *cvt-row*) 1000)
+      (equal (fn-sbud-row-memberships *cvt-row*) 1)
+      (equal (fn-sbud-row-octets *cvt-row*) (+ 1000 320))
       (equal (fn-cvec-record-figure *cvt-row*) *cvt-fig*)))
 (defconst *cvt-article-history* (list *cvt-undertake* *cvt-row* *cvt-release*))
 (defconst *cvt-article-octets*
-  (+ (len (fn-store-event-encode *cvt-undertake*)) 1000
+  (+ (len (fn-store-event-encode *cvt-undertake*)) (+ 1000 320)
      (len (fn-store-event-encode *cvt-release*))))
 ; fn-cvec-admitted-history-keeps-the-vector and -from-init, with an article
 ; in the history: every hypothesis holds and so does each conclusion, at the
-; article's 1 000 stored octets.
+; article's 1 000 stored octets and its one membership's 320.
 (assert-event
  (and (fn-bs-profile-admittedp *cvt-p*)
       (fn-cvec-roomp *cvt-p* 0 0 0)
@@ -334,7 +349,7 @@
         (fn-cvec-roomp *cvt-p* 2 (+ b (fn-sbud-row-octets *cvt-row*))
                        (fn-cvec-debt-step :article 1)))))
 ; Tooth, the article arm's verdict: from H - R - 1 000 committed the vector
-; holds, but the article's figure (2 344) does not fit beside the
+; holds, but the article's figure (2 664) does not fit beside the
 ; maintenance release, so the row is not admitted.
 (assert-event
  (let ((b (- *cvt-h* (+ *cvt-r* 1000))))
@@ -367,3 +382,134 @@
                   :admissible))
       (not (fn-cvec-roomp *cvt-p* (+ 1 1)
                           (+ *cvt-a* *cvt-r* (fn-cvec-row-payload-length *cvt-row*)) 1))))
+
+; -----------------------------------------------------------------------------
+; Lane membership-budget (2026-09-27).  KEYSTONE fn-cvec-article-refusal-word-
+; names-the-memberships.  The same 1 000-octet article in one group and in
+; ten, at one committed record, no open undertaking and B committed octets
+; chosen so that the ten-group article's record fits beside the maintenance
+; release but its 3 200 octets of memberships do not: the one-group article
+; is admitted, the ten-group one refused, and the host's word for it is
+; :memberships.  An article whose record alone does not fit stays
+; :unaffordable, and any other word passes through.
+(defconst *cvt-groups-10*
+  '("fn.t0" "fn.t1" "fn.t2" "fn.t3" "fn.t4" "fn.t5" "fn.t6" "fn.t7" "fn.t8" "fn.t9"))
+(defconst *cvt-record-10*
+  (fn-record-make 1 1 1 "<cvt10@example.invalid>"
+                  (make-list 1000 :initial-element 65) *cvt-groups-10*
+                  "archive-a" "content-a" "release-a" 9 841000000))
+(defconst *cvt-big-10*
+  (fn-record-make 1 1 1 "<cvtbig@example.invalid>"
+                  (make-list 10000 :initial-element 65) *cvt-groups-10*
+                  "archive-a" "content-a" "release-a" 9 841000000))
+(assert-event (equal *cvt-fig* 2664))
+(assert-event (equal (fn-sbud-article-figure 1000 10) 7893))
+(assert-event (equal (fn-sbud-article-record-figure 1000 10) 4693))
+(defconst *cvt-mb* (+ 1 (- (- *cvt-h* *cvt-r*) 7893)))
+; The one-group article: admitted (the budget is T), the word never asked.
+(assert-event (equal (fn-cvec-article-budget-for *cvt-p* 1 *cvt-mb* *cvt-record* 0) 8))
+; The ten-group article: refused (budget 0), and without its memberships
+; every gate would admit it.
+(assert-event (equal (fn-cvec-article-budget-for *cvt-p* 1 *cvt-mb* *cvt-record-10* 0) 0))
+(assert-event (fn-cvec-article-memberships-refusedp *cvt-p* 1 *cvt-mb* 1000 10 0))
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-p* 1 *cvt-mb*
+                                                   *cvt-record-10* 0)
+                     :memberships))
+; Its record too large even without memberships: :unaffordable, the store full.
+(assert-event (equal (fn-cvec-article-budget-for *cvt-p* 1 *cvt-mb* *cvt-big-10* 0) 0))
+(assert-event (not (fn-cvec-article-memberships-refusedp *cvt-p* 1 *cvt-mb* 10000 10 0)))
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-p* 1 *cvt-mb*
+                                                   *cvt-big-10* 0)
+                     :unaffordable))
+; The count gate refusing (8 committed of T = 8): :unaffordable, not the
+; memberships.
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-p* 8 *cvt-mb*
+                                                   *cvt-record-10* 0)
+                     :unaffordable))
+; Another word passes through, whatever the article.
+(assert-event (equal (fn-cvec-article-refusal-word :duplicate *cvt-p* 1 *cvt-mb*
+                                                   *cvt-record-10* 0)
+                     :duplicate))
+(assert-event (equal (fn-cvec-article-refusal-word :refused *cvt-p* 1 *cvt-mb*
+                                                   *cvt-record-10* 0)
+                     :refused))
+
+; -----------------------------------------------------------------------------
+; The accepted-statement figure (lane bp-retention-leftovers, membership-
+; budget's deferral).  Under *cvt-p* (R = 196 608, so the kind's count
+; budget is T) a composite whose article is in ten groups is charged
+; 196 608 + 3 200 = 199 808; at 46 097 committed octets the vector holds
+; after the ceiling alone (the gate before this lane admitted it) but not
+; after the figure: the ten-group composite is refused, a one-group one
+; admitted.
+(assert-event (equal (fn-cvec-statement-figure 10) 199808))
+(assert-event (equal (fn-cvec-statement-figure 1) 196928))
+(defconst *cvt-sb* 46097)
+(assert-event (equal (fn-cvec-verdict-at *cvt-p* :accepted-statement 1 *cvt-sb* 0)
+                     :admissible))
+(assert-event (equal (fn-cvec-statement-verdict-at *cvt-p* 1 *cvt-sb* 10 0)
+                     :unaffordable))
+(assert-event (equal (fn-cvec-statement-verdict-at *cvt-p* 1 *cvt-sb* 1 0)
+                     :admissible))
+; The bug the old gate had: its admission, followed by a composite charged
+; its figure, leaves the vector short.
+(assert-event (not (fn-cvec-roomp *cvt-p* 2 (+ *cvt-sb* 199808) 0)))
+
+; fn-cvec-statement-admission-keeps-the-vector.  Witness: admitted one
+; octet lower, a composite charged its whole figure keeps the vector.
+(assert-event
+ (and (equal (fn-cvec-statement-verdict-at *cvt-p* 1 (1- *cvt-sb*) 10 0)
+             :admissible)
+      (fn-cvec-roomp *cvt-p* 2 (+ (1- *cvt-sb*) 199808)
+                     (fn-cvec-debt-step :accepted-statement 0))))
+; Tooth, the verdict: at *cvt-sb* (refused) the same charge breaks it.
+(must-fail-checked
+ (defthm cvt-statement-without-the-verdict
+   (fn-cvec-roomp *cvt-p* 2 (+ *cvt-sb* 199808) 0)
+   :rule-classes nil))
+; Tooth, the charge within the figure: admitted, one octet past the figure
+; at the edge breaks it.
+(must-fail-checked
+ (defthm cvt-statement-past-its-figure
+   (fn-cvec-roomp *cvt-p* 2 (+ (1- *cvt-sb*) 199809) 0)
+   :rule-classes nil))
+
+; fn-cvec-statement-row-within-its-figure over a retained composite: the
+; held row in one group inside a small composite (charge = encoding + 320,
+; within the figure) and inside one whose article record alone is past the
+; ceiling (charge past the figure, encoding past the ceiling).
+(defconst *cvt-stxa* (fn-stxa-make 1 5 5 0 '(1) '(1) '(1) '(1)))
+(defconst *cvt-hstxa* (fn-hstxa-make *cvt-stxa* *cvt-row*))
+(defconst *cvt-stxa-big*
+  (fn-stxa-make 1 5 5 0 '(1) '(1) (make-list 200000 :initial-element 7) '(1)))
+(defconst *cvt-hstxa-big* (fn-hstxa-make *cvt-stxa-big* *cvt-row*))
+(assert-event
+ (and (fn-hstxa-p *cvt-hstxa*)
+      (equal (fn-store-event-kind *cvt-hstxa*) :accepted-statement)
+      (equal (fn-sbud-row-memberships *cvt-hstxa*) 1)
+      (equal (fn-sbud-row-octets *cvt-hstxa*)
+             (+ (len (fn-store-event-encode *cvt-stxa*)) 320))
+      (<= (fn-sbud-row-octets *cvt-hstxa*) (fn-cvec-statement-figure 1))
+      (<= (len (fn-store-event-encode *cvt-stxa*)) 196608)))
+(assert-event
+ (and (fn-hstxa-p *cvt-hstxa-big*)
+      (< 196608 (len (fn-store-event-encode *cvt-stxa-big*)))
+      (< (fn-cvec-statement-figure 1) (fn-sbud-row-octets *cvt-hstxa-big*))))
+; The history arm: the small composite at *cvt-sb* is admitted and keeps
+; the vector.
+(assert-event (fn-cvec-record-admittedp *cvt-p* 1 *cvt-sb* 0 *cvt-hstxa*))
+(assert-event (not (fn-cvec-record-admittedp *cvt-p* 1 *cvt-sb* 0 *cvt-hstxa-big*)))
+
+; The developer `store post''s word (fn-cvec-article-verdict-word): the
+; ten-group article at *cvt-mb* is refused for its memberships, the
+; one-group one admitted, the ten-group article past its record figure
+; refused as the store's budget, and the count gate refusing is not the
+; memberships.
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 1000 10 0)
+                     :memberships))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 1000 1 0)
+                     :admissible))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 10000 10 0)
+                     :unaffordable))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 8 *cvt-mb* 1000 10 0)
+                     :unaffordable))

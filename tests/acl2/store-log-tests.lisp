@@ -238,3 +238,105 @@
         (equal (fn-lg-log-len recs 4096) 20480)
         (equal (len log) 20480)
         (equal (fn-lg-scan log (slt-genesis) 4096 (slt-max)) (cons recs 20480)))))
+
+; -----------------------------------------------------------------------------
+; fn-lg-scan-of-log-then-torn-entry (PRF-246; audit packet G4-2, lane
+; audit-fixes): a torn entry AFTER a non-empty log.  The log is r1 and r2
+; (one batch entry); the torn entry is the chunk ((11 12)) chained on the
+; log's last trailer, torn by the byte model's crash under explicit
+; admissible choices, as keystone 2's witnesses above.
+(defun slt-lt-concl (records chunk observed prev unit max)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((log (fn-lg-log records prev unit))
+         (entry (fn-lg-entry (fn-lg-last-trailer records prev) chunk unit))
+         (scan (fn-lg-scan (append log observed) prev unit max)))
+    (or (equal scan (cons records (len log)))
+        (equal scan (cons (append records chunk) (+ (len log) (len entry))))
+        (fn-lg-forgeryp observed (fn-lg-last-trailer records prev) max
+                        (fn-lg-frame (fn-lg-last-trailer records prev) chunk)))))
+(defun slt-lt-records () (declare (xargs :guard t)) (list (slt-r1) (slt-r2)))
+(defun slt-lt-chunk () (declare (xargs :guard t)) (list '(11 12)))
+(defun slt-lt-entry () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-entry (fn-lg-last-trailer (slt-lt-records) (slt-genesis)) (slt-lt-chunk) (slt-unit)))
+(defun slt-lt-log () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-log (slt-lt-records) (slt-genesis) (slt-unit)))
+
+; Positive, torn (the entry's last unit did not land): the retained
+; hypotheses, the torn variant (its choices admissible), and the first
+; disjunct -- the log's two records, the frontier at the log's end.
+(assert-event
+ (let* ((n (fn-bs-unit-count 0 (len (slt-lt-entry)) (slt-unit)))
+        (choices (slt-choices (slt-lt-entry) (slt-unit) (1- n) :old :new))
+        (torn (slt-torn (slt-lt-entry) (slt-unit) choices))
+        (scan (fn-lg-scan (append (slt-lt-log) torn) (slt-genesis) (slt-unit) (slt-max))))
+   (and (fn-frame-digestp (slt-genesis))
+        (fn-lg-recordsp (slt-lt-records) (slt-max))
+        (fn-lg-chunkp (slt-lt-chunk) (slt-max))
+        (fn-bs-crash-choicesp choices (list (list :write 0 0 (slt-lt-entry))) (slt-unit))
+        (< (len torn) (len (slt-lt-entry)))
+        (equal scan (cons (slt-lt-records) (len (slt-lt-log))))
+        (slt-lt-concl (slt-lt-records) (slt-lt-chunk) torn (slt-genesis) (slt-unit) (slt-max)))))
+; Positive, landed (every unit): the second disjunct -- three records, the
+; frontier past the entry.
+(assert-event
+ (let* ((choices (slt-choices (slt-lt-entry) (slt-unit) 0 :new :new))
+        (torn (slt-torn (slt-lt-entry) (slt-unit) choices))
+        (scan (fn-lg-scan (append (slt-lt-log) torn) (slt-genesis) (slt-unit) (slt-max))))
+   (and (fn-bs-crash-choicesp choices (list (list :write 0 0 (slt-lt-entry))) (slt-unit))
+        (equal torn (slt-lt-entry))
+        (equal scan (cons (append (slt-lt-records) (slt-lt-chunk))
+                          (+ (len (slt-lt-log)) (len (slt-lt-entry)))))
+        (slt-lt-concl (slt-lt-records) (slt-lt-chunk) torn (slt-genesis) (slt-unit) (slt-max)))))
+; Removal of the torn-variant hypothesis: the entry followed by a second
+; chained entry (longer than the entry, so no torn variant of it); the scan
+; reads four records, none of the three disjuncts.
+(assert-event
+ (let* ((next (fn-lg-entry (fn-lg-trailer (fn-lg-frame (fn-lg-last-trailer (slt-lt-records) (slt-genesis))
+                                                       (slt-lt-chunk)))
+                           (list '(13)) (slt-unit)))
+        (two (append (slt-lt-entry) next)))
+   (and (fn-frame-digestp (slt-genesis))
+        (fn-lg-recordsp (slt-lt-records) (slt-max))
+        (fn-lg-chunkp (slt-lt-chunk) (slt-max))
+        (< (len (slt-lt-entry)) (len two))
+        (equal (car (fn-lg-scan (append (slt-lt-log) two) (slt-genesis) (slt-unit) (slt-max)))
+               (append (slt-lt-records) (slt-lt-chunk) (list '(13))))
+        (not (slt-lt-concl (slt-lt-records) (slt-lt-chunk) two (slt-genesis) (slt-unit) (slt-max))))))
+; The other three removals: in each the observed octets are the whole entry
+; (its every unit landed: a torn variant, choices admissible), every other
+; hypothesis holds, the omitted one fails, and so does the conclusion.
+(defun slt-lt-landed (entry) (declare (xargs :guard t :verify-guards nil))
+  (let ((choices (slt-choices entry (slt-unit) 0 :new :new)))
+    (and (fn-bs-crash-choicesp choices (list (list :write 0 0 entry)) (slt-unit))
+         (equal (slt-torn entry (slt-unit) choices) entry))))
+; Without (fn-frame-digestp prev): a three-octet predecessor.
+(assert-event
+ (let* ((prev '(1 2 3))
+        (e (fn-lg-entry (fn-lg-last-trailer (slt-lt-records) prev) (slt-lt-chunk) (slt-unit))))
+   (and (not (fn-frame-digestp prev))
+        (fn-lg-recordsp (slt-lt-records) (slt-max))
+        (fn-lg-chunkp (slt-lt-chunk) (slt-max))
+        (slt-lt-landed e)
+        (not (slt-lt-concl (slt-lt-records) (slt-lt-chunk) e prev (slt-unit) (slt-max))))))
+; Without (fn-lg-recordsp records max): MAX admits r1 and the chunk but not
+; r2 (7 octets); the scan reads nothing.
+(assert-event
+ (let ((m (+ *fn-frame-trailer-octets* 3)))
+   (and (fn-frame-digestp (slt-genesis))
+        (not (fn-lg-recordsp (slt-lt-records) m))
+        (fn-lg-chunkp (slt-lt-chunk) m)
+        (slt-lt-landed (slt-lt-entry))
+        (equal (fn-lg-scan (append (slt-lt-log) (slt-lt-entry)) (slt-genesis) (slt-unit) m)
+               (cons nil 0))
+        (not (slt-lt-concl (slt-lt-records) (slt-lt-chunk) (slt-lt-entry) (slt-genesis) (slt-unit) m)))))
+; Without (fn-lg-chunkp chunk max): the empty chunk; its entry reads back as
+; one empty record, which is neither the log nor the log and the chunk.
+(assert-event
+ (let ((e (fn-lg-entry (fn-lg-last-trailer (slt-lt-records) (slt-genesis)) nil (slt-unit))))
+   (and (fn-frame-digestp (slt-genesis))
+        (fn-lg-recordsp (slt-lt-records) (slt-max))
+        (not (fn-lg-chunkp nil (slt-max)))
+        (slt-lt-landed e)
+        (equal (car (fn-lg-scan (append (slt-lt-log) e) (slt-genesis) (slt-unit) (slt-max)))
+               (append (slt-lt-records) (list nil)))
+        (not (slt-lt-concl (slt-lt-records) nil e (slt-genesis) (slt-unit) (slt-max))))))

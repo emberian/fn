@@ -31,12 +31,13 @@ class DocsCheckTests(unittest.TestCase):
                 root = Path(tmp)
                 (root / "docs").mkdir()
                 (root / "docs" / "operator.md").write_text(doc, encoding="utf-8")
-                saved = docs_check.ROOT, docs_check.DOCS
+                saved = docs_check.ROOT, docs_check.DOCS, docs_check.ARTICLES
                 docs_check.ROOT, docs_check.DOCS = root, [root / "docs" / "operator.md"]
+                docs_check.ARTICLES = []
                 try:
                     return docs_check.argv_file(docs_check.inventory())
                 finally:
-                    docs_check.ROOT, docs_check.DOCS = saved
+                    docs_check.ROOT, docs_check.DOCS, docs_check.ARTICLES = saved
 
         base = book(text)
         self.assertNotRegex(base, r'\("docs/operator\.md" [0-9]+ ')
@@ -82,6 +83,25 @@ class DocsCheckTests(unittest.TestCase):
         self.assertEqual(docs_check.expand(["peer", "remove", "NAME"]),
                          (["peer", "remove", "peer1"], None))
         self.assertIsNone(docs_check.expand(["VERB", "..."])[0])
+
+    def test_article_code_lines_are_the_indented_body_lines(self):
+        text = ("Subject: x\n    Folded: header\n\nprose\n  - bullet text\n"
+                "    fn operator CONFIG peer list\n    fn operator CONFIG peer \\\n"
+                "        remove NAME\n")
+        self.assertEqual(list(docs_check.article_code_lines(text)),
+                         [(6, "fn operator CONFIG peer list", True),
+                          (7, "fn operator CONFIG peer remove NAME", True)])
+
+    def test_article_sections_are_its_labels(self):
+        slugs = docs_check.article_section_slugs(
+            "Subject: x\n\nintro\n*The details:* a\nb\n*The details:*\nc\n")
+        self.assertEqual(slugs[3], "top")
+        self.assertEqual(slugs[5], "the-details")
+        self.assertEqual(slugs[7], "the-details-1")
+
+    def test_the_articles_invocations_are_inventoried(self):
+        cited = {rel for kind, rel, *_ in self.found if rel.startswith("docs/articles/")}
+        self.assertIn("docs/articles/fn-faq-4.txt", cited)
 
 
 if __name__ == "__main__":

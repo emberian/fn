@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-open-bridge")
 (include-book "byte-store-stable-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sobt-configs* (list *fn-cfg-default-record*))
 ; Two configuration records, both at sequence 0: the second replays to
@@ -52,8 +52,8 @@
 (assert-event
  (let ((st (fn-sn-open-state (sobt-host *sobt-configs*))))
    (and (equal (fn-sf-records (fn-sn-files st)) (sobt-r))
-        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 4))) :recovering)
-        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 5))) :ready)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 2))) :recovering)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 3))) :ready)
         (fn-cpo-history-relation st))))
 
 ; Drop fn-sob-configured-openp: a configuration journal that replays :fault.
@@ -62,7 +62,7 @@
  (and (equal (fn-replay-result-kind (fn-cpr-replay *sobt-fault-configs* (sobt-r))) :fault)
       (not (fn-sob-configured-openp *sobt-fault-configs* (sobt-f) (sobt-r)))
       (fn-sn-open-okp (sobt-model *bsk5-groups* *bsk5-capacity*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-sn-open-okp (sobt-host *sobt-fault-configs*))))
 
 ; Drop the store-only open's success: with no groups the fixed-table replay
@@ -71,7 +71,7 @@
 (assert-event
  (and (not (fn-sn-open-okp (sobt-model nil *bsk5-capacity*)))
       (fn-sn-open-okp (sobt-host *sobt-configs*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (sobt-files (sobt-host *sobt-configs*))
          (sobt-files (sobt-model nil *bsk5-capacity*)))))

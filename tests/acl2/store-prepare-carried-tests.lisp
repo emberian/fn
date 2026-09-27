@@ -10,7 +10,7 @@
 ; the offered wire record at handle 1.
 (in-package "ACL2")
 (include-book "../../books/store-prepare-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "store-prepare-correspondence-tests")
 
 ;; One entry on a fresh local arena holding the committed payload at handle 0:
@@ -72,7 +72,7 @@
 (defconst *spca-stale-entry* (spca-run nil *spc-stale* *spc-duplicate-wire*))
 (assert-event (equal (fn-sf-phase (fn-sn-files (nth 0 *spca-stale-carried*))) :record-staged))
 (assert-event (equal (nth 0 *spca-stale-entry*) *spc-stale*))
-(must-fail
+(must-fail-checked
  (assert-event (equal *spca-stale-carried* *spca-stale-entry*)))
 
 ; fn-store-prepare-interned-carried-is-next-then-seal (no hypothesis): the

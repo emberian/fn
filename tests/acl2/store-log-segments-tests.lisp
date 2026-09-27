@@ -5,7 +5,10 @@
 (in-package "ACL2")
 (include-book "../../books/store-log-segments")
 (include-book "../../books/frame-trailer")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Names.
@@ -150,7 +153,7 @@
  (not (equal (append *slst-prefix*
                      (fn-lgs-open-chain-records (list *slst-t2*) *slst-g0* *slst-unit* *slst-max*))
              (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
   (defthm slst-t8-without-genesis
@@ -168,7 +171,7 @@
  (not (equal (append (list *slst-r1*)
                      (fn-lgs-open-chain-records (list *slst-t2*) *slst-g1* *slst-unit* *slst-max*))
              (fn-lgs-open-chain-records (list *slst-t1* *slst-t2*) *slst-g0* *slst-unit* *slst-max*))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
   (defthm slst-t8-without-prefix
@@ -190,7 +193,7 @@
 (assert-event (not (fn-lgs-all-below-p (fn-lgs-indices '("000002.log")) 2)))
 (assert-event (not (equal (car (fn-lgs-open-plan (append '("000002.log") '("000003.log")) 2))
                           (car (fn-lgs-open-plan '("000003.log") 2)))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
  (defthm slst-plan-without-below
@@ -202,7 +205,7 @@
 (assert-event (fn-lgs-all-below-p (fn-lgs-indices nil) nil))
 (assert-event (not (equal (car (fn-lgs-open-plan (append '("000001.log") '("000002.log")) nil))
                           (car (fn-lgs-open-plan '("000002.log") nil)))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
  (defthm slst-plan-without-first

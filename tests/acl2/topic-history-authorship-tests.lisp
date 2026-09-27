@@ -2,7 +2,7 @@
 (include-book "../../books/topic-history-authorship")
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *tha-principal* (make-list 32 :initial-element 7))
 (defconst *tha-other-principal* (make-list 32 :initial-element 8))
@@ -132,19 +132,19 @@
         (fn-stmt-error :unbound-event)))
 ; If the verified principal or exact key set hypothesis is removed, the
 ; matching-root conclusion has executable counterexamples above.
-(must-fail
+(must-fail-checked
  (defthm tha-root-match-ignores-principal
    (equal (fn-th-at 2 (fn-stmt-value
                        (fn-th-select-verified-source
                         *tha-root-source* *tha-other-principal* *tha-keys*)))
           :controller-matched)))
-(must-fail
+(must-fail-checked
  (defthm tha-root-match-ignores-keys
    (equal (fn-th-at 2 (fn-stmt-value
                        (fn-th-select-verified-source
                         *tha-root-source* *tha-principal* *tha-other-keys*)))
           :controller-matched)))
-(must-fail
+(must-fail-checked
  (defthm tha-accepted-ignores-snapshot
    (fn-stmt-okp
     (fn-th-select-accepted-event

@@ -75,9 +75,10 @@
                         0 *sn-groups* "sn-pin" "sn-content" "sn-release" 3)))
                 (and (fn-sn-statep s) (equal (fn-sn-finish s) s))))
 
-; Acknowledged content survives crash/replay and all five recovery barriers.
+; Acknowledged content survives crash/replay and all three recovery barriers.
 (defconst *sn-recovered*
-  (fn-sn-test-barriers (fn-sn-recover (fn-sn-crash *sn-finished* :old :absent)) 5))
+  (fn-sn-test-barriers (fn-sn-recover (fn-sn-crash *sn-finished* :old :absent))
+                       *fn-sf-recovery-barrier-count*))
 (assert-event (fn-sn-statep *sn-recovered*))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sn-recovered*)) :ready))
 (assert-event (equal (fn-sn-node *sn-recovered*) (fn-sn-node *sn-finished*)))

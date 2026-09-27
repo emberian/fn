@@ -10,7 +10,7 @@
 (include-book "peer-carriage-tests")
 (include-book "store-open-pre-c1-tests")
 (include-book "../../books/records-concrete")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The rows the intern makes of a wire history WS on a fresh arena, and the
 ; folds over them and over their wire forms.
@@ -132,5 +132,5 @@
 (make-event `(defconst *hfr-forged* ',(hfr-forged-run)))
 (assert-event (car *hfr-forged*))
 (assert-event (not (cadr *hfr-forged*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (caddr *hfr-forged*) (cadddr *hfr-forged*))))

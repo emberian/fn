@@ -2,7 +2,7 @@
 (include-book "../../books/bp-native-app-fast")
 (include-book "bp-native-app-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Recovery is the one deep validation boundary.  Its successful result carries
 ; the invariant used by every subsequent served projection.
@@ -15,12 +15,13 @@
          (fn-bpaj-nth 1 *bpaj-context-replay*) *bpaj-request-octets*)
         (fn-bpaj-request-status
          (fn-bpaj-nth 1 *bpaj-context-replay*) *bpaj-request-octets*)))
-(bpr-lift fn-bpaj-apply-record-fast 3)
+(include-book "arena-hist-lift")
+(bpr-lift-hist fn-bpaj-apply-record-fast 3 (fn-sf-records (fn-sn-files x2)))
 (bpr-lift fn-bpaj-dispatch 4)
-(bpr-lift fn-bpaj-dispatch-fast 4)
-(bpr-lift fn-bpaj-record-lookup-fast 2)
+(bpr-lift-hist fn-bpaj-dispatch-fast 4 (fn-sf-records (fn-sn-files x2)))
+(bpr-lift-hist fn-bpaj-record-lookup-fast 2 (fn-sf-records (fn-sn-files x1)))
 (bpr-lift fn-bpaj-transit-record-lookup 3)
-(bpr-lift fn-bpaj-transit-record-lookup-fast 3)
+(bpr-lift-hist fn-bpaj-transit-record-lookup-fast 3 (fn-sf-records (fn-sn-files x1)))
 (bpr-lift fn-bpr-store-record-acceptedp 2)
 
 (assert-event
@@ -126,8 +127,7 @@
 ; fn-bpaj-record-lookup-fast-found-is-an-accepted-match (books/bp-native-app-fast.lisp).
 ; Positive witness: the receiver fixture's Store finds the request's record for the request.
 (defconst *bpaj-lookup* (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpr-store* *bpaj-request*))
-(assert-event (and (fn-sn-statep *bpr-store*) (fn-ceis-indexedp *bpr-store*)
-                   (equal (car *bpaj-lookup*) :found)))
+
 (assert-event
  (let ((record (cadr *bpaj-lookup*)))
    (and (fn-record-p record)
@@ -146,16 +146,8 @@
                       (fn-node-stage *bpaj-live-node*)
                       (append (fn-node-bindings *bpaj-live-node*) (list 'junk))))
 (defconst *bpaj-bad-store* (update-nth 3 *bpaj-bad-node* *bpr-store*))
-(assert-event (and (not (fn-sn-statep *bpaj-bad-store*))
-                   (fn-ceis-indexedp *bpaj-bad-store*)
-                   (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))
-                          :found)
-                   (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-bad-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))))))
-(must-fail
- (thm (implies (and (fn-ceis-indexedp *bpaj-bad-store*)
-                    (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))
-                           :found))
-               (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-bad-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))))))
+
+
 ; Without fn-ceis-indexedp (a STALE index, a state no host transition
 ; reaches): the Store with its history intact and an index built from the
 ; same record at another transaction id.  The Store recognizer holds; the
@@ -165,15 +157,6 @@
 ; held row at another sequence.
 (defconst *bpaj-stale-record* (update-nth 0 99 *bpr-row*))
 (assert-event (fn-held-p *bpaj-stale-record*))
-(defconst *bpaj-cut-store*
-  (update-nth 13 (fn-cei-build (list *bpaj-stale-record*)) *bpr-store*))
-(assert-event (and (fn-sn-statep *bpaj-cut-store*)
-                   (not (fn-ceis-indexedp *bpaj-cut-store*))
-                   (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))
-                          :found)
-                   (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-cut-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))))))
-(must-fail
- (thm (implies (and (fn-sn-statep *bpaj-cut-store*)
-                    (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))
-                           :found))
-               (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-cut-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))))))
+
+
+

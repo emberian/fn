@@ -5,7 +5,7 @@
 (include-book "../../books/bp-node-debt")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/bp-node-fragment-replacement")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnd-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
 (defconst *bpnd-sender* (cons :dtn '(47 47 98 112 45 115 101 110 100 101 114 47)))
@@ -97,7 +97,7 @@
               (car (fn-bpnf-handoffs *bpnd-after-state*))
               *bpnd-local*)
              -1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnd-debt *bpnd-after-state* *bpnd-local*) 3)))
 
@@ -131,7 +131,7 @@
                        *bpnd-margin* -1 :pay)
       (equal (fn-bpnd-free (+ 2 *bpnd-f2-used*) *bpnd-before-debt*
                              *bpnd-margin*) 0)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnd-admitp *bpnd-f1-used* *bpnd-before-debt*
                    *bpnd-margin* 1 :spend)))
@@ -151,7 +151,7 @@
                               *bpnd-margin* 2 :spend))
       (not (fn-bpnd-admitp *fn-bpnf-received-max-records*
                               *bpnd-before-debt* *bpnd-margin* -1 :pay))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnd-admitp *bpnd-frontier-used* *bpnd-before-debt*
                    *bpnd-margin* 0 :pay)))
@@ -220,7 +220,7 @@
               (fn-bpn-nth 3 *bpnd-family-applied*)
               (fn-bpn-nth 2 *bpnd-family-applied*)
               *bpnd-local*) 1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnd-family-delta
           (fn-bpn-nth 3 *bpnd-family-applied*)

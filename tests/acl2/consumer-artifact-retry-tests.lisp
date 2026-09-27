@@ -15,7 +15,7 @@
 (include-book "../../books/consumer-artifact-retry")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun crt-text (s) (fn-record-string-octets s))
 (defconst *crt-crlf* '(13 10))
@@ -140,7 +140,7 @@
         (equal (third *crt-msgids*) *crt-mo*)
         (equal (crt-entry *crt-msgid* *crt-msgid* *crt-ob-same* *crt-groups* *crt-s*)
                :duplicate))))
-(must-fail
+(must-fail-checked
  (defthm crt-re-signed-without-different-signatures
    (let ((held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
          (pa (fn-hsig-injected-carrier-plan source principal keys s1 config a))
@@ -171,7 +171,7 @@
         (not (equal *crt-s1* *crt-s2*))
         (not (equal (crt-entry *crt-other-msgid* *crt-msgid* *crt-ob* *crt-groups* *crt-empty*)
                     :conflict)))))
-(must-fail
+(must-fail-checked
  (defthm crt-re-signed-without-the-held-carrier
    (let ((pa (fn-hsig-injected-carrier-plan source principal keys s1 config a))
          (pb (fn-hsig-injected-carrier-plan source principal keys s2 config b))

@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-prepare-correspondence")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defconst *opc-groups* '("fn.letters" "fn.test"))
@@ -195,7 +195,7 @@
 (assert-event
  (equal (in-arena-fn-ocfg-step *sr-arena* *opc-stale* (list :store (list :prepare *opc-conflict*)))
         *opc-stale*))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-opc-prepare *opc-stale* *opc-conflict*)
          (in-arena-fn-ocfg-step *sr-arena* *opc-stale* (list :store (list :prepare *opc-conflict*))))))

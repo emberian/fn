@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "bp-ion-workflow-tests")
 (include-book "../../books/bp-ion-workflow-replay")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 ; The workflow entries read the payload arena (the records flip): each call
 ; runs over an arena holding *bpo-payloads* (tests/acl2/arena-lift.lisp).
 (bpr-lift fn-bpiw-durable-fold 3)
@@ -123,7 +123,7 @@
 (assert-event (not (fn-bpiw-recovery-outcomep *bpiwr-reattempt*)))
 (assert-event (car (in-arena-fn-bpiw-apply *bpo-payloads* (nth 1 *bpiwr-open-4*) (nth 3 *bpiwr-open-4*)
                                   *bpiwr-reattempt*)))
-(must-fail
+(must-fail-checked
  (defthm bpiwr-teeth-any-live-record-reopens
    (car (fn-bpiw-replay-journal
          *bpo-node* (append *bpiwr-delivered-cut* (list *bpiwr-reattempt*)) fn-arena))))
@@ -133,7 +133,7 @@
 (defconst *bpiwr-stranger* '(:outcome 99 0 :recovery :committed))
 (assert-event (car *bpiwr-open-1*))
 (assert-event (fn-bpiw-recovery-outcomep *bpiwr-stranger*))
-(must-fail
+(must-fail-checked
  (defthm bpiwr-teeth-unaccepted-recovery-reopens
    (car (fn-bpiw-replay-journal
          *bpo-node* (append *bpiwr-enqueue-cut* (list *bpiwr-stranger*)) fn-arena))))

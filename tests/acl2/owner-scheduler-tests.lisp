@@ -12,7 +12,7 @@
 ; health lines as text.
 (in-package "ACL2")
 (include-book "../../books/owner-scheduler")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Every class waiting, at four successive picks.
 (defconst *osch-all* '((2 3 1 1) (2 3 1 1) (2 3 1 1) (2 3 1 1) (2 3 1 1)))
@@ -35,7 +35,7 @@
 ; delay is four.  The hypothesis fails and so does the conclusion.
 (assert-event (not (fn-osch-control-waitsp *osch-late*)))
 (assert-event (equal (fn-osch-control-delay 1 *osch-late*) 4))
-(must-fail
+(must-fail-checked
  (assert-event (<= (fn-osch-control-delay 1 *osch-late*) *fn-osch-bound*)))
 
 ; -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@
 (assert-event (equal (fn-osch-pick 3 '(0 1 0 0)) 1))       ; wraps 3, 0, 1
 (assert-event (equal (fn-osch-pick 2 '(1 1 1 1)) 2))
 (assert-event (equal (fn-osch-pick 17 '(0 0 0 1)) 3))      ; a cursor out of range reads as 0
-(must-fail (assert-event (equal (fn-osch-pick 3 '(0 1 0 0)) 3)))
+(must-fail-checked (assert-event (equal (fn-osch-pick 3 '(0 1 0 0)) 3)))
 
 ; fn-osch-next: the class and the cursor after it; the rows are kept.
 (assert-event
@@ -75,13 +75,13 @@
 (assert-event (fn-osch-row-okp (fn-osch-row 1 *osch-s2*)))
 (assert-event (equal (fn-osch-cursor *osch-s2*) 0))
 ; MUTATION (labelled): bumping the count without a bucket breaks the invariant.
-(must-fail
+(must-fail-checked
  (assert-event (fn-osch-row-okp (fn-osch-bump 0 (fn-osch-row 1 *osch-s2*)))))
 ; MUST-FAIL for fn-osch-row-observe-keeps-okp's hypothesis: a row that is
 ; not consistent, observed, is not consistent after either.
 (defconst *osch-bad-row* (fn-osch-bump 0 (fn-osch-row 1 *osch-s2*)))
 (assert-event (not (fn-osch-row-okp *osch-bad-row*)))
-(must-fail (assert-event (fn-osch-row-okp (fn-osch-row-observe *osch-bad-row* 5 0))))
+(must-fail-checked (assert-event (fn-osch-row-okp (fn-osch-row-observe *osch-bad-row* 5 0))))
 
 ; -----------------------------------------------------------------------------
 ; The health lines, as text.

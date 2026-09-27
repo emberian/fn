@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/feed-port-replay")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fpr-peer* '(105 110 110))
 (defconst *fpr-a* '(60 97 64 102 110 62))
@@ -57,6 +57,6 @@
   (append *fpr-records*
           (list (fn-feed-journal-entry :feed-outcome
                   (list *fpr-peer* *fpr-c* 3 239)))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
   (equal (fn-feed-restart (fn-feed-replay *fpr-open* *fpr-false-image*))
          (fn-feed-restart *fpr-live*))))

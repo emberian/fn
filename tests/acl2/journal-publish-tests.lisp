@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/journal-publish")
 (include-book "../../books/app-journal")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *fn-t-jpub-link-window*
@@ -36,13 +36,13 @@
 
 ; Teeth: without established authority an apparent EEXIST is never a known
 ; refusal, and without the directory barrier the conclusion is not durable.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-jpub-outcome
           (fn-jpub-step (fn-jpub-state :link-attempted nil nil)
                         '(:link-result :exists)))
          :refused)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-jpub-crash-outcome *fn-t-jpub-dir-window*) :durable)))
 
 ; The application frontier owns the filename and the admission/capacity
@@ -63,16 +63,16 @@
  (equal (fn-aj-recover-record *fn-t-aj-empty*
                               "00000000000000000000.wf" 100 :config)
         (fn-aj-operation-successor *fn-t-aj-config-op*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (fn-aj-recover-record *fn-t-aj-empty*
                                     "00000000000000000001.wf" 100 :config)
               :fault))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-aj-authorize *fn-t-aj-empty* :config 100 nil nil t))
          :ok)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-aj-authorize
                (fn-aj-state :workflow 4095 0 t)

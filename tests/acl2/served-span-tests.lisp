@@ -16,7 +16,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/served-span")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every function it may reach is guard-verified.
@@ -43,7 +43,7 @@
 
 ; Without (fn-ocl-relation oc): the carried read is not the reference read for
 ; an arbitrary configuration.
-(must-fail
+(must-fail-checked
  (defthm sst-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (natp i) (natp end))
@@ -52,7 +52,7 @@
 
 ; Without (fn-scar-view-indexedp (fn-ocfg-owner oc)): the Message-ID view trie
 ; premise the carried fold needs is dropped.
-(must-fail
+(must-fail-checked
  (defthm sst-read-span-needs-view-indexedp
    (implies (and (fn-ocl-relation oc)
                  (natp i) (natp end))
@@ -61,7 +61,7 @@
 
 ; Without (natp i): a non-natural start does not index the buffer as the
 ; reference's octet list is indexed.
-(must-fail
+(must-fail-checked
  (defthm sst-read-span-needs-natp-start
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))

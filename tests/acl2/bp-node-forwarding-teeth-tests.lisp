@@ -6,7 +6,7 @@
 (include-book "../../books/bp-node-debt")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpfx-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
 (defconst *bpfx-sender* (cons :dtn '(47 47 98 112 45 115 101 110 100 101 114 47)))
@@ -185,7 +185,7 @@
               3 (fn-bpn-nth
                  3 (car (fn-bpnf-answer-effects *bpfx-wide-open*))))
              0)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpn-nth 3 *bpfx-attempt-record*)
          (fn-bpn-nth

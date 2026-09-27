@@ -14,8 +14,8 @@ makes no availability or flight-readiness claim; see
 [architecture](architecture.md) for the boundaries and
 [failures](../specs/failures.md) for what durability here assumes.
 
-**Installing from a release** (`fn-6.7.N-linux-x86_64.tar.gz` or
-`fn-6.7.N-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
+**Installing from a release** (`fn-VERSION-linux-x86_64.tar.gz` or
+`fn-VERSION-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
 is the whole path from the download to a node others reach over TLS, and it
 names nothing outside the release. This page is the reference for the
 operator's verbs beyond it: status and health in depth, recovery, peering
@@ -193,7 +193,7 @@ R, A, G and the name bound within their codec ceilings; R at most 4,294,966,940 
 `1 <= K <= T`; each namespace count in `1..2^32-1`.
 
 ```text
-fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters
+fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
 fn operator /path/to/fn.toml init --profile development fn.letters   # 128 transactions, 24 MiB
 fn operator /path/to/fn.toml init --profile scale fn.letters         # 4096 transactions, 768 MiB
 ```
@@ -252,12 +252,27 @@ over `fn-heap-friend-candidate`, PKT-707, decided 2026-09-27): the
 development base with H = 64, 32 or 16 MiB, one transaction slot per 512
 octets of history (T = H / 512), R raised to what the article bound needs;
 else the floor, H = 8 MiB with 16,384 transactions (the small preset). A
-short post with its headers is a record of about 860 octets, so the floor
-holds about 9,700 such posts and the top rung about 78,000; a friend's feed
-spends the same history. `init` prints its decision (`init:
-profile=custom sizing=... reservation=MB MB budget=MB MB within-budget=...`)
-and `status` prints `profile=custom`. A request naming T, H or R, or
-`--profile development|scale`, is written as named and never resized. The
+short post with its headers is a record of about 860 octets and its one
+group membership is charged 320 more (books/store-budget.lisp
+`*fn-sbud-membership-octets*`, lane membership-budget), so the floor holds
+about 7,100 such posts and the top rung about 56,800; a friend's feed
+spends the same history. Every rung and preset is judged by its FULL store's
+run (`fn-heap-reserve-full-store-decide`: the state at H and T and a replay
+of all of it), so a store init admitted always reopens on the same machine
+(`fn-heap-init-accepted-store-always-reopens`). `init` prints its decision
+(`init: profile=custom sizing=... reservation=MB MB budget=MB MB
+within-budget=yes`) and `status` prints `profile=custom`. A request naming
+T, H or R, or `--profile development|scale`, is written as named and never
+resized when the budget holds it; past the budget it is refused
+`init-budget-cannot-hold-profile` with both figures (exit 1,
+`fn-heap-init-decide-refuses-the-operators-request-past-the-budget`),
+unless FN_INIT_BUDGET_MB names a target budget that holds it: then it is
+written with `within-budget=no target-budget=MB MB`. A named budget below
+the budget init observes without it (init run outside the service's
+memory limit) is written for the named budget and warned on stderr by name
+with both figures (`fn-heap-init-budget-note`, keystone
+`fn-heap-init-budget-note-names-the-budget-init-sized-for`; finding R1 of
+the public-node rehearsal). The
 small preset has no `--profile` word (PKT-581); name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16
@@ -693,13 +708,18 @@ default image profile's include closure is green at its digest
 load-checks the certificates from the cache, builds and freezes the
 production image, stages it with `packaging/install-native.sh`, checks that
 no Python is on the deployed path (`tools/runpath_check.py --tree`) and that
-`bin/fn --version` prints `fn 6.7.N (REV12)`, and packs
-`fn-6.7.N-PLATFORM.tar.gz` with a `SHA256SUMS` beside it. The version 6.7.N
+`bin/fn --version` prints `fn VERSION (REV12)`, and packs
+`fn-VERSION-PLATFORM.tar.gz` with a `SHA256SUMS` beside it. VERSION
 is the one line of the file `VERSION` at the root of the tree: the image
 build reads it into the image and the packaging names the tarball by it, and
-the cut tags REV `v6.7.N` (planning/release-v6.7.0.md is the cut's
-checklist; `tools/cut_release.sh` runs its mechanical gates). The `--frozen`
-form packages an already built image as `fn-6.7.N+REV12-PLATFORM.tar.gz`,
+the cut tags REV `vVERSION` (planning/release-v6.6.0.md is the first cut's
+checklist; `tools/cut_release.sh` runs its mechanical gates). Release order
+is D37's sequence (planning/release-sequence.json, decided by
+`tools/release_sequence.py`): 6.6.0 to 6.6.5, the 6.7.x series, then 6.6.6
+and one more `.6` per release after it. No tool compares version numbers;
+the cut's gate 01 requires VERSION to be the sequence's next entry after
+the newest `v*` tag. The `--frozen`
+form packages an already built image as `fn-VERSION+REV12-PLATFORM.tar.gz`,
 which is not a release. The tarball holds one directory `fn/`: `install.sh`,
 `bin/fn`, `libexec/fn/` (the frozen launcher, the production core,
 `source-revision`, the SBCL runtime, libsodium and libfn-mldsa65; the TLS
@@ -722,13 +742,13 @@ image's core.
 
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
---version` prints `fn 6.7.N (REV12)`: the release version built into the
+--version` prints `fn VERSION (REV12)`: the release version built into the
 image and the first twelve digits of the source revision recorded beside its
 core (`libexec/fn/source-revision`; exit 1 when the image records none).
 
 ### On OpenBSD (amd64, 7.9)
 
-The OpenBSD tarball, fn-6.7.N-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
+The OpenBSD tarball, fn-VERSION-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
 (`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
 run in the build VM). It carries the SBCL runtime with its one non-base
 library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
@@ -795,8 +815,8 @@ Four OpenBSD rules decide where it lives, how it starts and what keeps its store
 As root, with the tarball and its sum in `/tmp`:
 
 ```sh
-cd /tmp && sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
-cd /usr/local && tar xzf /tmp/fn-6.7.N-openbsd-amd64.tar.gz
+cd /tmp && sha256 -C SHA256SUMS fn-VERSION-openbsd-amd64.tar.gz
+cd /usr/local && tar xzf /tmp/fn-VERSION-openbsd-amd64.tar.gz
 cd fn && sha256 -q -c SHA256SUMS                     # every file in it
 F=/usr/local/fn/bin/fn
 C=/var/fn/fn.toml
@@ -844,7 +864,8 @@ the libsodium and TLS candidate lists are chosen at read time, so an
 OpenBSD core carries only OpenBSD's names (PKT-723); `init` and `import`
 draw their stage suffix per process from the OS's entropy, so two runs of a
 saved image no longer stage under the same `ROOT.init-XXXX` (PKT-819). The
-gated OpenBSD 6.7.0 tarball of d663400f3 was built this way.
+gated OpenBSD rehearsal tarball of d663400f3 (VERSION then read 6.7.0,
+before D37 made 6.6.0 the first release) was built this way.
 
 ### Install the native production entry
 
@@ -1425,10 +1446,12 @@ not (an unreachable node exits 3, never 0), 2 for a usage error.
 groups, read what is new since last time, post a reply -- the client is
 `tools/fn_client.py`, described in [agents on an fn node](agents.md).
 
-For a person, the same node in a browser: the web reader logs in over the
-same verified STARTTLS, asks for the password on the terminal (or takes
+For a person, the same node in a browser: the one-person web reader logs
+in over the same verified TLS (STARTTLS, or the TLS port with `--tls` or
+563), asks for the password on the terminal (or takes
 `FN_CLIENT_PASSWORD`), and serves pages on `127.0.0.1` only
-([the web reader](web.md)):
+([a reader on your own computer](web.md#a-reader-on-your-own-computer); a
+node's friends use [the friends' web reader](#the-friends-web-reader)):
 
 ```sh
 mkdir -p ~/.fn ~/.fn-web
@@ -1709,7 +1732,13 @@ The node serves the binding from its configuration, not from the file: at
 start it publishes the file's bindings as configuration records, and when
 `bind` or `unbind` runs against a running node (the configuration names a
 `[control] path`) the verb asks the owner to re-read the file and publish
-the change at once (PKT-221; `books/login-binding-live.lisp`). The verb's
+the change at once (PKT-221; `books/login-binding-live.lisp`).
+`principal set-password` asks the same (control request 14): the owner
+rebuilds its credential table from the file with the load it ran at start
+(`host/native/auth.lisp` `fnn-native-auth-reload-config`, ACL2's
+`fn-native-auth-host-load`) before republishing the bindings, so a new
+password is served to the next connection without a restart
+(friend-path-2). The verb's
 last word says which: `applied` (the running owner published it),
 `effective-at-next-start` (no owner was running), `restart-required` (an
 owner holds the store and did not publish it, for example no control socket
@@ -2014,6 +2043,119 @@ lost reply answers `281` again and binds nothing new. `account list` shows
 digest or verifier. Redeemed accounts and auth.toml's credentials together are
 bounded by the profile's `max-credentials`.
 
+## The friends' web reader
+
+What ships (docs/web.md is the operator's walk): `clients/` of every release
+tarball (packaging/install-clients.sh) holds the friends' web reader
+`clients/bin/fn-reader` (tools/fn_reader.py, WEB-003), the one-person reader
+`fn-web` (tools/fn_web.py) and the other clients (`fn-client`, `fn-agent`,
+`fn-consumer`, `fn-verify`), each a `/bin/sh` launcher that execs `python3`
+on `clients/lib/NAME.py`. They need Python 3.9 or newer; the node does not.
+`install.sh --reader` installs the reader as its own service: the account
+`fn-reader` (`_fnreader`), the folder `/var/lib/fn-reader` (`/var/fn-reader`,
+mode 0700) with `reader.conf` (`--settings`, one `name = value` per option)
+and a copy of the node's public certificate, and
+`/etc/systemd/system/fn-reader.service` (`/etc/rc.d/fn_reader`).
+`tools/runpath_check.py --tree` still finds no Python on the node's path:
+its node walk skips `clients/`, its clients rule holds `clients/` to Python
+source, launchers that run only `python3` and file-name tools, and one
+service template starting `PREFIX/clients/bin/fn-reader`; and no script,
+launcher or service of the node's may name `clients/` (the separation the
+release's `share/fn/runpath-check.txt` records).
+
+Where it sits:
+
+```
+browser --HTTPS--> Caddy (443) --HTTP, 127.0.0.1--> fn-reader (8920)
+fn-reader --NNTP over verified TLS, AUTHINFO as the friend--> the node (563 or 119)
+fn-reader --runs--> PREFIX/bin/fn redeem HOST:PORT CODE LOGIN (XREDEEM over TLS)
+```
+
+The node reaches the reader never; the reader reaches the node only as an
+NNTP client with a friend's own login, exactly as tin would, on the
+implicit-TLS port (`tls_port`, RFC 8143; port 563 or `tls = yes`) or the
+reader port with STARTTLS (RFC 4642). The certificate is verified before any
+login octet is sent (`--tls-cert`, the copied certificate, or `--system-ca`);
+a certificate that does not verify refuses the sign-in with no password
+sent.
+
+### Threat model
+
+What it protects:
+
+- **The operator's authority.** The reader holds none. It never opens the
+  store, the control socket, `auth.toml`, the node's keys, peer credentials
+  or `fn.toml`: it runs as its own account, which the node folder (owned by
+  the node's account, mode 0750; the control socket 0600) does not admit, and
+  the systemd unit adds `InaccessiblePaths=` for the node folder,
+  `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `PrivateDevices`,
+  `NoNewPrivileges` and one writable path, its own folder. On OpenBSD the
+  account and the folder's mode are the whole of it (rc.d has no sandbox).
+  The one program of the node's it runs is `bin/fn redeem`, as its own
+  account, which dials the node like any client (ACL2's `fn-redeem-step`
+  decides each step); a verb that needs the node folder fails there on
+  permission.
+- **Every decision.** The node checks every password (AUTHINFO, 281 or
+  481), makes every account (XREDEEM's 281 only once the account is durable),
+  decides which groups a login sees and may post to, accepts, refuses or
+  holds each post, and decides whose cancel withdraws what. The reader has
+  no account table and adds no permission.
+- **Friends' passwords.** Held in the reader's memory for a signed-in
+  session (12 hours idle, dropped at sign-out), to open that friend's NNTP
+  connections; never written to a file, a URL, a page or a log (there is no
+  access log). A redeem passes the new password to `fn redeem` on standard
+  input, never argv, in a new session with no terminal. Submission records
+  in the reader's folder hold the article lines and the node's answers,
+  never a password.
+- **Sessions.** A 256-bit random session cookie (`HttpOnly`,
+  `SameSite=Lax`, `Secure` when `proxied = yes` or `--https-cert`); a
+  per-session form token on every POST, and POSTs refused unless
+  `Sec-Fetch-Site` and `Origin` say this site; a sign-in token against
+  login CSRF; no JavaScript, and `Content-Security-Policy: default-src
+  'none'` with `frame-ancestors 'none'`.
+- **Guessing.** Per browser address, 8 failed sign-ins or codes in 15
+  minutes, then a pause (behind Caddy the address is the last
+  `X-Forwarded-For` entry, believed only from a loopback peer and only with
+  `proxied = yes`). And for everyone together: every friend reaches the
+  node from this machine's one address, and the node closes an address to
+  new connections for the rest of a minute after `exposure-auth-failures`
+  refused logins (10 on a public listener; books/public-exposure.lisp), so
+  the reader carries at most `--node-failures-per-minute` (5) refused logins
+  or codes to the node per minute and turns the rest away itself. A guesser
+  can delay other people's new sign-ins by a minute at a time; signed-in
+  friends keep the node. The node's own limits apply whatever the reader
+  does.
+- **Connections.** One cached NNTP connection per signed-in friend (reused
+  for 90 s, then replaced; the node's idle timer closes one left behind). The node's per-address limit (8 on a public listener)
+  would count them all as one visitor: `policy set exposure-trusted` with
+  this machine's address exempts it from that one rule and no other.
+
+What it does not protect against:
+
+- Root on the node's machine, or the reader's own account: either reads the
+  passwords of signed-in friends from memory and the reader's folder.
+- Caddy, which terminates HTTPS and so sees each password in transit: it is
+  in the trusted base for friends' passwords. Serve nothing else under the
+  reader's web name (its cookies are `Path=/`).
+- Another local user of the machine: 127.0.0.1:8920 is open to them. They
+  can sign in only with a friend's password, and their own
+  `X-Forwarded-For` evades the per-address pause but not the per-minute
+  pacing. Do not run the reader on a shared machine.
+- A friend's own device: whoever holds its session cookie is that friend
+  until it expires or they sign out.
+- The reader's folder: what each friend read and copies of what they sent,
+  private groups included (mode 0700, the reader's account).
+
+The reader is a client, so none of this is an ACL2 obligation: it is the
+same position as tin on the operator's machine. Tests: tests/test_fn_reader.py
+(fake node over TLS: sign-in, implicit TLS, a wrong certificate sends no
+password, proxied addresses, the pacing, redeem's argv and stdin),
+tests/test_fn_web_native.py `NativeReaderImplicitTlsTests` (a native node's
+TLS port: redeem, sign-in, post, read, remove), tests/test_runpath_check.py
+(the clients rule and the separation), tests/test_release_tarball.py (the
+layout), tests/friends_tarball.sh (`install.sh --reader` renders the unit
+and settings from the tarball).
+
 ## Private groups: which login sees which group
 
 Every login sees every group the node carries unless you give it an access
@@ -2283,8 +2425,13 @@ that never existed exit 7. Neither asks for recovery: the job is durable
 and the next contact re-offers it under the same identity. A BP node's
 held rows, held octets, largest ADU and largest bundle are raised offline
 with `bp-node profile JOURNAL NODE MAX-HELD-ROWS MAX-HELD-OCTETS
-[MAX-ADU-OCTETS MAX-BUNDLE-OCTETS]` (default 64, 16 MiB, 65,538 and 1 MiB;
-each at most 2^24; never lowered). A bundle past the ADU or bundle bound is
+[MAX-ADU-OCTETS MAX-BUNDLE-OCTETS [ROTATE-RECORDS]]` (default 64, 16 MiB,
+65,538 and 1 MiB; each at most 2^24; never lowered). ROTATE-RECORDS (default
+4,096; it may be lowered) is when the journal rotates by itself: `bp-node
+serve` and `bp-node dispatch` rotate at their open once the selected
+generation holds that many records (`BP journal rotation generation=G
+records=N threshold=T`, then `BP journal generation selected`), so no
+operator `bp-node checkpoint` is needed to keep a node taking custody. A bundle past the ADU or bundle bound is
 refused (`BP refused reason=adu-beyond-profile` or
 `bundle-beyond-profile`, exit 1); a journal opened under a profile smaller
 than its rows or held octets fences with `held-beyond-profile`, and since

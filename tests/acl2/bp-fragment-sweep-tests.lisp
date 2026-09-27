@@ -7,7 +7,7 @@
 ; the other true, makes that one false, and falsifies the conclusion.
 (in-package "ACL2")
 (include-book "../../books/bp-fragment-sweep")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpfwt-payload (n acc)
   (declare (xargs :guard (and (natp n) (true-listp acc))))
@@ -103,7 +103,7 @@
 ; Within the caps the two references agree.
 (assert-event (equal (fn-bpf-reassemble *bpfwt-cut* 8)
                      (fn-bpfw-spec *bpfwt-cut* 8)))
-(must-fail (assert-event (equal (fn-bpfw-reassemble *bpfwt-gap* 8)
+(must-fail-checked (assert-event (equal (fn-bpfw-reassemble *bpfwt-gap* 8)
                                 (list :ok *bpfwt-p*))))
 
 ; -----------------------------------------------------------------------------

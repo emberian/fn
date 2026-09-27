@@ -13,7 +13,25 @@
 (in-package "ACL2")
 (include-book "../../books/control-visible-indexed")
 (include-book "../../books/catalog-record")   ; fn-held-facts-of: the rows' facts
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
+
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-ctl-refresh-withdrawals-ix-hx (new old ws verdicts records hist configs)
+  ; fn-ctl-refresh-withdrawals-ix over a history stobj loaded with HIST (R holds when HIST is the history it reads).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix hist) 0 fn-hist)))
+        (mv (fn-ctl-refresh-withdrawals-ix new old ws verdicts records fn-hist configs) fn-hist))
+      ans)))
+(defun fn-ctl-row-event-ix-hx (m records hist)
+  ; fn-ctl-row-event-ix over a history stobj loaded with HIST (R holds when HIST is the history it reads).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix hist) 0 fn-hist)))
+        (mv (fn-ctl-row-event-ix m records fn-hist) fn-hist))
+      ans)))
 
 (defconst *cvit-p* (make-list 32 :initial-element 17))
 (defconst *cvit-p-verified* (fn-stx-make-verdict :verified *cvit-p* 1))
@@ -55,7 +73,7 @@
 ; articles; a row outlives its article's expiry).
 (defconst *cvit-rt2* (cvit-rec 2 6 "<t@example.invalid>" '("fn.mod.a") *cvit-o-bytes*))
 (defconst *cvit-hist* (list *cvit-rt* *cvit-ec2* *cvit-rt2*))
-(defconst *cvit-ix* (fn-cei-build *cvit-hist*))
+(defconst *cvit-ix* *cvit-hist*)
 
 ; The history is a Store history; the rows agree (H2); the index is the
 ; history's (H1).
@@ -63,25 +81,25 @@
  (and (fn-sf-record-listp *cvit-hist* 0 0 10)
       (fn-hstxa-p *cvit-ec2*)
       (fn-ctl-rows-okp *cvit-hist*)
-      (fn-cei-correspondencep *cvit-ix* *cvit-hist*)))
+      (equal *cvit-ix* *cvit-hist*)))
 
 (defun cvit-index-branch (m ix)
-  (fn-cei-get (fn-record-sequence (car (fn-cei-msgid-records m ix))) ix))
+  (nth (fn-record-sequence (car (fn-cei-article-records-for m ix))) ix))
 
 ; KEYSTONE fn-ctl-row-event-ix-is-row-event, positive witness: equal to the
 ; walk for the plain row's Message-ID (the OLDEST of its two rows), the
 ; composite's and an absent one; the index branch is the one taken.
 (assert-event
- (and (equal (fn-ctl-row-event-ix "<t@example.invalid>" *cvit-hist* *cvit-ix*)
+ (and (equal (fn-ctl-row-event-ix-hx "<t@example.invalid>" *cvit-hist* *cvit-ix*)
              (fn-ctl-row-event "<t@example.invalid>" *cvit-hist*))
-      (equal (fn-ctl-row-event-ix "<t@example.invalid>" *cvit-hist* *cvit-ix*) *cvit-rt*)
+      (equal (fn-ctl-row-event-ix-hx "<t@example.invalid>" *cvit-hist* *cvit-ix*) *cvit-rt*)
       (equal (cvit-index-branch "<t@example.invalid>" *cvit-ix*) *cvit-rt*)
-      (equal (len (fn-cei-msgid-records "<t@example.invalid>" *cvit-ix*)) 2)
-      (equal (fn-ctl-row-event-ix "<c2@example.invalid>" *cvit-hist* *cvit-ix*)
+      (equal (len (fn-cei-article-records-for "<t@example.invalid>" *cvit-ix*)) 2)
+      (equal (fn-ctl-row-event-ix-hx "<c2@example.invalid>" *cvit-hist* *cvit-ix*)
              (fn-ctl-row-event "<c2@example.invalid>" *cvit-hist*))
-      (equal (fn-ctl-row-event-ix "<c2@example.invalid>" *cvit-hist* *cvit-ix*) *cvit-ec2*)
+      (equal (fn-ctl-row-event-ix-hx "<c2@example.invalid>" *cvit-hist* *cvit-ix*) *cvit-ec2*)
       (equal (cvit-index-branch "<c2@example.invalid>" *cvit-ix*) *cvit-ec2*)
-      (equal (fn-ctl-row-event-ix "<x@example.invalid>" *cvit-hist* *cvit-ix*) nil)
+      (equal (fn-ctl-row-event-ix-hx "<x@example.invalid>" *cvit-hist* *cvit-ix*) nil)
       (equal (fn-ctl-row-event "<x@example.invalid>" *cvit-hist*) nil)))
 
 ; KEYSTONE fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals, positive
@@ -94,7 +112,7 @@
 (defconst *cvit-v1* (list (cons "<c2@example.invalid>" *cvit-p-verified*)
                           (cons "<t@example.invalid>" *cvit-p-verified*)))
 (assert-event
- (let ((ix (fn-ctl-refresh-withdrawals-ix (list *cvit-c2* *cvit-t*) (list *cvit-t*) nil
+ (let ((ix (fn-ctl-refresh-withdrawals-ix-hx (list *cvit-c2* *cvit-t*) (list *cvit-t*) nil
                                           *cvit-v1* *cvit-hist* *cvit-ix* nil))
        (ref (fn-ctl-refresh-withdrawals (list *cvit-c2* *cvit-t*) (list *cvit-t*) nil
                                         *cvit-v1* *cvit-hist* nil)))
@@ -106,14 +124,14 @@
 ; whose one row for T sits at sequence 0, answers that row; the walk
 ; answers T's own.  H2 holds.
 (defconst *cvit-other-rt* (cvit-rec 0 6 "<t@example.invalid>" '("fn.mod.a") *cvit-o-bytes*))
-(defconst *cvit-bad-ix* (fn-cei-build (list *cvit-other-rt*)))
+(defconst *cvit-bad-ix* (list *cvit-other-rt*))
 (assert-event
  (and (fn-ctl-rows-okp *cvit-hist*)
-      (not (fn-cei-correspondencep *cvit-bad-ix* *cvit-hist*))
+      (not (equal *cvit-bad-ix* *cvit-hist*))
       (equal (cvit-index-branch "<t@example.invalid>" *cvit-bad-ix*) *cvit-other-rt*)))
-(must-fail
+(must-fail-checked
  (assert-event
-  (equal (fn-ctl-row-event-ix "<t@example.invalid>" *cvit-hist* *cvit-bad-ix*)
+  (equal (fn-ctl-row-event-ix-hx "<t@example.invalid>" *cvit-hist* *cvit-bad-ix*)
          (fn-ctl-row-event "<t@example.invalid>" *cvit-hist*))))
 
 ; Teeth, H2 (the rows agree): a history whose first event has a row's head
@@ -125,16 +143,16 @@
         nil nil nil nil))
 (defconst *cvit-rt1* (cvit-rec 1 4 "<t@example.invalid>" '("fn.mod.a") *cvit-t-bytes*))
 (defconst *cvit-fake-hist* (list *cvit-fake* *cvit-rt1*))
-(defconst *cvit-fake-ix* (fn-cei-build *cvit-fake-hist*))
+(defconst *cvit-fake-ix* *cvit-fake-hist*)
 (assert-event
- (and (fn-cei-correspondencep *cvit-fake-ix* *cvit-fake-hist*)
+ (and (equal *cvit-fake-ix* *cvit-fake-hist*)
       (not (fn-ctl-rows-okp *cvit-fake-hist*))
       (not (fn-held-p *cvit-fake*))
       (equal (fn-ctl-event-row *cvit-fake*) *cvit-fake*)
       (equal (fn-ctl-row-event "<t@example.invalid>" *cvit-fake-hist*) *cvit-fake*)))
-(must-fail
+(must-fail-checked
  (assert-event
-  (equal (fn-ctl-row-event-ix "<t@example.invalid>" *cvit-fake-hist* *cvit-fake-ix*)
+  (equal (fn-ctl-row-event-ix-hx "<t@example.invalid>" *cvit-fake-hist* *cvit-fake-ix*)
          (fn-ctl-row-event "<t@example.invalid>" *cvit-fake-hist*))))
 
 ; The dispatch fix (books/control-visible.lisp fn-ctl-event-row): a
@@ -152,6 +170,6 @@
       (fn-ctl-rows-okp *cvit-stxe-hist*)
       (null (fn-ctl-event-row *cvit-stxe*))
       (equal (fn-ctl-row-event "<t@example.invalid>" *cvit-stxe-hist*) *cvit-rt1*)
-      (equal (fn-ctl-row-event-ix "<t@example.invalid>" *cvit-stxe-hist*
-                                  (fn-cei-build *cvit-stxe-hist*))
+      (equal (fn-ctl-row-event-ix-hx "<t@example.invalid>" *cvit-stxe-hist*
+                                  *cvit-stxe-hist*)
              *cvit-rt1*)))

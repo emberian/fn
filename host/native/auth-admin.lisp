@@ -401,16 +401,16 @@ production image, which refuses to start with the variable set."
                         *standard-output*)
           (finish-output *standard-output*)))
       ;; After the change is durable, the writer lock is observed once; a
-      ;; bind or unbind seen under a running owner asks it to republish the
-      ;; file's bindings (PKT-221), and ACL2 answers what the change's
-      ;; effect is (PKT-102).
+      ;; set-password, bind or unbind seen under a running owner asks it to
+      ;; reload the file (its credential table, then its bindings: PKT-221),
+      ;; and ACL2 answers what the change's effect is (PKT-102).
       (let* ((observation
                (and durable
                     (if *fnn-native-auth-admin-store-root*
                         (fnn-store-owner-observation
                          *fnn-native-auth-admin-store-root*)
                         :unknown)))
-             (live (and durable (eq action :bind)
+             (live (and durable (member action '(:set-password :bind))
                         (not (member observation '(:free :absent)))
                         (fnn-login-bindings-request-reload
                          *fnn-native-auth-admin-control-path*))))

@@ -5,7 +5,7 @@
 ; session; every hypothesis has a removal witness and a must-fail.
 (in-package "ACL2")
 (include-book "../../books/peer-transit-forms")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ptf-o (s) (fn-nntp-string-octets s))
 
@@ -88,7 +88,7 @@
                    (fn-peer-msgid-argp *ptf-args*)
                    (not (fn-nntp-keywordp (ptf-o "MODE") "IHAVE"))
                    (not (ptf-k1-conclusion *ptf-ps* (ptf-o "MODE") (ptf-o "CHECK") *ptf-args*))))
-(must-fail
+(must-fail-checked
  (defthm ptf-k1-without-ihave
    (implies (and (fn-nntp-keywordp kc "CHECK") (fn-peer-msgid-argp args))
             (ptf-k1-conclusion ps ki kc args))
@@ -99,7 +99,7 @@
                    (fn-peer-msgid-argp *ptf-args*)
                    (not (fn-nntp-keywordp (ptf-o "IHAVE") "CHECK"))
                    (not (ptf-k1-conclusion *ptf-ps* (ptf-o "IHAVE") (ptf-o "IHAVE") *ptf-args*))))
-(must-fail
+(must-fail-checked
  (defthm ptf-k1-without-check
    (implies (and (fn-nntp-keywordp ki "IHAVE") (fn-peer-msgid-argp args))
             (ptf-k1-conclusion ps ki kc args))
@@ -113,7 +113,7 @@
                    (not (ptf-k1-conclusion *ptf-ps* (ptf-o "IHAVE") (ptf-o "CHECK") *ptf-bad-args*))
                    (equal (ptf-code *ptf-ps* "IHAVE" *ptf-bad-args*) 501)
                    (equal (ptf-code *ptf-ps* "CHECK" *ptf-bad-args*) 501)))
-(must-fail
+(must-fail-checked
  (defthm ptf-k1-without-msgid
    (implies (and (fn-nntp-keywordp ki "IHAVE") (fn-nntp-keywordp kc "CHECK"))
             (ptf-k1-conclusion ps ki kc args))
@@ -141,7 +141,7 @@
 (assert-event (equal (ptf-k2 (fn-peer-decision :want nil) :uncertain) '(436 436 t t)))
 ; No hypothesis.  Tooth: the stronger claim that the two forms answer the
 ; same code is false, and the durable case says so.
-(must-fail
+(must-fail-checked
  (defthm ptf-k2-same-code
    (equal (fn-peer-wire-code (fn-peer-transit-outcome-effects
                               ps (fn-peer-make-submission peer :takethis msgid octets) d completion))
@@ -197,7 +197,7 @@
 ; 15 to 16), and the claim is not a theorem.
 (assert-event (not (<= (ptf-inflight (in-arena-ptf-step *sr-arena* *ptf-ps15* "CHECK <s1@example.invalid>"))
                        (fn-peer-session-inflight *ptf-ps15*))))
-(must-fail
+(must-fail-checked
  (defthm ptf-k3-never-raises
    (<= (nfix (fn-peer-session-inflight
               (fn-post-result-session

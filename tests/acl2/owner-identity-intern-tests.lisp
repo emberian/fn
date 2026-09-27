@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-identity-intern")
 (include-book "owner-signed-post-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (bpr-lift fn-ocfg-step 2)
 
@@ -117,3 +117,52 @@
       (equal (nth 1 *oiit-intern-k*)
              (fn-oii-identity-row *oiit-snapshot* nil 0 (nth 0 *oiit-intern-k*)))
       (equal (nth 2 *oiit-intern-k*) (nth 0 *oiit-intern-k*))))
+
+; -----------------------------------------------------------------------------
+; fn-oii-ocfg-prepare-identity-is-intern-then-step: no removal witness for
+; (fn-own-relation (fn-ocfg-owner oc)) (audit packet G2-P5, lane audit-fixes).
+; Two CORRUPTED owners were tried: a Store event index claiming 100 records
+; (the relation does not read that count, it still holds, and the equality
+; holds), and a node advanced past the frontier (the relation fails, and the
+; entry and the step both leave the Store unchanged: the equality holds).
+; The hypothesis is the bridge fn-ccar-ocfg-prepare-identity-is-ocfg-step-
+; under-relation's; no counterexample is known and the weakened theorem was
+; not attempted.
+(defun oiit-owner-with-store (o s)
+  (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+               (fn-own-node-secret o) (fn-own-refused o)))
+
+
+
+(defconst *oiit-far-s*
+  (update-nth 3 (fn-replay-advance-txid (fn-sn-node *oiit-s*) 20) *oiit-s*))
+(defconst *oiit-far-oc*
+  (fn-ocfg-make (oiit-owner-with-store *oiit-reserved* *oiit-far-s*) *ospt-config* nil nil))
+(make-event `(defconst *oiit-far-staged*
+  ',(with-guard-checking :none (fn-oii-ocfg-prepare-identity *oiit-far-oc* *ospt-event* *oiit-h*))))
+
+; -- fn-oii-publication-group-count-is-the-rows (lane bp-retention-leftovers):
+; the reachable signed POST's composite.  The preflight's count is the
+; number of groups the wire article names, and the interned row's held
+; article is filed in exactly those (the memberships its charge carries).
+(assert-event
+ (let ((k (fn-oii-publication-group-count *ospt-event*)))
+   (and (posp k)
+        (equal k (len (fn-record-groups (fn-replay-composite-record *ospt-event*))))
+        (equal (len (fn-record-groups (fn-hstxa-held *oiit-row*))) k))))
+; Any other event: 0 (a keyring snapshot carries no article).
+(assert-event (equal (fn-oii-publication-group-count
+                      (car (fn-sn-keyring-snapshots *oiit-s*)))
+                     0))
+; Mutation witness (labelled: not a hypothesis-removal tooth): off by one
+; from the count, the equation fails on a keyring snapshot, which interns to
+; itself and carries no held article.
+(must-fail-checked
+ (defthm oiit-group-count-without-a-composite
+   (let ((k (car (fn-sn-keyring-snapshots *oiit-s*))))
+     (equal (len (fn-record-groups (fn-hstxa-held (fn-oii-identity-row k nil 0 *oiit-h*))))
+            (+ 1 (fn-oii-publication-group-count k))))
+   :rule-classes nil))

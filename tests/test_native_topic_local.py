@@ -218,10 +218,12 @@ class NativeTopicLocalTest(unittest.TestCase):
                          before_retention.stderr.decode())
         # Two compactions over the record log (the checkpoint's rotation and
         # the covered segments' drop; lane log-recovery-2 re-targeted this
-        # from the pack chain), then a generation checkpoint.
+        # from the pack chain).  The generation checkpoint that followed is
+        # retired (lane matrix-reds): the reopen below reads the state
+        # checkpoint the compaction wrote, and the topic report after it is
+        # the projection's check.
         for words in (("operator", self.config, "store", "compact"),
-                      ("operator", self.config, "store", "compact"),
-                      ("checkpoint", "publish", self.store, "select")):
+                      ("operator", self.config, "store", "compact")):
             result = self.invoke(*words)
             self.assertEqual(result.returncode, 0,
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
@@ -235,9 +237,6 @@ class NativeTopicLocalTest(unittest.TestCase):
                          state(before_status))
         self.assertEqual(self.invoke("store", self.store, "retention").stdout,
                          before_retention.stdout)
-        checkpoint = self.invoke("checkpoint", "status", self.store)
-        self.assertEqual(checkpoint.returncode, 0, checkpoint.stderr.decode())
-        self.assertIn(b"auxiliary=equal-v2", checkpoint.stdout)
         compacted = self.transactions()
 
         final = self.start_owner()

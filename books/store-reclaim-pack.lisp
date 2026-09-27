@@ -1,32 +1,33 @@
-; fn: content reclamation's durable step, the reclaiming pack (STO-017, PRF-119).
+; fn: content reclamation's per-article rewrite (STO-017, PRF-119).
 ;
 ; `operator CONFIG store reclaim' removes released payload octets from the
-; disk.  It never edits a file in place.  The store is first compacted into
-; one selected lossless pack (books/store-compact-verb, the ordinary verb),
-; so every committed record lives in the pack and no transaction file is
-; left.  Then this book decides a second pack generation: the same event
-; list with each reclaimable article record re-encoded with its payload
-; replaced by `fn-rcl-tombstone-of', and every other event's octets exact.
-; The host publishes it, selects it (the marker replacement is the one
-; commit point) and retires the older generation, whose unlink is what
-; returns the octets to the file system.
+; disk.  It never edits a file in place.  On the record log (format 9, the
+; one store format) it checkpoints the REWRITTEN history and drops the
+; segments the checkpoint covers (books/store-log-reclaim.lisp
+; `fn-lgr-decide-stream', over the fold of books/store-reclaim-stream.lisp).
+; This book decides the rewrite: the same event list with each reclaimable
+; article record re-encoded with its payload replaced by
+; `fn-rcl-tombstone-of', and every other event's octets exact.  (Before the
+; record log it decided a reclaiming pack generation; the pack layer went
+; with the per-file layout, design 2026-09-27 storage-log section 9 row 5.)
 ;
-; Three operations are kept apart (specs/storage.md STO-017): packing keeps
-; the exact event history; history compaction is not done here; content
+; Three operations are kept apart (specs/storage.md STO-017): the exact
+; event history is kept; history compaction is not done here; content
 ; reclamation changes only payload octets of released article records and
 ; keeps every identity, number, obligation and anti-resurrection fact the
 ; record carries.
 ;
-; What is decided here, over the function the host calls
-; (host/checkpoint-host.lisp `fn-store-reclaim-decide', called by
-; host/native/checkpoint.lisp `fnn-reclaim-steps'):
+; What is decided here, over the functions the host calls
+; (host/checkpoint-host.lisp `fn-store-log-reclaim-event' = `fn-rclp-event'
+; per record and `fn-store-reclaim-context' = `fn-rclp-ctx', called by
+; host/native/checkpoint.lisp `fnn-log-reclaim-steps'):
 ;   - which events change: only a legacy article record whose article is
 ;     `fn-rcl-reclaimable' in the opened store (KEYSTONE
 ;     `fn-rclp-events-never-touch-a-held-article');
 ;   - what a changed event is: the encoding of the same record with the
 ;     tombstone as its payload, and nothing else of it changes
 ;     (`fn-rclp-event-decodes-to-the-tombstoned-record');
-;   - that the new list is still a pack summary's event list
+;   - that the new list is still a well-formed event list
 ;     (`fn-rclp-events-keep-the-summary-shape');
 ;   - that a rerun after any cut rewrites nothing more
 ;     (`fn-rclp-events-idempotent');
@@ -34,7 +35,7 @@
 ;     (`fn-rclp-freed-octets-account').
 (in-package "ACL2")
 (include-book "store-reclaim-holders")
-(include-book "store-compact-verb")
+(include-book "checkpoint-compaction")
 
 ; The record an article record becomes: the same fields with the tombstone
 ; of its payload in place of the payload, and the retention charge of its
@@ -45,7 +46,7 @@
 ; keeps a live pin, `fn-node-statep'), and what the ledger keeps for it is
 ; exactly what `fn-retain-release' keeps for a released obligation: one
 ; unit.  The content charge (pages) returns to the ledger's headroom when
-; the reclaiming pack is replayed.  Only the rewritten article's own pin
+; the rewritten history is replayed.  Only the rewritten article's own pin
 ; changes (every other event is the same octets,
 ; `fn-rclp-events-never-touch-a-held-article',
 ; `fn-rclp-events-keep-every-other-kind').
@@ -171,7 +172,7 @@
                '(:in-theory (enable fn-rclp-tombstoned)))))
 
 ; -----------------------------------------------------------------------------
-; The new list is a pack summary's event list.
+; The new list is an event list on the same terms as the old.
 
 (local
  (defthm store-event-decode-of-a-record-octets
@@ -256,11 +257,10 @@
                    :in-theory (disable fn-rclp-event fn-rclp-rewrites-p
                                        fn-store-event-decode-exact)))))
 
-;  KEYSTONE (the reclaiming pack is a pack).  The rewrite is a summary's
-; event list from SEQUENCE with txids in [LOWER, UPPER) exactly when the
-; committed history is: the capture the host publishes (`fn-cc-capture'
-; through `fn-store-reclaim-decide') accepts it on the same terms as the
-; ordinary pack, and the open replays it through the one Store decoder.
+;  KEYSTONE (the rewrite is a history).  The rewrite is an event list
+; from SEQUENCE with txids in [LOWER, UPPER) (`fn-cc-octet-event-listp')
+; exactly when the committed history is, so the replay the log reclaim runs
+; before its checkpoint reads it through the one Store decoder.
 (defthm fn-rclp-events-keep-the-summary-shape
   (equal (fn-cc-octet-event-listp (fn-rclp-events events ctx) sequence lower upper)
          (fn-cc-octet-event-listp events sequence lower upper))
@@ -301,7 +301,7 @@
                                               (theory 'minimal-theory))
                    :use rewritten-event-payload-is-a-tombstone))))
 
-;  KEYSTONE (convergence).  An event the reclaiming pack rewrote is never
+;  KEYSTONE (convergence).  An event the reclaim rewrote is never
 ; rewritten again, under any later context (the store reopened after the
 ; reclaim, a later rule, other holders): a reclaimed payload stays reclaimed.
 (defthm fn-rclp-a-reclaimed-event-stays-reclaimed
@@ -319,7 +319,7 @@
    :hints (("Goal" :cases ((fn-rclp-rewrites-p octets ctx))
                    :in-theory (disable fn-rclp-rewrites-p fn-rclp-event)))))
 
-; And a rerun with the same context writes the same pack.
+; And a rerun with the same context writes the same history.
 (defthm fn-rclp-events-idempotent
   (equal (fn-rclp-events (fn-rclp-events events ctx) ctx)
          (fn-rclp-events events ctx))
@@ -352,7 +352,7 @@
 ; article record whose article any obligation of the lifetimes table names
 ; (reader pin, consumer cursor, undelivered feed, BP obligation), or whose
 ; Store verdict needs its payload, or the rule is keep-forever, the I-th
-; event of the reclaiming pack is the same octets.
+; event of the rewritten history is the same octets.
 (defthm fn-rclp-events-never-touch-a-held-article
   (let* ((o (nth i events))
          (m (fn-record-msgid (fn-record-result-record (fn-record-decode-exact o))))
@@ -382,7 +382,7 @@
 ;  KEYSTONE (signed composites and every other kind are protected).  An
 ; event that is not a legacy article record -- an accepted-statement
 ; composite, a keyring snapshot, a statement verdict, a retention,
-; consumer or topic event -- is the same octets in the reclaiming pack.
+; consumer or topic event -- is the same octets in the rewritten history.
 (defthm fn-rclp-events-keep-every-other-kind
   (implies (not (fn-record-result-okp (fn-record-decode-exact (nth i events))))
            (equal (nth i (fn-rclp-events events ctx)) (nth i events)))
@@ -485,197 +485,13 @@
                                              (fn-rclp-event octets ctx)))))))))
 
 ; -----------------------------------------------------------------------------
-; The verb's decision.
+; The per-article context the rewrite reads.
 ;
 ; RULE: the configured retention rule (`fn-rcl-config-rule').  NOW: the
 ; instant the rule is measured at (the clock observation's stamp, nil when
 ; the clock is unusable, which reclaims nothing under release-after).  S:
-; the Store state the open replayed (holders, verdicts, articles).  RECORDS:
-; the committed history as octets (pack plus suffix).  FRONTIER: the durable
-; allocator frontier.  LOWER, NAMES, GENERATIONS, SELECTED: the compact verb's
-; observation; DISK-FREE: the free octets the host observed (PKT-169).  DRY: `--dry-run'.
-;
-;   (:compact-first)                 the history is not one selected pack
-;                                    with no transaction file left: the host
-;                                    runs the compact verb's decision first
-;   (:resume-retire COUNTS)          nothing to rewrite; an older generation
-;                                    survives a cut after the selection: retire it
-;   (:none COUNTS)                   nothing is reclaimable now (with no
-;                                    authorized release this is the answer,
-;                                    and it writes nothing)
-;   (:dry-run MSGIDS FREED COUNTS)   what a run would reclaim; nothing written
-;   (:reclaim STEPS MSGIDS FREED SUMMARY-OCTETS COUNTS)
-;   (:refused REASON)                nothing written; REASON is :profile,
-;                                    :observation, :spans-links,
-;                                    :temporary-space or :capture
-;
-; STEPS are `*fn-rclp-steps*': drop the derived state checkpoint (it holds
-; payload octets and would be opened in place of the history), publish the
-; reclaiming pack, select it, retire the older generations.
-(defconst *fn-rclp-steps* '(:drop-state-checkpoint :pack :select :retire))
-
+; the Store state the open replayed (holders, verdicts, articles).
 (defun fn-rclp-ctx (rule now s)
   (declare (xargs :guard t :verify-guards nil))
   (list rule now (fn-rcl-store-holders s) (fn-sn-verdicts s)
         (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
-
-(defun fn-rclp-decide (profile rule now s records frontier lower names
-                               generations selected disk-free dry)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((used (len records))
-         (reclaim (fn-bs-pack-reclaim-plan
-                   names (fn-bs-profile-max-transactions profile) lower))
-         (counts (fn-rcl-store-counts rule now s))
-         (ctx (fn-rclp-ctx rule now s))
-         (msgids (fn-rclp-rewritten-msgids records ctx)))
-    (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
-          ((or (not (natp lower)) (< used lower) (equal reclaim :invalid))
-           (list :refused :observation))
-          ; Nothing left to rewrite, but a generation older than the
-          ; selected one survives: a cut between the selection and the
-          ; retirement (the older generation still holds the released
-          ; payloads).  The rerun finishes the retirement.
-          ((and (atom msgids) (not dry)
-                (posp (fn-cverb-older-count generations selected)))
-           (list :resume-retire counts))
-          ((atom msgids) (list :none counts))
-          (dry (list :dry-run msgids (fn-rclp-freed records ctx) counts))
-          ((or (not (equal lower used)) (consp reclaim) (null selected))
-           (list :compact-first))
-          (t
-           (let ((new (fn-rclp-events records ctx)))
-             (cond
-              ; The reclaiming pack is one link: the first link of a new
-              ; chain covering what the selected chain covers.  A rewritten
-              ; history past one scheduling quantum would need a chain of
-              ; rewritten links published before one selection, which is
-              ; not built (PKT-332); it is refused by name, nothing written.
-              ((or (< *fn-cc-max-events* (len new))
-                   (< *fn-cc-max-octets* (fn-cc-event-octets-size new)))
-               (list :refused :spans-links))
-              ((not (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets new)))
-               (list :refused :temporary-space))
-              (t
-               (let ((captured (fn-cc-capture new frontier)))
-                 (if (not (equal (car captured) :ok))
-                     (list :refused :capture)
-                   (list :reclaim *fn-rclp-steps* msgids (fn-rclp-freed records ctx)
-                         (fn-cc-encode (cadr captured)) counts))))))))))
-
-;  KEYSTONE (the decision publishes the rewrite and nothing else).  When the
-; verb reclaims, the pack it publishes is the encoded summary of exactly
-; `fn-rclp-events' of the committed history, so every theorem above about
-; that list is a theorem about the bytes the host writes.
-(defthm fn-rclp-decide-publishes-the-rewrite
-  (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected disk-free dry)))
-    (implies (equal (car d) :reclaim)
-             (and (equal (nth 1 d) *fn-rclp-steps*)
-                  (equal (car (fn-cc-capture
-                               (fn-rclp-events records (fn-rclp-ctx rule now s))
-                               frontier))
-                         :ok)
-                  (equal (nth 4 d)
-                         (fn-cc-encode
-                          (cadr (fn-cc-capture
-                                 (fn-rclp-events records (fn-rclp-ctx rule now s))
-                                 frontier))))
-                  (not dry)
-                  (equal lower (len records))
-                  (consp (fn-rclp-rewritten-msgids records (fn-rclp-ctx rule now s))))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-rclp-events fn-rclp-rewritten-msgids
-                                      fn-rclp-freed fn-cc-capture fn-cc-encode
-                                      fn-rcl-store-counts fn-rclp-ctx
-                                      fn-bs-pack-reclaim-plan fn-cverb-pack-octets
-                                      fn-cverb-disk-admitsp
-                                      fn-cverb-older-count
-                                      fn-bs-profile-admittedp
-                                      fn-bs-profile-max-transactions))))
-
-;  KEYSTONE (temporary space against the disk, PKT-169).  When the verb
-; reclaims, the pack file the host seals from the octets it is handed (the
-; payload plus the frame trailer) fits the free octets the host reported for
-; the store's filesystem.
-(defthm fn-rclp-pack-fits-the-disk
-  (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected disk-free dry)))
-    (implies (equal (car d) :reclaim)
-             (<= (+ (len (nth 4 d)) *fn-frame-trailer-octets*) disk-free)))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-cverb-capture-within-pack-octets
-                                   (records (fn-rclp-events
-                                             records (fn-rclp-ctx rule now s)))))
-           :in-theory (e/d (fn-cverb-disk-admitsp fn-cverb-pack-octets fn-cc-nth)
-                           (fn-rclp-events fn-rclp-rewritten-msgids
-                            fn-cverb-capture-within-pack-octets
-                            fn-rclp-freed fn-cc-capture fn-cc-encode
-                            fn-cc-event-octets-size
-                            fn-rcl-store-counts fn-rclp-ctx
-                            fn-bs-pack-reclaim-plan
-                            fn-cverb-older-count
-                            fn-bs-profile-admittedp
-                            fn-bs-profile-max-transactions)))))
-
-(local
- (defthm fn-rclp-rewritten-msgids-need-events
-   (implies (consp (fn-rclp-rewritten-msgids events ctx)) (consp events))
-   :rule-classes :forward-chaining))
-
-;  KEYSTONE (the reclaiming pack of a chained history is a link).  The
-; summary the verb hands the host (`fn-cc-encode' of it is what
-; host/native/checkpoint.lisp `fnn-pack-publish-generation' seals) is a
-; version-0 pack, which books/checkpoint-pack-chain.lisp decodes as a first
-; link (`fn-ccc-link-of-summary'): a valid link, no predecessor, covering
-; exactly what the selected chain covered (its boundary is LOWER, the
-; chain's coverage, and the whole committed history).  Selecting it makes a
-; one-link chain; `fn-ccc-retire-plan' then retires every link of the old one.
-(defthm fn-rclp-reclaiming-pack-is-a-first-link
-  (let ((d (fn-rclp-decide profile rule now s records frontier lower names
-                           generations selected disk-free dry))
-        (summary (cadr (fn-cc-capture (fn-rclp-events records (fn-rclp-ctx rule now s))
-                                      frontier))))
-    (implies (equal (car d) :reclaim)
-             (let ((l (fn-ccc-link-of-summary summary)))
-               (and (fn-ccc-linkp l)
-                    (equal (fn-ccc-lower l) 0)
-                    (equal (fn-ccc-pred-digest l) nil)
-                    (equal (fn-ccc-boundary l) lower)
-                    (equal (fn-ccc-boundary l) (len records))))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-cc-capture fn-cc-make fn-cc-sequence
-                                   fn-cc-frontier fn-cc-events fn-cc-nth
-                                   fn-ccc-link-of-summary fn-ccc-make fn-ccc-linkp
-                                   fn-ccc-lower fn-ccc-boundary fn-ccc-lower-frontier
-                                   fn-ccc-frontier fn-ccc-pred-generation
-                                   fn-ccc-pred-digest fn-ccc-events)
-                                  (fn-rclp-events fn-rclp-freed
-                                   fn-rclp-rewritten-msgids
-                                   fn-cc-octet-event-listp fn-cc-event-octets-size
-                                   fn-rcl-store-counts fn-rclp-ctx
-                                   fn-bs-pack-reclaim-plan fn-cverb-pack-octets
-                                   fn-cverb-disk-admitsp fn-cverb-older-count
-                                   fn-bs-profile-admittedp
-                                   fn-bs-profile-max-transactions)))))
-
-(local
- (defthm rewritten-msgids-under-keep-forever
-   (equal (fn-rclp-rewritten-msgids records (list '(:keep-forever) now h v a)) nil)
-   :hints (("Goal" :in-theory (enable fn-rclp-rewrites-p fn-rclp-ctx-reclaimable
-                                      fn-rcl-reclaimable)))))
-
-;  KEYSTONE (bounded refusal without an authorized release).  Under the
-; default keep-forever rule the verb writes nothing: its answer is never
-; :reclaim.
-(defthm fn-rclp-keep-forever-writes-nothing
-  (not (equal (car (fn-rclp-decide profile '(:keep-forever) now s records frontier
-                                   lower names generations selected disk-free dry))
-              :reclaim))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-rclp-events fn-rclp-freed fn-cc-capture
-                                      fn-cc-encode fn-rcl-store-counts
-                                      fn-bs-pack-reclaim-plan fn-cverb-pack-octets
-                                      fn-cverb-disk-admitsp
-                                      fn-rclp-rewritten-msgids fn-cverb-older-count
-                                      fn-bs-profile-admittedp
-                                      fn-bs-profile-max-transactions))))

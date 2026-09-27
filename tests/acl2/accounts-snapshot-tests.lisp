@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/nntp-auth")
 (include-book "../../books/crypto-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *as-salt* (make-list 16 :initial-element 7))
 (defconst *as-password* (fn-record-string-octets "correct horse"))
@@ -59,7 +59,7 @@
  (equal (fn-auth-find-cred (fn-record-string-octets "ember")
                            (fn-auth-config-creds (as-snap (as-v2))))
         (as-operator-cred)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-auth-find-cred (fn-record-string-octets "ember")
                             (fn-auth-config-creds (as-snap (as-v2))))

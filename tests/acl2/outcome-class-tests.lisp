@@ -8,7 +8,7 @@
 (include-book "../../books/bp-run-class")
 (include-book "../../books/native-operator")
 (include-book "../../books/topic-history-local-control")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;; ---------------------------------------------------------------------------
 ;; fn-outcome-code-separates-the-classes.  Witness: the seven classes answer
@@ -27,18 +27,18 @@
 (assert-event (and (not (fn-outcome-classp :bogus)) (fn-outcome-classp :fenced)
                    (not (equal :bogus :fenced))
                    (equal (fn-outcome-code :bogus) (fn-outcome-code :fenced))))
-(must-fail
+(must-fail-checked
  (defthm oct-separates-without-c1
    (implies (and (fn-outcome-classp :fenced) (not (equal :bogus :fenced)))
             (not (equal (fn-outcome-code :bogus) (fn-outcome-code :fenced))))))
-(must-fail
+(must-fail-checked
  (defthm oct-separates-without-c2
    (implies (and (fn-outcome-classp :fenced) (not (equal :fenced :bogus)))
             (not (equal (fn-outcome-code :fenced) (fn-outcome-code :bogus))))))
 ;; Without (not (equal c1 c2)): one class, one code.
 (assert-event (and (fn-outcome-classp :usage)
                    (equal (fn-outcome-code :usage) (fn-outcome-code :usage))))
-(must-fail
+(must-fail-checked
  (defthm oct-separates-without-distinct
    (implies (and (fn-outcome-classp :usage) (fn-outcome-classp :usage))
             (not (equal (fn-outcome-code :usage) (fn-outcome-code :usage))))))
@@ -51,7 +51,7 @@
 (assert-event (and (not (fn-outcome-classp :bogus))
                    (equal (fn-outcome-code :bogus) 3)
                    (not (equal :bogus :fenced))))
-(must-fail
+(must-fail-checked
  (defthm oct-fenced-iff-without-classp
    (equal (equal (fn-outcome-code class) (fn-outcome-code :fenced))
           (equal class :fenced))
@@ -81,7 +81,7 @@
 (assert-event (and (not (equal :accepted :uncertain))
                    (not (equal (fn-bprc-decode-exit-code :accepted)
                                (fn-outcome-code :refused)))))
-(must-fail
+(must-fail-checked
  (defthm oct-decode-without-uncertain
    (equal (fn-bprc-decode-exit-code outcome) (fn-outcome-code :refused))
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
@@ -114,7 +114,7 @@
 (assert-event (and (equal :conflict :conflict)
                    (not (equal (fn-native-control-completion-status :refused :conflict)
                                :refused))))
-(must-fail
+(must-fail-checked
  (defthm oct-completion-passes-without-word
    (equal (fn-native-control-completion-status :refused :conflict) :refused)))
 
@@ -131,7 +131,7 @@
       (not (equal (fn-native-control-reply-encode :conflict)
                   (fn-nctrl-reply-encode-with *fn-nctrl-statuses-before-conflict*
                                               :conflict)))))
-(must-fail
+(must-fail-checked
  (defthm oct-octets-without-membership
    (equal (fn-native-control-reply-encode status)
           (fn-nctrl-reply-encode-with *fn-nctrl-statuses-before-conflict* status))

@@ -1,7 +1,7 @@
 ; Teeth for books/owner-intent-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-intent-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-tests")
 
 ; Every function the host calls is guard-verified.
@@ -119,26 +119,26 @@
 ; slot is 0: the Path readers never read it).
 (defconst *icar-t-forged-path-carry*
   (list* *icar-t-sub* 0 (fn-nntp-string-octets "out.example!not-for-mail")))
-(must-fail
+(must-fail-checked
  (defthm icar-t-path-without-carryp
    (equal (fn-icar-path *icar-t-sub* *icar-t-forged-path-carry*)
           (fn-own-feed-path-of (fn-own-sub-octets *icar-t-sub*)))))
-(must-fail
+(must-fail-checked
  (defthm icar-t-targets-without-carryp
    (equal (fn-icar-submission-targets *own-control-fed-taken*
                                       *icar-t-forged-path-carry*)
           (fn-own-submission-targets *own-control-fed-taken*))))
-(must-fail
+(must-fail-checked
  (defthm icar-t-intent-id-without-carryp
    (equal (fn-icar-intent-id sub carry)
           (fn-own-feed-intent-id (fn-own-sub-msgid sub)
                                  (fn-own-sub-octets sub)))))
-(must-fail
+(must-fail-checked
  (defthm icar-t-intent-without-carryp
    (equal (fn-icar-submission-intent o carry evidence generation txid)
           (cons (fn-own-submission-intent-result o evidence generation txid)
                 (fn-own-submission-intent-records o evidence generation txid)))))
-(must-fail
+(must-fail-checked
  (defthm icar-t-resolution-without-carryp
    (equal (fn-icar-submission-resolution-records
            o carry word evidence generation txid)

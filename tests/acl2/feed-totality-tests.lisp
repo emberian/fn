@@ -1,7 +1,7 @@
 ; Reachable teeth for the bounded FNFD port profile.
 (in-package "ACL2")
 (include-book "../../books/feed-totality")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-feed-ft-peer* '(105 110 110))
 (defconst *fn-feed-ft-msgid* '(60 116 64 102 110 62))
@@ -42,7 +42,7 @@
 (assert-event (equal (fn-feed-port-step-effects
                       (fn-feed-live-port-step *fn-feed-ft-offered*
                                               *fn-feed-ft-overflow-event*)) nil))
-(must-fail
+(must-fail-checked
  (assert-event (fn-feed-drivenp *fn-feed-ft-offered* *fn-feed-ft-overflow-records*)))
 
 ; A valid pair of maximum-length text fields is another reachable enqueue,
@@ -72,7 +72,7 @@
                       (fn-feed-live-port-step *fn-feed-ft-payload-open*
                                               *fn-feed-ft-payload-event*))
                      *fn-feed-ft-payload-open*))
-(must-fail
+(must-fail-checked
  (assert-event (not (equal (fn-feed-encode :feed-enqueue
                                             (fn-feed-journal-values
                                              (car *fn-feed-ft-payload-records*))
@@ -92,7 +92,7 @@
                                               *fn-feed-ft-tick-event*))
                      (fn-feed-live-records *fn-feed-ft-queued*
                                            *fn-feed-ft-tick-event*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-feed-port-step-status
                        (fn-feed-live-port-step nil *fn-feed-ft-tick-event*))
                       :accepted)))

@@ -15,7 +15,7 @@
 (in-package "ACL2")
 (include-book "../../books/records-canonicality")
 (include-book "../../books/records-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness.
@@ -66,7 +66,7 @@
 (assert-event (not (fn-record-p *rec-teeth-not-a-record*)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-round-trip-without-record-p
     (equal (fn-record-decode-exact (fn-record-encode *rec-teeth-not-a-record*))
            (list :ok *rec-teeth-not-a-record*)))))
@@ -79,7 +79,7 @@
 (assert-event (not (fn-record-p *rec-teeth-bad-payload*)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-round-trip-without-octet-payload
     (equal (fn-record-decode-exact (fn-record-encode *rec-teeth-bad-payload*))
            (list :ok *rec-teeth-bad-payload*)))))
@@ -97,7 +97,7 @@
 (assert-event (not (fn-record-result-okp (fn-record-decode-exact *rec-teeth-refused*))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-canonical-without-accepted-decode
     (equal (fn-record-encode
             (fn-record-result-record (fn-record-decode-exact *rec-teeth-refused*)))
@@ -107,21 +107,21 @@
 ; The same three cases of the implementation's keystones.
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-impl-round-trip-without-record-p
     (equal (fn-record-decode-exact-impl
             (fn-record-encode-impl *rec-teeth-not-a-record*))
            (list :ok *rec-teeth-not-a-record*)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-impl-round-trip-without-octet-payload
     (equal (fn-record-decode-exact-impl
             (fn-record-encode-impl *rec-teeth-bad-payload*))
            (list :ok *rec-teeth-bad-payload*)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-impl-canonical-without-accepted-decode
     (equal (fn-record-encode-impl
             (fn-record-result-record
@@ -173,7 +173,7 @@
                     (fn-record-decode-exact *rec-teeth-event-octets*))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-magic-without-accepted-decode
     (equal (take 5 *rec-teeth-event-octets*) *fn-record-magic-octets*))))
 
@@ -184,7 +184,7 @@
                      '(:error :unknown-version)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-schema-without-accepted-decode
     (equal (nth 5 *rec-teeth-unknown-version*)
            (fn-record-schema-octet
@@ -196,7 +196,7 @@
 ; false: the refused input's sixth octet is 2 where the dummy record
 ; needs 0.
 (local
- (must-fail
+ (must-fail-checked
   (defthm rec-teeth-impl-schema-without-accepted-decode
     (equal (nth 5 *rec-teeth-unknown-version*)
            (fn-record-schema-octet

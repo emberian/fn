@@ -1,7 +1,7 @@
 ; Teeth for books/owner-prepare-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-prepare-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 
 ; Reachable witness: owner-tests' *own-taken* (connection 4's submission in
@@ -38,7 +38,7 @@
                      (fn-sf-next-lower *pcar-t-swapped* 0)))
 ; The initial 0 is load-bearing: on the empty history the fold returns its
 ; accumulator, and the carried value is 0.
-(must-fail
+(must-fail-checked
  (defthm fn-pcar-t-next-lower-with-another-start
    (equal (fn-pcar-next-lower nil) (fn-sf-next-lower nil 1))))
 
@@ -94,7 +94,7 @@
                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *pcar-t-bad-oc* (fn-ocfg-make *pcar-t-bad-o* *osi-cfg* nil nil))
 (assert-event (not (fn-own-relation *pcar-t-bad-o*)))
-(must-fail
+(must-fail-checked
  (defthm fn-pcar-t-preserves-relation-without-relation
    (fn-own-relation
     (fn-ocfg-owner (fn-pcar-sbud-prepare *pcar-t-bad-oc* *pcar-t-record* 100)))))

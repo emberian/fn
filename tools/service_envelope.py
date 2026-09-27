@@ -78,6 +78,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT))
 import msgid_measure as m  # noqa: E402
+import native_env  # noqa: E402
 import rep_measure as r  # noqa: E402
 import signed_carriers as sc  # noqa: E402
 
@@ -93,7 +94,10 @@ def now():
 
 
 def image_env():
-    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
+    # Lane membership-budget: the envelope's stores are made for hbox (the
+    # H = 4 GiB profile's full store reserves about 74 GB, past the 40 GB
+    # unit): name that target, or `init' refuses the profile by name.
+    env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
     env.pop("ACL2_SYSTEM_BOOKS", None)
     env["LD_LIBRARY_PATH"] = OPENSSL + "/lib" + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
     return env

@@ -1,7 +1,7 @@
 ; Teeth for books/post-identity-index.lisp (PRF-191).
 (in-package "ACL2")
 (include-book "../../books/post-identity-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-prepare-carried-tests")
 
 ; -----------------------------------------------------------------------------
@@ -108,7 +108,7 @@
                    (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
                                                      *pit-bad-visible-view*)
                                (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail
+(must-fail-checked
  (defthm pit-find-without-visible
    (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-visible-view*)
           (fn-find-article *pit-fresh* *pit-arts*))))
@@ -126,7 +126,7 @@
                    (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
                                                      *pit-bad-index-view*)
                                (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail
+(must-fail-checked
  (defthm pit-find-without-index
    (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-index-view*)
           (fn-find-article *pit-fresh* *pit-arts*))))
@@ -204,6 +204,21 @@
       (null (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-o*))
       (null (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 
+; PRF-191's keystone, literally, at the reached owner (audit-fixes item 1):
+; both view hypotheses hold and the host's decision equals
+; fn-store-existing-action over the same arena for all three answers.
+; (fn-octets-p fn-octets) is the stobj's recognizer: no executable buffer
+; violates it, so no removal witness is claimed for it.
+(assert-event
+ (and (fn-ocl-view-visiblep (fn-own-view *pit-o*))
+      (fn-scar-view-indexedp *pit-o*)
+      (equal (pit-existing *pit-held* *pit-payload* *pit-groups* *pit-o*)
+             (pit-store-existing *pit-held* *pit-payload* *pit-groups* *pit-store*))
+      (equal (pit-existing *pit-held* *pit-changed* *pit-groups* *pit-o*)
+             (pit-store-existing *pit-held* *pit-changed* *pit-groups* *pit-store*))
+      (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-o*)
+             (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
+
 ; Hypothesis removal (corrupted views, as above): the fresh Message-ID is
 ; answered :duplicate from the fake article where the Store holds none.
 (defconst *pit-bad-visible-o* (pit-owner-with-view *pit-o* *pit-bad-visible-view*))
@@ -219,11 +234,11 @@
       (not (fn-scar-view-indexedp *pit-bad-index-o*))
       (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
              :duplicate)))
-(must-fail
+(must-fail-checked
  (defthm pit-existing-without-visible
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-visible-o*)
           (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
-(must-fail
+(must-fail-checked
  (defthm pit-existing-without-index
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
           (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
@@ -252,10 +267,7 @@
 
 ; The third hypothesis (PRF-242): the owner's Store is indexed, so the count
 ; the prepare reads is the committed record count.
-(assert-event
- (and (fn-ceis-indexedp (fn-sbud-oc-store *pit-oc*))
-      (equal (fn-sbud-count (fn-sbud-oc-store *pit-oc*))
-             (fn-sbud-used (fn-sbud-oc-store *pit-oc*)))))
+
 
 (assert-event
  (let ((a (fn-pidx-sbud-prepare *pit-oc* *pit-record* 100))
@@ -304,24 +316,12 @@
     ',(with-guard-checking
        :none
        (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
-(assert-event
- (and (not (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-visible-oc*))))
-      (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-visible-oc*))
-      (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-visible-oc*))
-      (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-index-oc*))
-      (equal *pit-bad-visible-prepared* *pit-bad-visible-oc*)
-      (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))
-             :record-staged)
-      (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-index-oc*)))
-      (not (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-index-oc*)))
-      (equal *pit-bad-index-prepared* *pit-bad-index-oc*)
-      (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))
-             :record-staged)))
-(must-fail
+
+(must-fail-checked
  (defthm pit-prepare-without-visible
    (equal (fn-pidx-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))))
-(must-fail
+(must-fail-checked
  (defthm pit-prepare-without-index
    (equal (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
@@ -337,26 +337,10 @@
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
                (fn-own-node-secret o) (fn-own-refused o)))
-(defconst *pit-bad-count-store*
-  (let* ((s (fn-sbud-oc-store *pit-oc*))
-         (index (fn-sn-event-index s)))
-    (fn-sn-with-event-index s (cons (car index) (cons (cadr index) 100)))))
-(defconst *pit-bad-count-oc*
-  (fn-ocfg-with-owner *pit-oc* (pit-owner-with-store *pit-o* *pit-bad-count-store*)))
-(assert-event
- (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-count-oc*)))
-      (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-count-oc*))
-      (not (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-count-oc*)))
-      (equal (fn-sbud-count (fn-sbud-oc-store *pit-bad-count-oc*)) 100)
-      (< (fn-sbud-used (fn-sbud-oc-store *pit-bad-count-oc*)) 100)
-      (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
-             *pit-bad-count-oc*)
-      (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))
-             :record-staged)))
-(must-fail
- (defthm pit-prepare-without-indexed-store
-   (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
-          (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))))
+
+
+
+
 
 ; -----------------------------------------------------------------------------
 ; The host's calls run compiled code: every function is guard-verified; the
@@ -384,6 +368,6 @@
                    ; (fn-octets-p) and the Store entry's (fn-arena-p), the
                    ; two stobj recognizers and nothing more.
                    (equal (guard 'fn-pidx-existing-action nil (w state))
-                          (list 'if (guard 'fn-rclb-existing-action nil (w state))
+                          (list 'if (guard 'fn-rclb-same-articlep nil (w state))
                                 (guard 'fn-store-existing-action nil (w state))
                                 ''nil))))

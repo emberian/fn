@@ -8,7 +8,7 @@
 ; exec path runs on a live local buffer, the way the host runs it.
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-buffer")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "octets-stobj-tests")
 
 (defconst *rbt-mo* (fn-record-string-octets *ost-msgid*))
@@ -47,26 +47,42 @@
                                (fn-state-articles (fn-node-acceptance (fn-sn-node *rbt-s*)))))
              *rbt-tomb*)))
 
+; D25's tombstone-aware verdict over an article list with the submitted
+; payload in the buffer: fn-rcl-action-over with the buffer's comparison
+; fn-rclb-same-articlep (the keystone's subject; the store-shaped twin
+; fn-rclb-existing-action was retired, PKT-860, and the host's buffer
+; verdict is books/post-identity-index.lisp fn-pidx-existing-action).
+(defun rbt-rclb-action-over (msgid fn-octets groups articles)
+  (declare (xargs :stobjs fn-octets :verify-guards nil))
+  (let ((article (fn-find-article msgid articles)))
+    (if article
+        (if (and (fn-rclb-same-articlep (fn-record-string-octets msgid) fn-octets
+                                        (fn-article-payload article))
+                 (equal groups (fn-article-groups article)))
+            :duplicate
+          :conflict)
+      nil)))
+
 (defun rbt-existing-action (msgid payload groups s)
   (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
   (with-local-stobj fn-octets
     (mv-let (r fn-octets)
       (let ((fn-octets (fn-octets-from-list payload fn-octets)))
-        (mv (fn-rclb-existing-action msgid fn-octets groups s) fn-octets))
+        (mv (rbt-rclb-action-over msgid fn-octets groups (ost-arts s)) fn-octets))
       r)))
 
-; The keystone fn-rclb-existing-action-is-rcl-existing-action, both sides,
+; The keystone fn-rclb-same-articlep-is-rcl-same-articlep, both sides,
 ; on the reclaimed store: the same octets resent, the same source
 ; re-injected (the source-digest arm), a changed body, other groups, an
 ; unknown Message-ID.
 (assert-event
- (and (equal (fn-rcl-existing-action *ost-msgid* *ost-held* *ost-groups* *rbt-s*) :duplicate)
+ (and (equal (fn-rcl-action-over *ost-msgid* *ost-held* *ost-groups* (ost-arts *rbt-s*)) :duplicate)
       (equal (rbt-existing-action *ost-msgid* *ost-held* *ost-groups* *rbt-s*) :duplicate)
-      (equal (fn-rcl-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *rbt-s*)
+      (equal (fn-rcl-action-over *ost-msgid* *ost-reinjected* *ost-groups* (ost-arts *rbt-s*))
              :duplicate)
       (equal (rbt-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *rbt-s*)
              :duplicate)
-      (equal (fn-rcl-existing-action *ost-msgid* *ost-changed* *ost-groups* *rbt-s*) :conflict)
+      (equal (fn-rcl-action-over *ost-msgid* *ost-changed* *ost-groups* (ost-arts *rbt-s*)) :conflict)
       (equal (rbt-existing-action *ost-msgid* *ost-changed* *ost-groups* *rbt-s*) :conflict)
       (equal (rbt-existing-action *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)
                                   *rbt-s*)
@@ -90,17 +106,34 @@
 (defconst *rbt-improper* (append *ost-held* 3))
 (assert-event (not (fn-octets-p *rbt-improper*)))
 (defthm rbt-t-improper-buffer-reads-to-its-length
-  (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *rbt-s*)
+  (equal (rbt-rclb-action-over *ost-msgid* *rbt-improper* *ost-groups* (ost-arts *rbt-s*))
          :duplicate)
   :rule-classes nil)
 ; On the reclaimed store both sides digest the same octets (SHA-256 reads a
 ; list to its last cons), so the separating store is the live one: the list
 ; side compares the improper source by `equal', the buffer side the octets
 ; it holds.
-(must-fail
+(must-fail-checked
  (defthm rbt-t-existing-action-without-octets-p
-   (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s-wire*)
-          (fn-rcl-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s-wire*))))
+   (equal (rbt-rclb-action-over *ost-msgid* *rbt-improper* *ost-groups* (ost-arts *ost-s-wire*))
+          (fn-rcl-action-over *ost-msgid* *rbt-improper* *ost-groups* (ost-arts *ost-s-wire*)))))
+
+; The keystone itself: its positive witness on the reclaimed store (the held
+; payload a tombstone, the source-digest arm) and on the live one, and its
+; one hypothesis removed (the improper value over the live held payload).
+(defthm rbt-t-same-articlep-witness
+ (and (fn-octets-p *ost-held*)
+      (fn-rcl-tombstonep (ost-held-of *ost-msgid* *rbt-s*))
+      (fn-rclb-same-articlep *rbt-mo* *ost-reinjected* (ost-held-of *ost-msgid* *rbt-s*))
+      (equal (fn-rclb-same-articlep *rbt-mo* *ost-reinjected* (ost-held-of *ost-msgid* *rbt-s*))
+             (fn-rcl-same-articlep *rbt-mo* *ost-reinjected* (ost-held-of *ost-msgid* *rbt-s*)))
+      (equal (fn-rclb-same-articlep *rbt-mo* *ost-changed* (ost-held-of *ost-msgid* *ost-s-wire*))
+             (fn-rcl-same-articlep *rbt-mo* *ost-changed* (ost-held-of *ost-msgid* *ost-s-wire*))))
+ :rule-classes nil)
+(must-fail-checked
+ (defthm rbt-t-same-articlep-without-octets-p
+   (equal (fn-rclb-same-articlep *rbt-mo* *rbt-improper* (ost-held-of *ost-msgid* *ost-s-wire*))
+          (fn-rcl-same-articlep *rbt-mo* *rbt-improper* (ost-held-of *ost-msgid* *ost-s-wire*)))))
 
 ; -----------------------------------------------------------------------------
 ; D32, recipe v3 (octets-stobj-tests' tin fixture): the held source is the

@@ -131,10 +131,10 @@
            (list :refused :access))
           (t nil))))
 
-(defun fn-cbind-poll (oc acfg consumer secret)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-cbind-poll (oc acfg consumer secret fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
   (or (fn-cbind-gate oc acfg consumer secret)
-      (fn-col-poll-report (fn-ocfg-owner oc) consumer)))
+      (fn-col-poll-report (fn-ocfg-owner oc) consumer fn-hist)))
 
 ; The consumer a cursor names (its fourth field), or nil.
 (defun fn-cbind-cursor-consumer (cursor-octets)
@@ -150,11 +150,11 @@
 
 ; The plain forms: exactly today's answer for an unbound consumer; a bound
 ; consumer is refused, so it is served only through its account.
-(defun fn-cbind-plain-poll (oc consumer)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-cbind-plain-poll (oc consumer fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
   (if (fn-cbind-config-login oc consumer)
       (list :refused :bound)
-    (fn-col-poll-report (fn-ocfg-owner oc) consumer)))
+    (fn-col-poll-report (fn-ocfg-owner oc) consumer fn-hist)))
 
 (defun fn-cbind-plain-ack (oc cursor-octets)
   (declare (xargs :guard t :verify-guards nil))
@@ -238,7 +238,7 @@
 ; The event fn-col-poll selects matches its entry's query group.
 (local
  (defthm fn-cbind-col-poll-event-matches-its-query
-   (let ((d (fn-col-poll o consumer)))
+   (let ((d (fn-col-poll o consumer fn-hist)))
      (implies (and (equal (car d) :poll) (caddr d))
               (fn-col-matchp
                (caddr d)
@@ -261,21 +261,21 @@
 (local
  (defthm fn-cbind-poll-when-gate-admits
    (implies (not (fn-cbind-gate oc acfg consumer secret))
-            (equal (fn-cbind-poll oc acfg consumer secret)
-                   (fn-col-poll-report (fn-ocfg-owner oc) consumer)))
+            (equal (fn-cbind-poll oc acfg consumer secret fn-hist)
+                   (fn-col-poll-report (fn-ocfg-owner oc) consumer fn-hist)))
    :hints (("Goal" :in-theory '(fn-cbind-poll)))))
 
 (local
  (defthm fn-cbind-poll-page-means-gate-admits
-   (implies (equal (car (fn-cbind-poll oc acfg consumer secret)) :poll)
+   (implies (equal (car (fn-cbind-poll oc acfg consumer secret fn-hist)) :poll)
             (not (fn-cbind-gate oc acfg consumer secret)))
    :hints (("Goal" :use ((:instance fn-cbind-gate-is-a-refusal))
             :in-theory '(fn-cbind-poll)))))
 
 (local
  (defthm fn-cbind-report-page-means-poll-page
-   (implies (equal (car (fn-col-poll-report o consumer)) :poll)
-            (equal (car (fn-col-poll o consumer)) :poll))
+   (implies (equal (car (fn-col-poll-report o consumer fn-hist)) :poll)
+            (equal (car (fn-col-poll o consumer fn-hist)) :poll))
    :hints (("Goal" :use ((:instance fn-col-poll-report-fits-or-refuses-by-name)
                          (:instance fn-col-poll-is-a-page-or-a-refusal))
             :in-theory (disable fn-col-poll fn-col-poll-report
@@ -295,7 +295,7 @@
 
 (local
  (defthm fn-cbind-readable-query-reads-the-event
-   (let ((d (fn-col-poll o consumer)))
+   (let ((d (fn-col-poll o consumer fn-hist)))
      (implies (and (equal (car d) :poll) (caddr d)
                    (fn-cbind-group-readablep
                     text
@@ -306,7 +306,7 @@
               (fn-cbind-event-readablep text (caddr d))))
    :hints (("Goal" :use ((:instance fn-cbind-col-poll-event-matches-its-query)
                          (:instance fn-cbind-matching-event-of-a-readable-group-is-readable
-                                    (event (caddr (fn-col-poll o consumer)))
+                                    (event (caddr (fn-col-poll o consumer fn-hist)))
                                     (group (fn-cp-nth 3 (fn-cp-nth 1 (fn-col-scope-entry
                                                                       (fn-sn-consumer (fn-own-store o))
                                                                       consumer))))))
@@ -319,13 +319,13 @@
 ; selected event, if any, has an article with a group readable under the
 ; bound account's read rule in the latest configuration.
 (defthm fn-cbind-poll-delivers-only-readable-events
-  (let ((r (fn-cbind-poll oc acfg consumer secret))
-        (d (fn-col-poll (fn-ocfg-owner oc) consumer))
+  (let ((r (fn-cbind-poll oc acfg consumer secret fn-hist))
+        (d (fn-col-poll (fn-ocfg-owner oc) consumer fn-hist))
         (login (fn-cbind-config-login oc consumer)))
     (implies (equal (car r) :poll)
              (and login
                   (fn-cbind-authenticp oc acfg login secret)
-                  (equal r (fn-col-poll-report (fn-ocfg-owner oc) consumer))
+                  (equal r (fn-col-poll-report (fn-ocfg-owner oc) consumer fn-hist))
                   (equal (car d) :poll)
                   (implies (caddr d)
                            (fn-cbind-event-readablep
@@ -348,8 +348,8 @@
 ; so the position does not move.  With KEYSTONE 3 this carries PRF-116's
 ; guarantees of fn-col-poll-report and fn-col-ack to the bound consumer.
 (defthm fn-cbind-poll-is-the-consumer-poll-or-a-refusal
-  (let ((r (fn-cbind-poll oc acfg consumer secret)))
-    (or (equal r (fn-col-poll-report (fn-ocfg-owner oc) consumer))
+  (let ((r (fn-cbind-poll oc acfg consumer secret fn-hist)))
+    (or (equal r (fn-col-poll-report (fn-ocfg-owner oc) consumer fn-hist))
         (equal (car r) :refused)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cbind-gate-is-a-refusal))
@@ -425,10 +425,10 @@
 ; today's, and a bound consumer's plain poll and ack are refused.
 (defthm fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll
   (and (implies (not (fn-cbind-config-login oc consumer))
-                (equal (fn-cbind-plain-poll oc consumer)
-                       (fn-col-poll-report (fn-ocfg-owner oc) consumer)))
+                (equal (fn-cbind-plain-poll oc consumer fn-hist)
+                       (fn-col-poll-report (fn-ocfg-owner oc) consumer fn-hist)))
        (implies (fn-cbind-config-login oc consumer)
-                (equal (fn-cbind-plain-poll oc consumer)
+                (equal (fn-cbind-plain-poll oc consumer fn-hist)
                        '(:refused :bound))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cbind-plain-poll)
@@ -456,16 +456,16 @@
 ; -----------------------------------------------------------------------------
 ; The polls over the payload arena (records flip)
 
-(defun fn-cbind-poll-over (oc acfg consumer secret fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+(defun fn-cbind-poll-over (oc acfg consumer secret fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
   (or (fn-cbind-gate oc acfg consumer secret)
-      (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+      (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena fn-hist)))
 
-(defun fn-cbind-plain-poll-over (oc consumer fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+(defun fn-cbind-plain-poll-over (oc consumer fn-arena fn-hist)
+  (declare (xargs :stobjs (fn-arena fn-hist) :verify-guards nil))
   (if (fn-cbind-config-login oc consumer)
       (list :refused :bound)
-    (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+    (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena fn-hist)))
 
 (verify-guards fn-cbind-poll-over)
 (verify-guards fn-cbind-plain-poll-over)
@@ -473,11 +473,11 @@
 ; The bridge: on a selection that is no held row the arena is not read and
 ; each poll over the arena is the poll above.
 (defthm fn-cbind-poll-over-is-poll-unless-a-held-row
-  (implies (not (fn-held-p (caddr (fn-col-poll (fn-ocfg-owner oc) consumer))))
-           (and (equal (fn-cbind-poll-over oc acfg consumer secret fn-arena)
-                       (fn-cbind-poll oc acfg consumer secret))
-                (equal (fn-cbind-plain-poll-over oc consumer fn-arena)
-                       (fn-cbind-plain-poll oc consumer))))
+  (implies (not (fn-held-p (caddr (fn-col-poll (fn-ocfg-owner oc) consumer fn-hist))))
+           (and (equal (fn-cbind-poll-over oc acfg consumer secret fn-arena fn-hist)
+                       (fn-cbind-poll oc acfg consumer secret fn-hist))
+                (equal (fn-cbind-plain-poll-over oc consumer fn-arena fn-hist)
+                       (fn-cbind-plain-poll oc consumer fn-hist))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-col-poll-report-over-is-the-report-unless-a-held-row
                                    (o (fn-ocfg-owner oc))))
@@ -489,21 +489,21 @@
 (local
  (defthm fn-cbind-poll-over-when-gate-admits
    (implies (not (fn-cbind-gate oc acfg consumer secret))
-            (equal (fn-cbind-poll-over oc acfg consumer secret fn-arena)
-                   (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+            (equal (fn-cbind-poll-over oc acfg consumer secret fn-arena fn-hist)
+                   (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena fn-hist)))
    :hints (("Goal" :in-theory '(fn-cbind-poll-over)))))
 
 (local
  (defthm fn-cbind-poll-over-page-means-gate-admits
-   (implies (equal (car (fn-cbind-poll-over oc acfg consumer secret fn-arena)) :poll)
+   (implies (equal (car (fn-cbind-poll-over oc acfg consumer secret fn-arena fn-hist)) :poll)
             (not (fn-cbind-gate oc acfg consumer secret)))
    :hints (("Goal" :use ((:instance fn-cbind-gate-is-a-refusal))
             :in-theory '(fn-cbind-poll-over)))))
 
 (local
  (defthm fn-cbind-report-over-page-means-poll-page
-   (implies (equal (car (fn-col-poll-report-over o consumer fn-arena)) :poll)
-            (equal (car (fn-col-poll o consumer)) :poll))
+   (implies (equal (car (fn-col-poll-report-over o consumer fn-arena fn-hist)) :poll)
+            (equal (car (fn-col-poll o consumer fn-hist)) :poll))
    :hints (("Goal" :in-theory (e/d (fn-col-poll-report-over)
                                    (fn-col-poll fn-col-poll-report-octets
                                     fn-row-wire-of fn-ncl-poll-event-bytesp))))))
@@ -513,13 +513,13 @@
 ; credential checks, and the selected event's article has a group readable
 ; under the bound account's read rule.
 (defthm fn-cbind-poll-over-delivers-only-readable-events
-  (let ((r (fn-cbind-poll-over oc acfg consumer secret fn-arena))
-        (d (fn-col-poll (fn-ocfg-owner oc) consumer))
+  (let ((r (fn-cbind-poll-over oc acfg consumer secret fn-arena fn-hist))
+        (d (fn-col-poll (fn-ocfg-owner oc) consumer fn-hist))
         (login (fn-cbind-config-login oc consumer)))
     (implies (equal (car r) :poll)
              (and login
                   (fn-cbind-authenticp oc acfg login secret)
-                  (equal r (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena))
+                  (equal r (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena fn-hist))
                   (equal (car d) :poll)
                   (implies (caddr d)
                            (fn-cbind-event-readablep
@@ -539,8 +539,8 @@
 
 ; KEYSTONE 2 over the arena: the consumer poll's own answer or a refusal.
 (defthm fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal
-  (let ((r (fn-cbind-poll-over oc acfg consumer secret fn-arena)))
-    (or (equal r (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena))
+  (let ((r (fn-cbind-poll-over oc acfg consumer secret fn-arena fn-hist)))
+    (or (equal r (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena fn-hist))
         (equal (car r) :refused)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cbind-gate-is-a-refusal))
@@ -551,10 +551,10 @@
 ; KEYSTONE 4 over the arena (the default).
 (defthm fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll
   (and (implies (not (fn-cbind-config-login oc consumer))
-                (equal (fn-cbind-plain-poll-over oc consumer fn-arena)
-                       (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+                (equal (fn-cbind-plain-poll-over oc consumer fn-arena fn-hist)
+                       (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena fn-hist)))
        (implies (fn-cbind-config-login oc consumer)
-                (equal (fn-cbind-plain-poll-over oc consumer fn-arena)
+                (equal (fn-cbind-plain-poll-over oc consumer fn-arena fn-hist)
                        '(:refused :bound))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cbind-plain-poll-over)

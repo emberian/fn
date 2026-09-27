@@ -4,7 +4,7 @@
 ; event, configuration and clock observation.
 (in-package "ACL2")
 (include-book "../../books/nntp-post")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-tp-groups* '("fn.letters"))
 (defconst *fn-tp-seed* '(77 101 115 115 97 103 101 45 73 68 58 32 60 115 101 101 100 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 115 101 101 100 13 10 13 10 83 101 101 100 32 98 111 100 121 13 10))
@@ -188,6 +188,8 @@
                      (fn-tp-line "441 posting failed; the store refused the article as malformed")))
 (assert-event (equal (fn-tp-outcome-line :unaffordable)
                      (fn-tp-line "441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it")))
+(assert-event (equal (fn-tp-outcome-line :memberships)
+                     (fn-tp-line "441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")))
 (assert-event (equal (fn-tp-outcome-line :storage-failed)
                      (fn-tp-line "441 posting failed; the store could not write the article, nothing was stored")))
 ; A word that is no refusal kind is uncertain, never a refusal.
@@ -197,17 +199,17 @@
 ; Teeth for fn-post-outcome-store-refusal-is-not-uncertain: one violating
 ; value per hypothesis at which the conclusion fails.
 ; A completion that is no refusal kind renders the uncertain line.
-(must-fail
+(must-fail-checked
  (defthm fn-tp-refusal-not-uncertain-needs-a-refusal-kind
    (not (equal (fn-tp-outcome-line :fault) (fn-tp-outcome-line :uncertain)))
    :rule-classes nil))
 
 ; Teeth for fn-post-outcome-store-refusal-kinds-are-distinct.
-(must-fail
+(must-fail-checked
  (defthm fn-tp-kinds-distinct-needs-other-a-refusal-kind
    (not (equal (fn-tp-outcome-line :fault) (fn-tp-outcome-line :bogus)))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm fn-tp-kinds-distinct-needs-two-kinds
    (not (equal (fn-tp-outcome-line :duplicate) (fn-tp-outcome-line :duplicate)))
    :rule-classes nil))
@@ -369,7 +371,7 @@
  (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :signature))
              (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-kc-ps* :durable-key-change-refused)))))
 ;; Without fn-post-sessionp the line is not rendered: the 403 for every completion.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable-key-change-refused))
          (fn-post-single *fn-tp-too-deep*
@@ -455,12 +457,12 @@
 
 ; Store refusal teeth that need a malformed session: without one, every
 ; completion, refusal kinds and uncertainty alike, is the same 403.
-(must-fail
+(must-fail-checked
  (defthm fn-tp-refusal-not-uncertain-needs-a-session
    (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :duplicate))
                (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :uncertain))))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm fn-tp-kinds-distinct-needs-a-session
    (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :duplicate))
                (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :conflict))))

@@ -6,7 +6,7 @@
 (include-book "../../books/bp-node-progress-premises")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpsp-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
 (defconst *bpsp-sender* (cons :dtn '(47 47 98 112 45 115 101 110 100 101 114 47)))
@@ -103,7 +103,7 @@
       (not (fn-bpnp-host-eventp *bpsp-bad-session-event*))
       (not (fn-bpnp-session-listp (fn-bpnp-sessions *bpsp-bad-event-after*)))
       (not (fn-bpnp-step-guard-premisesp *bpsp-bad-event-after*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpnp-step-guard-premisesp *bpsp-bad-event-after*)))
 
 ; Hypothesis (fn-bpnp-step-guard-premisesp st), one case per conjunct.  The
@@ -133,7 +133,7 @@
       (true-listp (fn-bpnf-held-list *bpsp-bad-sessions*))
       (not (fn-bpnp-step-guard-premisesp *bpsp-bad-sessions*))
       (not (fn-bpnp-step-guard-premisesp *bpsp-bad-sessions-after*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpnp-step-guard-premisesp *bpsp-bad-sessions-after*)))
 
 (make-event
@@ -148,7 +148,7 @@
       (fn-bpnp-session-listp (fn-bpnp-sessions *bpsp-bad-held*))
       (not (fn-bpnp-step-guard-premisesp *bpsp-bad-held*))
       (not (fn-bpnp-step-guard-premisesp *bpsp-bad-held-after*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpnp-step-guard-premisesp *bpsp-bad-held-after*)))
 
 (make-event
@@ -163,5 +163,5 @@
       (fn-bpnp-session-listp (fn-bpnp-sessions *bpsp-bad-base*))
       (not (fn-bpnp-step-guard-premisesp *bpsp-bad-base*))
       (not (fn-bpnp-step-guard-premisesp *bpsp-bad-base-after*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpnp-step-guard-premisesp *bpsp-bad-base-after*)))

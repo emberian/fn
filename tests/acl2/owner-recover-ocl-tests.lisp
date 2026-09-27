@@ -1,7 +1,7 @@
 ; Teeth for books/owner-recover-ocl.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-recover-ocl")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-owner-publish-tests")
 
 ; The owner host/owner-host.lisp fn-owner-recover installs (:186-201),
@@ -71,7 +71,7 @@
                       (fn-cpo-open-observed *orec-t-configs* *orec-t-frontier*
                                             *orec-t-events*))
                      :ok))
-(must-fail
+(must-fail-checked
  (defthm orec-t-without-natp-max-conns
    (fn-ocl-relation
     (orec-t-install *orec-t-configs* *orec-t-frontier* *orec-t-events* -1))))
@@ -85,7 +85,7 @@
 (assert-event (equal (fn-sn-open-kind
                       (fn-cpo-open-observed *orec-t-configs* 1 *orec-t-events*))
                      :error))
-(must-fail
+(must-fail-checked
  (defthm orec-t-without-open-ok-frontier
    (fn-ocl-relation (orec-t-install *orec-t-configs* 1 *orec-t-events* 4))))
 
@@ -99,7 +99,7 @@
                       (fn-cpo-open-observed (cdr *orec-t-configs*)
                                             *orec-t-frontier* *orec-t-events*))
                      :error))
-(must-fail
+(must-fail-checked
  (defthm orec-t-without-open-ok-fault
    (fn-ocl-relation
     (orec-t-install (cdr *orec-t-configs*) *orec-t-frontier* *orec-t-events* 4))))

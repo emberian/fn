@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-contact-driver")
 (include-book "../../books/bp-node-receive-boundary")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cd-local* (cons :dtn '(47 47 102 110 45 97 47)))   ; dtn://fn-a/
 (defconst *cd-peer* (cons :dtn '(47 47 102 110 45 98 47)))    ; dtn://fn-b/
@@ -79,13 +79,13 @@
 ; Hypothesis (car d) = :offer.  Route removed: the driver holds the job
 ; (:no-route), drives nothing, and the conclusion fails.
 (assert-event (equal (cd-next *cd-st* nil nil) (list :held *cd-key* :no-route)))
-(must-fail (assert-event (cd-routed-offer-p *cd-st* nil nil)))
+(must-fail-checked (assert-event (cd-routed-offer-p *cd-st* nil nil)))
 ; A boundary with no contact row: held, no live hop.
 (defconst *cd-dark*
   (list (fn-bprt-route 100 "dtn://fn-b/" "dark" "dtn://dark/" 0)))
 (assert-event (equal (cd-next *cd-st* *cd-dark* nil)
                      (list :held *cd-key* :no-live-hop)))
-(must-fail (assert-event (cd-routed-offer-p *cd-st* *cd-dark* nil)))
+(must-fail-checked (assert-event (cd-routed-offer-p *cd-st* *cd-dark* nil)))
 ; The table now prefers another boundary: the job's durable route (4556) is
 ; not the hop the table names (4557), so it is held, never sent to either.
 (defconst *cd-moved*
@@ -93,7 +93,7 @@
         *cd-table*))
 (assert-event (equal (cd-next *cd-st* *cd-moved* nil)
                      (list :held *cd-key* :route-changed)))
-(must-fail (assert-event (cd-routed-offer-p *cd-st* *cd-moved* nil)))
+(must-fail-checked (assert-event (cd-routed-offer-p *cd-st* *cd-moved* nil)))
 ; Another destination's route does not route this peer.
 (defconst *cd-other*
   (list (fn-bprt-route 100 "dtn://fn-c/" "relay" "dtn://relay/" 4556)))
@@ -107,7 +107,7 @@
                                         (fn-bpn-machine-state-contacts *cd-b1*)
                                         nil nil *fn-bpn-machine-max-records*)))
 (assert-event (equal (car (cd-next *cd-full* *cd-table* nil)) :offer))
-(must-fail (assert-event (cd-routed-offer-p *cd-full* *cd-table* nil)))
+(must-fail-checked (assert-event (cd-routed-offer-p *cd-full* *cd-table* nil)))
 ; Hypothesis: a well-formed base.  A malformed base with the same queued
 ; job: the driver offers, and the logical step answers nothing.
 (defconst *cd-malformed*
@@ -117,7 +117,7 @@
                       nil nil nil *cd-token* 4 1048576)))
 (assert-event (not (fn-bpn-machine-statep (fn-bpnf-base *cd-malformed*))))
 (assert-event (equal (car (cd-next *cd-malformed* *cd-table* nil)) :offer))
-(must-fail (assert-event (with-guard-checking
+(must-fail-checked (assert-event (with-guard-checking
                           :none (cd-routed-offer-p *cd-malformed* *cd-table* nil))))
 
 ; ---------------------------------------------------------------------
@@ -146,7 +146,7 @@
                      (list *cd-key*)))
 ; Without the threaded OFFERED the same state is offered again: the key
 ; would appear twice in the contact.
-(must-fail (assert-event (equal (car (cd-next *cd-s4* *cd-table* nil)) :close)))
+(must-fail-checked (assert-event (equal (car (cd-next *cd-s4* *cd-table* nil)) :close)))
 ; The next contact (OFFERED empty again) offers it: it stays owed.
 (assert-event (equal (car (cd-next *cd-s4* *cd-table* nil)) :offer))
 
@@ -162,21 +162,21 @@
 (assert-event (cd-closes-with-key-offered-p *cd-s4* (list *cd-key*)))
 ;   nothing issued
 (defconst *cd-issued* (fn-bpnf-with-issued *cd-s4* '(0 0 0 :deferral nil :pending)))
-(must-fail (assert-event (cd-closes-with-key-offered-p *cd-issued* nil)))
+(must-fail-checked (assert-event (cd-closes-with-key-offered-p *cd-issued* nil)))
 ;   no delivery uncertain
 (defconst *cd-delivery* (update-nth 7 '(:delivery-uncertain 0) *cd-s4*))
-(must-fail (assert-event (cd-closes-with-key-offered-p *cd-delivery* nil)))
+(must-fail-checked (assert-event (cd-closes-with-key-offered-p *cd-delivery* nil)))
 ;   base not fenced
 (defconst *cd-fenced*
   (fn-bpnf-with-base *cd-init*
                      (fn-bpn-state-with (fn-bpnf-base *cd-s4*)
                                         (fn-bpn-machine-state-jobs (fn-bpnf-base *cd-s4*))
                                         nil nil t *cd-tok2*)))
-(must-fail (assert-event (cd-closes-with-key-offered-p *cd-fenced* nil)))
+(must-fail-checked (assert-event (cd-closes-with-key-offered-p *cd-fenced* nil)))
 ;   base not pending: the state the offer leaves while its record is in flight
-(must-fail (assert-event (cd-closes-with-key-offered-p *cd-s1* nil)))
+(must-fail-checked (assert-event (cd-closes-with-key-offered-p *cd-s1* nil)))
 ;   peer is an EID
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((d (fn-bpnp-contact-next *cd-st* "dtn://fn-b/" (list :table *cd-table*) nil)))
     (implies (not (member (car d) '(:offer :held)))
@@ -213,7 +213,7 @@
                      :forwarded))
 ; Hypothesis: the job is :forwarded.  The same :requeued record applied to
 ; the :attempting job of *cd-s2* makes it :queued.
-(must-fail
+(must-fail-checked
  (assert-event (equal (cd-status-after
                        (fn-bpnf-base *cd-s2*)
                        (list :requeued *cd-tok2* (nth 0 *cd-key*) (nth 1 *cd-key*)

@@ -104,6 +104,97 @@ class GraphTests(unittest.TestCase):
                          [p.resolve() for p in self.graph.bridges])
 
 
+class SubjectRuleTests(unittest.TestCase):
+    """The subject is the function the host calls (AGENTS.md; keystone audit
+    2026-09-27).  Each test is one of the ways an event used to pass on the
+    strength of something that is not its subject."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.graph = reach_check.Graph()
+        cls.theorems = reach_check.theorem_forms(cls.graph.books)
+
+    def subject(self, name):
+        return reach_check.Subject(self.graph, name, self.theorems[name][1])
+
+    def test_a_dollar_symbol_is_one_symbol(self):
+        """`(defun fn-arena$lcorr ...)' used to define `fn-arena', so every
+        theorem naming the stobj was hosted by the stobj's name."""
+        self.assertEqual(reach_check.Graph.symbols("(fn-octets$corr a b)"),
+                         {"fn-octets$corr", "a", "b"})
+        self.assertIn("fn-arena$lcorr", self.graph.book_defs)
+        self.assertNotIn("fn-arena", self.graph.book_defs)
+
+    def test_stobj_names_are_never_the_subject(self):
+        for name in ("fn-arena", "fn-cat", "state"):
+            self.assertIn(name, self.graph.stobj_names)
+        s = self.subject("fn-sca-load-history-establishes-relation")
+        self.assertNotIn("fn-arena", s.functions)
+        self.assertIn("fn-sca-load-history", s.functions)
+        self.assertFalse(s.hosted(self.graph),
+                         "the host loads with fn-sca-load-held-rows (G5-1)")
+
+    def test_a_hypothesis_recognizer_does_not_host(self):
+        """G3-1: the LZ codec passed on `(fn-cbor-octet-listp x)'."""
+        s = self.subject("fn-lz-lits-words-is-append")
+        self.assertNotIn("fn-cbor-octet-listp", s.functions)
+        self.assertFalse(s.hosted(self.graph))
+
+    def test_hints_do_not_host(self):
+        form = ("(defthm t1 (equal (fn-lz-lits-words a b k fn-octets) c) "
+                ":hints ((\"Goal\" :use ((:instance fn-own-read-preserves-relation)) "
+                ":in-theory (enable fn-own-read))))")
+        s = reach_check.Subject(self.graph, "t1", form)
+        self.assertEqual(s.functions, ["fn-lz-lits-words"])
+        self.assertFalse(s.hosted(self.graph))
+
+    def test_a_hosted_function_over_a_models_state_is_the_model(self):
+        """G1-1: fn-ocv-reader-view is hosted, but here it reads the count
+        machine's views."""
+        self.assertIn("fn-ocv-reader-view", self.graph.reachable)
+        s = self.subject("fn-ocvm-reader-view-is-the-completed-prefix")
+        self.assertIn("fn-ocv-reader-view", s.functions)
+        self.assertFalse(s.hosted(self.graph))
+
+    def test_a_hosted_step_is_hosted(self):
+        self.assertTrue(self.subject("fn-own-read-preserves-relation").hosted(self.graph))
+
+    def test_an_absstobj_export_reaches_the_attached_implementation(self):
+        """(attach-stobj fn-arena fn-arena-paged): the host's fn-arena-get
+        runs fn-arena$p-get, so the paged correspondence is hosted and the
+        retired byte-array one is not."""
+        self.assertIn("fn-arena-get", self.graph.reachable)
+        self.assertIn("fn-arena-paged-get", self.graph.reachable)
+        self.assertIn("fn-arena$p-get", self.graph.reachable)
+        paged = reach_check.Subject(self.graph, "fn-arena-paged-get{correspondence}", None)
+        self.assertEqual(paged.functions, ["fn-arena-paged-get"])
+        self.assertTrue(paged.hosted(self.graph))
+        retired = reach_check.Subject(self.graph, "fn-arena-bytes-seal-list{correspondence}", None)
+        self.assertFalse(retired.hosted(self.graph))
+
+    def test_a_named_equality_ties_a_model_to_the_hosted_function(self):
+        bridges = reach_check.equality_bridges(self.graph, self.theorems)
+        self.assertIn(("fn-lgc-t-prepare", "fn-lgc-t-prepare-refines"),
+                      bridges["fn-lgt-prepare"])
+        self.assertIn(("fn-nov-lines-for-numbers", "fn-nov-indexed-lines-equal-archive-lines"),
+                      bridges["fn-nov-lines-for-numbers-indexed"])
+
+    def test_an_unfolding_or_commutation_is_not_an_equality_to_a_function(self):
+        graph = self.graph
+        cases = [
+            ("fn-bs-fence-dir", "fn-bs-make",
+             "(defthm x (equal (fn-bs-fence-dir d bs) (fn-bs-make (fn-bs-dirs bs) d i p n)))"),
+            ("fn-rcl-reclaim-state", "fn-accept-prepare",
+             "(defthm y (equal (fn-rcl-reclaim-state n (fn-accept-prepare a b c d e s) g) "
+             "(fn-accept-prepare a b c d e (fn-rcl-reclaim-state n s g))))"),
+            ("fn-bpnpf-read", "fn-bpnpf-default",
+             "(defthm z (equal (fn-bpnpf-read x y) (fn-bpnpf-default)))"),
+        ]
+        for unhosted, other, form in cases:
+            bridges = reach_check.equality_bridges(graph, {"t": ("f", form)})
+            self.assertNotIn(other, [o for o, _ in bridges.get(unhosted, [])], form)
+
+
 class RatchetTests(unittest.TestCase):
     """The baseline may shrink and may not grow silently."""
 

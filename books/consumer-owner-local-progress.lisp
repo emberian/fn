@@ -182,7 +182,7 @@
 ; A page is a read: the host-called poll answers a page or a refusal, never
 ; a Store write proposal.
 (defthm fn-col-poll-is-a-page-or-a-refusal
-  (member-equal (car (fn-col-poll o consumer)) '(:poll :refused))
+  (member-equal (car (fn-col-poll o consumer fn-hist)) '(:poll :refused))
   :hints (("Goal" :in-theory (e/d (fn-col-poll)
                                   (fn-col-poll-scan fn-col-scope-entry
                                    fn-col-poll-index-window fn-cp-cursor-encode
@@ -196,8 +196,8 @@
 ;; ceiling, the named refusal :oversize (the position unchanged: poll never
 ;; writes).  Never a truncated report, never a page that omits the event.
 (defthm fn-col-poll-report-fits-or-refuses-by-name
-  (let ((r (fn-col-poll-report o consumer))
-        (d (fn-col-poll o consumer)))
+  (let ((r (fn-col-poll-report o consumer fn-hist))
+        (d (fn-col-poll o consumer fn-hist)))
     (and (implies (not (equal (car d) :poll)) (equal r d))
          (implies (and (equal (car d) :poll) (not (caddr d))) (equal r d))
          (implies (and (equal (car d) :poll) (caddr d)
@@ -230,7 +230,7 @@
 ;; to its file's octets is not stated here: PKT-470), so the arm stays as the
 ;; named refusal for that corrupted state, not unreachable-in-composition.
 (defthm fn-col-poll-report-of-an-admitted-payload-fits
-  (let ((d (fn-col-poll o consumer)))
+  (let ((d (fn-col-poll o consumer fn-hist)))
     (implies (and (equal (car d) :poll)
                   (caddr d)
                   (consp (fn-col-poll-report-octets (caddr d)))
@@ -238,7 +238,7 @@
                   (fn-bs-publication-admissiblep
                    profile committed-count
                    (len (fn-col-poll-report-octets (caddr d)))))
-             (equal (fn-col-poll-report o consumer)
+             (equal (fn-col-poll-report o consumer fn-hist)
                     (list :poll (cadr d)
                           (fn-col-poll-report-octets (caddr d))))))
   :rule-classes nil
@@ -246,21 +246,21 @@
                         (:instance fn-bs-profile-valid-record-fits-a-poll-reply
                                    (values profile)
                                    (octets (len (fn-col-poll-report-octets
-                                                 (caddr (fn-col-poll o consumer)))))))
+                                                 (caddr (fn-col-poll o consumer fn-hist)))))))
            :in-theory (e/d (fn-ncl-poll-event-bytesp)
                            (fn-col-poll fn-col-poll-report fn-col-poll-report-octets
                             fn-bs-publication-admissiblep fn-cbor-octet-listp)))))
 
 (defthm fn-col-poll-report-is-a-page-or-a-refusal
-  (member-equal (car (fn-col-poll-report o consumer)) '(:poll :refused))
+  (member-equal (car (fn-col-poll-report o consumer fn-hist)) '(:poll :refused))
   :hints (("Goal" :use fn-col-poll-is-a-page-or-a-refusal
-           :cases ((equal (car (fn-col-poll o consumer)) :poll))
+           :cases ((equal (car (fn-col-poll o consumer fn-hist)) :poll))
            :in-theory (e/d (fn-col-poll-report)
                            (fn-col-poll fn-col-poll-report-octets
                             fn-ncl-poll-event-bytesp)))))
 
 (defthm fn-col-poll-is-the-index-window-scan-unfolds
-  (implies (equal (car (fn-col-poll o consumer)) :poll)
+  (implies (equal (car (fn-col-poll o consumer fn-hist)) :poll)
            (let* ((store (fn-own-store o))
                   (s (fn-sn-consumer store))
                   (scoped (fn-col-scope-entry s consumer))
@@ -269,13 +269,13 @@
                   (frontier (fn-cp-nth 3 s))
                   (scan (fn-col-poll-scan
                          (fn-col-poll-index-window
-                          (fn-sn-event-index store) position frontier
+                          fn-hist position frontier
                           *fn-col-poll-max-scan*)
                          (fn-cp-nth 3 entry) position frontier
                          *fn-col-poll-max-scan*)))
              (and (equal (car scoped) :scope)
                   (equal (car scan) :scan)
-                  (equal (fn-col-poll o consumer)
+                  (equal (fn-col-poll o consumer fn-hist)
                          (list :poll
                                (fn-cp-cursor-encode
                                 (update-nth 9 (fn-cp-nth 1 scan)

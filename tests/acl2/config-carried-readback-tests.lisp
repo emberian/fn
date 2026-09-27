@@ -8,7 +8,7 @@
 (in-package "ACL2")
 (include-book "../../books/config-carried-open")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-cfgct-events*
   (list (fn-store-retention-event-make :undertake 0 0 0
@@ -102,7 +102,7 @@
                   :accepted))
       (equal (fn-cfgc-readback-verdict *fn-cfgct-skip-octets* *fn-cfgct-skip-octets* 8 2)
              :verified)))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-readback-without-the-authorization
   (implies (and (equal record (fn-record-parse-value (fn-cfg-decode-exact authorized))) (equal (fn-cfgc-readback-verdict readback authorized generation
                                                  frontier)
@@ -153,7 +153,7 @@
                   (fn-record-parse-value (fn-cfg-decode-exact *fn-cfgct-skip-octets*))))
       (equal (fn-cfgc-readback-verdict *fn-cfgct-skip-octets* *fn-cfgct-skip-octets* 8 2)
              :verified)))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-readback-without-the-authorized-octets
   (implies (and (equal (fn-native-admin-publication-status
                         (fn-native-admin-publication-authorize
@@ -209,7 +209,7 @@
       (not (equal (fn-cfgc-readback-verdict *fn-cfgct-skip-octets* *fn-cfgct-authorized*
                                             6 2)
                   :verified))))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-readback-without-the-verdict
   (implies (and (equal (fn-native-admin-publication-status
                         (fn-native-admin-publication-authorize

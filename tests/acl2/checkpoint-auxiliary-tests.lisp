@@ -276,10 +276,9 @@
  (equal (fn-cpa-store-auxiliary-agrees
          (fn-sn-with-topic *cpa-h-store* nil))
         '(:mismatch :auxiliary-state)))
-; A derived index is rebuilt from exact dense Store positions; replacing the
-; maintained value without changing the journal is a mismatch too.
-(assert-event (consp (fn-sn-event-index *cpa-h-store*)))
+; Field 13 (the store node's event index) is retired (lane history-columns-3):
+; the auxiliary comparison expects nil there.
 (assert-event
  (equal (fn-cpa-store-auxiliary-agrees
-         (fn-sn-with-event-index *cpa-h-store* nil))
+         (fn-sn-with-event-index *cpa-h-store* '(:not-nil)))
         '(:mismatch :auxiliary-state)))

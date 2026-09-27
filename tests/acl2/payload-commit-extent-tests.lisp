@@ -9,7 +9,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/payload-commit-extent")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-arx-arena-prefixp (w state)) :common-lisp-compliant)
@@ -73,20 +73,20 @@
 
 ; Without the faithful write the reseat is not provably the identity.
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pcx-keeps-without-faithful
     (implies (and (fn-arena-p fn-arena) (true-listp r))
              (equal (fn-arx-commit-reseat h file position r fn-arena) fn-arena))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pcx-keeps-without-arena-p
     (implies (and (true-listp r)
                   (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len r)) r))
              (equal (fn-arx-commit-reseat h file position r fn-arena) fn-arena))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pcx-keeps-without-true-listp
     (implies (and (fn-arena-p fn-arena)
                   (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len r)) r))
@@ -105,7 +105,7 @@
            :in-theory (disable (:e fn-arx-commit-reseats) fn-arx-commit-reseats-keep-the-arena))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm pcx-reseats-without-faithful
     (implies (fn-arena-p fn-arena)
              (equal (fn-arx-commit-reseats members fn-arena) fn-arena))))))

@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-record-fence")
 (include-book "byte-store-stable-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bsk8-attempted () (nth 10 (bsk5-record-2-run)))
 (defun bsk8-fenced ()
@@ -26,7 +26,7 @@
                (list *bsk5-record* *bsk5-record-2*)))))
 
 ; Without the directory fence, the old image still lacks the candidate.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((bs (car (bsk8-attempted))))
     (equal (fn-bs-scan-records (fn-bs-scan-store (fn-bs-crash bs nil)))
@@ -60,7 +60,7 @@
         (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
                (list *bsk5-record*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((pair (bsk8-no-link-but-attempted))
          (bs (car pair)) (ks (cdr pair)))
@@ -77,7 +77,7 @@
         (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
                (list *bsk5-record* *bsk5-record-2*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((bs (bsk5-two-pending)) (ks (cdr (bsk8-attempted))))
     (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
@@ -102,7 +102,7 @@
         (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
                (list *bsk5-record* *bsk5-record-2*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((pair (bsk8-replaying-pending-link))
          (bs (car pair)) (ks (cdr pair)))
@@ -141,7 +141,7 @@
         (image (fn-bs-crash bs nil)))
    (equal (fn-bs-scan-records (fn-bs-scan-store image))
           (list *bsk5-record*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((pair (bsk8-attempted))
          (bs (car pair)) (ks (cdr pair))

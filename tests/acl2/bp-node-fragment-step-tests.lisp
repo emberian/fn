@@ -3,7 +3,7 @@
 (include-book "../../books/bp-app-handoff-time")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "bp-node-fragment-plan-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnfs-live-observation* (fn-clock-observation 1 2343 0 t))
 (assert-event (equal (fn-bpah-held-expiry *bpnff-p3* *bpnfs-live-observation*) :live))
@@ -55,7 +55,7 @@
  (equal (fn-bpnf-fragment-step
          (bpnfs-uncertain) (list :family 2 *bpnfs-live-observation*))
         (fn-bpnf-answer (bpnfs-uncertain) nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-held-list
           (fn-bpnf-answer-state (bpnfs-durable)))
@@ -109,7 +109,7 @@
                          (fn-bpb-encode *bpnfs-aged-b3*)
                          *bpnfs-age-arrival*))
         :fragment-not-reassembled))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnf-family-next
               *bpnfs-expiry-state* *bpnfs-age-later*)) :ready)))

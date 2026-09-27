@@ -7,6 +7,9 @@
 ; the complete store whose segment is zeros, and the empty log's teeth.
 (in-package "ACL2")
 (include-book "../../books/store-init-log-publication")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun sil-bs () (declare (xargs :guard t))
   (fn-bs-make 4 nil (list (cons :parent nil)) nil 0))
@@ -61,3 +64,65 @@
       (not (fn-lgk-content-okp (fn-bs-zeros 64)
                                (fn-lgt-recover (fn-bs-zeros 64) nil 4 4096 1)
                                4 nil 4096))))
+
+; -----------------------------------------------------------------------------
+; fn-bs-init-log-classify-by-what-is-known (PRF-268; audit packet G4-4, lane
+; audit-fixes): init's own run classified.  The conclusion for one state P of
+; the run and crash CHOICES, verbatim, with the store's next inode INO.
+(defun sil-classify-concl (p choices ino)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((img (fn-bs-crash (car p) choices))
+         (verdict (fn-bs-imp-classify (fn-bs-durable-entry img :parent "store.init-x")
+                                      (fn-bs-durable-entry img :parent "store"))))
+    (and (implies (member-equal verdict '(:no-store :not-published))
+                  (null (fn-bs-durable-entry img :parent "store")))
+         (implies (member-equal verdict '(:store-present :publication-uncertain))
+                  (and (equal (fn-bs-durable-entry img :parent "store") :stage)
+                       (fn-bs-imp-completep img *fn-bs-init-log-subdirs* (sil-files) ino))))))
+(defun sil-all-concl (ps ino)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp ps) (and (sil-classify-concl (car ps) nil ino) (sil-all-concl (cdr ps) ino)) t))
+(defun sil-verdict (p)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((img (fn-bs-crash (car p) nil)))
+    (fn-bs-imp-classify (fn-bs-durable-entry img :parent "store.init-x")
+                        (fn-bs-durable-entry img :parent "store"))))
+(defun sil-run-outs (bs outs) (declare (xargs :guard t :verify-guards nil))
+  (fn-bs-imp-run bs nil (fn-bs-init-log-program "store.init-x" "store" '(1 2 3)
+                                                "00000001.cfg" '(4 5) 16)
+                 outs nil nil))
+; Positive: the input and the outcomes hold; the first state's crash image
+; is :no-store with no ROOT entry, the final state's is :store-present with
+; ROOT = the stage and the store complete; the conclusion holds at every
+; state of the run (the member hypothesis).
+(assert-event
+ (let ((ps (sil-run)))
+   (and (fn-bs-imp-inputp (sil-bs) "store.init-x" "store" *fn-bs-init-log-subdirs* (sil-files) nil)
+        (fn-bs-imp-outcomesp nil)
+        (equal (sil-verdict (car ps)) :no-store)
+        (null (fn-bs-durable-entry (fn-bs-crash (car (car ps)) nil) :parent "store"))
+        (equal (sil-verdict (car (last ps))) :store-present)
+        (equal (fn-bs-durable-entry (fn-bs-crash (car (car (last ps))) nil) :parent "store") :stage)
+        (fn-bs-imp-completep (fn-bs-crash (car (car (last ps))) nil) *fn-bs-init-log-subdirs*
+                             (sil-files) 0)
+        (sil-all-concl ps 0))))
+; Removal of the input hypothesis: ROOT already names inode 5 before init
+; runs.  The outcomes hold; the first state's image classifies
+; :store-present, but ROOT is not the stage.
+(assert-event
+ (let* ((bs (fn-bs-make 4 (list (cons 5 nil)) (list (cons :parent (list (cons "store" 5)))) nil 6))
+        (ps (sil-run-outs bs nil)))
+   (and (not (fn-bs-imp-inputp bs "store.init-x" "store" *fn-bs-init-log-subdirs* (sil-files) nil))
+        (fn-bs-imp-outcomesp nil)
+        (equal (sil-verdict (car ps)) :store-present)
+        (not (sil-classify-concl (car ps) nil (fn-bs-next-ino bs))))))
+; (fn-bs-imp-outcomesp outs): no removal witness is constructible here.  The
+; run reads any value but :ok as a failed syscall, so a non-outcome behaves
+; as some failure outcome; the classification reads only the durable
+; entries.  Evaluated: a run with (:ok 1) (not an outcome) and one with a
+; bare symbol; the conclusion holds at every state of both.
+(assert-event
+ (and (not (fn-bs-imp-outcomesp (list :ok (list :ok 1) :ok)))
+      (sil-all-concl (sil-run-outs (sil-bs) (list :ok (list :ok 1) :ok)) 0)
+      (not (fn-bs-imp-outcomesp '(bad)))
+      (sil-all-concl (sil-run-outs (sil-bs) '(bad bad bad bad)) 0)))

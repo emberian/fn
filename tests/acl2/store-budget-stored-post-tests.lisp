@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-budget-stored-post")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sbsp-groups* '("fn.letters" "fn.test"))
 (defconst *sbsp-w1*
@@ -94,8 +94,9 @@
 (defconst *sbsp-s3* (fn-sn-finish *sbsp-s2*))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sbsp-s3*)) :ready))
 (assert-event (equal (sbsp-okp *sbsp-s3* (list *sbsp-w1*)) t))
-; What the relation buys: the budget counts the 2 octets the arena holds.
-(assert-event (equal (fn-sbud-bytes-used *sbsp-s3*) 2))
+; What the relation buys: the budget counts the 2 octets the arena holds and
+; the row's two memberships at 320 each (lane membership-budget).
+(assert-event (equal (fn-sbud-bytes-used *sbsp-s3*) (+ 2 640)))
 
 ; POST 2 on the grown history: the row at handle 1.
 (defconst *sbsp-s4* (sbsp-reserve *sbsp-s3*))
@@ -109,7 +110,7 @@
 (defconst *sbsp-s7* (fn-sn-finish (sbsp-publish *sbsp-s5*)))
 (assert-event (equal (len (fn-sf-records (fn-sn-files *sbsp-s7*))) 2))
 (assert-event (equal (sbsp-okp *sbsp-s7* (list *sbsp-w1* *sbsp-w2*)) t))
-(assert-event (equal (fn-sbud-bytes-used *sbsp-s7*) 7))
+(assert-event (equal (fn-sbud-bytes-used *sbsp-s7*) (+ 7 1280)))
 
 ; A refused stage keeps the relation too: the staged store is not :reserved.
 (defconst *sbsp-st-refused* (sbsp-stage *sbsp-s5* *sbsp-w2* (list *sbsp-w1*)))
@@ -127,17 +128,17 @@
 (defconst *sbsp-st-bad* (sbsp-stage *sbsp-s4* *sbsp-w2* nil))
 (assert-event (equal (nth 0 *sbsp-st-bad*) nil))
 (assert-event (equal (fn-sf-phase (fn-sn-files (nth 1 *sbsp-st-bad*))) :record-staged))
-(must-fail (assert-event (nth 2 *sbsp-st-bad*)))
+(must-fail-checked (assert-event (nth 2 *sbsp-st-bad*)))
 
 ; fn-sn-io-keeps-the-stored-octets (one hypothesis).  Omitted: the staged
 ; row's handle is outside the empty arena.  Conclusion: fails after the
 ; publish words.
 (assert-event (equal (sbsp-okp *sbsp-s1* nil) nil))
-(must-fail (assert-event (sbsp-okp *sbsp-s2* nil)))
+(must-fail-checked (assert-event (sbsp-okp *sbsp-s2* nil)))
 
 ; fn-sn-finish-keeps-the-stored-octets (one hypothesis).
 (assert-event (equal (sbsp-okp *sbsp-s2* nil) nil))
-(must-fail (assert-event (sbsp-okp *sbsp-s3* nil)))
+(must-fail-checked (assert-event (sbsp-okp *sbsp-s3* nil)))
 
 ; fn-arena-p (both stage keystones): the stobj's own recognizer, which every
 ; live arena satisfies; no removal witness is claimed for it.
@@ -184,4 +185,4 @@
 ; Removal of the relation: the empty arena.
 (defconst *sbsp-own-bad* (sbsp-owner *sbsp-oc* *sbsp-w2* nil))
 (assert-event (equal (nth 0 *sbsp-own-bad*) nil))
-(must-fail (assert-event (nth 2 *sbsp-own-bad*)))
+(must-fail-checked (assert-event (nth 2 *sbsp-own-bad*)))

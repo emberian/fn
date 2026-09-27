@@ -1,7 +1,7 @@
 ; Teeth for books/byte-store-state-checkpoint-program and
 ; books/byte-store-range-read.
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/byte-store-state-checkpoint-program")
 (include-book "../../books/byte-store-range-read")
 
@@ -51,7 +51,7 @@
 (defconst *scp-t-busy-run*
   (fn-bs-run *scp-t-busy* nil (fn-bs-scp-program ".stage-state-checkpoint-1" '(1 2 3))
              nil nil 0))
-(must-fail
+(must-fail-checked
  (defthm scp-t-crash-without-quiet-store
    (fn-bs-scp-old-or-newp (fn-bs-crash (car (nth 0 *scp-t-busy-run*)) '((:new) :drop))
                           *scp-t-busy* 3 '(1 2 3))))
@@ -76,7 +76,7 @@
 (assert-event (not (equal (append (fn-bs-read-range *scp-t-file* 3 0 2)
                                   (fn-bs-read-range *scp-t-changed* 3 2 4))
                           (fn-bs-read-range *scp-t-file* 3 0 6))))
-(must-fail
+(must-fail-checked
  (defthm scp-t-ranges-without-exclusive-read
    (implies (and (natp off) (natp n) (natp m)
                  (<= (+ off n) (len (fn-bs-content s0 ino))))

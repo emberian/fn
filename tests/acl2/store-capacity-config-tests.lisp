@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-capacity-config")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cvc-stamp* (fn-clock-observation 7 9 0 t))
 ; An ordinary second record (a capacity change) and the retention rule's
@@ -138,7 +138,7 @@
               (fn-cvec-config-generations *cvc-p1* *cvc-other*)))))
 ; fn-cvec-accepted-group-names-are-within-the-profile: its hypothesis
 ; (acceptance) removed, the 101-octet record is not within field 7.
-(must-fail
+(must-fail-checked
  (defthm cvc-group-names-within-without-acceptance
    (fn-cvec-group-names-within
     (fn-cfg-record-change *cvc-create-101*)

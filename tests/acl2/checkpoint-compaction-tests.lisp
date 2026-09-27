@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint-compaction")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *cc-a0*
@@ -54,7 +54,7 @@
  (equal (fn-cc-decode-exact (fn-cc-encode *cc-single-large-summary*))
         (list :ok *cc-single-large-summary*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cc-decode-always-rejects-before-header
     (equal (fn-cc-decode-exact octets) (list :error :octets)))))
 
@@ -88,7 +88,7 @@
 
 ; Each theorem hypothesis is load-bearing.
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cc-partial-without-summary-shape
     (implies (and (fn-cc-valid-suffixp summary suffix final-frontier)
                   (fn-cc-partial-observationp
@@ -98,7 +98,7 @@
                     (list :ok (append (fn-cc-events summary) suffix)
                           final-frontier))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cc-partial-without-valid-suffix
     (implies (and (fn-cc-summaryp summary)
                   (fn-cc-partial-observationp
@@ -108,7 +108,7 @@
                     (list :ok (append (fn-cc-events summary) suffix)
                           final-frontier))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cc-partial-without-exact-observation
     (implies (and (fn-cc-summaryp summary)
                   (fn-cc-valid-suffixp summary suffix final-frontier))

@@ -16,7 +16,7 @@
 
 (in-package "ACL2")
 (include-book "owner-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *oft-o* *own-taken*)
 (assert-event (fn-own-relation *oft-o*))
@@ -42,7 +42,7 @@
 ; Tooth: other = id = 4.
 (assert-event (equal 4 4))
 (assert-event (not (oft-keeps-other-p *oft-o* 4 4)))
-(must-fail (assert-event (oft-keeps-other-p *oft-o* 4 4)))
+(must-fail-checked (assert-event (oft-keeps-other-p *oft-o* 4 4)))
 
 ; -----------------------------------------------------------------------------
 ; fn-own-fault-clears-the-faulted-submission.  Hypotheses: (fn-own-inflight o)
@@ -57,7 +57,7 @@
 (assert-event (fn-own-inflight *oft-o*))
 (assert-event (not (equal (fn-own-sub-id (fn-own-inflight *oft-o*)) 3)))
 (assert-event (not (oft-clears-p *oft-o* 3)))
-(must-fail (assert-event (oft-clears-p *oft-o* 3)))
+(must-fail-checked (assert-event (oft-clears-p *oft-o* 3)))
 ; (fn-own-inflight o) has no tooth: nothing in flight stays nothing in
 ; flight, so the conclusion holds without it.  The hypothesis is redundant.
 (defthm oft-clears-the-faulted-submission-needs-only-the-id
@@ -78,7 +78,7 @@
 (assert-event (fn-own-inflight *oft-o*))
 (assert-event (equal (fn-own-sub-id (fn-own-inflight *oft-o*)) 4))
 (assert-event (not (oft-keeps-another-p *oft-o* 4)))
-(must-fail (assert-event (oft-keeps-another-p *oft-o* 4)))
+(must-fail-checked (assert-event (oft-keeps-another-p *oft-o* 4)))
 ; (fn-own-inflight o) has no tooth: with nothing in flight the slot stays
 ; empty, which is what it was.  The hypothesis is redundant.
 (defthm oft-keeps-another-connections-submission-needs-only-the-id
@@ -100,7 +100,7 @@
 ; one, and it is reachable.)
 (assert-event (not (equal (fn-own-pending *oft-o*) 3)))
 (assert-event (not (oft-releases-p *oft-o* 3)))
-(must-fail (assert-event (oft-releases-p *oft-o* 3)))
+(must-fail-checked (assert-event (oft-releases-p *oft-o* 3)))
 
 ; -----------------------------------------------------------------------------
 ; fn-own-fault-is-not-a-store-event (no hypothesis).  Witness, not

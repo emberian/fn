@@ -19,7 +19,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/payload-arena")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every function it may reach is guard-verified.
@@ -252,7 +252,7 @@
                    (not (equal (fn-arena$c-get 1 0 *pat-c*)
                                (fn-arena$a-get 1 0 *pat-a-wrong*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-get-without-corr
    (equal (fn-arena$c-get 1 0 *pat-c*) (fn-arena$a-get 1 0 *pat-a-wrong*))
    :rule-classes nil))
@@ -266,7 +266,7 @@
                    (not (equal (fn-arena$c-get 0 3 *pat-c*)
                                (fn-arena$a-get 0 3 *pat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-get-without-bound
    (equal (fn-arena$c-get 0 3 *pat-c*) (fn-arena$a-get 0 3 *pat-a*))
    :rule-classes nil))
@@ -279,7 +279,7 @@
                    (not (equal (fn-arena$c-get 2 0 *pat-c-spare*)
                                (fn-arena$a-get 2 0 *pat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-get-without-handle-bound
    (equal (fn-arena$c-get 2 0 *pat-c-spare*) (fn-arena$a-get 2 0 *pat-a*))
    :rule-classes nil))
@@ -293,7 +293,7 @@
                    (not (equal (fn-arena$c-get 1 -1 *pat-c*)
                                (fn-arena$a-get 1 -1 *pat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-get-without-natp-i
    (equal (fn-arena$c-get 1 -1 *pat-c*) (fn-arena$a-get 1 -1 *pat-a*))
    :rule-classes nil))
@@ -346,7 +346,7 @@
                    (not (fn-arena$corr (fn-arena$c-seal-list '(300) *pat-c*)
                                        (fn-arena$a-seal-list '(300) *pat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-seal-list-without-octets
    (fn-arena$corr (fn-arena$c-seal-list '(300) *pat-c*)
                   (fn-arena$a-seal-list '(300) *pat-a*))
@@ -370,7 +370,7 @@
                    (not (equal (fn-arena-payload -1 (fn-arena-seal-list '(9) nil))
                                (fn-arena-payload -1 nil))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-seal-keeps-sealed-without-natp
    (equal (fn-arena-payload -1 (fn-arena-seal-list '(9) nil))
           (fn-arena-payload -1 nil))
@@ -382,7 +382,7 @@
                    (not (equal (fn-arena-payload 2 (fn-arena-seal-list '(9) *pat-a*))
                                (fn-arena-payload 2 *pat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-seal-keeps-sealed-without-bound
    (equal (fn-arena-payload 2 (fn-arena-seal-list '(9) *pat-a*))
           (fn-arena-payload 2 *pat-a*))
@@ -410,7 +410,7 @@
                    (not (equal (fn-arena-payload -1 (fn-arn-seal-many '((9)) nil))
                                (fn-arena-payload -1 nil))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-seals-keep-sealed-without-natp
    (equal (fn-arena-payload -1 (fn-arn-seal-many '((9)) nil))
           (fn-arena-payload -1 nil))
@@ -420,7 +420,7 @@
        (not (equal (fn-arena-payload 2 (fn-arn-seal-many '((9) nil (8 8)) *pat-a*))
                    (fn-arena-payload 2 *pat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-seals-keep-sealed-without-bound
    (equal (fn-arena-payload 2 (fn-arn-seal-many '((9) nil (8 8)) *pat-a*))
           (fn-arena-payload 2 *pat-a*))
@@ -459,7 +459,7 @@
                    (not (fn-arn-store-corr (fn-arena-seal-list (fn-record-payload *pat-r3*) '((1 2 3)))
                                            (append (list *pat-r1* *pat-r2*) (list *pat-r3*)))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm pat-r-store-corr-of-commit-without-corr
    (fn-arn-store-corr (fn-arena-seal-list (fn-record-payload *pat-r3*) '((1 2 3)))
                       (append (list *pat-r1* *pat-r2*) (list *pat-r3*)))

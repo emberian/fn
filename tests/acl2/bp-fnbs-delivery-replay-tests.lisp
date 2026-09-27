@@ -2,7 +2,7 @@
 (include-book "../../books/bp-fnbs-delivery-replay")
 (include-book "bp-app-handoff-tests")
 (include-book "../../books/bp-node-receive-boundary")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpahr-stored* (fn-bpnf-stored-record 3 0 *bpah-held*))
 (defconst *bpahr-identity*
@@ -80,7 +80,7 @@
                             3 1 0 *bpahr-identity*
                             :receipt-accepted '(114)))))
               4 1048576)) :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpah-replay-rows (list (bpahr-row7)) 4 1048576))
          :ready)))
@@ -141,7 +141,7 @@
  (equal (fn-bpnf-host-eventp
          (list :deliver-result 1 1 *bpahr-key*
                :request-accepted '(114 105 100) :extra)) nil))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-handoffs *bpahr-live-start*)
          (fn-bpnf-handoffs *bpahr-live-durable*))))

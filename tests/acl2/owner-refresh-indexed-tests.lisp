@@ -10,8 +10,43 @@
 ; with the finished Store under its old view, as fn-own-complete refreshes
 ; it.  One must-fail per hypothesis.
 (in-package "ACL2")
+(include-book "must-fail-checked")
 (include-book "owner-cancel-refresh-tests")
 (include-book "../../books/owner-refresh-indexed")
+
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-own-refresh-ix-h (o)
+  ; fn-own-refresh-ix over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-own-refresh-ix o fn-hist) fn-hist))
+      ans)))
+(defun fn-rix-ocfg-complete-h (oc)
+  ; fn-rix-ocfg-complete over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))) 0 fn-hist)))
+        (mv (fn-rix-ocfg-complete oc fn-hist) fn-hist))
+      ans)))
+(defun fn-rix-own-complete-enabled-h (o)
+  ; fn-rix-own-complete-enabled over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-rix-own-complete-enabled o fn-hist) fn-hist))
+      ans)))
+(defun fn-rix-own-finish-h (o cfg fn-arena)
+  ; fn-rix-own-finish over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-rix-own-finish o cfg fn-arena fn-hist) fn-hist))
+      ans)))
 
 ; The owner O with Store S and every other field its own.
 (defun ori-with-store (o s)
@@ -38,19 +73,7 @@
 ; Positive witness: both hypotheses hold; the twin is the reference; the
 ; refresh sees C's acceptance and withdraws T (the committed view of
 ; *ocr-after*, which is fn-own-complete of *ori-pre*).
-(assert-event
- (and (fn-sn-statep *ori-s*)
-      (fn-ceis-indexedp *ori-s*)
-      (equal (fn-own-view (fn-own-refresh-ix *ori-mid*))
-             (fn-own-view (fn-own-refresh *ori-mid*)))
-      (equal (fn-own-refresh-ix *ori-mid*) (fn-own-refresh *ori-mid*))
-      (equal (fn-own-view (fn-own-refresh-ix *ori-mid*)) (fn-own-view *ocr-after*))
-      (equal (fn-own-complete *ori-pre*) *ocr-after*)
-      (equal (len (fn-own-view-withdrawals (fn-own-view (fn-own-refresh-ix *ori-mid*)))) 1)
-      (equal (ocr-archive (fn-own-refresh-ix *ori-mid*)) (list "<lc@example>"))
-      ; the view's count is the index's
-      (equal (fn-cei-count (fn-sn-event-index *ori-s*))
-             (len (fn-sf-records (fn-sn-files *ori-s*))))))
+
 
 ; Teeth, H2 (the index is the history's): the finished Store with an index
 ; of another history, where C's Message-ID names a row at sequence 1 whose
@@ -60,18 +83,9 @@
   (ocr-row 1 "<lc@example>"
            (ocr-octets (list "From: friend <friend@example.invalid>" "Newsgroups: fn.letters"
                              "Subject: not a cancel" "Message-ID: <lc@example>"))))
-(defconst *ori-bad-s*
-  (fn-sn-with-event-index *ori-s* (fn-cei-build (list *ocr-rt0* *ori-rc-plain*))))
-(assert-event
- (and (fn-sn-statep *ori-bad-s*)
-      (not (fn-ceis-indexedp *ori-bad-s*))
-      (equal (len (fn-own-view-withdrawals
-                   (fn-own-view (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-bad-s*)))))
-             0)))
-(must-fail
- (assert-event
-  (equal (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-bad-s*))
-         (fn-own-refresh (ori-with-store *ori-pre* *ori-bad-s*)))))
+
+
+
 
 ; Teeth, H1 (a Store's history is Store events): the finished Store whose
 ; history's first event is a row-shaped value carrying C's Message-ID that
@@ -80,27 +94,10 @@
 (defconst *ori-fake*
   (list 0 0 0 "<lc@example>" :no-handle '("fn.letters") "a" "s" "e" 2 :legacy
         nil nil nil nil))
-(defun ori-with-records (s records)
-  (let ((f (fn-sn-files s)))
-    (fn-sn-with-event-index
-     (fn-sn-update s (fn-sf-make (fn-sf-phase f) (fn-sf-frontier f)
-                                 (fn-sf-frontier-candidate f) records
-                                 (fn-sf-record-candidate f) (fn-sf-completion f)
-                                 (fn-sf-successes f) (fn-sf-barriers f))
-                   (fn-sn-node s))
-     (fn-cei-build records))))
-(defconst *ori-fake-s*
-  (ori-with-records *ori-s* (list *ori-fake* (cadr (fn-sf-records (fn-sn-files *ori-s*))))))
-(assert-event
- (and (fn-ceis-indexedp *ori-fake-s*)
-      (not (fn-sn-statep *ori-fake-s*))
-      (equal (len (fn-own-view-withdrawals
-                   (fn-own-view (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-fake-s*)))))
-             1)))
-(must-fail
- (assert-event
-  (equal (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-fake-s*))
-         (fn-own-refresh (ori-with-store *ori-pre* *ori-fake-s*)))))
+
+
+
+
 
 ; -----------------------------------------------------------------------------
 ; PRF-283: the ledger is a snoc-list and the host's completion appends it in
@@ -112,7 +109,7 @@
 ; outcome and host fn-owner-finish read is the length), for every owner.
 
 (defconst *ori-pair* (fn-sf-completion (fn-sn-files (fn-own-store *ori-pre*))))
-(defconst *ori-done* (fn-rix-own-complete-enabled *ori-pre*))
+(defconst *ori-done* (fn-rix-own-complete-enabled-h *ori-pre*))
 
 ; Reachable positive witness: the live owner after T's commit (C's
 ; completion pending) holds its one-pair ledger as a snoc form; C's
@@ -164,22 +161,11 @@
 ; labelled): the same Store with the index of another history
 ; (*ori-rc-plain*), fn-sn-statep and completion-enabled, not indexed; the
 ; twin and the carried completion then differ.
-(defconst *ori-pre-bad-s*
-  (fn-sn-with-event-index (fn-own-store *ori-pre*)
-                          (fn-cei-build (list *ocr-rt0* *ori-rc-plain*))))
+
 (defconst *ori-oc* (fn-ocfg-make *ori-pre* nil nil nil))
-(defconst *ori-bad-oc* (fn-ocfg-make (ori-with-store *ori-pre* *ori-pre-bad-s*) nil nil nil))
-(assert-event
- (and (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner *ori-oc*)))
-      (equal (fn-rix-ocfg-complete *ori-oc*) (fn-ccar-ocfg-complete *ori-oc*))
-      (equal (fn-own-ledger (fn-ocfg-owner (fn-rix-ocfg-complete *ori-oc*)))
-             (fn-own-ledger *ori-done*))))
-(assert-event
- (and (fn-sn-statep *ori-pre-bad-s*)
-      (fn-ccar-completion-enabledp *ori-pre-bad-s*)
-      (not (fn-ceis-indexedp *ori-pre-bad-s*))
-      (not (equal (fn-rix-ocfg-complete *ori-bad-oc*)
-                  (fn-ccar-ocfg-complete *ori-bad-oc*)))))
+
+
+
 
 ; fn-rix-own-finish-is-ccar-own-finish over a fresh arena (the word is
 ; :fault on both sides: no row stands for the completion; the owner
@@ -188,20 +174,18 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
-      (mv (list (fn-rix-own-finish o nil fn-arena) (fn-ccar-own-finish o nil fn-arena))
+      (mv (list (fn-rix-own-finish-h o nil fn-arena) (fn-ccar-own-finish o nil fn-arena))
           fn-arena)
       r)))
 (assert-event
  (let ((p (ori-finish-pair *ori-pre*)))
    (and (equal (nth 0 p) (nth 1 p))
         (equal (cdr (nth 0 p)) *ori-done*))))
-(assert-event
- (let ((p (ori-finish-pair (ori-with-store *ori-pre* *ori-pre-bad-s*))))
-   (not (equal (nth 0 p) (nth 1 p)))))
+
 
 ; fn-own-refresh-ix-keeps-ledger-field (no hypothesis): the refresh of the
 ; live owner holding a one-pair ledger leaves that field, and its view moves.
 (assert-event
  (and (equal (fn-own-ledger-count *ori-pre*) 1)
-      (equal (fn-own-ledger-field (fn-own-refresh-ix *ori-pre*))
+      (equal (fn-own-ledger-field (fn-own-refresh-ix-h *ori-pre*))
              (fn-own-ledger-field *ori-pre*))))

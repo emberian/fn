@@ -4,7 +4,8 @@
 
 (defun fn-native-auth-host-load (octets presentp requiredp protected-onlyp
                                         tls-availablep max-credentials)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-native-auth-load octets presentp requiredp protected-onlyp tls-availablep
                        max-credentials))
 
@@ -26,5 +27,6 @@
   (fn-native-auth-result-config result))
 
 (defun fn-native-auth-host-load-bindings (octets presentp max-credentials)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-native-auth-load-bindings octets presentp max-credentials))

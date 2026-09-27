@@ -473,6 +473,28 @@ input to a safe protocol boundary or close the connection. Do not reinterpret
 the remainder of an oversized article as fresh commands. Response framing must
 preserve payload octets subject to the specified wire transformation.
 
+QUIT ends the connection's input (RFC 3977 section 5.4: the server
+acknowledges QUIT and closes the connection). No octet after the QUIT line is
+framed or answered, whatever the read boundaries: the served fold stops on
+`fn-served-haltedp` (the reader session QUIT closed, or the TLS handshake owed
+after 382), and `fn-served-step-stops-at-quit` (books/served.lisp, PRF-312)
+says a read whose prefix leaves the session quit serves exactly what the
+prefix serves. Before it the commands books/nntp-auth.lisp answers itself
+(AUTHINFO with its credential check, STARTTLS with its 382 and handshake,
+CAPABILITIES, XREDEEM) were answered after the 205 (fuzz-nntp F1).
+
+A transit article (IHAVE after 335, TAKETHIS) meets the same octet bound as a
+POST: the transit connection's body limit is the smaller of the operator's
+profile bound A and the peer record's `inbound-max-octets`
+(`fn-own-peer-body-limit`, books/owner.lisp), the served run retains at most
+that limit of an article before its verdict
+(`fn-tb-served-run-retains-at-most-the-body-limit`, books/transit-bound.lisp,
+PRF-313), and the cut article is refused by name, 437 (IHAVE) or 439 with the
+Message-ID (TAKETHIS, RFC 4644 section 2.5.2), and the connection closed.
+Before it a peer streaming an endless TAKETHIS body grew the owner to 3.94 GiB
+(fuzz-nntp F2): `peer add` writes the record codec's 4 GiB ceiling as
+`inbound-max-octets`, and that alone was the limit.
+
 ## Posting and projection
 
 NNT-004: distinguish proto-article submission from a stored/relayed article.
@@ -542,7 +564,8 @@ three parts have three different owners of the *reply*, all of them ACL2.
    distinct `441` line (`fn-post-outcome-store-refusal-kinds-are-distinct`):
    `:duplicate` "this article is already stored here", `:conflict` "a
    different article with this Message-ID is stored here" (the two answers of
-   `fn-pb-existing-action`, which since D25 compares the poster's *source*:
+   the Store's entry `fn-store-existing-action`, D25's `fn-pb-action-over`
+   over the stored bytes, which since D25 compares the poster's *source*:
    each article's source is recovered by the injection inverse
    `fn-inj-source-of`, under the agent the submission's own Path line names,
    and two sources are compared octet for octet; an article that inverse does
@@ -776,8 +799,8 @@ Message-ID (D25). The node answers it from the Store, not from a reader view:
 What is proved, over the decision the host calls
 (`books/visibility-join.lisp`; `host/native/owner.lisp` `fnn-owner-attempt`
 through `host/owner-host.lisp` `fn-owner-existing-action-buffer`, whose
-decision is `fn-rclb-existing-action`; the carried-signature ingress through
-`fn-owner-existing-action`, `fn-rcl-existing-action`): once a Message-ID is
+decision is `fn-pidx-existing-action`; the carried-signature ingress through
+`fn-owner-existing-action`, `fn-store-existing-action`): once a Message-ID is
 held, the decision answers `:duplicate` or `:conflict`, never nil, after any
 Store completion (`fn-vj-a-completion-keeps-a-held-message-id-answered`; the
 cancel that withdraws the target is such a completion, `fn-sn-finish`) and
@@ -813,7 +836,7 @@ identity table. What each identity is, and which equality holds:
 | --- | --- | --- |
 | Application operation | the client's own (a persisted Message-ID) | a client that omits Message-ID has no retry identity: its resend is a new article (NNT-005) |
 | Message-ID | RFC 5536 s3.1.3 | transit (IHAVE, CHECK, TAKETHIS) and BP admission decide duplicates by it alone (RFC 3977 s6.3.2, RFC 4644); `fn-peer-decide-offer`, `fn-peer-decide-transfer` |
-| Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-rcl-existing-action`: same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
+| Authored source | the poster's octets, recovered by the injection inverse (`fn-inj-source-of`) | on the injecting routes (served POST, `operator post`, `hybrid-author`) the D25 verdict the host calls, `fn-store-existing-action` (books/store-intern.lisp; over the octet model `fn-rcl-action-over`): same source at any later clock is "already stored here" (`fn-sr-a-retry-is-already-stored`), one changed authored byte is "a different article" (`fn-sr-a-changed-source-is-a-conflict`); a supplied Path tail is source (D32); no field is normalized, so a signed carrier is stored octet for octet after the injected block |
 | Stored representation | the record payload (`store inspect`), its SHA-256 | the injected octets on the injecting node; on a receiving node the same octets with that node's path identity spliced into Path and any Xref dropped (`fn-peer-relayed-octets`); an injection is never a tombstone (`fn-sr-an-injection-is-not-a-tombstone`) |
 | Tombstone | SHA-256 of the octets and of the source, and the injecting agent | a retry after reclamation is still the duplicate and a changed source the conflict, up to a SHA-256 collision on the two sources (`fn-sr-a-retry-after-reclaim-is-already-stored`, `fn-sr-a-changed-source-after-reclaim-is-a-conflict`); marked unreachable-in-composition when no program wrote tombstones; `store reclaim` over the record log now rewrites a reclaimed article's record to its tombstone (`fn-lgr-decide`, books/store-log-reclaim.lisp, PRF-271, lane log-recovery 2026-09-27), and the mark has not been re-examined against it |
 | Bundle identity | RFC 9171 (source EID, creation time, sequence) | one per carried request; a re-offer of an uncertain forwarding attempt keeps it (specs/bp-node-machine.md s4.3.1) |

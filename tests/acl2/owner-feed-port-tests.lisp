@@ -1,7 +1,7 @@
 ; Actual owner-table boundary witnesses for bounded FNFD port admission.
 (in-package "ACL2")
 (include-book "../../books/owner-feed-port")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-ofp-peer* "nodeB")
 (defconst *fn-ofp-record*
@@ -65,7 +65,7 @@
 (assert-event (equal (fn-own-feed-port-table *fn-ofp-overflow*) *fn-ofp-table*))
 (assert-event (equal (fn-own-feed-port-records *fn-ofp-overflow*) nil))
 (assert-event (equal (fn-own-feed-port-effects *fn-ofp-overflow*) nil))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (equal (fn-own-feed-port-table *fn-ofp-overflow*)
         (fn-own-feed-lost-one *fn-ofp-peer* *fn-ofp-table*
                                *fn-ofp-overflow-obs*))))
@@ -124,6 +124,6 @@
                      *fn-ofp-two-table*))
 (assert-event (equal (fn-own-feed-port-records *fn-ofp-restart-refusal*) nil))
 (assert-event (equal (fn-own-feed-port-effects *fn-ofp-restart-refusal*) nil))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-own-feed-port-status *fn-ofp-restart-refusal*) :accepted)))

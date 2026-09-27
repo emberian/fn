@@ -12,6 +12,9 @@
 ; what the correspondence carries.
 (in-package "ACL2")
 (include-book "../../books/store-log-kernel-concrete")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun slc-unit () (declare (xargs :guard t)) 4)
 (defun slc-max () (declare (xargs :guard t)) 4096)
@@ -257,3 +260,49 @@
    (and (not (equal bad (fn-lgc-of ks1)))
         (not (equal (fn-lgc-append-octets bad (slc-unit)) (fn-lgk-append-octets ks1 (slc-unit))))
         (equal (fn-lgc-append-len bad (slc-unit)) (len (fn-lgk-append-octets ks1 (slc-unit)))))))
+
+; -----------------------------------------------------------------------------
+; fn-lgc-extend-program-keeps-the-relation (PRF-282; audit packet G4-8, lane
+; audit-fixes): the concrete kernel the host holds ((fn-lgc-of ks), host/
+; native/io.lisp) over store-log-extend-tests' resting segment (r1
+; committed, nothing in flight).
+(include-book "store-log-extend-tests")
+(defun slc-x-concl (bs ks next)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((run (fn-lg-extend-run bs (fn-lgc-of ks) (fn-lg-extend-program next) nil 0))
+         (final (car (last run))))
+    (and (equal (len run) 4)
+         (equal (cdr final) (fn-lgc-of ks))
+         (fn-lgk-relp (car final) ks 0 (sle-genesis) (sle-max))
+         (equal (len (fn-bs-durable-content (car final) 0)) next))))
+; Positive: R, nothing in flight in the concrete kernel, NEXT whole units
+; and past the content; all four conjuncts.
+(assert-event
+ (and (fn-lgk-relp (sle-bs0) (sle-ks) 0 (sle-genesis) (sle-max))
+      (not (consp (fn-lgc-inflight (fn-lgc-of (sle-ks)))))
+      (equal (mod (sle-next) (fn-bs-unit (sle-bs0))) 0)
+      (< (len (fn-bs-durable-content (sle-bs0) 0)) (sle-next))
+      (slc-x-concl (sle-bs0) (sle-ks) (sle-next))))
+; Removal of (< len next): a target below the segment's end (8) writes
+; nothing, and the length conjunct fails.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (fn-lgk-relp (sle-bs0) (sle-ks) 0 (sle-genesis) (sle-max))
+       (not (consp (fn-lgc-inflight (fn-lgc-of (sle-ks)))))
+       (equal (mod 8 (fn-bs-unit (sle-bs0))) 0)
+       (not (< (len (fn-bs-durable-content (sle-bs0) 0)) 8))
+       (not (slc-x-concl (sle-bs0) (sle-ks) 8)))))
+; Removal of the alignment: NEXT one octet past a whole unit (still past the
+; content); the conclusion fails.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (fn-lgk-relp (sle-bs0) (sle-ks) 0 (sle-genesis) (sle-max))
+       (not (consp (fn-lgc-inflight (fn-lgc-of (sle-ks)))))
+       (not (equal (mod (+ 1 (sle-next)) (fn-bs-unit (sle-bs0))) 0))
+       (< (len (fn-bs-durable-content (sle-bs0) 0)) (+ 1 (sle-next)))
+       (not (slc-x-concl (sle-bs0) (sle-ks) (+ 1 (sle-next)))))))
+; R and nothing-in-flight: their removal witnesses are the logical twin's
+; (store-log-extend-tests); the concrete statement adds only the kernel it
+; runs, which fn-lg-extend-run-keeps-the-kernel shows the run never reads.

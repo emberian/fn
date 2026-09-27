@@ -1,6 +1,6 @@
 ; Teeth for books/store-init-publication (PRF-217, PKT-647).
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/store-init-publication")
 
 ; A parent directory with no store at ROOT, next inode 5, no :transactions
@@ -69,7 +69,7 @@
 (assert-event (fn-bs-imp-inputp *init-t-taken* "store.init-1" "store"
                                 *fn-bs-init-pub-subdirs* *init-t-files* nil))
 (assert-event (assoc-equal :transactions (fn-bs-dirs *init-t-taken*)))
-(must-fail
+(must-fail-checked
  (defthm init-t-without-fresh-transactions
    (fn-bs-init-pub-emptyp
     (fn-bs-crash (car (car (last (fn-bs-imp-run *init-t-taken* nil *init-t-program* nil nil 0))))
@@ -83,7 +83,7 @@
 (defconst *init-t-short-run*
   (fn-bs-imp-run *init-t-bs* nil *init-t-program* *init-t-short-outs* nil 0))
 (assert-event (equal (len *init-t-short-run*) (len *init-t-program*)))
-(must-fail
+(must-fail-checked
  (defthm init-t-without-honest-outcomes
    (fn-bs-imp-no-store-or-completep (fn-bs-crash (car (car (last *init-t-short-run*))) nil)
                                     "store" *fn-bs-init-pub-subdirs* *init-t-files* 5 nil)))

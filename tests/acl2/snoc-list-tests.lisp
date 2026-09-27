@@ -79,9 +79,35 @@
 ; records field is not canonical.  Copying its field is not fn-sf-make of its
 ; list.  (CORRUPTED state, labelled: no transition builds it.)
 (defconst *sf-noncanon*
-  (fn-sf-make-fields :ready 0 nil *sl-bad* nil nil (fn-sl-of nil) 5))
+  (fn-sf-make-fields :ready 0 nil *sl-bad* nil nil (fn-sl-of nil)
+                     *fn-sf-recovery-barrier-count*))
 (assert-event (not (fn-sf-shapep *sf-noncanon*)))
 (assert-event (not (equal (fn-sf-make-fields :ready 0 nil (fn-sf-records-field *sf-noncanon*)
                                              nil nil (fn-sf-successes-field *sf-noncanon*) 5)
                           (fn-sf-make :ready 0 nil (fn-sf-records *sf-noncanon*)
                                       nil nil (fn-sf-successes *sf-noncanon*) 5))))
+
+; fn-sl-nth-is-nth's (natp i) hypothesis is redundant (audit packet G3-7,
+; lane audit-fixes): the weakened theorem is proved here, so no removal
+; witness exists.  Both sides fix the index (fn-sl-nth by nfix, nth by zp).
+; The library statement is left as it is (snoc-list has wide fan-in).
+(local (defthm sl-t-nth-of-nfix
+         (equal (fn-sl-nth (nfix i) h) (fn-sl-nth i h))
+         :hints (("Goal" :in-theory (e/d (fn-sl-nth fn-sl-nth-elem) (fn-sl-nth-is-nth))))))
+(local (defthm sl-t-nth-nth-of-nfix (equal (nth (nfix i) x) (nth i x))))
+(defthm sl-t-nth-is-nth-without-natp
+  (equal (fn-sl-nth i h) (nth i (fn-sl-list h)))
+  :hints (("Goal" :use ((:instance fn-sl-nth-is-nth (i (nfix i)))
+                        (:instance sl-t-nth-of-nfix)
+                        (:instance sl-t-nth-nth-of-nfix (x (fn-sl-list h))))
+           :in-theory (union-theories '((:type-prescription nfix) natp)
+                                      (theory 'minimal-theory))))
+  :rule-classes nil)
+; The non-natural indices the hypothesis excludes, evaluated on both forms
+; (fn-sl-nth's guard asks natp, so as a ground theorem).
+(defthm sl-t-nth-at-non-naturals
+  (and (equal (fn-sl-nth 1/2 '(:snoc 3 c b a)) (nth 1/2 (fn-sl-list '(:snoc 3 c b a))))
+       (equal (fn-sl-nth -1 '(:snoc 3 c b a)) (nth -1 (fn-sl-list '(:snoc 3 c b a))))
+       (equal (fn-sl-nth 'x '(:snoc 3 c b a)) 'a)
+       (equal (fn-sl-nth -1 '(a b c)) (nth -1 '(a b c))))
+  :rule-classes nil)

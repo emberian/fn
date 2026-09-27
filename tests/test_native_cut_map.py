@@ -15,8 +15,8 @@ class NativeCutMapTests(unittest.TestCase):
     def test_statement_cut_follows_its_barrier(self):
         native_cuts.verify_statement_cut_map()
 
-    def test_checkpoint_cuts_match_native_and_compaction_is_rotation(self):
-        native_cuts.verify_checkpoint_cut_map()
+    def test_compaction_is_rotation(self):
+        native_cuts.verify_compact_is_rotation()
 
     def test_outcomes_remain_explicit(self):
         self.assertEqual({cut.outcome for cut in native_cuts.ALL_CUTS}, {"kill"})

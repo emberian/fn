@@ -11,9 +11,9 @@
 ;                           fn-lg-fence-program through
 ;                           fnn-log-commit-open-batch)
 ;   fn-lg-open-program      fnn-recover-log      P-LOG-RECOVER's two cuts, then
-;                           recover-replayed and the five recovery barriers
-;                           (config, segment, journal/, root, parent), each
-;                           followed by recover-barrier
+;                           recover-replayed and the three recovery barriers
+;                           (journal/, root, parent), each followed by
+;                           recover-barrier
 ;
 ; tools/native_program_check.py reads each log-route arm's host steps
 ; (fnn-log-pwrite, fnn-log-fdatasync, the barrier thunks, the cuts) in order
@@ -34,9 +34,14 @@
   (declare (xargs :guard t))
   (list (list :cut "record-completing")))
 
-; The barriers other than the segment's fence objects the log's byte model
-; does not hold (the config file, journal/, the root, its parent): no step
-; of fn-lg-step changes the segment or the kernel for them.
+; The recovery barriers fence objects the log's byte model does not hold
+; (journal/, the root, its parent): no step of fn-lg-step changes the segment
+; or the kernel for them.  Three, not five (lane open-barriers, 2026-09-27):
+; the config file's and the segment's second fence are gone.  What each
+; remaining barrier is for, and that the three-barrier open is the five-
+; barrier open at every cut, is books/store-log-open-barriers.lisp
+; (fn-lgob-three-barrier-open-is-the-five-at-every-cut and one ground
+; counterexample per omitted barrier).
 (defun fn-lg-open-program ()
   (declare (xargs :guard t))
   (list (list :write-at :segment :tail)
@@ -44,10 +49,6 @@
         (list :fence :segment :tail)
         (list :cut "log-recovered")
         (list :cut "recover-replayed")
-        (list :fence :config)
-        (list :cut "recover-barrier")
-        (list :fence :segment :tail)
-        (list :cut "recover-barrier")
         (list :fence :journal)
         (list :cut "recover-barrier")
         (list :fence :root)
@@ -85,28 +86,16 @@
            :in-theory (disable fn-lgk-relp fn-olr-take fn-olr-take-preserves-relation
                                fn-lg-recordp))))
 
-(local
- (defthm fn-lgrp-relp-committed-true-listp
-   (implies (fn-lgk-relp bs ks ino genesis max) (true-listp (nth 1 ks)))
-   :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
-                                   (fn-lg-scan fn-lg-scan-last fn-lg-log fn-bs-durable-content))))))
-
-; Every process-death cut after P-LOG-RECOVER (recover-replayed and the five
+; Every process-death cut after P-LOG-RECOVER (recover-replayed and the three
 ; barriers' cuts): from the relation P-LOG-RECOVER establishes
-; (fn-lg-recover-program-establishes-the-relation; nothing in flight), every
-; state of the open's suffix is related.
+; (fn-lg-recover-program-establishes-the-relation), every state of the open's
+; suffix is related.  The suffix holds no segment step since lane
+; open-barriers (the segment's second fence is gone), so every state of it is
+; the recovered one: the hypothesis "nothing in flight" the five-barrier
+; statement carried is redundant for this suffix and was removed after this
+; weakened theorem was proved.
 (defthm fn-lg-open-suffix-keeps-the-relation
-  (implies (and (fn-lgk-relp bs ks ino genesis max) (not (fn-lgk-inflight ks)))
+  (implies (fn-lgk-relp bs ks ino genesis max)
            (fn-lg-all-relp (fn-lg-run bs ks (fn-lg-open-suffix) nil ino) ino genesis max))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-lg-fence-program-keeps-the-relation)
-                 (:instance fn-lgrp-relp-committed-true-listp)
-                 (:instance fn-lgk-relp-when-fields-agree
-                            (bs (fn-bs-fence-file bs ino)) (ks (fn-lgk-fence ks (fn-bs-unit bs)))
-                            (k2 ks))
-                 (:instance fn-lgk-relp-forward))
-           :in-theory (e/d (fn-bs-fsync-file fn-lgk-fence)
-                           (fn-lgk-relp fn-bs-fence-file fn-bs-durable-content
-                            fn-lg-fence-program-keeps-the-relation fn-lgk-relp-forward
-                            fn-lgrp-relp-committed-true-listp)))))
+           :in-theory (e/d () (fn-lgk-relp fn-bs-durable-content)))))

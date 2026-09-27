@@ -2,7 +2,7 @@
 (include-book "../../books/bp-handoff-status")
 (include-book "bp-receipt-tests")
 (include-book "../../books/bp-fnbs-delivery-replay")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; A committed FNRJ receipt for the same request that the kind-5 held row
 ; carries.  Its receipt ID is the kind-7 handoff ID, not a host-derived name.
@@ -97,7 +97,7 @@
  (equal (fn-bpah-handoff-effective-status
          (bphs-state-with-job (bphs-reply-job *bphs-receipt-adu* *bphs-receiver*))
          *bphs-handoff* *bphs-receipt-adu* *bphs-sender*) :owed))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-handoff-effective-status
           (bphs-state-with-job nil) *bphs-handoff*
@@ -133,12 +133,12 @@
  (equal (fn-bpah-outbox-effective-status
          (bphs-state-with-job nil) *bphs-view*
          *bphs-receipt-adu* *bphs-sender*) :owed))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-outbox-effective-status
           *bphs-live* *bphs-view* *bphs-request-adu* *bphs-sender*)
          '(:handed-off 8))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-outbox-effective-status
           *bphs-live* *bphs-view* *bphs-receipt-adu* *bphs-receiver*)

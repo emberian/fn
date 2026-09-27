@@ -497,6 +497,7 @@
 ;               withdrawal, principal :node), whatever the target's groups;
 ;   (:decline REASON) otherwise.  A key record has no scope: it never
 ;   reaches the authority arm.
+(fn-payload-kind fn-ctl-withdrawal-effect :handle "its T-RECEIVED formal is ignored")
 (defun fn-ctl-withdrawal-effect (w t-groups t-verdict t-received)
   (declare (xargs :guard t) (ignore t-received))
   (let ((named (fn-ctl-named-principal t-verdict))

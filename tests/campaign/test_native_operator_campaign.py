@@ -41,7 +41,6 @@ class NativeCutTableTests(unittest.TestCase):
         self.assertEqual([cut.name for cut in native_cuts.RECOVERY_CUTS],
                          ["recover-replayed", "recover-barrier-1",
                           "recover-barrier-2", "recover-barrier-3",
-                          "recover-barrier-4", "recover-barrier-5",
                           "recovery-stage-unlinked"])
         # The log's open (fn-lg-open-program, books/store-log-route-programs.lisp):
         # the per-file fn-bs-recover-program went with format 8 (PKT-838).
@@ -49,7 +48,7 @@ class NativeCutTableTests(unittest.TestCase):
                          {"fn-lg-open-program"})
         self.assertEqual([(cut.model_name, cut.occurrence)
                           for cut in native_cuts.RECOVERY_CUTS[1:-1]],
-                         [("recover-barrier", i) for i in range(1, 6)])
+                         [("recover-barrier", i) for i in range(1, 4)])
         unlinked = native_cuts.RECOVERY_CUTS[-1]
         self.assertEqual(unlinked.follows, "fn-lg-open-program")
 

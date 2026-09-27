@@ -10,7 +10,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/connection-budget")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cbt-machine* 2147483648)
 (defconst *cbt-hneed* (* 815 1048576))
@@ -47,13 +47,13 @@
 (assert-event (<= (+ 1218363392 (* 619 1500160)) *cbt-machine*))
 ; H1 dropped: 620 connections do not fit.
 (assert-event (not (<= 620 (cbt-bound *cbt-machine* t))))
-(must-fail
+(must-fail-checked
  (assert-event (<= (+ 1218363392 (* 620 1500160)) *cbt-machine*)))
 ; H2 dropped: a 1 GiB machine cannot hold the base; the bound is 0 and even
 ; no connection fits.
 (assert-event (equal (cbt-bound 1073741824 t) 0))
 (assert-event (not (<= 1218363392 1073741824)))
-(must-fail
+(must-fail-checked
  (assert-event (<= (+ 1218363392 (* 0 1500160)) 1073741824)))
 
 ; fn-cbud-bound-is-the-most (no hypotheses): 620 does not fit.
@@ -94,14 +94,14 @@
 (assert-event (cbt-fits *cbt-machine-40g* *cbt-dyn-dev* *cbt-hneed-default*))
 (assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 26249) *cbt-machine-40g*))
 ; H1 dropped: one more is not held, on either machine.
-(must-fail
+(must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 620) *cbt-machine*)))
-(must-fail
+(must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 26250) *cbt-machine-40g*)))
 ; H2 dropped: on 24 GiB neither way holds the base; the limit is 0 and even
 ; no connection is held.
 (assert-event (not (cbt-fits (* 24 1073741824) *cbt-dyn-dev* *cbt-hneed-default*)))
-(must-fail
+(must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 0) (* 24 1073741824))))
 ; fn-cbud-limit-is-the-most (no hypotheses).
 (assert-event (< *cbt-machine* (cbt-resident *cbt-dyn-launch* *cbt-hneed* 620)))
@@ -121,7 +121,7 @@
 ; and 1,000 connections are not held by it.
 (assert-event (equal (cbt-decide 1000 *cbt-machine*)
                      '(:refused :connections-exceed-memory 1000 619)))
-(must-fail
+(must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1000) *cbt-machine*)))
 ; fn-cbud-run-decide-refuses-exactly-past-the-limit: 620 refused, and the
 ; developer node on 24 GiB refuses the default capacity (bounds_join's case,
@@ -189,7 +189,7 @@
 (assert-event (not (equal (fn-exp-admit-decision (fn-exp-initial) *cbt-lim619* 619
                                                  *cbt-a* 5000)
                           '(:admit))))
-(must-fail
+(must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 620) *cbt-machine*)))
 ; H4 dropped: a capacity of 700 (a live raise the owner refuses, below) admits
 ; the 680th, which is not held.
@@ -197,12 +197,12 @@
                      '(:admit)))
 (assert-event (not (<= (fn-exp-connections-capacity *cbt-v-cap700*)
                        (cbt-limit *cbt-machine* *cbt-dyn-launch* *cbt-hneed*))))
-(must-fail
+(must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 680) *cbt-machine*)))
 ; H5 dropped: the 24 GiB developer node, the default capacity 31 and its
 ; first admission: not held.
 (assert-event (<= 31 (+ 31 (cbt-limit (* 24 1073741824) *cbt-dyn-dev* *cbt-hneed-default*))))
-(must-fail
+(must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 1) (* 24 1073741824))))
 ; H1 and H2 are PRF-211's; their removal witnesses are in
 ; tests/acl2/public-exposure-tests.lisp (a row past the width; ten 481s).
@@ -217,7 +217,7 @@
 (assert-event (<= (fn-exp-connections-capacity (fn-cfg-apply *cbt-v-empty* 1 0 *cbt-raise-550*))
                   619))
 ; The refusal's hypothesis dropped: the raise to 700 leaves 700 > 619.
-(must-fail
+(must-fail-checked
  (assert-event (<= (fn-exp-connections-capacity (fn-cfg-apply *cbt-v-empty* 1 0 *cbt-raise-700*))
                    619)))
 ; No bound installed (an ACL2 test entry): nothing refused here.
@@ -258,7 +258,7 @@
 (assert-event (equal (fn-cbud-step-read-octets *cbt-public-lim*) 512))
 ; H1 dropped: the loopback limits have no rate, and the read is not 512.
 (assert-event (not (posp (fn-exp-lim-steps *cbt-loopback-lim*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cbud-step-read-octets *cbt-loopback-lim*) 512)))
 ; fn-cbud-step-read-octets-is-bounded and fn-cbud-read-covers-the-step (no
 ; hypotheses): the loopback read is the quantum, 4 KiB, and two of it are the

@@ -3,7 +3,7 @@
 ; here include a burned transaction-id gap and a released high reservation.
 
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/config-physical-replay")
 (include-book "held-rows-tests")
 
@@ -168,7 +168,7 @@
 (defconst *cpr-t-unserved* (fn-hrt-row-at *cpr-t-unserved-wire* 0))
 (assert-event (fn-store-event-p *cpr-t-unserved*))
 (assert-event (null (fn-cpr-apply-event *cpr-t-step* *cpr-t-unserved*)))
-(must-fail
+(must-fail-checked
  (defthm cpr-t-apply-event-statep-without-non-refusal
    (fn-cnode-statep (fn-cpr-apply-event *cpr-t-step* *cpr-t-unserved*))))
 ; The loop: from a configured node every result's node is configured, the
@@ -181,7 +181,7 @@
                 (fn-cpr-loop *cpr-t-step* nil (list *cpr-t-undertake*) 1 0))))
 ; Its hypothesis: from a node that is not configured the fault carries that
 ; node, and the conclusion fails.
-(must-fail
+(must-fail-checked
  (defthm cpr-t-loop-statep-without-configured-start
    (fn-cnode-statep
     (fn-replay-result-node (fn-cpr-loop nil nil nil 0 0)))))
@@ -234,7 +234,7 @@
                                             (fn-cnode-line-ceiling)))
 (assert-event (not (fn-cnode-record-acceptablep *cpr-t-bad-cn* *cpr-t-next*
                                                 (fn-cnode-line-ceiling))))
-(must-fail
+(must-fail-checked
  (defthm cpr-t-carried-check-without-cfgp
    (equal (fn-cnode-record-acceptablep *cpr-t-bad-cn* *cpr-t-next*
                                        (fn-cnode-line-ceiling))
@@ -253,7 +253,7 @@
                     (fn-cnode-make
                      (fn-replay-advance-txid (fn-cnode-node *cpr-t-bad-cn*) 8)
                      (fn-cnode-config *cpr-t-bad-cn*)))))
-(must-fail
+(must-fail-checked
  (defthm cpr-t-advanced-node-without-configured-start
    (fn-cnode-statep
     (fn-cnode-make (fn-replay-advance-txid (fn-cnode-node *cpr-t-bad-cn*) 8)

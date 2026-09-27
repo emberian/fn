@@ -4,8 +4,9 @@
  "minimized_hex": [
   "515549540d0a41555448494e464f205553455220780d0a"
  ],
- "note": "Model and host agree, and both answer 381 after 205 in the same read: RFC 3977 section 5.4 (the server closes after acknowledging QUIT).",
+ "note": "Fixed by lane wire-bounds (F1): nothing after QUIT's 205 is framed or answered (fn-served-step-stops-at-quit).",
  "packet": "F1 (after-QUIT)",
- "status": "open",
- "store": "-"
+ "status": "fixed",
+ "store": "-",
+ "was": "Model and host agree, and both answer 381 after 205 in the same read: RFC 3977 section 5.4 (the server closes after acknowledging QUIT)."
 }

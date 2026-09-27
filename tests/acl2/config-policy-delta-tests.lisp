@@ -9,7 +9,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/config-policy-delta")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cpdt-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
 (defconst *cpdt-p1* (append (fn-record-string-octets "Subject: b") '(13 10 13 10 66 13 10 67 13 10)))
@@ -107,7 +107,7 @@
        (not (equal (fn-cat-apply-in-quanta *cpdt-bad* 0 '(1) nil *cpdt-a* *cpdt-c*)
                    (fn-cat-apply-delta *cpdt-bad* nil *cpdt-a* *cpdt-c*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm fn-cpdt-without-delta-p
   (implies (and (natp cursor) (<= cursor (nfix (nth 2 d))))
            (equal (fn-cat-apply-in-quanta d cursor quanta keyring fn-arena fn-cat)
@@ -134,7 +134,7 @@
        (not (equal (fn-cat-apply-in-quanta *cpdt-policy* -1 '(1) nil *cpdt-a* *cpdt-c*)
                    (fn-cat-apply-delta *cpdt-policy* nil *cpdt-a* *cpdt-c*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm fn-cpdt-without-natp-cursor
   (implies (and (fn-delta-p d) (<= cursor (nfix (nth 2 d))))
            (equal (fn-cat-apply-in-quanta d cursor quanta keyring fn-arena fn-cat)
@@ -163,7 +163,7 @@
                    (fn-cat-apply-delta *cpdt-policy* nil *cpdt-a* *cpdt-c*))))
   :rule-classes nil)
 (assert-event (not (cpdt-agrees *cpdt-policy* 1 '(1))))
-(must-fail
+(must-fail-checked
  (defthm fn-cpdt-without-cursor-bound
   (implies (and (fn-delta-p d) (natp cursor))
            (equal (fn-cat-apply-in-quanta d cursor quanta keyring fn-arena fn-cat)

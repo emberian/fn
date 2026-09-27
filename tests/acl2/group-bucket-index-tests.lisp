@@ -1,7 +1,7 @@
 ; Sparse local numbers, crossposts and a retained earlier view.
 (in-package "ACL2")
 (include-book "../../books/group-bucket-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *gix-groups* '("fn.one" "fn.two" "fn.three"))
 ; by specification: the flip -- an article's payload is an arena handle
@@ -84,12 +84,12 @@
 ; Without article-list consistency, a malformed historical membership can
 ; make the source fold and index interpretation differ.  This is the same
 ; live-state hypothesis the existing flat-index range keystone needs.
-(must-fail
+(must-fail-checked
  (defthm gix-range-without-article-listp
    (equal (fn-gidx-range-numbers (fn-gidx-build articles) group low high)
           (fn-nntp-group-range-numbers group low high articles))
    :hints (("Goal" :do-not-induct t))))
-(must-fail
+(must-fail-checked
  (defthm gix-range-without-group-type
    (implies (and (fn-article-listp configured articles)
                  (natp low) (natp high))
@@ -97,7 +97,7 @@
                                            group low high)
                    (fn-nntp-group-range-numbers group low high articles)))
    :hints (("Goal" :do-not-induct t))))
-(must-fail
+(must-fail-checked
  (defthm gix-range-without-low-type
    (implies (and (fn-article-listp configured articles)
                  (stringp group) (natp high))
@@ -105,7 +105,7 @@
                                            group low high)
                    (fn-nntp-group-range-numbers group low high articles)))
    :hints (("Goal" :do-not-induct t))))
-(must-fail
+(must-fail-checked
  (defthm gix-range-without-high-type
    (implies (and (fn-article-listp configured articles)
                  (stringp group) (natp low))
@@ -117,7 +117,7 @@
 ; The complete command theorem needs a well-formed archive projection.  A
 ; malformed membership/number shape is not licensed merely because the bucket
 ; can be built from its raw article list.
-(must-fail
+(must-fail-checked
  (defthm gix-listgroup-without-projection
    (equal (fn-gidx-listgroup-command
            session archive (fn-gidx-build (fn-state-articles archive)) args)

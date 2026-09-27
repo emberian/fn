@@ -32,7 +32,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/feed-connection-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The scenario.  A profile file `FNAUTH1\nnode\nsecret\n', the replies a peer
@@ -183,7 +183,7 @@
 (assert-event (not (fn-fc-gate-okp 0 t (fn-fc-drive *fct-clear-permitted*
                                                     (list *fct-200*)))))
 (local
- (must-fail
+ (must-fail-checked
   (fct-gate-thm fct-gate-without-protected-profile ((fn-fc-opening-phasep st)))))
 
 ; Without `fn-fc-opening-phasep': a STARTTLS connection with a credential
@@ -199,7 +199,7 @@
 (assert-event (not (fn-fc-gate-okp 0 nil (fn-fc-drive *fct-ready-unopened*
                                                       (list *fct-238*)))))
 (local
- (must-fail
+ (must-fail-checked
   (fct-gate-thm fct-gate-without-opening-phase ((fn-fc-protected-profilep st)))))
 
 ; -----------------------------------------------------------------------------
@@ -282,7 +282,7 @@
 (assert-event (not (fn-fc-statep *fct-not-a-state*)))
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-not-a-state* *fct-481*)) :invalid))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-refused-login-without-statep
       (,*fct-hyp-login-phase* ,*fct-hyp-line* ,*fct-hyp-not-281* ,*fct-hyp-not-381*)))))
@@ -291,7 +291,7 @@
 ; a feed reply, not a refusal.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-ready-unopened* *fct-481*)) :reply))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-refused-login-without-phase
       (,*fct-hyp-statep* ,*fct-hyp-line* ,*fct-hyp-not-281* ,*fct-hyp-not-381*)))))
@@ -307,7 +307,7 @@
                           281)))
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-pass* *fct-half*)) :need-input))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-refused-login-without-a-line
       (,*fct-hyp-statep* ,*fct-hyp-login-phase* ,*fct-hyp-not-281* ,*fct-hyp-not-381*)))))
@@ -315,7 +315,7 @@
 ; Without "not 281": 281 is the login, and the connection proceeds to MODE.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-pass* *fct-281*)) :mode))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-refused-login-without-not-281
       (,*fct-hyp-statep* ,*fct-hyp-login-phase* ,*fct-hyp-line* ,*fct-hyp-not-381*)))))
@@ -323,7 +323,7 @@
 ; Without "USER not answered 381": 381 to USER asks for the password.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-user* *fct-381*)) :auth-pass))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-refused-login-without-not-381
       (,*fct-hyp-statep* ,*fct-hyp-login-phase* ,*fct-hyp-line* ,*fct-hyp-not-281*)))))
@@ -351,7 +351,7 @@
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-not-a-state-starttls* *fct-580*))
                      :invalid))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-starttls-refusal-without-statep
       (,*fct-hyp-starttls-phase* ,*fct-hyp-line* ,*fct-hyp-not-382*)))))
@@ -359,7 +359,7 @@
 ; Without the phase: 580 in the ready phase is a feed reply.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-ready-unopened* *fct-580*)) :reply))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-starttls-refusal-without-phase
       (,*fct-hyp-statep* ,*fct-hyp-line* ,*fct-hyp-not-382*)))))
@@ -371,7 +371,7 @@
                                                      '(53 56))))
                           382)))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-starttls-refusal-without-a-line
       (,*fct-hyp-statep* ,*fct-hyp-starttls-phase* ,*fct-hyp-not-382*)))))
@@ -379,7 +379,7 @@
 ; Without "not 382": 382 starts the handshake.
 (assert-event (equal (fn-fc-kind (fn-fc-step *fct-at-starttls* *fct-382*)) :tls))
 (local
- (must-fail
+ (must-fail-checked
   (make-event
    `(fct-closes-quietly-thm fct-starttls-refusal-without-not-382
       (,*fct-hyp-statep* ,*fct-hyp-starttls-phase* ,*fct-hyp-line*)))))
@@ -429,20 +429,20 @@
   *fn-fc-auth-pass-prefix*
   ((fn-fap-tokenp (fn-fc-pass st)) (true-listp (fn-fc-pass st))))
 (local
- (must-fail
+ (must-fail-checked
   (fct-render-thm fct-user-command-without-tokenp fn-fc-auth-user-command
     fn-fc-user *fn-fc-auth-user-prefix* ((true-listp (fn-fc-user st))))))
 (local
- (must-fail
+ (must-fail-checked
   (fct-render-thm fct-user-command-without-true-listp fn-fc-auth-user-command
     fn-fc-user *fn-fc-auth-user-prefix* ((fn-fap-tokenp (fn-fc-user st))))))
 ; fn-fc-auth-pass-command-sends-the-configured-secret-alone
 (local
- (must-fail
+ (must-fail-checked
   (fct-render-thm fct-pass-command-without-tokenp fn-fc-auth-pass-command
     fn-fc-pass *fn-fc-auth-pass-prefix* ((true-listp (fn-fc-pass st))))))
 (local
- (must-fail
+ (must-fail-checked
   (fct-render-thm fct-pass-command-without-true-listp fn-fc-auth-pass-command
     fn-fc-pass *fn-fc-auth-pass-prefix* ((fn-fap-tokenp (fn-fc-pass st))))))
 
@@ -481,5 +481,5 @@
 (fct-custody-thm fct-decoded-credential-full
   (cadr (fn-fap-decode profile)) (caddr (fn-fap-decode profile)))
 (local
- (must-fail
+ (must-fail-checked
   (fct-custody-thm fct-undecoded-credential-renders-verbatim user pass)))

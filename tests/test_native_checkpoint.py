@@ -1,12 +1,32 @@
-"""Actual saved-image checkpoint publication, selection, and recovery (format 9).
+"""`checkpoint clone' and `operator CONFIG store compact' over the record log
+(format 9); "the history" a case keeps is the `store export' archive of it
+(transaction_bytes).
 
-The generation checkpoints (checkpoint publish / select / status and their
-cuts) and `operator CONFIG store compact' (format 9: rotation and drop) run
-over a record-log store; "the history" a case keeps is the `store export'
-archive of it (transaction_bytes).  Retired with the per-file layout and the
-pack chain (design 2026-09-27 storage-log section 9 row 5; the pack books go
-in lane log-recovery's pack deletion; `checkpoint pack*' refuses
-reason=record-log on format 9):
+The generation checkpoints (`checkpoint publish [select]', `checkpoint
+select', `checkpoint status', and the open's restore of a selected
+generation) are retired (lane matrix-reds, 2026-09-27): their frame is the
+node of books/checkpoint.lisp fn-checkpoint-capture, which since the records
+flip holds arena handles the frame does not resolve, so every capture of a
+store holding an article was refused.  The verbs now refuse by name
+(test_retired_generation_verbs_refuse_by_name).  Format 9's checkpoint is
+the state checkpoint (fn-bs-scp-program with the arena run, lane
+checkpoint-arena), covered by tests.test_native_state_checkpoint (the open
+equals the full replay, a corrupt or arena-less file falls back to the
+replay, every cut of its program), tests.test_native_checkpoint_auto (the
+owner's publication, a kill between batches) and
+tests.test_native_log_compaction (the rotation and the drop, their cuts).
+Deleted here with them: test_selected_corruption_is_reported_without_rollback_
+or_lost_replay, test_corrupt_unselected_generation_is_invisible,
+test_acl2_namespace_codec_rejects_alias_overflow_and_excess,
+test_differential_mismatch_is_always_corruption,
+test_known_and_ambiguous_failures_keep_distinct_exit_codes,
+test_process_death_at_every_native_checkpoint_cut_reopens,
+test_process_death_at_every_selection_cut_preserves_event_bytes, and the
+module tests.test_native_checkpoint_generations (PRF-171's generation arm).
+
+Retired earlier with the per-file layout and the pack chain (design
+2026-09-27 storage-log section 9 row 5; lane log-recovery-2 deleted the
+`checkpoint pack*' verbs):
 * test_native_and_python_frames_cross_open_byte_identically -- the Python
   store (tools/run_store.py, tools/checkpoint.py) reads only the per-file
   layout; it has no record-log reader;
@@ -39,12 +59,10 @@ reason=record-log on format 9):
 import os
 from pathlib import Path
 import shutil
-import signal
 import socket
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 
 from tools import run_store
@@ -81,28 +99,6 @@ class NativeCheckpointTests(unittest.TestCase):
             timeout=getattr(self, "native_timeout", 30), check=False, text=True)
         self.assertEqual(result.returncode, expected,
                          f"native {args} returned {result.returncode}\n"
-                         f"stdout={result.stdout}\nstderr={result.stderr}")
-        return result
-
-    def python_checkpoint(self, store, command, *args, expected=0):
-        result = subprocess.run(
-            [sys.executable, "tools/checkpoint.py", "--store", str(store),
-             command, *map(str, args)], cwd=ROOT, env=self.env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60,
-            check=False, text=True)
-        self.assertEqual(result.returncode, expected,
-                         f"python checkpoint {command} returned {result.returncode}\n"
-                         f"stdout={result.stdout}\nstderr={result.stderr}")
-        return result
-
-    def python_store(self, store, command, *args, expected=0):
-        result = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(store),
-             command, *map(str, args)], cwd=ROOT, env=self.env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60,
-            check=False, text=True)
-        self.assertEqual(result.returncode, expected,
-                         f"python store {command} returned {result.returncode}\n"
                          f"stdout={result.stdout}\nstderr={result.stderr}")
         return result
 
@@ -271,117 +267,25 @@ class NativeCheckpointTests(unittest.TestCase):
             diagnostic = stop_and_diagnostics(owner, timeout=60)
             self.assertEqual(owner.returncode, 0, diagnostic)
 
-    def test_selected_corruption_is_reported_without_rollback_or_lost_replay(self):
-        original = self.initialized("original")
-        self.native("checkpoint", "publish", original, "select")
-        generation = Path("checkpoints/generation-0.fncp")
-        marker = Path("checkpoints/selected.fncp")
-        cases = (
-            ("marker-truncated", marker, lambda raw: raw[:-1]),
-            ("generation-truncated", generation, lambda raw: raw[:-1]),
-            ("generation-malformed", generation,
-             lambda raw: b"BAD!" + raw[4:]),
-        )
-        for label, relative, damage in cases:
-            with self.subTest(label=label):
-                store = self.base / label
-                shutil.copytree(original, store)
-                path = store / relative
-                path.write_bytes(damage(path.read_bytes()))
-                status = self.native("checkpoint", "status", store,
-                                     expected=run_store.EXIT_FAULT)
-                self.assertIn("checkpoint=corrupt", status.stdout)
-                recovered = self.native("store", store, "recover",
-                                        expected=run_store.EXIT_FAULT)
-                self.assertIn("transactions=1 articles=1", recovered.stdout)
-                self.assertIn("checkpoint=corrupt", recovered.stdout)
-
-        missing = self.base / "generation-missing"
-        shutil.copytree(original, missing)
-        (missing / generation).unlink()
-        status = self.native("checkpoint", "status", missing,
-                             expected=run_store.EXIT_FAULT)
-        self.assertIn("selected generation 0 is missing", status.stdout)
-
-    def test_corrupt_unselected_generation_is_invisible(self):
-        store = self.initialized("unselected")
-        self.native("checkpoint", "publish", store, "select")
-        self.native("checkpoint", "publish", store)
-        second = store / "checkpoints" / "generation-1.fncp"
-        second.write_bytes(b"unselected garbage")
-        status = self.native("checkpoint", "status", store)
-        self.assertIn("generations=0 1 checkpoint=ok generation=0", status.stdout)
-
-    def test_acl2_namespace_codec_rejects_alias_overflow_and_excess(self):
-        original = self.initialized("namespace", article=False)
-        self.native("checkpoint", "publish", original)
-        generation = original / "checkpoints" / "generation-0.fncp"
-        for label, alias in (("leading-zero", "generation-00.fncp"),
-                             ("overflow", "generation-4294967296.fncp")):
-            with self.subTest(label=label):
-                store = self.base / label
-                shutil.copytree(original, store)
-                shutil.copy2(generation, store / "checkpoints" / alias)
-                result = self.native("checkpoint", "status", store,
-                                     expected=run_store.EXIT_FAULT)
-                self.assertIn("ACL2 rejected checkpoint namespace", result.stderr)
-
-        excess = self.base / "namespace-excess"
-        shutil.copytree(original, excess)
-        directory = excess / "checkpoints"
-        for index in range(4097):
-            (directory / f"unexpected-{index}").touch()
-        result = self.native("checkpoint", "status", excess,
-                             expected=run_store.EXIT_FAULT)
-        self.assertIn("checkpoint namespace exceeds ACL2 observation bound",
-                      result.stderr)
-
-    def test_differential_mismatch_is_always_corruption(self):
-        store = self.initialized("mismatch")
-        self.native("checkpoint", "publish", store, "select")
-        env = dict(self.env)
-        env["FN_CHECKPOINT_DIFFERENTIAL"] = "0"
-        env["FN_CHECKPOINT_TEST_MISMATCH"] = "1"
-        status = self.native("checkpoint", "status", store,
-                             expected=run_store.EXIT_FAULT, env=env)
-        self.assertIn("checkpoint=corrupt", status.stdout)
-        self.assertIn("differs from full replay", status.stdout)
-        recovered = self.native("store", store, "recover",
-                                expected=run_store.EXIT_FAULT, env=env)
-        self.assertIn("transactions=1 articles=1", recovered.stdout)
-        self.assertIn("checkpoint=corrupt", recovered.stdout)
-
-    def test_known_and_ambiguous_failures_keep_distinct_exit_codes(self):
-        refused_store = self.initialized("candidate-refused", article=False)
-        refused_env = dict(self.env)
-        refused_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "file-barrier"
-        refused = self.native("checkpoint", "publish", refused_store,
-                              expected=run_store.EXIT_REFUSED, env=refused_env)
-        self.assertIn("publication refused", refused.stderr)
-        self.assertEqual(list((refused_store / "checkpoints").glob("generation-*")), [])
-
-        uncertain_store = self.initialized("candidate-uncertain", article=False)
-        uncertain_env = dict(self.env)
-        uncertain_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
-        uncertain = self.native("checkpoint", "publish", uncertain_store,
-                                expected=run_store.EXIT_UNCERTAIN, env=uncertain_env)
-        self.assertIn("publication is uncertain", uncertain.stderr)
-        self.assertTrue((uncertain_store / "checkpoints" / "generation-0.fncp").is_file())
-
-        marker_store = self.initialized("marker", article=False)
-        self.native("checkpoint", "publish", marker_store)
-        marker_refused_env = dict(self.env)
-        marker_refused_env["FN_CHECKPOINT_TEST_FAIL"] = "selection-file"
-        self.native("checkpoint", "select", marker_store, "0",
-                    expected=run_store.EXIT_REFUSED, env=marker_refused_env)
-        self.assertFalse((marker_store / "checkpoints" / "selected.fncp").exists())
-
-        marker_uncertain_env = dict(self.env)
-        marker_uncertain_env["FN_CHECKPOINT_TEST_FAIL"] = "selection-directory"
-        self.native("checkpoint", "select", marker_store, "0",
-                    expected=run_store.EXIT_UNCERTAIN, env=marker_uncertain_env)
-        reopened = self.native("checkpoint", "status", marker_store)
-        self.assertIn("checkpoint=ok generation=0", reopened.stdout)
+    def test_retired_generation_verbs_refuse_by_name(self):
+        """`checkpoint publish/select/status' refuse by name, naming the state
+        checkpoint, and write nothing: no checkpoints directory, the history
+        unchanged."""
+        store = self.initialized("retired")
+        before = self.transaction_bytes(store)
+        for args in (("publish", store), ("publish", store, "select"),
+                     ("select", store, "0"), ("status", store)):
+            with self.subTest(args=args):
+                refused = self.native("checkpoint", *args,
+                                      expected=run_store.EXIT_REFUSED)
+                self.assertIn("generation checkpoints are retired on the record log",
+                              refused.stderr)
+                self.assertIn("store checkpoint", refused.stderr)
+        self.assertFalse((store / "checkpoints").exists())
+        self.assertEqual(self.transaction_bytes(store), before)
+        recovered = self.native("store", store, "recover")
+        self.assertIn("recovered transactions=", recovered.stdout)
+        self.assertNotIn("checkpoint=", recovered.stdout.splitlines()[0])
 
     def transaction_bytes(self, store):
         """The committed history the store's open reads (format 9: the record
@@ -395,70 +299,6 @@ class NativeCheckpointTests(unittest.TestCase):
                 for path in sorted(archive.rglob("*")) if path.is_file()}
         shutil.rmtree(archive)
         return tree
-
-    def stopped_then_killed(self, args, point, occurrence=1):
-        env = dict(self.env)
-        env["FN_CHECKPOINT_TEST_STOP"] = point
-        env["FN_CHECKPOINT_TEST_STOP_AFTER"] = str(occurrence)
-        process = subprocess.Popen(
-            [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        try:
-            deadline = time.monotonic() + getattr(self, "stop_deadline", 10)
-            while time.monotonic() < deadline:
-                if process.poll() is not None:
-                    stdout, stderr = process.communicate()
-                    self.fail(f"process exited before {point}: {stdout} {stderr}")
-                state = subprocess.run(
-                    ["ps", "-o", "state=", "-p", str(process.pid)],
-                    stdout=subprocess.PIPE, text=True, check=False).stdout.strip()
-                if state.startswith("T"):
-                    break
-                time.sleep(0.02)
-            else:
-                self.fail(f"process did not stop at {point}")
-            os.kill(process.pid, signal.SIGKILL)
-        finally:
-            if process.poll() is None:
-                process.kill()
-            # Reap the process and close both pipes.  wait() alone leaves the
-            # Popen-owned file objects open and obscures real warning output.
-            process.communicate(timeout=5)
-
-    def test_process_death_at_every_native_checkpoint_cut_reopens(self):
-        candidate_expectations = {
-            "candidate-file": "generations=- checkpoint=none",
-            "candidate-link": "generations=0 checkpoint=none",
-            "candidate-directory": "generations=0 checkpoint=none",
-        }
-        for point, expected in candidate_expectations.items():
-            with self.subTest(point=point):
-                store = self.initialized(point)
-                before = self.transaction_bytes(store)
-                self.stopped_then_killed(("checkpoint", "publish", store), point)
-                status = self.native("checkpoint", "status", store)
-                self.assertIn(expected, status.stdout)
-                recovered = self.native("store", store, "recover")
-                self.assertIn("transactions=1 articles=1", recovered.stdout)
-                self.assertEqual(self.transaction_bytes(store), before)
-
-    def test_process_death_at_every_selection_cut_preserves_event_bytes(self):
-        selection_expectations = {
-            "selection-file": "checkpoint=none",
-            "selection-replace": "checkpoint=ok generation=0",
-            "selection-directory": "checkpoint=ok generation=0",
-        }
-        for point, expected in selection_expectations.items():
-            with self.subTest(point=point):
-                store = self.initialized(point)
-                self.native("checkpoint", "publish", store)
-                before = self.transaction_bytes(store)
-                self.stopped_then_killed(("checkpoint", "select", store, "0"), point)
-                status = self.native("checkpoint", "status", store)
-                self.assertIn(expected, status.stdout)
-                recovered = self.native("store", store, "recover")
-                self.assertIn("transactions=1 articles=1", recovered.stdout)
-                self.assertEqual(self.transaction_bytes(store), before)
 
     def owner_config(self, store, name):
         control = self.base / (name + "-control.sock")

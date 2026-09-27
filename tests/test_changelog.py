@@ -42,5 +42,25 @@ class MergePartsTests(unittest.TestCase):
         self.assertEqual(changelog.capability("zzz-unknown"), "Other")
 
 
+class PreviousReleaseTests(unittest.TestCase):
+    """The range starts at the previous release in D37's sequence, not at
+    the numerically largest tag."""
+
+    def test_the_first_release_has_none(self):
+        self.assertIsNone(changelog.previous_release("6.6.0", []))
+        self.assertIsNone(changelog.previous_release("6.6.0", ["v6.6.0", "other"]))
+
+    def test_sequence_order_not_numeric(self):
+        self.assertEqual(changelog.previous_release("6.7.0", ["v6.6.4", "v6.6.5"]), "v6.6.5")
+        self.assertEqual(changelog.previous_release("6.6.6", ["v6.6.5", "v6.7.9", "v6.7.10"]),
+                         "v6.7.10")
+        self.assertEqual(changelog.previous_release("6.6.6.6", ["v6.7.3", "v6.6.6", "v6.6.6.6"]),
+                         "v6.6.6")
+
+    def test_tags_after_version_and_strays_are_ignored(self):
+        self.assertEqual(changelog.previous_release("6.6.2", ["v6.6.1", "v6.6.3", "v1.2.3"]),
+                         "v6.6.1")
+
+
 if __name__ == "__main__":
     unittest.main()

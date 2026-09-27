@@ -6,6 +6,7 @@
 ; these entries. Do not add whole-store recognition per served operation.
 (in-package "ACL2")
 (include-book "../books/store-observed")
+(include-book "../books/history-columns-relation")
 ; D25: the duplicate-versus-conflict decision keys on the poster's bytes.
 (include-book "../books/poster-bytes")
 (include-book "../books/native-config-observation")
@@ -38,6 +39,7 @@
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
+(include-book "../books/store-open-replay-refusal")
 ; PRF-242: the open's replay answers its identity questions from tries it
 ; builds as it advances, and the history recognizer dispatches once per record.
 (include-book "../books/replay-identity-index")
@@ -53,7 +55,8 @@
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
-; fn-rcl-existing-action: the duplicate-versus-tombstone decision
+; fn-rcl-same-articlep: the duplicate-versus-tombstone comparison
+; fn-store-existing-action (books/store-intern.lisp) makes, which
 ; fn-store-sn-prepare and the retention prepare call.
 (include-book "../books/store-reclaim")
 (include-book "../books/acceptance-payload-ref")
@@ -73,10 +76,28 @@
 
 ; This wrapper reuses the established decimal-octet boundary helpers from the
 ; store host. Python supplies only ordered filesystem observations.
+;; The history stobj fn-hist (books/history-columns.lisp) the event-index
+;; readers read in place of the store node's retired field 13.  Before each
+;; read the host refreshes it against the Store it reads
+;; (books/history-columns-relation.lisp fn-hist-refresh-is-the-history: the
+;; result IS the history, so R holds at the read): a whole load after an open
+;; or reset of the store node (`fn-store-sn-hist-reload', set below wherever
+;; the store is replaced by an open), else the sync of the rows committed
+;; since the last read.  One process serves one Store (owner mode, or the
+;; store node's), so one stobj.
+(defun fn-host-hist-sync (store fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (let ((reload (and (boundp-global 'fn-store-sn-hist-reload state)
+                     (f-get-global 'fn-store-sn-hist-reload state))))
+    (let ((fn-hist (fn-hist-refresh (fn-sn-files store) reload fn-hist)))
+      (let ((state (f-put-global 'fn-store-sn-hist-reload nil state)))
+        (mv fn-hist state)))))
+
 (defun fn-store-sn-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-store-sn-record-octets nil state))
          (state (f-put-global 'fn-store-sn-record-debt nil state))
+         (state (f-put-global 'fn-store-sn-hist-reload t state))
          (state (f-put-global 'fn-store-sn
                              ; No compiled group table and no compiled
                              ; capacity: the domain is empty and the capacity
@@ -144,7 +165,7 @@
   (let ((s (f-get-global 'fn-store-sn state)))
     (mv-let (bytes state) (fn-store-sn-record-octets s state)
       (mv-let (debt state) (fn-store-sn-record-debt s state)
-        ; PRF-180: the count read from the index (fn-sbud-count-is-used).
+        ; PRF-180: the count read from the index (fn-sbud-count-is-used-by-definition).
         (value (fn-cvec-verdict-at profile kind (fn-sbud-count s) bytes debt))))))
 
 ; An article's verdict (packet 1): the count gate and the history gate at the
@@ -152,16 +173,29 @@
 ; and octets (books/store-budget-article.lisp,
 ; `fn-sbud-article-verdict-keeps-history').
 (defun fn-store-sn-article-verdict (profile payload-length group-count state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (natp payload-length)))
   (let ((s (f-get-global 'fn-store-sn state)))
     (mv-let (bytes state) (fn-store-sn-record-octets s state)
       (mv-let (debt state) (fn-store-sn-record-debt s state)
         ; PRF-138: and the capacity vector still holds after it
         ; (`fn-cvec-article-verdict-keeps-the-vector').  PRF-180: the count
-        ; read from the index (fn-sbud-count-is-used).
+        ; read from the index (fn-sbud-count-is-used-by-definition).
         (value (fn-cvec-article-verdict-at profile (fn-sbud-count s) bytes
                                            payload-length group-count
                                            debt))))))
+
+; The developer `store post''s word for the same verdict
+; (`fn-cvec-article-verdict-word'): :admissible, :memberships (the membership
+; charge alone refused it) or :unaffordable.
+(defun fn-store-sn-article-verdict-word (profile payload-length group-count state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (f-get-global 'fn-store-sn state)))
+    (mv-let (bytes state) (fn-store-sn-record-octets s state)
+      (mv-let (debt state) (fn-store-sn-record-debt s state)
+        (value (fn-cvec-article-verdict-word profile (fn-sbud-count s) bytes
+                                             payload-length group-count
+                                             debt))))))
 
 (defun fn-store-sn-headroom (profile state)
   (declare (xargs :stobjs state :mode :program))
@@ -243,7 +277,11 @@ the same configuration replay and observed-node open definitions startup uses."
   "The existing exact byte decoders feed one logical publication authorization.
 The result binds the core's record generation, the ACL2 filename, candidate
 reopen predicate, writer-lock observation and observed final namespace."
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (and (fn-cbor-octet-listp record-octets)
+                              (fn-octet-list-listp octet-records)
+                              (fn-octet-list-listp config-octet-records)
+                              (fn-octet-list-listp observed-name-octets))))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records))
         (parsed (fn-cfg-decode-exact record-octets))
@@ -281,7 +319,10 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-cfg-native-admin-authorize-carried
     (frontier config-octet-records record-octets lock-owned observed-name-octets
               profile state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (and (fn-cbor-octet-listp record-octets)
+                              (fn-octet-list-listp config-octet-records)
+                              (fn-octet-list-listp observed-name-octets))))
   (let* ((carried (and (boundp-global 'fn-store-sco-open state)
                        (f-get-global 'fn-store-sco-open state)))
          (opened-configs (and (boundp-global 'fn-store-cfg-open-configs state)
@@ -341,10 +382,17 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; its twin `fn-rii-classified-open' (books/replay-identity-index.lisp, PRF-242:
 ; the history recognizer reads each record's kind once), EQUAL with no
 ; hypothesis (fn-rii-classified-open-is-classified-open).
-(defun fn-store-sn-open-extended (e config-records frontier state)
+;
+; fn-store-sn-open-classified is that open over E and its CLASSIFIED open,
+; computed by the caller: the
+; recover entries below call the fused fn-rii-sco-extend-open
+; (books/replay-identity-index.lisp section 7b, KEYSTONE
+; fn-rii-sco-extend-open-is-extend-then-open: it is the extension and
+; fn-rii-classified-open of it), whose drain does not check the resumed node
+; again.
+(defun fn-store-sn-open-classified (e classified config-records state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((classified (fn-rii-classified-open e config-records frontier))
-         (refused (equal (car classified) :refused))
+  (let* ((refused (equal (car classified) :refused))
          (state (f-put-global 'fn-store-open-refusal
                               (if refused classified nil) state))
          (pair (if refused (list nil nil) classified))
@@ -358,6 +406,7 @@ reopen predicate, writer-lock observation and observed final namespace."
              (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
                     :recovering))
         (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened) state))
+               (state (f-put-global 'fn-store-sn-hist-reload t state))
                (state (f-put-global 'fn-store-sn-record-octets nil state))
                (state (f-put-global 'fn-store-sn-record-debt nil state))
                (state (f-put-global 'fn-store-cfg
@@ -369,14 +418,38 @@ reopen predicate, writer-lock observation and observed final namespace."
                ; (fn-store-cfg-native-admin-authorize-carried).
                (state (f-put-global 'fn-store-cfg-open-configs config-records state)))
           (value :recovering))
-      (let ((state (f-put-global 'fn-store-sco-open nil state)))
-        (value :fault))))))
+      ;; A replay that stopped at an article its capacity cannot hold
+      ;; refuses the open by name (books/store-open-replay-refusal.lisp
+      ;; fn-sorr-refusal); any other stop stays a fault, its position and
+      ;; reason kept for the fault's line (fn-sorr-stop-text).
+      (let* ((records (fn-sco-records e))
+             (refusal (fn-sorr-refusal replayed records config-records))
+             (state (f-put-global 'fn-store-sco-open nil state))
+             (state (f-put-global 'fn-store-open-refusal refusal state))
+             (state (f-put-global 'fn-store-open-stop
+                                  (and (not refusal)
+                                       (fn-sorr-stop-text replayed records config-records))
+                                  state)))
+        (value (if refusal :refused :fault)))))))
+
+(defun fn-store-sn-open-extended (e config-records frontier state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-store-sn-open-classified e (fn-rii-classified-open e config-records frontier)
+                               config-records state))
 
 ; The operator's line for the refusal the last open recorded, or nil.
 (defun fn-store-open-refusal-text (state)
   (declare (xargs :stobjs state :mode :program))
   (value (if (boundp-global 'fn-store-open-refusal state)
-             (fn-sopc-refusal-text (f-get-global 'fn-store-open-refusal state))
+             (let ((refusal (f-get-global 'fn-store-open-refusal state)))
+               (or (fn-sopc-refusal-text refusal) (fn-sorr-refusal-text refusal)))
+           nil)))
+
+; Where the last open's replay stopped, for the fault's line, or nil.
+(defun fn-store-open-stop-text (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (boundp-global 'fn-store-open-stop state)
+             (f-get-global 'fn-store-open-stop state)
            nil)))
 
 ; The repair verb's answer while its semantics wait on ember (PKT-444).
@@ -414,7 +487,9 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; guard-verified callee re-checking its guard) and print a warning on
 ; standard output (flip-L6-2 LANEDUMP).
 (defun fn-store-sn-recover-records (octet-records config-octet-records)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (and (fn-octet-list-listp octet-records)
+                              (fn-octet-list-listp config-octet-records))))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad)
@@ -423,7 +498,8 @@ reopen predicate, writer-lock observation and observed final namespace."
       records)))
 
 (defun fn-store-sn-recover-rows (rows frontier config-octet-records state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp config-octet-records)))
   (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal config-records :bad) (null config-records))
         (value :fault)
@@ -432,9 +508,9 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; the full open fn-cpo-open-observed and the full replay
       ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
       ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
-      (fn-store-sn-open-extended
-       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-       config-records frontier state))))
+      (let ((pair (fn-rii-sco-extend-open (fn-sco-capture config-records nil)
+                                          config-records rows frontier)))
+        (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
@@ -603,16 +679,6 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :mode :program))
   (fn-scka-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
 
-; How many of the ACL2-bound transaction sequences (ascending, from
-; fn-store-txn-observation-selected) lie below S: the host drops exactly
-; those and reads the rest.  A wrong split cannot open: fn-sco-open runs
-; the history recognizer over the checkpoint's records and the suffix.
-(defun fn-store-sco-covered-count (sequences s)
-  (declare (xargs :mode :program))
-  (if (and (consp sequences) (natp (car sequences)) (natp s) (< (car sequences) s))
-      (+ 1 (fn-store-sco-covered-count (cdr sequences) s))
-    0))
-
 ; The open from the loaded checkpoint and the suffix's ROWS.  It mirrors the
 ; full recover (fn-store-sn-recover-records, the intern,
 ; fn-store-sn-recover-rows): the host decodes the suffix with
@@ -628,7 +694,8 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; fn-sn-recover-from-checkpoint-equals-full-recover is about the fn-sco-open
 ; of that extension.  The answer is (mv nil KEYWORD state).
 (defun fn-store-sn-recover-from-checkpoint (rows frontier config-octet-records state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp config-octet-records)))
   (let ((checkpoint (fn-store-sco-current state))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad)
@@ -637,9 +704,8 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; The suffix is replayed once: E is fn-sco-open's extension, and the
       ; open and the configuration are read off it (fn-sco-open is
       ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
-      (fn-store-sn-open-extended
-       (fn-rii-sco-extend checkpoint config-records rows)
-       config-records frontier state))))
+      (let ((pair (fn-rii-sco-extend-open checkpoint config-records rows frontier)))
+        (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
 ; payload read through the arena), encoded.
@@ -1112,7 +1178,12 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sn-prepare (msgid-octets payload group-codes id-octets
                              subject-octets evidence-octets charge observation
                              fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (fn-cbor-octet-listp payload)
+                              (fn-cbor-octet-listp id-octets)
+                              (fn-cbor-octet-listp subject-octets)
+                              (fn-cbor-octet-listp evidence-octets))))
   (let* ((s (f-get-global 'fn-store-sn state))
          (groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
     ; The fields' checks are ACL2's (books/post-fields.lisp
@@ -1268,7 +1339,9 @@ reopen predicate, writer-lock observation and observed final namespace."
            (fn-sn-node (f-get-global 'fn-store-sn state))))))
 
 (defun fn-store-sn-existing-action (msgid-octets payload group-codes fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (fn-cbor-octet-listp payload))))
   (let ((groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
     (if (or (not (fn-pfld-lookup-inputsp msgid-octets groups))
             (not (fn-octet-listp payload)))
@@ -1297,26 +1370,33 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (fn-rtf-reserved (f-get-global 'fn-store-sn state))))
 
-(defun fn-store-sn-lookup (msgid-octets fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-store-sn-lookup (msgid-octets fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program
+                  :guard (fn-cbor-octet-listp msgid-octets)))
   (if (not (fn-af-message-idp msgid-octets))
-      (value nil)
-    ; The row's HANDLE through the event index, not the acceptance state's
-    ; article (fn-apr-payload-of-is-the-article-payload,
-    ; books/acceptance-payload-ref.lisp: equal at rest), and its bytes read
-    ; through the arena (books/store-intern.lisp fn-handle-bytes: no bytes for
-    ; a handle outside it).
-    (value (fn-handle-bytes (fn-apr-payload-of (fn-store-octets->string msgid-octets)
-                                               (f-get-global 'fn-store-sn state))
-                            fn-arena))))
+      (mv nil nil fn-hist state)
+    ; The row's HANDLE through the history stobj's Message-ID answer, not the
+    ; acceptance state's article (fn-apr-payload-of-is-the-article-payload,
+    ; books/acceptance-payload-ref.lisp: equal at rest under R), and its
+    ; bytes read through the arena (books/store-intern.lisp fn-handle-bytes:
+    ; no bytes for a handle outside it).
+    (let ((store (f-get-global 'fn-store-sn state)))
+      (mv-let (fn-hist state) (fn-host-hist-sync store fn-hist state)
+        (mv nil (fn-handle-bytes (fn-apr-payload-of (fn-store-octets->string msgid-octets)
+                                                    store fn-hist)
+                                 fn-arena)
+            fn-hist state)))))
 
-(defun fn-store-sn-lookup-foundp (msgid-octets state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-store-sn-lookup-foundp (msgid-octets fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program
+                  :guard (fn-cbor-octet-listp msgid-octets)))
   (if (not (fn-af-message-idp msgid-octets))
-      (value nil)
-    ; fn-apr-foundp-is-article-found (books/acceptance-payload-ref.lisp).
-    (value (fn-apr-foundp (fn-store-octets->string msgid-octets)
-                          (f-get-global 'fn-store-sn state)))))
+      (mv nil nil fn-hist state)
+    ; fn-apr-foundp-is-article-found (books/acceptance-payload-ref.lisp), under R.
+    (let ((store (f-get-global 'fn-store-sn state)))
+      (mv-let (fn-hist state) (fn-host-hist-sync store fn-hist state)
+        (mv nil (fn-apr-foundp (fn-store-octets->string msgid-octets) store fn-hist)
+            fn-hist state)))))
 
 ; -----------------------------------------------------------------------------
 ; The served statement query (decision D21)

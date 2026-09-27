@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-byte-invariants")
 (include-book "bp-fnbs-codec-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-bpnf-byte-test-base ()
   (fn-bs-make 4
@@ -73,7 +73,7 @@
                       (list :absent (list :record *bpnfc-anon-record*)))
         (member-equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-link-present) 9 1)
                       (list :absent (list :record *bpnfc-anon-record*))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-link-absent) 9 1)
          (fn-bpnf-byte-slot (fn-bpnf-byte-test-link-present) 9 1))))
@@ -99,7 +99,7 @@
                (fn-bpnf-byte-test-durable-crash))
         (equal (fn-bs-durable-content durable ino)
                (fn-bpnf-stored-record-frame *bpnfc-anon-record*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-durable-crash) 9 1)
          :absent)))

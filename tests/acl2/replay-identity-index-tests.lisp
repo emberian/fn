@@ -10,7 +10,7 @@
 ; empty and built once from a node that already knows an article, a pin and
 ; a release.
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/replay-identity-index")
 
 (defconst *rii-t-stamp* *fn-cfg-default-stamp*)
@@ -234,19 +234,19 @@
       (equal (fn-replay-result-reason *rii-t-bad-prefix*) :event-refusal)
       (fn-sco-pausedp
        (fn-sco-cpr-prefix *rii-t-paused-cn* nil (list *rii-t-article-2*) 3 3))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-apply-record-without-msgid-trie
    (equal *rii-t-bad-msgid-step*
           (fn-replay-apply-record *rii-t-paused-node* *rii-t-article-2*))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-apply-record-without-id-trie
    (equal *rii-t-bad-id-step*
           (fn-replay-apply-record *rii-t-paused-node* *rii-t-article-2*))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-cpr-apply-event-without-okp
    (equal *rii-t-bad-id-event*
           (fn-cpr-apply-event *rii-t-paused-cn* *rii-t-article-2*))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-prefix-without-okp
    (equal *rii-t-bad-prefix*
           (fn-sco-cpr-prefix *rii-t-paused-cn* nil (list *rii-t-article-2*) 3 3))))
@@ -299,7 +299,7 @@
                             (ktrie (cdr *rii-t-wrong-next*))
                             (retention (fn-node-retention *rii-t-paused-node*))
                             (id "archive-rii"))))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-ix-next-without-release-step
    (fn-rii-okp *rii-t-wrong-next* *rii-t-paused-node*)))
 
@@ -318,7 +318,7 @@
                             (ktrie (cdr *rii-t-fake-id*))
                             (retention (fn-node-retention *rii-t-paused-node*))
                             (id "archive-rii-2"))))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-ix-next-without-okp
    (fn-rii-okp *rii-t-still-wrong* *rii-t-paused-node*)))
 
@@ -341,3 +341,108 @@
       (eq (symbol-class 'fn-rii-sn-statep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-sf-statep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-sf-record-listp (w state)) :common-lisp-compliant)))
+
+; -----------------------------------------------------------------------------
+; 7a (lane snapshot-open-2): the open checks the configured node once.
+; fn-rii-sco-finalize-configured-is-finalize-from, reachable: the drain of
+; the paused fold of the full history is :ok, its node configured, and the
+; finalize without the node checks is the finalize with them, :ok.
+(defconst *rii-t-replayed*
+  (fn-sco-cpr-finish (fn-sco-cpr *rii-t-full-e*) *rii-t-configs*))
+(assert-event
+ (and (fn-sco-pausedp (fn-sco-cpr *rii-t-full-e*))
+      (equal (fn-replay-result-kind *rii-t-replayed*) :ok)
+      (fn-cnode-statep (fn-replay-result-node *rii-t-replayed*))
+      (equal (fn-rii-sco-finalize-configured *rii-t-replayed* *rii-t-full-e*
+                                             *rii-t-configs* *rii-t-frontier*)
+             (fn-rii-sco-finalize-from *rii-t-replayed* *rii-t-full-e*
+                                       *rii-t-configs* *rii-t-frontier*))
+      (equal (fn-sn-open-kind
+              (fn-rii-sco-finalize-configured *rii-t-replayed* *rii-t-full-e*
+                                              *rii-t-configs* *rii-t-frontier*))
+             :ok)
+      (equal (fn-rii-sco-store-open *rii-t-full-e* *rii-t-configs* *rii-t-frontier*)
+             (fn-sco-store-open *rii-t-full-e* *rii-t-configs* *rii-t-frontier*))))
+
+; Hypothesis removal: an :ok result whose node is NOT configured (its
+; bindings corrupted; a corrupted-state witness, not a reachable one).  The
+; finalize with the checks refuses it (:frontier); the one without them
+; answers :ok, so the hypothesis carries the theorem.  The retained
+; hypothesis's other disjunct (the kind is :ok) holds.  Evaluated without
+; guard checking: the corrupted node is outside the guard by construction.
+(defconst *rii-t-bad-node*
+  (let ((n (fn-cnode-node (fn-replay-result-node *rii-t-replayed*))))
+    (fn-node-make-state (fn-node-acceptance n) (fn-node-retention n) nil
+                        '(:not-a-binding))))
+(defconst *rii-t-bad-replayed*
+  (fn-replay-ok (fn-cnode-make *rii-t-bad-node*
+                               (fn-cnode-config (fn-replay-result-node *rii-t-replayed*)))
+                (fn-replay-result-sequence *rii-t-replayed*)))
+(assert-event
+ (with-guard-checking
+  :none
+  (and (equal (fn-replay-result-kind *rii-t-bad-replayed*) :ok)
+      (not (fn-cnode-statep (fn-replay-result-node *rii-t-bad-replayed*)))
+      (equal (fn-sn-open-kind
+              (fn-rii-sco-finalize-from *rii-t-bad-replayed* *rii-t-full-e*
+                                        *rii-t-configs* *rii-t-frontier*))
+             :error)
+      (equal (fn-sn-open-kind
+              (fn-rii-sco-finalize-configured *rii-t-bad-replayed* *rii-t-full-e*
+                                              *rii-t-configs* *rii-t-frontier*))
+             :ok))))
+
+(assert-event
+ (and (eq (symbol-class 'fn-rii-sco-finalize-configured (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sn-statep-carried (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sf-statep-carried (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-advance-idlep (w state)) :common-lisp-compliant)))
+
+; -----------------------------------------------------------------------------
+; 7b (lane snapshot-open-2): the extension and its open in one call.
+; fn-rii-sco-extend-open-is-extend-then-open has no hypothesis.  REACHABLE:
+; the checkpoint-resume path (the capture after the first article, extended
+; over the second) takes the resumed drain (the suffix is not empty and the
+; extension's fold is paused) and opens :ok, equal to the two calls; the
+; full-replay path (the empty capture over the whole history) and an empty
+; suffix are equal to the two calls too.
+(assert-event
+ (let* ((suffix (list *rii-t-article-2*))
+        (e (fn-rii-sco-extend *rii-t-capture* *rii-t-configs* suffix))
+        (fused (fn-rii-sco-extend-open *rii-t-capture* *rii-t-configs* suffix
+                                       *rii-t-frontier*)))
+   (and (fn-sco-pausedp (fn-sco-cpr e))
+        (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr e)))
+        (equal fused (list e (fn-rii-classified-open e *rii-t-configs* *rii-t-frontier*)))
+        (equal (fn-sn-open-kind (cadr (cadr fused))) :ok)
+        (equal (fn-rii-sco-extend-open *rii-t-empty* *rii-t-configs* *rii-t-events*
+                                       *rii-t-frontier*)
+               (list *rii-t-full-e*
+                     (fn-rii-classified-open *rii-t-full-e* *rii-t-configs*
+                                             *rii-t-frontier*)))
+        (equal (fn-rii-sco-extend-open *rii-t-capture* *rii-t-configs* nil
+                                       *rii-t-frontier*)
+               (let ((e0 (fn-rii-sco-extend *rii-t-capture* *rii-t-configs* nil)))
+                 (list e0 (fn-rii-classified-open e0 *rii-t-configs* *rii-t-frontier*)))))))
+
+; fn-rii-sco-cpr-resume-paused-node-is-configured, hypothesis removal
+; (corrupted state, labelled): a paused fold whose node is not configured
+; (the bindings corrupted, as in 7a).  With an EMPTY suffix the resume
+; returns it paused and unconfigured: the conclusion fails where the omitted
+; hypothesis (a non-empty suffix) fails; the retained one (paused) holds.
+; With a non-empty suffix the same fold is refused (not paused).
+(defconst *rii-t-bad-paused*
+  (fn-sco-paused (fn-cnode-make *rii-t-bad-node*
+                                (fn-cnode-config (fn-replay-result-node *rii-t-replayed*)))
+                 3 3))
+(assert-event
+ (and (fn-sco-pausedp (fn-sco-cpr-resume *rii-t-bad-paused* *rii-t-configs* nil))
+      (not (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr-resume *rii-t-bad-paused*
+                                                          *rii-t-configs* nil))))
+      (not (fn-sco-pausedp (fn-sco-cpr-resume *rii-t-bad-paused* *rii-t-configs*
+                                              (list *rii-t-article-2*))))))
+
+(assert-event
+ (and (eq (symbol-class 'fn-rii-sco-extend-open (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sco-store-open-resumed (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sco-cpr-finish-configured (w state)) :common-lisp-compliant)))

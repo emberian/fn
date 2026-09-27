@@ -441,7 +441,7 @@ class Acl2Store:
             self.call("(set-check-invariant-risk t)")
             if not self.preloaded:
                 for form in forms:
-                    self.call(form)
+                    self.boot_call(form)
             if _reset:
                 self.reset()
         except BaseException:
@@ -452,6 +452,17 @@ class Acl2Store:
         if getattr(self, "_slot_held", False):
             self._slot_held = False
             _release_slot()
+
+    def boot_call(self, form):
+        """One boot form: a load (`ld', `include-book') under its measured
+        budget (tools/bridge_image.py load_budget), recording the time it
+        took; any other form under the per-call budget."""
+        if not bridge_image.is_load_form(form):
+            return self.call(form)
+        started = time.monotonic()
+        output = self.call(form, timeout=bridge_image.load_budget(form))
+        bridge_image.record_load(form, time.monotonic() - started)
+        return output
 
     @staticmethod
     def form_timeout(form):
@@ -880,10 +891,10 @@ class Acl2Store:
         return acl2_nat(self.call("(fn-store-sn-reserved state)"))
 
     def lookup(self, msgid):
-        return acl2_octets(self.call("(fn-store-sn-lookup '" + self.literal(msgid) + " fn-arena state)"))
+        return acl2_octets(self.call("(fn-store-sn-lookup '" + self.literal(msgid) + " fn-arena fn-hist state)"))
 
     def lookup_found(self, msgid):
-        return acl2_boolean(self.call("(fn-store-sn-lookup-foundp '" + self.literal(msgid) + " state)"))
+        return acl2_boolean(self.call("(fn-store-sn-lookup-foundp '" + self.literal(msgid) + " fn-hist state)"))
 
     def close(self):
         if getattr(self, "closed", False):
@@ -1413,9 +1424,10 @@ class Store:
         # Validate and replay first, then establish the recovered namespace
         # frontier before treating it as a usable durable state.
         try:
+            # books/byte-store-programs.lisp fn-bs-recover-program: the three
+            # recovery barriers (*fn-sf-recovery-barrier-count*); the config and
+            # frontier files are fenced before their names are published.
             for barrier in (
-                    lambda: fsync_regular(self.config_path),
-                    lambda: fsync_regular(self.frontier_path),
                     lambda: fsync_dir(self.transactions),
                     lambda: fsync_dir(self.root),
                     lambda: fsync_dir(self.root.parent)):

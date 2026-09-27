@@ -9,7 +9,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-open-node-bridge")
 (include-book "byte-store-stable-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sonbt-configs* (list *fn-cfg-default-record*))
 ; Both at txid 0, both at sequence 0: the second replays to :config-sequence.
@@ -81,14 +81,14 @@
       (fn-sn-open-okp *sonbt-reconfigured-open*)
       (equal (fn-sn-node (fn-sn-open-state *sonbt-reconfigured-open*))
              (fn-cst-replay-node *sonbt-reconfigured* *sonbt-events* 8))))
-(must-fail (assert-event (sonbt-agreesp *sonbt-reconfigured* *sonbt-events*)))
-(must-fail
+(must-fail-checked (assert-event (sonbt-agreesp *sonbt-reconfigured* *sonbt-events*)))
+(must-fail-checked
  (assert-event
   (equal (fn-sn-node (fn-sn-open-state *sonbt-reconfigured-open*))
          (fn-sf-replay-node (fn-sn-groups (fn-sn-open-state *sonbt-reconfigured-open*))
                             (fn-sn-capacity (fn-sn-open-state *sonbt-reconfigured-open*))
                             *sonbt-events* 8))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-snt-relation (fn-sn-open-state *sonbt-reconfigured-open*))))
 
 ; Drop the configured replay's success (the correspondence) or the host
@@ -99,8 +99,8 @@
  (and (fn-sonb-configured-before-eventsp *sonbt-fault-configs*)
       (equal (fn-replay-result-kind (fn-cpr-replay *sonbt-fault-configs* (sonbt-r))) :fault)
       (not (fn-sn-open-okp (sonbt-host *sonbt-fault-configs*)))))
-(must-fail (assert-event (sonbt-agreesp *sonbt-fault-configs* (sonbt-r))))
-(must-fail (assert-event (fn-snt-relation (sonbt-st *sonbt-fault-configs*))))
+(must-fail-checked (assert-event (sonbt-agreesp *sonbt-fault-configs* (sonbt-r))))
+(must-fail-checked (assert-event (fn-snt-relation (sonbt-st *sonbt-fault-configs*))))
 
 ; fn-sn-open-observed-success-configured-node-of-host-open without the
 ; host's success: an empty configuration journal is refused (:history), and
@@ -109,7 +109,7 @@
 (assert-event
  (and (not (fn-sn-open-okp (fn-cpo-open-observed nil 0 nil)))
       (consp (fn-cst-replay-node nil nil 0))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-sn-node (fn-sn-open-state (fn-cpo-open-observed nil 0 nil)))
          (fn-cst-replay-node nil nil 0))))

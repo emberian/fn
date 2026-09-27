@@ -43,6 +43,7 @@
 
 (in-package "ACL2")
 (include-book "byte-store-invariants")
+(include-book "payload-lz-value")
 
 ; -----------------------------------------------------------------------------
 ; A-DURABILITY.  "A completed platform barrier preserves the named bytes and
@@ -402,6 +403,26 @@
     (implies (fn-assume-host-exclusive-read before after ino)
              (equal (fn-bs-content after ino) (fn-bs-content before ino)))))
 
+;------------------------------------------------------------------------------
+; An fn OBLIGATION, not a platform assumption: the log's sole pending writer
+; (books/store-log-recover.lisp, P-LOG-RECOVER).  While the log recovers, no
+; store operation other than the log segment's own writes is pending.  fn
+; proves it of its own owner; nothing here is assumed of the platform.  It is
+; stated as a constrained function so that the recovery theorems are proved
+; once, over the obligation, and each caller discharges it by functional
+; instantiation with its own state's predicate:
+;   fn-lgk-recover-establishes-relation   books/store-log-recover.lisp (user)
+;   fn-owb-recover-establishes-relation   books/owner-batch.lisp (discharge:
+;     fn-owb-related-state-is-the-sole-pending-writer, a related state)
+; specs/failures.md, "fn obligations stated as constrained functions".
+(encapsulate
+  (((fn-assume-log-sole-pending-writer * *) => *))
+  (local (defun fn-assume-log-sole-pending-writer (bs ino)
+           (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino))))
+  (defthm fn-assume-log-sole-pending-writer-names-only-the-log
+    (implies (fn-assume-log-sole-pending-writer bs ino)
+             (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino)))))
+
 ; -----------------------------------------------------------------------------
 ; A-BP-CONTACT (spec bp-node-machine 5.7; mandate 9, "a blocked oldest row
 ; must not starve unrelated ready work").  A base contact to PEER sustains at
@@ -522,3 +543,40 @@
   :hints (("Goal" :induct (fn-durable-ind off len))))
 
 (in-theory (disable fn-durable-octets-unfold))
+
+; -----------------------------------------------------------------------------
+; A-DURABLE-LZ (lane compression-extents, 2026-09-27; PRF-326; brief C2 of
+; planning/evidence/article-compression-2026-09-27.md section 6).
+;
+; "The host's realizer for a COMPRESSED extent answers the value its C
+; decodes to."
+;
+; A compressed extent (books/payload-lz-record.lisp) is an LZ4 block C at
+; [POFF, POFF+PLEN) inside a log entry (protected prefix [EOFF, EOFF+ELEN),
+; trailer TRAILER), decoding against the dictionary DICT to N octets.
+; `(fn-durable-realize-lz file eoff elen poff plen trailer n dict)' is the
+; host's realizer (host/native/extent.lisp): it reads C through the extent
+; realizer above (one pread of the entry, ACL2's trailer check,
+; `fn-durable-realize-octets'), runs ACL2's decoder on it
+; (`fn-lzr-lz-value''s decode, books/payload-lz-value.lisp) and answers the
+; octets ACL2 produced; where the decode fails it REFUSES by name
+; (:lz-decode, a recovery event) and answers nothing.  The constraint says
+; what it answers is `fn-lzr-lz-value' of C's durable octets.  It is a
+; named contract on host code (a cache keeps the last decoded payload so a
+; reader that reads octet by octet decodes once), not on the decoder: the
+; decoder is ACL2's, and what the octets are is A-DURABLE-EXTENT's.
+;
+; Theorems that take it: fn-arena-seal-lz-extent-payload and
+; fn-arena-reseat-lz-extent-keeps-a-faithful-arena (books/payload-arena.lisp)
+; through the arena's compressed exports, and every consumer theorem over
+; the arena through them.
+(encapsulate
+  (((fn-durable-realize-lz * * * * * * * *) => *))
+
+  (local (defun fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
+           (declare (ignore eoff elen trailer))
+           (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n)))
+
+  (defthm fn-durable-realize-lz-is-the-lz-value
+    (equal (fn-durable-realize-lz file eoff elen poff plen trailer n dict)
+           (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n))))

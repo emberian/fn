@@ -689,6 +689,70 @@
     (let ((fn-arena$p (fn-arp-write-octet (car xs) fn-arena$p)))
       (fn-arp-write (cdr xs) fn-arena$p))))
 
+;; The bulk write (lane snapshot-open-2): fn-arp-write-buffer's executable
+;; computes the page and column once per page (fn-arp-write-run), not the
+;; generic FLOOR and MOD of fn-arp-put per octet (at a 100k checkpoint open the
+;; seal of the payloads was 9.0 s, a third of it in FLOOR).  Its logic is the
+;; octet-at-a-time definition; fn-arp-write-run-is-write-buffer is the
+;; equality its guard proof uses.
+; The octet at column J of page K (fn-arp-put with the page and column given).
+(defun fn-arp-put-kj (k j o fn-arena$p)
+  (declare (xargs :stobjs fn-arena$p
+                  :guard (and (natp k) (natp j) (fn-cbor-octetp o)
+                              (< k (fn-arena$p-pages-length fn-arena$p)))))
+  (stobj-let ((fn-arena-page (fn-arena$p-pagesi k fn-arena$p)))
+             (fn-arena-page)
+             (if (< j (fn-arena-page-bytes-length fn-arena-page))
+                 (update-fn-arena-page-bytesi j o fn-arena-page)
+               fn-arena-page)
+             fn-arena$p))
+
+; Octets [i, i + (e - j)) of the buffer into columns [j, e) of page K, the fill
+; advancing with each, as fn-arp-write-octet writes them when the fill is
+; K * page + J: the page and column are computed once per page, not per octet.
+(defun fn-arp-write-in-page (k j e i fn-octets fn-arena$p)
+  (declare (xargs :stobjs (fn-octets fn-arena$p)
+                  :guard (and (natp k) (natp j) (natp e) (natp i) (<= j e)
+                              (<= (+ i (- e j)) (fn-octets-len fn-octets))
+                              (< k (fn-arena$p-pages-length fn-arena$p)))
+                  :measure (nfix (- (nfix e) (nfix j)))))
+  (if (or (not (natp j)) (not (natp e)) (<= e j))
+      fn-arena$p
+    (let* ((fn-arena$p (fn-arp-put-kj k j (fn-octets-get i fn-octets) fn-arena$p))
+           (fn-arena$p (update-fn-arena$p-fill (1+ (fn-arena$p-fill fn-arena$p)) fn-arena$p)))
+      (fn-arp-write-in-page k (1+ j) e (1+ (nfix i)) fn-octets fn-arena$p))))
+
+(encapsulate
+  ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-arp-mod-page-bounds
+    (implies (natp f)
+             (and (natp (mod f 262144)) (< (mod f 262144) 262144)
+                  (natp (floor f 262144))))
+    :rule-classes ((:rewrite) (:type-prescription :corollary (implies (natp f) (natp (mod f 262144))))
+                   (:linear :corollary (implies (natp f) (< (mod f 262144) 262144))))))
+
+; The run: the page and the column once per page.
+(defun fn-arp-write-run (i n fn-octets fn-arena$p)
+  (declare (xargs :stobjs (fn-octets fn-arena$p)
+                  :guard (and (natp i) (natp n) (<= n (fn-octets-len fn-octets))
+                              (fn-arena$p-wfp fn-arena$p))
+                  :measure (nfix (- (nfix n) (nfix i)))
+                  :hints (("Goal" :in-theory (disable fn-arp-add-page fn-arp-write-in-page
+                                                      fn-arena$p-fill fn-arena$p-npages)))
+                  :verify-guards nil))
+  (if (or (not (natp i)) (not (natp n)) (<= n i))
+      fn-arena$p
+    (let* ((f (nfix (fn-arena$p-fill fn-arena$p)))
+           (fn-arena$p (if (< f (* *fn-arp-page* (fn-arena$p-npages fn-arena$p)))
+                           fn-arena$p
+                         (fn-arp-add-page fn-arena$p)))
+           (k (floor f *fn-arp-page*))
+           (j (mod f *fn-arp-page*))
+           (c (min (- n i) (- *fn-arp-page* j)))
+           (fn-arena$p (fn-arp-write-in-page k j (+ j c) i fn-octets fn-arena$p)))
+      (fn-arp-write-run (+ i c) n fn-octets fn-arena$p))))
+
 (defun fn-arp-write-buffer (i n fn-octets fn-arena$p)
   ; The octet buffer's cells [i, n) at the fill point, read in place.
   (declare (xargs :stobjs (fn-octets fn-arena$p)
@@ -696,10 +760,11 @@
                               (fn-arena$p-wfp fn-arena$p))
                   :measure (nfix (- (nfix n) (nfix i)))
                   :verify-guards nil))
-  (if (or (not (natp i)) (not (natp n)) (<= n i))
-      fn-arena$p
-    (let ((fn-arena$p (fn-arp-write-octet (fn-octets-get i fn-octets) fn-arena$p)))
-      (fn-arp-write-buffer (1+ i) n fn-octets fn-arena$p))))
+  (mbe :logic (if (or (not (natp i)) (not (natp n)) (<= n i))
+                  fn-arena$p
+                (let ((fn-arena$p (fn-arp-write-octet (fn-octets-get i fn-octets) fn-arena$p)))
+                  (fn-arp-write-buffer (1+ i) n fn-octets fn-arena$p)))
+       :exec (fn-arp-write-run i n fn-octets fn-arena$p)))
 
 (defun fn-arp-seal-entry (start fn-arena$p)
   ; The octets written at [start, fill) become the next handle.
@@ -882,8 +947,7 @@
 
 (verify-guards fn-arp-write
   :hints (("Goal" :in-theory (disable fn-arp-cap-of-npages))))
-(verify-guards fn-arp-write-buffer
-  :hints (("Goal" :in-theory (disable fn-arp-cap-of-npages))))
+
 
 (defthm fn-arp-write-shape
   (implies (and (fn-arena$pp fn-arena$p) (<= (nth 5 fn-arena$p) (len (nth 0 fn-arena$p)))
@@ -907,6 +971,215 @@
   :hints (("Goal" :induct (fn-arp-write-buffer i n fn-octets fn-arena$p)
            :in-theory (e/d (fn-arp-write fn-oct-slice-list) (fn-arp-write-octet))
            :expand ((fn-oct-slice-list i n fn-octets)))))
+
+;; The bulk write's equality with the octet-at-a-time definition.
+(defthm fn-arp-put-is-put-kj
+  (equal (fn-arp-put p o fn-arena$p)
+         (fn-arp-put-kj (floor p *fn-arp-page*) (mod p *fn-arp-page*) o fn-arena$p))
+  :hints (("Goal" :in-theory (enable fn-arp-put))))
+
+(encapsulate
+  ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-arp-floor-mod-of-kj
+    (implies (and (natp k) (natp j) (< j 262144))
+             (and (equal (floor (+ j (* 262144 k)) 262144) k)
+                  (equal (mod (+ j (* 262144 k)) 262144) j)))))
+
+(defthm fn-arp-put-kj-keeps-the-fields
+  (and (equal (nth *fn-arena$p-fill* (fn-arp-put-kj k j o fn-arena$p))
+              (nth *fn-arena$p-fill* fn-arena$p))
+       (equal (nth *fn-arena$p-npages* (fn-arp-put-kj k j o fn-arena$p))
+              (nth *fn-arena$p-npages* fn-arena$p)))
+  :hints (("Goal" :in-theory (enable fn-arp-put-kj nth update-nth))))
+
+(defthm fn-arp-write-buffer-step
+  (implies (and (natp i) (natp n) (< i n))
+           (equal (fn-arp-write-buffer i n fn-octets fn-arena$p)
+                  (fn-arp-write-buffer (1+ i) n fn-octets
+                                       (fn-arp-write-octet (fn-octets-get i fn-octets)
+                                                           fn-arena$p))))
+  :hints (("Goal" :in-theory (disable fn-arp-write-buffer-is-write)
+           :expand ((fn-arp-write-buffer i n fn-octets fn-arena$p)))))
+
+(defthm fn-arp-write-buffer-done
+  (implies (<= (nfix n) (nfix i))
+           (equal (fn-arp-write-buffer i n fn-octets fn-arena$p) fn-arena$p))
+  :hints (("Goal" :in-theory (disable fn-arp-write-buffer-is-write)
+           :expand ((fn-arp-write-buffer i n fn-octets fn-arena$p)))))
+
+(defthm fn-arp-write-octet-inside
+  (implies (and (natp (nth *fn-arena$p-fill* fn-arena$p))
+                (< (nth *fn-arena$p-fill* fn-arena$p)
+                   (* *fn-arp-page* (nfix (nth *fn-arena$p-npages* fn-arena$p)))))
+           (equal (fn-arp-write-octet o fn-arena$p)
+                  (update-nth *fn-arena$p-fill* (1+ (nth *fn-arena$p-fill* fn-arena$p))
+                              (fn-arp-put (nth *fn-arena$p-fill* fn-arena$p) o fn-arena$p))))
+  :hints (("Goal" :in-theory (e/d (fn-arp-write-octet) (fn-arp-put-is-put-kj)))))
+
+(local
+ (defthm fn-arp-floor-mod-of-fill
+   (implies (and (equal (nth *fn-arena$p-fill* fn-arena$p) (+ j (* 262144 k)))
+                 (natp k) (natp j) (< j 262144))
+            (and (equal (floor (nth *fn-arena$p-fill* fn-arena$p) 262144) k)
+                 (equal (mod (nth *fn-arena$p-fill* fn-arena$p) 262144) j)))))
+
+(defthm fn-arp-write-in-page-is-write-buffer
+  (implies (and (natp k) (natp j) (natp e) (natp i) (<= j e) (<= e *fn-arp-page*)
+                (equal (nth 4 fn-arena$p) (+ j (* *fn-arp-page* k)))
+                (< k (nfix (nth 5 fn-arena$p))))
+           (equal (fn-arp-write-in-page k j e i fn-octets fn-arena$p)
+                  (fn-arp-write-buffer i (+ i (- e j)) fn-octets fn-arena$p)))
+  :hints (("Goal" :induct (fn-arp-write-in-page k j e i fn-octets fn-arena$p)
+           :in-theory (e/d () (fn-arp-put-kj fn-arp-add-page fn-arp-write-octet
+                               fn-arp-write-buffer-is-write)))))
+
+(defthm fn-arp-add-page-fields
+  (and (equal (nth *fn-arena$p-fill* (fn-arp-add-page fn-arena$p))
+              (nth *fn-arena$p-fill* fn-arena$p))
+       (equal (nth *fn-arena$p-npages* (fn-arp-add-page fn-arena$p))
+              (+ 1 (nth *fn-arena$p-npages* fn-arena$p))))
+  :hints (("Goal" :in-theory (enable fn-arp-add-page nth update-nth))))
+
+(defthm fn-arp-write-in-page-fields
+  (implies (and (natp j) (natp e) (<= j e) (acl2-numberp (nth *fn-arena$p-fill* fn-arena$p)))
+           (and (equal (nth *fn-arena$p-fill* (fn-arp-write-in-page k j e i fn-octets fn-arena$p))
+                       (+ (- e j) (nth *fn-arena$p-fill* fn-arena$p)))
+                (equal (nth *fn-arena$p-npages* (fn-arp-write-in-page k j e i fn-octets fn-arena$p))
+                       (nth *fn-arena$p-npages* fn-arena$p))))
+  :hints (("Goal" :induct (fn-arp-write-in-page k j e i fn-octets fn-arena$p)
+           :in-theory (disable fn-arp-put-kj))))
+
+; Appending two buffer writes.
+(defthm fn-arp-write-buffer-append
+  (implies (and (natp i) (natp m) (natp n) (<= i m) (<= m n))
+           (equal (fn-arp-write-buffer m n fn-octets (fn-arp-write-buffer i m fn-octets fn-arena$p))
+                  (fn-arp-write-buffer i n fn-octets fn-arena$p)))
+  :hints (("Goal" :induct (fn-arp-write-buffer i m fn-octets fn-arena$p)
+           :in-theory (disable fn-arp-write-buffer-is-write fn-arp-write-octet))))
+
+; A full arena: the first octet's write adds the page either way.
+(defthm fn-arp-write-octet-at-full
+  (implies (and (natp (nth *fn-arena$p-fill* fn-arena$p))
+                (natp (nth *fn-arena$p-npages* fn-arena$p))
+                (equal (nth *fn-arena$p-fill* fn-arena$p)
+                       (* *fn-arp-page* (nth *fn-arena$p-npages* fn-arena$p))))
+           (equal (fn-arp-write-octet o (fn-arp-add-page fn-arena$p))
+                  (fn-arp-write-octet o fn-arena$p)))
+  :hints (("Goal" :in-theory (e/d (fn-arp-write-octet) (fn-arp-add-page fn-arp-put
+                                                          fn-arp-put-is-put-kj
+                                                          fn-arp-write-octet-inside)))))
+
+
+(defthm fn-arp-write-buffer-at-full
+  (implies (and (natp i) (natp n) (< i n)
+                (natp (nth *fn-arena$p-fill* fn-arena$p))
+                (natp (nth *fn-arena$p-npages* fn-arena$p))
+                (equal (nth *fn-arena$p-fill* fn-arena$p)
+                       (* *fn-arp-page* (nth *fn-arena$p-npages* fn-arena$p))))
+           (equal (fn-arp-write-buffer i n fn-octets (fn-arp-add-page fn-arena$p))
+                  (fn-arp-write-buffer i n fn-octets fn-arena$p)))
+  :hints (("Goal" :in-theory (disable fn-arp-write-buffer-is-write fn-arp-add-page
+                                      fn-arp-write-octet))))
+
+(encapsulate
+  ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-arp-floor-mod-split
+    (implies (natp f)
+             (equal (+ (mod f 262144) (* 262144 (floor f 262144))) f)))
+  (defthm fn-arp-floor-below-np
+    (implies (and (natp f) (natp np) (< f (* 262144 np)))
+             (< (floor f 262144) np))
+    :rule-classes (:rewrite :linear))
+  (defthm fn-arp-floor-le
+    (implies (natp f)
+             (and (integerp (floor f 262144))
+                  (<= 0 (floor f 262144))
+                  (<= (* 262144 (floor f 262144)) f)
+                  (< f (+ 262144 (* 262144 (floor f 262144))))))
+    :rule-classes ((:linear :corollary (implies (natp f) (<= (* 262144 (floor f 262144)) f)))
+                   (:linear :corollary (implies (natp f) (< f (+ 262144 (* 262144 (floor f 262144))))))
+                   (:type-prescription :corollary (implies (natp f) (natp (floor f 262144))))))
+  (defthm fn-arp-floor-of-full
+    (implies (natp np)
+             (and (equal (floor (* 262144 np) 262144) np)
+                  (equal (mod (* 262144 np) 262144) 0)))))
+
+(defthmd fn-arp-mod-is-difference
+  (equal (mod f 262144) (- f (* 262144 (floor f 262144))))
+  :hints (("Goal" :in-theory '(mod commutativity-of-*))))
+
+(defthm fn-arp-write-buffer-fields-inside
+  (implies (and (natp i) (natp m) (<= i m)
+                (natp (nth *fn-arena$p-fill* fn-arena$p))
+                (natp (nth *fn-arena$p-npages* fn-arena$p))
+                (<= (+ (nth *fn-arena$p-fill* fn-arena$p) (- m i))
+                    (* *fn-arp-page* (nth *fn-arena$p-npages* fn-arena$p))))
+           (and (equal (nth *fn-arena$p-fill* (fn-arp-write-buffer i m fn-octets fn-arena$p))
+                       (+ (nth *fn-arena$p-fill* fn-arena$p) (- m i)))
+                (equal (nth *fn-arena$p-npages* (fn-arp-write-buffer i m fn-octets fn-arena$p))
+                       (nth *fn-arena$p-npages* fn-arena$p))))
+  :hints (("Goal" :induct (fn-arp-write-buffer i m fn-octets fn-arena$p)
+           :in-theory (disable fn-arp-write-buffer-is-write fn-arp-put-kj))))
+
+(defthm fn-arp-write-buffer-fill
+  (implies (and (natp i) (natp m) (<= i m) (natp (nth *fn-arena$p-fill* fn-arena$p)))
+           (equal (nth *fn-arena$p-fill* (fn-arp-write-buffer i m fn-octets fn-arena$p))
+                  (+ (nth *fn-arena$p-fill* fn-arena$p) (- m i))))
+  :hints (("Goal" :induct (fn-arp-write-buffer i m fn-octets fn-arena$p)
+           :in-theory (e/d (fn-arp-write-octet)
+                           (fn-arp-write-buffer-is-write fn-arp-put-kj fn-arp-add-page
+                            fn-arp-write-octet-inside)))))
+
+(defthm fn-arp-write-buffer-npages-from-full
+  (implies (and (natp i) (natp m) (< i m)
+                (natp (nth *fn-arena$p-fill* fn-arena$p))
+                (natp (nth *fn-arena$p-npages* fn-arena$p))
+                (equal (nth *fn-arena$p-fill* fn-arena$p)
+                       (* *fn-arp-page* (nth *fn-arena$p-npages* fn-arena$p)))
+                (<= (+ (nth *fn-arena$p-fill* fn-arena$p) (- m i))
+                    (* *fn-arp-page* (+ 1 (nth *fn-arena$p-npages* fn-arena$p)))))
+           (equal (nth *fn-arena$p-npages* (fn-arp-write-buffer i m fn-octets fn-arena$p))
+                  (+ 1 (nth *fn-arena$p-npages* fn-arena$p))))
+  :hints (("Goal" :in-theory (e/d (fn-arp-write-octet)
+                                  (fn-arp-write-buffer-at-full fn-arp-write-buffer-is-write
+                                   fn-arp-add-page fn-arp-put-kj fn-arp-write-octet-inside)))))
+
+(defthm fn-arp-write-run-is-write-buffer
+  (implies (and (natp (nth *fn-arena$p-fill* fn-arena$p))
+                (natp (nth *fn-arena$p-npages* fn-arena$p))
+                (<= (nth *fn-arena$p-fill* fn-arena$p)
+                    (* *fn-arp-page* (nth *fn-arena$p-npages* fn-arena$p))))
+           (equal (fn-arp-write-run i n fn-octets fn-arena$p)
+                  (fn-arp-write-buffer i n fn-octets fn-arena$p)))
+  :hints (("Goal" :induct (fn-arp-write-run i n fn-octets fn-arena$p)
+           :in-theory (e/d (fn-arp-mod-is-difference)
+                           (fn-arp-write-buffer-is-write fn-arp-add-page
+                            fn-arp-write-octet fn-arp-write-in-page fn-arp-put-kj
+                            fn-arp-write-buffer-step fn-arp-write-octet-inside)))))
+
+(verify-guards fn-arp-write-run
+  :hints (("Goal" :in-theory (e/d (fn-arp-mod-is-difference fn-oct-octets-p-is-octet-listp)
+                                  (fn-arp-write-buffer-step fn-arp-write-octet fn-arp-write
+                                   fn-arp-add-page fn-arp-put-kj fn-arp-write-octet-inside
+                                   fn-arp-cap-of-npages fn-oct-slice-list-is-take-nthcdr
+                                   fn-arp-write-shape))
+           :use ((:instance fn-arp-write-shape (xs (fn-oct-slice-list i n fn-octets)))
+                 (:instance fn-arp-write-shape
+                            (xs (fn-oct-slice-list
+                                 i (+ 262144 i (- (nth *fn-arena$p-fill* fn-arena$p))
+                                      (* 262144 (floor (nth *fn-arena$p-fill* fn-arena$p) 262144)))
+                                 fn-octets)))
+                 (:instance fn-arp-write-shape (fn-arena$p (fn-arp-add-page fn-arena$p))
+                            (xs (fn-oct-slice-list i n fn-octets)))
+                 (:instance fn-arp-write-shape (fn-arena$p (fn-arp-add-page fn-arena$p))
+                            (xs (fn-oct-slice-list i (+ 262144 i) fn-octets)))
+                 (:instance fn-arp-add-page-shape)))))
+
+(verify-guards fn-arp-write-buffer
+  :hints (("Goal" :in-theory (disable fn-arp-cap-of-npages fn-arp-write-run
+                                      fn-arp-write-buffer-is-write fn-arp-write-octet))))
 
 (verify-guards fn-arena$p-seal-list
   :hints (("Goal" :in-theory (disable fn-arp-cap-of-npages))))

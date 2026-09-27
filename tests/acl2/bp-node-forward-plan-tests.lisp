@@ -8,7 +8,7 @@
 (include-book "../../books/bp-route-step")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fp-local* (cons :dtn (fn-record-string-octets "//bp-local/")))
 (defconst *fp-sender* (cons :dtn (fn-record-string-octets "//bp-sender/")))
@@ -65,10 +65,10 @@
                      (list :hop "relay-b" "dtn://relay-b/" 4557)))
 ;; Hypothesis "the route peer is non-nil": a destination no route matches.
 (assert-event (null (fn-bpnp-route-peer *fp-local* (list :table *fp-table*))))
-(must-fail (assert-event (equal (car (fn-bprt-outbound-choice "dtn://bp-local/" *fp-table*))
+(must-fail-checked (assert-event (equal (car (fn-bprt-outbound-choice "dtn://bp-local/" *fp-table*))
                                 :hop)))
 ;; Hypothesis "a table": a malformed table is not the table form.
-(must-fail (assert-event (fn-bpnp-table-routingp (list :table '(bad)))))
+(must-fail-checked (assert-event (fn-bpnp-table-routingp (list :table '(bad)))))
 (assert-event (null (fn-bpnp-route-peer *fp-dest* (list :table '(bad)))))
 
 ;; fn-bpnp-progress-dispatch-names-the-routed-hop.  Witness: the first
@@ -92,9 +92,9 @@
 ;; event proposes no dispatch, and the rows' destinations have no :hop.
 (make-event `(defconst *fp-progress-0* ',(fn-bpnp-progress-step *fp-s1* *fp-local* *fp-obs* (list :table nil) 1
                          (fn-bpnp-default-budgets))))
-(must-fail (assert-event (equal (car (car (fn-bpnf-answer-effects *fp-progress-0*)))
+(must-fail-checked (assert-event (equal (car (car (fn-bpnf-answer-effects *fp-progress-0*)))
                                 :persist-dispatch)))
-(must-fail (assert-event (equal (car (fn-bprt-outbound-choice "dtn://bp-dest/" nil)) :hop)))
+(must-fail-checked (assert-event (equal (car (fn-bprt-outbound-choice "dtn://bp-dest/" nil)) :hop)))
 
 ;; Both rows dispatched and durable.
 (make-event `(defconst *fp-s2* ',(fn-bpnf-answer-state (fp-durable *fp-progress-1*))))
@@ -137,19 +137,19 @@
                      (cadr *fp-ordered*)))
 ;; Hypothesis "the same row": the two plan entries' sessions each select a
 ;; row, different ones, and the entries differ.
-(must-fail (assert-event (equal (fn-bpn-nth 1 (fp-scan *fp-e1* *fp-ordered* nil))
+(must-fail-checked (assert-event (equal (fn-bpn-nth 1 (fp-scan *fp-e1* *fp-ordered* nil))
                                 (fn-bpn-nth 1 (fp-scan *fp-e2* *fp-ordered* nil)))))
-(must-fail (assert-event (equal *fp-e1* *fp-e2*)))
+(must-fail-checked (assert-event (equal *fp-e1* *fp-e2*)))
 ;; Hypothesis "e2 is a plan entry": an entry with e1's peer and another
 ;; boundary selects the same row, and it is not e1.
 (defconst *fp-e1-forged* (list *fp-relay* "relay-b" "dtn://relay-b/" 4557))
 (assert-event (equal (fn-bpn-nth 1 (fp-scan *fp-e1-forged* *fp-ordered* nil))
                      (car *fp-ordered*)))
-(must-fail (assert-event (member-equal *fp-e1-forged* *fp-plan*)))
-(must-fail (assert-event (equal *fp-e1* *fp-e1-forged*)))
+(must-fail-checked (assert-event (member-equal *fp-e1-forged* *fp-plan*)))
+(must-fail-checked (assert-event (equal *fp-e1* *fp-e1-forged*)))
 ;; Hypothesis "both scans ready": e2's scan over no rows is not ready yet
 ;; carries e1's row in its second field (the waits it returns), and the
 ;; entries differ.
 (assert-event (equal (fn-bpn-nth 1 (fp-scan *fp-e2* nil (car *fp-ordered*)))
                      (car *fp-ordered*)))
-(must-fail (assert-event (equal (car (fp-scan *fp-e2* nil (car *fp-ordered*))) :ready)))
+(must-fail-checked (assert-event (equal (car (fp-scan *fp-e2* nil (car *fp-ordered*))) :ready)))

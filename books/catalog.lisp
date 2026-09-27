@@ -93,6 +93,7 @@
        (natp (fn-hc-generation x))
        t))
 
+(fn-payload-kind fn-cat-rowp :handle "the row's payload is a handle (natp)")
 (defun fn-cat-rowp (x)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-held-shapep x)

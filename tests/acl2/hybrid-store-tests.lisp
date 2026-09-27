@@ -3,7 +3,7 @@
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (include-book "std/testing/assert-equal" :dir :system)
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *hst-principal* (make-list 32 :initial-element 7))
 (defconst *hst-ed-key* (make-list 32 :initial-element 11))
@@ -85,7 +85,7 @@
                       *fn-article-max-octets*)
   *hst-injection-observation*)
  nil)
-(must-fail
+(must-fail-checked
  (assert! (fn-inj-suffixp
            *hst-authored-source*
            (fn-hsig-injected-carrier-octets
@@ -96,7 +96,7 @@
              (list (fn-record-string-octets "example"))
              *fn-article-max-octets*)
             *hst-injection-observation*))))
-(must-fail
+(must-fail-checked
  (assert! (fn-inj-reinjectionp
            (fn-hsig-injected-carrier-octets
             *hst-authored-source* *hst-principal* *hst-keys*
@@ -109,7 +109,7 @@
            *hst-carried-received*
            (fn-record-string-octets "author.example.invalid")
            (fn-record-string-octets "<hybrid@example.invalid>"))))
-(must-fail
+(must-fail-checked
  (assert! (fn-inj-reinjectionp
            *hst-carried-received* *hst-carried-received*
            (fn-record-string-octets "author.example.invalid")
@@ -360,7 +360,7 @@
 (assert-event (equal (fn-hsig-source-version (make-list 70000 :initial-element 65))
                      *fn-hsig-v2-version*))
 (assert-event (and (< 32768 70000) (< 70000 *fn-stxa-max-authored-source*)))
-(must-fail
+(must-fail-checked
  (defthm hst-source-bound-without-a-subject
    (<= (len source) *fn-stxa-max-authored-source*)))
 (assert-event
@@ -447,7 +447,7 @@
                *hst-cancel-source* *hst-cancel-received*
                (hst-cancel-record '("example")))))
 (assert-equal (hst-cancel-event '("example")) nil)
-(must-fail
+(must-fail-checked
  (assert! (equal (fn-record-groups (hst-cancel-record '("example")))
                  (list (fn-ctl-filing-group
                         (cadr (fn-ctl-classify-octets *hst-cancel-source*)))))))
@@ -456,7 +456,7 @@
 (assert! (fn-hsig-article-event-snapshot-bindsp
           *hst-carried-event*
           (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*)))
-(must-fail
+(must-fail-checked
  (assert! (equal (fn-record-groups
                   (fn-record-result-record
                    (fn-record-decode-exact
@@ -538,11 +538,11 @@
 (assert! (and (not (hst-octets nil *hst-g1*))
               (fn-inj-group-namesp *hst-g2-unserved*)
               (equal (hst-reason nil *hst-g2-unserved*) :posting-disallowed)))
-(must-fail (assert! (equal (hst-reason nil *hst-g2-unserved*) :unknown-group)))
+(must-fail-checked (assert! (equal (hst-reason nil *hst-g2-unserved*) :unknown-group)))
 ; Without the second (G2 names groups): the first holds, the configuration
 ; is invalid and the refusal is not :unknown-group.
 (defconst *hst-g2-not-names* (list '(32)))
 (assert! (and (hst-octets t *hst-g1*)
               (not (fn-inj-group-namesp *hst-g2-not-names*))
               (equal (hst-reason t *hst-g2-not-names*) :config-invalid)))
-(must-fail (assert! (equal (hst-reason t *hst-g2-not-names*) :unknown-group)))
+(must-fail-checked (assert! (equal (hst-reason t *hst-g2-not-names*) :unknown-group)))

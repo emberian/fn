@@ -10,7 +10,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/wildmat-matcher-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: RFC 3977 section 4.2's own example,
@@ -78,7 +78,7 @@
 (assert-event (not (fn-wildmat-pattern-listp *wm-teeth-malformed*)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm wm-teeth-rightmost-without-pattern-listp
     (equal (fn-wildmat-rightmost-match *wm-teeth-malformed* nil)
            (fn-wm-select-reference *wm-teeth-malformed* nil nil)))))
@@ -112,7 +112,7 @@
 ; The hypothesis dropped: `!' satisfies neither side, so the implication is
 ; not vacuously true of every code point.
 (local
- (must-fail
+ (must-fail-checked
   (defthm wm-teeth-text-exactp-without-exactp
     (fn-wildmat-text-exactp 33)
     :rule-classes nil)))
@@ -144,7 +144,7 @@
                (if (fn-wildmat-exactp 32) (if (equal 32 32) t nil) nil)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm wm-teeth-matchp-conservation-without-itemp
     (equal (fn-wildmat-item-character-matchp 32 32)
            (if (equal 32 63)
@@ -178,7 +178,7 @@
               (fn-wildmat-parse *wm-teeth-spaced*)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm wm-teeth-rfc3977-patterns-without-a-successful-parse
     (consp (fn-wildmat-result-value (fn-wildmat-parse *wm-teeth-spaced*)))
     :rule-classes nil)))
@@ -198,7 +198,7 @@
  (not (fn-wildmat-rfc3977-codepointsp *wm-teeth-spaced*)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm wm-teeth-parse-one-rfc3977-without-the-restriction
     (fn-wildmat-rfc3977-pattern-listp
      (fn-wildmat-result-value (fn-wildmat-parse-text *wm-teeth-spaced*)))

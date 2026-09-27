@@ -39,6 +39,9 @@ CONFIG is a JSON file:
      "from": "bob <bob@node.example>",       the From of a reply
      "node": "127.0.0.1:1119",               NNTP, for reply
      "cafile": "/etc/fn/cert.pem",           the node's certificate
+     "tls": true,                            optional: TLS from the first
+                                             octet (the node's tls_port;
+                                             port 563 needs no flag)
      "state": "/home/bob/.fn-agent"}         the cursor and drafts
 
 Without "secret_file" the consumer is the operator's unbound one (plain
@@ -186,6 +189,8 @@ class Agent:
         words = [sys.executable, str(CLIENT), "--node", self.config["node"]]
         words += (["--cafile", self.config["cafile"]] if self.config.get("cafile")
                   else ["--plain"])
+        if self.config.get("tls") is True:
+            words += ["--tls"]
         words += ["post", groups or ",".join(event["groups"]),
                   "--subject", subject, "--references", " ".join(references),
                   "--draft", str(draft)]

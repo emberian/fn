@@ -5,7 +5,10 @@
 ; codec at a given txid).
 (in-package "ACL2")
 (include-book "../../books/store-log-route")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 ; A recovered empty kernel at next txid 1, and records at txids 1 and 2.
 (defconst *slrt-ks* (fn-lgk-make nil *fn-lg-genesis* 0 1 nil nil 0 :ready))
@@ -60,7 +63,7 @@
 ; first record of a batch is taken whatever OMAX says, so the octet bound's
 ; conclusion fails without it.
 (assert-event (equal (car (fn-olr-take *slrt-ks* *slrt-r1* 1 0 0 64 100 4096)) :taken))
-(must-fail
+(must-fail-checked
  (assert-event
   (<= (+ 0 (fn-olr-entry-octets (len *slrt-r1*) 4096)) 100)))
 
@@ -107,6 +110,63 @@
 ; take that was not :taken (a refused record) does not extend it.
 (assert-event (not (fn-olr-linkp nil (slrt-k1))))
 (assert-event (not (fn-olr-linkp (list *slrt-r1* *slrt-r1*) (slrt-k5))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-olr-linkp (list *slrt-r2*)
                              (cadr (fn-olr-take *slrt-ks* *slrt-r2* 2 0 0 64 16777216 4096)))))
+
+; -----------------------------------------------------------------------------
+; fn-olr-crash-reads-a-prefix-of-the-history (PRF-264; audit packet G4-3,
+; lane audit-fixes): the route's own contribution, evaluated.  The state is
+; store-log-kernel-tests' appended batch in flight (the recovered log r1 r2
+; committed, r3 r4 r5 in flight, R asserted there); HISTORY is the store
+; node's history the link names.  Each crash image is fn-bs-crash of the
+; appended store under explicit admissible choices (fn-bs-crash-imagep's
+; witness).
+(include-book "store-log-kernel-tests")
+(defun slrt-cx-history () (declare (xargs :guard t))
+  (list (slk-r 1) (slk-r 2) (slk-r 3) (slk-r 4) (slk-r 5)))
+(defun slrt-cx-concl (history choices)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((bs (slk-appended-bs)) (ks (slk-appended-ks))
+         (content (fn-bs-durable-content (fn-bs-crash bs choices) 0))
+         (scan (fn-lg-scan content (slk-genesis) (fn-bs-unit bs) (slk-max))))
+    (or (and (fn-lg-prefixp (car scan) history)
+             (fn-lg-prefixp (fn-lgk-committed ks) (car scan)))
+        (fn-lg-forgery-in (nthcdr (fn-lgk-frontier ks) content)
+                          (fn-lgk-inflight ks) (fn-lgk-last ks)
+                          (fn-bs-unit bs) (slk-max)))))
+(defun slrt-cx-units () (declare (xargs :guard t :verify-guards nil))
+  (let ((ks (slk-appended-ks)))
+    (floor (len (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (slk-unit))) (slk-unit))))
+; Positive: the antecedent (R, a batch in flight, admissible choices, the
+; link) and both conjuncts of the prefix disjunct, on two images: every
+; unit landed (the scan is the whole history) and nothing landed (the scan
+; is the committed prefix).
+(assert-event
+ (let* ((bs (slk-appended-bs)) (ks (slk-appended-ks))
+        (all (list (slk-sels (slrt-cx-units) (slrt-cx-units) :new :new)))
+        (none (list (slk-sels (slrt-cx-units) 0 :new :old))))
+   (and (fn-lgk-relp bs ks 0 (slk-genesis) (slk-max))
+        (consp (fn-lgk-inflight ks))
+        (fn-olr-linkp (slrt-cx-history) ks)
+        (fn-bs-crash-choicesp all (fn-bs-pending bs) (fn-bs-unit bs))
+        (fn-bs-crash-choicesp none (fn-bs-pending bs) (fn-bs-unit bs))
+        (equal (car (fn-lg-scan (fn-bs-durable-content (fn-bs-crash bs all) 0)
+                                (slk-genesis) (fn-bs-unit bs) (slk-max)))
+               (slrt-cx-history))
+        (equal (car (fn-lg-scan (fn-bs-durable-content (fn-bs-crash bs none) 0)
+                                (slk-genesis) (fn-bs-unit bs) (slk-max)))
+               (list (slk-r 1) (slk-r 2)))
+        (slrt-cx-concl (slrt-cx-history) all)
+        (slrt-cx-concl (slrt-cx-history) none))))
+; Removal of the link: a history without the committed record r1 (the store
+; node's history is not the kernel's).  R, the batch in flight and the
+; image are as above; the scan (r1 ... r5) is no prefix of it, and the
+; damaged-entry disjunct is false (nothing is damaged).
+(assert-event
+ (let* ((ks (slk-appended-ks))
+        (all (list (slk-sels (slrt-cx-units) (slrt-cx-units) :new :new)))
+        (history (cdr (slrt-cx-history))))
+   (and (not (fn-olr-linkp history ks))
+        (consp (fn-lgk-inflight ks))
+        (not (slrt-cx-concl history all)))))

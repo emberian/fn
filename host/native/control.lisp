@@ -326,6 +326,9 @@ transition."
                              ;; HST-023: the scheduler's hold and wait fold
                              ;; (books/owner-scheduler.lisp fn-osch-health-lines).
                              (fnn-owner-sched-snapshot service)
+                             ;; the owner's arena: the reclaim line reads each
+                             ;; article's stored length through it.
+                             (fnn-live-arena)
                              *the-live-state*)))
        (unless (and (consp answer) (consp (cdr answer))
                     (fnn-octet-list-p (first answer)))
@@ -424,6 +427,18 @@ transition."
                          (:status (list :consumer-status-reply :refused nil nil nil))
                          (otherwise (list :consumer-reply :refused nil)))
                        :not-owner)))
+                   ;; Lane time-model-2 (PRF-311): a mutating request --
+                   ;; an operator post, a live configuration change, a
+                   ;; moderation decision -- while the disk is slow or
+                   ;; stalled is answered BUSY (try later: nothing stored,
+                   ;; nothing staged) at once, decided by ACL2 at a clock
+                   ;; event appended now (fn-otm-admit-post), before it
+                   ;; waits for the gate that the barrier in flight holds.
+                   ((and (or (and (consp request) (eq (car request) :request))
+                             (and (consp admin) (eq (car admin) :admin))
+                             (and (consp moderation) (eq (car moderation) :moderation)))
+                         (eq (fnn-owner-disk-admit service) :shed))
+                    :busy)
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))

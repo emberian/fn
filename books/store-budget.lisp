@@ -1,7 +1,7 @@
 ; fn: the Store's transaction budget, decided by the served prepare (M5).
 ;
 ; Where the budget comes from.  A store's persisted profile
-; (books/byte-store-frame.lisp, format 8: the operator's fields, validated by
+; (books/byte-store-frame.lisp: the operator's fields, validated by
 ; `fn-bs-profile-validp') is written by `init' and decoded by
 ; `fn-bs-config-decode' at every open.  Its max_transactions field T is the
 ; transaction budget and its max_history_octets field H bounds the committed
@@ -31,7 +31,7 @@
 (include-book "byte-store-frame")
 (include-book "store-events")
 (include-book "store-node")
-(include-book "consumer-event-index-store-invariants")
+(include-book "store-files-traces")
 
 ; -----------------------------------------------------------------------------
 ; The count, the budget and the verdict
@@ -56,7 +56,39 @@ ceiling cannot hold KIND's worst-case encoded record."
   (declare (xargs :guard t))
   (and (natp budget) (natp used) (< used budget)))
 
-; The stored octets of one retained row (records-flip, 2026-09-27).  A held
+; THE MEMBERSHIP CHARGE (lane membership-budget, 2026-09-27; ember's
+; decision 17:30Z: each group membership is charged to the history budget,
+; so the history bound H bounds memberships; no crosspost cap, D27).
+;
+; Before this lane the history budget charged an article its payload octets
+; only, and nothing but the profile's max-groups-per-article G bounded the
+; memberships a store holds: the heap figure's membership term was
+; 2 x T x 320 x G, 41 TB on the scale gate (record reservation-figure
+; section 1).  A membership is not free: each group an article is filed in
+; costs the catalog a (group . number) pair in the row's numbers, a slot in
+; that group's article-number column and its index entry, and the group's
+; name in the record the store writes.  Measured on the flipped image, 137
+; octets of live heap a membership plus 45 for the group's name
+; (per-record-state section 2, reservation-after-flip section 3): 182.  The
+; heap figure models it as `*fn-heap-membership-octets*' = 320 (the 182
+; rounded up with the per-group index's doubling slack), and the budget
+; charges the SAME 320 octets: so a store whose charges fit H holds at most
+; H / 320 memberships and the heap figure's membership term is at most
+; 2 x 320 x (H / 320) = 2 H (books/heap-store-figure.lisp
+; `fn-heap-store-figure-holds-every-store').
+(defconst *fn-sbud-membership-octets* 320)
+
+; The memberships one retained row holds: the groups its article is filed
+; in (a held row's, or the held article inside an accepted-statement
+; composite); 0 for any other row.
+(defun fn-sbud-row-memberships (row)
+  (declare (xargs :guard t))
+  (cond ((fn-held-p row) (len (fn-record-groups row)))
+        ((fn-hstxa-p row) (len (fn-record-groups (fn-hstxa-held row))))
+        (t 0)))
+
+; The stored octets of one retained row (records-flip, 2026-09-27), and its
+; membership charge.  A held
 ; article row keeps its payload in the arena: its octets are the extent of
 ; its handle, which the intern decided once as the facts' octets
 ; (books/records-freeze.lisp `fn-rfz-intern-extent'; stated over the arena
@@ -64,11 +96,17 @@ ceiling cannot hold KIND's worst-case encoded record."
 ; composite whole, so it is that composite's encoding.  Every other row is a
 ; wire event and is its encoding.  Before the flip this was the wire encoder
 ; alone, which is nil on a held row: every retained article counted 0
-; octets against the history bound.
+; octets against the history bound.  An article row (held or composite)
+; adds `*fn-sbud-membership-octets*' per group it is filed in.
 (defun fn-sbud-row-octets (row)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-held-p row) (nfix (fn-hf-octets (fn-held-facts row))))
-        ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
+  (cond ((fn-held-p row)
+         (+ (nfix (fn-hf-octets (fn-held-facts row)))
+            (* *fn-sbud-membership-octets* (len (fn-record-groups row)))))
+        ((fn-hstxa-p row)
+         (+ (len (fn-store-event-encode (fn-hstxa-stxa row)))
+            (* *fn-sbud-membership-octets*
+               (len (fn-record-groups (fn-hstxa-held row))))))
         (t (len (fn-store-event-encode row)))))
 
 ; On a wire event (neither held nor composite) the row's octets are its
@@ -77,6 +115,16 @@ ceiling cannot hold KIND's worst-case encoded record."
   (implies (and (not (fn-held-p row)) (not (fn-hstxa-p row)))
            (equal (fn-sbud-row-octets row)
                   (len (fn-store-event-encode row)))))
+
+; Every row pays for its memberships.
+(defthm fn-sbud-row-octets-pays-its-memberships
+  (<= (* *fn-sbud-membership-octets* (fn-sbud-row-memberships row))
+      (fn-sbud-row-octets row))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-sbud-row-memberships)
+                                  (fn-store-event-encode fn-held-p fn-hstxa-p
+                                   fn-record-groups fn-hstxa-held fn-hstxa-stxa
+                                   fn-held-facts fn-hf-octets)))))
 
 (in-theory (disable fn-sbud-row-octets))
 
@@ -88,6 +136,24 @@ ceiling cannot hold KIND's worst-case encoded record."
       (+ (fn-sbud-row-octets (car records))
          (fn-sbud-record-octets (cdr records)))
     0))
+
+; The memberships the committed records hold, and the bridge the heap
+; figure uses: the budget's octets pay for every membership, so a store
+; whose charges are within H holds at most H / 320 memberships.
+(defun fn-sbud-record-memberships (records)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (+ (fn-sbud-row-memberships (car records))
+         (fn-sbud-record-memberships (cdr records)))
+    0))
+
+; KEYSTONE (the budget pays for the memberships).
+(defthm fn-sbud-record-octets-pays-the-memberships
+  (<= (* *fn-sbud-membership-octets* (fn-sbud-record-memberships records))
+      (fn-sbud-record-octets records))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-sbud-record-memberships records)
+           :in-theory (disable fn-sbud-row-memberships))))
 
 (defun fn-sbud-bytes-used (s)
   "Committed record octets of the Store state S."
@@ -299,7 +365,7 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 ; model and stay so.  What the host calls instead reads the Store's derived
 ; event index (books/consumer-event-index.lisp), which every host-called open
 ; builds from the history it read and `fn-sn-io''s record-directory append
-; extends by the appended event -- the maintained relation `fn-ceis-indexedp',
+; extends by the appended event -- the maintained relation (retired with field 13),
 ; proved of every owner the host reaches with no hypothesis
 ; (books/owner-store-indexed.lisp `fn-osi-live-owner-store-is-indexed'):
 ;
@@ -318,36 +384,33 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 ;
 ; Why a named function and not `mbe' inside `fn-sbud-used': an `:exec' that
 ; reads the index is equal to the `len' only under the relation, so the guard
-; would have to carry `fn-ceis-indexedp', and a guard is evaluated when the
+; would have to carry the relation, and a guard is evaluated when the
 ; :program host calls the function -- a full rebuild of the index per call.
 ; So the host calls `fn-sbud-count' and the theorems below equate it with
 ; `fn-sbud-used' under the relation, the pattern of books/owner-prepare-carried.
 
 (defun fn-sbud-count (s)
-  "Committed transactions of the Store state S, read from its derived event
-index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
+  "Committed transactions of the Store state S: the snoc-list's carried
+count (O(1)), `fn-sbud-used' with no hypothesis."
   (declare (xargs :guard t))
-  (fn-cei-count (fn-sn-event-index s)))
+  (fn-sf-records-count (fn-sn-files s)))
 
-; KEYSTONE (the count).  Under the maintained relation the carried count is
-; the committed record count.
-(defthm fn-sbud-count-is-used
-  (implies (fn-ceis-indexedp s)
-           (equal (fn-sbud-count s) (fn-sbud-used s)))
-  :hints (("Goal" :in-theory (e/d (fn-sbud-count fn-sbud-used fn-ceis-indexedp)
-                                  (fn-cei-correspondencep)))))
+; KEYSTONE (the count): the carried count is the committed record count.
+(defthm fn-sbud-count-is-used-by-definition
+  (equal (fn-sbud-count s) (fn-sbud-used s))
+  :hints (("Goal" :in-theory (enable fn-sbud-count fn-sbud-used fn-sf-records-count))))
 
 ; The committed octets of the records at sequences K .. COUNT-1 of INDEX,
 ; added to SUM: one index lookup and one row's stored octets per step.
-(defun fn-sbud-octets-advance (k count sum index)
+(defun fn-sbud-octets-advance (k count sum files)
   (declare (xargs :guard (and (natp k) (natp count) (acl2-numberp sum))
                   :measure (nfix (- (nfix count) (nfix k)))
                   :verify-guards nil))
   (if (and (natp k) (natp count) (< k count))
       (fn-sbud-octets-advance
        (1+ k) count
-       (+ sum (fn-sbud-row-octets (fn-cei-get k index)))
-       index)
+       (+ sum (fn-sbud-row-octets (fn-sf-records-nth k files)))
+       files)
     sum))
 
 ; The committed record octets of S from the carried CACHE = (K . SUM): the
@@ -359,10 +422,9 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
   (declare (xargs :guard t :verify-guards nil))
   (let ((count (fn-sbud-count s)))
     (if (and (consp cache) (natp (car cache)) (natp (cdr cache))
-             (<= (car cache) count)
-             (<= count (1+ *fn-cbor-max-uint*)))
+             (<= (car cache) count))
         (fn-sbud-octets-advance (car cache) count (cdr cache)
-                                (fn-sn-event-index s))
+                                (fn-sn-files s))
       (fn-sbud-bytes-used s))))
 
 ;; The lookup without a true-list premise: the index is built from the
@@ -406,31 +468,29 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
 
 ; The advance over a corresponding index is the fold over the suffix.
 (defthm fn-sbud-octets-advance-is-the-suffix-fold
-  (implies (and (fn-cei-correspondencep index events)
-                (<= (len events) (1+ *fn-cbor-max-uint*))
+  (implies (and (equal events (fn-sf-records files))
                 (natp k) (<= k (len events)) (acl2-numberp sum))
-           (equal (fn-sbud-octets-advance k (len events) sum index)
+           (equal (fn-sbud-octets-advance k (len events) sum files)
                   (+ sum (fn-sbud-record-octets (nthcdr k events)))))
-  :hints (("Goal" :induct (fn-sbud-octets-advance k (len events) sum index)
-           :in-theory (e/d (fn-sbud-octets-advance fn-cp-uintp)
-                           (fn-store-event-encode fn-cei-correspondencep
-                            fn-cei-get fn-sbud-record-octets)))))
+  :hints (("Goal" :induct (fn-sbud-octets-advance k (len events) sum files)
+           :in-theory (e/d (fn-sf-records-nth fn-sbud-octets-advance )
+                           (fn-store-event-encode 
+                            fn-sbud-record-octets)))))
 
 ; KEYSTONE (the carried octets).  Under the maintained relation, from a
 ; cache that is the record octets of a prefix of the committed records, the
 ; carried figure is the fold `fn-sbud-bytes-used'.
 (defthm fn-sbud-bytes-carried-is-the-fold
-  (implies (and (fn-ceis-indexedp s)
-                (fn-sbud-octets-cache-validp cache (fn-sf-records (fn-sn-files s))))
+  (implies (and (fn-sbud-octets-cache-validp cache (fn-sf-records (fn-sn-files s))))
            (equal (fn-sbud-bytes-carried cache s)
                   (fn-sbud-bytes-used s)))
   :hints (("Goal" :use ((:instance fn-sbud-octets-advance-is-the-suffix-fold
-                                   (index (fn-sn-event-index s))
+                                   (files (fn-sn-files s))
                                    (events (fn-sf-records (fn-sn-files s)))
                                    (k (car cache)) (sum (cdr cache)))
                         (:instance fn-sbud-bytes-used-is-kernel-sum))
            :in-theory (e/d (fn-sbud-bytes-carried fn-sbud-octets-cache-validp
-                            fn-sbud-bytes-extend fn-ceis-indexedp fn-sbud-used)
+                            fn-sbud-bytes-extend fn-sbud-used)
                            (fn-sbud-octets-advance fn-sbud-record-octets
                             fn-sbud-count fn-cei-correspondencep
                             fn-sbud-octets-advance-is-the-suffix-fold
@@ -469,9 +529,8 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
         (fn-retain-capacity (fn-node-retention (fn-sn-node s)))))
 
 (defthm fn-sbud-headroom-carried-is-headroom-at
-  (implies (fn-ceis-indexedp s)
-           (equal (fn-sbud-headroom-carried profile s bytes-used)
-                  (fn-sbud-headroom-at profile s bytes-used)))
+  (equal (fn-sbud-headroom-carried profile s bytes-used)
+         (fn-sbud-headroom-at profile s bytes-used))
   :hints (("Goal" :in-theory (e/d (fn-sbud-headroom-carried fn-sbud-headroom-at)
                                   (fn-sbud-count fn-sbud-used)))))
 
@@ -490,6 +549,7 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
 (verify-guards fn-store-retention-event-encode)
 (verify-guards fn-store-event-encode)
 (verify-guards fn-sbud-row-octets)
+
 (verify-guards fn-sbud-record-octets)
 (verify-guards fn-sbud-bytes-used)
 (verify-guards fn-sbud-verdict)

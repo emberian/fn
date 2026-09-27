@@ -26,19 +26,25 @@
       (not (slrp-related-run-p (slk-appended-bs) (fn-olr-consume-to (slk-ks0) 9)
                                (fn-lg-reserve-program)))))
 
-; fn-lg-open-suffix-keeps-the-relation: from the recovered state (nothing in
-; flight) all ten steps run and every state is related.
+; fn-lg-open-suffix-keeps-the-relation: from the recovered state all seven
+; steps (recover-replayed and the three barriers with their cuts) run and
+; every state is related.
 (assert-event
- (and (not (fn-lgk-inflight (slk-ks0)))
-      (equal (len (fn-lg-run (slk-bs-extended) (slk-ks0) (fn-lg-open-suffix) nil 0)) 11)
+ (and (fn-lgk-relp (slk-bs-extended) (slk-ks0) 0 (slk-genesis) (slk-max))
+      (equal (len (fn-lg-run (slk-bs-extended) (slk-ks0) (fn-lg-open-suffix) nil 0)) 7)
       (slrp-related-run-p (slk-bs-extended) (slk-ks0) (fn-lg-open-suffix))))
-; Hypothesis removed (nothing in flight): with a batch in flight the
-; segment's barrier makes it durable but the open's kernel does not commit
-; it, so the states after that barrier are not related.
+; The same with a batch in flight (the hypothesis the five-barrier statement
+; carried, removed): related at every cut, because no step of the suffix
+; touches the segment.
 (assert-event
  (and (fn-lgk-relp (slk-appended-bs) (slk-appended-ks) 0 (slk-genesis) (slk-max))
       (fn-lgk-inflight (slk-appended-ks))
-      (not (slrp-related-run-p (slk-appended-bs) (slk-appended-ks) (fn-lg-open-suffix)))))
+      (slrp-related-run-p (slk-appended-bs) (slk-appended-ks) (fn-lg-open-suffix))))
+; Hypothesis removed (R): the appended store with the kernel before the
+; append is not related, and neither is any state of the suffix.
+(assert-event
+ (and (not (fn-lgk-relp (slk-appended-bs) (slk-ks0) 0 (slk-genesis) (slk-max)))
+      (not (slrp-related-run-p (slk-appended-bs) (slk-ks0) (fn-lg-open-suffix)))))
 
 ; fn-lg-order-program-keeps-the-relation: a record taken into the open batch
 ; of the recovered kernel; the cut reached and related.
@@ -49,3 +55,28 @@
  (and (fn-lg-recordp (slk-r 3) (slk-max))
       (equal (fn-lgk-batch (slrp-taken)) (list (slk-r 3)))
       (slrp-related-run-p (slk-bs-extended) (slrp-taken) (fn-lg-order-program))))
+
+; Audit packet G4-6 (lane audit-fixes): fn-lg-order-program-keeps-the-
+; relation's complete antecedent at the witness, and its removals.
+(assert-event
+ (and (fn-lgk-relp (slk-bs-extended) (slk-ks0) 0 (slk-genesis) (slk-max))
+      (fn-lg-recordp (slk-r 3) (slk-max))
+      (slrp-related-run-p (slk-bs-extended) (slrp-taken) (fn-lg-order-program))))
+; Removal of R: the appended store with the kernel before the append (a
+; pending write the kernel does not hold); the record is a record, the take
+; is made, and the cut is not related.
+(assert-event
+ (and (not (fn-lgk-relp (slk-appended-bs) (slk-ks0) 0 (slk-genesis) (slk-max)))
+      (fn-lg-recordp (slk-r 3) (slk-max))
+      (not (slrp-related-run-p (slk-appended-bs) (slrp-taken) (fn-lg-order-program)))))
+; Removal of (fn-lg-recordp record max): a 5,000-octet record past MAX 4096.
+; The take does not check the log's bound (it is :taken into the batch), R
+; holds before it, and the cut is not related.
+(assert-event
+ (let* ((big (make-list 5000 :initial-element 7))
+        (r (fn-olr-take (slk-ks0) big (fn-lgk-next-txid (slk-ks0)) 0 0 64 16777216 (slk-unit))))
+   (and (fn-lgk-relp (slk-bs-extended) (slk-ks0) 0 (slk-genesis) (slk-max))
+        (not (fn-lg-recordp big (slk-max)))
+        (equal (car r) :taken)
+        (equal (fn-lgk-batch (cadr r)) (list big))
+        (not (slrp-related-run-p (slk-bs-extended) (cadr r) (fn-lg-order-program))))))

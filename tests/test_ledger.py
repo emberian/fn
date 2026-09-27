@@ -241,6 +241,87 @@ class SuspectTests(unittest.TestCase):
         self.assertTrue(any("preserves-no-subject-call" in r
                             for r in flagged["rotate-preserves-inv"]))
 
+    # The shapes the keystone audit of 2026-09-27 found registered as
+    # keystones and the detectors above did not read (lane audit-fixes).
+
+    def test_a_cond_arm_selected_by_a_constant_argument_is_flagged(self):
+        flagged = self.flags('''
+            (defun code (kind completion)
+              (cond ((equal completion :durable) (if (equal kind :ihave) 235 239))
+                    ((equal completion :unaffordable) 436)
+                    (t 437)))
+            (defthm full-store-is-a-retry-code
+              (and (equal (code kind :unaffordable) 436)
+                   (not (member-equal (code kind :unaffordable) '(437 439)))))
+        ''')
+        self.assertTrue(any("arm-of-definition" in r
+                            for r in flagged["full-store-is-a-retry-code"]))
+
+    def test_a_cond_arm_selected_by_a_hypothesis_spelled_with_equal_is_flagged(self):
+        flagged = self.flags('''
+            (defun release (action word)
+              (cond ((eq word :uncertain) :own-uncertain)
+                    ((eq action :complete) :rendered)
+                    (t :close)))
+            (defthm uncertain-word-told-uncertain
+              (implies (equal word :uncertain)
+                       (equal (release action word) :own-uncertain)))
+        ''')
+        self.assertIn("uncertain-word-told-uncertain", flagged)
+
+    def test_both_arms_of_an_if_as_two_implications_are_flagged(self):
+        flagged = self.flags('''
+            (defun loginp (oc c) (assoc c oc))
+            (defun poll (oc c) (if (loginp oc c) (list :refused :bound) (cdr oc)))
+            (defthm poll-cases
+              (and (implies (not (loginp oc c)) (equal (poll oc c) (cdr oc)))
+                   (implies (loginp oc c) (equal (poll oc c) '(:refused :bound)))))
+        ''')
+        self.assertIn("poll-cases", flagged)
+
+    def test_an_iff_with_the_definitions_own_test_is_flagged(self):
+        flagged = self.flags('''
+            (defun after (op status)
+              (if (and (equal op :register) (equal status :refused))
+                  (list :bootstrap :register)
+                nil))
+            (defthm after-exactly
+              (iff (after op status)
+                   (and (equal op :register) (equal status :refused))))
+        ''')
+        self.assertTrue(any("iff-of-definition-test" in r
+                            for r in flagged["after-exactly"]))
+
+    def test_accessor_of_constructor_is_flagged(self):
+        flagged = self.flags('''
+            (defun mk (a b c) (list a b c))
+            (defun get-b (o) (car (cdr o)))
+            (defun wrapped-b (o) (len (get-b o)))
+            (defthm wrapped-b-of-mk (equal (wrapped-b (mk a b c)) (len b)))
+        ''')
+        self.assertTrue(any("both sides unfold" in r
+                            for r in flagged["wrapped-b-of-mk"]))
+
+    def test_a_decided_arm_beside_a_real_conjunct_is_not_flagged(self):
+        flagged = self.flags('''
+            (defun code (completion) (if (equal completion :unaffordable) 436 437))
+            (defun history (s) (if (consp s) (history (cdr s)) nil))
+            (defthm code-and-history
+              (and (equal (code :unaffordable) 436)
+                   (equal (history s) nil)))
+        ''')
+        self.assertNotIn("code-and-history", flagged)
+
+    def test_an_undecided_test_is_not_an_arm(self):
+        flagged = self.flags('''
+            (defun okp (x) (and (consp x) (natp (car x))))
+            (defun f (x) (if (okp x) (car x) 0))
+            (defthm f-is-a-natural (natp (f x)))
+            (defthm f-of-a-number (implies (natp x) (equal (f x) 0)))
+        ''')
+        self.assertNotIn("f-is-a-natural", flagged)
+        self.assertNotIn("f-of-a-number", flagged)
+
     # -- must not be flagged --------------------------------------------
 
     def test_an_ordinary_induction_is_not_flagged(self):

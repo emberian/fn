@@ -6,7 +6,7 @@
 (include-book "poster-bytes-tests")
 (include-book "source-routes-tests")
 (include-book "../../books/store-existing-alpha")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Evaluate over the arena of SPEC (srt-spec's form: the journal the entry
 ; interned, then payloads sealed after it): the entry, D25's decision over
@@ -40,12 +40,15 @@
 (defconst *sea-spec* (list *pbt-prior*))
 (defconst *sea-held* (pbt-octets *pbt-dateless* *pbt-a*))
 
-; The flip regression the book repairs: on the live store the list
-; decisions compare with the handle, so a byte-identical resend is a
-; conflict.
-(assert-event (equal (fn-sn-existing-action *pbt-msgid* *sea-held* *pbt-groups* *pbt-store*)
+; The flip regression the book repairs: applied to the live store's own
+; articles (handles) the list decisions compare with the handle, so a
+; byte-identical resend is a conflict (the store-shaped twins that did this
+; were retired, PKT-860).
+(defconst *sea-live-articles*
+  (fn-state-articles (fn-node-acceptance (fn-sn-node *pbt-store*))))
+(assert-event (equal (fn-sn-action-over *pbt-msgid* *sea-held* *pbt-groups* *sea-live-articles*)
                      :conflict))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* *sea-held* *pbt-groups* *pbt-store*)
+(assert-event (equal (fn-pb-action-over *pbt-msgid* *sea-held* *pbt-groups* *sea-live-articles*)
                      :conflict))
 
 ; -----------------------------------------------------------------------------
@@ -78,7 +81,7 @@
       (equal (sea-pb *srt-t-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*)
                      *srt-groups* *srt-t-dateless*)
              :conflict)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (sea-entry *srt-t-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*)
                                  *srt-groups* *srt-t-dateless*)
                       (sea-pb *srt-t-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*)
@@ -104,7 +107,7 @@
       (not (sea-tombp *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))
       (null (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))
       (sea-pb *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)
                       (sea-pb *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))))
 
@@ -129,7 +132,7 @@
       (not (equal (sea-entry *srt-t-dateless-spec* *srt-msgid* *sea-tomb-bytes* *srt-groups*
                              *srt-t-dateless*)
                   :duplicate))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (sea-entry *srt-t-dateless-spec* *srt-msgid* *sea-tomb-bytes* *srt-groups*
                                  *srt-t-dateless*)
                       :duplicate)))
@@ -138,6 +141,6 @@
 (assert-event
  (and (sea-sn *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)
       (null (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))))
-(must-fail
+(must-fail-checked
  (assert-event (iff (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)
                     (sea-sn *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))))

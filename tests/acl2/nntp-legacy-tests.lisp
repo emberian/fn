@@ -208,7 +208,8 @@
     "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS"
     "ARTICLE HEAD BODY STAT"
     "OVER XOVER HDR XHDR XPAT"
-    "IHAVE CHECK TAKETHIS"))
+    "IHAVE CHECK TAKETHIS"
+    "XFNCATCHUP"))
 (assert-event (equal (lg-reply *lg-env* "HELP")
                      (lg-block "100 help text follows" *lg-help-lines*)))
 

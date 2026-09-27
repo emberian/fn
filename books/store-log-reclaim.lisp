@@ -3,12 +3,10 @@
 ; STO-017).
 ;
 ; On a format-9 store `store reclaim' is a checkpoint of the REWRITTEN history
-; followed by the drop: the decision (fn-lgr-decide) is the reclaiming pack's
-; (books/store-reclaim-pack.lisp fn-rclp-decide) over the same per-article
-; context -- STO-014's decision over every holder, fn-rclp-ctx, untouched --
-; without the pack's observation and link limits: every article record the
-; context releases becomes its tombstone (fn-rclp-events), and nothing else
-; changes.  The host (host/native/checkpoint.lisp fnn-command-reclaim) replays
+; followed by the drop: the decision (fn-lgr-decide) reads the per-article
+; context (books/store-reclaim-pack.lisp fn-rclp-ctx: STO-014's decision
+; over every holder): every article record the context releases becomes its
+; tombstone (fn-rclp-events), and nothing else changes.  The host (host/native/checkpoint.lisp fnn-command-reclaim) replays
 ; the rewritten history into the store node, publishes its state checkpoint
 ; with the log rotated, and drops the segments the checkpoint covers
 ; (books/store-log-segments.lisp, T8): the payload octets the released
@@ -20,15 +18,16 @@
 ; fn-rclp-a-reclaimed-event-stays-reclaimed).
 (in-package "ACL2")
 (include-book "store-reclaim-stream")
+(include-book "byte-store-frame") ; fn-bs-profile-admittedp
 
 ;   (:refused :profile)             the profile is not admitted
 ;   (:none COUNTS)                  nothing to rewrite
 ;   (:dry-run MSGIDS FREED COUNTS)  what a run would reclaim; nothing written
 ;   (:reclaim MSGIDS FREED RECORDS COUNTS)
 ;                                   RECORDS: the rewritten history
-(defun fn-lgr-decide (profile rule now s records dry)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((counts (fn-rcl-store-counts rule now s))
+(defun fn-lgr-decide (profile rule now s records dry fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let* ((counts (fn-rcl-store-counts rule now s fn-arena))
          (ctx (fn-rclp-ctx rule now s))
          (msgids (fn-rclp-rewritten-msgids records ctx)))
     (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
@@ -45,7 +44,7 @@
 ; theorem about what the log's checkpoint holds), the dry run writes nothing,
 ; and a reclaim happens only when some article is rewritten.
 (defthm fn-lgr-decide-checkpoints-the-rewrite
-  (let ((d (fn-lgr-decide profile rule now s records dry)))
+  (let ((d (fn-lgr-decide profile rule now s records dry fn-arena)))
     (implies (equal (car d) :reclaim)
              (and (not dry)
                   (fn-bs-profile-admittedp profile)
@@ -68,9 +67,9 @@
 ;   (:refused :profile) | (:none COUNTS) | (:dry-run MSGIDS FREED COUNTS)
 ;   | (:reclaim MSGIDS FREED COUNTS)   -- the rewritten history is the host's
 ;                                         per-record rewrites, in order
-(defun fn-lgr-decide-stream (profile rule now s acc dry)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((counts (fn-rcl-store-counts rule now s))
+(defun fn-lgr-decide-stream (profile rule now s acc dry fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let ((counts (fn-rcl-store-counts rule now s fn-arena))
         (msgids (rev (nth 1 acc)))
         (freed (nth 2 acc)))
     (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
@@ -97,8 +96,8 @@
 (defthm fn-lgr-decide-stream-is-lgr-decide
   (implies (and (true-listp records)
                 (equal acc (fn-rcls-fold records (fn-rclp-ctx rule now s) (fn-rcls-init))))
-           (equal (fn-lgr-decide profile rule now s records dry)
-                  (let ((d (fn-lgr-decide-stream profile rule now s acc dry)))
+           (equal (fn-lgr-decide profile rule now s records dry fn-arena)
+                  (let ((d (fn-lgr-decide-stream profile rule now s acc dry fn-arena)))
                     (if (equal (car d) :reclaim)
                         (list :reclaim (nth 1 d) (nth 2 d)
                               (fn-rclp-events records (fn-rclp-ctx rule now s)) (nth 3 d))

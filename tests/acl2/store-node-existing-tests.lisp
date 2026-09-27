@@ -1,8 +1,8 @@
 ; Reachable Store outcomes and teeth for the byte-identity decision
-; (books/store-node-existing-invariants.lisp, fn-sn-existing-action) and the
+; (books/store-node-existing-invariants.lisp, fn-sn-action-over) and the
 ; entry the host calls (books/store-intern.lisp fn-store-existing-action).
 ; by specification: the flip -- the held payload is a handle, so
-; fn-sn-existing-action is the specification over the WIRE view: its
+; fn-sn-action-over is the specification over the WIRE view: its
 ; outcomes are asserted over alpha of the Store's articles (the bytes under
 ; each handle, books/store-existing-alpha.lisp fn-sn-action-over over
 ; fn-sn-alpha-articles, which fn-store-existing-action-refines-byte-identity-
@@ -12,7 +12,7 @@
 (include-book "../../books/store-existing-alpha")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *snex-groups* '("fn.letters" "fn.test"))
 (defconst *snex-record-wire*
@@ -53,16 +53,14 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena) (snex-sn-in (list *snex-record-wire*) msgid payload groups s fn-arena)
       r)))
-; On the live Store the decision is its definition over the articles
-; (handles): a byte-identical resend is no duplicate there, which is why the
-; outcomes below are over alpha.
+; Over the live Store's own articles (handles) a byte-identical resend is no
+; duplicate, which is why the outcomes below are over alpha (and why the
+; store-shaped twin fn-sn-existing-action was retired, PKT-860).
 (assert-event
- (and (equal (fn-sn-existing-action "<held@example>" '(65 66) *snex-groups* *snex-finished*)
-             (fn-sn-action-over "<held@example>" '(65 66) *snex-groups*
-                                (fn-state-articles (fn-node-acceptance
-                                                    (fn-sn-node *snex-finished*)))))
-      (equal (fn-sn-existing-action "<held@example>" '(65 66) *snex-groups* *snex-finished*)
-             :conflict)))
+ (equal (fn-sn-action-over "<held@example>" '(65 66) *snex-groups*
+                           (fn-state-articles (fn-node-acceptance
+                                               (fn-sn-node *snex-finished*))))
+        :conflict))
 (assert-event (equal (snex-sn
                       "<held@example>" '(65 66) *snex-groups* *snex-finished*)
                      :duplicate))
@@ -77,23 +75,23 @@
 
 ; Each deleted premise makes the corresponding outcome false on the same
 ; committed article: payload equality, group equality, or a held binding.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<held@example>" '(99) *snex-groups* *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<held@example>" '(65 66) '("fn.letters") *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<missing@example>" '(65 66) *snex-groups* *snex-finished*)
          :duplicate)))
 ; A difference without a held Message-ID is missing, not a conflict.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<missing@example>" '(99) *snex-groups* *snex-finished*)
@@ -116,22 +114,22 @@
                      :conflict))
 (assert-event (null (fn-hrt-existing-action
                      *snex-prior* "<missing@example>" '(65 66) *snex-groups* *snex-finished*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<held@example>" '(99) *snex-groups* *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<held@example>" '(65 66) '("fn.letters") *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<missing@example>" '(65 66) *snex-groups* *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<missing@example>" '(99) *snex-groups* *snex-finished*)

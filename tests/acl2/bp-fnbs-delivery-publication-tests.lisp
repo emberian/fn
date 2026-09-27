@@ -2,7 +2,7 @@
 (include-book "../../books/bp-fnbs-delivery-publication")
 (include-book "../../books/codec-attach")
 (include-book "bp-fnbs-delivery-replay-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpahp-record* (fn-bpn-nth 4 (fn-bpnf-issued *bpahr-live-result*)))
 (make-event
@@ -22,7 +22,7 @@
 (assert-event (equal (car (fn-bpah-publication-authorize
                            *bpahr-live-result* 1 2 *bpahp-record* t nil))
                      :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpah-publication-operationp
    (fn-bpah-publication-authorize

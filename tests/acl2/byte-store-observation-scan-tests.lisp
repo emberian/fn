@@ -3,7 +3,7 @@
 (include-book "../../books/byte-store-frame")
 (include-book "../../books/byte-store-txn-name")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bso-event-0*
   (fn-record-make 0 0 0 "<bso-0@example.invalid>" '(65)
@@ -75,7 +75,7 @@
 
 ; Without the visible relation, exact ordered names and a good source scan
 ; do not stop a damaged transaction frame from changing the scan.
-(must-fail
+(must-fail-checked
  (assert-event
   (implies (and (equal (fn-bs-names (bso-model) :transactions)
                        (fn-bs-names (bso-corrupt) :transactions))
@@ -85,7 +85,7 @@
 
 ; Without ordered transaction names, the same exact octets and alias pattern
 ; may fail the scanner's canonical namespace check.
-(must-fail
+(must-fail-checked
  (assert-event
   (implies (and (fn-bso-served-image-agree (bso-model) (bso-reordered))
                 (fn-bs-scan-okp (fn-bs-scan-store (bso-model))))
@@ -104,7 +104,7 @@
 
 ; The scan-ok premise excludes malformed duplicate-name roots: a set/count
 ; observation alone cannot detect the extra physical key in this input.
-(must-fail
+(must-fail-checked
  (assert-event
   (implies (and (fn-bso-served-image-agree
                  (bso-duplicate-root-model) (bso-duplicate-root-physical))

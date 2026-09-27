@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-native-correspondence")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 ; Reach the actual composed subject at the allocator commit observation.  The
@@ -16,13 +16,13 @@
         (equal (fn-sn-node s4) (fn-sn-node s3)))))
 
 ; Dropping the operation-domain hypothesis loses the typed byte-program event.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-sf-eventp
    (fn-bs-native-io-event :not-a-native-operation :ok))))
 
 ; The result hypothesis has teeth too: a successful operation tag with an
 ; outcome that host/native/io.lisp never reports is not a typed event.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-sf-eventp (fn-bs-native-io-event :record-link :known-fail))))

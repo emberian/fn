@@ -18,7 +18,7 @@
 (include-book "../../books/visibility-join")
 (include-book "../../books/control-visible")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "poster-bytes-tests")
 (include-book "held-rows-tests")
 
@@ -144,7 +144,7 @@
 ; and the decision answers nil (a fresh prepare).
 (assert-event (and (stringp *vjt-absent*)
                    (not (fn-acceptedp *vjt-absent* (fn-vj-articles *vjt-completing*)))))
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (vjt-entry *vjt-absent* *vjt-t-payload* '("fn.test")
                                                 *vjt-two*)
                              '(:duplicate :conflict))))
@@ -160,7 +160,7 @@
                               (fn-state-fenced acc))))
     (update-nth 3 (update-nth (vjt-index-of acc node 0) acc2 node) *vjt-completing*)))
 (assert-event (and (not (stringp nil)) (fn-acceptedp nil (fn-vj-articles *vjt-corrupt*))))
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (vjt-entry nil *vjt-t-payload* '("fn.test")
                                                      (fn-sn-finish *vjt-corrupt*))
                              '(:duplicate :conflict))))
@@ -206,7 +206,7 @@
              :conflict)))
 ; Teeth (1): drop "held".
 (assert-event (not (fn-acceptedp *vjt-absent* (fn-state-articles *vjt-acc*))))
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (vjt-entry *vjt-absent* *vjt-t-payload* '("fn.test")
                                                 *vjt-reclaimed*)
                              '(:duplicate :conflict))))
@@ -215,7 +215,7 @@
 (assert-event (not (equal (fn-vj-articles *vjt-empty*)
                           (fn-state-articles (fn-rcl-reclaim-state *vjt-acc* *vjt-t*
                                                                    *vjt-tomb*)))))
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (vjt-entry *vjt-t* *vjt-t-payload* '("fn.test")
                                                 *vjt-empty*)
                              '(:duplicate :conflict))))
@@ -235,7 +235,7 @@
                    (equal (fn-vj-articles *vjt-corrupt-reclaimed*)
                           (fn-state-articles (fn-rcl-reclaim-state *vjt-corrupt-acc*
                                                                    *vjt-t* *vjt-tomb*)))))
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (vjt-entry nil *vjt-t-payload* '("fn.test")
                                                      *vjt-corrupt-reclaimed*)
                              '(:duplicate :conflict))))
@@ -261,7 +261,7 @@
       (equal (vjt-reply *pbt-owner* 0 *vjt-t* *vjt-t-payload* *vjt-reclaimed*)
              *pbt-duplicate-line*)))
 (defmacro vjt-441-fails (o id msgid s)
-  `(must-fail
+  `(must-fail-checked
     (assert-event
      (member-equal (vjt-reply ,o ,id ,msgid *vjt-t-payload* ,s)
                    (list (fn-pb-served-reply ,o ,id :duplicate)

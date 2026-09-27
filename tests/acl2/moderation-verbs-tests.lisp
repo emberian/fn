@@ -10,7 +10,8 @@
 (include-book "../../books/moderation-verbs")
 (include-book "../../books/native-admin")
 (include-book "../../books/native-operator")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
+(include-book "arena-lift")
 
 (defun mvt-o (s) (declare (xargs :guard (stringp s))) (fn-record-string-octets s))
 (defconst *mvt-crlf* (coerce '(#\Return #\Newline) 'string))
@@ -48,8 +49,12 @@
 (assert-event (equal (fn-inj-decision-msgid *mvt-envelope-decision*) (mvt-o *mvt-env-id*)))
 (defun mvt-art (id payload groups)
   (fn-make-article id payload groups (list (cons (car groups) 1)) t 841000000))
+; A FLIPPED archive (records flip; lane matrix-reds): the stored envelope
+; carries arena handle 0, and the arena holds its octets, as the owner's
+; archive does.  Every approve below reads the envelope through the arena.
 (defconst *mvt-env*
-  (mvt-art *mvt-env-id* (fn-inj-decision-octets *mvt-envelope-decision*) '("fn.queue")))
+  (mvt-art *mvt-env-id* 0 '("fn.queue")))
+(defconst *mvt-arena* (list (fn-inj-decision-octets *mvt-envelope-decision*)))
 (defconst *mvt-raw* (list *mvt-env* (mvt-art "<other@example.invalid>" nil '("fn.test"))))
 
 ; The IDs: the post's names its envelope; an envelope's is itself.
@@ -61,11 +66,19 @@
 ; ---------------------------------------------------------------------------
 ; 2. Approve.
 
+(defun mvt-approve-a (raw ws login id fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-mvb-approve raw ws nil *mvt-cfg* *mvt-obs* (mvt-o login) id fn-arena))
+(bpr-lift mvt-approve-a 4)
+(bpr-lift fn-mvb-held-article 1)
+(defun mvt-approve-in (arena raw ws login id)
+  (in-arena-mvt-approve-a arena raw ws login id))
 (defun mvt-approve (raw ws login id)
-  (fn-mvb-approve raw ws nil *mvt-cfg* *mvt-obs* (mvt-o login) id))
+  (mvt-approve-in *mvt-arena* raw ws login id))
 (defconst *mvt-approved* (mvt-approve *mvt-raw* nil "alice" "<m1@example.invalid>"))
 (defconst *mvt-approved-octets*
-  (fn-mvb-approved-article (mvt-o "alice") (fn-mvb-held-article *mvt-env*)))
+  (fn-mvb-approved-article (mvt-o "alice")
+                           (in-arena-fn-mvb-held-article *mvt-arena* *mvt-env*)))
 ; The reachable positive witness: every literal of the keystone.
 (assert-event (equal (car *mvt-approved*) :submit))
 (assert-event (fn-mvb-moderates-some (mvt-o "alice") '("fn.queue") (list *mvt-entry*)))
@@ -90,18 +103,42 @@
 (assert-event (equal (fn-inj-config-closed (fn-mvb-login-config *mvt-cfg* (mvt-o "alice")))
                      (list (list :approver (mvt-o "fn.mod") (mvt-o "fn.queue")))))
 
+; fn-mvb-held-article-is-the-model-body-by-definition: the held body read through the
+; arena is the body of the envelope's octet model, which is the envelope as
+; the pre-flip archive stored it (octets in the payload position).
+(assert-event (equal (in-arena-fn-mvb-held-article *mvt-arena* *mvt-env*)
+                     (fn-mvb-after-blank (fn-inj-decision-octets *mvt-envelope-decision*))))
+(assert-event (consp (in-arena-fn-mvb-held-article *mvt-arena* *mvt-env*)))
+; The arena is what approve reads: with no octets under the envelope's
+; handle (an empty arena) the held body is empty and approve refuses
+; :envelope-malformed, the answer dev gave before this lane
+; (tests.test_native_moderation); the submission conclusion fails.
+(assert-event (equal (mvt-approve-in nil *mvt-raw* nil "alice" "<m1@example.invalid>")
+                     '(:refused :envelope-malformed)))
+(must-fail-checked
+ (assert-event (equal (car (mvt-approve-in nil *mvt-raw* nil "alice" "<m1@example.invalid>"))
+                      :submit)))
+; A pre-flip archive (the envelope's octets in its payload position) is read
+; as before: the non-handle payload passes through the arena read.
+(assert-event
+ (equal (mvt-approve-in nil (list (mvt-art *mvt-env-id*
+                                           (fn-inj-decision-octets *mvt-envelope-decision*)
+                                           '("fn.queue")))
+                        nil "alice" "<m1@example.invalid>")
+        *mvt-approved*))
+
 ; Hypothesis removal (the plan is not a submission): carol, by name; the
 ; conclusion's first literal fails.
 (defconst *mvt-carol* (mvt-approve *mvt-raw* nil "carol" "<m1@example.invalid>"))
 (assert-event (equal *mvt-carol* '(:refused :not-a-moderator)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-mvb-moderates-some (mvt-o "carol") '("fn.queue") (list *mvt-entry*))))
 ; Already approved (the post's own Message-ID stored), already rejected (a
 ; node record withdraws the envelope), no such envelope.
 (defconst *mvt-raw-approved* (cons (mvt-art "<m1@example.invalid>" nil '("fn.mod")) *mvt-raw*))
 (assert-event (equal (mvt-approve *mvt-raw-approved* nil "alice" "<m1@example.invalid>")
                      '(:refused :already-approved)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cev-envelope-state *mvt-env* nil *mvt-raw-approved* nil) "held")))
 (defconst *mvt-node-record*
   (fn-ctl-withdrawal-make *mvt-env-id* "<fn-withdraw.fn-moderate.m1@example.invalid>"
@@ -163,7 +200,7 @@
 (defconst *mvt-delta2* (fn-cfg-withdraw-article *mvt-cause* "<other@example.invalid>" "x"))
 (assert-event (equal (fn-cfg-withdraw-article-reason *mvt-v1* *mvt-delta2*)
                      :withdrawal-duplicate))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cfg-withdrawal-target
                        (fn-cfg-authorities (fn-cfg-apply-delta *mvt-v1* 1 nil *mvt-delta2*))
                        *mvt-cause*)
@@ -179,7 +216,7 @@
 ; The composed keystone: after the row, the configuration authorizes the
 ; cause for exactly the envelope.
 (assert-event (fn-ctl-node-authorizesp *mvt-cause* *mvt-env-id* (fn-cfg-make 1 *mvt-v1*)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-ctl-node-authorizesp *mvt-cause* *mvt-env-id* (fn-cfg-make 1 *mvt-v0*))))
 
 ; The cause article the node injects: a cancel of the envelope under the
@@ -209,7 +246,7 @@
 (assert-event (equal (fn-ctl-visible-articles *mvt-with-cause* (list *mvt-plan*) nil)
                      (cdr *mvt-with-cause*)))
 ; Hypothesis removal: without the row the unsigned cause declines.
-(must-fail
+(must-fail-checked
  (assert-event (fn-ctl-withdrawalp
                 (fn-ctl-withdrawal-plan *mvt-cause* nil *mvt-env-id* nil
                                         (fn-cfg-make 1 *mvt-v0*)))))
@@ -222,7 +259,7 @@
 
 (assert-event (equal (fn-mvb-withdraw *mvt-raw* *mvt-cfg* *mvt-obs* *mvt-node* nil "<absent@example.invalid>" "x")
                      '(:refused :no-such-article)))
-(must-fail
+(must-fail-checked
  (assert-event (consp (fn-cev-find-article "<absent@example.invalid>" *mvt-raw*))))
 (assert-event (equal (fn-mvb-withdraw *mvt-with-cause* *mvt-cfg* *mvt-obs* *mvt-node* nil *mvt-env-id* "x")
                      '(:refused :already-withdrawn)))

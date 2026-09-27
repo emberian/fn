@@ -1,7 +1,7 @@
 ; Executable E2 decision traces, not Store publication or a served consumer API.
 (in-package "ACL2")
 (include-book "../../books/consumer-position")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cpt-h* '(1))
 (defconst *cpt-i* '(2))
@@ -35,7 +35,7 @@
 (assert-event (equal (fn-cp-cursor-decode
                       (fn-cp-cursor-encode *cpt-max-cursor*))
                      (list :ok *cpt-max-cursor*)))
-(must-fail (defthm fn-cpt-roundtrip-needs-valid-cursor
+(must-fail-checked (defthm fn-cpt-roundtrip-needs-valid-cursor
              (equal (fn-cp-cursor-decode (fn-cp-cursor-encode cursor))
                     (list :ok cursor))))
 (assert-event (equal (fn-cp-cursor-decode
@@ -46,7 +46,7 @@
                      '(:refused :version)))
 (assert-event (equal (fn-cp-cursor-decode (make-list 513 :initial-element 0))
                      '(:refused :octets)))
-(must-fail (defthm fn-cpt-overlong-refusal-needs-overlong-input
+(must-fail-checked (defthm fn-cpt-overlong-refusal-needs-overlong-input
              (equal (fn-cp-cursor-decode octets)
                     '(:refused :octets))))
 (assert-event (equal (fn-cp-cursor-decode
@@ -116,12 +116,12 @@
 ; Removing the stale-epoch hypothesis is false on the same reachable
 ; registration with a fresh cursor.  Future-bound and epoch conclusions also
 ; fail for input cursors when their write-arm premise is removed.
-(must-fail (defthm fn-cpt-epoch-refusal-needs-mismatch
+(must-fail-checked (defthm fn-cpt-epoch-refusal-needs-mismatch
              (equal (fn-cp-ack s caller qver view cursor)
                     (list :refused :scope))))
-(must-fail (defthm fn-cpt-bound-needs-write-arm
+(must-fail-checked (defthm fn-cpt-bound-needs-write-arm
              (<= (nth 9 cursor) (nth 3 s))))
-(must-fail (defthm fn-cpt-epoch-binding-needs-write-arm
+(must-fail-checked (defthm fn-cpt-epoch-binding-needs-write-arm
              (equal (nth 8 cursor)
                     (nth 6 (fn-cp-find (nth 3 cursor) (nth 5 s))))))
 
@@ -178,7 +178,7 @@
                      *cpt-old*))
 ; Teeth of fn-cp-register-within-refuses-exactly-past-the-operator-bound: the
 ; refusal needs the table at the bound (a write below it is not refused) ...
-(must-fail (defthm fn-cpt-within-refuses-without-the-bound
+(must-fail-checked (defthm fn-cpt-within-refuses-without-the-bound
              (implies (equal (car (fn-cp-register s caller consumer query
                                                   qver view))
                              :write)
@@ -195,14 +195,14 @@
                                      '(0 0) *cpt-q* 1 1)))
 ; Teeth of fn-cp-apply-preserves-consumer-capacity: one per hypothesis.
 ; Without the starting table within MAX:
-(must-fail (defthm fn-cpt-capacity-needs-bounded-initial-table
+(must-fail-checked (defthm fn-cpt-capacity-needs-bounded-initial-table
              (implies (or (not (eq (nth 0 event) :register))
                           (equal (fn-cp-register-within s max caller consumer
                                                         query qver view)
                                  (list :write event)))
                       (<= (len (nth 5 (fn-cp-apply s event))) (nfix max)))))
 ; Without the served decision's write (a register applied at the bound):
-(must-fail (defthm fn-cpt-capacity-needs-the-served-decision
+(must-fail-checked (defthm fn-cpt-capacity-needs-the-served-decision
              (implies (<= (len (nth 5 s)) (nfix max))
                       (<= (len (nth 5 (fn-cp-apply s event))) (nfix max)))))
 ; The witness of the second: the committed 257th applied to a 256 table
@@ -212,7 +212,7 @@
 
 ; No invariant is asserted of malformed initial states.  The transition
 ; theorem and its trace corollary both require a recognized starting state.
-(must-fail (defthm fn-cpt-statep-needs-valid-start
+(must-fail-checked (defthm fn-cpt-statep-needs-valid-start
              (fn-cp-statep (fn-cp-apply s event))))
-(must-fail (defthm fn-cpt-trace-needs-valid-start
+(must-fail-checked (defthm fn-cpt-trace-needs-valid-start
              (fn-cp-statep (fn-cp-apply-trace s events))))

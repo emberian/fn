@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing
 import os
 from pathlib import Path
 import resource
@@ -74,6 +75,20 @@ def threads(pid):
     out = subprocess.run(["ps", "-H", "-o", "pid=", "-p", str(pid)],
                          stdout=subprocess.PIPE, text=True).stdout.split()
     return len(out) or None
+
+
+def cpu_seconds(pid):
+    """The process's user and system CPU seconds (Linux /proc; None elsewhere)."""
+    stat = Path("/proc/%d/stat" % pid)
+    if not stat.exists():
+        return None
+    fields = stat.read_text().rsplit(")", 1)[1].split()
+    return (int(fields[11]) + int(fields[12])) / os.sysconf("SC_CLK_TCK")
+
+
+def own_cpu_seconds():
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    return usage.ru_utime + usage.ru_stime
 
 
 def raise_nofile():
@@ -142,6 +157,9 @@ def main():
     p.add_argument("--overs", type=int, default=20)
     p.add_argument("--posts", type=int, default=50)
     p.add_argument("--connect", type=int, default=250)
+    p.add_argument("--reader-procs", type=int, default=1,
+                   help="split the active readers over this many driver processes, so "
+                        "the driver's own interpreter lock is not what is measured")
     p.add_argument("--tls", action="store_true",
                    help="readers over implicit TLS (a fresh self-signed RSA-2048 pair)")
     a = p.parse_args()
@@ -217,7 +235,9 @@ def main():
 
         greet, overs, errors = [], [], []
         lock = threading.Lock()
-        barrier = threading.Barrier(a.active)
+        procs = max(1, min(a.reader_procs, a.active))
+        barrier = (multiprocessing.get_context("fork").Barrier(a.active) if procs > 1
+                   else threading.Barrier(a.active))
 
         def reader():
             try:
@@ -243,13 +263,49 @@ def main():
                 with lock:
                     errors.append(repr(exc))
 
-        workers = [threading.Thread(target=reader) for _ in range(a.active)]
+        def readers(count):
+            workers = [threading.Thread(target=reader) for _ in range(count)]
+            for w in workers:
+                w.start()
+            for w in workers:
+                w.join()
+
+        def child(count, queue):
+            readers(count)
+            queue.put((greet, overs, errors, own_cpu_seconds()))
+
+        node_cpu0, client_cpu0 = cpu_seconds(proc.pid), own_cpu_seconds()
         t0 = time.perf_counter()
-        for w in workers:
-            w.start()
-        for w in workers:
-            w.join()
+        children_cpu = 0.0
+        if procs == 1:
+            readers(a.active)
+        else:
+            # Each child forks with the held connections' descriptors; it
+            # only opens its own readers and reports their samples.
+            ctx = multiprocessing.get_context("fork")
+            queue = ctx.Queue()
+            shares = [a.active // procs + (1 if i < a.active % procs else 0)
+                      for i in range(procs)]
+            children = [ctx.Process(target=child, args=(n, queue)) for n in shares]
+            for c in children:
+                c.start()
+            for _ in children:
+                g, o, e, cpu = queue.get()
+                greet.extend(g)
+                overs.extend(o)
+                errors.extend(e)
+                children_cpu += cpu
+            for c in children:
+                c.join()
+        node_cpu1, client_cpu1 = cpu_seconds(proc.pid), own_cpu_seconds() + children_cpu
         doc["active"] = {"seconds": round(time.perf_counter() - t0, 3),
+                         "reader_procs": procs,
+                         # Where the phase's CPU went: the node's, and this
+                         # driver's (its TLS and its threads), so a latency
+                         # difference is attributed before it is explained.
+                         "node_cpu_s": (round(node_cpu1 - node_cpu0, 2)
+                                        if node_cpu0 is not None else None),
+                         "client_cpu_s": round(client_cpu1 - client_cpu0, 2),
                          "greeting": summary(greet), "over": summary(overs),
                          "errors": errors[:5], "error_count": len(errors),
                          "rss_kib": rss_kib(proc.pid)}

@@ -7,7 +7,7 @@
 (include-book "../../books/peer-host")
 (include-book "../../books/native-admin-peer")
 (include-book "../../books/peer-pull")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun pht (s) (fn-record-string-octets s))
 
@@ -53,9 +53,9 @@
 (assert-event (not (fn-peer-host-namep (cons 97 *pht-253*))))
 ; Teeth: without the :resolve antecedent the host need not be a name; without
 ; :address it need not be a literal; without :refused it need not be refused.
-(must-fail (assert-event (fn-peer-host-namep *pht-v4*)))
-(must-fail (assert-event (not (equal (fn-native-config-ipv4-address *pht-name*) :bad))))
-(must-fail (assert-event (equal (fn-peer-dial-target *pht-name*) '(:refused :host-syntax))))
+(must-fail-checked (assert-event (fn-peer-host-namep *pht-v4*)))
+(must-fail-checked (assert-event (not (equal (fn-native-config-ipv4-address *pht-name*) :bad))))
+(must-fail-checked (assert-event (equal (fn-peer-dial-target *pht-name*) '(:refused :host-syntax))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-peer-tls-verification-selects-one-check.
@@ -78,14 +78,14 @@
 (assert-event (equal (fn-peer-tls-verification "news.example.org"
                                                (coerce (list #\/ (code-char 0)) 'string))
                      '(:refused :trust)))
-(must-fail (assert-event (equal (car (fn-peer-tls-verification 'news :system-roots)) :verify)))
-(must-fail (assert-event (equal (car (fn-peer-tls-verification "bad name" "/a/ca.pem")) :verify)))
-(must-fail (assert-event (equal (car (fn-peer-tls-verification "news.example.org" nil)) :verify)))
+(must-fail-checked (assert-event (equal (car (fn-peer-tls-verification 'news :system-roots)) :verify)))
+(must-fail-checked (assert-event (equal (car (fn-peer-tls-verification "bad name" "/a/ca.pem")) :verify)))
+(must-fail-checked (assert-event (equal (car (fn-peer-tls-verification "news.example.org" nil)) :verify)))
 
 ; fn-peer-tls-verification-sni-is-never-a-literal: SNI for a name; a literal
 ; is checked (SSL_set1_host) but never sent as SNI.
 (assert-event (third (fn-peer-tls-verification "news.example.org" "/a/ca.pem")))
-(must-fail (assert-event (third (fn-peer-tls-verification "192.0.2.7" "/a/ca.pem"))))
+(must-fail-checked (assert-event (third (fn-peer-tls-verification "192.0.2.7" "/a/ca.pem"))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-peer-tls-select-named-default and its neighbours.
@@ -93,7 +93,7 @@
                      '("news.example.org" :system-roots)))
 ; Tooth (a DNS name): a numeric host has no name to default to.
 (assert-event (equal (fn-peer-tls-select "192.0.2.7" "-" "-") nil))
-(must-fail (assert-event (fn-peer-tls-select "192.0.2.7" "-" "-")))
+(must-fail-checked (assert-event (fn-peer-tls-select "192.0.2.7" "-" "-")))
 ; A numeric host with the name its certificate carries.
 (assert-event (equal (fn-peer-tls-select "192.0.2.7" "news.example.org" "-")
                      '("news.example.org" :system-roots)))
@@ -134,7 +134,7 @@
 ; Refusals: a host that is neither; `-' for the name of a numeric host.
 (assert-event (equal (fn-native-admin-result-status (pht-add "bad_host" "-" "-")) :refused))
 (assert-event (equal (fn-native-admin-result-status (pht-add "192.0.2.7" "-" "-")) :refused))
-(must-fail (assert-event (equal (fn-native-admin-result-status (pht-add "192.0.2.7" "-" "-"))
+(must-fail-checked (assert-event (equal (fn-native-admin-result-status (pht-add "192.0.2.7" "-" "-"))
                                 :accepted)))
 
 ; The pull plan reads the system roots from the rows (books/peer-pull.lisp).

@@ -223,9 +223,14 @@ segment from that one: `fn-lg-scan` from the named genesis (range reads,
 `fn-bs-read-ranges-concatenate`, one entry at a time: the open never holds a
 segment as a list, D27), stopping at the first entry that does not validate,
 chain or fit. The last complete record's aligned end is the frontier; the
-segment is `ftruncate`d there and fenced (ONE recovery barrier, so the next
+segment is `ftruncate`d there and fenced (the segment's fence, so the next
 incarnation's durable content is exactly what it scanned; the chain is the
-defence in depth for a crash before that fence) and the staging sweep runs
+defence in depth for a crash before that fence), then three recovery barriers
+drain the directory entries a dead process left pending: journal/, the root,
+its parent (not ONE: log-recovery-2 refuted one barrier with a ground
+counterexample, and lane open-barriers took the open from five to these three,
+proved equivalent at every cut, each necessary:
+books/store-log-open-barriers.lisp) and the staging sweep runs
 for the pipeline's stages as today. Refusals by name: `log-chain-broken`
 (an entry that validates but names another predecessor: a splice or a stale
 tail beyond a tear that the truncate did not reach), `history-short-of-checkpoint`

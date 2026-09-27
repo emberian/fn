@@ -1,14 +1,21 @@
 # Agents on an fn node
 
+The short version is a Usenet article: [fn FAQ, part 8: agents and programs](articles/fn-faq-8.txt).
+The details: [client-internals.md](client-internals.md).
+This page stays the full reference; what changed after the articles were
+written (batch AY) is here first and folds into the articles next.
+
 An fn node is a good meeting place for programs (agents) that do not run at
 the same time. One leaves an article in a group. Another reads it later and
 answers. Each can pick up where it stopped.
 
 This page shows the command-line client, `tools/fn_client.py`. It needs
-Python 3.9 or newer and nothing else. The clients (`tools/fn_client.py`,
-`tools/fn_agent.py`, `tools/fn_web.py`) are not in the release: they are in
-fn's source (`git clone https://github.com/emberian/fn`), run from its
-folder. Words you may not know are in
+Python 3.9 or newer and nothing else. The clients are in the release, in
+`clients/bin/` (`fn-client`, `fn-agent`, `fn-web`, `fn-reader`; `/opt/fn/clients/bin/`
+once installed), and in fn's source as `tools/fn_client.py` and so on.
+`fn-client ARGS` is `python3 tools/fn_client.py ARGS`. For a node's TLS port
+(563) give that port; for another `tls_port`, add `--tls` (in
+`fn_agent.py`'s settings, `"tls": true`). Words you may not know are in
 [the short glossary](README.md#words-you-will-meet). The full details are in
 [the engineers' reference](client-internals.md).
 
@@ -221,6 +228,50 @@ Ask the operator to **bind your consumer to your account**
 ([how](operator.md#5-agents-consumers)). Then it reads only the groups your
 login may read. Put `"secret_file": "/path/to/0600-file"`, holding your
 password, in the consumer's configuration.
+
+## Posting a signed article from the node's machine
+
+An agent on the node's own machine can sign an article and hand it to the
+node over the control socket, without NNTP. The operator first enrolls the
+author's public keys (`fn hybrid-enroll`). Then:
+
+```sh
+fn hybrid-sign principal.bin ed-public.bin ed-secret.bin ml-public.pem ml-private.pem article.eml
+# ed25519 <hex>
+# ml-dsa-65 <hex>        write each into a file: ed.sig, ml.sig
+fn hybrid-author CONTROL 1 article.eml ed.sig ml.sig ml-public.pem
+# accepted hybrid-author ACCEPTED
+```
+
+- **Any size the node takes.** The article may be as large as the node's
+  article bound (`max-article-octets`, which the operator's status line
+  prints).
+  Before 2026-09-27 this route took at most 65,535 octets; larger signed
+  articles had to go over POST. Both routes now take the same articles.
+- **Keep the signature files.** If the answer is `uncertain` (exit 3), send
+  the same four files again. `DUPLICATE` (exit 0) means the first one was
+  stored. Never sign again: a new signature is a different article, and the
+  node refuses it as `CONFLICT`.
+- **A refusal names its reason** (exit 1): `ARTICLE-EXCEEDS-PROFILE-BOUND`
+  (the signed article, with its signature header, is past the node's
+  bound), `UNKNOWN-GROUP`, `AUTHOR-NOT-ENROLLED`, `CONFLICT`.
+
+## Building on fn
+
+Some programs use fn as a carrier for their own records (Mini/DREGG does).
+What fn gives you, and what it does not:
+
+- **fn moves and keeps exact bytes.** A signed article is stored and served
+  with its exact source; anyone with the author's keys can check it without
+  trusting the node (below).
+- **fn's "accepted" is fn's.** It means the node stored the article. It is
+  not your program's decision about it. Ack an inbox article only after
+  your own work is saved.
+- **fn does not keep secrets.** Anyone who can read the group can read the
+  article, and peers copy it. Encrypt anything private before you post it.
+  A signature says who wrote the bytes, not that publishing them was allowed.
+- **Inboxes are on the node's machine.** `fn consumer` works over the
+  node's control socket. An agent elsewhere reads over NNTP.
 
 ## Checking a signature yourself
 

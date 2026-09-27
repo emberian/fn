@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-control-reason")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *ncrt-unknown-group* (fn-record-string-octets "unknown-group"))
 (defconst *ncrt-no-such-grant* (fn-record-string-octets "no-such-grant"))
@@ -48,7 +48,7 @@
                       (fn-native-control-reasoned-reply-read
                        (fn-native-control-reasoned-reply-encode :no-such-status :x)))
                      '(:transport)))
-(must-fail
+(must-fail-checked
  (defthm ncrt-without-membership
    (equal (fn-native-control-reasoned-client-step
            (fn-native-control-reasoned-reply-read
@@ -59,7 +59,7 @@
 ; Hypothesis (a refusal class): an acceptance prints no reason.
 (assert-event (member-equal :accepted *fn-nctrl-statuses*))
 (assert-event (null (fn-native-control-reply-detail :accepted *ncrt-unknown-group*)))
-(must-fail
+(must-fail-checked
  (defthm ncrt-detail-without-refusal
    (implies (and (member-equal status *fn-nctrl-statuses*) reason)
             (equal (fn-native-control-reply-detail status (fn-nctrl-reason-word reason))
@@ -68,7 +68,7 @@
    :rule-classes nil))
 ; Hypothesis (a reason): a refusal with no reason prints none.
 (assert-event (null (fn-native-control-reply-detail :refused (fn-nctrl-reason-word nil))))
-(must-fail
+(must-fail-checked
  (defthm ncrt-detail-without-reason
    (implies (and (member-equal status *fn-nctrl-statuses*)
                  (equal (fn-native-control-status-class status) :refused))

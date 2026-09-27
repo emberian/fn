@@ -14,7 +14,7 @@
 (in-package "ACL2")
 (include-book "../../books/sha256-stobj")
 (include-book "../../books/records-shape")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "sha256-tests")
 
 ; -----------------------------------------------------------------------------
@@ -134,7 +134,7 @@
 ; is nil.  Without the hypothesis the statement is false, and here is the
 ; separating witness, evaluated in the logic where the guard does not apply.
 
-(must-fail
+(must-fail-checked
  (defthm shs-t-string-without-stringp
    (equal (fn-sha256-of-string s)
           (fn-sha256-of-octets (fn-shs-string-octets s)))))

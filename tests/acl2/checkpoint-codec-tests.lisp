@@ -8,7 +8,7 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint-codec")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defconst *cpc-groups* '("fn.letters" "fn.test"))
@@ -86,7 +86,7 @@
         '(:error :invalid)))
 ; Migration changes the logical value.  Hence the canonical re-encode
 ; keystone explicitly requires the current header; dropping it is false.
-(must-fail
+(must-fail-checked
  (assert-event
   (implies (fn-cpc-result-okp
             (fn-cpc-decode *cpc-prestamp-octets* *cpc-groups* 10 3 1))

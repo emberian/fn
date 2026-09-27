@@ -15,7 +15,7 @@
 ; quadratic walks: the statement about the executed function.
 (in-package "ACL2")
 (include-book "../../books/owner")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; References: the :logic bodies, copied.
@@ -275,7 +275,7 @@
 (assert-event (not (equal *opt-stale-index* (fn-gidx-build *opt-old*))))
 (assert-event (not (equal (fn-gidx-refresh *opt-stale-index* *opt-old* *opt-articles*)
                           (fn-gidx-build *opt-articles*))))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-gidx-refresh buckets old-articles new-articles)
              (fn-gidx-build new-articles))))
 

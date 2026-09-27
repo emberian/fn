@@ -276,38 +276,37 @@
            :in-theory (e/d (fn-bs-recovered-kernel)
                            (fn-cpo-open-observed fn-sn-statep))))))
 
-(defthm fn-sn-open-observed-not-ready-before-five-barriers-of-host-open
+(defthm fn-sn-open-observed-not-ready-before-the-barriers-of-host-open
   (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
            (let ((st (fn-sn-open-state (fn-cpo-open-observed configs frontier events))))
              (and (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 0))) :recovering)
                   (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 1))) :recovering)
-                  (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 2))) :recovering)
-                  (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 3))) :recovering)
-                  (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 4))) :recovering))))
+                  (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 2))) :recovering))))
   :hints (("Goal"
            :use (fn-sob-host-open-recovering-state
-                 (:instance fn-sn-observed-four-ok-barriers-remain-recovering
+                 (:instance fn-sn-observed-ok-barriers-before-the-last-remain-recovering
                             (st (fn-sn-open-state
                                  (fn-cpo-open-observed configs frontier events)))))
            :in-theory (disable fn-sob-host-open-recovering-state
-                               fn-sn-observed-four-ok-barriers-remain-recovering
+                               fn-sn-observed-ok-barriers-before-the-last-remain-recovering
                                fn-cpo-open-observed fn-sn-open-okp
                                fn-sn-observed-rebarrier fn-sn-statep))))
 
-(defthm fn-sn-open-observed-five-barriers-open-ready-of-host-open
+(defthm fn-sn-open-observed-barriers-open-ready-of-host-open
   (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
            (equal (fn-sf-phase
                    (fn-sn-files
                     (fn-sn-observed-rebarrier
-                     (fn-sn-open-state (fn-cpo-open-observed configs frontier events)) 5)))
+                     (fn-sn-open-state (fn-cpo-open-observed configs frontier events))
+                     *fn-sf-recovery-barrier-count*)))
                   :ready))
   :hints (("Goal"
            :use (fn-sob-host-open-recovering-state
-                 (:instance fn-sn-observed-five-ok-barriers-is-ready
+                 (:instance fn-sn-observed-all-ok-barriers-is-ready
                             (st (fn-sn-open-state
                                  (fn-cpo-open-observed configs frontier events)))))
            :in-theory (disable fn-sob-host-open-recovering-state
-                               fn-sn-observed-five-ok-barriers-is-ready
+                               fn-sn-observed-all-ok-barriers-is-ready
                                fn-cpo-open-observed fn-sn-open-okp
                                fn-sn-observed-rebarrier fn-sn-statep))))
 

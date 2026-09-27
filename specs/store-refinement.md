@@ -398,20 +398,13 @@ namespace.  These tests establish the named adapter/model boundary and selected
 restart behavior, not a claim about arbitrary filesystem races, power loss, or
 every existing/retry opening path.
 
-### Selected-prefix reclamation interruption campaign (W30)
+### Selected-prefix reclamation interruption campaign (W30, retired)
 
-The native checkpoint campaign names every candidate publication, authority
-selection, covered-prefix unlink, and closing directory-barrier boundary.  The
-repeated unlink hook accepts a bounded one-based occurrence, so process death is
-exercised after every issued covered unlink rather than only after the first.
-After each reopen, the campaign compares surviving transaction files with their
-pre-interruption bytes, recovers the complete event count through the selected
-pack, retries reclamation, and verifies that the uncovered suffix remains byte
-identical.  It also constructs arbitrary covered-prefix deletion subsets and
-requires surviving covered conflicts or missing uncovered suffix entries to
-fail closed without further deletion.  These are process-death filesystem
-scenarios mapped to `fn-bs-pack-reclaim-program`; they make no hardware ordering
-claim.
+This campaign exercised the per-file layout's pack reclaim (every covered
+unlink, the directory barrier, the retry). Its subject, the pack reclaim
+program, went with that layout (PKT-838; its books in lane flip-cleanup,
+2026-09-27). The record log's compaction and reclaim cuts are
+tests/test_native_log_compaction.py's.
 
 ### Native immutable-initializer retry (W18)
 
@@ -460,8 +453,9 @@ identities only to preserve alias equality; ACL2 computes the comparison and
 the all-issued-operation SIGKILL image. All thirteen declared post cuts now
 cover allocator staging, replacement, observation and reservation; record
 staging, link, observation, durable directory barrier, completion and cleanup;
-and both finish cuts. The five recovery barriers have distinct host
-selectors and distinct occurrences of `fn-bs-recover-program`'s barrier cut;
+and both finish cuts. The recovery barriers (five then, three since lane
+open-barriers: `recover-barrier-1` to `-3` of `fn-lg-open-program`) have
+distinct host selectors and distinct occurrences of the open program's barrier cut;
 they preserve the prior acknowledged article through reopen. See the
 [runtime record](../tests/evidence/2026-09-23-served-crash-observation.md).
 `fn-bso-served-agreement-preserves-scan` in

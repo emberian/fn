@@ -77,6 +77,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(ROOT))
+import native_env  # noqa: E402
 
 MAGIC = 0x6A736677736872
 FLUSH, FUA, DISCARD, MARK, METADATA = 1, 2, 4, 8, 16
@@ -193,8 +194,12 @@ def config2_for(work, store, port):
 
 
 def native(image, *argv, timeout=1800):
+    # Lane membership-budget: the scale stores here are made for hbox; name
+    # that target budget (tools/native_env.py, once), or `init' refuses a
+    # profile its unit cannot hold.
+    env = native_env.harness_store_env()
     r = subprocess.run([str(image), "--fn"] + [str(a) for a in argv], stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, timeout=timeout)
+                       stderr=subprocess.PIPE, timeout=timeout, env=env)
     return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
 
 
@@ -1171,11 +1176,16 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
     if code:
         violations.append("status-exit-%d" % code)
     # Outstanding retention work never disappears: every committed article
-    # is reclaimable, held or reclaimed (the status line's three counts).
-    counts = dict(re.findall(r"\b(articles|reclaimable|held|reclaimed)=(\d+)", so))
+    # is in exactly one retention class ACL2 names on the status line
+    # (reclaimable, held, reclaimed, signed, kept; PKT-844,
+    # fn-rcl-store-classes-partition-the-articles).  A status without the
+    # signed/kept fields predates PKT-844: its three counts are compared.
+    counts = dict(re.findall(r"\b(articles|reclaimable|held|reclaimed|signed|kept)=(\d+)", so))
     rule = re.search(r"reclaim rule=(\S+)", so)
-    if rule and rule.group(1) != "keep-forever" and "reclaimed" in counts and "articles" in counts:
-        total = sum(int(counts[k]) for k in ("reclaimable", "held", "reclaimed"))
+    if rule and "reclaimed" in counts and "articles" in counts and (
+            rule.group(1) != "keep-forever" or "kept" in counts):
+        total = sum(int(counts.get(k, 0))
+                    for k in ("reclaimable", "held", "reclaimed", "signed", "kept"))
         rec["reclaim_accounting"] = [int(counts["articles"]), total]
         if total != int(counts["articles"]):
             violations.append("reclaim-accounting:%s" % counts)

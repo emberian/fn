@@ -13,7 +13,7 @@
 ; ARTICLE reply is (status line, then the body).
 (in-package "ACL2")
 (include-book "../../books/served-reply-buffer")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Run the host-called subject over a buffer that first holds STALE; answer
 ; (okp range len).
@@ -63,7 +63,7 @@
 (defconst *srbt-bad* (list (list :reply '(50 50)) (list :reply '(300))))
 (assert-event (not (fn-srb-effects-octetsp *srbt-bad*)))
 (assert-event (equal (first (srbt-run *srbt-stale* *srbt-bad*)) nil))
-(must-fail
+(must-fail-checked
  (assert-event (equal (second (srbt-run *srbt-stale* *srbt-bad*))
                       (fn-served-reply-octets *srbt-bad*))))
 
@@ -71,7 +71,7 @@
 (assert-event (equal (second (srbt-run *srbt-stale* *srbt-bad*)) *srbt-stale*))
 
 ; MUTATION (labelled): appending without the clear keeps the stale octets.
-(must-fail
+(must-fail-checked
  (assert-event (equal (srbt-run-no-clear *srbt-stale* *srbt-effects*)
                       *srbt-reply*)))
 

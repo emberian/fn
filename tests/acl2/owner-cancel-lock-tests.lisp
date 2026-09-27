@@ -14,7 +14,7 @@
 ; tests/test_native_own_cancel.py.
 (in-package "ACL2")
 (include-book "../../books/owner-served-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun oclt-octets (s) (fn-record-string-octets s))
 (defun oclt-join (lines)
@@ -100,14 +100,14 @@
                           (oclt-octets "alice") *oclt-alice*))
 (assert-event (fn-peer-submissionp (fn-own-sub-decision *oclt-transit*)))
 (assert-event (not (oclt-conclusion nil *oclt-transit* *oclt-secret*)))
-(must-fail (assert-event (oclt-conclusion nil *oclt-transit* *oclt-secret*)))
+(must-fail-checked (assert-event (oclt-conclusion nil *oclt-transit* *oclt-secret*)))
 
 ; Removal: no key ring installed (nil, the owner before the host's
 ; install): the stored octets are the injected ones.
 (assert-event (not (fn-ns-ringp nil)))
 (assert-event (equal (fn-own-sub-stored-octets nil *oclt-sub* nil) *oclt-injected*))
 (assert-event (not (oclt-conclusion nil *oclt-sub* nil)))
-(must-fail (assert-event (oclt-conclusion nil *oclt-sub* nil)))
+(must-fail-checked (assert-event (oclt-conclusion nil *oclt-sub* nil)))
 
 ; Removal: no author (an unauthenticated POST; the four-element submission).
 (defconst *oclt-anon* (oclt-sub *oclt-injected* nil))
@@ -115,7 +115,7 @@
 (assert-event (equal (fn-own-sub-stored-octets nil *oclt-anon* *oclt-secret*)
                      *oclt-injected*))
 (assert-event (not (oclt-conclusion nil *oclt-anon* *oclt-secret*)))
-(must-fail (assert-event (oclt-conclusion nil *oclt-anon* *oclt-secret*)))
+(must-fail-checked (assert-event (oclt-conclusion nil *oclt-anon* *oclt-secret*)))
 
 ; Removal: the poster wrote their own Cancel-Lock (tin): kept, none added.
 (defconst *oclt-tin*
@@ -132,7 +132,7 @@
                                              *oclt-secret*
                                              (fn-own-sub-login *oclt-tin-sub*) nil)))
 (assert-event (not (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
-(must-fail (assert-event (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
+(must-fail-checked (assert-event (oclt-conclusion nil *oclt-tin-sub* *oclt-secret*)))
 
 ; The submission's author survives the writer's take (the mark set, the
 ; login and account kept), and a submission without one keeps its

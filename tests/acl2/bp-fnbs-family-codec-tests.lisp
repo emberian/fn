@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-family-codec")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnf-family-row*
   (fn-bpnf-family-record 2 5 0 3 '(159 0)))
@@ -19,7 +19,7 @@
 (assert-event
  (null (fn-bpnf-family-unframe
         (append (fn-bpnf-family-frame *bpnf-family-row*) '(0)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-family-unframe
           (append (fn-bpnf-family-frame *bpnf-family-row*) '(0)))
@@ -44,7 +44,7 @@
          (fn-bpnf-family-record-at
           2 5 0 3 '(159 0) (fn-clock-observation -1 0 0 nil)))
         :bad))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-family-v1-unframe
           (fn-bpnf-family-frame *bpnf-family-row*))

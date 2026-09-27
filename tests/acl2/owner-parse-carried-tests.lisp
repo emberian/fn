@@ -1,8 +1,18 @@
 ; Teeth for books/owner-parse-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-parse-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-commit-carried-tests")
+
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-apc-own-finish-h (o cfg fn-arena carry)
+  ; fn-apc-own-finish over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-apc-own-finish o cfg fn-arena fn-hist carry) fn-hist))
+      ans)))
 
 ; The host runs compiled code: every function it calls here is
 ; guard-verified, as its reference is.  The resolution publication's
@@ -103,7 +113,7 @@
   (mv-let (rows fn-arena)
     (fn-hrt-events prior nil 0 fn-arena)
     (declare (ignore rows))
-    (mv (list (fn-apc-own-finish o cfg fn-arena carry)
+    (mv (list (fn-apc-own-finish-h o cfg fn-arena carry)
               (fn-ccar-own-finish o cfg fn-arena)
               (fn-apc-completion-names-submission-p o cfg fn-arena carry)
               (fn-ccar-completion-names-submission-p o cfg fn-arena))
@@ -252,22 +262,22 @@
                           (apc-t-c-intent *apc-t-c-carry*))))
 
 ; The keystone and the host-line equalities without fn-apc-p.
-(must-fail
+(must-fail-checked
  (defthm apc-t-parse-without-apc-p
    (equal (fn-apc-parse octets carry) (fn-article-parse octets))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-filing-without-apc-p
    (equal (fn-apc-filing-plan received groups domain carry)
           (fn-pa-filing-plan received groups domain))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-transit-verdict-without-apc-p
    (equal (fn-apc-transit-verdict received snapshots carried transitp ed ml carry)
           (fn-pcb-transit-verdict received snapshots carried transitp ed ml))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-row-without-apc-p
    (equal (fn-apc-intern-row-at w keyring generation h carry)
           (fn-intern-row-at w keyring generation h))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-intent-without-apc-p
    (implies (fn-icar-carryp icar)
             (equal (fn-apc-submission-intent o icar carry evidence generation txid)
@@ -311,3 +321,68 @@
                                          (concatenate 'string "240 article received OK"
                                                       (coerce (list (code-char 13) (code-char 10))
                                                               'string)))))))
+
+; =============================================================================
+; Audit packet G2-P4 (lane audit-fixes, sub-lane g12b): a biting witness for
+; fn-apc-own-finish-is-ccar-own-finish's two hypotheses.  The carry reaches
+; the finish only through the stored octets of an ACCOUNT's submission (the
+; Cancel-Lock the owner writes reads the parse's fields), and no reached
+; owner in these books posts under a login.  CONSTRUCTED owner (labelled):
+; owner-tests' taken owner (*own-taken*) with its in-flight submission
+; replaced by the same injected article under the login "alice" and an
+; account (owner-cancel-lock-tests' shape) and a node secret; from it the
+; Store runs the host's post events (owner-tests' own-post-events) over the
+; record the host stages for that submission -- its stored octets, the
+; account's lock in front of the injected octets -- to :completing.
+(defconst *apc-g-secret*
+  (list (fn-ns-create-entry (fn-record-string-octets "fn.test") (make-list 32 :initial-element 7))))
+(defconst *apc-g-account* (make-list 32 :initial-element 1))
+(defconst *apc-g-sub*
+  (let ((s *osi-sub*))
+    (fn-own-sub-make-author (fn-own-sub-id s) (fn-own-sub-version s) (fn-own-sub-mark s)
+                            (fn-own-sub-decision s) (fn-record-string-octets "alice") *apc-g-account*)))
+(defun apc-g-with-sub (o sub secret)
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+               sub (fn-own-feeds o) secret (fn-own-refused o)))
+(defconst *apc-g-taken* (apc-g-with-sub *own-taken* *apc-g-sub* *apc-g-secret*))
+(defconst *apc-g-stored* (fn-own-sub-stored-octets *osi-cfg* *apc-g-sub* *apc-g-secret*))
+(defconst *apc-g-wire* (osi-record-of-wire 2 2 *apc-g-sub* *apc-g-stored*))
+(defconst *apc-g-o*
+  (in-arena-fn-own-run *sr-arena* *apc-g-taken*
+                       (osi-drop-last (own-post-events (osi-record-of 2 2 *apc-g-sub* *apc-g-stored*)))))
+(defconst *apc-g-prior* (osi-prior *apc-g-wire*))
+(defconst *apc-g-tk* (fn-apc-take *osi-cfg* *apc-g-sub* *apc-g-secret*))
+(defconst *apc-g-carry* (cdr *apc-g-tk*))
+(defconst *apc-g-x*
+  (fn-ipp-injected-octets (fn-own-sub-decision *apc-g-sub*) *apc-g-secret*
+                          (fn-own-sub-login *apc-g-sub*) *osi-cfg*))
+; The corrupted carry (no take writes it): the injected octets carried with
+; the parse of the same octets under a Cancel-Lock header, so the owner
+; thinks the author locked the article and writes no lock of its own.
+(defconst *apc-g-bad*
+  (list (cons *apc-g-x*
+              (fn-article-parse (append (fn-nntp-string-octets "Cancel-Lock: sha256:AAAA") '(13 10)
+                                        *apc-g-x*)))))
+(defconst *apc-g-finish* (apc-t-eval *apc-g-o* *osi-cfg* *apc-g-prior* *apc-g-carry*))
+(defconst *apc-g-bad-finish* (apc-t-eval *apc-g-o* *osi-cfg* *apc-g-prior* *apc-g-bad*))
+; Positive: the take's carry, both hypotheses, the equality; the finish is
+; :durable and the account's lock is in the stored octets (non-degenerate:
+; stored /= injected).
+
+; Removal of (fn-apc-p carry): the index hypothesis holds; the carried
+; stored octets lose the lock, so the finish answers :fault where the
+; reference answers :durable.
+
+; Removal of (fn-ceis-indexedp (fn-own-store o)) (CORRUPTED Store): the same
+; owner with its Store's event index built from no history; fn-apc-p holds,
+; the Store is a state and completion-enabled, and the indexed completion's
+; owner differs from the reference's (same word).
+
+
+
+
+; Not done here: fn-apc-own-outcome-is-acar-own-outcome's fn-apc-p (the carry
+; is read only for peer targets, and no owner here posts with a peer) and
+; fn-apc-submission-intent-is-reference's fn-icar-carryp.

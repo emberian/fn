@@ -19,90 +19,19 @@
 ; the sync reads only the rows past the stobj's count.
 
 (in-package "ACL2")
-(include-book "history-columns")
+(include-book "history-columns-relation")
 (include-book "owner-invariants-served")
 (include-book "store-carried-folds")
 
 (local (include-book "arithmetic/top" :dir :system))
 
-(defun fn-hist-sync-aux (k n files fn-hist)
-  (declare (xargs :stobjs fn-hist
-                  :guard (and (natp k) (natp n))
-                  :measure (nfix (- (nfix n) (nfix k)))))
-  (if (and (natp k) (natp n) (< k n))
-      (let ((fn-hist (fn-hist-append (fn-sf-records-nth k files) fn-hist)))
-        (fn-hist-sync-aux (1+ k) n files fn-hist))
-    fn-hist))
-
-; The rows of FILES' history past the stobj's count, appended in order.
-(defun fn-hist-sync (files fn-hist)
-  (declare (xargs :stobjs fn-hist))
-  (fn-hist-sync-aux (fn-hist-count fn-hist) (fn-sf-records-count files)
-                    files fn-hist))
-
-; -----------------------------------------------------------------------------
-; The sync over a prefix is the history.
-
-(local
- (defun fn-hist-slice (k n xs)
-   (declare (xargs :measure (nfix (- (nfix n) (nfix k)))))
-   (if (and (natp k) (natp n) (< k n))
-       (cons (nth k xs) (fn-hist-slice (1+ k) n xs))
-     nil)))
-
-(local
- (defthm fn-hist-sync-aux-is-append-slice
-   (implies (true-listp fn-hist)
-            (equal (fn-hist-sync-aux k n files fn-hist)
-                   (append fn-hist (fn-hist-slice k n (fn-sf-records files)))))
-   :hints (("Goal" :in-theory (enable fn-sf-records-nth)
-            :induct (fn-hist-sync-aux k n files fn-hist)))))
+; fn-hist-sync and fn-hist-sync-of-prefix-is-the-history: books/history-columns-relation.lisp.
 
 (local
  (defthm fn-hist-nthcdr-unroll
    (implies (and (natp k) (< k (len xs)))
             (equal (nthcdr k xs) (cons (nth k xs) (nthcdr (1+ k) xs))))))
-
-(local
- (defthm fn-hist-nthcdr-len
-   (implies (true-listp xs) (equal (nthcdr (len xs) xs) nil))))
-
-(local
- (defthm fn-hist-slice-is-nthcdr
-   (implies (and (true-listp xs) (natp k) (<= k (len xs)))
-            (equal (fn-hist-slice k (len xs) xs) (nthcdr k xs)))
-   :hints (("Goal" :induct (fn-hist-slice k (len xs) xs)
-            :in-theory (disable nthcdr nth len)))))
-
 (local (in-theory (disable fn-hist-nthcdr-unroll)))
-
-(local
- (defthm fn-hist-prefix-append-nthcdr
-   (implies (and (fn-sf-prefixp h xs) (true-listp xs))
-            (equal (append h (nthcdr (len h) xs)) xs))
-   :hints (("Goal" :in-theory (enable fn-sf-prefixp)))))
-
-(local
- (defthm fn-hist-prefix-len
-   (implies (fn-sf-prefixp h xs) (<= (len h) (len xs)))
-   :rule-classes :linear
-   :hints (("Goal" :in-theory (enable fn-sf-prefixp)))))
-
-(local
- (defthm fn-hist-prefix-true-listp
-   (implies (fn-sf-prefixp h xs) (true-listp h))
-   :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-sf-prefixp)))))
-
-(defthm fn-hist-sync-of-prefix-is-the-history
-  (implies (and (fn-sf-prefixp fn-hist (fn-sf-records files))
-                (true-listp (fn-sf-records files)))
-           (equal (fn-hist-sync files fn-hist) (fn-sf-records files)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-hist-sync fn-sf-records-count)
-                           (fn-hist-sync-aux fn-sf-prefixp)))))
-
-(in-theory (disable fn-hist-sync))
 
 (local
  (defthm fn-hist-own-relation-records-true-listp

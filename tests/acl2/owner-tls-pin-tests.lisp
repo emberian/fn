@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "owner-verdict-tests")
 (include-book "../../books/owner-tls-prefix")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (fn-wire-statep
@@ -46,7 +46,7 @@
  (not (equal (fn-served-result-effects
               (in-arena-fn-served-step *sr-arena* *otp-unpinned* *ov-hdr*))
              (fn-own-tls-result-effects *otp-tls-b*))))
-(must-fail
+(must-fail-checked
  (defthm otp-dropping-verdict-pin-is-equivalent
    (equal (fn-served-result-effects
            (fn-served-step *otp-unpinned* *ov-hdr* fn-arena))

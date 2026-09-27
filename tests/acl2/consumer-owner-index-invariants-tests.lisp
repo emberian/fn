@@ -3,19 +3,33 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-owner-index-invariants")
 (include-book "consumer-owner-local-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
-(assert-event (fn-ceis-relatedp *colt-after-article*))
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-col-poll-hx (o consumer hist)
+  ; fn-col-poll over a history stobj loaded with HIST (R holds when HIST is the history it reads).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix hist) 0 fn-hist)))
+        (mv (fn-col-poll o consumer fn-hist) fn-hist))
+      ans)))
+
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-col-poll-h (o consumer)
+  ; fn-col-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-col-poll o consumer fn-hist) fn-hist))
+      ans)))
+
+
 (assert-event (fn-snt-relation *colt-after-article*))
+
 (assert-event
- (let* ((store *colt-after-article*)
-        (files (fn-sn-files store)))
-   (and (fn-ceis-relatedp store)
-        (not (member-eq (fn-sf-phase files)
-                        '(:replaying :fault)))
-        (fn-sf-statep files))))
-(assert-event
- (equal (fn-col-poll (fn-own-start *colt-after-article* 2) *colt-id*)
+ (equal (fn-col-poll-h (fn-own-start *colt-after-article* 2) *colt-id*)
         (fn-col-poll-list-reference
          (fn-own-start *colt-after-article* 2) *colt-id*)))
 
@@ -31,48 +45,25 @@
     (fn-sn-with-consumer store
                          (update-nth 5 (cons bad (cdr entries)) s))))
 (assert-event
- (equal (fn-col-poll (fn-own-start *coit-bad-ack-store* 2) *colt-id*)
+ (equal (fn-col-poll-h (fn-own-start *coit-bad-ack-store* 2) *colt-id*)
         '(:refused :scope)))
 (assert-event
  (equal (fn-col-poll-list-reference
          (fn-own-start *coit-bad-ack-store* 2) *colt-id*)
         '(:refused :scope)))
 
-(defconst *coit-stale-index*
-  (fn-sn-with-event-index *colt-after-article* nil))
-(assert-event (not (fn-ceis-relatedp *coit-stale-index*)))
+;; Without R (lane history-columns-3: the store node's event index is
+;; retired): the poll read through a history stobj that is NOT the Store's
+;; history (empty) answers differently from the list reference.
+(defconst *coit-owner* (fn-own-start *colt-after-article* 2))
+(assert-event (consp (fn-sf-records (fn-sn-files (fn-own-store *coit-owner*)))))
 (assert-event
- (and (fn-sf-statep (fn-sn-files *coit-stale-index*))
-      (not (member-eq
-            (fn-sf-phase (fn-sn-files *coit-stale-index*))
-            '(:replaying :fault)))))
+ (not (equal (fn-col-poll-hx *coit-owner* *colt-id* nil)
+             (fn-col-poll-list-reference *coit-owner* *colt-id*))))
 (assert-event
- (not (equal (fn-col-poll (fn-own-start *coit-stale-index* 2) *colt-id*)
-             (fn-col-poll-list-reference
-              (fn-own-start *coit-stale-index* 2) *colt-id*))))
-(must-fail
+ (equal (fn-col-poll-h *coit-owner* *colt-id*)
+        (fn-col-poll-list-reference *coit-owner* *colt-id*)))
+(must-fail-checked
  (assert-event
-  (equal (fn-col-poll (fn-own-start *coit-stale-index* 2) *colt-id*)
-         (fn-col-poll-list-reference
-          (fn-own-start *coit-stale-index* 2) *colt-id*))))
-
-; The phase premise matters because the maintained index relation is
-; intentionally vacuous in :fault/:replaying, when poll is not served.
-(defconst *coit-fault-files*
-  (let ((files (fn-sn-files *colt-after-article*)))
-    (fn-sf-make :fault (fn-sf-frontier files) nil
-                (fn-sf-records files) nil nil
-                (fn-sf-successes files) 0)))
-(defconst *coit-fault-stale-index*
-  (fn-sn-with-event-index
-   (fn-sn-update *colt-after-article* *coit-fault-files*
-                 (fn-sn-node *colt-after-article*))
-   nil))
-(assert-event (fn-ceis-relatedp *coit-fault-stale-index*))
-(assert-event
- (fn-sf-statep (fn-sn-files *coit-fault-stale-index*)))
-(must-fail
- (assert-event
-  (equal (fn-col-poll (fn-own-start *coit-fault-stale-index* 2) *colt-id*)
-         (fn-col-poll-list-reference
-          (fn-own-start *coit-fault-stale-index* 2) *colt-id*))))
+  (equal (fn-col-poll-hx *coit-owner* *colt-id* nil)
+         (fn-col-poll-list-reference *coit-owner* *colt-id*))))

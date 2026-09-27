@@ -4,7 +4,7 @@
 ; must-fail per hypothesis: the hypothesis false and the conclusion false.
 (in-package "ACL2")
 (include-book "../../books/article-header-limits")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-ahlt-fields (n)
   ; N fields "X: x" then the blank line and a one-line body.
@@ -79,7 +79,7 @@
       (fn-article-limit-reasonp (cadr (fn-article-parse-under *ahlt-1001* *ahlt-raised*)))))
 ; Tooth (the input parses under WIDER): WIDER admits 1 field, the input has 2
 ; within LIMITS; the two parses differ.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((wider (fn-article-limits 1 10 100)) (octets (fn-ahlt-fields 2)))
     (implies (fn-article-census-within (fn-article-header-census octets) *ahlt-raised*)
@@ -90,7 +90,7 @@
 (defconst *ahlt-bad* '(9 120 13 10 13 10))
 (assert-event (equal (fn-article-parse-under *ahlt-bad* *ahlt-ceiling*)
                      '(:error :invalid-header)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-article-limit-reasonp (cadr (fn-article-parse-under *ahlt-bad* (fn-article-limits 5 10 1000))))))
 
@@ -99,7 +99,7 @@
  (and (fn-article-result-okp (fn-article-parse-under *ahlt-1000* *ahlt-raised*))
       (fn-article-census-within (fn-article-header-census *ahlt-1000*) *ahlt-raised*)))
 ; Tooth (the parse succeeds): 1,001 fields are not within the raised limits.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-article-census-within (fn-article-header-census *ahlt-1001*) *ahlt-raised*)))
 
@@ -111,12 +111,12 @@
              (fn-article-parse-under *ahlt-64* *fn-article-default-limits*))))
 ; Tooth (the parse succeeds under LIMITS): 65 fields, refused by the
 ; defaults, admitted by the raised limits.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-article-parse-under *ahlt-65* *ahlt-raised*)
          (fn-article-parse-under *ahlt-65* *fn-article-default-limits*))))
 ; Tooth (LIMITS within WIDER): "wider" narrower than the defaults.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-article-parse-under *ahlt-64* (fn-article-limits 10 256 16384))
          (fn-article-parse-under *ahlt-64* *fn-article-default-limits*))))
@@ -144,7 +144,7 @@
 (assert-event (equal (fn-article-census-refusal (fn-article-header-census *ahlt-bad-then-65*)
                                                 *fn-article-default-limits*)
                      :header-fields-limit))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-article-limit-reasonp
    (cadr (fn-article-parse-under *ahlt-bad-then-65* *fn-article-default-limits*)))))

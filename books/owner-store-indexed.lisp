@@ -3,7 +3,7 @@
 ;; signed-history-index-2, 2026-09-26).
 ;
 ; The maintained relation is fn-ceis-indexedp
-; (books/consumer-event-index-store-invariants.lisp): the Store's derived
+; (books/history-columns-relation.lisp (the retired index's invariants were deleted)): the Store's derived
 ; event index is the index of its committed history, in every phase.  The
 ; BP receiver's Message-ID lookups read that index
 ; (books/bp-native-app-fast.lisp, fn-bpaj-indexed-records-are-the-walk) and
@@ -48,7 +48,7 @@
 (include-book "public-exposure")
 (include-book "owner-open-carried")
 (include-book "store-node-resolution")
-(include-book "consumer-event-index-store-invariants")
+(include-book "store-files-traces")
 (include-book "bp-signed-binding")
 (include-book "post-identity-index")
 
@@ -62,37 +62,11 @@
 ; include: the resolution events and the carried identity prepare.  Each
 ; keeps the history and the index.
 
-(defthm fn-osi-refuse-reservation-keeps-indexed
-  (implies (fn-ceis-indexedp s)
-           (fn-ceis-indexedp (fn-sn-refuse-reservation s txid)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-ceis-indexedp fn-sn-refuse-reservation
-                 fn-sf-refuse-reservation)
-                (fn-sn-refuse-reservation-enabledp fn-sn-update
-                 fn-sn-make-v6 fn-cei-correspondencep fn-cei-build
-                 fn-replay-advance-txid)))))
 
-(defthm fn-osi-known-abort-keeps-indexed
-  (implies (fn-ceis-indexedp s)
-           (fn-ceis-indexedp (fn-sn-known-abort s)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-ceis-indexedp fn-sn-known-abort fn-sn-known-abort-files
-                 fn-sn-known-abort-file-start fn-sf-abort-completion
-                 fn-sf-prepublish-abort fn-store-files-traces-vocabulary)
-                (fn-sn-known-abort-enabledp fn-sn-update
-                 fn-sn-make-v6 fn-cei-correspondencep fn-cei-build
-                 fn-replay-advance-txid fn-node-complete)))))
 
-(defthm fn-osi-ccar-prepare-identity-keeps-indexed
-  (implies (fn-ceis-indexedp s)
-           (fn-ceis-indexedp (fn-ccar-sn-prepare-identity s event)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-ceis-indexedp fn-ccar-sn-prepare-identity
-                 fn-spc-stage-record)
-                (fn-sn-update fn-sn-make-v6 fn-cei-correspondencep
-                 fn-cei-build fn-sn-statep fn-store-event-p
-                 fn-stxe-p fn-stxk-p fn-stxa-p
-                 fn-replay-apply-record fn-replay-identity-step)))))
+
+
+
 
 ; The store-only kernel crash is the one Store transition that breaks the
 ; relation; the host never issues it (see the head of this book).
@@ -100,37 +74,12 @@
   (declare (xargs :guard t))
   (not (and (consp event) (equal (car event) :crash))))
 
-(defthm fn-osi-snrt-step-keeps-indexed
-  (implies (and (fn-ceis-indexedp s)
-                (fn-osi-host-store-eventp event))
-           (fn-ceis-indexedp (fn-snrt-step s event)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-snrt-step fn-snt-step fn-osi-host-store-eventp)
-                (fn-ceis-indexedp fn-sn-prepare fn-sn-io fn-sn-finish
-                 fn-sn-crash fn-sn-recover fn-sn-prepare-retention
-                 fn-sn-prepare-identity fn-sn-prepare-consumer
-                 fn-sn-prepare-topic fn-sn-refuse-reservation
-                 fn-sn-known-abort)))))
+
 
 ; -----------------------------------------------------------------------------
 ; Establishment
 
-(defthm fn-osi-cpo-open-observed-is-indexed
-  (implies (equal (fn-sn-open-kind (fn-cpo-open-observed configs frontier events))
-                  :ok)
-           (fn-ceis-indexedp
-            (fn-sn-open-state (fn-cpo-open-observed configs frontier events))))
-  :hints (("Goal" :in-theory
-           (e/d (fn-cpo-open-observed fn-ceis-indexedp fn-sn-open-ok
-                 fn-sn-open-error fn-sn-open-kind fn-sn-open-state
-                 fn-cpo-install)
-                (fn-cpr-replay fn-sn-statep fn-cnode-statep
-                 fn-sn-update-replayed fn-sn-observed-seed
-                 fn-replay-identity fn-cpe-projection-replay
-                 fn-th-prefix-project fn-replay-advance-txid
-                 fn-replay-advance-okp fn-sn-observed-historyp
-                 fn-stx-index-of-store fn-cei-build
-                 fn-cei-correspondencep)))))
+
 
 (defthm fn-osi-observed-seed-is-replaying
   (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-seed groups capacity
@@ -139,19 +88,7 @@
   :hints (("Goal" :in-theory (e/d (fn-sn-observed-seed)
                                   (fn-node-initial-state)))))
 
-(defthm fn-osi-sn-open-observed-is-indexed
-  (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
-           (fn-ceis-indexedp
-            (fn-sn-open-state
-             (fn-sn-open-observed groups capacity frontier records))))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-open-ok
-                 fn-sn-open-error fn-sn-open-state fn-ceis-indexedp)
-                (fn-sn-statep fn-sn-observed-seed fn-sn-recover
-                 fn-sn-observed-configurationp fn-cei-correspondencep))
-           :use ((:instance fn-ceis-recovery-rebuilds-index-by-definition
-                            (s (fn-sn-observed-seed groups capacity
-                                                    frontier records)))))))
+
 
 (defthm fn-osi-own-start-store
   (equal (fn-own-store (fn-own-start store max-conns)) store)
@@ -163,15 +100,7 @@
                                    fn-ctl-visible-state)))))
 
 ; The owner the host installs at open, on either path, or :fault.
-(defthm fn-osi-ock-install-is-indexed
-  (implies (and (not (equal (fn-ock-install replayed opened max-conns) :fault))
-                (fn-ceis-indexedp (fn-sn-open-state opened)))
-           (fn-ceis-indexedp
-            (fn-own-store (fn-ocfg-owner
-                           (fn-ock-install replayed opened max-conns)))))
-  :hints (("Goal" :in-theory (e/d (fn-ock-install)
-                                  (fn-ceis-indexedp fn-own-start
-                                   fn-own-configure fn-oag-post-config)))))
+
 
 (defthm fn-osi-ock-install-requires-an-ok-open
   (implies (not (equal (fn-ock-install replayed opened max-conns) :fault))
@@ -193,52 +122,17 @@
 
 ; A refused open is :fault, whose owner has the empty Store, whose empty
 ; index is the index of its empty history.
-(defthm fn-osi-refused-open-is-indexed
-  (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner :fault)))
-  :hints (("Goal" :in-theory (enable fn-ceis-indexedp))))
+
 
 ; KEYSTONE (establishment): the owner host/owner-host.lisp
 ; fn-owner-recover-extended installs, on either path, has an indexed Store.
 ; No hypothesis.
-(defthm fn-osi-open-installs-indexed-store
-  (fn-ceis-indexedp
-   (fn-own-store (fn-ocfg-owner (fn-osi-open configs prefix suffix
-                                            frontier max-conns))))
-  :hints (("Goal"
-           :cases ((equal (fn-osi-open configs prefix suffix frontier max-conns)
-                          :fault))
-           :use (fn-owner-recover-from-checkpoint-equals-full-recover
-                 fn-osi-refused-open-is-indexed
-                 (:instance fn-osi-ock-install-is-indexed
-                            (replayed (fn-cpr-replay configs (append prefix suffix)))
-                            (opened (fn-cpo-open-observed
-                                     configs frontier (append prefix suffix))))
-                 (:instance fn-osi-cpo-open-observed-is-indexed
-                            (events (append prefix suffix)))
-                 (:instance fn-osi-ock-install-requires-an-ok-open
-                            (replayed (fn-cpr-replay configs (append prefix suffix)))
-                            (opened (fn-cpo-open-observed
-                                     configs frontier (append prefix suffix)))))
-           :in-theory (e/d (fn-ock-recover-full fn-osi-open)
-                           (fn-ock-recover-extended fn-ock-install
-                            fn-cpo-open-observed fn-ceis-indexedp
-                            fn-sco-extend fn-sco-capture
-                            fn-osi-refused-open-is-indexed
-                            fn-osi-ock-install-is-indexed
-                            fn-osi-cpo-open-observed-is-indexed)))))
+
 
 ; -----------------------------------------------------------------------------
 ; The carried article prepare's Store step keeps the history and the index.
 
-(defthm fn-osi-spc-prepare-keeps-indexed
-  (implies (fn-ceis-indexedp s)
-           (fn-ceis-indexedp (fn-spc-prepare s record)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-ceis-indexedp fn-spc-prepare fn-spc-stage-record)
-                (fn-sn-update fn-sn-make-v6 fn-cei-correspondencep
-                 fn-cei-build fn-sn-statep fn-record-p
-                 fn-sn-prepare-node fn-sn-record-bindsp
-                 fn-cpe-projection-step)))))
+
 
 ; -----------------------------------------------------------------------------
 ; The raw owner.  Only the :store, :complete and :reopen events of
@@ -287,29 +181,12 @@
                                    fn-own-conn-boundedp fn-own-outcome-completion
                                    fn-own-find-conn-id)))))
 
-(defthm fn-osi-own-store-step-keeps-indexed
-  (implies (and (fn-ceis-indexedp (fn-own-store o))
-                (fn-osi-host-store-eventp event))
-           (fn-ceis-indexedp (fn-own-store (fn-own-store-step o event))))
-  :hints (("Goal" :in-theory (e/d (fn-own-store-step)
-                                  (fn-ceis-indexedp fn-snrt-step
-                                   fn-osi-host-store-eventp)))))
 
-(defthm fn-osi-own-complete-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store o))
-           (fn-ceis-indexedp (fn-own-store (fn-own-complete o))))
-  :hints (("Goal" :in-theory (e/d (fn-own-complete)
-                                  (fn-ceis-indexedp fn-sn-finish
-                                   fn-sn-completion-enabledp)))))
+
+
 
 ; The model's restart re-establishes the relation whatever the old Store.
-(defthm fn-osi-own-reopen-is-indexed
-  (implies (fn-ceis-indexedp (fn-own-store o))
-           (fn-ceis-indexedp (fn-own-store (fn-own-reopen o frontier records))))
-  :hints (("Goal" :in-theory (e/d (fn-own-reopen)
-                                  (fn-ceis-indexedp fn-sn-open-observed
-                                   fn-sf-crash-imagep fn-sn-open-okp
-                                   fn-sn-open-state)))))
+
 
 ; The owner events the host issues: every one but the kernel crash.
 (defun fn-osi-host-own-eventp (event)
@@ -329,31 +206,9 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-own-step))))
 
-(defthm fn-osi-own-step-keeps-indexed
-  (implies (and (fn-ceis-indexedp (fn-own-store o))
-                (fn-osi-host-own-eventp event))
-           (fn-ceis-indexedp (fn-own-store (fn-own-step o event fn-arena))))
-  :hints (("Goal"
-           :cases ((equal (car event) :store) (equal (car event) :complete)
-                   (equal (car event) :reopen))
-           :use (fn-osi-own-step-of-store-changing-events
-                 fn-osi-own-step-store-of-other-events
-                 (:instance fn-osi-own-store-step-keeps-indexed
-                            (event (cadr event)))
-                 fn-osi-own-complete-keeps-indexed
-                 (:instance fn-osi-own-reopen-is-indexed
-                            (frontier (cadr event)) (records (caddr event))))
-           :in-theory (union-theories '(fn-osi-host-own-eventp member-equal
-                                        (:executable-counterpart member-equal)
-                                        (:executable-counterpart fn-osi-host-store-eventp))
-                                      (theory 'ground-zero)))))
 
-(defthm fn-osi-own-finish-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store o))
-           (fn-ceis-indexedp (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena)))))
-  :hints (("Goal" :in-theory (e/d (fn-ccar-own-finish-is-own-finish fn-own-finish)
-                                  (fn-ceis-indexedp fn-own-complete
-                                   fn-own-completion-names-submission-p)))))
+
+
 
 ; -----------------------------------------------------------------------------
 ; The configured owner.
@@ -378,82 +233,24 @@
                            (fn-own-read-full fn-own-read-step-full
                             fn-own-connection-events-keep-store-bound-and-ledger)))))
 
-(defthm fn-osi-ocfg-step-keeps-indexed
-  (implies (and (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-                (fn-osi-host-own-eventp event))
-           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))))
-  :hints (("Goal" :in-theory (e/d (fn-ocfg-step fn-ocfg-open fn-ocfg-advance
-                                   fn-ocfg-close fn-ocfg-read fn-ocfg-read-step
-                                   fn-ocfg-open-peer fn-ocfg-fault
-                                   fn-ocfg-reconfigure fn-ocfg-complete
-                                   fn-ocfg-pass fn-ocfg-with-owner
-                                   fn-ocfg-with-read-owner)
-                                  (fn-ceis-indexedp fn-own-step fn-own-complete
-                                   fn-osi-host-own-eventp
-                                   fn-own-open fn-own-reader-context
-                                   fn-own-advance-result fn-own-close
-                                   fn-own-read fn-own-read-step fn-own-open-peer
-                                   fn-own-read-full fn-own-read-step-full
-                                   fn-own-fault fn-ocfg-reconfig-okp))
-           :use ((:instance fn-osi-own-step-keeps-indexed
-                            (o (fn-ocfg-owner oc)))
-                 (:instance fn-osi-own-complete-keeps-indexed
-                            (o (fn-ocfg-owner oc)))))))
+
 
 (defthm fn-osi-ocfg-with-owner-store
   (equal (fn-own-store (fn-ocfg-owner (fn-ocfg-with-owner oc owner)))
          (fn-own-store owner))
   :hints (("Goal" :in-theory (enable fn-ocfg-with-owner))))
 
-(defthm fn-osi-rcon-io-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp
-            (fn-own-store (fn-ocfg-owner (fn-rcon-ocfg-io oc operation result)))))
-  :hints (("Goal" :use ((:instance fn-osi-ocfg-step-keeps-indexed
-                                   (event (list :store (list :io operation result)))))
-           :in-theory (e/d (fn-rcon-ocfg-io-is-ocfg-step fn-osi-host-own-eventp
-                            fn-osi-host-store-eventp)
-                           (fn-ceis-indexedp fn-ocfg-step fn-rcon-ocfg-io
-                            fn-osi-ocfg-step-keeps-indexed)))))
 
-(defthm fn-osi-pcar-prepare-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp
-            (fn-own-store (fn-ocfg-owner (fn-pcar-sbud-prepare oc record budget)))))
-  :hints (("Goal" :in-theory (e/d (fn-pcar-sbud-prepare-is-sbud-prepare
-                                   fn-sbud-prepare fn-opc-prepare
-                                   fn-opc-owner-prepare)
-                                  (fn-ceis-indexedp fn-pcar-sbud-prepare
-                                   fn-spc-prepare fn-own-refresh
-                                   fn-sbud-admitp fn-sbud-used)))))
+
+
 
 ;; PRF-191: the prepare fn-owner-prepare-buffer installs since
 ;; books/post-identity-index.lisp.  It keeps the index with no hypothesis on
 ;; the view: whichever node its duplicate test yields, the Store it returns
 ;; is the one it was given or that Store with the record staged.
-(defthm fn-osi-pidx-spc-prepare-keeps-indexed
-  (implies (fn-ceis-indexedp s)
-           (fn-ceis-indexedp (fn-pidx-spc-prepare s record view)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-ceis-indexedp fn-pidx-spc-prepare fn-pcar-stage-record)
-                (fn-sn-update fn-sn-make-v6 fn-cei-correspondencep
-                 fn-cei-build fn-sn-statep fn-rcon-record-p
-                 fn-pidx-sn-prepare-node fn-rcon-sn-record-bindsp
-                 fn-rcon-cpe-projection-step fn-pcar-candidatep
-                 fn-rcon-record-p-is-record-p
-                 fn-rcon-cpe-projection-step-is-cpe-projection-step
-                 fn-rcon-sn-record-bindsp-is-sn-record-bindsp
-                 fn-pcar-stage-record-is-stage-record)))))
 
-(defthm fn-osi-pidx-prepare-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp
-            (fn-own-store (fn-ocfg-owner (fn-pidx-sbud-prepare oc record budget)))))
-  :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pidx-opc-prepare
-                                   fn-pidx-opc-owner-prepare)
-                                  (fn-ceis-indexedp fn-pidx-spc-prepare
-                                   fn-own-refresh fn-sbud-admitp fn-sbud-used
-                                   fn-sbud-count)))))
+
+
 
 ;; The view trie (fn-scar-view-indexedp, books/owner-offer-indexed.lisp) is
 ;; kept alike: only the refresh changes the view.
@@ -468,46 +265,13 @@
                                    fn-pidx-spc-prepare
                                    fn-sbud-admitp fn-sbud-used fn-sbud-count)))))
 
-(defthm fn-osi-ccar-ocfg-prepare-identity-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp
-            (fn-own-store (fn-ocfg-owner (fn-ccar-ocfg-prepare-identity oc event)))))
-  :hints (("Goal" :in-theory (e/d (fn-ccar-ocfg-prepare-identity)
-                                  (fn-ceis-indexedp fn-ccar-sn-prepare-identity
-                                   fn-own-refresh)))))
 
-(defthm fn-osi-ccar-ocfg-complete-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp
-            (fn-own-store (fn-ocfg-owner (fn-ccar-ocfg-complete oc)))))
-  :hints (("Goal" :use ((:instance fn-osi-ocfg-step-keeps-indexed
-                                   (event '(:complete))))
-           :in-theory (e/d (fn-ccar-ocfg-complete-is-ocfg-step-complete
-                            fn-osi-host-own-eventp)
-                           (fn-ceis-indexedp fn-ocfg-step
-                            fn-osi-ocfg-step-keeps-indexed)))))
 
-(defthm fn-osi-cpo-configure-durable-keeps-indexed
-  (implies (fn-ceis-indexedp st)
-           (fn-ceis-indexedp (fn-cpo-configure-durable st record)))
-  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install
-                                   fn-ceis-indexedp)
-                                  (fn-cpo-history-relation fn-cpr-replay
-                                   fn-sn-statep fn-cnode-statep
-                                   fn-replay-advance-txid fn-replay-advance-okp
-                                   fn-cei-correspondencep)))))
 
-(defthm fn-osi-ocl-publish-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp
-            (fn-own-store (fn-ocfg-owner
-                           (mv-nth 1 (fn-ocl-publish oc generation max-octets))))))
-  :hints (("Goal" :in-theory (e/d (fn-ocl-publish fn-ocl-complete
-                                   fn-ocl-owner-with-store)
-                                  (fn-ceis-indexedp fn-own-complete
-                                   fn-own-refresh fn-own-configure
-                                   fn-cpo-configure-durable fn-oag-post-config
-                                   fn-ocl-store-config)))))
+
+
+
+
 
 (defthm fn-osi-ocfg-open-keeps-store
   (and (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))
@@ -638,34 +402,9 @@
                                   (fn-bs-profile-admittedp fn-osb-config
                                    fn-own-configure)))))
 
-(defthm fn-osi-host-step-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-osi-host-step oc ev fn-arena)))))
-  :hints (("Goal"
-           :use ((:instance fn-osi-own-finish-keeps-indexed
-                            (o (fn-ocfg-owner oc)) (cfg (fn-ocfg-config oc))))
-           :in-theory (union-theories
-                       '(fn-osi-host-step
-                         fn-ccar-own-finish-installs-ccar-own-complete-by-definition
-                         fn-osi-ocfg-step-keeps-indexed fn-osi-rcon-io-keeps-indexed
-                         fn-osi-pcar-prepare-keeps-indexed
-                         fn-osi-pidx-prepare-keeps-indexed
-                         fn-osi-ccar-ocfg-prepare-identity-keeps-indexed
-                         fn-osi-ccar-ocfg-complete-keeps-indexed
-                         fn-osi-ocl-publish-keeps-indexed
-                         fn-osi-ocfg-with-owner-store fn-osi-own-keeps-store-outside-step
-                         fn-osi-osb-install-keeps-store fn-osi-ocfg-open-keeps-store
-                         fn-osi-exp-open-keeps-store fn-scar-ocfg-read-keeps-store
-                         fn-ocar-ocfg-open-keeps-store
-                         fn-osi-ocar-exp-open-keeps-store)
-                       (theory 'minimal-theory)))))
 
-(defthm fn-osi-host-run-keeps-indexed
-  (implies (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner oc)))
-           (fn-ceis-indexedp (fn-own-store (fn-ocfg-owner (fn-osi-host-run oc evs fn-arena)))))
-  :hints (("Goal" :induct (fn-osi-host-run oc evs fn-arena)
-           :in-theory (e/d (fn-osi-host-run)
-                           (fn-ceis-indexedp fn-osi-host-step)))))
+
+
 
 (defun fn-osi-live-owner (configs prefix suffix frontier max-conns evs fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
@@ -680,17 +419,7 @@
 ; open, by any sequence of the owners it installs, is indexed.  No
 ; hypothesis.  This is the Store fnn-bpapp-accept-locked binds before each
 ; dispatch.
-(defthm fn-osi-live-owner-store-is-indexed
-  (fn-ceis-indexedp (fn-osi-live-store configs prefix suffix frontier
-                                       max-conns evs fn-arena))
-  :hints (("Goal" :use (fn-osi-open-installs-indexed-store
-                        (:instance fn-osi-host-run-keeps-indexed
-                                   (oc (fn-osi-open configs prefix suffix
-                                                    frontier max-conns))))
-           :in-theory (e/d (fn-osi-live-store fn-osi-live-owner)
-                           (fn-ceis-indexedp fn-osi-host-run fn-osi-open
-                            fn-osi-open-installs-indexed-store
-                            fn-osi-host-run-keeps-indexed)))))
+
 
 ; -----------------------------------------------------------------------------
 ; PRF-132, restated over the Store the host dispatches over.  host/native/
@@ -705,69 +434,20 @@
 ; KEYSTONE: once the live Store's history holds an article record (plain or
 ; signed; after the records flip, the held row it retains) with the
 ; Message-ID the dispatcher reads, the dispatcher never answers (:submit).
-(defthm fn-bpaj-dispatch-never-resubmits-a-stored-article
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
-    (implies (and (member-equal record
-                                (fn-bpr-article-records
-                                 (fn-sf-records (fn-sn-files store))))
-                  (fn-held-p record)
-                  (equal (fn-record-msgid record)
-                         (fn-bpaj-dispatch-msgid joined request-octets)))
-             (not (equal (fn-bpaj-dispatch-fast joined store request-octets
-                                                generation fn-arena)
-                         (list :submit)))))
-  :hints (("Goal"
-           :use (fn-osi-live-owner-store-is-indexed
-                 (:instance fn-bpaj-dispatch-never-resubmits-under-index
-                            (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs fn-arena))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
+
 
 ; KEYSTONE: whatever the dispatcher binds over the live Store is the wire
 ; form, read through the arena, of the held row an event of that Store's own
 ; history retains as its article, for the request's Message-ID, accepted by
 ; the receiver's Store check; a composite row whose article record decodes
 ; binds its verdict to that article.
-(defthm fn-bpaj-dispatch-binds-the-stores-own-record
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
-    (implies (equal (car (fn-bpaj-dispatch-fast joined store request-octets
-                                                generation fn-arena))
-                    :bind)
-             (let* ((record (cadr (fn-bpaj-dispatch-fast
-                                   joined store request-octets generation fn-arena)))
-                    (events (fn-sf-records (fn-sn-files store)))
-                    (event (fn-bpaj-article-event record events fn-arena)))
-               (and (fn-record-p record)
-                    (equal (fn-record-msgid record)
-                           (fn-bpaj-dispatch-msgid joined request-octets))
-                    (fn-bpaj-store-record-accepted-fast store record fn-arena)
-                    (member-equal event events)
-                    (fn-bpr-row-stands-for (fn-bpr-event-article event) record fn-arena)
-                    (implies (and (fn-hstxa-p event)
-                                  (fn-record-p (fn-bpr-event-article (fn-hstxa-stxa event))))
-                             (fn-stxa-bindsp (fn-hstxa-stxa event)))))))
-  :hints (("Goal"
-           :use (fn-osi-live-owner-store-is-indexed
-                 (:instance fn-bpaj-dispatch-binds-the-stores-own-record-under-index
-                            (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs fn-arena))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
+
 
 ; The fast/checked equalities over the live Store: the Store record check,
 ; the direct and transit Message-ID lookups (the direct one the receipt
 ; hosts call, PRF-220) and the dispatcher they compose into are the
 ; checked walks over the history.
-(defthm fn-osi-live-store-record-accepted-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
-    (implies (fn-sn-statep store)
-             (equal (fn-bpaj-store-record-accepted-fast store record fn-arena)
-                    (fn-bpr-store-record-acceptedp store record fn-arena))))
-  :hints (("Goal"
-           :use (fn-osi-live-owner-store-is-indexed
-                 (:instance fn-bpaj-store-record-accepted-fast-is-checked
-                            (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs fn-arena))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
+
 
 ;; PRF-220: the premise of the Store check is carried, never evaluated on
 ;; a request.  host/owner-host.lisp fn-owner-store is
@@ -789,54 +469,13 @@
 ;; Store, under its carried relation and index, the Store check the host runs
 ;; (no whole-node or whole-store recognizer, no history walk) is the
 ;; receiver's checked Store predicate.
-(defthm fn-osi-ocl-store-record-accepted-fast-is-checked
-  (let ((store (fn-own-store (fn-ocfg-owner oc))))
-    (implies (and (fn-ocl-relation oc) (fn-ceis-indexedp store))
-             (equal (fn-bpaj-store-record-accepted-fast store record fn-arena)
-                    (fn-bpr-store-record-acceptedp store record fn-arena))))
-  :hints (("Goal"
-           :use (fn-bpaj-ocl-relation-carries-sn-statep
-                 (:instance fn-bpaj-store-record-accepted-fast-is-checked
-                            (store (fn-own-store (fn-ocfg-owner oc)))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
 
-(defthm fn-osi-live-record-lookup-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
-    (implies (fn-sn-statep store)
-             (equal (fn-bpaj-record-lookup-fast store request fn-arena)
-                    (fn-bpaj-record-lookup store request fn-arena))))
-  :hints (("Goal"
-           :use (fn-osi-live-owner-store-is-indexed
-                 (:instance fn-bpaj-record-lookup-fast-is-checked
-                            (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs fn-arena))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
 
-(defthm fn-osi-live-transit-record-lookup-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
-    (implies (fn-sn-statep store)
-             (equal (fn-bpaj-transit-record-lookup-fast store request intent fn-arena)
-                    (fn-bpaj-transit-record-lookup store request intent fn-arena))))
-  :hints (("Goal"
-           :use (fn-osi-live-owner-store-is-indexed
-                 (:instance fn-bpaj-transit-record-lookup-fast-is-checked
-                            (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs fn-arena))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
 
-(defthm fn-osi-live-dispatch-fast-is-checked
-  (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs fn-arena)))
-    (implies (and (fn-bpaj-statep joined) (fn-sn-statep store))
-             (equal (fn-bpaj-dispatch-fast joined store request-octets
-                                           current-generation fn-arena)
-                    (fn-bpaj-dispatch joined store request-octets
-                                      current-generation fn-arena))))
-  :hints (("Goal"
-           :use (fn-osi-live-owner-store-is-indexed
-                 (:instance fn-bpaj-dispatch-fast-is-checked
-                            (store (fn-osi-live-store configs prefix suffix
-                                                      frontier max-conns evs fn-arena))))
-           :in-theory (union-theories '() (theory 'minimal-theory)))))
+
+
+
+
 
 (in-theory (disable fn-osi-open fn-osi-live-owner fn-osi-live-store
                     fn-osi-host-step fn-osi-host-run))

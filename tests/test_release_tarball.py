@@ -5,7 +5,7 @@ tools/runpath_check.py's GLIBC_FLOOR (the release runs on Debian 12).
 
 Needs a release built by packaging/release-tarball.sh on this platform:
 
-    FN_RELEASE_TARBALL=/abs/out/fn-6.7.N-linux-x86_64.tar.gz \\
+    FN_RELEASE_TARBALL=/abs/out/fn-6.6.0-linux-x86_64.tar.gz \\
         python3 -m unittest -v tests.test_release_tarball
 
 (OUT_DIR/SHA256SUMS beside it).  The install refuses a node whose store
@@ -31,6 +31,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import runpath_check  # noqa: E402
+import release_sequence  # noqa: E402
 sys.path.insert(0, str(ROOT))
 from tests import older_release_store as older  # noqa: E402
 
@@ -83,7 +84,7 @@ class ReleaseTarballTests(unittest.TestCase):
         for rel in ("SHA256SUMS", "install.sh", "bin/fn", "libexec/fn/fn-host",
                     "libexec/fn/fn-host.core", "libexec/fn/source-revision",
                     "libexec/fn/runtime/sbcl", "libexec/fn/lib/libfn-mldsa65.so",
-                    "share/fn/fn.toml.example", "share/fn/docs/install.md",
+                    "share/fn/fn.toml.example", "share/fn/docs/fn-faq-3.txt",
                     "share/fn/release-gate.txt", "share/fn/runpath-check.txt"):
             self.assertTrue((self.top / rel).exists(), rel)
         self.assertTrue(list((self.top / "libexec/fn/lib").glob("libsodium.so.*")))
@@ -91,6 +92,30 @@ class ReleaseTarballTests(unittest.TestCase):
                    else "share/fn/systemd/fn.service.in")
         self.assertTrue((self.top / service).is_file(), service)
         self.assertFalse((self.top / "libexec/fn/fn-host-developer").exists())
+
+    def test_the_clients_ship_beside_the_node_and_apart_from_it(self):
+        # The friends' web reader and the other clients (packaging/
+        # install-clients.sh): Python in clients/ only, a launcher each, the
+        # reader's service, its settings and a Caddy snippet.
+        for name in ("fn-reader", "fn-web", "fn-client", "fn-agent", "fn-consumer",
+                     "fn-verify"):
+            self.assertTrue(os.access(self.top / "clients/bin" / name, os.X_OK), name)
+        for rel in ("clients/lib/fn_reader.py", "clients/lib/nntp_session.py",
+                    "clients/README.txt", "clients/share/fn-reader.conf.example",
+                    "clients/share/caddy/fn-reader.caddy", "share/fn/docs/web.md",
+                    ("clients/share/rc.d/fn_reader.rc.in" if platform.system() == "OpenBSD"
+                     else "clients/share/systemd/fn-reader.service.in")):
+            self.assertTrue((self.top / rel).is_file(), rel)
+        python = {p.relative_to(self.top).as_posix() for p in self.top.rglob("*.py")}
+        self.assertTrue(python and all(rel.startswith("clients/lib/") for rel in python),
+                        python)
+        record = (self.top / "share/fn/runpath-check.txt").read_text()
+        self.assertIn("clients/: 7 Python programs", record)
+        if shutil.which("python3"):
+            shown = subprocess.run([str(self.top / "clients/bin/fn-reader"), "--help"],
+                                   env=CLEAN_ENV, capture_output=True, text=True, timeout=60)
+            self.assertEqual(shown.returncode, 0, shown.stderr)
+            self.assertIn("--settings", shown.stdout)
 
     def test_inner_sums_cover_every_file(self):
         listed = sums(self.top / "SHA256SUMS")
@@ -106,13 +131,15 @@ class ReleaseTarballTests(unittest.TestCase):
         out = subprocess.run([str(self.top / "bin/fn"), "--version"], env=CLEAN_ENV,
                              capture_output=True, text=True, timeout=120)
         self.assertEqual(out.returncode, 0, out.stderr)
-        # `fn 6.7.N (REV12)': VERSION's release version, built into the image.
-        printed = re.fullmatch(r"fn (6\.7\.(?:0|[1-9][0-9]*)) \(([0-9a-f]{12})\)\n", out.stdout)
+        # `fn VERSION (REV12)': VERSION's release version, built into the
+        # image, an entry of D37's release sequence.
+        printed = re.fullmatch(r"fn ([0-9.]+) \(([0-9a-f]{12})\)\n", out.stdout)
         self.assertIsNotNone(printed, out.stdout)
         version, short = printed.groups()
+        release_sequence.position(version)
         self.assertEqual(short, rev[:12])
-        # A gated release is fn-6.7.N-PLATFORM.tar.gz; a --frozen package
-        # (not a release) is fn-6.7.N+REV12-PLATFORM.tar.gz.
+        # A gated release is fn-VERSION-PLATFORM.tar.gz; a --frozen package
+        # (not a release) is fn-VERSION+REV12-PLATFORM.tar.gz.
         self.assertRegex(self.tarball.name,
                          "^fn-" + re.escape(version) + "(\\+" + short + ")?"
                          + "-(linux-x86_64|openbsd-amd64)\\.tar\\.gz$")

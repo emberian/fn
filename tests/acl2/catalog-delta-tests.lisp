@@ -15,7 +15,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/catalog-delta")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-cat-apply-delta (w state)) :common-lisp-compliant)
@@ -167,7 +167,7 @@
        (not (equal (fn-cat-apply-in-quanta (list :policy 1 0 2) 1 '(1) nil *cdt-a* *cdt-c*)
                    (fn-cat-apply-delta (list :policy 1 0 2) nil *cdt-a* *cdt-c*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm cdt-r-in-quanta-without-cursor
    (equal (fn-cat-apply-in-quanta (list :policy 1 0 2) 1 '(1) nil *cdt-a* *cdt-c*)
           (fn-cat-apply-delta (list :policy 1 0 2) nil *cdt-a* *cdt-c*))
@@ -215,7 +215,7 @@
        (not (equal (fn-held-withdrawn (fn-cat-at 0 (fn-cat-withdraw 0 2 *cdt-c-w*)))
                    (cons (fn-cat-count *cdt-c-w*) 2))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm cdt-r-cancel-without-fresh-target
    (equal (fn-held-withdrawn (fn-cat-at 0 (fn-cat-withdraw 0 2 *cdt-c-w*)))
           (cons (fn-cat-count *cdt-c-w*) 2))

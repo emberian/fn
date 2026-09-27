@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/consumer-local-control")
 
 (defconst *ncl-id* '(7))
@@ -76,7 +76,7 @@
  (equal (fn-ncl-status-reply-decode
          (fn-ncl-status-reply-encode :fault nil nil nil))
         '(:consumer-status-reply :fault nil nil nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ncl-status-reply-decode
           (fn-ncl-status-reply-encode :other nil nil nil))
@@ -88,12 +88,12 @@
 ; The next four must-fail cases isolate, in theorem order, the ACK uint32,
 ; frontier uint32, ACK<=frontier and exact-distance hypotheses.  Each keeps
 ; every other premise true and falsifies the claimed decoded value.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ncl-status-reply-decode
           (fn-ncl-status-reply-encode :accepted -1 11 12))
          '(:consumer-status-reply :accepted -1 11 12))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ncl-status-reply-decode
           (fn-ncl-status-reply-encode
@@ -102,14 +102,14 @@
          (list :consumer-status-reply :accepted
                3 (1+ *fn-cbor-max-uint*)
                (- (1+ *fn-cbor-max-uint*) 3)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ncl-status-reply-decode
           (fn-ncl-status-reply-encode
            :accepted 11 3 (- 3 11)))
          (list :consumer-status-reply :accepted
                11 3 (- 3 11)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ncl-status-reply-decode
           (fn-ncl-status-reply-encode :accepted 3 11 7))

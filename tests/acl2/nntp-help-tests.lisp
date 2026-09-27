@@ -15,7 +15,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/nntp-help")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *nht-archive* (fn-initial-state '("fn.letters")))
 (defconst *nht-obs* (fn-clock-observation 1000000 843004800000 500 t))
@@ -63,6 +63,7 @@
                        "ARTICLE HEAD BODY STAT"
                        "OVER XOVER HDR XHDR XPAT"
                        "IHAVE CHECK TAKETHIS"
+                       "XFNCATCHUP"
                        "."))))))
 
 ; The converse the keystone does not state (PKT-571), checked by evaluation:
@@ -72,7 +73,7 @@
   '("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST" "AUTHINFO" "STARTTLS"
     "XREDEEM" "GROUP" "LISTGROUP" "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS"
     "ARTICLE" "HEAD" "BODY" "STAT" "OVER" "XOVER" "HDR" "XHDR" "XPAT"
-    "IHAVE" "CHECK" "TAKETHIS"))
+    "IHAVE" "CHECK" "TAKETHIS" "XFNCATCHUP"))
 (defun nht-all-served (keywords fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp keywords)
@@ -83,9 +84,9 @@
     t))
 (bpr-lift nht-all-served 1)
 (assert-event (in-arena-nht-all-served *sr-arena* *nht-listed*))
-; The list is the whole table: 28 keywords, and a lower-case spelling is
+; The list is the whole table: 29 keywords, and a lower-case spelling is
 ; the same keyword (RFC 3977 section 3.1: case-insensitive).
-(assert-event (equal (len *nht-listed*) 28))
+(assert-event (equal (len *nht-listed*) 29))
 (defun nht-flatten (rows)
   (if (consp rows) (append (car rows) (nht-flatten (cdr rows))) nil))
 (assert-event (equal (nht-flatten *fn-nntp-served-command-table*) *nht-listed*))
@@ -202,7 +203,7 @@
 ; and a transit article is awaited only on a peer connection mid-IHAVE;
 ; their teeth are the `must-fail's below.
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-sessionp
   (implies (and 
                 (not (fn-auth-session-handshakingp as))
@@ -245,7 +246,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-handshaking
   (implies (and (fn-auth-sessionp as)
                 (not (fn-peer-session-transfer (fn-auth-session-base as)))
@@ -287,7 +288,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-transfer
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
@@ -329,7 +330,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-awaiting
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
@@ -371,7 +372,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-open
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
@@ -413,7 +414,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-command-input
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
@@ -455,7 +456,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-keyword-token
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
@@ -497,7 +498,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 (defthm nht-without-arguments
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
@@ -539,7 +540,7 @@
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
-(must-fail
+(must-fail-checked
 ; the prover's search without this hypothesis visits every served keyword;
 ; bound it (the ground witness above is the counterexample).
 (with-prover-step-limit 300000
@@ -586,7 +587,7 @@
 
 ; (10) without the selection in view: a ruled session selected outside its
 ; view is deselected (the ground case above).
-(must-fail
+(must-fail-checked
 (defthm nht-without-selection-in-view
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))

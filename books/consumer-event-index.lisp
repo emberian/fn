@@ -424,7 +424,7 @@
 ; Store carries for its derived index, a Message-ID lookup in the index is
 ; the fold over the committed history.  Established at every open (each
 ; open installs `fn-cei-build' of the history it read) and preserved by every
-; Store transition (books/consumer-event-index-store-invariants.lisp); the
+; Store transition (books/history-columns-relation.lisp (the retired index's invariants were deleted)); the
 ; one transition that grows the history, `fn-sn-io''s record-directory
 ; append, extends the index by `fn-cei-put' of the appended event
 ; (`fn-cei-extend-preserves-correspondence').
