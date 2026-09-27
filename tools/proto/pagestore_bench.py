@@ -9,9 +9,10 @@ Runs ON hbox (Linux).  From the laptop:
     ssh hbox python3 /tank/fn/scratch/arena-store-host/tree/tools/proto/pagestore_bench.py build
     ssh hbox python3 .../pagestore_bench.py q1|q2|q3|q4|cut-map|summarize [--out DIR]
 
-`build` certifies books/pagestore-words, pagestore and pagestore-exec
-in the w28 ACL2 (their include closure's sha256 certificates come from the
-proof REPL tree), includes pagestore-exec, loads
+`build` certifies books/pagestore-words, pagestore, pagestore-exec,
+pagestore-keystones, pagestore-reclaim and pagestore-gc in the w28 ACL2 (their
+include closure's sha256 certificates come from the proof REPL tree),
+includes pagestore-gc, loads
 host/native/proto-pagestore.lisp and saves one image
 (/tank/fn/scratch/arena-store-host/fnps-image.core) under swarm-build.
 Every command after that is one process of that image under
@@ -63,7 +64,8 @@ def ship(_a):
     print("shipped", LANE, "->", TREE)
 
 
-BOOKS = ("pagestore-words", "pagestore", "pagestore-exec")
+BOOKS = ("pagestore-words", "pagestore", "pagestore-exec", "pagestore-keystones",
+         "pagestore-reclaim", "pagestore-gc")
 
 
 def build(_a):
@@ -75,22 +77,22 @@ def build(_a):
     out = open(log, "w")
     for b in BOOKS:
         for ext in (".cert", ".fasl", ".port"):
-            (books / "proto" / (b + ext)).unlink(missing_ok=True)
+            (books / (b + ext)).unlink(missing_ok=True)
     for b in BOOKS:
         t0 = time.time()
-        script = f"""(set-cbd "{TREE}/books/proto/")
+        script = f"""(set-cbd "{TREE}/books/")
 (certify-book "{b}" ? t)
 """
         out.write(f"== certify {b}\n"); out.flush()
         p = subprocess.run(["swarm-build"] + sbcl_argv(ACL2_CORE), input=script, text=True,
                            stdout=out, stderr=subprocess.STDOUT, cwd=TREE)
-        ok = (books / "proto" / (b + ".cert")).exists()
+        ok = (books / (b + ".cert")).exists()
         out.write(f"== certify {b} rc {p.returncode} cert {ok} {time.time() - t0:.1f} s\n"); out.flush()
         print("certify", b, "rc", p.returncode, "cert", ok, f"{time.time() - t0:.1f} s", flush=True)
         if not ok:
             return 1
-    script = f"""(set-cbd "{TREE}/books/proto/")
-(include-book "pagestore-exec")
+    script = f"""(set-cbd "{TREE}/books/")
+(include-book "pagestore-gc")
 :q
 (load "{TREE}/host/native/proto-pagestore.lisp")
 (save-exec "{ROOT}/fnps-image" "arena-store-host")
@@ -308,6 +310,8 @@ def q3(a):
         elif name == "table-written":
             k = rng.choice([1, 1, 2])
         env = {"FNPS_CUT": f"{name}:{k}", "FNPS_DIGEST": "1", "FNPS_SEED": str(rng.randrange(1 << 30))}
+        if a.reclaim:
+            env["FNPS_RECLAIM"] = "1"
         mmode = rng.choice(["eager", "lazy"])
         rc, recs, raw = run(["mutate", store, "main", kind, str(count), "1", mmode], env=env)
         pre = ev(recs, "pre")
@@ -334,7 +338,9 @@ def q3(a):
         c = counts.setdefault(name, {"cuts": 0, "reached": 0, "violations": 0})
         c["cuts"] += 1; c["reached"] += int(reached); c["violations"] += int(not ok)
         viol += int(not ok)
+        rb = ev(recs, "reclaim-before")
         append(res, {"i": i, "cut": label, "kind": kind, "count": count, "mutate_mode": mmode,
+                     "reclaim_before": rb[0] if rb else None,
                      "rc": rc, "reached": reached, "open_mode": mode, "want_txid": want_txid,
                      "got": got, "refusals": refs, "ok": ok})
         if not ok:
@@ -426,12 +432,58 @@ def q3(a):
                       "lazy_open": ol[0] if ol else None, "lazy_touch": fl[0] if fl else None,
                       "restored": rok, "eager_ok": eok, "lazy_ok": lok, "ok": ok})
         print("damage", j, which, what, "eager", eok, "lazy", lok, "restored", rok, flush=True)
-    summary = {"n": a.n, "cuts": a.cuts, "violations": viol, "by_cut": counts, "refusals": refusals,
+    summary = {"n": a.n, "reclaim": a.reclaim, "cuts": a.cuts, "violations": viol, "by_cut": counts, "refusals": refusals,
                "damage": dmg, "damage_violations": dviol}
     append(d / "q3-summary.jsonl", summary)
     print(json.dumps(summary, indent=1))
     shutil.rmtree(store, ignore_errors=True)
     return 0 if viol == 0 and dviol == 0 else 1
+
+
+def reclaim_smoke(a):
+    """Init, then --commits commits with FNPS_RECLAIM=1: the free list, the
+    file's pages, and a digest open (mode alternating) after every commit
+    landing on that commit's txid with its pre-computed image digest."""
+    d = out_dir(a)
+    res = d / "reclaim.jsonl"
+    rng = random.Random(a.seed)
+    store = str(NVME / "reclaim")
+    shutil.rmtree(store, ignore_errors=True)
+    rc, recs, raw = run(["init", store, str(a.n)])
+    if rc != 0:
+        print(raw[-3000:]); return 1
+    bad = 0
+    rc, recs, raw = run(["reclaim", store, "main"])
+    append(res, {"step": "reclaim-cmd", "rc": rc, "reclaim": ev(recs, "reclaim")})
+    for i in range(a.commits):
+        kind = rng.choice(["random", "random", "append"])
+        count = rng.choice([1, 5, 40, 100]) if kind == "random" else rng.choice([1, 4, 16])
+        rc, recs, raw = run(["mutate", store, "main", kind, str(count), "1", rng.choice(["lazy", "eager"])],
+                            env={"FNPS_RECLAIM": "1", "FNPS_DIGEST": "1",
+                                 "FNPS_SEED": str(rng.randrange(1 << 30))})
+        pre = ev(recs, "pre"); com = ev(recs, "commit")
+        rb = ev(recs, "reclaim-before"); ra = ev(recs, "reclaim-after")
+        if rc != 0 or not pre or not com:
+            print(raw[-3000:]); return 1
+        c = com[0]["commit"]
+        mode = "eager" if i % 2 == 0 else "lazy"
+        rc2, recs2, raw2 = run(["digest", store, "main", mode])
+        dg = ev(recs2, "digest")
+        ok = bool(dg) and dg[0]["txid"] == c["txid"] and dg[0]["digest"] == pre[0]["next-digest"]
+        bad += int(not ok)
+        size = os.path.getsize(Path(store) / "pages") // 16384
+        rec = {"i": i, "kind": kind, "count": count, "txid": c["txid"], "dirty": c["dirty"],
+               "writes": c["writes"], "hwm_after_commit": c["hwm"], "file_pages": size,
+               "reclaim_before": rb[0] if rb else None, "reclaim_after": ra[0] if ra else None,
+               "open_mode": mode, "landed": dg[0]["txid"] if dg else None, "ok": ok}
+        append(res, rec)
+        print(i, kind, count, "txid", c["txid"], "file pages", size,
+              "freed before", rb and rb[0]["freed"], "free after commit",
+              rb and rb[0]["free-after"] - (c["writes"] - 1), "freed after", ra and ra[0]["freed"],
+              "ok", ok, flush=True)
+    append(res, {"summary": {"commits": a.commits, "violations": bad}})
+    shutil.rmtree(store, ignore_errors=True)
+    return 0 if bad == 0 else 1
 
 
 def summarize(a):
@@ -515,7 +567,7 @@ def main(argv=None):
     sub.add_parser("ship").set_defaults(fn=ship)
     sub.add_parser("build").set_defaults(fn=build)
     for name, fn in (("q1", q1), ("q2", q2), ("q4", q4), ("cut-map", cut_map), ("q3", q3),
-                     ("summarize", summarize)):
+                     ("reclaim-smoke", reclaim_smoke), ("summarize", summarize)):
         p = sub.add_parser(name)
         p.set_defaults(fn=fn)
         p.add_argument("--out", default=str(ROOT / "results"))
@@ -526,8 +578,10 @@ def main(argv=None):
         p.add_argument("--fs", default="nvme")
         p.add_argument("--cuts", type=int, default=210)
         p.add_argument("--damage", type=int, default=12)
+        p.add_argument("--commits", type=int, default=10)
         p.add_argument("--seed", type=int, default=931)
         p.add_argument("--keep", action="store_true")
+        p.add_argument("--reclaim", action="store_true", help="FNPS_RECLAIM=1 on every commit")
     a = ap.parse_args(argv)
     return a.fn(a) or 0
 

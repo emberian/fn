@@ -266,7 +266,9 @@
         (unless (fnps-eof-p e) (error e))
         (push (list :dir (pgs-rec-dir-addr rec)) *fnps-absent*)
         (resize-pgs-m *pgs-x-dir-base* (fnps-mem))))
-    (values (pgs-x-open-dir rec (fnps-mem) (fnps-shs)))))
+    (multiple-value-bind (v shs) (pgs-x-open-dir rec (fnps-mem) (fnps-shs))
+      (declare (ignore shs))
+      v)))
 
 (defun fnps-size-image (npages)
   ;; A fresh image of NPAGES pages: zero words, not resident, clean.
@@ -275,6 +277,18 @@
     (resize-pgs-w (* npages +fnps-pw+) mem)
     (resize-pgs-d npages mem)
     (resize-pgs-v npages mem)))
+
+(defun fnps-open-table-page (tp rec mode)
+  ;; pgs-x-open-table-page's verdict (the stobjs are updated in place).
+  (multiple-value-bind (v mem shs) (pgs-x-open-table-page tp rec mode (fnps-mem) (fnps-shs))
+    (declare (ignore mem shs))
+    v))
+
+(defun fnps-open-page (i txid mode)
+  ;; pgs-x-open-page's verdict.
+  (multiple-value-bind (v mem shs) (pgs-x-open-page i txid mode (fnps-mem) (fnps-shs))
+    (declare (ignore mem shs))
+    v))
 
 (defvar *fnps-t* nil)            ; open timings plist, filled by fnps-try
 
@@ -296,8 +310,7 @@
                (setf ntab (length tabs))
                (fnps-timed t-tables (fnps-load-pages fd (fnps-t) tabs))
                (dolist (tp tabs)
-                 (let ((v (fnps-timed t-tables
-                            (values (pgs-x-open-table-page (first tp) rec mode (fnps-mem) (fnps-shs))))))
+                 (let ((v (fnps-timed t-tables (fnps-open-table-page (first tp) rec mode))))
                    (when v (return-from try v))))
                (let ((pairs (loop for tp in tabs
                                   append (destructuring-bind (lo hi) (pgs-x-table-page-range (first tp) npages)
@@ -305,8 +318,7 @@
                  (setf npg (length pairs))
                  (fnps-timed t-read (fnps-load-pages fd (fnps-w) pairs))
                  (dolist (p pairs)
-                   (let ((v (fnps-timed t-verify
-                              (values (pgs-x-open-page (first p) txid mode (fnps-mem) (fnps-shs))))))
+                   (let ((v (fnps-timed t-verify (fnps-open-page (first p) txid mode))))
                      (when v (return-from try v))))
                  nil))))
       (setf *fnps-t* (list :ms-dir t-dir :ms-tables t-tables :ms-pages-read t-read
@@ -372,10 +384,10 @@
   (ecase (first v)
     (:need-table
      (fnps-load-pages (fnps-pages-fd s) (fnps-t) (list (list (second v) (third v))))
-     (values (pgs-x-open-table-page (second v) (fnps-rec s) :eager (fnps-mem) (fnps-shs))))
+     (fnps-open-table-page (second v) (fnps-rec s) :eager))
     (:need-page
      (fnps-load-pages (fnps-pages-fd s) (fnps-w) (list (list (second v) (third v))))
-     (values (pgs-x-open-page (second v) (pgs-rec-txid (fnps-rec s)) :eager (fnps-mem) (fnps-shs))))))
+     (fnps-open-page (second v) (pgs-rec-txid (fnps-rec s)) :eager))))
 
 (defun fnps-need-p (v)
   (and (consp v) (member (first v) '(:need-table :need-page)) (= (length v) 3)))
@@ -426,7 +438,10 @@
          result)
     (loop
       (let ((r (fnps-timed t-plan
-                 (values (pgs-x-commit lpages (fnps-n s) txid (fnps-alloc s) slot (fnps-mem) (fnps-shs))))))
+                 (multiple-value-bind (r mem shs)
+                     (pgs-x-commit lpages (fnps-n s) txid (fnps-alloc s) slot (fnps-mem) (fnps-shs))
+                   (declare (ignore mem shs))
+                   r))))
         (cond ((and (consp r) (eq (first r) :need-table))
                (let ((v (fnps-timed t-need (fnps-serve-need s r))))
                  (when v (return-from fnps-commit (list :refused v)))))
@@ -481,6 +496,107 @@
             :ms-total (+ t-dirty t-plan t-need t-pages t-tables t-dir t-rec t-sync)))))
 
 ;; ---------------------------------------------------------------------------
+;; Reclamation: one cycle of books/pagestore-gc.lisp over the stobj pgs-gc.
+;;
+;; The allocator state is NOT persisted: a fresh process starts at FREE nil
+;; and HWM = the pages the file holds, so space is reused only when a cycle
+;; runs in the process before its commit (FNPS_RECLAIM=1 runs one before
+;; and one after the commit; the free list of the second dies with the
+;; process).  The cycle: `pgs-g-start' at the current (FREE0 HWM0),
+;; `pgs-g-load-free0-all' of FREE0, the marks of every valid record of every
+;; root (`pgs-g-mark-run-all' of its directory run, the run's words filled
+;; into scratch pgs-gs and `pgs-g-mark-words-all' over its directory
+;; entries, then each table page the directory names filled and
+;; `pgs-g-mark-words-all' over its `pgs-x-tcnt' entries), the sweep
+;; `pgs-g-sweep-all' (quanta of +fnps-gc-quantum+, cursor descending) and
+;; `pgs-g-install' -- the subjects of pgs-g-mark-record-covers,
+;; pgs-g-sweep-all-is and pgs-g-reclaim-sound.  Page 0 (the inline layout's
+;; slot page, which the model's disk does not hold) is marked too: marks
+;; that are a superset of the keeps are what the keystone assumes.
+
+(defmacro fnps-gc () '(fnps-live 'pgs-gc))
+(defun fnps-gs () (svref (fnps-gc) 2))           ; 0 gm, 1 gf, 2 gs
+(defconstant +fnps-gc-quantum+ 4096)
+
+(defun fnps-gc-fill (fd phys npages)
+  ;; Scratch := NPAGES pages from PHYS, page by page on end of file (an
+  ;; absent page leaves zeros: its entries name page 0, already marked).
+  (resize-pgs-gs 0 (fnps-gc))
+  (resize-pgs-gs (* npages +fnps-pw+) (fnps-gc))
+  (handler-case (progn (incf *fnps-read-calls*)
+                       (fnps-fill-from-file fd (* phys +fnps-pb+) (fnps-gs) 0 (* npages +fnps-pw+)))
+    (fnps-io-error (e)
+      (unless (fnps-eof-p e) (error e))
+      (dotimes (j npages) (fnps-fill-page-or-absent fd (+ phys j) (fnps-gs) j)))))
+
+(defun fnps-valid-records (fd)
+  ;; The valid records (pgs-x-read-rec, pgs-rec-ok) in the two slots of FD,
+  ;; read through pgs-m[0, 1024), whose words are restored afterwards.
+  (let ((saved (subseq (fnps-m) 0 1024)))
+    (unwind-protect
+         (progn
+           (handler-case (progn (incf *fnps-read-calls*)
+                                (fnps-fill-from-file fd 0 (fnps-m) 0 1024))
+             (fnps-io-error (e)
+               (unless (fnps-eof-p e) (error e))
+               (fill (fnps-m) 0 :end 1024)))
+           (multiple-value-bind (r0 c0 shs0) (pgs-x-read-rec 0 (fnps-mem) (fnps-shs))
+             (declare (ignore shs0))
+             (multiple-value-bind (r1 c1 shs1) (pgs-x-read-rec 512 (fnps-mem) (fnps-shs))
+               (declare (ignore shs1))
+               (append (and (pgs-rec-ok r0 c0) (list r0))
+                       (and (pgs-rec-ok r1 c1) (list r1))))))
+      (replace (fnps-m) saved))))
+
+(defun fnps-gc-mark-record (fd rec)
+  (let* ((q +fnps-gc-quantum+)
+         (npages (pgs-rec-npages rec))
+         (nt (pgs-x-ntables npages)))
+    (pgs-g-mark-run-all (pgs-rec-dir-addr rec) (pgs-dir-run-pages npages) q (fnps-gc))
+    (fnps-gc-fill fd (pgs-rec-dir-addr rec) (pgs-dir-run-pages npages))
+    (pgs-g-mark-words-all 0 nt q (fnps-gc))
+    (let ((tphys (loop for tp below nt collect (pgs-g-word (* 6 tp) (fnps-gc)))))
+      (loop for tp from 0 for ph in tphys
+            do (fnps-gc-fill fd ph 1)
+               (pgs-g-mark-words-all 0 (pgs-x-tcnt tp npages) q (fnps-gc))))
+    (1+ nt)))
+
+(defun fnps-root-fds (s)
+  ;; (NAME . FD) of every root: main's slots in page 0, a branch's in its file.
+  (cons (cons "main" (fnps-pages-fd s))
+        (loop for p in (directory (concatenate 'string (fnps-dir s) "/root-*"))
+              collect (cons (subseq (file-namestring p) 5) (fnps-open-file (namestring p))))))
+
+(defun fnps-reclaim (s &key (tag :reclaim))
+  ;; One cycle at the handle's allocator state; installs the result.
+  (let* ((t0 (fnps-now))
+         (alloc0 (fnps-alloc s))
+         (free0 (first alloc0))
+         (hwm0 (second alloc0))
+         (q +fnps-gc-quantum+)
+         (roots (fnps-root-fds s))
+         (nrec 0) (pages-read 0))
+    (setf *fnps-read-calls* 0)
+    (unwind-protect
+         (progn
+           (pgs-g-start hwm0 (fnps-gc))
+           (pgs-g-load-free0-all free0 q (fnps-gc))
+           (pgs-g-mark-run-all 0 1 q (fnps-gc))
+           (dolist (r roots)
+             (dolist (rec (fnps-valid-records (cdr r)))
+               (incf nrec)
+               (incf pages-read (fnps-gc-mark-record (fnps-pages-fd s) rec)))))
+      (dolist (r (rest roots)) (sb-unix:unix-close (cdr r))))
+    (let* ((swept (pgs-g-sweep-all hwm0 q nil (fnps-gc)))
+           (alloc2 (pgs-g-install alloc0 swept)))
+      (setf (fnps-alloc s) alloc2)
+      (fnps-emit :event tag :roots (mapcar #'car roots) :records-marked nrec
+                 :pages-read pages-read :hwm0 hwm0 :free0 (length free0)
+                 :freed (length swept) :free-after (length (first alloc2))
+                 :hwm-after (second alloc2) :ms (- (fnps-now) t0))
+      (length swept))))
+
+;; ---------------------------------------------------------------------------
 ;; Synthesis: fn-hist-shaped columns at ~100 B/record, written through
 ;; pgs-x-write (which keeps the dirty flags).
 
@@ -489,7 +605,8 @@
 (defun fnps-rand (n) (random n *fnps-rng*))
 
 (defun fnps-put-word (i v)
-  (let ((r (pgs-x-write (floor i +fnps-pw+) (mod i +fnps-pw+) v (fnps-mem))))
+  (multiple-value-bind (r mem) (pgs-x-write (floor i +fnps-pw+) (mod i +fnps-pw+) v (fnps-mem))
+    (declare (ignore mem))
     (unless (eq r :ok) (error "pgs-x-write ~a at word ~a" r i))))
 
 (defun fnps-msgid (i) (format nil "<~d.~8,'0x@fn.example>" i (fnps-rand #xffffffff)))
@@ -611,7 +728,9 @@
   (let ((bad (fnps-load-all s)))
     (if bad
         (values nil bad)
-      (values (pgs-x-words-digest 0 0 (* (fnps-npages) 256) (fnps-mem) (fnps-shs)) nil))))
+      (multiple-value-bind (d shs) (pgs-x-words-digest 0 0 (* (fnps-npages) 256) (fnps-mem) (fnps-shs))
+        (declare (ignore shs))
+        (values d nil)))))
 
 (defun fnps-hex (d) (format nil "~64,'0x" d))
 
@@ -658,7 +777,7 @@
       (fnps-close s))
     s))
 
-(defun fnps-cmd-mutate (dir root kind count fsyncs &key (mode :lazy) digest)
+(defun fnps-cmd-mutate (dir root kind count fsyncs &key (mode :lazy) digest reclaim)
   (let ((s (fnps-open dir root mode :emit nil)))
     (unless s (fnps-emit :event :mutate :refused t) (return-from fnps-cmd-mutate nil))
     (let ((pre-txid (pgs-rec-txid (fnps-rec s))))
@@ -669,8 +788,12 @@
         (multiple-value-bind (d bad) (fnps-image-digest s)
           (fnps-emit :event :pre :from-txid pre-txid :next-digest (and d (fnps-hex d))
                      :refused (mapcar #'fnps-refusal-string bad))))
+      (when reclaim (fnps-reclaim s :tag :reclaim-before))
       (let ((c (fnps-commit s)))
-        (fnps-emit :event :commit :kind kind :count count :fsyncs-arg fsyncs :mode mode :commit c)
+        (fnps-emit :event :commit :kind kind :count count :fsyncs-arg fsyncs :mode mode :commit c
+                   :file-pages (fnps-file-pages (fnps-pages-fd s)))
+        (when (and reclaim (not (eq (first c) :refused)))
+          (fnps-reclaim s :tag :reclaim-after))
         (when (eq (first c) :refused)
           (fnps-close s)
           (sb-ext:exit :code 5 :abort t))))
@@ -761,7 +884,13 @@
            (fnps-cmd-mutate (first a) (second a) (fnps-kw (third a))
                             (parse-integer (fourth a)) (parse-integer (fifth a))
                             :mode (if (sixth a) (fnps-kw (sixth a)) :lazy)
-                            :digest (sb-ext:posix-getenv "FNPS_DIGEST")))
+                            :digest (sb-ext:posix-getenv "FNPS_DIGEST")
+                            :reclaim (equal (sb-ext:posix-getenv "FNPS_RECLAIM") "1")))
+          ((string= cmd "reclaim")
+           (let ((s (fnps-open (first a) (second a) :lazy :emit nil)))
+             (if s
+                 (progn (fnps-reclaim s) (fnps-close s))
+               (fnps-emit :event :reclaim :refused t))))
           ((string= cmd "digest") (fnps-cmd-digest (first a) (second a) (fnps-kw (or (third a) "eager"))))
           ((string= cmd "branch") (fnps-cmd-branch (first a) (second a) (third a)))
           ((string= cmd "damage") (fnps-cmd-damage (first a) (second a) (third a)
