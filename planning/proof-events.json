@@ -3425,6 +3425,38 @@
         {
           "kind": "theorem",
           "name": "fn-ock-fast-path-within-k-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-intern-events-is-intern-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-intern-events-arena-is-payloads"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-load-of-written-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-seal-n-compose"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-recover-from-checkpoint-is-full-recover"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-recover-rows-rii-is-recover-rows"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-write-run-is-run-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-next-checkpoint-is-capture"
         }
       ]
     },

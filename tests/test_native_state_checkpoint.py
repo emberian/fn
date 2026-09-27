@@ -338,6 +338,43 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
         return line
 
+    def test_a_killed_owner_reopens_from_the_checkpoint_without_replay(self):
+        """Records flip (checkpoint-arena-2): the checkpoint carries the arena,
+        so after the serving owner dies (SIGKILL) the next open reads the
+        checkpoint (its arena run sealed from the file, the suffix interned on
+        top), replays only the suffix, and reconstructs what the full replay
+        does."""
+        self.init_with_checkpoint_at_three("store")
+        expected = self.observation()
+        owner = self.start_owner(self.image)
+        owner.kill()
+        owner.wait(timeout=60)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        self.assertEqual(self.observation(), expected)
+        aside = self.root / "aside.fnsc"
+        self.path().rename(aside)
+        self.assertEqual(self.open_line(), "open=full-replay reason=absent")
+        self.assertEqual(self.observation(), expected)
+
+    def test_a_kill_inside_the_arena_run_never_trusts_the_torn_file(self):
+        """The arena run is the file's first steps: a kill after the run's
+        head step (FN_NATIVE_CHECKPOINT_BATCH_FAULT=0:kill) leaves the staged
+        file unrenamed, and the next open reads the old checkpoint, byte for
+        byte, never the torn one."""
+        self.init_with_checkpoint_at_three("store")
+        old = self.digest()
+        expected = self.observation()
+        env = verbs.environment()
+        env["FN_NATIVE_CHECKPOINT_BATCH_FAULT"] = "0:kill"
+        died = self.checkpoint("store", env=env)
+        self.assertEqual(died.returncode, -signal.SIGKILL, died.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        self.assertEqual(self.digest(), old)
+        recovered = self.op("recover")
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
+        self.assertEqual(list((self.store / "staging").iterdir()), [])
+        self.assertEqual(self.observation(), expected)
+
     def test_every_cut_reopens_with_the_old_or_the_new_checkpoint(self):
         seen = {}
         for cut in native_cuts.STATE_CHECKPOINT_CUTS:
