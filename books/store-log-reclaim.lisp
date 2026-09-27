@@ -84,6 +84,10 @@
          (if (consp records)
              (cons (fn-rclp-event (car records) ctx) (fn-rclp-events (cdr records) ctx))
            records))
+  ;; The definition's own body: one expansion, nothing else (in the batch's
+  ;; union world the default theory ran past 300 s here).
+  :hints (("Goal" :expand ((fn-rclp-events records ctx))
+                  :in-theory (theory 'minimal-theory)))
   :rule-classes nil)
 
 ; KEYSTONE: over the fold of the history from fn-rcls-init under the store's
