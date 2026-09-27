@@ -559,7 +559,7 @@ def run(a) -> int:
     steps = q(a.steps) if a.steps else ""
     if a.dry_run:
         print(f"would: rsync tools/fundamentals/ {HOST}:{box}/harness/")
-        print(f"would ({HOST}): cd {box} && {env} nohup sh harness/rows.sh {a.tree} {box}/out {steps} > {box}/rows.log 2>&1; touch {box}/done")
+        print(f"would ({HOST}): cd {box} && {env} nohup sh harness/rows.sh {a.tree} {box}/out {steps} > {box}/rows.log 2>&1; date -u > {box}/done")
         print(f"would: rsync {HOST}:{box}/out/ {evdir}/out/ and judge it")
         return 0
     if sh(f"ssh -n -o BatchMode=yes {HOST} test -x {q(a.tree)}/build/fn-host-developer").returncode:
@@ -567,7 +567,7 @@ def run(a) -> int:
     if sh(f"ssh -n -o BatchMode=yes {HOST} mkdir -p {box}/out").returncode or \
             sh(f"rsync -a --delete {q(str(ROOT / 'tools' / 'fundamentals'))}/ {HOST}:{box}/harness/").returncode:
         raise SystemExit("fundamentals: shipping the harness failed")
-    start = f"cd {box} && rm -f done && (env {env} sh harness/rows.sh {q(a.tree)} {box}/out {steps} > rows.log 2>&1; touch done) > /dev/null 2>&1 < /dev/null &"
+    start = f"cd {box} && rm -f done && (env {env} sh harness/rows.sh {q(a.tree)} {box}/out {steps} > rows.log 2>&1; date -u > done) > /dev/null 2>&1 < /dev/null &"
     if sh(f"ssh -n -o BatchMode=yes {HOST} {q('nohup sh -c ' + q(start))}").returncode:
         raise SystemExit("fundamentals: starting the run failed")
     print(f"fundamentals: started {HOST}:{box} (rows.log, out/driver.log)")
