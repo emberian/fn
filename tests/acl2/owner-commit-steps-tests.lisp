@@ -245,3 +245,41 @@
                              (fn-ocs-member-releases *ocst-a-failed* *ocst-members*))))
 (must-fail
  (assert-event (equal (fn-ocs-member-release :stop :refused nil) :rendered)))
+
+; -----------------------------------------------------------------------------
+; Teeth for the step machine's characterizations (keystone-audit 2026-09-27).
+; fn-ocs-barrier-only-from-a-start: witness (the START at an idle owner) and
+; its hypothesis removed -- the fenced barrier's step is not :barrier and the
+; conclusion fails there (the phase is in flight, the event not :started).
+(assert-event (and (equal (ocst-step-action :idle :started) :barrier)
+                   (not (fn-ocs-in-flight-p :idle))
+                   (equal (ocst-step-phase :idle :started) :staged)))
+(assert-event (and (not (equal (ocst-step-action :staged :fenced) :barrier))
+                   (fn-ocs-in-flight-p :staged)
+                   (not (equal :fenced :started))))
+; fn-ocs-staged-only-by-a-start: both disjuncts reached (the START; a fault
+; at a staged batch), and the hypothesis removed -- the COMPLETE's step leaves
+; :fenced and neither disjunct holds.
+(assert-event (equal (ocst-step-phase :staged :started) :staged))
+(assert-event (equal (ocst-step-action :staged :started) :fault))
+(assert-event (and (not (equal (ocst-step-phase :staged :fenced) :staged))
+                   (not (equal (ocst-step-action :staged :fenced) :barrier))
+                   (not (equal (ocst-step-action :staged :fenced) :fault))))
+; fn-ocs-failed-barrier-stops-telling-no-member: the event hypothesis removed
+; is the keystone witness above (:fenced: :complete, members :rendered); the
+; phase hypothesis removed: :failed at an idle owner is a fault, not the stop.
+(assert-event (and (equal (ocst-step-action :idle :failed) :fault)
+                   (not (equal (ocst-step-action :idle :failed) :stop))))
+; fn-ocs-in-flight-until-completed: its event hypothesis removed at each
+; in-flight phase (:completed leaves the batch), its phase hypothesis
+; removed (the idle START stages: in flight, but from out of flight).
+(assert-event (and (not (fn-ocs-in-flight-p (ocst-step-phase :fenced :completed)))
+                   (not (fn-ocs-in-flight-p (ocst-step-phase :failed :completed)))
+                   (fn-ocs-in-flight-p (ocst-step-phase :staged :failed))))
+(assert-event (and (not (fn-ocs-in-flight-p :idle))
+                   (not (fn-ocs-in-flight-p (ocst-step-phase :idle :fenced)))))
+; fn-ocs-inspect-pick-keeps-the-ocm, its hypothesis removed: a :reader pick
+; at an idle owner moves the four classes' cursor.
+(assert-event (and (equal (ocst-class (fn-ocs-init) *ocst-readers*) :reader)
+                   (not (equal (fn-ocs-ocm (ocst-pick (fn-ocs-init) *ocst-readers*))
+                               (fn-ocs-ocm (fn-ocs-init))))))

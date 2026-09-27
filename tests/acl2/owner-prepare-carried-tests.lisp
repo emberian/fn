@@ -98,3 +98,15 @@
  (defthm fn-pcar-t-preserves-relation-without-relation
    (fn-own-relation
     (fn-ocfg-owner (fn-pcar-sbud-prepare *pcar-t-bad-oc* *pcar-t-record* 100)))))
+
+; keystone-audit 2026-09-27: fn-pcar-files-candidatep-is-candidatep (no
+; hypothesis) on the reachable Store: the O(1) files reader (count and last
+; record) agrees with the list reader, accepting the next record and
+; refusing the one at the wrong transaction id.
+(assert-event
+ (and (< 0 (fn-sf-records-count *pcar-t-files*))
+      (fn-pcar-files-candidatep *pcar-t-record* *pcar-t-files*)
+      (equal (fn-pcar-files-candidatep *pcar-t-record* *pcar-t-files*)
+             (fn-pcar-candidatep *pcar-t-record* (fn-sf-records *pcar-t-files*)
+                                 (fn-sf-frontier *pcar-t-files*)))
+      (not (fn-pcar-files-candidatep *pcar-t-late-record* *pcar-t-files*))))

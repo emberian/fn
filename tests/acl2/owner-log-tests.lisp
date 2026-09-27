@@ -518,3 +518,18 @@
          (append (fn-olog-field "detail" (fn-olog-symbol-text :carried))
                  (cons 32 (fn-olog-field "verdict" (fn-olog-symbol-text nil)))))))
 (assert-event (equal (fn-olog-detail-fields :carried nil) (olt-text "detail=carried")))
+
+; keystone-audit 2026-09-27: fn-olog-control-refusal-line-is-one-line on the
+; refused operator article (its conclusion evaluated), and
+; fn-olog-control-refusal-line-says-refused-iff-submit-refused with the
+; retry arm's STORED octets present (the restated argument): still refused,
+; and the line still says so in one line.
+(assert-event (fn-olog-no-breakp *olt-control-refusal*))
+(assert-event
+ (let ((line (fn-olog-control-refusal-line *olt-served* *olt-operator-msgid*
+                                           *olt-operator-groups* *olt-source* *olt-source*)))
+   (and (equal (fn-own-operator-submit-result *olt-served* *olt-operator-msgid*
+                                              *olt-operator-groups* *olt-source* *olt-source*)
+               :refused)
+        (equal (fn-olog-line-word line) (olt-text "refused"))
+        (fn-olog-no-breakp line))))

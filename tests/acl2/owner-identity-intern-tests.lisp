@@ -78,3 +78,42 @@
 (assert-event (equal (fn-sn-completion-record (fn-own-store *oiit-completing*)) *oiit-row*))
 (assert-event (in-arena-ospt-finish-conclusion *oiit-arena* *oiit-completing*
                                                *ospt-staged* *ospt-snapshots*))
+
+; -- keystone-audit 2026-09-27: fn-oii-identity-row-is-the-intern and
+; fn-oii-seal-is-the-intern-arena (no hypotheses) on the reachable
+; composite and on a keyring snapshot, over the arena of the trace: the
+; entry's row is the intern's, which seals the relayed article at the
+; arena's count exactly when the event seals (a snapshot seals nothing).
+(defun oiit-intern-in (payloads w keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((fn-arena (fn-arn-seal-many payloads fn-arena))
+         (h (fn-arena-count fn-arena)))
+    (mv-let (row fn-arena)
+      (fn-intern-event w keyring generation fn-arena)
+      (mv (list h row (fn-arena-count fn-arena)
+                (if (< h (fn-arena-count fn-arena)) (fn-arena-payload h fn-arena) :none))
+          fn-arena))))
+(defun oiit-intern (payloads w keyring generation)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (oiit-intern-in payloads w keyring generation fn-arena)
+      r)))
+(make-event
+ `(defconst *oiit-intern*
+    ',(oiit-intern *sr-arena* *ospt-event* (fn-sn-keyring *oiit-s*)
+                   (fn-sn-keyring-generation *oiit-s*))))
+(assert-event
+ (and (equal (nth 0 *oiit-intern*) *oiit-h*)
+      (equal (nth 1 *oiit-intern*) *oiit-row*)
+      (fn-oii-identity-sealsp *ospt-event*)
+      (equal (nth 2 *oiit-intern*) (+ 1 *oiit-h*))
+      (equal (nth 3 *oiit-intern*) (fn-oii-identity-payload *ospt-event*))))
+(defconst *oiit-snapshot* (car (fn-sn-keyring-snapshots *oiit-s*)))
+(make-event
+ `(defconst *oiit-intern-k* ',(oiit-intern *sr-arena* *oiit-snapshot* nil 0)))
+(assert-event
+ (and (not (fn-oii-identity-sealsp *oiit-snapshot*))
+      (equal (nth 1 *oiit-intern-k*)
+             (fn-oii-identity-row *oiit-snapshot* nil 0 (nth 0 *oiit-intern-k*)))
+      (equal (nth 2 *oiit-intern-k*) (nth 0 *oiit-intern-k*))))
