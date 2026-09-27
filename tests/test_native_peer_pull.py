@@ -766,7 +766,7 @@ class NativePeerPullTests(unittest.TestCase):
                      [a, b])
         self.assertFalse(stored)
         self.assertFalse(any("cursor=advanced" in l for l in lines), lines)
-        # friend-path-2 (PRF-310): each failed round names the refusal, the
+        # friend-path-2 (PRF-318): each failed round names the refusal, the
         # serving node's reply code and the phase it came in.
         failed = [l for l in lines if "round=failed" in l]
         self.assertTrue(failed, lines)
