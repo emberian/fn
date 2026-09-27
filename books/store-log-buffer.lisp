@@ -567,9 +567,20 @@
                   (fn-arx-list-places (nthcdr j fn-octets) p count unit ep en
                                       (nthcdr qj fn-octets) q qend acc)))
   :hints (("Goal" :induct (fn-lgb-places j p count unit ep en qj q qend acc fn-octets)
-           :in-theory (disable fn-lg-pad-len fn-arx-u32-list)
-           :expand ((fn-arx-list-places (nthcdr j fn-octets) p count unit ep en
-                                        (nthcdr qj fn-octets) q qend acc)))))
+           :in-theory (e/d ((:induction fn-lgb-places))
+                           (fn-lg-pad-len fn-arx-u32-list (:definition fn-lgb-places)
+                            fn-arx-list-places fn-lgb-nth-beyond true-listp fn-lgb-car-nthcdr
+                            fn-lgb-take-len fn-lgc-take-all fn-cbor-octet-listp))
+           ;; Each side opened once per induction case (:free: the places'
+           ;; bounds and accumulator are rewritten before the expansion).
+           :expand ((:free (p ep en q qend acc)
+                           (fn-lgb-places j p count unit ep en qj q qend acc fn-octets))
+                    (:free (p ep en q qend acc)
+                           (fn-arx-list-places (nthcdr j fn-octets) p count unit ep en
+                                               (nthcdr qj fn-octets) q qend acc))
+                    (:free (p ep en q qend acc)
+                           (fn-arx-list-places (nthcdr j fn-octets) p count unit ep en
+                                               nil q qend acc))))))
 
 ; The host's call: the COUNT records of the entry at POS.
 (defun fn-lgb-entry-places (pos count unit fn-octets)
