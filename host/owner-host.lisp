@@ -1308,8 +1308,8 @@
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
              (equal (fn-sf-phase after-files) :ready)
-             (equal (len (fn-own-ledger after))
-                    (1+ (len (fn-own-ledger before)))))
+             (equal (fn-own-ledger-count after)
+                    (1+ (fn-own-ledger-count before))))
         (value :durable)
       (value :fault))))
 

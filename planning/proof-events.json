@@ -10011,6 +10011,39 @@
           "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/store-log-reclaim-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-277",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-ledger-of-fn-own-make"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-list-of-fn-own-ledger-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-ledger-count-is-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-list-when-plain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-refresh-ix-keeps-ledger-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-own-complete-enabled-ledger-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-own-complete-enabled-ledger"
+        }
+      ]
     }
   ]
 }

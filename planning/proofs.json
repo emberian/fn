@@ -9980,6 +9980,38 @@
       "events": [
         "fn-lgr-decide-checkpoints-the-rewrite"
       ]
+    },
+    {
+      "id": "PRF-277",
+      "title": "The owner holds its ledger as a snoc-list: the commit appends one pair in O(1), and the take, the outcome and the host's finish read its length in O(1)",
+      "statement": "books/owner.lisp (post-alloc-3). The owner record's ledger field holds a snoc-list (books/snoc-list.lisp; a plain list, nil included, represents itself: fn-sl-list-when-plain); fn-own-ledger reads the list back (fn-sl-list of fn-own-ledger-field) and fn-own-make takes the FIELD, so a transition that keeps the ledger passes the field through and fn-own-ledger-of-fn-own-make reads (fn-sl-list FIELD), which fn-sl-list-of-fn-own-ledger-field names back as the ledger. fn-own-ledger-count (O(1) on a snoc form) is the length for every owner (fn-own-ledger-count-is-len); fn-own-take-submission's mark and fn-own-completion-consumedp read it through mbe (logic unchanged). KEYSTONES (no hypothesis): fn-rix-own-complete-enabled-ledger-field (the completion the host calls puts the pair on the field with fn-sl-snoc: one cons) and fn-rix-own-complete-enabled-ledger (the ledger it represents is the old one with the pair appended); fn-sl-list-of-fn-sl-snoc (PRF-272) for every value. Host subjects: host/owner-host.lisp fn-owner-finish-submission -> books/owner-refresh-indexed.lisp fn-rix-own-finish -> fn-rix-own-complete -> fn-rix-own-complete-enabled; fn-owner-finish -> fn-rix-ocfg-complete (the same completion) and compares fn-own-ledger-count before and after. Before: the commit copied the ledger (fn-ag-append), 16 B x POSTs-since-open per POST, and the take and the outcome walked it for its length. Local policy (D27: bound work, not data); no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-272",
+        "PRF-275"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/snoc-list.lisp",
+        "books/owner.lisp",
+        "books/owner-refresh-indexed.lisp",
+        "tests/acl2/owner-refresh-indexed-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 2026-09-27.",
+      "events": [
+        "fn-own-ledger-of-fn-own-make",
+        "fn-sl-list-of-fn-own-ledger-field",
+        "fn-own-ledger-count-is-len",
+        "fn-sl-list-when-plain",
+        "fn-own-refresh-ix-keeps-ledger-field",
+        "fn-rix-own-complete-enabled-ledger-field",
+        "fn-rix-own-complete-enabled-ledger"
+      ]
     }
   ]
 }

@@ -16,7 +16,7 @@
 ; The owner O with Store S and every other field its own.
 (defun ori-with-store (o s)
   (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)
                (fn-own-refused o)))
@@ -97,3 +97,58 @@
  (assert-event
   (equal (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-fake-s*))
          (fn-own-refresh (ori-with-store *ori-pre* *ori-fake-s*)))))
+
+; -----------------------------------------------------------------------------
+; PRF-277: the ledger is a snoc-list and the host's completion appends it in
+; O(1).  KEYSTONES fn-rix-own-complete-enabled-ledger-field (the field after
+; the completion is fn-sl-snoc of the old field and the completion pair) and
+; fn-rix-own-complete-enabled-ledger (the ledger it represents is the old
+; ledger with the pair appended), both for every owner (no hypothesis, so no
+; must-fail); fn-own-ledger-count-is-len (the O(1) count the take, the
+; outcome and host fn-owner-finish read is the length), for every owner.
+
+(defconst *ori-pair* (fn-sf-completion (fn-sn-files (fn-own-store *ori-pre*))))
+(defconst *ori-done* (fn-rix-own-complete-enabled *ori-pre*))
+
+; Reachable positive witness: the live owner after T's commit (C's
+; completion pending) holds its one-pair ledger as a snoc form; C's
+; completion snocs one pair onto it, the new field's reverse is the old
+; one's under one cons (nothing copied), the ledger is the append, the
+; count is the length, and the owner is the reference completion's.
+(assert-event
+ (and (fn-ccar-completion-enabledp (fn-own-store *ori-pre*))
+      (fn-sl-snoc-formp (fn-own-ledger-field *ori-pre*))
+      (equal (fn-own-ledger-count *ori-pre*) 1)
+      (equal (fn-own-ledger-field *ori-done*)
+             (fn-sl-snoc (fn-own-ledger-field *ori-pre*) *ori-pair*))
+      (equal (cddr (fn-own-ledger-field *ori-done*))
+             (cons *ori-pair* (cddr (fn-own-ledger-field *ori-pre*))))
+      (equal (fn-own-ledger *ori-done*)
+             (append (fn-own-ledger *ori-pre*) (list *ori-pair*)))
+      (equal (fn-own-ledger-count *ori-done*) 2)
+      (equal (fn-own-ledger-count *ori-done*) (len (fn-own-ledger *ori-done*)))
+      (equal (fn-own-ledger *ori-done*) (fn-own-ledger *ocr-after*))))
+
+; A plain-list field (a literal a test builds, nil at the start) represents
+; itself; the first snoc puts it in snoc form once.
+(assert-event
+ (let ((o (fn-own-make (fn-own-store *ori-pre*) (fn-own-view *ori-pre*) nil 0 1 nil
+                       (list (cons 0 7)) nil nil nil nil nil nil nil nil)))
+   (and (equal (fn-own-ledger o) (list (cons 0 7)))
+        (equal (fn-own-ledger-count o) 1)
+        (equal (fn-sl-snoc (fn-own-ledger-field o) (cons 1 8))
+               (list* :snoc 2 (cons 1 8) (list (cons 0 7))))
+        (equal (fn-own-ledger (fn-own-make nil nil nil 0 1 nil
+                                           (fn-sl-snoc (fn-own-ledger-field o) (cons 1 8))
+                                           nil nil nil nil nil nil nil nil))
+               (list (cons 0 7) (cons 1 8))))))
+
+; Corrupted state (labelled): a snoc form whose count exceeds its reverse
+; represents the list padded with nil (as TAKE pads); the count is still its
+; length, so the O(1) count and the model never disagree on any value.
+(assert-event
+ (let ((o (fn-own-make nil nil nil 0 1 nil (list* :snoc 3 (list (cons 0 7)))
+                       nil nil nil nil nil nil nil nil)))
+   (and (equal (fn-own-ledger o) (list nil nil (cons 0 7)))
+        (equal (fn-own-ledger-count o) 3)
+        (equal (fn-own-ledger-count o) (len (fn-own-ledger o))))))

@@ -276,7 +276,7 @@
    (fn-own-make (fn-prc-spc-prepare (fn-own-store o) record (fn-own-view o) carry)
                 (fn-own-view o) (fn-own-conns o)
                 (fn-own-next-id o) (fn-own-max-conns o)
-                (fn-own-pending o) (fn-own-ledger o)
+                (fn-own-pending o) (fn-own-ledger-field o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
