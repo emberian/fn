@@ -21,7 +21,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | yes: `certify-20260927T074153Z-1550147` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | yes: `certify-20260927T072600Z-1195049` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20260927T074153Z-1550147` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
+| [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20260927T075052Z-1892626` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20260927T072600Z-1195049` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | yes: `certify-20260927T072600Z-1195049` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20260927T072600Z-1195049` | no: source changed since 69046a76 | no: dev source not on the node |
@@ -99,7 +99,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **live reconfiguration.** No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.
 
 - Host-called subject: `fn-ocl-publish` at host/owner-host.lisp:760.
-- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260924T144840Z-1413165` passed this source of `books/config-owner-publish.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/accounts.lisp` and 108 more changed.
+- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20260927T075052Z-1892626` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix and native modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `host/owner-host.lisp`.
 - Deployed: no: node image `bbf52159`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).

@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1174 |
-| Certification roots in the Makefile | 1134 |
-| Books inside the root closure | 1162 |
-| `defthm` and `defthmd` events | 17248 |
-| `defun` events | 11984 |
-| Functions with verified guards | 2414 |
-| Functions declared `:verify-guards nil` and never verified | 1189 |
-| Functions left at the default with an explicit guard | 6613 |
-| Functions left at the default with no guard | 1768 |
-| `assert-event` checks | 17200 |
-| `must-fail` checks | 2072 |
+| Books read | 1176 |
+| Certification roots in the Makefile | 1136 |
+| Books inside the root closure | 1164 |
+| `defthm` and `defthmd` events | 17301 |
+| `defun` events | 12007 |
+| Functions with verified guards | 2415 |
+| Functions declared `:verify-guards nil` and never verified | 1191 |
+| Functions left at the default with an explicit guard | 6631 |
+| Functions left at the default with no guard | 1770 |
+| `assert-event` checks | 17209 |
+| `must-fail` checks | 2075 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 87 |
+| `encapsulate` events | 88 |
 | Theorems flagged SUSPECT by shape | 186 |
 | Export-hygiene warnings | 201 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 205 |
-| Include-hygiene warnings | 1180 |
+| Include-hygiene warnings | 1181 |
 | Host-names warnings | 1312 |
 | Hand-written-record warnings | 18 |
 
@@ -558,6 +558,7 @@ that `make certify` requests.
 | `books/payload-arena-attach.lisp` | root | 0 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `books/payload-arena-bytes.lisp` | root | 79 | 28 | 3/3/19/3 | 0 | 0 | 0 |
 | `books/payload-arena.lisp` | root | 49 | 13 | 0/1/9/3 | 0 | 0 | 0 |
+| `books/payload-lz.lisp` | root | 51 | 19 | 1/0/16/2 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 22 | 13 | 0/0/13/0 | 0 | 0 | 1 |
 | `books/peer-carriage-rows.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/peer-carriage.lisp` | root | 45 | 21 | 0/1/19/1 | 0 | 0 | 0 |
@@ -1111,6 +1112,7 @@ that `make certify` requests.
 | `tests/acl2/owner-verdict-read-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 32 | 6 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/payload-arena-tests.lisp` | root | 22 | 13 | 0/0/1/12 | 7 | 10 | 0 |
+| `tests/acl2/payload-lz-tests.lisp` | root | 2 | 4 | 0/2/2/0 | 9 | 3 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 15 | 0 |
 | `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 114 | 20 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |

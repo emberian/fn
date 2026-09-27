@@ -377,6 +377,8 @@
     "tests/acl2/store-log-decode-tests",
     "books/store-log-programs",
     "tests/acl2/store-log-programs-tests",
+    "books/payload-lz",
+    "tests/acl2/payload-lz-tests",
     "books/byte-store-k0-step-lemmas",
     "books/byte-store-k0-step-root-fence",
     "books/byte-store-k0-step",
@@ -1138,26 +1140,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1174,
-    "books_in_root_closure": 1162,
-    "roots": 1134,
-    "theorems": 17248,
-    "functions": 11984,
-    "assert_events": 17200,
-    "must_fails": 2072,
+    "books": 1176,
+    "books_in_root_closure": 1164,
+    "roots": 1136,
+    "theorems": 17301,
+    "functions": 12007,
+    "assert_events": 17209,
+    "must_fails": 2075,
     "prover_refusals": 0,
-    "encapsulates": 87,
+    "encapsulates": 88,
     "guards": {
-      "verified": 2414,
-      "declared-off": 1189,
-      "default-guarded": 6613,
-      "default-unguarded": 1768
+      "verified": 2415,
+      "declared-off": 1191,
+      "default-guarded": 6631,
+      "default-unguarded": 1770
     },
     "suspect_theorems": 186,
     "export_hygiene_warnings": 201,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 205,
-    "include_hygiene_warnings": 1180,
+    "include_hygiene_warnings": 1181,
     "host_names_warnings": 1312,
     "hand_written_record_warnings": 18
   },
@@ -14256,6 +14258,34 @@
         "payload-arena-bytes"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/payload-lz.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 51,
+      "functions": 19,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 16,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "octets-stobj"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -29991,6 +30021,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/payload-lz-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 3,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/payload-lz"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/peer-authored-accept-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -45643,6 +45701,13 @@
         "line": 7,
         "include": "../../books/nntp-verdict-effects",
         "included": "books/nntp-verdict-effects.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/payload-lz-tests.lisp",
+        "line": 9,
+        "include": "../../books/payload-lz",
+        "included": "books/payload-lz.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
