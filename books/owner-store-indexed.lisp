@@ -350,7 +350,7 @@
 
 (defthm fn-osi-own-finish-keeps-indexed
   (implies (fn-ceis-indexedp (fn-own-store o))
-           (fn-ceis-indexedp (fn-own-store (cdr (fn-ccar-own-finish o cfg)))))
+           (fn-ceis-indexedp (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-ccar-own-finish-is-own-finish fn-own-finish)
                                   (fn-ceis-indexedp fn-own-complete
                                    fn-own-completion-names-submission-p)))))
@@ -567,6 +567,7 @@
 ;   :prepare-identity fn-owner-prepare-identity               fn-ccar-ocfg-prepare-identity
 ;   :complete        fn-owner-finish                          fn-ccar-ocfg-complete
 ;   :finish          fn-owner-finish-submission               fn-ccar-own-finish
+;                    (installs its cdr, fn-ccar-own-complete: the word alone reads the arena)
 ;   :publish         fn-owner-reconfigure-complete            fn-ocl-publish
 ;   :configure       fn-owner-posting-configure               fn-own-configure
 ;   :profile         fn-owner-install-profile                 fn-osb-install
@@ -598,8 +599,7 @@
       (:complete (fn-ccar-ocfg-complete oc))
       (:finish (if (fn-ocfg-staged oc) oc
                  (fn-ocfg-with-owner
-                  oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc)
-                                              (fn-ocfg-config oc))))))
+                  oc (fn-ccar-own-complete (fn-ocfg-owner oc)))))
       (:publish (mv-let (verdict next) (fn-ocl-publish oc a b)
                   (declare (ignore verdict))
                   next))
@@ -646,6 +646,7 @@
                             (o (fn-ocfg-owner oc)) (cfg (fn-ocfg-config oc))))
            :in-theory (union-theories
                        '(fn-osi-host-step
+                         fn-ccar-own-finish-installs-ccar-own-complete-by-definition
                          fn-osi-ocfg-step-keeps-indexed fn-osi-rcon-io-keeps-indexed
                          fn-osi-pcar-prepare-keeps-indexed
                          fn-osi-pidx-prepare-keeps-indexed

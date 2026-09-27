@@ -514,8 +514,9 @@
                            (fn-sn-statep fn-sn-finish fn-ccar-sn-finish-is-sn-finish
                             fn-sn-completion-enabledp fn-own-refresh)))))
 
-(defun fn-ccar-completion-names-submission-p (o cfg)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o))
+(defun fn-ccar-completion-names-submission-p (o cfg fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (fn-sn-statep (fn-own-store o))
                   :guard-hints
                   (("Goal" :in-theory
                     (disable fn-ccar-completion-record-is-completion-record)))))
@@ -524,29 +525,31 @@
     (and sub
          record
          (fn-evc-recordp record)
-         (equal (fn-record-msgid record)
-                (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record)
-                (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))
+         (let ((w (fn-row-wire-of record fn-arena)))
+           (and (equal (fn-record-msgid w)
+                       (fn-record-octets-string (fn-own-sub-msgid sub)))
+                (equal (fn-record-payload w) (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))))
          t)))
 
 (defthm fn-ccar-completion-names-submission-p-is-reference
   (implies (fn-sn-statep (fn-own-store o))
-           (equal (fn-ccar-completion-names-submission-p o cfg)
-                  (fn-own-completion-names-submission-p o cfg)))
+           (equal (fn-ccar-completion-names-submission-p o cfg fn-arena)
+                  (fn-own-completion-names-submission-p o cfg fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-ccar-completion-names-submission-p
                                    fn-own-completion-names-submission-p
                                    fn-evc-carried-definitions)
                                   (fn-sn-statep fn-sn-completion-record
-                                   fn-record-p)))))
+                                   fn-row-wire-of fn-record-p)))))
 
-; The function host/owner-host.lisp fn-owner-finish-submission calls.  The
-; gate is evaluated once; the record is found at its sequence position and
-; its kind and fields are read by shape (books/store-events-carried.lisp).
-(defun fn-ccar-own-finish (o cfg)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
+; The function host/owner-host.lisp fn-owner-finish-submission calls, with
+; the entry's arena (the store retains rows; the completion is named through
+; alpha of its row).  The gate is evaluated once; the record is found at its
+; sequence position and its kind and fields are read by shape
+; (books/store-events-carried.lisp).
+(defun fn-ccar-own-finish (o cfg fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o))))
   (if (fn-ccar-completion-enabledp (fn-own-store o))
-      (cons (if (fn-ccar-completion-names-submission-p o cfg) :durable :fault)
+      (cons (if (fn-ccar-completion-names-submission-p o cfg fn-arena) :durable :fault)
             (fn-ccar-own-complete-enabled o))
     (cons :fault o)))
 
@@ -582,12 +585,20 @@
 ; store) is what equates the raw function with this logical one on every
 ; owner whose store satisfies it.
 (defthm fn-ccar-own-finish-is-own-finish
-  (equal (fn-ccar-own-finish o cfg) (fn-own-finish o cfg))
+  (equal (fn-ccar-own-finish o cfg fn-arena) (fn-own-finish o cfg fn-arena))
   :hints (("Goal" :in-theory '(fn-ccar-own-finish fn-own-finish
                                fn-ccar-own-complete-split-at-its-gate
                                fn-ccar-completion-enabledp-is-reference
                                fn-ccar-completion-names-submission-p-is-reference
                                fn-ccar-completion-enabled-implies-statep))))
+
+; The owner the host installs after the finish does not depend on the
+; arena: only the word reads the completed row's bytes.  The host models
+; that name the installed owner (books/owner-store-indexed.lisp
+; fn-osi-host-step) use this, not the finish, since they hold no arena.
+(defthm fn-ccar-own-finish-installs-ccar-own-complete-by-definition
+  (equal (cdr (fn-ccar-own-finish o cfg fn-arena)) (fn-ccar-own-complete o))
+  :hints (("Goal" :in-theory '(fn-ccar-own-finish fn-ccar-own-complete cdr-cons))))
 
 (in-theory (disable fn-ccar-own-complete-enabled fn-ccar-own-complete
                     fn-ccar-completion-names-submission-p fn-ccar-own-finish))
@@ -800,7 +811,7 @@
 ; relation again (fn-own-complete-preserves-relation over the reference).
 (defthm fn-ccar-own-finish-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (cdr (fn-ccar-own-finish o cfg))))
+           (fn-own-relation (cdr (fn-ccar-own-finish o cfg fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-own-finish)
                                   (fn-own-relation fn-own-complete)))))
 
@@ -809,7 +820,7 @@
 ; (fn-sn-finish-preserves-state), and fn-own-refresh keeps the store.
 (defthm fn-ccar-own-finish-preserves-sn-statep
   (implies (fn-sn-statep (fn-own-store o))
-           (fn-sn-statep (fn-own-store (cdr (fn-ccar-own-finish o cfg)))))
+           (fn-sn-statep (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-own-finish fn-own-complete
                                    fn-own-refresh-keeps-fields)
                                   (fn-sn-statep fn-sn-finish fn-own-refresh
