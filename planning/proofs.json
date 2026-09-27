@@ -1162,9 +1162,7 @@
         "fn-stx-index-equivocators-agree",
         "fn-stx-index-invariant-preserved-by-accept",
         "fn-stx-durable-completion-is-an-acceptance",
-        "fn-sn-finish-preserves-indexedp",
-        "fn-sn-statement-lookup-is-the-lace-lookup",
-        "fn-sn-equivocatorp-is-the-lace-equivocator"
+        "fn-sn-finish-preserves-indexedp"
       ],
       "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the two served-query keystones fn-sn-statement-lookup-is-the-lace-lookup and fn-sn-equivocatorp-is-the-lace-equivocator were stated over the acceptance articles BYTES; after the flip those carry handles, so records-flip-2 removed them from books/store-node-invariants.lisp and this row no longer cites them.  What holds today: the store index is the fold of the retained rows contexts (fn-sn-indexedp over fn-sn-index-of-rows, preserved by every transition in books/store-node-invariants.lisp) and that fold is the wire index of the rows bytes read through the arena (books/store-intern.lisp fn-rows-index-is-the-wire-index, under fn-rows-contexts-okp, which fn-intern-events-contexts-okp establishes at the intern).  OPEN (named): the two lookup keystones restated over alpha in books/store-intern.lisp (lookup in fn-sn-index = lookup in the lace of fn-rows-articles-newest-first)."
     },
@@ -3886,11 +3884,11 @@
         "fn-evc-field-by-shape-is-store-event-sequence",
         "fn-evc-field-by-shape-is-store-event-txid",
         "fn-evc-field-by-shape-is-store-event-generation",
-        "fn-evc-class-by-shape-is-fn-record-p",
+        "fn-evc-class-by-shape-is-fn-held-p",
         "fn-evc-class-by-shape-is-fn-store-retention-event-p",
         "fn-evc-class-by-shape-is-fn-stxe-p",
         "fn-evc-class-by-shape-is-fn-stxk-p",
-        "fn-evc-class-by-shape-is-fn-stxa-p",
+        "fn-evc-class-by-shape-is-fn-hstxa-p",
         "fn-evc-class-by-shape-is-fn-cpe-eventp",
         "fn-evc-class-by-shape-is-fn-th-topic-eventp",
         "fn-ccar-ocfg-complete-is-ocfg-step-complete",
