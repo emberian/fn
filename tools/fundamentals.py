@@ -31,7 +31,8 @@ measured.  No row is a before/after comparison unless it says so.
 The bars are parameters (defaults: the checklist as written, and where it
 leaves a number open, the reading named here and in the record):
   F1  --f1-slope-max 1.5 (B per payload octet after a reopen: "about 1"),
-      --f1-reopen-mb 128 (VmRSS and VmHWM of the 1,000-post reopen)
+      --f1-reopen-mb 128, --f1-reopen hwm|rss (the 1,000-post reopen's peak,
+      VmHWM, by default; VmRSS after it is the lenient reading)
   F2  --f2-r-evidence PATH (the committed record discharging R at every host
       entry); the lookup count needs a `lookups' figure in sr_measure's JSON
   F3  --f3-fsync-max 1.0 (fsyncs per POST at 8 posters: "well under 7");
@@ -183,8 +184,10 @@ def f1(out: Path, a) -> Row:
         r.clause("retained heap per payload octet", None, "the 1,000 x 2,048 and 1,000 x 8,000 rows did not both report")
     if floor and floor.get("after_reopen"):
         rss, hwm = floor["after_reopen"]["rss_kib"], floor["after_reopen"]["hwm_kib"]
-        ok = rss * 1024 < a.f1_reopen_mb * MB and hwm * 1024 < a.f1_reopen_mb * MB
-        r.clause(f"the 1,000-post reopen under {a.f1_reopen_mb} MB RSS (VmRSS and VmHWM)", ok,
+        judged = hwm if a.f1_reopen == "hwm" else rss
+        ok = judged * 1024 < a.f1_reopen_mb * MB
+        r.clause(f"the 1,000-post reopen under {a.f1_reopen_mb:g} MB RSS "
+                 f"({'VmHWM: the peak through the reopen' if a.f1_reopen == 'hwm' else 'VmRSS after it'})", ok,
                  f"VmRSS {mib(rss)}, VmHWM {mib(hwm)} after the reopen ({floor.get('status_open', '?')}, {floor.get('reopen_s')} s)")
     else:
         r.clause(f"the 1,000-post reopen under {a.f1_reopen_mb} MB RSS", None, "floor.py reported no reopen")
@@ -495,7 +498,7 @@ def readme(rev: str, out: Path, rows: list[Row], a) -> str:
              f"- Rows pinned to cores {a.row_cores} one after another, each in its own systemd scope; the F4 hour on {a.f4_cores} at the same time, then the stall case there; native modules unpinned in a 24G scope.",
              "- One image, stated load: no row is a before/after comparison unless its record says so.", "",
              "## The bars as read", "",
-             f"F1 slope at most {a.f1_slope_max} B/octet, reopen under {a.f1_reopen_mb} MB; F3 at most {a.f3_fsync_max} fsync/POST; "
+             f"F1 slope at most {a.f1_slope_max} B/octet, reopen under {a.f1_reopen_mb} MB ({a.f1_reopen}); F3 at most {a.f3_fsync_max} fsync/POST; "
              f"F4 Q_max {a.f4_q_max_ms}, H {a.f4_h_ms}, client deadline {a.f4_client_deadline_ms} ms; F6 under {a.f6_bar_s} s; "
              f"F7 {a.f7_reading}; F8 reserved {a.f8_reserved_mb} MB, in use {a.f8_in_use_mb} MB ({a.f8_in_use}), reopen {a.f8_reopen_mb} MB.", "",
              "## The rows", "", "| ID | record | status here |", "| --- | --- | --- |"]
@@ -584,6 +587,8 @@ def main(argv=None) -> int:
     bars = argparse.ArgumentParser(add_help=False)
     bars.add_argument("--f1-slope-max", type=float, default=1.5)
     bars.add_argument("--f1-reopen-mb", type=float, default=128)
+    bars.add_argument("--f1-reopen", choices=("hwm", "rss"), default="hwm",
+                      help="the reopen's figure: its peak (VmHWM, default) or VmRSS after it")
     bars.add_argument("--f2-r-evidence", default=None)
     bars.add_argument("--f3-fsync-max", type=float, default=1.0)
     bars.add_argument("--f4-q-max-ms", type=float, default=None)

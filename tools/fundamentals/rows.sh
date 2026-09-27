@@ -31,7 +31,8 @@ T=$1; O=$2; STEPS=${3:-"heap f4 f5 f5n f8 f1 f6 f3 f2 f7 wait f4s"}
 H=$(cd "$(dirname "$0")" && pwd)
 ROW_CORES=${ROW_CORES:-20-23}; F4_CORES=${F4_CORES:-16-19}; F4_SECONDS=${F4_SECONDS:-3600}
 FX=${F6_FIXTURES:-/tank/fn/scratch/fixtures}
-W=/dev/shm/fundamentals-$(basename "$O")
+# This invocation's own scratch: a second rows.sh on the same OUT never removes it.
+W=/dev/shm/fundamentals-$(basename "$(dirname "$O")")-$$
 DEV=$T/build/fn-host-developer; PROD=$T/build/fn-host; PROF=$T/build/fn-host-developer-heap
 mkdir -p "$O" "$W" "$O/bin" "$O/logs"
 if [ -z "${OPENSSL_TEST:-}" ]; then
@@ -110,7 +111,7 @@ f6) for fx in chain-20000 t40k-2k-cp5; do
       done
     done ;;
 f3) for fs in nvme tank; do
-      if [ $fs = nvme ]; then D=/var/tmp/fundamentals-$(basename "$O")/gc-$fs; S=30; else D=/tank/fn/scratch/fundamentals/$(basename "$O")/gc-$fs; S=60; fi
+      if [ $fs = nvme ]; then D=/var/tmp/fundamentals-$(basename "$(dirname "$O")")/gc-$fs; S=30; else D=/tank/fn/scratch/fundamentals/$(basename "$(dirname "$O")")/gc-$fs; S=60; fi
       rm -rf "$D"; mkdir -p "$(dirname "$D")"
       box "f3-$fs"
       FN_TREE=$T scope 110G "$ROW_CORES" python3 "$H/gc_measure.py" --image "$DEV" --dir "$D" --json "$O/f3-gc-$fs.json" --label $fs --seconds $S --connections 1,8,32 --fsync-posts 64 > "$O/f3-gc-$fs.log" 2>&1

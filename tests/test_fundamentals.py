@@ -22,7 +22,7 @@ SCOREBOARD = ROOT / "planning" / "evidence" / "fundamentals-2026-09-27" / "out"
 
 def bars(**over):
     a = fundamentals.main.__globals__["argparse"].Namespace(
-        f1_slope_max=1.5, f1_reopen_mb=128, f2_r_evidence=None, f3_fsync_max=1.0,
+        f1_slope_max=1.5, f1_reopen_mb=128, f1_reopen="hwm", f2_r_evidence=None, f3_fsync_max=1.0,
         f4_q_max_ms=None, f4_h_ms=None, f4_client_deadline_ms=10000, f6_bar_s=10,
         f7_reading="as-written", f8_reserved_mb=256, f8_in_use_mb=128, f8_in_use="rss",
         f8_reopen_mb=256, checklist=None, row_cores="20-23", f4_cores="16-19", tree=None)
