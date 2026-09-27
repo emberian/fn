@@ -139,8 +139,14 @@
 (assert-event (equal (fn-ccco-octet-event-listp *ct-h* 0 0 6) (fn-cc-octet-event-listp *ct-h* 0 0 6)))
 (assert-event (fn-ccco-octet-event-listp *ct-h* 0 0 6))
 (assert-event (not (fn-ccco-octet-event-listp *ct-h* 1 0 6)))
-(assert-event (equal (fn-ccco-event-fields *ct-a0*) (list t 0 0 0)))
-(assert-event (equal (fn-ccco-event-fields *ct-e1*)
-                     (list t (fn-store-event-sequence *ct-e1*) (fn-store-event-txid *ct-e1*)
-                           (fn-store-event-generation *ct-e1*))))
-(assert-event (equal (fn-ccco-event-fields 'not-an-event) (list nil nil nil nil)))
+; fn-event-fields-of-wire-is-the-dispatchers (books/store-event-fields.lisp):
+; a link's decoded events are WIRE events, read with WIREP t.
+(assert-event (equal (fn-event-fields *ct-a0* t) (list t 0 0 0)))
+(assert-event (equal (fn-event-fields *ct-e1* t)
+                     (list t (fn-wire-event-sequence *ct-e1*) (fn-wire-event-txid *ct-e1*)
+                           (fn-wire-event-generation *ct-e1*))))
+(assert-event (equal (fn-event-fields 'not-an-event t) (list nil nil nil nil)))
+; The vocabulary is load-bearing: a wire record is no retained row, so the
+; rows' reading (WIREP nil) does not recognize it.
+(assert-event (fn-record-p *ct-a0*))
+(assert-event (equal (fn-event-fields *ct-a0* nil) (list nil nil nil nil)))
