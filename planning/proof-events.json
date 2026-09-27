@@ -7317,6 +7317,23 @@
           "name": "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
         }
       ]
+    },
+    {
+      "id": "PRF-216",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-checkpoint-decode-is-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-selection-plan-is-selection-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-dec-is-dec"
+        }
+      ]
     }
   ]
 }

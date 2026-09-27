@@ -7814,6 +7814,35 @@
         "fn-cfgc-publication-authorize-is-the-replayed-authorization",
         "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
       ]
+    },
+    {
+      "id": "PRF-216",
+      "title": "The BP kind-19 checkpoint read from an octet buffer by index is the list decoder: the reopen after a rotation decodes the same checkpoint and refuses the same files, in linear work",
+      "statement": "books/bp-node-rotation-buffer.lisp. fn-bpnrb-selection-plan (the host-called entry: host/native/bp-service.lisp fnn-bps-selection-plan, called by fnn-bps-open, copies the selected generation file's bytes into fn-octets-bp, an abstract stobj congruent to fn-octets, one byte per octet) reads the file by index: fn-bpnrb-decode-range checks the head, reads the u64 payload length from eight cells, checks the frame trailer over the prefix (fn-frame-trailer of fn-bpnr-checkpoint-prefix of the payload cells, built once) and runs the tree decoder fn-bpnrb-dec, which carries an index (a counted run is its cells copied once, fn-bpnrb-slice-acc; a u64 is eight cells). KEYSTONE fn-bpnrb-checkpoint-decode-is-decode, hypothesis-free: (equal (fn-bpnrb-checkpoint-decode budget x) (fn-bpnr-checkpoint-decode x budget)) -- the same checkpoint on every file the list decoder takes, nil on every file it refuses, so fn-bpnr-checkpoint-decode-of-octets (PRF-081's round trip) and PRF-081's recovery keystones are about what the host executes. fn-bpnrb-selection-plan-is-selection-plan, hypothesis-free: the entry equals fn-bpnr-selection-plan over the buffer's value. fn-bpnrb-dec-is-dec: over an octet buffer, the index decoder on the cells [i, end) is fn-bpnr-dec on that slice, with the rest of the slice being the cells from the returned index. The bounded-step foundation (gpt-6's review 2026-09-26 section 2: the checkpoint pipeline's discipline for the BP checkpoint): fn-bpnrb-mstep, the recursion as an explicit machine over (position, goals, value stack); fn-bpnrb-mrun, one quantum of at most Q steps stopping once B octets are consumed, returning the exact continuation; fn-bpnrb-mrun-all-of-dec-goal (the machine run from a decode goal is fn-bpnrb-dec's result followed by the remaining goals) and fn-bpnrb-mrun-all-of-mrun (a quantum keeps the whole run: resuming from its continuation reaches the same answer; a refused quantum is a refused run). These are NOT host-called yet: the host still calls fn-bpnrb-selection-plan in one call (0.55 s at 11.4 MB); the stepped entry and its keystone are the continuation's (LANEDUMP). Every executable function is guard-verified (asserted :common-lisp-compliant in the test book). Why: the list decoder's u64 and counted reads re-established true-listp of the whole remaining input per token (fn-bpnr-read-u64, fn-bpnr-read-counted), so the reopen after a rotation was quadratic in the file (sb-sprof: 99.9 percent of samples in TRUE-LISTP, 722 s for an 11,418,801-octet file of 1,311 held rows). What it does not say: the held rows' wires remain octet lists in the checkpoint value (the replay's representation); the trailer digest is computed over a list of the prefix (the constrained fn-frame-digest has no buffer-range twin); the list decoder remains the specification and the rotation's writer (fn-bpnr-checkpoint-octets) is unchanged.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005"
+      ],
+      "depends_on": [
+        "PRF-081"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpnrb-checkpoint-decode-is-decode",
+        "fn-bpnrb-selection-plan-is-selection-plan",
+        "fn-bpnrb-dec-is-dec"
+      ],
+      "evidence": [
+        "books/bp-node-rotation-slice.lisp",
+        "books/bp-node-rotation-buffer.lisp",
+        "tests/acl2/bp-node-rotation-buffer-tests.lisp",
+        "host/native/bp-service.lisp",
+        "planning/evidence/bp-checkpoint-open-2026-09-26.md"
+      ],
+      "progress_note": "Lane bp-checkpoint-open (2026-09-26): the three books certified on hbox with certify_books.py (--incremental, 2 jobs); READY FOR BATCH, the deputy's batch certification is the cited manifest."
     }
   ]
 }
