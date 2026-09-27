@@ -7548,6 +7548,51 @@
           "name": "fn-cnx-freshp-of-cat-writers"
         }
       ]
+    },
+    {
+      "id": "PRF-226",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-contact-next-is-the-head-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-offer-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-evolution-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-open-establishes-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-drain-is-the-head-drain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-drain-visits-are-linear"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-offered-record-evolves"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-lifecycle-record-keeps-the-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-close-keeps-the-frontiers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnjc-ask-position-bounds"
+        }
+      ]
     }
   ]
 }
