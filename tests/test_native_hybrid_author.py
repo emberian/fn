@@ -297,6 +297,108 @@ class NativeHybridAuthorTest(unittest.TestCase):
         self.assertNotIn("REFUSED", outcomes["damaged-signature"][1][0].split()[-1:],
                          outcomes)
 
+    def test_v2_source_through_hybrid_author(self):
+        """PKT-codex-003 (Mini/DREGG): the local author request carries a v2
+        source (past 65,535 octets), as the served POST does.  Under a Store
+        whose article bound A is 400,000, a signed 191,283-octet source (the
+        size of Mini's grain-origin R, refused here before) is accepted, its
+        exact resend is DUPLICATE, NNTP serves the stored carrier ending in
+        the exact source with its acceptance-time verdict, and a source whose
+        carrier passes A is refused by the injection decision's own word.
+        The read bound is books/native-hybrid-control.lisp KEYSTONE
+        fn-native-hybrid-control-author-request-within-read-bound."""
+        store = self.root / "store-v2"
+        made = self.invoke("store", str(store), "init",
+                           "--max-article-octets", "400000",
+                           "--max-record-octets", "18874368", "fn.test",
+                           timeout=180)
+        self.assertEqual(made.returncode, 0, made.stderr.decode())
+        self.config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
+                store, self.port, self.control, self.service_log),
+            encoding="ascii")
+
+        def source_of(stem, total):
+            head = (b"From: author@example.invalid\r\n"
+                    b"Date: Sun, 27 Sep 2026 20:00:00 +0000\r\n"
+                    b"Newsgroups: fn.test\r\nSubject: " + stem.encode()
+                    + b"\r\nMessage-ID: <" + stem.encode()
+                    + b"@example.invalid>\r\n\r\n")
+            room = total - len(head)
+            lines, line = [], b"v" * 78 + b"\r\n"
+            while room >= len(line):
+                lines.append(line)
+                room -= len(line)
+            if room == 1:
+                lines[0] = b"v" * 79 + b"\r\n"
+            elif room:
+                lines.append(b"w" * (room - 2) + b"\r\n")
+            data = head + b"".join(lines)
+            self.assertEqual(len(data), total)
+            path = self.root / (stem + ".eml")
+            path.write_bytes(data)
+            return path
+
+        def signed(source, stem):
+            result = self.invoke("hybrid-sign", str(self.principal),
+                                 str(self.ed_public), str(self.ed_secret),
+                                 str(self.ml_public), str(self.ml_private),
+                                 str(source), timeout=300)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            values = dict(line.split() for line in result.stdout.decode().splitlines())
+            ed_path = self.root / (stem + "-ed.sig")
+            ml_path = self.root / (stem + "-ml.sig")
+            ed_path.write_bytes(bytes.fromhex(values["ed25519"]))
+            ml_path.write_bytes(bytes.fromhex(values["ml-dsa-65"]))
+            return [str(self.control), "1", str(source), str(ed_path),
+                    str(ml_path), str(self.ml_public)]
+
+        def author(arguments):
+            done = self.invoke("hybrid-author", *arguments, timeout=300)
+            return done.returncode, done.stderr.decode().strip().splitlines()[-1:]
+
+        large = source_of("codex003-v2", 191283)
+        past_a = source_of("codex003-past-a", 399000)
+        owner = self.start_owner()
+        try:
+            enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
+                                   str(self.principal), str(self.ed_public),
+                                   str(self.ml_public))
+            self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+            request = signed(large, "codex003-v2")
+            first = author(request)
+            again = author(request)
+            beyond = author(signed(past_a, "codex003-past-a"))
+            with socket.create_connection(("127.0.0.1", self.port), timeout=60) as sock:
+                with whole_stream(sock) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"ARTICLE <codex003-v2@example.invalid>\r\n")
+                    status = stream.readline()
+                    returned = bytearray()
+                    if status.startswith(b"220 "):
+                        while True:
+                            line = stream.readline()
+                            self.assertTrue(line, "ARTICLE ended before its terminator")
+                            if line == b".\r\n":
+                                break
+                            returned.extend(line[1:] if line.startswith(b"..") else line)
+                    stream.write(b"HDR :fn-verified <codex003-v2@example.invalid>\r\n")
+                    hdr = [stream.readline(), stream.readline(), stream.readline()]
+        finally:
+            self.stop_owner(owner)
+        print("NATIVE-CODEX003-WITNESS " + repr(
+            {"first": first, "again": again, "beyond": beyond,
+             "article": status[:4], "stored": len(returned), "hdr": hdr}))
+        self.assertEqual(first, (0, ["accepted hybrid-author ACCEPTED"]))
+        self.assertEqual(again, (0, ["accepted hybrid-author DUPLICATE"]))
+        self.assertEqual(beyond, (1, ["refused hybrid-author ARTICLE-EXCEEDS-PROFILE-BOUND"]))
+        self.assertTrue(status.startswith(b"220 "), status)
+        self.assertTrue(bytes(returned).endswith(large.read_bytes()))
+        self.assertIn(b"FN-Authorship: ", bytes(returned)[:200])
+        self.assertEqual(hdr[0], b"225 headers follow\r\n")
+        self.assertEqual(hdr[1], b"0 verified " + b"55" * 32 + b" keyring 1\r\n")
+
     def test_portable_carrier_verifies_exact_source_and_keyset(self):
         source = self.root / "authored.eml"
         source.write_bytes(
