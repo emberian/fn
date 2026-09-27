@@ -3149,6 +3149,19 @@
                 (equal (fn-auth-view-index as config archive index) index)
                 (equal (fn-auth-view-config as config archive) config))))
 
+; The view's posting configuration differs from the connection's only in its
+; served and closed groups.
+(defthm fn-auth-view-config-keeps
+  (and (equal (fn-inj-config-allow (fn-auth-view-config as config archive))
+              (fn-inj-config-allow config))
+       (equal (fn-inj-config-agent (fn-auth-view-config as config archive))
+              (fn-inj-config-agent config))
+       (equal (fn-inj-config-max-octets (fn-auth-view-config as config archive))
+              (fn-inj-config-max-octets config))
+       (equal (fn-inj-config-listing (fn-auth-view-config as config archive))
+              (fn-inj-config-listing config)))
+  :hints (("Goal" :in-theory (enable fn-auth-view-config fn-gac-post-config))))
+
 (in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
                     fn-auth-access-post fn-auth-access-restrictedp
                     fn-auth-view-session fn-auth-view-archive fn-auth-view-index

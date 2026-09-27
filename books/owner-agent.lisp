@@ -284,8 +284,13 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                     (fn-auth-step-pinned as archive index verdicts config
                                          observation injection wire-event)))
            :use ((:instance fn-auth-pinned-submission-is-the-delegated-submission)
+                 ;; PRF-222: the delegate serves the session's view, whose
+                 ;; posting configuration keeps the agent (fn-auth-view-config-keeps).
                  (:instance fn-oag-peer-step-pinned-submission-names-the-configured-agent
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as config archive)))))))
 
 (local
  (defthm fn-oag-auth-effects-carry-no-submission
