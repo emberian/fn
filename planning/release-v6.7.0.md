@@ -98,7 +98,7 @@ the common conditions in planning/evidence/fundamentals-2026-09-27/README.md):
 
 ## 3. The gates, in order
 
-`tools/cut_release.sh` runs gates 01 to 16 in this order and stops at the
+`tools/cut_release.sh` runs gates 01 to 17 in this order and stops at the
 first red. It writes `build/cut/v6.7.N-REV12/verdict.txt`, whose last line
 is `VERDICT GREEN ...` or `VERDICT RED at NN NAME`, and one log per gate.
 Run it from a clean checkout at REV (a `git worktree add --detach`), never
@@ -125,7 +125,8 @@ prints every other gate's commands and checks the box preconditions it can
 | 13 | the OpenBSD tarball | in the cut's OpenBSD 7.9 build VM on hbox (`--openbsd-vm`, default `cutbld`: a tools/power_loss_openbsd.py configuration whose root is a copy of openbsd-release-fixes' orfbld; provisioning in the header of tools/cut_release.sh): REV's default closure certified in the guest, `fn-6.7.N-openbsd-amd64.tar.gz` built by packaging/release-tarball.sh, runpath `--tarball`, installed fresh, tests.test_release_tarball `OK`, the installed `fn --version` under root's login limits prints `fn 6.7.N (REV12)`; the VM is booted and shut down by the gate, and a VM already running (someone's) is red, never taken | hbox (the VM) |
 | 14 | the power-loss cut list on the release image | tools/power_loss.py's reproduction (planning/evidence/power-loss-2026-09-26.md section 7): rig, workload of 600 POSTs, index, the cut plan `init=8,post=150,checkpoint=60,compact=60,reclaim=50,control=8` with recovery cut at 0.2, on the INSTALLED tarball's launcher; the summary's `all` row: 0 violations, controls caught > 0, 0 harness errors | hbox (sudo -n for the block layer) |
 | 15 | the friends session from the tarball | tests.test_native_friends_feed with `FN_FRIEND_FN` the fresh install's `bin/fn` (the friend) and the developer image as the author: `OK` with no skip | hbox |
-| 16 | the tag | prints `git tag -a v6.7.N -m 'fn 6.7.N' REV` for the coordinator; the script creates no tag | local |
+| 16 | extract-check | `make extract-check` (lane extract-2's N-version differential) when REV's Makefile has the target; `SKIPPED` (never green) until it does | local |
+| 17 | the tag | prints `git tag -a v6.7.N -m 'fn 6.7.N' REV` for the coordinator; the script creates no tag | local |
 
 What the gates do not decide (the cut's qualification record, section 4):
 
@@ -167,7 +168,7 @@ What the gates do not decide (the cut's qualification record, section 4):
    qual-69046a76-2026-09-26.md). Commit the throughput JSON gate 10 wrote
    under planning/evidence/throughput/, the verdict and the tarballs'
    SHA256SUMS.
-5. Tag `v6.7.N` at REV (gate 16's line); push the tag.
+5. Tag `v6.7.N` at REV (gate 17's line); push the tag.
 6. The release notes (section 7), final, beside the tarballs. ember's go
    before any friend is sent a link.
 

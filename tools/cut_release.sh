@@ -14,7 +14,7 @@
 #   VERDICT GREEN vVERSION REV          every gate green
 #   VERDICT RED at NN NAME              the first red gate; nothing after it ran
 #   VERDICT DRY-RUN ...                 --dry-run (below)
-#   VERDICT PARTIAL ...                 --to N below 16: gates FROM..N green
+#   VERDICT PARTIAL ...                 --to N below 17: gates FROM..N green
 #
 # It creates no tag: the last gate prints the `git tag' command for the
 # coordinator.  It never touches /tank/fn/node and deploys nothing.
@@ -52,7 +52,10 @@
 #         and the installed `fn --version' 
 #   14    the power-loss cut list on the release image    hbox (sudo -n)
 #   15    the friends session from the Linux tarball      hbox
-#   16    the tag: print the command                      local
+#   16    extract-check: `make extract-check' (the        local
+#         N-version differential) when REV has the
+#         target; SKIPPED until then
+#   17    the tag: print the command                      local
 #
 # Box paths: everything under /tank/fn/scratch/cut-VERSION-REV12/ (S); the native
 # gate's tree is S/native-REV12/tree (T), whose build/ holds the six
@@ -99,7 +102,7 @@ usage() {
   echo 'usage: cut_release.sh [--dry-run] [--rev REV] [--out DIR] [--from N] [--to N] [--runtime-from DIR] [--openbsd-vm NAME]' >&2
   exit 2
 }
-DRY=no REV_ARG=HEAD OUT="" FROM=1 TO=16
+DRY=no REV_ARG=HEAD OUT="" FROM=1 TO=17
 RUNTIME=/tank/fn/scratch/glibc-floor/runtime-2.6.8
 OB_VM=cutbld OB_BASE=/tank/fn/scratch/power-loss-openbsd
 HOST=${FN_HBOX:-hbox}
@@ -148,6 +151,7 @@ else
 fi
 
 FIRST_RED=
+SKIPS=
 # box CMD: one shell command on hbox (never in a dry run).
 box() { ssh -n -o BatchMode=yes "$HOST" "$1"; }
 # box_script NAME TEXT: TEXT becomes S/NAME.sh on hbox (no quoting through
@@ -168,11 +172,13 @@ gate() {
   case $rc in
     0) word=GREEN ;;
     10) word=DRY ;;
+    11) word=SKIPPED ;;
     *) word=RED ;;
   esac
   line="$nn $name $word ($started..$(stamp)): $last"
   echo "$line" >> "$V"
   echo "   $word: $last"
+  [ "$word" != SKIPPED ] || SKIPS="$SKIPS $nn"
   if [ "$word" = RED ]; then
     [ -n "$FIRST_RED" ] || FIRST_RED="$nn $name"
     if [ "$DRY" = no ]; then
@@ -494,6 +500,17 @@ g_friends() {
   echo "friends session: the friend's node on the release tarball's bin/fn, OK"
 }
 
+# The N-version differential (lane extract-2): `make extract-check' when REV's
+# Makefile has the target; until then the gate says SKIPPED, never green.
+g_extract() {
+  if ! git show "$REV:Makefile" 2>/dev/null | grep -q '^extract-check:'; then
+    echo "no make target extract-check at REV (lane extract-2): skipped"; return 11
+  fi
+  if [ "$DRY" = yes ]; then would make extract-check; return 10; fi
+  make extract-check || { echo "make extract-check failed"; return 1; }
+  echo "make extract-check green"
+}
+
 g_tag() {
   echo "for the coordinator, at the cut: git tag -a v$VERSION -m 'fn $VERSION' $REV && git push origin v$VERSION"
   [ "$DRY" = yes ] && return 10
@@ -515,14 +532,15 @@ gate 12 tarball-linux g_tarball_linux
 gate 13 tarball-openbsd g_tarball_openbsd
 gate 14 power-loss g_power_loss
 gate 15 friends g_friends
-gate 16 tag g_tag
+gate 16 extract g_extract
+gate 17 tag g_tag
 
 if [ "$DRY" = yes ]; then
   echo "VERDICT DRY-RUN v$VERSION $REV: first red ${FIRST_RED:-none} ($(stamp))" >> "$V"
-elif [ "$TO" -lt 16 ]; then
+elif [ "$TO" -lt 17 ]; then
   echo "VERDICT PARTIAL v$VERSION $REV: gates $FROM to $TO green; not a cut ($(stamp))" >> "$V"
 else
-  echo "VERDICT GREEN v$VERSION $REV ($(stamp))" >> "$V"
+  echo "VERDICT GREEN v$VERSION $REV${SKIPS:+ (skipped:$SKIPS)} ($(stamp))" >> "$V"
 fi
 tail -1 "$V"
 echo "verdict: $V"
