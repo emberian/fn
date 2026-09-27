@@ -7856,7 +7856,11 @@
         "fn-cfgc-cpr-replay-of-one-more",
         "fn-cfgc-candidate-open-result-is-the-replayed-candidate",
         "fn-cfgc-publication-authorize-is-the-replayed-authorization",
-        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization",
+        "fn-cfgc-advance-okp-is-replay-advance-okp",
+        "fn-cfgc-cpo-open-of-other-configs",
+        "fn-cfgc-candidate-open-carried-is-the-replayed-candidate",
+        "fn-cfgc-readback-verified-is-the-reopen"
       ]
     },
     {
@@ -8000,7 +8004,7 @@
         "PRF-120"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-job-cursor.lisp",
         "tests/acl2/bp-node-job-cursor-tests.lisp",
@@ -8039,7 +8043,7 @@
         "PRF-188"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/reader-open-carried.lisp",
         "tests/acl2/reader-open-carried-tests.lisp",
@@ -8098,7 +8102,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
@@ -8134,7 +8138,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/checkpoint-pack-chain-once.lisp",
         "tests/acl2/checkpoint-pack-chain-once-tests.lisp",
