@@ -125,10 +125,16 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # (fnn-checkpoint-write-steps: fn-ockp-step per step, the step's
         # frames written straight from the publication buffer) inside the
         # same byte program's staged writer.
-        self.assertIn("'fn-store-sco-publish-setup", command)
-        self.assertIn("(fnn-checkpoint-write-steps fd setup segment sequence", command)
-        self.assertIn("(fnn-state-checkpoint-write", command)
+        # Since log-recovery (2026-09-27) the verb and `store compact' share
+        # one publication, fnn-state-checkpoint-publish-steps (the log's
+        # rotation first, the covered segments' drop after the install).
+        self.assertIn("(fnn-state-checkpoint-publish-steps", command)
         self.assertNotIn("fnn-plan-octets", command)
+        publish = native_cuts.host_function(io, "fnn-state-checkpoint-publish-steps")
+        self.assertIn("'fn-store-sco-publish-setup", publish)
+        self.assertIn("(fnn-checkpoint-write-steps fd setup segment sequence", publish)
+        self.assertIn("(fnn-state-checkpoint-write", publish)
+        self.assertNotIn("fnn-plan-octets", publish)
         steps = native_cuts.host_function(io, "fnn-checkpoint-write-steps")
         self.assertIn("(fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+", steps)
         self.assertIn("(fnn-plan-write-all fd frames st)", steps)
