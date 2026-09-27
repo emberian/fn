@@ -341,3 +341,59 @@
       (eq (symbol-class 'fn-rii-sn-statep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-sf-statep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-sf-record-listp (w state)) :common-lisp-compliant)))
+
+; -----------------------------------------------------------------------------
+; 7a (lane snapshot-open-2): the open checks the configured node once.
+; fn-rii-sco-finalize-configured-is-finalize-from, reachable: the drain of
+; the paused fold of the full history is :ok, its node configured, and the
+; finalize without the node checks is the finalize with them, :ok.
+(defconst *rii-t-replayed*
+  (fn-sco-cpr-finish (fn-sco-cpr *rii-t-full-e*) *rii-t-configs*))
+(assert-event
+ (and (fn-sco-pausedp (fn-sco-cpr *rii-t-full-e*))
+      (equal (fn-replay-result-kind *rii-t-replayed*) :ok)
+      (fn-cnode-statep (fn-replay-result-node *rii-t-replayed*))
+      (equal (fn-rii-sco-finalize-configured *rii-t-replayed* *rii-t-full-e*
+                                             *rii-t-configs* *rii-t-frontier*)
+             (fn-rii-sco-finalize-from *rii-t-replayed* *rii-t-full-e*
+                                       *rii-t-configs* *rii-t-frontier*))
+      (equal (fn-sn-open-kind
+              (fn-rii-sco-finalize-configured *rii-t-replayed* *rii-t-full-e*
+                                              *rii-t-configs* *rii-t-frontier*))
+             :ok)
+      (equal (fn-rii-sco-store-open *rii-t-full-e* *rii-t-configs* *rii-t-frontier*)
+             (fn-sco-store-open *rii-t-full-e* *rii-t-configs* *rii-t-frontier*))))
+
+; Hypothesis removal: an :ok result whose node is NOT configured (its
+; bindings corrupted; a corrupted-state witness, not a reachable one).  The
+; finalize with the checks refuses it (:frontier); the one without them
+; answers :ok, so the hypothesis carries the theorem.  The retained
+; hypothesis's other disjunct (the kind is :ok) holds.  Evaluated without
+; guard checking: the corrupted node is outside the guard by construction.
+(defconst *rii-t-bad-node*
+  (let ((n (fn-cnode-node (fn-replay-result-node *rii-t-replayed*))))
+    (fn-node-make-state (fn-node-acceptance n) (fn-node-retention n) nil
+                        '(:not-a-binding))))
+(defconst *rii-t-bad-replayed*
+  (fn-replay-ok (fn-cnode-make *rii-t-bad-node*
+                               (fn-cnode-config (fn-replay-result-node *rii-t-replayed*)))
+                (fn-replay-result-sequence *rii-t-replayed*)))
+(assert-event
+ (with-guard-checking
+  :none
+  (and (equal (fn-replay-result-kind *rii-t-bad-replayed*) :ok)
+      (not (fn-cnode-statep (fn-replay-result-node *rii-t-bad-replayed*)))
+      (equal (fn-sn-open-kind
+              (fn-rii-sco-finalize-from *rii-t-bad-replayed* *rii-t-full-e*
+                                        *rii-t-configs* *rii-t-frontier*))
+             :error)
+      (equal (fn-sn-open-kind
+              (fn-rii-sco-finalize-configured *rii-t-bad-replayed* *rii-t-full-e*
+                                              *rii-t-configs* *rii-t-frontier*))
+             :ok))))
+
+(assert-event
+ (and (eq (symbol-class 'fn-rii-sco-finalize-configured (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sn-statep-carried (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sf-statep-carried (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-advance-idlep (w state)) :common-lisp-compliant)))
