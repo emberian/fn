@@ -7341,6 +7341,26 @@
         {
           "kind": "theorem",
           "name": "fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-operation-decide-holds-the-operation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-operation-decide-of-a-serve-action-is-heap-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-operation-decide-holds-the-operation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-is-reserve-of-heap-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-of-holds-the-decision"
         }
       ]
     },
@@ -8074,6 +8094,10 @@
         {
           "kind": "theorem",
           "name": "fn-obi-load-from-empty-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccco-coverage-headers-is-coverage-chain"
         }
       ]
     },

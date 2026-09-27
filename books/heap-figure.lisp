@@ -250,6 +250,113 @@
   :hints (("Goal" :in-theory (disable fn-heap-figure-octets fn-heap-profile-word
                                       fn-bs-profile-admittedp))))
 
+;; -----------------------------------------------------------------------------
+;; The operation's figure (lane openbsd-release-fixes, PKT-686).
+;;
+;; The figure above models the open and the served path: two list copies of
+;; the history.  The offline compaction verbs hold more.  Measured on the
+;; production image (planning/evidence/openbsd-release-fixes-2026-09-27.md
+;; section 3: the least `--dynamic-space-size' at which each verb exits 0, by
+;; bisection, on a store of 3,000 articles holding 7,271,160 history octets
+;; under the small preset's fields with a 16-record open suffix, whose figure
+;; is 821 MB): `store compact' 1,280 to 1,381 MB and `store reclaim' (which
+;; compacts first) 1,179 to 1,447 MB on Linux, compact 1,256 MB on OpenBSD
+;; 7.9; `recover' (a full replay) and the owner's open 666 to 716 MB.  Less
+;; the core, the nursery, both checkpoint buffers and the record in flight,
+;; that is at most 5.13 list copies of the history for the compaction verbs
+;; (sixteen octets per octet, twice for the collector's copy) and at most
+;; 1.61 for the open.  The compaction verbs' figure counts
+;; *fn-heap-compaction-history-copies* = 6 copies; every other command keeps
+;; the two copies of the figure above (`fn-heap-operation-decide-of-a-serve-
+;; action-is-heap-decide').  The native action is ACL2's
+;; (books/native-operator.lisp fn-native-operator-result-native-action).
+
+(defconst *fn-heap-serve-history-copies* 2)
+(defconst *fn-heap-compaction-history-copies* 6)
+
+(defun fn-heap-operation-history-copies (action)
+  (declare (xargs :guard t))
+  (if (member-equal action '(:compact :reclaim))
+      *fn-heap-compaction-history-copies*
+    *fn-heap-serve-history-copies*))
+
+(defun fn-heap-operation-list-octets (action profile)
+  (declare (xargs :guard t))
+  (* *fn-heap-octets-per-list-octet*
+     (+ (* (fn-heap-operation-history-copies action)
+           (fn-bs-profile-max-history-octets profile))
+        (fn-bs-profile-max-record-octets profile)
+        (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile)))))
+
+(defun fn-heap-operation-figure-octets (action profile core nursery)
+  (declare (xargs :guard t))
+  (+ (nfix core) (nfix nursery)
+     (* 2 (fn-heap-operation-list-octets action profile))
+     (fn-heap-buffer-octets profile)))
+
+; `fn-heap-decide' over the operation's figure.
+(defun fn-heap-operation-decide (action profile core nursery observations)
+  (declare (xargs :guard t))
+  (let* ((machine (fn-heap-machine-octets observations))
+         (machine-mb (floor machine *fn-heap-mib*)))
+    (cond ((zp machine)
+           (list :refused :machine-memory-unobserved 0 0))
+          ((not (fn-bs-profile-admittedp profile))
+           (let ((floor-mb (fn-heap-mb-of (+ (nfix core) (nfix nursery)))))
+             (if (<= (* *fn-heap-mib* floor-mb) machine)
+                 (list :heap machine-mb "none" machine-mb)
+               (list :refused :machine-cannot-hold-image floor-mb machine-mb))))
+          (t
+           (let ((mb (fn-heap-mb-of
+                      (fn-heap-operation-figure-octets action profile core nursery))))
+             (if (<= (* *fn-heap-mib* mb) machine)
+                 (list :heap mb (fn-heap-profile-word profile) machine-mb)
+               (list :refused :machine-cannot-hold-profile mb machine-mb)))))))
+
+; A command other than the compaction verbs gets exactly the figure above.
+(defthm fn-heap-operation-decide-of-a-serve-action-is-heap-decide
+  (implies (not (member-equal action '(:compact :reclaim)))
+           (equal (fn-heap-operation-decide action profile core nursery observations)
+                  (fn-heap-decide profile core nursery observations)))
+  :hints (("Goal" :in-theory (e/d (fn-heap-figure-octets fn-heap-list-octets
+                                   fn-heap-operation-figure-octets
+                                   fn-heap-operation-list-octets)
+                                  (fn-heap-profile-word fn-bs-profile-admittedp
+                                   fn-heap-buffer-octets)))))
+
+; KEYSTONE (PKT-686).  An accepted operation figure holds the operation on
+; every store the profile admits: for any history of USED octets within H,
+; the image, the nursery, the operation's measured list copies of the
+; history with the record and the header in flight, at sixteen bytes per
+; octet with the collector's copy, and both checkpoint buffers fit in the
+; megabytes the launcher passes, and those fit the machine.
+(defthm fn-heap-operation-decide-holds-the-operation
+  (let ((decision (fn-heap-operation-decide action profile core nursery observations)))
+    (implies (and (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap)
+                  (<= used (fn-bs-profile-max-history-octets profile))
+                  (natp core) (natp nursery))
+             (and (<= (+ core nursery
+                         (* 2 *fn-heap-octets-per-list-octet*
+                            (+ (* (fn-heap-operation-history-copies action) used)
+                               (fn-bs-profile-max-record-octets profile)
+                               (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile))))
+                         (* 2 (fn-ock-capture-budget profile)))
+                      (* *fn-heap-mib* (fn-heap-decision-mb decision)))
+                  (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
+                      (fn-heap-machine-octets observations)))))
+  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets
+                                   fn-heap-operation-list-octets fn-heap-buffer-octets)
+                                  (fn-ock-capture-budget
+                                   fn-bs-profile-admittedp
+                                   fn-bs-profile-max-history-octets
+                                   fn-bs-profile-max-record-octets
+                                   fn-bs-profile-field
+                                   fn-heap-profile-word))
+           :use ((:instance fn-heap-mb-of-covers
+                            (octets (fn-heap-operation-figure-octets
+                                     action profile core nursery)))))))
+
 ; -----------------------------------------------------------------------------
 ; The small preset and init's default on a small machine.
 
