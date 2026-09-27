@@ -9978,7 +9978,7 @@
     {
       "id": "PRF-273",
       "title": "Every process-death cut of the record-log route is a cut of a model program, at a related state",
-      "statement": "books/store-log-route-programs.lisp: the format-9 arms of host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-mark-committed and fnn-recover call fnn-log-reserve, fnn-log-publish, nothing, and fnn-recover-log, whose durable steps and process-death cuts in source order are exactly fn-lg-reserve-program (frontier-reserved), fn-lg-append-program ++ fn-lg-fence-program ++ fn-lg-order-program (log-written, log-fenced, record-completing; a batch of one), and fn-lg-open-program (P-LOG-RECOVER's log-truncated and log-recovered, then recover-replayed and the five recovery barriers each followed by recover-barrier): tools/native_program_check.py checks each arm (tests/campaign/native_cuts.py verify_log_route_arms, in make check; teeth in tests/test_native_program_check.py LogRouteArmTests). fn-lg-reserve-program-keeps-the-relation: from R, the state at frontier-reserved (the kernel caught up by fn-olr-consume-to) is R-related; fn-lg-order-program-keeps-the-relation: from R and a record, the state at record-completing (the record taken into the open batch, fn-olr-take) is related; fn-lg-open-suffix-keeps-the-relation: from R with nothing in flight (as fn-lg-recover-program-establishes-the-relation leaves it), every state after log-recovered is related. So a process death at any cut is a crash of an R-related state (fn-lgk-crash-of-related-state-is-a-prefix). Teeth: tests/acl2/store-log-route-programs-tests.lisp (reached states of store-log-kernel-tests; R removed; a batch in flight at the open's barrier).",
+      "statement": "books/store-log-route-programs.lisp: the format-9 arms of host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-mark-committed and fnn-recover call fnn-log-reserve, fnn-log-publish, nothing, and fnn-recover-log, whose durable steps and process-death cuts in source order are exactly fn-lg-reserve-program (frontier-reserved), fn-lg-append-program ++ fn-lg-fence-program ++ fn-lg-order-program (log-written, log-fenced, record-completing; a batch of one), and fn-lg-open-program (P-LOG-RECOVER's log-truncated and log-recovered, then recover-replayed and the five recovery barriers each followed by recover-barrier): tools/native_program_check.py checks each arm (tests/campaign/native_cuts.py verify_log_route_arms, in make check; teeth in tests/test_native_program_check.py LogRouteArmTests). fn-lg-reserve-program-keeps-the-relation: from R, the state at frontier-reserved (the kernel caught up by fn-olr-consume-to) is R-related; fn-lg-order-program-keeps-the-relation: from R and a record, the state at record-completing (the record taken into the open batch, fn-olr-take) is related; fn-lg-open-suffix-keeps-the-relation: from R with nothing in flight (as fn-lg-recover-program-establishes-the-relation leaves it), every state after log-recovered is related. So a process death at any cut is a crash of an R-related state (fn-lgk-crash-of-related-state-is-a-prefix). Teeth: tests/acl2/store-log-route-programs-tests.lisp (reached states of store-log-kernel-tests; R removed; a batch in flight at the open's barrier). Which of the open's fences the byte model needs (books/store-log-open-barriers.lisp, lane log-recovery-2): fn-lgob-duplicate-segment-fence-is-identity: on an R-related state with nothing in flight the second recovery barrier (the segment again) changes neither the byte store nor the kernel, and fn-lgob-recovered-segment-fence-is-identity: the state fnn-log-recover leaves at log-recovered is one; fn-lgob-file-fence-keeps-entry-operations: a file fence drains no directory entry operation, so ONE barrier (the segment's) is not sufficient: fn-lgob-one-barrier-loses-a-rotated-segment (a death at rotate-created, the open fencing only the segment, a batch fenced: a crash image holds the batch's octets under no durable name) and fn-lgob-journal-fence-keeps-the-rotated-segment (with journal/ fenced every crash image names it). Teeth: tests/acl2/store-log-open-barriers-tests.lisp.",
       "milestone": "M5",
       "requirements": [
         "STO-028"
@@ -9989,6 +9989,8 @@
       "evidence": [
         "books/store-log-route-programs.lisp",
         "tests/acl2/store-log-route-programs-tests.lisp",
+        "books/store-log-open-barriers.lisp",
+        "tests/acl2/store-log-open-barriers-tests.lisp",
         "tests/campaign/native_cuts.py",
         "tools/native_program_check.py",
         "tests/test_native_program_check.py"
@@ -9997,7 +9999,12 @@
         "fn-lg-reserve-program-keeps-the-relation",
         "fn-lg-order-program-keeps-the-relation",
         "fn-lg-open-suffix-keeps-the-relation",
-        "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        "fn-lg-open-program-is-recover-then-the-suffix-by-definition",
+        "fn-lgob-duplicate-segment-fence-is-identity",
+        "fn-lgob-recovered-segment-fence-is-identity",
+        "fn-lgob-file-fence-keeps-entry-operations",
+        "fn-lgob-one-barrier-loses-a-rotated-segment",
+        "fn-lgob-journal-fence-keeps-the-rotated-segment"
       ]
     },
     {
