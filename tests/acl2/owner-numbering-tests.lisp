@@ -82,18 +82,23 @@
 (assert-event (equal (fn-own-number-holder "fn.letters" 4 (fn-state-articles (onb-archive *onb-after*)))
                      "<four@example>"))
 
-; A reader's numbers, through the served read.  Reader 3, still pinned at
-; version 2, answers GROUP as before; advanced (fn-ocfg-advance, the pin
-; write the host performs), it sees 1 to 4 and STAT names the new articles
-; by the numbers above.
+; A reader's numbers, through the served read.  Reader 3 is still pinned at
+; version 2 after the post (its record is unchanged: P3); BY SPECIFICATION
+; (NNT-042, 2026-09-27) its GROUP acquires the fresh view and sees 1 to 4 --
+; before NNT-042 it answered 211 2 1 2 as before the post.  Advanced first
+; (fn-ocfg-advance, the pin write the host performs) it sees the same, and
+; STAT names the new articles by the numbers above.
 (defun onb-reply (oc id octets)
   (fn-served-reply-octets (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets))))
 (defconst *onb-stat-octets*
   (append *own-group-octets*
           (fn-nntp-string-octets "STAT 3") '(13 10)
           (fn-nntp-string-octets "STAT 4") '(13 10)))
+(assert-event (equal (fn-own-conn-version
+                      (fn-own-find-conn 3 (fn-own-conns (fn-ocfg-owner *onb-after*))))
+                     2))
 (assert-event (equal (onb-reply *onb-after* 3 *own-group-octets*)
-                     (append (fn-nntp-string-octets "211 2 1 2 fn.letters") '(13 10))))
+                     (append (fn-nntp-string-octets "211 4 1 4 fn.letters") '(13 10))))
 (assert-event (equal (onb-reply (fn-ocfg-advance *onb-after* 3) 3 *onb-stat-octets*)
                      (append (fn-nntp-string-octets "211 4 1 4 fn.letters") '(13 10)
                              (fn-nntp-string-octets "223 3 ") (fn-nntp-string-octets *onb-injected-id*)
