@@ -4,7 +4,7 @@
 ; (fnn-owner-gate-pick, fnn-owner-commit-event, fnn-owner-disk-event).
 (in-package "ACL2")
 (include-book "../../books/owner-time-model")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun otmt-class (s w) (mv-let (c s2) (fn-otm-next s w) (declare (ignore s2)) c))
 (defun otmt-pick (s w) (mv-let (c s2) (fn-otm-next s w) (declare (ignore c)) s2))
@@ -129,7 +129,7 @@ clock regressed: readings=1
 (defconst *otmt-reg* (otmt-disk (otmt-at *otmt-s1a* 8000) :issue 3000 0))
 (assert-event (and (equal (fn-otm-now *otmt-reg*) 8000)
                    (equal (fn-otm-disk-since (fn-otm-disk *otmt-reg*)) 8000)))
-(must-fail
+(must-fail-checked
  (defthm otmt-tooth-wait-needs-the-wait
    (implies (and (natp reading) (<= (fn-otm-disk-since (fn-otm-disk s)) (fn-otm-now s))
                  (<= (fn-otm-now s) reading))
@@ -206,7 +206,7 @@ clock regressed: readings=1
 ; the first item alone satisfies it
 (assert-event (fn-otm-barrier-walk-okp *otmt-s1* (list (list *otmt-rc* :next-started))))
 
-(must-fail
+(must-fail-checked
  (defthm otmt-tooth-bound-needs-pending
    (implies (fn-otm-barrier-walk-okp s ws)
             (equal (fn-otm-walk-others s ws) 0))
