@@ -5079,40 +5079,61 @@ replay (fnn-recover-log) when its records' places are wanted; NIL otherwise.")
   "While the stream hands a record to its sink under *fnn-extent-file*: the
 record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
 
+(defvar *fnn-octets-lg* nil)
+
+(defun fnn-live-octets-lg ()
+  "The log walk's own octet buffer (books/store-log-buffer.lisp fn-octets-lg,
+congruent to fn-octets): the served attempt's buffer and the realizer's are
+never touched by an open."
+  (or *fnn-octets-lg*
+      (setq *fnn-octets-lg*
+            (or (cdr (assoc 'fn-octets-lg (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the log walk's buffer stobj is not in this image")))))
+
 (defun fnn-log-stream-segment (fd extent unit max genesis sink)
   "The segment's decode from GENESIS as a stream of entries
 (books/store-log-stream.lisp): at the state's offset the header octets ACL2
 names (fn-lgw-header-len), the entry's length from them (fn-lgw-entry-len),
-that entry's octets (none: NIL), and ACL2's step (fn-lgw-step); each record
-the step takes (one, or a batch entry's several) goes to SINK as ACL2's octet
-list and is not kept here.  One entry's
+that entry's octets read into the walk's octet buffer (none: an empty
+buffer), and ACL2's step over the buffer (fn-lgw-step-buf,
+books/store-log-buffer.lisp: KEYSTONE fn-lgw-step-buf-is-step, the list step
+on the buffer's octets); each record the step takes (one, or a batch entry's
+several) goes to SINK as ACL2's octet list and is not kept here.  One entry's
 octets at a time, never the segment (KEYSTONE fn-lgw-run-is-the-open: the
 records are the recovered kernel's committed records and the kernel is its
 fn-lgc-of).  An entry at the stop validating under another predecessor is a
 splice or a stale segment, refused by name (fn-lgw-broken, which is
 fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
 (fn-lgw-kernel)."
-  (let ((st (fnn-core 'fn-lgw-start genesis 1)))
-    (loop until (fnn-core 'fn-lgw-stop st) do
-      (let* ((pos (fnn-nat (fnn-core 'fn-lgw-pos st)))
-             (h (fnn-log-pread fd pos (fnn-nat (fnn-core 'fn-lgw-header-len st extent))))
-             (n (fnn-core 'fn-lgw-entry-len (fnn-octet-list h) st extent))
-             (e (and n (fnn-octet-list (fnn-log-pread fd pos (fnn-nat n))))))
-        (destructuring-bind (took records next) (fnn-call 'fn-lgw-step e st unit max extent)
-          (when took
-            (if *fnn-extent-file*
-                ;; The full replay's extent seals (PRF-294): each record's
-                ;; PLACE in this entry, ACL2's (fn-arx-list-places over the
-                ;; entry's octets at POS), bound for the sink as
-                ;; *fnn-log-record-place* (FILE . PLACE), or NIL.
-                (let ((places (fnn-core 'fn-arx-list-places e pos (length records) unit
-                                        0 0 nil 0 0 nil)))
-                  (dolist (record records)
-                    (let ((*fnn-log-record-place*
-                            (and (consp places) (cons *fnn-extent-file* (pop places)))))
-                      (funcall sink record))))
-              (dolist (record records) (funcall sink record))))
-          (setq st next))))
+  (let ((st (fnn-core 'fn-lgw-start genesis 1))
+        (buf (fnn-live-octets-lg)))
+    (unwind-protect
+         (loop until (fnn-core 'fn-lgw-stop st) do
+           (let* ((pos (fnn-nat (fnn-core 'fn-lgw-pos st)))
+                  (h (fnn-log-pread fd pos (fnn-nat (fnn-core 'fn-lgw-header-len st extent))))
+                  (n (fnn-core 'fn-lgw-entry-len (fnn-octet-list h) st extent))
+                  (e (if n (fnn-log-pread fd pos (fnn-nat n)) (fnn-make-octets 0))))
+             ;; The buffer holds exactly the entry's octets (its array E, its
+             ;; fill (length E)), as fnn-extent-entry-ok fills the realizer's.
+             (setf (svref buf 0) e
+                   (svref buf 1) (length e))
+             (destructuring-bind (took records next)
+                 (fnn-call 'fn-lgw-step-buf st unit max extent buf)
+               (when took
+                 (if *fnn-extent-file*
+                     ;; The full replay's extent seals (PRF-294): each record's
+                     ;; PLACE in this entry, ACL2's (fn-lgb-entry-places over
+                     ;; the buffer: fn-arx-list-places of its octets), bound for
+                     ;; the sink as *fnn-log-record-place* (FILE . PLACE), or NIL.
+                     (let ((places (fnn-core 'fn-lgb-entry-places pos (length records) unit buf)))
+                       (dolist (record records)
+                         (let ((*fnn-log-record-place*
+                                 (and (consp places) (cons *fnn-extent-file* (pop places)))))
+                           (funcall sink record))))
+                   (dolist (record records) (funcall sink record))))
+               (setq st next))))
+      (setf (svref buf 1) 0
+            (svref buf 0) (fnn-make-octets 0)))
     (when (fnn-core 'fn-lgw-broken st)
       (error 'fnn-store-open-refusal
              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))

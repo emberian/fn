@@ -40,6 +40,9 @@
 ;; fnn-log-*): the committed records' count in place of their list.
 (include-book "../books/store-log-kernel-concrete")
 (include-book "../books/store-log-stream")
+;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
+;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
+(include-book "../books/store-log-buffer")
 (include-book "../books/store-log-segments")
 (include-book "../books/store-log-extend")
 (include-book "../books/store-init-log-publication")
