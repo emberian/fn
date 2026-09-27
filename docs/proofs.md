@@ -478,6 +478,21 @@ never trimmed. A dependency edited since its certificate no longer stops
 `start` blind: it names the book whose own bytes are uncertified, and
 `--certify-missing` certifies it first or `--source-deps` loads it from
 source in the session, marked as uncertified in `status`.
+A from-source book loads form by form, so its `local` lemmas stay in the
+session as rules its dependents use, which a certified include would not give
+them; `--ld-local` loads each one inside a single `(encapsulate () ...)` so
+they stay local. Keyword commands (`:ubt! foo`, `:pe f`) are one command with
+the rest of their line, and a raw-Lisp abort (a control-stack exhaustion, a
+memory fault) answers as a refusal in seconds instead of costing the session.
+`probe` keeps a checkpoint in its session (a label and the world's command
+number) and checks it before and after every attempt, undoing whatever an
+earlier attempt or a hand `send` left above it and reloading when it cannot;
+a trial theorem left behind as a rewrite rule would make the next attempt's
+step count wrong (161 steps instead of 7,313 for the same event in the lane's
+live check). `--host hbox|persvati` runs any of these commands in the lane's
+tree on that box, with that box's ACL2 build and certificate cache (the boxes
+run different builds, so neither can use the other's certificates), after
+syncing only `tools/` and the book's include closure.
 
 **And when the closure is red, one run tells you every reason.**
 [`tools/triage.py`](../tools/triage.py) answers the question an ordinary
