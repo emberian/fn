@@ -1121,11 +1121,190 @@
 
 (in-theory (disable fn-rii-sco-finalize-from))
 
-; fn-sco-store-open over the twin: (REPLAYED OPENED).
+; -----------------------------------------------------------------------------
+; 7a. The open checks the configured node ONCE (lane snapshot-open-2).
+;
+; fn-sco-finalize-from checks the fold's node with three whole-state
+; recognizers (fn-cnode-statep, fn-replay-advance-okp's fn-node-statep, and
+; fn-sn-statep's fn-node-statep of the advanced node) and walks the history
+; twice (fn-sn-observed-historyp, and fn-sn-statep's fn-sf-record-listp over
+; the same records and frontier).  Measured at 40k articles each node check
+; is ~0.24 s and grows with the store.  When the fold's result is the
+; drain of a paused fold (fn-sco-cpr-finish), a successful result's node is
+; configured (fn-cpr-loop-ok-is-configured: the drain's logic starts by
+; checking it), so every one of those checks is implied: the node's by
+; fn-replay-advance-preserves-node-statep, the files' records by the
+; history recognizer already run at the top.  fn-rii-sco-finalize-configured
+; is the finalize with those checks dropped, EQUAL to fn-rii-sco-finalize-from
+; whenever a successful result's node is configured
+; (fn-rii-sco-finalize-configured-is-finalize-from), and the open below
+; calls it exactly then.
+
+(defun fn-rii-sf-statep-carried (s)
+  (declare (xargs :guard (fn-rii-observed-historyp (fn-sf-frontier s) (fn-sf-records s))
+                  :verify-guards nil))
+  (and (fn-sf-shapep s)
+       (fn-sf-phasep (fn-sf-phase s))
+       (fn-record-uint32p (fn-sf-frontier s))
+       (fn-sf-success-listp (fn-sf-successes s) (fn-sf-records s))
+       (natp (fn-sf-barriers s))
+       (<= (fn-sf-barriers s) *fn-sf-recovery-barrier-count*)
+       (fn-sf-phase-shapep s)))
+
+(defthm fn-rii-sf-statep-carried-is-sf-statep
+  (implies (fn-rii-sf-record-listp (fn-sf-records s) 0 0 (fn-sf-frontier s))
+           (equal (fn-rii-sf-statep-carried s) (fn-rii-sf-statep s)))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sf-statep)
+                                  (fn-rii-sf-statep-is-sf-statep fn-sf-phase-shapep fn-sf-success-listp fn-sf-phasep)))))
+
+(verify-guards fn-rii-sf-statep-carried
+  :hints (("Goal" :in-theory (e/d (fn-rii-observed-historyp)
+                                  (fn-rii-observed-historyp-is-observed-historyp
+                                   fn-sf-phase-shapep fn-sf-success-listp)))))
+
+(defun fn-rii-sn-statep-carried (s)
+  (declare (xargs :guard (fn-rii-observed-historyp (fn-sf-frontier (fn-sn-files s))
+                                                   (fn-sf-records (fn-sn-files s)))
+                  :verify-guards nil))
+  (and (fn-sn-shapep s)
+       (fn-string-listp (fn-sn-groups s))
+       (fn-no-duplicatesp (fn-sn-groups s))
+       (natp (fn-sn-capacity s))
+       (fn-rii-sf-statep-carried (fn-sn-files s))
+       (fn-prin-keyringp (fn-sn-keyring s))
+       (natp (fn-sn-keyring-generation s))
+       (fn-sn-verdict-listp (fn-sn-verdicts s))
+       (fn-sn-keyring-snapshot-listp (fn-sn-keyring-snapshots s))
+       (natp (fn-sn-identity-next s))))
+
+(verify-guards fn-rii-sn-statep-carried)
+
+(defthm fn-rii-sn-statep-carried-is-sn-statep
+  (implies (and (fn-node-statep (fn-sn-node s))
+                (fn-rii-sf-record-listp (fn-sf-records (fn-sn-files s)) 0 0
+                                        (fn-sf-frontier (fn-sn-files s))))
+           (equal (fn-rii-sn-statep-carried s) (fn-rii-sn-statep s)))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sn-statep)
+                                  (fn-rii-sn-statep-is-sn-statep fn-rii-sf-statep
+                                   fn-rii-sf-statep-carried
+                                   fn-node-statep fn-prin-keyringp fn-sn-verdict-listp
+                                   fn-sn-keyring-snapshot-listp)))))
+
+(defun fn-rii-advance-idlep (node recorded-txid)
+  (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
+  (and (natp recorded-txid)
+       (null (fn-node-stage node))
+       (null (fn-state-pending (fn-node-acceptance node)))
+       (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+       (<= (fn-state-next-txid (fn-node-acceptance node)) recorded-txid)))
+
+(verify-guards fn-rii-advance-idlep
+  :hints (("Goal" :in-theory (enable fn-node-statep fn-statep))))
+
+(defthm fn-rii-advance-idlep-is-advance-okp
+  (implies (fn-node-statep node)
+           (equal (fn-rii-advance-idlep node recorded-txid)
+                  (fn-replay-advance-okp node recorded-txid)))
+  :hints (("Goal" :in-theory (e/d (fn-replay-advance-okp) (fn-node-statep)))))
+(defthm fn-rii-opened-node-and-files
+  (let ((opened (fn-sn-with-event-index
+                 (fn-sn-with-topic
+                  (fn-sn-with-consumer
+                   (fn-cpo-install
+                    (fn-sn-update-replayed seed files advanced index identity)
+                    (fn-cnode-make advanced config) configs)
+                   consumer)
+                  topic)
+                 event-index)))
+    (and (equal (fn-sn-node opened) advanced)
+         (equal (fn-sn-files opened) files)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index fn-sn-with-topic
+                                   fn-sn-with-consumer fn-cpo-install
+                                   fn-sn-update-replayed fn-cnode-node fn-cnode-make)
+                                  (fn-sn-node fn-sn-files fn-sn-make-v6
+                                   fn-sn-with-configuration)))))
+(defun fn-rii-sco-finalize-configured (replayed c configs frontier)
+  (declare (xargs :guard (or (not (equal (fn-replay-result-kind replayed) :ok))
+                             (fn-cnode-statep (fn-replay-result-node replayed)))
+                  :verify-guards nil))
+  (let ((events (fn-sco-records c)))
+    (if (or (null configs)
+            (not (fn-rii-observed-historyp frontier events)))
+        (fn-sn-open-error :history)
+      (if (not (equal (fn-replay-result-kind replayed) :ok))
+          (fn-sn-open-error :replay)
+        (let* ((cn (fn-replay-result-node replayed))
+               (node (fn-cnode-node cn)))
+          (if (not (fn-rii-advance-idlep node frontier))
+              (fn-sn-open-error :frontier)
+            (let* ((advanced (fn-replay-advance-txid node frontier))
+                   (config (fn-cnode-config cn))
+                   (identity (fn-sco-identity c))
+                   (consumer (fn-sco-consumer c))
+                   (topic (fn-sco-topic c))
+                   (files (fn-sf-make :recovering frontier nil events
+                                      nil nil nil 0))
+                   (seed (fn-sn-observed-seed
+                          (fn-cnode-domain-of config)
+                          (fn-cfg-capacity (fn-cfg-value config))
+                          frontier events))
+                   (opened (fn-sn-with-event-index
+                            (fn-sn-with-topic
+                             (fn-sn-with-consumer
+                              (fn-cpo-install
+                               (fn-sn-update-replayed
+                                seed files advanced
+                                (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                                identity)
+                               (fn-cnode-make advanced config) configs)
+                              (fn-cp-nth 1 consumer))
+                             topic)
+                            (fn-sco-event-index c))))
+              (if (and (equal (fn-stxk-context-kind identity) :ok)
+                       (consp consumer) (eq (car consumer) :ok)
+                       (eq (fn-th-at 0 topic) :ok)
+                       (fn-rii-sn-statep-carried opened))
+                  (fn-sn-open-ok opened)
+                (fn-sn-open-error :identity)))))))))
+
+(defthm fn-rii-sco-finalize-configured-is-finalize-from
+  (implies (or (not (equal (fn-replay-result-kind replayed) :ok))
+               (fn-cnode-statep (fn-replay-result-node replayed)))
+           (equal (fn-rii-sco-finalize-configured replayed c configs frontier)
+                  (fn-rii-sco-finalize-from replayed c configs frontier)))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-finalize-from fn-rii-observed-historyp
+                                   fn-rii-cnode-statep-has-node-statep)
+                                  (fn-rii-sco-finalize-from-is-sco-finalize-from
+                                   fn-rii-observed-historyp-is-observed-historyp
+                                   fn-rii-sn-statep-carried fn-rii-sn-statep
+                                   fn-rii-sn-statep-is-sn-statep
+                                   fn-node-statep fn-cnode-statep
+                                   fn-replay-advance-okp fn-rii-advance-idlep
+                                   fn-sn-with-event-index fn-sn-with-topic
+                                   fn-sn-with-consumer fn-cpo-install
+                                   fn-sn-update-replayed fn-sn-observed-seed
+                                   fn-stx-index-of-store fn-replay-advance-txid)))))
+(verify-guards fn-rii-sco-finalize-configured
+  :hints (("Goal" :in-theory (e/d (fn-rii-cnode-statep-has-node-statep)
+                                  (fn-cnode-statep fn-node-statep fn-cpr-replay fn-cpr-loop
+                                   fn-sco-cpr-finish fn-sco-cpr-prefix)))))
+
+(defthm fn-rii-sco-cpr-finish-ok-is-configured
+  (implies (and (fn-sco-pausedp r)
+                (equal (fn-replay-result-kind (fn-sco-cpr-finish r configs)) :ok))
+           (fn-cnode-statep (fn-replay-result-node (fn-sco-cpr-finish r configs))))
+  :hints (("Goal" :in-theory (e/d (fn-sco-cpr-finish) (fn-cnode-statep fn-cpr-loop)))))
+
+; fn-sco-store-open over the twin: (REPLAYED OPENED).  A paused fold's drain
+; is finalized without re-checking its node (7a).
 (defun fn-rii-sco-store-open (e configs frontier)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((replayed (fn-sco-cpr-finish (fn-sco-cpr e) configs)))
-    (list replayed (fn-rii-sco-finalize-from replayed e configs frontier))))
+  (let* ((r (fn-sco-cpr e))
+         (replayed (fn-sco-cpr-finish r configs)))
+    (list replayed
+          (if (fn-sco-pausedp r)
+              (fn-rii-sco-finalize-configured replayed e configs frontier)
+            (fn-rii-sco-finalize-from replayed e configs frontier)))))
 
 (defthm fn-rii-sco-store-open-is-sco-store-open
   (equal (fn-rii-sco-store-open e configs frontier)
@@ -1133,9 +1312,13 @@
   :hints (("Goal" :in-theory (e/d (fn-rii-sco-store-open fn-sco-store-open
                                    fn-sco-finalize-from-unfolds)
                                   (fn-sco-finalize fn-sco-finalize-from
-                                   fn-sco-cpr-finish)))))
+                                   fn-rii-sco-finalize-configured
+                                   fn-rii-sco-finalize-from
+                                   fn-sco-cpr-finish fn-cnode-statep)))))
 
-(verify-guards fn-rii-sco-store-open)
+(verify-guards fn-rii-sco-store-open
+  :hints (("Goal" :in-theory (disable fn-sco-cpr-finish fn-cnode-statep
+                                      fn-rii-sco-finalize-configured-is-finalize-from))))
 
 ; The open the host calls (fn-sopc-classified-open over the twin).
 (defun fn-rii-classified-open (e configs frontier)
@@ -1154,5 +1337,108 @@
 
 (verify-guards fn-rii-classified-open)
 
+; -----------------------------------------------------------------------------
+; 7b. The extension and its open in one call (lane snapshot-open-2).
+;
+; The host extended the checkpoint (fn-rii-sco-extend) and then opened the
+; extension (fn-rii-classified-open) in two calls; the resume checked the
+; checkpoint's node and the drain checked the resumed node again (a second
+; whole-node recognizer, ~0.075 s at 40k, O(state)).  After a resume over a
+; non-empty suffix the paused node is configured
+; (fn-rii-sco-cpr-resume-paused-node-is-configured), so the fused call drains
+; it without the check.
+
+(local
+ (defthm fn-rii-sco-cpr-prefix-paused-node-is-configured
+   (implies (and (consp events)
+                 (fn-sco-pausedp (fn-sco-cpr-prefix cn configs events cs es)))
+            (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr-prefix cn configs events cs es))))
+   :hints (("Goal" :induct (fn-sco-cpr-prefix cn configs events cs es)
+            :in-theory (e/d (fn-sco-cpr-prefix fn-replay-fault fn-sco-paused fn-sco-pausedp)
+                            (fn-cnode-statep fn-cnode-apply-config fn-cpr-apply-event
+                             fn-cnode-record-acceptablep fn-store-event-p fn-cfg-recordp
+                             fn-replay-advance-okp fn-replay-advance-txid))
+            :expand ((fn-sco-cpr-prefix cn configs events cs es)))
+           ("Subgoal *1/2" :expand ((:free (cn2 c2 s2 e2) (fn-sco-cpr-prefix cn2 c2 nil s2 e2)))))))
+
+(defthm fn-rii-sco-cpr-resume-paused-node-is-configured
+  (implies (and (consp suffix)
+                (fn-sco-pausedp (fn-sco-cpr-resume r configs suffix)))
+           (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr-resume r configs suffix))))
+  :hints (("Goal" :in-theory (e/d (fn-sco-cpr-resume) (fn-cnode-statep fn-sco-cpr-prefix fn-sco-pausedp fn-sco-at)))))
+
+; The drain of a paused fold whose node is known configured: fn-sco-cpr-finish's
+; logic (fn-cpr-loop from the paused node) without its executable check.
+(defun fn-rii-sco-cpr-finish-configured (r configs)
+  (declare (xargs :guard (and (fn-sco-pausedp r) (fn-cnode-statep (fn-sco-at 1 r)))))
+  (fn-cpr-loop (fn-sco-at 1 r) (fn-sco-nthcdr (nfix (fn-sco-at 2 r)) configs) nil
+               (fn-sco-at 2 r) (fn-sco-at 3 r)))
+
+(defthm fn-rii-sco-cpr-finish-configured-is-finish
+  (implies (fn-sco-pausedp r)
+           (equal (fn-rii-sco-cpr-finish-configured r configs)
+                  (fn-sco-cpr-finish r configs)))
+  :hints (("Goal" :in-theory (e/d (fn-sco-cpr-finish) (fn-cpr-loop fn-cnode-statep)))))
+
+; The open of a paused extension whose node is known configured.
+(defun fn-rii-sco-store-open-resumed (e configs frontier)
+  (declare (xargs :guard (and (fn-sco-pausedp (fn-sco-cpr e))
+                              (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr e))))
+                  :guard-hints (("Goal" :in-theory (disable fn-cnode-statep fn-cpr-loop
+                                                            fn-rii-sco-cpr-finish-configured-is-finish)
+                                 :use ((:instance fn-rii-sco-cpr-finish-ok-is-configured
+                                                  (r (fn-sco-cpr e))))))))
+  (let ((replayed (fn-rii-sco-cpr-finish-configured (fn-sco-cpr e) configs)))
+    (list replayed (fn-rii-sco-finalize-configured replayed e configs frontier))))
+
+(defthm fn-rii-sco-store-open-resumed-is-store-open
+  (implies (fn-sco-pausedp (fn-sco-cpr e))
+           (equal (fn-rii-sco-store-open-resumed e configs frontier)
+                  (fn-rii-sco-store-open e configs frontier)))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-store-open)
+                                  (fn-rii-sco-finalize-configured fn-rii-sco-finalize-from
+                                   fn-sco-cpr-finish fn-cnode-statep fn-cpr-loop)))))
+
+; The extension and its classified open in one call (the host's two calls,
+; fused): after a resume over a non-empty suffix the paused node is configured
+; (fn-rii-sco-cpr-resume-paused-node-is-configured: the resume checked the
+; checkpoint's node and every step keeps it), so the drain does not check it
+; again.
+(defun fn-rii-sco-extend-open (c configs suffix frontier)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((e (fn-rii-sco-extend c configs suffix))
+         (refusal (fn-sopc-open-refusal e)))
+    (list e
+          (if refusal
+              refusal
+            (if (and (consp suffix) (fn-sco-pausedp (fn-sco-cpr e)))
+                (fn-rii-sco-store-open-resumed e configs frontier)
+              (fn-rii-sco-store-open e configs frontier))))))
+
+; KEYSTONE (3).  The fused call is the extension and the classified open, with
+; no hypothesis: host/store-node-host.lisp fn-store-sn-recover-from-checkpoint
+; and fn-store-sn-recover-rows.
+(defthm fn-rii-sco-extend-open-is-extend-then-open
+  (equal (fn-rii-sco-extend-open c configs suffix frontier)
+         (list (fn-rii-sco-extend c configs suffix)
+               (fn-rii-classified-open (fn-rii-sco-extend c configs suffix)
+                                       configs frontier)))
+  :hints (("Goal" :in-theory '(fn-rii-sco-extend-open fn-rii-classified-open)
+           :use ((:instance fn-rii-sco-store-open-resumed-is-store-open
+                            (e (fn-rii-sco-extend c configs suffix)))))))
+
+(verify-guards fn-rii-sco-extend-open
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-extend)
+                                  (fn-rii-sco-cpr-resume fn-cnode-statep fn-sopc-open-refusal
+                                   fn-rii-sco-store-open fn-rii-sco-store-open-resumed
+                                   fn-replay-identity-loop fn-sco-consumer-resume
+                                   fn-th-prefix-loop fn-cei-build-aux))
+           :use ((:instance fn-rii-sco-cpr-resume-paused-node-is-configured
+                            (r (fn-sco-cpr c)))))))
+
 (in-theory (disable fn-rii-sco-cpr-prefix fn-rii-sco-cpr-resume fn-rii-sco-extend
-                    fn-rii-sco-store-open fn-rii-classified-open))
+                    fn-rii-sco-store-open fn-rii-classified-open
+                    fn-rii-sf-statep-carried fn-rii-sn-statep-carried
+                    fn-rii-advance-idlep fn-rii-sco-finalize-configured
+                    fn-rii-sco-cpr-finish-configured fn-rii-sco-store-open-resumed
+                    fn-rii-sco-extend-open))

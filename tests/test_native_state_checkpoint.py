@@ -53,9 +53,16 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # records-flip (checkpoint-arena-2): the entry opens over the ROWS the
         # host interned on top of the loaded arena (fnn-recover-suffix-rows);
         # fn-rii-sco-extend is fn-sco-extend (fn-rii-sco-extend-is-sco-extend).
-        self.assertIn("(fn-rii-sco-extend checkpoint config-records rows)", recover)
+        # snapshot-open-2 (PRF-321): the extension and its open are one call,
+        # fn-rii-sco-extend-open (KEYSTONE
+        # fn-rii-sco-extend-open-is-extend-then-open: the extension and
+        # fn-rii-classified-open of it), opened by fn-store-sn-open-classified
+        # (fn-store-sn-open-extended's body).
+        self.assertIn("(fn-rii-sco-extend-open checkpoint config-records rows frontier)", recover)
         self.assertNotIn("fn-arena", recover)
-        self.assertIn("(fn-store-sn-open-extended", recover)
+        self.assertIn("(fn-store-sn-open-classified", recover)
+        rii0 = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
+        self.assertIn("(defthm fn-rii-sco-extend-open-is-extend-then-open", rii0)
         # The open the host takes is fn-sco-store-open over the same
         # arguments, called directly or through the one ACL2 function the
         # host calls in its place (since 2e25e21b fn-sopc-classified-open,

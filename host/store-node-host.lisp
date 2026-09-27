@@ -341,10 +341,17 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; its twin `fn-rii-classified-open' (books/replay-identity-index.lisp, PRF-242:
 ; the history recognizer reads each record's kind once), EQUAL with no
 ; hypothesis (fn-rii-classified-open-is-classified-open).
-(defun fn-store-sn-open-extended (e config-records frontier state)
+;
+; fn-store-sn-open-classified is that open over E and its CLASSIFIED open,
+; computed by the caller: the
+; recover entries below call the fused fn-rii-sco-extend-open
+; (books/replay-identity-index.lisp section 7b, KEYSTONE
+; fn-rii-sco-extend-open-is-extend-then-open: it is the extension and
+; fn-rii-classified-open of it), whose drain does not check the resumed node
+; again.
+(defun fn-store-sn-open-classified (e classified config-records state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((classified (fn-rii-classified-open e config-records frontier))
-         (refused (equal (car classified) :refused))
+  (let* ((refused (equal (car classified) :refused))
          (state (f-put-global 'fn-store-open-refusal
                               (if refused classified nil) state))
          (pair (if refused (list nil nil) classified))
@@ -371,6 +378,11 @@ reopen predicate, writer-lock observation and observed final namespace."
           (value :recovering))
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
         (value :fault))))))
+
+(defun fn-store-sn-open-extended (e config-records frontier state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-store-sn-open-classified e (fn-rii-classified-open e config-records frontier)
+                               config-records state))
 
 ; The operator's line for the refusal the last open recorded, or nil.
 (defun fn-store-open-refusal-text (state)
@@ -432,9 +444,9 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; the full open fn-cpo-open-observed and the full replay
       ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
       ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
-      (fn-store-sn-open-extended
-       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-       config-records frontier state))))
+      (let ((pair (fn-rii-sco-extend-open (fn-sco-capture config-records nil)
+                                          config-records rows frontier)))
+        (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
@@ -637,9 +649,8 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; The suffix is replayed once: E is fn-sco-open's extension, and the
       ; open and the configuration are read off it (fn-sco-open is
       ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
-      (fn-store-sn-open-extended
-       (fn-rii-sco-extend checkpoint config-records rows)
-       config-records frontier state))))
+      (let ((pair (fn-rii-sco-extend-open checkpoint config-records rows frontier)))
+        (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
 ; payload read through the arena), encoded.

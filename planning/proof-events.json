@@ -11089,6 +11089,52 @@
           "name": "fn-lgdm-least-valid-is-valid"
         }
       ]
+    },
+    {
+      "id": "PRF-320",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sha256-of-prefixed-range-is-sha256"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-digest-range-is-the-frame-digest"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccr-window-seal-is-seal"
+        }
+      ]
+    },
+    {
+      "id": "PRF-321",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-finalize-configured-is-finalize-from"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-finish-ok-is-configured"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-store-open-is-sco-store-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-extend-open-is-extend-then-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-resume-paused-node-is-configured"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-finish-configured-is-finish"
+        }
+      ]
     }
   ]
 }

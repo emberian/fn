@@ -131,7 +131,8 @@
 (include-book "books/history-columns-store")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
-;; tries and the one-dispatch history recognizer).
+;; tries and the one-dispatch history recognizer), and the store's recover
+;; entries their fusion fn-rii-sco-extend-open (PRF-321).
 (include-book "books/replay-identity-index")
 ;; lane proto-determinism: `store ROOT digest' (host/store-node-host.lisp
 ;; fn-store-sn-replay-digest-report) calls books/state-digest (fn-sdg-).

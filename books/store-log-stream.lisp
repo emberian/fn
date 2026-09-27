@@ -120,8 +120,103 @@
 ;; The entry's verdict and records from ONE frame open (fn-lg-entry-okp and
 ;; fn-lg-slice-records each open the frame, and each open digests the entry:
 ;; fn-lgw-decide-is-okp-and-records says the one open answers both).
+; The batch body's unpack, guard-verified (lane snapshot-open-2).  fn-lg-unpack
+; and fn-lg-unpack-exactp (books/store-log.lisp) are :verify-guards nil, so
+; the step ran their *1* bodies, whose every nthcdr and take re-checked the
+; remaining body's true-listp: at a 20 KB batch entry that was 60 percent of
+; the step (planning/evidence/snapshot-open-2-2026-09-27.md).  These twins are
+; the same recursions, EQUAL to them on every value
+; (fn-lgw-unpack-is-unpack, fn-lgw-unpack-exactp-is-exactp); their guard is an
+; octet list, and the step's decision calls them where the frame's payload is
+; one (fn-frame-decode-payload-octets).
+(local
+ (defthm fn-lgw-bs-take-is-take
+   (implies (<= (nfix n) (len xs))
+            (equal (fn-bs-take n xs) (take n xs)))
+   :hints (("Goal" :in-theory (enable fn-bs-take)))))
+
+(local
+ (defthm fn-lgw-octet-listp-nthcdr
+   (implies (fn-cbor-octet-listp x)
+            (fn-cbor-octet-listp (nthcdr k x)))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-lgw-octet-listp-take
+   (implies (and (fn-cbor-octet-listp x) (<= (nfix k) (len x)))
+            (fn-cbor-octet-listp (take k x)))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-lgw-up-len-nthcdr
+   (equal (len (nthcdr k x)) (nfix (- (len x) (nfix k))))))
+
+(local
+ (defthm fn-lgw-nthcdr-shorter
+   (implies (and (posp k) (consp x))
+            (< (len (nthcdr k x)) (len x)))
+   :rule-classes :linear))
+
+(defun fn-lgw-unpack (x)
+  (declare (xargs :guard (fn-cbor-octet-listp x) :measure (len x)
+                  :hints (("Goal" :in-theory (disable fn-cbor-u32-from take nthcdr len)))
+                  :verify-guards nil))
+  (if (and (consp x) (<= 4 (len x)))
+      (let ((n (nfix (fn-cbor-u32-from (take 4 x)))))
+        (if (<= (+ 4 n) (len x))
+            (cons (take n (nthcdr 4 x)) (fn-lgw-unpack (nthcdr (+ 4 n) x)))
+          nil))
+    nil))
+
+(defun fn-lgw-unpack-exactp (x)
+  (declare (xargs :guard (fn-cbor-octet-listp x) :measure (len x)
+                  :hints (("Goal" :in-theory (disable fn-cbor-u32-from take nthcdr len)))
+                  :verify-guards nil))
+  (if (consp x)
+      (and (<= 4 (len x))
+           (let ((n (nfix (fn-cbor-u32-from (take 4 x)))))
+             (and (<= (+ 4 n) (len x))
+                  (fn-lgw-unpack-exactp (nthcdr (+ 4 n) x)))))
+    t))
+
+(verify-guards fn-lgw-unpack
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp))))
+(verify-guards fn-lgw-unpack-exactp
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp))))
+
+(defthm fn-lgw-unpack-is-unpack
+  (equal (fn-lgw-unpack x) (fn-lg-unpack x))
+  :hints (("Goal" :induct (fn-lgw-unpack x)
+           :in-theory (enable fn-lg-unpack))))
+
+(defthm fn-lgw-unpack-exactp-is-exactp
+  (equal (fn-lgw-unpack-exactp x) (fn-lg-unpack-exactp x))
+  :hints (("Goal" :induct (fn-lgw-unpack-exactp x)
+           :in-theory (enable fn-lg-unpack-exactp))))
+
+(defun fn-lgw-unpack-okp (x max)
+  (declare (xargs :guard (fn-cbor-octet-listp x)))
+  (and (fn-lgw-unpack-exactp x)
+       (let ((records (fn-lgw-unpack x)))
+         (and (consp (cdr records))
+              (fn-lg-recordsp records max)))))
+
+(defthm fn-lgw-unpack-okp-is-okp
+  (equal (fn-lgw-unpack-okp x max) (fn-lg-unpack-okp x max))
+  :hints (("Goal" :in-theory (e/d (fn-lg-unpack-okp) (fn-lgw-unpack fn-lgw-unpack-exactp
+                                                         fn-lg-unpack fn-lg-unpack-exactp)))))
+
 (defun fn-lgw-decide (e prev max)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (e/d (fn-frame-open)
+                                                        (fn-lgw-unpack-okp fn-lgw-unpack
+                                                         fn-lg-unpack-okp fn-lg-unpack
+                                                         fn-frame-decode))
+                                 :use ((:instance fn-frame-decode-payload-octets
+                                                  (octets e)
+                                                  (digest (fn-frame-digest
+                                                           (fn-frame-protected-prefix e)))
+                                                  (max-payload (fn-lg-open-bound e max))))))))
   (if (not (consp e))
       (mv nil nil)
     (let* ((r (ec-call (fn-frame-open e (ec-call (fn-lg-open-bound e max)))))
@@ -131,10 +226,15 @@
                (equal (fn-frame-result-magic r) *fn-lg-magic*)
                (equal (fn-frame-result-version r) *fn-lg-version*)
                (or (equal (fn-frame-result-kind r) *fn-lg-record-kind*)
-                   (and batchp (ec-call (fn-lg-unpack-okp body max))))
+                   (and batchp
+                        (mbe :logic (ec-call (fn-lg-unpack-okp body max))
+                             :exec (fn-lgw-unpack-okp body max))))
                (equal (ec-call (fn-bs-take *fn-frame-trailer-octets* (fn-frame-result-payload r)))
                       prev))
-          (mv t (if batchp (ec-call (fn-lg-unpack body)) (list body)))
+          (mv t (if batchp
+                    (mbe :logic (ec-call (fn-lg-unpack body))
+                         :exec (fn-lgw-unpack body))
+                  (list body)))
         (mv nil nil)))))
 
 (defthm fn-lgw-decide-is-okp-and-records

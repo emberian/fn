@@ -901,6 +901,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-number-index-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
+	books/sha256-range \
+	tests/acl2/sha256-range-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
