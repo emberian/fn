@@ -116,7 +116,7 @@ that)."
              (progn (fnn-load-config store) (fnn-store-config store))))
     (error () nil)))
 
-(defun fnn-heap-decision (profile)
+(defun fnn-heap-decision (profile &optional observed)
   ;; heap-figure's figure for the store, then the room the served connections'
   ;; heap parts need beside it (books/connection-budget.lisp
   ;; fn-cbud-launch-decide; PKT-605): the connections this machine holds
@@ -124,19 +124,24 @@ that)."
   (let ((observations (fnn-heap-observations))
         (core (fnn-heap-core-octets)))
     (fnn-core 'fn-cbud-launch-decide
-              (fnn-core 'fn-heap-decide profile (fnn-heap-image-observation)
-                        +fnn-gc-nursery-octets+ observations)
+              ;; The run's figure over the store on disk (reservation-after-flip).
+              (fnn-core 'fn-heap-operation-decide :run profile (fnn-heap-image-observation)
+                        +fnn-gc-nursery-octets+ observations observed)
               profile core
               (fnn-mux-thread-count nil) (fnn-mux-thread-stack-octets)
               observations)))
 
-(defun fnn-heap-report-line (profile)
-  (fnn-core 'fn-heap-report-line (fnn-heap-decision profile)))
+(defun fnn-heap-report-line (profile &optional observed)
+  (fnn-core 'fn-heap-report-line (fnn-heap-decision profile observed)))
 
 (defun fnn-heap-print-store-line (root)
-  "The `heap=' line `status' and `health' print after their report."
+  "The `heap=' line `status' and `health' print after their report: the next
+run's figure over the store as it is on disk."
   (when (stringp root)
-    (fnn-out "~a" (fnn-heap-report-line (fnn-heap-store-profile root)))))
+    (let ((profile (fnn-heap-store-profile root)))
+      (fnn-out "~a" (fnn-heap-report-line
+                     profile
+                     (and profile (fnn-heap-history-observation root profile)))))))
 
 (defun fnn-heap-env-octets (name)
   "NAME's value in the environment as octets for ACL2 to read (at most 32
@@ -293,7 +298,10 @@ sizes by them (NIL otherwise)."
              (fnn-heap-operator-profile (second argv) (cddr argv))
            (values profile (if (integerp connections) connections 0) action observed)))
         ((and (string= (or (first argv) "") "store") (third argv))
-         (values (fnn-heap-store-profile (second argv)) 0 nil nil))
+         (let ((profile (fnn-heap-store-profile (second argv))))
+           (values profile 0 nil
+                   (and profile (fnn-heap-history-observation (fnn-absolute (second argv))
+                                                              profile)))))
         (t (values nil 0 nil nil))))
 
 ;; The whole reservation (books/heap-reservation.lisp

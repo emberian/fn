@@ -363,8 +363,9 @@
           t)
         (natp nursery)))
 
-; The compaction verbs count six copies, every other command two; a command
-; that observes nothing decides as fn-heap-decide, whatever it was handed.
+; The compaction verbs count six copies, every other command two; any other
+; command unobserved decides as fn-heap-decide, and observed as the run
+; does; `init' judges an empty store whatever it was handed.
 (assert! (equal (fn-heap-operation-history-copies :reclaim) 6))
 (assert! (equal (fn-heap-operation-history-copies :compact) 6))
 (assert! (equal (fn-heap-operation-history-copies :run) 2))
@@ -372,9 +373,16 @@
                                           *hft-nursery* (list *hft-2g*) nil)
                 '(:heap 1843 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :status *fn-heap-small-profile* *hft-bsd-core*
-                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))
+                                          *hft-nursery* (list *hft-2g*) nil)
                 (fn-heap-decide *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
                                 (list *hft-2g*))))
+(assert! (equal (fn-heap-operation-decide :status *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))
+                (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))))
+(assert! (equal (fn-heap-operation-decide :init *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) nil)
+                '(:heap 672 "small" 2048)))
 ; By the store's observed history: an empty store reclaims in 672 MB, the
 ; measured 3,000-article store in 1,639 MB (its six list copies), a store of
 ; 100,000 octets in 50 files compacts, recovers and runs in 681 MB, where an

@@ -381,20 +381,22 @@
 ; the history term is the least of OBSERVED and H; for every other action
 ; (`run' grows the store) it stays H.
 ;
-; And (lane reservation-after-flip) `run': the open a run starts with
+; And (lane reservation-after-flip) every command: the open it starts with
 ; replays at most what is on disk, so its figure's OPEN term is the
 ; observed store's (books/heap-store-figure.lisp fn-heap-open-octets-bound,
 ; -records-bound), while its STATE term stays at the profile's bounds since
-; a run grows the store.  OBSERVED may also be (OCTETS . RECORDS), RECORDS
+; a run grows the store (fn-heap-operation-figure-octets).  OBSERVED may also be (OCTETS . RECORDS), RECORDS
 ; the transaction files' count, which bounds the open's per-record term.
 (defconst *fn-heap-list-actions* '(:recover :compact :reclaim))
-(defconst *fn-heap-observed-actions* '(:recover :compact :reclaim :run))
 
 ; Whether the probe observes the history for ACTION (host/native/heap.lisp
 ; fnn-heap-operator-profile asks).
+; Every command that names a store opens it, so the probe observes the store
+; whatever the command (lane reservation-after-flip; before, only the offline
+; verbs were observed).
 (defun fn-heap-operation-observes-p (action)
-  (declare (xargs :guard t))
-  (if (member-equal action *fn-heap-observed-actions*) t nil))
+  (declare (xargs :guard t) (ignore action))
+  t)
 
 ; The probe lists each history directory to at most this many entries (the
 ; profile's transaction slots and 1,024 more for packs, checkpoint
@@ -429,14 +431,21 @@
      (* 2 (fn-heap-operation-list-octets action profile observed))
      (fn-heap-buffer-octets profile)))
 
+;; `init' makes the store: its first run opens nothing on disk (ACL2 says
+;; so, whatever the probe was handed).
+(defconst *fn-heap-empty-store-observation* '(0 . 0))
+
+(defun fn-heap-operation-observation (action observed)
+  (declare (xargs :guard t))
+  (if (equal action :init) *fn-heap-empty-store-observation* observed))
+
 (defun fn-heap-operation-figure-octets (action profile core nursery observed)
   (declare (xargs :guard t))
-  (cond ((member-equal action *fn-heap-list-actions*)
-         (max (fn-heap-operation-list-figure-octets action profile core nursery observed)
-              (fn-heap-store-figure-octets profile core nursery observed)))
-        ((member-equal action *fn-heap-observed-actions*)
-         (fn-heap-store-figure-octets profile core nursery observed))
-        (t (fn-heap-figure-octets profile core nursery))))
+  (if (member-equal action *fn-heap-list-actions*)
+      (max (fn-heap-operation-list-figure-octets action profile core nursery observed)
+           (fn-heap-store-figure-octets profile core nursery observed))
+    (fn-heap-store-figure-octets profile core nursery
+                                 (fn-heap-operation-observation action observed))))
 
 (defthm fn-heap-operation-figure-octets-natp
   (natp (fn-heap-operation-figure-octets action profile core nursery observed))
@@ -465,16 +474,18 @@
                  (list :heap mb (fn-heap-profile-word profile) machine-mb)
                (list :refused :machine-cannot-hold-profile mb machine-mb)))))))
 
-; Every action but the observed verbs decides exactly as fn-heap-decide,
-; whatever OBSERVED.
+; Unobserved, every action but the offline verbs decides exactly as
+; fn-heap-decide.
 (defthm fn-heap-operation-decide-of-a-serve-action-is-heap-decide
-  (implies (not (member-equal action *fn-heap-observed-actions*))
+  (implies (and (not (member-equal action *fn-heap-list-actions*))
+                (not (equal action :init)))
            (equal (fn-heap-operation-decide action profile core nursery observations
-                                            observed)
+                                            nil)
                   (fn-heap-decide profile core nursery observations)))
-  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-figure-octets
+                                   fn-heap-operation-observation)
                                   (fn-heap-profile-word fn-bs-profile-admittedp
-                                   fn-heap-figure-octets
+                                   fn-heap-store-figure-octets
                                    fn-heap-buffer-octets fn-heap-storeless-decide)))))
 
 ; An accepted operation decision for an admitted profile is its figure's
@@ -496,13 +507,15 @@
                                    fn-heap-machine-octets)))))
 
 (defthm fn-heap-operation-figure-holds-the-parts
-  (and (<= (fn-heap-store-figure-octets profile core nursery observed)
+  (and (<= (fn-heap-store-figure-octets profile core nursery
+                                        (fn-heap-operation-observation action observed))
            (fn-heap-operation-figure-octets action profile core nursery observed))
        (implies (member-equal action *fn-heap-list-actions*)
                 (<= (fn-heap-operation-list-figure-octets action profile core nursery observed)
                     (fn-heap-operation-figure-octets action profile core nursery observed))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-figure-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets
+                                   fn-heap-operation-observation)
                                   (fn-heap-store-figure-octets
                                    fn-heap-operation-list-figure-octets)))))
 
@@ -561,7 +574,7 @@
 ; input within the observation (OU octets, ON records: what is on disk when
 ; the probe ran; for a command that observes nothing its figure is the
 ; unobserved one, which holds every observation's); and it fits the machine.
-; (A hypothesis (member action *fn-heap-observed-actions*) was removed after
+; (A hypothesis (member action '(:recover :compact :reclaim :run)) was removed after
 ; proving the weakened theorem.)
 (defthm fn-heap-operation-decide-holds-the-store
   (let* ((decision (fn-heap-operation-decide action profile core nursery observations
@@ -571,8 +584,10 @@
                   (equal (car decision) :heap)
                   (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
-                  (<= (nfix on) (fn-heap-open-records-bound profile observed)))
+                  (<= (nfix ou) (fn-heap-open-octets-bound
+                                 profile (fn-heap-operation-observation action observed)))
+                  (<= (nfix on) (fn-heap-open-records-bound
+                                 profile (fn-heap-operation-observation action observed))))
              (and (<= (fn-heap-store-need profile core used n ou on
                                           (fn-heap-nursery-trigger d nursery))
                       d)
@@ -587,6 +602,7 @@
                             (octets (fn-heap-operation-figure-octets
                                      action profile core nursery observed)))
                  (:instance fn-heap-store-figure-holds-every-store
+                            (observed (fn-heap-operation-observation action observed))
                             (d (* *fn-heap-mib*
                                   (fn-heap-mb-of (fn-heap-operation-figure-octets
                                                   action profile core nursery
@@ -611,7 +627,8 @@
   (<= (fn-heap-operation-figure-octets action profile core nursery observed)
       (fn-heap-operation-figure-octets action profile core nursery nil))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-figure-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-figure-octets
+                                   fn-heap-operation-observation)
                                   (fn-heap-store-figure-octets
                                    fn-heap-operation-list-figure-octets)))))
 

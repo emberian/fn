@@ -256,11 +256,10 @@
                                   (fn-heap-decide
                                    fn-heap-decide-refuses-exactly-past-the-machine)))))
 
-;; OBSERVED (PKT-686 item 1): the octets of the store's history files the
-;; probe observed, or NIL; heap-figure's operation figure sizes `recover',
-;; `store compact' and `store reclaim' by it (fn-heap-operation-history-octets).
-;; And `run' (reservation-after-flip): its open is sized by the store on disk.
-(defconst *fn-heap-operation-actions* *fn-heap-observed-actions*)
+;; OBSERVED (PKT-686 item 1; every command since reservation-after-flip):
+;; what the probe observed of the store's history on disk, or NIL;
+;; heap-figure's operation figure sizes the command's open by it and the
+;; offline verbs' list copies too (fn-heap-operation-history-octets).
 
 (defun fn-heap-reserve-operation-decide (action profile core nursery observations
                                                 connections observed)
@@ -268,21 +267,24 @@
                   :guard-hints (("Goal" :in-theory (disable fn-heap-operation-decide
                                                             fn-heap-reserve-decide
                                                             fn-heap-reserve-of)))))
-  (if (member-equal action *fn-heap-operation-actions*)
-      (fn-heap-reserve-of (fn-heap-operation-decide action profile core nursery
-                                                    observations observed)
-                          profile core observations connections)
-    (fn-heap-reserve-decide profile core nursery observations connections)))
+  (declare (ignorable action))
+  (fn-heap-reserve-of (fn-heap-operation-decide action profile core nursery
+                                                observations observed)
+                      profile core observations connections))
 
-; Every command but the operation verbs reserves exactly as before.
-(defthm fn-heap-reserve-operation-decide-of-a-serve-action-by-definition
-  (implies (not (member-equal action *fn-heap-operation-actions*))
+; Unobserved, every command but the offline verbs reserves exactly as
+; fn-heap-reserve-decide.
+(defthm fn-heap-reserve-operation-decide-of-a-serve-action
+  (implies (and (not (member-equal action *fn-heap-list-actions*))
+                (not (equal action :init)))
            (equal (fn-heap-reserve-operation-decide action profile core nursery
-                                                    observations connections observed)
+                                                    observations connections nil)
                   (fn-heap-reserve-decide profile core nursery observations
                                           connections)))
-  :hints (("Goal" :in-theory (union-theories '(fn-heap-reserve-operation-decide)
-                                             (theory 'minimal-theory)))))
+  :hints (("Goal" :use (fn-heap-reserve-decide-is-reserve-of-heap-decide
+                        fn-heap-operation-decide-of-a-serve-action-is-heap-decide)
+           :in-theory (union-theories '(fn-heap-reserve-operation-decide)
+                                      (theory 'minimal-theory)))))
 
 ; An accepted reservation beside a heap decision D is D's heap, and heap,
 ; core and the threads' stacks fit the machine -- for a store's profile and
@@ -371,15 +373,10 @@
                             (+ (* 1024 (fn-heap-reserve-stack-kib r))
                                *fn-heap-thread-runtime-octets*)))
                       (fn-heap-machine-octets observations)))))
-  :hints (("Goal" :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide)
-                        (:instance fn-heap-reserve-of-holds-the-decision
+  :hints (("Goal" :use ((:instance fn-heap-reserve-of-holds-the-decision
                                    (d (fn-heap-operation-decide action profile core nursery
-                                                                observations observed)))
-                        (:instance fn-heap-reserve-of-holds-the-decision
-                                   (d (fn-heap-decide profile core nursery observations)))
-                        (:instance fn-heap-operation-decide-of-a-serve-action-is-heap-decide))
-           :in-theory (union-theories '(fn-heap-reserve-operation-decide
-                                        (:executable-counterpart member-equal))
+                                                                observations observed))))
+           :in-theory (union-theories '(fn-heap-reserve-operation-decide)
                                       (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
@@ -553,7 +550,6 @@
 ;; open (books/heap-figure.lisp fn-heap-operation-decide, :run).  A later run
 ;; is judged by the store it then has; one whose replay the machine cannot
 ;; hold is refused by name then, not at init.
-(defconst *fn-heap-empty-store-observation* '(0 . 0))
 
 (defun fn-heap-reserve-first-run-decide (profile core nursery observations connections)
   (declare (xargs :guard t))
