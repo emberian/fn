@@ -5514,12 +5514,11 @@
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
         "planning/evidence/bp-rotation-2026-09-27.md"
       ],
-      "progress_note": "Lane bp-lifecycle-4 (2026-09-26, wave 2), PKT-276's codec items, PKT-294. See the record.",
+      "progress_note": "Lane bp-lifecycle-4 (2026-09-26, wave 2), PKT-276's codec items, PKT-294. See the record. Batch AX (2026-09-27): fn-bpnpf-profile-write-never-lowers leaves the row's events: bp-rotation moved the host's writer to the format-3 fn-bpnpf-node-profile-write-octets, whose fn-bpnpf-node-profile-write-never-lowers the row cites (reach_check: no host line reaches the older writer).",
       "events": [
         "fn-bpnpf-profile-read-of-octets",
         "fn-bpnpf-profile-read-of-format-1",
         "fn-bpnpf-profile-read-is-valid",
-        "fn-bpnpf-profile-write-never-lowers",
         "fn-bpnpf-profile-within-codec-widths",
         "fn-bpnpf-admission-within-profile-is-the-channel-answer",
         "fn-bpnpf-admission-ready-is-within-profile",
