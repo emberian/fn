@@ -1014,7 +1014,10 @@ disk sheds at the gate's recorded time (the read runs under the disk-slow
 posture, so IHAVE is answered 436 and CHECK 431 at once), else :transit
 (which waits for a batch in flight).  Appends nothing: the committer's timed
 wakes append the clock events that move the disk past its deadline."
-  (let ((class (fnn-core 'fn-otm-peer-read-class (fnn-owner-gate-sched-value service))))
+  (let ((class (let ((gate (fnn-owner-service-gate service)))
+                 ;; Under the gate mutex, as fnn-owner-gate-pick's fn-otm-next.
+                 (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                   (fnn-core 'fn-otm-peer-read-class (fnn-owner-gate-sched gate))))))
     (unless (member class '(:reader :transit))
       (fnn-fault "owner returned a malformed peer read class ~a" class))
     class))

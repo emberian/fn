@@ -316,7 +316,14 @@ return the index the bytes begin at."
 ;;; off the entry's own STOBJS-IN (a property the image keeps: host/native/
 ;;; strip-world.lisp), once per name, so a wrapper never carries a list that
 ;;; could go stale.
-(defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq))
+;;; Synchronized: fnn-call runs on the owner's thread under the owner mutex,
+;;; on the gate's (fnn-owner-gate-pick, under the gate mutex only) and on an
+;;; I/O loop's (a peer read's class, host/native/owner.lisp
+;;; fnn-owner-peer-read-class), and this cache is filled lazily on a name's
+;;; first call: unsynchronized, two first calls at once are SBCL's "Unsafe
+;;; concurrent operations on HASH-TABLE" (lane log-leftovers, 2026-09-27:
+;;; it stopped an owner in the native peering module).
+(defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq :synchronized t))
 
 (defun fnn-live-cat ()
   (or *fnn-cat*
@@ -1060,7 +1067,9 @@ offered to the writer while the owner runs (PKT-508), else written here."
 ;;; the formal and the kind: the six handle-for-octets defects of 2026-09-27
 ;;; surfaced as silent refusals downstream instead.  The kind decision is
 ;;; ACL2's (the guard and the recognizer); the host only evaluates it.
-(defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq))
+;;; Synchronized, as *fnn-trailing-stobjs*: fnn-call is entered from more
+;;; than one thread and the spec is cached on a name's first call.
+(defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq :synchronized t))
 
 (defun fnn-guard-conjuncts (term)
   "The conjuncts of a translated guard TERM ((if a b 'nil) is a conjunction)."
