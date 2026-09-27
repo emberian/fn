@@ -215,7 +215,7 @@ results only after the corresponding physical fsync returns successfully.
 Exact frame decoding and truthful physical observations remain adapter premises.
 
 This entry is the root of every process (`host/store-node-host.lisp`,
-`fn-store-sn-recover`), and the trace theorems are rooted there in
+`fn-store-sn-recover-rows`), and the trace theorems are rooted there in
 [`store-observed-traces`](../books/store-observed-traces.lisp), which includes
 `store-observed` and `store-node-resolution`. The two books are
 separate because the opening theorems above certify in the theory of

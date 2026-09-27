@@ -19,6 +19,10 @@
     (otherwise *proposal*)))
 (defun fnn-core (name &rest args)
   (apply #'fnn-owner-core name args))
+;; The poll, bound poll and wait step read the live payload arena (records
+;; flip): the deployed adapter calls them through fnn-core-arena-state.
+(defun fnn-core-arena-state (name &rest args)
+  (apply #'fnn-owner-core name args))
 (defun fnn-owner-consumer-commit (service event)
   (declare (ignore service)) (push (list :commit event) *calls*) :durable)
 (defun fnn-octet-list-p (x)

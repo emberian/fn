@@ -1047,9 +1047,21 @@ The core (host/store-node-host.lisp `fn-store-sn-recover') replays
 allocation domain and the capacity from the configured node, and opens the
 observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
 here.  The host supplies octets and decides nothing about them."
-  (fnn-action (fnn-core-arena-state 'fn-store-sn-recover
-                                    (mapcar #'fnn-octet-list records) frontier
-                                    (mapcar #'fnn-octet-list config-records))))
+  (let* ((octets (mapcar #'fnn-octet-list records))
+         (configs (mapcar #'fnn-octet-list config-records))
+         (decoded (fnn-core 'fn-store-sn-recover-records octets configs)))
+    (if (eq decoded :bad)
+        :fault
+      ;; The intern at the open: the arena emptied, then the decoded wire
+      ;; events sealed and made rows by the guard-verified fn-intern-events
+      ;; (books/store-intern.lisp; KEYSTONES fn-intern-events-materializes,
+      ;; -are-store-events, -keep-coordinates, -contexts-okp), called here so
+      ;; that no :program entry updates the arena (invariant-risk).
+      (let ((arena (fnn-live-arena)))
+        (fnn-call 'fn-arena-clear arena)
+        (let ((rows (first (fnn-call 'fn-intern-events decoded nil 0 arena))))
+          (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
+                                      rows frontier configs)))))))
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."
@@ -1169,12 +1181,40 @@ round policy."
                      internal-time-units-per-second)
               wall +fnn-owner-wall-error-ms+ has-wall)))
 
+(defun fnn-seal-octets (octets)
+  "The arena update a prepare names: seal OCTETS (the octet list the core
+answered with) through the guard-verified `fn-arena-seal-list'
+(books/payload-arena.lisp).  The core entries only READ the arena: an entry
+that also sealed would carry ACL2's invariant-risk and run through its *1*
+body, checking every callee's guard (the whole history, per POST)."
+  (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
+  t)
+
+(defun fnn-seal-live-buffer ()
+  "The arena update the owner's buffer prepare names (:seal-buffer): seal the
+octet buffer's payload through the guard-verified `fn-arena-seal-buffer'
+(books/payload-arena.lisp); see FNN-SEAL-OCTETS."
+  (fnn-call 'fn-arena-seal-buffer (fnn-live-octets) (fnn-live-arena))
+  t)
+
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
-  (fnn-action (fnn-core-arena-state 'fn-store-sn-prepare (fnn-octet-list msgid)
-                                    (fnn-octet-list payload)
-                                    codes (fnn-octet-list obligation) (fnn-octet-list subject)
-                                    (fnn-octet-list evidence) charge
-                                    (fnn-store-prepare-observation))))
+  "The standalone POST's prepare: ACL2 decides (fn-store-sn-prepare) and names
+the payload to seal as (:seal OCTETS); the host seals exactly those octets
+(books/store-prepare-carried.lisp
+`fn-store-prepare-interned-carried-is-next-then-seal')."
+  (let ((value (fnn-core-arena-state 'fn-store-sn-prepare (fnn-octet-list msgid)
+                                     (fnn-octet-list payload)
+                                     codes (fnn-octet-list obligation) (fnn-octet-list subject)
+                                     (fnn-octet-list evidence) charge
+                                     (fnn-store-prepare-observation))))
+    (if (and (consp value) (eq (first value) :seal))
+        (progn
+          (unless (and (consp (rest value)) (null (cddr value))
+                       (fnn-octet-list-p (second value)))
+            (fnn-fault "ACL2 returned a malformed seal"))
+          (fnn-seal-octets (second value))
+          :prepared)
+      (fnn-action value))))
 (defun fnn-bridge-existing-action (msgid payload codes)
   (fnn-action (fnn-core-arena-state 'fn-store-sn-existing-action (fnn-octet-list msgid)
                                     (fnn-octet-list payload) codes)))
