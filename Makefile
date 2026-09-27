@@ -1158,6 +1158,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reader-view-tests \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
+	books/owner-time-model \
+	tests/acl2/owner-time-model-tests \
 	books/store-log-route-programs \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \

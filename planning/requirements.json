@@ -4670,6 +4670,32 @@
         "planning/evidence/log-recovery-2026-09-27.md"
       ],
       "implementation_note": "Lane log-recovery (2026-09-27; design 2026-09-27 storage-log section 6). The checkpoint's F row carries the log position (fn-sct-log-positionp); fnn-log-rotate (P-ROTATE) at the capture of the checkpoint verb, of store compact and of the owner's automatic checkpoint; fnn-log-drop (P-DROP) after the install; fnn-recover-log's plan (fn-lgs-open-plan) and chain-broken check (fn-lgs-chain-broken-string-p). store reclaim over the log: the rewritten history's checkpoint then the drop (PRF-271). Not done: the recovery's five barriers down to one, the streaming open (the segment is still read into one string, PKT-COL-7)."
+    },
+    {
+      "id": "HST-026",
+      "title": "The node's answers are stated relative to a disk with unbounded latency: a batch barrier is a request with a deadline, reads and status never wait on it, and while the disk is slow a new POST is refused try-later with the reason and health and status say so",
+      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-308"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-time-model.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/design-time-model-2026-09-27.md",
+        "planning/evidence/time-model-2026-09-27.md"
+      ],
+      "implementation_note": "Slice 1 of planning/design-time-model-2026-09-27.md. The committer's wait for the syncer is timed by ACL2 and appends clock events; the barrier's deadline is the live configuration's barrier-deadline-ms limit (default 5,000 ms; the admin verb to set it is slice 2). A POST shed while slow gets fn-own-outcome's :refused outcome with ACL2's reason line (441; RFC 3977 section 6.3.1). Not yet: the stall deadline H and the in-flight members' uncertain answer, 440 at the POST command, IHAVE 436 during slow, mutating control try-later, the inline barrier and configuration publication as requests."
     }
   ]
 }

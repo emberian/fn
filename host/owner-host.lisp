@@ -1058,22 +1058,6 @@
                 (not (fn-own-control-submissionp (car q)))
                 t))))
 
-;; A served POST shed while the disk is slow (books/owner-time-model.lisp
-;; fn-otm-admit-post answered :shed): the submission in flight gets
-;; fn-own-outcome's :refused outcome -- nothing durable, no pin moved, the
-;; feeds unchanged, the owner's own refusal log line -- and its reply is
-;; ACL2's try-later line for the disk (fn-otm-shed-reply over the gate's
-;; value S, at its recorded time): RFC 3977 section 6.3.1's 441,
-;; with the reason in place of the generic refusal text.
-(defun fn-owner-shed-outcome (id s state)
-  (declare (xargs :stobjs state :mode :program))
-  (mv-let (erp val state) (fn-owner-outcome id :refused state)
-    (declare (ignore val))
-    (if erp
-        (mv erp nil state)
-      (let ((state (f-put-global 'fn-owner-output (fn-otm-shed-reply s) state)))
-        (value :shed)))))
-
 ;; The carried obligation-id trie (books/post-retain-carried.lisp): the
 ;; global's writers are fn-owner-install-extended (every recovery: the
 ;; refresh of nil, so the first POST pays no build), fn-owner-prepare-buffer
@@ -2378,6 +2362,22 @@
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
     (value :fed)))
+
+;; A served POST shed while the disk is slow (books/owner-time-model.lisp
+;; fn-otm-admit-post answered :shed): the submission in flight gets
+;; fn-own-outcome's :refused outcome -- nothing durable, no pin moved, the
+;; feeds unchanged, the owner's own refusal log line -- and its reply is
+;; ACL2's try-later line for the disk (fn-otm-shed-reply over the gate's
+;; value S, at its recorded time): RFC 3977 section 6.3.1's 441,
+;; with the reason in place of the generic refusal text.
+(defun fn-owner-shed-outcome (id s state)
+  (declare (xargs :stobjs state :mode :program))
+  (mv-let (erp val state) (fn-owner-outcome id :refused state)
+    (declare (ignore val))
+    (if erp
+        (mv erp nil state)
+      (let ((state (f-put-global 'fn-owner-output (fn-otm-shed-reply s) state)))
+        (value :shed)))))
 
 ; The control result is projected before the event consumes the in-flight
 ; submission.  The state transition uses fn-own-outcome-completion and

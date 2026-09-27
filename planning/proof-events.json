@@ -10869,6 +10869,71 @@
           "name": "fn-ofa-publication-is-well-formed"
         }
       ]
+    },
+    {
+      "id": "PRF-308",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otm-barrier-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-disk-event-keeps-the-pipeline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-next-is-ocp-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-commit-event-is-ocp-commit-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-observe-keeps-the-disk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-recorded-time-is-monotone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-shed-only-past-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-past-the-deadline-sheds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-shed-iff-slow"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-return-recovers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-clock-event-never-issues"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-return-records-the-latency"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-wait-reaches-the-deadline"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-issue-only-when-none-pending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-issue-is-pending-and-admits"
+        }
+      ]
     }
   ]
 }
