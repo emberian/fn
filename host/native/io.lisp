@@ -552,9 +552,28 @@ label; it does not select a policy."
   (let ((result (fnn-%flock fd operation)))
     (when (< result 0) (fnn-os-fail (sb-alien:get-errno)))))
 
-(defvar *fnn-random-state* (sb-ext:seed-random-state t))
+;;; The state behind every staged name's random suffix, seeded from the OS's
+;;; entropy (`seed-random-state t': /dev/urandom) by the first draw of each
+;;; process.  A saved image must not carry it: a state seeded while the image
+;;; was built gave every process of that image the same sequence, so `init'
+;;; and `import', whose stage names carry no PID, staged under the same
+;;; ROOT.init-77b60431a1de in every run (PKT-691).  The save hook drops it
+;;; before `save-lisp-and-die'; a restarted image seeds its own.
+(defvar *fnn-random-state* nil)
+(defvar *fnn-random-state-lock* (sb-thread:make-mutex :name "fn native random state"))
+
+(defun fnn-random-state ()
+  (or *fnn-random-state*
+      (sb-thread:with-mutex (*fnn-random-state-lock*)
+        (or *fnn-random-state*
+            (setq *fnn-random-state* (sb-ext:seed-random-state t))))))
+
+(defun fnn-random-state-forget ()
+  (setq *fnn-random-state* nil))
+(pushnew 'fnn-random-state-forget sb-ext:*save-hooks*)
+
 (defun fnn-random-hex (octets)
-  (format nil "~(~v,'0x~)" (* 2 octets) (random (ash 1 (* 8 octets)) *fnn-random-state*)))
+  (format nil "~(~v,'0x~)" (* 2 octets) (random (ash 1 (* 8 octets)) (fnn-random-state))))
 
 ;;; Paths, as Python's pathlib joins and parents them.
 

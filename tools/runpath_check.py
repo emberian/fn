@@ -99,14 +99,35 @@ RC_VARIABLES = {"daemon", "daemon_flags", "daemon_user", "daemon_logger",
 
 
 # The platform's C library, the one thing outside the release an ELF object
-# may name (ld.so resolves it): glibc on Linux, libc on OpenBSD.
+# may name (ld.so resolves it): glibc on Linux, libc on OpenBSD.  A tree is
+# checked against its target's rules (PKT-690): `--platform', or the program
+# interpreter of the release's runtime (`detect_platform'); a tree whose
+# platform is unknown gets the union, as before.
+PLATFORM_LIBC_BY = {
+    "linux": re.compile(
+        r"^(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|"
+        r"ld-linux-x86-64\.so\.2|libutil\.so\.1)$"),
+    # OpenBSD's base libraries are libNAME.so.MAJOR.MINOR (ld.so(1)).
+    "openbsd": re.compile(r"^(?:libc|libm|libpthread|libutil|libc\+\+abi|libc\+\+)\.so\.\d+\.\d+$"),
+}
 PLATFORM_LIBC = re.compile(
     r"^(?:libc\.so(?:\.[\d.]+)?|libm\.so(?:\.[\d.]+)?|libdl\.so\.2|libpthread\.so(?:\.[\d.]+)?|"
     r"librt\.so\.1|ld-linux-x86-64\.so\.2|libutil\.so(?:\.[\d.]+)?|libc\+\+abi\.so[\d.]*)$")
+LIBC_LOADERS_BY = {"linux": {"/lib64/ld-linux-x86-64.so.2"}, "openbsd": {"/usr/libexec/ld.so"}}
 LIBC_LOADERS = {"/lib64/ld-linux-x86-64.so.2", "/usr/libexec/ld.so"}
+PLATFORMS = ("linux", "openbsd")
 # The system TLS library the image loads by dlopen: D35 as ember confirmed it
-# on 2026-09-26 ("no OpenSSL 3.5, the system libssl"; lane crypto-deps).
+# on 2026-09-26 ("no OpenSSL 3.5, the system libssl"; lane crypto-deps):
+# OpenSSL 3's sonames on Linux; on OpenBSD LibreSSL in the base system (the
+# core names it unversioned; ld.so resolves the installed major) or the
+# OpenSSL 3 pair under an operator's FN_OPENSSL_PREFIX (host/native/tls.lisp
+# `fnn-tls-configured-library-pair', an absolute path the operator names).
+SYSTEM_TLS_BY = {
+    "linux": re.compile(r"^lib(?:ssl|crypto)\.so\.3$"),
+    "openbsd": re.compile(r"^lib(?:ssl|crypto)\.so(?:\.3|\.\d+\.\d+)?$"),
+}
 SYSTEM_TLS = re.compile(r"^lib(?:ssl|crypto)\.so(?:\.[\d.]+)?$")
+OPENBSD_LIB_RE = re.compile(r"^(lib[A-Za-z0-9_+-][A-Za-z0-9_+.-]*?)\.so\.(\d+)\.(\d+)$")
 # Absolute paths a shipped script may run: the shell and OpenBSD's rc.subr.
 SYSTEM_SCRIPTS = {"/bin/sh", "/bin/ksh", "/etc/rc.d/rc.subr"}
 # The oldest glibc a Linux release runs on: Debian 12's 2.36 (lane
@@ -211,6 +232,20 @@ def scan_libraries(root: Path, findings: Findings) -> None:
             continue
         text = strip_lisp_comments(path.read_text(encoding="utf-8"))
         names = sorted(set(LIB_LITERAL_RE.findall(text)))
+        # A candidate list is chosen at read time (#+linux, #+openbsd, ...), so
+        # the saved core carries only its platform's names and the tree check
+        # may read every lib*.so string in the core as one it may dlopen
+        # (PKT-690).  A run-time `(member :os *features*)' would put every
+        # platform's names in every core.
+        for match in LIB_LITERAL_RE.finditer(text):
+            defun = enclosing_defun(text, match.start())
+            if not defun.endswith("-library-candidates"):
+                continue
+            start = max(m.start() for m in DEFUN_RE.finditer(text, 0, match.start() + 1))
+            body = text[start:match.start()]
+            if "*features*" in body or not re.search(r"#[+-]", body):
+                findings.fail(f"{rel}: {defun} names {match.group(1)} without a read-time "
+                              "platform conditional (#+linux, #+openbsd, #+darwin)")
         for name in names:
             if PYTHON_RE.search(Path(name).name):
                 findings.fail(f"{rel} may dlopen {name}")
@@ -460,11 +495,46 @@ def core_dlopen_names(path: Path) -> set[str]:
     return names
 
 
-def tree_check(top: Path) -> Findings:
+def detect_platform(top: Path) -> str | None:
+    """The target of an unpacked release: its runtime's program interpreter
+    (glibc's loader on Linux, /usr/libexec/ld.so on OpenBSD), or None."""
+    runtime = top / "libexec" / "fn" / "runtime" / "sbcl"
+    if not runtime.is_file():
+        return None
+    facts = elf_facts(runtime.read_bytes())
+    interp = facts and facts["interp"]
+    return next((p for p, loaders in LIBC_LOADERS_BY.items() if interp in loaders), None)
+
+
+def carried_satisfies(name: str, carried: set[str], platform: str | None) -> bool:
+    """Whether the dynamic loader of PLATFORM resolves NAME to a carried file.
+    OpenBSD's ld.so resolves libX.so and libX.so.MAJOR to a libX.so.MAJOR.MINOR
+    file, and a file not named so is no library to it; elsewhere a carried
+    NAME or NAME.VERSION (libX.so.23 for libX.so.23.3.0)."""
+    if name in carried:
+        return True
+    if platform == "openbsd":
+        for c in carried:
+            m = OPENBSD_LIB_RE.match(c)
+            if m and (name == f"{m.group(1)}.so" or name == f"{m.group(1)}.so.{m.group(2)}"):
+                return True
+        return False
+    return any(c.startswith(name + ".") for c in carried)
+
+
+def tree_check(top: Path, platform: str | None = None) -> Findings:
     findings = Findings()
     if not (top / "bin" / "fn").is_file():
         findings.fail(f"{top}: no bin/fn")
         return findings
+    detected = detect_platform(top)
+    if platform is not None and detected is not None and detected != platform:
+        findings.fail(f"the release's runtime is for {detected}, not {platform}")
+    platform = platform or detected
+    libc = PLATFORM_LIBC_BY.get(platform, PLATFORM_LIBC)
+    loaders = LIBC_LOADERS_BY.get(platform, LIBC_LOADERS)
+    system_tls = SYSTEM_TLS_BY.get(platform, SYSTEM_TLS)
+    findings.note(f"platform {platform or 'unknown (the union of every platform rule)'}")
     fasls = 0
     carried = {p.name for p in top.rglob("*") if p.is_file()}
     for path in sorted(p for p in top.rglob("*") if p.is_file() or p.is_symlink()):
@@ -511,14 +581,14 @@ def tree_check(top: Path) -> Findings:
             for name in needed:
                 if PYTHON_RE.search(name):
                     findings.fail(f"{rel}: DT_NEEDED {name}")
-                elif not (PLATFORM_LIBC.match(name) or name in carried):
+                elif not (libc.match(name) or carried_satisfies(name, carried, platform)):
                     findings.fail(f"{rel}: DT_NEEDED {name} is neither carried by the "
                                   "release nor the platform C library")
             for rpath in facts["rpaths"]:
                 for entry in rpath.split(":"):
                     if entry and not entry.startswith("$ORIGIN"):
                         findings.fail(f"{rel}: DT_RPATH/RUNPATH {entry} outside the release")
-            if facts["interp"] is not None and facts["interp"] not in LIBC_LOADERS:
+            if facts["interp"] is not None and facts["interp"] not in loaders:
                 findings.fail(f"{rel}: program interpreter {facts['interp']} is not the "
                               "platform C library loader")
             highest, above = glibc_above_floor(facts)
@@ -533,12 +603,12 @@ def tree_check(top: Path) -> Findings:
         if path.suffix == ".core" and rel.startswith("libexec/"):
             names = core_dlopen_names(path)
             outside = sorted(n for n in names if not (
-                n in carried or PLATFORM_LIBC.match(n) or SYSTEM_TLS.match(n)
-                or any(c.startswith(n + ".") for c in carried)))
+                libc.match(n) or system_tls.match(n)
+                or carried_satisfies(n, carried, platform)))
             for name in outside:
                 findings.fail(f"{rel}: may dlopen {name}, which the release does not carry")
             findings.note(f"{rel}: dlopen names {' '.join(sorted(names)) or '(none)'}; "
-                          "the system's: " + (" ".join(sorted(n for n in names if SYSTEM_TLS.match(n)))
+                          "the system's: " + (" ".join(sorted(n for n in names if system_tls.match(n)))
                                              or "(none)"))
             continue
         if executable and not rel.startswith("share/"):
@@ -576,15 +646,17 @@ def main(argv: list[str] | None = None) -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--tree", type=Path, help="an unpacked release directory")
     group.add_argument("--tarball", type=Path, help="a release tarball")
+    parser.add_argument("--platform", choices=PLATFORMS,
+                        help="the release's target (default: from its runtime's interpreter)")
     parser.add_argument("--root", type=Path, default=ROOT, help="repository root (static mode)")
     parser.add_argument("--quiet", action="store_true", help="print only findings")
     args = parser.parse_args(argv)
     if args.tarball:
         with tempfile.TemporaryDirectory(prefix="fn-runpath.") as tmp:
-            findings = tree_check(unpack(args.tarball, Path(tmp)))
+            findings = tree_check(unpack(args.tarball, Path(tmp)), args.platform)
             label = str(args.tarball)
     elif args.tree:
-        findings = tree_check(args.tree)
+        findings = tree_check(args.tree, args.platform)
         label = str(args.tree)
     else:
         findings = static_check(args.root)

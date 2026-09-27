@@ -172,6 +172,67 @@ class RunpathCheckTests(unittest.TestCase):
                 core.write("libpython3.12.so.1.0".encode("utf-32-le") + b"\0" * 4)
             self.assert_finding(top, "may dlopen libpython3.12.so.1.0")
 
+    # PKT-690: the OpenBSD release carries libsodium.so.11.1, which OpenBSD's
+    # ld.so finds for the core's libsodium.so; Linux's libsodium.so.23 in an
+    # OpenBSD core is a name the release does not carry.
+    def test_openbsd_tree_is_clean_under_its_platform(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.release(Path(tmp))
+            code, out, err = self.run_main(["--tree", str(top), "--platform", "openbsd"])
+            self.assertEqual(code, 0, err)
+            self.assertIn("runpath: platform openbsd", out)
+
+    def test_linux_soname_in_an_openbsd_core_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.release(Path(tmp))
+            with open(top / "libexec/fn/fn-host.core", "ab") as core:
+                core.write(b"libsodium.so.23\0")
+            code, _out, err = self.run_main(["--tree", str(top), "--platform", "openbsd"])
+            self.assertEqual(code, 1, err)
+            self.assertIn("may dlopen libsodium.so.23, which the release does not carry", err)
+
+    def test_openbsd_resolves_only_major_minor_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.release(Path(tmp))
+            os.rename(top / "libexec/fn/lib/libsodium.so.11.1", top / "libexec/fn/lib/libsodium.so.23")
+            code, _out, err = self.run_main(["--tree", str(top), "--platform", "openbsd"])
+            self.assertEqual(code, 1, err)
+            self.assertIn("may dlopen libsodium.so, which the release does not carry", err)
+        carried = {"libsodium.so.11.1"}
+        self.assertTrue(runpath_check.carried_satisfies("libsodium.so", carried, "openbsd"))
+        self.assertTrue(runpath_check.carried_satisfies("libsodium.so.11", carried, "openbsd"))
+        self.assertFalse(runpath_check.carried_satisfies("libsodium.so.23", carried, "openbsd"))
+        self.assertTrue(runpath_check.carried_satisfies("libsodium.so.23", {"libsodium.so.23.3.0"}, "linux"))
+
+    def test_openbsd_libraries_are_not_linux_libc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.release(Path(tmp))
+            self.assert_platform_finding(top, "linux", "DT_NEEDED libc.so.103.0 is neither carried")
+
+    def assert_platform_finding(self, top, platform, fragment):
+        code, _out, err = self.run_main(["--tree", str(top), "--platform", platform])
+        self.assertEqual(code, 1, err)
+        self.assertIn(fragment, err)
+
+    def test_candidate_lists_must_be_read_time(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for rel in runpath_check.LIB_SOURCES:
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(ROOT / rel, root / rel)
+            findings = runpath_check.Findings()
+            runpath_check.scan_libraries(root, findings)
+            self.assertEqual(findings.problems, [])
+            crypto = root / "host/native/crypto.lisp"
+            crypto.write_text(crypto.read_text().replace(
+                "#+linux '(\"libsodium.so.23\"",
+                "((member :linux *features*) '(\"libsodium.so.23\""))
+            findings = runpath_check.Findings()
+            runpath_check.scan_libraries(root, findings)
+            self.assertTrue(any("fnn-crypto-library-candidates names libsodium.so.23 without a "
+                                "read-time platform conditional" in p for p in findings.problems),
+                            findings.problems)
+
     def test_arithmetic_expansion_runs_no_command(self):
         # packaging/fn's heap step: `$(( (core_octets + 1048575) / 1048576 + 128 ))'.
         self.assertEqual(runpath_check.split_commands(
