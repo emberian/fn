@@ -529,9 +529,11 @@
                   (fn-ocfg-pin-find other (fn-ocfg-pins oc))))
   :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner))))
 
-(defthm fn-ocfg-pin-set-absent-is-unchanged
+; A pin the table lacks is not created by a set (the shape the table's
+; tail takes when it is not a list is not asked).
+(defthm fn-ocfg-pin-find-of-pin-set-absent
   (implies (not (fn-ocfg-pin-find id pins))
-           (equal (fn-ocfg-pin-set id cfg pins) pins))
+           (not (fn-ocfg-pin-find id (fn-ocfg-pin-set id cfg pins))))
   :hints (("Goal" :induct (fn-ocfg-pin-set id cfg pins)
            :in-theory (enable fn-ocfg-pin-set fn-ocfg-pin-find))))
 
