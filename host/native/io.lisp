@@ -316,7 +316,7 @@ return the index the bytes begin at."
 ;;; off the entry's own STOBJS-IN (a property the image keeps: host/native/
 ;;; strip-world.lisp), once per name, so a wrapper never carries a list that
 ;;; could go stale.
-(defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq))
+(defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq :synchronized t))
 
 (defun fnn-live-cat ()
   (or *fnn-cat*
@@ -1060,7 +1060,14 @@ offered to the writer while the owner runs (PKT-508), else written here."
 ;;; the formal and the kind: the six handle-for-octets defects of 2026-09-27
 ;;; surfaced as silent refusals downstream instead.  The kind decision is
 ;;; ACL2's (the guard and the recognizer); the host only evaluates it.
-(defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq))
+;;; Both per-name caches (this one and *fnn-trailing-stobjs*) are filled
+;;; lazily by whichever thread first calls an entry -- the owner, an io
+;;; thread, the checkpoint publisher -- so they are synchronized: an
+;;; unsynchronized EQ table stopped an owner at startup with "Unsafe
+;;; concurrent operations on #<HASH-TABLE :TEST EQ :COUNT 163>" (lane
+;;; served-columns native-n1, 2026-09-27: hybrid_author, reader_index; both
+;;; green on a rerun of the same image).
+(defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq :synchronized t))
 
 (defun fnn-guard-conjuncts (term)
   "The conjuncts of a translated guard TERM ((if a b 'nil) is a conjunction)."
