@@ -29,6 +29,9 @@
     "books/article",
     "books/article-invariants",
     "books/article-properties",
+    "books/article-header-census",
+    "books/article-header-limits",
+    "tests/acl2/article-header-limits-tests",
     "tests/acl2/article-tests",
     "tests/acl2/article-teeth-tests",
     "books/article-work-primitives",
@@ -862,6 +865,8 @@
     "tests/acl2/owner-feed-port-tests",
     "tests/acl2/owner-feed-tests",
     "books/owner",
+    "books/transit-header-limits",
+    "tests/acl2/transit-header-limits-tests",
     "tests/acl2/owner-feed-form-tests",
     "books/owner-invariants",
     "books/owner-fault",
@@ -1044,26 +1049,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1069,
-    "books_in_root_closure": 1061,
-    "roots": 1040,
-    "theorems": 15400,
-    "functions": 10555,
-    "assert_events": 15660,
-    "must_fails": 1872,
+    "books": 1074,
+    "books_in_root_closure": 1066,
+    "roots": 1045,
+    "theorems": 15429,
+    "functions": 10589,
+    "assert_events": 15732,
+    "must_fails": 1886,
     "prover_refusals": 0,
     "encapsulates": 78,
     "guards": {
-      "verified": 2337,
-      "declared-off": 907,
-      "default-guarded": 5728,
-      "default-unguarded": 1583
+      "verified": 2339,
+      "declared-off": 910,
+      "default-guarded": 5747,
+      "default-unguarded": 1593
     },
-    "suspect_theorems": 146,
-    "export_hygiene_warnings": 168,
+    "suspect_theorems": 148,
+    "export_hygiene_warnings": 176,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 164,
-    "include_hygiene_warnings": 1061,
+    "teeth_form_warnings": 171,
+    "include_hygiene_warnings": 1067,
     "host_names_warnings": 1188,
     "hand_written_record_warnings": 18
   },
@@ -1488,6 +1493,62 @@
       "read_error": null
     },
     {
+      "book": "books/article-header-census.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 6,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 4,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "article",
+        "article-properties"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/article-header-limits.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "article-header-census",
+        "article-properties"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-article-parse-is-the-ceiling-limits-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/article-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1544,13 +1605,13 @@
       "book": "books/article-public-bound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
-      "functions": 1,
+      "theorems": 19,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1572,13 +1633,13 @@
       "book": "books/article-public-work.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
-      "functions": 5,
+      "theorems": 11,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1712,18 +1773,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 24,
-      "functions": 45,
+      "functions": 53,
       "guards": {
-        "verified": 45,
+        "verified": 46,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
-      "verify_guards_events": 45,
+      "verify_guards_events": 46,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5929,18 +5990,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 32,
-      "functions": 42,
+      "functions": 43,
       "guards": {
         "verified": 2,
         "declared-off": 0,
-        "default-guarded": 37,
+        "default-guarded": 38,
         "default-unguarded": 3
       },
       "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 37,
+      "defconsts": 43,
       "defmacros": 0,
       "encapsulates": 1,
       "includes": [
@@ -9463,7 +9524,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -9922,12 +9983,12 @@
       "book": "books/injection.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
-      "functions": 82,
+      "theorems": 41,
+      "functions": 86,
       "guards": {
         "verified": 62,
         "declared-off": 0,
-        "default-guarded": 20,
+        "default-guarded": 24,
         "default-unguarded": 0
       },
       "verify_guards_events": 70,
@@ -9939,6 +10000,7 @@
       "encapsulates": 0,
       "includes": [
         "article-fields",
+        "article-header-census",
         "clock",
         "injection-path",
         "injection-shape",
@@ -9947,7 +10009,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-inj-bound-octets-of-an-atom"
+      ],
       "read_error": null
     },
     {
@@ -12915,11 +12979,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 92,
-      "functions": 164,
+      "functions": 165,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 159,
+        "default-guarded": 160,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -13331,10 +13395,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 71,
-      "functions": 62,
+      "functions": 64,
       "guards": {
         "verified": 9,
-        "declared-off": 4,
+        "declared-off": 6,
         "default-guarded": 49,
         "default-unguarded": 0
       },
@@ -17824,6 +17888,33 @@
       "read_error": null
     },
     {
+      "book": "books/transit-header-limits.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-header-limits",
+        "owner"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/visibility-join.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -18451,6 +18542,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/article-header-limits-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 24,
+      "must_fails": 6,
+      "prover_refusals": 0,
+      "defconsts": 11,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/article-header-limits"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/article-teeth-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -18491,7 +18610,7 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 38,
+      "assert_events": 39,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 10,
@@ -21707,10 +21826,10 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 93,
+      "assert_events": 103,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 7,
+      "defconsts": 8,
       "defmacros": 5,
       "encapsulates": 0,
       "includes": [
@@ -30875,6 +30994,36 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/transit-header-limits-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 37,
+      "must_fails": 8,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/transit-header-limits",
+        "peer-inbound-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/visibility-join-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31073,7 +31222,7 @@
     {
       "theorem": "fn-af-message-id-equalp-is-exact",
       "book": "books/article-fields.lisp",
-      "line": 340,
+      "line": 346,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out"
       ]
@@ -31093,6 +31242,15 @@
       "line": 130,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp"
+      ]
+    },
+    {
+      "theorem": "fn-article-parse-is-the-ceiling-limits-by-definition",
+      "book": "books/article-header-limits.lisp",
+      "line": 226,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-article-parse",
+        "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
@@ -31389,7 +31547,7 @@
     {
       "theorem": "fn-bs-profile-of-valid",
       "book": "books/byte-store-frame.lisp",
-      "line": 349,
+      "line": 388,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bs-profile-of and the conclusion is that branch's value"
       ]
@@ -31397,7 +31555,7 @@
     {
       "theorem": "fn-bs-profile-validp-of-profile-of",
       "book": "books/byte-store-frame.lisp",
-      "line": 353,
+      "line": 393,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bs-profile-admittedp"
       ]
@@ -31619,6 +31777,14 @@
       "line": 308,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-inj-bound-octets-of-an-atom",
+      "book": "books/injection.lisp",
+      "line": 567,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-inj-bound-octets and the conclusion is that branch's value"
       ]
     },
     {
@@ -31853,7 +32019,7 @@
     {
       "theorem": "fn-peer-archive-command-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1583,
+      "line": 1619,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -31861,7 +32027,7 @@
     {
       "theorem": "fn-peer-nntp-command-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1598,
+      "line": 1634,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-command-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -31869,7 +32035,7 @@
     {
       "theorem": "fn-peer-nntp-step-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1613,
+      "line": 1649,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-step-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -31877,7 +32043,7 @@
     {
       "theorem": "fn-peer-post-step-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1626,
+      "line": 1662,
       "reasons": [
         "instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -32289,7 +32455,7 @@
       {
         "theorem": "fn-article-parse-work-value",
         "book": "books/article-public-work.lisp",
-        "line": 145,
+        "line": 157,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32469,13 +32635,13 @@
       {
         "theorem": "fn-bs-frontier-decode-extends-format-2",
         "book": "books/byte-store-frame.lisp",
-        "line": 841,
+        "line": 881,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bs-frontier-next-is-successor",
         "book": "books/byte-store-frame.lisp",
-        "line": 1141,
+        "line": 1184,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32671,6 +32837,54 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
+        "theorem": "fn-inj-config-max-octets-of-fn-inj-make-config-full",
+        "book": "books/injection.lisp",
+        "line": 478,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-inj-config-max-octets-of-fn-inj-make-config-listed",
+        "book": "books/injection.lisp",
+        "line": 499,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-inj-config-max-octets-of-fn-inj-make-config-closed",
+        "book": "books/injection.lisp",
+        "line": 520,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-inj-config-max-octets-of-fn-inj-make-config",
+        "book": "books/injection.lisp",
+        "line": 541,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-inj-config-header-limits-of-fn-inj-make-config-full",
+        "book": "books/injection.lisp",
+        "line": 551,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-inj-config-header-limits-of-fn-inj-make-config-listed",
+        "book": "books/injection.lisp",
+        "line": 555,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-inj-config-header-limits-of-fn-inj-make-config-closed",
+        "book": "books/injection.lisp",
+        "line": 559,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-inj-config-header-limits-of-fn-inj-make-config",
+        "book": "books/injection.lisp",
+        "line": 563,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-midx-concrete-build-is-build",
         "book": "books/msgid-index-concrete.lisp",
         "line": 150,
@@ -32733,19 +32947,19 @@
       {
         "theorem": "fn-post-body-octets-iter-is-body-octets",
         "book": "books/nntp-post.lisp",
-        "line": 236,
+        "line": 240,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-post-reader-env-listing",
         "book": "books/nntp-post.lisp",
-        "line": 307,
+        "line": 311,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-post-reader-env-closed",
         "book": "books/nntp-post.lisp",
-        "line": 314,
+        "line": 318,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -32823,13 +33037,13 @@
       {
         "theorem": "fn-olog-control-post-line-says-the-control-result",
         "book": "books/owner-log.lisp",
-        "line": 600,
+        "line": 601,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-olog-served-refusal-line-says-refused",
         "book": "books/owner-log.lisp",
-        "line": 656,
+        "line": 657,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -33301,7 +33515,7 @@
       {
         "function": "fn-article-header",
         "book": "books/article.lisp",
-        "line": 108,
+        "line": 144,
         "stated_in": [
           "books/article-invariants.lisp",
           "books/article-properties.lisp"
@@ -33311,7 +33525,7 @@
       {
         "function": "fn-article-body",
         "book": "books/article.lisp",
-        "line": 111,
+        "line": 147,
         "stated_in": [
           "books/article-properties.lisp",
           "books/relay-source.lisp",
@@ -33322,7 +33536,7 @@
       {
         "function": "fn-article-fields",
         "book": "books/article.lisp",
-        "line": 114,
+        "line": 150,
         "stated_in": [
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
@@ -33336,7 +33550,7 @@
       {
         "function": "fn-article-field-raw-lines",
         "book": "books/article.lisp",
-        "line": 129,
+        "line": 165,
         "stated_in": [
           "books/article-work.lisp",
           "books/relay-source.lisp"
@@ -33346,7 +33560,7 @@
       {
         "function": "fn-article-field-name",
         "book": "books/article.lisp",
-        "line": 132,
+        "line": 168,
         "stated_in": [
           "books/source-projection-bridge.lisp",
           "books/stx-invariants.lisp"
@@ -33356,7 +33570,7 @@
       {
         "function": "fn-article-field-unfolded-value",
         "book": "books/article.lisp",
-        "line": 135,
+        "line": 171,
         "stated_in": [
           "books/article-work.lisp",
           "books/injection-invariants.lisp",
@@ -33367,7 +33581,7 @@
       {
         "function": "fn-article-result-article",
         "book": "books/article.lisp",
-        "line": 170,
+        "line": 206,
         "stated_in": [
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
@@ -33386,7 +33600,7 @@
       {
         "function": "fn-article-line-value",
         "book": "books/article.lisp",
-        "line": 210,
+        "line": 246,
         "stated_in": [
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
@@ -33401,14 +33615,15 @@
       {
         "function": "fn-article-line-rest",
         "book": "books/article.lisp",
-        "line": 213,
+        "line": 249,
         "stated_in": [
+          "books/article-header-census.lisp",
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/article-public-bound.lisp",
           "books/article-work-scanners.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-bpf-offset",
@@ -33802,13 +34017,13 @@
       {
         "check": "bsft-round-trip-without-the-width",
         "book": "tests/acl2/byte-store-frame-tests.lisp",
-        "line": 351,
+        "line": 354,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "bsft-extends-without-the-format-2-hypothesis",
         "book": "tests/acl2/byte-store-frame-tests.lisp",
-        "line": 376,
+        "line": 379,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -34712,6 +34927,48 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "thlt-without-want-or-defer",
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 55,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thlt-without-want",
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 84,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thlt-bp-without-submitted",
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 128,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thlt-ctl-without-gate",
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 164,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thlt-ctl-inject-without-reading-parse",
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 186,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thlt-ctl-without-injected",
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 201,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "thlt-ctl-refuse-without-past-the-limits",
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 209,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "wst-keystone-needs-octets-p",
         "book": "tests/acl2/wire-span-tests.lisp",
         "line": 132,
@@ -34764,6 +35021,13 @@
         "line": 9,
         "include": "byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-header-limits.lisp",
+        "line": 32,
+        "include": "article-properties",
+        "included": "books/article-properties.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -36623,7 +36887,7 @@
       },
       {
         "book": "books/heap-figure.lisp",
-        "line": 63,
+        "line": 64,
         "include": "outcome-class",
         "included": "books/outcome-class.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -37903,6 +38167,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/transit-header-limits.lisp",
+        "line": 32,
+        "include": "article-header-limits",
+        "included": "books/article-header-limits.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/visibility-join.lisp",
         "line": 51,
         "include": "store-node-retention",
@@ -37977,6 +38248,13 @@
         "line": 3,
         "include": "../../books/article-fields",
         "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/article-header-limits-tests.lisp",
+        "line": 6,
+        "include": "../../books/article-header-limits",
+        "included": "books/article-header-limits.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -42107,6 +42385,27 @@
         "line": 4,
         "include": "../../books/transfer-public-bound",
         "included": "books/transfer-public-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 7,
+        "include": "../../books/transit-header-limits",
+        "included": "books/transit-header-limits.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 8,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/transit-header-limits-tests.lisp",
+        "line": 9,
+        "include": "peer-inbound-tests",
+        "included": "tests/acl2/peer-inbound-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -50352,35 +50651,35 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 553,
+        "line": 561,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 794,
+        "line": 802,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 794,
+        "line": 802,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2435,
+        "line": 2458,
         "name": "fn-scar-ocfg-read-span",
         "source": "books/served-span.lisp",
         "reason": "defined in books/served-span.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2579,
+        "line": 2602,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -50525,12 +50824,12 @@
       },
       {
         "book": "books/injection.lisp",
-        "line": 422,
+        "line": 423,
         "shape": "fn-inj-config-shapep",
         "shapes": 2,
-        "accessors": 18,
+        "accessors": 19,
         "variable": "x",
-        "reason": "hand-written record: 2 shape predicate(s) (fn-inj-config-shapep, fn-inj-decision-shapep) and 18 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
+        "reason": "hand-written record: 2 shape predicate(s) (fn-inj-config-shapep, fn-inj-decision-shapep) and 19 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/nntp-auth.lisp",
@@ -50579,7 +50878,7 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 95,
+        "line": 97,
         "shape": "fn-peer-decision-shapep",
         "shapes": 3,
         "accessors": 10,

@@ -8045,7 +8045,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/records-freeze-2026-09-26.md",
         "books/payload-arena.lisp",
