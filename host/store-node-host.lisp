@@ -930,7 +930,7 @@ reopen predicate, writer-lock observation and observed final namespace."
                 (if (equal next s)
                     (mv nil :refused fn-arena state)
                   (let ((state (f-put-global 'fn-store-sn next state)))
-                    (mv nil :prepared fn-arena state)))))))))))
+                    (mv nil :prepared fn-arena state))))))))))))
 
 ; A semantic refusal consumes the already durable allocator reservation using
 ; the proved composition transition, which advances the same live node to the
