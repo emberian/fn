@@ -10012,6 +10012,29 @@
         "fn-rix-own-complete-enabled-ledger-field",
         "fn-rix-own-complete-enabled-ledger"
       ]
+    },
+    {
+      "id": "PRF-278",
+      "title": "A POST's profile admission is decided once per open and carried",
+      "statement": "books/store-profile-carried.lisp (post-alloc-3). The carry pairs the Store profile with its admission verdict (fn-pvc-make, written once by host/owner-host.lisp fn-owner-install-profile; NIL at the recovery reset); fn-pvc-carryp: the verdict is fn-bs-profile-admittedp of the profile it names (no owner state, so no owner step falsifies it; fn-pvc-carryp-of-make, fn-pvc-carryp-when-atom); a reader uses the verdict only for the profile the carry names and decides afresh otherwise. KEYSTONES fn-pvc-article-budget-carried-is-cvec-article-budget-for (under fn-pvc-carryp, the budget fn-owner-prepare-buffer and fn-owner-prepare hand the prepare is fn-cvec-article-budget-for of the profile in hand), fn-pvc-post-boundary-carried-is-sbud-post-boundary (fn-owner-post-boundary), fn-pvc-verdict-carried-is-cvec-verdict-at (fn-owner-publication-verdict). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-profile-carried.lisp",
+        "tests/acl2/store-profile-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 (helper post-alloc-3-profile) 2026-09-27: the store profile's validation (frame layout, the texts' UTF-8 decode, every relation) ran about a dozen times per POST in the budget and the POST boundary; now once per open.",
+      "events": [
+        "fn-pvc-article-budget-carried-is-cvec-article-budget-for",
+        "fn-pvc-post-boundary-carried-is-sbud-post-boundary",
+        "fn-pvc-verdict-carried-is-cvec-verdict-at",
+        "fn-pvc-carryp-of-make"
+      ]
     }
   ]
 }

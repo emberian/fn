@@ -10044,6 +10044,27 @@
           "name": "fn-rix-own-complete-enabled-ledger"
         }
       ]
+    },
+    {
+      "id": "PRF-278",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-article-budget-carried-is-cvec-article-budget-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-post-boundary-carried-is-sbud-post-boundary"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-verdict-carried-is-cvec-verdict-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-carryp-of-make"
+        }
+      ]
     }
   ]
 }
