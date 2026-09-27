@@ -212,7 +212,11 @@ class NativeBpObligationTests(unittest.TestCase):
         self.assertIn("BP obligation request durable attempt work=work-a "
                       "attempt=attempt-b", accepted.stdout,
                       accepted.stdout + accepted.stderr)
-        self.assertIn(accepted.returncode, (0, 3), accepted.stderr)
+        # A dead contact is :not-connected, exit 7 (books/outcome-class.lisp;
+        # docs/operator.md: "No connection was made. The job stays queued."),
+        # since the outcome algebra (cd64c1ea4); this expectation (0 or 3)
+        # predates it and the flip hid it (the request was refused earlier).
+        self.assertEqual(accepted.returncode, 7, accepted.stdout + accepted.stderr)
         status = self.invoke("bp-obligation", "status", self.store,
                              self.journal, "work-a")
         self.assertEqual(status.returncode, 0, status.stderr)
