@@ -2083,6 +2083,15 @@ nil when nothing was queued (or the store does not commit through the log)."
                   ;; (the uncertain line); the batch stops there.
                   (push (list cid reply stop *fnn-owner-uncertain-render*) members)
                   (when stop (setq uncertain t) (return))))
+              ;; The bound ended the drain: members may still be queued.
+              ;; Keep the committer's wake-up count positive (host
+              ;; bookkeeping: a START-NEXT or the next START that finds
+              ;; nothing reports so), or the backlog would wait for a new
+              ;; submission's wake-up.
+              (when (and (= (length members) (fnn-log-bmax log)) (not uncertain))
+                (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+                  (setf (fnn-owner-service-queued service)
+                        (max 1 (fnn-owner-service-queued service)))))
               (when (and seal members (not uncertain))
                 (fnn-log-seal-open-batch store)))
           (fnn-store-indeterminate (e)
