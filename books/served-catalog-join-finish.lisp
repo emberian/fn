@@ -518,3 +518,60 @@
            :use ((:instance fn-scj-host-finish-view-and-store)
                  (:instance fn-scj-joinp-of-host-finish
                             (s2 (fn-ccar-sn-finish-enabled (fn-own-store o))))))))
+
+; Step 2 at the identity finish (an instance; its own teeth OPEN).  host/owner-host.lisp
+; fn-owner-finish-identity installs fn-rix-ocfg-complete, which is the
+; article finish's owner with no configuration record staged and the
+; store's event index carried (fn-scj-identity-finish-owner-is-article-
+; finish-owner), then runs the same fn-sca-finish over its view: the join
+; and the rows invariant are carried (a signed composite's EVENT loads its
+; held row, fn-scj-load-h).
+(defthm fn-scj-joinp-at-identity-finish
+  (let* ((o (fn-ocfg-owner oc))
+         (view (fn-own-view o))
+         (o2 (fn-ocfg-owner (fn-rix-ocfg-complete oc)))
+         (s2 (fn-own-store o2))
+         (view2 (fn-own-view o2))
+         (acc2 (fn-node-acceptance (fn-sn-node s2)))
+         (a (car (fn-state-articles acc2)))
+         (events2 (append events0 (list event)))
+         (held (fn-pc-held pending))
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+                                      (fn-sca-targets-of (fn-record-msgid held)
+                                                         (fn-own-view-withdrawals view2))
+                                      fn-cat))))
+    (implies (and (fn-ceis-indexedp (fn-own-store o))
+                  (not (fn-ocfg-staged oc))
+                  (fn-sn-completion-enabledp (fn-own-store o))
+                  (fn-scj-joinp view fn-arena fn-cat)
+                  (fn-scar-view-indexedp o)
+                  (fn-scj-rows-invp fn-cat events0)
+                  (fn-cst-relation s2)
+                  (fn-own-store-idlep s2)
+                  (equal (fn-sf-records (fn-sn-files s2)) events2)
+                  (fn-rows-composites-okp events2 fn-arena)
+                  (fn-scj-rows-clearp events2)
+                  (equal (fn-scj-load-h event) held)
+                  (fn-pc-p pending)
+                  (equal token (fn-pc-token pending))
+                  (equal (fn-pc-expected pending) (len fn-cat))
+                  (equal (fn-state-articles acc2) (cons a (fn-own-view-raw view)))
+                  (equal (fn-sn-verdicts s2)
+                         (cons (cons (fn-article-msgid a) verdict) (fn-own-view-verdicts view)))
+                  (equal (fn-state-articles (fn-own-view-archive view))
+                         (fn-ctl-visible-articles (fn-own-view-raw view)
+                                                  (fn-own-view-withdrawals view)
+                                                  (fn-own-view-verdicts view)))
+                  (equal (fn-state-articles (fn-own-view-archive view2))
+                         (fn-ctl-visible-articles (fn-state-articles acc2)
+                                                  (fn-own-view-withdrawals view2)
+                                                  (fn-own-view-verdicts view2)))
+                  (<= (nfix (fn-own-view-version view)) (len events0)))
+             (and (fn-scj-joinp view2 fn-arena c2)
+                  (fn-scj-rows-invp c2 events2))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-ocfg-with-owner fn-ocfg-make fn-ocfg-owner car-cons
+                                        fn-ccar-completion-enabledp-is-reference)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-scj-identity-finish-owner-is-article-finish-owner (cfg (fn-ocfg-config oc)))
+                 (:instance fn-scj-joinp-at-host-finish (o (fn-ocfg-owner oc)) (cfg (fn-ocfg-config oc)))))))
