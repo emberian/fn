@@ -1718,3 +1718,797 @@
   :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-rec-shape-p pgs-step-try-cur-crash)
                   :use ((:instance pgs-s-facts)
                         (:instance pgs-step-try-cur-crash)))))
+
+; -----------------------------------------------------------------------------
+; Allocation is complete and fresh (milestone: `pgs-alloc' never refuses).
+;
+; The allocator invariant: FREE is distinct naturals below HWM that no valid
+; record of any root keeps, and every kept address is below HWM.
+
+(defun pgs-alloc-free (alloc) (true-list-fix (car (true-list-fix alloc))))
+(defun pgs-alloc-hwm (alloc) (nfix (cadr (true-list-fix alloc))))
+
+(defun pgs-alloc-inv (alloc disk)
+  (let ((free (pgs-alloc-free alloc)) (hwm (pgs-alloc-hwm alloc)) (k (pgs-disk-keeps disk)))
+    (and (nat-listp free) (no-duplicatesp-equal free)
+         (pgs-all-below free hwm) (pgs-all-below k hwm)
+         (pgs-avoids free k))))
+
+(defthm pgs-all-below-member
+  (implies (and (pgs-all-below s b) (member-equal x s)) (< x b))
+  :rule-classes nil)
+
+(defthm pgs-take-singles-from
+  ; Every single is in FREE or at or above HWM.
+  (implies (and (member-equal x (car (pgs-take-singles n free hwm))) (natp hwm))
+           (or (member-equal x free) (<= hwm x)))
+  :rule-classes nil
+  :hints (("Goal" :induct (pgs-take-singles n free hwm))))
+
+(defthm pgs-take-singles-not-member
+  (implies (and (natp hwm) (not (member-equal x free)) (< x hwm))
+           (not (member-equal x (car (pgs-take-singles n free hwm)))))
+  :hints (("Goal" :use pgs-take-singles-from)))
+
+(defthm pgs-take-singles-rest-not-member
+  (implies (not (member-equal x free))
+           (not (member-equal x (mv-nth 1 (pgs-take-singles n free hwm)))))
+  :hints (("Goal" :induct (pgs-take-singles n free hwm))))
+
+(defthm pgs-take-singles-simple
+  (and (equal (len (car (pgs-take-singles n free hwm))) (nfix n))
+       (natp (mv-nth 2 (pgs-take-singles n free hwm)))
+       (<= (nfix hwm) (mv-nth 2 (pgs-take-singles n free hwm)))
+       (implies (nat-listp free) (nat-listp (car (pgs-take-singles n free hwm))))
+       (implies (nat-listp free) (nat-listp (mv-nth 1 (pgs-take-singles n free hwm))))
+       (implies (no-duplicatesp-equal free)
+                (no-duplicatesp-equal (mv-nth 1 (pgs-take-singles n free hwm)))))
+  :hints (("Goal" :induct (pgs-take-singles n free hwm))))
+
+(defthm pgs-all-below-weaken
+  (implies (and (pgs-all-below s a) (<= a b)) (pgs-all-below s b)))
+
+(defthm pgs-take-singles-rest-below
+  (implies (and (pgs-all-below free hwm) (natp hwm))
+           (pgs-all-below (mv-nth 1 (pgs-take-singles n free hwm))
+                          (mv-nth 2 (pgs-take-singles n free hwm))))
+  :hints (("Goal" :induct (pgs-take-singles n free hwm))))
+
+(defthm pgs-take-singles-avoid-rest
+  (implies (and (no-duplicatesp-equal free) (natp hwm) (pgs-all-below free hwm))
+           (pgs-avoids (car (pgs-take-singles n free hwm))
+                       (mv-nth 1 (pgs-take-singles n free hwm))))
+  :hints (("Goal" :induct (pgs-take-singles n free hwm))))
+
+(defthm pgs-take-singles-distinct
+  (implies (and (no-duplicatesp-equal free) (pgs-all-below free hwm) (natp hwm))
+           (no-duplicatesp-equal (car (pgs-take-singles n free hwm))))
+  :hints (("Goal" :induct (pgs-take-singles n free hwm))
+          ("Subgoal *1/2" :use ((:instance pgs-take-singles-not-member
+                                           (x (car free)) (n (+ -1 n)) (free (cdr free)))))))
+
+(defthm pgs-all-below-not-member
+  (implies (and (pgs-all-below k b) (natp b) (<= b x)) (not (member-equal x k))))
+
+(defthm pgs-take-singles-avoid-kept
+  (implies (and (pgs-avoids free k) (pgs-all-below k hwm) (natp hwm))
+           (pgs-avoids (car (pgs-take-singles n free hwm)) k))
+  :hints (("Goal" :induct (pgs-take-singles n free hwm))))
+
+(defthm pgs-member-run
+  (implies (natp a)
+           (iff (member-equal x (pgs-run a m))
+                (and (natp x) (<= a x) (< x (+ a (nfix m))))))
+  :hints (("Goal" :induct (pgs-run a m))))
+
+(defthm pgs-run-distinct
+  (implies (natp a) (no-duplicatesp-equal (pgs-run a m)))
+  :hints (("Goal" :induct (pgs-run a m))))
+
+(defthm pgs-nat-listp-run
+  (implies (natp a) (nat-listp (pgs-run a m))))
+
+(defthm pgs-all-in-member
+  (implies (and (pgs-all-in xs free) (member-equal x xs)) (member-equal x free)))
+
+(defthm pgs-find-free-run-found
+  (implies (natp (pgs-find-free-run cands m free))
+           (pgs-all-in (pgs-run (pgs-find-free-run cands m free) m) free))
+  :hints (("Goal" :induct (pgs-find-free-run cands m free) :in-theory (disable pgs-all-in pgs-run))))
+
+(defthm pgs-remove-all-member
+  (iff (member-equal x (pgs-remove-all xs free))
+       (and (member-equal x free) (not (member-equal x xs)))))
+
+(defthm pgs-remove-all-nat-listp
+  (implies (nat-listp free) (nat-listp (pgs-remove-all xs free))))
+
+(defthm pgs-remove-all-distinct
+  (implies (no-duplicatesp-equal free) (no-duplicatesp-equal (pgs-remove-all xs free))))
+
+(defthm pgs-remove-all-below
+  (implies (pgs-all-below free b) (pgs-all-below (pgs-remove-all xs free) b)))
+
+(defthm pgs-remove-all-avoids
+  (implies (pgs-avoids free k) (pgs-avoids (pgs-remove-all xs free) k)))
+
+(defun pgs-avoids-by-member-ind (xs) (if (atom xs) xs (pgs-avoids-by-member-ind (cdr xs))))
+
+(defthm pgs-avoids-all-in
+  ; A list inside FREE avoids what FREE avoids.
+  (implies (and (pgs-all-in xs free) (pgs-avoids free k)) (pgs-avoids xs k))
+  :hints (("Goal" :induct (pgs-avoids-by-member-ind xs))))
+
+(defthm pgs-avoids-of-all-below-above
+  ; Addresses below A avoid addresses at or above A.
+  (implies (and (pgs-all-below xs a) (natp a) (natp b) (<= a b))
+           (pgs-avoids xs (pgs-run b m)))
+  :hints (("Goal" :induct (pgs-avoids-by-member-ind xs))))
+
+(defthm pgs-remove-all-avoids-removed
+  (pgs-avoids (pgs-remove-all xs free) xs))
+
+(defthm pgs-all-below-of-all-in
+  (implies (and (pgs-all-in xs free) (pgs-all-below free b)) (pgs-all-below xs b))
+  :hints (("Goal" :induct (pgs-avoids-by-member-ind xs))
+          ("Subgoal *1/2" :use ((:instance pgs-all-below-member (s free) (x (car xs)))))))
+
+(defthm pgs-all-below-of-run
+  (implies (natp a) (pgs-all-below (pgs-run a m) (+ a (nfix m))))
+  :hints (("Goal" :induct (pgs-run a m))))
+
+(defthm pgs-avoids-rotate
+  (implies (consp x)
+           (and (equal (no-duplicatesp-equal (append (cdr x) (list (car x)))) (no-duplicatesp-equal x))
+                (equal (pgs-avoids (append (cdr x) (list (car x))) k) (pgs-avoids x k)))))
+
+(defthm pgs-run-one
+  (equal (pgs-run a 1) (list a))
+  :hints (("Goal" :expand ((pgs-run a 1) (pgs-run (+ 1 (nfix a)) 0)))))
+
+(defthm pgs-car-of-nat-listp
+  (implies (and (nat-listp x) (consp x)) (natp (car x))))
+
+(defthm pgs-cdr-of-nat-listp
+  (implies (nat-listp x) (nat-listp (cdr x))))
+
+(defun pgs-alloc-ok-p (new k)
+  (and (no-duplicatesp-equal new) (pgs-avoids new k)))
+
+(defthm pgs-alloc-branch-single
+  (implies (and (nat-listp free) (no-duplicatesp-equal free) (pgs-all-below free hwm) (natp hwm)
+                (pgs-all-below k hwm) (pgs-avoids free k) (natp n))
+           (let ((s0 (car (pgs-take-singles (+ 1 n) free hwm))))
+             (and (natp (car s0)) (nat-listp (cdr s0)) (equal (len (cdr s0)) n)
+                  (pgs-alloc-ok-p (append (cdr s0) (pgs-run (car s0) 1)) k))))
+  :hints (("Goal" :in-theory (disable pgs-take-singles pgs-take-singles-simple pgs-avoids
+                                      no-duplicatesp-equal pgs-run)
+                  :use ((:instance pgs-take-singles-simple (n (+ 1 n)))
+                        (:instance pgs-consp-iff-len (y (car (pgs-take-singles (+ 1 n) free hwm))))
+                        (:instance pgs-take-singles-distinct (n (+ 1 n)))
+                        (:instance pgs-take-singles-avoid-kept (n (+ 1 n)))))))
+
+(defthm pgs-alloc-branch-found
+  (implies (and (nat-listp free) (no-duplicatesp-equal free) (pgs-all-below free hwm) (natp hwm)
+                (pgs-all-below k hwm) (pgs-avoids free k)
+                (natp a) (pgs-all-in (pgs-run a m) free))
+           (let ((s (car (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm))))
+             (and (nat-listp s) (equal (len s) (nfix n))
+                  (pgs-alloc-ok-p (append s (pgs-run a m)) k))))
+  :hints (("Goal" :in-theory (disable pgs-take-singles pgs-run pgs-remove-all)
+                  :use ((:instance pgs-take-singles-avoid-kept
+                                   (free (pgs-remove-all (pgs-run a m) free)) (k (pgs-run a m)))
+                        (:instance pgs-take-singles-avoid-kept
+                                   (free (pgs-remove-all (pgs-run a m) free)))
+                        (:instance pgs-avoids-all-in (xs (pgs-run a m)))
+                        (:instance pgs-all-below-of-all-in (xs (pgs-run a m)) (b hwm))
+                        (:instance pgs-take-singles-distinct (free (pgs-remove-all (pgs-run a m) free)))))))
+
+(defthm pgs-alloc-branch-extend
+  (implies (and (nat-listp free) (no-duplicatesp-equal free) (pgs-all-below free hwm) (natp hwm)
+                (pgs-all-below k hwm) (pgs-avoids free k) (natp m))
+           (let ((s (car (pgs-take-singles n free (+ hwm (nfix m))))))
+             (and (nat-listp s) (equal (len s) (nfix n))
+                  (pgs-alloc-ok-p (append s (pgs-run hwm m)) k))))
+  :hints (("Goal" :in-theory (disable pgs-take-singles pgs-run)
+                  :use ((:instance pgs-all-below-of-run (a hwm))
+                        (:instance pgs-take-singles-avoid-kept
+                                   (hwm (+ hwm (nfix m))) (k (pgs-run hwm m)))
+                        (:instance pgs-take-singles-avoid-kept (hwm (+ hwm (nfix m))))
+                        (:instance pgs-avoids-of-all-below-above (xs free) (a hwm) (b hwm))
+                        (:instance pgs-avoids-of-all-below-above (xs k) (a hwm) (b hwm))
+                        (:instance pgs-avoids-symmetric (xs k) (ys (pgs-run hwm m)))
+                        (:instance pgs-take-singles-distinct (hwm (+ hwm (nfix m))))))))
+
+(defthm pgs-alloc-hwm-natp
+  (natp (pgs-alloc-hwm alloc))
+  :rule-classes :type-prescription)
+
+(defthm pgs-alloc-free-true-listp
+  (true-listp (pgs-alloc-free alloc))
+  :rule-classes :type-prescription)
+
+(defthm pgs-alloc-unfold
+  (equal (pgs-alloc n m alloc)
+         (let ((free (pgs-alloc-free alloc)) (hwm (pgs-alloc-hwm alloc)))
+           (if (<= (nfix m) 1)
+               (let ((s0 (car (pgs-take-singles (+ 1 (nfix n)) free hwm))))
+                 (list (car s0) (cdr s0)
+                       (mv-nth 1 (pgs-take-singles (+ 1 (nfix n)) free hwm))
+                       (mv-nth 2 (pgs-take-singles (+ 1 (nfix n)) free hwm))))
+             (let ((a (pgs-find-free-run free m free)))
+               (if (natp a)
+                   (list a (car (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm))
+                         (mv-nth 1 (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm))
+                         (mv-nth 2 (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm)))
+                 (list hwm (car (pgs-take-singles n free (+ hwm (nfix m))))
+                       (mv-nth 1 (pgs-take-singles n free (+ hwm (nfix m))))
+                       (mv-nth 2 (pgs-take-singles n free (+ hwm (nfix m))))))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (pgs-alloc) (pgs-take-singles pgs-run pgs-find-free-run pgs-remove-all)))))
+
+(defun pgs-alloc-result-ok (al n m k)
+  (let ((new (append (second al) (pgs-run (first al) (max 1 (nfix m))))))
+    (and (natp (first al))
+         (nat-listp (second al))
+         (equal (len (second al)) (nfix n))
+         (no-duplicatesp-equal new)
+         (pgs-avoids new k))))
+
+(defthm pgs-alloc-when-single
+  (implies (<= (nfix m) 1)
+           (equal (pgs-alloc n m alloc)
+                  (list (car (car (pgs-take-singles (+ 1 (nfix n)) (pgs-alloc-free alloc) (pgs-alloc-hwm alloc))))
+                        (cdr (car (pgs-take-singles (+ 1 (nfix n)) (pgs-alloc-free alloc) (pgs-alloc-hwm alloc))))
+                        (mv-nth 1 (pgs-take-singles (+ 1 (nfix n)) (pgs-alloc-free alloc) (pgs-alloc-hwm alloc)))
+                        (mv-nth 2 (pgs-take-singles (+ 1 (nfix n)) (pgs-alloc-free alloc) (pgs-alloc-hwm alloc))))))
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
+                  :use pgs-alloc-unfold)))
+
+(defthm pgs-alloc-when-found
+  (implies (and (< 1 (nfix m))
+                (natp (pgs-find-free-run (pgs-alloc-free alloc) m (pgs-alloc-free alloc))))
+           (equal (pgs-alloc n m alloc)
+                  (let ((free (pgs-alloc-free alloc)) (hwm (pgs-alloc-hwm alloc))
+                        (a (pgs-find-free-run (pgs-alloc-free alloc) m (pgs-alloc-free alloc))))
+                    (list a (car (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm))
+                          (mv-nth 1 (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm))
+                          (mv-nth 2 (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm))))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory) :use pgs-alloc-unfold)))
+
+(defthm pgs-alloc-when-extend
+  (implies (and (< 1 (nfix m))
+                (not (natp (pgs-find-free-run (pgs-alloc-free alloc) m (pgs-alloc-free alloc)))))
+           (equal (pgs-alloc n m alloc)
+                  (let ((free (pgs-alloc-free alloc)) (hwm (pgs-alloc-hwm alloc)))
+                    (list hwm (car (pgs-take-singles n free (+ hwm (nfix m))))
+                          (mv-nth 1 (pgs-take-singles n free (+ hwm (nfix m))))
+                          (mv-nth 2 (pgs-take-singles n free (+ hwm (nfix m))))))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory) :use pgs-alloc-unfold)))
+
+(defthm pgs-alloc-result-ok-single
+  (implies (and (nat-listp free) (no-duplicatesp-equal free) (pgs-all-below free hwm) (natp hwm)
+                (pgs-all-below k hwm) (pgs-avoids free k) (<= (nfix m) 1))
+           (pgs-alloc-result-ok (list (car (car (pgs-take-singles (+ 1 (nfix n)) free hwm)))
+                                      (cdr (car (pgs-take-singles (+ 1 (nfix n)) free hwm)))
+                                      f h)
+                                n m k))
+  :hints (("Goal" :in-theory (union-theories '(pgs-alloc-result-ok pgs-alloc-ok-p car-cons cdr-cons max
+                                               pgs-run-one)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-alloc-branch-single (n (nfix n)))))
+          (and stable-under-simplificationp '(:in-theory (enable natp nfix)))))
+
+(defthm pgs-alloc-result-ok-found
+  (implies (and (nat-listp free) (no-duplicatesp-equal free) (pgs-all-below free hwm) (natp hwm)
+                (pgs-all-below k hwm) (pgs-avoids free k) (< 1 (nfix m))
+                (natp a) (pgs-all-in (pgs-run a m) free))
+           (pgs-alloc-result-ok (list a (car (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm)) f h)
+                                n m k))
+  :hints (("Goal" :in-theory (union-theories '(pgs-alloc-result-ok pgs-alloc-ok-p car-cons cdr-cons max)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-alloc-branch-found)))
+          (and stable-under-simplificationp '(:in-theory (enable natp nfix)))))
+
+(defthm pgs-alloc-result-ok-extend
+  (implies (and (nat-listp free) (no-duplicatesp-equal free) (pgs-all-below free hwm) (natp hwm)
+                (pgs-all-below k hwm) (pgs-avoids free k) (< 1 (nfix m)))
+           (pgs-alloc-result-ok (list hwm (car (pgs-take-singles n free (+ hwm (nfix m)))) f h)
+                                n m k))
+  :hints (("Goal" :in-theory (union-theories '(pgs-alloc-result-ok pgs-alloc-ok-p car-cons cdr-cons max)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-alloc-branch-extend (m (nfix m)))))
+          (and stable-under-simplificationp '(:in-theory (enable natp nfix)))))
+
+(defthm pgs-alloc-result-ok-of-alloc
+  (implies (pgs-alloc-inv alloc disk)
+           (pgs-alloc-result-ok (pgs-alloc n m alloc) n m (pgs-disk-keeps disk)))
+  :hints (("Goal" :in-theory (union-theories '(pgs-alloc-inv pgs-alloc-when-single pgs-alloc-when-found
+                                               pgs-alloc-when-extend pgs-alloc-result-ok-single
+                                               pgs-alloc-result-ok-found pgs-alloc-result-ok-extend
+                                               pgs-find-free-run-found pgs-alloc-hwm-natp
+                                               natp (:compound-recognizer natp-compound-recognizer))
+                                             (theory 'minimal-theory))
+                  :cases ((<= (nfix m) 1)
+                          (and (< 1 (nfix m))
+                               (natp (pgs-find-free-run (pgs-alloc-free alloc) m (pgs-alloc-free alloc))))
+                          (and (< 1 (nfix m))
+                               (not (natp (pgs-find-free-run (pgs-alloc-free alloc) m (pgs-alloc-free alloc)))))))))
+
+(defthm pgs-alloc-fresh
+  ; Allocation is complete (it always answers N singles and a run) and
+  ; fresh: the singles and the whole directory run are distinct naturals
+  ; that no valid record of any root keeps.
+  (implies (pgs-alloc-inv alloc disk)
+           (let* ((al (pgs-alloc n m alloc))
+                  (new (append (second al) (pgs-run (first al) (max 1 (nfix m))))))
+             (and (natp (first al))
+                  (nat-listp (second al))
+                  (equal (len (second al)) (nfix n))
+                  (no-duplicatesp-equal new)
+                  (pgs-avoids new (pgs-disk-keeps disk)))))
+  :hints (("Goal" :in-theory '(pgs-alloc-result-ok)
+                  :use pgs-alloc-result-ok-of-alloc)))
+
+; -----------------------------------------------------------------------------
+; The commit on a disk, named in parts.
+
+(defun pgs-c-k0 (disk r mode) (second (pgs-open disk r mode)))
+(defun pgs-c-cur (disk r mode) (pgs-slot (pgs-c-k0 disk r mode) (pgs-root-slots r disk)))
+(defun pgs-c-txid (disk r) (pgs-next-txid (pgs-root-slots r disk)))
+(defun pgs-c-al (disk r mode dirty alloc)
+  (let ((ptab (pgs-sp (pgs-c-cur disk r mode) (pgs-pages disk)))
+        (lpages (pgs-dirty-lpages dirty)))
+    (pgs-alloc (+ (len dirty) (len (pgs-touched lpages nil)))
+               (pgs-dir-run-pages (pgs-grown-len lpages (len ptab)))
+               alloc)))
+(defun pgs-c-fresh (disk r mode dirty alloc) (take (len dirty) (second (pgs-c-al disk r mode dirty alloc))))
+(defun pgs-c-tfresh (disk r mode dirty alloc) (nthcdr (len dirty) (second (pgs-c-al disk r mode dirty alloc))))
+(defun pgs-c-rs (disk r mode dirty alloc) (first (pgs-c-al disk r mode dirty alloc)))
+(defun pgs-c-writes (disk r mode dirty alloc)
+  (pgs-swr (pgs-c-cur disk r mode) (pgs-pages disk) dirty (pgs-c-fresh disk r mode dirty alloc)
+           (pgs-c-tfresh disk r mode dirty alloc) (pgs-c-rs disk r mode dirty alloc) (pgs-c-txid disk r)))
+(defun pgs-c-rec (disk r mode dirty alloc)
+  (pgs-srec (pgs-c-cur disk r mode) (pgs-pages disk) dirty (pgs-c-fresh disk r mode dirty alloc)
+            (pgs-c-tfresh disk r mode dirty alloc) (pgs-c-rs disk r mode dirty alloc) (pgs-c-txid disk r)))
+(defun pgs-c-lpages-ok (disk r mode dirty)
+  (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (pgs-sp (pgs-c-cur disk r mode) (pgs-pages disk))) 0))
+
+(defthm pgs-plan-commit-unfold
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (true-listp (pgs-open disk r mode))
+                (pgs-c-lpages-ok disk r mode dirty))
+           (equal (pgs-plan-commit disk r mode dirty alloc)
+                  (list :plan (pgs-c-writes disk r mode dirty alloc)
+                        (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
+                        (pgs-c-rec disk r mode dirty alloc)
+                        (list (third (pgs-c-al disk r mode dirty alloc))
+                              (fourth (pgs-c-al disk r mode dirty alloc))))))
+  :hints (("Goal" :in-theory (e/d (pgs-swr pgs-srec pgs-sd2 pgs-std pgs-sp2 pgs-sd pgs-sp
+                                   pgs-step-ptab2 pgs-step-tdirty pgs-step-dir2 pgs-step-writes pgs-step-tl)
+                                  (pgs-open pgs-alloc pgs-plan-ptab pgs-make-rec pgs-touched
+                                   pgs-page-writes pgs-next-txid pgs-slot pgs-root-slots pgs-chunk
+                                   pgs-flatten pgs-contents pgs-lpages-ok pgs-grown-len pgs-table-dirty
+                                   pgs-dirty-digests pgs-dirty-lpages pgs-lookup)))))
+
+(defthm pgs-plan-commit-refuses-without-open
+  (implies (not (equal (car (pgs-open disk r mode)) :ok))
+           (equal (pgs-plan-commit disk r mode dirty alloc) (list :refused :no-open-commit)))
+  :hints (("Goal" :in-theory (disable pgs-open))))
+
+(defthm pgs-plan-commit-refuses-out-of-order
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (true-listp (pgs-open disk r mode))
+                (not (pgs-c-lpages-ok disk r mode dirty)))
+           (equal (pgs-plan-commit disk r mode dirty alloc) (list :refused :dirty-out-of-order)))
+  :hints (("Goal" :in-theory (e/d (pgs-sp pgs-sd)
+                                  (pgs-open pgs-alloc pgs-plan-ptab pgs-make-rec pgs-touched
+                                   pgs-page-writes pgs-next-txid pgs-slot pgs-root-slots pgs-chunk
+                                   pgs-flatten pgs-contents pgs-lpages-ok pgs-lookup)))))
+
+(defthm pgs-next-txid-above
+  (implies (and (member-equal k '(0 1)) (pgs-rec-valid (pgs-slot k slots)))
+           (< (pgs-rec-txid (pgs-slot k slots)) (pgs-next-txid slots)))
+  :hints (("Goal" :in-theory (e/d (pgs-rec-txid) (pgs-rec-valid pgs-slot))
+                  :cases ((equal k 0))))
+  :rule-classes :linear)
+
+(defthm pgs-next-txid-natp
+  (natp (pgs-next-txid slots))
+  :rule-classes :type-prescription)
+
+(defthm pgs-rec-valid-of-nil
+  (not (pgs-rec-valid nil))
+  :hints (("Goal" :in-theory (enable pgs-rec-valid))))
+
+(in-theory (disable (:e pgs-rec-valid)))
+
+(defthm pgs-open-is-open-slots
+  (equal (pgs-open disk r mode)
+         (pgs-open-slots (pgs-root-slots r disk) (pgs-pages disk) mode))
+  :rule-classes nil)
+
+(defthm pgs-c-open-facts
+  (implies (equal (car (pgs-open disk r mode)) :ok)
+           (and (member-equal (pgs-c-k0 disk r mode) '(0 1))
+                (pgs-rec-valid (pgs-c-cur disk r mode))
+                (equal (pgs-try (pgs-c-cur disk r mode) (pgs-pages disk) mode)
+                       (list :ok (third (pgs-open disk r mode)) (fourth (pgs-open disk r mode))))
+                (true-listp (pgs-open disk r mode))))
+  :hints (("Goal" :in-theory (disable pgs-open pgs-open-slots pgs-try pgs-rec-valid pgs-slot)
+                  :use ((:instance pgs-open-is-open-slots)
+                        (:instance pgs-open-slots-ok (slots (pgs-root-slots r disk))
+                                   (pages (pgs-pages disk)))))))
+
+(defthm pgs-c-view-facts
+  ; What R opens on: the current record's txid and the contents of its table.
+  (implies (equal (car (pgs-open disk r mode)) :ok)
+           (and (equal (third (pgs-open disk r mode)) (pgs-rec-txid (pgs-c-cur disk r mode)))
+                (equal (fourth (pgs-open disk r mode))
+                       (pgs-contents (pgs-sp (pgs-c-cur disk r mode) (pgs-pages disk)) (pgs-pages disk)))))
+  :hints (("Goal" :in-theory (e/d (pgs-sp pgs-sd) (pgs-open pgs-try pgs-c-open-facts pgs-contents pgs-flatten))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-try-ok-facts (rec (pgs-c-cur disk r mode)) (pages (pgs-pages disk)))))))
+
+(defthm pgs-c-lpages-ok-is
+  (implies (equal (car (pgs-open disk r mode)) :ok)
+           (equal (pgs-c-lpages-ok disk r mode dirty)
+                  (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (fourth (pgs-open disk r mode))) 0)))
+  :hints (("Goal" :in-theory (disable pgs-open pgs-lpages-ok pgs-contents))))
+
+(defthm pgs-avoids-subset-single
+  (implies (and (pgs-avoids xs (append s rr)) (member-equal a rr))
+           (pgs-avoids xs (append s (list a)))))
+
+(defthm pgs-no-dups-subset-single
+  (implies (and (no-duplicatesp-equal (append s rr)) (member-equal a rr))
+           (no-duplicatesp-equal (append s (list a))))
+  :hints (("Goal" :in-theory (enable pgs-no-dups-append))))
+
+(defthm pgs-append-take-nthcdr-len
+  (implies (and (true-listp s) (<= (nfix n) (len s)))
+           (equal (append (take n s) (nthcdr n s)) s)))
+
+(defmacro pgs-c-m-term ()
+  '(pgs-dir-run-pages (pgs-grown-len (pgs-dirty-lpages dirty)
+                                     (len (pgs-sp (pgs-c-cur disk r mode) (pgs-pages disk))))))
+
+(defmacro pgs-c-run-term ()
+  '(pgs-run (pgs-c-rs disk r mode dirty alloc) (max 1 (nfix (pgs-c-m-term)))))
+
+(defmacro pgs-c-new-term ()
+  '(append (second (pgs-c-al disk r mode dirty alloc)) (pgs-c-run-term)))
+
+(defthm pgs-append-take-nthcdr-assoc
+  (implies (and (true-listp s) (<= (nfix n) (len s)))
+           (equal (append (take n s) (append (nthcdr n s) x)) (append s x)))
+  :hints (("Goal" :in-theory (disable pgs-append-take-nthcdr-len)
+                  :use ((:instance pgs-append-take-nthcdr-len)))))
+
+(defthm pgs-nat-listp-of-take
+  (implies (and (nat-listp s) (<= (nfix n) (len s))) (nat-listp (take n s))))
+
+(defthm pgs-nat-listp-of-nthcdr
+  (implies (nat-listp s) (nat-listp (nthcdr n s)))
+  :hints (("Goal" :in-theory (enable nthcdr) :induct (nthcdr n s))))
+
+(defthm pgs-alloc-split
+  ; An allocation's singles, split into the data pages' and the table pages',
+  ; with the run's first page as the directory address.
+  (implies (and (pgs-alloc-result-ok al n m k) (natp dn) (natp tn) (equal (nfix n) (+ dn tn)))
+           (let ((fresh (take dn (second al))) (tfresh (nthcdr dn (second al))) (rs (first al)))
+             (and (nat-listp fresh) (nat-listp tfresh) (natp rs)
+                  (equal (len fresh) dn) (equal (len tfresh) tn)
+                  (no-duplicatesp-equal (append fresh tfresh (list rs)))
+                  (pgs-avoids k (append fresh tfresh (list rs))))))
+  :hints (("Goal" :in-theory (disable pgs-run pgs-avoids-subset-single pgs-no-dups-subset-single
+                                      pgs-no-dups-append pgs-avoids-append-right)
+                  :use ((:instance pgs-avoids-subset-single
+                                   (xs k) (s (second al)) (a (first al))
+                                   (rr (pgs-run (first al) (max 1 (nfix m)))))
+                        (:instance pgs-avoids-symmetric
+                                   (xs k) (ys (append (second al) (pgs-run (first al) (max 1 (nfix m))))))
+                        (:instance pgs-no-dups-subset-single
+                                   (s (second al)) (a (first al))
+                                   (rr (pgs-run (first al) (max 1 (nfix m)))))
+                        (:instance pgs-run-first (a (first al)) (m (max 1 (nfix m))))))))
+
+(defthm pgs-c-alloc-facts
+  (implies (pgs-alloc-inv alloc disk)
+           (let ((fresh (pgs-c-fresh disk r mode dirty alloc))
+                 (tfresh (pgs-c-tfresh disk r mode dirty alloc))
+                 (rs (pgs-c-rs disk r mode dirty alloc)))
+             (and (nat-listp fresh) (nat-listp tfresh) (natp rs)
+                  (equal (len fresh) (len dirty))
+                  (equal (len tfresh) (len (pgs-step-tl dirty)))
+                  (no-duplicatesp-equal (append fresh tfresh (list rs)))
+                  (pgs-avoids (pgs-disk-keeps disk) (append fresh tfresh (list rs))))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-c-fresh pgs-c-tfresh pgs-c-rs pgs-step-tl)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-alloc-result-ok-of-alloc
+                                   (n (+ (len dirty) (len (pgs-touched (pgs-dirty-lpages dirty) nil))))
+                                   (m (pgs-c-m-term)))
+                        (:instance pgs-alloc-split
+                                   (al (pgs-c-al disk r mode dirty alloc))
+                                   (n (+ (len dirty) (len (pgs-touched (pgs-dirty-lpages dirty) nil))))
+                                   (m (pgs-c-m-term)) (k (pgs-disk-keeps disk))
+                                   (dn (len dirty)) (tn (len (pgs-touched (pgs-dirty-lpages dirty) nil))))
+                        (:instance pgs-c-al)))
+          (and stable-under-simplificationp
+               '(:in-theory (enable natp nfix (:type-prescription len))))))
+
+(defthm pgs-c-avoids-cur
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (pgs-avoids (pgs-disk-keeps disk) w))
+           (pgs-avoids (pgs-rec-keeps-in (pgs-c-cur disk r mode) (pgs-pages disk)) w))
+  :hints (("Goal" :in-theory (disable pgs-open pgs-rec-keeps-in pgs-roots-keeps pgs-slots-keeps
+                                      pgs-roots-keeps-cover pgs-slot-keeps-avoid pgs-c-open-facts)
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-roots-keeps-cover (roots (pgs-roots disk)) (pages (pgs-pages disk)))
+                        (:instance pgs-slot-keeps-avoid (k (pgs-c-k0 disk r mode))
+                                   (slots (pgs-root-slots r disk)) (pages (pgs-pages disk)))))))
+
+(defthm pgs-avoids-of-avoids-symmetric
+  (implies (pgs-avoids ys xs) (pgs-avoids xs ys))
+  :hints (("Goal" :use pgs-avoids-symmetric)))
+
+(defthm pgs-c-step-hyps
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (pgs-c-lpages-ok disk r mode dirty)
+                (pgs-alloc-inv alloc disk))
+           (pgs-step-hyps (pgs-c-cur disk r mode) (pgs-pages disk) mode dirty
+                          (pgs-c-fresh disk r mode dirty alloc) (pgs-c-tfresh disk r mode dirty alloc)
+                          (pgs-c-rs disk r mode dirty alloc) (pgs-c-txid disk r)))
+  :hints (("Goal" :in-theory (union-theories '(pgs-step-hyps pgs-c-lpages-ok pgs-c-txid pgs-sp pgs-sd pgs-step-ptab pgs-c-cur
+                                               car-cons cdr-cons pgs-step-tl)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-c-alloc-facts)
+                        (:instance pgs-next-txid-above (k (pgs-c-k0 disk r mode))
+                                   (slots (pgs-root-slots r disk)))
+                        (:instance pgs-next-txid-natp (slots (pgs-root-slots r disk)))
+                        (:instance pgs-c-avoids-cur
+                                   (w (append (pgs-c-fresh disk r mode dirty alloc)
+                                              (pgs-c-tfresh disk r mode dirty alloc)
+                                              (list (pgs-c-rs disk r mode dirty alloc)))))))))
+
+(defthm pgs-c-writes-avoid-keeps
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (pgs-c-lpages-ok disk r mode dirty)
+                (pgs-alloc-inv alloc disk))
+           (pgs-avoids (pgs-disk-keeps disk) (pgs-write-addrs (pgs-c-writes disk r mode dirty alloc))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-c-writes) (theory 'minimal-theory))
+                  :use ((:instance pgs-c-step-hyps)
+                        (:instance pgs-c-alloc-facts)
+                        (:instance pgs-s-writes-avoid
+                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
+                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
+                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
+                                   (rs (pgs-c-rs disk r mode dirty alloc)) (txid (pgs-c-txid disk r)))))))
+
+; -----------------------------------------------------------------------------
+; The keystones.
+
+(defthm pgs-open-of-crash
+  (equal (pgs-open (pgs-crash disk r writes keep k sv) r2 mode)
+         (if (equal r2 r)
+             (pgs-open-slots (pgs-set-slot k sv (pgs-root-slots r disk))
+                             (pgs-apply-pages writes keep (pgs-pages disk)) mode)
+           (pgs-open-slots (pgs-root-slots r2 disk)
+                           (pgs-apply-pages writes keep (pgs-pages disk)) mode)))
+  :hints (("Goal" :in-theory (disable pgs-open-slots pgs-apply-pages pgs-set-slot))))
+
+(defthm pgs-set-other-slot
+  (implies (member-equal k0 '(0 1))
+           (or (equal (pgs-set-slot (if (equal k0 1) 0 1) v slots)
+                      (cons (pgs-slot k0 slots) v))
+               (equal (pgs-set-slot (if (equal k0 1) 0 1) v slots)
+                      (cons v (pgs-slot k0 slots)))))
+  :rule-classes nil)
+
+; The plan exists exactly when R opens and the dirty pages are in order:
+; allocation never refuses.
+(defthm pgs-plan-commit-complete
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (fourth (pgs-open disk r mode))) 0))
+           (equal (car (pgs-plan-commit disk r mode dirty alloc)) :plan))
+  :hints (("Goal" :in-theory (union-theories '(pgs-c-lpages-ok-is car-cons) (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-plan-commit-unfold)))))
+
+; Commit-then-open denotes the committed state.
+(defthm pgs-open-after-commit
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (fourth (pgs-open disk r mode))) 0)
+                (pgs-alloc-inv alloc disk))
+           (equal (pgs-view (pgs-open (pgs-commit disk r mode dirty alloc) r mode))
+                  (list (pgs-next-txid (pgs-root-slots r disk))
+                        (pgs-apply-dirty (fourth (pgs-open disk r mode)) dirty))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-commit pgs-c-writes pgs-c-rec pgs-c-cur pgs-c-txid
+                                               pgs-c-lpages-ok-is pgs-open-of-crash
+                                               car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-c-view-facts)
+                        (:instance pgs-plan-commit-unfold)
+                        (:instance pgs-c-step-hyps)
+                        (:instance pgs-set-other-slot (k0 (pgs-c-k0 disk r mode))
+                                   (v (pgs-c-rec disk r mode dirty alloc))
+                                   (slots (pgs-root-slots r disk)))
+                        (:instance pgs-step-open-complete
+                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
+                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
+                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
+                                   (rs (pgs-c-rs disk r mode dirty alloc))
+                                   (txid (pgs-c-txid disk r))
+                                   (slots2 (pgs-set-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
+                                                         (pgs-c-rec disk r mode dirty alloc)
+                                                         (pgs-root-slots r disk))))))))
+
+(defthm pgs-slot-of-set-same
+  (implies (member-equal k '(0 1))
+           (equal (pgs-slot j (pgs-set-slot k (pgs-slot k slots) slots))
+                  (pgs-slot j slots))))
+
+(defthm pgs-try-in-order-of-set-same
+  (implies (member-equal k '(0 1))
+           (equal (pgs-try-in-order order (pgs-set-slot k (pgs-slot k slots) slots) pages mode refs)
+                  (pgs-try-in-order order slots pages mode refs)))
+  :hints (("Goal" :induct (pgs-try-in-order order slots pages mode refs)
+                  :in-theory (disable pgs-try pgs-set-slot pgs-slot pgs-rec-shape-p))))
+
+(defthm pgs-open-slots-of-set-same
+  (implies (member-equal k '(0 1))
+           (equal (pgs-open-slots (pgs-set-slot k (pgs-slot k slots) slots) pages mode)
+                  (pgs-open-slots slots pages mode)))
+  :hints (("Goal" :in-theory (disable pgs-try-in-order pgs-rec-valid pgs-open-order
+                                      pgs-set-slot pgs-slot pgs-slot-refusals))))
+
+(defthm pgs-view-of-ok
+  (implies (and (equal (car o) :ok) (true-listp o))
+           (equal (pgs-view o) (list (third o) (fourth o)))))
+
+(defthm pgs-c-slots-avoid
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (pgs-c-lpages-ok disk r mode dirty)
+                (pgs-alloc-inv alloc disk))
+           (pgs-avoids (pgs-slots-keeps (pgs-root-slots r2 disk) (pgs-pages disk))
+                       (pgs-write-addrs (pgs-c-writes disk r mode dirty alloc))))
+  :hints (("Goal" :in-theory (disable pgs-roots-keeps-cover pgs-c-writes-avoid-keeps pgs-c-writes
+                                      pgs-slots-keeps pgs-roots-keeps pgs-open)
+                  :use ((:instance pgs-c-writes-avoid-keeps)
+                        (:instance pgs-roots-keeps-cover (r r2) (roots (pgs-roots disk))
+                                   (pages (pgs-pages disk))
+                                   (w (pgs-write-addrs (pgs-c-writes disk r mode dirty alloc))))))))
+
+; A crash anywhere in the commit opens on the committed state or on the
+; previous one; on the previous one unless the new record landed whole.
+(defthm pgs-open-after-crash
+  (let* ((o (pgs-open disk r mode))
+         (p (pgs-plan-commit disk r mode dirty alloc))
+         (image (pgs-crash disk r (second p) keep (third p) sv)))
+    (implies (and (equal (car o) :ok)
+                  (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (fourth o)) 0)
+                  (pgs-alloc-inv alloc disk)
+                  (pgs-writes-faithful (second p) (pgs-pages disk))
+                  (or (equal sv (pgs-slot (third p) (pgs-root-slots r disk)))
+                      (equal sv (fourth p))
+                      (not (pgs-rec-valid sv))))
+             (and (member-equal (pgs-view (pgs-open image r mode))
+                                (list (pgs-view (pgs-open (pgs-commit disk r mode dirty alloc) r mode))
+                                      (pgs-view o)))
+                  (implies (not (equal sv (fourth p)))
+                           (equal (pgs-view (pgs-open image r mode)) (pgs-view o))))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-c-writes pgs-c-rec pgs-c-cur pgs-c-txid
+                                               pgs-c-lpages-ok-is pgs-open-of-crash
+                                               pgs-view-of-ok member-equal car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-c-view-facts)
+                        (:instance pgs-plan-commit-unfold)
+                        (:instance pgs-c-step-hyps)
+                        (:instance pgs-open-after-commit)
+                        (:instance pgs-view-of-ok (o (pgs-open disk r mode)))
+                        (:instance pgs-open-is-open-slots)
+                        (:instance pgs-c-slots-avoid (r2 r))
+                        (:instance pgs-open-slots-of-apply-pages
+                                   (slots (pgs-root-slots r disk)) (pages (pgs-pages disk))
+                                   (writes (pgs-c-writes disk r mode dirty alloc)))
+                        (:instance pgs-open-slots-of-set-same
+                                   (k (if (equal (pgs-c-k0 disk r mode) 1) 0 1))
+                                   (slots (pgs-root-slots r disk))
+                                   (pages (pgs-apply-pages (pgs-c-writes disk r mode dirty alloc)
+                                                           keep (pgs-pages disk))))
+                        (:instance pgs-set-other-slot (k0 (pgs-c-k0 disk r mode)) (v sv)
+                                   (slots (pgs-root-slots r disk)))
+                        (:instance pgs-step-open-crash
+                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
+                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
+                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
+                                   (rs (pgs-c-rs disk r mode dirty alloc))
+                                   (txid (pgs-c-txid disk r))
+                                   (slots2 (pgs-set-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
+                                                         sv (pgs-root-slots r disk))))
+                        (:instance pgs-step-open-torn
+                                   (cur (pgs-c-cur disk r mode)) (pages (pgs-pages disk))
+                                   (fresh (pgs-c-fresh disk r mode dirty alloc))
+                                   (tfresh (pgs-c-tfresh disk r mode dirty alloc))
+                                   (rs (pgs-c-rs disk r mode dirty alloc))
+                                   (txid (pgs-c-txid disk r))
+                                   (slots2 (pgs-set-slot (if (equal (pgs-c-k0 disk r mode) 1) 0 1)
+                                                         sv (pgs-root-slots r disk))))))))
+
+; Fork isolation: a commit on R, complete or crashed anywhere, leaves every
+; other root's open exactly as it was (refusals included).
+(defthm pgs-refused-plan-writes-nothing
+  (implies (not (equal (car (pgs-plan-commit disk r mode dirty alloc)) :plan))
+           (equal (pgs-write-addrs (second (pgs-plan-commit disk r mode dirty alloc))) nil))
+  :hints (("Goal" :in-theory (disable pgs-open pgs-alloc pgs-plan-ptab pgs-make-rec
+                                      pgs-page-writes pgs-next-txid pgs-slot pgs-root-slots
+                                      pgs-touched pgs-chunk pgs-flatten pgs-contents pgs-lpages-ok))))
+
+(defthm pgs-crash-isolates-other-roots
+  (let ((p (pgs-plan-commit disk r mode dirty alloc)))
+    (implies (and (not (equal r2 r)) (pgs-alloc-inv alloc disk))
+             (equal (pgs-open (pgs-crash disk r (second p) keep (third p) sv) r2 mode2)
+                    (pgs-open disk r2 mode2))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-open-of-crash pgs-avoids-nil car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :cases ((equal (car (pgs-plan-commit disk r mode dirty alloc)) :plan)))
+          ("Subgoal 2" :use ((:instance pgs-refused-plan-writes-nothing)
+                             (:instance pgs-open-is-open-slots (r r2) (mode mode2))
+                             (:instance pgs-open-slots-of-apply-pages
+                                        (slots (pgs-root-slots r2 disk)) (pages (pgs-pages disk))
+                                        (mode mode2)
+                                        (writes (second (pgs-plan-commit disk r mode dirty alloc))))))
+          ("Subgoal 1"
+                  :in-theory (union-theories '(pgs-open-of-crash pgs-c-lpages-ok-is car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-plan-commit-refuses-without-open)
+                        (:instance pgs-plan-commit-refuses-out-of-order)
+                        (:instance pgs-c-open-facts)
+                        (:instance pgs-plan-commit-unfold)
+                        (:instance pgs-c-slots-avoid)
+                        (:instance pgs-open-is-open-slots (r r2) (mode mode2))
+                        (:instance pgs-open-slots-of-apply-pages
+                                   (slots (pgs-root-slots r2 disk)) (pages (pgs-pages disk))
+                                   (mode mode2)
+                                   (writes (pgs-c-writes disk r mode dirty alloc)))))))
+
+(defthm pgs-fork-parts
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (true-listp (pgs-open disk r mode))
+                (not (equal r2 r)))
+           (and (equal (pgs-pages (pgs-fork disk r r2 mode)) (pgs-pages disk))
+                (equal (pgs-root-slots r2 (pgs-fork disk r r2 mode))
+                       (cons (pgs-c-cur disk r mode) nil))
+                (equal (pgs-root-slots r (pgs-fork disk r r2 mode))
+                       (pgs-root-slots r disk))))
+  :hints (("Goal" :in-theory (disable pgs-open pgs-slot))))
+
+(defthm pgs-open-slots-single
+  (implies (and (pgs-rec-valid cur) (equal (car (pgs-try cur pages mode)) :ok))
+           (equal (pgs-open-slots (cons cur nil) pages mode)
+                  (list :ok 0 (cadr (pgs-try cur pages mode)) (caddr (pgs-try cur pages mode)) nil)))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-rec-valid pgs-rec-shape-p))))
+
+; A fork opens on its source's state, and leaves the source as it was.
+(defthm pgs-fork-denotes
+  (implies (and (equal (car (pgs-open disk r mode)) :ok)
+                (not (equal r2 r)))
+           (and (equal (pgs-view (pgs-open (pgs-fork disk r r2 mode) r2 mode))
+                       (pgs-view (pgs-open disk r mode)))
+                (equal (pgs-open (pgs-fork disk r r2 mode) r mode2)
+                       (pgs-open disk r mode2))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-fork-parts pgs-view
+                                               true-listp car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-c-open-facts)
+                        (:instance pgs-view-of-ok (o (pgs-open disk r mode)))
+                        (:instance pgs-open-slots-single (cur (pgs-c-cur disk r mode))
+                                   (pages (pgs-pages disk)))
+                        (:instance pgs-open-is-open-slots (r r2)
+                                   (disk (pgs-fork disk r r2 mode)))
+                        (:instance pgs-open-is-open-slots (mode mode2))
+                        (:instance pgs-open-is-open-slots (mode mode2)
+                                   (disk (pgs-fork disk r r2 mode)))))))
