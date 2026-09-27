@@ -238,6 +238,35 @@ vector holds after it at its worst case, its own promise included."
         :admissible
       :unaffordable)))
 
+;; THE ACCEPTED-STATEMENT FIGURE (lane bp-retention-leftovers, membership-
+;; budget's deferral).  A composite's stored charge is its encoding plus the
+;; membership charge of the article it carries (`fn-sbud-row-octets'), so
+;; its gate charges the kind's publication ceiling PLUS 320 per group: the
+;; composite's charge is within its figure exactly when its encoding is
+;; within the ceiling, whatever its group count
+;; (`fn-cvec-statement-row-within-its-figure').  Before, the gate charged
+;; the ceiling alone and a composite in k groups whose encoding exceeded
+;; 196,608 - 320 k was stored above the figure it was admitted at.
+(defun fn-cvec-statement-figure (group-count)
+  (declare (xargs :guard t))
+  (+ (fn-store-publication-ceiling :accepted-statement)
+     (* *fn-sbud-membership-octets* (nfix group-count))))
+
+(defun fn-cvec-statement-verdict-at (profile used bytes-used group-count debt)
+  "The publication verdict for one accepted-statement composite whose article
+is filed in GROUP-COUNT groups: the kind's count gate, the history gate and
+the capacity vector at the composite's figure."
+  (declare (xargs :guard t))
+  (if (and (fn-sbud-admitp (fn-sbud-budget profile :accepted-statement) used)
+           (fn-bs-history-admissiblep profile bytes-used
+                                      (fn-cvec-statement-figure group-count))
+           (fn-cvec-roomp profile (+ 1 (nfix used))
+                          (+ (nfix bytes-used)
+                             (fn-cvec-statement-figure group-count))
+                          debt))
+      :admissible
+    :unaffordable))
+
 (defun fn-cvec-article-verdict-at (profile used bytes-used payload-length
                                            group-count debt)
   (declare (xargs :guard t))
@@ -307,6 +336,59 @@ vector holds after it at its worst case, its own promise included."
             (len (fn-record-groups record)) debt))
       :memberships
     word))
+
+; The developer `store post' names the membership refusal as the served
+; path does (lane bp-retention-leftovers, membership-budget's deferral): its
+; verdict (`fn-cvec-article-verdict-at', host/store-node-host.lisp
+; `fn-store-sn-article-verdict-word') refused, the article is in at least
+; one group, and at the same count, octets and debt the article's figure
+; WITHOUT its membership charge would have passed the count gate, the
+; history gate and the vector.
+(defun fn-cvec-article-verdict-word (profile used bytes-used payload-length
+                                             group-count debt)
+  (declare (xargs :guard t))
+  (cond ((equal (fn-cvec-article-verdict-at profile used bytes-used
+                                            payload-length group-count debt)
+                :admissible)
+         :admissible)
+        ((and (posp group-count)
+              (fn-sbud-admitp (fn-sbud-budget profile :article) used)
+              (fn-bs-history-admissiblep
+               profile bytes-used
+               (fn-sbud-article-record-figure payload-length group-count))
+              (fn-cvec-roomp profile (+ 1 (nfix used))
+                             (+ (nfix bytes-used)
+                                (fn-sbud-article-record-figure payload-length
+                                                               group-count))
+                             debt))
+         :memberships)
+        (t :unaffordable)))
+
+; The word admits exactly what the verdict admits; :memberships names a
+; refusal the membership charge alone caused.
+(defthm fn-cvec-article-verdict-word-by-definition
+  (let ((word (fn-cvec-article-verdict-word profile used bytes-used
+                                            payload-length group-count debt)))
+    (and (iff (equal word :admissible)
+              (equal (fn-cvec-article-verdict-at profile used bytes-used
+                                                 payload-length group-count debt)
+                     :admissible))
+         (member-equal word '(:admissible :memberships :unaffordable))
+         (implies (equal word :memberships)
+                  (and (posp group-count)
+                       (equal (fn-cvec-article-verdict-at
+                               profile used bytes-used payload-length
+                               group-count debt)
+                              :unaffordable)
+                       (fn-cvec-roomp profile (+ 1 (nfix used))
+                                      (+ (nfix bytes-used)
+                                         (fn-sbud-article-record-figure
+                                          payload-length group-count))
+                                      debt)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-cvec-article-verdict-word
+                               fn-cvec-article-verdict-at
+                               member-equal (:e member-equal)))))
 
 ; What `status' prints: the octets and transactions the vector reserves at
 ; DEBT, and whether the committed state has them.
@@ -389,6 +471,49 @@ vector holds after it at its worst case, its own promise included."
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-bs-publication-admissiblep)
                                   (fn-store-publication-ceiling)))))
+
+;  KEYSTONE (an admitted composite keeps the vector at its stored charge).
+; An accepted-statement composite admitted at (USED, BYTES-USED, DEBT) for
+; GROUP-COUNT groups, whose stored charge is within its figure, leaves the
+; vector holding at the next committed state.
+(defthm fn-cvec-statement-admission-keeps-the-vector
+  (implies (and (equal (fn-cvec-statement-verdict-at profile used bytes-used
+                                                     group-count debt)
+                       :admissible)
+                (natp used) (natp bytes-used) (natp debt)
+                (natp octets)
+                (<= octets (fn-cvec-statement-figure group-count)))
+           (fn-cvec-roomp profile (+ 1 used) (+ bytes-used octets)
+                          (fn-cvec-debt-step :accepted-statement debt)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
+                                   (used (+ 1 (nfix used)))
+                                   (b (+ (nfix bytes-used)
+                                         (fn-cvec-statement-figure group-count)))
+                                   (b2 (+ bytes-used octets))))
+           :in-theory (e/d (fn-cvec-statement-verdict-at)
+                           (fn-cvec-roomp fn-cvec-statement-figure
+                            fn-store-publication-ceiling)))))
+
+;  KEYSTONE (the composite's charge and its figure agree).  A retained
+; accepted-statement row's stored charge (its encoding plus 320 per group of
+; its article) is within the figure its gate charges exactly when its
+; encoding is within the kind's publication ceiling, whatever its group
+; count: the membership charge is paid on both sides.
+(defthm fn-cvec-statement-row-within-its-figure
+  (implies (fn-hstxa-p row)
+           (iff (<= (fn-sbud-row-octets row)
+                    (fn-cvec-statement-figure (fn-sbud-row-memberships row)))
+                (<= (len (fn-store-event-encode (fn-hstxa-stxa row)))
+                    (fn-store-publication-ceiling :accepted-statement))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-sbud-row-octets fn-sbud-row-memberships
+                                   fn-cvec-statement-figure)
+                                  (fn-store-event-encode
+                                   fn-store-publication-ceiling
+                                   fn-hstxa-p fn-hstxa-stxa fn-hstxa-held
+                                   fn-record-groups))
+           :cases ((fn-held-p row)))))
 
 ;  KEYSTONE (a release discharges a debt and keeps the vector).  Where the
 ; vector holds with at least one open undertaking, a release record of at
@@ -535,25 +660,37 @@ vector holds after it at its worst case, its own promise included."
 
 (defun fn-cvec-record-figure (record)
   (declare (xargs :guard t :verify-guards nil))
-  (if (equal (fn-store-event-kind record) :article)
-      (fn-sbud-article-figure (fn-cvec-row-payload-length record)
-                              (len (fn-record-groups record)))
-    (fn-store-publication-ceiling (fn-store-event-kind record))))
+  (let ((kind (fn-store-event-kind record)))
+    (cond ((equal kind :article)
+           (fn-sbud-article-figure (fn-cvec-row-payload-length record)
+                                   (len (fn-record-groups record))))
+          ((equal kind :accepted-statement)
+           (fn-cvec-statement-figure (fn-sbud-row-memberships record)))
+          (t (fn-store-publication-ceiling kind)))))
 
 (defun fn-cvec-record-admittedp (profile used bytes-used debt record)
   (declare (xargs :guard t :verify-guards nil))
   (let ((kind (fn-store-event-kind record)))
-    (if (equal kind :article)
-        (and (fn-held-p record)
-             (equal (fn-cvec-article-verdict-at
-                     profile used bytes-used (fn-cvec-row-payload-length record)
-                     (len (fn-record-groups record)) debt)
-                    :admissible))
-      (and (equal (fn-cvec-verdict-at profile kind used bytes-used debt)
-                  :admissible)
-           (or (not (equal kind :release)) (posp debt))
-           (<= (fn-sbud-row-octets record)
-               (fn-store-publication-ceiling kind))))))
+    (cond ((equal kind :article)
+           (and (fn-held-p record)
+                (equal (fn-cvec-article-verdict-at
+                        profile used bytes-used (fn-cvec-row-payload-length record)
+                        (len (fn-record-groups record)) debt)
+                       :admissible)))
+          ((equal kind :accepted-statement)
+           (and (equal (fn-cvec-statement-verdict-at
+                        profile used bytes-used (fn-sbud-row-memberships record)
+                        debt)
+                       :admissible)
+                (<= (fn-sbud-row-octets record)
+                    (fn-cvec-statement-figure
+                     (fn-sbud-row-memberships record)))))
+          (t
+           (and (equal (fn-cvec-verdict-at profile kind used bytes-used debt)
+                       :admissible)
+                (or (not (equal kind :release)) (posp debt))
+                (<= (fn-sbud-row-octets record)
+                    (fn-store-publication-ceiling kind)))))))
 
 ; The arm the restatement replaced could not fire: a wire record is never a
 ; row of kind :article.
@@ -651,11 +788,16 @@ vector holds after it at its worst case, its own promise included."
                             (group-count (len (fn-record-groups record))))
                  (:instance fn-cvec-release-keeps-the-vector
                             (octets (fn-sbud-row-octets record)))
+                 (:instance fn-cvec-statement-admission-keeps-the-vector
+                            (group-count (fn-sbud-row-memberships record))
+                            (octets (fn-sbud-row-octets record)))
                  (:instance fn-cvec-admission-keeps-the-vector
                             (kind (fn-store-event-kind record))
                             (octets (fn-sbud-row-octets record))))
            :in-theory (e/d (fn-cvec-record-admittedp fn-cvec-debt-step)
                            (fn-cvec-roomp fn-cvec-verdict-at
+                            fn-cvec-statement-verdict-at fn-cvec-statement-figure
+                            fn-sbud-row-memberships
                             fn-cvec-article-verdict-at fn-cvec-row-payload-length
                             fn-store-event-kind fn-store-event-encode
                             fn-store-publication-ceiling fn-held-p)))))
@@ -793,6 +935,7 @@ vector holds after it at its worst case, its own promise included."
            :in-theory (disable fn-cvec-roomp fn-cvec-history-admittedp))))
 
 (in-theory (disable fn-cvec-roomp fn-cvec-verdict-at fn-cvec-article-verdict-at
+                    fn-cvec-statement-verdict-at fn-cvec-statement-figure
                     fn-cvec-article-budget fn-cvec-article-budget-for
                     fn-cvec-report fn-cvec-debt-extend fn-cvec-record-debt
                     fn-cvec-history-admittedp

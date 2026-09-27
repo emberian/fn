@@ -1175,11 +1175,16 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
     if code:
         violations.append("status-exit-%d" % code)
     # Outstanding retention work never disappears: every committed article
-    # is reclaimable, held or reclaimed (the status line's three counts).
-    counts = dict(re.findall(r"\b(articles|reclaimable|held|reclaimed)=(\d+)", so))
+    # is in exactly one retention class ACL2 names on the status line
+    # (reclaimable, held, reclaimed, signed, kept; PKT-844,
+    # fn-rcl-store-classes-partition-the-articles).  A status without the
+    # signed/kept fields predates PKT-844: its three counts are compared.
+    counts = dict(re.findall(r"\b(articles|reclaimable|held|reclaimed|signed|kept)=(\d+)", so))
     rule = re.search(r"reclaim rule=(\S+)", so)
-    if rule and rule.group(1) != "keep-forever" and "reclaimed" in counts and "articles" in counts:
-        total = sum(int(counts[k]) for k in ("reclaimable", "held", "reclaimed"))
+    if rule and "reclaimed" in counts and "articles" in counts and (
+            rule.group(1) != "keep-forever" or "kept" in counts):
+        total = sum(int(counts.get(k, 0))
+                    for k in ("reclaimable", "held", "reclaimed", "signed", "kept"))
         rec["reclaim_accounting"] = [int(counts["articles"]), total]
         if total != int(counts["articles"]):
             violations.append("reclaim-accounting:%s" % counts)

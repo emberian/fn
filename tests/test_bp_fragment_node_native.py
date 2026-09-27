@@ -442,20 +442,30 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertNotIn(b"BP fragment family durable", out)
         killed = time.monotonic()
         print(f"SCN-077 first-half-seconds={killed - authored:.1f}", flush=True)
-        # The next open finds the first half's records in the generation
-        # and rotates with the family's first half held.
+        # The serve itself rotated when its generation reached 1,000 records,
+        # between sessions, with the family's first fragments held (lane
+        # bp-retention-leftovers, fn-bpnrd-serve-rotation-due-p): the new
+        # selection durable and "lifecycle" retired while it kept serving.
+        self.assertGreaterEqual(out.count(b"BP journal rotation in serve"), 1,
+                                out[-4000:])
+        self.assertIn(b"BP journal generation selected generation=1", out)
+        self.assertIn(b"BP journal generation retired name=lifecycle", out)
+        # The next open recovers every held fragment of the first half.
         held, rotated = self.recovered_held(output=True)
-        self.assertIn(b"BP journal generation selected generation=1", rotated)
-        self.assertIn(b"BP journal generation retired name=lifecycle", rotated)
         self.assertEqual(held, half)
-        self.assertEqual([self.generation_number(path)
-                          for path in self.generation_directories()], [1])
+        generations = [self.generation_number(path)
+                       for path in self.generation_directories()]
+        self.assertEqual(len(generations), 1, generations)
+        self.assertGreaterEqual(generations[0], 1)
         second, port = self.start_receiver(once=False)
         second_out = self.drain(second)
         self.send_many(port, order[half:-1], paths)
         second.terminate()
         out = second_out(300)
         self.assertNotIn(b"BP fragment family durable", out)
+        # The second half crossed the threshold again inside this serve.
+        self.assertGreaterEqual(out.count(b"BP journal rotation in serve"), 1,
+                                out[-4000:])
         before_last = time.monotonic()
         print(f"SCN-077 second-half-seconds={before_last - killed:.1f}",
               flush=True)
@@ -470,13 +480,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         print(f"SCN-077 reassembly-and-handoff-seconds={done - before_last:.1f}",
               flush=True)
         self.assertEqual(third.returncode, 0, (out[-4000:], err[-4000:]))
-        # The third open found the second half's records: the journal
-        # rotated again, with all but the last fragment held.  (Its open's
-        # lines precede the listening announcement, which start_receiver
-        # consumes; the durable state says it: generation 2 is the only
-        # generation directory left.)
-        self.assertEqual([self.generation_number(path)
-                          for path in self.generation_directories()], [2])
+        # The journal rotated at least twice with the family in flight (in
+        # the two serves, and at an open that found a generation past the
+        # threshold); one generation directory is left, every earlier one
+        # retired.
+        generations = [self.generation_number(path)
+                       for path in self.generation_directories()]
+        self.assertEqual(len(generations), 1, generations)
+        self.assertGreaterEqual(generations[0], 2)
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
@@ -618,10 +629,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         # completes the family once.
         self.assertNotEqual(os.geteuid(), 0,
                             "the failed retirement step needs a non-root run")
+        # A serve rotates between sessions as well (lane bp-retention-
+        # leftovers): the four sessions run under a threshold of 100 so their
+        # records are in the generation at the next open, then the operator
+        # lowers it to one record.
         raised = self.invoke("bp-node", "profile", self.journal,
-                             "dtn://receiver/", 64, 16777216, 65538, 1048576, 1)
+                             "dtn://receiver/", 64, 16777216, 65538, 1048576, 100)
         self.assertEqual(raised.returncode, 0, raised.stderr)
-        self.assertIn(b"rotate-records=1", raised.stdout)
+        self.assertIn(b"rotate-records=100", raised.stdout)
         fragments = self.author_fragments(8)
         first, port = self.start_receiver(once=False)
         for number in range(7, 3, -1):
@@ -631,6 +646,11 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         first.terminate()
         out, err = first.communicate(timeout=120)
         self.assertNotIn(b"BP fragment family durable", out)
+        self.assertNotIn(b"BP journal rotation in serve", out)
+        lowered = self.invoke("bp-node", "profile", self.journal,
+                              "dtn://receiver/", 64, 16777216, 65538, 1048576, 1)
+        self.assertEqual(lowered.returncode, 0, lowered.stderr)
+        self.assertIn(b"rotate-records=1", lowered.stdout)
         # The next open rotates (four records): killed there.
         killed = self.kill_at_rotation()
         self.assertIn(b"BP journal rotation generation=1 records=", killed)
@@ -645,6 +665,13 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         print("rotation kill: generation directories "
               + repr([path.name for path in self.generation_directories()]),
               flush=True)
+        # A serve now rotates between sessions too (fn-bpnrd-serve-rotation-
+        # due-p): with the threshold at one record every session would.  The
+        # threshold is raised for these three sessions, so their records are
+        # still in the generation at the next open, and lowered again after.
+        raised = self.invoke("bp-node", "profile", self.journal,
+                             "dtn://receiver/", 64, 16777216, 65538, 1048576, 100)
+        self.assertEqual(raised.returncode, 0, raised.stderr)
         second, port = self.start_receiver(once=False)
         for number in range(3, 0, -1):
             sent = self.send_fragment(port, fragments[number], number)
@@ -653,6 +680,10 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         second.terminate()
         out, err = second.communicate(timeout=120)
         self.assertNotIn(b"BP fragment family durable", out)
+        self.assertNotIn(b"BP journal rotation in serve", out)
+        lowered = self.invoke("bp-node", "profile", self.journal,
+                              "dtn://receiver/", 64, 16777216, 65538, 1048576, 1)
+        self.assertEqual(lowered.returncode, 0, lowered.stderr)
         # The selected generation's directory cannot be emptied: the next
         # open rotates, the new selection is durable, and retirement fails
         # at the selected directory.  Recovery reads the new generation;
@@ -683,13 +714,61 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
         self.assertEqual(self.article_count(), 1)
-        # The last fragment's records make the next open rotate; it first
-        # finishes the removal the failed step left.
+        # The last fragment's record makes the serve rotate between its
+        # session and its deliveries (or, for records written after that,
+        # the next open); the rotation first finishes the removal the failed
+        # step left.
         _held, finished = self.recovered_held(output=True)
         self.assertIn(b"BP journal generation retired name=" + old.name.encode(),
-                      finished)
+                      out + finished)
         self.assertFalse(old.exists())
         self.assertEqual(len(self.generation_directories()), 1)
+
+    def test_serve_crosses_the_threshold_twice_with_a_family_in_flight(self):
+        # Lane bp-retention-leftovers: one `bp-node serve' process, a profile
+        # rotating every two records, a family of eight fragments of which
+        # seven arrive (highest offset first) in seven sessions.  The serve
+        # rotates between sessions each time its generation reaches the
+        # threshold (fn-bpnrd-serve-rotation-due-p), at least twice, without
+        # stopping and without the developer cut; every rotation keeps every
+        # held fragment (fn-bpnrd-rotation-keeps-every-held-family), the old
+        # generations are retired, and the offset-zero fragment then
+        # completes the family once.
+        raised = self.invoke("bp-node", "profile", self.journal,
+                             "dtn://receiver/", 64, 16777216, 65538, 1048576, 2)
+        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertIn(b"rotate-records=2", raised.stdout)
+        fragments = self.author_fragments(8)
+        serve, port = self.start_receiver(once=False)
+        for number in range(7, 0, -1):
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+        serve.terminate()
+        out, err = serve.communicate(timeout=120)
+        rotations = out.count(b"BP journal rotation in serve")
+        print(f"serve rotations={rotations} generations="
+              f"{[path.name for path in self.generation_directories()]}",
+              flush=True)
+        self.assertGreaterEqual(rotations, 2, out[-4000:])
+        self.assertGreaterEqual(
+            len(re.findall(rb"BP journal generation selected generation=", out)),
+            2, out[-4000:])
+        self.assertNotIn(b"BP journal rotation uncertain", out)
+        self.assertNotIn(b"BP fragment family durable", out)
+        generations = self.generation_directories()
+        self.assertEqual(len(generations), 1, [p.name for p in generations])
+        self.assertGreaterEqual(self.generation_number(generations[0]), 2)
+        self.assertEqual(self.recovered_held(), 7)
+        last, port = self.start_receiver()
+        sent = self.send_fragment(port, fragments[0], 0)
+        self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
+        out, err = last.communicate(timeout=300)
+        self.assertEqual(last.returncode, 0, (out, err))
+        self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
+        self.assertEqual(out.count(b"BP application handoff durable"), 1,
+                         (out, err))
+        self.assertEqual(self.article_count(), 1)
 
 if __name__ == "__main__":
     unittest.main()

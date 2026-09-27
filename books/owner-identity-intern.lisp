@@ -96,6 +96,32 @@
                  (:instance fn-cat-intern-list-is-row-at-count
                   (w (fn-replay-composite-record w)))))))
 
+; The groups the article a composite carries is filed in: the memberships
+; the row the intern makes of W is charged (books/store-budget.lisp
+; `fn-sbud-row-memberships' of an hstxa row), which the identity preflight
+; charges at 320 each (books/store-capacity-vector.lisp
+; `fn-cvec-statement-figure'; host/owner-host.lisp
+; `fn-owner-identity-publication-verdict').  0 for any other event.
+(defun fn-oii-publication-group-count (w)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w)))
+      (len (fn-record-groups (fn-replay-composite-record w)))
+    0))
+
+; The preflight's count is the interned row's: the held article inside the
+; composite row is filed in exactly the groups the wire article names.
+(defthm fn-oii-publication-group-count-is-the-rows
+  (implies (and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w)))
+           (equal (len (fn-record-groups
+                        (fn-hstxa-held
+                         (fn-oii-identity-row w keyring generation h))))
+                  (fn-oii-publication-group-count w)))
+  :hints (("Goal" :in-theory (e/d (fn-oii-identity-row fn-intern-row-at
+                                   fn-oii-publication-group-count
+                                   fn-hstxa-make fn-hstxa-held)
+                                  (fn-stxa-p fn-record-p
+                                   fn-replay-composite-record)))))
+
 ; THE ENTRY the host installs: the configured owner's identity prepare over
 ; the row at handle H under the owner's Store keyring and generation.
 (defun fn-oii-ocfg-prepare-identity (oc w h)

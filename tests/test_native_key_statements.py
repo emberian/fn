@@ -15,6 +15,7 @@ python3 -m unittest -v tests.test_native_key_statements
 """
 
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -330,6 +331,19 @@ class NativeKeyStatementTests(unittest.TestCase):
             "generation=2 state=retired principal=" + P.hex(),
             "generation=1 state=retired principal=" + P.hex()])
         witness("log", [line for line in self.log(b).splitlines() if "key-statement" in line])
+        # PKT-844: every article is in one retention class ACL2 names on the
+        # status line (fn-rcl-store-classes-partition-the-articles); the
+        # served statements and the signed articles are `signed' (retained
+        # with the identity state, never released by article retention).
+        status = self.fn("operator", b["config"], "status").stdout.decode("ascii", "replace")
+        counts = {k: int(v) for k, v in re.findall(
+            r"\b(articles|reclaimable|held|reclaimed|signed|kept)=(\d+)", status)}
+        witness("status classes", counts)
+        self.assertEqual(counts["articles"],
+                         sum(counts[k] for k in ("reclaimable", "held", "reclaimed",
+                                                 "signed", "kept")), status)
+        # At least the served succession and revocation statements.
+        self.assertGreaterEqual(counts["signed"], 2, status)
 
     def test_kill_at_the_cut_and_recovery_at_open(self):
         c = self.node("c")

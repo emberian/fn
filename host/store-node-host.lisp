@@ -163,6 +163,18 @@
                                            payload-length group-count
                                            debt))))))
 
+; The developer `store post''s word for the same verdict
+; (`fn-cvec-article-verdict-word'): :admissible, :memberships (the membership
+; charge alone refused it) or :unaffordable.
+(defun fn-store-sn-article-verdict-word (profile payload-length group-count state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (f-get-global 'fn-store-sn state)))
+    (mv-let (bytes state) (fn-store-sn-record-octets s state)
+      (mv-let (debt state) (fn-store-sn-record-debt s state)
+        (value (fn-cvec-article-verdict-word profile (fn-sbud-count s) bytes
+                                             payload-length group-count
+                                             debt))))))
+
 (defun fn-store-sn-headroom (profile state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sbud-headroom profile (f-get-global 'fn-store-sn state))))
