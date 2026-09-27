@@ -163,6 +163,13 @@ trust-boundary entries. The production integration must not contaminate book
 certification with arbitrary raw-mode changes or hide trusted code inside a
 claimed proved function. Certify the pure core in a clean environment.
 
+The native SHA-256 (lane digest-native) is such an entry, visible by name:
+`host/native/digest.lisp` replaces, in the saved images only and after a
+start-up check against the ACL2 definitions, the raw bodies of the three
+SHA-256 realisers the digest seams attach to (A-CRYPTO-NATIVE,
+specs/failures.md). The books, their certificates and every theorem are
+unchanged; the ACL2 definitions stay the reference and the fallback.
+
 ## Durability barriers by platform
 
 Native file and directory barriers use `fnn-durable-barrier` in
