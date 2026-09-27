@@ -116,41 +116,43 @@
 ; buffer seal of 600,000 octets starts mid page 0 and spans pages 0, 1 and 2
 ; in one call, a range seal starts at the last octet of a page, and each is
 ; read back against the generic.
-(defconst *pap-d* (pap-octets 11 600011 nil))
+(defun pap-d () (declare (xargs :guard t)) (pap-octets 11 600011 nil))
 
 (defmacro pap-bulk-body (st count get payload seal-list seal-buffer seal-range clear)
   `(let* ((,st (,clear ,st))
           (,st (,seal-list *pap-c* ,st))
           (,st (with-local-stobj fn-octets
                  (mv-let (,st fn-octets)
-                   (let* ((fn-octets (fn-octets-from-list *pap-d* fn-octets))
+                   (let* ((fn-octets (fn-octets-from-list (pap-d) fn-octets))
                           (,st (,seal-buffer fn-octets ,st))
                           (,st (,seal-range 262143 524290 fn-octets ,st)))
                      (mv ,st fn-octets))
                    ,st))))
      (mv (list (,count ,st)
-               (equal (,payload 1 ,st) *pap-d*)
-               (equal (,payload 2 ,st) (take (- 524290 262143) (nthcdr 262143 *pap-d*)))
+               (equal (,payload 1 ,st) (pap-d))
+               (equal (,payload 2 ,st) (take (- 524290 262143) (nthcdr 262143 (pap-d))))
                (,get 1 262140 ,st) (,get 1 262141 ,st) (,get 1 524284 ,st)
                (,get 1 524285 ,st) (,get 2 0 ,st) (,get 2 262146 ,st))
          ,st)))
 
 (defun pap-bulk-paged-run (fn-arena-paged)
-  (declare (xargs :stobjs fn-arena-paged))
+  (declare (xargs :stobjs fn-arena-paged :verify-guards nil))
   (pap-bulk-body fn-arena-paged fn-arena-paged-count fn-arena-paged-get fn-arena-paged-payload
                  fn-arena-paged-seal-list fn-arena-paged-seal-buffer fn-arena-paged-seal-range
                  fn-arena-paged-clear))
 
 (defun pap-bulk-generic-run (fn-arena)
-  (declare (xargs :stobjs fn-arena))
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (pap-bulk-body fn-arena fn-arena-count fn-arena-get fn-arena-payload
                  fn-arena-seal-list fn-arena-seal-buffer fn-arena-seal-range fn-arena-clear))
 
 (defun pap-bulk-paged ()
+  (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena-paged
     (mv-let (result fn-arena-paged) (pap-bulk-paged-run fn-arena-paged) result)))
 
 (defun pap-bulk-generic ()
+  (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (result fn-arena) (pap-bulk-generic-run fn-arena) result)))
 
@@ -159,8 +161,9 @@
    (and (equal r (pap-bulk-generic))
         (equal (car r) 3)
         (cadr r) (caddr r)
-        (equal (nth 3 r) (nth 262140 *pap-d*))
-        (equal (nth 6 r) (nth 262143 *pap-d*)))))
+        (equal (nth 3 r) (nth 262140 (pap-d)))
+        (equal (nth 6 r) (nth 524285 (pap-d)))
+        (equal (nth 7 r) (nth 262143 (pap-d))))))
 
 (assert-event
  (and (eq (symbol-class 'fn-arp-put-kj (w state)) :common-lisp-compliant)
