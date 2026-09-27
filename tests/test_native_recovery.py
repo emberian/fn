@@ -61,7 +61,9 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
         acquire = re.search(r"\(defun fnn-acquire .*?\n\n\(defun fnn-store-close", source, re.S)
         self.assertIsNotNone(acquire)
         self.assertIn("(fnn-safe-directory (fnn-staging store))", acquire.group(0))
-        recover = re.search(r"\(defun fnn-recover .*?\n\n\(defun fnn-require-writer", source, re.S)
+        # The open's recovery is the record log's (format 8 is refused at
+        # the profile's open; fnn-recover calls fnn-recover-log).
+        recover = re.search(r"\(defun fnn-recover-log .*?\n\n\(defun ", source, re.S)
         self.assertIsNotNone(recover)
         self.assertLess(recover.group(0).index("(fnn-sweep-staging store)"),
                         recover.group(0).index("(setf (fnn-store-fenced store) nil)"))
@@ -88,7 +90,9 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
             for match in re.finditer(r"\(fnn-join \(fnn-staging store\)\s*"
                                      r"\(format nil \"(\.[a-z-]+-)~d", source):
                 staged.add(match.group(1))
-        self.assertGreaterEqual(len(staged), 7, staged)
+        # Six since the per-file layout's allocator and marker stages went
+        # (PKT-838).
+        self.assertGreaterEqual(len(staged), 6, staged)
         for prefix in staged:
             self.assertTrue(any(prefix.startswith(p) for p in prefixes),
                             "{} is staged but not swept".format(prefix))
