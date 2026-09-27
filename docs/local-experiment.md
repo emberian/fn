@@ -45,6 +45,11 @@ is refused by this experimental profile. The CLI's Message-ID and group
 arguments are not yet checked against article headers by a complete injector;
 keep them consistent in examples.
 
+This is the Python development host. Its store keeps one file per
+transaction under `transactions/`. The native node
+([Running your node](operator.md)) keeps its store as a record log instead;
+a release serves only that.
+
 To read the stored article over NNTP:
 
 ```sh

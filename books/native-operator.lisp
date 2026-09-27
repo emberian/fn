@@ -2325,6 +2325,72 @@ OBSERVED (the markers found beside the store root) is empty."
            (equal (fn-native-operator-store-outcome result observed) result))
   :hints (("Goal" :in-theory '(fn-native-operator-store-outcome))))
 
+; -----------------------------------------------------------------------------
+; The control socket's path at `run' (lane ops-fixes).  A Unix socket's
+; address holds its path in sun_path: 108 octets on Linux, 104 on OpenBSD
+; and Darwin, each with a terminating NUL, so 103 octets is the longest
+; control path every supported platform binds whole.  A longer path was
+; bound truncated (SBCL copies the prefix that fits), and the owner then
+; faulted at its own start with ENOENT on the full path (exit 4,
+; tests.test_native_heap_from_profile on a deep scratch tree).  The run is
+; refused by name before anything opens: :control-path-too-long, exit 1.
+; The clients that connect to the path need no check: with no owner bound
+; there, their connect fails before submission and names no-owner
+; (books/native-control-reason.lisp fn-native-control-transport-word).
+
+(defconst *fn-nop-control-path-max-octets* 103)
+
+(defun fn-native-operator-control-path-too-longp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-native-action result) :run)
+       (< *fn-nop-control-path-max-octets*
+          (len (fn-record-string-octets
+                (fn-native-config-control-path
+                 (fn-native-operator-result-config result)))))))
+
+(defun fn-native-operator-control-outcome (result)
+  "RESULT unchanged, or the :control-path-too-long refusal of a `run' whose
+control path no supported platform binds whole."
+  (declare (xargs :guard t))
+  (if (fn-native-operator-control-path-too-longp result)
+      (fn-nop-refused :control-path-too-long
+                      (fn-native-operator-result-command result)
+                      (fn-native-operator-result-config result)
+                      (fn-native-operator-result-arguments result))
+    result))
+
+; KEYSTONE.  The subject is `fn-native-operator-control-outcome', which
+; `fnn-operator-store-outcome' (host/native/operator.lisp) calls through
+; `fn-native-operator-host-control-outcome' on every plan, after the
+; store's outcome and before any action executes: a run whose control path
+; is too long is refused by name with the refusal code, and nothing runs;
+; every other plan passes through unchanged.
+(defthm fn-native-operator-long-control-path-is-refused
+  (implies (fn-native-operator-control-path-too-longp result)
+           (let ((outcome (fn-native-operator-control-outcome result)))
+             (and (equal (fn-native-operator-result-status outcome) :refused)
+                  (equal (fn-native-operator-result-reason outcome)
+                         :control-path-too-long)
+                  (equal (fn-native-operator-exit-code outcome)
+                         (fn-outcome-code :refused))
+                  (equal (fn-native-operator-result-native-action outcome) :none))))
+  :hints (("Goal" :in-theory '(fn-native-operator-control-outcome
+                                fn-nop-refused fn-nop-result
+                                fn-native-operator-result-status
+                                fn-native-operator-result-reason
+                                fn-native-operator-exit-code
+                                fn-native-operator-outcome-class
+                                fn-outcome-of-status
+                                fn-ncfg-first fn-ncfg-second fn-ncfg-rest
+                                (:e fn-native-operator-result-native-action)
+                                fn-nop-native-action-of-refused
+                                car-cons cdr-cons))))
+
+(defthm fn-native-operator-control-outcome-passes-a-bindable-path
+  (implies (not (fn-native-operator-control-path-too-longp result))
+           (equal (fn-native-operator-control-outcome result) result))
+  :hints (("Goal" :in-theory '(fn-native-operator-control-outcome))))
+
 ;  The line printed before a usage or refused result's tagged line: what the
 ; command accepts, or what to do.  ACL2's words; the host prints them.
 (defun fn-native-operator-result-hint (result)
@@ -2332,7 +2398,9 @@ OBSERVED (the markers found beside the store root) is empty."
   (let ((status (fn-native-operator-result-status result))
         (reason (fn-native-operator-result-reason result))
         (command (fn-native-operator-result-command result)))
-    (cond ((and (equal status :refused) (equal reason :no-store))
+    (cond ((and (equal status :refused) (equal reason :control-path-too-long))
+           "the control socket path ([control] path, else the [store] path with /control.sock) is longer than 103 octets, which a Unix socket cannot bind on every platform; set a shorter [control] path in fn.toml")
+          ((and (equal status :refused) (equal reason :no-store))
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
           ((and (equal status :usage) (equal reason :mission-fixes-profile))
            "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG store export DIR, reinstall, then fn operator CONFIG store import DIR --FIELD N; or delete the mission line from fn.toml to choose a profile at init")

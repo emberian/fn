@@ -17,8 +17,15 @@ and [the current view](current.md). Release scope is
 2. **Iterate in a live session.** `tools/proof_repl.py start NAME BOOK
    --upto EVENT`, then `send`; 300 s bounds a discovery attempt, and a
    timeout is a finding with the theorem named. Compare attempts by the
-   prover steps each answer reports, not by seconds. An admitted form is
-   not a certificate.
+   prover steps each answer reports, not by seconds (`send-range` and
+   `probe` for a stretch or a trial copy). A session stops itself after 20
+   idle minutes (`--idle-timeout MIN`, 0 = never; raise it before a long
+   farm or native wait), and `reap --idle MIN` clears idle sessions box-wide.
+   A dependency uncertified at your bytes refuses `start` by name:
+   `--certify-missing` certifies it, `--source-deps` loads it from source
+   (`--ld-local` keeps its local events local). `--host hbox|persvati`
+   runs any command in your tree on that box. `forms BOOK` numbers a book's
+   forms for `#N`. An admitted form is not a certificate.
 3. **Certify incrementally.** `farm.py submit <box> --affected-by <book>` (or
    the changed books and tests as plain roots): cached books install, the
    rest certify. Never `--closure` for lane work. Wait with one background

@@ -287,8 +287,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-record-provenance-tests \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
-	books/byte-store-k0-staging-error \
-	books/byte-store-k0-authority-error \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \
@@ -354,7 +352,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-compact-verb-tests \
 	books/store-compact-window \
 	tests/acl2/store-compact-window-tests \
-	books/store-history-marker \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
 	books/store-reclaim \
@@ -372,14 +369,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
-	tests/acl2/store-history-marker-tests \
-	books/store-history-required \
-	tests/acl2/store-history-required-tests \
-	books/byte-store-marker-program \
-	books/byte-store-k0-marker \
-	tests/acl2/byte-store-k0-marker-tests \
-	books/byte-store-marker-candidates \
-	tests/acl2/byte-store-marker-candidates-tests \
 	books/store-log \
 	tests/acl2/store-log-tests \
 	books/store-log-crash \
@@ -398,6 +387,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-tests \
 	books/store-log-kernel-concrete \
 	tests/acl2/store-log-kernel-concrete-tests \
+	books/store-log-stream \
+	tests/acl2/store-log-stream-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
@@ -415,23 +406,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
 	tests/acl2/payload-lz-tests \
-	books/byte-store-k0-step-lemmas \
-	books/byte-store-k0-step-root-fence \
-	books/byte-store-k0-step \
-	tests/acl2/byte-store-k0-step-tests \
-	books/byte-store-k0-step-bridge-marker \
-	books/byte-store-k0-step-bridge-prefix \
-	books/byte-store-k0-step-bridge \
-	tests/acl2/byte-store-k0-step-bridge-tests \
-	books/byte-store-k0-step-bridge-frontier \
-	tests/acl2/byte-store-k0-cuts-tests \
-	books/byte-store-k0-step-bridge-root \
-	tests/acl2/byte-store-k0-step-bridge-root-tests \
-	books/byte-store-k0-window \
-	books/byte-store-k0-recover-program \
-	tests/acl2/byte-store-k0-recover-program-tests \
-	books/byte-store-k0-pre-init \
-	tests/acl2/byte-store-k0-pre-init-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
@@ -961,6 +935,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/config-owner-live-authorize \
+	tests/acl2/config-owner-live-authorize-tests \
 	books/owner-prepare-served \
 	books/store-prepare-served \
 	books/owner-prepare-served-ocl \
@@ -1030,6 +1006,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-bound-commit \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
+	books/history-columns \
+	tests/acl2/history-columns-tests \
+	books/history-columns-store \
+	tests/acl2/history-columns-store-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
 	books/consumer-event-index-store-invariants \
@@ -1393,6 +1373,10 @@ check:
 # Static, under a second, with its teeth test.
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
+# A host macro used before its definition in load order compiles as a
+# function call (batch AW: every format-9 restart faulted; lane ops-fixes).
+	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

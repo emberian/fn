@@ -57,7 +57,7 @@
            (release-cut
              (string= (or (fnn-developer-selector
                            "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE") "") "1"))
-           (*fnn-record-directory-fault-observer*
+           (*fnn-record-barrier-fault-observer*
              (and release-cut
                   (lambda (path)
                     (setq cut-fired t)

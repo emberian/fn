@@ -303,10 +303,6 @@
       "packet": "PKT-448 (d)",
       "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
-    "fn-cpr-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-840"
-    },
     "fn-ctl-apply-records recursion N": {
       "class": "unexpected",
       "packet": "PKT-658"

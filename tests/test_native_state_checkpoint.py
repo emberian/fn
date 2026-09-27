@@ -75,7 +75,9 @@ class StateCheckpointSourceTests(unittest.TestCase):
             extended[:400])
         rii = (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii")
         self.assertIn("(defthm fn-rii-classified-open-is-classified-open", rii)
-        opened = native_cuts.host_function(io, "fnn-recover-from-state-checkpoint")
+        # The per-file open went with format 8 (lane log-recovery-2,
+        # PKT-838): the log's open over a checkpoint without a log position.
+        opened = native_cuts.host_function(io, "fnn-recover-log-from-state-checkpoint")
         self.assertIn("'fn-store-sco-select", opened)
         self.assertIn("(fnn-recover-suffix-rows store suffix config-records)", opened)
         suffix_rows = native_cuts.host_function(io, "fnn-recover-suffix-rows")
@@ -83,7 +85,6 @@ class StateCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena))", suffix_rows)
         self.assertIn("'fn-store-sn-recover-from-checkpoint", suffix_rows)
         self.assertNotIn("fn-arena-clear", suffix_rows)
-        self.assertIn("'fn-store-sco-covered-count", opened)
         # rep-wave-d-3: the file is read into the octet buffer as the
         # writer's plan shape, each segment admitted by ACL2 against the
         # profile's bounds before it is read; checkpoint-pipeline (schema 3):
@@ -126,14 +127,16 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # (fnn-checkpoint-write-steps: fn-ockp-step per step, the step's
         # frames written straight from the publication buffer) inside the
         # same byte program's staged writer.
-        # (the verb's body is fnn-state-checkpoint-publish-steps since
-        # checkpoint-arena-2; the owner-free publication lives there)
-        self.assertIn("(fnn-state-checkpoint-publish-steps store records)", command)
-        command = native_cuts.host_function(io, "fnn-state-checkpoint-publish-steps")
-        self.assertIn("'fn-store-sco-publish-setup", command)
-        self.assertIn("(fnn-checkpoint-write-steps fd setup segment sequence", command)
-        self.assertIn("(fnn-state-checkpoint-write", command)
+        # Since log-recovery (2026-09-27) the verb and `store compact' share
+        # one publication, fnn-state-checkpoint-publish-steps (the log's
+        # rotation first, the covered segments' drop after the install).
+        self.assertIn("(fnn-state-checkpoint-publish-steps", command)
         self.assertNotIn("fnn-plan-octets", command)
+        publish = native_cuts.host_function(io, "fnn-state-checkpoint-publish-steps")
+        self.assertIn("'fn-store-sco-publish-setup", publish)
+        self.assertIn("(fnn-checkpoint-write-steps fd setup segment sequence", publish)
+        self.assertIn("(fnn-state-checkpoint-write", publish)
+        self.assertNotIn("fnn-plan-octets", publish)
         steps = native_cuts.host_function(io, "fnn-checkpoint-write-steps")
         self.assertIn("(fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+", steps)
         self.assertIn("(fnn-plan-write-all fd frames st)", steps)

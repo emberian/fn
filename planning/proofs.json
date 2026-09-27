@@ -533,12 +533,11 @@
         "tests/test_native_checkpoint.py",
         "books/byte-store-compaction-correspondence.lisp",
         "tests/acl2/byte-store-compaction-correspondence-tests.lisp",
-        "tests/test_native_compaction_crash_map.py",
         "planning/evidence/compaction-plan-guards-2026-09-21.json",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T092212Z-1110255.json"
       ],
-      "progress_note": "The implemented physical tranche retains exact canonical event bytes in one immutable selected pack, validates every surviving covered record, accepts only missing files within the covered prefix, requires a contiguous uncovered suffix, and resumes exact prefix unlink under the writer lease. fn-cc-partial-deletion-preserves-exact-history covers arbitrary missing subsets of that prefix under summary, suffix and exact-observation hypotheses; its test has a non-degenerate middle deletion and one must-fail event per hypothesis. The aggregate parser refuses above 4 MiB before header parsing and its focused test round-trips a valid pack larger than the generic 65538-octet CBOR input cap. Selected namespace and exact-overlap helper guards are verified; guard closure of the actual framed coverage/observation caller remains open on the shared unverified Store-event decoder chain. The definition-unfolding prefix-plus-suffix equality is deliberately not a registry event. One pack is limited to 4096 events and 4 MiB, so this exact-history representation cannot compact arbitrarily large stores. Open: a general crash correspondence theorem, active-reader coordination, protected article-object closure, filesystem qualification, and integrated native-image execution. The byte crash correspondence now transcribes the actual native reclaim plan as repeated transaction-directory unlinks with a post-unlink cut and a closing directory fence with a post-barrier cut. Executable witnesses show arbitrary covered-name survival before the fence, no restoration after it, exact suffix retention, and conflict refusal. The native caller now invokes the logical plan subject directly; recovery continues through fn-store-checkpoint-compaction-observe. Source mapping and model witnesses are not integrated native-image evidence; source-matched process-death execution and filesystem qualification remain open. The actual reclaim planner now uses total nested-pair accessors and has explicit guard events, with source-LD evidence and malformed-input witnesses. The modeled crash examples execute the actual planner through a test helper; no hand-written substitute program supplies their run. These source checks do not certify the complete dependency closure or establish general suffix preservation under all physical crashes. No event yet; T12d (009 stays v1). The scoped ACL2 pack-retirement book proves the selected generation survives every modeled issued-unlink cut under plan-prefix and selected-membership premises, and that a valid gap-aware next generation exceeds the selected name when not exhausted. Its test book supplies a multi-generation deletion witness and counterexamples to the keystone premises. The native caller uses the proved plan under the exclusive Store lock, with one cut after each unlink and one after the packs-directory barrier; an empty plan returns without a cut. The follow-up count theorems state that surviving unlinks reduce bounded pack namespace occupancy, without authorizing retained-history or article-object deletion. Native image execution and syscall/power-loss correspondence remain open."
+      "progress_note": "The implemented physical tranche retains exact canonical event bytes in one immutable selected pack, validates every surviving covered record, accepts only missing files within the covered prefix, requires a contiguous uncovered suffix, and resumes exact prefix unlink under the writer lease. fn-cc-partial-deletion-preserves-exact-history covers arbitrary missing subsets of that prefix under summary, suffix and exact-observation hypotheses; its test has a non-degenerate middle deletion and one must-fail event per hypothesis. The aggregate parser refuses above 4 MiB before header parsing and its focused test round-trips a valid pack larger than the generic 65538-octet CBOR input cap. Selected namespace and exact-overlap helper guards are verified; guard closure of the actual framed coverage/observation caller remains open on the shared unverified Store-event decoder chain. The definition-unfolding prefix-plus-suffix equality is deliberately not a registry event. One pack is limited to 4096 events and 4 MiB, so this exact-history representation cannot compact arbitrarily large stores. Open: a general crash correspondence theorem, active-reader coordination, protected article-object closure, filesystem qualification, and integrated native-image execution. The byte crash correspondence now transcribes the actual native reclaim plan as repeated transaction-directory unlinks with a post-unlink cut and a closing directory fence with a post-barrier cut. Executable witnesses show arbitrary covered-name survival before the fence, no restoration after it, exact suffix retention, and conflict refusal. The native caller now invokes the logical plan subject directly; recovery continues through fn-store-checkpoint-compaction-observe. Source mapping and model witnesses are not integrated native-image evidence; source-matched process-death execution and filesystem qualification remain open. The actual reclaim planner now uses total nested-pair accessors and has explicit guard events, with source-LD evidence and malformed-input witnesses. The modeled crash examples execute the actual planner through a test helper; no hand-written substitute program supplies their run. These source checks do not certify the complete dependency closure or establish general suffix preservation under all physical crashes. No event yet; T12d (009 stays v1). The scoped ACL2 pack-retirement book proves the selected generation survives every modeled issued-unlink cut under plan-prefix and selected-membership premises, and that a valid gap-aware next generation exceeds the selected name when not exhausted. Its test book supplies a multi-generation deletion witness and counterexamples to the keystone premises. The native caller uses the proved plan under the exclusive Store lock, with one cut after each unlink and one after the packs-directory barrier; an empty plan returns without a cut. The follow-up count theorems state that surviving unlinks reduce bounded pack namespace occupancy, without authorizing retained-history or article-object deletion. Native image execution and syscall/power-loss correspondence remain open. Lane log-recovery-2 (2026-09-27, PKT-838): tests/test_native_compaction_crash_map.py (the pack chain's cut map) was deleted with the packs; the log's compaction cuts are verify_log_segment_cut_map and tests.test_native_log_compaction."
     },
     {
       "id": "PRF-010",
@@ -1826,23 +1825,10 @@
         "tests/acl2/owner-retention-preparation-tests.lisp",
         "planning/evidence/k0-owner-retention-preparation-2026-09-24.md",
         "planning/evidence/manifests/certify-20260924T062249Z-1003562.json",
-        "books/byte-store-k0-step-root-fence.lisp",
-        "books/byte-store-k0-step-bridge-prefix.lisp",
-        "books/byte-store-k0-step-bridge-frontier.lisp",
-        "tests/acl2/byte-store-k0-cuts-tests.lisp",
         "planning/evidence/k0-cuts-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T090708Z-3027220.json",
-        "books/byte-store-k0-staging-error.lisp",
         "planning/evidence/k0-steps-2026-09-25.md",
-        "books/byte-store-k0-step-bridge-root.lisp",
-        "tests/acl2/byte-store-k0-step-bridge-root-tests.lisp",
-        "books/byte-store-k0-authority-error.lisp",
         "planning/evidence/k0-rest-2026-09-25.md",
-        "books/byte-store-k0-window.lisp",
-        "books/byte-store-k0-recover-program.lisp",
-        "books/byte-store-k0-pre-init.lisp",
-        "tests/acl2/byte-store-k0-recover-program-tests.lisp",
-        "tests/acl2/byte-store-k0-pre-init-tests.lisp",
         "planning/evidence/k0-recovery-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
@@ -1950,7 +1936,7 @@
         "fn-bs-k0i-step-preserves-pre-init",
         "fn-bs-k0i-pre-init-crash-image-is-uninitialised"
       ],
-      "progress_note": "2026-09-22 lane t5/sweep: byte-store-keystones had been red since 4857c648 added fn-sn-observed-identity-okp to the kernel reopen theorems; K4 and fn-bs-crash-image-reopens carry the identity condition over the scanned records; E2 additionally requires the maintained fn-csi-full-relationp, whose strict consumer replay consequence over K2's scanned image is proved by fn-bs-crash-image-consumer-replay-ok. The byte-level identity tooth is not written; the kernel's is store-observed's. K-sweep added for finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md; certification and scope in planning/evidence/sweep-allocation-orphans-2026-09-22.md. 2026-09-23 K0 bounded continuation: fn-bs-k0-record-attempted-cut-establishes-relation proves the full byte/kernel relation at the actual successful P-RECORD pair-10 cut from a related staged input, typed ACL2 frame/name, and fresh staging. Authority list, old inode entries and fences, staged durable record equality, pending link/candidate and the kernel image are derived separately. This does not establish the input relation at every served call or cover other cuts, errors, recovery or physical barriers. Article call arguments now have a finite ACL2 bridge: fn-bs-k0-article-host-arguments-are-typed-record-input proves the exact native protected-prefix/trailer frame and ACL2 transaction name decode to the staged candidate; the composed pair-10 theorem remains conditional on a related physical byte state and fresh stage. Retention/identity event codec bridges and call-entry relation establishment remain open. ACL2 fn-sf-prepare-record and the host-reached fn-sn-prepare now preserve the byte relation from any related state, including successful article staging. fn-bs-k0-served-article-prepare-to-attempted-relation composes a reserved article prepare, ACL2 frame/name and the actual P-RECORD pair10, but still assumes a related physical state at reserved entry, a valid fresh stage, and a successful prepare. Whole served trace, other event kinds/cuts/outcomes and hardware barriers remain open. 2026-09-24 K4 topic repair: the Store v6 observed reopen correctly requires topic-prefix replay. The byte keystone and acknowledged/sweep dependents carry that exact observed premise; the physical FNST counterexample in byte-store-scan-tests satisfies the old consumer/byte/crash/identity premises yet fails topic replay and actual fn-sn-open-observed. A maintained actual Store topic/crash bridge remains open; this conditional certificate is not universal recovery. 2026-09-24 K0 retention continuation: the ACL2-authored retention event now round-trips through the shared canonical Store decoder and supplies the exact native protected-frame, trailer and transaction-name arguments to the actual P-RECORD pair-10 relation theorem. The stopped pair-11 transaction-directory EIO run has both physical outcomes: :apply has the appended durable candidate and retains the attempted byte/kernel relation before the error callback; :drop retains the old durable prefix; both drain the transaction-directory choice and the callback fences. Exact applied-conclusion teeth separately drop the related-input, typed-frame and fresh-stage premises. The dropped-prefix theorem is a conditional composition result, not an independently toothed keystone: its relation and typed-frame premises may be redundant for that conclusion. The owner preparation bridge is separate; call-entry byte relation, native syscall correspondence, all P-RECORD cuts and whole recovery remain open. STAGING BARRIER ERROR (k0-steps, PKT-086): fn-bs-k0-staging-fsync-error-preserves-relation; fn-bs-k0-step-inputp admits (:fsync-dir :staging) with an error outcome whose landed part is a well-formed crash selection of the staging entry operations. ROOT RENAME AND AUTHORITY ERRORS (k0-rest, PKT-080/086): the coverage of fn-bs-k0-coveredp is generic over the :root name (fn-bs-k0s-root-rename-pendingp; the marker is its instance), the :rename arm admits any :root name but the frontier (onto config.json only from a fenced, allocated inode passing fn-bs-config-okp), and the state-checkpoint and profile programs' cuts and every step at their pairs with any outcome follow from the general step theorem. The :root and :transactions barriers' error outcomes are covered from any related state (the transactions one in :record-attempted when a link is pending): the one pending authority entry lands or is dropped, and both results are related. 2026-09-25 lane k0-recovery: the recovery window as step kinds of the general step (fn-bs-k0w-step-preserves-relation), the recovery program by the step from any window-related pair (fn-bs-k0v-recover-program-by-step), the admin.lisp:107 re-recovery over fn-cpo-open-observed (fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut), and a pre-init relation kept by :mkdir, :link-eexist and every initializer step (fn-bs-k0i-step-preserves-pre-init); see planning/evidence/k0-recovery-2026-09-25.md."
+      "progress_note": "Lane log-recovery-2 (2026-09-27, PKT-838): the K0 step family over the per-file layout's programs (books/byte-store-k0-step*.lisp, -k0-marker, -k0-window, -k0-recover-program, -k0-pre-init, -k0-authority-error, -k0-staging-error and their tests) was deleted with the per-file host code; no host line called their subjects. Their theorems are removed from this row's events; K1/K2 (byte-store-scan), the keystones and the K0 base (byte-store-k0, -k0-staging, -k0-recovery, which store-open-bridge includes) stay. 2026-09-22 lane t5/sweep: byte-store-keystones had been red since 4857c648 added fn-sn-observed-identity-okp to the kernel reopen theorems; K4 and fn-bs-crash-image-reopens carry the identity condition over the scanned records; E2 additionally requires the maintained fn-csi-full-relationp, whose strict consumer replay consequence over K2's scanned image is proved by fn-bs-crash-image-consumer-replay-ok. The byte-level identity tooth is not written; the kernel's is store-observed's. K-sweep added for finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md; certification and scope in planning/evidence/sweep-allocation-orphans-2026-09-22.md. 2026-09-23 K0 bounded continuation: fn-bs-k0-record-attempted-cut-establishes-relation proves the full byte/kernel relation at the actual successful P-RECORD pair-10 cut from a related staged input, typed ACL2 frame/name, and fresh staging. Authority list, old inode entries and fences, staged durable record equality, pending link/candidate and the kernel image are derived separately. This does not establish the input relation at every served call or cover other cuts, errors, recovery or physical barriers. Article call arguments now have a finite ACL2 bridge: fn-bs-k0-article-host-arguments-are-typed-record-input proves the exact native protected-prefix/trailer frame and ACL2 transaction name decode to the staged candidate; the composed pair-10 theorem remains conditional on a related physical byte state and fresh stage. Retention/identity event codec bridges and call-entry relation establishment remain open. ACL2 fn-sf-prepare-record and the host-reached fn-sn-prepare now preserve the byte relation from any related state, including successful article staging. fn-bs-k0-served-article-prepare-to-attempted-relation composes a reserved article prepare, ACL2 frame/name and the actual P-RECORD pair10, but still assumes a related physical state at reserved entry, a valid fresh stage, and a successful prepare. Whole served trace, other event kinds/cuts/outcomes and hardware barriers remain open. 2026-09-24 K4 topic repair: the Store v6 observed reopen correctly requires topic-prefix replay. The byte keystone and acknowledged/sweep dependents carry that exact observed premise; the physical FNST counterexample in byte-store-scan-tests satisfies the old consumer/byte/crash/identity premises yet fails topic replay and actual fn-sn-open-observed. A maintained actual Store topic/crash bridge remains open; this conditional certificate is not universal recovery. 2026-09-24 K0 retention continuation: the ACL2-authored retention event now round-trips through the shared canonical Store decoder and supplies the exact native protected-frame, trailer and transaction-name arguments to the actual P-RECORD pair-10 relation theorem. The stopped pair-11 transaction-directory EIO run has both physical outcomes: :apply has the appended durable candidate and retains the attempted byte/kernel relation before the error callback; :drop retains the old durable prefix; both drain the transaction-directory choice and the callback fences. Exact applied-conclusion teeth separately drop the related-input, typed-frame and fresh-stage premises. The dropped-prefix theorem is a conditional composition result, not an independently toothed keystone: its relation and typed-frame premises may be redundant for that conclusion. The owner preparation bridge is separate; call-entry byte relation, native syscall correspondence, all P-RECORD cuts and whole recovery remain open. STAGING BARRIER ERROR (k0-steps, PKT-086): fn-bs-k0-staging-fsync-error-preserves-relation; fn-bs-k0-step-inputp admits (:fsync-dir :staging) with an error outcome whose landed part is a well-formed crash selection of the staging entry operations. ROOT RENAME AND AUTHORITY ERRORS (k0-rest, PKT-080/086): the coverage of fn-bs-k0-coveredp is generic over the :root name (fn-bs-k0s-root-rename-pendingp; the marker is its instance), the :rename arm admits any :root name but the frontier (onto config.json only from a fenced, allocated inode passing fn-bs-config-okp), and the state-checkpoint and profile programs' cuts and every step at their pairs with any outcome follow from the general step theorem. The :root and :transactions barriers' error outcomes are covered from any related state (the transactions one in :record-attempted when a link is pending): the one pending authority entry lands or is dropped, and both results are related. 2026-09-25 lane k0-recovery: the recovery window as step kinds of the general step (fn-bs-k0w-step-preserves-relation), the recovery program by the step from any window-related pair (fn-bs-k0v-recover-program-by-step), the admin.lisp:107 re-recovery over fn-cpo-open-observed (fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut), and a pre-init relation kept by :mkdir, :link-eexist and every initializer step (fn-bs-k0i-step-preserves-pre-init); see planning/evidence/k0-recovery-2026-09-25.md."
     },
     {
       "id": "PRF-042",
@@ -3144,7 +3130,6 @@
         "tests/acl2/nntp-post-tests.lisp",
         "host/native/owner.lisp",
         "host/native/io.lisp",
-        "tests/campaign/native_nntp_post_probe.py",
         "planning/evidence/p2-wire-2026-09-24.md",
         "books/poster-bytes.lisp",
         "books/poster-bytes-invariants.lisp",
@@ -3167,7 +3152,8 @@
         "fn-own-consumed-completion-is-240-or-uncertain",
         "fn-post-outcome-store-refusal-kinds-are-distinct",
         "fn-post-outcome-store-refusal-is-not-uncertain"
-      ]
+      ],
+      "progress_note": "Lane log-recovery-2 (2026-09-27, PKT-838): tests/campaign/native_nntp_post_probe.py (the per-file POST cuts at the wire) was deleted with the per-file layout; tests.test_native_commit_log's test_every_post_log_cut_is_old_or_new_and_the_node_goes_on checks each served log cut at the wire."
     },
     {
       "id": "PRF-071",
@@ -3425,23 +3411,17 @@
       "assumptions": [
         "A-DURABILITY"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
-        "books/store-history-marker.lisp",
-        "tests/acl2/store-history-marker-tests.lisp",
         "host/native/io.lisp",
         "host/native/owner.lisp",
-        "tests/test_native_history_marker.py",
         "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
         "planning/evidence/manifests/certify-20260924T232218Z-1792716.json",
         "planning/evidence/m5-history-lifetimes-2026-09-24.md",
-        "books/store-history-required.lisp",
-        "tests/acl2/store-history-required-tests.lisp",
-        "tests/test_native_history_required.py",
         "planning/evidence/marker-required-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
-      "progress_note": "Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s; at 72d40647, run-20260924T232158Z-fa11, manifest certify-20260924T232218Z-1792716, book 2.6 s, tests 2.3 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
+      "progress_note": "Retired 2026-09-27 (lane log-recovery-2, PKT-838; design 2026-09-27 storage-log section 9 row 3): its subject was deleted with the per-file layout. A format-9 store has no committed-history marker (M := D: the log's last complete entry is the committed history, design section 3.4); fnn-mark-committed, fnn-check-history-marker, books/store-history-marker.lisp and books/store-history-required.lisp and their tests are gone, and every image refuses a format-8 store at the profile's open (books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name). What covers the property now: the log's scan and recovery (P-LOG-RECOVER, books/store-log-segments.lisp, PRF-270) -- a lost acknowledged record cannot exist because the acknowledgement follows the batch's barrier. Before: Lane m5-history-lifetimes (2026-09-24). Certified on persvati (run-20260924T230612Z-64bc, manifest certify-20260924T230629Z-1648710, ACL2 8.7 w25, book 2.5 s, tests 2.2 s; at 72d40647, run-20260924T232158Z-fa11, manifest certify-20260924T232218Z-1792716, book 2.6 s, tests 2.3 s). Teeth: a reachable seven-step history (commit, burn, commit crashed after rename with the old marker, surviving uncertain record, commit, burn, lost uncertain) that is admitted, refuses a lost newest record by name, and admits the same history after further burns. For every hypothesis of both keystones, a concrete instance where the others hold and the conclusion is false. Open: the crash table is not a program of the fn-bs byte model; an absent marker is admitted; an unacknowledged survivor above the marker is not covered.",
       "events": [
         "fn-hm-open-refuses-a-lost-acknowledged-record",
         "fn-hm-decode-of-encode",
@@ -6398,15 +6378,13 @@
       "assumptions": [
         "A-DURABILITY"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
-        "books/byte-store-marker-candidates.lisp",
-        "tests/acl2/byte-store-marker-candidates-tests.lisp",
         "planning/evidence/publish-program-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T102932Z-378295.json",
         "planning/evidence/manifests/certify-20260926T103516Z-444060.json"
       ],
-      "progress_note": "Lane publish-program (2026-09-26, dev 17ff24aa). Certified on persvati (ACL2 8.7 w25 acl2-literal, 2 jobs, 300 s): run-20260926T102908Z-0df7, manifest certify-20260926T102932Z-378295, the book passed and the test book failed on a wrong witness (one garble selector for an eleven-unit write: the fixture's unit is 4 octets); run-20260926T103449Z-fa4d, manifest certify-20260926T103516Z-444060, the repaired test book passed; no book over 10 s. Teeth: a reachable history (open, one acknowledged commit, the deferred commit) asserting every hypothesis and conclusion of the three theorems, beside the served step at the same point (invariant kept, the open refused); the live hypothesis removed (a state that is not live: the identity step, the invariant kept, K not below A, a marker behind the history caught up); the invariant removed as corrupted-state witnesses (a marker above the history: the deferred step lands on the invariant and the open at K refuses; a marker behind: caught up). The byte refutations are ground images on the K5 fixture (byte-store-k0-marker-tests' pair): admissible choices, the observation neither old nor new, the open's refusal by name, and the served program's image at the same cut for contrast. Not claimed: a general theorem over the unfenced program's crash images (the ground counterexample refutes the universal claims); any program of the served path changed; the sound sharing (PKT-441).",
+      "progress_note": "Retired 2026-09-27 (lane log-recovery-2, PKT-838; design section 9 row 3): the marker programs it compared (books/byte-store-marker-candidates.lisp, books/byte-store-marker-program.lisp, books/store-history-required.lisp) were deleted with the per-file layout; a format-9 store has no marker (M := D). Before: Lane publish-program (2026-09-26, dev 17ff24aa). Certified on persvati (ACL2 8.7 w25 acl2-literal, 2 jobs, 300 s): run-20260926T102908Z-0df7, manifest certify-20260926T102932Z-378295, the book passed and the test book failed on a wrong witness (one garble selector for an eleven-unit write: the fixture's unit is 4 octets); run-20260926T103449Z-fa4d, manifest certify-20260926T103516Z-444060, the repaired test book passed; no book over 10 s. Teeth: a reachable history (open, one acknowledged commit, the deferred commit) asserting every hypothesis and conclusion of the three theorems, beside the served step at the same point (invariant kept, the open refused); the live hypothesis removed (a state that is not live: the identity step, the invariant kept, K not below A, a marker behind the history caught up); the invariant removed as corrupted-state witnesses (a marker above the history: the deferred step lands on the invariant and the open at K refuses; a marker behind: caught up). The byte refutations are ground images on the K5 fixture (byte-store-k0-marker-tests' pair): admissible choices, the observation neither old nor new, the open's refusal by name, and the served program's image at the same cut for contrast. Not claimed: a general theorem over the unfenced program's crash images (the ground counterexample refutes the universal claims); any program of the served path changed; the sound sharing (PKT-441).",
       "events": [
         "fn-hmr-deferred-commit-leaves-the-invariant",
         "fn-hmr-deferred-commit-admits-a-lost-answered-record",
@@ -10804,6 +10782,92 @@
         "fn-orr-reader-relation-at-a-captured-view",
         "fn-orr-relation-of-with-view",
         "fn-ocvp-step-preserves-inv"
+      ]
+    },
+    {
+      "id": "PRF-301",
+      "title": "The store's history is an abstract stobj of columns whose logical value is the history list, and the store node's event index answers what it answers",
+      "statement": "books/history-columns.lisp (lane history-columns, stage 1 of 3; the coordinator's decision on PKT-PRS-1's event-index half, PKT-PRS-3, PKT-PRS-4). defabsstobj fn-hist: logical value the true list of retained events (fn-sf-records, oldest first, sequence = position); executable fn-hist$c: a resizable rows column by sequence, the count, and a Message-ID table from a salted 32-bit FNV-1a hash of the Message-ID of an event's article (taken by digest-free shape, fn-hist-key-article) to the sequences carrying it, newest first; a lookup compares every candidate exactly (fn-cei-event-article, fn-held-p, equal), so no answer assumes Message-ID uniqueness or hash separation (PKT-774 worst case: an adversary who learns the salt puts all N articles in one bucket; a lookup is then N exact comparisons, an append stays O(1)). Correspondence fn-hist$corr: the object IS the fold of the history's appends from the empty object with its salt (supporters digest-free; :corr-fn-exists t). Exports refined by defabsstobj: fn-hist-count (len), fn-hist-at (nth), fn-hist-msgid-records (fn-cei-article-records-for), fn-hist-append (append one) and fn-hist-clear, all exec functions guard-verified. KEYSTONE fn-hist-load-is-the-history: the open's load (clear with a salt, one append per event) is the history. Bridges over the store node's index under its correspondence fn-cei-correspondencep (PRF-144): fn-hist-count-serves-cei-count, fn-hist-at-serves-cei-get (every natural sequence, the history within 2^32 events), fn-hist-msgid-records-serve-cei (every Message-ID). Stage 2a (books/history-columns-store.lisp): R(o, fn-hist) := fn-hist = (fn-sf-records (fn-sn-files (fn-own-store o))); fn-hist-sync appends the rows past the stobj's count (fn-sf-records-nth); KEYSTONE fn-hist-sync-after-run-is-the-history: under fn-own-relation, R before any fn-own-run implies the synced stobj is the history after it (by fn-own-run-records-prefix); fn-hist-sync-of-prefix-is-the-history. The store's carried folds from the stobj under R alone, for every cache: fn-hist-count-is-used (fn-sbud-used), fn-hist-bytes-carried-is-bytes-extend, fn-hist-debt-carried-is-debt-extend, fn-hist-usage-carried-is-usage-extend (the EXTEND specifications fn-sbud-bytes-carried, fn-scf-debt-carried, fn-scf-usage-carried meet under the index). Host call: none yet (stage 2 threads fn-hist where the index is read: store-budget, carried folds, checkpoint tables, poll index, control-visible, owner refresh, BP receiver, acceptance payload ref). Local policy; no RFC requirement.",
+      "milestone": "M4",
+      "requirements": [
+        "STO-001",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-columns.lisp",
+        "tests/acl2/history-columns-tests.lisp",
+        "books/history-columns-store.lisp",
+        "tests/acl2/history-columns-store-tests.lisp"
+      ],
+      "progress_note": "history-columns stage 1 2026-09-27: measured in an hbox ACL2 session over the same held rows, the structure's own live bytes per record: fn-hist 58.6 B (10k, 27-char Message-IDs), 56.8 B (10k, 47-char), 76.4 B (1k); the store node's index fn-cei-build 692 B, 1,429 B, 681 B. Stage 2 (switch the store node's index) and stage 3 (held-row strings into a byte pool) open.",
+      "events": [
+        "fn-hist-load-is-the-history",
+        "fn-hist-count-serves-cei-count",
+        "fn-hist-at-serves-cei-get",
+        "fn-hist-msgid-records-serve-cei",
+        "fn-hist-append{correspondence}",
+        "fn-hist-msgid-records{correspondence}",
+        "fn-hist-sync-after-run-is-the-history",
+        "fn-hist-sync-of-prefix-is-the-history",
+        "fn-hist-bytes-carried-is-bytes-extend",
+        "fn-hist-debt-carried-is-debt-extend",
+        "fn-hist-usage-carried-is-usage-extend",
+        "fn-hist-count-is-used"
+      ]
+    },
+    {
+      "id": "PRF-297",
+      "title": "The format-9 open reads a segment one entry at a time, and the stream it runs is the recovered kernel's scan",
+      "statement": "Subjects: the calls host/native/io.lisp fnn-log-stream-segment makes per entry (fn-lgw-start, fn-lgw-header-len, fn-lgw-entry-len, fn-lgw-step, fn-lgw-stop, fn-lgw-pos, fn-lgw-broken, fn-lgw-kernel), reached from fnn-log-recover, fnn-log-open-read-only and fnn-log-scan-segments (fnn-recover-log, whose full replay takes each record straight into the replay's chunk), and from the history reads fnn-log-read-closed-segment and fnn-log-read-active-segment (the active segment to the concrete kernel's frontier). The host reads the header octets fn-lgw-header-len names at the state's offset, then the entry fn-lgw-entry-len names (or none), and fn-lgw-step decides it from one frame open (fn-lgw-decide-is-okp-and-records): the record (handed to the replay, not kept), the next offset past the padding, the chain's trailer, the count, the next txid, the stop and the splice verdict. KEYSTONE fn-lgw-run-is-the-open (books/store-log-stream.lisp): over the segment's octets C, with no hypothesis, the run from (fn-lgw-start GENESIS FLOOR) emits exactly the committed records (a batch entry's several in order, PKT-749) of (fn-lgt-recover C GENESIS UNIT MAX FLOOR) in order, ends in a state whose kernel is fn-lgc-of that recovered kernel (the kernel fn-lg-recover-program-establishes-the-relation names; PRF-276's refinement starts from it), and whose splice verdict is fn-lgs-chain-broken-p of C. Composed from one window = the scan's slice (fn-lgw-window-is-the-slice), one step = one scan step (fn-lgw-step-when-entry, -when-no-entry), and fn-lgw-run-is-the-scan (the run over the steps with the step closed); fn-lgw-run-is-fn-lgc-open equates it with the whole-segment open. The host's reads are windows of C (A-HOST's read of a regular file, the assumption the whole-segment read made). Measured in planning/evidence/log-open-stream-2026-09-27.md.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-276"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/store-log-stream.lisp",
+        "tests/acl2/store-log-stream-tests.lisp",
+        "tests/test_native_log.py",
+        "tests/test_native_commit_log.py",
+        "planning/evidence/log-open-stream-2026-09-27.md"
+      ]
+    },
+    {
+      "id": "PRF-298",
+      "title": "A live owner's administrative publication is authorized from its carried state: no Store record read and no history replayed, equal to the replaying authorization under the owner invariant",
+      "statement": "books/config-owner-live-authorize.lisp fn-olau-authorize (host/owner-host.lisp fn-owner-cfg-native-admin-authorize, called by host/native/admin.lisp fnn-admin-authorize-owner from fnn-owner-live-reconfigure-locked for every live configuration verb): fn-native-admin-publication-authorize under the profile's group-name bound and configuration generations, with the candidate open replaced by fn-olau-candidatep -- the ready phase, the observed configuration history equal to the carried one, the configuration-only fold one step from the observed history's, the record at the frontier with the next sequence, and the one record accepted by and applied to the carried node and configuration (fn-cnode-carried-acceptablep, fn-oclc-apply), its node accepting the frontier. KEYSTONE fn-olau-authorize-is-the-replayed-authorization (hypotheses: fn-ocl-relation OC, the conjunct of fn-lgoc-invariantp it needs; the store at :ready; CONFIG-RECORDS the carried configuration history; the record's txid the frontier; fn-olau-events-reopenp of the Store history, its identity, consumer and topic replays and identity typing): fn-olau-authorize equals fn-cvec-native-admin-authorize over the carried rows and frontier on every arm. fn-olau-candidatep-is-the-replayed-candidate (fn-cpo-history-relation, :ready, the carried configuration, a record at the frontier, the reopen conditions): the carried candidate is fn-native-admin-candidate-openp of the extended history.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-287",
+        "PRF-274",
+        "PRF-209"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-owner-live-authorize.lisp",
+        "tests/acl2/config-owner-live-authorize-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/admin.lisp"
+      ],
+      "progress_note": "Lane log-recovery-2 (Opus 5.5, 2026-09-27; PKT-837). hot_path_check's fn-cpr-loop finding (the candidate replay on the live administrative path) is gone. Teeth: tests/acl2/config-owner-live-authorize-tests.lisp: the native live arm's staged group request (fn-lgoc-invariantp holds; carried = replayed = :accepted at generation 3, 00000003.cfg; lock and occupied-name refusals agree); hypothesis removal, each with the other hypotheses checked: the forged owner (initial configuration claimed), the owner at :reserved after fn-olr-ocfg-reserve (invariant kept), a disk configuration history differing in one stamp, a record below the frontier -- in each the replay accepts and the carried authorization refuses. fn-olau-events-reopenp has no ground witness yet: fn-ocl-relation does not carry the Store history's identity, consumer and topic replays (the owner's open established them); carrying them is the remainder.",
+      "events": [
+        "fn-olau-candidatep-is-the-replayed-candidate",
+        "fn-olau-authorize-is-the-replayed-authorization"
       ]
     }
   ]

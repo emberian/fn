@@ -146,7 +146,7 @@ def start_owner(image, config, env, stderr_path, timeout=3600):
     started = time.perf_counter()
     proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
                             env=env, stdout=subprocess.PIPE, stderr=stderr)
-    wait_for_announcement(proc, b"LISTENING ", timeout=timeout)
+    wait_for_announcement(proc, b"LISTENING ", timeout=timeout, stderr_path=stderr_path)
     return proc, time.perf_counter() - started, stderr
 
 

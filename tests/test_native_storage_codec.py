@@ -54,23 +54,6 @@ class NativeConfigNamespaceSourceTests(unittest.TestCase):
         self.assertIn("fn-nco-canonical-contiguousp", model)
 
 
-class NativeTransactionNamespaceSourceTests(unittest.TestCase):
-    def test_native_scan_uses_bounded_acl2_transaction_observation(self):
-        source = (ROOT / "host" / "native" / "io.lisp").read_text()
-        block = source[source.index("(defun fnn-transaction-files"):
-                       source.index("(defun fnn-staging-observation")]
-        self.assertIn("fnn-list-directory-bounded", block)
-        self.assertIn("fnn-bridge-transaction-observation", block)
-        self.assertNotIn("fnn-list-directory (fnn-transactions", block)
-        self.assertNotIn("parse-integer", block)
-        self.assertNotIn("fnn-seq-name-p", block)
-        bridge = source[source.index("(defun fnn-bridge-transaction-observation"):
-                        source.index("(defun fnn-bridge-staging-observation-limit")]
-        self.assertIn("fn-store-txn-observation", bridge)
-        model = (ROOT / "books" / "byte-store-scan.lisp").read_text()
-        self.assertIn("(defun fn-bs-txn-observation-pairs", model)
-
-
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
                      "build/fn-host-developer is required for raw Store fixtures")
 class NativeStorageCodecTests(unittest.TestCase):

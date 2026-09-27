@@ -127,8 +127,15 @@ class Harness:
     def config(self, name):
         store, port = self.tmp / name, free_port()
         path = self.tmp / (name + ".toml")
+        # The control socket in a short directory: under a deep scratch tree
+        # store/control.sock passes the 103 octets a Unix socket binds whole
+        # everywhere, and `run' is refused :control-path-too-long
+        # (books/native-operator.lisp; lane ops-fixes).
+        control = Path(tempfile.mkdtemp(prefix="fnh-")) / "c.sock"
+        self.addCleanup(shutil.rmtree, control.parent, True)
         path.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
-                        'port = {}\n'.format(store, port), encoding="ascii")
+                        'port = {}\n[control]\npath = "{}"\n'.format(store, port, control),
+                        encoding="ascii")
         return path, port
 
     def env(self, **extra):

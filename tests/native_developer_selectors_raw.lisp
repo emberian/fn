@@ -71,22 +71,8 @@
 (defun fnn-open-live-store (root writable &optional fault)
   (note :open root writable fault)
   (throw 'opened fault))
-;; fnn-recovery-test-fault asks ACL2 for the marker program's cut names
-;; (books/store-history-marker.lisp fn-hm-marker-cut-names).  This stub
-;; answers with the certified definition's own quoted table, read from the
-;; book, so the check follows the book and not a copy.
-(defun book-constant-body (path name)
-  (with-open-file (stream path)
-    (loop for form = (read stream nil :eof)
-          until (eq form :eof)
-          when (and (consp form) (eq (car form) 'defun) (eq (cadr form) name))
-            do (return (eval (car (last form))))
-          finally (error "~a: ~a not found" path name))))
-(defparameter *marker-cut-names*
-  (book-constant-body "books/store-history-marker.lisp" 'fn-hm-marker-cut-names))
 (defun fnn-core (name &rest args)
   (case name
-    (fn-hm-marker-cut-names *marker-cut-names*)
     ;; fnn-main's GC trigger (reservation-after-flip: ACL2's
     ;; fn-heap-nursery-trigger); the stub answers the host's default.
     (fn-heap-nursery-trigger (second args))
@@ -194,11 +180,11 @@
 
 (with-profile (:developer)
   (clear-selectors)
-  (setenv "FN_NATIVE_POST_FAULT" "record-attempted:kill")
+  (setenv "FN_NATIVE_POST_FAULT" "log-fenced:kill")
   (check (eql (run-main (list "store" "/x" "status")) 0)
          "a developer image starts with a selector set")
   (check (logged :dispatch) "a developer image dispatches with a selector set")
-  (check (equal (fnn-developer-selector "FN_NATIVE_POST_FAULT") "record-attempted:kill")
+  (check (equal (fnn-developer-selector "FN_NATIVE_POST_FAULT") "log-fenced:kill")
          "a developer image reads its selector")
   (clear-selectors)
   (check (eq :fault (handler-case (fnn-developer-selector "FN_NATIVE_NOT_REGISTERED")
@@ -210,9 +196,9 @@
 
 (with-profile (:developer)
   (clear-selectors)
-  (setenv "FN_NATIVE_POST_FAULT" "record-attempted:kill")
+  (setenv "FN_NATIVE_POST_FAULT" "log-fenced:kill")
   (check (equal (fnn-post-entry-fault nil)
-                '(:record-attempted :fnn-test-kill "developer-only native post fault"))
+                '(:log-fenced :fnn-test-kill "developer-only native post fault"))
          "FN_NATIVE_POST_FAULT arms a post cut")
   (setq *log* nil)
   (check (equal (catch 'opened (fnn-command-post "/x" "<a@b>" "/p" nil nil '("g")))
@@ -228,13 +214,12 @@
     (check (eq (first (fnn-post-entry-fault nil))
                (intern (string-upcase cut) :keyword))
            (format nil "FN_NATIVE_RECOVERY_FAULT selects ~a" cut)))
-  (check (consp *marker-cut-names*) "the marker program names its cuts")
-  (dolist (cut *marker-cut-names*)
-    (setenv "FN_NATIVE_RECOVERY_FAULT" (format nil "~a:eio" cut))
-    (check (equal (fnn-post-entry-fault nil)
-                  (list (intern (string-upcase cut) :keyword) 'fnn-os-error
-                        "developer-only native recovery fault"))
-           (format nil "FN_NATIVE_RECOVERY_FAULT selects the marker cut ~a" cut)))
+  ;; A format-9 store has no committed-history marker (M := D): the per-file
+  ;; marker program's cuts are not recovery cuts.
+  (setenv "FN_NATIVE_RECOVERY_FAULT" "marker-replaced:eio")
+  (check (eq :fault (handler-case (fnn-post-entry-fault nil)
+                      (fnn-store-fault () :fault)))
+         "a marker cut is not a recovery cut")
   (setenv "FN_NATIVE_RECOVERY_FAULT" "recover-barrier:kill")
   (check (eq :fault (handler-case (fnn-post-entry-fault nil)
                       (fnn-store-fault () :fault)))
@@ -312,12 +297,12 @@
   (check (eq (first *owner-run-fault*) :finish-durable)
          "owner run reads FN_NATIVE_POST_FAULT")
   (clear-selectors)
-  (fnn-command-owner "run" (list "/store" "0" "1" "8" "prepublish"))
-  (check (eq (first *owner-run-fault*) :record-staged-durable)
+  (fnn-command-owner "run" (list "/store" "0" "1" "8" "recordbarrier"))
+  (check (eq (first *owner-run-fault*) :log-written)
          "owner run's INJECT arms its +fnn-cli-faults+ entry"))
 
 (with-profile (:production)
-  (setenv "FN_NATIVE_POST_FAULT" "record-attempted:kill")
+  (setenv "FN_NATIVE_POST_FAULT" "log-fenced:kill")
   (setenv "FN_NATIVE_CONTROL_FAULT" "postpublish")
   ;; Unreachable through fnn-main (the gate); the readers still honour nothing.
   (check (null (run-normalized)) "a production owner arms nothing")
@@ -333,9 +318,8 @@
   (let* ((store (make-fnn-store :fault-point :finish-durable :fault-class :fnn-test-kill
                                 :fault-message "m"))
          (armed (fnn-owner-control-arm-fault store)))
-    ;; postpublish arms one point per commit route (+fnn-cli-faults+: the
-    ;; per-file route's record-attempted, the record log's log-fenced).
-    (check (equal (fnn-store-fault-point store) '(:record-attempted :log-fenced))
+    ;; postpublish arms the record log's log-fenced (+fnn-cli-faults+).
+    (check (eq (fnn-store-fault-point store) :log-fenced)
            "the control fault is armed for its submission")
     (fnn-owner-control-disarm-fault store armed)
     (check (and (eq (fnn-store-fault-point store) :finish-durable)

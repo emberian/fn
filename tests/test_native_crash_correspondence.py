@@ -80,12 +80,13 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         from tests.campaign import model_images, native_cuts
         native_cuts.verify_recovery_order()
         indices = [model_images.cut_index(cut.program, cut.model_name,
-                                          cut.occurrence)
+                                          cut.occurrence, cut.book)
                    for cut in native_cuts.RECOVERY_CUTS
                    if cut.model_name == "recover-barrier"]
         self.assertEqual(len(indices), 5)
         self.assertEqual(indices, sorted(set(indices)))
-        self.assert_ordered(function_body(self.io, "fnn-recover"), [
+        self.assertIn("(fnn-recover-log store)", function_body(self.io, "fnn-recover"))
+        self.assert_ordered(function_body(self.io, "fnn-recover-log"), [
             "(fnn-at store :recover-replayed)",
             "(fnn-observe store :recovery-barrier :ok)",
             '(fnn-at store (intern (format nil "RECOVER-BARRIER-~d" ordinal) :keyword))',
@@ -108,47 +109,32 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
             "(equal (fn-rcon-sn-io s operation result) (fn-sn-io s operation result))",
             concrete[start:concrete.index(":hints", start)])
 
-    def test_allocator_observations_and_cuts_follow_syscalls(self):
-        body = function_body(self.io, "fnn-advance-frontier")
-        self.assert_ordered(body, [
-            "(fnn-observe store :start-frontier)",
-            "(fnn-write-staged-at store stage contents :frontier-created :frontier-written)",
-            "(fnn-observe store :frontier-file :ok)",
-            "(fnn-at store :frontier-staged-durable)",
-            "(fnn-replace stage (fnn-frontier-path store))",
-            "(fnn-at store :frontier-replaced)",
-            "(fnn-observe store :frontier-replace :ok)",
-            "(fnn-at store :frontier-attempted)",
-            "(fnn-fsync-dir (fnn-store-root store))",
-            "(fnn-at store :frontier-durable)",
-            "(fnn-observe store :frontier-directory :ok)",
+    # The per-file allocator and record programs (fn-bs-frontier-program,
+    # fn-bs-record-program) went with format 8 (lane log-recovery-2,
+    # PKT-838); on the log the reservation and the record's place are
+    # fn-lg-reserve-program and fn-lg-order-program
+    # (books/store-log-route-programs.lisp; tools/native_program_check.py's
+    # log route arms read them step by step).
+    def test_reservation_observation_and_cut_follow_the_kernel(self):
+        self.assert_ordered(function_body(self.io, "fnn-log-reserve"), [
+            "(fnn-core 'fn-olr-consume-to ",
+            "(fnn-observe store :log-reserve)",
             "(fnn-at store :frontier-reserved)",
         ])
 
-    def test_record_observations_and_cuts_follow_syscalls(self):
-        body = function_body(self.io, "fnn-publish")
-        self.assert_ordered(body, [
-            "(fnn-write-staged-at store stage data :record-created :record-written)",
-            "(fnn-observe store :record-file :ok)",
-            "(fnn-at store :record-staged-durable)",
-            "(fnn-link stage final)",
-            "(fnn-at store :record-linked)",
-            "(fnn-observe store :record-link :ok)",
-            "(fnn-at store :record-attempted)",
-            "(fnn-fsync-dir (fnn-transactions store))",
-            "(fnn-at store :record-durable)",
-            "(fnn-observe store :record-directory :ok)",
+    def test_record_place_follows_its_batch_barrier(self):
+        self.assert_ordered(function_body(self.io, "fnn-log-publish"), [
+            "(fnn-log-take store record)",
+            "(fnn-log-commit-open-batch store)",
+            "(fnn-observe store :log-order)",
             "(fnn-at store :record-completing)",
-            "(fnn-unlink stage)",
-            "(fnn-at store :record-stage-unlinked)",
-            "(fnn-fsync-dir (fnn-staging store))",
-            "(fnn-at store :record-staging-cleaned)",
         ])
 
     def test_recovery_is_the_only_restart_entry(self):
         body = function_body(self.io, "fnn-open-live-store")
         self.assertIn("(fnn-recover store)", body)
-        recover = function_body(self.io, "fnn-recover")
+        self.assertIn("(fnn-recover-log store)", function_body(self.io, "fnn-recover"))
+        recover = function_body(self.io, "fnn-recover-log")
         self.assertEqual(len(re.findall(r"fnn-observe store :recovery-barrier :ok", recover)), 1)
         self.assertIn("(loop for barrier", recover)
         self.assertIn("for ordinal from 1", recover)

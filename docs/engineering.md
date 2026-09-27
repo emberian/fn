@@ -159,7 +159,7 @@ collects what this project has taught us about agents doing ACL2 proof work.
 integration, `specs/` the contracts, and `planning/` the decisions and evidence.
 The supplied RFC files remain the protocol references.
 
-For a first repository check, with Python 3.10 or newer:
+For a first repository check, with Python 3.11 or newer:
 
 ```sh
 make check

@@ -183,6 +183,18 @@ own exit codes (0, 1, 3, 4 unresolved, 2 usage) describe the server's state
 as seen over NNTP; its `--json` record says so with `"scope": "server"`, and
 its 3 never asks you to recover a local Store.
 
+#### Upload pace
+
+The node reads a connection one served step at a time, and ACL2 decides
+each step's read size (books/connection-budget.lisp,
+`fn-cbud-step-read-octets`; lane input-loop-2,
+[record](../planning/evidence/input-loop-2-2026-09-27.md)). On a listener
+with a step rate (`exposure-steps-per-second`, 64 in the public profile,
+per source address) a step reads at most 512 octets, so one address
+uploads at about 32 KiB per second. Without a rate (loopback, or the row
+set to 0) a step reads up to 4 KiB. A large POST to a public node is
+therefore slow, not refused; its size limit is the profile's.
+
 #### The watermark
 
 `read` remembers, per node and per group, the last article number it printed,
@@ -238,6 +250,33 @@ plain `poll`/`ack` refuse a bound consumer; unbound consumers are unchanged.
 The socket stays the operator's, so this confines an agent that holds only
 its account's password, not a process running as the node's owner
 ([Bound consumers](../specs/consumer-progress.md#bound-consumers)).
+
+**Waiting, withdrawals and `--json`** (lanes agent-wait and
+friend-blockers-2, 2026-09-27; [records](../planning/evidence/agent-wait-2026-09-27.md),
+[2](../planning/evidence/friend-blockers-2-2026-09-27.md)).
+`fn consumer wait CONTROL NAME CURSOR REPORT --timeout S` and
+`bound-wait CONTROL NAME SECRET-FILE CURSOR REPORT --timeout S` (S from 0
+to 3600) are the poll, repeated at commits: on an empty page the worker
+sleeps on the owner's commit signal, raised by every durable publication
+and by a stop, for at most the time left, then polls again. A wait writes
+nothing, so the at-least-once contract of the poll holds of every answer.
+Twelve waits are admitted at once (the control socket's sixteen workers
+less four kept for other requests); the thirteenth is refused `waiters`
+(exit 1). `register` bootstraps the node's consumer history itself when
+the owner refuses it `unbootstrapped`; `bootstrap` remains for an explicit
+first step. A refusal is printed with the owner's reason word (`consumer
+refused unknown-consumer`, `... credential`, `... scope`), and `consumer
+bind` of a name never registered is refused `unknown-consumer`.
+`fn consumer --json COMMAND ...` prints one JSON line (command, outcome,
+reason and, for a poll or wait, the report kind `article`, `withdrawn` or
+`empty` with its Message-ID); `fn consumer-article [--json] REPORT` decodes
+a report. An article withdrawn in the committed view (the view `430
+withdrawn` reads) is never served as content: the consumer gets a
+withdrawal report carrying only its Message-ID, at the article's place and
+again at the cancel's place when the article was already delivered.
+`tools/fn_agent.py` prints it as `{"kind": "withdrawn", ...}`;
+`tools/fn_consumer.py` notes it and acks. The contract is
+[Waiting](../specs/consumer-progress.md#waiting).
 
 If the state file itself cannot be written, the outcome word and the exit code
 are still the node's -- the read happened and the articles are out, and that is
@@ -839,9 +878,41 @@ authenticates at connect; tin then asks `CAPABILITIES` again and sees
 `POST`. tin writes `From:`/`Sender:` from the machine's name and refuses to
 post from a host without a domain (`Bad address in From: header`, `Invalid
 Sender:-header <user@host..>`): give it one (the build's `DOMAIN_NAME`, or
-`disable_sender=ON` in the site `tin.defaults`). A cancel from tin is an
-ordinary unsigned control article: the node files it in `control.cancel`
-and the target stays served (C2: an unsigned cancel carries no authority).
-The walk of 2026-09-26 (log in, read, follow up, post, cancel, all `240`) is
+`disable_sender=ON` in the site `tin.defaults`). The walk of 2026-09-26 (log in, read, follow up, post, cancel, all `240`) is
 `planning/evidence/sanding-2026-09-26.md`.
+
+**Cancelling one's own post** (SEC-006, lane newsreader-cancel,
+[record](../planning/evidence/newsreader-cancel-2026-09-26.md)). A served
+POST under a login gets an RFC 8315 `Cancel-Lock` the node writes inside the
+stored octets, keyed by the login (derived from the node's secret,
+`STORE/keys/node-secret.key`). A key-less cancel from the same login
+(Thunderbird writes none) gets the node's `Cancel-Key`, and at the cancel's
+publication the target is withdrawn: `430`, absent from OVER, still gone
+after a restart, and gone on a peer that receives both. A client's own
+lines (tin with its secret) are kept and decide as before. Another login's
+key-less cancel is filed (`240`) and withdraws nothing. The node files every
+cancel in `control.cancel`, which must exist.
+
+### slrn and pan
+
+Lanes reader-clients-2 and reader-compat (2026-09-27,
+[records](../planning/evidence/reader-clients-2-2026-09-27.md),
+[2](../planning/evidence/reader-compat-2026-09-27.md)) drove stock slrn
+1.0.3 and pan 0.162 over TLS with an invitation-code account. What the node
+now answers for them, each decided in ACL2: `LIST OVERVIEW.FMT` names
+`Bytes:` and `Lines:` (RFC 3977 section 8.4.2's compatibility form; slrn
+disabled XOVER on `:bytes`); `ARTICLE`/`HEAD` of a locally numbered article
+carry this node's `Xref` as the first header line (generated at serving,
+ahead of the stored octets, which are unchanged and stay a suffix of the
+reply) and `HDR`/`XHDR Xref` return its value, so a
+cross-post read in one group is read in the others; `LIST SUBSCRIPTIONS`
+answers 215 with the operator's default list (`group subscribe-default`) cut
+to the login's view, else the view's groups (slrn `--create` gave up on
+503); `NEWGROUPS` and `LIST ACTIVE.TIMES` list groups by the stamp of the
+configuration record that created them. Client properties, not node
+behaviour: slrn verifies no TLS certificate at all (its binary imports no
+verification call); pan loads trust only from `SSL_CERT_DIR`/`SSL_DIR`;
+pan cancels only an article whose `Sender` matches a profile; slrn probes
+posting with an empty `POST` at every connect, which the node refuses and
+logs.
 

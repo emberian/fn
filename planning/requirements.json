@@ -311,7 +311,8 @@
         "PRF-010",
         "PRF-067",
         "PRF-089",
-        "PRF-189"
+        "PRF-189",
+        "PRF-301"
       ],
       "verification": [
         "proof",
@@ -382,6 +383,7 @@
         "PRF-254",
         "PRF-255",
         "PRF-264",
+        "PRF-297",
         "PRF-272",
         "PRF-269",
         "PRF-282"
@@ -657,20 +659,15 @@
         "integration"
       ],
       "evidence": [
-        "books/store-history-marker.lisp",
-        "tests/acl2/store-history-marker-tests.lisp",
         "host/native/io.lisp",
         "host/native/owner.lisp",
-        "tests/test_native_history_marker.py",
         "planning/evidence/manifests/certify-20260924T230629Z-1648710.json",
         "planning/evidence/manifests/certify-20260924T232218Z-1792716.json",
         "planning/evidence/m5-history-lifetimes-2026-09-24.md",
-        "books/store-history-required.lisp",
-        "tests/acl2/store-history-required-tests.lisp",
-        "tests/test_native_history_required.py",
-        "planning/evidence/marker-required-2026-09-25.md"
+        "planning/evidence/marker-required-2026-09-25.md",
+        "books/store-log-segments.lisp"
       ],
-      "implementation_note": "committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites, and through fn-hmr-catch-up in fnn-recover after the recovery barriers and before the open returns (D31 case 2: a record durable without its marker is covered before any retry is answered as already stored). fnn-check-history-marker evaluates fn-hmr-open-verdict once against the reconstructed record count and faults with history-short-of-marker, marker-damaged, or, when the profile's history-marker field is required, marker-missing. store upgrade-profile --history-marker required is granted by fn-hmr-upgrade-verdict only over a marker counting the reconstructed history; init never writes it; the field never falls.",
+      "implementation_note": "Format 9 (the record log; lane log-recovery-2, PKT-838): M := D. A record is acknowledged only after its batch's barrier (fnn-log-fence), and the open's scan (fnn-recover-log, P-LOG-RECOVER) finds every acknowledged record or refuses by name. The per-file marker (committed-history.json, fnn-mark-committed, fnn-check-history-marker, books/store-history-marker.lisp, books/store-history-required.lisp) was deleted with the per-file layout; format 8 is refused at the profile's open. Before: committed-history.json (FNSM kind 3) holds the committed-record count. fnn-mark-committed writes it through fn-hm-after-commit after each record's transaction-directory barrier and before fnn-finish, at all three publish sites, and through fn-hmr-catch-up in fnn-recover after the recovery barriers and before the open returns (D31 case 2: a record durable without its marker is covered before any retry is answered as already stored). fnn-check-history-marker evaluates fn-hmr-open-verdict once against the reconstructed record count and faults with history-short-of-marker, marker-damaged, or, when the profile's history-marker field is required, marker-missing. store upgrade-profile --history-marker required is granted by fn-hmr-upgrade-verdict only over a marker counting the reconstructed history; init never writes it; the field never falls.",
       "note": "Not detected: loss of the marker with the files it covers in an unmarked store, an unacknowledged and never-answered record above the marker, whole-store replacement by an older valid copy (D14), and the configuration history and BP stores. A shared-lock reader may serve a record above the marker until the next writable open. The guarantee A <= M <= D is frozen (D31), not the syscall sequence."
     },
     {
@@ -3238,13 +3235,11 @@
         "scenario"
       ],
       "evidence": [
-        "books/byte-store-marker-candidates.lisp",
-        "tests/acl2/byte-store-marker-candidates-tests.lisp",
         "planning/evidence/publish-program-2026-09-26.md",
         "planning/evidence/publish-program-2026-09-26/measure.sh",
         "planning/evidence/publish-program-2026-09-26/post_n.py"
       ],
-      "implementation_note": "A served commit makes seven fsyncs (strace over `store probe`: 7.2 per commit with the reopen), two renames, one link and one unlink: the frontier's stage and root, the record's stage, transactions directory and staging directory, the marker's stage and root. On the pool `tank` (ZFS, about 90 percent full, no SLOG) each is one ZIL commit; the marker's two fence its stage inode and the root entry, and neither can be shared with a barrier that precedes the record's or follows the acknowledgement (PRF-169). The measured cost and the sound sharing are in the record; the reservation pulled into the completion window is PKT-441."
+      "implementation_note": "Format 9 (the record log; lane log-recovery-2, PKT-838): M := D. A record is acknowledged only after its batch's barrier (fnn-log-fence), and the open's scan (fnn-recover-log, P-LOG-RECOVER) finds every acknowledged record or refuses by name. The per-file marker (committed-history.json, fnn-mark-committed, fnn-check-history-marker, books/store-history-marker.lisp, books/store-history-required.lisp) was deleted with the per-file layout; format 8 is refused at the profile's open. Before: A served commit makes seven fsyncs (strace over `store probe`: 7.2 per commit with the reopen), two renames, one link and one unlink: the frontier's stage and root, the record's stage, transactions directory and staging directory, the marker's stage and root. On the pool `tank` (ZFS, about 90 percent full, no SLOG) each is one ZIL commit; the marker's two fence its stage inode and the root entry, and neither can be shared with a barrier that precedes the record's or follows the acknowledgement (PRF-169). The measured cost and the sound sharing are in the record; the reservation pulled into the completion window is PKT-441."
     },
     {
       "id": "HST-010",
@@ -3756,6 +3751,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-198",
+        "PRF-301",
+        "PRF-297",
         "PRF-282"
       ],
       "verification": [
@@ -4548,6 +4545,7 @@
         "PRF-285",
         "PRF-286",
         "PRF-287",
+        "PRF-298",
         "PRF-290",
         "PRF-291",
         "PRF-299",

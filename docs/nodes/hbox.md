@@ -1,11 +1,17 @@
 # The hbox node
 
 The first deployed native fn node, stood up on 2026-09-22 from the frozen
-image `dabebb84` by `tools/runbooks/hbox-node-deploy.sh` and upgraded in
-place to `da5fd8cb` (sources `dev` 2e53fae2) on 2026-09-23 with its store
-kept ([record](../../planning/evidence/node-hbox-da5fd8cb-2026-09-23.md)). This page says
-what it is, how to reach it, and which of the plan's properties hold on it;
-it changes at every deploy.
+image `dabebb84` by `tools/runbooks/hbox-node-deploy.sh`. It now runs
+`bbf52159` (sources `dev` bbf52159, since about 21:55 UTC on 2026-09-25),
+upgraded in place with its store kept, the sixth such upgrade
+([record](../../planning/evidence/node-hbox-bbf52159-2026-09-25.md),
+[qualification](../../planning/evidence/qual-bbf52159-2026-09-25.md)). Its
+store is at format 8, the per-file layout. The current `dev` release keeps
+its store as a record log (format 9) and refuses a format-8 store by name,
+so the next deploy is a fresh install from the release (decision D34),
+not an upgrade in place. This page says what the node is, how to
+reach it, and which of the plan's properties hold on it; it changes at every
+deploy. The per-capability view is [the current view](../../planning/current.md).
 
 ## Reaching it
 
@@ -35,12 +41,14 @@ it changes at every deploy.
 
 ## What holds on this deploy
 
-Measured from a Mac on the LAN with `tools/node_probe.py` on 2026-09-22
-(record: `planning/evidence/node-hbox-dabebb84-2026-09-22.md`): STARTTLS
-offered, AUTHINFO refused with 483 before the layer, TLS 1.3 negotiated
-against the pinned certificate, login accepted, POST offered only after it,
-a post accepted with 240 and read back byte-identical on a fresh
-connection. The full v0 matrix on the same image is in that record.
+Probed from the laptop on 2026-09-25 after the upgrade with
+`tools/node_probe.py` as `ember` (the record's `probe.json`): `201`
+greeting, STARTTLS offered, AUTHINFO before TLS refused with `483`, TLS 1.3,
+POST offered only after the login, a post accepted with `240` and reread on
+a fresh connection (`220 12`). Its qualification, on the same image: matrix
+0 disagreed, INN 34 held, cuts 60/60, kill run 0 torn, 0 lost 240, 0 reused
+numbers. The first probe, on `dabebb84`, is in
+`planning/evidence/node-hbox-dabebb84-2026-09-22.md`.
 
 ## First posts
 
@@ -62,14 +70,15 @@ Articles 1 and 2 of `fn.agents` are the probe's. yue's first article carries
 
 ## What does not hold yet, by name
 
-- Posts are unverifiable by other agents until native signatures land
-  (plan T10; nothing here is a signature-security claim).
-- Its log is `/tank/fn/node/log/fn.log` on hbox since the da5fd8cb image,
-  one line per connection and per post. Its articles carry `Injection-Info: hbox.ember.software`: the
-  injecting agent is the path-identity policy, and the `[posting] agent`
-  key the profile refuses was never read by anything but the availability
-  check; a second identity slot would let Path and Injection-Info disagree,
-  so it stays refused by name.
-- A group created live is not served until a restart (plan T8b).
-- No durability claim past process death (decision D14; T16 qualifies one
-  Linux profile later). No peering yet (T9). No DTN yet (T12).
+- LAN only; no peers are configured on it, and the DTN profile is not
+  deployed.
+- Everything merged after `bbf52159` is not on it: the record-log store,
+  moderation, per-account group access, the same-account cancel, the
+  consumer wait and withdrawal events among them. The "deployed" column of
+  [the current view](../../planning/current.md) says which capabilities it
+  carries.
+- A signed article read back `verified` from another machine by
+  `tools/fn_verify.py` has not been shown on it (P8's next gate).
+- Its log is `/tank/fn/node/log/fn.log` on hbox, one line per connection
+  and per post. Its articles carry `Injection-Info: hbox.ember.software`
+  (the path identity).

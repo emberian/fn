@@ -31,7 +31,6 @@
       "books/statement.lisp": 1,
       "books/store-budget-article.lisp": 1,
       "books/store-events.lisp": 2,
-      "books/store-history-required.lisp": 1,
       "books/transfer-journal-invariants.lisp": 3,
       "books/transfer-journal.lisp": 1
     }
