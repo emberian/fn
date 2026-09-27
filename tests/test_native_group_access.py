@@ -163,8 +163,9 @@ class NativeGroupAccessTests(unittest.TestCase):
         rows = []
         if status[:1] == "2":
             while True:
-                row = stream.readline().decode("ascii", "replace").rstrip("\r\n")
-                if row in (".", ""):
+                raw = stream.readline()
+                row = raw.decode("ascii", "replace").rstrip("\r\n")
+                if row == "." or raw == b"":
                     break
                 rows.append(row)
         return status, rows
