@@ -2236,7 +2236,7 @@ members."
   "ACL2's action for the commit's PHASE and EVENT (fn-ocs-commit-step), for
 the inline commit, which holds no gate phase (only at an idle owner: while a
 batch is in flight the gate admits no class that commits inline)."
-  (let ((action (first (fnn-core 'fn-ocs-commit-step phase event))))
+  (let ((action (fnn-core 'fn-ocs-commit-step phase event)))
     (unless (member action '(:barrier :complete :stop :none :fault))
       (fnn-fault "owner returned a malformed commit step ~a" action))
     action))

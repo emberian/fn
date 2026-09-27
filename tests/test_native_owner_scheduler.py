@@ -112,6 +112,12 @@ class SchedulerSourceTests(unittest.TestCase):
         inline = owner[owner.index("(defun fnn-owner-commit-queued-locked "):owner.index("(defun fnn-owner-commit-event ")]
         self.assertIn("fnn-owner-commit-step-action", inline)
         self.assertIn("'fn-ocs-commit-step", owner)
+        # fnn-core answers an mv function's FIRST value (the action): taking
+        # (first ...) of that keyword is a memory fault at nil in the saved
+        # image's compiled code (the operator post's inline commit, AW r4).
+        step = owner[owner.index("(defun fnn-owner-commit-step-action "):owner.index("(defun fnn-owner-commit-queued-locked ")]
+        self.assertIn("(fnn-core 'fn-ocs-commit-step phase event)", step)
+        self.assertNotIn("(first (fnn-core", step)
         commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
         self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
         self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)
