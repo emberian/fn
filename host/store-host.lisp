@@ -467,6 +467,18 @@
   (declare (xargs :mode :program))
   (fn-store-log-next-txid-loop records (nfix floor)))
 
+;; The same fold one record at a time (the format-9 open streams its records,
+;; host/native/io.lisp fnn-recover-log): (fn-store-log-next-txid-loop R ACC)
+;; is the steps over R in order, by its definition; and the join of two
+;; frontiers (the fold's, the checkpoint's, the log kernel's next).
+(defun fn-store-log-next-txid-step (record acc)
+  (declare (xargs :mode :program))
+  (fn-store-log-next-txid-loop (list record) (nfix acc)))
+
+(defun fn-store-log-next-txid-join (a b)
+  (declare (xargs :mode :program))
+  (max (nfix a) (nfix b)))
+
 ;; The record log's layout (books/store-log-route.lisp).
 (defun fn-store-log-segment-name () (fn-olr-segment-name))
 (defun fn-store-log-unit () (fn-olr-unit))

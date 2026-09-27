@@ -5154,7 +5154,8 @@ tree root), or stop the build."
 ;;; storage-log.md; lane w6-log-core).  One preallocated segment file.  ACL2
 ;;; decides every value the host writes or tests: the extent
 ;;; (fn-lg-extent-okp), the kernel at open from the segment's bytes
-;;; (fn-lgc-open over fn-lg-decode), recovery's zeroing range
+;;; (fnn-log-stream-segment: one entry at a time, books/store-log-stream.lisp),
+;;; recovery's zeroing range
 ;;; (fn-lg-recover-tail), each record's admission (fn-lgc-t-prepare: only at
 ;;; the kernel's next txid), the append's admission and octets
 ;;; (fn-lgc-append-admitsp, fn-lgc-frontier, fn-lgc-append-octets) and the
@@ -5163,8 +5164,8 @@ tree root), or stop the build."
 ;;; (books/store-log-kernel-concrete.lisp, lane per-record-state): the
 ;;; committed records' COUNT in place of their list, each transition proved
 ;;; to commute with the abstraction fn-lgc-of (KEYSTONE fn-lgc-run-refines-
-;;; the-kernel); the open's records go to the replay once (fnn-log-opened)
-;;; and are dropped.  The host reads, writes and fences, in the order of
+;;; the-kernel); the open's records are streamed to the replay one entry at a
+;;; time (fnn-log-stream-segment, KEYSTONE fn-lgw-run-is-the-open).  The host reads, writes and fences, in the order of
 ;;; fn-lg-recover-program, fn-lg-append-program and fn-lg-fence-program
 ;;; (tests/campaign/native_cuts.py LOG_CUTS, verify_log_cut_map).  No owner
 ;;; path calls these yet: lane w6-log-owner moves the commit onto them.
@@ -5174,9 +5175,6 @@ tree root), or stop the build."
 
 (defstruct (fnn-log (:constructor %make-fnn-log))
   path fd kernel unit max extent
-  ;; The records the open's decode found (fn-lgc-open's first value), held
-  ;; only until the open's replay takes them (fnn-log-take-opened).
-  (opened nil)
   ;; The open batch's members and entry octets (fn-olr-take's COUNT and
   ;; OCTETS), the operator's bounds (fn-owb-bmax / fn-owb-omax of the live
   ;; configuration; set by the owner), and the fenced members not yet
@@ -5265,49 +5263,62 @@ EXTENT octets, or refused."
              (fnn-fsync-dir (fnn-log-parent path))
              fd)))))
 
-(defun fnn-log-read-string (fd extent)
-  "The segment's EXTENT octets as a string, one character per octet: the
-concrete input of fn-lg-decode (its model is fn-lgd-octets)."
-  (fnn-posix () (sb-posix:lseek fd 0 sb-posix:seek-set))
-  (let ((data (fnn-read-exact-fd fd extent)))
-    (unless data (fnn-fault "log segment shorter than its extent"))
-    (map 'string #'code-char data)))
+(defun fnn-log-pread (fd offset count)
+  "COUNT octets of the segment at OFFSET (lseek, then read to completion); a
+segment shorter than the extent ACL2 asked within is a fault."
+  (fnn-posix () (sb-posix:lseek fd offset sb-posix:seek-set))
+  (or (fnn-read-exact-fd fd count)
+      (fnn-fault "log segment shorter than its extent")))
 
-(defun fnn-log-open-kernel (fd extent unit max &optional (genesis *fn-lg-genesis*))
-  "The segment's decode from GENESIS: (values RECORDS KERNEL), the concrete
-kernel (fn-lgc-open; fn-lgc-open-refines: fn-lg-open-kernel's committed
-records and its abstraction).  A scan that stops at an entry validating
-under another predecessor is a splice or a stale segment, refused by name
-(fn-lgs-chain-broken-string-p), never read as a torn tail."
-  (let ((text (fnn-log-read-string fd extent)))
-    (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
+(defun fnn-log-stream-segment (fd extent unit max genesis sink)
+  "The segment's decode from GENESIS as a stream of entries
+(books/store-log-stream.lisp): at the state's offset the header octets ACL2
+names (fn-lgw-header-len), the entry's length from them (fn-lgw-entry-len),
+that entry's octets (none: NIL), and ACL2's step (fn-lgw-step); a record the
+step takes goes to SINK as an octet vector and is not kept here.  One entry's
+octets at a time, never the segment (KEYSTONE fn-lgw-run-is-the-open: the
+records are the recovered kernel's committed records and the kernel is its
+fn-lgc-of).  An entry at the stop validating under another predecessor is a
+splice or a stale segment, refused by name (fn-lgw-broken, which is
+fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
+(fn-lgw-kernel)."
+  (let ((st (fnn-core 'fn-lgw-start genesis 1)))
+    (loop until (fnn-core 'fn-lgw-stop st) do
+      (let* ((pos (fnn-nat (fnn-core 'fn-lgw-pos st)))
+             (h (fnn-log-pread fd pos (fnn-nat (fnn-core 'fn-lgw-header-len st extent))))
+             (n (fnn-core 'fn-lgw-entry-len (fnn-octet-list h) st extent))
+             (e (and n (fnn-octet-list (fnn-log-pread fd pos (fnn-nat n))))))
+        (destructuring-bind (took record next) (fnn-call 'fn-lgw-step e st unit max extent)
+          (when took (funcall sink (fnn-octets record)))
+          (setq st next))))
+    (when (fnn-core 'fn-lgw-broken st)
       (error 'fnn-store-open-refusal
              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-    (destructuring-bind (records kernel)
-        (fnn-call 'fn-lgc-open text genesis unit max 1)
-      (values records kernel))))
+    (fnn-core 'fn-lgw-kernel st)))
 
-(defun fnn-log-take-opened (log)
-  "The open's records, once: the slot is cleared so that the kernel's life
-does not hold them."
-  (prog1 (fnn-log-opened log) (setf (fnn-log-opened log) nil)))
+(defun fnn-log-open-kernel (fd extent unit max &optional (genesis *fn-lg-genesis*))
+  "(values RECORDS KERNEL) of the segment (fnn-log-stream-segment collecting
+the records): for the log rig's oracle, never the open."
+  (let* ((records nil)
+         (ks (fnn-log-stream-segment fd extent unit max genesis
+                                     (lambda (r) (push r records)))))
+    (values (nreverse records) ks)))
 
-(defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*))
+(defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*) (sink #'identity))
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
-from GENESIS, then the tail [F, EXTENT) zeroed by one write and fenced.  The
+from GENESIS, each record handed to SINK as it is read (fnn-log-stream-
+segment), then the tail [F, EXTENT) zeroed by one write and fenced.  The
 kernel is R-related to the segment at log-recovered
 (fn-lg-recover-program-establishes-the-relation)."
-  (let ((fd (fnn-log-open-segment path extent unit)))
-    (multiple-value-bind (records ks)
-        (handler-case (fnn-log-open-kernel fd extent unit max genesis)
-          (error (e) (fnn-close fd) (error e)))
-      (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
-        (fnn-log-pwrite fd offset (fnn-make-octets count))
-        (fnn-log-at :log-truncated)
-        (fnn-log-fdatasync fd)
-        (fnn-log-at :log-recovered))
-      (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent
-                     :opened records))))
+  (let* ((fd (fnn-log-open-segment path extent unit))
+         (ks (handler-case (fnn-log-stream-segment fd extent unit max genesis sink)
+               (error (e) (fnn-close fd) (error e)))))
+    (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
+      (fnn-log-pwrite fd offset (fnn-make-octets count))
+      (fnn-log-at :log-truncated)
+      (fnn-log-fdatasync fd)
+      (fnn-log-at :log-recovered))
+    (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
 
 (defun fnn-log-prepare (log record)
   "The checked prepare: RECORD joins the open batch only at the kernel's
@@ -5414,14 +5425,12 @@ positive extent is kept: a re-run init completes, never truncates."
       (fnn-close fd))
     (fnn-init-cut store "init-journal-segment-fenced")))
 
-(defun fnn-log-open-read-only (path unit max &optional (genesis *fn-lg-genesis*))
+(defun fnn-log-open-read-only (path unit max &optional (genesis *fn-lg-genesis*) (sink #'identity))
   (let* ((extent (fnn-log-observed-extent path))
-         (fd (fnn-log-open-segment path extent unit t)))
-    (multiple-value-bind (records ks)
-        (handler-case (fnn-log-open-kernel fd extent unit max genesis)
-          (error (e) (fnn-close fd) (error e)))
-      (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
-                     :kernel ks :opened records))))
+         (fd (fnn-log-open-segment path extent unit t))
+         (ks (handler-case (fnn-log-stream-segment fd extent unit max genesis sink)
+               (error (e) (fnn-close fd) (error e)))))
+    (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent :kernel ks)))
 
 (defun fnn-log-batch-reset (log)
   (setf (fnn-log-count log) 0 (fnn-log-octets log) 0))
@@ -5578,43 +5587,33 @@ the next open completes); it is a known failure of the checkpoint."
   (let ((plan (fnn-core 'fn-lgs-open-plan (fnn-log-segment-names store) first)))
     (if (eq (first plan) :scan) (third plan) nil)))
 
-(defun fnn-log-scan-segments (store scan genesis)
+(defun fnn-log-scan-segments (store scan genesis sink)
   "Scan the segments SCAN (indices, the last the active one) from GENESIS,
-the chain carried from each segment's kernel to the next (fn-lgc-last).
-The closed segments are read only; the active one is recovered (a writable
-open: P-LOG-RECOVER) or read.  Returns (values RECORDS LOG): every scanned
-record in order, and the active segment's log."
+the chain carried from each segment's kernel to the next (fn-lgc-last), each
+record handed to SINK in order as it is read (fnn-log-stream-segment: one
+entry's octets at a time).  The closed segments are read only (the fold's step,
+books/store-log-segments.lisp fn-lgs-open-chain-records / -last over one
+segment, T8's subject: its records and last are the recovered kernel's, which
+the stream's are by fn-lgw-run-is-the-open); the active one is recovered (a
+writable open: P-LOG-RECOVER) or read.  Returns the active segment's log."
   (let ((unit (fnn-store-log-unit))
-        (max (fnn-store-log-max store))
-        (records nil))
+        (max (fnn-store-log-max store)))
     (loop for (k . more) on scan do
       (let ((path (fnn-segment-path-at store k)))
         (if more
-            ;; A closed segment: the fold's step (books/store-log-segments.lisp
-            ;; fn-lgs-open-chain-records and fn-lgs-open-chain-last over the
-            ;; one segment, T8's subject) after the splice check.
             (let* ((extent (fnn-log-observed-extent path))
                    (fd (fnn-log-open-segment path extent unit t)))
               (unwind-protect
-                   (let ((text (fnn-log-read-string fd extent)))
-                     (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
-                       (error 'fnn-store-open-refusal
-                              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-                     (push (mapcar #'fnn-octets
-                                   (fnn-core 'fn-lgs-open-chain-records (list text) genesis unit max))
-                           records)
-                     (setq genesis (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)))
+                   (setq genesis (fnn-core 'fn-lgc-last
+                                           (fnn-log-stream-segment fd extent unit max genesis sink)))
                 (fnn-close fd)))
           (progn
             (fnn-log-complete-rotation store path)
             (let ((log (if (fnn-store-writable store)
-                           (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis)
-                         (fnn-log-open-read-only path unit max genesis))))
+                           (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis sink)
+                         (fnn-log-open-read-only path unit max genesis sink))))
               (setf (fnn-log-index log) k)
-              (push (mapcar #'fnn-octets (fnn-log-take-opened log))
-                    records)
-              (return-from fnn-log-scan-segments
-                (values (apply #'append (nreverse records)) log)))))))
+              (return-from fnn-log-scan-segments log))))))
     (fnn-fault "the log's open plan named no segment")))
 
 (defun fnn-recover-log-from-log-checkpoint (store config-records suffix)
@@ -5668,18 +5667,27 @@ an interrupted drop."
                      :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
                                       (second plan) (first log-position))))
             (setq drop (third plan))
-            (multiple-value-bind (scanned log)
-                (fnn-log-scan-segments store (second plan)
-                                       (if log-position (second log-position) *fn-lg-genesis*))
+            ;; The records arrive one at a time (fnn-log-scan-segments): each
+            ;; is kept as its octet vector for the replay and folded into the
+            ;; next txid (fn-store-log-next-txid-step: one past the largest
+            ;; txid of every record the log holds, of every event kind).
+            (let* ((acc 0) (kept nil)
+                   (log (fnn-log-scan-segments
+                         store (second plan)
+                         (if log-position (second log-position) *fn-lg-genesis*)
+                         (lambda (record)
+                           (push record kept)
+                           (setq acc (fnn-core 'fn-store-log-next-txid-step
+                                               (fnn-octet-list record) acc)))))
+                   (scanned (nreverse kept)))
+              (setq kept nil)
               (fnn-log-batch-reset log)
-              ;; The frontier: one past the largest txid of every record the
-              ;; scan holds, of every event kind (ACL2's fn-store-log-next-
-              ;; txid), at least the checkpoint's frontier at S (the dropped
-              ;; segments' txids), and the log kernel caught up to it.
-              (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
-                                             (mapcar #'fnn-octet-list scanned)
-                                             (max floor (fnn-core 'fn-lgc-next-txid
-                                                                  (fnn-log-kernel log)))))))
+              ;; The frontier: the fold, at least the checkpoint's frontier at S
+              ;; (the dropped segments' txids) and the log kernel's next, and
+              ;; the log kernel caught up to it.
+              (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid-join
+                                             (fnn-core 'fn-store-log-next-txid-join acc floor)
+                                             (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log))))))
                 (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) next)
                       (fnn-store-log store) log
                       (fnn-store-frontier store) next))
