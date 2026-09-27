@@ -7931,6 +7931,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-ccco-coverage-headers-is-coverage-chain"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-ccco-observe-chain-is-observe-chain"
         },
         {

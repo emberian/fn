@@ -144,3 +144,38 @@
                      (list t (fn-store-event-sequence *ct-e1*) (fn-store-event-txid *ct-e1*)
                            (fn-store-event-generation *ct-e1*))))
 (assert-event (equal (fn-ccco-event-fields 'not-an-event) (list nil nil nil nil)))
+
+; fn-ccco-coverage-headers-is-coverage-chain (PKT-686): the coverage over
+; link headers is the reference's coverage.  Reachable witness: the decoded
+; two-link chain, with the open's memo and with none (compaction's case),
+; the complete antecedent (a sound memo) and the conclusion (:ok 5 5); the
+; headers carry no event.
+(assert-event (and (fn-ccco-memo-soundp *ct-memo*) (fn-ccco-memo-soundp nil)))
+(assert-event (equal (fn-ccco-coverage-headers *ct-chain* 5 6 *ct-bound* nil)
+                     (fn-ccc-coverage-chain *ct-chain* 5 6 *ct-bound*)))
+(assert-event (equal (fn-ccco-coverage-headers *ct-chain* 5 6 *ct-bound* *ct-memo*)
+                     '(:ok 5 5)))
+(assert-event (equal (fn-ccco-decode-headers *ct-chain* *ct-bound* nil)
+                     (list (list 1 (fn-ccco-link-header *ct-link-b*) *ct-db*)
+                           (list 0 (fn-ccco-link-header *ct-link-a*) *ct-da*))))
+(assert-event (null (fn-ccc-events (fn-ccco-link-header *ct-link-b*))))
+; Each refusal agrees: a torn link (integrity), an unchained pair (chain), a
+; count below the boundary (coverage).
+(assert-event (equal (fn-ccco-coverage-headers *ct-chain-torn* 5 6 *ct-bound* nil)
+                     '(:error :integrity)))
+(assert-event (equal (fn-ccco-coverage-headers (list (list 1 *ct-fb* *ct-db*)) 5 6 *ct-bound* nil)
+                     (fn-ccc-coverage-chain (list (list 1 *ct-fb* *ct-db*)) 5 6 *ct-bound*)))
+(assert-event (equal (fn-ccco-coverage-headers (list (list 1 *ct-fb* *ct-db*)) 5 6 *ct-bound* nil)
+                     '(:error :chain)))
+(assert-event (equal (fn-ccco-coverage-headers *ct-chain* 4 6 *ct-bound* nil)
+                     (fn-ccc-coverage-chain *ct-chain* 4 6 *ct-bound*)))
+(assert-event (equal (fn-ccco-coverage-headers *ct-chain* 4 6 *ct-bound* nil)
+                     '(:error :coverage)))
+; Hypothesis removal (fn-ccco-memo-soundp): under the lying memo the
+; conclusion fails, so the keystone without it is false.
+(assert-event (not (fn-ccco-memo-soundp *ct-memo-lie*)))
+(assert-event (not (equal (fn-ccco-coverage-headers *ct-chain* 5 6 *ct-bound* *ct-memo-lie*)
+                          (fn-ccc-coverage-chain *ct-chain* 5 6 *ct-bound*))))
+(local (must-fail (defthm ct-coverage-headers-without-sound-memo
+                    (equal (fn-ccco-coverage-headers framed count frontier max memo)
+                           (fn-ccc-coverage-chain framed count frontier max)))))
