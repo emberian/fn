@@ -26,8 +26,13 @@ Families (each bounded and logged):
                 headers to depth, duplicate Message-IDs, a Path loop
   body          dot-stuffing edge cases, no terminator then close, a big body
                 fed one octet per second then abandoned
-  connection    capacity+50 half-open sockets, slowloris on AUTHINFO,
-                garbage on the TLS port, STARTTLS then plain
+  connection    capacity+50 half-open sockets, slowloris on AUTHINFO
+  tls           (with a tls_port + self-signed pair) garbage before and mid
+                handshake, a hello with no cipher, TLS 1.0/1.1 only, an
+                oversized record, plain NNTP on 563, STARTTLS-then-plain-then-
+                STARTTLS, STARTTLS-then-garbage, an unsolicited client cert,
+                an unserved SNI, alert and close_notify floods, a TLS-layer
+                slowloris, and a measured handshake-cost burst
   pipelining    a thousand commands in one write, a TAKETHIS storm
   transit       CHECK for a million ids, IHAVE with a 2 GiB announced size
   bp            (with --bp-image) raw TCPCL/contact garbage, a never-completing
@@ -48,6 +53,7 @@ import re
 import shutil
 import signal
 import socket
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -103,6 +109,9 @@ class Node:
         self.use_scope = use_scope
         self.mem = mem
         self.port = free_port()
+        self.tls_port = None       # set by setup(tls=True): the 563-like listener
+        self.certificate = None
+        self.private_key = None
         self.store = base / "store"
         self.config = base / "fn.toml"
         self.log = base / "fn.log"
@@ -120,13 +129,34 @@ class Node:
                 args, result.returncode, result.stderr.decode("utf-8", "replace")))
         return result
 
-    def setup(self, exposure):
+    def _make_certificate(self):
+        """A self-signed CN=localhost RSA pair, exactly as tests/test_native_
+        starttls.py builds one; used both to configure the node and to trust it
+        from the clean-TLS probe."""
+        self.certificate = self.base / "server-certificate.pem"
+        self.private_key = self.base / "server-private-key.pem"
+        subprocess.run(
+            ["openssl", "req", "-x509", "-newkey", "rsa:2048",
+             "-keyout", str(self.private_key), "-out", str(self.certificate),
+             "-sha256", "-days", "1", "-nodes", "-subj", "/CN=localhost"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            timeout=60, check=True)
+
+    def setup(self, exposure, tls=False):
         self.command(["store", self.store, "init", "fn.test"])
+        listener = ('[listener]\nhost = "127.0.0.1"\nport = {}\n'.format(self.port))
+        if tls:
+            self._make_certificate()
+            self.tls_port = free_port()
+            # tls_cert/tls_key enable STARTTLS on the plain port and, with
+            # tls_port, an implicit-TLS listener (specs/nntp.md; SCN-092).
+            listener += ('tls_cert = "{}"\ntls_key = "{}"\ntls_port = {}\n'.format(
+                self.certificate, self.private_key, self.tls_port))
         self.config.write_text(
-            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[store]\npath = "{}"\n'.format(self.store) + listener +
             '[control]\npath = "{}"\n[log]\npath = "{}"\n'
             '[auth]\nrequired = false\nprotected_only = false\npath = "{}"\n'.format(
-                self.store, self.port, self.base / "control.sock", self.log,
+                self.base / "control.sock", self.log,
                 self.base / "auth.toml"), encoding="ascii")
         self.command(["operator", self.config, "principal", "set-password", LOGIN],
                      stdin=(PASSWORD + "\n" + PASSWORD + "\n").encode())
@@ -142,18 +172,49 @@ class Node:
         err = open(self.stderr, "ab")
         self.process = subprocess.Popen(argv, cwd=os.getcwd(),
                                         stdout=subprocess.PIPE, stderr=err)
-        # Read the readiness line ("LISTENING <port>").
+        # Read the readiness lines: "LISTENING <port>" and, when a tls_port is
+        # configured, "LISTENING-TLS <port>" after it.
         deadline = time.monotonic() + 60
+        seen_plain = False
         while time.monotonic() < deadline:
             line = self.process.stdout.readline()
             if not line:
                 raise RuntimeError("owner exited before LISTENING: {}".format(
                     self.stderr.read_text(errors="replace")[-2000:]))
-            if line.startswith(b"LISTENING "):
+            if line.startswith(b"LISTENING-TLS "):
+                got = int(line.split()[1])
+                if self.tls_port is not None and got != self.tls_port:
+                    raise RuntimeError("LISTENING-TLS {} != {}".format(got, self.tls_port))
                 break
+            if line.startswith(b"LISTENING "):
+                seen_plain = True
+                if self.tls_port is None:
+                    break
         else:
             raise RuntimeError("no LISTENING line")
+        if self.tls_port is not None and not seen_plain:
+            raise RuntimeError("LISTENING-TLS without a plain LISTENING line")
         self.pid = self._owner_pid()
+
+    def cpu_seconds(self):
+        """The owner's cumulative CPU time (utime+stime) in seconds, from
+        /proc/<pid>/stat fields 14 and 15 over SC_CLK_TCK."""
+        try:
+            data = (Path("/proc") / str(self.pid) / "stat").read_text()
+            fields = data[data.rindex(")") + 2:].split()
+            ticks = int(fields[11]) + int(fields[12])  # utime, stime (0-based 13,14)
+            return ticks / os.sysconf("SC_CLK_TCK")
+        except (OSError, ValueError, IndexError):
+            return None
+
+    def thread_count(self):
+        try:
+            for line in (Path("/proc") / str(self.pid) / "status").read_text().splitlines():
+                if line.startswith("Threads:"):
+                    return int(line.split()[1])
+        except OSError:
+            return None
+        return None
 
     def _owner_pid(self):
         """The fn owner pid.  Under a scope the Popen child is systemd-run's
@@ -757,6 +818,385 @@ def family_transit(node, evidence):
     return rows, None
 
 
+# --------------------------------------------------------------------------
+# The TLS family (SCN-147): the surface a public node exposes on 563 (implicit
+# TLS) and 119 (STARTTLS).  Raw bytes are hand-built so the refusal under test
+# is the server's and never the client library's own protocol policy; full
+# handshakes use ssl against the node's own self-signed certificate.
+
+def _tls_record(content_type, body, version=b"\x03\x03"):
+    return bytes([content_type]) + version + len(body).to_bytes(2, "big") + body
+
+
+def _client_hello(legacy_version, cipher_suites, extensions=b"",
+                  record_version=b"\x03\x01"):
+    """One ClientHello record.  CIPHER_SUITES is a list of 2-octet suites;
+    an empty list is a hello that offers no cipher at all."""
+    rnd = bytes((i * 7 + 3) & 0xFF for i in range(32))
+    ciphers = b"".join(cipher_suites)
+    body = (legacy_version + rnd + b"\x00"                      # empty session id
+            + len(ciphers).to_bytes(2, "big") + ciphers
+            + b"\x01\x00"                                       # null compression
+            + len(extensions).to_bytes(2, "big") + extensions)
+    handshake = b"\x01" + len(body).to_bytes(3, "big") + body  # ClientHello
+    return b"\x16" + record_version + len(handshake).to_bytes(2, "big") + handshake
+
+
+def _alert(level, description):
+    return _tls_record(0x15, bytes([level, description]))
+
+
+def _decode_reply(back):
+    """A short label for the first record the server sent back (a TLS alert,
+    an NNTP line, a close, or a timeout tag)."""
+    if isinstance(back, str):
+        return back
+    if not back:
+        return "<closed>"
+    if back[0] == 0x15 and len(back) >= 7:          # alert record
+        return "alert level={} desc={}".format(back[5], back[6])
+    if back[0] == 0x16:
+        return "handshake record"
+    text = back[:48].decode("ascii", "replace").strip()
+    return text or "<{}-bytes>".format(len(back))
+
+
+def _raw_probe(port, payload, hold=0.0, source=None, timeout=8):
+    """Send raw bytes to PORT, optionally hold the socket open, read one reply.
+    Returns (label, seconds, raw_back)."""
+    t0 = time.monotonic()
+    src = (source, 0) if source else None
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout,
+                                      source_address=src) as sock:
+            sock.settimeout(timeout)
+            sock.sendall(payload)
+            if hold:
+                time.sleep(hold)
+            try:
+                back = sock.recv(4096)
+            except (socket.timeout, OSError):
+                back = "<timeout>"
+    except OSError as error:
+        return "connect-" + type(error).__name__, round(time.monotonic() - t0, 3), b""
+    return _decode_reply(back), round(time.monotonic() - t0, 3), \
+        (back if isinstance(back, bytes) else b"")
+
+
+def _tls_client_context(node):
+    context = ssl.create_default_context(cafile=str(node.certificate))
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
+def _tls_handshake_then_date(node, context=None, server_hostname="localhost",
+                             source=None, timeout=15):
+    """A full implicit-TLS handshake on the tls_port, then a DATE round trip.
+    Returns (ok, greeting, date_reply)."""
+    context = context or _tls_client_context(node)
+    src = (source, 0) if source else None
+    try:
+        with socket.create_connection(("127.0.0.1", node.tls_port), timeout=timeout,
+                                      source_address=src) as raw:
+            raw.settimeout(timeout)
+            with context.wrap_socket(raw, server_hostname=server_hostname) as tls:
+                tls.settimeout(timeout)
+                buffered = b""
+                while b"\r\n" not in buffered:
+                    piece = tls.recv(4096)
+                    if not piece:
+                        return False, b"", b""
+                    buffered += piece
+                greeting, buffered = buffered.split(b"\r\n", 1)
+                tls.sendall(b"DATE\r\n")
+                while b"\r\n" not in buffered:
+                    piece = tls.recv(4096)
+                    if not piece:
+                        break
+                    buffered += piece
+                date = buffered.split(b"\r\n", 1)[0]
+                return (greeting.startswith((b"200 ", b"201 ")),
+                        greeting + b"\r\n", date + b"\r\n")
+    except (OSError, ssl.SSLError) as error:
+        return False, ("err-" + type(error).__name__).encode(), b""
+
+
+def _system_cpu_seconds():
+    """Whole-box BUSY CPU seconds: user+nice+system+irq+softirq+steal from
+    /proc/stat, excluding idle and iowait (fields 4 and 5)."""
+    try:
+        f = Path("/proc/stat").read_text().splitlines()[0].split()
+        busy = [f[1], f[2], f[3], f[6], f[7]] + (f[8:9] if len(f) > 8 else [])
+        return sum(int(x) for x in busy) / os.sysconf("SC_CLK_TCK")
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def family_tls(node, evidence):
+    rows = {}
+    defects = []            # [class, detail], surfaced through the run()'s hook
+    if node.tls_port is None:
+        return {"skipped": "no tls_port configured"}, None
+
+    # -- 1. Bytes that are not a handshake -----------------------------------
+    raw_cases = {
+        "garbage before handshake": bytes((i * 53 + 7) & 0xFF for i in range(64)),
+        "garbage mid handshake": b"\x16\x03\x01\x00\x30" + bytes(
+            (i * 31) & 0xFF for i in range(20)),
+        "record length 16 KiB + 1": b"\x16\x03\x03\x40\x01" + b"A" * 200,
+        "no cipher suites offered": _client_hello(b"\x03\x03", []),
+        "only NULL cipher": _client_hello(b"\x03\x03", [b"\x00\x00"]),
+        "TLS 1.0 only": _client_hello(b"\x03\x01", [b"\xc0\x13", b"\x00\x2f"]),
+        "TLS 1.1 only": _client_hello(b"\x03\x02", [b"\xc0\x13", b"\x00\x2f"]),
+        "plain NNTP on tls port": b"CAPABILITIES\r\n",
+        "alert flood": _alert(1, 90) * 200,
+        "close_notify storm": _alert(1, 0) * 500,
+    }
+    saved = 0
+    for name, payload in raw_cases.items():
+        label, seconds, back = _raw_probe(node.tls_port, payload,
+                                          source="127.0.9.10")
+        rows[name] = {"reply": label, "seconds": seconds}
+        if b"101 " in back or b"200 " in back:
+            defects.append(("wrong-reply",
+                            "tls_port answered NNTP to {!r}: {}".format(name, label)))
+        (evidence / "tls-raw-{}.bytes".format(saved)).write_bytes(payload[:8192])
+        rows[name]["saved"] = "tls-raw-{}.bytes".format(saved)
+        saved += 1
+
+    # -- 2. STARTTLS abuse on the plain port ---------------------------------
+    def starttls_upgrade(sock):
+        sock.settimeout(15)
+        greeting = recv_line(sock, 15)
+        if not greeting[:3] in (b"200", b"201"):
+            return greeting
+        sock.sendall(b"STARTTLS\r\n")
+        return recv_line(sock, 15)
+
+    # STARTTLS then a full handshake, a plain command, then STARTTLS again.
+    try:
+        with node.connect(source="127.0.9.11", timeout=15) as sock:
+            r382 = starttls_upgrade(sock)
+            if r382.startswith(b"382 "):
+                context = _tls_client_context(node)
+                with context.wrap_socket(sock, server_hostname="localhost") as tls:
+                    tls.settimeout(15)
+                    tls.sendall(b"DATE\r\n")
+                    date = tls.recv(256)
+                    tls.sendall(b"STARTTLS\r\n")
+                    second = tls.recv(256)
+                    rows["STARTTLS then DATE then STARTTLS again"] = {
+                        "382": r382.decode("ascii", "replace").strip()[:40],
+                        "date": _decode_reply(date),
+                        "second_starttls": _decode_reply(second)}
+                    if not second.startswith(b"502 "):
+                        defects.append(("wrong-reply",
+                                        "a second STARTTLS was not 502: " + _decode_reply(second)))
+            else:
+                rows["STARTTLS then DATE then STARTTLS again"] = {
+                    "382": r382.decode("ascii", "replace").strip()[:40]}
+    except (OSError, ssl.SSLError) as error:
+        rows["STARTTLS then DATE then STARTTLS again"] = {"error": type(error).__name__}
+
+    # STARTTLS then garbage instead of a ClientHello.
+    try:
+        with node.connect(source="127.0.9.12", timeout=15) as sock:
+            r382 = starttls_upgrade(sock)
+            reply = "<no-382>"
+            if r382.startswith(b"382 "):
+                sock.sendall(bytes((i * 91 + 5) & 0xFF for i in range(80)))
+                try:
+                    back = sock.recv(256)
+                except (socket.timeout, OSError):
+                    back = b"<timeout>"
+                reply = _decode_reply(back)
+            rows["STARTTLS then garbage"] = {
+                "382": r382.decode("ascii", "replace").strip()[:40], "after": reply}
+    except (OSError, ssl.SSLError) as error:
+        rows["STARTTLS then garbage"] = {"error": type(error).__name__}
+
+    # -- 3. Handshakes that complete but with hostile parameters -------------
+    # An unsolicited client certificate (the server requests none).
+    client_context = _tls_client_context(node)
+    try:
+        client_context.load_cert_chain(str(node.certificate), str(node.private_key))
+    except ssl.SSLError:
+        pass
+    ok, greeting, date = _tls_handshake_then_date(node, context=client_context)
+    rows["unsolicited client certificate"] = {
+        "ok": ok, "greeting": greeting.decode("ascii", "replace").strip()[:40],
+        "date": date.decode("ascii", "replace").strip()[:40]}
+
+    # SNI for a name the node does not serve.
+    ok, greeting, date = _tls_handshake_then_date(node, server_hostname="not.served.example")
+    rows["SNI for an unserved name"] = {
+        "ok": ok, "greeting": greeting.decode("ascii", "replace").strip()[:40]}
+
+    # -- 4. Does a failed handshake count against per-address / capacity? -----
+    # Fill more than the per-address limit (8) with FAILED handshakes from one
+    # source, then attempt a clean full handshake from the same source.
+    src = "127.0.9.20"
+    for _ in range(12):
+        _raw_probe(node.tls_port, raw_cases["garbage before handshake"], source=src)
+    ok_tls, greeting, _ = _tls_handshake_then_date(node, source=src)
+    # And a clean plaintext session from the same source (per-address shared).
+    plain_ok = False
+    try:
+        with node.connect(source=src, timeout=15) as sock:
+            sock.settimeout(15)
+            recv_line(sock, 10)
+            sock.sendall(b"DATE\r\n")
+            plain_ok = recv_line(sock, 10).startswith(b"111 ")
+    except OSError:
+        plain_ok = False
+    counts = not (ok_tls and plain_ok)
+    rows["failed handshake vs per-address limit"] = {
+        "failed_handshakes_from_source": 12, "per_address_limit": 8,
+        "clean_tls_after": ok_tls, "clean_plain_after": plain_ok,
+        "failed_handshake_counts_against_limit": counts,
+        "note": ("failed handshakes are NOT metered: PRF-162 orders SSL_accept "
+                 "before fn-owner-exposure-open, so a handshake that never "
+                 "completes takes no connection slot and no per-address credit")}
+    if not ok_tls and not plain_ok:
+        defects.append(("wrong-reply",
+                        "clean traffic from a source that only sent failed "
+                        "handshakes was itself refused"))
+
+    # -- 5. TLS-layer slowloris: half-open handshakes held open --------------
+    held = []
+    rss0 = node.rss_bytes()
+    threads0 = node.thread_count()
+    for n in range(200):
+        try:
+            sock = socket.create_connection(("127.0.0.1", node.tls_port), timeout=10,
+                                            source_address=("127.0.9.{}".format(
+                                                30 + (n % 200)), 0))
+            sock.sendall(b"\x16\x03\x01\x00\x05\x01\x00\x00\x01")  # a truncated ClientHello
+            held.append(sock)
+        except OSError:
+            break
+    time.sleep(2)
+    rss_peak = node.rss_bytes()
+    threads_peak = node.thread_count()
+    # A legitimate reader (plain port) must still be served during the flood.
+    served_during = False
+    try:
+        with node.connect(source="127.0.9.250", timeout=15) as sock:
+            sock.settimeout(15)
+            recv_line(sock, 10)
+            sock.sendall(b"DATE\r\n")
+            served_during = recv_line(sock, 10).startswith(b"111 ")
+    except OSError:
+        served_during = False
+    for sock in held:
+        try:
+            sock.close()
+        except OSError:
+            pass
+    rows["TLS slowloris half-open x200"] = {
+        "held": len(held), "rss_before": rss0, "rss_peak": rss_peak,
+        "threads_before": threads0, "threads_peak": threads_peak,
+        "legit_reader_served_during": served_during}
+    if not served_during:
+        defects.append(("wrong-reply",
+                        "a legitimate reader was not served during a TLS "
+                        "half-open flood"))
+
+    # -- 6. Renegotiation / KeyUpdate ----------------------------------------
+    # OpenSSL 3 disables client-initiated TLS 1.2 renegotiation and TLS 1.3
+    # removed it; a raw renegotiation ClientHello inside an established session
+    # is application data to the record layer, so the honest attempt is: send a
+    # ClientHello record on a fresh connection AFTER one byte, and a HelloRequest.
+    label, seconds, _ = _raw_probe(
+        node.tls_port,
+        _client_hello(b"\x03\x03", [b"\xc0\x2f"]) + _client_hello(b"\x03\x03", [b"\xc0\x2f"]),
+        source="127.0.9.240")
+    rows["back-to-back ClientHello (renegotiation-shaped)"] = {"reply": label, "seconds": seconds}
+    rows["KeyUpdate flood"] = {
+        "reply": "not driven",
+        "note": ("a TLS 1.3 KeyUpdate is an encrypted post-handshake record; it "
+                 "cannot be forged with the standard library without the session "
+                 "keys, so this is left to an openssl s_client harness")}
+
+    # -- 7. Handshake CPU cost: a measured batch, then a 30 s burst ----------
+    ncpu0, box0, w0 = node.cpu_seconds(), _system_cpu_seconds(), time.monotonic()
+    ok_count = 0
+    for _ in range(300):
+        ok, _, _ = _tls_handshake_then_date(node)
+        if ok:
+            ok_count += 1
+    ncpu1, box1, w1 = node.cpu_seconds(), _system_cpu_seconds(), time.monotonic()
+    cost = {"handshakes": ok_count}
+    if ok_count and ncpu0 is not None and ncpu1 is not None:
+        cost["node_cpu_ms_per_handshake"] = round((ncpu1 - ncpu0) / ok_count * 1000, 3)
+    if ok_count and box0 is not None and box1 is not None:
+        cost["box_cpu_ms_per_handshake"] = round((box1 - box0) / ok_count * 1000, 3)
+    cost["wall_ms_per_handshake"] = round((w1 - w0) / ok_count * 1000, 3) if ok_count else None
+    rows["handshake cost (300 sequential)"] = cost
+
+    # A 30 s burst from a bounded worker pool: sustained handshakes as fast as
+    # the pool can drive, node CPU and thread peak observed.
+    stop = time.monotonic() + 30
+    burst = {"ok": 0, "fail": 0}
+    fail_kinds = {}
+    lock = threading.Lock()
+    peak = {"rss": 0, "threads": 0}
+
+    def worker():
+        while time.monotonic() < stop:
+            ok, greeting, _ = _tls_handshake_then_date(node, timeout=10)
+            with lock:
+                if ok:
+                    burst["ok"] += 1
+                else:
+                    burst["fail"] += 1
+                    kind = greeting.decode("ascii", "replace") if greeting.startswith(b"err-") \
+                        else "no-greeting"
+                    fail_kinds[kind] = fail_kinds.get(kind, 0) + 1
+
+    ncpu0, box0 = node.cpu_seconds(), _system_cpu_seconds()
+    pool = [threading.Thread(target=worker) for _ in range(48)]
+    for t in pool:
+        t.start()
+    while time.monotonic() < stop:
+        r, n = node.rss_bytes(), node.thread_count()
+        if r:
+            peak["rss"] = max(peak["rss"], r)
+        if n:
+            peak["threads"] = max(peak["threads"], n)
+        time.sleep(0.25)
+    for t in pool:
+        t.join(15)
+    ncpu1, box1 = node.cpu_seconds(), _system_cpu_seconds()
+    done = burst["ok"] + burst["fail"]
+    burst_row = {"completed": burst["ok"], "failed": burst["fail"],
+                 "attempts": done, "fail_kinds": fail_kinds,
+                 "completed_per_second": round(burst["ok"] / 30.0, 1),
+                 "attempts_per_second": round(done / 30.0, 1),
+                 "rss_peak": peak["rss"], "threads_peak": peak["threads"]}
+    if done and ncpu0 is not None and ncpu1 is not None:
+        burst_row["node_cpu_ms_per_attempt"] = round((ncpu1 - ncpu0) / done * 1000, 3)
+    if burst["ok"] and ncpu0 is not None and ncpu1 is not None:
+        burst_row["node_cpu_ms_per_completed"] = round((ncpu1 - ncpu0) / burst["ok"] * 1000, 3)
+    if done and box0 is not None and box1 is not None:
+        burst_row["box_cpu_ms_per_attempt"] = round((box1 - box0) / done * 1000, 3)
+    rows["handshake burst (30 s, 48-way)"] = burst_row
+
+    # -- 8. The clean TLS probe still answers after all the abuse ------------
+    ok, greeting, date = _tls_handshake_then_date(node)
+    rows["clean TLS probe after abuse"] = {
+        "ok": ok, "greeting": greeting.decode("ascii", "replace").strip()[:40],
+        "date": date.decode("ascii", "replace").strip()[:40]}
+    if not ok:
+        defects.append(("owner-death-like",
+                        "the implicit-TLS listener stopped answering after the family"))
+
+    rows["_defects"] = defects
+    return rows, None
+
+
 TCPCL_MAGIC = b"dtn!"
 
 
@@ -981,13 +1421,16 @@ def run(argv=None):
                         help="do not wrap the owner in systemd-run (a laptop rehearsal)")
     parser.add_argument("--capacity", type=int, default=31)
     parser.add_argument("--families", default="malformed,header,body,connection,"
-                        "pipelining,transit,bp")
+                        "pipelining,transit,tls,bp")
     args = parser.parse_args(argv)
 
     args.evidence.mkdir(parents=True, exist_ok=True)
     use_scope = (not args.no_scope) and shutil.which("systemd-run") is not None
     report = {"started": now(), "image": str(args.image), "scope": use_scope,
               "families": {}, "oracle": {}, "defects": []}
+
+    selected = [n.strip() for n in args.families.split(",")]
+    want_tls = "tls" in selected
 
     base = Path(tempfile.mkdtemp(prefix="fn-hostile-"))
     node = Node(base, args.image, use_scope, args.mem)
@@ -1000,8 +1443,9 @@ def run(argv=None):
             ("exposure-idle-seconds", "20"),
             ("exposure-auth-failures", "10"),
             ("anonymous", "open"),
-        ])
+        ], tls=want_tls)
         node.start()
+        report["tls_port"] = node.tls_port
         oracle = Oracle(node, args.evidence)
         report["heap_figure_bytes"] = oracle.heap_figure
 
@@ -1012,6 +1456,7 @@ def run(argv=None):
             "connection": lambda: family_connection(node, args.evidence, args.capacity),
             "pipelining": lambda: family_pipelining(node, args.evidence),
             "transit": lambda: family_transit(node, args.evidence),
+            "tls": lambda: family_tls(node, args.evidence),
         }
         for name in args.families.split(","):
             name = name.strip()
@@ -1022,15 +1467,19 @@ def run(argv=None):
                 rows, worst = families[name]()
             except Exception as error:  # a family bug must not lose the run
                 rows, worst = {"harness-error": repr(error)}, None
+            # A family may surface its own assessed defects through rows["_defects"];
+            # they join the generic oracle verdict (liveness/memory/fault/slow).
+            family_defects = rows.pop("_defects", []) if isinstance(rows, dict) else []
             report["families"][name] = rows
             verdict = oracle.check(name, worst)
+            verdict["defects"] = list(verdict["defects"]) + list(family_defects)
             report["oracle"][name] = verdict
             for kind, detail in verdict["defects"]:
                 report["defects"].append({"family": name, "class": kind, "detail": detail})
             print("   {} -> {}".format(name, "OK" if not verdict["defects"]
                                        else [d[0] for d in verdict["defects"]]), flush=True)
         # BP runs its own bp-node process and oracle (a separate listener).
-        if "bp" in [n.strip() for n in args.families.split(",")]:
+        if "bp" in selected:
             print("== family bp {}".format(now()), flush=True)
             try:
                 rows, bp_defects = family_bp(args.image, args.evidence, use_scope, args.mem)
@@ -1052,8 +1501,8 @@ def run(argv=None):
             shutil.rmtree(base)
         except OSError:
             pass
-    severity = {"owner-death": 0, "fault": 1, "unbounded-memory": 2,
-                "wrong-reply": 3, "slow": 4}
+    severity = {"owner-death": 0, "owner-death-like": 0, "fault": 1,
+                "unbounded-memory": 2, "wrong-reply": 3, "slow": 4}
     report["defects"].sort(key=lambda d: severity.get(d["class"], 9))
     print("HOSTILE-REPORT " + json.dumps({"defects": report["defects"]}, sort_keys=True))
     return 1 if report["defects"] else 0
