@@ -7480,6 +7480,35 @@
           "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
         }
       ]
+    },
+    {
+      "id": "PRF-219",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-establishes-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-apply-record-keeps-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-replay-node-refs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-payload-of-is-the-article-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-feed-article-is-own-feed-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-apr-foundp-is-article-found"
+        }
+      ]
     }
   ]
 }
