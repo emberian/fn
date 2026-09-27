@@ -7799,7 +7799,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-apr-replay-establishes-refs",
         "fn-apr-apply-record-keeps-refs",
@@ -7811,9 +7811,10 @@
       "evidence": [
         "books/acceptance-payload-ref.lisp",
         "tests/acl2/acceptance-payload-ref-tests.lisp",
-        "planning/evidence/acceptance-payload-arena-2026-09-26.md"
+        "planning/evidence/acceptance-payload-arena-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260927T002614Z-565053.json"
       ],
-      "progress_note": "Lane acceptance-payload-arena (2026-09-26): every event admitted in the persvati REPL; certification in the record."
+      "progress_note": "Lane acceptance-payload-arena (2026-09-26): certified on persvati, run-20260927T001950Z-505f (certify-20260927T002614Z-565053: passed 2, failed 0, no book over 10 s at two jobs); every event REPL-admitted first."
     }
   ]
 }
