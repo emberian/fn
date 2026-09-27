@@ -729,123 +729,28 @@ its acknowledgement, and every open refuses, by name, a record history
 shorter than it; a burned allocation never trips it.
 
 STO-022: The durable reply's barrier cost is the publication program's and
-nothing less: every fence of a served commit fences an object A <= M <= D
-reads, and a cheaper program is admitted only through the byte model's
-discipline and crash theorems and the history model's invariant. A served
-commit makes seven fsyncs (the frontier's stage and root, the record's stage,
-transactions directory and staging directory, the marker's stage and root);
-the marker's two fence different objects, its stage inode and the root entry,
-and neither can move before the record's barrier or after the
-acknowledgement. The three cheaper programs PKT-079 and PKT-143 allowed are
-stated and refused in `books/byte-store-marker-candidates.lisp` (PRF-169):
-the deferred marker leaves A <= M, an unfenced stage is refused by discipline
-D1 and its garbled crash image, an in-place overwrite by D2 and the same
-image. The one sound sharing, the next reservation's frontier renamed under
-the marker's root barrier before the acknowledgement, is a file-kernel and
-K0 change (PKT-441). Measured: `planning/evidence/publish-program-2026-09-26.md`.
+nothing less.
 
-The namespace gate admits a history and every proper prefix of it
-(`fn-cverb-open-history-gate-admits-a-lost-suffix`). The allocation frontier
-cannot tell a lost newest record from a burned reservation, because the
-frontier is reserved before the record. `committed-history.json` is the
-witness written after the commit:
+On the record log (format 9, the only format an image opens: format 8 is
+refused by name at the profile's open) the boundary is the log itself: M := D
+(design 2026-09-27 storage-log section 3.4). A record is acknowledged only
+after its batch's barrier (P-BATCH, `fnn-log-fence`: the segment's fdatasync
+and the log kernel's fence), so the last complete entry of the log is the
+committed history, and an open that scans the segments
+(`fnn-recover-log`, P-LOG-RECOVER, `books/store-log-segments.lisp`) finds
+every acknowledged record or refuses by name (`log-chain-broken`,
+`history-short-of-checkpoint`, `checkpoint-damaged`). There is no separate
+marker object, no marker program and no catch-up: the per-file layout's
+`committed-history.json`, `fnn-mark-committed`, `fnn-check-history-marker`,
+the marker books (`store-history-marker`, `store-history-required`,
+`byte-store-marker-program`, `byte-store-marker-candidates`, `byte-store-k0-marker`)
+and PRF-076 and PRF-169 were deleted with the per-file layout (lane
+log-recovery-2, PKT-838). A burned reservation leaves no entry, so it never
+shortens the scanned history. The barrier cost of a served commit is the
+batch's: one fdatasync of the segment per batch, shared by its members.
 
-- What it holds: `fn-hm-after-commit SEQUENCE` is the FNSM kind-3 frame of
-  the count `SEQUENCE + 1` (`books/store-history-marker.lisp`).
-- When it is written: `fnn-mark-committed` (`host/native/io.lisp`) runs after
-  `fnn-publish` returned `:durable` (the record passed its
-  transaction-directory barrier) and before `fnn-finish`. It is called at
-  the three publish sites: `store post`, the capacity probe, and the owner's
-  `fnn-owner-publish-prepared`. The one other writer is the recovery
-  catch-up below. No reservation, abort or refusal writes it.
-- The byte program (`*fn-hm-marker-program*`): create a `.stage-` name in
-  `staging/`, write it, fsync the file, rename it onto
-  `committed-history.json`, fsync the root directory. Each step has a cut:
-  `marker-created`, `-written`, `-staged-durable`, `-replaced`, `-durable`.
-  They are selectable on a developer image as `FN_NATIVE_POST_FAULT=CUT:kill|eio`
-  from ACL2's table `fn-hm-marker-cut-names`. Any OS error is uncertain:
-  the store is fenced, the transaction is not acknowledged, and recovery
-  decides. So every acknowledged record is below a durable marker.
-- The open's check: `fn-hm-open-verdict`, evaluated once in `fnn-recover`
-  against the length of the reconstructed record list (pack events plus
-  suffix files, so a reclaim does not shorten it). A count below the marker
-  is a fault that names `history-short-of-marker`. A frame that is not
-  kind 3 names `marker-damaged`. Under the profile's `history-marker =
-  unmarked` an absent marker is admitted as `:unmarked`: that is every store
-  written before the marker, and its first writable open writes the marker.
-  The host calls `fn-hmr-open-verdict` (`books/store-history-required.lisp`),
-  which is `fn-hm-open-verdict` except as below.
-- Proved (PRF-076), over a model whose crash table is rename atomicity for
-  this one program: no history the host can produce is refused. Such a
-  history is any interleaving of burned reservations, uncertain
-  publications, and commits crashed at any marker cut
-  (`fn-hm-run-keeps-every-open-admitted`). A lost suffix that contains an
-  acknowledged record is refused as `history-short-of-marker`, whatever
-  history follows it (`fn-hm-open-refuses-a-lost-acknowledged-record`).
-- The crash table is no longer an assumption: the program is
-  `fn-bs-marker-program` of the byte crash model
-  (`books/byte-store-marker-program.lisp`), between the record program and
-  the finish program in every commit's coordinate
-  (`tests/campaign/native_cuts.py` `POST_PROGRAMS`). In every crash image of
-  every cut the marker is the old one before the rename, old or new at it,
-  and new after the root barrier, never torn
-  (`fn-bs-marker-program-crash-is-old-or-new`), which is exactly the history
-  step above (`fn-bs-marker-crash-is-the-history-table`), so the open after
-  recovery stays admitted (`fn-bs-marker-crash-open-stays-admitted`). K0 at
-  the five cuts is `fn-bs-k0-marker-cuts-relation`
-  (`books/byte-store-k0-marker.lisp`); at `marker-replaced` it is stated on
-  the two resolutions of the pending rename.
-- Cost: one more staged write, two fsyncs and a rename per committed
-  record, in every profile. Measured with the in-process commit probe (120
-  commits of 32 KiB, hbox, three runs each): on tmpfs, 110 ms per commit
-  before and 108 ms after, which is within noise. On ZFS (`/tank`), 326 ms
-  before and 388 ms after: 62 ms more per commit (+19%). The ZFS runs vary
-  (before: 279 to 360 ms per commit). See
-  [the record](../planning/evidence/m5-history-lifetimes-2026-09-24.md).
-- **The guarantee (D31)**, with A the committed prefix covered by success
-  answers a client may rely on, M the durable marker's count and D the
-  durable reconstructable length: A <= M <= D. The syscall sequence is not
-  frozen; a cheaper publication program is legitimate when its
-  acknowledgments and crash behaviour refine the same invariant, and moving
-  the count into the allocation barrier is not (allocation precedes the
-  record's durability).
-- **The requirement (D31 case 1).** The format-8 profile's thirteenth field,
-  `history-marker`, is `unmarked` (0) or `required` (1). Under `required`
-  an absent marker is damage: `fn-hmr-open-verdict` answers
-  `:marker-missing` and the open faults (exit 4). `init` never writes
-  `required` (`history-marker-required-before-a-marker`), and D34 removed
-  the verb that marked a store later, so today every store is born
-  `unmarked`; how a store is born `required` (a birth that writes the
-  covering marker of the empty history first, `fn-hmr-birth`) is PKT-587.
-  No step changes the profile (`fn-hmr-step-keeps-the-profile`), so a
-  required store never admits an absent marker, whatever follows
-  (`fn-hmr-required-store-never-admits-an-absent-marker`).
-- **The recovery catch-up (D31 case 2).** A record can be durable while its
-  marker is not: the process died between the record's barrier and the
-  marker's. The next open finds the record, and a retry of that submission
-  is then answered as already stored (NNTP 441 with the duplicate text, the
-  developer `duplicate`, BP `:duplicate`) with no later commit to advance
-  the marker. The catch-up point is recovery: after `fnn-recover`'s fifth
-  barrier (so the reconstructed records are durable) and its staging sweep,
-  and before the open returns, a writable open writes `fn-hmr-catch-up`'s
-  frame, the reconstructed count, through `fnn-mark-committed`: the same
-  program and cuts (selectable on `recover` as
-  `FN_NATIVE_RECOVERY_FAULT=CUT:kill|eio`). An error there is uncertain (exit 3) and the
-  next open catches up again. A reader under the shared lock writes nothing
-  and answers no submission. Proved over the history model of commits,
-  opens, resolutions and migrations: `fn-hmr-step-preserves-the-invariant`
-  (the open admits, A <= M, and a live process's marker equals D) and
-  `fn-hmr-open-refuses-below-every-answered-record` (an open that finds
-  fewer records than the newest one answered as stored, by a 240 or by a
-  resolution, is refused naming the marker).
-- Not detected: losing the marker together with the files it covers in an
-  `unmarked` store (reads as `:unmarked`); an unacknowledged record that
-  survived above the marker and was never answered (`fnn-publish`
-  uncertain, or a crash before the marker's rename, with no open since);
-  replacing the whole store with an older valid copy, which needs a
-  freshness anchor (D14); the configuration history and the BP stores. A
-  shared-lock reader may serve a record above the marker until the next
-  writable open.
+Not detected: replacing the whole store with an older valid copy, which needs
+a freshness anchor (D14); the configuration history and the BP stores.
 
 ### Content reclamation under D13 (STO-014)
 

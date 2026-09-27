@@ -1447,10 +1447,6 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; The replayed configuration the core hands back at recover.  The host
   ;; stores it and passes it back; it derives no name, code or generation.
   (config-generation nil) (config-served nil) (config-domain nil)
-  ;; D31: the committed-history frame this open writes before it returns
-  ;; (fn-hmr-catch-up), or NIL.  Set by fnn-check-history-marker, written by
-  ;; fnn-recover after its barriers, only by a writable open.
-  (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil)
   ;; Whether the open returns the whole history's record octets (the verbs

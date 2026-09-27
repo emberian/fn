@@ -285,8 +285,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-record-provenance-tests \
 	books/byte-store-k0 \
 	books/byte-store-k0-staging \
-	books/byte-store-k0-staging-error \
-	books/byte-store-k0-authority-error \
 	books/byte-store-k0-recovery \
 	tests/acl2/byte-store-k0-tests \
 	tests/acl2/byte-store-k0-recovery-tests \
@@ -352,7 +350,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-compact-verb-tests \
 	books/store-compact-window \
 	tests/acl2/store-compact-window-tests \
-	books/store-history-marker \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
 	books/store-reclaim \
@@ -370,14 +367,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
-	tests/acl2/store-history-marker-tests \
-	books/store-history-required \
-	tests/acl2/store-history-required-tests \
-	books/byte-store-marker-program \
-	books/byte-store-k0-marker \
-	tests/acl2/byte-store-k0-marker-tests \
-	books/byte-store-marker-candidates \
-	tests/acl2/byte-store-marker-candidates-tests \
 	books/store-log \
 	tests/acl2/store-log-tests \
 	books/store-log-crash \
@@ -411,23 +400,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
 	tests/acl2/payload-lz-tests \
-	books/byte-store-k0-step-lemmas \
-	books/byte-store-k0-step-root-fence \
-	books/byte-store-k0-step \
-	tests/acl2/byte-store-k0-step-tests \
-	books/byte-store-k0-step-bridge-marker \
-	books/byte-store-k0-step-bridge-prefix \
-	books/byte-store-k0-step-bridge \
-	tests/acl2/byte-store-k0-step-bridge-tests \
-	books/byte-store-k0-step-bridge-frontier \
-	tests/acl2/byte-store-k0-cuts-tests \
-	books/byte-store-k0-step-bridge-root \
-	tests/acl2/byte-store-k0-step-bridge-root-tests \
-	books/byte-store-k0-window \
-	books/byte-store-k0-recover-program \
-	tests/acl2/byte-store-k0-recover-program-tests \
-	books/byte-store-k0-pre-init \
-	tests/acl2/byte-store-k0-pre-init-tests \
 	books/checkpoint-auxiliary \
 	tests/acl2/checkpoint-auxiliary-tests \
 	books/hybrid-signature-invariants \
