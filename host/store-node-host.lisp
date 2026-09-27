@@ -204,9 +204,11 @@ reopen predicate, writer-lock observation and observed final namespace."
 ;; fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization: EQUAL to
 ;; fn-cvec-native-admin-authorize whenever the carried fold is the replay of
 ;; the same histories).  The records are the extended capture's (the history
-;; the open replayed, fn-sco-records of E); the fold is E's
-;; (fn-sco-store-open-of-extended-capture); the configuration history must be
-;; the one the open folded, compared here.  NIL when there is no carried open
+;; the open replayed, fn-sco-records of E); the fold and the open's result are
+;; E's (fn-sco-store-open-of-extended-capture); the configuration history and
+;; the frontier must be the ones the open used, compared here.  The candidate
+;; open is not recomputed (PKT-601 (1),
+;; fn-cfgc-candidate-open-carried-is-the-replayed-candidate).  NIL when there is no carried open
 ;; or the configuration history is not the open's: the caller then runs
 ;; fn-store-cfg-native-admin-authorize over the history it read.  The live
 ;; owner never calls this: its Store advanced past its open.
@@ -223,7 +225,12 @@ reopen predicate, writer-lock observation and observed final namespace."
          (names (fn-store-octet-lists->strings observed-name-octets)))
     (cond ((or (not (consp carried)) (null opened-configs)
                (equal config-records :bad)
-               (not (equal config-records opened-configs)))
+               (not (equal config-records opened-configs))
+               ; PKT-601 (1): the candidate open is decided from the open's
+               ; result, which names the frontier it opened at.
+               (not (equal frontier
+                           (fn-sf-frontier
+                            (fn-sn-files (fn-sn-open-state (caddr carried)))))))
            (value nil))
           ((or (null config-records) (equal names :bad)
                (not (fn-record-parse-okp parsed)))
@@ -231,7 +238,7 @@ reopen predicate, writer-lock observation and observed final namespace."
           (t (value (fn-cfgc-cvec-native-admin-authorize
                      (fn-sco-records (car carried)) frontier config-records
                      (fn-record-parse-value parsed) lock-owned names profile
-                     (cadr carried)))))))
+                     (cadr carried) (caddr carried)))))))
 
 ; The same authorization flattened for a caller that reads one form:
 ; (status reason generation name).  The generation and the filename are

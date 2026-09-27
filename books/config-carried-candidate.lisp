@@ -15,11 +15,14 @@
 ; host calls, which takes the open's carried fold and is EQUAL to the
 ; authorization it replaces whenever that carried fold is the replay the open
 ; computed.  The candidate open (fn-cpo-open-observed over the exact next
-; image) is kept: it is the reopen check; its extension from the open is the
-; remainder (PKT-601).
+; image, the reopen check) is decided from the open's own result and the
+; extended fold (PKT-601 (1), fn-cfgc-candidate-open-carried): the history,
+; identity, consumer, topic and index conditions it shares with the open are
+; not rebuilt.
 
 (in-package "ACL2")
 (include-book "store-capacity-config")
+(include-book "store-open-bridge")
 
 ; -----------------------------------------------------------------------------
 ; The configuration-only fold, extended by one record.
@@ -181,13 +184,12 @@
                                    (fn-cpr-replay fn-sn-statep fn-cnode-statep
                                     fn-sn-observed-historyp))))))
 
-(local
- (defthm fn-cfgc-observed-is-below
-   (implies (and (fn-sn-observed-historyp frontier events)
-                 (<= (nfix frontier) (nfix bound)))
-            (and (fn-cfgc-events-below events bound)
-                 (true-listp events)))
-   :hints (("Goal" :in-theory (enable fn-sn-observed-historyp fn-record-uint32p)))))
+(defthm fn-cfgc-observed-is-below
+  (implies (and (fn-sn-observed-historyp frontier events)
+                (<= (nfix frontier) (nfix bound)))
+           (and (fn-cfgc-events-below events bound)
+                (true-listp events)))
+  :hints (("Goal" :in-theory (enable fn-sn-observed-historyp fn-record-uint32p))))
 
 ; CONFIGURATION is the configuration-only fold of CONFIG-RECORDS (the
 ; authorization computes it once); REPLAYED is the open's physical fold of
@@ -250,15 +252,177 @@
                             fn-cfgc-observed-is-below
                             fn-sn-open-okp)))))
 
+;-----------------------------------------------------------------------------
+; The candidate open, extended from the open's own success (PKT-601 (1)).
+;
+; The candidate open fn-cpo-open-observed of CONFIGS ++ (R) differs from the
+; open's fn-cpo-open-observed of CONFIGS only in its configuration: the
+; history shape, the identity, consumer and topic replays and the event index
+; are functions of the Store history and the frontier alone, which the
+; request does not change.  Its success is exactly the configured replay's
+; (store-open-bridge fn-cpo-open-observed-succeeds-exactly), so given the
+; open's success the candidate's is the extended fold's kind and the four
+; scalar conditions under which a replayed node accepts the frontier; the
+; node's whole-state recognizer is implied by the fold's success
+; (fn-cpr-replay-ok-is-configured).  No record is revisited.
+
+; fn-replay-advance-okp without its whole-state recognizer: the four scalar
+; tests on the node the fold produced.
+(defun fn-cfgc-advance-okp (node frontier)
+  (declare (xargs :guard t))
+  (let ((acceptance (fn-node-acceptance node)))
+    (and (natp frontier)
+         (null (fn-node-stage node))
+         (null (fn-state-pending acceptance))
+         (equal (fn-state-fenced acceptance) nil)
+         (natp (fn-state-next-txid acceptance))
+         (<= (fn-state-next-txid acceptance) frontier))))
+
+(defthm fn-cfgc-advance-okp-is-replay-advance-okp
+  (implies (fn-node-statep node)
+           (equal (fn-cfgc-advance-okp node frontier)
+                  (fn-replay-advance-okp node frontier)))
+  :hints (("Goal" :in-theory (enable fn-replay-advance-okp fn-node-statep fn-statep))))
+
+; The open's result kind is its success (the whole-state recognizer ran
+; inside the open, before it answered :ok).
+(defthm fn-cfgc-cpo-open-kind-ok-is-okp
+  (equal (equal (fn-sn-open-kind (fn-cpo-open-observed configs frontier events)) :ok)
+         (fn-sn-open-okp (fn-cpo-open-observed configs frontier events)))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-open-observed fn-sn-open-okp fn-sn-open-ok
+                                   fn-sn-open-error fn-sn-open-kind fn-sn-open-state
+                                   fn-sn-open-shapep)
+                                  (fn-sn-statep fn-cpr-replay fn-cnode-statep
+                                   fn-replay-advance-okp fn-sn-observed-historyp
+                                   fn-sn-with-event-index fn-sn-with-topic
+                                   fn-sn-with-consumer fn-cpo-install
+                                   fn-sn-update-replayed fn-sn-observed-seed
+                                   fn-stx-index-of-store fn-replay-advance-txid
+                                   fn-replay-identity fn-cpe-projection-replay
+                                   fn-th-prefix-project fn-cei-build)))))
+
+; Over the same Store history and frontier, a second configuration history
+; opens exactly when its configured replay does.
+(defthm fn-cfgc-cpo-open-of-other-configs
+  (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
+           (iff (fn-sn-open-okp (fn-cpo-open-observed configs2 frontier events))
+                (fn-sob-configured-openp configs2 frontier events)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cpo-open-observed-succeeds-exactly)
+                        (:instance fn-cpo-open-observed-succeeds-exactly
+                                   (configs configs2)))
+           :in-theory nil)))
+
+(defthm fn-cfgc-cpo-open-ok-is-recovering
+  (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
+           (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state
+                                             (fn-cpo-open-observed configs frontier events))))
+                  :recovering))
+  :hints (("Goal" :use (fn-sob-cpo-open-ok-facts)
+           :in-theory (e/d (fn-bs-recovered-kernel)
+                           (fn-cpo-open-observed fn-sn-open-okp)))))
+
+; The configured open's condition is the fold's kind and the four scalar tests.
+(defthm fn-cfgc-configured-openp-by-kind
+  (implies (consp configs2)
+           (equal (fn-sob-configured-openp configs2 frontier events)
+                  (let ((replayed (fn-cpr-replay configs2 events)))
+                    (and (equal (fn-replay-result-kind replayed) :ok)
+                         (fn-cfgc-advance-okp
+                          (fn-cnode-node (fn-replay-result-node replayed))
+                          frontier)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cpr-replay-ok-is-configured
+                                   (configs configs2)))
+           :in-theory (e/d (fn-sob-configured-openp fn-cnode-statep)
+                           (fn-cpr-replay fn-cpr-replay-ok-is-configured
+                            fn-cfgc-advance-okp fn-replay-advance-okp)))))
+
+; OPENED is the open's result, carried (host/store-node-host.lisp
+; fn-store-sn-open-extended keeps it beside E and REPLAYED).  When it
+; succeeded and the record is filed after every event, the candidate is decided
+; from the extended fold alone; otherwise the replaying candidate.
+(defun fn-cfgc-candidate-open-carried
+    (records frontier config-records record configuration replayed opened)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((configuration1 (fn-cfgc-config-extend configuration record)))
+    (if (not (equal (fn-replay-result-kind configuration1) :ok))
+        (list :refused :configuration)
+      (if (and (<= (nfix frontier) (nfix (fn-cfg-record-txid record)))
+               (equal (fn-sn-open-kind opened) :ok))
+          (let ((replayed1 (fn-cfgc-cpr-extend replayed config-records records record)))
+            (if (and (equal (fn-replay-result-kind replayed1) :ok)
+                     (fn-cfgc-advance-okp
+                      (fn-cnode-node (fn-replay-result-node replayed1)) frontier))
+                (list :accepted (fn-replay-result-node replayed1))
+              (list :refused :history)))
+        (fn-cfgc-candidate-open-result records frontier config-records record
+                                       configuration replayed)))))
+
+(verify-guards fn-cfgc-candidate-open-carried)
+
+; KEYSTONE (PKT-601 (1): the candidate open is not recomputed).  From the
+; open's carried result, the candidate is the candidate the authorization
+; replayed for.
+(defthm fn-cfgc-candidate-open-carried-is-the-replayed-candidate
+  (implies (and (true-listp config-records)
+                (equal configuration (fn-cnode-config-replay config-records))
+                (equal replayed (fn-cpr-replay config-records records))
+                (equal opened (fn-cpo-open-observed config-records frontier records)))
+           (equal (fn-cfgc-candidate-open-carried
+                   records frontier config-records record configuration replayed
+                   opened)
+                  (fn-native-admin-candidate-open-result
+                   records frontier
+                   (fn-native-admin-append-record config-records record))))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-cfgc-candidate-open-result-is-the-replayed-candidate)
+                 (:instance fn-cfgc-config-replay-of-one-more
+                            (configs config-records))
+                 (:instance fn-cfgc-cpo-open-kind-ok-is-okp
+                            (configs config-records) (events records))
+                 (:instance fn-cfgc-cpo-open-of-other-configs
+                            (configs config-records) (events records)
+                            (configs2 (append config-records (list record))))
+                 (:instance fn-cfgc-configured-openp-by-kind
+                            (configs2 (append config-records (list record)))
+                            (events records))
+                 (:instance fn-cfgc-cpo-open-ok-is-recovering
+                            (configs (append config-records (list record)))
+                            (events records))
+                 (:instance fn-sob-cpo-open-ok-facts
+                            (configs config-records) (events records))
+                 (:instance fn-cfgc-observed-is-below
+                            (events records)
+                            (bound (fn-cfg-record-txid record)))
+                 (:instance fn-cfgc-cpr-replay-of-one-more
+                            (configs config-records) (events records)))
+           :in-theory (e/d (fn-native-admin-candidate-open-result)
+                           (fn-cpo-open-observed fn-cpr-replay fn-cfgc-cpr-extend
+                            fn-cfgc-config-extend fn-cnode-config-replay
+                            fn-sn-observed-historyp fn-cfgc-events-below
+                            fn-cfgc-candidate-open-result
+                            fn-cfgc-candidate-open-result-is-the-replayed-candidate
+                            fn-native-admin-append-record fn-sob-configured-openp
+                            fn-cfgc-config-replay-of-one-more
+                            fn-cfgc-cpr-replay-of-one-more
+                            fn-cfgc-cpo-open-kind-ok-is-okp
+                            fn-cfgc-cpo-open-ok-is-recovering
+                            fn-cfgc-observed-is-below
+                            fn-cfgc-advance-okp
+                            fn-sn-open-okp fn-sn-open-kind)))))
+
 ; -----------------------------------------------------------------------------
 ; The authorization the offline request calls.
 
 ; fn-native-admin-publication-authorize with the configuration-only fold run
-; once (over CONFIG-RECORDS; the candidate's is one step from it) and the
-; candidate's physical fold one step from REPLAYED, the open's.
+; once (over CONFIG-RECORDS; the candidate's is one step from it), the
+; candidate's physical fold one step from REPLAYED, the open's, and the
+; candidate open decided from OPENED, the open's result (PKT-601 (1)).
 (defun fn-cfgc-publication-authorize
     (records frontier config-records record lock-owned observed-names
-             max-generations replayed)
+             max-generations replayed opened)
   (declare (xargs :guard t))
   (if (not lock-owned)
       (fn-native-admin-publication-result :refused :lock nil nil nil)
@@ -268,9 +432,9 @@
         (let* ((current (fn-cnode-config (fn-replay-result-node configuration)))
                (generation (+ 1 (nfix (fn-cfg-generation current))))
                (name (fn-native-admin-config-name generation))
-               (candidate (equal (car (fn-cfgc-candidate-open-result
+               (candidate (equal (car (fn-cfgc-candidate-open-carried
                                        records frontier config-records record
-                                       configuration replayed))
+                                       configuration replayed opened))
                                  :accepted)))
           (cond ((not (fn-cfg-recordp record))
                  (fn-native-admin-publication-result :refused :record nil nil nil))
@@ -296,22 +460,24 @@
 ; occupied name, the candidate).
 (defthm fn-cfgc-publication-authorize-is-the-replayed-authorization
   (implies (and (true-listp config-records)
-                (equal replayed (fn-cpr-replay config-records records)))
+                (equal replayed (fn-cpr-replay config-records records))
+                (equal opened (fn-cpo-open-observed config-records frontier records)))
            (equal (fn-cfgc-publication-authorize
                    records frontier config-records record lock-owned
-                   observed-names max-generations replayed)
+                   observed-names max-generations replayed opened)
                   (fn-native-admin-publication-authorize
                    records frontier config-records record lock-owned
                    observed-names max-generations)))
   :hints (("Goal"
            :do-not-induct t
-           :use ((:instance fn-cfgc-candidate-open-result-is-the-replayed-candidate
+           :use ((:instance fn-cfgc-candidate-open-carried-is-the-replayed-candidate
                             (configuration (fn-cnode-config-replay config-records))))
            :in-theory (e/d (fn-native-admin-publication-authorize
                             fn-native-admin-candidate-openp)
-                           (fn-cfgc-candidate-open-result
+                           (fn-cfgc-candidate-open-carried
                             fn-native-admin-candidate-open-result
-                            fn-cfgc-candidate-open-result-is-the-replayed-candidate
+                            fn-cfgc-candidate-open-carried-is-the-replayed-candidate
+                            fn-cpo-open-observed
                             fn-cnode-config-replay fn-cpr-replay
                             fn-native-admin-config-name fn-cfg-recordp
                             fn-native-admin-append-record)))))
@@ -321,7 +487,7 @@
 ; over the carried fold.
 (defun fn-cfgc-cvec-native-admin-authorize
     (records frontier config-records record lock-owned observed-names profile
-             replayed)
+             replayed opened)
   (declare (xargs :guard t))
   (if (not (fn-cvec-group-names-within
             (fn-cfg-record-change record)
@@ -330,23 +496,26 @@
                                           nil nil nil)
     (fn-cfgc-publication-authorize
      records frontier config-records record lock-owned observed-names
-     (fn-cvec-config-generations profile record) replayed)))
+     (fn-cvec-config-generations profile record) replayed opened)))
 
 ; KEYSTONE (PKT-510 (1): one replay per offline request).  The authorization
 ; host/store-node-host.lisp fn-store-cfg-native-admin-authorize-carried calls
 ; (for host/native/admin.lisp fnn-admin-execute) equals the one
 ; fn-store-cfg-native-admin-authorize calls, whenever REPLAYED is the open's
-; fold of the same histories: fn-store-sn-open-extended keeps it in the global
-; fn-store-sco-open, and fn-sco-store-open-of-extended-capture
-; (books/owner-checkpoint-open.lisp) is the theorem that it is
-; (fn-cpr-replay configs events) of the open's configuration records and the
-; extended capture's records, on the full and the checkpoint open alike.
+; fold of the same histories and OPENED is the open's result:
+; fn-store-sn-open-extended keeps both in the global fn-store-sco-open, and
+; fn-sco-store-open-of-extended-capture (books/owner-checkpoint-open.lisp) is
+; the theorem that they are (fn-cpr-replay configs events) and
+; (fn-cpo-open-observed configs frontier events) of the open's configuration
+; records, frontier and the extended capture's records, on the full and the
+; checkpoint open alike.
 (defthm fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization
   (implies (and (true-listp config-records)
-                (equal replayed (fn-cpr-replay config-records records)))
+                (equal replayed (fn-cpr-replay config-records records))
+                (equal opened (fn-cpo-open-observed config-records frontier records)))
            (equal (fn-cfgc-cvec-native-admin-authorize
                    records frontier config-records record lock-owned
-                   observed-names profile replayed)
+                   observed-names profile replayed opened)
                   (fn-cvec-native-admin-authorize
                    records frontier config-records record lock-owned
                    observed-names profile)))
@@ -355,5 +524,5 @@
            :in-theory (e/d (fn-cvec-native-admin-authorize)
                            (fn-cfgc-publication-authorize
                             fn-native-admin-publication-authorize
-                            fn-cpr-replay fn-cvec-group-names-within
+                            fn-cpr-replay fn-cpo-open-observed fn-cvec-group-names-within
                             fn-cvec-config-generations)))))
