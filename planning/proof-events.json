@@ -7614,6 +7614,42 @@
         {
           "kind": "theorem",
           "name": "fn-lgk-recover-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-txids-strictly-increase"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-recovered-okp-of-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-prepare-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-known-abort-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-append-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-fence-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-fence-failed-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-finish-one-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-prepare-preserves-relation"
         }
       ]
     },
