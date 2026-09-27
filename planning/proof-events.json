@@ -7526,6 +7526,35 @@
           "name": "fn-wire-list-length-onto-is-list-length"
         }
       ]
+    },
+    {
+      "id": "PRF-220",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-node-record-committed-carriedp-is-committedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-sn-statep-carries-node-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-store-record-accepted-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-ocl-relation-carries-sn-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osi-ocl-store-record-accepted-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+        }
+      ]
     }
   ]
 }

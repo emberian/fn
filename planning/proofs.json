@@ -7976,6 +7976,40 @@
         "fn-post-body-octets-iter-is-body-octets",
         "fn-wire-list-length-onto-is-list-length"
       ]
+    },
+    {
+      "id": "PRF-220",
+      "title": "The BP application and receipt Store checks run no whole-node or whole-Store recognizer and no history walk per request: the node recognizer is carried by the owner's relation, and the receipt hosts look the record up through the event index",
+      "statement": "Subjects: fn-bpaj-store-record-accepted-fast (books/bp-native-app-fast.lisp), reached per request from host/bp-native-app-host.lisp fn-owner-app-submit and fn-owner-app-record and host/bp-receipt-journal-host.lisp fn-bprj-apply, fn-bprj-preflight and fn-bprj-request-action (native: host/native/bp-app.lisp, host/native/workflow.lisp); fn-bpaj-record-lookup-fast and fn-bpaj-bpr-accept-request-fast, now called by host/bp-receipt-host.lisp fn-bpr-host-accept and host/bp-receive-host.lisp fn-bpreq-existing-record in place of their deleted host walks. fn-bpaj-node-record-committed-carriedp is fn-bpi-node-record-committedp without its fn-node-statep conjunct; KEYSTONE fn-bpaj-node-record-committed-carriedp-is-committedp: under (fn-node-statep node) alone they are equal. fn-bpaj-store-record-accepted-fast-is-checked keeps its statement (fn-sn-statep and fn-ceis-indexedp give fast = fn-bpr-store-record-acceptedp) through fn-bpaj-sn-statep-carries-node-statep. KEYSTONE fn-osi-ocl-store-record-accepted-fast-is-checked: over the configured owner's Store (fn-owner-store = (fn-own-store (fn-ocfg-owner oc))), under fn-ocl-relation oc and fn-ceis-indexedp, the fast check is the checked one; fn-bpaj-ocl-relation-carries-sn-statep: fn-ocl-relation (established at open, kept by the ocl open/close/observe/read/advance/complete transitions) carries fn-sn-statep; fn-ceis-indexedp is PRF-144's. KEYSTONE fn-bpaj-record-lookup-fast-found-is-an-accepted-match: under fn-sn-statep and fn-ceis-indexedp, a record the indexed lookup finds has the request's article and subject (the retired host walk's predicate) and satisfies fn-bpr-store-record-acceptedp; the lookup differs from the retired walk only by refusing (two records under the article's Message-ID, or a record whose Message-ID is not the article's). Scope: the node's article and binding are still found by two pointer walks that allocate nothing (fn-find-article, fn-node-find-binding; PKT-638); the lab ingress host fn-bpi-host-prepare/-already-durablep and the BP workflow's fn-bp-statep are not changed (PKT-638).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-009",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-132",
+        "PRF-144"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-native-app-fast.lisp",
+        "books/owner-store-indexed.lisp",
+        "tests/acl2/bp-native-app-fast-tests.lisp",
+        "tests/acl2/owner-store-indexed-tests.lisp",
+        "host/bp-receipt-host.lisp",
+        "host/bp-receive-host.lisp",
+        "host/bp-native-app-host.lisp",
+        "planning/evidence/hot-path-fixes-bp-2026-09-26.md"
+      ],
+      "events": [
+        "fn-bpaj-node-record-committed-carriedp-is-committedp",
+        "fn-bpaj-sn-statep-carries-node-statep",
+        "fn-bpaj-store-record-accepted-fast-is-checked",
+        "fn-bpaj-ocl-relation-carries-sn-statep",
+        "fn-osi-ocl-store-record-accepted-fast-is-checked",
+        "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+      ]
     }
   ]
 }
