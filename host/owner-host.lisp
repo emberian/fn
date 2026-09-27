@@ -80,6 +80,8 @@
 ;; fn-octets buffer and calls fn-rclb-existing-action (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
+; HST-023 (PRF-221): the served step's typed result and render plan.
+(include-book "../books/served-plan")
 (include-book "../books/store-reclaim-buffer")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
@@ -2382,27 +2384,22 @@
                                   state)))
         (value :ok)))))
 
-; The served read's reply, into the octet buffer (PRF-192; PKT-491): the
-; host calls this right after `fn-owner-chunk' (host/native/owner.lisp
-; fnn-owner-handle-chunk) and writes the buffer's range [0, len) to the
-; socket.  `fn-served-reply-to-buffer-is-the-reply': under :ok that range
-; is `fn-served-reply-octets' of the step's effects, the reply
-; `fn-owner-install-effects' would have put in `fn-owner-output'.
-; :malformed (a reply effect that is not octets) is a host fault, as a
-; non-octet `fn-owner-output' was.
-(defun fn-owner-reply-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (mv-let (okp fn-octets)
-    (fn-served-reply-to-buffer (f-get-global 'fn-owner-effects state) fn-octets)
-    (mv nil (if okp :ok :malformed) fn-octets state)))
-
 ; The same read over a range of the octet buffer (books/served-span.lisp;
 ; REP-012, PRF-181): host/native/owner.lisp fnn-owner-handle-chunk fills the
 ; buffer from the socket's byte vector and calls this with [start, end), so
 ; no octet of a read is ever a cons cell.  fn-scar-ocfg-read-span is
 ; fn-scar-ocfg-read-tls-prefix over (fn-oct-slice-list start end fn-octets)
-; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation); everything
-; installed below is installed as fn-owner-chunk installs it.
+; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation).
+;
+; HST-023 (PRF-221; adapter-retirement-2's ServedStep, PKT-616 (b)): the
+; result is ONE typed value, `fn-splan-step-make' of the step's effects, its
+; close, STARTTLS and submission projections (fn-served-closingp,
+; fn-served-starttlsp, fn-served-submission: what fn-owner-install-effects
+; put in six globals), the consumed prefix, the refusal log lines and the
+; exposure close.  No reply octets are built or rendered here: the effects
+; are the render plan (books/served-plan.lisp), which the host renders into
+; the connection's own buffer after the mutex is released.  The owner and
+; exposure states are installed exactly as fn-owner-chunk installs them.
 (defun fn-owner-chunk-span (id start end fn-octets state)
   (declare (xargs :stobjs (fn-octets state) :mode :program))
   (let ((owner (fn-owner-core state)))
@@ -2413,24 +2410,22 @@
           (value :bad-range)
         (let* ((result (fn-scar-ocfg-read-span
                         (fn-owner-ocfg state) id start end fn-octets))
+               (effects (fn-own-tls-result-effects result))
+               (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
                        (fn-own-tls-result-owner result) state))
-               (state (fn-owner-install-effects
-                       (fn-own-tls-result-effects result) state))
-               (state (f-put-global 'fn-owner-consumed
-                                    (fn-own-tls-result-consumed result) state))
                ; PRF-161: progress, failed logins and submissions of this step.
-               (state (fn-owner-exposure-observe
-                       id (fn-own-tls-result-effects result)
-                       (fn-own-tls-result-consumed result) state))
-               ; One line per 441 the effects send (books/owner-log.lisp
-               ; fn-olog-served-refusal-lines-one-per-441).
-               (state (f-put-global 'fn-owner-refusal-lines
-                                    (fn-olog-served-refusal-lines
-                                     (fn-owner-core state) id
-                                     (fn-own-tls-result-effects result))
-                                    state)))
-          (value :ok))))))
+               (state (fn-owner-exposure-observe id effects consumed state)))
+          (value (fn-splan-step-make
+                  effects
+                  (fn-served-closingp effects)
+                  (fn-served-starttlsp effects)
+                  (fn-served-submission effects)
+                  consumed
+                  ; One line per 441 the effects send (books/owner-log.lisp
+                  ; fn-olog-served-refusal-lines-one-per-441).
+                  (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+                  (f-get-global 'fn-owner-exposure-close state))))))))
 
 (defun fn-owner-close (id state)
   (declare (xargs :stobjs state :mode :program))

@@ -8012,6 +8012,45 @@
         "fn-osi-ocl-store-record-accepted-fast-is-checked",
         "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
       ]
+    },
+    {
+      "id": "PRF-237",
+      "title": "The owner's scheduler bounds a control request's wait at three quanta, and a served reply rendered off the mutex in windows is the reply the served machine decided",
+      "statement": "fn-osch-control-waits-at-most-the-bound (books/owner-scheduler.lisp; keystone): for every cursor C and every sequence WS of waiting-count observations in which the control class has a waiter (fn-osch-control-waitsp), the quanta of other classes picked before the first control pick, fn-osch-control-delay, is at most *fn-osch-bound* = 3; the pick is fn-osch-pick of the cursor and the counts (fn-osch-next-is-the-pick), names a slot with a waiter (fn-osch-pick-has-a-waiter) and is nil exactly when nobody waits (fn-osch-pick-nil-iff-idle); the hold/wait fold adds one hold to exactly its class (fn-osch-observe-holds) and keeps a row's buckets summing to its holds (fn-osch-row-observe-keeps-okp). fn-splan-window-is-a-prefix-of-the-reply (books/served-plan.lisp; keystone, no hypothesis on the plan): one window of W octets into the buffer, read as fn-oct-slice-list [0, len), followed by what the continuation still owes (fn-splan-remaining) is what the plan owed, len is at most W, and under :ok a window of an unfinished plan writes at least one octet. fn-splan-windows-are-the-reply (keystone): once a plan built from EFFECTS is drained to done (fn-splan-donep), the concatenation of its windows, for any W and any number of windows, is (fn-served-reply-octets effects). fn-splan-step-plan-remaining: the step's plan owes the step's reply, then the completion, the redeem reply and the exposure close.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-192",
+        "PRF-161"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-scheduler.lisp",
+        "tests/acl2/owner-scheduler-tests.lisp",
+        "books/served-plan.lisp",
+        "tests/acl2/served-plan-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native/control.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_owner_scheduler.py",
+        "planning/evidence/owner-scheduler-2026-09-26.md"
+      ],
+      "progress_note": "Lane owner-scheduler (Fable 5.1, 2026-09-26/27; ember's priority 2, gpt-6 consolidation review section 7, PKT-321). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-osch-next at every release of the owner mutex and at every arrival at an idle owner; fnn-owner-gate-leave calls fn-osch-observe; host/owner-host.lisp fn-owner-chunk-span returns fn-splan-step-make; fnn-owner-handle-chunk calls fn-splan-step-plan; fnn-owner-render-next calls fn-splan-window off the mutex and fnn-owner-write-plan loops it until fn-splan-donep. Teeth: tests/acl2/owner-scheduler-tests.lisp (the delay from every cursor, the worst case 3; the must-fail with control absent for four picks: delay 4; the pick's facts; the fold's row invariant and its labelled mutation; the health lines as text) and tests/acl2/served-plan-tests.lisp (the ARTICLE-shaped reply drained in windows of 5 and of 100; a must-fail per hypothesis of the progress conjunct; the must-fail for keystone 2's done hypothesis; the :malformed status; the 3 MiB body in 64 KiB windows: 49 windows). A quantum is one bounded semantic step; the bound is in quanta.",
+      "events": [
+        "fn-osch-control-waits-at-most-the-bound",
+        "fn-osch-next-is-the-pick",
+        "fn-osch-pick-has-a-waiter",
+        "fn-osch-pick-nil-iff-idle",
+        "fn-osch-observe-holds",
+        "fn-osch-row-observe-keeps-okp",
+        "fn-splan-window-is-a-prefix-of-the-reply",
+        "fn-splan-windows-are-the-reply",
+        "fn-splan-step-plan-remaining"
+      ]
     }
   ]
 }

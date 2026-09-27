@@ -3905,6 +3905,33 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "HST-023",
+      "title": "The owner mutex is entered through a gate whose next class ACL2 picks: a control request waits at most three quanta of readers, posters and transit; a served reply is an immutable render plan the connection's thread writes off the mutex in bounded windows; health prints each class's hold and wait distribution",
+      "specification": "specs/host.md#the-served-reader-path",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-237"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-scheduler.lisp",
+        "books/served-plan.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native/control.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_owner_scheduler.py",
+        "planning/design-2026-09-26-owner-scheduler.md",
+        "planning/evidence/owner-scheduler-2026-09-26.md"
+      ],
+      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read)."
     }
   ]
 }

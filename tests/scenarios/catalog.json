@@ -4355,6 +4355,36 @@
         "record": "planning/evidence/served-line-iterative-2026-09-26.md",
         "log": "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
       }
+    },
+    {
+      "id": "SCN-163",
+      "title": "The mixed hour before and after the scheduler gate and the render plans on the same box: control p99, POST p99, the greeting under 40 readers, and the owner's hold-time distribution",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Build the developer image of dev HEAD (before) and of the lane's tree (after) on hbox; run planning/evidence/owner-scheduler-2026-09-26/mixed.py on each for the same duration: 3 tight-loop readers (GROUP / OVER / ARTICLE / XPAT), 1 unsigned POST every 0.5 s, a hybrid-signed report every 20 s, a consumer wake every 30 s, a live group create and control grant every 120 s, status and health every 30 s.",
+        "Run greeting40.py on each image: a 2,000-article store, 40 readers looping GROUP / ARTICLE, 60 fresh connections timed to their 200 line and 60 control-socket status requests timed.",
+        "Read the after image's `health': the sched lines (holds per class in five buckets, hold-max, wait-max, waits over 1 s).",
+        "tests/test_native_owner_scheduler.py on both images: the sched lines count the classes that ran; an ARTICLE larger than one 64 KiB window is the posted article; status under three tight-loop readers is answered within 10 s every time."
+      ],
+      "expected": [
+        "Before: control requests queue past the client's 10 s deadline (PKT-321's shape). After: every control request is answered within its deadline; the control p99 and the greeting p99 under 40 readers fall; POST p99 does not rise; correctness holds on both (recover rc 0, every outcome classified).",
+        "After: no held quantum of any class exceeds the longest single step; the control class's wait-max is bounded by three quanta of the other classes."
+      ],
+      "evidence": [
+        "planning/evidence/owner-scheduler-2026-09-26.md",
+        "planning/evidence/owner-scheduler-2026-09-26/mixed.py",
+        "planning/evidence/owner-scheduler-2026-09-26/greeting40.py",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner_scheduler.py",
+        "native": true,
+        "record": "planning/evidence/owner-scheduler-2026-09-26.md"
+      }
     }
   ]
 }

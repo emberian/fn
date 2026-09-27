@@ -7555,6 +7555,47 @@
           "name": "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
         }
       ]
+    },
+    {
+      "id": "PRF-237",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osch-control-waits-at-most-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-next-is-the-pick"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-pick-has-a-waiter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-pick-nil-iff-idle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-observe-holds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-row-observe-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-window-is-a-prefix-of-the-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-windows-are-the-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-step-plan-remaining"
+        }
+      ]
     }
   ]
 }

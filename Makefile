@@ -962,6 +962,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-reply-tests \
 	books/served-reply-buffer \
 	tests/acl2/served-reply-buffer-tests \
+	books/served-plan \
+	tests/acl2/served-plan-tests \
+	books/owner-scheduler \
+	tests/acl2/owner-scheduler-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	tests/acl2/group-number-index-tests \
