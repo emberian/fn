@@ -3913,7 +3913,6 @@
         "fn-pbb-block-agent-is-pb-block-agent",
         "fn-pbb-path-agent-is-pb-path-agent",
         "fn-pbb-same-articlep-is-pb-same-articlep",
-        "fn-pbb-existing-action-is-pb-existing-action",
         "fn-octets-append-back{correspondence}",
         "fn-octets-get-word{correspondence}",
         "fn-octets-append-word{correspondence}",
@@ -4019,7 +4018,6 @@
         "fn-rcl-config-rule-after-retention-set",
         "fn-nntp-msgid-retrieval-answers-reclaimed",
         "fn-nntp-number-retrieval-answers-reclaimed",
-        "fn-rclb-existing-action-is-rcl-existing-action",
         "fn-nntp-over-by-msgid-answers-reclaimed",
         "fn-nntp-over-current-answers-reclaimed",
         "fn-nov-lines-indexed-skip-a-reclaimed-article",
@@ -4032,7 +4030,8 @@
         "fn-rcl-tombstone-contributes-nothing",
         "fn-rcl-store-counts-is-the-model-over-alpha",
         "fn-rcl-store-classes-partition-the-articles",
-        "fn-rcl-signed-article-is-never-reclaimable"
+        "fn-rcl-signed-article-is-never-reclaimable",
+        "fn-rclb-same-articlep-is-rcl-same-articlep"
       ]
     },
     {
@@ -11244,7 +11243,10 @@
         "fn-heap-init-decide-honors-the-operators-request",
         "fn-heap-init-accepted-store-always-reopens",
         "fn-heap-reserve-full-store-accepted-is-within-the-machine",
-        "fn-heap-init-decide-fits-the-budget-and-the-machine"
+        "fn-heap-init-decide-fits-the-budget-and-the-machine",
+        "fn-heap-init-budget-note-names-the-budget-init-sized-for",
+        "fn-heap-init-budget-note-only-when-named-below-machine-by-definition",
+        "fn-heap-init-budget-is-the-named-below-the-machine"
       ]
     },
     {
@@ -11474,7 +11476,10 @@
       "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs). Lane ax-fix/reply-text (2026-09-27): the 440 and the post-340 441 carry the disk's reason again (fn-otm-shed-replies through fn-otm-read-span); test-book witnesses run the host's call on live stobjs over owner-reader-read-tests' owner: a MUTATION witness (connection 0's posting bit on) answers 340 admitted and the stalled disk's 440 shedding, the bit restored; the REACHED owner (posting off) keeps the generic 440 shedding.",
       "events": [
         "fn-otm-read-span-while-shedding",
-        "fn-otm-closed-posting-never-awaits-an-article"
+        "fn-otm-closed-posting-never-awaits-an-article",
+        "fn-otm-closed-posting-answers-the-generic-440",
+        "fn-otm-posting-disallowed-refusal-is-the-generic-441",
+        "fn-otm-disk-reply-effects-is-a-map"
       ]
     },
     {

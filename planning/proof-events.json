@@ -3663,10 +3663,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rclb-existing-action-is-rcl-existing-action"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-nntp-over-by-msgid-answers-reclaimed"
         },
         {
