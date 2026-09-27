@@ -7238,7 +7238,23 @@
         "fn-cat-load-from-empty",
         "fn-cat-relation-of-withdraw",
         "fn-cat-relation-of-redecide",
-        "fn-cat-relation-of-complete"
+        "fn-cat-relation-of-complete",
+        "fn-cat-load-of-nil",
+        "fn-cat-load-of-append",
+        "fn-cat-relation-of-non-article-append",
+        "fn-cat-relation-is-prefix-relation",
+        "fn-cat-prefix-relation-of-growth",
+        "fn-cat-wire-list-of-withdraw",
+        "fn-cat-wire-list-of-redecide",
+        "fn-cat-prefix-relation-of-withdraw",
+        "fn-cat-prefix-relation-of-redecide",
+        "fn-cat-ocl-relation-at-recover",
+        "fn-cat-ocl-relation-at-init",
+        "fn-cat-ocl-relation-of-article-finish",
+        "fn-cat-ocl-relation-before-article-finish",
+        "fn-cat-ocl-relation-of-other-finish",
+        "fn-cat-ocl-relation-of-withdraw",
+        "fn-cat-ocl-relation-of-redecide"
       ],
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
@@ -7279,7 +7295,18 @@
         "planning/evidence/catalog-slice-2026-09-26.md",
         "planning/evidence/manifests/certify-20260927T001344Z-408497.json"
       ],
-      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over."
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
+      "events": [
+        "fn-view-apply-is-refresh",
+        "fn-crf-apply-article-plain",
+        "fn-cat-view-below-of-commit",
+        "fn-cat-view-articles-of-commit-pinned",
+        "fn-cat-view-articles-of-commit-advanced",
+        "fn-cat-view-below-of-withdraw-pinned",
+        "fn-cat-view-articles-of-withdraw-pinned",
+        "fn-cat-view-below-of-withdraw-advanced",
+        "fn-cat-withdraw-then-commit-view"
+      ]
     },
     {
       "id": "PRF-203",
@@ -7896,7 +7923,7 @@
     {
       "id": "PRF-228",
       "title": "A moderated group: an unapproved article is never visible in it, a moderator's approved article is, and an Approved field from anyone else is refused by name",
-      "statement": "fn-cfg-set-group-moderation-sets-the-moderation (books/config-invariants.lisp, KEYSTONE): an admitted (fn-cfg-set-group-moderation NAME QUEUE ADDRESS LOGINS) (code 23, `group moderate`) applied by fn-cfg-apply-delta makes fn-cfg-group-moderation of NAME (QUEUE ADDRESS LOGINS), or nil for --off, and leaves every other group's unchanged. Over fn-post-gated-decision, the served POST's decision (books/nntp-post.lisp, called by fn-nntp-post-step; host line host/reader-host.lisp fn-reader-chunk through books/served.lisp): fn-post-unapproved-article-is-never-in-a-moderated-group (KEYSTONE): an ordinary article with no Approved field is never committed with a group whose status in the connection's configuration is moderated (it is forwarded as an RFC 5537 section 3.5.1 method-1 envelope into the queue group, or refused :moderation-unavailable); fn-post-moderator-approved-article-is-committed (KEYSTONE): with Approved and every named moderated group :approver on the connection, the decision is the injection's (committed into the moderated groups); fn-post-forged-approval-is-refused-by-name (KEYSTONE): with Approved and some named moderated group not :approver, the decision is the refusal :approval-not-moderator (441 by name). fn-mod-session-entries-approver-iff-moderator (books/moderation.lisp): on the owner-installed status list (no :approver entries), a connection's view marks group G :approver exactly when its login is one of G's moderators (books/nntp-auth.lisp fn-auth-moderation-config, called by fn-auth-delegate and fn-auth-delegate-pinned). fn-post-submission-is-the-decision-or-its-envelope with fn-mod-envelope-msgid-is-not-a-generated-id keep fn-post-distinct-injection-clocks-give-distinct-identities unconditional. Relay: books/peer-inbound.lisp fn-peer-decide-transfer refuses :unapproved-moderated (RFC 5537 sections 3.6 item 6, 3.7 item 5); witnessed in tests only, no theorem.",
+      "statement": "fn-cfg-set-group-moderation-sets-the-moderation (books/config-invariants.lisp, KEYSTONE): an admitted (fn-cfg-set-group-moderation NAME QUEUE ADDRESS LOGINS) (code 23, `group moderate`) applied by fn-cfg-apply-delta makes fn-cfg-group-moderation of NAME (QUEUE ADDRESS LOGINS), or nil for --off, and leaves every other group's unchanged. Over fn-post-gated-decision, the served POST's decision (books/nntp-post.lisp, called by fn-nntp-post-step; host line host/reader-host.lisp fn-reader-chunk through books/served.lisp): fn-post-unapproved-article-is-never-in-a-moderated-group (KEYSTONE): an ordinary article with no Approved field is never committed with a group whose status in the connection's configuration is moderated (it is forwarded as an RFC 5537 section 3.5.1 method-1 envelope into the queue group, or refused :moderation-unavailable); fn-post-moderator-approved-article-is-committed (KEYSTONE): with Approved and every named moderated group :approver on the connection, the decision is the injection's (committed into the moderated groups); fn-post-forged-approval-is-refused-by-name (KEYSTONE): with Approved and some named moderated group not :approver, the decision is the refusal :approval-not-moderator (441 by name). fn-mod-session-entries-approver-iff-moderator (books/moderation.lisp): on the owner-installed status list (no :approver entries), a connection's view marks group G :approver exactly when its login is one of G's moderators (books/nntp-auth.lisp fn-auth-moderation-config, called by fn-auth-delegate and fn-auth-delegate-pinned). fn-post-submission-is-the-decision-or-its-envelope with fn-mod-envelope-msgid-is-not-a-generated-id keep fn-post-distinct-injection-clocks-give-distinct-identities unconditional. Relay: fn-peer-transfer-never-stages-an-unapproved-moderated-article (books/peer-inbound-invariants.lisp, KEYSTONE) over fn-peer-transfer, the owner's transit port: a transfer that changes the node stages the article in a group moderated under the configuration only when the article carries Approved (fn-peer-decide-transfer's :unapproved-moderated refusal; RFC 5537 sections 3.6 item 6, 3.7 item 5). Queue privacy (PKT-658): fn-own-submission-targets-of-a-queue-by-definition and fn-own-feed-durable-never-enqueues-a-queue (books/owner-feed-subject.lisp, KEYSTONES) over fn-own-submission-targets and fn-own-feed-durable (host fn-owner-submission-intent and the outcomes): a submission naming a moderation queue group of the owner's posting configuration has no target and leaves the feed table unchanged; fn-auth-view-hides-the-queue-from-a-non-moderator (books/nntp-auth.lisp, KEYSTONE) over fn-auth-view-archive, the store fn-auth-delegate-pinned serves: for a projected reader connection whose login moderates none of the groups a queue serves (or has not authenticated), the view holds neither the queue group nor an article filed in it (group-access's READ rule with the queue hidden, fn-gac-readablep's :hide form; fn-mod-hidden-queues). The operator's `moderation list GROUP` (PKT-657) renders the queue's envelopes held/approved/rejected (books/control-evidence.lisp fn-cev-moderation-report; FNLS frame kind 3 code 10); approve/reject verbs are not built.",
       "milestone": "M4",
       "requirements": [
         "NNT-047"
@@ -7920,7 +7947,17 @@
         "books/native-admin.lisp",
         "tests/acl2/moderation-tests.lisp",
         "tests/test_native_moderation.py",
-        "planning/evidence/moderated-groups-2026-09-27.md"
+        "planning/evidence/moderated-groups-2026-09-27.md",
+        "books/peer-inbound-invariants.lisp",
+        "books/owner.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/owner-intent-carried.lisp",
+        "books/group-access.lisp",
+        "books/control-evidence.lisp",
+        "books/control-evidence-grammar.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/peer-inbound-tests.lisp",
+        "tests/acl2/owner-tests.lisp"
       ],
       "events": [
         "fn-cfg-set-group-moderation-sets-the-moderation",
@@ -7932,7 +7969,12 @@
         "fn-mod-gate-unapproved-names-no-moderated-group",
         "fn-post-submission-is-the-decision-or-its-envelope",
         "fn-mod-envelope-msgid-is-not-a-generated-id",
-        "fn-auth-moderation-config-closed"
+        "fn-auth-moderation-config-closed",
+        "fn-peer-transfer-never-stages-an-unapproved-moderated-article",
+        "fn-own-feed-durable-never-enqueues-a-queue",
+        "fn-auth-view-hides-the-queue-from-a-non-moderator",
+        "fn-mod-hidden-queues-is-hiddenp",
+        "fn-auth-access-text-of-moderation-config"
       ]
     },
     {
@@ -8007,7 +8049,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",

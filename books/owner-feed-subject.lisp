@@ -116,12 +116,12 @@
                                fn-own-feed-durable fn-own-submission-targets
                                fn-own-feed-tablep fn-own-sub-origin))))
 
-;; PKT-658 (PRF-228).  KEYSTONE: a submission naming a moderation queue group
+;; PKT-658 (PRF-228).  -by-definition: a submission naming a moderation queue group
 ;; of the owner's posting configuration (books/owner-agent.lisp
 ;; `fn-oag-post-config' installs the (:moderated G QUEUE MODS) entries) has no
 ;; target: the host's intent (host/owner-host.lisp fn-owner-submission-intent)
 ;; names no peer and no feed record is written for it.
-(defthm fn-own-submission-never-offers-a-queue
+(defthm fn-own-submission-targets-of-a-queue-by-definition
   (implies (fn-mod-names-a-queuep (fn-own-sub-feed-groups (fn-own-inflight o))
                                   (fn-inj-config-closed (fn-own-config o)))
            (equal (fn-own-submission-targets o) nil))
@@ -138,9 +138,9 @@
   (implies (fn-mod-names-a-queuep (fn-own-sub-feed-groups (fn-own-inflight o))
                                   (fn-inj-config-closed (fn-own-config o)))
            (equal (fn-own-feed-durable o sub) (fn-own-feeds o)))
-  :hints (("Goal" :use fn-own-submission-never-offers-a-queue
+  :hints (("Goal" :use fn-own-submission-targets-of-a-queue-by-definition
            :in-theory (e/d (fn-own-feed-durable fn-own-feed-enqueue-all)
-                           (fn-own-submission-never-offers-a-queue
+                           (fn-own-submission-targets-of-a-queue-by-definition
                             fn-own-submission-targets
                             fn-mod-names-a-queuep fn-own-sub-feed-groups)))))
 

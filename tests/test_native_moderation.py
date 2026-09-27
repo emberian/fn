@@ -17,6 +17,13 @@ restart fn.mod is still `m`; `group moderate fn.mod --off` live makes it
 runs on the production image (FN_NATIVE_HOST) and the developer image
 (FN_NATIVE_DEVELOPER_HOST).
 
+PKT-658: carol, who moderates nothing, is not served the queue (LIST ACTIVE
+omits it, GROUP answers 411, ARTICLE of the envelope 430); alice is.
+PKT-657: `moderation list fn.mod` reports the envelope held, then approved,
+live and offline.  The relay: a peer (source address 127.0.0.2) offering
+an article in fn.mod without Approved is refused 437 and nothing is
+stored; the same peer's approved article is taken (235).
+
 The decisions are ACL2's: books/nntp-post.lisp fn-post-gated-decision
 (books/moderation.lisp fn-mod-gate), books/nntp-auth.lisp
 fn-auth-moderation-config (the login's approver view), the configuration's
@@ -153,11 +160,12 @@ class NativeModerationTests(unittest.TestCase):
             if stream and not stream.closed:
                 stream.close()
 
-    def tls(self, node):
+    def tls(self, node, source=None):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
-        raw = socket.create_connection(("127.0.0.1", node["tls_port"]), timeout=60)
+        raw = socket.create_connection(("127.0.0.1", node["tls_port"]), timeout=60,
+                                       source_address=(source, 0) if source else None)
         stream = context.wrap_socket(raw).makefile("rwb", buffering=0)
         self.addCleanup(stream.close)
         stream.readline()
@@ -204,6 +212,12 @@ class NativeModerationTests(unittest.TestCase):
         stream.write((body + ".\r\n").encode("ascii"))
         return stream.readline().decode("ascii", "replace").rstrip("\r\n")
 
+    def post_body(self, stream, lines):
+        body = "".join(("." + row if row.startswith(".") else row) + "\r\n"
+                       for row in lines)
+        stream.write((body + ".\r\n").encode("ascii"))
+        return stream.readline().decode("ascii", "replace").rstrip("\r\n")
+
     def article(self, groups, tag, extra=()):
         return (["From: {}@example.invalid".format(tag), "Newsgroups: " + groups,
                  "Subject: " + tag, "Message-ID: <{}@example.invalid>".format(tag)]
@@ -231,6 +245,9 @@ class NativeModerationTests(unittest.TestCase):
                                           "--moderators", "alice", "--queue",
                                           "fn.absent").returncode, 0)
         self.ok(node, "group", "moderate", "fn.mod", "--moderators", "alice")
+        # A peer that relays fn.* to this node, known by its source address.
+        self.ok(node, "peer", "add", "relay", "relay.example.invalid", "127.0.0.2",
+                "1119", "fn.*", "-", "127.0.0.2", "true")
         self.start(node)
         self.account(node, "alice")
         self.account(node, "carol")
@@ -239,8 +256,9 @@ class NativeModerationTests(unittest.TestCase):
         self.assertIn("moderation fn.mod fn.mod.moderation", listed)
 
         carol = self.login(node, "carol")
-        self.assertEqual(self.active(carol),
-                         {"fn.mod": "m", "fn.mod.moderation": "y", "fn.test": "y"})
+        # PKT-658: carol moderates nothing; the queue is not served to her.
+        self.assertEqual(self.active(carol), {"fn.mod": "m", "fn.test": "y"})
+        self.assertTrue(self.line(carol, "GROUP fn.mod.moderation").startswith("411"))
         # Held: 240, not in fn.mod, in the queue as the envelope.
         held = self.post_lines(carol, self.article("fn.mod", "held1"))
         self.assertTrue(held.startswith("240"), held)
@@ -251,6 +269,34 @@ class NativeModerationTests(unittest.TestCase):
             "fn.mod", "forged1", ["Approved: carol@example.invalid"]))
         self.assertEqual(forged, FORGED)
         self.assertTrue(self.line(carol, "STAT <forged1@example.invalid>").startswith("430"))
+        # PKT-658: the envelope is not carol's to read.
+        self.assertTrue(self.line(
+            carol, "STAT <fn-moderate.held1@example.invalid>").startswith("430"))
+        # PKT-657: the operator's list, live.
+        listed = text(self.ok(node, "moderation", "list", "fn.mod"))
+        self.assertIn("moderation group=fn.mod queue=fn.mod.moderation held=1", listed)
+        self.assertIn("held envelope=<fn-moderate.held1@example.invalid> "
+                      "message-id=<held1@example.invalid>", listed)
+        self.assertNotEqual(self.operator(node, "moderation", "list").returncode, 0)
+        self.assertIn("moderated=no",
+                      text(self.ok(node, "moderation", "list", "fn.test")))
+        # The relay: unapproved refused (437), nothing stored; approved taken.
+        peer = self.tls(node, source="127.0.0.2")
+        relayed = ["Path: relay.example.invalid!not-for-mail",
+                   "From: far@example.invalid", "Newsgroups: fn.mod",
+                   "Subject: relayed", "Date: Sat, 26 Sep 2026 12:00:00 +0000",
+                   "Message-ID: <relay1@example.invalid>", "", "relayed body"]
+        self.assertTrue(self.line(peer, "IHAVE <relay1@example.invalid>").startswith("335"))
+        refused = self.post_body(peer, relayed)
+        print("NATIVE-MODERATION relay unapproved ->", refused)
+        self.assertTrue(refused.startswith("437"), refused)
+        self.assertTrue(self.line(carol, "STAT <relay1@example.invalid>").startswith("430"))
+        approved_relay = [row.replace("relay1", "relay2") for row in relayed]
+        approved_relay.insert(4, "Approved: alice@example.invalid")
+        self.assertTrue(self.line(peer, "IHAVE <relay2@example.invalid>").startswith("335"))
+        taken = self.post_body(peer, approved_relay)
+        print("NATIVE-MODERATION relay approved ->", taken)
+        self.assertTrue(taken.startswith("235"), taken)
 
         alice = self.login(node, "alice")
         self.assertEqual(self.active(alice)["fn.mod"], "m")
@@ -267,11 +313,17 @@ class NativeModerationTests(unittest.TestCase):
         approved = self.post_lines(alice, ["Approved: alice@example.invalid"] + proto)
         self.assertTrue(approved.startswith("240"), approved)
         reader = self.login(node, "carol")
-        self.assertEqual(self.count(reader, "fn.mod"), 1)
+        self.assertEqual(self.count(reader, "fn.mod"), 2)
         self.assertTrue(self.line(reader, "STAT <held1@example.invalid>").startswith("223"))
+        self.assertTrue(self.line(reader, "STAT <relay2@example.invalid>").startswith("223"))
+        listed = text(self.ok(node, "moderation", "list", "fn.mod"))
+        self.assertIn("held=0", listed)
+        self.assertIn("approved envelope=<fn-moderate.held1@example.invalid>", listed)
 
-        # After a restart the moderation holds.
+        # After a restart the moderation holds; offline, the list reads the store.
         self.stop(node)
+        self.assertIn("approved envelope=<fn-moderate.held1@example.invalid>",
+                      text(self.ok(node, "moderation", "list", "fn.mod")))
         self.start(node)
         carol = self.login(node, "carol")
         self.assertEqual(self.active(carol)["fn.mod"], "m")

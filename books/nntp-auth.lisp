@@ -3277,6 +3277,16 @@
            (not (fn-gac-readablep text g)))
   :hints (("Goal" :in-theory (enable fn-gac-readablep)))))
 
+(local (defthm fn-auth-restrict-articles-exclude
+  (implies (not (fn-gac-readablep text g))
+           (not (fn-auth-arts-name-groupp g (fn-gac-restrict-articles text arts))))
+  :hints (("Goal" :use (fn-gac-restrict-articles-memberships-readable
+                        (:instance fn-auth-articles-readablep-exclude
+                                   (arts (fn-gac-restrict-articles text arts))))
+           :in-theory (disable fn-gac-restrict-articles-memberships-readable
+                               fn-auth-articles-readablep-exclude
+                               fn-gac-restrict-articles fn-gac-readablep)))))
+
 ;; KEYSTONE (PKT-658).  The store a reader connection is served
 ;; (`fn-auth-view-archive', which `fn-auth-delegate-pinned' passes to the
 ;; reader machine; host: books/served.lisp through host/reader-host.lisp)
@@ -3298,7 +3308,9 @@
   :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read
                                    fn-auth-access-text)
                                   (fn-gac-restrict-state fn-mod-queue-hiddenp
-                                   fn-mod-hidden-queues fn-gac-pattern))
+                                   fn-mod-hidden-queues fn-gac-pattern
+                                   fn-mod-hidden-queues-is-hiddenp
+                                   fn-gac-text-octets))
            :use ((:instance fn-mod-hidden-queues-is-hiddenp
                             (g (fn-gac-text-octets g))
                             (closed (fn-inj-config-closed config))
@@ -3306,9 +3318,7 @@
                  (:instance fn-gac-restrict-state-groups-are-readable
                             (text (fn-auth-access-text as config 1))
                             (s archive))
-                 (:instance fn-gac-restrict-state-articles-are-readable
-                            (text (fn-auth-access-text as config 1))
-                            (s archive))))))
+))))
 
 (in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
                     fn-auth-access-post fn-auth-access-restrictedp

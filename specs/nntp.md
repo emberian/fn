@@ -863,13 +863,30 @@ to. RFC 6048 section 2.1.1 lists such a group with status `m`.
   `:unapproved-moderated` ("no Approved header field for a moderated
   newsgroup", 437/439): IHAVE, TAKETHIS and BP transit alike. An Approved
   field from a peer is taken as the peer's assertion (RFC 5537 has no
-  standard approval authentication; section 7).
-- **Not done.** The operator verbs `moderation list GROUP`, `moderation
-  approve ID` and `moderation reject ID` (PKT-657): the queue is read and
-  approved over NNTP today. The queue group is an ordinary group: a peer
-  whose feed pattern matches it is offered the envelopes, and every reader
-  can read it until the operator restricts it with `account access`
-  (PKT-658). No PGPMoose-style signed approval. A poster who omits Date gets
+  standard approval authentication; section 7). Over the owner's transit
+  port: `fn-peer-transfer-never-stages-an-unapproved-moderated-article`.
+- **The queue is private (PKT-658), a stronger fn guarantee.** A
+  submission naming a queue group of the owner's posting configuration is
+  offered to no peer, whatever the feed patterns
+  (`fn-own-submission-targets-of-a-queue-by-definition`,
+  `fn-own-feed-durable-never-enqueues-a-queue`). A reader connection whose
+  login moderates none of the groups a queue serves, and every connection
+  before AUTHINFO, is served a view without the queue group and its
+  articles: the queue is added, hidden, to the login's `account access`
+  READ rule (the restricted view of NNT-046), so GROUP answers 411 and
+  ARTICLE 430 as for a group the node does not carry
+  (`fn-auth-view-hides-the-queue-from-a-non-moderator`). Posting to the
+  queue is not restricted by this rule.
+- **The operator's list (PKT-657, in part).** `moderation list GROUP`
+  prints `moderation group=G queue=Q held=N` and one line per envelope in
+  Q: `held`, `approved` (the post's own Message-ID is stored) or `rejected`
+  (a withdrawal record withdraws the envelope), with the envelope's and the
+  post's Message-IDs; live over the owner's control socket (FNLS frame
+  kind 3, report code 10) or offline over the Store, rendered by
+  `fn-cev-moderation-report`.
+- **Not done.** `moderation approve ID` and `moderation reject ID`
+  (PKT-657): approval is over NNTP today, and rejection needs an operator
+  withdrawal under the node's authority (PKT-575's CT3 verb). No PGPMoose-style signed approval. A poster who omits Date gets
   a node-added Date in the forwarded body, so a resend is a different
   envelope (D25 conflict), not a duplicate.
 

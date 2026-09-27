@@ -2064,7 +2064,7 @@
 
 ; -----------------------------------------------------------------------------
 ; PKT-658 (PRF-228): a submission naming a moderation queue group is offered to
-; no peer (books/owner-feed-subject.lisp fn-own-submission-never-offers-a-queue,
+; no peer (books/owner-feed-subject.lisp fn-own-submission-targets-of-a-queue-by-definition,
 ; fn-own-feed-durable-never-enqueues-a-queue).  *own-cancel-queued* is
 ; *own-cancel-a* under a posting configuration whose status list names
 ; fn.letters as the queue of a moderated group (the entry the owner installs,
