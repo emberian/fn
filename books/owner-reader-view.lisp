@@ -237,7 +237,7 @@
 (defun fn-own-with-view (o v)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) v (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
                (fn-own-node-secret o) (fn-own-refused o)))
