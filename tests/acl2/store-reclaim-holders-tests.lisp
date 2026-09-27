@@ -13,6 +13,12 @@
 ; octets-stobj-tests (not included: it depends on the octet buffer books).
 (defconst *rht-s0* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
 (defconst *rht-art* (car (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-s0*)))))
+; Since the records flip the article holds a payload HANDLE; its stored
+; bytes are the handle's in the arena that interned the owner's journal.
+(defconst *rht-bytes*
+  (fn-hrt-bytes *osi-completing-prior* (fn-article-payload *rht-art*)))
+(assert-event (and (natp (fn-article-payload *rht-art*))
+                   (fn-cbor-octet-listp *rht-bytes*) (consp *rht-bytes*)))
 (defconst *rht-m* (car (fn-article-memberships *rht-art*)))
 (defconst *rht-g* (car *rht-m*))
 (defconst *rht-n* (cdr *rht-m*))
@@ -73,19 +79,20 @@
 ; *stxt-r1* is :unverified under the empty keyring (its key not enrolled)
 ; and contributes a statement under *stxt-keyring*.
 (assert-event (equal (fn-stx-verdict-token
-                      (fn-stx-verdict-of-octets (fn-article-payload *rht-art*) nil 0))
+                      (fn-stx-verdict-of-octets *rht-bytes* nil 0))
                      :absent))
-(assert-event (equal (fn-stx-delta (fn-article-payload *rht-art*) *stxt-keyring*) nil))
+(assert-event (equal (fn-stx-delta *rht-bytes* *stxt-keyring*) nil))
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict-of-octets (fn-article-payload *stxt-r1*) nil 0))
                      :unverified))
 (must-fail-checked (assert-event (equal (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)
                                 nil)))
 
-; The counts: caught up, the article is counted reclaimable and nothing
-; held; lagging, nothing is reclaimable and it is counted held.
+; The counts: caught up, the article is counted reclaimable (its stored
+; octets among the reclaimable octets) and nothing held; lagging, nothing is
+; reclaimable and it is counted held.
 (assert-event (let ((c (fn-rcl-store-counts *rht-rule* 0 *rht-caught*)))
-                (and (<= 1 (nth 0 c)) (<= (len (fn-article-payload *rht-art*)) (nth 1 c))
+                (and (<= 1 (nth 0 c)) (<= (len *rht-bytes*) (nth 1 c))
                      (equal (nth 4 c) 0))))
 (assert-event (let ((c (fn-rcl-store-counts *rht-rule* 0 *rht-lag*)))
                 (and (equal (nth 0 c) 0) (<= 1 (nth 4 c)))))
