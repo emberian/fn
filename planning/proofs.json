@@ -3407,9 +3407,10 @@
         "planning/evidence/m4-native-request-2026-09-24.md",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/bp-sender-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T170314Z-800039.json"
+        "planning/evidence/manifests/certify-20260927T170314Z-800039.json",
+        "planning/evidence/manifests/certify-20260927T181644Z-2000680.json"
       ],
-      "progress_note": "Lane m4-native-request (2026-09-24). Certified on hbox, w28 ACL2 8.7, 2 jobs: run-20260924T230759Z-4d2f (manifest certify-20260924T230813Z-2144048, bp-request-plan 7.6 s, tests 1.9 s) at the source of commit 41799aaf; the first run (certify-20260924T230223Z-2118502) certified the plan before the retry-request clause. Teeth: reachable witness over the committed-article image of bp-outbound-tests (the plan's attempt and ADU are the hand trace's exact record and octets); must-fail at the refusal witness for the one hypothesis; refusals for an in-flight attempt, a pending image, a fenced image and a work bound to no article (where the attempt alone would be admitted); a restart-observed work planned with its :retry-request replays through fn-bpiw-replay-journal while the same history without it is refused. Status stays in-progress: the lab evidence is on a scratch DTN developer image, and the recovery of an attempt fenced by a cut between the attempt and its outcome has no native verb. Lane bp-sender (2026-09-27, PKT-RT-1): after the records flip the plan's ADU carried the article's arena handle and every request was refused; fn-bprq-plan and fn-bpo-request-adu now take fn-arena (read only) and the keystone is restated over fn-arena-payload of the article's handle; teeth over an arena holding the article, an empty arena, and other octets (tests/acl2/bp-outbound-tests, bp-request-plan-tests). Certified on hbox (manifest certify-20260927T170314Z-800039: 13 roots affected by books/bp-outbound, passed, no book over 10 s); fn-bprq-plan-unfolds 15.9 s -> 0.03 s.",
+      "progress_note": "Lane m4-native-request (2026-09-24). Certified on hbox, w28 ACL2 8.7, 2 jobs: run-20260924T230759Z-4d2f (manifest certify-20260924T230813Z-2144048, bp-request-plan 7.6 s, tests 1.9 s) at the source of commit 41799aaf; the first run (certify-20260924T230223Z-2118502) certified the plan before the retry-request clause. Teeth: reachable witness over the committed-article image of bp-outbound-tests (the plan's attempt and ADU are the hand trace's exact record and octets); must-fail at the refusal witness for the one hypothesis; refusals for an in-flight attempt, a pending image, a fenced image and a work bound to no article (where the attempt alone would be admitted); a restart-observed work planned with its :retry-request replays through fn-bpiw-replay-journal while the same history without it is refused. Status stays in-progress: the lab evidence is on a scratch DTN developer image, and the recovery of an attempt fenced by a cut between the attempt and its outcome has no native verb. Lane bp-sender (2026-09-27, PKT-RT-1): after the records flip the plan's ADU carried the article's arena handle and every request was refused; fn-bprq-plan and fn-bpo-request-adu now take fn-arena (read only) and the keystone is restated over fn-arena-payload of the article's handle; teeth over an arena holding the article, an empty arena, and other octets (tests/acl2/bp-outbound-tests, bp-request-plan-tests). Certified on hbox (manifest certify-20260927T170314Z-800039: 13 roots affected by books/bp-outbound, passed, no book over 10 s); fn-bprq-plan-unfolds 15.9 s -> 0.03 s. Recertified after merging origin/dev 2d1964848 (the arena's extent logic moved the closure): hbox certify-20260927T181644Z-2000680, 13 roots, passed, no book over 10 s.",
       "events": [
         "fn-bprq-plan-is-the-works-request"
       ]
@@ -7612,7 +7613,8 @@
         "fn-heap-store-figure-observed-is-at-most-unobserved",
         "fn-heap-operation-decide-holds-the-store",
         "fn-heap-reserve-first-run-accepted-is-within-the-machine",
-        "fn-heap-storeless-decide-is-small-and-fits"
+        "fn-heap-storeless-decide-is-small-and-fits",
+        "fn-heap-status-decide-is-the-launchers-run-reservation"
       ],
       "evidence": [
         "books/heap-figure.lisp",
