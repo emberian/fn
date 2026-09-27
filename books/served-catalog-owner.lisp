@@ -588,7 +588,8 @@
    (implies (fn-hstxa-p x) (fn-sca-composite-shapep x))
    :hints (("Goal" :use ((:instance fn-sca-composite-held-is-held)
                          (:instance fn-held-p-implies-cat-rowp (x (fn-hstxa-held x))))
-            :in-theory (e/d (fn-sca-composite-shapep fn-hstxa-p) (fn-held-p fn-cat-rowp))))))
+            :in-theory (union-theories '(fn-sca-composite-shapep fn-hstxa-p)
+                                       (theory 'minimal-theory))))))
 
 (local (defthm fn-sca-composite-is-not-cat-row
    (implies (fn-hstxa-p x) (not (fn-cat-rowp x)))
@@ -734,10 +735,12 @@
                  (fn-rows-handles-inp (list row)
                                       (mv-nth 1 (fn-intern-events ws keyring generation fn-arena)))))
    :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
-            :in-theory (e/d (fn-intern-events)
-                            (fn-intern-event fn-rows-handles-inp fn-row-composite-okp
-                             fn-arena-seal-list-is-append fn-wire-event-p fn-record-p
-                             fn-stxa-p fn-replay-composite-record fn-cat-intern-list))))))
+            :in-theory (union-theories '(fn-intern-events fn-intern-event-arena
+                                         fn-sca-composite-okp-survives-seal
+                                         mv-nth car-cons cdr-cons
+                                         (:executable-counterpart zp)
+                                         (:induction fn-intern-events))
+                                       (theory 'minimal-theory))))))
 
 (defthm fn-sca-intern-events-composites-okp
   (implies (and (fn-arena-p fn-arena) (natp generation) (fn-wire-event-listp ws)
