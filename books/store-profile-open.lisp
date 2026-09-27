@@ -336,7 +336,8 @@
  (defthm fn-spo-saved-frame-of-valid-is-encode
    (implies (fn-bs-profile-validp values)
             (equal (fn-spo-saved-frame values) (fn-bs-config-encode values)))
-   :hints (("Goal" :in-theory (enable fn-spo-saved-frame fn-bs-config-encode)))))
+   :hints (("Goal" :in-theory (e/d (fn-spo-saved-frame fn-bs-config-encode)
+                                   (fn-bs-profile-validp))))))
 
 (local
  (defthm fn-spo-v2-valid-is-shape
@@ -353,7 +354,8 @@
  (defthm fn-spo-validp-is-admitted
    (implies (fn-bs-profile-validp values)
             (fn-bs-profile-admittedp values))
-   :hints (("Goal" :in-theory (enable fn-bs-profile-admittedp)))))
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-admittedp fn-bs-profile-of)
+                                   (fn-bs-profile-validp))))))
 
 (local
  (defthm fn-spo-saved-format-8-of-encode

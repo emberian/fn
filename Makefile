@@ -32,6 +32,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article \
 	books/article-invariants \
 	books/article-properties \
+	books/article-header-census \
 	books/article-header-limits \
 	tests/acl2/article-header-limits-tests \
 	tests/acl2/article-tests \

@@ -79,7 +79,7 @@
 (include-book "injection-shape")
 (include-book "injection-path")
 (include-book "article-fields")
-(include-book "article-header-limits")
+(include-book "article-header-census")
 (include-book "mailbox")
 (include-book "clock")
 (local (include-book "arithmetic/top" :dir :system))
@@ -568,6 +568,8 @@
   (implies (not (consp max)) (equal (fn-inj-bound-octets max) max)))
 
 (in-theory (disable (:d fn-inj-config-shapep) (:d fn-inj-make-config)
+                    (:d fn-inj-config-header-limits)
+                    fn-inj-bound-octets fn-inj-bound-header-limits
                     (:d fn-inj-make-config-full)
                     (:d fn-inj-make-config-listed) (:d fn-inj-config-listing)
                     (:d fn-inj-config-allow) (:d fn-inj-config-agent)
