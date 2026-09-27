@@ -46,6 +46,18 @@ def segments(store: Path):
     return sorted(p.name for p in (store / "journal").iterdir())
 
 
+
+def reclaim_counts(stdout: bytes) -> dict:
+    """The counts ACL2 printed (host/native/checkpoint.lisp
+    fnn-reclaim-counts-line): reclaimable, reclaimable-octets, held,
+    reclaimed and freed-octets, from the line that carries them."""
+    for line in stdout.decode("utf-8", "replace").splitlines():
+        if " reclaimable=" in " " + line:
+            fields = dict(word.split("=", 1) for word in line.split() if "=" in word)
+            return {k: int(fields[k]) for k in
+                    ("reclaimable", "reclaimable-octets", "held", "reclaimed", "freed-octets")}
+    raise AssertionError("no counts line in %r" % stdout)
+
 class LogCompactionMixin:
     image = ""
 
@@ -133,6 +145,13 @@ class LogCompactionMixin:
         dry = node.fn("operator", str(node.config), "store", "reclaim", "--dry-run")
         self.assertEqual(dry.returncode, 0, dry.stderr[-600:])
         self.assertIn(b"dry-run would-reclaim=8", dry.stdout)
+        # The counts read each article through the arena (lane
+        # matrix-reds-reclaim): before, they parsed its handle, so every
+        # octet count was 0 and a reclaimed article counted as reclaimable.
+        before = reclaim_counts(dry.stdout)
+        self.assertEqual(before["reclaimable"], 8, dry.stdout)
+        self.assertGreater(before["reclaimable-octets"], 0, dry.stdout)
+        self.assertEqual(before["reclaimed"], 0, dry.stdout)
         self.assertEqual(segments(node.store), ["000001.log"])
         done = node.fn("operator", str(node.config), "store", "reclaim")
         self.assertEqual(done.returncode, 0, done.stderr[-800:])
@@ -143,6 +162,10 @@ class LogCompactionMixin:
         again = node.fn("operator", str(node.config), "store", "reclaim")
         self.assertEqual(again.returncode, 0, again.stderr[-800:])
         self.assertIn(b"reclaimed=0", again.stdout)
+        after = reclaim_counts(again.stdout)
+        self.assertEqual(after["reclaimable"], 0, again.stdout)
+        self.assertEqual(after["reclaimable-octets"], 0, again.stdout)
+        self.assertEqual(after["reclaimed"], 8, again.stdout)
         recovered = node.fn("store", str(node.store), "recover")
         self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
 
