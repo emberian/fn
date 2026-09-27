@@ -819,7 +819,7 @@ def family_transit(node, evidence):
 
 
 # --------------------------------------------------------------------------
-# The TLS family (SCN-147): the surface a public node exposes on 563 (implicit
+# The TLS family (SCN-151): the surface a public node exposes on 563 (implicit
 # TLS) and 119 (STARTTLS).  Raw bytes are hand-built so the refusal under test
 # is the server's and never the client library's own protocol policy; full
 # handshakes use ssl against the node's own self-signed certificate.
