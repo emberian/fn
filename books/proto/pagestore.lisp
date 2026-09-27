@@ -65,10 +65,15 @@
 ; =============================================================================
 ; 2. The model.
 ;
-; A page table (ptab) is a list of entries (PHYS TXID DIGEST), one per
-; logical page, in logical order: the page's address, the commit that wrote
-; it, and its content's digest.  A commit record is
-;   (:pgs-commit TXID PTAB-ADDR PTAB-LEN PTAB-DIGEST CHECK)
+; A table is a list of entries (PHYS TXID DIGEST): the page's address, the
+; commit that wrote it, and its content's digest.  The page table of a
+; commit has TWO LEVELS: the flat table (one entry per logical page) is cut
+; into TABLE PAGES of *pgs-tab-entries* entries (`pgs-chunk'; the last one
+; partial), each stored in a page of its own, and the DIRECTORY (one entry
+; per table page, the same entry shape) is stored in a run of pages the
+; record names.  A commit rewrites only the table pages holding a dirty
+; entry, and the directory.  A commit record is
+;   (:pgs-commit TXID DIR-ADDR NPAGES DIR-DIGEST CHECK)
 ; and it is VALID when CHECK is the digest of the rest.
 
 (defun pgs-entry-p (e)
@@ -102,15 +107,15 @@
   (declare (xargs :guard t))
   (pgs-rec-ok x (pgs-digest (pgs-rec-body x))))
 
-(defun pgs-make-rec (txid ptab-addr ptab-len ptab-digest)
+(defun pgs-make-rec (txid dir-addr npages dir-digest)
   (declare (xargs :guard t))
-  (let ((body (list :pgs-commit txid ptab-addr ptab-len ptab-digest)))
+  (let ((body (list :pgs-commit txid dir-addr npages dir-digest)))
     (append body (list (pgs-digest body)))))
 
 (defun pgs-rec-txid (x) (declare (xargs :guard t)) (nfix (second (true-list-fix x))))
-(defun pgs-rec-ptab-addr (x) (declare (xargs :guard t)) (nfix (third (true-list-fix x))))
-(defun pgs-rec-ptab-len (x) (declare (xargs :guard t)) (nfix (fourth (true-list-fix x))))
-(defun pgs-rec-ptab-digest (x) (declare (xargs :guard t)) (nfix (fifth (true-list-fix x))))
+(defun pgs-rec-dir-addr (x) (declare (xargs :guard t)) (nfix (third (true-list-fix x))))
+(defun pgs-rec-npages (x) (declare (xargs :guard t)) (nfix (fourth (true-list-fix x))))
+(defun pgs-rec-dir-digest (x) (declare (xargs :guard t)) (nfix (fifth (true-list-fix x))))
 
 ; Pages: an alist from address to content; a write is an acons.
 (defun pgs-lookup (a pages)
@@ -120,7 +125,7 @@
 ; The page verdict (shared).  In :eager mode every entry is checked; in
 ; :lazy mode only the entries the commit itself wrote (TXID equal to the
 ; record's), which are the only ones its own crash can have left unwritten;
-; the rest are checked on first touch (`pgs-x-touch').
+; the rest are checked on first touch.
 (defun pgs-entry-checked-p (e txid mode)
   (declare (xargs :guard (pgs-entry-p e)))
   (or (eq mode :eager) (equal (second e) txid)))
@@ -133,16 +138,17 @@
       :damaged
     :ok))
 
-(defun pgs-check-pages (ptab txid mode pages i)
-  ; nil when every checked page verifies; else (:page-damaged I PHYS).
+(defun pgs-check-pages (ptab txid mode pages i tag)
+  ; nil when every checked page of PTAB verifies; else (TAG I PHYS), TAG
+  ; :table-damaged for the directory's pages, :page-damaged for the table's.
   (declare (xargs :guard (and (pgs-ptab-p ptab) (natp i))))
   (if (atom ptab)
       nil
     (let ((e (car ptab)))
       (if (eq (pgs-entry-verdict e txid mode (pgs-digest (pgs-lookup (first e) pages)))
               :damaged)
-          (list :page-damaged i (first e))
-        (pgs-check-pages (cdr ptab) txid mode pages (+ 1 i))))))
+          (list tag i (first e))
+        (pgs-check-pages (cdr ptab) txid mode pages (+ 1 i) tag)))))
 
 (defun pgs-ptab-txids-ok (ptab txid)
   ; Shared: no entry claims a commit newer than the record naming the table.
@@ -159,30 +165,100 @@
     (cons (pgs-lookup (first (car ptab)) pages)
           (pgs-contents (cdr ptab) pages))))
 
-; The table verdict (shared): nil when the table read at the record's
-; address has the record's digest, length and no entry newer than the
-; record; else the refusal, by name.
-(defun pgs-ptab-verdict (rec ptab observed)
+; -----------------------------------------------------------------------------
+; Table pages.
+
+(defconst *pgs-entry-words* 6)          ; phys, txid, four digest words
+(defconst *pgs-tab-entries* 341)        ; entries per table page: floor(2048 / 6)
+
+(defun pgs-ntables (n)
+  ; The table pages of a table of N entries.
+  (declare (xargs :guard t :measure (nfix n)))
+  (let ((n (nfix n)))
+    (if (zp n) 0 (+ 1 (pgs-ntables (- n *pgs-tab-entries*))))))
+
+(defthm pgs-len-of-nthcdr
+  (equal (len (nthcdr n x)) (nfix (- (len x) (nfix n))))
+  :hints (("Goal" :in-theory (enable nthcdr) :induct (nthcdr n x))))
+
+(defun pgs-chunk (x)
+  ; The flat table X as its table pages.
+  (declare (xargs :guard (true-listp x) :measure (len x)))
+  (if (atom x)
+      nil
+    (cons (take (min *pgs-tab-entries* (len x)) x)
+          (pgs-chunk (nthcdr *pgs-tab-entries* x)))))
+
+(defun pgs-flatten (cs)
   (declare (xargs :guard t))
-  (let ((addr (pgs-rec-ptab-addr rec)))
-    (cond ((not (equal observed (pgs-rec-ptab-digest rec)))
-           (list :ptab-damaged addr))
-          ((not (and (pgs-ptab-p ptab) (equal (len ptab) (pgs-rec-ptab-len rec))
-                     (pgs-ptab-txids-ok ptab (pgs-rec-txid rec))))
-           (list :ptab-malformed addr))
+  (if (atom cs) nil (append (true-list-fix (car cs)) (pgs-flatten (cdr cs)))))
+
+; The directory's verdict (shared): nil when the directory read at the
+; record's address has the record's digest, one entry per table page of
+; NPAGES entries, and no entry newer than the record; else the refusal.
+(defun pgs-dir-verdict (rec dir observed)
+  (declare (xargs :guard t))
+  (let ((addr (pgs-rec-dir-addr rec)))
+    (cond ((not (equal observed (pgs-rec-dir-digest rec)))
+           (list :dir-damaged addr))
+          ((not (and (pgs-ptab-p dir)
+                     (equal (len dir) (pgs-ntables (pgs-rec-npages rec)))
+                     (pgs-ptab-txids-ok dir (pgs-rec-txid rec))))
+           (list :dir-malformed addr))
           (t nil))))
+
+; The table pages' verdict (shared; the host checks each table page as it
+; decodes it): table page I is a table of min(E, REM) entries, REM the
+; entries from it on, none newer than the record.
+(defun pgs-table-ok (c rem txid)
+  (declare (xargs :guard t))
+  (and (pgs-ptab-p c)
+       (equal (len c) (min *pgs-tab-entries* (nfix rem)))
+       (pgs-ptab-txids-ok c txid)))
+
+(defun pgs-tables-verdict (cs rem txid i)
+  (declare (xargs :guard (natp i)))
+  (if (atom cs)
+      nil
+    (if (pgs-table-ok (car cs) rem txid)
+        (pgs-tables-verdict (cdr cs) (- (nfix rem) *pgs-tab-entries*) txid (+ 1 i))
+      (list :table-malformed i))))
+
+(defthm pgs-ptab-p-of-append
+  (implies (and (pgs-ptab-p a) (pgs-ptab-p b))
+           (pgs-ptab-p (append a b))))
+
+(defthm pgs-ptab-p-true-listp
+  (implies (pgs-ptab-p x) (true-listp x))
+  :rule-classes (:forward-chaining :rewrite))
+
+(defthm pgs-true-list-fix-when-true-listp
+  (implies (true-listp x) (equal (true-list-fix x) x)))
+
+(defthm pgs-ptab-p-of-flatten-when-tables-ok
+  (implies (not (pgs-tables-verdict cs rem txid i))
+           (pgs-ptab-p (pgs-flatten cs))))
 
 ; Try one record: (:ok TXID CONTENTS) or (:refused REASON ...).
 (defun pgs-try (rec pages mode)
   (declare (xargs :guard (pgs-rec-shape-p rec)))
-  (let* ((ptab (pgs-lookup (pgs-rec-ptab-addr rec) pages))
-         (tv (pgs-ptab-verdict rec ptab (pgs-digest ptab))))
-    (if tv
-        (cons :refused tv)
-      (let ((bad (pgs-check-pages ptab (pgs-rec-txid rec) mode pages 0)))
-        (if bad
-            (cons :refused bad)
-          (list :ok (pgs-rec-txid rec) (pgs-contents ptab pages)))))))
+  (let* ((txid (pgs-rec-txid rec))
+         (dir (pgs-lookup (pgs-rec-dir-addr rec) pages))
+         (dv (pgs-dir-verdict rec dir (pgs-digest dir))))
+    (if dv
+        (cons :refused dv)
+      (let ((tbad (pgs-check-pages dir txid mode pages 0 :table-damaged)))
+        (if tbad
+            (cons :refused tbad)
+          (let* ((cs (pgs-contents dir pages))
+                 (tv (pgs-tables-verdict cs (pgs-rec-npages rec) txid 0)))
+            (if tv
+                (cons :refused tv)
+              (let* ((ptab (pgs-flatten cs))
+                     (bad (pgs-check-pages ptab txid mode pages 0 :page-damaged)))
+                (if bad
+                    (cons :refused bad)
+                  (list :ok txid (pgs-contents ptab pages)))))))))))
 
 ; The candidate order (shared): the valid slots, newest first; slot 0 wins a
 ; tie.  V0/V1 are the observed validities.
@@ -247,19 +323,22 @@
     nil))
 
 ; -----------------------------------------------------------------------------
-; The live set and allocation (shared).
+; The live set (shared).
 ;
-; A valid record keeps its page-table run (PTAB-ADDR and the pages after it
-; the encoded table occupies) and every page its table names.  Fresh space
-; is any address no valid record of any root keeps.
-
-(defconst *pgs-page-words* 2048)        ; 16 KiB pages
-(defconst *pgs-entry-words* 6)          ; phys, txid, four digest words
+; A valid record keeps its directory run (DIR-ADDR and the pages after it
+; the encoded directory occupies), every table page its directory names and
+; every page its table names.  Fresh space is any address no valid record of
+; any root keeps.
 
 (defun pgs-ptab-run-pages (n)
   ; Pages the encoded table of N entries occupies (at least one).
   (declare (xargs :guard (natp n)))
   (max 1 (ceiling (* *pgs-entry-words* (nfix n)) *pgs-page-words*)))
+
+(defun pgs-dir-run-pages (npages)
+  ; Pages a directory for NPAGES logical pages occupies.
+  (declare (xargs :guard t))
+  (pgs-ptab-run-pages (pgs-ntables npages)))
 
 (defun pgs-run (a m)
   (declare (xargs :guard (and (natp a) (natp m))))
@@ -269,23 +348,27 @@
   (declare (xargs :guard (pgs-ptab-p ptab)))
   (if (atom ptab) nil (cons (first (car ptab)) (pgs-ptab-physes (cdr ptab)))))
 
-(defun pgs-rec-keeps (rec ptab)
-  ; The addresses a record keeps, given the table read at its address.
+(defun pgs-rec-keeps (rec dir tables)
+  ; The addresses a record keeps, given its directory DIR (read at its
+  ; address) and TABLES, the contents of the pages DIR names.
   (declare (xargs :guard t))
-  (append (pgs-run (pgs-rec-ptab-addr rec) (pgs-ptab-run-pages (pgs-rec-ptab-len rec)))
-          (if (pgs-ptab-p ptab) (pgs-ptab-physes ptab) nil)))
+  (append (pgs-run (pgs-rec-dir-addr rec) (pgs-dir-run-pages (pgs-rec-npages rec)))
+          (if (pgs-ptab-p dir)
+              (append (pgs-ptab-physes dir)
+                      (let ((ptab (pgs-flatten tables)))
+                        (if (pgs-ptab-p ptab) (pgs-ptab-physes ptab) nil)))
+            nil)))
 
-(defun pgs-mark (xs fal)
+(defun pgs-rec-keeps-in (rec pages)
   (declare (xargs :guard t))
-  (if (atom xs) fal (pgs-mark (cdr xs) (hons-acons (car xs) t fal))))
+  (let ((dir (pgs-lookup (pgs-rec-dir-addr rec) pages)))
+    (pgs-rec-keeps rec dir (if (pgs-ptab-p dir) (pgs-contents dir pages) nil))))
 
 (defun pgs-slots-keeps (slots pages)
   (declare (xargs :guard t))
   (let ((s0 (pgs-slot 0 slots)) (s1 (pgs-slot 1 slots)))
-    (append (if (pgs-rec-valid s0)
-                (pgs-rec-keeps s0 (pgs-lookup (pgs-rec-ptab-addr s0) pages)) nil)
-            (if (pgs-rec-valid s1)
-                (pgs-rec-keeps s1 (pgs-lookup (pgs-rec-ptab-addr s1) pages)) nil))))
+    (append (if (pgs-rec-valid s0) (pgs-rec-keeps-in s0 pages) nil)
+            (if (pgs-rec-valid s1) (pgs-rec-keeps-in s1 pages) nil))))
 
 (defun pgs-roots-keeps (roots pages)
   (declare (xargs :guard t))
@@ -294,64 +377,93 @@
     (append (and (consp (car roots)) (pgs-slots-keeps (cdar roots) pages))
             (pgs-roots-keeps (cdr roots) pages))))
 
-(defun pgs-used (disk)
-  ; The fast alist of kept addresses (model).  The host builds the same set
-  ; from the tables it read (`pgs-x-used').
+(defun pgs-disk-keeps (disk)
   (declare (xargs :guard t))
-  (pgs-mark (pgs-roots-keeps (pgs-roots disk) (pgs-pages disk)) nil))
+  (pgs-roots-keeps (pgs-roots disk) (pgs-pages disk)))
 
-(defun pgs-free-run-p (a m used)
-  (declare (xargs :guard (and (natp a) (natp m)) :measure (nfix m)))
-  (if (zp m) t
-    (and (not (hons-get a used)) (pgs-free-run-p (+ 1 a) (1- m) used))))
+; -----------------------------------------------------------------------------
+; Allocation (shared).
+;
+; The allocator's state is (FREE HWM): FREE a list of reusable addresses
+; (reclamation adds to it, section 3), HWM the high-water mark (everything
+; at or above it is unwritten).  A commit takes the directory run first --
+; the first address of FREE that starts M free addresses (M = 1 below
+; 116,281 logical pages), else M pages at HWM -- then N singles: FREE in
+; order, then HWM upward.  It never refuses.
 
-(defun pgs-find-run (a m bound used)
-  ; The first A' >= A below BOUND with M free addresses from A'; nil if none.
-  (declare (xargs :guard (and (natp a) (natp m) (natp bound))
-                  :measure (nfix (- bound a))))
-  (cond ((not (and (natp a) (natp bound) (< a bound))) nil)
-        ((pgs-free-run-p a m used) a)
-        (t (pgs-find-run (+ 1 a) m bound used))))
+(defun pgs-all-in (xs free)
+  (declare (xargs :guard (true-listp free)))
+  (if (atom xs) t (and (member-equal (car xs) free) (pgs-all-in (cdr xs) free))))
 
-(defun pgs-find-singles (n a bound used)
-  ; N free addresses from A, ascending, below BOUND (fewer if BOUND comes first).
-  (declare (xargs :guard (and (natp n) (natp a) (natp bound))
-                  :measure (nfix (- bound a))))
-  (cond ((zp n) nil)
-        ((not (and (natp a) (natp bound) (< a bound))) nil)
-        ((hons-get a used) (pgs-find-singles n (+ 1 a) bound used))
-        (t (cons a (pgs-find-singles (1- n) (+ 1 a) bound used)))))
+(defun pgs-find-free-run (cands m free)
+  ; The first A in CANDS with A..A+M-1 all in FREE, or nil.
+  (declare (xargs :guard (and (natp m) (true-listp free))))
+  (cond ((atom cands) nil)
+        ((and (natp (car cands)) (pgs-all-in (pgs-run (car cands) m) free)) (car cands))
+        (t (pgs-find-free-run (cdr cands) m free))))
 
-(defun pgs-alloc (n m hwm used)
-  ; Allocation for a commit of N dirty pages and an M-page table run, over
-  ; the kept set USED whose addresses are all below HWM: the run first fit,
-  ; then N singles.  Everything at or above HWM is free, so the search to
-  ; HWM + M + N always succeeds; the result is (RUN-START . SINGLES), or
-  ; :alloc-short (not reached when USED is below HWM; kept as a refusal
-  ; rather than an assumption).
-  (declare (xargs :guard (and (natp n) (natp m) (natp hwm))))
-  (let* ((bound (+ hwm m n))
-         (a (pgs-find-run 0 m bound used)))
-    (if (not (natp a))
-        :alloc-short
-      (let* ((used2 (pgs-mark (pgs-run a m) used))
-             (singles (pgs-find-singles n 0 bound used2)))
-        (prog2$ (fast-alist-free used2)
-                (if (equal (len singles) (nfix n))
-                    (cons a singles)
-                  :alloc-short))))))
+(defun pgs-remove-all (xs free)
+  (declare (xargs :guard (and (true-listp xs) (true-listp free))))
+  (if (atom free)
+      nil
+    (if (member-equal (car free) xs)
+        (pgs-remove-all xs (cdr free))
+      (cons (car free) (pgs-remove-all xs (cdr free))))))
+
+(defun pgs-take-singles (n free hwm)
+  ; (mv SINGLES FREE2 HWM2): N addresses, FREE first.
+  (declare (xargs :guard (and (natp n) (true-listp free) (natp hwm))))
+  (cond ((zp n) (mv nil free (nfix hwm)))
+        ((consp free)
+         (mv-let (s f h) (pgs-take-singles (1- n) (cdr free) hwm)
+           (mv (cons (car free) s) f h)))
+        (t (mv-let (s f h) (pgs-take-singles (1- n) nil (+ 1 (nfix hwm)))
+             (mv (cons (nfix hwm) s) f h)))))
+
+(defun pgs-alloc (n m alloc)
+  ; (RUN-START SINGLES FREE2 HWM2) for a commit of N singles and an M-page
+  ; directory run over the allocator state ALLOC = (FREE HWM).
+  (declare (xargs :guard (and (natp n) (natp m))))
+  (let* ((free (true-list-fix (car (true-list-fix alloc))))
+         (hwm (nfix (cadr (true-list-fix alloc))))
+         (a (pgs-find-free-run free m free)))
+    (if (natp a)
+        (mv-let (s f h) (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm)
+          (list a s f h))
+      (mv-let (s f h) (pgs-take-singles n free (+ hwm (nfix m)))
+        (list hwm s f h)))))
 
 ; -----------------------------------------------------------------------------
 ; The commit.
 ;
-; DIRTY is a list of (LPAGE . CONTENT); FRESH the singles, one per dirty
-; page; the table after the commit replaces each dirty entry by
-; (FRESH TXID DIGEST).  The planner is shared: the model hands it the
-; content digests, the host the digests it computed over the stobj.
+; DIRTY is a list of (LPAGE . CONTENT), LPAGES strictly ascending; an LPAGE
+; equal to the table's length at that point APPENDS a page (growth), so the
+; new pages are exactly N, N+1, ... (`pgs-lpages-ok').  The planner is shared:
+; the model hands it the content digests, the host the digests it computed
+; over the stobj.
+
+(defun pgs-lpages-ok (ls n lo)
+  ; LS strictly ascending from LO, each at most the length N reached so far.
+  (declare (xargs :guard t))
+  (if (atom ls)
+      (null ls)
+    (let ((l (car ls)))
+      (and (natp l) (<= (nfix lo) l) (<= l (nfix n))
+           (pgs-lpages-ok (cdr ls) (if (equal l (nfix n)) (+ 1 (nfix n)) n) (+ 1 l))))))
+
+(defun pgs-grown-len (ls n)
+  ; Shared: the table's length after the commit of LS over N entries.
+  (declare (xargs :guard t))
+  (if (atom ls)
+      (nfix n)
+    (pgs-grown-len (cdr ls) (if (equal (nfix (car ls)) (nfix n)) (+ 1 (nfix n)) n))))
 
 (defun pgs-update-entry (i e ptab)
+  ; Replace entry I, or append it when I is the length.
   (declare (xargs :guard (and (natp i) (true-listp ptab))))
-  (if (< (nfix i) (len ptab)) (update-nth (nfix i) e ptab) ptab))
+  (cond ((< (nfix i) (len ptab)) (update-nth (nfix i) e ptab))
+        ((equal (nfix i) (len ptab)) (append ptab (list e)))
+        (t ptab)))
 
 (defun pgs-plan-ptab (ptab lpages fresh digests txid)
   ; Shared: LPAGES, FRESH and DIGESTS are parallel lists.
@@ -364,6 +476,17 @@
                                      ptab)
                    (cdr lpages) (cdr fresh) (cdr digests) txid)))
 
+(defun pgs-touched (lpages prev)
+  ; Shared: the table pages LPAGES (ascending) fall in, ascending, each once;
+  ; PREV the last one emitted (nil at the start).
+  (declare (xargs :guard (nat-listp lpages)))
+  (if (atom lpages)
+      nil
+    (let ((tp (floor (nfix (car lpages)) *pgs-tab-entries*)))
+      (if (equal tp prev)
+          (pgs-touched (cdr lpages) prev)
+        (cons tp (pgs-touched (cdr lpages) tp))))))
+
 (defun pgs-dirty-lpages (dirty)
   (declare (xargs :guard (alistp dirty)))
   (if (atom dirty) nil (cons (nfix (caar dirty)) (pgs-dirty-lpages (cdr dirty)))))
@@ -371,6 +494,11 @@
 (defun pgs-dirty-digests (dirty)
   (declare (xargs :guard (alistp dirty)))
   (if (atom dirty) nil (cons (pgs-digest (cdar dirty)) (pgs-dirty-digests (cdr dirty)))))
+
+(defun pgs-table-dirty (tl cs)
+  ; The table pages a commit rewrites: (T . table page T of CS) for T in TL.
+  (declare (xargs :guard (and (nat-listp tl) (true-listp cs))))
+  (if (atom tl) nil (cons (cons (car tl) (nth (car tl) cs)) (pgs-table-dirty (cdr tl) cs))))
 
 (defun pgs-page-writes (dirty fresh)
   ; The page writes: (ADDR . CONTENT), in dirty order.
@@ -390,17 +518,14 @@
   (pgs-next-txid-of (pgs-slot 0 slots) (pgs-rec-valid (pgs-slot 0 slots))
                     (pgs-slot 1 slots) (pgs-rec-valid (pgs-slot 1 slots))))
 
-(defun pgs-hwm (xs)
-  (declare (xargs :guard t))
-  (if (atom xs) 0 (max (+ 1 (nfix (car xs))) (pgs-hwm (cdr xs)))))
-
-(defun pgs-plan-commit (disk r mode dirty)
-  ; The commit on root R of DIRTY over the state R opens on:
-  ;   (:plan WRITES SLOT RECORD) where WRITES are the page writes then the
-  ;   table write, and RECORD goes to SLOT (the slot the open did not use);
-  ;   or (:refused REASON).  Model only (it digests contents through the
-  ;   constrained seam): the host runs `pgs-x-plan', which calls the same
-  ;   `pgs-alloc', `pgs-plan-ptab' and `pgs-make-rec-fields'.
+(defun pgs-plan-commit (disk r mode dirty alloc)
+  ; The commit on root R of DIRTY over the state R opens on, allocating from
+  ; ALLOC = (FREE HWM):
+  ;   (:plan WRITES SLOT RECORD ALLOC2) where WRITES are the page writes,
+  ;   the table-page writes and the directory write, and RECORD goes to SLOT
+  ;   (the slot the open did not use); or (:refused REASON).  Model only (it
+  ;   digests contents through the constrained seam): the host runs the same
+  ;   `pgs-alloc', `pgs-plan-ptab', `pgs-touched' over the stobj.
   (declare (xargs :guard (alistp dirty) :verify-guards nil))
   (let* ((o (pgs-open disk r mode)))
     (if (not (and (consp o) (eq (car o) :ok) (true-listp o)))
@@ -409,23 +534,27 @@
              (slots (pgs-root-slots r disk))
              (cur (pgs-slot k slots))
              (pages (pgs-pages disk))
-             (ptab (pgs-lookup (pgs-rec-ptab-addr cur) pages))
-             (keeps (pgs-roots-keeps (pgs-roots disk) pages))
-             (used (pgs-mark keeps nil))
-             (n (len dirty))
-             (m (pgs-ptab-run-pages (len ptab)))
-             (al (pgs-alloc n m (pgs-hwm keeps) used)))
-        (prog2$
-         (fast-alist-free used)
-         (if (not (consp al))
-             (list :refused :alloc-short)
-           (let* ((txid (pgs-next-txid slots))
-                  (ptab2 (pgs-plan-ptab (true-list-fix ptab) (pgs-dirty-lpages dirty)
-                                        (cdr al) (pgs-dirty-digests dirty) txid))
-                  (rec (pgs-make-rec txid (car al) (len ptab2) (pgs-digest ptab2)))
-                  (writes (append (pgs-page-writes dirty (cdr al))
-                                  (list (cons (car al) ptab2)))))
-             (list :plan writes (if (equal k 1) 0 1) rec))))))))
+             (dir (pgs-lookup (pgs-rec-dir-addr cur) pages))
+             (ptab (pgs-flatten (pgs-contents dir pages)))
+             (lpages (pgs-dirty-lpages dirty)))
+        (if (not (pgs-lpages-ok lpages (len ptab) 0))
+            (list :refused :dirty-out-of-order)
+          (let* ((txid (pgs-next-txid slots))
+                 (tl (pgs-touched lpages nil))
+                 (n (len dirty))
+                 (al (pgs-alloc (+ n (len tl)) (pgs-dir-run-pages (pgs-grown-len lpages (len ptab)))
+                                alloc))
+                 (rs (first al))
+                 (fresh (take n (second al)))
+                 (tfresh (nthcdr n (second al)))
+                 (ptab2 (pgs-plan-ptab ptab lpages fresh (pgs-dirty-digests dirty) txid))
+                 (tdirty (pgs-table-dirty tl (pgs-chunk ptab2)))
+                 (dir2 (pgs-plan-ptab (true-list-fix dir) tl tfresh (pgs-dirty-digests tdirty) txid))
+                 (rec (pgs-make-rec txid rs (len ptab2) (pgs-digest dir2)))
+                 (writes (append (pgs-page-writes dirty fresh)
+                                 (pgs-page-writes tdirty tfresh)
+                                 (list (cons rs dir2)))))
+            (list :plan writes (if (equal k 1) 0 1) rec (list (third al) (fourth al)))))))))
 
 ; Applying writes.  KEEP says, per write, whether it reached the disk; the
 ; complete commit keeps all.  A slot write sets one slot of one root.
@@ -458,22 +587,24 @@
                      (cons (pgs-apply-pages writes keep (pgs-pages disk))
                            (pgs-roots disk))))
 
-(defun pgs-commit (disk r mode dirty)
+(defun pgs-commit (disk r mode dirty alloc)
   ; The complete commit: every write, then the record.
   (declare (xargs :guard (alistp dirty) :verify-guards nil))
-  (let ((p (pgs-plan-commit disk r mode dirty)))
+  (let ((p (pgs-plan-commit disk r mode dirty alloc)))
     (if (eq (car p) :plan)
         (pgs-crash disk r (second p) nil (third p) (fourth p))
       disk)))
 
-; The logical state after DIRTY: CONTENTS with each dirty page replaced.
+; The logical state after DIRTY: CONTENTS with each dirty page replaced,
+; or appended when its LPAGE is the length.
 (defun pgs-apply-dirty (contents dirty)
   (declare (xargs :guard (and (true-listp contents) (alistp dirty))))
   (if (atom dirty)
       contents
-    (pgs-apply-dirty (if (< (nfix (caar dirty)) (len contents))
-                         (update-nth (nfix (caar dirty)) (cdar dirty) contents)
-                       contents)
+    (pgs-apply-dirty (let ((i (nfix (caar dirty))))
+                       (cond ((< i (len contents)) (update-nth i (cdar dirty) contents))
+                             ((equal i (len contents)) (append contents (list (cdar dirty))))
+                             (t contents)))
                      (cdr dirty))))
 
 ; A fork: root R2 gets the record R opens on, in slot 0, and an empty slot 1.
@@ -490,17 +621,16 @@
 ; The snapshot program's process-death cuts, each a model crash point.
 ;
 ; The host (host/native/proto-pagestore.lisp, `fnps-at') names every point
-; where the snapshot may die: before any write, after the K-th page write,
-; after the table write, after the page file's barrier (two-barrier mode),
-; with the record half-written, after the record write, after its barrier.
-; A process death keeps every completed write (the page cache survives), so
+; where the snapshot may die: before any write, after the K-th data-page
+; write, after the K-th table-page write, after the directory write, with
+; the record half-written, after the record write, after its barrier.  A
+; process death keeps every completed write (the page cache survives), so
 ; each cut is the model's `pgs-crash' with KEEP the completed prefix of the
-; commit's writes and the slot old, torn or new: `pgs-cut-crash-point'.
-; tools/proto/pagestore_bench.py `cut-map' checks that the host's cut names
-; are exactly this list, and the campaign cuts at every one.
+; commit's writes (NDATA data pages, then the table pages, then the
+; directory) and the slot old, torn or new: `pgs-cut-crash-point'.
 
 (defconst *pgs-snapshot-cuts*
-  '(:begin :page-written :table-written :pages-synced
+  '(:begin :page-written :table-written :dir-written
     :record-torn :record-written :record-synced))
 
 (defun pgs-prefix-keep (k n)
@@ -508,578 +638,15 @@
   (declare (xargs :guard (and (natp k) (natp n))))
   (if (zp n) nil (cons (not (zp k)) (pgs-prefix-keep (if (zp k) 0 (1- k)) (1- n)))))
 
-(defun pgs-cut-crash-point (cut k nwrites)
-  ; (KEEP . SLOT) for host cut CUT (occurrence K for :page-written) in a
-  ; commit of NWRITES writes (the pages, then the table): SLOT is :old,
-  ; :torn or :new.
-  (declare (xargs :guard (and (natp k) (natp nwrites))))
+(defun pgs-cut-crash-point (cut k ndata nwrites)
+  ; (KEEP . SLOT) for host cut CUT (occurrence K for the per-write cuts) in
+  ; a commit of NWRITES writes whose first NDATA are data pages: SLOT is
+  ; :old, :torn or :new.
+  (declare (xargs :guard (and (natp k) (natp ndata) (natp nwrites))))
   (case cut
     (:begin (cons (pgs-prefix-keep 0 nwrites) :old))
     (:page-written (cons (pgs-prefix-keep k nwrites) :old))
-    ((:table-written :pages-synced) (cons (pgs-prefix-keep nwrites nwrites) :old))
+    (:table-written (cons (pgs-prefix-keep (+ ndata k) nwrites) :old))
+    (:dir-written (cons (pgs-prefix-keep nwrites nwrites) :old))
     (:record-torn (cons (pgs-prefix-keep nwrites nwrites) :torn))
     (otherwise (cons (pgs-prefix-keep nwrites nwrites) :new))))
-
-; =============================================================================
-; 5. The executable: the same decisions over words.
-;
-; The stobj `pgs-mem' and SHA-256 over its words are books/proto/pagestore-words.lisp.
-
-(local (in-theory (disable floor mod truncate rem ash)))
-(local (in-theory (disable nth update-nth)))
-(local (in-theory (disable fn-shs-p)))
-
-; -----------------------------------------------------------------------------
-; Digests as four words (most significant first) and back.
-
-(defun-inline pgs-u64-fix (x)
-  (declare (xargs :guard t))
-  (mod (nfix x) *pgs-u64-modulus*))
-
-(local (defthm pgs-u64-of-u64-fix
-  (unsigned-byte-p 64 (pgs-u64-fix x))
-  :hints (("Goal" :in-theory (enable pgs-u64-fix$inline unsigned-byte-p mod)))
-  :rule-classes ((:rewrite)
-                 (:type-prescription :corollary (natp (pgs-u64-fix x)))
-                 (:linear :corollary (< (pgs-u64-fix x) 18446744073709551616)))))
-
-(local (in-theory (disable pgs-u64-fix$inline)))
-
-(defun pgs-x-dig4 (base pgs-mem)
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp base) (<= (+ base 4) (pgs-m-length pgs-mem)))))
-  (+ (* (nfix (pgs-mi base pgs-mem)) 6277101735386680763835789423207666416102355444464034512896)
-     (* (nfix (pgs-mi (+ 1 base) pgs-mem)) 340282366920938463463374607431768211456)
-     (* (nfix (pgs-mi (+ 2 base) pgs-mem)) 18446744073709551616)
-     (nfix (pgs-mi (+ 3 base) pgs-mem))))
-
-(defun pgs-dig-word (d k)
-  ; Word K (0 most significant) of the 256-bit digest D.
-  (declare (xargs :guard (and (natp k) (< k 4))))
-  (pgs-u64-fix (floor (nfix d) (expt 2 (* 64 (- 3 (nfix k)))))))
-
-(defun pgs-x-put-m (i v pgs-mem)
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp i) (< i (pgs-m-length pgs-mem)))))
-  (update-pgs-mi i (pgs-u64-fix v) pgs-mem))
-
-(defthm pgs-m-length-of-put-m
-  (implies (and (natp i) (< i (pgs-m-length pgs-mem)))
-           (equal (pgs-m-length (pgs-x-put-m i v pgs-mem)) (pgs-m-length pgs-mem))))
-
-(defthm pgs-w-length-of-put-m
-  (implies (natp i)
-           (equal (pgs-w-length (pgs-x-put-m i v pgs-mem)) (pgs-w-length pgs-mem))))
-
-(defthm pgs-memp-of-put-m
-  (implies (and (pgs-memp pgs-mem) (natp i) (< i (pgs-m-length pgs-mem)))
-           (pgs-memp (pgs-x-put-m i v pgs-mem))))
-
-(in-theory (disable pgs-x-put-m))
-
-(defun pgs-x-put-dig4 (base d pgs-mem)
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp base) (<= (+ base 4) (pgs-m-length pgs-mem)))))
-  (let* ((pgs-mem (pgs-x-put-m base (pgs-dig-word d 0) pgs-mem))
-         (pgs-mem (pgs-x-put-m (+ 1 base) (pgs-dig-word d 1) pgs-mem))
-         (pgs-mem (pgs-x-put-m (+ 2 base) (pgs-dig-word d 2) pgs-mem)))
-    (pgs-x-put-m (+ 3 base) (pgs-dig-word d 3) pgs-mem)))
-
-(defthm pgs-lengths-of-put-dig4
-  (implies (and (natp base) (<= (+ base 4) (pgs-m-length pgs-mem)))
-           (and (equal (pgs-m-length (pgs-x-put-dig4 base d pgs-mem)) (pgs-m-length pgs-mem))
-                (equal (pgs-w-length (pgs-x-put-dig4 base d pgs-mem)) (pgs-w-length pgs-mem)))))
-
-(defthm pgs-memp-of-put-dig4
-  (implies (and (pgs-memp pgs-mem) (natp base) (<= (+ base 4) (pgs-m-length pgs-mem)))
-           (pgs-memp (pgs-x-put-dig4 base d pgs-mem))))
-
-(in-theory (disable pgs-x-put-dig4))
-
-; -----------------------------------------------------------------------------
-; The commit record, 20 words in the metadata array at BASE:
-;   0 magic  1 txid  2 ptab-addr  3 ptab-len  4 page words  5-7 zero
-;   8-11 ptab digest  12-15 zero  16-19 check = SHA-256 of words 0-15.
-; A slot of zeros is EMPTY (nil); anything else that is not this shape is
-; :torn, which `pgs-slot-refusals' names.
-
-(defun pgs-x-zero-words-p (i n pgs-mem)
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp i) (natp n) (<= (+ i n) (pgs-m-length pgs-mem)))
-                  :measure (nfix n)))
-  (if (zp n)
-      t
-    (and (equal (pgs-mi i pgs-mem) 0)
-         (pgs-x-zero-words-p (+ 1 i) (1- n) pgs-mem))))
-
-(defun pgs-x-read-rec (base pgs-mem fn-shs)
-  ; (mv RECORD CHECK fn-shs): the record the words hold (nil when empty,
-  ; :torn when malformed) and the check observed over them.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp base) (<= (+ base *pgs-rec-words*) (pgs-m-length pgs-mem)))))
-  (mv-let (check fn-shs)
-    (pgs-x-words-digest 1 base 2 pgs-mem fn-shs)
-    (mv (cond ((pgs-x-zero-words-p base *pgs-rec-words* pgs-mem) nil)
-              ((and (equal (pgs-mi base pgs-mem) *pgs-magic*)
-                    (equal (pgs-mi (+ 4 base) pgs-mem) *pgs-page-words*)
-                    (pgs-x-zero-words-p (+ 5 base) 3 pgs-mem)
-                    (pgs-x-zero-words-p (+ 12 base) 4 pgs-mem))
-               (list :pgs-commit
-                     (pgs-mi (+ 1 base) pgs-mem) (pgs-mi (+ 2 base) pgs-mem)
-                     (pgs-mi (+ 3 base) pgs-mem) (pgs-x-dig4 (+ 8 base) pgs-mem)
-                     (pgs-x-dig4 (+ 16 base) pgs-mem)))
-              (t :torn))
-        check
-        fn-shs)))
-
-(defun pgs-x-zero-m (i n pgs-mem)
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp i) (natp n) (<= (+ i n) (pgs-m-length pgs-mem)))
-                  :measure (nfix n)))
-  (if (zp n)
-      pgs-mem
-    (let ((pgs-mem (pgs-x-put-m i 0 pgs-mem)))
-      (pgs-x-zero-m (+ 1 i) (1- n) pgs-mem))))
-
-(defthm pgs-lengths-of-zero-m
-  (implies (and (natp i) (natp n) (<= (+ i n) (pgs-m-length pgs-mem)))
-           (and (equal (pgs-m-length (pgs-x-zero-m i n pgs-mem)) (pgs-m-length pgs-mem))
-                (equal (pgs-w-length (pgs-x-zero-m i n pgs-mem)) (pgs-w-length pgs-mem)))))
-
-(defthm pgs-memp-of-zero-m
-  (implies (and (pgs-memp pgs-mem) (natp i) (natp n) (<= (+ i n) (pgs-m-length pgs-mem)))
-           (pgs-memp (pgs-x-zero-m i n pgs-mem))))
-
-(in-theory (disable pgs-x-zero-m))
-
-(defun pgs-x-write-rec (base txid addr len pdig pgs-mem fn-shs)
-  ; Encode the record at BASE and compute its check: (mv RECORD pgs-mem fn-shs).
-  ; RECORD is `pgs-x-read-rec' of the words (the check over the words that
-  ; were written).
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp base) (<= (+ base *pgs-rec-words*) (pgs-m-length pgs-mem)))))
-  (let* ((pgs-mem (pgs-x-zero-m base *pgs-rec-words* pgs-mem))
-         (pgs-mem (pgs-x-put-m base *pgs-magic* pgs-mem))
-         (pgs-mem (pgs-x-put-m (+ 1 base) txid pgs-mem))
-         (pgs-mem (pgs-x-put-m (+ 2 base) addr pgs-mem))
-         (pgs-mem (pgs-x-put-m (+ 3 base) len pgs-mem))
-         (pgs-mem (pgs-x-put-m (+ 4 base) *pgs-page-words* pgs-mem))
-         (pgs-mem (pgs-x-put-dig4 (+ 8 base) pdig pgs-mem)))
-    (mv-let (check fn-shs)
-      (pgs-x-words-digest 1 base 2 pgs-mem fn-shs)
-      (let ((pgs-mem (pgs-x-put-dig4 (+ 16 base) check pgs-mem)))
-        (mv (list :pgs-commit (pgs-u64-fix txid) (pgs-u64-fix addr) (pgs-u64-fix len)
-                  (pgs-x-dig4 (+ 8 base) pgs-mem) check)
-            pgs-mem fn-shs)))))
-
-; -----------------------------------------------------------------------------
-; The page table, 6 words per entry (phys, txid, digest) from BASE; the run
-; is zero-padded to whole pages and digested whole.
-
-(defun pgs-x-decode-ptab (j n base acc pgs-mem)
-  ; Entries J..N-1, consed onto ACC in reverse; the caller reverses.
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp j) (natp n) (natp base) (<= j n)
-                              (<= (+ base (* 6 n)) (pgs-m-length pgs-mem)))
-                  :measure (nfix (- (nfix n) (nfix j)))))
-  (if (mbe :logic (zp (- (nfix n) (nfix j))) :exec (= j n))
-      acc
-    (let ((b (+ base (* 6 j))))
-      (pgs-x-decode-ptab (+ 1 (nfix j)) n base
-                         (cons (list (pgs-mi b pgs-mem) (pgs-mi (+ 1 b) pgs-mem)
-                                     (pgs-x-dig4 (+ 2 b) pgs-mem))
-                               acc)
-                         pgs-mem))))
-
-(defun pgs-x-encode-ptab (ptab j base pgs-mem)
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (pgs-ptab-p ptab) (natp j) (natp base)
-                              (<= (+ base (* 6 (+ j (len ptab)))) (pgs-m-length pgs-mem)))
-                  :measure (len ptab)))
-  (if (atom ptab)
-      pgs-mem
-    (let* ((e (car ptab))
-           (b (+ base (* 6 j)))
-           (pgs-mem (pgs-x-put-m b (first e) pgs-mem))
-           (pgs-mem (pgs-x-put-m (+ 1 b) (second e) pgs-mem))
-           (pgs-mem (pgs-x-put-dig4 (+ 2 b) (third e) pgs-mem)))
-      (pgs-x-encode-ptab (cdr ptab) (+ 1 j) base pgs-mem))))
-
-; -----------------------------------------------------------------------------
-; Verification of the resident image (the open), and at first touch.
-
-(defun pgs-x-verify (ptab i txid mode pgs-mem fn-shs)
-  ; (mv BAD pgs-mem fn-shs): BAD is nil when every page the mode checks
-  ; verifies (each is flagged verified), else (:page-damaged I PHYS) for the
-  ; first that does not: `pgs-check-pages' over the observed digests.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (pgs-ptab-p ptab) (natp i)
-                              (<= (* (+ i (len ptab)) *pgs-page-words*) (pgs-w-length pgs-mem))
-                              (<= (+ i (len ptab)) (pgs-v-length pgs-mem)))
-                  :measure (len ptab)))
-  (if (atom ptab)
-      (mv nil pgs-mem fn-shs)
-    (let ((e (car ptab)))
-      (if (pgs-entry-checked-p e txid mode)
-          (mv-let (d fn-shs)
-            (pgs-x-page-digest i pgs-mem fn-shs)
-            (if (eq (pgs-entry-verdict e txid mode d) :damaged)
-                (mv (list :page-damaged i (first e)) pgs-mem fn-shs)
-              (let ((pgs-mem (update-pgs-vi i 1 pgs-mem)))
-                (pgs-x-verify (cdr ptab) (+ 1 i) txid mode pgs-mem fn-shs))))
-        (pgs-x-verify (cdr ptab) (+ 1 i) txid mode pgs-mem fn-shs)))))
-
-(defun pgs-x-touch (i tbase pgs-mem fn-shs)
-  ; Lazy mode, first touch of resident page I: :ok (now flagged verified)
-  ; or :damaged, against the table entry encoded at TBASE.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp i) (natp tbase)
-                              (< i (pgs-v-length pgs-mem))
-                              (<= (* (+ 1 i) *pgs-page-words*) (pgs-w-length pgs-mem))
-                              (<= (+ tbase (* 6 (+ 1 i))) (pgs-m-length pgs-mem)))))
-  (if (equal (pgs-vi i pgs-mem) 1)
-      (mv :ok pgs-mem fn-shs)
-    (mv-let (d fn-shs)
-      (pgs-x-page-digest i pgs-mem fn-shs)
-      (let ((b (+ tbase (* 6 i))))
-        (if (eq (pgs-entry-verdict (list (pgs-mi b pgs-mem) (pgs-mi (+ 1 b) pgs-mem)
-                                         (pgs-x-dig4 (+ 2 b) pgs-mem))
-                                   0 :eager d)
-                :damaged)
-            (mv :damaged pgs-mem fn-shs)
-          (let ((pgs-mem (update-pgs-vi i 1 pgs-mem)))
-            (mv :ok pgs-mem fn-shs)))))))
-
-(defthm pgs-stobjs-of-x-touch
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs) (natp i) (< i (pgs-v-length pgs-mem)))
-           (and (pgs-memp (mv-nth 1 (pgs-x-touch i tbase pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 2 (pgs-x-touch i tbase pgs-mem fn-shs)))
-                (equal (pgs-w-length (mv-nth 1 (pgs-x-touch i tbase pgs-mem fn-shs))) (pgs-w-length pgs-mem))
-                (equal (pgs-m-length (mv-nth 1 (pgs-x-touch i tbase pgs-mem fn-shs))) (pgs-m-length pgs-mem))
-                (equal (pgs-v-length (mv-nth 1 (pgs-x-touch i tbase pgs-mem fn-shs))) (pgs-v-length pgs-mem))
-                (equal (pgs-d-length (mv-nth 1 (pgs-x-touch i tbase pgs-mem fn-shs))) (pgs-d-length pgs-mem)))))
-
-(in-theory (disable pgs-x-touch))
-
-; -----------------------------------------------------------------------------
-; Writers and the dirty bitmap (one flag word per page).
-
-(defun pgs-x-put (lp off v pgs-mem)
-  ; Word OFF of resident page LP := V, and LP is dirty.
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp lp) (natp off) (< off *pgs-page-words*)
-                              (< lp (pgs-d-length pgs-mem))
-                              (<= (* (+ 1 lp) *pgs-page-words*) (pgs-w-length pgs-mem)))))
-  (let ((pgs-mem (update-pgs-wi (+ (* lp *pgs-page-words*) off) (pgs-u64-fix v) pgs-mem)))
-    (update-pgs-di lp 1 pgs-mem)))
-
-(defun pgs-x-dirty-list (j acc pgs-mem)
-  ; The dirty pages below J, ascending, onto ACC.
-  (declare (xargs :stobjs pgs-mem
-                  :guard (and (natp j) (<= j (pgs-d-length pgs-mem)))
-                  :measure (nfix j)))
-  (if (zp j)
-      acc
-    (pgs-x-dirty-list (1- j)
-                      (if (equal (pgs-di (1- j) pgs-mem) 1) (cons (1- j) acc) acc)
-                      pgs-mem)))
-
-(defun pgs-x-lpages-fit (lpages n)
-  (declare (xargs :guard t))
-  (if (atom lpages)
-      (null lpages)
-    (and (natp (car lpages)) (< (car lpages) (nfix n))
-         (pgs-x-lpages-fit (cdr lpages) n))))
-
-(defun pgs-x-clear-dirty (lpages pgs-mem)
-  (declare (xargs :stobjs pgs-mem
-                  :guard (pgs-x-lpages-fit lpages (pgs-d-length pgs-mem))))
-  (if (atom lpages)
-      pgs-mem
-    (let ((pgs-mem (update-pgs-di (car lpages) 0 pgs-mem)))
-      (pgs-x-clear-dirty (cdr lpages) pgs-mem))))
-
-(defun pgs-x-dirty-digests (lpages pgs-mem fn-shs)
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (pgs-x-lpages-fit lpages (pgs-d-length pgs-mem))
-                              (<= (* (pgs-d-length pgs-mem) *pgs-page-words*)
-                                  (pgs-w-length pgs-mem)))))
-  (if (atom lpages)
-      (mv nil fn-shs)
-    (mv-let (d fn-shs)
-      (pgs-x-page-digest (car lpages) pgs-mem fn-shs)
-      (mv-let (ds fn-shs)
-        (pgs-x-dirty-digests (cdr lpages) pgs-mem fn-shs)
-        (mv (cons d ds) fn-shs)))))
-
-(defthm pgs-nat-listp-of-lpages-fit
-  (implies (pgs-x-lpages-fit lpages n) (nat-listp lpages)))
-
-(defthm pgs-true-listp-of-dirty-digests
-  (and (true-listp (mv-nth 0 (pgs-x-dirty-digests lpages pgs-mem fn-shs)))
-       (true-listp (car (pgs-x-dirty-digests lpages pgs-mem fn-shs)))))
-
-(defthm pgs-true-listp-of-find-singles
-  (true-listp (pgs-find-singles n a bound used)))
-
-(defthm pgs-alloc-shape
-  (implies (consp (pgs-alloc n m hwm used))
-           (true-listp (cdr (pgs-alloc n m hwm used)))))
-
-(defthm pgs-ptab-run-pages-posp
-  (and (integerp (pgs-ptab-run-pages n)) (< 0 (pgs-ptab-run-pages n)))
-  :rule-classes ((:type-prescription :corollary (integerp (pgs-ptab-run-pages n)))
-                 (:linear :corollary (< 0 (pgs-ptab-run-pages n)))))
-
-(in-theory (disable pgs-alloc pgs-x-dirty-digests pgs-ptab-run-pages))
-
-(defun pgs-x-keeps (pairs)
-  ; The kept addresses of every valid record the host read: PAIRS is a list
-  ; of (RECORD . TABLE).
-  (declare (xargs :guard t))
-  (if (atom pairs)
-      nil
-    (append (and (consp (car pairs)) (pgs-rec-keeps (caar pairs) (cdar pairs)))
-            (pgs-x-keeps (cdr pairs)))))
-
-(defun pgs-x-plan (ptab lpages pairs txid pgs-mem fn-shs)
-  ; The host's commit decision: (mv (RUN-START SINGLES PTAB2) fn-shs), or
-  ; (mv :alloc-short fn-shs).  The same `pgs-alloc' and `pgs-plan-ptab' as
-  ; `pgs-plan-commit', over the digests observed in the stobj.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (true-listp ptab)
-                              (pgs-x-lpages-fit lpages (pgs-d-length pgs-mem))
-                              (<= (* (pgs-d-length pgs-mem) *pgs-page-words*)
-                                  (pgs-w-length pgs-mem)))))
-  (let* ((keeps (pgs-x-keeps pairs))
-         (used (pgs-mark keeps nil))
-         (al (pgs-alloc (len lpages) (pgs-ptab-run-pages (len ptab)) (pgs-hwm keeps) used)))
-    (prog2$
-     (fast-alist-free used)
-     (if (not (consp al))
-         (mv :alloc-short fn-shs)
-       (mv-let (digests fn-shs)
-         (pgs-x-dirty-digests lpages pgs-mem fn-shs)
-         (mv (list (car al) (cdr al)
-                   (pgs-plan-ptab ptab lpages (cdr al) digests txid))
-             fn-shs))))))
-
-; -----------------------------------------------------------------------------
-; Reads through the store, and the two first requests (a lookup by sequence,
-; a lookup by Message-ID) over the fn-hist-shaped columns.
-;
-; Every read is bounds-checked at run time (the words came from a file) and,
-; in lazy mode, verifies its page at first touch; a failed check is a
-; refusal by name, never a value.  Layout (logical page 0, the header):
-;   0 magic "FNPSCOLS"  1 N records  2 HBITS (table of 2^HBITS slots)
-;   3 OFF: word index of the offsets column (N words: pool byte offsets)
-;   4 TAB: word index of the Message-ID table (slot = sequence + 1, 0 empty)
-;   5 POOL: word index of the byte pool   6 pool words   7 salt
-; A pool entry at byte offset O (8-aligned): its first word holds the
-; Message-ID length L (bits 0-15) and the row length R (bits 16-31); the
-; Message-ID's octets follow from O + 8, then the row's.
-
-(defconst *pgs-cols-magic* #x534C4F4353504E46)   ; "FNPSCOLS", little-endian
-
-(defun pgs-x-rd (i lazy tbase pgs-mem fn-shs)
-  ; (mv VERDICT WORD pgs-mem fn-shs): VERDICT :ok, :out-of-range, or
-  ; (:page-damaged LP).
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (natp i) (natp tbase))))
-  (let ((lp (nfix (floor (nfix i) *pgs-page-words*))))
-    (if (not (and (natp i) (natp tbase)
-                  (< i (pgs-w-length pgs-mem)) (< lp (pgs-v-length pgs-mem))
-                  (<= (* (+ 1 lp) *pgs-page-words*) (pgs-w-length pgs-mem))
-                  (<= (+ tbase (* 6 (+ 1 lp))) (pgs-m-length pgs-mem))))
-        (mv :out-of-range 0 pgs-mem fn-shs)
-      (if lazy
-          (mv-let (v pgs-mem fn-shs)
-            (pgs-x-touch lp tbase pgs-mem fn-shs)
-            (if (eq v :ok)
-                (mv :ok (pgs-wi i pgs-mem) pgs-mem fn-shs)
-              (mv (list :page-damaged lp) 0 pgs-mem fn-shs)))
-        (mv :ok (pgs-wi i pgs-mem) pgs-mem fn-shs)))))
-
-(defthm pgs-stobjs-of-x-rd
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-rd i lazy tbase pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-rd i lazy tbase pgs-mem fn-shs)))
-                (equal (pgs-w-length (mv-nth 2 (pgs-x-rd i lazy tbase pgs-mem fn-shs))) (pgs-w-length pgs-mem))
-                (equal (pgs-m-length (mv-nth 2 (pgs-x-rd i lazy tbase pgs-mem fn-shs))) (pgs-m-length pgs-mem))
-                (equal (pgs-v-length (mv-nth 2 (pgs-x-rd i lazy tbase pgs-mem fn-shs))) (pgs-v-length pgs-mem))
-                (equal (pgs-d-length (mv-nth 2 (pgs-x-rd i lazy tbase pgs-mem fn-shs))) (pgs-d-length pgs-mem)))))
-
-(defun pgs-byte-of-word (w k)
-  (declare (xargs :guard (and (natp w) (natp k))))
-  (mod (floor (nfix w) (expt 2 (* 8 (mod (nfix k) 8)))) 256))
-
-(defun pgs-x-pool-byte (o pool lazy tbase pgs-mem fn-shs)
-  ; Octet O of the pool that starts at word POOL.
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp o) (natp pool) (natp tbase))))
-  (mv-let (v w pgs-mem fn-shs)
-    (pgs-x-rd (+ pool (floor o 8)) lazy tbase pgs-mem fn-shs)
-    (mv v (pgs-byte-of-word w o) pgs-mem fn-shs)))
-
-(defthm pgs-stobjs-of-x-pool-byte
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-pool-byte o pool lazy tbase pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-pool-byte o pool lazy tbase pgs-mem fn-shs)))
-                (equal (pgs-w-length (mv-nth 2 (pgs-x-pool-byte o pool lazy tbase pgs-mem fn-shs))) (pgs-w-length pgs-mem))
-                (equal (pgs-m-length (mv-nth 2 (pgs-x-pool-byte o pool lazy tbase pgs-mem fn-shs))) (pgs-m-length pgs-mem))
-                (equal (pgs-v-length (mv-nth 2 (pgs-x-pool-byte o pool lazy tbase pgs-mem fn-shs))) (pgs-v-length pgs-mem))
-                (equal (pgs-d-length (mv-nth 2 (pgs-x-pool-byte o pool lazy tbase pgs-mem fn-shs))) (pgs-d-length pgs-mem)))))
-
-(in-theory (disable pgs-x-rd pgs-x-pool-byte))
-
-(defun pgs-x-pool-bytes (o n pool lazy tbase acc pgs-mem fn-shs)
-  ; N octets from O, reversed onto ACC (the caller reverses).
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (natp o) (natp n) (natp pool) (natp tbase) (true-listp acc))
-                  :measure (nfix n)))
-  (if (zp n)
-      (mv :ok acc pgs-mem fn-shs)
-    (mv-let (v b pgs-mem fn-shs)
-      (pgs-x-pool-byte o pool lazy tbase pgs-mem fn-shs)
-      (if (not (eq v :ok))
-          (mv v acc pgs-mem fn-shs)
-        (pgs-x-pool-bytes (+ 1 o) (1- n) pool lazy tbase (cons b acc) pgs-mem fn-shs)))))
-
-(defthm pgs-true-listp-of-pool-bytes
-  (implies (true-listp acc)
-           (true-listp (mv-nth 1 (pgs-x-pool-bytes o n pool lazy tbase acc pgs-mem fn-shs)))))
-
-(defthm pgs-stobjs-of-x-pool-bytes
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-pool-bytes o n pool lazy tbase acc pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-pool-bytes o n pool lazy tbase acc pgs-mem fn-shs)))
-                (equal (pgs-w-length (mv-nth 2 (pgs-x-pool-bytes o n pool lazy tbase acc pgs-mem fn-shs))) (pgs-w-length pgs-mem))
-                (equal (pgs-m-length (mv-nth 2 (pgs-x-pool-bytes o n pool lazy tbase acc pgs-mem fn-shs))) (pgs-m-length pgs-mem))
-                (equal (pgs-v-length (mv-nth 2 (pgs-x-pool-bytes o n pool lazy tbase acc pgs-mem fn-shs))) (pgs-v-length pgs-mem))
-                (equal (pgs-d-length (mv-nth 2 (pgs-x-pool-bytes o n pool lazy tbase acc pgs-mem fn-shs))) (pgs-d-length pgs-mem)))))
-
-(in-theory (disable pgs-x-pool-bytes))
-
-(defun pgs-x-header (k lazy tbase pgs-mem fn-shs)
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (natp k) (natp tbase))))
-  (pgs-x-rd k lazy tbase pgs-mem fn-shs))
-
-(defthm pgs-stobjs-of-x-header
-  (implies (and (pgs-memp pgs-mem) (fn-shs-p fn-shs))
-           (and (pgs-memp (mv-nth 2 (pgs-x-header k lazy tbase pgs-mem fn-shs)))
-                (fn-shs-p (mv-nth 3 (pgs-x-header k lazy tbase pgs-mem fn-shs)))
-                (equal (pgs-w-length (mv-nth 2 (pgs-x-header k lazy tbase pgs-mem fn-shs))) (pgs-w-length pgs-mem))
-                (equal (pgs-m-length (mv-nth 2 (pgs-x-header k lazy tbase pgs-mem fn-shs))) (pgs-m-length pgs-mem))
-                (equal (pgs-v-length (mv-nth 2 (pgs-x-header k lazy tbase pgs-mem fn-shs))) (pgs-v-length pgs-mem))
-                (equal (pgs-d-length (mv-nth 2 (pgs-x-header k lazy tbase pgs-mem fn-shs))) (pgs-d-length pgs-mem)))))
-
-(in-theory (disable pgs-x-header))
-
-(defun pgs-x-entry (seq lazy tbase pgs-mem fn-shs)
-  ; (mv VERDICT (O L R) pgs-mem fn-shs) for record SEQ.
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (natp seq) (natp tbase))))
-  (mv-let (v0 magic pgs-mem fn-shs) (pgs-x-header 0 lazy tbase pgs-mem fn-shs)
-    (mv-let (v1 n pgs-mem fn-shs) (pgs-x-header 1 lazy tbase pgs-mem fn-shs)
-      (mv-let (v3 off pgs-mem fn-shs) (pgs-x-header 3 lazy tbase pgs-mem fn-shs)
-        (mv-let (v5 pool pgs-mem fn-shs) (pgs-x-header 5 lazy tbase pgs-mem fn-shs)
-          (cond ((not (and (eq v0 :ok) (eq v1 :ok) (eq v3 :ok) (eq v5 :ok)))
-                 (mv :header-unreadable nil pgs-mem fn-shs))
-                ((not (equal magic *pgs-cols-magic*))
-                 (mv :header-malformed nil pgs-mem fn-shs))
-                ((not (< seq (nfix n)))
-                 (mv :no-such-sequence nil pgs-mem fn-shs))
-                (t
-                 (mv-let (v o pgs-mem fn-shs)
-                   (pgs-x-rd (+ (nfix off) seq) lazy tbase pgs-mem fn-shs)
-                   (if (not (eq v :ok))
-                       (mv v nil pgs-mem fn-shs)
-                     (mv-let (v h pgs-mem fn-shs)
-                       (pgs-x-rd (+ (nfix pool) (floor (nfix o) 8)) lazy tbase pgs-mem fn-shs)
-                       (if (not (eq v :ok))
-                           (mv v nil pgs-mem fn-shs)
-                         (mv :ok (list (nfix o) (mod (nfix h) 65536)
-                                       (mod (floor (nfix h) 65536) 65536)
-                                       (nfix pool))
-                             pgs-mem fn-shs))))))))))))
-
-(in-theory (disable pgs-x-entry))
-
-(defun pgs-x-lookup-seq (seq lazy tbase pgs-mem fn-shs)
-  ; The first request by sequence: (mv VERDICT MSGID-OCTETS pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (natp seq) (natp tbase))))
-  (mv-let (v e pgs-mem fn-shs)
-    (pgs-x-entry seq lazy tbase pgs-mem fn-shs)
-    (if (not (and (eq v :ok) (true-listp e) (= (len e) 4)))
-        (mv v nil pgs-mem fn-shs)
-      (mv-let (v bytes pgs-mem fn-shs)
-        (pgs-x-pool-bytes (+ 8 (nfix (first e))) (nfix (second e)) (nfix (fourth e))
-                          lazy tbase nil pgs-mem fn-shs)
-        (mv v (revappend bytes nil) pgs-mem fn-shs)))))
-
-(defthm pgs-true-listp-of-revappend
-  (implies (true-listp y) (true-listp (revappend x y))))
-
-(defthm pgs-true-listp-of-lookup-seq
-  (true-listp (mv-nth 1 (pgs-x-lookup-seq seq lazy tbase pgs-mem fn-shs))))
-
-(in-theory (disable pgs-x-lookup-seq))
-
-(defun pgs-fnv (s i h)
-  ; FNV-1a, 32 bits, over the octets of S from I.
-  (declare (xargs :guard (and (stringp s) (natp i) (natp h))
-                  :measure (nfix (- (length s) (nfix i)))))
-  (if (and (stringp s) (natp i) (< i (length s)))
-      (pgs-fnv s (1+ i) (mod (* (logxor (nfix h) (char-code (char s i))) 16777619)
-                            4294967296))
-    (nfix h)))
-
-(defun pgs-x-octets-match (s i bytes)
-  (declare (xargs :guard (and (stringp s) (natp i) (true-listp bytes))
-                  :measure (len bytes)))
-  (if (atom bytes)
-      (and (natp i) (= i (length s)))
-    (and (natp i) (< i (length s))
-         (equal (char-code (char s i)) (car bytes))
-         (pgs-x-octets-match s (+ 1 i) (cdr bytes)))))
-
-(defun pgs-x-probe (s slot k size tab lazy tbase pgs-mem fn-shs)
-  ; Walk the table from SLOT for at most K slots; every candidate is
-  ; compared exactly.  (mv VERDICT SEQ-OR-NIL pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs)
-                  :guard (and (stringp s) (natp slot) (natp k) (natp size)
-                              (natp tab) (natp tbase))
-                  :measure (nfix k)))
-  (if (zp k)
-      (mv :ok nil pgs-mem fn-shs)
-    (mv-let (v x pgs-mem fn-shs)
-      (pgs-x-rd (+ tab slot) lazy tbase pgs-mem fn-shs)
-      (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-shs))
-            ((equal x 0) (mv :ok nil pgs-mem fn-shs))
-            ((not (posp x)) (mv :table-malformed nil pgs-mem fn-shs))
-            (t (mv-let (v bytes pgs-mem fn-shs)
-                 (pgs-x-lookup-seq (1- (nfix x)) lazy tbase pgs-mem fn-shs)
-                 (cond ((not (eq v :ok)) (mv v nil pgs-mem fn-shs))
-                       ((pgs-x-octets-match s 0 bytes) (mv :ok (1- (nfix x)) pgs-mem fn-shs))
-                       (t (pgs-x-probe s (if (< (+ 1 slot) size) (+ 1 slot) 0) (1- k)
-                                       size tab lazy tbase pgs-mem fn-shs)))))))))
-
-(defun pgs-msgid-start (s salt size)
-  (declare (xargs :guard (and (stringp s) (posp size))))
-  (mod (pgs-fnv s 0 (mod (logxor 2166136261 (nfix salt)) 4294967296)) size))
-
-(defthm pgs-natp-of-msgid-start
-  (implies (posp size) (natp (pgs-msgid-start s salt size)))
-  :rule-classes :type-prescription)
-
-(in-theory (disable pgs-msgid-start))
-
-(defun pgs-x-lookup-msgid (s lazy tbase pgs-mem fn-shs)
-  ; The first request by Message-ID: (mv VERDICT SEQ-OR-NIL pgs-mem fn-shs).
-  (declare (xargs :stobjs (pgs-mem fn-shs) :guard (and (stringp s) (natp tbase))))
-  (mv-let (v2 hbits pgs-mem fn-shs) (pgs-x-header 2 lazy tbase pgs-mem fn-shs)
-    (mv-let (v4 tab pgs-mem fn-shs) (pgs-x-header 4 lazy tbase pgs-mem fn-shs)
-      (mv-let (v7 salt pgs-mem fn-shs) (pgs-x-header 7 lazy tbase pgs-mem fn-shs)
-        (let ((size (expt 2 (nfix hbits))))
-          (if (not (and (eq v2 :ok) (eq v4 :ok) (eq v7 :ok) (< (nfix hbits) 40) (posp size)))
-              (mv :header-unreadable nil pgs-mem fn-shs)
-            (pgs-x-probe s (pgs-msgid-start s salt size) size size (nfix tab)
-                         lazy tbase pgs-mem fn-shs)))))))
