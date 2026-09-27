@@ -4292,6 +4292,37 @@
         "Four 239s in order, each echoing its Message-ID, then 205; all four stored byte-identical.",
         "340 240 340 240 340 240 340 240 205 in that order (no 340 before the 240 of the article preceding it); all four stored."
       ]
+    },
+    {
+      "id": "SCN-156",
+      "title": "a store whose profile raises max-header-fields to 1,000 accepts a 900-field POST and refuses 1,001 by name; the default profile refuses the 65th field and a 258-line header by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-030"
+      ],
+      "steps": [
+        "`store ROOT init --max-header-fields 1000 --max-header-lines 2000 --max-header-octets 1048576 fn.test`; run the owner; POST a 900-field article; ARTICLE it; POST 1,000 and 1,001 fields.",
+        "`store ROOT init fn.test`; POST 64, 65 and 900 fields and a 258-physical-line header."
+      ],
+      "expected": [
+        "240 for 900 and 1,000 fields, ARTICLE serves the 896 X- fields back; 441 naming max-header-fields for 1,001.",
+        "240 for 64 fields; 441 naming max-header-fields for 65 and 900; 441 naming max-header-lines for the 258-line header."
+      ],
+      "evidence": [
+        "planning/evidence/header-limits-profile-2026-09-27.md",
+        "planning/evidence/header-limits-profile/native-header-limits.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_header_limits",
+        "cases": [
+          "test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name",
+          "test_the_default_profile_is_unchanged"
+        ],
+        "native": true,
+        "record": "planning/evidence/header-limits-profile-2026-09-27.md",
+        "log": "planning/evidence/header-limits-profile/native-header-limits.log"
+      }
     }
   ]
 }

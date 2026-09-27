@@ -21,7 +21,8 @@
 ;   NURSERY  the host's collection trigger (host/native/io.lisp
 ;            +fnn-gc-nursery-octets+, 64 MiB): what is consed between two
 ;            collections, garbage included.
-;   L        the list octets: 16 x (2H + R).  Sixteen bytes per octet, one
+;   L        the list octets: 16 x (2H + R + 3 x HDR), HDR the profile's
+;            max-header-octets (field 17; the header in flight, below).  Sixteen bytes per octet, one
 ;            cons per octet (planning/evidence/rep-wave-d-2026-09-25.md
 ;            section 1.2, measured to 0.2%): the retained history H once, the
 ;            open's second copy of it (the checkpoint decode's payload copy,
@@ -118,11 +119,18 @@
 ; -----------------------------------------------------------------------------
 ; The figure.
 
+;; The header in flight (PRF-230, lane header-limits-profile): the served
+;; POST's parse holds the header view, each field's raw lines and each
+;; field's unfolded value, three list copies of at most the profile's
+;; max-header-octets (field 17), beside the record R it becomes.
+(defconst *fn-heap-header-copies* 3)
+
 (defun fn-heap-list-octets (profile)
   (declare (xargs :guard t))
   (* *fn-heap-octets-per-list-octet*
      (+ (* 2 (fn-bs-profile-max-history-octets profile))
-        (fn-bs-profile-max-record-octets profile))))
+        (fn-bs-profile-max-record-octets profile)
+        (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile)))))
 
 (defun fn-heap-buffer-octets (profile)
   (declare (xargs :guard t))

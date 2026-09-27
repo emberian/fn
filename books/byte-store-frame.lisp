@@ -387,7 +387,8 @@
 
 (defthm fn-bs-profile-of-valid
   (implies (fn-bs-profile-validp values)
-           (equal (fn-bs-profile-of values) values)))
+           (equal (fn-bs-profile-of values) values))
+  :hints (("Goal" :in-theory (e/d (fn-bs-profile-of) (fn-bs-profile-validp)))))
 
 (defthm fn-bs-profile-validp-of-profile-of
   (implies (fn-bs-profile-admittedp values)
@@ -922,7 +923,7 @@
                    (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-8*))
                       (len (fn-frame-field-octets
                             :text *fn-bs-meta-frontier-format*))
-                      104)))
+                      128)))
    :hints (("Goal"
             :use ((:instance fn-bs-profile-validp-facts)
                   (:instance fn-bs-all-nat-fields-octets-len

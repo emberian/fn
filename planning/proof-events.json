@@ -7379,6 +7379,31 @@
           "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
         }
       ]
+    },
+    {
+      "id": "PRF-230",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-admits-exactly-the-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-within-its-limits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-raised-limits-agree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-census-refusal-is-the-parse"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-under-work-input-bound"
+        }
+      ]
     }
   ]
 }

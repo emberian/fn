@@ -257,7 +257,7 @@
                    (+ (len (fn-frame-field-octets :text *fn-bs-meta-format-8*))
                       (len (fn-frame-field-octets
                             :text *fn-bs-meta-frontier-format*))
-                      104)))
+                      128)))
    :hints (("Goal"
             :use ((:instance fn-spo-all-nat-fields-octets-len
                              (specs (cddr *fn-bs-meta-profile-spec*))

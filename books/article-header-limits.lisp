@@ -288,7 +288,7 @@
                             fn-article-limit-reasonp fn-article-result-okp)))))
 
 ;; The reading parser is the ceiling limits' instance.
-(defthm fn-article-parse-is-the-ceiling-limits
+(defthm fn-article-parse-is-the-ceiling-limits-by-definition
   (equal (fn-article-parse octets)
          (fn-article-parse-under octets *fn-article-ceiling-limits*))
   :rule-classes nil

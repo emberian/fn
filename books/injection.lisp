@@ -552,6 +552,18 @@
   (equal (fn-inj-config-header-limits
           (fn-inj-make-config-full allow agent groups max listing closed))
          (fn-inj-bound-header-limits max)))
+(defthm fn-inj-config-header-limits-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-header-limits
+          (fn-inj-make-config-listed allow agent groups max listing))
+         (fn-inj-bound-header-limits max)))
+(defthm fn-inj-config-header-limits-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-header-limits
+          (fn-inj-make-config-closed allow agent groups max closed))
+         (fn-inj-bound-header-limits max)))
+(defthm fn-inj-config-header-limits-of-fn-inj-make-config
+  (equal (fn-inj-config-header-limits
+          (fn-inj-make-config allow agent groups max))
+         (fn-inj-bound-header-limits max)))
 (defthm fn-inj-bound-octets-of-an-atom
   (implies (not (consp max)) (equal (fn-inj-bound-octets max) max)))
 
@@ -1099,7 +1111,9 @@
                                fn-inj-config-allow-of-fn-inj-make-config-listed
                                fn-inj-config-agent-of-fn-inj-make-config-listed
                                fn-inj-config-groups-of-fn-inj-make-config-listed
-                               fn-inj-config-max-octets-of-fn-inj-make-config-listed))))
+                               fn-inj-config-max-octets-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config))))
 
 ; Nor is the closed-group list (PRF-196): the configuration the served
 ; connection carries, built by `fn-inj-make-config-full', decides every POST
@@ -1120,8 +1134,11 @@
                                fn-inj-config-agent-of-fn-inj-make-config-full
                                fn-inj-config-groups-of-fn-inj-make-config-full
                                fn-inj-config-max-octets-of-fn-inj-make-config-full
+                               fn-inj-config-header-limits-of-fn-inj-make-config-full
                                fn-inj-config-shapep-of-fn-inj-make-config-listed
                                fn-inj-config-allow-of-fn-inj-make-config-listed
                                fn-inj-config-agent-of-fn-inj-make-config-listed
                                fn-inj-config-groups-of-fn-inj-make-config-listed
-                               fn-inj-config-max-octets-of-fn-inj-make-config-listed))))
+                               fn-inj-config-max-octets-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config))))

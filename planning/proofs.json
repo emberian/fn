@@ -7880,6 +7880,39 @@
         "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
         "fn-ocfg-read-tls-prefix-carries-at-most-one-submission"
       ]
+    },
+    {
+      "id": "PRF-230",
+      "title": "The header limits of one article are the operator's: the parse under a profile's limits admits exactly the headers within them and refuses the next by name, and readers parse under the ceiling so raising a limit never changes an admitted article",
+      "statement": "For any limits WIDER under which OCTETS parses, fn-article-parse-under OCTETS LIMITS is that same article exactly when the input's header census (fields, physical lines, octets before the blank line, read by the parser's own line scanner) is within LIMITS, and otherwise a refusal whose code is :header-fields-limit, :header-lines-limit or :header-octets-limit (fn-article-parse-under-admits-exactly-the-limits); by instance a success is within its limits (fn-article-parse-under-within-its-limits) and a success under LIMITS is the same article under any wider limits (fn-article-parse-under-raised-limits-agree). fn-article-parse, which every reader of a stored or received article calls, is the ceiling limits' instance (fn-article-parse-is-the-ceiling-limits-by-definition). For an input the reading parser admits, fn-article-census-refusal of the census against LIMITS is NIL exactly when the parse under LIMITS admits it (and then equals the reading parse), and otherwise a limit's name while that parse refuses by a limit's name (fn-article-census-refusal-is-the-parse); fn-inj-decide (books/injection.lisp, called by the served POST through the owner's configuration, whose header limits host/owner-host.lisp fn-owner-served-post-bound takes from the opened profile's fields 15 to 17, fn-bs-profile-header-limits) refuses by exactly that census refusal. The parse's work under any limits is bounded by fn-article-parse-under-work-budget (fn-article-parse-under-work-input-bound).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-030"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article.lisp",
+        "books/article-header-limits.lisp",
+        "books/article-public-bound.lisp",
+        "books/injection.lisp",
+        "books/byte-store-frame.lisp",
+        "tests/acl2/article-header-limits-tests.lisp",
+        "tests/acl2/byte-store-frame-tests.lisp",
+        "tests/test_native_header_limits.py",
+        "planning/evidence/header-limits-profile-2026-09-27.md"
+      ],
+      "progress_note": "Open: the peer (IHAVE/TAKETHIS) and BP ingress decisions parse under the ceiling and do not yet read the profile's header limits (PKT-660); the heap figure does not yet carry a header term; the fold append is quadratic per field (bounded by max-header-octets).",
+      "events": [
+        "fn-article-parse-under-admits-exactly-the-limits",
+        "fn-article-parse-under-within-its-limits",
+        "fn-article-parse-under-raised-limits-agree",
+        "fn-article-census-refusal-is-the-parse",
+        "fn-article-parse-under-work-input-bound"
+      ]
     }
   ]
 }
