@@ -59,6 +59,44 @@
 #                                rc.d/fn.rc.in, docs/install.md,
 #                                native-artifacts.txt, release-gate.txt,
 #                                runpath-check.txt
+#
+# Building the OpenBSD release (openbsd-amd64).  It is built on OpenBSD 7.9
+# amd64 itself, with SBCL (pkg_add sbcl), libsodium, zstd and python3, and an
+# ACL2 8.7 built there with its system books certified.  Three requirements
+# no error message states plainly (each cost a failed build, 2026-09-27):
+#   a. FN_ACL2 must be a LITERAL launcher: a sh script that execs sbcl with
+#      every runtime option written out (--tls-limit, --dynamic-space-size,
+#      --control-stack-size, --core PATH/saved_acl2.core ...), not ACL2's
+#      generated saved_acl2, which expands ${SBCL_USER_ARGS}.  Certificates
+#      made under the generated one carry no qualified launcher/core/runtime
+#      fingerprint: nothing publishes to FN_CERT_CACHE and step 2 acquires
+#      nothing (`no qualified ACL2 launcher/core/runtime fingerprint').
+#   b. FN_IMAGE_ACL2 must name the same launcher at --tls-limit 65536 (a
+#      copy of (a) with only that number changed): the production world
+#      passes SBCL's default 16384 (`Thread local storage exhausted' in
+#      native-build.log).
+#   c. Where step 4 stages and runs bin/fn must be on a file system mounted
+#      wxallowed (`mount -o wxallowed,nodev DEV DIR', or under /usr/local):
+#      OUT_DIR for the first form, TMPDIR (default /tmp, never wxallowed)
+#      for --frozen.  Otherwise install-native's probe dies with `RWX mmap
+#      not supported' (under --frozen, then `GC invariant lost'), and step 4
+#      may report only `image did not identify itself as the production
+#      profile'.
+# The order: certify the default closure with (a) into FN_CERT_CACHE, from a
+# git archive of REV unpacked on its own (python3 tools/certify_books.py
+# --jobs N --closure $(python3 tools/proof_artifacts.py roots --profile
+# default), FN_ACL2, ACL2_SYSTEM_BOOKS and FN_CERT_CACHE set); move that
+# certifying tree aside (rename it), since a live origin is not acquired for
+# another tree (tools/certs.py usable_origin); then run this script with
+# FN_ACL2=(a), FN_IMAGE_ACL2=(b), FN_CERT_CACHE,
+# FN_FREEZE_SODIUM=/usr/local/lib/libsodium.so.11.1 (the 7.9 package) and
+# FN_FREEZE_DYNAMIC_SPACE_MB=1024 (the launchers' default heap; the node
+# replaces it with the figure from the store's profile).  Raise the data
+# size limit first (`ulimit -d unlimited', or the login class's hard
+# limit): root's class caps it at 4 GiB and the literal launchers ask for
+# 4096 MB.  Step 1 still needs REV's committed manifests to cover the
+# closure (tools/green_check.py); the guest's own certification does not
+# replace them.
 set -eu
 usage() {
   echo 'usage: release-tarball.sh [--runtime-from DIR] PLATFORM REV OUT_DIR [SOURCE_ARCHIVE]' >&2

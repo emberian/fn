@@ -85,7 +85,9 @@ newfs -O 1 /dev/rsd1a
 mkdir -p /var/fn
 echo '/dev/sd1a /var/fn ffs rw,nodev,nosuid 1 2' >> /etc/fstab
 mount /var/fn
-``` To see a partition's format, as root:
+```
+
+To see a partition's format, as root:
 `dumpfs /dev/rsd0X | head -1` prints `FFS1` or `FFS2`. To move a store off
 FFS2: `store export`, make the FFS1 partition, then `store import`
 ([moving data](install.md#4-reinstalling)).
