@@ -59,10 +59,17 @@
 (assert-event (equal *fn-stxa-max-octets* 4294966940))
 
 ; The other half: at the ceiling the saved profile opens, as itself.
-(defconst *spot-ceiling* (fn-bs-profile-put 4 4294966940 *spot-window*))
+; Under the record log's word it opens as itself; under the per-file
+; layout's (format 8, D34 after PKT-COL-1) it is refused by the format's name.
+(defconst *spot-ceiling*
+  (fn-bs-profile-put 4 4294966940 (cons *fn-bs-meta-format-9* (cdr *spot-window*))))
 (assert-event (fn-bs-profile-v2-validp *spot-ceiling*))
 (assert-event (equal (fn-spo-config-open (fn-spo-saved-frame *spot-ceiling*))
                      (list :opened *spot-ceiling*)))
+(defconst *spot-ceiling-8* (fn-bs-profile-put 4 4294966940 *spot-window*))
+(assert-event (fn-bs-profile-v2-validp *spot-ceiling-8*))
+(assert-event (equal (fn-spo-config-open (fn-spo-saved-frame *spot-ceiling-8*))
+                     '(:refused :store-format)))
 ; The presets and the defaults open as themselves (the refinement: the old
 ; open's answer).
 (assert-event (equal (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-scale*))
@@ -86,7 +93,9 @@
  (thm (implies (equal values *spot-short-history*)
                (equal (fn-spo-config-open (fn-spo-saved-frame values))
                       (if (<= (fn-bs-pf 4 values) *fn-stxa-max-octets*)
-                          (list :opened values)
+                          (if (equal (car values) *fn-bs-meta-format-9*)
+                              (list :opened values)
+                            (list :refused :store-format))
                         (list :refused :max-record-octets-above-the-poll-reply))))))
 
 ; CORRUPTED-state witness (not a saved profile): the window frame with one
@@ -172,17 +181,83 @@
 ; -----------------------------------------------------------------------------
 ; Format 9 (lane commit-onto-log): the preset profiles are format 9 and name
 ; the record log as their commit route; the same values in the per-file
-; layout (format 8, the developer selector's) are valid too and name the
-; files; a format-9 frame decodes, opens and is not foreign.
+; layout (format 8) are valid profiles too (the decoder reads them, for the
+; import's migration) and name the files; a format-9 frame decodes, opens and
+; is not foreign.
+(defun spot-as-format-8 (values) (cons *fn-bs-meta-format-8* (cdr values)))
 (assert-event (equal (car *fn-bs-profile-scale*) *fn-bs-meta-format-9*))
 (assert-event (fn-bs-profile-validp *fn-bs-profile-scale*))
 (assert-event (fn-bs-profile-logp *fn-bs-profile-scale*))
-(assert-event (fn-bs-profile-validp (fn-bs-profile-as-format-8 *fn-bs-profile-scale*)))
-(assert-event (not (fn-bs-profile-logp (fn-bs-profile-as-format-8 *fn-bs-profile-scale*))))
+(assert-event (fn-bs-profile-validp (spot-as-format-8 *fn-bs-profile-scale*)))
+(assert-event (not (fn-bs-profile-logp (spot-as-format-8 *fn-bs-profile-scale*))))
 (assert-event (equal (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-scale*))
                      (list :opened *fn-bs-profile-scale*)))
 (assert-event (not (fn-spo-foreign-formatp
-                    (fn-bs-config-encode (fn-bs-profile-as-format-8 *fn-bs-profile-scale*)))))
+                    (fn-bs-config-encode (spot-as-format-8 *fn-bs-profile-scale*)))))
+
+; A format-8 store (fn-spo-open-of-a-format-8-profile-refuses-by-name, and
+; the decoded-branch half of fn-spo-config-open-store-format-is-exactly-a-
+; foreign-frame).  The config.json every format-8 store of the development
+; preset carried (`init --profile development' before lane commit-onto-log:
+; sha256 61802dbb..., tests/native_profile_fixture.py's old DEVELOPMENT_FRAME),
+; octet for octet; tests/older_release_store.py writes the same file as a
+; synthesized format-8 store's config.json.
+(defconst *spot-format-8-octets*
+  '(
+    70 78 83 77 1 1 0 0 0 172 0 10 102 110 45 115
+    116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
+    45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
+    116 105 101 114 45 50 0 0 0 0 0 0 0 128 0 0
+    0 0 1 128 0 0 0 0 0 0 1 5 131 54 0 0
+    0 0 0 0 128 0 0 0 0 0 0 0 255 255 0 0
+    0 0 0 0 1 0 0 0 0 0 0 0 0 128 0 0
+    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 0 0 0 0 0
+    0 0 0 0 0 64 0 0 0 0 0 0 1 0 0 0
+    0 0 0 0 64 0 111 175 234 85 87 2 35 102 237 1
+    113 126 80 157 84 219 244 161 139 149 192 230 72 133 110 142
+    218 91 176 40 45 100))
+(assert-event (equal (len *spot-format-8-octets*) 214))
+(assert-event (equal (fn-bs-config-encode (spot-as-format-8 *fn-bs-profile-development*))
+                     *spot-format-8-octets*))
+; Reachable witness, the complete antecedent: a valid profile whose word is
+; not fn-store-9; the conclusion: the open refuses it by the format's name,
+; and the line names the way out.  The decoder still reads it (the import's
+; migration reads the same values).
+(assert-event (fn-bs-profile-validp (spot-as-format-8 *fn-bs-profile-development*)))
+(assert-event (not (equal (car (spot-as-format-8 *fn-bs-profile-development*))
+                          *fn-bs-meta-format-9*)))
+(assert-event (equal (fn-spo-config-open *spot-format-8-octets*) '(:refused :store-format)))
+(assert-event (equal (fn-bs-config-decode *spot-format-8-octets*)
+                     (spot-as-format-8 *fn-bs-profile-development*)))
+(assert-event (equal (fn-spo-refusal-text (fn-spo-config-open *spot-format-8-octets*))
+                     "open refused reason=store-format: reinstall from the release and import"))
+; Hypothesis removed (the word): the development preset itself (format 9) is
+; valid and opens: the conclusion fails.
+(assert-event (fn-bs-profile-validp *fn-bs-profile-development*))
+(assert-event (equal (car *fn-bs-profile-development*) *fn-bs-meta-format-9*))
+(assert-event (equal (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-development*))
+                     (list :opened *fn-bs-profile-development*)))
+(must-fail
+ (with-prover-step-limit 20000 (thm (implies (and (equal values *fn-bs-profile-development*)
+                    (fn-bs-profile-validp values))
+               (equal (fn-spo-config-open (fn-bs-config-encode values))
+                      (list :refused :store-format))))))
+; Hypothesis removed (validity): the format-8 word over fields whose H is
+; below R: the retained hypothesis holds, the profile is invalid, and the open
+; answers the generic fault, not the format's name.
+(defconst *spot-format-8-short*
+  (fn-bs-profile-put 3 1 (spot-as-format-8 *fn-bs-profile-development*)))
+(assert-event (not (equal (car *spot-format-8-short*) *fn-bs-meta-format-9*)))
+(assert-event (not (fn-bs-profile-validp *spot-format-8-short*)))
+(assert-event (equal (fn-spo-config-open (fn-spo-saved-frame *spot-format-8-short*))
+                     '(:rejected)))
+(must-fail
+ (with-prover-step-limit 20000 (thm (implies (and (equal values *spot-format-8-short*)
+                    (not (equal (car values) *fn-bs-meta-format-9*)))
+               (equal (fn-spo-config-open (fn-spo-saved-frame values))
+                      (list :refused :store-format))))))
 ; A value that is not a profile names no route.
 (assert-event (not (fn-bs-profile-logp '(1 2 3))))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*))) 9))
