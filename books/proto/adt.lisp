@@ -23,7 +23,7 @@
 ;     adt-corr-* theorems, universally quantified over the schema, close them;
 ;   the defabsstobj event, and the "-is-" theorems stating each export's
 ;     logical meaning.
-; No step is written per type.  No skip-proofs, defaxiom or trust tag.
+; No step is written per type.
 
 (in-package "ACL2")
 (include-book "adt-lib")
