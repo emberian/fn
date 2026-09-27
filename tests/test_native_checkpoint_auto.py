@@ -205,14 +205,13 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
         self.assertEqual(self.observation(), from_checkpoint)
         aside.rename(self.path())
-        # The verb (the same pipeline over the same history) republishes the
-        # automatic publication's octets; on format 9 its F row names the
-        # segment the verb rotated to, so the file is not the same bytes.
+        # The verb (the same fn-sccb-plan over the same frozen checkpoint)
+        # republishes the automatic publication byte for byte.
         made = self.checkpoint()
         self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         self.assertIn("checkpoint sequence=64 octets={} steps=".format(octets).encode("ascii"),
                       made.stdout)
-        self.assertNotEqual(self.digest(), published)
+        self.assertEqual(self.digest(), published)
         self.assertEqual(self.open_line(), "open=checkpoint:64 suffix=0")
 
     def test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues(self):
