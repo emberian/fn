@@ -12,10 +12,14 @@
 ; Path, Injection-Info and any generated Message-ID from it.
 (defconst *fn-reader-agent*
   '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
+;; The records flip: the seed article's payload is handle 0 of the payload
+;; arena, which fn-reader-use-seed fills with *fn-reader-payload* (the served
+;; readers read an article's bytes through the arena: books/nntp-session.lisp
+;; fn-nntp-article-bytes).
 (defconst *fn-reader-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-reader-groups*) 1 *fn-reader-id*
-                      *fn-reader-payload* *fn-reader-groups* :legacy)
+                      0 *fn-reader-groups* :legacy)
    0 1 :durable))
 
 (defun fn-reader-group-octets (names)
@@ -85,9 +89,12 @@
     (let ((state (f-put-global 'fn-reader-action :refused state)))
       (value :refused))))
 
-(defun fn-reader-use-seed (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-reader-install-selection (fn-rdc-selection *fn-reader-archive* nil) state))
+(defun fn-reader-use-seed (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((fn-arena (fn-arena-seal-list *fn-reader-payload* (fn-arena-clear fn-arena))))
+    (mv-let (erp val state)
+      (fn-reader-install-selection (fn-rdc-selection *fn-reader-archive* nil) state)
+      (mv erp val fn-arena state))))
 
 ; The operator's posting permission and the host's clock reading.  A clock
 ; reading is an observation, not a computed value: books/clock.lisp says what

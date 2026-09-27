@@ -137,7 +137,7 @@ class Acl2Reader:
             # (fn-post-disallowed-posting-does-not-await).  The owner,
             # tools/run_owner.py, is the process that serves POST.
             self.call("(fn-reader-set-posting nil state)")
-            selection = "(fn-reader-use-seed state)" if self.owns_process else "(fn-reader-use-store state)"
+            selection = "(fn-reader-use-seed fn-arena state)" if self.owns_process else "(fn-reader-use-store state)"
             if acl2_archive_action(self.call(selection)) != b"ready":
                 raise RuntimeError("reader archive is not NNTP-projectable")
         except BaseException:
