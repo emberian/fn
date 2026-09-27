@@ -521,7 +521,8 @@
 (assert! (not (hrt-held-conclusion *hrt-bad-field*)))
 (must-fail
  (defthm hrt-held-without-the-fields
-   (implies (fn-bs-profile-requestp request)
+   (implies (and (fn-bs-profile-requestp request)
+                 (equal request *hrt-bad-field*))
             (hrt-held-conclusion request))
    :hints (("Goal" :do-not-induct t))))
 ; Teeth for fn-heap-article-held-meets-the-article-relations: the 8 MiB
