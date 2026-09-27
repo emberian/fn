@@ -13,18 +13,18 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1296 |
 | Certification roots in the Makefile | 1249 |
 | Books inside the root closure | 1285 |
-| `defthm` and `defthmd` events | 19211 |
-| `defun` events | 13156 |
-| Functions with verified guards | 2492 |
-| Functions declared `:verify-guards nil` and never verified | 1568 |
-| Functions left at the default with an explicit guard | 7316 |
+| `defthm` and `defthmd` events | 19219 |
+| `defun` events | 13160 |
+| Functions with verified guards | 2494 |
+| Functions declared `:verify-guards nil` and never verified | 1569 |
+| Functions left at the default with an explicit guard | 7317 |
 | Functions left at the default with no guard | 1780 |
-| `assert-event` checks | 18883 |
+| `assert-event` checks | 18885 |
 | `must-fail` checks | 2153 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 97 |
 | Theorems flagged SUSPECT by shape | 222 |
-| Export-hygiene warnings | 232 |
+| Export-hygiene warnings | 234 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 229 |
 | Include-hygiene warnings | 1387 |
@@ -730,7 +730,7 @@ that `make certify` requests.
 | `books/store-log-route-programs.lisp` | root | 5 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-log-route.lisp` | root | 27 | 11 | 0/3/8/0 | 0 | 0 | 0 |
 | `books/store-log-segments.lisp` | root | 30 | 30 | 0/9/20/1 | 0 | 0 | 0 |
-| `books/store-log-stream.lisp` | root | 36 | 18 | 0/2/16/0 | 0 | 0 | 1 |
+| `books/store-log-stream.lisp` | root | 44 | 21 | 2/2/17/0 | 0 | 0 | 1 |
 | `books/store-log-txid.lisp` | root | 25 | 7 | 0/1/6/0 | 0 | 0 | 0 |
 | `books/store-log.lisp` | root | 104 | 29 | 0/19/10/0 | 0 | 0 | 2 |
 | `books/store-maintenance-reserve.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -1310,7 +1310,7 @@ that `make certify` requests.
 | `tests/acl2/store-log-route-programs-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 5 | 0 | 0 |
 | `tests/acl2/store-log-route-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 31 | 2 | 0 |
 | `tests/acl2/store-log-segments-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 60 | 4 | 0 |
-| `tests/acl2/store-log-stream-tests.lisp` | root | 0 | 16 | 0/12/4/0 | 8 | 0 | 0 |
+| `tests/acl2/store-log-stream-tests.lisp` | root | 0 | 17 | 0/13/4/0 | 10 | 0 | 0 |
 | `tests/acl2/store-log-tests.lisp` | root | 0 | 14 | 0/8/6/0 | 16 | 0 | 0 |
 | `tests/acl2/store-log-txid-tests.lisp` | root | 0 | 16 | 0/13/3/0 | 5 | 0 | 0 |
 | `tests/acl2/store-maintenance-reserve-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 2 | 0 |
@@ -1486,7 +1486,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lgkc-log-of-atom` | `books/store-log-kernel.lisp` | 362 | branch-of-definition: the hypothesis negates a branch test of fn-lg-log and the conclusion is that branch's value |
 | `fn-lgoc-store-of-rcon-io` | `books/owner-log-ocl.lisp` | 331 | closed-theory-corollary: proved only by fn-lgoc-rcon-io-is-owner-with-store, fn-lgoc-store-of-owner-with-store |
 | `fn-lgr-rewrites-are-the-events` | `books/store-log-reclaim.lisp` | 82 | definition-restated: the conclusion is the body of fn-rclp-events |
-| `fn-lgw-slice-when-not-declared` | `books/store-log-stream.lisp` | 222 | branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value |
+| `fn-lgw-slice-when-not-declared` | `books/store-log-stream.lisp` | 322 | branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value |
 | `fn-lgx-trailer-is-trailer` | `books/store-log-kernel-concrete.lisp` | 185 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-mod-inj-append-of-a-cons` | `books/moderation.lisp` | 358 | branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value |
 | `fn-mod-named-entries-of-no-groups` | `books/moderation.lisp` | 101 | branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value |

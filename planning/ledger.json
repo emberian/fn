@@ -1256,20 +1256,20 @@
     "books": 1296,
     "books_in_root_closure": 1285,
     "roots": 1249,
-    "theorems": 19211,
-    "functions": 13156,
-    "assert_events": 18883,
+    "theorems": 19219,
+    "functions": 13160,
+    "assert_events": 18885,
     "must_fails": 2153,
     "prover_refusals": 0,
     "encapsulates": 97,
     "guards": {
-      "verified": 2492,
-      "declared-off": 1568,
-      "default-guarded": 7316,
+      "verified": 2494,
+      "declared-off": 1569,
+      "default-guarded": 7317,
       "default-unguarded": 1780
     },
     "suspect_theorems": 222,
-    "export_hygiene_warnings": 232,
+    "export_hygiene_warnings": 234,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 229,
     "include_hygiene_warnings": 1387,
@@ -19300,15 +19300,15 @@
       "book": "books/store-log-stream.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
-      "functions": 18,
+      "theorems": 44,
+      "functions": 21,
       "guards": {
-        "verified": 0,
+        "verified": 2,
         "declared-off": 2,
-        "default-guarded": 16,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -35871,15 +35871,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 16,
+      "functions": 17,
       "guards": {
         "verified": 0,
-        "declared-off": 12,
+        "declared-off": 13,
         "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
+      "assert_events": 10,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -38681,7 +38681,7 @@
     {
       "theorem": "fn-lgw-slice-when-not-declared",
       "book": "books/store-log-stream.lisp",
-      "line": 222,
+      "line": 322,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value"
       ]
@@ -40856,6 +40856,18 @@
         "theorem": "fn-lgc-rotate-refines",
         "book": "books/store-log-kernel-concrete.lisp",
         "line": 580,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgw-unpack-is-unpack",
+        "book": "books/store-log-stream.lisp",
+        "line": 187,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgw-unpack-exactp-is-exactp",
+        "book": "books/store-log-stream.lisp",
+        "line": 192,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
