@@ -7894,12 +7894,13 @@
         "PRF-188"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/reader-open-carried.lisp",
         "tests/acl2/reader-open-carried-tests.lisp",
         "books/replay.lisp",
-        "planning/evidence/hot-path-fixes-owner-2026-09-27.md"
+        "planning/evidence/hot-path-fixes-owner-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T010859Z-1095275.json"
       ],
       "progress_note": "Lane hot-path-fixes-owner (2026-09-27; PKT-448 (a), (f)). Teeth: tests/acl2/reader-open-carried-tests.lisp: a reachable one-article archive (the reader host's seed) whose selection is ready, the carried reset equal to the reference with the greeting written, the trie and verdicts pinned and the session projected; the Store selection over owner-advance-carried-tests' committed owner store; hypothesis removal for fn-rdc-served-open-is-served-open (a wrong index with fn-statep retained; a corrupted-state archive with the index hypothesis retained) and for fn-rdc-reset-is-served-open (a refused selection); the retention mbt's lemma on the committed store's node, and its failure on a non-node (corrupted-state). Measured at N = 10,000 in the record.",
       "events": [
