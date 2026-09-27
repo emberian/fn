@@ -1037,6 +1037,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
 	tests/acl2/history-columns-tests \
+	books/proto/pagestore-words \
 	books/proto/pagestore \
 	books/proto/pagestore-keystones \
 	tests/acl2/proto-pagestore-tests \
