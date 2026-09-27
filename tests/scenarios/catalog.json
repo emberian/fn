@@ -5160,6 +5160,73 @@
         "planning/evidence/fixtures-refresh-2026-09-27/native-older-release-open-production.log",
         "planning/evidence/fixtures-refresh-2026-09-27.md"
       ]
+    },
+    {
+      "id": "SCN-177",
+      "title": "A consumer's refusal names its reason, as text and as one JSON line; a bind of an unregistered consumer name is refused by name; a plain poll of a bound consumer says `bound`",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-009"
+      ],
+      "steps": [
+        "`store init fn.test`; start the owner; `consumer register CONTROL worker fn.test CURSOR`.",
+        "`consumer status CONTROL ghost`; `consumer poll CONTROL ghost CURSOR REPORT`; `consumer --json poll CONTROL ghost CURSOR REPORT`.",
+        "`consumer --json status CONTROL worker`; `consumer --json poll CONTROL worker CURSOR REPORT`; `consumer-article --json REPORT`.",
+        "`operator CONFIG consumer bind ghost --account bob`; `operator CONFIG consumer bind worker --account bob`; `consumer poll CONTROL worker CURSOR REPORT`."
+      ],
+      "expected": [
+        "`consumer status refused unknown-consumer` and `consumer refused unknown-consumer` (exit 1); the JSON line {\"command\": \"poll\", \"outcome\": \"refused\", \"reason\": \"unknown-consumer\"}.",
+        "The status line has the three counts with distance = frontier - ack and reason null; the poll's report is `empty`; consumer-article prints {\"report\": \"empty\"} and exits 1.",
+        "The ghost bind exits 1 naming unknown-consumer; the worker bind exits 0; the plain poll then answers `consumer refused bound`."
+      ],
+      "implementation": {
+        "test": "tests.test_native_consumer_e2",
+        "cases": [
+          "NativeConsumerE2Tests.test_refusals_name_their_reason_json_lines_and_bind_of_an_unknown_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/friend-blockers-2-2026-09-27.md",
+        "log": "planning/evidence/friend-blockers-2-2026-09-27/native-fb2-test_native_consumer_e2.log"
+      },
+      "evidence": [
+        "tests/test_native_consumer_e2.py",
+        "planning/evidence/friend-blockers-2-2026-09-27.md",
+        "planning/evidence/friend-blockers-2-2026-09-27/native-fb2-test_native_consumer_e2.log"
+      ]
+    },
+    {
+      "id": "SCN-176",
+      "title": "A consumer gets the withdrawal event, never the withdrawn content: an article the committed view withdrew is delivered as its Message-ID at its own position; a cancel of an article of the consumer's group is delivered at the cancel's position; nothing withdrawn, the page is the poll's",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-008"
+      ],
+      "steps": [
+        "A committed history (bootstrap, consumer 7 on fn.test, the article <poll@fn.test> at 2); the owner's view withdraws it by the record of <cancel@fn.test>.",
+        "Poll consumer 7 with an answer carrying a report; the same with nothing withdrawn.",
+        "A history with groups fn.test and control.cancel whose only event past the consumer's position is the cancel (in control.cancel); poll with the view's withdrawal."
+      ],
+      "expected": [
+        "The page is (:poll CURSOR REPORT) with REPORT = FNWD 0x01 then <poll@fn.test>, the answer's cursor; with nothing withdrawn the page is the answer.",
+        "The poll without withdrawals is an empty page; with them the page is the withdrawal of <poll@fn.test> at the cancel's next position (3)."
+      ],
+      "implementation": {
+        "test": "tests/acl2/consumer-withdrawal-tests.lisp",
+        "cases": [
+          "the committed-Store witnesses of fn-cwd-page-never-serves-withdrawn-content and fn-cwd-page-of-a-withdrawal"
+        ],
+        "native": false,
+        "record": "planning/evidence/friend-blockers-2-2026-09-27.md",
+        "note": "No native case yet: on dev at 2026-09-27 a cancel withdraws nothing on the served view until lane flip-L8-2's live refresh lands; the native withdrawal case belongs with that refresh (the lane's LANEDUMP names it).",
+        "log": "planning/evidence/manifests/certify-20260927T085904Z-2813563.json"
+      },
+      "evidence": [
+        "tests/acl2/consumer-withdrawal-tests.lisp",
+        "planning/evidence/friend-blockers-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T085904Z-2813563.json"
+      ]
     }
   ]
 }

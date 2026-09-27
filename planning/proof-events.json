@@ -2982,10 +2982,6 @@
           "kind": "theorem",
           "name": "fn-ncl-status-nonaccepted-reply-roundtrip",
           "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ncl-cli-after-retries-only-a-refused-register"
         }
       ]
     },
@@ -9581,6 +9577,80 @@
         {
           "kind": "theorem",
           "name": "fn-spo-layout-fields-of-a-layout-frame"
+        }
+      ]
+    },
+    {
+      "id": "PRF-261",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-printed-reason-is-the-decisions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-request-decode-is-the-plain-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-framep-of-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-cli-after-retries-only-an-unbootstrapped-register"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-bind-refusal-refuses-exactly-an-unregistered-bind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-json-object-is-ascii"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-withdrawal-roundtrip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-withdrawal-report-fits-the-poll-reply"
+        }
+      ]
+    },
+    {
+      "id": "PRF-262",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-never-serves-withdrawn-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-delivers-a-withdrawing-cause"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-withdrawal-advances"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-of-a-withdrawal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-without-withdrawals-is-the-answer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-of-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
         }
       ]
     }

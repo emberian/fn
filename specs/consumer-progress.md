@@ -395,9 +395,13 @@ with the consumer reply it always sent, and answers a refusal (or an
 uncertain or failed end) with the reasoned reply, kind 18: the status and
 ACL2's reason word. An owner that predates kind 22 answers the plain
 refusal before acting on anything, and the client sends the kind-4 request
-once more (`fn-native-control-reasoned-client-step`'s resend). CNS-009: the
-word the client prints is the reason the owner's decision named
-(`fn-ncr-printed-reason-is-the-decisions`).
+once more (`fn-native-control-reasoned-client-step`'s resend).
+
+CNS-009: a consumer command's refusal names the reason the owner's decision
+named, and the word the client prints is exactly that reason's
+(`fn-ncr-printed-reason-is-the-decisions`); a bind of an unregistered
+consumer name is refused by name; every consumer command can print one
+ACL2-rendered JSON line.
 
 The reasons: `unbootstrapped` (no consumer history yet; `register` then
 bootstraps it and registers once more, and only for this reason or an old

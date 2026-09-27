@@ -60,6 +60,11 @@
 (include-book "consumer-wait")
 (include-book "consumer-reason")
 
+; The progress book's unfolding of the poll (a rewrite rule whose hypothesis
+; is the poll's page) expands fn-col-poll and its scan inside every goal
+; that mentions a poll; the lemmas here reason about the two scans instead.
+(local (in-theory (disable fn-col-poll-is-the-index-window-scan-unfolds)))
+
 ; -----------------------------------------------------------------------------
 ; The view's withdrawal decision.
 
@@ -105,7 +110,22 @@
 (defun fn-cwd-scan (events group position frontier budget ws withdrawn)
   (declare (xargs :guard (and (true-listp events) (fn-cp-idp group)
                               (natp position) (natp frontier) (natp budget))
-                  :measure (nfix budget)))
+                  :measure (nfix budget)
+                  ;; The measure and the guard need only the budget's and the
+                  ;; position's types: the event and record predicates stay
+                  ;; closed (the admission was 3.0 s with them open).
+                  :hints (("Goal" :in-theory
+                           (disable fn-col-poll-article fn-col-poll-articlep
+                                    fn-col-poll-compositep fn-cwd-cause-target
+                                    fn-store-event-p fn-store-event-sequence
+                                    fn-record-groups fn-record-octets-string
+                                    fn-ctl-event-msgid member-equal)))
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-col-poll-article fn-col-poll-articlep
+                                          fn-col-poll-compositep fn-cwd-cause-target
+                                          fn-store-event-p fn-store-event-sequence
+                                          fn-record-groups fn-record-octets-string
+                                          fn-ctl-event-msgid member-equal)))))
   (if (or (zp budget) (<= (nfix frontier) (nfix position)))
       (list :scan position nil)
     (if (not (consp events)) (list :refused :history)
@@ -141,7 +161,10 @@
                                        budget ws withdrawn)
            :in-theory (e/d (fn-col-poll-scan)
                            (fn-cwd-cause-target fn-col-poll-article
-                            fn-col-poll-articlep fn-col-poll-compositep)))))
+                            fn-col-poll-articlep fn-col-poll-compositep
+                            fn-store-event-p fn-store-event-sequence
+                            fn-record-groups fn-record-octets-string
+                            fn-ctl-event-msgid member-equal)))))
 
 ; With nothing withdrawn the scan never stops at a withdrawal.
 (defthm fn-cwd-scan-of-no-withdrawn
@@ -149,9 +172,12 @@
          (fn-col-poll-scan events group position frontier budget))
   :hints (("Goal" :induct (fn-cwd-scan events group position frontier
                                        budget ws nil)
-           :in-theory (e/d (fn-col-poll-scan)
-                           (fn-col-poll-article
-                            fn-col-poll-articlep fn-col-poll-compositep)))))
+           :in-theory (e/d (fn-col-poll-scan fn-cwd-cause-target-of-no-withdrawn)
+                           (fn-cwd-cause-target fn-col-poll-article
+                            fn-col-poll-articlep fn-col-poll-compositep
+                            fn-store-event-p fn-store-event-sequence
+                            fn-record-groups fn-record-octets-string
+                            fn-ctl-event-msgid member-equal)))))
 
 (in-theory (disable fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal
                     fn-cwd-scan-of-no-withdrawn))
@@ -170,7 +196,10 @@
   :hints (("Goal" :induct (fn-cwd-scan events group position frontier
                                        budget ws withdrawn)
            :in-theory (disable fn-cwd-cause-target fn-col-poll-article
-                               fn-col-poll-articlep fn-col-poll-compositep))))
+                            fn-col-poll-articlep fn-col-poll-compositep
+                            fn-store-event-p fn-store-event-sequence
+                            fn-record-groups fn-record-octets-string
+                            fn-ctl-event-msgid member-equal))))
 
 ; KEYSTONE (b2: a withdrawing cause is delivered, not skipped).  When the
 ; event at the consumer's position is a history event there, is no article
@@ -260,8 +289,12 @@
               :withdrawal))
   :hints (("Goal" :induct (fn-cwd-scan events group position frontier
                                        budget ws nil)
-           :in-theory (disable fn-col-poll-article fn-col-poll-articlep
-                               fn-col-poll-compositep))))
+           :in-theory (e/d (fn-cwd-cause-target-of-no-withdrawn)
+                           (fn-cwd-cause-target fn-col-poll-article
+                            fn-col-poll-articlep fn-col-poll-compositep
+                            fn-store-event-p fn-store-event-sequence
+                            fn-record-groups fn-record-octets-string
+                            fn-ctl-event-msgid member-equal)))))
 
 (local
  (defthm fn-cwd-scope-entry-is-a-scope-or-a-refusal

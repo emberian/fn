@@ -164,7 +164,7 @@
 ; -----------------------------------------------------------------------------
 ; The command line: `fn consumer --json COMMAND ...' is COMMAND's plan with
 ; the JSON line for its output; every other line is `fn-cwait-cli-plan''s,
-; unchanged (`fn-ncr-cli-plan-without-the-flag-is-the-wait-plan').
+; unchanged (`fn-ncr-cli-plan-without-the-flag-by-definition').
 
 (defconst *fn-ncr-json-flag* '(45 45 106 115 111 110)) ; --json
 
@@ -175,7 +175,7 @@
                                      (and (consp argv) (cdr argv))))
     (fn-cwait-cli-plan command argv)))
 
-(defthm fn-ncr-cli-plan-without-the-flag-is-the-wait-plan
+(defthm fn-ncr-cli-plan-without-the-flag-by-definition
   (implies (not (equal command *fn-ncr-json-flag*))
            (equal (fn-ncr-cli-plan command argv)
                   (fn-cwait-cli-plan command argv))))
