@@ -137,11 +137,12 @@
 (assert-event (equal (th-decide *th-cfg-skew* "innA" "<s@example.invalid>" *th-soon* *th-clock*)
                      (fn-peer-decision :refuse :date-future)))
 ; Without a clock reading the future check does not decide (the transfer
-; then defers :no-clock, fn-peer-transfer).
+; then defers :no-clock, fn-peer-transfer; the last argument is the arena
+; handle the transit entry fn-peer-transfer-interned hands it, records-flip).
 (assert-event (equal (th-decide *th-cfg* "innA" "<f@example.invalid>" *th-future* nil)
                      (fn-peer-decision :want nil)))
 (assert-event (equal (cadr (mv-list 2 (fn-peer-transfer *th-node* *th-cfg* "innA" (th-o "<f@example.invalid>")
-                                                         *th-future* nil 1 "ob" "s")))
+                                                         *th-future* nil 1 "ob" "s" 0)))
                      (fn-peer-decision :defer :no-clock)))
 ; The reply text names the reason (RFC 3977 section 6.3.2: 437 with text).
 (assert-event (equal (fn-peer-reason-text :no-path) "no Path"))

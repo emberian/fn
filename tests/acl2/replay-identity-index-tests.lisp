@@ -24,9 +24,12 @@
   (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1)) *rii-t-stamp*))
 (defconst *rii-t-increase*
   (fn-cfg-record-make 2 7 3 (list (fn-cfg-set-capacity 20)) *rii-t-stamp*))
+; The history holds RETAINED rows (records flip): each article is the held
+; row of its wire record, at a handle of its own (the fold reads no bytes).
 (defun rii-t-article (sequence txid msgid obligation)
-  (fn-record-make sequence txid txid msgid '(65) '("fn.test")
-                  obligation "subject" "evidence" 2 841000000))
+  (fn-held-plain (fn-record-make sequence txid txid msgid '(65) '("fn.test")
+                                 obligation "subject" "evidence" 2 841000000)
+                 sequence))
 (defconst *rii-t-article* (rii-t-article 2 7 "<rii@example.invalid>" "archive-rii"))
 (defconst *rii-t-article-2* (rii-t-article 3 8 "<rii-2@example.invalid>" "archive-rii-2"))
 ; The same Message-ID again, under a fresh obligation id: acceptance refuses.
@@ -129,7 +132,7 @@
                :error))))
 
 (assert-event
- (equal (fn-rii-event-fields *rii-t-article*) (list t 2 7 7)))
+ (equal (fn-event-fields *rii-t-article* nil) (list t 2 7 7)))
 
 ; -----------------------------------------------------------------------------
 ; The fold's keystone and the step's under their hypothesis, reachable: the

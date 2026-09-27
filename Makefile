@@ -335,6 +335,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-compaction-preservation-tests \
 	books/checkpoint-pack-chain \
 	tests/acl2/checkpoint-pack-chain-tests \
+	books/store-event-fields \
 	books/checkpoint-pack-chain-once \
 	tests/acl2/checkpoint-pack-chain-once-tests \
 	books/catalog-load-index \
