@@ -63,13 +63,20 @@
   (declare (xargs :guard t))
   (* 256 *fn-olr-unit*))
 
-; An entry's octets for a record of N octets: the FNLG frame (header, the
-; 32-octet chain, the record, the 32-octet trailer) padded to the unit.  No
-; digest is computed to know it (`fn-olr-entry-octets-is-the-entry-length').
+; A record's octets in the open batch's packed chunk (PKT-749: the batch is
+; one entry, padded once): its four-octet length and its N octets.  The
+; batch bound OMAX counts these; the segment is sized by the digest-free
+; length of the batch's log (`fn-olr-log-need').
 (defun fn-olr-entry-octets (n unit)
-  (declare (xargs :guard t))
-  (let ((f (+ *fn-frame-overhead-octets* *fn-frame-trailer-octets* (nfix n))))
-    (+ f (fn-lg-pad-len f unit))))
+  (declare (xargs :guard t) (ignore unit))
+  (+ 4 (nfix n)))
+
+; The segment offset the open batch's append ends at: the frontier and the
+; batch's log length, computed without a digest
+; (`fn-olr-log-need-is-the-append-end').
+(defun fn-olr-log-need (ks unit)
+  (declare (xargs :guard (true-listp ks) :verify-guards nil))
+  (+ (fn-lgk-frontier ks) (fn-lg-log-len (fn-lgk-batch ks) unit)))
 
 ; The next extent when the open batch does not fit: at least twice the
 ; current one and at least NEED rounded up to the unit.  Growth is by
@@ -121,13 +128,24 @@
 ; =============================================================================
 ; What the host's take, catch-up and extension keep.
 
-; The octets the host accumulates for the open batch are the entries' own:
-; an entry's length is fn-olr-entry-octets of its record's length.
-(defthm fn-olr-entry-octets-is-the-entry-length
-  (implies (and (fn-frame-digestp prev) (fn-cbor-octet-listp record))
-           (equal (len (fn-lg-entry prev record unit))
-                  (fn-olr-entry-octets (len record) unit)))
-  :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-pad-len))))
+; The octets the host accumulates for the open batch are the records' packed
+; octets: fn-olr-entry-octets of a record's length is its share of the
+; packed body.
+(defthm fn-olr-entry-octets-is-the-packed-length
+  (equal (fn-lg-pack-len (list record)) (fn-olr-entry-octets (len record) unit)))
+
+; The host sizes the segment from the digest-free length: it is the end of
+; the append the kernel admits, so fn-lgk-fitsp holds exactly when the
+; extent reaches it.
+(defthm fn-olr-log-need-is-the-append-end
+  (implies (and (fn-frame-digestp (fn-lgk-last ks)) (fn-lg-recordsp (fn-lgk-batch ks) max))
+           (and (equal (fn-olr-log-need ks unit)
+                       (+ (fn-lgk-frontier ks) (len (fn-lgk-append-octets ks unit))))
+                (equal (fn-lgk-fitsp ks unit extent)
+                       (<= (fn-olr-log-need ks unit) (nfix extent)))))
+  :hints (("Goal" :in-theory (disable fn-lg-log fn-lg-log-len)
+           :use ((:instance fn-lg-log-len-is-the-log-length
+                            (records (fn-lgk-batch ks)) (prev (fn-lgk-last ks)))))))
 
 ; The take: :taken is the log kernel's prepare at the owner's txid, and any
 ; other verdict leaves the kernel unchanged (host: `fnn-log-take').

@@ -26,9 +26,10 @@
 (defun slt-genesis () (declare (xargs :guard t :verify-guards nil)) *fn-lg-genesis*)
 
 ; -----------------------------------------------------------------------------
-; Keystone 1, the reachable witness: a log of two chained entries scans to
-; exactly its two records and its length; the padding is a natural and the
-; entry's length is its frame's plus the padding.
+; Keystone 1, the reachable witness: a log of two records -- one packed
+; entry (kind 2) since PKT-749 -- scans to exactly its two records and its
+; length; the padding is a natural and the entry's length is its frame's
+; plus the padding.  A lone record is a kind-1 entry, as before.
 
 (assert-event
  (let* ((log (fn-lg-log (list (slt-r1) (slt-r2)) (slt-genesis) (slt-unit)))
@@ -36,11 +37,16 @@
    (and (fn-frame-digestp (slt-genesis))
         (fn-lg-recordsp (list (slt-r1) (slt-r2)) (slt-max))
         (equal scan (cons (list (slt-r1) (slt-r2)) (len log)))
-        ; the first entry: 42 octets of frame overhead, 32 of chain, 3 of
+        ; one record alone: 42 octets of frame overhead, 32 of chain, 3 of
         ; record, padded from 77 to 80
-        (equal (len (fn-lg-frame (slt-genesis) (slt-r1))) 77)
+        (equal (len (fn-lg-frame (slt-genesis) (list (slt-r1)))) 77)
         (equal (fn-lg-pad-len 77 (slt-unit)) 3)
-        (equal (len (fn-lg-entry (slt-genesis) (slt-r1) (slt-unit))) 80)
+        (equal (len (fn-lg-entry (slt-genesis) (list (slt-r1)) (slt-unit))) 80)
+        ; both records, one packed entry: 42 + 32 + (4 + 3) + (4 + 7) = 92,
+        ; a multiple of the unit, so no padding at all
+        (equal (fn-lg-frame-kind (list (slt-r1) (slt-r2))) *fn-lg-batch-kind*)
+        (equal (len log) 92)
+        (equal (fn-lg-log-len (list (slt-r1) (slt-r2)) (slt-unit)) 92)
         (equal (mod (len log) (slt-unit)) 0))))
 
 ; The frontier after an append is the end: appending a third entry at the
@@ -49,7 +55,7 @@
  (let* ((records (list (slt-r1) (slt-r2)))
         (log (fn-lg-log records (slt-genesis) (slt-unit)))
         (r3 '(11 12))
-        (entry (fn-lg-entry (fn-lg-last-trailer records (slt-genesis)) r3 (slt-unit)))
+        (entry (fn-lg-entry (fn-lg-last-trailer records (slt-genesis)) (list r3) (slt-unit)))
         (scan (fn-lg-scan (append log entry) (slt-genesis) (slt-unit) (slt-max))))
    (equal scan (cons (list (slt-r1) (slt-r2) r3) (+ (len log) (len entry))))))
 
@@ -101,7 +107,7 @@
   (list (slt-selectors (fn-bs-unit-count 0 (len entry) unit) i sel other)))
 
 (defun slt-entry () (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-entry (slt-genesis) (slt-r1) (slt-unit)))
+  (fn-lg-entry (slt-genesis) (list (slt-r1)) (slt-unit)))
 (defun slt-scan (octets) (declare (xargs :guard t :verify-guards nil))
   (fn-lg-scan octets (slt-genesis) (slt-unit) (slt-max)))
 
@@ -144,7 +150,7 @@
         (torn (slt-torn (slt-entry) (slt-unit) choices)))
    (and (fn-bs-crash-choicesp choices (list (list :write 0 0 (slt-entry))) (slt-unit))
         (not (equal torn (slt-entry)))
-        (equal (fn-bs-take 77 torn) (fn-lg-frame (slt-genesis) (slt-r1)))
+        (equal (fn-bs-take 77 torn) (fn-lg-frame (slt-genesis) (list (slt-r1))))
         (equal (slt-scan torn) (cons (list (slt-r1)) 80)))))
 ; (f) nothing landed: the empty history.
 (assert-event
@@ -154,21 +160,81 @@
 ; another predecessor is not read (the scan stops before it), whatever its
 ; record says.
 (assert-event
- (let* ((stale (fn-lg-entry (fn-lg-trailer (fn-lg-frame (slt-genesis) (slt-r2)))
-                            '(99) (slt-unit)))
+ (let* ((stale (fn-lg-entry (fn-lg-trailer (fn-lg-frame (slt-genesis) (list (slt-r2))))
+                            '((99)) (slt-unit)))
         (log (fn-lg-log (list (slt-r1)) (slt-genesis) (slt-unit))))
    (equal (slt-scan (append log stale)) (cons (list (slt-r1)) (len log)))))
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis removal, keystone 2: the torn-variant hypothesis.  Octets that
-; are NOT a torn variant of the entry can hold the entry and more: the scan
-; reads two records, which is none of the three disjuncts.
+; are NOT a torn variant of the entry can hold the entry and a second
+; chained entry after it: the scan reads two records, which is none of the
+; three disjuncts.
 (assert-event
- (let* ((two (fn-lg-log (list (slt-r1) (slt-r2)) (slt-genesis) (slt-unit)))
+ (let* ((two (append (slt-entry)
+                     (fn-lg-entry (fn-lg-trailer (fn-lg-frame (slt-genesis) (list (slt-r1))))
+                                  (list (slt-r2)) (slt-unit))))
         (scan (slt-scan two)))
    (and (fn-frame-digestp (slt-genesis))
-        (fn-lg-recordp (slt-r1) (slt-max))
+        (fn-lg-chunkp (list (slt-r1)) (slt-max))
         (< (len (slt-entry)) (len two))         ; so not a torn variant (fn-lg-torn-variant-len)
         (not (equal scan (cons nil 0)))
         (not (equal scan (cons (list (slt-r1)) (len (slt-entry)))))
-        (not (fn-lg-forgeryp two (slt-genesis) (slt-max) (fn-lg-frame (slt-genesis) (slt-r1)))))))
+        (not (fn-lg-forgeryp two (slt-genesis) (slt-max)
+                             (fn-lg-frame (slt-genesis) (list (slt-r1))))))))
+
+; -----------------------------------------------------------------------------
+; PKT-749: the packed chunk (kind 2), padded once.
+
+(defun slt-chunk () (declare (xargs :guard t)) (list (slt-r1) (slt-r2) '(11 12)))
+(defun slt-chunk-entry () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-entry (slt-genesis) (slt-chunk) (slt-unit)))
+
+; The chunk's entry is one frame: 42 + 32 + (4+3) + (4+7) + (4+2) = 98,
+; padded to 100; three records one entry.
+(assert-event
+ (and (fn-lg-chunkp (slt-chunk) (slt-max))
+      (equal (len (fn-lg-frame (slt-genesis) (slt-chunk))) 98)
+      (equal (len (slt-chunk-entry)) 100)
+      (equal (fn-lg-log (slt-chunk) (slt-genesis) (slt-unit)) (slt-chunk-entry))
+      (equal (slt-scan (slt-chunk-entry)) (cons (slt-chunk) 100))))
+
+; A torn chunk is all or nothing: the last unit lost reads nothing; every
+; unit landed reads all three (fn-lg-scan-of-torn-entry over a chunk).
+(assert-event
+ (let* ((n (fn-bs-unit-count 0 (len (slt-chunk-entry)) (slt-unit)))
+        (cut (slt-choices (slt-chunk-entry) (slt-unit) (1- n) :old :new))
+        (all (slt-choices (slt-chunk-entry) (slt-unit) 0 :new :new)))
+   (and (equal n 25)
+        (fn-bs-crash-choicesp cut (list (list :write 0 0 (slt-chunk-entry))) (slt-unit))
+        (equal (slt-scan (slt-torn (slt-chunk-entry) (slt-unit) cut)) (cons nil 0))
+        (fn-bs-crash-choicesp all (list (list :write 0 0 (slt-chunk-entry))) (slt-unit))
+        (equal (slt-scan (slt-torn (slt-chunk-entry) (slt-unit) all))
+               (cons (slt-chunk) 100)))))
+
+; The scan's kind-2 rule, its teeth: a sealed, chained kind-2 frame whose
+; body is not exactly its packed records (a length past the body), or holds
+; only one record, or a record past MAX, is not read.
+(defun slt-kind2 (body) (declare (xargs :guard t :verify-guards nil))
+  (fn-frame-seal *fn-lg-magic* *fn-lg-version* *fn-lg-batch-kind*
+                 (append (slt-genesis) body)))
+(assert-event
+ (and (fn-lg-entry-okp (slt-kind2 '(0 0 0 1 5 0 0 0 1 6)) (slt-genesis) (slt-max))
+      (not (fn-lg-entry-okp (slt-kind2 '(0 0 0 9 1 2)) (slt-genesis) (slt-max)))
+      (not (fn-lg-entry-okp (slt-kind2 '(0 0 0 2 1 2)) (slt-genesis) (slt-max)))
+      (not (fn-lg-entry-okp (slt-kind2 '(0 0 0 1 5 0 0 0 1 6)) (slt-genesis) 32))
+      (equal (slt-scan (slt-kind2 '(0 0 0 9 1 2))) (cons nil 0))))
+
+; The size (PKT-749's measure): eight records of 2,200 octets (about a
+; 2 KiB article's stored record) at the 4 KiB unit.  Per-record entries
+; were eight units (32,768 octets); the packed chunk is 42 + 32 + 8 * 2,204
+; = 17,706 octets, padded to 20,480: 37.5 percent less.  The digest-free
+; length is the log's length (fn-lg-log-len-is-the-log-length).
+(assert-event
+ (let* ((recs (make-list 8 :initial-element (make-list 2200 :initial-element 7)))
+        (log (fn-lg-log recs (slt-genesis) 4096)))
+   (and (fn-lg-recordsp recs (slt-max))
+        (equal (* 8 (len (fn-lg-entry (slt-genesis) (list (car recs)) 4096))) 32768)
+        (equal (fn-lg-log-len recs 4096) 20480)
+        (equal (len log) 20480)
+        (equal (fn-lg-scan log (slt-genesis) 4096 (slt-max)) (cons recs 20480)))))

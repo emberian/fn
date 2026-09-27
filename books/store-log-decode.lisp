@@ -8,7 +8,8 @@
 ; of at most the frame's length, which the payload bound MAX limits), opens
 ; it with the frame codec and steps past its padding.  Nothing converts the
 ; whole segment to a list.  It answers (mv RECORDS CONSUMED LAST): the
-; records, the frontier and the last trailer, which are the logical scan's
+; records (every record of an entry: one, or a packed chunk's), the
+; frontier and the last trailer, which are the logical scan's
 ; three answers:
 ;
 ;   fn-lg-decode-is-the-scan   for every S (no hypothesis),
@@ -98,11 +99,11 @@
           (if (not (ec-call (fn-lg-entry-okp slice prev max)))
               (mv (revappend acc nil) pos prev)
             (let ((step (+ n (fn-lg-pad-len n unit)))
-                  (record (ec-call (fn-lg-slice-records slice max)))
+                  (records (ec-call (fn-lg-slice-records slice max)))
                   (last (ec-call (fn-lg-trailer slice))))
               (if (< (+ pos step) (length s))
-                  (fn-lgd-loop s (+ pos step) last unit max (cons record acc))
-                (mv (revappend (cons record acc) nil) (+ pos step) last)))))))))
+                  (fn-lgd-loop s (+ pos step) last unit max (revappend records acc))
+                (mv (revappend (revappend records acc) nil) (+ pos step) last)))))))))
 
 (defun fn-lg-decode (s prev unit max)
   (declare (xargs :guard (stringp s)))
@@ -209,6 +210,9 @@
 
 (defthm fn-lgd-scan-last-of-atom
   (implies (atom x) (equal (fn-lg-scan-last x prev unit max) prev)))
+
+(defthm fn-lgd-revappend-revappend
+  (equal (revappend (revappend r acc) y) (revappend acc (append r y))))
 
 (defthm fn-lgd-loop-is-the-scan
   (implies (and (stringp s) (natp pos) (<= pos (length s)) (true-listp acc))

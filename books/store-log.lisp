@@ -269,6 +269,10 @@
         (fn-lg-unpack body)
       (list body))))
 
+(defthm fn-lg-slice-records-true-listp
+  (true-listp (fn-lg-slice-records slice max))
+  :rule-classes :type-prescription)
+
 (local
  (defthm fn-lg-len-nthcdr-of-atom
    (implies (atom x) (equal (len (nthcdr k x)) 0))))
@@ -1160,9 +1164,65 @@
                                fn-lg-forgeryp fn-bs-torn-variantp fn-lg-recordsp
                                fn-lg-recordp fn-lg-chunkp))))
 
+; -----------------------------------------------------------------------------
+; The log's length without its digests: what the host needs to size the
+; segment before an append (host/native/io.lisp fnn-log-ensure-extent).
+
+(defun fn-lg-chunk-frame-len (chunk)
+  (declare (xargs :guard t))
+  (+ *fn-frame-overhead-octets* *fn-frame-trailer-octets*
+     (if (consp chunk)
+         (if (consp (cdr chunk)) (fn-lg-pack-len chunk) (len (car chunk)))
+       0)))
+
+(defun fn-lg-log-len (records unit)
+  (declare (xargs :guard t :verify-guards nil :measure (len records)
+                  :hints (("Goal" :in-theory (enable fn-lg-chunk-len)))))
+  (if (consp records)
+      (let* ((k (fn-lg-chunk-len records))
+             (f (fn-lg-chunk-frame-len (fn-bs-take k records))))
+        (+ f (fn-lg-pad-len f unit) (fn-lg-log-len (nthcdr k records) unit)))
+    0))
+
+(local
+ (defthm fn-lg-frame-body-len
+   (equal (len (fn-lg-frame-body chunk))
+          (if (consp chunk)
+              (if (consp (cdr chunk)) (fn-lg-pack-len chunk) (len (car chunk)))
+            0))
+   :hints (("Goal" :in-theory (enable fn-lg-frame-body)))))
+
+(local
+ (defthm fn-lg-entry-len-is-chunk-frame-len
+   (implies (and (fn-frame-digestp prev) (fn-lg-chunkp chunk max))
+            (equal (len (fn-lg-entry prev chunk unit))
+                   (+ (fn-lg-chunk-frame-len chunk)
+                      (fn-lg-pad-len (fn-lg-chunk-frame-len chunk) unit))))
+   :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-pad-len fn-lg-chunkp)
+            :use (fn-lg-chunk-body-octets fn-lg-frame-len)))))
+
+; The digest-free length is the log's length.
+(defthm fn-lg-log-len-is-the-log-length
+  (implies (and (fn-frame-digestp prev) (fn-lg-recordsp records max))
+           (equal (len (fn-lg-log records prev unit)) (fn-lg-log-len records unit)))
+  :hints (("Goal" :induct (fn-lg-log records prev unit)
+           :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-recordsp fn-lg-chunkp
+                               fn-lg-pad-len fn-lg-chunk-frame-len fn-lg-entry-len
+                               fn-lg-trailer-of-frame-digestp))
+          ("Subgoal *1/1"
+           :expand ((fn-lg-log records prev unit) (fn-lg-log-len records unit))
+           :use ((:instance fn-lg-chunkp-of-first-chunk)
+                 (:instance fn-lg-recordsp-of-nthcdr (k (fn-lg-chunk-len records)))
+                 (:instance fn-lg-trailer-of-frame-digestp
+                            (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-entry-len-is-chunk-frame-len
+                            (chunk (fn-bs-take (fn-lg-chunk-len records) records)))))
+          ("Subgoal *1/2" :expand ((fn-lg-log records prev unit) (fn-lg-log-len records unit)))))
+
 ; The unfolding rules stay available by name (the crash book enables them
 ; where it steps a batch chunk by chunk).
-(in-theory (disable fn-lg-log-unfolds fn-lg-last-trailer-unfolds))
+(in-theory (disable fn-lg-log-unfolds fn-lg-last-trailer-unfolds
+                    fn-lg-log-len-is-the-log-length))
 
 ; A chunk's frame is used through its lemmas (length, octets, slice, open,
 ; records), never by opening the packed body.
