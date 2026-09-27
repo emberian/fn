@@ -233,6 +233,14 @@ after it."
       (fnn-fault "owner returned non-action from ~a" name))
     value))
 
+(defun fnn-owner-arena-action (name &rest args)
+  "fnn-owner-action for an owner entry that reads or seals the payload arena
+(the records flip: the duplicate test reads stored bytes by handle)."
+  (let ((value (apply #'fnn-core-arena-state name args)))
+    (unless (keywordp value)
+      (fnn-fault "owner returned non-action from ~a" name))
+    value))
+
 (defun fnn-owner-buffer-action (name &rest args)
   "fnn-owner-action for a wrapper that reads the octet buffer.  The owner's
 prepare answers owner outcomes (:unaffordable, :clock-unusable, ...) that the
@@ -290,7 +298,7 @@ function supplied no observation at all, which is a defect here."
 
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
-  (fnn-owner-action 'fn-owner-finish-submission))
+  (fnn-owner-arena-action 'fn-owner-finish-submission))
 
 ;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
 ;;; A wrapper that used to answer a keyword and leave the rest of its result

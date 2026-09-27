@@ -298,11 +298,24 @@ def read_prompt(proc, timeout=ACL2_CALL_BASE_SECONDS):
     raise StoreError("ACL2 prompt timeout")
 
 
+ARENA_RESULT_PREFIX = b"(NIL "
+ARENA_RESULT_SUFFIX = b" <fn-arena> <state>)"
+
+
 def acl2_result(output):
+    """The printed value of one bridge call.  An entry that seals into the
+    payload arena (the records flip: `fn-store-sn-recover`, `-prepare`,
+    `-recover-from-checkpoint`) returns (mv nil VALUE fn-arena state), which
+    ACL2 prints as `(NIL VALUE <fn-arena> <state>)`; its VALUE is the answer.
+    A non-nil error flag there is not unwrapped, so its parser refuses it."""
     data = output.strip()
     if not data.endswith(PROMPT):
         raise StoreError("unexpected ACL2 bridge result")
-    return data[:-len(PROMPT)].strip()
+    body = data[:-len(PROMPT)].strip()
+    if (body.upper().startswith(ARENA_RESULT_PREFIX)
+            and body.lower().endswith(ARENA_RESULT_SUFFIX)):
+        body = body[len(ARENA_RESULT_PREFIX):-len(ARENA_RESULT_SUFFIX)].strip()
+    return body
 
 
 def decimal_list(body):
@@ -490,8 +503,8 @@ class Acl2Store:
     # The served statement query (decision D21).  ACL2 holds the index in the
     # store state; this sends the id and prints what the index answers.  No
     # part of the query is computed here: fn-sn-statement-lookup reads the
-    # carried index, and fn-sn-statement-lookup-is-the-lace-lookup
-    # (books/store-node-invariants) is what says that is the same answer as
+    # carried index, and fn-store-statement-lookup-is-the-lace-lookup
+    # (books/store-intern) is what says that is the same answer as
     # the linear lace projection.
     def set_keyring(self, pairs):
         entries = " ".join(

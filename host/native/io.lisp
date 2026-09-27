@@ -242,6 +242,34 @@ return the index the bytes begin at."
     (setf (svref st 1) (+ fill n))
     fill))
 
+;;; The PAYLOAD ARENA (books/payload-arena.lisp; the records flip,
+;;; books/store-intern.lisp): `fn-arena' is the abstract stobj whose logical
+;;; value is the list of sealed payloads and whose executable is the byte
+;;; array books/payload-arena-attach.lisp attached (one byte per payload
+;;; octet).  The Store's rows carry handles into it; the live object is the
+;;; state's user-stobj-alist entry, found as `fnn-live-octets' finds the
+;;; buffer's.  The host never reads or writes it: every call below hands it
+;;; to an ACL2 entry (the intern at the open, the POST's seal, the reads by
+;;; handle), and one thread owns it, as it owns the Store.
+
+(defvar *fnn-arena* nil)
+
+(defun fnn-live-arena ()
+  (or *fnn-arena*
+      (setq *fnn-arena*
+            (or (cdr (assoc 'fn-arena (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the payload arena stobj is not in this image")))))
+
+(defun fnn-core-arena-state (name &rest args)
+  "A wrapper over the arena and state, the live arena passed before state:
+its value.  An entry that seals returns (mv erp val fn-arena state) and a
+reader (mv erp val state); the arena is updated in place either way."
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name (append args (list (fnn-live-arena) *the-live-state*)))
+    (declare (ignore ignored))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
 (defun fnn-core-buffer-state (name &rest args)
   "A `state`-returning wrapper over the buffer, (mv erp value state) with the
 live buffer passed before state: its value."
