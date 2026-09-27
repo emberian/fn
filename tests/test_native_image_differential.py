@@ -141,6 +141,9 @@ def normalize(data, *roots):
     for root in roots:
         text = text.replace(str(root), "<T>")
     text = re.sub(r"\bpid[= ]\d+", "pid=<N>", text)
+    # heap-figure's figure counts the image's core file (books/heap-figure.lisp
+    # fn-heap-figure-octets): the full core is larger by design, an input.
+    text = re.sub(r"\bheap=\d+ MB", "heap=<core-dependent> MB", text)
     text = re.sub(r"\bms=\d+", "ms=<N>", text)
     text = re.sub(r"\b\d+(\.\d+)? ?(ms|s)\b", "<N>\\2", text)
     return text
@@ -210,6 +213,7 @@ class Session:
 class ReleaseAgainstReferenceTests(unittest.TestCase):
     """Each case on byte-identical inputs: the reference (full) image and the
     release (stripped, checked) image; outcomes and durable state compared."""
+    maxDiff = None
 
     @classmethod
     def setUpClass(cls):
@@ -500,6 +504,7 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
 class GuardViolationTests(unittest.TestCase):
     """A guard violation at the host boundary: the developer verb
     `guard-probe' calls fn-sha256-of-string on 42 through fnn-call."""
+    maxDiff = None
 
     def test_the_same_refusal_full_and_stripped(self):
         tmp = Path(tempfile.mkdtemp(prefix="fn-diff-guard-"))

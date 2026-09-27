@@ -23,10 +23,10 @@ name, outside a limit of at most 2 GiB.
   2 KiB, serves them (ARTICLE, OVER), publishes one automatic checkpoint
   (K = 128: at 64), stops, reopens from the checkpoint and serves them
   again.  Each run's VmHWM is printed.
-* The refusal: `init --profile development' is refused by name at init
-  (`refused init-budget-cannot-hold-profile profile=development
-  sizing=requested ...'), nothing created; the same store made by the
-  developer image's own `store ROOT init' is refused at `run' and `status'.
+* The refusal: `init --profile development' is the operator's request,
+  honored, never resized: the launcher's probe refuses it by name under 2
+  GiB; the image's own init writes it (`within-budget=no'), and the launcher
+  refuses its `run' and `status' by name.
 * FreshInitTests (also without a small limit): conservative sizing,
   FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB, and the default mission
   honored (runs) or refused by name (under 2 GiB).
@@ -44,14 +44,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = os.environ.get("FN_NATIVE_HOST")
-DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 EXIT_OK, EXIT_REFUSED = 0, 1
 HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB$", re.M)
 REFUSED = re.compile(
     r"refused machine-cannot-hold-profile heap=(\d+) MB machine=(\d+) MB")
 # What `init' prints (books/heap-reservation.lisp fn-heap-init-report-line).
 INIT_LINE = re.compile(r"^init: profile=([a-z]+) sizing=([a-z]+) "
-                       r"reservation=(\d+) MB budget=(\d+) MB$", re.M)
+                       r"reservation=(\d+) MB budget=(\d+) MB within-budget=(yes|no)$",
+                       re.M)
 INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-z]+) "
                           r"sizing=([a-z]+) reservation=(\d+) MB budget=(\d+) MB")
 
@@ -237,6 +237,8 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.assertIsNotNone(found, text(made))
         word, sizing, reservation, budget = (found.group(1), found.group(2),
                                              int(found.group(3)), int(found.group(4)))
+        # Every capacity-free init is within the budget it prints.
+        self.assertEqual(found.group(5), "yes")
         self.assertLessEqual(reservation, budget)
         if LIMIT:
             self.assertLessEqual(budget, LIMIT // (1024 * 1024))
@@ -357,22 +359,22 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertLess(max(hwm1, hwm2) * 1024, LIMIT)
 
     def test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start(self):
+        """`--profile development' is the operator's request: honored, never
+        resized.  Under the launcher its probe refuses it by name here; the
+        image's own init writes it and says the budget does not hold it; the
+        launcher then refuses its run and status by name."""
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
         self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
-        found = INIT_REFUSED.search(text(refused))
-        self.assertIsNotNone(found, text(refused))
-        self.assertEqual(found.group(1, 2), ("development", "requested"))
+        self.assertRegex(text(refused), REFUSED)
         self.assertFalse((self.tmp / "development").exists())
-        if not DEVELOPER:
-            self.skipTest("the run's refusal needs a store made without the budget: "
-                          "set FN_NATIVE_DEVELOPER_HOST")
-        # The same store made by the developer image's own init (no budget),
-        # as a store brought from a larger machine would be.
-        made = self.run_fn("store", self.tmp / "development", "init", "--profile",
-                           "development", "local.test", command=[DEVELOPER, "--fn"])
+        made = self.run_fn("operator", config, "init", "--profile", "development",
+                           "local.test", command=[IMAGE, "--fn"])
         self.assertEqual(made.returncode, EXIT_OK, text(made))
+        self.assertRegex(made.stdout.decode(),
+                         r"init: profile=development sizing=requested reservation=\d+ MB "
+                         r"budget=\d+ MB within-budget=no")
         for verb in ("run", "status"):
             result = self.run_fn("operator", config, verb)
             self.assertEqual(result.returncode, EXIT_REFUSED, text(result))

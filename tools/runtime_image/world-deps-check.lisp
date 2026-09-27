@@ -75,7 +75,7 @@
     (setf (get sym key) (remove prop (get sym key) :key #'car))
     (remhash text *wdc-kept*)
     (setf (gethash text *wdc-omitted*) t)
-    (format *error-output* "~&world-deps-check: dropped ~a~%" text)))
+    (wdc-write (format nil "DROPPED ~a" text))))
 
 (defun wdc-write (line)
   (when *wdc-out*
@@ -97,7 +97,10 @@
                            (symbol-name (car (last name))))))) 
             (when (and n (not (member n '("WDC-NOTE" "WDC-CALLER" "FGETPROP" "SGETPROP")
                                       :test #'string=))
-                       (not (search "ENCAPSULAT" n)) (not (search "LAMBDA" n)))
+                       (not (search "ENCAPSULAT" n)) (not (search "LAMBDA" n))
+                       (let ((sym (if (consp name) (car (last name)) name)))
+                         (and (symbolp sym) (symbol-package sym)
+                              (not (eql 0 (search "SB-" (package-name (symbol-package sym))))))))
               (setq found n)))))))
     (or found "?")))
 
@@ -138,8 +141,8 @@
                (unless (gethash text held)
                  (wdc-die "the dependency set lists ~a, which the live world lacks" text)))
              *wdc-kept*)
-    (format *error-output* "~&world-deps-check: ~d kept pairs match the image; ~d omitted~%"
-            (hash-table-count *wdc-kept*) (hash-table-count *wdc-omitted*)))
+    (wdc-write (format nil "LOADED kept=~d omitted=~d (the kept pairs match the image)"
+                       (hash-table-count *wdc-kept*) (hash-table-count *wdc-omitted*))))
   (let ((drop (sb-ext:posix-getenv "FN_WORLD_DEPS_DROP")))
     (when (and drop (plusp (length drop))) (wdc-drop drop)))
   (push #'wdc-summary sb-ext:*exit-hooks*)

@@ -288,9 +288,11 @@
 ; are laid over the preset and never lowered: when no candidate holds them
 ; the small candidate is refused by name with its reservation and the
 ; budget.  A request naming T, H or R, or a preset other than the default
-; (`--profile development|scale'), is the operator's: written as named when
-; the budget holds it, else refused by name.  `init' prints the decision
-; (fn-heap-init-report-line); nothing is resized silently.
+; (`--profile development|scale'), is the operator's: written as named,
+; never resized, the line saying whether the budget holds it (when it does
+; not, the launcher's probe refuses the run by name on this machine; a
+; harness that runs the image directly still can).  `init' prints the
+; decision (fn-heap-init-report-line); nothing is resized silently.
 
 (defun fn-heap-capacity-free-fieldsp (fields)
   (declare (xargs :guard t))
@@ -425,6 +427,9 @@
         ((equal octets '(108 97 114 103 101 115 116)) :largest)
         (t :bad)))
 
+(defthm fn-heap-init-sizing-is-never-requested
+  (not (equal (fn-heap-init-sizing octets) :requested)))
+
 (defun fn-heap-init-observations (physical limits explicit)
   (declare (xargs :guard t))
   (cons (fn-heap-available-physical-octets physical)
@@ -460,8 +465,12 @@
 
 ; The decision the host calls (host/native/heap.lisp fnn-heap-init-decision,
 ; from fnn-operator-execute-init and the heap probe):
-;   (:init REQUEST WORD RESERVATION-MB BUDGET-MB SIZING)
+;   (:init REQUEST WORD RESERVATION-MB BUDGET-MB SIZING HELDP)
 ;   (:refused REASON RESERVATION-MB BUDGET-MB WORD SIZING)
+; HELDP says the budget holds the whole reservation; it is always T for a
+; capacity-free request (fn-heap-init-decide-sized-init-is-held), and NIL only
+; for an operator's request the budget does not hold, which is written as
+; named (never resized) with the line saying so.
 ; SIZING :conservative, :largest or :requested (the operator named the
 ; capacity or the preset).  REASON :init-budget-cannot-hold-profile,
 ; :machine-memory-unobserved, :invalid-init-profile, :invalid-init-budget or
@@ -498,11 +507,16 @@
                   (mb (fn-heap-mb-of (fn-heap-init-reservation-octets
                                       profile core nursery))))
              (cond ((fn-heap-reserve-acceptsp chosen core nursery obs)
-                    (list :init chosen word mb budget-mb mode))
-                   ((zp budget)
-                    (list :refused :machine-memory-unobserved 0 0 word mode))
+                    (list :init chosen word mb budget-mb mode t))
                    ((and (consp profile) (equal (car profile) :invalid))
                     (list :refused :invalid-init-profile 0 budget-mb "none" mode))
+                   ; The operator's own request: written as named, the line
+                   ; saying the budget does not hold it (the launcher's probe
+                   ; refuses its run by name on this machine).
+                   ((equal mode :requested)
+                    (list :init chosen word mb budget-mb mode nil))
+                   ((zp budget)
+                    (list :refused :machine-memory-unobserved 0 0 word mode))
                    (t (list :refused :init-budget-cannot-hold-profile mb
                             budget-mb word mode))))))))
 
@@ -613,7 +627,7 @@
                                 budget-octets sizing-octets))
         (obs (fn-heap-init-observations
               physical limits (fn-heap-init-explicit-budget budget-octets))))
-    (implies (equal (car d) :init)
+    (implies (and (equal (car d) :init) (nth 6 d))
              (and (equal (fn-heap-init-decision-request d)
                          (fn-heap-init-chosen request core nursery obs
                                               (fn-heap-init-sizing sizing-octets)))
@@ -643,7 +657,7 @@
          (budget (fn-heap-machine-octets
                   (fn-heap-init-observations
                    physical limits (fn-heap-init-explicit-budget budget-octets)))))
-    (implies (equal (car d) :init)
+    (implies (and (equal (car d) :init) (nth 6 d))
              (and (fn-bs-profile-admittedp p)
                   (<= (fn-heap-init-reservation-octets p core nursery) budget)
                   (implies (posp (fn-heap-machine-octets (cons physical limits)))
@@ -679,25 +693,45 @@
                             (obs1 (fn-heap-init-observations physical limits (fn-heap-init-explicit-budget budget-octets)))
                             (obs2 (cons physical limits)))))))
 
-; A request that names its capacity or its preset is written as named or
-; refused; init never writes another request for it.
+; A request that names its capacity or its preset, and resolves to a valid
+; profile, is written exactly as named, whatever the budget: never refused
+; for size, never resized.
 (defthm fn-heap-init-decide-honors-the-operators-request
   (implies (and (not (fn-heap-machine-sized-requestp request))
-                (equal (car (fn-heap-init-decide request core nursery physical
-                                                 limits budget-octets sizing-octets))
-                       :init))
-           (and (equal (fn-heap-init-decision-request
-                        (fn-heap-init-decide request core nursery physical
-                                             limits budget-octets sizing-octets))
-                       request)
-                (equal (nth 5 (fn-heap-init-decide request core nursery physical
-                                                   limits budget-octets sizing-octets))
-                       :requested)))
+                (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
+                (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+                (not (equal (car (fn-bs-profile-resolve request nil)) :invalid)))
+           (let ((d (fn-heap-init-decide request core nursery physical
+                                         limits budget-octets sizing-octets)))
+             (and (equal (car d) :init)
+                  (equal (fn-heap-init-decision-request d) request)
+                  (equal (nth 5 d) :requested))))
   :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
                                       fn-bs-profile-resolve
                                       fn-heap-init-sizing
                                       fn-heap-reserve-init-choose
                                       fn-heap-init-candidates
+                                      fn-heap-init-reservation-octets
+                                      fn-heap-machine-octets
+                                      fn-heap-init-observations
+                                      fn-heap-init-explicit-budget
+                                      fn-heap-profile-word
+                                      fn-heap-mb-of
+                                      fn-heap-machine-sized-requestp))))
+
+; A capacity-free request (a bare init, every mission) is written only when
+; the budget holds it: then the keystone applies.
+(defthm fn-heap-init-decide-sized-init-is-held
+  (implies (and (fn-heap-machine-sized-requestp request)
+                (equal (car (fn-heap-init-decide request core nursery physical
+                                                 limits budget-octets sizing-octets))
+                       :init))
+           (nth 6 (fn-heap-init-decide request core nursery physical
+                                       limits budget-octets sizing-octets)))
+  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
+                                      fn-bs-profile-resolve
+                                      fn-heap-init-sizing
+                                      fn-heap-init-chosen
                                       fn-heap-init-reservation-octets
                                       fn-heap-machine-octets
                                       fn-heap-init-observations
@@ -761,7 +795,7 @@
                                  physical limits
                                  (fn-heap-init-explicit-budget budget-octets)))
                                *fn-heap-mib*)
-                        :conservative)))
+                        :conservative t)))
   :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
                                       fn-bs-profile-resolve
                                       fn-heap-init-reservation-octets
@@ -796,7 +830,7 @@
                                       fn-heap-machine-sized-requestp))))
 
 ; ---- The line init prints (stdout on acceptance, stderr on refusal):
-;   init: profile=WORD sizing=MODE reservation=MB MB budget=MB MB
+;   init: profile=WORD sizing=MODE reservation=MB MB budget=MB MB within-budget=yes|no
 ;   refused REASON profile=WORD sizing=MODE reservation=MB MB budget=MB MB
 
 (defun fn-heap-init-mode-word (mode)
@@ -828,7 +862,10 @@
   (declare (xargs :guard t))
   (let ((d (true-list-fix decision)))
     (if (equal (car d) :init)
-        (fn-heap-init-report-fields "init:" (nth 2 d) (nth 5 d) (nth 3 d) (nth 4 d))
+        (concatenate 'string
+                     (fn-heap-init-report-fields "init:" (nth 2 d) (nth 5 d) (nth 3 d)
+                                                 (nth 4 d))
+                     (if (nth 6 d) " within-budget=yes" " within-budget=no"))
       (fn-heap-init-report-fields
        (concatenate 'string "refused " (fn-heap-init-reason-word (nth 1 d)))
        (nth 4 d) (nth 5 d) (nth 2 d) (nth 3 d)))))

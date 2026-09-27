@@ -7012,6 +7012,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-heap-init-decide-sized-init-is-held"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-heap-init-decide-conservative-is-development-or-small"
         },
         {
