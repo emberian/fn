@@ -9898,7 +9898,8 @@
         "tests/acl2/payload-arena-paged-tests.lisp",
         "books/payload-arena-attach.lisp",
         "planning/evidence/arena-offheap-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T122543Z-3171271.json"
+        "planning/evidence/manifests/certify-20260927T122543Z-3171271.json",
+        "planning/evidence/manifests/certify-20260927T125739Z-3340064.json"
       ],
       "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic."
     }
