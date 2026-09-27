@@ -268,8 +268,8 @@
      (let ((effect (car (fn-bpnf-answer-effects (bpfr-reopen *bpfr-r1*)))))
        (fn-bpnp-step *bpfr-pending-over*
                      (list :persist-result (fn-bpn-nth 1 effect) (fn-bpn-nth 2 effect)
-                           :durable))))
-   3))))
+                           :durable)))))
+   3)))
 
 ;; ---------------------------------------------------------------------
 ;; The retry count survives recovery from the durable rows themselves.

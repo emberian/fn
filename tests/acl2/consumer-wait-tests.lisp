@@ -184,7 +184,7 @@
                           (cwt-k2 'x 30)))))
 (must-fail-checked
  (assert-event (let ((r (cwt-step *cwt-oc-full* *cwt-c2* *cwt-secret* 5 30)))
-                 (implies (natp 5)
+                 (implies (and (natp 5) (equal (car r) :answer))
                           (cwt-k2 5 30)))))
 ; Conjunct 3 without its hypothesis (before the deadline): a sleep.
 (must-fail-checked

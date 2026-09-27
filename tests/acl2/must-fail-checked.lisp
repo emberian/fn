@@ -14,7 +14,10 @@
 ;   defthm/defthmd NAME TERM ...  NAME is new, TERM translates as a theorem
 ;                                 and :hints translate (translate-hints+);
 ;   thm TERM ...                  TERM and :hints translate;
-;   assert-event X / assert! X    X translates for evaluation.
+;   assert-event X / assert! X    X translates for evaluation;
+;   verify-guards NAME ...        NAME is a function and :hints translate
+;                                 (admit the defun with :verify-guards nil
+;                                 first, so its translation is checked).
 ; Any other event (a defun, an encapsulate, ...) cannot be checked for
 ; translation apart from admitting it, so it is REFUSED unless the call
 ; declares why its failure is the claim:
@@ -81,6 +84,14 @@
         ((assert-event assert!)
          (er-progn (translate (cadr form) t nil t ctx wrld state)
                    (value :ok)))
+        (verify-guards
+         (let ((name (cadr form)))
+           (if (and (symbolp name) (function-symbolp name wrld))
+               (fn-mfc-check-hints name (fn-mfc-kwarg :hints (cddr form))
+                                   ctx wrld state)
+             (er soft ctx "must-fail-checked: ~x0 is not a function, so the ~
+                           verify-guards fails for that and not for its claim."
+                 name))))
         (make-event
          (er-let* ((pair (trans-eval (cadr form) ctx state t)))
            ; pair = (stobjs-out . replaced-val)
