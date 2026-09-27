@@ -48,6 +48,7 @@
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-step 2)
 (bpr-lift nht-run 2)
+(bpr-lift fn-nls-live-report 5)
 (defconst *nht-oc*
   (in-arena-fn-ocfg-step *sr-arena* (in-arena-nht-run *sr-arena* (fn-opc-prepare (in-arena-nht-run *sr-arena* *nht-0* *nht-reserve-events*) *nht-first*) '((:store (:io :record-file :ok))
                (:store (:io :record-link :ok))
@@ -384,7 +385,7 @@
 (assert-event (equal (fn-rtf-pin-count *nht-s*) 1))
 (assert-event (equal (fn-rtf-reserved *nht-s*) 2))
 (assert-event
- (equal (take 25 (fn-nls-live-report :obligations *nht-profile* *nht-oc* (nht-cache) *nht-obs*))
+ (equal (take 25 (in-arena-fn-nls-live-report *sr-arena* :obligations *nht-profile* *nht-oc* (nht-cache) *nht-obs*))
         (fn-record-string-octets "obligations=1 reserved=2
 ")))
 

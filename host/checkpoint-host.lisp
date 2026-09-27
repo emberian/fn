@@ -236,15 +236,15 @@
 ;; configuration's; the instant is the clock observation's stamp, derived as
 ;; an article's stamp is (`fn-record-stamp-of-observation').
 (defun fn-store-reclaim-decide (profile clock octet-records frontier lower names
-                                        generations selected disk-free dry state)
-  (declare (xargs :stobjs state :mode :program))
+                                        generations selected disk-free dry fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (cfg (f-get-global 'fn-store-cfg state))
          (rule (fn-rcl-config-rule (fn-cfg-value cfg)))
          (stamp (fn-record-stamp-of-observation clock)))
     (value (fn-rclp-decide profile rule (if (natp stamp) stamp nil) s
                            octet-records frontier lower names generations
-                           selected disk-free dry))))
+                           selected disk-free dry fn-arena))))
 
 ;; The same decision streamed one record at a time
 ;; (books/store-reclaim-stream.lisp, PKT-686 item 2): the host folds
@@ -273,12 +273,12 @@
   (fn-rcls-step acc octets ctx))
 
 (defun fn-store-reclaim-decide-stream (profile clock acc frontier lower names
-                                               generations selected disk-free dry state)
-  (declare (xargs :stobjs state :mode :program))
+                                               generations selected disk-free dry fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
     (value (fn-rcls-decide profile rule now (f-get-global 'fn-store-sn state)
                            acc frontier lower names generations selected
-                           disk-free dry))))
+                           disk-free dry fn-arena))))
 
 ;; The streamed reclaim over the record log (books/store-log-reclaim.lisp
 ;; fn-lgr-decide-stream, over compact-arena's fold fn-rcls-*): one record's
@@ -287,10 +287,10 @@
   (declare (xargs :mode :program))
   (fn-rclp-event octets ctx))
 
-(defun fn-store-log-reclaim-decide-stream (profile clock acc dry state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-store-log-reclaim-decide-stream (profile clock acc dry fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
-    (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state) acc dry))))
+    (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state) acc dry fn-arena))))
 
 ;; The subjects of books/checkpoint-compaction-preservation: the reclaim
 ;; preservation theorems are stated over these two functions.

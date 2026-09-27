@@ -4613,7 +4613,7 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
            (fnn-write-report
             (fnn-core 'fn-native-live-status-host-offline kind
                       (fnn-store-config store) (fnn-store-observation store)
-                      *the-live-state*))
+                      (fnn-live-arena) *the-live-state*))
            ;; The selected pack chain (books/checkpoint-pack-chain via
            ;; host/native/checkpoint.lisp): ACL2 computes the links and the
            ;; boundary; the offline report does not carry them yet.

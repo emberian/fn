@@ -9,6 +9,21 @@
 ; store-reclaim-holders-tests), its committed history as octets, and the
 ; one article.
 (defconst *rpt-s* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
+
+; The arena of the fixture's history (audit-fixes, 2026-09-27): the payloads
+; the host's entry interned from the owner's journal, in handle order, so
+; that sealing them in order rebuilds the arena its articles' handles name.
+(defun rcl-prior-payloads (prior i fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel)
+      nil
+    (let ((b (fn-hrt-bytes prior i)))
+      (if (consp b)
+          (cons b (rcl-prior-payloads prior (+ 1 i) (- fuel 1)))
+        nil))))
+(defconst *rpt-payloads* (rcl-prior-payloads *osi-completing-prior* 0 64))
+(bpr-lift fn-rclp-decide 12)
+(bpr-lift fn-rcl-store-counts 3)
 (defun rpt-encode-all (rs)
   (declare (xargs :mode :program))
   (if (consp rs) (cons (fn-store-event-encode (car rs)) (rpt-encode-all (cdr rs))) nil))
@@ -142,7 +157,7 @@
 (assert-event (fn-bs-profile-admittedp *rpt-profile*))
 (defmacro rpt-n () '(len (rpt-events)))
 ; Fully packed (lower = n, no name, a selected generation): it reclaims.
-(defmacro rpt-d () '(fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
+(defmacro rpt-d () '(in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                   (rpt-n) (rpt-n) nil '(0) 0 1000000 nil))
 (assert-event (and (equal (car (rpt-d)) :reclaim)
                    (equal (nth 2 (rpt-d)) (rpt-msgids))
@@ -156,10 +171,10 @@
 (defmacro rpt-pack-file ()
   '(+ (len (nth 4 (rpt-d))) *fn-frame-trailer-octets*))
 (assert-event (<= (rpt-pack-file) 1000000))
-(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
+(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) (rpt-n) nil '(0) 0 (1- (rpt-pack-file)) nil)
                      '(:refused :temporary-space)))
-(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
+(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) (rpt-n) nil '(0) 0 nil nil)
                      '(:refused :temporary-space)))
 (must-fail-checked (assert-event (<= (rpt-pack-file) (1- (rpt-pack-file)))))
@@ -177,7 +192,7 @@
                      (list :ok (rpt-link))))
 ;; Tooth: without the :reclaim answer (the history not packed, lower 0) the
 ;; link does not cover the chain's boundary.
-(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
+(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) 0 nil nil nil 1000000 nil)
                      '(:compact-first)))
 (must-fail-checked (assert-event (equal (fn-ccc-boundary (rpt-link)) 0)))
@@ -186,20 +201,20 @@
 ;; history followed by 4096 more records (bytes the rewrite keeps as they
 ;; are) under the same packed observation.
 (defmacro rpt-long () '(append (rpt-events) (make-list 4096 :initial-element '(1 2 3))))
-(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-long)
+(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-long)
                                      (len (rpt-long)) (len (rpt-long)) nil '(0) 0 1000000 nil)
                      '(:refused :spans-links)))
 ; --dry-run writes nothing and names the same article.
-(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
+(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) (rpt-n) nil '(0) 0 1000000 t)
                      (list :dry-run (rpt-msgids) (rpt-freed)
-                           (fn-rcl-store-counts *rpt-rule* 0 *rpt-s*))))
+                           (in-arena-fn-rcl-store-counts *rpt-payloads* *rpt-rule* 0 *rpt-s*))))
 ; Not packed: compact first.
-(assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
+(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) 0 nil nil nil nil nil)
                      '(:compact-first)))
 ; fn-rclp-keep-forever-writes-nothing: witness.
-(assert-event (equal (car (fn-rclp-decide *rpt-profile* '(:keep-forever) 0 *rpt-s*
+(assert-event (equal (car (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* '(:keep-forever) 0 *rpt-s*
                                           (rpt-events) (rpt-n) (rpt-n) nil '(0) 0 1000000 nil))
                      :none))
 
@@ -207,10 +222,10 @@
 ; only tombstones (nothing to rewrite) and generation 0 survives under the
 ; selected 1: the rerun retires it.  Tooth: with no older generation it is
 ; :none.
-(assert-event (equal (car (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
+(assert-event (equal (car (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
                                           (rpt-n) (rpt-n) nil '(0 1) 1 1000000 nil))
                      :resume-retire))
 (must-fail-checked (assert-event
-            (equal (car (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
+            (equal (car (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
                                         (rpt-n) (rpt-n) nil '(1) 1 1000000 nil))
                    :resume-retire)))
