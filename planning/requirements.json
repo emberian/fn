@@ -4506,7 +4506,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-248",
-        "PRF-265"
+        "PRF-265",
+        "PRF-267"
       ],
       "verification": [
         "proof",
@@ -4522,9 +4523,11 @@
         "host/native-live-status-host.lisp",
         "tests/test_native_owner_scheduler.py",
         "planning/design-2026-09-26-owner-scheduler.md",
-        "planning/evidence/owner-scheduler-2026-09-26.md"
+        "planning/evidence/owner-scheduler-2026-09-26.md",
+        "books/owner-commit-steps.lisp",
+        "planning/evidence/owner-scheduler-2-2026-09-27.md"
       ],
-      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read)."
+      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime."
     },
     {
       "id": "CNS-008",

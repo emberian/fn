@@ -5227,6 +5227,37 @@
         "planning/evidence/friend-blockers-2-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T085904Z-2813563.json"
       ]
+    },
+    {
+      "id": "SCN-178",
+      "title": "The mixed hour before and after the commit's barrier leaves the owner (PKT-688 (4) slice 2) on the same box: status/health p50 and p99, POST p50 and p99",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Build the developer image of lane commit-onto-log's measurement tree ddcaf1d0d (the :commit class, one quantum holding the owner across the log's fdatasync) as the before, and of the same tree plus this lane's split (books/owner-commit-steps.lisp) as the after, on hbox; run planning/evidence/owner-scheduler-2026-09-26/mixed.py on each for the same duration, concurrently, on the 4 MiB-article profile (SCN-171's load: 3 tight-loop readers, 1 unsigned POST every 0.5 s, a hybrid-signed report every 20 s, a consumer wake every 30 s, a live group create and control grant every 120 s, status and health every 30 s).",
+        "tests/test_native_owner_scheduler.py on the after image: a developer selector holds the barrier open 6 s; `status' is answered inside it; a reader's GROUP and the POST's 240 only after it."
+      ],
+      "expected": [
+        "After: the status/health p99 no longer includes a barrier; POST p99 does not rise; correctness holds (recover rc 0, every outcome classified).",
+        "While a barrier is held open no reader quantum is admitted and the 240 leaves only after the barrier."
+      ],
+      "evidence": [
+        "planning/evidence/owner-scheduler-2-2026-09-27.md",
+        "planning/evidence/owner-scheduler-2026-09-26/mixed.py",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_owner_scheduler",
+        "cases": [
+          "SchedulerSourceTests",
+          "SchedulerNativeTests"
+        ],
+        "native": true,
+        "record": "planning/evidence/owner-scheduler-2-2026-09-27.md"
+      }
     }
   ]
 }

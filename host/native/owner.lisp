@@ -789,25 +789,26 @@ checkpoint's S, or NIL."
   (mutex (sb-thread:make-mutex :name "fn owner gate"))
   (ready (sb-thread:make-waitqueue :name "fn owner gate ready"))
   ;; Slots 0-3 the four classes of books/owner-scheduler.lisp, slot 4 the
-  ;; commit class (books/owner-commit-class.lisp).
-  (waiting (make-array 5 :initial-element 0))
-  (next-ticket (make-array 5 :initial-element 0))
-  (serving (make-array 5 :initial-element 0))
+  ;; commit class (books/owner-commit-class.lisp), slot 5 :inspect (the live
+  ;; status and health pages; books/owner-commit-steps.lisp).
+  (waiting (make-array 6 :initial-element 0))
+  (next-ticket (make-array 6 :initial-element 0))
+  (serving (make-array 6 :initial-element 0))
   (busy nil)
   (holder nil)
   (turn nil)
   (sched nil))
 
 (defun fnn-make-owner-gate ()
-  (%make-fnn-owner-gate :sched (fnn-core 'fn-ocm-init)))
+  (%make-fnn-owner-gate :sched (fnn-core 'fn-ocs-init)))
 
 (defun fnn-owner-class-index (class)
   "The class's slot, ACL2's (fn-osch-class-index); a name ACL2 does not
 recognise is a host fault."
-  (unless (fnn-core 'fn-ocm-classp class)
+  (unless (fnn-core 'fn-ocs-classp class)
     (fnn-fault "unknown owner service class ~a" class))
-  (let ((i (fnn-core 'fn-ocm-class-index class)))
-    (unless (and (integerp i) (<= 0 i 4))
+  (let ((i (fnn-core 'fn-ocs-class-index class)))
+    (unless (and (integerp i) (<= 0 i 5))
       (fnn-fault "owner returned a malformed service class slot"))
     i))
 
@@ -818,11 +819,10 @@ recognise is a host fault."
   "The owner is free and nobody was admitted: ask ACL2 which class runs
 (nil when no class waits).  The caller holds the gate mutex."
   (destructuring-bind (class sched)
-      (let ((waiting (fnn-owner-gate-waiting gate)))
-        (fnn-call 'fn-ocm-next (fnn-owner-gate-sched gate)
-                  (list (svref waiting 0) (svref waiting 1)
-                        (svref waiting 2) (svref waiting 3))
-                  (plusp (svref waiting 4))))
+      ;; books/owner-commit-steps.lisp: the phase of the commit in flight is
+      ;; part of ACL2's value; the six counts are the host's observation.
+      (fnn-call 'fn-ocs-next (fnn-owner-gate-sched gate)
+                (coerce (fnn-owner-gate-waiting gate) 'list))
     (setf (fnn-owner-gate-sched gate) sched
           (fnn-owner-gate-turn gate) (and class (fnn-owner-class-index class)))
     (sb-thread:condition-broadcast (fnn-owner-gate-ready gate))))
@@ -863,7 +863,7 @@ the next class (none when nothing waits: fn-osch-next answers nil)."
     (setf (fnn-owner-gate-busy gate) nil
           (fnn-owner-gate-holder gate) nil
           (fnn-owner-gate-sched gate)
-          (fnn-core 'fn-ocm-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
+          (fnn-core 'fn-ocs-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
     (fnn-owner-gate-pick gate)))
 
 (defun fnn-owner-sched-snapshot (service)
@@ -1854,8 +1854,10 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
 
 (defun fnn-owner-drain-one (service)
   "Take and complete at most one queued served submission; return cid, the
-completion reply (an ACL2 octet list, appended to the step's render plan)
-and whether the outcome was uncertain."
+completion reply (an ACL2 octet list, appended to the step's render plan),
+whether the outcome was uncertain, and ACL2's outcome word (the attempt's,
+:refused for a refusal before the attempt, :uncertain for a control fault),
+which books/owner-commit-steps.lisp fn-ocs-member-releases reads."
   (setq *fnn-owner-transit-detail* nil
         *fnn-owner-transit-verdict* nil)
   (let* ((took (fnn-owner-take))
@@ -1868,7 +1870,7 @@ and whether the outcome was uncertain."
           (when (eq taken :taken-control)
             (fnn-owner-action 'fn-owner-fault cid)
             (return-from fnn-owner-drain-one
-              (values cid (fnn-owner-list-global 'fn-owner-output) t)))
+              (values cid (fnn-owner-list-global 'fn-owner-output) t :uncertain)))
           ;; The identities here serve the transfer decision only (the
           ;; obligation and subject fn-owner-transit-decide takes below); a
           ;; served POST derives them once, from the octet buffer, inside
@@ -1922,7 +1924,7 @@ and whether the outcome was uncertain."
                 (progn
                   (fnn-owner-transit-complete
                    cid transit-kind transit-reason :refused)
-                  (values cid (fnn-owner-list-global 'fn-owner-output) nil))
+                  (values cid (fnn-owner-list-global 'fn-owner-output) nil :refused))
               (if (not (eq intent :ready))
                   (progn
                     (if transitp
@@ -1932,7 +1934,7 @@ and whether the outcome was uncertain."
                            cid :want transit-reason :refused))
                       (progn (fnn-owner-action 'fn-owner-outcome cid :refused)
                              (fnn-owner-log)))
-                    (values cid (fnn-owner-list-global 'fn-owner-output) nil))
+                    (values cid (fnn-owner-list-global 'fn-owner-output) nil :refused))
                 (progn
                   ;; Durable intent before the first Store mutation.  Empty is
                   ;; a complete plan when the ACL2 target set is empty.
@@ -1961,7 +1963,7 @@ and whether the outcome was uncertain."
                       (progn (fnn-owner-action 'fn-owner-outcome cid word)
                              (fnn-owner-log)))
                     (values cid (fnn-owner-list-global 'fn-owner-output)
-                            (eq word :uncertain))))))))))))
+                            (eq word :uncertain) word)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The commit quantum (format 9; lane commit-onto-log, design 2026-09-27
@@ -2041,74 +2043,233 @@ it."
                      (cons deliver socket))
                nil)))))
 
-(defun fnn-owner-commit-queued-locked (service)
-  "Run the commit quantum's body: the caller holds the owner mutex.  Returns
-the number of members committed (0 when nothing was queued)."
-  (let ((store (fnn-owner-service-store service)))
+(defun fnn-owner-commit-start-locked (service)
+  "START (books/owner-commit-steps.lisp): drain at most the operator's batch
+bound of queued members into the log's open batch, each through its
+sequential life; the caller holds the owner mutex.  Nothing is appended or
+fenced and no reply leaves.  Returns (values MEMBERS UNCERTAIN DEFERRED):
+MEMBERS in order, each (CID REPLY WORD RENDER): REPLY the completion ACL2
+rendered, WORD ACL2's outcome word, RENDER what ACL2's uncertain reply for the
+member is rendered from (nil when the member was refused before its
+attempt); UNCERTAIN when a member's outcome was, or an observation was
+indeterminate; DEFERRED the members' log lines and feed resolutions, released
+by the COMPLETE.  MEMBERS is nil and UNCERTAIN nil when nothing was queued (or
+the store does not commit through the log)."
+  (let ((store (fnn-owner-service-store service))
+        (deferred (list :deferred)))
     (unless (and (fnn-owner-service-batching service) (fnn-store-logp store))
-      (return-from fnn-owner-commit-queued-locked 0))
+      (return-from fnn-owner-commit-start-locked (values nil nil deferred)))
     (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
       (setf (fnn-owner-service-queued service) 0))
     (let ((members nil) (uncertain nil)
-          (deferred (list :deferred))
           (log (fnn-store-log store)))
       (destructuring-bind (bmax omax) (fnn-owner-core 'fn-owner-log-bounds)
         (setf (fnn-log-bmax log) bmax (fnn-log-omax log) omax))
       (let ((*fnn-log-batch* t)
             (*fnn-owner-deferred* deferred))
         (handler-case
-            (progn
-              ;; One quantum commits at most the operator's batch bound of
-              ;; members (a work bound per step, D27); the rest stay queued
-              ;; for the next commit quantum.
-              (loop repeat (fnn-log-bmax log) do
-                (setq *fnn-owner-uncertain-render* nil)
-                (multiple-value-bind (cid reply stop) (fnn-owner-drain-one service)
-                  (unless cid (return))
-                  ;; A member ACL2 answered uncertain keeps its own reply
-                  ;; (the uncertain line); the batch stops there.
-                  (push (list cid reply stop *fnn-owner-uncertain-render*) members)
-                  (when stop (setq uncertain t) (return))))
-              (unless uncertain
-                (fnn-log-commit-open-batch store)))
+            ;; One START takes at most the operator's batch bound of members
+            ;; (a work bound per step, D27); the rest stay queued for the
+            ;; next batch.
+            (loop repeat (fnn-log-bmax log) do
+              (setq *fnn-owner-uncertain-render* nil)
+              (multiple-value-bind (cid reply stop word) (fnn-owner-drain-one service)
+                (unless cid (return))
+                ;; A member ACL2 answered uncertain ends the START: the batch
+                ;; is not appended (fn-ocs-commit-step's :started-uncertain).
+                (push (list cid reply word *fnn-owner-uncertain-render*) members)
+                (when stop (setq uncertain t) (return))))
           (fnn-store-indeterminate (e)
             (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
             (setq uncertain t))))
-      (when (and (null members) (not uncertain))
-        (return-from fnn-owner-commit-queued-locked 0))
-      (setq members (nreverse members))
-      (cond
-        (uncertain
-         (setf (fnn-store-fenced store) t)
-         (fnn-err "a log batch of ~d member~:p is uncertain; the store needs recovery"
-                  (length members))
-         ;; Every member is answered ACL2's uncertain reply (never the
-         ;; completion it rendered: the log may not hold its record), each
-         ;; from the owner before its own outcome (campaign W1: the poster is
-         ;; told before the connection closes); a member with nothing to
-         ;; render from closes with no reply.
-         (setf (fnn-owner-service-sparing service)
-               (loop for m in members
-                     append (fnn-owner-awaiting-sockets service (first m))))
-         (dolist (m members)
-           (fnn-owner-deliver
-            service (first m)
-            (cond ((third m) (cons :close (second m)))
-                  ((fourth m)
-                   (let ((octets (ignore-errors
-                                  (apply #'fnn-core 'fn-owner-uncertain-reply-of (fourth m)))))
-                     (if (fnn-octet-list-p octets) (cons :close octets) :uncertain)))
-                  (t :uncertain))))
-         (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
-        (t
-         (fnn-log-batch-finish store)
-         ;; After the barrier: the lines and the feed resolutions, in order.
-         (dolist (item (reverse (cdr deferred)))
-           (if (eq (car item) :log)
-               (fnn-log-line (cdr item))
-             (fnn-owner-feed-flush service (cdr item))))
-         (dolist (m members) (fnn-owner-deliver service (first m) (second m)))))
-      (length members))))
+      (values (nreverse members) uncertain deferred))))
+
+(defun fnn-owner-commit-barrier (service)
+  "BARRIER (books/owner-commit-steps.lisp): the open batch's append and
+fdatasync (host/native/io.lisp fnn-log-commit-open-batch: the log struct and
+the store's fence bit, never an owner global).  Run by the committer with
+the owner RELEASED, or inline inside a quantum by
+fnn-owner-commit-queued-locked.  Returns (values WORD CONDITION): :fenced,
+or :failed with the condition that ended it (an indeterminate observation,
+or any other serious condition, which the COMPLETE re-signals under the
+owner so its fault boundary classifies it)."
+  (let ((store (fnn-owner-service-store service)))
+    (handler-case
+        (progn
+          ;; Developer image only: hold the barrier open for the native
+          ;; test of the in-flight regime (tests/test_native_owner_scheduler.py).
+          (let ((ms (fnn-developer-selector "FN_NATIVE_OWNER_TEST_BARRIER_MS")))
+            (when (and ms (every #'digit-char-p ms) (plusp (length ms)))
+              (sleep (/ (parse-integer ms) 1000))))
+          (fnn-log-commit-open-batch store)
+          (values :fenced nil))
+      (fnn-store-indeterminate (e)
+        (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+        (values :failed nil))
+      (serious-condition (e)
+        (values :failed e)))))
+
+
+(defun fnn-owner-commit-start-event (members uncertain)
+  "The START's observation for fn-ocs-commit-step: a member (or an
+observation) was uncertain, nothing was queued, or a batch was staged."
+  (cond (uncertain :started-uncertain)
+        ((null members) :started-none)
+        (t :started)))
+
+(defun fnn-owner-commit-release-member (service member release)
+  "Answer MEMBER (CID REPLY WORD RENDER) as ACL2's RELEASE for it
+(books/owner-commit-steps.lisp fn-ocs-member-release) names."
+  (destructuring-bind (cid reply word render) member
+    (declare (ignore word))
+    (fnn-owner-deliver
+     service cid
+     (case release
+       (:rendered reply)
+       (:own-uncertain (cons :close reply))
+       (:uncertain-reply
+        (let ((octets (ignore-errors
+                       (apply #'fnn-core 'fn-owner-uncertain-reply-of render))))
+          ;; ACL2's uncertain reply could not be rendered: the close alone
+          ;; (still uncertain to its client, never an acceptance).
+          (if (fnn-octet-list-p octets) (cons :close octets) :uncertain)))
+       (:close :uncertain)
+       (t (fnn-fault "owner named a malformed member release ~a" release))))))
+
+(defun fnn-owner-commit-complete-locked (service action members deferred)
+  "COMPLETE (books/owner-commit-steps.lisp), the caller holding the owner
+mutex; ACTION is ACL2's step (fn-ocs-commit-step): :complete after a fenced
+barrier -- the log kernel acknowledges the batch, the members' deferred log
+lines and feed resolutions go out in order, and only then each member's
+reply -- or :stop after an uncertain member or a failed barrier -- the
+recovery event: the store is fenced, every member answered uncertain, and the
+service stops (exit 3).  Each member is answered as ACL2's
+fn-ocs-member-releases names (its own acceptance or refusal only in a
+COMPLETE: fn-ocs-members-told-only-after-the-barrier).  Returns the number of
+members."
+  (let* ((store (fnn-owner-service-store service))
+         (releases (fnn-core 'fn-ocs-member-releases action
+                             (loop for m in members
+                                   collect (list (third m) (and (fourth m) t))))))
+    (unless (and (listp releases) (= (length releases) (length members)))
+      (fnn-fault "owner returned malformed member releases ~a" releases))
+    (case action
+      (:stop
+       ;; An indeterminate observation before the first member was kept
+       ;; still stops: the store is fenced either way (lane log-2).
+       (setf (fnn-store-fenced store) t)
+       (fnn-err "a log batch of ~d member~:p is uncertain; the store needs recovery"
+                (length members))
+       ;; Each member is answered from the owner before the stop (campaign
+       ;; W1: the poster is told before the connection closes).
+       (setf (fnn-owner-service-sparing service)
+             (loop for m in members
+                   append (fnn-owner-awaiting-sockets service (first m))))
+       (loop for m in members for r in releases
+             do (fnn-owner-commit-release-member service m r))
+       (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
+      (:complete
+       (fnn-log-batch-finish store)
+       ;; After the barrier: the lines and the feed resolutions, in order.
+       (dolist (item (reverse (cdr deferred)))
+         (if (eq (car item) :log)
+             (fnn-log-line (cdr item))
+           (fnn-owner-feed-flush service (cdr item))))
+       (loop for m in members for r in releases
+             do (fnn-owner-commit-release-member service m r)))
+      (t (fnn-fault "owner named ~a for a batch's COMPLETE" action)))
+    (length members)))
+
+(defun fnn-owner-commit-step-action (phase event)
+  "ACL2's action for the commit's PHASE and EVENT (fn-ocs-commit-step), for
+the inline commit, which holds no gate phase."
+  (let ((action (fnn-core 'fn-ocs-commit-step phase event)))
+    (unless (member action '(:barrier :complete :stop :none :fault))
+      (fnn-fault "owner returned a malformed commit step ~a" action))
+    action))
+
+(defun fnn-owner-commit-queued-locked (service)
+  "The three steps in ONE quantum the caller already holds (a bound
+submission's or a BP transit's, which commit what is queued before their own
+record): START, the barrier inline, COMPLETE, each named by ACL2's
+fn-ocs-commit-step.  Returns the number of members committed (0 when nothing
+was queued)."
+  (multiple-value-bind (members uncertain deferred)
+      (fnn-owner-commit-start-locked service)
+    (let ((action (fnn-owner-commit-step-action
+                   :idle (fnn-owner-commit-start-event members uncertain))))
+      (when (eq action :barrier)
+        (multiple-value-bind (word condition) (fnn-owner-commit-barrier service)
+          (when condition (error condition))
+          (setq action (fnn-owner-commit-step-action :staged word))))
+      (case action
+        ((:complete :stop)
+         (fnn-owner-commit-complete-locked service action members deferred))
+        (:none nil)
+        (t (fnn-fault "owner named ~a for an inline commit" action))))
+    (length members)))
+
+(defun fnn-owner-commit-event (service event)
+  "Apply the commit's EVENT to ACL2's scheduler value (books/owner-commit-steps.lisp
+fn-ocs-commit-event) and return the ACTION it names; the gate's next pick
+reads the phase it leaves.  Called inside the committer's :commit quanta."
+  (let ((gate (fnn-owner-service-gate service)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (destructuring-bind (action sched)
+          (fnn-call 'fn-ocs-commit-event (fnn-owner-gate-sched gate) event)
+        (unless (member action '(:barrier :complete :stop :none :fault))
+          (fnn-fault "owner returned a malformed commit step ~a" action))
+        (setf (fnn-owner-gate-sched gate) sched)
+        action))))
+
+
+(defun fnn-owner-commit-batch (service)
+  "One batch through ACL2's three commit steps (books/owner-commit-steps.lisp
+fn-ocs-commit-step): START as a :commit quantum, the BARRIER with the owner
+released (while it runs ACL2's pick admits only :inspect and this batch's
+COMPLETE: fn-ocs-in-flight-admits-only-inspect-and-commit), then COMPLETE as
+a :commit quantum.  The members' replies leave only in COMPLETE, after the
+barrier returned, each as ACL2's fn-ocs-member-releases names
+(fn-ocs-members-told-only-after-the-barrier)."
+  (let ((members nil) (uncertain nil) (deferred nil) (action nil))
+    (fnn-owner-serialized
+     service nil
+     (lambda ()
+       (multiple-value-setq (members uncertain deferred)
+         (fnn-owner-commit-start-locked service))
+       (setq action (fnn-owner-commit-event
+                     service (fnn-owner-commit-start-event members uncertain)))
+       (case action
+         (:barrier nil)
+         (:stop (fnn-owner-commit-complete-locked service :stop members deferred))
+         (:none nil)
+         (t (fnn-fault "owner named ~a after a START" action))))
+     :commit)
+    (when (eq action :barrier)
+      (multiple-value-bind (word condition) (fnn-owner-commit-barrier service)
+        ;; COMPLETE runs whatever the barrier observed, and the batch leaves
+        ;; flight at its end whatever COMPLETE does, so a failure can never
+        ;; leave the gate admitting only :inspect and :commit.
+        (fnn-owner-gated (service :commit)
+          (unwind-protect
+               (let ((step (fnn-owner-commit-event service word)))
+                 (fnn-owner-shared-action-locked
+                  service nil
+                  (lambda ()
+                    ;; A barrier that ended in a fault (not an indeterminate
+                    ;; observation) is re-signalled here, under the owner, so
+                    ;; the fault boundary classifies it (exit 4), as it did
+                    ;; when the barrier ran inside the quantum.
+                    (when condition (error condition))
+                    (cond ((fnn-owner-service-stopping service)
+                           ;; Stopped during the barrier: no member is
+                           ;; answered (uncertain to its client).
+                           (dolist (m members)
+                             (fnn-owner-deliver service (first m) :uncertain)))
+                          ((member step '(:complete :stop))
+                           (fnn-owner-commit-complete-locked service step members deferred))
+                          (t (fnn-fault "owner named ~a after a barrier" step))))))
+            (fnn-owner-commit-event service :completed)))))))
 
 (defun fnn-owner-loops-snapshot (service)
   "Per I/O loop, the pass count by which it will have polled (and stepped)
@@ -2150,9 +2311,7 @@ timer)."
                   do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
                                                (fnn-owner-service-commit-lock service)))))
         (when (fnn-owner-service-stopping service) (return))
-        (fnn-owner-serialized service nil
-                              (lambda () (fnn-owner-commit-queued-locked service))
-                              :commit))
+        (fnn-owner-commit-batch service))
     (fnn-store-error ()
       ;; The service stopped between the wake-up and the gate.
       nil)

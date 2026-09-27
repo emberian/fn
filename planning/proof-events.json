@@ -9785,6 +9785,75 @@
           "note": "Teeth: tests/acl2/owner-commit-class-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-admits-only-inspect-and-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-next-otherwise-is-ocm-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-pick-keeps-the-ocm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-complete-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-barrier-only-from-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-staged-only-by-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-until-completed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-first-when-not-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waiting-picks-someone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-other-pick-clears-lasti"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-members-told-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-failed-barrier-stops-telling-no-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-rendered-only-in-a-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-otherwise-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-uncertain-word-told-uncertain"
+        }
+      ]
     }
   ]
 }
