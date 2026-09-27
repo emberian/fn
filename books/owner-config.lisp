@@ -506,13 +506,18 @@
   (fn-ocfg-make owner (fn-ocfg-config oc) (fn-ocfg-pins oc)
                 (fn-ocfg-staged oc)))
 
-(defun fn-ocfg-with-read-owner (oc id owner)
+(defun fn-ocfg-with-read-owner (oc id owner repinned)
   ; fn-own-finish-read may close an invalid connection.  Keep the pin table's
-  ; domain equal to the returned owner's connections on that branch.
+  ; domain equal to the returned owner's connections on that branch.  A read
+  ; whose GROUP or LISTGROUP advanced the connection to the committed view
+  ; (REPINNED; NNT-042) pins it to the current configuration, exactly as
+  ; fn-ocfg-advance does: the view is the current configuration's.
   (declare (xargs :guard t))
   (fn-ocfg-make owner (fn-ocfg-config oc)
                 (if (fn-own-find-conn id (fn-own-conns owner))
-                    (fn-ocfg-pins oc)
+                    (if repinned
+                        (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
+                      (fn-ocfg-pins oc))
                   (fn-ocfg-pin-remove id (fn-ocfg-pins oc)))
                 (fn-ocfg-staged oc)))
 
@@ -520,31 +525,45 @@
   (implies (not (equal other id))
            (equal (fn-ocfg-pin-find
                    other (fn-ocfg-pins
-                          (fn-ocfg-with-read-owner oc id owner)))
+                          (fn-ocfg-with-read-owner oc id owner repinned)))
                   (fn-ocfg-pin-find other (fn-ocfg-pins oc))))
   :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner))))
 
+; A pin the table lacks is not created by a set (the shape the table's
+; tail takes when it is not a list is not asked).
+(defthm fn-ocfg-pin-find-of-pin-set-absent
+  (implies (not (fn-ocfg-pin-find id pins))
+           (not (fn-ocfg-pin-find id (fn-ocfg-pin-set id cfg pins))))
+  :hints (("Goal" :induct (fn-ocfg-pin-set id cfg pins)
+           :in-theory (enable fn-ocfg-pin-set fn-ocfg-pin-find))))
+
+; A surviving connection keeps its pin, moved to the current configuration
+; when the read re-pinned it (NNT-042); a pin the table lacks is not created.
 (defthm fn-ocfg-with-read-owner-pin-iff-survives
   (equal (fn-ocfg-pin-find
-          id (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner)))
+          id (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner repinned)))
          (if (fn-own-find-conn id (fn-own-conns owner))
-             (fn-ocfg-pin-find id (fn-ocfg-pins oc))
+             (if (and repinned (fn-ocfg-pin-find id (fn-ocfg-pins oc)))
+                 (cons id (fn-ocfg-config oc))
+               (fn-ocfg-pin-find id (fn-ocfg-pins oc)))
            nil))
-  :hints (("Goal" :in-theory (enable fn-ocfg-with-read-owner
-                                      fn-ocfg-pin-remove
-                                      fn-ocfg-pin-find))))
+  :hints (("Goal" :in-theory (e/d (fn-ocfg-with-read-owner)
+                                  (fn-ocfg-pin-remove fn-ocfg-pin-set
+                                   fn-ocfg-pin-find)))))
 
 (defun fn-ocfg-read (oc id octets)
   (declare (xargs :guard t))
-  (let ((result (fn-own-read (fn-ocfg-owner oc) id octets)))
+  (let ((result (fn-own-read-full (fn-ocfg-owner oc) id octets)))
     (cons (car result)
-          (fn-ocfg-with-read-owner oc id (cdr result)))))
+          (fn-ocfg-with-read-owner oc id (car (cdr result))
+                                   (car (cdr (cdr result)))))))
 
 (defun fn-ocfg-read-step (oc id event)
   (declare (xargs :guard t))
-  (let ((result (fn-own-read-step (fn-ocfg-owner oc) id event)))
+  (let ((result (fn-own-read-step-full (fn-ocfg-owner oc) id event)))
     (cons (car result)
-          (fn-ocfg-with-read-owner oc id (cdr result)))))
+          (fn-ocfg-with-read-owner oc id (car (cdr result))
+                                   (car (cdr (cdr result)))))))
 
 (defun fn-ocfg-open-peer (oc peer acfg)
   (declare (xargs :guard t))

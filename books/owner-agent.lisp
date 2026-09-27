@@ -448,15 +448,15 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                              fn-auth-starttls-effect)
                             (fn-nntp-replyp fn-octet-listp))))))
 
-(defthm fn-oag-dispatch-submission-names-the-configured-agent
+(defthm fn-oag-dispatch-core-submission-names-the-configured-agent
   (implies (fn-served-connp conn)
            (fn-oag-names-agentp
             (fn-served-submission
-             (fn-served-result-effects (fn-served-dispatch conn event)))
+             (fn-served-result-effects (fn-served-dispatch-core conn event)))
             (fn-inj-config-agent (fn-served-conn-config conn))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-served-dispatch)
+           :in-theory (e/d (fn-served-dispatch-core)
                            (fn-auth-step-pinned fn-auth-sessionp fn-served-connp
                             fn-oag-names-agentp fn-auth-effectsp
                             fn-served-connp-is-consistent-session
@@ -490,14 +490,58 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                             (injection (fn-served-conn-injection conn))
                             (wire-event event))))))
 
+; The served dispatch (NNT-042, books/served.lisp) re-pins the connection at
+; the live view before a GROUP or LISTGROUP line and, when the selection
+; failed, keeps the previous connection with the new wire.  Neither move
+; changes the configuration, so each theorem over fn-served-dispatch-core
+; lifts to fn-served-dispatch through fn-served-dispatch-without-advance-is-
+; core and fn-served-dispatch-effects-are-the-repinned-dispatch-effects.
+(defthm fn-oag-repin-keeps-the-config
+  (equal (fn-served-conn-config (fn-served-repin conn))
+         (fn-served-conn-config conn))
+  :hints (("Goal" :in-theory (enable fn-served-repin))))
+
+(defthm fn-oag-with-wire-keeps-the-config
+  (equal (fn-served-conn-config (fn-served-conn-with-wire conn wire))
+         (fn-served-conn-config conn))
+  :hints (("Goal" :in-theory (enable fn-served-conn-with-wire))))
+
+(defthm fn-oag-dispatch-submission-names-the-configured-agent
+  (implies (fn-served-connp conn)
+           (fn-oag-names-agentp
+            (fn-served-submission
+             (fn-served-result-effects (fn-served-dispatch conn event)))
+            (fn-inj-config-agent (fn-served-conn-config conn))))
+  :hints (("Goal"
+           :do-not-induct t
+           :cases ((fn-served-advance-eventp event))
+           :in-theory (disable fn-served-dispatch fn-served-dispatch-core
+                               fn-served-repin fn-served-connp
+                               fn-oag-names-agentp)
+           :use ((:instance fn-served-dispatch-without-advance-is-core)
+                 (:instance fn-served-dispatch-effects-are-the-repinned-dispatch-effects)
+                 (:instance fn-oag-dispatch-core-submission-names-the-configured-agent)
+                 (:instance fn-oag-dispatch-core-submission-names-the-configured-agent
+                            (conn (fn-served-repin conn)))
+                 (:instance fn-served-repin-preserves-connp)))))
+
+(defthm fn-oag-dispatch-core-keeps-the-config
+  (equal (fn-served-conn-config
+          (fn-served-result-conn (fn-served-dispatch-core conn event)))
+         (fn-served-conn-config conn))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch-core)
+                                  (fn-auth-step-pinned fn-post-offeredp
+                                   fn-wire-begin-article-with-line-limit
+                                   fn-wire-article-line-limit)))))
+
 (defthm fn-oag-dispatch-keeps-the-config
   (equal (fn-served-conn-config
           (fn-served-result-conn (fn-served-dispatch conn event)))
          (fn-served-conn-config conn))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
-                                  (fn-auth-step-pinned fn-post-offeredp
-                                   fn-wire-begin-article-with-line-limit
-                                   fn-wire-article-line-limit)))))
+                                  (fn-served-dispatch-core fn-served-repin
+                                   fn-served-selectedp
+                                   fn-served-advance-eventp)))))
 
 (defthm fn-oag-dispatch-events-keep-the-config
   (equal (fn-served-conn-config
@@ -531,17 +575,10 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
  (defthm fn-oag-fed-conn-is-a-connection
    (implies (fn-served-connp conn)
             (fn-served-connp
-             (fn-served-make-conn-group-indexed
+             (fn-served-conn-with-wire
+              conn
               (fn-wire-result-state
-               (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
-              (fn-served-conn-session conn)
-              (fn-served-conn-archive conn)
-              (fn-served-conn-config conn)
-              (fn-served-conn-observation conn)
-              (fn-served-conn-injection conn)
-              (fn-served-conn-verdicts conn)
-              (fn-served-conn-index conn)
-              (fn-served-conn-group-index conn) (fn-served-conn-control conn))))
+               (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-auth-session-consistentp))))))

@@ -74,7 +74,7 @@
                      (fn-nntp-verdict-hdr-msgid
                       ns (fn-served-conn-archive conn)
                       (fn-served-conn-verdicts conn) (caddr tokens))))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
@@ -115,7 +115,7 @@
                      (fn-served-result-conn
                       (fn-served-dispatch conn (list :command line))))
                     (fn-served-conn-wire conn))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
@@ -132,11 +132,7 @@
 
 (defun fn-ovr-with-wire (conn wire)
   (declare (xargs :guard t))
-  (fn-served-make-conn-group-indexed
-   wire (fn-served-conn-session conn) (fn-served-conn-archive conn)
-   (fn-served-conn-config conn) (fn-served-conn-observation conn)
-   (fn-served-conn-injection conn) (fn-served-conn-verdicts conn)
-   (fn-served-conn-index conn) (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
+  (fn-served-conn-with-wire conn wire))
 (defthm fn-ovr-feed-byte-silent
   (implies (not (consp (fn-wire-result-events
                  (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))
@@ -150,7 +146,8 @@
                                   (fn-wire-feed-byte)))))
 (defthm fn-ovr-with-wire-of-with-wire
   (equal (fn-ovr-with-wire (fn-ovr-with-wire conn w1) w2)
-         (fn-ovr-with-wire conn w2)))
+         (fn-ovr-with-wire conn w2))
+  :hints (("Goal" :in-theory (enable fn-served-conn-with-wire))))
 (defthm fn-ovr-wire-of-with-wire
   (equal (fn-served-conn-wire (fn-ovr-with-wire conn w)) w))
 (defthm fn-ovr-handshaking-of-with-wire
@@ -160,25 +157,7 @@
 (defthm fn-ovr-with-own-wire
   (implies (fn-served-conn-shapep conn)
            (equal (fn-ovr-with-wire conn (fn-served-conn-wire conn)) conn))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (enable fn-served-conn-shapep fn-served-make-conn-group-indexed
-                              fn-served-conn-wire fn-served-conn-session
-                              fn-served-conn-archive fn-served-conn-config
-                              fn-served-conn-observation fn-served-conn-injection
-                              fn-served-conn-verdicts fn-served-conn-index
-                              fn-served-conn-group-index fn-served-conn-control)
-           :expand ((len conn) (len (cdr conn)) (len (cddr conn)) (len (cdddr conn))
-                    (len (cddddr conn)) (len (cdr (cddddr conn)))
-                    (len (cddr (cddddr conn))) (len (cdddr (cddddr conn)))
-                    (len (cddddr (cddddr conn)))
-                    (len (cdr (cddddr (cddddr conn))))
-                    (len (cddr (cddddr (cddddr conn))))
-                    (true-listp (cddr (cddddr (cddddr conn))))
-                    (true-listp conn) (true-listp (cdr conn)) (true-listp (cddr conn))
-                    (true-listp (cdddr conn)) (true-listp (cddddr conn))
-                    (true-listp (cdr (cddddr conn))) (true-listp (cddr (cddddr conn)))
-                    (true-listp (cdddr (cddddr conn))) (true-listp (cddddr (cddddr conn)))
-                    (true-listp (cdr (cddddr (cddddr conn))))))))
+  :hints (("Goal" :in-theory (enable fn-ovr-with-wire))))
 (defthm fn-ovr-with-wire-is-shaped
   (fn-served-conn-shapep (fn-ovr-with-wire conn w)))
 (in-theory (disable fn-ovr-with-wire))
@@ -246,7 +225,7 @@
 
 (defthm fn-ovr-dispatch-effects-true-listp
   (true-listp (fn-served-result-effects (fn-served-dispatch conn event)))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core)
                                   (fn-auth-step-pinned fn-post-offeredp
                                    fn-wire-begin-article-with-line-limit)))))
 
@@ -481,17 +460,9 @@
                                (fn-own-conn-verdicts conn))))))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-served-step-hdr-fn-verified-is-the-pinned-verdict
-                  (conn (fn-served-make-conn-group-indexed
-                         (fn-own-conn-wire (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-live-session o (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-archive (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-observation (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-clock o)
-                         (fn-own-conn-verdicts (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-index (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-group-index (fn-own-find-conn id (fn-own-conns o))) (fn-own-conn-control (fn-own-find-conn id (fn-own-conns o)))))))
-           :in-theory (e/d (fn-own-read fn-own-finish-read)
+                  (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
+                                            (fn-own-conn-live-session o (fn-own-find-conn id (fn-own-conns o)))))))
+           :in-theory (e/d (fn-own-read fn-own-read-full fn-own-finish-read)
                            (fn-served-step-hdr-fn-verified-is-the-pinned-verdict
                             fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config

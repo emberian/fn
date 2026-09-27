@@ -786,6 +786,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-entries \
 	books/catalog-refresh \
 	books/catalog-number-index \
+	books/served-catalog \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -804,6 +805,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-view-tests \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
+	tests/acl2/served-catalog-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	tests/acl2/catalog-number-index-tests \

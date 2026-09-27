@@ -34,9 +34,26 @@
 (assert-event
  (equal (fn-own-tls-result-effects *ocri-new-tls*)
         (car (fn-ocfg-read *ocri-live* 1 *ocri-new-group*))))
+; BY SPECIFICATION (NNT-042, 2026-09-27): a successful GROUP acquires the
+; committed view, so the old connection (pinned before the new group) and the
+; new one answer GROUP fn.live alike; before NNT-042 the old one answered 411.
+; The two pins still differ through a read that is not a selection.
 (assert-event
- (not (equal (fn-own-tls-result-effects *ocri-old-tls*)
-             (fn-own-tls-result-effects *ocri-new-tls*))))
+ (equal (fn-own-tls-result-effects *ocri-old-tls*)
+        (fn-own-tls-result-effects *ocri-new-tls*)))
+(defconst *ocri-stat-command*
+  (append (fn-nntp-string-octets "STAT 1") '(13 10)))
+(assert-event
+ (not (equal (fn-state-groups
+              (fn-own-conn-archive
+               (fn-own-find-conn 0
+                (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-read *ocri-live* 0
+                                                                 *ocri-stat-command*)))))))
+             (fn-state-groups
+              (fn-own-conn-archive
+               (fn-own-find-conn 1
+                (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-read *ocri-live* 1
+                                                                 *ocri-stat-command*))))))))))
 (assert-event
  (fn-ocri-conns-p
   (fn-own-conns (fn-ocfg-owner
@@ -51,10 +68,16 @@
 ; forged old pin survives a read as a forged pin; the result is still outside
 ; that relation.
 (assert-event (not (fn-ocri-relation *ocl-t-forged-old-pin*)))
+; A read that is not a selection keeps the forged pin (the corrupted-state
+; witness); BY SPECIFICATION (NNT-042, 2026-09-27) a successful GROUP re-pins
+; the connection to the committed view, replacing the forged pin, so the
+; relation holds again after it.
 (assert-event
  (not (fn-ocri-relation
-       (cdr (fn-ocfg-read *ocl-t-forged-old-pin*
-                          0 *ocri-new-group*)))))
+       (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocl-t-stat-command*)))))
+(assert-event
+ (fn-ocri-relation
+  (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocri-new-group*))))
 (local
  (must-fail
   (defthm ocri-read-without-relation-is-not-preserved

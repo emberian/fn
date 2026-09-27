@@ -3830,7 +3830,7 @@
     },
     {
       "id": "NNT-042",
-      "title": "A reader connection's view is a version that advances at GROUP and LISTGROUP between commands and is fixed within a command; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it advances past it",
+      "title": "A reader connection's view is a version (ViewId): a successful GROUP or LISTGROUP acquires a fresh coherent view and performs its normal selection effects; other reads stay on that view until the next refresh boundary; a failed selection leaves the previous view and cursor unchanged; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it acquires a view past it",
       "specification": "specs/nntp.md#sessions-and-framing",
       "milestone": "M5",
       "status": "specified",
@@ -3846,12 +3846,23 @@
       "evidence": [
         "books/catalog-delta.lisp",
         "tests/acl2/catalog-delta-tests.lisp",
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/served.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "books/config-owner-live.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_reader_freshness.py"
       ],
       "keystones": [
-        "fn-view-cancel-after-target"
+        "fn-view-cancel-after-target",
+        "fn-served-step-pin-is-old-or-live",
+        "fn-served-successful-selection-is-the-repinned-dispatch",
+        "fn-served-failed-selection-keeps-the-connection",
+        "fn-own-read-preserves-relation",
+        "fn-ocl-read-preserves-historical-relation"
       ],
-      "implementation_note": "A stronger fn guarantee than RFC 3977 (which fixes no view semantics), from the NNTP inventory's finding that a reader connection today keeps the view it opened with. The ACL2 half is certified (catalog-slice-2, 2026-09-26: fn-view-advance, fn-view-sees, fn-view-apply, fn-view-cancel-after-target over the catalog; SCN-131's two-connection case run on the live catalog in tests/acl2/catalog-delta-tests.lisp). The served path still pins a per-connection archive copy (fn-own-conn-archive); moving GROUP/LISTGROUP to the version and the served reads to the catalog is PKT-585 (steps 7 and 8), with tests.test_native_catalog_view.",
+      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585).",
       "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
     },
     {

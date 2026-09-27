@@ -60,6 +60,78 @@
 (include-book "group-bucket-index")
 
 ; -----------------------------------------------------------------------------
+; The pin identity and the live view (NNT-042; D33: a reader's view is a
+; VERSION that advances between commands, never within one).
+;
+; `pinned' names the view a connection is pinned at: (version frontier
+; repinned), REPINNED being t once the read in progress moved the pin.
+; `live' is the owner's committed view as it stood when the read began --
+; the seven values the owner pins into a NEW connection (books/owner.lisp
+; fn-own-open: version, frontier, archive, verdicts, Message-ID trie, group
+; buckets, control pin) -- or nil on a connection that never advances (every
+; caller of the ten-argument constructor below).  GROUP and LISTGROUP move the
+; pin to `live' before they answer (fn-served-repin under fn-served-dispatch);
+; no other command reads `live'.
+
+(defun fn-served-pinned-make (version frontier repinned)
+  (declare (xargs :guard t))
+  (list version frontier repinned))
+(defun fn-served-pinned-version (x)
+  (declare (xargs :guard t))
+  (fn-ag-car x))
+(defun fn-served-pinned-frontier (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr x)))
+(defun fn-served-pinned-repinned (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr x))))
+(defthm fn-served-pinned-fields
+  (and (equal (fn-served-pinned-version (fn-served-pinned-make v f r)) v)
+       (equal (fn-served-pinned-frontier (fn-served-pinned-make v f r)) f)
+       (equal (fn-served-pinned-repinned (fn-served-pinned-make v f r)) r)))
+
+(defun fn-served-live-make (version frontier archive verdicts index buckets control)
+  (declare (xargs :guard t))
+  (list version frontier archive verdicts index buckets control))
+(defun fn-served-live-version (x)
+  (declare (xargs :guard t))
+  (fn-ag-car x))
+(defun fn-served-live-frontier (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr x)))
+(defun fn-served-live-archive (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr x))))
+(defun fn-served-live-verdicts (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))
+(defun fn-served-live-index (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
+(defun fn-served-live-buckets (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+(defun fn-served-live-control (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
+(defthm fn-served-live-fields
+  (let ((x (fn-served-live-make version frontier archive verdicts index buckets control)))
+    (and x
+         (equal (fn-served-live-version x) version)
+         (equal (fn-served-live-frontier x) frontier)
+         (equal (fn-served-live-archive x) archive)
+         (equal (fn-served-live-verdicts x) verdicts)
+         (equal (fn-served-live-index x) index)
+         (equal (fn-served-live-buckets x) buckets)
+         (equal (fn-served-live-control x) control))))
+(in-theory (disable fn-served-pinned-make fn-served-pinned-version
+                    fn-served-pinned-frontier fn-served-pinned-repinned
+                    fn-served-live-make fn-served-live-version
+                    fn-served-live-frontier fn-served-live-archive
+                    fn-served-live-verdicts fn-served-live-index
+                    fn-served-live-buckets fn-served-live-control))
+
+; -----------------------------------------------------------------------------
 ; The connection record: wire framing state, POST session, pinned archive,
 ; posting configuration, clock observation, pinned historical verdicts, and
 ; the Message-ID index for exactly that pinned archive.
@@ -73,7 +145,7 @@
 
 (defun fn-served-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 10)))
+  (and (true-listp x) (equal (len x) 12)))
 
 (defun fn-served-conn-wire (x)
   (declare (xargs :guard t))
@@ -135,6 +207,16 @@
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))
 
+; The pin identity (version frontier repinned) and the live view, above.
+(defun fn-served-conn-pinned (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))))
+(defun fn-served-conn-live (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))))
+
 (defun fn-served-conn-pinned-index (conn)
   (declare (xargs :guard t))
   (if (fn-served-conn-group-index conn)
@@ -143,12 +225,126 @@
                                 (fn-served-conn-control conn))
     (fn-served-conn-index conn)))
 
+(defun fn-served-make-conn-live
+    (wire session archive config observation injection verdicts index buckets
+          control pinned live)
+  (declare (xargs :guard t))
+  (list wire session archive config observation injection verdicts index buckets
+        control pinned live))
+
+; The ten-argument constructor: no pin identity and no live view, so a
+; connection built here never advances (every theorem written before NNT-042
+; is about such a connection and holds as stated).
 (defun fn-served-make-conn-group-indexed
     (wire session archive config observation injection verdicts index buckets
           control)
   (declare (xargs :guard t))
-  (list wire session archive config observation injection verdicts index buckets
-        control))
+  (fn-served-make-conn-live wire session archive config observation injection
+                            verdicts index buckets control nil nil))
+
+; The connection with only its wire framing state replaced: what the byte
+; fold rebuilds at every byte (fn-served-feed-byte), keeping the pin and the
+; live view.
+(defun fn-served-conn-with-wire (conn wire)
+  (declare (xargs :guard t))
+  (fn-served-make-conn-live wire (fn-served-conn-session conn)
+                            (fn-served-conn-archive conn)
+                            (fn-served-conn-config conn)
+                            (fn-served-conn-observation conn)
+                            (fn-served-conn-injection conn)
+                            (fn-served-conn-verdicts conn)
+                            (fn-served-conn-index conn)
+                            (fn-served-conn-group-index conn)
+                            (fn-served-conn-control conn)
+                            (fn-served-conn-pinned conn)
+                            (fn-served-conn-live conn)))
+
+(defthm fn-served-conn-fields-of-make-conn-live
+  (let ((c (fn-served-make-conn-live wire session archive config observation
+                                     injection verdicts index buckets control
+                                     pinned live)))
+    (and (fn-served-conn-shapep c)
+         (equal (fn-served-conn-wire c) wire)
+         (equal (fn-served-conn-session c) session)
+         (equal (fn-served-conn-archive c) archive)
+         (equal (fn-served-conn-config c) config)
+         (equal (fn-served-conn-observation c) observation)
+         (equal (fn-served-conn-injection c) injection)
+         (equal (fn-served-conn-verdicts c) verdicts)
+         (equal (fn-served-conn-index c) index)
+         (equal (fn-served-conn-group-index c) buckets)
+         (equal (fn-served-conn-control c) control)
+         (equal (fn-served-conn-pinned c) pinned)
+         (equal (fn-served-conn-live c) live))))
+
+(defthm fn-served-conn-pinned-of-make-group-indexed
+  (equal (fn-served-conn-pinned
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+         nil))
+
+(defthm fn-served-conn-live-of-make-group-indexed
+  (equal (fn-served-conn-live
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+         nil))
+
+(defthm fn-served-conn-fields-of-with-wire
+  (let ((c (fn-served-conn-with-wire conn wire)))
+    (and (fn-served-conn-shapep c)
+         (equal (fn-served-conn-wire c) wire)
+         (equal (fn-served-conn-session c) (fn-served-conn-session conn))
+         (equal (fn-served-conn-archive c) (fn-served-conn-archive conn))
+         (equal (fn-served-conn-config c) (fn-served-conn-config conn))
+         (equal (fn-served-conn-observation c) (fn-served-conn-observation conn))
+         (equal (fn-served-conn-injection c) (fn-served-conn-injection conn))
+         (equal (fn-served-conn-verdicts c) (fn-served-conn-verdicts conn))
+         (equal (fn-served-conn-index c) (fn-served-conn-index conn))
+         (equal (fn-served-conn-group-index c) (fn-served-conn-group-index conn))
+         (equal (fn-served-conn-control c) (fn-served-conn-control conn))
+         (equal (fn-served-conn-pinned c) (fn-served-conn-pinned conn))
+         (equal (fn-served-conn-live c) (fn-served-conn-live conn)))))
+
+; A connection is rebuilt from its twelve fields (the eta law the
+; per-command read books spend: books/nntp-auth-invariants.lisp,
+; books/owner-verdict-read.lisp).
+(local
+ (defthm fn-served-twelve-list-rebuilt
+   (implies (and (true-listp c) (equal (len c) 12))
+            (equal (list (car c) (cadr c) (caddr c) (cadddr c)
+                         (car (cddddr c)) (cadr (cddddr c))
+                         (caddr (cddddr c)) (cadddr (cddddr c))
+                         (car (cddddr (cddddr c))) (cadr (cddddr (cddddr c)))
+                         (caddr (cddddr (cddddr c))) (cadddr (cddddr (cddddr c))))
+                   c))
+   :hints (("Goal" :in-theory (union-theories
+                               '(len true-listp car-cons cdr-cons cons-car-cdr fix)
+                               (theory 'ground-zero))))))
+
+(defthm fn-served-conn-rebuilt-from-its-fields
+  (implies (fn-served-conn-shapep c)
+           (equal (fn-served-make-conn-live
+                   (fn-served-conn-wire c) (fn-served-conn-session c)
+                   (fn-served-conn-archive c) (fn-served-conn-config c)
+                   (fn-served-conn-observation c) (fn-served-conn-injection c)
+                   (fn-served-conn-verdicts c) (fn-served-conn-index c)
+                   (fn-served-conn-group-index c) (fn-served-conn-control c)
+                   (fn-served-conn-pinned c) (fn-served-conn-live c))
+                  c))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-served-conn-shapep fn-served-make-conn-live
+                                fn-served-conn-wire fn-served-conn-session
+                                fn-served-conn-archive fn-served-conn-config
+                                fn-served-conn-observation fn-served-conn-injection
+                                fn-served-conn-verdicts fn-served-conn-index
+                                fn-served-conn-group-index fn-served-conn-control
+                                fn-served-conn-pinned fn-served-conn-live
+                                fn-ag-car fn-ag-cdr)
+                              (theory 'ground-zero))
+           :use ((:instance fn-served-twelve-list-rebuilt)))))
+
+(defthm fn-served-conn-with-wire-of-own-wire
+  (implies (fn-served-conn-shapep c)
+           (equal (fn-served-conn-with-wire c (fn-served-conn-wire c)) c))
+  :hints (("Goal" :in-theory (enable fn-served-conn-with-wire))))
 
 (defun fn-served-make-conn-indexed
     (wire session archive config observation injection verdicts index)
@@ -222,6 +418,22 @@
           (fn-served-make-conn-indexed
            wire session archive config observation injection verdicts index))
          nil))
+
+(defthm fn-served-conn-pinned-of-make-indexed
+  (equal (fn-served-conn-pinned
+          (fn-served-make-conn-indexed
+           wire session archive config observation injection verdicts index))
+         nil)
+  :hints (("Goal" :in-theory (enable fn-served-make-conn-indexed
+                                     fn-served-make-conn-group-indexed))))
+
+(defthm fn-served-conn-live-of-make-indexed
+  (equal (fn-served-conn-live
+          (fn-served-make-conn-indexed
+           wire session archive config observation injection verdicts index))
+         nil)
+  :hints (("Goal" :in-theory (enable fn-served-make-conn-indexed
+                                     fn-served-make-conn-group-indexed))))
 
 (defun fn-served-make-conn-pinned
     (wire session archive config observation injection verdicts)
@@ -399,6 +611,8 @@
                     (:d fn-served-conn-injection)
                     (:d fn-served-conn-verdicts) (:d fn-served-conn-index)
                     (:d fn-served-conn-group-index) (:d fn-served-conn-control)
+                    (:d fn-served-conn-pinned) (:d fn-served-conn-live)
+                    (:d fn-served-make-conn-live) (:d fn-served-conn-with-wire)
                     (:d fn-served-make-conn-group-indexed)
                     (:d fn-served-make-conn-indexed)
                     (:d fn-served-make-conn-pinned)
@@ -439,12 +653,13 @@
   (declare (xargs :guard t))
   (let ((conn (fn-served-result-conn result)))
     (fn-served-make-result
-     (fn-served-make-conn-group-indexed
+     (fn-served-make-conn-live
       (fn-served-conn-wire conn) (fn-served-conn-session conn)
       (fn-served-conn-archive conn) (fn-served-conn-config conn)
       (fn-served-conn-observation conn) (fn-served-conn-injection conn)
       verdicts (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
+      (fn-served-conn-group-index conn) (fn-served-conn-control conn)
+      (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (fn-served-result-effects result))))
 
 (defthm fn-served-pin-verdicts-retains-effects
@@ -476,7 +691,8 @@
    :hints (("Goal" :in-theory (enable fn-served-make-conn
                                       fn-served-make-conn-pinned
                                       fn-served-make-conn-indexed
-                                      fn-served-make-conn-group-indexed)))))
+                                      fn-served-make-conn-group-indexed
+                                      fn-served-make-conn-live)))))
 
 (local
  (defthm fn-served-make-result-equal
@@ -495,6 +711,21 @@
 ; fn-auth-session-consistentp, which walks the pinned archive, is not
 ; executable on a served read by design.
 
+; The live view's own invariant, carried with the connection: what makes a
+; connection re-pinned at it a connection again (fn-served-repin-preserves-
+; connp).  Nil is fine: such a connection never advances.
+(defun fn-served-live-okp (live)
+  (declare (xargs :guard t :verify-guards nil))
+  (or (null live)
+      (and (fn-nntp-projectionp (fn-served-live-archive live))
+           (fn-midx-correspondencep
+            (fn-served-live-index live)
+            (fn-state-articles (fn-served-live-archive live)))
+           (implies (fn-served-live-buckets live)
+                    (equal (fn-served-live-buckets live)
+                           (fn-gidx-build
+                            (fn-state-articles (fn-served-live-archive live))))))))
+
 (defun fn-served-connp (c)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-served-conn-shapep c)
@@ -507,7 +738,12 @@
        (implies (fn-served-conn-group-index c)
                 (equal (fn-served-conn-group-index c)
                        (fn-gidx-build
-                        (fn-state-articles (fn-served-conn-archive c)))))))
+                        (fn-state-articles (fn-served-conn-archive c)))))
+       (fn-served-live-okp (fn-served-conn-live c))))
+
+(defthm fn-served-connp-is-live-okp
+  (implies (fn-served-connp c)
+           (fn-served-live-okp (fn-served-conn-live c))))
 
 (defthm fn-served-connp-forward-shape
   (implies (fn-served-connp c) (and (consp c) (true-listp c)))
@@ -657,7 +893,8 @@
 ; article mode; and a
 ; submission leaves as a :submit effect rather than a reply.
 
-(defun fn-served-dispatch (conn event)
+; The dispatch proper, over the connection as pinned when it is called.
+(defun fn-served-dispatch-core (conn event)
   (declare (xargs :guard t))
   (let* ((r (fn-auth-step-pinned (fn-served-conn-session conn)
                                (fn-served-conn-archive conn)
@@ -676,14 +913,15 @@
                       wire (fn-wire-article-line-limit wire)))
                   wire)))
     (fn-served-make-result
-     (fn-served-make-conn-group-indexed wire2 (fn-post-result-session r)
+     (fn-served-make-conn-live wire2 (fn-post-result-session r)
                           (fn-served-conn-archive conn)
                           (fn-served-conn-config conn)
                           (fn-served-conn-observation conn)
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
                           (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
+                          (fn-served-conn-group-index conn) (fn-served-conn-control conn)
+                          (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (mbe :logic (append effects
                          (if submission
                              (list (fn-served-submit-effect submission (fn-served-login (fn-served-conn-session conn))
@@ -696,14 +934,14 @@
                                 nil))))))
 
 ; Local projections of one dispatch, in accessor vocabulary, so that nothing
-; below opens fn-served-dispatch.
+; below opens fn-served-dispatch-core.
 
 (local
- (defthm fn-served-dispatch-conn-projections
+ (defthm fn-served-dispatch-core-conn-projections
    (and (fn-served-conn-shapep
-         (fn-served-result-conn (fn-served-dispatch conn event)))
+         (fn-served-result-conn (fn-served-dispatch-core conn event)))
         (equal (fn-served-conn-session
-                (fn-served-result-conn (fn-served-dispatch conn event)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
                (fn-post-result-session
                 (fn-auth-step-pinned (fn-served-conn-session conn)
                                    (fn-served-conn-archive conn)
@@ -714,33 +952,42 @@
                                    (fn-served-conn-injection conn)
                                    event)))
         (equal (fn-served-conn-archive
-                (fn-served-result-conn (fn-served-dispatch conn event)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
                (fn-served-conn-archive conn))
         (equal (fn-served-conn-config
-                (fn-served-result-conn (fn-served-dispatch conn event)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
                (fn-served-conn-config conn))
         (equal (fn-served-conn-observation
-                (fn-served-result-conn (fn-served-dispatch conn event)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
                (fn-served-conn-observation conn))
         (equal (fn-served-conn-injection
-                (fn-served-result-conn (fn-served-dispatch conn event)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
                (fn-served-conn-injection conn))
         (equal (fn-served-conn-verdicts
-                (fn-served-result-conn (fn-served-dispatch conn event)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
                (fn-served-conn-verdicts conn))
         (equal (fn-served-conn-index
-                (fn-served-result-conn (fn-served-dispatch conn event)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
                (fn-served-conn-index conn))
         (equal (fn-served-conn-group-index
-                (fn-served-result-conn (fn-served-dispatch conn event)))
-               (fn-served-conn-group-index conn)))
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
+               (fn-served-conn-group-index conn))
+        (equal (fn-served-conn-control
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
+               (fn-served-conn-control conn))
+        (equal (fn-served-conn-pinned
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
+               (fn-served-conn-pinned conn))
+        (equal (fn-served-conn-live
+                (fn-served-result-conn (fn-served-dispatch-core conn event)))
+               (fn-served-conn-live conn)))
    :hints (("Goal" :in-theory (disable fn-auth-step-pinned fn-post-offeredp
                                        fn-wire-begin-article-with-line-limit
                                        fn-wire-article-line-limit)))))
 
 (local
- (defthm fn-served-dispatch-effects-unfold
-   (equal (fn-served-result-effects (fn-served-dispatch conn event))
+ (defthm fn-served-dispatch-core-effects-unfold
+   (equal (fn-served-result-effects (fn-served-dispatch-core conn event))
           (let ((r (fn-auth-step-pinned (fn-served-conn-session conn)
                                       (fn-served-conn-archive conn)
                                       (fn-served-conn-pinned-index conn)
@@ -760,11 +1007,11 @@
                                        fn-wire-begin-article-with-line-limit
                                        fn-wire-article-line-limit)))))
 
-(defthm fn-served-dispatch-preserves-wire-statep
+(defthm fn-served-dispatch-core-preserves-wire-statep
   (implies (fn-wire-statep (fn-served-conn-wire conn))
            (fn-wire-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-served-dispatch conn event)))))
+             (fn-served-result-conn (fn-served-dispatch-core conn event)))))
   :hints (("Goal"
            :in-theory (disable fn-wire-statep fn-wire-begin-article-with-line-limit
                                fn-wire-article-line-limit
@@ -776,11 +1023,11 @@
                              (fn-wire-article-line-limit
                              (fn-served-conn-wire conn))))))))
 
-(defthm fn-served-dispatch-preserves-fast-statep
+(defthm fn-served-dispatch-core-preserves-fast-statep
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-served-dispatch conn event)))))
+             (fn-served-result-conn (fn-served-dispatch-core conn event)))))
   :hints (("Goal"
            :in-theory (disable fn-wire-fast-statep
                                fn-wire-begin-article-with-line-limit
@@ -793,17 +1040,17 @@
                              (fn-wire-article-line-limit
                               (fn-served-conn-wire conn))))))))
 
-(defthm fn-served-dispatch-preserves-connp
+(defthm fn-served-dispatch-core-preserves-connp
   (implies (fn-served-connp conn)
            (fn-served-connp
-            (fn-served-result-conn (fn-served-dispatch conn event))))
+            (fn-served-result-conn (fn-served-dispatch-core conn event))))
   :hints (("Goal"
            :in-theory (e/d (fn-served-connp)
-                           (fn-served-dispatch fn-wire-statep
+                           (fn-served-dispatch-core fn-wire-statep
                             fn-auth-step-pinned fn-auth-session-consistentp
                             fn-auth-step-pinned-preserves-consistent-session
-                            fn-served-dispatch-preserves-wire-statep))
-           :use ((:instance fn-served-dispatch-preserves-wire-statep)
+                            fn-served-dispatch-core-preserves-wire-statep))
+           :use ((:instance fn-served-dispatch-core-preserves-wire-statep)
                  (:instance fn-served-connp-is-group-correspondence
                             (c conn))
                  (:instance fn-auth-step-pinned-preserves-consistent-session
@@ -816,13 +1063,13 @@
                             (injection (fn-served-conn-injection conn))
                             (wire-event event))))))
 
-(defthm fn-served-dispatch-effects-are-typed
+(defthm fn-served-dispatch-core-effects-are-typed
   (implies (fn-served-connp conn)
            (fn-served-effectsp
-            (fn-served-result-effects (fn-served-dispatch conn event))))
+            (fn-served-result-effects (fn-served-dispatch-core conn event))))
   :hints (("Goal"
            :in-theory (e/d ()
-                           (fn-served-dispatch fn-auth-step-pinned
+                           (fn-served-dispatch-core fn-auth-step-pinned
                             fn-auth-sessionp fn-served-connp
                             fn-nntp-effectp fn-inj-injectedp fn-peer-submissionp
                             ; else the :use hypothesis is rewritten to T
@@ -860,10 +1107,373 @@
                             (injection (fn-served-conn-injection conn))
                             (wire-event event))))))
 
-; The three theorems above are the only readers of the two local projections;
-; below them fn-served-dispatch is closed and only its keystones are used.
-(local (in-theory (disable fn-served-dispatch-conn-projections
-                           fn-served-dispatch-effects-unfold)))
+; The theorems above are the only readers of the two local projections; below
+; them fn-served-dispatch-core is closed and only its keystones are used.
+(local (in-theory (disable fn-served-dispatch-core-conn-projections
+                           fn-served-dispatch-core-effects-unfold)))
+
+; -----------------------------------------------------------------------------
+; NNT-042: GROUP and LISTGROUP advance the connection to the owner's committed
+; view before they answer (specs/nntp.md "The reader's view is a version";
+; PKT-571's R1: a long-lived reader saw no peer's article until it
+; reconnected).  Within a command the pin is fixed (C3: a multi-line reply is
+; consistent); it moves only here, between commands, and only to `live'.
+;
+; The event test mirrors the dispatcher's own framing tests
+; (fn-auth-step-pinned, fn-nntp-step-pinned): a framed :command line whose
+; first token is the keyword.  Whether the pin MOVES is decided by the
+; selection's outcome (fn-served-dispatch below): a refused or failed
+; selection keeps the previous view and cursor.
+(defun fn-served-advance-eventp (event)
+  (declare (xargs :guard t))
+  (and (consp event)
+       (equal (car event) :command)
+       (consp (cdr event))
+       (null (cdr (cdr event)))
+       (fn-nntp-command-inputp (car (cdr event)))
+       (let ((tokens (fn-nntp-tokenize (car (cdr event)))))
+         (and (consp tokens)
+              (fn-nntp-keyword-tokenp (car tokens))
+              (or (fn-nntp-keywordp (car tokens) "GROUP")
+                  (fn-nntp-keywordp (car tokens) "LISTGROUP"))))))
+
+; The reader session re-selected against the live archive: the group is kept
+; when the live view still has it, and its cursor is what GROUP sets (the
+; group's first available article, RFC 3977 section 6.1.1.2; nil on an empty
+; group) -- the one cursor fn-nntp-session-consistentp accepts for a group
+; of the NEW archive.  LISTGROUP without an argument therefore still lists
+; the selected group; GROUP and LISTGROUP with one re-select anyway.
+(defun fn-served-reselect (inner archive)
+  (declare (xargs :guard t))
+  (let* ((group (fn-nntp-session-group inner))
+         (group2 (if (and group
+                          (fn-ag-member group (fn-state-groups archive)))
+                     group
+                   nil))
+         (low (if group2
+                  (fn-nntp-group-low group2 (fn-state-articles archive))
+                nil))
+         (current (if (posp low) low nil)))
+    (fn-nntp-set-cursor inner group2 current)))
+
+; The two wrappers keep their own fields (fn-auth-with-base: the login and
+; the TLS state; fn-peer-with-base: the peer, its node, the transfer state),
+; as fn-own-advance-result does (books/owner.lisp).
+(defun fn-served-repin-session (as archive)
+  (declare (xargs :guard t))
+  (let* ((pold (fn-auth-session-base as))
+         (told (fn-peer-session-base pold)))
+    (fn-auth-with-base
+     as
+     (fn-peer-with-base
+      pold
+      (fn-post-make-session (fn-served-reselect (fn-post-session-base told) archive)
+                            (fn-post-session-awaiting told))))))
+
+; The pin moves to the live view: archive, verdicts, trie, buckets and
+; control pin are the view's, the pin identity is the view's version and
+; frontier with REPINNED set, the session is re-selected.  Without a live
+; view the connection is returned as it is.
+(defun fn-served-repin (conn)
+  (declare (xargs :guard t))
+  (let ((live (fn-served-conn-live conn)))
+    (if (not live)
+        conn
+      (fn-served-make-conn-live
+       (fn-served-conn-wire conn)
+       (fn-served-repin-session (fn-served-conn-session conn)
+                                (fn-served-live-archive live))
+       (fn-served-live-archive live)
+       (fn-served-conn-config conn)
+       (fn-served-conn-observation conn)
+       (fn-served-conn-injection conn)
+       (fn-served-live-verdicts live)
+       (fn-served-live-index live)
+       (fn-served-live-buckets live)
+       (fn-served-live-control live)
+       (fn-served-pinned-make (fn-served-live-version live)
+                              (fn-served-live-frontier live) t)
+       live))))
+
+; RFC 3977 sections 6.1.1 and 6.1.2: a selection succeeded exactly when the
+; reply is 211.  The predicate reads the arm's own decision as it rendered
+; it; it decides nothing of its own.
+(defun fn-served-selectedp (effects)
+  (declare (xargs :guard t))
+  (and (consp effects)
+       (consp (car effects))
+       (equal (car (car effects)) :reply)
+       (consp (cdr (car effects)))
+       (let ((octets (car (cdr (car effects)))))
+         (and (consp octets) (equal (car octets) 50)
+              (consp (cdr octets)) (equal (car (cdr octets)) 49)
+              (consp (cdr (cdr octets))) (equal (car (cdr (cdr octets))) 49)))))
+
+; One framed event.  A GROUP or LISTGROUP line is dispatched over the
+; connection re-pinned at the live view; when the selection SUCCEEDED (211)
+; that is the connection from now on -- the fresh coherent view with the
+; command's own selection effects.  When it failed (411, 412, 480, 501,
+; 503) the previous view and cursor are kept: the connection is handed back
+; as it was, with the wire framing state the dispatch left, and only the
+; reply leaves (gpt-6's wave-5 review of 2026-09-26, section 1; NNT-042).
+; Every other event is the dispatch proper.
+(defun fn-served-dispatch (conn event)
+  (declare (xargs :guard t))
+  (if (fn-served-advance-eventp event)
+      (let ((r (fn-served-dispatch-core (fn-served-repin conn) event)))
+        (if (fn-served-selectedp (fn-served-result-effects r))
+            r
+          (fn-served-make-result
+           (fn-served-conn-with-wire conn (fn-served-conn-wire (fn-served-result-conn r)))
+           (fn-served-result-effects r))))
+    (fn-served-dispatch-core conn event)))
+
+(in-theory (disable fn-served-selectedp))
+
+(defthm fn-served-repin-keeps-wire
+  (equal (fn-served-conn-wire (fn-served-repin conn))
+         (fn-served-conn-wire conn))
+  :hints (("Goal" :in-theory (enable fn-served-repin))))
+
+(defthm fn-served-repin-keeps-live
+  (equal (fn-served-conn-live (fn-served-repin conn))
+         (fn-served-conn-live conn))
+  :hints (("Goal" :in-theory (enable fn-served-repin))))
+
+(local
+ (defthm fn-served-reselect-is-a-session
+   (implies (fn-nntp-sessionp inner)
+            (fn-nntp-sessionp (fn-served-reselect inner archive)))
+   :hints (("Goal" :in-theory (e/d (fn-served-reselect fn-nntp-set-cursor
+                                    fn-nntp-sessionp fn-nntp-make-session
+                                    fn-nntp-session-openp fn-nntp-session-group
+                                    fn-nntp-session-current fn-nntp-session-projected)
+                                   (fn-nntp-group-low fn-state-groups fn-state-articles))))))
+
+; The re-selected reader session is consistent with the live archive: the
+; kept group is one of its groups and the cursor is GROUP's own choice
+; (fn-nntp-group-selects-the-first-available-article, books/nntp-invariants.lisp).
+(local
+ (defthm fn-served-reselect-is-consistent
+   (implies (and (fn-nntp-sessionp inner)
+                 (fn-nntp-projectionp archive))
+            (fn-nntp-session-consistentp (fn-served-reselect inner archive) archive))
+   :hints (("Goal"
+            :use ((:instance fn-nntp-group-selects-the-first-available-article
+                             (session inner) (group (fn-nntp-session-group inner))))
+            :in-theory (e/d (fn-served-reselect fn-nntp-session-consistentp
+                             fn-nntp-group-nonemptyp fn-nntp-set-cursor
+                             fn-nntp-sessionp fn-nntp-make-session
+                             fn-nntp-session-openp fn-nntp-session-group
+                             fn-nntp-session-current fn-nntp-session-projected)
+                            (fn-nntp-projectionp fn-nntp-available-article
+                             fn-nntp-group-low fn-nntp-group-result
+                             fn-nntp-cursor-validp
+                             fn-state-groups fn-state-articles fn-state-nexts))))))
+
+(local
+ (defthm fn-served-repin-auth-sessionp-forward-bases
+   (implies (fn-auth-sessionp as)
+            (and (fn-peer-sessionp (fn-auth-session-base as))
+                 (fn-post-sessionp
+                  (fn-peer-session-base (fn-auth-session-base as)))
+                 (fn-nntp-sessionp
+                  (fn-post-session-base
+                   (fn-peer-session-base (fn-auth-session-base as))))))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (e/d (fn-auth-sessionp fn-peer-sessionp fn-post-sessionp)
+                                   (fn-auth-configp fn-peer-transferp fn-node-statep
+                                    fn-cfgp fn-nntp-sessionp))))))
+
+(local
+ (defthm fn-served-repin-post-make-session-is-a-session
+   (implies (and (fn-post-sessionp ps) (fn-nntp-sessionp base))
+            (fn-post-sessionp (fn-post-make-session base (fn-post-session-awaiting ps))))
+   :hints (("Goal" :in-theory (e/d (fn-post-sessionp)
+                                   (fn-nntp-sessionp fn-post-make-session
+                                    fn-post-session-shapep fn-post-session-base
+                                    fn-post-session-awaiting))))))
+
+(local
+ (defthm fn-served-repin-peer-with-base-is-a-session
+   (implies (and (fn-peer-sessionp ps) (fn-post-sessionp base))
+            (fn-peer-sessionp (fn-peer-with-base ps base)))
+   :hints (("Goal" :in-theory (e/d (fn-peer-sessionp fn-peer-with-base)
+                                   (fn-post-sessionp fn-node-statep fn-cfgp
+                                    fn-peer-transferp))))))
+
+(local
+ (defthm fn-served-repin-auth-with-base-is-a-session
+   (implies (and (fn-auth-sessionp as) (fn-peer-sessionp base))
+            (fn-auth-sessionp (fn-auth-with-base as base)))
+   :hints (("Goal" :in-theory (e/d (fn-auth-sessionp fn-auth-with-base)
+                                   (fn-peer-sessionp fn-auth-configp
+                                    fn-nntp-printable-tokenp fn-prin-idp))))))
+
+(local
+ (defthm fn-served-repin-session-is-consistent
+   (implies (and (fn-auth-sessionp as) (fn-nntp-projectionp archive))
+            (fn-auth-session-consistentp (fn-served-repin-session as archive) archive))
+   :hints (("Goal"
+            :use ((:instance fn-served-repin-auth-sessionp-forward-bases)
+                  (:instance fn-served-reselect-is-a-session
+                             (inner (fn-post-session-base
+                                     (fn-peer-session-base (fn-auth-session-base as)))))
+                  (:instance fn-served-reselect-is-consistent
+                             (inner (fn-post-session-base
+                                     (fn-peer-session-base (fn-auth-session-base as)))))
+                  (:instance fn-served-repin-post-make-session-is-a-session
+                             (ps (fn-peer-session-base (fn-auth-session-base as)))
+                             (base (fn-served-reselect
+                                    (fn-post-session-base
+                                     (fn-peer-session-base (fn-auth-session-base as)))
+                                    archive)))
+                  (:instance fn-served-repin-peer-with-base-is-a-session
+                             (ps (fn-auth-session-base as))
+                             (base (fn-post-make-session
+                                    (fn-served-reselect
+                                     (fn-post-session-base
+                                      (fn-peer-session-base (fn-auth-session-base as)))
+                                     archive)
+                                    (fn-post-session-awaiting
+                                     (fn-peer-session-base (fn-auth-session-base as))))))
+                  (:instance fn-served-repin-auth-with-base-is-a-session
+                             (base (fn-peer-with-base
+                                    (fn-auth-session-base as)
+                                    (fn-post-make-session
+                                     (fn-served-reselect
+                                      (fn-post-session-base
+                                       (fn-peer-session-base (fn-auth-session-base as)))
+                                      archive)
+                                     (fn-post-session-awaiting
+                                      (fn-peer-session-base (fn-auth-session-base as))))))))
+            :in-theory (e/d (fn-served-repin-session fn-auth-session-consistentp
+                             fn-peer-session-consistentp fn-post-session-consistentp
+                             fn-auth-with-base fn-peer-with-base)
+                            (fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                             fn-nntp-sessionp fn-nntp-session-consistentp
+                             fn-nntp-projectionp fn-served-reselect
+                             fn-post-make-session
+                             fn-served-repin-auth-sessionp-forward-bases
+                             fn-served-reselect-is-a-session
+                             fn-served-reselect-is-consistent
+                             fn-served-repin-post-make-session-is-a-session
+                             fn-served-repin-peer-with-base-is-a-session
+                             fn-served-repin-auth-with-base-is-a-session))))))
+
+; The re-pinned session keeps every authentication fact (the auth keystones
+; of books/nntp-auth-invariants.lisp read these through the advance).
+(defthm fn-served-repin-session-keeps-auth-fields
+  (and (equal (fn-auth-session-config (fn-served-repin-session as archive))
+              (fn-auth-session-config as))
+       (equal (fn-auth-session-pending (fn-served-repin-session as archive))
+              (fn-auth-session-pending as))
+       (equal (fn-auth-session-subject (fn-served-repin-session as archive))
+              (fn-auth-session-subject as))
+       (equal (fn-auth-session-tlsp (fn-served-repin-session as archive))
+              (fn-auth-session-tlsp as))
+       (equal (fn-auth-session-handshakingp (fn-served-repin-session as archive))
+              (fn-auth-session-handshakingp as)))
+  :hints (("Goal" :in-theory (e/d (fn-served-repin-session fn-auth-with-base)
+                                  (fn-served-reselect fn-peer-with-base
+                                   fn-post-make-session)))))
+
+(defthm fn-served-repin-preserves-connp
+  (implies (fn-served-connp conn)
+           (fn-served-connp (fn-served-repin conn)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-served-connp fn-served-repin fn-served-live-okp)
+                           (fn-auth-session-consistentp fn-nntp-projectionp
+                            fn-midx-correspondencep fn-gidx-build fn-wire-statep
+                            fn-served-repin-session fn-auth-sessionp
+                            fn-auth-consistent-forward))
+           :use ((:instance fn-served-repin-session-is-consistent
+                            (as (fn-served-conn-session conn))
+                            (archive (fn-served-live-archive (fn-served-conn-live conn))))
+                 (:instance fn-auth-consistent-forward
+                            (as (fn-served-conn-session conn))
+                            (archive (fn-served-conn-archive conn)))))))
+
+(in-theory (disable fn-served-reselect fn-served-repin-session fn-served-repin
+                    fn-served-advance-eventp))
+
+(defthm fn-served-with-wire-preserves-connp
+  (implies (and (fn-served-connp conn) (fn-wire-statep wire))
+           (fn-served-connp (fn-served-conn-with-wire conn wire)))
+  :hints (("Goal" :in-theory (e/d (fn-served-connp)
+                                  (fn-wire-statep fn-auth-session-consistentp
+                                   fn-midx-correspondencep fn-gidx-build
+                                   fn-served-live-okp)))))
+
+(defthm fn-served-dispatch-preserves-wire-statep
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (fn-wire-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-dispatch conn event)))))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
+                                  (fn-served-dispatch-core fn-wire-statep
+                                   fn-served-selectedp fn-served-repin)))))
+
+(defthm fn-served-dispatch-preserves-fast-statep
+  (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
+           (fn-wire-fast-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-dispatch conn event)))))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
+                                  (fn-served-dispatch-core fn-wire-fast-statep
+                                   fn-served-selectedp fn-served-repin)))))
+
+(defthm fn-served-dispatch-preserves-connp
+  (implies (fn-served-connp conn)
+           (fn-served-connp
+            (fn-served-result-conn (fn-served-dispatch conn event))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-served-dispatch)
+                           (fn-served-dispatch-core fn-served-connp
+                            fn-served-selectedp fn-served-repin fn-wire-statep
+                            fn-served-dispatch-core-preserves-wire-statep))
+           :use ((:instance fn-served-dispatch-core-preserves-wire-statep
+                            (conn (fn-served-repin conn)))))))
+
+(defthm fn-served-dispatch-effects-are-typed
+  (implies (fn-served-connp conn)
+           (fn-served-effectsp
+            (fn-served-result-effects (fn-served-dispatch conn event))))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
+                                  (fn-served-dispatch-core fn-served-connp
+                                   fn-served-effectsp)))))
+
+; The advance test on a framed command line, for the per-command read books:
+; a line whose keyword is anything but GROUP or LISTGROUP moves no pin.
+(defthm fn-served-advance-eventp-of-command
+  (equal (fn-served-advance-eventp (list :command line))
+         (and (fn-nntp-command-inputp line)
+              (consp (fn-nntp-tokenize line))
+              (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
+              (or (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "GROUP")
+                  (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "LISTGROUP"))))
+  :hints (("Goal" :in-theory (enable fn-served-advance-eventp))))
+
+(defthm fn-served-advance-eventp-of-non-command
+  (implies (not (equal (car event) :command))
+           (not (fn-served-advance-eventp event)))
+  :hints (("Goal" :in-theory (enable fn-served-advance-eventp))))
+
+; One token is one keyword: a token that is LIST is not GROUP.
+(defthm fn-nntp-keywordp-exclusive
+  (implies (and (fn-nntp-keywordp k a)
+                (not (equal (fn-nntp-string-octets a) (fn-nntp-string-octets b))))
+           (not (fn-nntp-keywordp k b)))
+  :hints (("Goal" :in-theory (enable fn-nntp-keywordp))))
+
+; A dispatch whose event moves no pin is the dispatch proper.
+(defthm fn-served-dispatch-without-advance-is-core
+  (implies (not (fn-served-advance-eventp event))
+           (equal (fn-served-dispatch conn event)
+                  (fn-served-dispatch-core conn event)))
+  :hints (("Goal" :in-theory (enable fn-served-dispatch))))
+
+(in-theory (disable fn-served-dispatch-core))
 
 ; The events one byte framed, in order (fn-wire-feed-byte emits at most one;
 ; the fold is written over the list so that it is total without that fact).
@@ -951,15 +1561,7 @@
   (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
     (fn-served-dispatch-events
-     (fn-served-make-conn-group-indexed (fn-wire-result-state fed)
-                          (fn-served-conn-session conn)
-                          (fn-served-conn-archive conn)
-                          (fn-served-conn-config conn)
-                          (fn-served-conn-observation conn)
-                          (fn-served-conn-injection conn)
-                          (fn-served-conn-verdicts conn)
-                          (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
+     (fn-served-conn-with-wire conn (fn-wire-result-state fed))
      (fn-wire-result-events fed))))
 
 (defthm fn-served-feed-byte-preserves-wire-statep
@@ -974,18 +1576,9 @@
                             (wire-state (fn-served-conn-wire conn)))
                  (:instance fn-served-dispatch-events-preserves-wire-statep
                             (conn
-                             (fn-served-make-conn-group-indexed
-                              (fn-wire-result-state
+                             (fn-served-conn-with-wire conn (fn-wire-result-state
                                (fn-wire-feed-byte
-                                (fn-served-conn-wire conn) byte))
-                              (fn-served-conn-session conn)
-                              (fn-served-conn-archive conn)
-                              (fn-served-conn-config conn)
-                              (fn-served-conn-observation conn)
-                              (fn-served-conn-injection conn)
-                              (fn-served-conn-verdicts conn)
-                              (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
+                                (fn-served-conn-wire conn) byte))))
                             (events
                              (fn-wire-result-events
                               (fn-wire-feed-byte
@@ -1003,18 +1596,9 @@
                             (wire-state (fn-served-conn-wire conn)))
                  (:instance fn-served-dispatch-events-preserves-fast-statep
                             (conn
-                             (fn-served-make-conn-group-indexed
-                              (fn-wire-result-state
+                             (fn-served-conn-with-wire conn (fn-wire-result-state
                                (fn-wire-feed-byte
-                                (fn-served-conn-wire conn) byte))
-                              (fn-served-conn-session conn)
-                              (fn-served-conn-archive conn)
-                              (fn-served-conn-config conn)
-                              (fn-served-conn-observation conn)
-                              (fn-served-conn-injection conn)
-                              (fn-served-conn-verdicts conn)
-                              (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
+                                (fn-served-conn-wire conn) byte))))
                             (events
                              (fn-wire-result-events
                               (fn-wire-feed-byte
@@ -1054,17 +1638,8 @@
  (defthm fn-served-fed-conn-is-a-connection
    (implies (fn-served-connp conn)
             (fn-served-connp
-             (fn-served-make-conn-group-indexed
-              (fn-wire-result-state
-               (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
-              (fn-served-conn-session conn)
-              (fn-served-conn-archive conn)
-              (fn-served-conn-config conn)
-              (fn-served-conn-observation conn)
-              (fn-served-conn-injection conn)
-              (fn-served-conn-verdicts conn)
-              (fn-served-conn-index conn)
-                              (fn-served-conn-group-index conn) (fn-served-conn-control conn))))
+             (fn-served-conn-with-wire conn (fn-wire-result-state
+               (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-auth-session-consistentp))))))
@@ -1109,6 +1684,202 @@
                                            (fn-served-closed-wirep wire2))
                                       (list (fn-nntp-close-effect))
                                     nil))))))))
+
+; -----------------------------------------------------------------------------
+; The pin moves only to the live view (NNT-042 at the fold).
+;
+; A connection's PIN is its archive, verdicts, Message-ID trie, group
+; buckets, control pin and pin identity.  After any dispatch, byte or read the
+; pin is either what it was or the live view's, and the live view itself is
+; never touched: the owner reads the pin back from the served connection
+; (books/owner.lisp fn-own-finish-read) knowing exactly these two cases.
+
+(defun fn-served-conn-pin (c)
+  (declare (xargs :guard t))
+  (list (fn-served-conn-archive c) (fn-served-conn-verdicts c)
+        (fn-served-conn-index c) (fn-served-conn-group-index c)
+        (fn-served-conn-control c) (fn-served-conn-pinned c)))
+
+(defun fn-served-live-pin (live)
+  (declare (xargs :guard t))
+  (list (fn-served-live-archive live) (fn-served-live-verdicts live)
+        (fn-served-live-index live) (fn-served-live-buckets live)
+        (fn-served-live-control live)
+        (fn-served-pinned-make (fn-served-live-version live)
+                               (fn-served-live-frontier live) t)))
+
+(defun fn-served-pin-old-or-live-p (c0 c)
+  (declare (xargs :guard t))
+  (and (equal (fn-served-conn-live c) (fn-served-conn-live c0))
+       (or (equal (fn-served-conn-pin c) (fn-served-conn-pin c0))
+           (and (fn-served-conn-live c0)
+                (equal (fn-served-conn-pin c)
+                       (fn-served-live-pin (fn-served-conn-live c0)))))))
+
+(defthm fn-served-pin-old-or-live-p-reflexive
+  (fn-served-pin-old-or-live-p c c))
+
+; The two cases, field by field (for the owner's read-back proof,
+; books/owner-invariants.lisp).
+(defthm fn-served-conn-pin-fields
+  (implies (equal (fn-served-conn-pin a) (fn-served-conn-pin b))
+           (and (equal (fn-served-conn-archive a) (fn-served-conn-archive b))
+                (equal (fn-served-conn-verdicts a) (fn-served-conn-verdicts b))
+                (equal (fn-served-conn-index a) (fn-served-conn-index b))
+                (equal (fn-served-conn-group-index a) (fn-served-conn-group-index b))
+                (equal (fn-served-conn-control a) (fn-served-conn-control b))
+                (equal (fn-served-conn-pinned a) (fn-served-conn-pinned b))))
+  :rule-classes nil)
+
+(defthm fn-served-live-pin-fields
+  (implies (equal (fn-served-conn-pin a) (fn-served-live-pin live))
+           (and (equal (fn-served-conn-archive a) (fn-served-live-archive live))
+                (equal (fn-served-conn-verdicts a) (fn-served-live-verdicts live))
+                (equal (fn-served-conn-index a) (fn-served-live-index live))
+                (equal (fn-served-conn-group-index a) (fn-served-live-buckets live))
+                (equal (fn-served-conn-control a) (fn-served-live-control live))
+                (equal (fn-served-conn-pinned a)
+                       (fn-served-pinned-make (fn-served-live-version live)
+                                              (fn-served-live-frontier live) t))))
+  :rule-classes nil)
+
+(defthm fn-served-pin-old-or-live-p-cases
+  (implies (fn-served-pin-old-or-live-p c0 c)
+           (and (equal (fn-served-conn-live c) (fn-served-conn-live c0))
+                (or (equal (fn-served-conn-pin c) (fn-served-conn-pin c0))
+                    (and (fn-served-conn-live c0)
+                         (equal (fn-served-conn-pin c)
+                                (fn-served-live-pin (fn-served-conn-live c0)))))))
+  :rule-classes nil)
+
+(defthm fn-served-pin-old-or-live-p-transitive
+  (implies (and (fn-served-pin-old-or-live-p a b)
+                (fn-served-pin-old-or-live-p b c))
+           (fn-served-pin-old-or-live-p a c))
+  :hints (("Goal" :in-theory (disable fn-served-conn-pin fn-served-live-pin))))
+
+(defthm fn-served-repin-pin
+  (fn-served-pin-old-or-live-p conn (fn-served-repin conn))
+  :hints (("Goal" :in-theory (enable fn-served-repin))))
+
+(defthm fn-served-with-wire-pin
+  (fn-served-pin-old-or-live-p conn (fn-served-conn-with-wire conn wire)))
+
+(defthm fn-served-dispatch-core-pin
+  (fn-served-pin-old-or-live-p
+   conn (fn-served-result-conn (fn-served-dispatch-core conn event)))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch-core)
+                                  (fn-auth-step-pinned fn-post-offeredp
+                                   fn-wire-begin-article-with-line-limit
+                                   fn-wire-article-line-limit)))))
+
+(defthm fn-served-dispatch-pin
+  (fn-served-pin-old-or-live-p
+   conn (fn-served-result-conn (fn-served-dispatch conn event)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-served-dispatch)
+                           (fn-served-dispatch-core fn-served-repin
+                            fn-served-pin-old-or-live-p fn-served-advance-eventp
+                            fn-served-selectedp))
+           :use ((:instance fn-served-pin-old-or-live-p-transitive
+                            (a conn) (b (fn-served-repin conn))
+                            (c (fn-served-result-conn
+                                (fn-served-dispatch-core (fn-served-repin conn) event))))))))
+
+; The spec's two clauses (NNT-042), by construction: a failed selection keeps
+; the connection but its wire framing state; a successful one is the
+; dispatch proper over the connection re-pinned at the live view.
+(defthm fn-served-failed-selection-keeps-the-connection
+  (implies (and (fn-served-advance-eventp event)
+                (not (fn-served-selectedp
+                      (fn-served-result-effects
+                       (fn-served-dispatch-core (fn-served-repin conn) event)))))
+           (equal (fn-served-result-conn (fn-served-dispatch conn event))
+                  (fn-served-conn-with-wire
+                   conn (fn-served-conn-wire
+                         (fn-served-result-conn
+                          (fn-served-dispatch-core (fn-served-repin conn) event))))))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
+                                  (fn-served-dispatch-core fn-served-repin
+                                   fn-served-selectedp)))))
+
+(defthm fn-served-successful-selection-is-the-repinned-dispatch
+  (implies (and (fn-served-advance-eventp event)
+                (fn-served-selectedp
+                 (fn-served-result-effects
+                  (fn-served-dispatch-core (fn-served-repin conn) event))))
+           (equal (fn-served-dispatch conn event)
+                  (fn-served-dispatch-core (fn-served-repin conn) event)))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
+                                  (fn-served-dispatch-core fn-served-repin
+                                   fn-served-selectedp)))))
+
+(defthm fn-served-dispatch-effects-are-the-repinned-dispatch-effects
+  (implies (fn-served-advance-eventp event)
+           (equal (fn-served-result-effects (fn-served-dispatch conn event))
+                  (fn-served-result-effects
+                   (fn-served-dispatch-core (fn-served-repin conn) event))))
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch)
+                                  (fn-served-dispatch-core fn-served-repin
+                                   fn-served-selectedp)))))
+
+(defthm fn-served-dispatch-events-pin
+  (fn-served-pin-old-or-live-p
+   conn (fn-served-result-conn (fn-served-dispatch-events conn events)))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+           :in-theory (disable fn-served-dispatch fn-served-pin-old-or-live-p))
+          ("Subgoal *1/1" :use ((:instance fn-served-pin-old-or-live-p-transitive
+                                           (a conn)
+                                           (b (fn-served-result-conn (fn-served-dispatch conn (car events))))
+                                           (c (fn-served-result-conn
+                                               (fn-served-dispatch-events
+                                                (fn-served-result-conn (fn-served-dispatch conn (car events)))
+                                                (cdr events)))))))))
+
+(defthm fn-served-feed-byte-pin
+  (fn-served-pin-old-or-live-p
+   conn (fn-served-result-conn (fn-served-feed-byte conn byte)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-served-feed-byte)
+                           (fn-served-dispatch-events fn-wire-feed-byte
+                            fn-served-pin-old-or-live-p))
+           :use ((:instance fn-served-pin-old-or-live-p-transitive
+                            (a conn)
+                            (b (fn-served-conn-with-wire
+                                conn (fn-wire-result-state
+                                      (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))
+                            (c (fn-served-result-conn
+                                (fn-served-dispatch-events
+                                 (fn-served-conn-with-wire
+                                  conn (fn-wire-result-state
+                                        (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
+                                 (fn-wire-result-events
+                                  (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))))))))
+
+(defthm fn-served-feed-pin
+  (fn-served-pin-old-or-live-p
+   conn (fn-served-result-conn (fn-served-feed conn octets)))
+  :hints (("Goal" :induct (fn-served-feed conn octets)
+           :in-theory (disable fn-served-feed-byte fn-served-pin-old-or-live-p
+                               fn-wire-statep))
+          ("Subgoal *1/2" :use ((:instance fn-served-pin-old-or-live-p-transitive
+                                           (a conn)
+                                           (b (fn-served-result-conn (fn-served-feed-byte conn (car octets))))
+                                           (c (fn-served-result-conn
+                                               (fn-served-feed
+                                                (fn-served-result-conn (fn-served-feed-byte conn (car octets)))
+                                                (cdr octets)))))))))
+
+; KEYSTONE for the owner's read-back of the pin: one read moves a
+; connection's pin nowhere or to the live view, and leaves the live view.
+(defthm fn-served-step-pin-is-old-or-live
+  (fn-served-pin-old-or-live-p
+   conn (fn-served-result-conn (fn-served-step conn octets)))
+  :hints (("Goal" :in-theory (e/d (fn-served-step)
+                                  (fn-served-feed fn-served-pin-old-or-live-p
+                                   fn-wire-statep fn-served-closed-wirep)))))
+
+(in-theory (disable fn-served-conn-pin fn-served-live-pin fn-served-pin-old-or-live-p))
 
 ; A list of reads, in arrival order.
 
@@ -1432,12 +2203,13 @@
   (declare (xargs :guard t))
   (let ((conn (fn-served-result-conn result)))
     (fn-served-make-result
-     (fn-served-make-conn-group-indexed
+     (fn-served-make-conn-live
       (fn-served-conn-wire conn) (fn-served-conn-session conn)
       (fn-served-conn-archive conn) (fn-served-conn-config conn)
       (fn-served-conn-observation conn) (fn-served-conn-injection conn)
       (fn-served-conn-verdicts conn) (fn-served-conn-index conn) buckets
-      (fn-served-conn-control conn))
+      (fn-served-conn-control conn)
+      (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (fn-served-result-effects result))))
 
 (defun fn-served-open-group-indexed
@@ -2035,15 +2807,7 @@
       0
     (let* ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) (car octets)))
            (here (fn-served-dispatch-events
-                  (fn-served-make-conn-group-indexed (fn-wire-result-state fed)
-                                       (fn-served-conn-session conn)
-                                       (fn-served-conn-archive conn)
-                                       (fn-served-conn-config conn)
-                                       (fn-served-conn-observation conn)
-                                       (fn-served-conn-injection conn)
-                                       (fn-served-conn-verdicts conn)
-                                       (fn-served-conn-index conn)
-                          (fn-served-conn-group-index conn) (fn-served-conn-control conn))
+                  (fn-served-conn-with-wire conn (fn-wire-result-state fed))
                   (fn-wire-result-events fed))))
       (+ (len (fn-wire-result-events fed))
          (fn-served-feed-steps (fn-served-result-conn here) (cdr octets))))))

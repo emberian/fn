@@ -113,7 +113,7 @@
                            (fn-served-result-conn
                             (fn-served-dispatch c0 *fn-sit-starttls-event*))
                            *fn-sit-established-event*))))))
-  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch
+  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch fn-served-dispatch-core
                                      fn-served-open-group-indexed
                                      fn-served-open-indexed
                                      fn-served-pin-group-index
@@ -139,7 +139,7 @@
          (fn-auth-session-tlsp (fn-served-conn-session (fn-served-result-conn r)))
          (not (fn-auth-session-handshakingp
                (fn-served-conn-session (fn-served-result-conn r))))))
-  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch
+  :hints (("Goal" :in-theory (enable fn-sit-opened fn-served-dispatch fn-served-dispatch-core
                                      fn-served-open-group-indexed
                                      fn-served-open-indexed
                                      fn-served-pin-group-index

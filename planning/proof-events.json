@@ -161,6 +161,14 @@
         {
           "kind": "theorem",
           "name": "fn-own-raw-local-number-is-never-reassigned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-other-post-keeps-a-non-selecting-read-step"
         }
       ]
     },
@@ -6898,6 +6906,70 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-served-repin-preserves-connp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-preserves-connp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-effects-are-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-pin-is-old-or-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-failed-selection-keeps-the-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-effects-are-the-repinned-dispatch-effects"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-dispatch-is-served-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-step-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-survivor-keeps-historical-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-is-served-step-on-pinned-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-reader-sees-pinned-prefix-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-own-read-survivor-has-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-read-preserves-historical-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-view-cancel-after-target"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-view-apply-is-refresh"
         },
         {
@@ -6931,8 +7003,29 @@
         {
           "kind": "theorem",
           "name": "fn-cat-withdraw-then-commit-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-msgid-article-is-find-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scat-number-article-is-find-group-number"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-msgid-retrieval-cat-is-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-number-retrieval-cat-is-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-cat-is-pinned"
         }
-      ]
+      ],
+      "pending_subject": "fn-view-apply-is-refresh as registered is deferred to 7b/8 (the delta equation needs the arms over the catalog); the proved events are the version semantics over the host-called served path and, since catalog-slice-6, the Message-ID and number retrieval arms over the catalog equal to the pinned arms (not yet host-called: the lift and the host switch are 7b rest and 8)."
     },
     {
       "id": "PRF-203",

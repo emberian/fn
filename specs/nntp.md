@@ -426,17 +426,34 @@ durability. This is the reading the power-loss campaign measured
 again": at 258 cuts the fresh POST after recovery took the lost in-flight
 POST's number, and no acknowledged or served number moved or was issued twice).
 
-NNT-042: a reader connection's view of the store is a VERSION, the committed
-count when the view was taken: the connection sees the articles committed below
+NNT-042: a reader connection's view of the store is a VERSION (the public
+concept is the ViewId: the committed count when the view was taken, until the
+catalog names it otherwise): the connection sees the articles committed below
 it, and a cancel committed after one of them leaves that article visible to the
-connection until it advances past the cancel. GROUP and LISTGROUP advance the
-connection's version to the current count between commands; within a command
-the version is fixed (C3), so a multi-line response is consistent. A long-lived
-reader therefore sees a peer's new article after its next GROUP, never only on
-reconnection. A stronger fn guarantee than RFC 3977 section 6.1.1, which fixes
-no view semantics; `fn-view-advance`, `fn-view-sees` and
-`fn-view-cancel-after-target` (books/catalog-delta.lisp) are the ACL2 half; the
-served path does not read them yet (PKT-585).
+connection until it acquires a view past the cancel. A successful GROUP or
+LISTGROUP acquires a fresh coherent view and performs that command's normal
+selection effects. Other reads remain on that view until the next specified
+refresh boundary (the next successful GROUP or LISTGROUP, the poster's own 240,
+or the control channel's advance). A failed selection (411, 412, 480, 501, 503)
+leaves the previous view and cursor unchanged. Within a command the view is
+fixed (C3), so a multi-line response is consistent, and every fact a command
+reads -- articles, numbers, visibility, verdicts, counts -- is read from that
+one view. A long-lived reader therefore sees a peer's new article after its
+next GROUP, never only on reconnection. This is an explicit specification
+change (2026-09-26, gpt-6's wave-5 review section 1): before it a connection
+kept the view it pinned at open until the control channel advanced it. A
+stronger fn guarantee than RFC 3977 section 6.1.1, which fixes no view
+semantics. The served machine: `fn-served-dispatch` (books/served.lisp)
+dispatches a GROUP or LISTGROUP line over the connection re-pinned at the
+owner's committed view (`fn-served-repin`) and keeps that connection exactly
+when the reply is 211 (`fn-served-selectedp`; `fn-served-successful-selection-
+is-the-repinned-dispatch`, `fn-served-failed-selection-keeps-the-connection`);
+the owner hands every read its committed view as the live pin
+(`fn-own-served-conn`) and takes the pin back (`fn-own-finish-read`,
+`fn-served-step-pin-is-old-or-live`). `fn-view-advance`, `fn-view-sees` and
+`fn-view-cancel-after-target` (books/catalog-delta.lisp) are the catalog's
+statement of the same semantics; the retrieval arms read the catalog through
+the view in the next increment (PKT-585).
 
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
@@ -563,7 +580,12 @@ before the post, and moves only when the control channel advances it
 `fn-own-pinned-prefix-survives-any-trace`). A `:refused` or `:uncertain`
 outcome moves no pin. K1 covers either choice — it constrains what a
 connection reads at its pin, not which pin it holds — so this is a recorded
-policy choice, not a consequence of the keystones.
+policy choice, not a consequence of the keystones. Since NNT-042 (2026-09-26)
+that policy has one more advance: a reader's own successful GROUP or LISTGROUP
+acquires the committed view (the pinned prefix moves to the owner's view and
+the configured owner moves the connection's configuration pin with it,
+`fn-ocfg-with-read-owner`), so "keeps the version it pinned at open" holds
+between those commands and for every other command.
 The read-only reader (`tools/run_reader.py`) answers POST with 440.
 
 A submission is not an acknowledgement. No 240 is reachable from
