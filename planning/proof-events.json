@@ -9757,6 +9757,10 @@
         {
           "kind": "theorem",
           "name": "fn-ccc-capture-link-window-is-capture-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcls-decide-is-rclp-decide"
         }
       ]
     }

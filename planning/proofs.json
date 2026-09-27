@@ -9731,14 +9731,16 @@
     },
     {
       "id": "PRF-264",
-      "title": "The compaction verb decides and captures over the history's length and one link's window: fn-cverb-decide-window and fn-ccc-capture-link-window answer what the whole-history decision and capture answer, so compaction never hands ACL2 the history as octet lists",
-      "statement": "books/store-compact-window.lisp (lane compact-arena, PKT-686 item 2). fn-scw-window-count (lens lower), the count of records the next link takes read from the records' lengths, is fn-ccc-fit of the records above LOWER: fn-scw-window-count-is-fit (equal (fn-scw-window-count (fn-scw-lens records) lower) (fn-ccc-fit (nthcdr (nfix lower) records))), no hypothesis. KEYSTONE fn-cverb-decide-window-is-cverb-decide: (implies (and (equal used (len records)) (equal window (fn-scw-window records lower))) (equal (fn-cverb-decide-window profile used lower window names generations selected disk-free) (fn-cverb-decide profile records lower names generations selected disk-free))). KEYSTONE fn-ccc-capture-link-window-is-capture-link: under the same two hypotheses (equal (fn-ccc-capture-link-window used window lower lower-frontier pred-generation pred-digest) (fn-ccc-capture-link records lower lower-frontier pred-generation pred-digest)). So PRF-085's and books/store-compact-verb.lisp's theorems about fn-cverb-decide and fn-ccc-capture-link (the capture succeeds, the pack fits the disk, the chain reconstructs the history, the publication crash walks the old or new chain) hold of what the host calls. Host: host/checkpoint-host.lisp fn-store-compact-window-count, fn-store-compact-decide-window, fn-store-checkpoint-chain-capture-window, called from host/native/checkpoint.lisp fnn-compact-window (the records' lengths, then the octet lists of the COUNT records from LOWER), fnn-compact-decide and fnn-pack-publish-generation. The two hypotheses are the host's reading of the records it holds (the lengths of its octet vectors; the window it slices by ACL2's count). Scope: the reclaim decision (fn-rclp-decide) still receives every record, and the chain walk and coverage still read every link as octet lists; the process-death cuts are unchanged (same host functions and order).",
+      "title": "Compaction and reclaim off the whole history's octet lists: the compaction verb decides and captures over the history's length and one link's window, and the reclaim decision is a fold over one record at a time; each answers exactly what the whole-history function answers",
+      "statement": "books/store-compact-window.lisp (lane compact-arena, PKT-686 item 2). fn-scw-window-count (lens lower), the count of records the next link takes read from the records' lengths, is fn-ccc-fit of the records above LOWER: fn-scw-window-count-is-fit (equal (fn-scw-window-count (fn-scw-lens records) lower) (fn-ccc-fit (nthcdr (nfix lower) records))), no hypothesis. KEYSTONE fn-cverb-decide-window-is-cverb-decide: (implies (and (equal used (len records)) (equal window (fn-scw-window records lower))) (equal (fn-cverb-decide-window profile used lower window names generations selected disk-free) (fn-cverb-decide profile records lower names generations selected disk-free))). KEYSTONE fn-ccc-capture-link-window-is-capture-link: under the same two hypotheses (equal (fn-ccc-capture-link-window used window lower lower-frontier pred-generation pred-digest) (fn-ccc-capture-link records lower lower-frontier pred-generation pred-digest)). So PRF-085's and books/store-compact-verb.lisp's theorems about fn-cverb-decide and fn-ccc-capture-link (the capture succeeds, the pack fits the disk, the chain reconstructs the history, the publication crash walks the old or new chain) hold of what the host calls. Host: host/checkpoint-host.lisp fn-store-compact-window-count, fn-store-compact-decide-window, fn-store-checkpoint-chain-capture-window, called from host/native/checkpoint.lisp fnn-compact-window (the records' lengths, then the octet lists of the COUNT records from LOWER), fnn-compact-decide and fnn-pack-publish-generation. The two hypotheses are the host's reading of the records it holds (the lengths of its octet vectors; the window it slices by ACL2's count). RECLAIM: books/store-reclaim-stream.lisp fn-rcls-step folds one record into (USED MSGIDS-REVERSED FREED NEW-REVERSED SIZE SPANS) from fn-rcls-init, dropping the rewritten history once the rewritten prefix passes one link (*fn-cc-max-events*, *fn-cc-max-octets*; length and size only grow). KEYSTONE fn-rcls-decide-is-rclp-decide: (implies (and (true-listp records) (equal acc (fn-rcls-fold records (fn-rclp-ctx rule now s) (fn-rcls-init)))) (equal (fn-rcls-decide profile rule now s acc frontier lower names generations selected disk-free dry) (fn-rclp-decide profile rule now s records frontier lower names generations selected disk-free dry))), so books/store-reclaim-pack.lisp's keystones (fn-rclp-decide-publishes-the-rewrite, -pack-fits-the-disk, -reclaiming-pack-is-a-first-link, -keep-forever-writes-nothing) hold of what the host calls. Host: host/checkpoint-host.lisp fn-store-reclaim-context, fn-store-reclaim-init, fn-store-reclaim-step, fn-store-reclaim-decide-stream (the same clock observation for the context and the decision), from host/native/checkpoint.lisp fnn-reclaim-observe, which hands ACL2 one record's octet list at a time. Scope: the chain walk and coverage still read every link as octet lists; the process-death cuts are unchanged (same host functions and order).",
       "milestone": "M5",
       "requirements": [
-        "STO-012"
+        "STO-012",
+        "STO-017"
       ],
       "depends_on": [
         "PRF-085",
+        "PRF-119",
         "PRF-240"
       ],
       "assumptions": [
@@ -9750,13 +9752,16 @@
         "tests/acl2/store-compact-window-tests.lisp",
         "host/checkpoint-host.lisp",
         "host/native/checkpoint.lisp",
-        "planning/evidence/compact-arena-2026-09-27.md"
+        "planning/evidence/compact-arena-2026-09-27.md",
+        "books/store-reclaim-stream.lisp",
+        "tests/acl2/store-reclaim-stream-tests.lisp"
       ],
       "progress_note": "Lane compact-arena (2026-09-27): the book and its test book REPL-admitted on hbox (w28); certification is the batch's.",
       "events": [
         "fn-scw-window-count-is-fit",
         "fn-cverb-decide-window-is-cverb-decide",
-        "fn-ccc-capture-link-window-is-capture-link"
+        "fn-ccc-capture-link-window-is-capture-link",
+        "fn-rcls-decide-is-rclp-decide"
       ]
     }
   ]
