@@ -50,6 +50,13 @@ per-book publish it reports ``installed 21``
 the box once more when it returns, on every exit code and on its timeout
 path, and a sweep that printed nothing says so rather than passing for a
 sweep that found nothing.
+
+Two verdict words (lane tooling-leftovers, 2026-09-27).  A run whose every
+book came from the cache certified nothing, and `submit` and the verdict
+say so in capitals: its green is the cache's, not the change's.  A run or
+a book ended by a signal (exit 128+N, or an ACL2 exit -N: earlyoom's
+SIGTERM is 143) is KILLED, not failed: it has no verdict, and the verdict
+block lists it apart from the proof failures.
 """
 
 from __future__ import annotations
@@ -665,6 +672,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
               f"{cached['certify']} ({cached['roots_installed']} of "
               f"{cached['roots']} roots already certified at these bytes)",
               file=sys.stderr)
+        if cached.get("certify") == 0 and cached.get("books"):
+            print(all_from_cache_words(identifier, cached["books"]), file=sys.stderr)
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
                            no_publish, pcert, budget_seconds, require_origin,
@@ -797,7 +806,9 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     except ValueError:
         code = 1
     collect(host, identifier, root, remote, cache)
-    print(f"{identifier} on {host}: finished with exit code {code}")
+    signalled = killed_signal(code)
+    print(f"{identifier} on {host}: finished with exit code {code}"
+          + (f" -- {killed_words(signalled)}" if signalled is not None else ""))
     return code
 
 
@@ -913,6 +924,49 @@ def book_log(directory: Path, book: str) -> Path | None:
     return waves[-1] if waves else None
 
 
+def all_from_cache_words(identifier: str, books: int) -> str:
+    """The loud line for a run that certified nothing: every book came from the cache.
+
+    Lanes read such a run's green as "my change certified" (2026-09-27);
+    it means the cache already held a certificate for these exact bytes,
+    which is only a certification of the change if the change is in them.
+    """
+    return (f"{identifier}: ALL {books} BOOKS CAME FROM THE CACHE -- this run certified "
+            "NOTHING. Its green says the cache holds certificates for these exact bytes; "
+            "if you expected your change to be certified here, it is not in the bytes "
+            "you shipped (wrong tree, uncommitted edit, --affected-by naming another "
+            "book), or --recertify BOOK forces a fresh run")
+
+
+# What a signal exit means on the farm.  earlyoom (hbox) sends SIGTERM to
+# the biggest process, then SIGKILL; the kernel OOM killer sends SIGKILL.
+# The shell records a signalled child as 128 + N; Python's returncode as -N.
+SIGNAL_NAMES = {9: "SIGKILL", 15: "SIGTERM", 2: "SIGINT", 1: "SIGHUP", 6: "SIGABRT"}
+KILLED_REASON = re.compile(r"ACL2 exited (-?\d+)\b")
+
+
+def killed_signal(code: object) -> int | None:
+    """The signal number a runner or ACL2 exit code means, or None."""
+    try:
+        number = int(code)
+    except (TypeError, ValueError):
+        return None
+    if number < 0:
+        return -number
+    if 128 < number < 160:
+        return number - 128
+    return None
+
+
+def killed_words(signal_number: int) -> str:
+    name = SIGNAL_NAMES.get(signal_number, f"signal {signal_number}")
+    cause = {15: "earlyoom, a systemd stop or a kill",
+             9: "the kernel OOM killer, earlyoom's second signal, or kill -9"}.get(
+        signal_number, "a signal")
+    return (f"KILLED by {name} ({cause}), not failed: the books it had not finished "
+            "have no verdict; rerun them (at fewer --jobs if memory killed it)")
+
+
 def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
     """The fixed-form end of `farm.py wait`: what failed, where, and why.
 
@@ -922,6 +976,9 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
     `root`; with none, the verdict is unknown and says so.
     """
     head = f"== verdict {identifier}: exit {code}"
+    signalled = killed_signal(code)
+    if signalled is not None:
+        head += " -- " + killed_words(signalled)
     log = root / "build" / "farm" / f"{identifier}.log"
     try:
         directories = sorted(set(EVIDENCE.findall(log.read_text(encoding="utf-8"))))
@@ -941,6 +998,7 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
                 f"read {log}"]
     lines = [head]
     failing: list[str] = []
+    killed: list[str] = []
     slow: list[tuple[float, str, object]] = []
     passed = installed = 0
     for directory, manifest in manifests:
@@ -952,8 +1010,18 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
         for book in sorted(set(reasons) | {book for book, value in results.items()
                                            if value != "passed"}):
             where = book_log(directory, book)
+            stated = "; ".join(reasons.get(book) or [])
+            match = KILLED_REASON.search(stated)
+            book_signal = killed_signal(match.group(1)) if match else None
+            if book_signal is not None:
+                # A book whose ACL2 was killed has no verdict: not a proof failure.
+                killed.append(f"  KILLED {book}: ACL2 ended by "
+                              f"{SIGNAL_NAMES.get(book_signal, f'signal {book_signal}')}"
+                              " (no verdict)")
+                killed.append(f"    log: {where or directory}")
+                continue
             first = first_failure_line(where) if where else None
-            why = first or "; ".join(reasons.get(book) or []) or results.get(book, "failed")
+            why = first or stated or results.get(book, "failed")
             failing.append(f"  FAILED {book}: {why}")
             failing.append(f"    log: {where or directory}")
         jobs = manifest.get("jobs_effective") or manifest.get("jobs")
@@ -962,9 +1030,13 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
                 slow.append((seconds, book, jobs))
         lines.append(f"  manifest {directory / 'manifest.json'}: "
                      f"status {manifest.get('status', 'unknown')}")
-    lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}; "
-                 f"installed from the cache {installed}")
+    lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}"
+                 + (f", killed {len(killed) // 2}" if killed else "")
+                 + f"; installed from the cache {installed}")
+    if passed == 0 and not failing and not killed and installed:
+        lines.append("  " + all_from_cache_words(identifier, installed))
     lines.extend(failing)
+    lines.extend(killed)
     if slow:
         lines.append(f"  books over {SLOW_SECONDS:g} s (D26 measures at two jobs):")
         for seconds, book, jobs in sorted(slow, reverse=True):

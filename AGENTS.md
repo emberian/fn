@@ -15,9 +15,10 @@ specification for the affected subsystem. How lanes work is
 - Agreed directions live in the decision register. Proposals and open
   questions are not requirements. This file adds no approval gate.
 - Requirements live in `planning/requirements.json`, proof targets in
-  `planning/proofs.json`; IDs are stable and the coordinator assigns new
-  ones at merge (`tools/next_id.py`). Change the registry, the specification
-  and the scenario together.
+  `planning/proofs.json`; IDs are stable; a lane claims a new one in the
+  shared ledger before writing it (`tools/next_id.py claim`) and the
+  coordinator checks the claims at merge (`tools/next_id.py check`).
+  Change the registry, the specification and the scenario together.
 - Preserve the supplied RFCs and cite their sections; distinguish an RFC
   requirement, a stronger fn guarantee and a local policy.
 - A claim names its coordinate: source revision, proof (a committed
