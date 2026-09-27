@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1062 |
 | Certification roots in the Makefile | 1033 |
 | Books inside the root closure | 1054 |
-| `defthm` and `defthmd` events | 15119 |
-| `defun` events | 10428 |
-| Functions with verified guards | 2337 |
+| `defthm` and `defthmd` events | 15124 |
+| `defun` events | 10429 |
+| Functions with verified guards | 2338 |
 | Functions declared `:verify-guards nil` and never verified | 823 |
 | Functions left at the default with an explicit guard | 5698 |
 | Functions left at the default with no guard | 1570 |
-| `assert-event` checks | 15566 |
-| `must-fail` checks | 1843 |
+| `assert-event` checks | 15590 |
+| `must-fail` checks | 1848 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 145 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 166 |
 | Include-hygiene warnings | 1056 |
-| Host-names warnings | 1191 |
+| Host-names warnings | 1193 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -164,7 +164,7 @@ that `make certify` requests.
 | `books/bp-ion-workflow.lisp` | root | 2 | 17 | 0/17/0/0 | 0 | 0 | 0 |
 | `books/bp-limits.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-listener-set.lisp` | root | 10 | 7 | 7/0/0/0 | 0 | 0 | 0 |
-| `books/bp-native-app-fast.lisp` | root | 35 | 19 | 0/0/19/0 | 0 | 0 | 0 |
+| `books/bp-native-app-fast.lisp` | root | 38 | 20 | 1/0/19/0 | 0 | 0 | 0 |
 | `books/bp-native-app.lisp` | root | 6 | 44 | 0/0/44/0 | 0 | 0 | 0 |
 | `books/bp-node-busy-delivery.lisp` | root | 19 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-contact-driver.lisp` | root | 17 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -509,7 +509,7 @@ that `make certify` requests.
 | `books/owner-served-invariants.lisp` | root | 16 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-signed-post.lisp` | root | 28 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-store-budget.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/owner-store-indexed.lisp` | root | 46 | 7 | 0/5/2/0 | 0 | 0 | 0 |
+| `books/owner-store-indexed.lisp` | root | 48 | 7 | 0/5/2/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 4 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-verdict-read.lisp` | root | 21 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/owner-xref-read.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -756,7 +756,7 @@ that `make certify` requests.
 | `tests/acl2/bp-ion-workflow-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 0 | 0 |
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/bp-listener-set-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 19 | 7 | 0 |
-| `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 2 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-node-contact-driver-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 23 | 12 | 0 |
 | `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 44 | 0/12/1/31 | 59 | 58 | 0 |
@@ -1011,7 +1011,7 @@ that `make certify` requests.
 | `tests/acl2/owner-served-invariants-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 76 | 11 | 0 |
 | `tests/acl2/owner-signed-post-tests.lisp` | root | 0 | 13 | 0/0/0/13 | 69 | 27 | 0 |
 | `tests/acl2/owner-store-budget-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 11 | 4 | 0 |
-| `tests/acl2/owner-store-indexed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 3 | 0 |
+| `tests/acl2/owner-store-indexed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 67 | 6 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 25 | 0/0/1/24 | 376 | 25 | 0 |
 | `tests/acl2/owner-tls-pin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/owner-verdict-read-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 31 | 6 | 0 |

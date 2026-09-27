@@ -1040,14 +1040,14 @@
     "books": 1062,
     "books_in_root_closure": 1054,
     "roots": 1033,
-    "theorems": 15119,
-    "functions": 10428,
-    "assert_events": 15566,
-    "must_fails": 1843,
+    "theorems": 15124,
+    "functions": 10429,
+    "assert_events": 15590,
+    "must_fails": 1848,
     "prover_refusals": 0,
     "encapsulates": 77,
     "guards": {
-      "verified": 2337,
+      "verified": 2338,
       "declared-off": 823,
       "default-guarded": 5698,
       "default-unguarded": 1570
@@ -1057,7 +1057,7 @@
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 166,
     "include_hygiene_warnings": 1056,
-    "host_names_warnings": 1191,
+    "host_names_warnings": 1193,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -3206,15 +3206,15 @@
       "book": "books/bp-native-app-fast.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 35,
-      "functions": 19,
+      "theorems": 38,
+      "functions": 20,
       "guards": {
-        "verified": 0,
+        "verified": 1,
         "declared-off": 0,
         "default-guarded": 19,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -12763,7 +12763,7 @@
       "book": "books/owner-store-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 46,
+      "theorems": 48,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -19700,10 +19700,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
-      "must_fails": 0,
+      "assert_events": 22,
+      "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -19711,7 +19711,9 @@
         "../../books/codec-attach",
         "bp-native-app-tests"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -26990,10 +26992,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 47,
-      "must_fails": 3,
+      "assert_events": 67,
+      "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 10,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -42256,6 +42258,20 @@
         "name": "*fn-bpn-machine-max-octets*",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-receipt-host.lisp",
+        "line": 37,
+        "name": "cadr",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/bp-receive-host.lisp",
+        "line": 23,
+        "name": "cadr",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/bp-release-owner-host.lisp",
