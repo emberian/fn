@@ -8518,7 +8518,6 @@
         "fn-mod-hidden-queues-is-hiddenp",
         "fn-auth-access-text-of-moderation-config",
         "fn-mvb-approve-commits-the-held-article-approved",
-        "fn-mvb-held-article-is-the-model-body-by-definition",
         "fn-mvb-only-a-moderator-approves-or-rejects",
         "fn-mvb-reject-withdraws-the-held-envelope"
       ]

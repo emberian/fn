@@ -8263,10 +8263,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-mvb-held-article-is-the-model-body-by-definition"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-mvb-only-a-moderator-approves-or-rejects"
         },
         {
