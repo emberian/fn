@@ -27,6 +27,7 @@ segments it covers.  The cases, each over a store the served node filled:
 """
 from __future__ import annotations
 
+import re
 import os
 import shutil
 import tempfile
@@ -43,7 +44,11 @@ ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-durable",
 
 
 def segments(store: Path):
-    return sorted(p.name for p in (store / "journal").iterdir())
+    """journal/'s log segments (NNNNNN.log, books/store-log-segments.lisp
+    fn-lgs-segment-index); journal/ also holds the decision journal
+    decisions.fnj (time-model-2), which is not a segment."""
+    return sorted(p.name for p in (store / "journal").iterdir()
+                  if re.fullmatch(r"[0-9]{6}\.log", p.name))
 
 
 
