@@ -7243,6 +7243,22 @@
         {
           "kind": "theorem",
           "name": "fn-heap-figure-octets-grows-with-history-and-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-operation-decide-holds-the-operation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-operation-decide-of-a-serve-action-is-heap-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-operation-decide-holds-the-operation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-is-reserve-of-heap-decide"
         }
       ]
     },

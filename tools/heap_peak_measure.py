@@ -189,6 +189,9 @@ def main():
     p.add_argument("--step", type=int, default=16)
     p.add_argument("--big", type=int, default=8192, help="MB for setup steps")
     p.add_argument("--json", required=True)
+    p.add_argument("--at-figure", action="store_true",
+                   help="run each operation once at the launcher's own figure for it "
+                        "(`IMAGE --fn heap -- operator CONFIG VERB...') instead of bisecting")
     a = p.parse_args()
     image = Path(a.image).resolve()
     work = Path(a.work)
@@ -233,7 +236,18 @@ def main():
     def log(operation, probe_result):
         print("%s %s" % (operation, json.dumps(probe_result)), flush=True)
 
-    for operation in a.ops.split(","):
+    words_of = {"recover": ["recover"], "open": ["run"], "compact": ["store", "compact"],
+                "reclaim": ["store", "reclaim"]}
+    for operation in a.ops.split(",") if a.at_figure else []:
+        line = figure(image, config, words_of[operation])
+        mb = int(line.split("heap=", 1)[1].split()[0]) if line.startswith("heap=") else None
+        result = probe(image, kept, work, operation, mb, a.big) if mb else {"refused": line}
+        result["figure_line"] = line
+        results[operation] = result
+        log(operation, result)
+        out["operations"] = results
+        Path(a.json).write_text(json.dumps(out, indent=1))
+    for operation in [] if a.at_figure else a.ops.split(","):
         results[operation] = bisect(image, kept, work, operation, a.lo, a.hi, a.step, a.big, log)
         print("== %s least_mb=%s (figure %d MB)" % (operation, results[operation]["least_mb"], fig_mb),
               flush=True)
