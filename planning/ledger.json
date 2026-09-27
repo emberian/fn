@@ -1171,6 +1171,8 @@
     "tests/acl2/owner-reader-read-tests",
     "books/owner-time-model",
     "tests/acl2/owner-time-model-tests",
+    "books/state-digest",
+    "tests/acl2/state-digest-tests",
     "books/store-log-route-programs",
     "tests/acl2/store-log-route-programs-tests",
     "books/store-log-open-barriers",
@@ -1256,8 +1258,8 @@
   ],
   "totals": {
     "books": 1300,
-    "books_in_root_closure": 1287,
-    "roots": 1251,
+    "books_in_root_closure": 1289,
+    "roots": 1253,
     "theorems": 19234,
     "functions": 13251,
     "assert_events": 18991,
@@ -17820,8 +17822,8 @@
     },
     {
       "book": "books/state-digest.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 15,
       "guards": {
@@ -34814,8 +34816,8 @@
     },
     {
       "book": "tests/acl2/state-digest-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 2,
       "guards": {

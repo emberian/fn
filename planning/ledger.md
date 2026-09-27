@@ -11,8 +11,8 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 1300 |
-| Certification roots in the Makefile | 1251 |
-| Books inside the root closure | 1287 |
+| Certification roots in the Makefile | 1253 |
+| Books inside the root closure | 1289 |
 | `defthm` and `defthmd` events | 19234 |
 | `defun` events | 13251 |
 | Functions with verified guards | 2488 |
@@ -678,7 +678,7 @@ that `make certify` requests.
 | `books/snoc-list.lisp` | root | 29 | 13 | 0/0/13/0 | 0 | 0 | 2 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 0 |
 | `books/source-routes.lisp` | closure | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/state-digest.lisp` | - | 0 | 15 | 0/0/14/1 | 0 | 0 | 0 |
+| `books/state-digest.lisp` | root | 0 | 15 | 0/0/14/1 | 0 | 0 | 0 |
 | `books/statement-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/statement-codec.lisp` | root | 38 | 7 | 0/0/6/1 | 0 | 0 | 1 |
 | `books/statement-invariants.lisp` | root | 57 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -1273,7 +1273,7 @@ that `make certify` requests.
 | `tests/acl2/source-projection-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 5 | 3 | 0 |
 | `tests/acl2/source-routes-tests.lisp` | root | 0 | 23 | 0/12/0/11 | 23 | 7 | 0 |
 | `tests/acl2/stack-depth-twins-tests.lisp` | - | 2 | 0 | 0/0/0/0 | 15 | 0 | 0 |
-| `tests/acl2/state-digest-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 6 | 0 | 0 |
+| `tests/acl2/state-digest-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 6 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-budget-article-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 2 | 0 |
 | `tests/acl2/store-budget-naming-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 61 | 17 | 0 |
