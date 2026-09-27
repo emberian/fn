@@ -326,6 +326,8 @@ transition."
                              ;; HST-023: the scheduler's hold and wait fold
                              ;; (books/owner-scheduler.lisp fn-osch-health-lines).
                              (fnn-owner-sched-snapshot service)
+                             ;; the reclaim counts read the arena (only read)
+                             (fnn-live-stobj 'fn-arena)
                              *the-live-state*)))
        (unless (and (consp answer) (consp (cdr answer))
                     (fnn-octet-list-p (first answer)))

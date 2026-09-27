@@ -26,6 +26,7 @@
 (in-package "ACL2")
 (include-book "store-reclaim")
 (include-book "store-node")
+(include-book "article-arena-reads")  ; fn-nntp-article-tombstonep, -length
 
 ; A registered consumer whose acknowledgement is below FRONTIER.
 (defun fn-rcl-lagging-consumerp (entries frontier)
@@ -135,3 +136,132 @@
                                      (:d fn-stx-delta) (:d fn-stx-verifiedp)
                                      (:d fn-stx-statement-of) fn-prin-verifiedp
                                      fn-stx-make-verdict fn-stx-verdict-token))))
+
+; -----------------------------------------------------------------------------
+; The counts over the ARENA (lane matrix-reds-reclaim).  Since the records
+; flip an archive article's payload position is an arena HANDLE
+; (books/store-intern.lisp), so `fn-rcl-verdict''s tombstone test and
+; `fn-rcl-summary''s `len' read a natural: :already-reclaimed was never
+; answered (a reclaimed article counted as reclaimable again) and every
+; octet count was 0.  The counts the host prints read each article through
+; the arena instead (books/article-arena-reads.lisp): its length in O(1),
+; whether it is a tombstone from the tombstone's fixed head, and a
+; tombstone's recorded length from the tombstone's own octets (fixed size).
+; No payload octet list is built for a live article (D27).  The arena is
+; only read (flip-L6-2's rule).
+;
+; The wire functions above stay the octet-list model; each arena function
+; below is that model over the articles' octet models
+; (books/nntp-session.lisp fn-nntp-article-alpha): the keystones
+; fn-rcl-verdict-arena-is-the-model-verdict and
+; fn-rcl-store-counts-arena-is-the-model-counts.
+
+(defun fn-rcl-verdict-arena (rule now h verdicts article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-rcl-rulep
+                                                            fn-rcl-rule-permits
+                                                            fn-nntp-article-tombstonep)))))
+  (let ((msgid (fn-article-msgid article))
+        (memberships (fn-article-memberships article)))
+    (cond ((fn-nntp-article-tombstonep article fn-arena) :already-reclaimed)
+          ((equal rule '(:keep-forever)) :rule-keeps)
+          ((not (fn-rcl-rulep rule)) :rule-refused)
+          ((not (fn-rcl-rule-permits rule now (fn-article-stamp article)))
+           :too-recent)
+          ((fn-rcl-verdict-heldp msgid verdicts) :verdict-needs-payload)
+          ((fn-rcl-pinned-p (fn-rcl-pins h) memberships) :held-reader-pin)
+          ((fn-rcl-unacknowledged-p memberships (fn-rcl-cursors h))
+           :held-consumer-cursor)
+          ((fn-rcl-undelivered-p (fn-rcl-feeds h) msgid) :held-feed)
+          ((member-equal msgid (true-list-fix (fn-rcl-bp h))) :held-bp-obligation)
+          (t :reclaimable))))
+
+; KEYSTONE.  The verdict over the arena is `fn-rcl-verdict' of the article's
+; octet model: the pre-flip verdict, which read the article's own payload.
+(defthm fn-rcl-verdict-arena-is-the-model-verdict
+  (equal (fn-rcl-verdict-arena rule now h verdicts article fn-arena)
+         (fn-rcl-verdict rule now h verdicts (fn-nntp-article-alpha article fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-article-alpha)
+                                  (fn-rcl-tombstonep fn-rcl-rulep fn-rcl-rule-permits
+                                   fn-rcl-verdict-heldp fn-rcl-pinned-p
+                                   fn-rcl-unacknowledged-p fn-rcl-undelivered-p
+                                   fn-nntp-article-bytes)))))
+
+(defun fn-rcl-summary-arena (rule now h verdicts articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (consp articles)
+      (let* ((rest (fn-rcl-summary-arena rule now h verdicts (cdr articles) fn-arena))
+             (a (car articles))
+             (verdict (fn-rcl-verdict-arena rule now h verdicts a fn-arena)))
+        (cond ((equal verdict :reclaimable)
+               (list (+ 1 (nfix (nth 0 rest)))
+                     (+ (fn-nntp-article-length a fn-arena) (nfix (nth 1 rest)))
+                     (nfix (nth 2 rest)) (nfix (nth 3 rest))))
+              ((equal verdict :already-reclaimed)
+               (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                     (+ 1 (nfix (nth 2 rest)))
+                     (+ (nfix (- (fn-rcl-tomb-length (fn-nntp-article-bytes a fn-arena))
+                                 (fn-nntp-article-length a fn-arena)))
+                        (nfix (nth 3 rest)))))
+              (t (list (nfix (nth 0 rest)) (nfix (nth 1 rest))
+                       (nfix (nth 2 rest)) (nfix (nth 3 rest))))))
+    (list 0 0 0 0)))
+
+(defun fn-rcl-held-count-arena (rule now h verdicts articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (consp articles)
+      (+ (if (fn-rcl-heldp (fn-rcl-verdict-arena rule now h verdicts (car articles) fn-arena))
+             1 0)
+         (fn-rcl-held-count-arena rule now h verdicts (cdr articles) fn-arena))
+    0))
+
+; What the host calls (books/native-live-status.lisp fn-nls-reclaim-words,
+; books/store-log-reclaim.lisp fn-lgr-decide-stream).
+(defun fn-rcl-store-counts-arena (rule now s fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let ((h (fn-rcl-store-holders s))
+        (verdicts (fn-sn-verdicts s))
+        (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+    (append (fn-rcl-summary-arena rule now h verdicts articles fn-arena)
+            (list (fn-rcl-held-count-arena rule now h verdicts articles fn-arena)))))
+
+; The octet models of an article list (logical: the statement's model).
+(defun fn-rcl-articles-alpha (articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp articles)
+      (cons (fn-nntp-article-alpha (car articles) fn-arena)
+            (fn-rcl-articles-alpha (cdr articles) fn-arena))
+    nil))
+
+(defthm fn-rcl-summary-arena-is-the-model-summary
+  (equal (fn-rcl-summary-arena rule now h verdicts articles fn-arena)
+         (fn-rcl-summary rule now h verdicts (fn-rcl-articles-alpha articles fn-arena)))
+  :hints (("Goal" :induct (fn-rcl-summary-arena rule now h verdicts articles fn-arena)
+           :in-theory (e/d (fn-nntp-article-alpha fn-nntp-article-length)
+                           (fn-rcl-verdict fn-rcl-verdict-arena fn-rcl-tomb-length
+                            fn-nntp-article-bytes)))))
+
+(defthm fn-rcl-held-count-arena-is-the-model-held-count
+  (equal (fn-rcl-held-count-arena rule now h verdicts articles fn-arena)
+         (fn-rcl-held-count rule now h verdicts (fn-rcl-articles-alpha articles fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-rcl-verdict fn-rcl-verdict-arena fn-rcl-heldp))))
+
+; KEYSTONE.  The counts the host prints are the octet-list model's counts
+; (`fn-rcl-store-counts''s summary and held count) over the octet models of
+; the Store's articles: the counts the pre-flip Store printed.  Subject:
+; fn-rcl-store-counts-arena, called by fn-nls-reclaim-words (the status
+; report, host/native-live-status-host.lisp and the owner's live report) and
+; fn-lgr-decide-stream (host/checkpoint-host.lisp
+; fn-store-log-reclaim-decide-stream, `store reclaim').
+(defthm fn-rcl-store-counts-arena-is-the-model-counts
+  (let ((h (fn-rcl-store-holders s))
+        (verdicts (fn-sn-verdicts s))
+        (models (fn-rcl-articles-alpha
+                 (fn-state-articles (fn-node-acceptance (fn-sn-node s))) fn-arena)))
+    (equal (fn-rcl-store-counts-arena rule now s fn-arena)
+           (append (fn-rcl-summary rule now h verdicts models)
+                   (list (fn-rcl-held-count rule now h verdicts models)))))
+  :hints (("Goal" :in-theory (disable fn-rcl-summary fn-rcl-held-count
+                                      fn-rcl-summary-arena fn-rcl-held-count-arena
+                                      fn-rcl-store-holders))))
+

@@ -384,7 +384,7 @@
 (assert-event (equal (fn-rtf-pin-count *nht-s*) 1))
 (assert-event (equal (fn-rtf-reserved *nht-s*) 2))
 (assert-event
- (equal (take 25 (fn-nls-live-report :obligations *nht-profile* *nht-oc* (nht-cache) *nht-obs*))
+ (equal (take 25 (fn-nls-live-report :obligations *nht-profile* *nht-oc* (nht-cache) *nht-obs* fn-arena))
         (fn-record-string-octets "obligations=1 reserved=2
 ")))
 

@@ -76,21 +76,21 @@
 
 ; The keystone's instance: every kind, live equals offline.
 (assert-event
- (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-obs*)
+ (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-obs* fn-arena)
         (fn-nls-offline-report :status *nlst-profile* *nlst-s*
-                               (fn-ocfg-config *nlst-oc*) *nlst-obs*)))
+                               (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena)))
 (assert-event
- (equal (fn-nls-live-report :obligations *nlst-profile* *nlst-oc* (nlst-cache) *nlst-obs*)
+ (equal (fn-nls-live-report :obligations *nlst-profile* *nlst-oc* (nlst-cache) *nlst-obs* fn-arena)
         (fn-nls-offline-report :obligations *nlst-profile* *nlst-s*
-                               (fn-ocfg-config *nlst-oc*) *nlst-obs*)))
+                               (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena)))
 ; The words: the status report opens with the committed count and article.
 (assert-event
  (equal (take 28 (fn-nls-offline-report :status *nlst-profile* *nlst-s*
-                                        (fn-ocfg-config *nlst-oc*) *nlst-obs*))
+                                        (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena))
         (fn-record-string-octets "transactions=1 articles=1 st")))
 (assert-event
  (equal (take 29 (fn-nls-offline-report :obligations *nlst-profile* *nlst-s*
-                                        (fn-ocfg-config *nlst-oc*) *nlst-obs*))
+                                        (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena))
         (fn-record-string-octets "obligations=1 reserved=2
 obli")))
 
@@ -102,14 +102,14 @@ obli")))
 (assert-event (not (fn-sbud-octets-cache-validp
                     (nlst-stale) (fn-sf-records (fn-sn-files *nlst-s*)))))
 (assert-event
- (not (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-stale) *nlst-obs*)
+ (not (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-stale) *nlst-obs* fn-arena)
              (fn-nls-offline-report :status *nlst-profile* *nlst-s*
-                                    (fn-ocfg-config *nlst-oc*) *nlst-obs*))))
+                                    (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena))))
 (must-fail
  (defthm nlst-live-is-offline-without-a-valid-sum
-   (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-stale) *nlst-obs*)
+   (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-stale) *nlst-obs* fn-arena)
           (fn-nls-offline-report :status *nlst-profile* *nlst-s*
-                                 (fn-ocfg-config *nlst-oc*) *nlst-obs*))
+                                 (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena))
    :rule-classes nil
    ;; The keystone's own hints: the ground values go through the record
    ;; encoder's attachment, which a proof cannot evaluate; the assertion
@@ -124,14 +124,14 @@ obli")))
   (fn-ocfg-make (fn-ocfg-owner *nlst-oc*) (fn-ocfg-config *nlst-oc*)
                 (list (cons 0 (fn-ocfg-config *nlst-oc*))) nil))
 (assert-event
- (not (equal (fn-nls-live-report :pins *nlst-profile* *nlst-connected* (nlst-cache) *nlst-obs*)
+ (not (equal (fn-nls-live-report :pins *nlst-profile* *nlst-connected* (nlst-cache) *nlst-obs* fn-arena)
              (fn-nls-offline-report :pins *nlst-profile* *nlst-s*
-                                    (fn-ocfg-config *nlst-oc*) *nlst-obs*))))
+                                    (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena))))
 (must-fail
  (defthm nlst-live-is-offline-with-a-connection
-   (equal (fn-nls-live-report :pins *nlst-profile* *nlst-connected* (nlst-cache) *nlst-obs*)
+   (equal (fn-nls-live-report :pins *nlst-profile* *nlst-connected* (nlst-cache) *nlst-obs* fn-arena)
           (fn-nls-offline-report :pins *nlst-profile* *nlst-s*
-                                 (fn-ocfg-config *nlst-oc*) *nlst-obs*))
+                                 (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena))
    :rule-classes nil
    ;; The keystone's own hints: the ground values go through the record
    ;; encoder's attachment, which a proof cannot evaluate; the assertion
@@ -144,10 +144,11 @@ obli")))
 ; ---------------------------------------------------------------------------
 ; The exchange
 
-(defun nlst-report ()
-  (declare (xargs :verify-guards nil))
-  (fn-nls-offline-report :status *nlst-profile* *nlst-s*
-                         (fn-ocfg-config *nlst-oc*) *nlst-obs*))
+; The report reads the reclaim counts through the arena (lane
+; matrix-reds-reclaim): a macro, so each use passes the live arena.
+(defmacro nlst-report ()
+  `(fn-nls-offline-report :status *nlst-profile* *nlst-s*
+                          (fn-ocfg-config *nlst-oc*) *nlst-obs* fn-arena))
 (assert-event (equal (fn-nls-request-decode (fn-nls-request-encode :obligations 7))
                      '(:live-status :obligations 7)))
 (assert-event (equal (car (fn-nls-request-decode
@@ -266,9 +267,8 @@ obli")))
   (update-nth 3 (expt 2 40) (fn-bs-config-for-profile :development)))
 (assert-event (equal (fn-bs-profile-max-history-octets *nlst-big-profile*)
                      (expt 2 40)))
-(defun nlst-status (profile obs)
-  (declare (xargs :verify-guards nil))
-  (fn-nls-offline-report :status profile *nlst-s* (fn-ocfg-config *nlst-oc*) obs))
+(defmacro nlst-status (profile obs)
+  `(fn-nls-offline-report :status ,profile *nlst-s* (fn-ocfg-config *nlst-oc*) ,obs fn-arena))
 (assert-event
  (nlst-infixp (fn-record-string-octets " max-history-octets=1099511627776")
               (nlst-status *nlst-big-profile* *nlst-obs*)))
@@ -293,7 +293,7 @@ pins=")
               (nlst-status *nlst-profile* *nlst-obs*)))
 ; Live equals offline with the file observed (the keystone's instance).
 (assert-event
- (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-file-obs*)
+ (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-file-obs* fn-arena)
         (nlst-status *nlst-profile* *nlst-file-obs*)))
 
 ; PKT-492 (checkpoint-capture-stream): the owner's deferred automatic
@@ -322,7 +322,7 @@ pins=")
       (equal (fn-nls-checkpoint-deferred-words '(nil nil nil nil nil (:plan))) nil)))
 ; Live equals offline with a deferral observed (the keystone's instance).
 (assert-event
- (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-deferred-obs*)
+ (equal (fn-nls-live-report :status *nlst-profile* *nlst-oc* (nlst-cache) *nlst-deferred-obs* fn-arena)
         (nlst-status *nlst-profile* *nlst-deferred-obs*)))
 
 ; The pessimistic open cost: every record replayed, 32 octets of list per
@@ -445,13 +445,13 @@ open-cost replay-records=")
 (assert-event (consp (fn-cfg-authorities (fn-cfg-value *nlst-granted-config*))))
 (assert-event
  (equal (fn-nls-report (fn-native-admin-result-report-kind *nlst-control-list*)
-                       *nlst-profile* *nlst-s* 0 *nlst-granted-config* nil *nlst-obs*)
+                       *nlst-profile* *nlst-s* 0 *nlst-granted-config* nil *nlst-obs* fn-arena)
         (fn-record-string-octets
          (concatenate 'string "grant " *nlst-p-hex* " cancel fn.mod.*"
                       (coerce (list (code-char 10)) 'string)))))
 (assert-event
  (equal (fn-nls-report :peers *nlst-profile* *nlst-s* 0 *nlst-granted-config*
-                       nil *nlst-obs*)
+                       nil *nlst-obs* fn-arena)
         nil))
 ; `peer list' still names the peers.
 (assert-event
@@ -463,7 +463,7 @@ open-cost replay-records=")
 ; Without the plan's own kind the equality fails: the host's old :peers.
 (must-fail
  (defthm nlst-peers-kind-is-query-report
-   (equal (fn-nls-report :peers profile s bytes cfg pins obs)
+   (equal (fn-nls-report :peers profile s bytes cfg pins obs fn-arena)
           (fn-native-admin-query-report plan (fn-cfg-value cfg)))
    :hints (("Goal" :in-theory (disable fn-native-admin-control-report
                                        fn-native-admin-peer-budget-report)))))
@@ -477,7 +477,7 @@ open-cost replay-records=")
 (assert-event (equal (fn-nls-code-kind (fn-nls-kind-code :accounts)) :accounts))
 (assert-event
  (equal (fn-nls-report :accounts *nlst-profile* *nlst-s* 0 *nlst-granted-config*
-                       nil *nlst-obs*)
+                       nil *nlst-obs* fn-arena)
         (fn-nls-query-report *nlst-account-list*
                              (fn-cfg-value *nlst-granted-config*))))
 
