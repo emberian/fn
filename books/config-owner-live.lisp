@@ -1819,12 +1819,84 @@
                             fn-ocl-projectionp-of-a-visible-state
                             fn-ocl-projection-keeps-state-fields)))))
 
+; A connection the table pins has a pin (fn-ocfg-conns-pinnedp, read at the
+; found connection).
+(local
+ (defthm fn-ocl-found-connection-has-a-pin
+   (implies (and (fn-ocfg-conns-pinnedp conns pins)
+                 (fn-own-find-conn id conns))
+            (fn-ocfg-pin-find (fn-own-conn-id (fn-own-find-conn id conns)) pins))
+   :hints (("Goal" :induct (fn-own-find-conn id conns)
+            :in-theory (e/d (fn-own-find-conn fn-ocfg-conns-pinnedp)
+                            (fn-ocfg-pin-find))))))
+
+; The read wrapper's owner and its connection's configuration, by cases on
+; the flag (books/owner-config.lisp fn-ocfg-with-read-owner).
+(local
+ (defthm fn-ocl-with-read-owner-fields
+   (and (equal (fn-ocfg-owner (fn-ocfg-with-read-owner oc id owner repinned)) owner)
+        (equal (fn-ocfg-config (fn-ocfg-with-read-owner oc id owner repinned))
+               (fn-ocfg-config oc))
+        (equal (fn-ocfg-staged (fn-ocfg-with-read-owner oc id owner repinned))
+               (fn-ocfg-staged oc))
+        (equal (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner repinned))
+               (if (fn-own-find-conn id (fn-own-conns owner))
+                   (if repinned
+                       (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
+                     (fn-ocfg-pins oc))
+                 (fn-ocfg-pin-remove id (fn-ocfg-pins oc))))
+        (implies (and (fn-own-find-conn id (fn-own-conns owner))
+                      (fn-ocfg-pin-find id (fn-ocfg-pins oc)))
+                 (equal (fn-ocfg-conn-config (fn-ocfg-with-read-owner oc id owner repinned) id)
+                        (if repinned (fn-ocfg-config oc) (fn-ocfg-conn-config oc id)))))
+   :hints (("Goal" :in-theory (e/d (fn-ocfg-with-read-owner fn-ocfg-conn-config)
+                                   (fn-ocfg-pin-find fn-ocfg-pin-set fn-ocfg-pin-remove
+                                    fn-own-find-conn))))))
+
+; A connection whose identifier is not the moved pin's keeps its history when
+; the store is the same and only that other pin moved.
+(local
+ (defthm fn-ocl-conn-historyp-under-same-store-and-other-pin-set
+   (implies (and (fn-ocl-conn-historyp oc conn)
+                 (equal (fn-own-store (fn-ocfg-owner next))
+                        (fn-own-store (fn-ocfg-owner oc)))
+                 (equal (fn-ocfg-pins next)
+                        (fn-ocfg-pin-set id cfg (fn-ocfg-pins oc)))
+                 (not (equal (fn-own-conn-id conn) id)))
+            (fn-ocl-conn-historyp next conn))
+   :hints (("Goal"
+            :use ((:instance fn-ocl-conn-historyp-under-same-store-and-pin))
+            :in-theory (e/d (fn-ocfg-conn-config)
+                            (fn-ocl-conn-historyp fn-ocfg-pin-set fn-ocfg-pin-find
+                             fn-ocl-conn-historyp-under-same-store-and-pin))))))
+
+; The replacement of the connection whose pin moved keeps every history: the
+; replaced connection has one in the new owner by hypothesis, every other
+; connection by the lemma above.
+(local
+ (defthm fn-ocl-replace-connection-preserves-histories-under-pin-set
+   (implies (and (fn-ocl-conns-historyp oc conns)
+                 (equal (fn-own-store (fn-ocfg-owner next-oc))
+                        (fn-own-store (fn-ocfg-owner oc)))
+                 (equal (fn-ocfg-pins next-oc)
+                        (fn-ocfg-pin-set (fn-own-conn-id next) cfg (fn-ocfg-pins oc)))
+                 (fn-ocl-conn-historyp next-oc next))
+            (fn-ocl-conns-historyp next-oc (fn-own-replace-conn next conns)))
+   :hints (("Goal" :induct (fn-own-replace-conn next conns)
+            :in-theory (e/d (fn-own-replace-conn fn-ocl-conns-historyp)
+                            (fn-ocl-conn-historyp fn-ocfg-pin-set fn-ocfg-pin-find)))
+           ("Subgoal *1/2" :use ((:instance fn-ocl-conn-historyp-under-same-store-and-other-pin-set
+                                            (conn (car conns)) (next next-oc)
+                                            (id (fn-own-conn-id next))))))))
+
 ; NNT-042: the surviving connection has a history in the configured owner
 ; AFTER the read: with its old pin and fields when the read moved nothing
 ; (fn-own-read-survivor-keeps-historical-fields, first case), or at the
 ; committed view under the current configuration, to which
 ; fn-ocfg-with-read-owner pinned it (second case;
-; fn-ocl-unchanged-view-new-pin-is-historical is the :advance shape).
+; fn-ocl-unchanged-view-new-pin-is-historical is the :advance shape).  Proved
+; in the minimal theory from the named facts: an open theory looped the
+; rewriter on the read's owner.
 (defthm fn-ocl-own-read-survivor-has-history
   (implies
    (and (fn-ocl-relation oc)
@@ -1838,13 +1910,20 @@
      id (fn-own-conns
          (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))))
   :hints (("Goal"
-           :cases ((fn-own-read-repinned (fn-ocfg-owner oc) id octets))
-           :use ((:instance fn-ocl-related-found-connection-has-history)
+           :use ((:instance fn-ocl-relation-read-input-facts)
+                 (:instance fn-ocl-related-found-connection-has-history)
+                 (:instance fn-ocl-found-connection-has-a-pin
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))
+                            (pins (fn-ocfg-pins oc)))
+                 (:instance fn-own-find-conn-id (conns (fn-own-conns (fn-ocfg-owner oc))))
                  (:instance fn-own-read-survivor-is-archive-bounded
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-own-read-survivor-keeps-historical-fields
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-ocfg-read-unfolds)
+                 (:instance fn-ocl-with-read-owner-fields
+                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))
+                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
                  (:instance fn-ocl-own-read-keeps-store (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-own-read-keeps-owner-control (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-view-archive-has-current-domain)
@@ -1867,24 +1946,7 @@
                                    id (fn-own-conns
                                        (cdr (fn-own-read
                                              (fn-ocfg-owner oc) id octets)))))))
-           :in-theory (e/d (fn-ocfg-with-read-owner fn-ocfg-conn-config)
-                           (fn-ocl-relation fn-ocl-conn-historyp fn-ocfg-read
-                            fn-own-read fn-own-read-repinned fn-own-read-full
-                            fn-own-conn-boundedp fn-cst-relation fn-cpr-replay
-                            fn-cst-replay-node fn-ocl-view-historyp
-                            fn-ocl-view-configp fn-ocl-config-historyp
-                            fn-own-read-survivor-keeps-historical-fields
-                            fn-own-read-survivor-is-archive-bounded
-                            fn-ocl-connection-history-keeps-replaced-session
-                            fn-ocl-conn-historyp-under-same-store-and-pin
-                            fn-ocl-view-archive-has-current-domain
-                            ; the four :use'd rewrite rules, else the
-                            ; rewriter loops on the read's owner
-                            fn-ocl-related-found-connection-has-history
-                            fn-ocl-ocfg-read-unfolds fn-ocl-own-read-keeps-store
-                            fn-ocl-own-read-keeps-owner-control
-                            fn-ocl-own-read-survivor-had-original
-                            fn-own-find-conn fn-own-conn-boundedp-is-auth-session)))))
+           :in-theory (theory 'minimal-theory))))
 
 (defthm fn-ocl-replace-cannot-create-other-found-id
   (implies (and (not (equal selected (fn-own-conn-id next)))
@@ -2004,6 +2066,16 @@
                             (o (fn-ocfg-owner oc)))
                  fn-ocl-own-read-survivor-has-history
                  (:instance fn-ocl-ocfg-read-unfolds)
+                 (:instance fn-ocl-with-read-owner-fields
+                            (owner (cdr (fn-own-read (fn-ocfg-owner oc) id octets)))
+                            (repinned (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))
+                 (:instance fn-ocl-replace-connection-preserves-histories-under-pin-set
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))
+                            (next-oc (cdr (fn-ocfg-read oc id octets)))
+                            (cfg (fn-ocfg-config oc))
+                            (next (fn-own-find-conn
+                                   id (fn-own-conns
+                                       (cdr (fn-own-read (fn-ocfg-owner oc) id octets))))))
                  (:instance fn-ocl-pin-set-keeps-conns-pinned
                             (conns (fn-own-replace-conn
                                     (fn-own-find-conn
@@ -2074,9 +2146,11 @@
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (n (fn-own-next-id (fn-ocfg-owner oc)))))
            :in-theory (e/d (fn-ocfg-with-read-owner
-                            fn-own-set-conns fn-own-enqueue)
+                            fn-own-set-conns fn-own-enqueue
+                            ; the read wrapper opens to the owner read and
+                            ; the pin table's move (fn-ocfg-read stays closed)
+                            fn-ocl-ocfg-read-unfolds)
                            (fn-ocfg-read fn-own-read-full fn-own-read-repinned
-                            fn-ocl-ocfg-read-unfolds
                             fn-ocl-pin-set-keeps-conns-pinned
                             fn-ocl-pin-set-keeps-pins-pin-conns-only
                             fn-ocl-pin-set-keeps-pins-okp
